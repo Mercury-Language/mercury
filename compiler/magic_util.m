@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,6 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module (inst).
 :- import_module bool, io, list, map, set, std_util.
 
 	% Check that the argument types and modes are legal for
@@ -88,11 +87,11 @@
 	% Convert all modes to output, creating test unifications 
 	% where the original mode was input. This will result in
 	% a join on the input attributes.
-:- pred magic_util__create_input_test_unifications(list(prog_var)::in,
-		list(prog_var)::in, list(mode)::in, list(prog_var)::out,
-		list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred magic_util__create_input_test_unifications(module_info::in,
+		list(prog_var)::in, list(prog_var)::in, list(mode)::in,
+		list(prog_var)::out, list(hlds_goal)::in, list(hlds_goal)::out,
 		hlds_goal_info::in, hlds_goal_info::out,
-		magic_info::in, magic_info::out) is det.
+		proc_info::in, proc_info::out) is det.
 		
 	% Convert an input mode to output.
 :- pred magic_util__mode_to_output_mode(module_info::in,
@@ -120,6 +119,7 @@
 
 :- import_module hlds_data, code_util, type_util, mode_util, inst_match.
 :- import_module instmap, goal_util, prog_out, hlds_out, error_util, prog_util.
+:- import_module (inst), polymorphism.
 
 :- import_module assoc_list, int, require, string, term, varset.
 
@@ -372,18 +372,26 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			% the input matches the output.
 			magic_info_get_module_info(ModuleInfo),
 			{ module_info_pred_proc_info(ModuleInfo, PredProcId,
-				PredInfo, ProcInfo) },
-			{ pred_info_module(PredInfo, PredModule) },
-			{ pred_info_name(PredInfo, PredName) },
+				CalledPredInfo, CalledProcInfo) },
+			{ pred_info_module(CalledPredInfo, PredModule) },
+			{ pred_info_name(CalledPredInfo, PredName) },
 			{ Name = qualified(PredModule, PredName) },
-			{ proc_info_argmodes(ProcInfo, ArgModes) },
-			magic_util__create_input_test_unifications(Args,
-				InputArgs, ArgModes, NewArgs, [], Tests,
-				CallGoalInfo0, CallGoalInfo),
+			{ proc_info_argmodes(CalledProcInfo, ArgModes) },
+			magic_info_get_proc_info(ProcInfo0),
+			{ magic_util__create_input_test_unifications(
+				ModuleInfo, Args, InputArgs, ArgModes,
+				NewArgs, [], Tests, CallGoalInfo0,
+				CallGoalInfo1, ProcInfo0, ProcInfo) },
+			magic_info_set_proc_info(ProcInfo),
+			{ goal_info_get_nonlocals(CallGoalInfo1,
+				CallNonLocals1) },
+			magic_util__restrict_nonlocals(CallNonLocals1,
+				CallNonLocals),
+			{ goal_info_set_nonlocals(CallGoalInfo1, CallNonLocals,
+				CallGoalInfo) },
 			{ CallGoal = call(PredId, ProcId, NewArgs,
-				not_builtin, no, Name)
-					- CallGoalInfo }
-		;	
+				not_builtin, no, Name) - CallGoalInfo }
+		;
 			% Transform away the input arguments. 
 			magic_util__handle_input_args(PredProcId0, PredProcId,
 				PrevGoals, NonLocals, Args, InputArgs,
@@ -431,7 +439,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 	(
 		{ Closure = unify(_, _, UniMode, Uni0, Context) - Info },
 		{ Uni0 = construct(Var, ConsId0, _, Modes, _, _, _) },
-		{ ConsId0 = pred_const(PredId0, ProcId0, Method) },
+		{ ConsId0 = pred_const(PredId0, ProcId0, Method) }
+	->
 		%
 		% Replace the pred_proc_id of the procedure being aggregated
 		% over with its Aditi version.
@@ -444,22 +453,32 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 			ProcId = ProcId0,
 			ConsId = ConsId0
 		},
-		{ hlds_pred__is_derived_relation(ModuleInfo0, PredId) }
-	->
 
-		%
-		% Create the input relation for the aggregate query.
-		% This is just `true', since we don't allow curried
-		% arguments (except for aditi:states).
-		%
-		magic_info_get_magic_proc_info(MagicProcInfo),
-		{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
-			CallProcInfo) },
-		{ CallProcInfo = magic_proc_info(_, MagicInputs, _, _, _) },
+		( { hlds_pred__is_derived_relation(ModuleInfo0, PredId) } ->
 
-		{ true_goal(InputGoal) },
-		magic_util__create_input_closures(MagicInputs, [], [],
-			InputGoal, CallProcInfo, 1, InputGoals, InputVars),
+			%
+			% Create the input relation for the aggregate query.
+			% This is just `true', since we don't allow curried
+			% arguments (except for aditi:states).
+			%
+			magic_info_get_magic_proc_info(MagicProcInfo),
+			{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
+				CallProcInfo) },
+			{ CallProcInfo = magic_proc_info(_, MagicInputs,
+						_, _, _) },
+
+			{ true_goal(InputGoal) },
+			magic_util__create_input_closures(MagicInputs, [], [],
+				InputGoal, CallProcInfo, 1,
+				InputGoals, InputVars)
+		;
+			% Base relation. It could actually be another
+			% aggregate, but if aggregate becomes a new goal
+			% type we won't be able to handle that, in the
+			% same way that call(call(X)) doesn't work. 
+			{ InputGoals = [] },
+			{ InputVars = [] }
+		),
 
 		% Update the unify_rhs.
 		magic_info_get_module_info(ModuleInfo),
@@ -467,21 +486,18 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		{ pred_info_module(CallPredInfo, PredModule) },
 		{ pred_info_name(CallPredInfo, PredName) },
 		{ list__length(InputVars, Arity) },
-		{ Rhs = functor(cons(qualified(PredModule, PredName), Arity),
-				InputVars) },
+		{ Rhs = functor(cons(qualified(PredModule, PredName),
+				Arity), InputVars) },
 
-		{ VarToReuse = no },
 		{ RLExprnId = no },
 		{ Uni = construct(Var, ConsId, InputVars, Modes,
-			VarToReuse, cell_is_unique, RLExprnId) },
+			construct_dynamically, cell_is_unique, RLExprnId) },
 		{ Goal1 = unify(Var, Rhs, UniMode, Uni, Context) - Info },
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
 	;
-		% Base relation. It could actually be another aggregate,
-		% but if aggregate becomes a new goal type we won't be able to
-		% handle that, in the same way that call(call(X)) doesn't work. 
-		{ InputAndClosure = [Closure] }
+		{ error(
+	"magic_util__setup_aggregate_input: non-closure input to aggregate") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -511,8 +527,12 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 
 	% Convert input args to outputs, and test that
 	% the input matches the output.
-	magic_util__create_input_test_unifications(Args, InputArgs,
-		OldArgModes, NewOutputArgs, [], Tests, GoalInfo0, GoalInfo1),
+	magic_info_get_module_info(ModuleInfo1),
+	magic_info_get_proc_info(ProcInfo0),
+	{ magic_util__create_input_test_unifications(ModuleInfo1,
+		Args, InputArgs, OldArgModes, NewOutputArgs, [], Tests,
+		GoalInfo0, GoalInfo1, ProcInfo0, ProcInfo) },
+	magic_info_set_proc_info(ProcInfo),
 
 	% All database predicates are considered nondet after this.
 	{ goal_info_set_determinism(GoalInfo1, 
@@ -544,76 +564,79 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	{ CallGoal = call(PredId, ProcId, AllArgs, not_builtin, no,
 			qualified(PredModule, PredName)) - GoalInfo }.
 
-magic_util__create_input_test_unifications([], _, [_|_], _, _, _, _, _) --> 
-	{ error("magic_util__create_input_test_unifications") }.
-magic_util__create_input_test_unifications([_|_], _, [], _, _, _, _, _) -->
-	{ error("magic_util__create_input_test_unifications") }.
-magic_util__create_input_test_unifications([], _, [], [], Tests, Tests,
-		CallInfo, CallInfo) --> [].
-magic_util__create_input_test_unifications([Var | Vars], InputArgs,
+magic_util__create_input_test_unifications(_, [], _, [_|_],
+		_, _, _, _, _, _, _) :-
+	error("magic_util__create_input_test_unifications").
+magic_util__create_input_test_unifications(_, [_|_], _, [],
+		_, _, _, _, _, _, _) :-
+	error("magic_util__create_input_test_unifications").
+magic_util__create_input_test_unifications(_, [], _, [], [], Tests, Tests,
+		CallInfo, CallInfo, ProcInfo, ProcInfo).
+magic_util__create_input_test_unifications(ModuleInfo, [Var | Vars], InputArgs,
 		[Mode | Modes], [OutputVar | OutputVars], Tests0, Tests,
-		CallInfo0, CallInfo) -->
-	( { list__member(Var, InputArgs) } ->
-		magic_util__create_input_test_unification(Var, Mode,
-			OutputVar, Test, CallInfo0, CallInfo1),
-		{ Tests1 = [Test | Tests0] }
+		CallInfo0, CallInfo, ProcInfo0, ProcInfo) :-
+	( list__member(Var, InputArgs) ->
+		magic_util__create_input_test_unification(ModuleInfo,
+			Var, Mode, OutputVar, Test, CallInfo0, CallInfo1,
+			ProcInfo0, ProcInfo1),
+		Tests1 = [Test | Tests0]
 	;
-		{ OutputVar = Var },
-		{ CallInfo1 = CallInfo0 },
-		{ Tests1 = Tests0 }
+		ProcInfo1 = ProcInfo0,
+		OutputVar = Var,
+		CallInfo1 = CallInfo0,
+		Tests1 = Tests0
 	),	
-	magic_util__create_input_test_unifications(Vars, InputArgs, Modes, 
-		OutputVars, Tests1, Tests, CallInfo1, CallInfo).
+	magic_util__create_input_test_unifications(ModuleInfo, Vars, InputArgs,
+		Modes, OutputVars, Tests1, Tests, CallInfo1, CallInfo,
+		ProcInfo1, ProcInfo).
 
-:- pred magic_util__create_input_test_unification(prog_var::in, (mode)::in,
-		prog_var::out, hlds_goal::out, hlds_goal_info::in,
-		hlds_goal_info::out, magic_info::in, magic_info::out) is det.
+:- pred magic_util__create_input_test_unification(module_info::in,
+		prog_var::in, (mode)::in, prog_var::out,
+		hlds_goal::out, hlds_goal_info::in,
+		hlds_goal_info::out, proc_info::in, proc_info::out) is det.
 
-magic_util__create_input_test_unification(Var, Mode, OutputVar, Test,
-		CallInfo0, CallInfo) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ mode_get_insts(ModuleInfo0, Mode, _, FinalInst) }, 
-	magic_info_get_proc_info(ProcInfo0),
-	{ proc_info_varset(ProcInfo0, VarSet0) },
-	{ varset__new_var(VarSet0, OutputVar, VarSet) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ map__lookup(VarTypes0, Var, VarType) },
-	{ map__det_insert(VarTypes0, OutputVar, VarType, VarTypes) },
-	{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
-	{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo) },
-	magic_info_set_proc_info(ProcInfo),
+magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
+		Test, CallInfo0, CallInfo, ProcInfo0, ProcInfo) :-
+	mode_get_insts(ModuleInfo, Mode, _, FinalInst), 
+	proc_info_varset(ProcInfo0, VarSet0),
+	varset__new_var(VarSet0, OutputVar, VarSet),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	map__lookup(VarTypes0, Var, VarType),
+	map__det_insert(VarTypes0, OutputVar, VarType, VarTypes),
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo),
 
-	{ set__list_to_set([Var, OutputVar], NonLocals) },
-	{ instmap_delta_init_reachable(InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo) },
-	( { type_is_atomic(VarType, ModuleInfo0) } ->
+	set__list_to_set([Var, OutputVar], NonLocals),
+	instmap_delta_init_reachable(InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, semidet, GoalInfo),
+	( type_is_atomic(VarType, ModuleInfo) ->
 		%
 		% The type is a builtin, so create a simple_test unification.
 		%
-		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst -> FinalInst) 
-			- (FinalInst -> FinalInst)) },
-		{ Test = unify(Var, var(OutputVar), UnifyMode,
-			Unification, unify_context(explicit, [])) - GoalInfo }
-	; { type_to_type_id(VarType, _TypeId, _ArgTypes) } ->
+		Unification = simple_test(Var, OutputVar),
+		UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)),
+		Test = unify(Var, var(OutputVar), UnifyMode,
+			Unification, unify_context(explicit, [])) - GoalInfo
+	; type_to_type_id(VarType, _TypeId, _ArgTypes) ->
 		% XXX for now we pretend that the unification is
 		% a simple test, since otherwise we would have to
 		% go through the rigmarole of creating type_info variables
 		% (and then ignoring them in code generation).
-		{ Unification = simple_test(Var, OutputVar) },
-		{ UnifyMode = ((FinalInst -> FinalInst) 
-			- (FinalInst -> FinalInst)) },
-		{ Test = unify(Var, var(OutputVar), UnifyMode,
-			Unification, unify_context(explicit, [])) - GoalInfo }
+		Unification = simple_test(Var, OutputVar),
+		UnifyMode = ((FinalInst -> FinalInst) 
+			- (FinalInst -> FinalInst)),
+		Test = unify(Var, var(OutputVar), UnifyMode,
+			Unification, unify_context(explicit, [])) - GoalInfo
 
 		/*
 		% 
 		% The type is non-builtin, so look up the unification 
 		% procedure for the type.
 		%
-		{ module_info_get_special_pred_map(ModuleInfo0,
-			SpecialPredMap) },
-		{ map__lookup(SpecialPredMap, unify - TypeId, UniPredId) },
+		module_info_get_special_pred_map(ModuleInfo,
+			SpecialPredMap),
+		map__lookup(SpecialPredMap, unify - TypeId, UniPredId),
 
 		% It had better be an in-in unification, since Aditi
 		% relations cannot have non-ground arguments. This is 
@@ -621,23 +644,23 @@ magic_util__create_input_test_unification(Var, Mode, OutputVar, Test,
 		% XXX __Unify__/2 needs to be special cased in rl_exprn.m 
 		% because we don't add the type_info arguments.
 
-		{ hlds_pred__in_in_unification_proc_id(UniProcId) },
-		{ SymName = unqualified("__Unify__") },
-		{ ArgVars = [Var, OutputVar] },
-		{ Test = call(UniPredId, UniProcId, ArgVars, not_builtin,
-			no, SymName) - GoalInfo }
+		hlds_pred__in_in_unification_proc_id(UniProcId),
+		SymName = unqualified("__Unify__"),
+		ArgVars = [Var, OutputVar],
+		Test = call(UniPredId, UniProcId, ArgVars, not_builtin,
+			no, SymName) - GoalInfo
 		*/
 	;
-		{ error("magic_util__create_input_test_unifications: \
-			type_to_type_id failed") }
+		error("magic_util__create_input_test_unifications: \
+			type_to_type_id failed")
 	),
-	{ goal_info_get_nonlocals(CallInfo0, CallNonLocals0) },
-	{ set__delete(CallNonLocals0, Var, CallNonLocals1) },
-	{ set__insert(CallNonLocals1, OutputVar, CallNonLocals) },
-	{ goal_info_get_instmap_delta(CallInfo0, CallDelta0) },
-	{ instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta) },
-	{ goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1) },
-	{ goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo) }.
+	goal_info_get_nonlocals(CallInfo0, CallNonLocals0),
+	set__delete(CallNonLocals0, Var, CallNonLocals1),
+	set__insert(CallNonLocals1, OutputVar, CallNonLocals),
+	goal_info_get_instmap_delta(CallInfo0, CallDelta0),
+	instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta),
+	goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1),
+	goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -804,11 +827,10 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Rhs = functor(cons(qualified(SuppModule, SuppName), 
 				SuppArity), LambdaInputs) },
 
-		{ VarToReuse = no },
 		{ RLExprnId = no },
 		{ Unify = construct(InputVar, 
 			pred_const(SuppPredId, SuppProcId, (aditi_bottom_up)), 
-			LambdaInputs, UniModes, VarToReuse,
+			LambdaInputs, UniModes, construct_dynamically,
 			cell_is_unique, RLExprnId) },
 		{ UnifyContext = unify_context(explicit, []) },
 
@@ -1091,22 +1113,40 @@ magic_util__mode_to_output_mode(ModuleInfo, Mode, OutputMode) :-
 %-----------------------------------------------------------------------------%
 
 magic_util__check_args(Vars, Modes, Types, Context, IdType) -->
-	( magic_util__check_args_2(Vars, Modes, Types, Context, 1, IdType) ->
-		[]
+	(
+		magic_util__check_args_2(Vars, Modes, Types, Context,
+			1, IdType, no_rtti, MaybeRtti)
+	->
+		(
+			{ MaybeRtti = no_rtti }
+		;
+			{ MaybeRtti = found_rtti(RttiArg) },
+			magic_info_get_error_pred_proc_id(PredProcId),
+			magic_info_get_errors(Errors0),
+			{ Error = nonspecific_polymorphism(PredProcId, RttiArg)
+					- Context },
+			{ set__insert(Errors0, Error, Errors) },
+			magic_info_set_errors(Errors)
+		;
+			{ MaybeRtti = found_polymorphic }
+		)
 	;
 		{ error("magic_util__check_args") }
 	).
 
 :- pred magic_util__check_args_2(list(prog_var)::in, list(mode)::in,
-	list(type)::in, term__context::in, int::in, magic_arg_id_type::in,
+	list(type)::in, term__context::in, int::in,
+	magic_arg_id_type::in, rtti_arg_state::in, rtti_arg_state::out,
 	magic_info::in, magic_info::out) is semidet.
 
-magic_util__check_args_2([], [], [], _, _, _) --> [].
+magic_util__check_args_2([], [], [], _, _, _, Rtti, Rtti) --> [].
 magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
-		[ArgType | ArgTypes], Context, ArgNo, ArgIdType) -->
+		[ArgType | ArgTypes], Context, ArgNo,
+		ArgIdType, Rtti0, Rtti) -->
 	magic_info_get_error_vars(ErrorVars0),
 	( { set__member(Var, ErrorVars0) } ->
-		[]
+		{ NextArgNo = ArgNo + 1 },
+		{ Rtti1 = Rtti0 }
 	;
 		(
 			{ ArgIdType = arg_number },
@@ -1119,11 +1159,18 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 			{ ArgId = var_name(VarName) }
 		),
 
-		magic_info_get_curr_pred_proc_id(PredProcId),
+		magic_info_get_error_pred_proc_id(PredProcId),
 		magic_info_get_module_info(ModuleInfo),
 		( { type_is_aditi_state(ArgType) } ->
-			( { \+  mode_is_input(ModuleInfo, ArgMode) } ->
-				% aditi__states must be input
+			(
+				{ \+ mode_is_input(ModuleInfo, ArgMode) },
+
+				% The second `aditi__state' of the closure
+				% passed to `aditi_bulk_modify' has mode
+				% `unused'.
+				{ \+ mode_is_unused(ModuleInfo, ArgMode) }
+			->
+				% aditi__states must not be output.
 				{ StateError =
 					[argument_error(output_aditi_state,
 						ArgId, PredProcId) - Context] }
@@ -1135,7 +1182,7 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 		),
 
 			% Check that the argument types are legal.
-		magic_util__check_type(ArgType, ErrorTypes),
+		magic_util__check_type(ArgType, ErrorTypes, MaybeRtti),
 		{ set__to_sorted_list(ErrorTypes, ErrorTypeList0) },
 		
 			% Check that partially instantiated modes are not used.
@@ -1172,31 +1219,83 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 		{ set__insert_list(Errors1, StateError, Errors) },
 		magic_info_set_errors(Errors),
 
-		{ NextArgNo is ArgNo + 1 },
-		magic_util__check_args_2(Vars, ArgModes, ArgTypes,
-			Context, NextArgNo, ArgIdType)
-	).
+		{ list__member(polymorphic, ErrorTypeList) ->
+			NextArgNo = ArgNo + 1,
+			Rtti1 = found_polymorphic
+		; MaybeRtti = yes(RttiArg) ->
+			% Don't count type-infos when working
+			% out what number the current argument is.
+			NextArgNo = ArgNo,
+			update_rtti_arg_state(Rtti0, RttiArg, Rtti1)
+		;
+			NextArgNo = ArgNo + 1,
+			Rtti1 = Rtti0
+		}
+	),
+	magic_util__check_args_2(Vars, ArgModes, ArgTypes,
+		Context, NextArgNo, ArgIdType, Rtti1, Rtti).
 
 %-----------------------------------------------------------------------------%
+
+:- type rtti_arg_state
+	--->	no_rtti
+	;	found_rtti(rtti_arg)
+	;	found_polymorphic	% Report errors for the polymorphic
+					% arguments, but don't report for the
+					% typeinfos and typeclass infos
+	.
+
+:- pred update_rtti_arg_state(rtti_arg_state::in,
+		rtti_arg::in, rtti_arg_state::out) is det.
+
+update_rtti_arg_state(no_rtti, Arg, found_rtti(Arg)).
+update_rtti_arg_state(found_rtti(Arg0), Arg1, found_rtti(Arg)) :-
+	update_rtti_arg(Arg0, Arg1, Arg).
+update_rtti_arg_state(found_polymorphic, _, found_polymorphic).
+
+:- pred update_rtti_arg(rtti_arg::in, rtti_arg::in, rtti_arg::out) is det.
+
+update_rtti_arg(both, _, both).
+update_rtti_arg(type_info, type_info, type_info).
+update_rtti_arg(type_info, typeclass_info, both).
+update_rtti_arg(type_info, both, both).
+update_rtti_arg(typeclass_info, typeclass_info, typeclass_info).
+update_rtti_arg(typeclass_info, type_info, both).
+update_rtti_arg(typeclass_info, both, both).
+
+%-----------------------------------------------------------------------------%
+
 
 	% Go over a type collecting any reasons why that type cannot
 	% be an argument type of an Aditi relation.
 :- pred magic_util__check_type((type)::in, set(argument_error)::out,
-		magic_info::in, magic_info::out) is det.
+		maybe(rtti_arg)::out, magic_info::in, magic_info::out) is det.
 
-magic_util__check_type(ArgType, Errors) -->
-	{ set__init(Errors0) },
+magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 
-		% Polymorphic types are not allowed.
-	{ map__init(Subn) },
-	( { term__is_ground(ArgType, Subn) } ->
-		{ Errors1 = Errors0 }
+	% Polymorphic types are not allowed.
+	% Errors for type_infos and typeclass_infos are only reported
+	% if there are no other polymorphic arguments.
+	( { polymorphism__type_info_type(ArgType, _) } ->
+		{ set__init(Errors) },
+		{ MaybeRtti = yes(type_info) }
+	; { polymorphism__typeclass_info_class_constraint(ArgType, _) } ->
+		{ set__init(Errors) },
+		{ MaybeRtti = yes(typeclass_info) }
 	;
-		{ set__insert(Errors0, polymorphic, Errors1) }
-	),
+		{ MaybeRtti = no },
+		{ map__init(Subn) },
+		{ set__init(Errors0) },
+		{ term__is_ground(ArgType, Subn) ->
+			Errors1 = Errors0
+		;
+			set__insert(Errors0, polymorphic, Errors1)
+		},
 
-	{ set__init(Parents) }, 
-	magic_util__traverse_type(yes, Parents, ArgType, Errors1, Errors).
+		{ set__init(Parents) }, 
+		magic_util__traverse_type(yes, Parents, ArgType,
+			Errors1, Errors)
+	).
 
 :- pred magic_util__traverse_type(bool::in, set(type_id)::in, (type)::in, 
 	set(argument_error)::in, set(argument_error)::out, 
@@ -1281,10 +1380,15 @@ magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->
 		set(argument_error)::in, set(argument_error)::out, 
 		magic_info::in, magic_info::out) is det.
 		
-magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
-	{ assoc_list__values(CtorArgs, CtorArgTypes) },
-	list__foldl2(magic_util__traverse_type(no, Parents), 
-		CtorArgTypes, Errors0, Errors).
+magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
+		Errors0, Errors) -->
+	( { ExistQVars = [] } ->
+		{ assoc_list__values(CtorArgs, CtorArgTypes) },
+		list__foldl2(magic_util__traverse_type(no, Parents), 
+			CtorArgTypes, Errors0, Errors)
+	;
+		{ set__insert(Errors0, existentially_typed, Errors) }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1325,6 +1429,8 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 
 :- pred magic_info_get_module_info(module_info::out, magic_info::in,
 		magic_info::out) is det.
+:- pred magic_info_get_error_pred_proc_id(pred_proc_id::out, magic_info::in,
+		magic_info::out) is det.
 :- pred magic_info_get_curr_pred_proc_id(pred_proc_id::out, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_get_pred_info(pred_info::out, magic_info::in,
@@ -1336,8 +1442,6 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 :- pred magic_info_get_magic_map(magic_map::out, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_get_magic_vars(list(prog_var)::out, magic_info::in,
-		magic_info::out) is det.
-:- pred magic_info_get_magic_insts(list(inst)::out, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_get_magic_var_map(map(pred_proc_id, prog_var)::out,
 		magic_info::in, magic_info::out) is det.
@@ -1358,6 +1462,8 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 
 :- pred magic_info_set_module_info(module_info::in, magic_info::in,
 		magic_info::out) is det.
+:- pred magic_info_set_error_pred_proc_id(pred_proc_id::in, magic_info::in,
+		magic_info::out) is det.
 :- pred magic_info_set_curr_pred_proc_id(pred_proc_id::in, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_set_pred_info(pred_info::in, magic_info::in,
@@ -1369,8 +1475,6 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 :- pred magic_info_set_magic_map(magic_map::in, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_set_magic_vars(list(prog_var)::in, magic_info::in,
-		magic_info::out) is det.
-:- pred magic_info_set_magic_insts(list(inst)::in, magic_info::in,
 		magic_info::out) is det.
 :- pred magic_info_set_magic_var_map(map(pred_proc_id, prog_var)::in,
 		magic_info::in, magic_info::out) is det.
@@ -1393,39 +1497,42 @@ magic_util__check_ctor(Parents, ctor(_, _, _, CtorArgs), Errors0, Errors) -->
 
 :- type magic_info
 	--->	magic_info(
-			module_info,
-			maybe(pred_proc_id),
-			maybe(pred_info),
-			maybe(proc_info),
-			list(pred_proc_id),	% preds in the current 
+			module_info :: module_info,
+			error_pred_proc_id :: maybe(pred_proc_id),
+			curr_pred_proc_id :: maybe(pred_proc_id),
+			pred_info :: maybe(pred_info),
+			proc_info :: maybe(proc_info),
+			scc :: list(pred_proc_id),
+						% preds in the current 
 						% sub-module 
-			magic_map,		% magic pred_proc_id for
+			magic_map :: magic_map,	% magic pred_proc_id for
 						% each pred_proc_id
 					
-			list(prog_var),		% magic input variables
-			list(inst),		% insts of magic input vars
-			map(pred_proc_id, prog_var),
+			magic_vars :: list(prog_var),	
+						% magic input variables
+
+			magic_var_map :: map(pred_proc_id, prog_var),
 						% magic input variables for
 						% each entry-point of the
 						% sub-module
-			int,			% next supp id
-			map(pred_proc_id, magic_proc_info),
-			pred_map,
+			next_supp_id :: int,	% next supp id
+			magic_proc_info :: map(pred_proc_id, magic_proc_info),
+			pred_map :: pred_map,
 						% map from old to transformed
 						% pred_proc_id
-			set(prog_var),		% vars for which errors have
+			error_vars :: set(prog_var),
+						% vars for which errors have
 						% been reported.
-			magic_errors,
-			set(type_id),		% type_ids which are allowed
+			errors :: magic_errors,
+			ok_types :: set(type_id),	
+						% type_ids which are allowed
 						% as argument types of
 						% Aditi predicates. A type
 						% is ok if no part of it is
 						% higher-order or abstract.
-			map(type_id, set(argument_error)),		
+			bad_types :: map(type_id, set(argument_error))
 						% type_ids which are not ok
 						% as Aditi argument types.
-			unit,
-			unit
 		).	
 
 %-----------------------------------------------------------------------------%
@@ -1439,136 +1546,98 @@ magic_info_init(ModuleInfo, MagicInfo) :-
 	set__init(OKTypes),
 	map__init(BadTypes),
 	set__init(ErrorVars),
-	MagicInfo = magic_info(ModuleInfo, no, no, no, [], MagicMap, [], [], 
+	MagicInfo = magic_info(ModuleInfo, no, no, no, no, [], MagicMap, [],
 			VarMap, 1, MagicProcInfo, PredMap, ErrorVars, Errors, 
-			OKTypes, BadTypes, unit, unit).
+			OKTypes, BadTypes).
 	
-magic_info_get_module_info(ModuleInfo, Info, Info) :-
-	Info = magic_info(ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
+magic_info_get_module_info(Info ^ module_info, Info, Info).
 
-magic_info_get_curr_pred_proc_id(PredProcId, Info, Info) :-
-	Info = magic_info(_,MaybePredProcId,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
-	( MaybePredProcId = yes(PredProcId1) ->
+magic_info_get_error_pred_proc_id(PredProcId, Info, Info) :-
+	( Info ^ error_pred_proc_id = yes(PredProcId1) ->
 		PredProcId = PredProcId1
 	;
-		error("magic_info_get_pred_info")
+		error("magic_info_get_error_pred_proc_id")
+	).
+
+magic_info_get_curr_pred_proc_id(PredProcId, Info, Info) :-
+	( Info ^ curr_pred_proc_id = yes(PredProcId1) ->
+		PredProcId = PredProcId1
+	;
+		error("magic_info_get_curr_pred_proc_id")
 	).
 
 magic_info_get_pred_info(PredInfo, Info, Info) :-
-	Info = magic_info(_,_,MaybePredInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
-	( MaybePredInfo = yes(PredInfo1) ->
+	( Info ^ pred_info = yes(PredInfo1) ->
 		PredInfo = PredInfo1
 	;
 		error("magic_info_get_pred_info")
 	).
 
 magic_info_get_proc_info(ProcInfo, Info, Info) :-
-	Info = magic_info(_,_,_,MaybeProcInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
-	( MaybeProcInfo = yes(ProcInfo1) ->
+	( Info ^ proc_info = yes(ProcInfo1) ->
 		ProcInfo = ProcInfo1
 	;
 		error("magic_info_get_proc_info")
 	).
 
-magic_info_get_scc(SCC, Info, Info) :-
-	Info = magic_info(_,_,_,_,SCC,_,_,_,_,_,_,_,_,_,_,_,_,_).
+magic_info_get_scc(Info ^ scc, Info, Info).
 
-magic_info_get_magic_map(Map, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,Map,_,_,_,_,_,_,_,_,_,_,_,_).
+magic_info_get_magic_map(Info ^ magic_map, Info, Info).
 
-magic_info_get_magic_vars(Vars, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,Vars,_,_,_,_,_,_,_,_,_,_,_).
+magic_info_get_magic_vars(Info ^ magic_vars, Info, Info).
 
-magic_info_get_magic_insts(Insts, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,Insts,_,_,_,_,_,_,_,_,_,_).
+magic_info_get_magic_var_map(Info ^ magic_var_map, Info, Info).
 
-magic_info_get_magic_var_map(VarMap, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,VarMap,_,_,_,_,_,_,_,_,_).
+magic_info_get_next_supp_id(SuppId0, Info0,
+			Info0 ^ next_supp_id := SuppId0 + 1) :-
+		SuppId0 = Info0 ^ next_supp_id.
 
-magic_info_get_next_supp_id(SuppId0,
-		magic_info(A,B,C,D,E,F,G,H,I,SuppId0,K,L,M,N,O,P,Q,R),
-		magic_info(A,B,C,D,E,F,G,H,I,SuppId,K,L,M,N,O,P,Q,R)) :-
-	SuppId is SuppId0 + 1.
+magic_info_get_magic_proc_info(Info ^ magic_proc_info, Info, Info).
 
-magic_info_get_magic_proc_info(MagicProcInfo, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,MagicProcInfo,_,_,_,_,_,_,_).
+magic_info_get_pred_map(Info ^ pred_map, Info, Info).
 
-magic_info_get_pred_map(PredMap, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,_, PredMap,_,_,_,_,_,_).
+magic_info_get_error_vars(Info ^ error_vars, Info, Info).
 
-magic_info_get_error_vars(ErrorVars, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,_,_,ErrorVars,_,_,_,_,_).
+magic_info_get_errors(Info ^ errors, Info, Info).
 
-magic_info_get_errors(Errors, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,_,_,_,Errors,_,_,_,_).
+magic_info_get_ok_types(Info ^ ok_types, Info, Info).
 
-magic_info_get_ok_types(Types, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,Types,_,_,_).
-
-magic_info_get_bad_types(Types, Info, Info) :-
-	Info = magic_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Types,_,_).
+magic_info_get_bad_types(Info ^ bad_types, Info, Info).
 
 %-----------------------------------------------------------------------------%
 
-magic_info_set_module_info(ModuleInfo, Info0, Info) :-
-	Info0 = magic_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(ModuleInfo,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_module_info(ModuleInfo, Info, Info ^ module_info := ModuleInfo).
 
-magic_info_set_curr_pred_proc_id(PredProcId, Info0, Info) :-
-	Info0 = magic_info(A,_,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,yes(PredProcId),C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_error_pred_proc_id(PredProcId, Info0,
+		Info0 ^ error_pred_proc_id := yes(PredProcId)).
 
-magic_info_set_pred_info(PredInfo, Info0, Info) :-
-	Info0 = magic_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,yes(PredInfo),D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_curr_pred_proc_id(PredProcId, Info0,
+		Info0 ^ curr_pred_proc_id := yes(PredProcId)).
 
-magic_info_set_proc_info(ProcInfo, Info0, Info) :-
-	Info0 = magic_info(A,B,C,_,E,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,yes(ProcInfo),E,F,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_pred_info(PredInfo, Info0, Info0 ^ pred_info := yes(PredInfo)).
 
-magic_info_set_scc(SCC, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,_,F,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,SCC,F,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_proc_info(ProcInfo, Info0, Info0 ^ proc_info := yes(ProcInfo)).
 
-magic_info_set_magic_map(MagicMap, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,_,G,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,MagicMap,G,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_scc(SCC, Info0, Info0 ^ scc := SCC).
 
-magic_info_set_magic_vars(Vars, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,_,H,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,Vars,H,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_magic_map(MagicMap, Info0, Info0 ^ magic_map := MagicMap). 
 
-magic_info_set_magic_insts(Insts, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,_,I,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,Insts,I,J,K,L,M,N,O,P,Q,R).
+magic_info_set_magic_vars(Vars, Info0, Info0 ^ magic_vars := Vars).
 
-magic_info_set_magic_var_map(Map, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,_,J,K,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,Map,J,K,L,M,N,O,P,Q,R).
+magic_info_set_magic_var_map(Map, Info0, Info0 ^ magic_var_map := Map).
 
-magic_info_set_magic_proc_info(MagicProcInfo, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,MagicProcInfo,L,M,N,O,P,Q,R).
+magic_info_set_magic_proc_info(MagicProcInfo, Info0,
+		Info0 ^ magic_proc_info := MagicProcInfo).
 
-magic_info_set_pred_map(PredMap, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,K,PredMap,M,N,O,P,Q,R).
+magic_info_set_pred_map(PredMap, Info0, Info0 ^ pred_map := PredMap).
 
-magic_info_set_error_vars(ErrorVars, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,ErrorVars,N,O,P,Q,R).
+magic_info_set_error_vars(ErrorVars, Info0, Info0 ^ error_vars := ErrorVars).
 
-magic_info_set_errors(Errors, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,Errors,O,P,Q,R).
+magic_info_set_errors(Errors, Info0, Info0 ^ errors := Errors).
 
-magic_info_set_ok_types(Types, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_,P,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,Types,P,Q,R).
+magic_info_set_ok_types(Types, Info0, Info0 ^ ok_types := Types).
 
-magic_info_set_bad_types(Types, Info0, Info) :-
-	Info0 = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,_,Q,R),
-	Info = magic_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,Types,Q,R).
+magic_info_set_bad_types(Types, Info0, Info0 ^ bad_types := Types).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1588,11 +1657,21 @@ magic_info_set_bad_types(Types, Info0, Info) :-
 	;	var_name(string)
 	.
 
+:- type rtti_arg
+	--->	type_info
+	;	typeclass_info
+	;	both
+	.	
+
 :- type magic_error_type
 	--->	argument_error(argument_error, magic_arg_id, pred_proc_id)
 				% The maybe(int) here is an argument number.
 				% If there is no argument number the error
 				% occurred creating a supplementary predicate.
+	;	nonspecific_polymorphism(pred_proc_id, rtti_arg)
+				% There are type-info or typeclass-info
+				% arguments, but there are no polymorphic
+				% arguments.
 	;	curried_argument(pred_proc_id)
 				% Curried args to an aggregate closure are NYI.
 	;	non_removeable_aditi_state(pred_proc_id,
@@ -1615,6 +1694,7 @@ magic_info_set_bad_types(Types, Info0, Info) :-
 	;	higher_order
 	;	abstract
 	;	polymorphic
+	;	existentially_typed
 	;	output_aditi_state
 	;	embedded_aditi_state
 	.
@@ -1633,15 +1713,11 @@ magic_info_set_bad_types(Types, Info0, Info) :-
 			% and for the internal recursive calls in
 			% a multi-linear rule, the inputs must be the
 			% inputs to the procedure. 
-			% The lists of variables are the list of inputs
-			% to the procedure and to the erroneous call.
 
 	;	outputs_of_recursive_call
 			% for the last recursive call in a right- or
 			% multi-linear rule, the outputs must be the
 			% outputs of the procedure. 
-			% The lists of variables are the list of inputs
-			% to the procedure and to the erroneous call.
 
 	;	inputs_occur_in_other_goals
 			% For left-linear rules, the inputs to the procedure
@@ -1669,10 +1745,18 @@ magic_util__report_error(ModuleInfo, Verbose,
 		argument_error(Error, Arg, proc(PredId, _)) - Context) -->
 
 	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
-	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
+	{ string__append_list(["In Aditi ", PredName, ":"], PredNamePiece) },
 	{ magic_util__error_arg_id_piece(Arg, ArgPiece) },
 	{ magic_util__report_argument_error(Context, Error, ArgPiece,
 		Verbose, SecondPart) },
+	write_error_pieces(Context, 0, [fixed(PredNamePiece), nl | SecondPart]).
+
+magic_util__report_error(ModuleInfo, _Verbose,
+		nonspecific_polymorphism(proc(PredId, _), _) - Context) -->
+	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
+	{ SecondPart = [words("the code uses polymorphism or type-classes"),
+			words("which are not supported by Aditi.")] },
 	write_error_pieces(Context, 0, [fixed(PredNamePiece), nl | SecondPart]).
 
 magic_util__report_error(ModuleInfo, _Verbose,
@@ -1745,7 +1829,8 @@ magic_util__report_error(ModuleInfo, _Verbose,
 magic_util__error_arg_id_piece(arg_number(ArgNo), words(ArgWords)) :-
 	string__int_to_string(ArgNo, ArgStr),
 	string__append("argument ", ArgStr, ArgWords).
-magic_util__error_arg_id_piece(var_name(Name), words(Name)).
+magic_util__error_arg_id_piece(var_name(Name), words(NameStr)) :-
+	string__append_list(["`", Name, "'"], NameStr).
 
 :- pred magic_util__report_argument_error(term__context::in,
 		argument_error::in, format_component::in, bool::in,
@@ -1759,6 +1844,10 @@ magic_util__report_argument_error(_Context, higher_order,
 	Pieces = [words("the type of"), ArgPiece, words("is higher order.")].
 magic_util__report_argument_error(_Context, polymorphic, ArgPiece, _, Pieces) :-
 	Pieces = [words("the type of"), ArgPiece, words("is polymorphic.")].
+magic_util__report_argument_error(_Context, existentially_typed,
+		ArgPiece, _, Pieces) :-
+	Pieces = [words("the type of"), ArgPiece,
+		words("contains existentially typed constructors.")].
 magic_util__report_argument_error(_Context, abstract, ArgPiece, _, Pieces) :-
 	Pieces = [words("the type of"), ArgPiece,
 			words("contains abstract types.")].

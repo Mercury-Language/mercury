@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,8 +202,8 @@
 %		If characters on the input stream (up to the next `.' that
 %		is followed by whitespace) do not form a syntactically
 %		correct term, or if the term read is not a ground term,
-%		if the term is not a valid term of the appropriate type,
-%		or if encounters an I/O error, then it returns
+%		or if the term is not a valid term of the appropriate type,
+%		or if an I/O error is encountered, then it returns
 %		`error(Message, LineNumber)'.
 
 % The type `posn' represents a position within a string.
@@ -978,9 +978,35 @@
 	% Write complete memory usage statistics to stderr,
 	% including information about all procedures and types.
 	% (You need to compile with memory profiling enabled.)
+	%
+	% OBSOLETE: call io__report_stats/3 instead, with the first
+	% specified as "full_memory_stats".
 
+:- pragma obsolete(io__report_full_memory_stats/2).
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
+
+	% Write statistics to stderr; what statistics will be written
+	% is controlled by the first argument, which acts a selector.
+	% What selector values cause what statistics to be printed
+	% is implementation defined.
+	%
+	% The Melbourne implementation supports the following selectors:
+	%
+	% "standard"		Writes memory/time usage statistics.
+	%
+	% "full_memory_stats"	Writes complete memory usage statistics,
+	%			including information about all procedures
+	%			and types. Requires compilation with
+	%			memory profiling enabled.
+	%
+	% "tabling"		Writes statistics about the internals
+	%			of the tabling system. Requires the runtime
+	%			to have been compiled with the macro
+	%			MR_TABLE_STATISTICS defined.
+
+:- pred io__report_stats(string, io__state, io__state).
+:- mode io__report_stats(in, di, uo) is det.
 
 /*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
@@ -1468,7 +1494,12 @@ io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 		[will_not_call_mercury, thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
-	clearerr(f->file);
+
+	if (MR_IS_FILE_STREAM(*f)) {
+		clearerr(MR_file(*f));
+	} else {
+		/* Not a file stream so do nothing */
+	}
 }").
 
 :- pred io__check_err(stream, io__res, io__state, io__state).
@@ -1491,7 +1522,13 @@ io__check_err(Stream, Res) -->
 		[will_not_call_mercury, thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
-	RetVal = ferror(f->file);
+
+	if (MR_IS_FILE_STREAM(*f)) {
+		RetVal = ferror(MR_file(*f));
+	} else {
+		RetVal = -1;
+	}
+
 	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "",
 		MR_PROC_LABEL, RetStr);
 }").
@@ -1518,7 +1555,9 @@ io__check_err(Stream, Res) -->
 %	otherwise Size is -1.
 
 :- pragma c_header_code("
+#ifdef HAVE_UNISTD_H
 	#include <unistd.h>
+#endif
 #ifdef HAVE_SYS_STAT_H
 	#include <sys/stat.h>
 #endif
@@ -1533,8 +1572,14 @@ io__check_err(Stream, Res) -->
     (defined(HAVE_FILENO) || defined(fileno)) && \
     defined(S_ISREG)
 	struct stat s;
-	if (fstat(fileno(f->file), &s) == 0 && S_ISREG(s.st_mode)) {
-		Size = s.st_size;
+	if (MR_IS_FILE_STREAM(*f)) {
+		if (fstat(fileno(MR_file(*f)), &s) == 0 &&
+				S_ISREG(s.st_mode))
+		{
+			Size = s.st_size;
+		} else {
+			Size = -1;
+		}
 	} else {
 		Size = -1;
 	}
@@ -1622,7 +1667,7 @@ io__check_err(Stream, Res) -->
 	char *buffer = (Char *) Buffer0;
 	int items_read;
 
-	items_read = fread(buffer + Pos0, sizeof(Char), Size - Pos0, f->file);
+	MR_READ(*f, buffer + Pos0, Size - Pos0);
 
 	Buffer = (Word) buffer;
 	Pos = Pos0 + items_read;
@@ -1857,8 +1902,8 @@ io__write_univ(Univ, Priority) -->
 		io__write_int(Int)
 	; { univ_to_type(Univ, Float) } ->
 		io__write_float(Float)
-	; { univ_to_type(Univ, TypeInfo) } ->
-		io__write_type_info(TypeInfo)
+	; { univ_to_type(Univ, TypeDesc) } ->
+		io__write_type_desc(TypeDesc)
 	; { univ_to_type(Univ, OrigUniv) } ->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
@@ -2098,11 +2143,11 @@ arg_priority(1000) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__write_type_info(type_info, io__state, io__state).
-:- mode io__write_type_info(in, di, uo) is det.
+:- pred io__write_type_desc(type_desc, io__state, io__state).
+:- mode io__write_type_desc(in, di, uo) is det.
 
-io__write_type_info(TypeInfo) -->
-	io__write_string(type_name(TypeInfo)).
+io__write_type_desc(TypeDesc) -->
+	io__write_string(type_name(TypeDesc)).
 
 :- pred io__write_univ_as_univ(univ, io__state, io__state).
 :- mode io__write_univ_as_univ(in, di, uo) is det.
@@ -2135,7 +2180,7 @@ io__write_array(Array) -->
 		io__state::di, io__state::uo) is det.
 io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
 	{ TypeInfo = unsafe_cast(PrivateBuiltinTypeInfo) },
-	io__write_type_info(TypeInfo).
+	io__write_type_desc(TypeInfo).
 
 :- func unsafe_cast(T1::in) = (T2::out) is det.
 :- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out),
@@ -2467,17 +2512,29 @@ io__set_environment_var(Var, Value) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% memory management predicates
-
-:- pragma promise_pure(io__report_stats/2).
+% statistics reporting predicates
 
 io__report_stats -->
-	{ impure report_stats }.
-
-:- pragma promise_pure(io__report_full_memory_stats/2).
+	io__report_stats("standard").
 
 io__report_full_memory_stats -->
-	{ impure report_full_memory_stats }.
+	io__report_stats("full_memory_stats").
+
+:- pragma promise_pure(io__report_stats/3).
+
+io__report_stats(Selector) -->
+	{ Selector = "standard" ->
+		impure report_stats
+	; Selector = "full_memory_stats" ->
+		impure report_full_memory_stats
+	; Selector = "tabling" ->
+		impure private_builtin__table_report_statistics
+	;
+		string__format(
+			"io__report_stats: selector `%s' not understood",
+			[s(Selector)], Message),
+		error(Message)
+	}.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2513,7 +2570,7 @@ io__finalize_state -->
 	% we don't bother.)
 	[].
 
-:- pred io__gc_init(type_info, type_info, io__state, io__state).
+:- pred io__gc_init(type_desc, type_desc, io__state, io__state).
 :- mode io__gc_init(in, in, di, uo) is det.
 
 :- pragma c_code(io__gc_init(StreamNamesType::in, UserGlobalsType::in,
@@ -2522,8 +2579,8 @@ io__finalize_state -->
 #ifdef CONSERVATIVE_GC
 	GC_INIT();
 #endif
-	MR_add_root(&ML_io_stream_names, (Word *) StreamNamesType);
-	MR_add_root(&ML_io_user_globals, (Word *) UserGlobalsType);
+	MR_add_root(&ML_io_stream_names, (MR_TypeInfo) StreamNamesType);
+	MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
 	update_io(IO0, IO);
 ").
 
@@ -2576,7 +2633,7 @@ io__set_op_table(_OpTable) --> [].
 
 % For use by the debugger:
 
-:- pred io__get_io_input_stream_type(type_info, io__state, io__state).
+:- pred io__get_io_input_stream_type(type_desc, io__state, io__state).
 :- mode io__get_io_input_stream_type(out, di, uo) is det.
 
 :- pragma export(io__get_io_input_stream_type(out, di, uo),
@@ -2586,7 +2643,7 @@ io__get_io_input_stream_type(Type) -->
 	io__stdin_stream(Stream),
 	{ Type = type_of(Stream) }.
 
-:- pred io__get_io_output_stream_type(type_info, io__state, io__state).
+:- pred io__get_io_output_stream_type(type_desc, io__state, io__state).
 :- mode io__get_io_output_stream_type(out, di, uo) is det.
 
 :- pragma export(io__get_io_output_stream_type(out, di, uo),
@@ -2609,6 +2666,10 @@ io__get_io_output_stream_type(Type) -->
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
 #include ""mercury_type_info.h""
+#include ""mercury_library_types.h""
+#include ""mercury_file.h""
+#include ""mercury_heap.h""
+#include ""mercury_misc.h""
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2642,15 +2703,17 @@ void		mercury_print_string(MercuryFile* mf, const char *s);
 void		mercury_print_binary_string(MercuryFile* mf, const char *s);
 int		mercury_getc(MercuryFile* mf);
 void		mercury_close(MercuryFile* mf);
+int		ML_fprintf(MercuryFile* mf, const char *format, ...);
 ").
 
 :- pragma c_code("
 
-MercuryFile mercury_stdin = { NULL, 1 };
-MercuryFile mercury_stdout = { NULL, 1 };
-MercuryFile mercury_stderr = { NULL, 1 };
-MercuryFile mercury_stdin_binary = { NULL, 1 };
-MercuryFile mercury_stdout_binary = { NULL, 1 };
+MercuryFile mercury_stdin;
+MercuryFile mercury_stdout;
+MercuryFile mercury_stderr;
+MercuryFile mercury_stdin_binary;
+MercuryFile mercury_stdout_binary;
+
 MercuryFile *mercury_current_text_input = &mercury_stdin;
 MercuryFile *mercury_current_text_output = &mercury_stdout;
 MercuryFile *mercury_current_binary_input = &mercury_stdin_binary;
@@ -2659,19 +2722,23 @@ MercuryFile *mercury_current_binary_output = &mercury_stdout_binary;
 void
 mercury_init_io(void)
 {
-	mercury_stdin.file = stdin;
-	mercury_stdout.file = stdout;
-	mercury_stderr.file = stderr;
+	MR_mercuryfile_init(stdin, 1, &mercury_stdin);
+	MR_mercuryfile_init(stdout, 1, &mercury_stdout);
+	MR_mercuryfile_init(stderr, 1, &mercury_stderr);
+
+	MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
+	MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
+
 #if defined(HAVE_FDOPEN) && (defined(HAVE_FILENO) || defined(fileno))
-	mercury_stdin_binary.file = fdopen(fileno(stdin), ""rb"");
-	if (mercury_stdin_binary.file == NULL) {
-		fatal_error(""error opening standard input stream in ""
+	MR_file(mercury_stdin_binary) = fdopen(fileno(stdin), ""rb"");
+	if (MR_file(mercury_stdin_binary) == NULL) {
+		MR_fatal_error(""error opening standard input stream in ""
 			""binary mode:\\n\\tfdopen() failed: %s"",
 			strerror(errno));
 	}
-	mercury_stdout_binary.file = fdopen(fileno(stdout), ""wb"");
-	if (mercury_stdout_binary.file == NULL) {
-		fatal_error(""error opening standard output stream in ""
+	MR_file(mercury_stdout_binary) = fdopen(fileno(stdout), ""wb"");
+	if (MR_file(mercury_stdout_binary) == NULL) {
+		MR_fatal_error(""error opening standard output stream in ""
 			""binary mode:\\n\\tfdopen() failed: %s"",
 			strerror(errno));
 	}
@@ -2680,8 +2747,8 @@ mercury_init_io(void)
 	** XXX Standard ANSI/ISO C provides no way to set stdin/stdout
 	** to binary mode.  I guess we just have to punt...
 	*/
-	mercury_stdin_binary.file = stdin;
-	mercury_stdout_binary.file = stdout;
+	MR_file(mercury_stdin_binary) = stdin;
+	MR_file(mercury_stdout_binary) = stdout;
 #endif
 }
 
@@ -2698,8 +2765,7 @@ mercury_open(const char *filename, const char *type)
 	f = fopen(filename, type);
 	if (!f) return NULL;
 	mf = MR_GC_NEW(MercuryFile);
-	mf->file = f;
-	mf->line_number = 1;
+	MR_mercuryfile_init(f, 1, mf);
 	return mf;
 }
 
@@ -2752,12 +2818,12 @@ mercury_output_error(MercuryFile *mf)
 void
 mercury_print_string(MercuryFile* mf, const char *s)
 {
-	if (fprintf(mf->file, ""%s"", s) < 0) {
+	if (ML_fprintf(mf, ""%s"", s) < 0) {
 		mercury_output_error(mf);
 	}
 	while (*s) {
 		if (*s++ == '\\n') {
-			mf->line_number++;
+			MR_line_number(*mf)++;
 		}
 	}
 }
@@ -2769,7 +2835,7 @@ mercury_print_string(MercuryFile* mf, const char *s)
 void
 mercury_print_binary_string(MercuryFile* mf, const char *s)
 {
-	if (fprintf(mf->file, ""%s"", s) < 0) {
+	if (ML_fprintf(mf, ""%s"", s) < 0) {
 		mercury_output_error(mf);
 	}
 }
@@ -2781,9 +2847,9 @@ mercury_print_binary_string(MercuryFile* mf, const char *s)
 int
 mercury_getc(MercuryFile* mf)
 {
-	int c = getc(mf->file);
+	int c = MR_GETCH(*mf);
 	if (c == '\\n') {
-		mf->line_number++;
+		MR_line_number(*mf)++;
 	}
 	return c;
 }
@@ -2799,12 +2865,29 @@ mercury_close(MercuryFile* mf)
 	    mf != &mercury_stdout &&
 	    mf != &mercury_stderr)
 	{
-		if (fclose(mf->file) < 0) {
+		if (MR_CLOSE(*mf) < 0) {
 			mercury_io_error(mf, ""error closing file: %s"",
 				strerror(errno));
 		}
 		MR_GC_free(mf);
 	}
+}
+
+").
+
+:- pragma c_code("
+
+int
+ML_fprintf(MercuryFile* mf, const char *format, ...)
+{
+	int rc;
+	va_list args;
+
+	va_start(args, format);
+	rc = MR_VFPRINTF(*mf, format, args);
+	va_end(args);
+
+	return rc;
 }
 
 ").
@@ -2821,10 +2904,10 @@ mercury_close(MercuryFile* mf)
 		may_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *) File;
 	if (Character == '\\n') {
-		mf->line_number--;
+		MR_line_number(*mf)--;
 	}
 	/* XXX should work even if ungetc() fails */
-	if (ungetc(Character, mf->file) == EOF) {
+	if (MR_UNGETCH(*mf, Character) == EOF) {
 		mercury_io_error(mf, ""io__putback_char: ungetc failed"");
 	}
 	update_io(IO0, IO);
@@ -2834,7 +2917,7 @@ mercury_close(MercuryFile* mf)
 		may_call_mercury, "{
 	MercuryFile* mf = (MercuryFile *) File;
 	/* XXX should work even if ungetc() fails */
-	if (ungetc(Character, mf->file) == EOF) {
+	if (MR_UNGETCH(*mf, Character) == EOF) {
 		mercury_io_error(mf, ""io__putback_byte: ungetc failed"");
 	}
 	update_io(IO0, IO);
@@ -2850,18 +2933,18 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__write_char(Character::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
-	if (putc(Character, mercury_current_text_output->file) < 0) {
+	if (MR_PUTCH(*mercury_current_text_output, Character) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	if (Character == '\\n') {
-		mercury_current_text_output->line_number++;
+		MR_line_number(*mercury_current_text_output)++;
 	}
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__write_int(Val::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
-	if (fprintf(mercury_current_text_output->file, ""%ld"", (long) Val) < 0) {
+	if (ML_fprintf(mercury_current_text_output, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
@@ -2869,7 +2952,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__write_float(Val::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
-	if (fprintf(mercury_current_text_output->file, ""%#.15g"", Val) < 0) {
+	if (ML_fprintf(mercury_current_text_output, ""%#.15g"", Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
@@ -2878,8 +2961,9 @@ mercury_close(MercuryFile* mf)
 :- pragma c_code(io__write_byte(Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
 	/* call putc with a strictly non-negative byte-sized integer */
-	if (putc((int) ((unsigned char) Byte),
-			mercury_current_binary_output->file) < 0) {
+	if (MR_PUTCH(*mercury_current_binary_output,
+			(int) ((unsigned char) Byte)) < 0)
+	{
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
@@ -2893,7 +2977,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__flush_output(IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
-	if (fflush(mercury_current_text_output->file) < 0) {
+	if (MR_FLUSH(*mercury_current_text_output) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
@@ -2901,7 +2985,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__flush_binary_output(IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "
-	if (fflush(mercury_current_binary_output->file) < 0) {
+	if (MR_FLUSH(*mercury_current_binary_output) < 0) {
 		mercury_output_error(mercury_current_binary_output);
 	}
 	update_io(IO0, IO);
@@ -2928,7 +3012,14 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
 	MercuryFile *stream = (MercuryFile *) Stream;
 	/* XXX should check for failure */
-	fseek(stream->file, Off, seek_flags[Flag]);
+	/* XXX should also check if the stream is seekable */
+	if (MR_IS_FILE_STREAM(*stream)) {
+		fseek(MR_file(*stream), Off, seek_flags[Flag]);
+	} else {
+		mercury_io_error(stream,
+				""io__seek_binary_2: unseekable stream"");
+	}
+
 	IO = IO0;
 }").
 
@@ -2937,7 +3028,13 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	/* XXX should check for failure */
-	Offset = ftell(stream->file);
+	/* XXX should check if the stream is tellable */
+	if (MR_IS_FILE_STREAM(*stream)) {
+		Offset = ftell(MR_file(*stream));
+	} else {
+		mercury_io_error(stream,
+			""io__binary_stream_offset: untellable stream"");
+	}
 	IO = IO0;
 }").
 
@@ -2956,11 +3053,11 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		[may_call_mercury, thread_safe], 
 "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (putc(Character, stream->file) < 0) {
+	if (MR_PUTCH(*stream, Character) < 0) {
 		mercury_output_error(stream);
 	}
 	if (Character == '\\n') {
-		stream->line_number++;
+		MR_line_number(*stream)++;
 	}
 	update_io(IO0, IO);
 }").
@@ -2968,7 +3065,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fprintf(stream->file, ""%ld"", (long) Val) < 0) {
+	if (ML_fprintf(stream, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
@@ -2977,7 +3074,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fprintf(stream->file, ""%#.15g"", Val) < 0) {
+	if (ML_fprintf(stream, ""%#.15g"", Val) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
@@ -2987,7 +3084,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
 	/* call putc with a strictly non-negative byte-sized integer */
-	if (putc((int) ((unsigned char) Byte), stream->file) < 0) {
+	if (MR_PUTCH(*stream, (int) ((unsigned char) Byte)) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
@@ -3003,7 +3100,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__flush_output(Stream::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fflush(stream->file) < 0) {
+	if (MR_FLUSH(*stream) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
@@ -3012,7 +3109,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(io__flush_binary_output(Stream::in, IO0::di, IO::uo),
 		[may_call_mercury, thread_safe], "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fflush(stream->file) < 0) {
+	if (MR_FLUSH(*stream) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
@@ -3080,7 +3177,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma c_code(io__get_line_number(LineNum::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	LineNum = mercury_current_text_input->line_number;
+	LineNum = MR_line_number(*mercury_current_text_input);
 	update_io(IO0, IO);
 ").
 	
@@ -3088,13 +3185,13 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	LineNum = stream->line_number;
+	LineNum = MR_line_number(*stream);
 	update_io(IO0, IO);
 }").
 	
 :- pragma c_code(io__set_line_number(LineNum::in, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	mercury_current_text_input->line_number = LineNum;
+	MR_line_number(*mercury_current_text_input) = LineNum;
 	update_io(IO0, IO);
 ").
 	
@@ -3102,13 +3199,13 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	stream->line_number = LineNum;
+	MR_line_number(*stream) = LineNum;
 	update_io(IO0, IO);
 }").
 	
 :- pragma c_code(io__get_output_line_number(LineNum::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	LineNum = mercury_current_text_output->line_number;
+	LineNum = MR_line_number(*mercury_current_text_output);
 	update_io(IO0, IO);
 ").
 	
@@ -3116,13 +3213,13 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	LineNum = stream->line_number;
+	LineNum = MR_line_number(*stream);
 	update_io(IO0, IO);
 }").
 
 :- pragma c_code(io__set_output_line_number(LineNum::in, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	mercury_current_text_output->line_number = LineNum;
+	MR_line_number(*mercury_current_text_output) = LineNum;
 	update_io(IO0, IO);
 ").
 	
@@ -3130,7 +3227,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 		will_not_call_mercury, "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	stream->line_number = LineNum;
+	MR_line_number(*stream) = LineNum;
 	update_io(IO0, IO);
 }").
 	
@@ -3348,7 +3445,9 @@ io__make_temp(Dir, Prefix, Name) -->
 %#include <stdio.h>
 
 :- pragma c_header_code("
+#ifdef HAVE_UNISTD_H
 	#include <unistd.h>
+#endif
 	#include <sys/types.h>
 	#include <sys/stat.h>
 	#include <fcntl.h>
@@ -3492,6 +3591,10 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 		RetVal::out, RetStr::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe],
 "{
+#ifdef _MSC_VER
+		/* VC++ runtime fix */
+	_unlink(NewFileName);
+#endif
 	RetVal = rename(OldFileName, NewFileName);
 	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
 		MR_PROC_LABEL, RetStr);

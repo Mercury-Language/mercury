@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,28 +30,16 @@
 :- interface.
 
 % Stores and keys are indexed by a type S that is used to distinguish
-% between different stores.  The idea is to use an existential type
-% declaration for store__init:
-%	:- some [S] pred store__init(store(S)).
-% That way, we could use the type system to ensure at compile time
-% that you never attempt to use a key from one store to access a
-% different store.
-% However, Mercury doesn't yet support existential types :-(
-% For the moment we just use a type `some_store_type'
-% instead of `some [S] ... S'. 
-% So currently this check is not done --
-% if you attempt to use a key from one store to access a
-% different store, the behaviour is undefined.
-% This will hopefully be rectified in some future version when
-% Mercury does support existential types.
+% between different stores.  By using an existential type declaration
+% for store__new (see below), we use the type system to ensure at
+% compile time that you never attempt to use a key from one store
+% to access a different store.
 
 :- type store(S).
 
-:- type some_store_type.
-
-	% initialize a store
-:- pred store__init(store(some_store_type)).
-:- mode store__init(uo) is det.
+	% initialize a new store
+:- some [S] pred store__new(store(S)).
+:- mode          store__new(uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -123,7 +111,7 @@
 :- mode store__ref_functor(in, out, out, di, uo) is det.
 
 	% arg_ref(Ref, ArgNum, ArgRef):	     
-	%	/* Psuedo-C code: ArgRef = &Ref[ArgNum]; */
+	%	/* Pseudo-C code: ArgRef = &Ref[ArgNum]; */
 	% Given a reference to a term, return a reference to
 	% the specified argument (field) of that term
 	% (argument numbers start from zero).
@@ -133,7 +121,7 @@
 :- mode store__arg_ref(in, in, out, di, uo) is det.
 
 	% new_arg_ref(Val, ArgNum, ArgRef):
-	%	/* Psuedo-C code: ArgRef = &Val[ArgNum]; */
+	%	/* Pseudo-C code: ArgRef = &Val[ArgNum]; */
 	% Equivalent to `new_ref(Val, Ref), arg_ref(Ref, ArgNum, ArgRef)',
 	% except that it is more efficient.
 	% It is an error if the argument number is out of range,
@@ -201,6 +189,20 @@
 :- mode store__unsafe_new_arg_ref(di, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Unsafe interfaces retained only for backwards compatibility
+%
+
+	% OBSOLETE: use `S' or `some [S] ... S' instead.
+:- type some_store_type.
+
+	% initialize a store
+	% OBSOLETE: use store__new/1 instead
+:- pred store__init(store(some_store_type)).
+:- mode store__init(uo) is det.
+:- pragma obsolete(store__init/1).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -214,7 +216,16 @@
 
 :- type ref(T, S) ---> ref(c_pointer).
 
-:- pragma c_code(init(_S0::uo), will_not_call_mercury, "").
+store__new(S) :-
+	store__do_init(S).
+
+store__init(S) :-
+	store__do_init(S).
+
+:- pred store__do_init(store(some_store_type)).
+:- mode store__do_init(uo) is det.
+
+:- pragma c_code(store__do_init(_S0::uo), will_not_call_mercury, "").
 
 /* 
 Note -- the syntax for the operations on stores
@@ -304,31 +315,39 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma c_header_code("
 	#include ""mercury_type_info.h""
+	#include ""mercury_heap.h""
+	#include ""mercury_misc.h""	/* for MR_fatal_error() */
 
 	/* ML_arg() is defined in std_util.m */
-	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
-			Word *arg_type_info, Word **argument_ptr);
+	bool ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr);
 
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
-	Word* arg_ref;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+	MR_TypeInfo	exp_arg_type_info;
+	Word		*arg_ref;
+
+	type_info = (MR_TypeInfo) TypeInfo_for_T;
+	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) Ref, ArgNum,
+	if (!ML_arg(type_info, (Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-		fatal_error(""store__arg_ref: argument number out of range"");
+		MR_fatal_error(
+			""store__arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
-		fatal_error(""store__arg_ref: argument has wrong type"");
+		MR_fatal_error(""store__arg_ref: argument has wrong type"");
 	}
 
 	restore_transient_registers();
@@ -340,21 +359,28 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
-	Word* arg_ref;
+	MR_TypeInfo	type_info;
+	MR_TypeInfo	arg_type_info;
+	MR_TypeInfo	exp_arg_type_info;
+	Word		*arg_ref;
+
+	type_info = (MR_TypeInfo) TypeInfo_for_T;
+	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) &Val, ArgNum,
+	if (!ML_arg(type_info, (Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-	      fatal_error(""store__new_arg_ref: argument number out of range"");
+		MR_fatal_error(
+			""store__new_arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
-	      fatal_error(""store__new_arg_ref: argument has wrong type"");
+		MR_fatal_error(
+			""store__new_arg_ref: argument has wrong type"");
 	}
 
 	restore_transient_registers();
@@ -365,9 +391,10 @@ ref_functor(Ref, Functor, Arity) -->
 	** return a pointer to it; so if that is the case, then we need
 	** to copy it to the heap before returning.
 	*/
+
 	if (arg_ref == &Val) {
 		incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
-		*(Word *)ArgRef = Val;
+		* (Word *) ArgRef = Val;
 	} else {
 		ArgRef = (Word) arg_ref;
 	}
@@ -377,21 +404,21 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(set_ref(Ref::in, ValRef::in, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	*(Word *)Ref = *(Word *)ValRef;
+	* (Word *) Ref = * (Word *) ValRef;
 	S = S0;
 ").
 
 :- pragma c_code(set_ref_value(Ref::in, Val::di, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	*(Word *)Ref = Val;
+	* (Word *) Ref = Val;
 	S = S0;
 ").
 
 :- pragma c_code(extract_ref_value(_S::di, Ref::in, Val::out),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Ref;
+	Val = * (Word *) Ref;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -400,8 +427,8 @@ ref_functor(Ref, Functor, Arity) -->
 		will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Ref);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Ref);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 
@@ -409,8 +436,8 @@ ref_functor(Ref, Functor, Arity) -->
 				S0::di, S::uo), will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Val);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Val);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 

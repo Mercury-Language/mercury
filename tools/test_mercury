@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -26,6 +26,8 @@ PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
 PATH="/home/mercury/public/$FULLARCH:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
+# generate_index_html needs to be in our PATH too
+PATH="`pwd`:$PATH"
 export PATH
 
 CVSROOT=/home/staff/zs/imp
@@ -71,21 +73,29 @@ case $HOST in
 	*)		LN="ln"; LN_S="ln -s" ;;
 esac
 
+# flags for building the compiler
+INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
+INSTALL_MGNUCFLAGS=""
+INSTALL_CFLAGS=""
+INSTALL_MLFLAGS=""
+
+# flags for running the tests
 TEST_MCFLAGS="$OPTIMIZE --opt-space"
+TEST_MGNUCFLAGS=""
 TEST_CFLAGS=""
+TEST_MLFLAGS=""
 
 case $FULLARCH in
 	i?86-*-linux*)
 		# On x86 Linux, we need to set the following flags to enable
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
-		TEST_MGNUCFLAGS=--pic-reg
-		TEST_MLFLAGS=--shared
+		TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
+		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
+		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
 		;;
 	*)
 		# On other platforms shared libraries is the default
-		TEST_MGNUCFLAGS=""
-		TEST_MLFLAGS=""
 		;;
 esac
 
@@ -101,7 +111,8 @@ esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
-BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
+BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
+BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 
 STABLE=$DIR/mercury-latest-stable
 UNSTABLE=$DIR/mercury-latest-unstable
@@ -255,8 +266,10 @@ cd mercury || { false; exit 1; }
 # 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
 	echo "MC = ../scripts/mmc" > Mmake.params
-	echo "EXTRA_MCFLAGS = $TEST_MCFLAGS" >> Mmake.params
-	echo "EXTRA_CFLAGS = $TEST_CFLAGS" >> Mmake.params
+	echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS" >> Mmake.params
+	echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
+	echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
+	echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
 # fi
 
 autoconf || { false; exit 1; }
@@ -268,7 +281,7 @@ mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
 version=`mmake version` || { false; exit 1; }
 fullarch=`mmake fullarch` || { false; exit 1; }
-tools/bootcheck -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
+tools/bootcheck -k -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#
@@ -296,49 +309,26 @@ case $status in 0)
         true)	cd mercury || { false; exit 1; } ;;
     esac
 
+    # Previously we had lots of special case code here for installing on
+    # IRIX systems.   We don't currently have any IRIX boxes, and this 
+    # code was a bit of a pain to maintain.  If we ever get an IRIX box
+    # again, look back in the CVS archives for version 1.114 to see
+    # the necessary code.
+
+    mmake install MMAKEFLAGS=$PARALLEL || status=1
+    mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
+	|| status=1
+
+	# If you want to add extra grades to install on specific hosts,
+	# do it here.  Any grade which is tested later, but which is not
+	# installed above, should be installed here.
     case $HOST in
-	munta)
-		# see README.IRIX for an explanation of these contortions
-		
-		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
-			MMAKEFLAGS=$PARALLEL || status=1
-
-		# mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL
-		#
-		# the above line doesn't work, due to a bug in gcc 2.6.3;
-		# the following hack avoids the bug by compiling modules.o
-		# with -O1 rather than -O2
-		#
-		(cd library && \
-		\
-		PATH=../scripts:../util:$PATH \
-		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
-		int.dir/*.o && \
-		\
-		PATH=../scripts:../util:$PATH \
-		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake install_split_library \
-		) || status=1
-
-		: install the shared library grades
-		mmake install_grades LIBGRADES="reg.gc reg.gc.prof" \
-			MMAKEFLAGS="$PARALLEL EXT_FOR_SHARED_LIB=so" || status=1
-
-		: must reinstall a non-shared libgc.a and libgc_prof.a
-		(cd boehm_gc && \
-		mmake install MMAKEFLAGS=$PARALLEL && \
-		mmake clean MMAKEFLAGS=$PARALLEL && \
-		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
-		 	MMAKEFLAGS=$PARALLEL \
-		) || status=1
+    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || status=1
 		;;
 	*)
-		mmake install MMAKEFLAGS=$PARALLEL || status=1
-		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
-			|| status=1
 		;;
     esac
+
     case $install_anyway in
         false)	cd ../.. || status=1 ;;
         true)	cd .. || status=1 ;;
@@ -368,42 +358,28 @@ for grade in $GRADES kludge_for_broken_shells
 do
 	if [ "$grade" != kludge_for_broken_shells ]; then
 		echo "test clpr stuff for grade $grade" 1>&2
+		{
+			echo "GRADE = $grade"
+			echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS"
+			echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS"
+			echo "EXTRA_CFLAGS = $INSTALL_CFLAGS"
+			echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS"
+		} > mercury/extras/Mmake.params &&
 		(cd mercury/extras/clpr &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 	fi
 done
@@ -455,6 +431,9 @@ unset MERCURY_COMPILER
 
 #MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
 #export MERCURY_COMPILER
+
+# Any grade here that is not installed by default needs to be explicitly
+# installed above, before the tests are run.
 case $HOST in
 	mundook|murlibobo)
 		GRADES="none none.gc
@@ -484,10 +463,16 @@ case $HOST in
 		# Don't bother with these, otherwise it would take forever...
 		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
 		;;
-	hg|hydra)
+	hydra)
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
+		;;
+	hg)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			asm_fast.gc.par hlc.gc"
 		;;
 	quicksilver)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
@@ -515,16 +500,17 @@ do
 		$PARALLEL || status=1
 	case $grade in
 		*.memprof*)
-			# we need to link statically for profiling on DEC Alpha
+			# we need to set LD_BIND_NOW=1 for profiling on DEC Alpha
 			(cd benchmarks &&
 			touch poly.m &&
 			mmake poly.depend &&
 			mmake poly \
 				GRADE="$grade" \
 				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
 				EXTRA_CFLAGS="$TEST_CFLAGS" \
-				EXTRA_MLFLAGS="-static" &&
-			./poly > poly.$grade.out &&
+				EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
+			LD_BIND_NOW=1 ./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
 			{ diff -u poly.mprof-exp poly.$grade.mprof || true; } &&
 			cp Prof.CallPair poly.$grade.CallPair &&
@@ -609,8 +595,6 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-: check for success
-
 case $status in
     0)
 	: if we get this far, then it worked.
@@ -618,8 +602,10 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
-		# Only delete the stable rotds.
+		# Delete older stable rotds and anything stable tar files 
+		# with the same version.
 	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-*-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
@@ -627,9 +613,9 @@ case $status in
 	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
-		# Only delete the stable rotds.
 	    rsh $BETA_FTPHOST "\
-	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
@@ -637,8 +623,8 @@ case $status in
 	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
-		# Only delete the stable rotds.
 	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
@@ -647,6 +633,30 @@ case $status in
 	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
 	    ;;
 	esac
+	;;
+    *)
+	;;
+esac
+
+# Now rebuild the index files on the www site
+case $HOST in 
+    murlibobo)
+	echo "test_mercury generating www index files, starting at `date`" 1>&2
+	(
+	cd $BETA_WEBDIR_TOP
+	generate_index_html
+	)
+	echo "test_mercury generating www index files, finished at `date`" 1>&2
+	;;
+    *)
+	;;
+esac
+
+: check for success
+
+case $status in
+    0)
+
 	echo "test_mercury exiting successfully at `date`" 1>&2
 	true
 	exit 0

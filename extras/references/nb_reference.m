@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,6 +51,9 @@
 :- implementation.
 
 %  This type is implemented in C.
+%  Note that if the C type used to implement nb_references changes (from
+%  something equivalent to `Word'), then `c_reference.h' should also be
+%  updated.
 :- type nb_reference(T) ---> nb_reference(c_pointer).
 
 :- pragma c_header_code("#include ""mercury_deep_copy.h""").
@@ -61,7 +64,7 @@
 #ifndef CONSERVATIVE_GC
 	save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (Word *) TypeInfo_for_T,
+	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(Word *) Ref);
 #ifndef CONSERVATIVE_GC
 	restore_transient_registers();
@@ -78,10 +81,27 @@
 #ifndef CONSERVATIVE_GC
 	save_transient_registers();
 #endif
-	*(Word *) Ref = MR_make_long_lived(X, (Word *) TypeInfo_for_T,
+	*(Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(Word *) Ref);
 #ifndef CONSERVATIVE_GC
 	restore_transient_registers();
 #endif
 ").
+
+:- interface.
+
+% init(Ref, Value)
+%	Initialise a reference Ref to have value Value.
+%	This is for use with user-declared ME_NbReferences (see
+%	c_reference.h), and must be called before using such a reference.
+%	Attempting to access the reference before it is initialised is
+%	undefined.
+
+:- impure pred init(nb_reference(T)::in, T::in) is det.
+
+:- implementation.
+
+:- pragma inline(init/2).
+init(Ref, X) :-
+	impure update(Ref, X).
 

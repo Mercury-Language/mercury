@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 :- implementation.
 
 :- import_module builtin_ops, globals, options, opt_util, prog_data.
-:- import_module bool, int, list, require, std_util.
+:- import_module bool, int, list, require, std_util, counter.
 
 transform_llds(LLDS0, LLDS) -->
 	globals__io_lookup_int_option(max_jump_table_size, Size),
@@ -90,49 +90,49 @@ transform_c_procedure_list([P0 | P0s], [P | Ps]) -->
 :- pred transform_c_procedure(c_procedure, c_procedure, io__state, io__state).
 :- mode transform_c_procedure(in, out, di, uo) is det.
 
-transform_c_procedure(c_procedure(Name, Arity, PredProcId, Instructions0),
-		c_procedure(Name, Arity, PredProcId, Instructions)) -->
-	transform_instructions(Instructions0, Instructions).
+transform_c_procedure(Proc0, Proc) -->
+	{ Proc0 = c_procedure(Name, Arity, PPId, Instrs0,
+		ProcLabel, C0, Recons) },
+	{ Proc  = c_procedure(Name, Arity, PPId, Instrs,
+		ProcLabel, C, Recons) },
+	transform_instructions(Instrs0, ProcLabel, C0, C, Instrs).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_instructions(list(instruction), list(instruction),
-		io__state, io__state).
-:- mode transform_instructions(in, out, di, uo) is det.
-
-transform_instructions(Instrs0, Instrs) -->
-	{ opt_util__get_prologue(Instrs0, ProcLabel, _, _, _) },
-	{ max_label_int(Instrs0, 0, N) },
-	transform_instructions_2(Instrs0, ProcLabel, N, Instrs).
-
-:- pred transform_instructions_2(list(instruction), proc_label, int,
+:- pred transform_instructions(list(instruction), proc_label, counter, counter,
 		list(instruction), io__state, io__state).
-:- mode transform_instructions_2(in, in, in, out, di, uo) is det.
+:- mode transform_instructions(in, in, in, out, out, di, uo) is det.
 
-transform_instructions_2([], _, _, []) --> [].
-transform_instructions_2([Instr0 | Instrs0], ProcLabel, N0, Instrs) -->
-	transform_instruction(Instr0, ProcLabel, N0, InstrsA, N),
-	transform_instructions_2(Instrs0, ProcLabel, N, InstrsB),
+transform_instructions(Instrs0, ProcLabel, C0, C, Instrs) -->
+	transform_instructions_2(Instrs0, ProcLabel, C0, C, Instrs).
+
+:- pred transform_instructions_2(list(instruction), proc_label,
+		counter, counter, list(instruction), io__state, io__state).
+:- mode transform_instructions_2(in, in, in, out, out, di, uo) is det.
+
+transform_instructions_2([], _, C, C, []) --> [].
+transform_instructions_2([Instr0 | Instrs0], ProcLabel, C0, C, Instrs) -->
+	transform_instruction(Instr0, ProcLabel, C0, InstrsA, C1),
+	transform_instructions_2(Instrs0, ProcLabel, C1, C, InstrsB),
 	{ list__append(InstrsA, InstrsB, Instrs) }.
 
-
 %-----------------------------------------------------------------------------%
 
-:- pred transform_instruction(instruction, proc_label, int,
-		list(instruction), int, io__state, io__state).
+:- pred transform_instruction(instruction, proc_label, counter,
+		list(instruction), counter, io__state, io__state).
 :- mode transform_instruction(in, in, in, out, out, di, uo) is det.
 
-transform_instruction(Instr0, ProcLabel, N0, Instrs, N) -->
+transform_instruction(Instr0, ProcLabel, C0, Instrs, C) -->
 	globals__io_lookup_int_option(max_jump_table_size, Size),
 	(
 		{ Instr0 = computed_goto(_Rval, Labels) - _},
 		{ list__length(Labels, L) },
 		{ L > Size }
 	->
-		split_computed_goto(Instr0, Size, L, ProcLabel, N0, Instrs, N)
+		split_computed_goto(Instr0, Size, L, ProcLabel, C0, Instrs, C)
 	;
 		{ Instrs = [Instr0] },
-		{ N = N0 }
+		{ C = C0 }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -145,21 +145,20 @@ transform_instruction(Instr0, ProcLabel, N0, Instrs, N) -->
 	% instructions, Is, to do a binary search down to a jump_table
 	% whose size is sufficiently small.
 	%
-:- pred split_computed_goto(instruction, int, int, proc_label, int,
-		list(instruction), int, io__state, io__state).
+:- pred split_computed_goto(instruction, int, int, proc_label, counter,
+		list(instruction), counter, io__state, io__state).
 :- mode split_computed_goto(in, in, in, in, in, out, out, di, uo) is det.
 
-split_computed_goto(Instr0, MaxSize, Length, ProcLabel, N0, Instrs, N) -->
+split_computed_goto(Instr0, MaxSize, Length, ProcLabel, C0, Instrs, C) -->
 	(
 		{ Length =< MaxSize }
 	->
 		{ Instrs = [Instr0] },
-		{ N = N0 }
+		{ C = C0 }
 	;
 		{ Instr0 = computed_goto(Rval, Labels) - _Comment }
 	->
-		{ N1 is N0 + 1},
-		{ N2 is N1 + 1},
+		{ counter__allocate(N, C0, C1) },
 		{ Mid = Length // 2 },
 
 		(
@@ -172,44 +171,22 @@ split_computed_goto(Instr0, MaxSize, Length, ProcLabel, N0, Instrs, N) -->
 
 		{ Index     = binop((-), Rval, const(int_const(Mid))) },
 		{ Test      = binop((>=), Rval, const(int_const(Mid))) },
-		{ ElseAddr  = label(local(ProcLabel, N1)) },
-		{ ElseLabel = label(local(ProcLabel, N1)) - ""},
+		{ ElseAddr  = label(local(ProcLabel, N)) },
+		{ ElseLabel = label(local(ProcLabel, N)) - ""},
 		{ IfInstr   = if_val(Test, ElseAddr ) - "Binary search"},
 
 		{ ThenInstr = computed_goto(Rval, Start) - "Then section" },
 		{ ElseInstr = computed_goto(Index, End) - "Else section" },
 
-		split_computed_goto(ThenInstr, MaxSize, Mid, ProcLabel, N2,
-				ThenInstrs, N3),
+		split_computed_goto(ThenInstr, MaxSize, Mid, ProcLabel, C1,
+				ThenInstrs, C2),
 		split_computed_goto(ElseInstr, MaxSize, Length - Mid,
-				ProcLabel, N3, ElseInstrs, N),
+				ProcLabel, C2, ElseInstrs, C),
 
 		{ list__append(ThenInstrs, [ElseLabel | ElseInstrs], InstrsA) },
 		{ Instrs = [IfInstr | InstrsA] }
 	;
 		{ error("split_computed_goto") }
-	).
-
-%-----------------------------------------------------------------------------%
-
-	%
-	% max_label_int(Is, M0, M)
-	%
-	% Find the highest integer, M, used in local labels from the list of
-	% intructions, Is, where M0 is the highest integer found so far.
-	%
-:- pred max_label_int(list(instruction), int, int).
-:- mode max_label_int(in, in, out) is det.
-
-max_label_int([], N, N).
-max_label_int([Instr - _Comment | Instrs], N0, N) :-
-	(
-		Instr = label(local(_, Num)),
-		Num > N0
-	->
-		max_label_int(Instrs, Num, N)
-	;
-		max_label_int(Instrs, N0, N)
 	).
 
 %-----------------------------------------------------------------------------%

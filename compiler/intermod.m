@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,6 +127,8 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			HigherOrderSizeLimit, Deforestation,
 			IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_instances(IntermodInfo1,
+			IntermodInfo2) },
+		{ intermod__gather_types(IntermodInfo2,
 			IntermodInfo) },
 		intermod__write_intermod_info(IntermodInfo),
 		{ intermod_info_get_module_info(ModuleInfo1,
@@ -149,10 +151,12 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			set(module_name),	% modules to import
 			set(pred_id), 		% preds to output clauses for
 			set(pred_id),	 	% preds to output decls for
-			list(pair(class_id, hlds_instance_defn)),
+			assoc_list(class_id, hlds_instance_defn),
 						% instances declarations
 						% to write
-			unit,
+			assoc_list(type_id, hlds_type_defn),
+						% type declarations
+						% to write
 			unit,
 			module_info,
 			bool,			% do the c_header_codes for
@@ -171,7 +175,8 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	map__init(VarTypes),
 	varset__init(TVarSet),
 	Instances = [],
-	IntermodInfo = info(Modules, Procs, ProcDecls, Instances, unit,
+	Types = [],
+	IntermodInfo = info(Modules, Procs, ProcDecls, Instances, Types,
 			unit, ModuleInfo, no, VarTypes, TVarSet).
 			
 %-----------------------------------------------------------------------------%
@@ -224,7 +229,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 		;
 			% Remove any items added for the clauses
 			% for this predicate.
-			dcg_set(IntermodInfo0)
+			:=(IntermodInfo0)
 		)
 	;
 		[]
@@ -306,9 +311,6 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 		% included in the .opt file.
 		pred_info_get_goal_type(PredInfo, assertion)
 	).
-
-:- pred dcg_set(T::in, T::unused, T::out) is det.
-dcg_set(T, _, T).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -459,8 +461,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
-			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
+intermod__traverse_goal(pragma_foreign_code(A,B,C,D,E,F,G,H) - Info,
+		pragma_foreign_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
 
 intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now
@@ -822,10 +824,18 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 		=(IntermodInfo0),
 		(
 			{ Interface0 = concrete(Methods0) },
-			{ MaybePredProcIds = yes(PredProcIds) ->
+			{ MaybePredProcIds = yes(ClassProcs) ->
+				GetPredId =
+				    (pred(Proc::in, PredId::out) is det :-
+					Proc = hlds_class_proc(PredId, _)
+				    ),
+				list__map(GetPredId, ClassProcs, ClassPreds0),
+
+				% The interface is sorted on pred_id.
+				list__remove_adjacent_dups(ClassPreds0,
+					ClassPreds),
 				assoc_list__from_corresponding_lists(
-					PredProcIds, Methods0,
-					MethodAL0)
+					ClassPreds, Methods0, MethodAL0)
 			;
 				error(
 	"intermod__gather_instances_3: method pred_proc_ids not filled in")
@@ -855,7 +865,7 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 				% Don't write declarations for any of the
 				% methods if one can't be written.
 				%
-				dcg_set(IntermodInfo0)
+				:=(IntermodInfo0)
 			)
 		;
 			{ Interface0 = abstract },
@@ -888,42 +898,104 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 	% Resolve overloading of instance methods before writing them
 	% to the `.opt' file.
 :- pred intermod__qualify_instance_method(module_info::in,
-		pair(hlds_class_proc, instance_method)::in,
+		pair(pred_id, instance_method)::in,
 		pair(pred_id, instance_method)::out) is det.
 
-intermod__qualify_instance_method(ModuleInfo, ClassProcId - InstanceMethod0,
-		PredId - InstanceMethod) :-
-	ClassProcId = hlds_class_proc(MethodCallPredId, _),
+intermod__qualify_instance_method(ModuleInfo,
+		MethodCallPredId - InstanceMethod0, PredId - InstanceMethod) :-
 	module_info_pred_info(ModuleInfo, MethodCallPredId,
 		MethodCallPredInfo),
 	pred_info_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
 		MethodCallArgTypes),
-	(
-		InstanceMethod0 = func_instance(MethodName,
+	InstanceMethod0 = instance_method(PredOrFunc, MethodName,
 			InstanceMethodName0, MethodArity, MethodContext),
+	(
+		PredOrFunc = function,
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),
 		(
 			predicate_table_search_func_sym_arity(PredicateTable,
 				InstanceMethodName0, MethodArity, PredIds),
 			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 				MethodCallTVarSet, MethodCallArgTypes,
-				PredId0, InstanceMethodName)
+				PredId0, InstanceMethodName1)
 		->
 			PredId = PredId0,
-			InstanceMethod = func_instance(MethodName,
-				InstanceMethodName, MethodArity, MethodContext)
+			InstanceMethodName = InstanceMethodName1
 		;
-			error(
-		"intermod__qualify_instance_method: undefined function")
+			hlds_out__simple_call_id_to_string(
+				function - InstanceMethodName0/MethodArity,
+				MethodStr),
+			string__append(
+			    "intermod__qualify_instance_method: undefined ",
+			    MethodStr, Msg),
+			error(Msg)
 		)
 	;
-		InstanceMethod0 = pred_instance(MethodName,
-			InstanceMethodName0, MethodArity, MethodContext),
+		PredOrFunc = predicate,
 		typecheck__resolve_pred_overloading(ModuleInfo,
 			MethodCallArgTypes, MethodCallTVarSet,
-			InstanceMethodName0, InstanceMethodName, PredId),
-		InstanceMethod = pred_instance(MethodName,
-			InstanceMethodName, MethodArity, MethodContext)
+			InstanceMethodName0, InstanceMethodName, PredId)
+	),
+	InstanceMethod = instance_method(PredOrFunc, MethodName,
+			InstanceMethodName, MethodArity, MethodContext).
+
+%-----------------------------------------------------------------------------%
+
+:- pred intermod__gather_types(intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_types -->
+	intermod_info_get_module_info(ModuleInfo),
+	{ module_info_types(ModuleInfo, Types) },
+	map__foldl(intermod__gather_types_2, Types).
+
+:- pred intermod__gather_types_2(type_id::in,
+	hlds_type_defn::in, intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_types_2(TypeId, TypeDefn0, Info0, Info) :-
+	intermod_info_get_module_info(ModuleInfo, Info0, Info1),
+	module_info_name(ModuleInfo, ModuleName),
+	(
+	    intermod__should_write_type(ModuleName, TypeId, TypeDefn0)
+	->
+	    (
+		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
+		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0),
+		MaybeUserEq0 = yes(UserEq0)
+	    ->
+		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
+		map__lookup(SpecialPreds, unify - TypeId, UnifyPredId),
+		module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
+		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
+		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
+			TVarSet, UserEq0, UserEq, UserEqPredId),
+		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq)),
+		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
+
+		% XXX If the predicate is exported to sub-modules, it
+		% won't be written to the `.opt' file. See the comments
+		% for intermod__add_proc.
+		% This doesn't cause problems because if there are
+		% sub-modules, nothing gets written to the `.opt' file.
+		intermod__add_proc(UserEqPredId, _, Info1, Info2)
+	    ;	
+		Info2 = Info1,
+		TypeDefn = TypeDefn0
+	    ),
+	    intermod_info_get_types(Types0, Info2, Info3),
+	    intermod_info_set_types([TypeId - TypeDefn | Types0], Info3, Info)
+	;
+	    Info = Info1
+	).
+
+:- pred intermod__should_write_type(module_name::in,
+		type_id::in, hlds_type_defn::in) is semidet.
+
+intermod__should_write_type(ModuleName, TypeId, TypeDefn) :-
+	hlds_data__get_type_defn_status(TypeDefn, ImportStatus),
+	TypeId = Name - _Arity,
+	Name = qualified(ModuleName, _),
+	( ImportStatus = local
+	; ImportStatus = abstract_exported
 	).
 
 %-----------------------------------------------------------------------------%
@@ -969,7 +1041,7 @@ intermod__write_intermod_info(IntermodInfo0) -->
 		io__state::uo) is det.
 
 intermod__write_intermod_info_2(IntermodInfo) -->
-	{ IntermodInfo = info(_, Preds0, PredDecls0, Instances, _, _,
+	{ IntermodInfo = info(_, Preds0, PredDecls0, Instances, Types, _,
 				ModuleInfo, WriteHeader, _, _) },
 	{ set__to_sorted_list(Preds0, Preds) }, 
 	{ set__to_sorted_list(PredDecls0, PredDecls) },
@@ -986,7 +1058,7 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 		[]
 	),
 
-	intermod__write_types(ModuleInfo),
+	intermod__write_types(Types),
 	intermod__write_insts(ModuleInfo),
 	intermod__write_modes(ModuleInfo),
 	intermod__write_classes(ModuleInfo),
@@ -996,7 +1068,7 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_lookup_string_option(dump_hlds_options, VerboseDump),
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
-		{ module_info_get_c_header(ModuleInfo, CHeader) },
+		{ module_info_get_foreign_header(ModuleInfo, CHeader) },
 		intermod__write_c_header(CHeader)
 	;
 		[]
@@ -1020,7 +1092,7 @@ intermod__write_modules([Module | Rest]) -->
 		intermod__write_modules(Rest)
 	).
 
-:- pred intermod__write_c_header(list(c_header_code)::in,
+:- pred intermod__write_c_header(list(foreign_header_code)::in,
 				io__state::di, io__state::uo) is det.
 
 intermod__write_c_header([]) --> [].
@@ -1028,50 +1100,38 @@ intermod__write_c_header([Header - _ | Headers]) -->
         intermod__write_c_header(Headers),
         mercury_output_pragma_c_header(Header).
 
-:- pred intermod__write_types(module_info::in,
+:- pred intermod__write_types(assoc_list(type_id, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
 
-intermod__write_types(ModuleInfo) -->
-	{ module_info_name(ModuleInfo, ModuleName) },
-	{ module_info_types(ModuleInfo, Types) },
-	map__foldl(intermod__write_type(ModuleName), Types).
+intermod__write_types(Types) -->
+	list__foldl(intermod__write_type, Types).
 
-:- pred intermod__write_type(module_name::in, type_id::in,
-		hlds_type_defn::in, io__state::di, io__state::uo) is det.
+:- pred intermod__write_type(pair(type_id, hlds_type_defn)::in,
+		io__state::di, io__state::uo) is det.
 
-intermod__write_type(ModuleName, TypeId, TypeDefn) -->
-	{ hlds_data__get_type_defn_status(TypeDefn, ImportStatus) },
+intermod__write_type(TypeId - TypeDefn) -->
+	{ hlds_data__get_type_defn_tvarset(TypeDefn, VarSet) },
+	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
+	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
+	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	{ TypeId = Name - _Arity },
 	(
-		{ Name = qualified(ModuleName, _) },
-		{ ImportStatus = local
-		; ImportStatus = abstract_exported
-		}
-	->
-		{ hlds_data__get_type_defn_tvarset(TypeDefn, VarSet) },
-		{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
-		{ hlds_data__get_type_defn_body(TypeDefn, Body) },
-		{ hlds_data__get_type_defn_context(TypeDefn, Context) },
-		(
-			{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
-			mercury_output_type_defn(VarSet,
-				du_type(Name, Args, Ctors,
-					MaybeEqualityPred),
-				Context)
-		;
-			{ Body = uu_type(_) },
-			{ error("uu types not implemented") }
-		;
-			{ Body = eqv_type(EqvType) },
-			mercury_output_type_defn(VarSet,
-				eqv_type(Name, Args, EqvType), Context)
-		;
-			{ Body = abstract_type },
-			mercury_output_type_defn(VarSet,
-				abstract_type(Name, Args), Context)
-		)
+		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
+		mercury_output_type_defn(VarSet,
+			du_type(Name, Args, Ctors,
+				MaybeEqualityPred),
+			Context)
 	;
-		[]
+		{ Body = uu_type(_) },
+		{ error("uu types not implemented") }
+	;
+		{ Body = eqv_type(EqvType) },
+		mercury_output_type_defn(VarSet,
+			eqv_type(Name, Args, EqvType), Context)
+	;
+		{ Body = abstract_type },
+		mercury_output_type_defn(VarSet,
+			abstract_type(Name, Args), Context)
 	).
 
 :- pred intermod__write_modes(module_info::in,
@@ -1312,7 +1372,11 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
 		PredOrFunc, Clause0) -->
 	{ strip_headvar_unifications(HeadVars, Clause0,
 		ClauseHeadVars, Clause) },
-	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, no,
+	% Variable numbers need to be appended for the case
+	% where the added arguments for a DCG pred expression
+	% are named the same as variables in the enclosing clause.
+	{ AppendVarNums = yes },
+	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
 		ClauseHeadVars, PredOrFunc, Clause, no).
 
 	% Strip the `Headvar__n = Term' unifications from each clause,
@@ -1500,17 +1564,17 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
 		(
-			% Pull the C code out of the goal.
+			% Pull the foreign code out of the goal.
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_,_,_,_,_,_,_) - _
+				    X = pragma_foreign_code(_,_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(Attributes,
+			{ CCodeGoal = pragma_foreign_code(c, Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_c_code(Attributes,
+			{ Goal = pragma_foreign_code(c, Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		)
 	->	
@@ -1524,8 +1588,8 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, pragma_c_code_impl::in,
-		pragma_c_code_attributes::in, list(prog_var)::in,
+		pred_or_func::in, pragma_foreign_code_impl::in,
+		pragma_foreign_code_attributes::in, list(prog_var)::in,
 		prog_varset::in, list(maybe(pair(string, mode)))::in,
 		sym_name::in, io__state::di, io__state::uo) is det.
 
@@ -1591,8 +1655,8 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 :- pred intermod_info_get_instances(
 			assoc_list(class_id, hlds_instance_defn)::out, 
 			intermod_info::in, intermod_info::out) is det.
-%:- pred intermod_info_get_modes(set(mode_id)::out, 
-%			intermod_info::in, intermod_info::out) is det.
+:- pred intermod_info_get_types(assoc_list(type_id, hlds_type_defn)::out, 
+			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_get_insts(set(inst_id)::out, 
 %			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_module_info(module_info::out,
@@ -1610,6 +1674,7 @@ intermod_info_get_pred_decls(ProcDecls) -->
 					=(info(_,_,ProcDecls,_,_,_,_,_,_,_)).
 intermod_info_get_instances(Instances) -->
 		=(info(_,_,_,Instances,_,_,_,_,_,_)).
+intermod_info_get_types(Types)		--> =(info(_,_,_,_,Types,_,_,_,_,_)).
 %intermod_info_get_modes(Modes)		--> =(info(_,_,_,_,Modes,_,_,_,_,_)).
 %intermod_info_get_insts(Insts)		--> =(info(_,_,_,_,_,Insts,_,_,_,_)).
 intermod_info_get_module_info(Module)	--> =(info(_,_,_,_,_,_,Module,_,_,_)).
@@ -1626,8 +1691,8 @@ intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
 :- pred intermod_info_set_instances(
 			assoc_list(class_id, hlds_instance_defn)::in, 
 			intermod_info::in, intermod_info::out) is det.
-%:- pred intermod_info_set_modes(set(mode_id)::in, 
-%			intermod_info::in, intermod_info::out) is det.
+:- pred intermod_info_set_types(assoc_list(type_id, hlds_type_defn)::in, 
+			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_set_insts(set(inst_id)::in, 
 %			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_module_info(module_info::in,
@@ -1651,9 +1716,9 @@ intermod_info_set_pred_decls(ProcDecls, info(A,B,_,D,E,F,G,H,I,J),
 intermod_info_set_instances(Instances, info(A,B,C,_,E,F,G,H,I,J),
 				info(A,B,C, Instances, E,F,G,H,I,J)).
 
-%intermod_info_set_modes(Modes, info(A,B,C,D,_,F,G,H,I,J),
-%				info(A,B,C,D, Modes, F,G,H,I,J)).
-%
+intermod_info_set_types(Types, info(A,B,C,D, _, F,G,H,I,J),
+				info(A,B,C,D, Types, F,G,H,I,J)).
+
 %intermod_info_set_insts(Insts, info(A,B,C,D,E,_,G,H,I,J),
 %				info(A,B,C,D,E, Insts, G,H,I,J)).
 
@@ -1689,7 +1754,9 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	globals__lookup_int_option(Globals, higher_order_size_limit,
 		HigherOrderSizeLimit),
 	intermod__gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
-		Deforestation, Info0, Info),
+		Deforestation, Info0, Info1),
+	intermod__gather_instances(Info1, Info2),
+	intermod__gather_types(Info2, Info),
 	do_adjust_pred_import_status(Info, Globals, Module0, Module),
 	maybe_write_string(VVerbose, " done\n", IO2, IO).
 
@@ -1721,14 +1788,8 @@ adjust_type_status(Globals, ModuleInfo0, ModuleInfo) :-
 
 adjust_type_status_2(Globals, TypeId - TypeDefn0, TypeId - TypeDefn,
 		ModuleInfo0, ModuleInfo) :-
-	hlds_data__get_type_defn_status(TypeDefn0, Status),
-	(
-		module_info_name(ModuleInfo0, ModuleName),
-		TypeId = qualified(ModuleName, _) - _,
-		( Status = local
-		; Status = abstract_exported
-		)
-	->
+	module_info_name(ModuleInfo0, ModuleName),
+	( intermod__should_write_type(ModuleName, TypeId, TypeDefn0) ->
 		hlds_data__set_type_defn_status(TypeDefn0, exported, TypeDefn),
 		fixup_special_preds(TypeId, Globals, ModuleInfo0, ModuleInfo)
 	;
@@ -1742,8 +1803,8 @@ adjust_type_status_2(Globals, TypeId - TypeDefn0, TypeId - TypeDefn,
 fixup_special_preds(TypeId, Globals, ModuleInfo0, ModuleInfo) :-
 	special_pred_list(Globals, SpecialPredList),
 	module_info_get_special_pred_map(ModuleInfo0, SpecPredMap),
-	list__map((pred(SpecPredId::in, PredId::out) is det :-
-			map__lookup(SpecPredMap, SpecPredId - TypeId, PredId)
+	list__filter_map((pred(SpecPredId::in, PredId::out) is semidet :-
+			map__search(SpecPredMap, SpecPredId - TypeId, PredId)
 		), SpecialPredList, PredIds),
 	set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo).
 

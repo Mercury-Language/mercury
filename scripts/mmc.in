@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998 The University of Melbourne.
+# Copyright (C) 1994-1998, 2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -11,16 +11,20 @@
 # Use `mmc -h' for help.
 #
 # Environment variables: MERCURY_INT_DIR, MERCURY_C_INCL_DIR,
+# MERCURY_ALL_MC_C_INCL_DIRS,
 # MERCURY_COMPILER, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
 
 INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
-C_INCL=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+MERC_C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+MERC_ALL_MC_C_INCL_DIRS=${MERCURY_ALL_MC_C_INCL_DIRS="--c-include-directory $MERC_C_INCL_DIR"}
 MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+CFLAG_TO_NAME_OBJECT_FILE="@OBJFILE_OPT@"
+OBJECT_FILE_EXTENSION="@OBJ_SUFFIX@"
 LOW_TAG_BITS=@LOW_TAG_BITS@
 BITS_PER_WORD=@BITS_PER_WORD@
 BYTES_PER_WORD=@BYTES_PER_WORD@
@@ -35,10 +39,12 @@ DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
 case $# in
 	0) exec $MC \
-		--c-include-directory "$C_INCL" \
+		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
+		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
@@ -50,10 +56,12 @@ case $# in
 		-I "$INTDIR"
 		;;
 	*) exec $MC \
-		--c-include-directory "$C_INCL" \
+		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
+		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \

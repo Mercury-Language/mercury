@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,7 @@
 %	6) Add bit operations (XOR, AND, OR, etc). We would treat
 %	  the integers as having a 2's complement bit representation.
 %	  This is easier to do if we use base 2^14 as mentioned above.
-%       (djh: this is done:  /\ \/ << >> ^ \)
+%       (djh: this is done:  /\ \/ << >> xor \)
 %
 %	7) The implementation of `div' is slower than it need be.
 %       (djh: this is much improved)
@@ -131,9 +131,6 @@
 :- func integer \/ integer = integer.
 
 :- func integer `xor` integer = integer.
-
-:- func integer ^ integer = integer.
-:- pragma obsolete(('^')/2).
 
 :- func \ integer = integer.
 
@@ -277,8 +274,6 @@ X1 `xor` X2 =
     ;
         big_xor(X1, X2)
     ).
-
-X1 ^ X2 = X1 `xor` X2.
 
 \ X = big_neg(big_plus(X, integer__one)).
 

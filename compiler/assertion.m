@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,6 +58,65 @@
 		prog_vars::in, pair(prog_var)::out) is semidet.
 
 	%
+	%
+	% assertion__is_associativity_assertion(Id, MI, Vs, CVs, OV)
+	%
+	% Does the assertion represented by the assertion id, Id,
+	% state the associativity of a pred/func?
+	% We extend the usual definition of associativity to apply to
+	% predicates or functions with more than two arguments as
+	% follows by allowing extra arguments which must be invariant.
+	% If so, this predicate returns (in CVs) the two variables which
+	% can be swapped in order if it was a call to Vs, and the
+	% output variable, OV, related to these two variables (for the
+	% case below it would be the variable in the same position as
+	% AB, BC or ABC).
+	%
+	% The assertion must be in a form similar to this
+	% 	all [Is,A,B,C,ABC] 
+	% 	(
+	% 	  some [AB] p(Is,A,B,AB), p(Is,AB,C,ABC)
+	% 	<=>
+	% 	  some [BC] p(Is,B,C,BC), p(Is,A,BC,ABC)
+	% 	)
+	% for the predicate to return true (note that the invariant
+	% arguments, Is, can be any where providing they are in
+	% identical locations on both sides of the equivalence).
+	%
+:- pred assertion__is_associativity_assertion(assert_id::in, module_info::in,
+		prog_vars::in, pair(prog_var)::out, prog_var::out) is semidet.
+
+	%
+	% assertion__is_associativity_assertion(Id, MI, PId, Vs, SPair)
+	%
+	% Recognise assertions in the form
+	% 	all [A,B,S0,S] 
+	% 	(
+	% 	  some [SA] p(A,S0,SA), p(B,SA,S)
+	% 	<=>
+	% 	  some [SB] p(B,S0,SB), p(A,SB,S)
+	% 	)
+	% and given the actual variables, Vs, to the call to p, return
+	% the pair of variables which are state variables, SPair.
+	%
+:- pred assertion__is_update_assertion(assert_id::in, module_info::in,
+		pred_id::in, prog_vars::in, pair(prog_var)::out) is semidet.
+
+	%
+	% assertion__is_construction_equivalence_assertion(Id, MI, C, P)
+	%
+	% Can a single construction unification whose functor is
+	% determined by the cons_id, C, be expressed as a call
+	% to the predid, P (with possibly some construction unifications
+	% to initialise the arguments).
+	%
+	% The assertion will be in a form similar to
+	% 	all [L,H,T] ( L = [H|T] <=> append([H], T, L) )
+	%
+:- pred assertion__is_construction_equivalence_assertion(assert_id::in,
+		module_info::in, cons_id::in, pred_id::in) is semidet.
+
+	%
 	% assertion__in_interface_check
 	%
 	% Ensure that an assertion which is defined in an interface
@@ -72,8 +131,9 @@
 
 :- implementation.
 
-:- import_module globals, goal_util, hlds_out, options, prog_out, type_util.
-:- import_module bool, list, map, require, set, std_util.
+:- import_module globals, goal_util, hlds_out.
+:- import_module options, prog_out, prog_util, type_util.
+:- import_module assoc_list, bool, list, map, require, set, std_util.
 
 :- type subst == map(prog_var, prog_var).
 
@@ -128,6 +188,280 @@ commutative_var_ordering_2(VarP, VarQ, [P|Ps], [Q|Qs], [V|Vs], CallVarB) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+assertion__is_associativity_assertion(AssertId, Module, CallVars,
+		AssociativeVars, OutputVar) :-
+	assertion__goal(AssertId, Module, Goal - GoalInfo),
+	equivalent(Goal - GoalInfo, P, Q),
+
+	goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
+
+		% There may or may not be a some [] depending on whether
+		% the user explicity qualified the call or not.
+	(
+		P = some(_, _, conj(PCalls0) - _) - _PGoalInfo,
+		Q = some(_, _, conj(QCalls0) - _) - _QGoalInfo
+	->
+		PCalls = PCalls0,
+		QCalls = QCalls0
+	;
+		P = conj(PCalls) - _PGoalInfo,
+		Q = conj(QCalls) - _QGoalInfo
+	),
+		
+
+	AssociativeVars - OutputVar =
+			promise_only_solution(associative(PCalls, QCalls,
+				UniversiallyQuantifiedVars, CallVars)).
+
+
+	% associative(Ps, Qs, Us, R)
+	%
+	% If the assertion was in the form
+	% 	all [Us] (some [] (Ps)) <=> (some [] (Qs))
+	% try and rearrange the order of Ps and Qs so that the assertion
+	% is in the standard from
+	%
+	% 	compose( A, B,  AB),		compose(B,  C,  BC),
+	% 	compose(AB, C, ABC) 	<=>	compose(A, BC, ABC)
+
+:- pred associative(hlds_goals::in, hlds_goals::in,
+		set(prog_var)::in, prog_vars::in,
+		pair(pair(prog_var), prog_var)::out) is cc_nondet.
+
+associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
+		(CallVarA - CallVarB) - OutputVar) :-
+	reorder(PCalls, QCalls, LHSCalls, RHSCalls),
+	process_one_side(LHSCalls, UniversiallyQuantifiedVars, PredId,
+			AB, PairsL, Vs),
+	process_one_side(RHSCalls, UniversiallyQuantifiedVars, PredId,
+			BC, PairsR, _),
+
+		% If you read the predicate documentation, you will note
+		% that for each pair of variables on the left hand side
+		% there are an equivalent pair of variables on the right
+		% hand side.  As the pairs of variables are not
+		% symmetric, the call to list__perm will only succeed
+		% once, if at all.
+	assoc_list__from_corresponding_lists(PairsL, PairsR, Pairs),
+	list__perm(Pairs, [(A - AB) - (B - A), (B - C) - (C - BC),
+			(AB - ABC) - (BC - ABC)]),
+
+	assoc_list__from_corresponding_lists(Vs, CallVars, AssocList),
+	list__filter((pred(X-_Y::in) is semidet :- X = AB),
+			AssocList, [_AB - OutputVar]),
+	list__filter((pred(X-_Y::in) is semidet :- X = A),
+			AssocList, [_A - CallVarA]),
+	list__filter((pred(X-_Y::in) is semidet :- X = B),
+			AssocList, [_B - CallVarB]).
+
+	% reorder(Ps, Qs, Ls, Rs)
+	%
+	% Given both sides of the equivalence return another possible
+	% ordering.
+
+:- pred reorder(hlds_goals::in, hlds_goals::in,
+		hlds_goals::out, hlds_goals::out) is nondet.
+
+reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
+	list__perm(PCalls, LHSCalls),
+	list__perm(QCalls, RHSCalls).
+reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
+	list__perm(PCalls, RHSCalls),
+	list__perm(QCalls, LHSCalls).
+
+	% process_one_side(Gs, Us, L, Ps)
+	% 
+	% Given the list of goals, Gs, which are one side of a possible
+	% associative equivalence, and the universally quantified
+	% variables, Us, of the goals return L the existentially
+	% quantified variable that links the two calls and Ps the list
+	% of variables which are not invariants.
+	%
+	% ie for app(TypeInfo, X, Y, XY), app(TypeInfo, XY, Z, XYZ)
+	% L <= XY and Ps <= [X - XY, Y - Z, XY - XYZ]
+
+:- pred process_one_side(hlds_goals::in, set(prog_var)::in, pred_id::out,
+		prog_var::out, assoc_list(prog_var)::out,
+		prog_vars::out) is semidet.
+
+process_one_side(Goals, UniversiallyQuantifiedVars, PredId,
+		LinkingVar, Vars, VarsA) :-
+	process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
+			LinkingVar, Vars0, VarsA),
+
+		% Filter out all the invariant arguments, and then make
+		% sure that their is only 3 arguments left.
+	list__filter((pred(X-Y::in) is semidet :- not X = Y), Vars0, Vars),
+	list__length(Vars, number_of_associative_vars).
+
+:- func number_of_associative_vars = int.
+number_of_associative_vars = 3.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+
+
+	%
+	% assertion__is_update_assertion(Id, MI, PId, Ss)
+	%
+	% is true iff the assertion, Id, is about a predicate, PId,
+	% which takes some state as input and produces some state as
+	% output and the same state is produced as input regardless of
+	% the order that the state is updated.
+	%
+	% ie the promise should look something like this, note that A
+	% and B could be vectors of variables.
+	% :- promise all [A,B,SO,S]
+	%	(
+	%		(some [SA] (update(S0,A,SA), update(SA,B,S)))
+	%	<=>
+	%		(some [SB] (update(S0,B,SB), update(SB,A,S)))
+	%	).
+	%
+assertion__is_update_assertion(AssertId, Module, _PredId, CallVars,
+		StateA - StateB) :-
+	assertion__goal(AssertId, Module, Goal - GoalInfo),
+
+	equivalent(Goal - GoalInfo, P, Q),
+
+	goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
+
+		% There may or may not be an explicit some [Vars] there,
+		% as quantification now works correctly.
+	(
+		P = some(_, _, conj(PCalls0) - _) - _PGoalInfo,
+		Q = some(_, _, conj(QCalls0) - _) - _QGoalInfo
+	->
+		PCalls = PCalls0,
+		QCalls = QCalls0
+	;
+		P = conj(PCalls) - _PGoalInfo,
+		Q = conj(QCalls) - _QGoalInfo
+	),
+
+	solutions(update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars),
+			[StateA - StateB | _]).
+
+	%
+	% 	compose(S0, A, SA),		compose(SB, A, S),
+	% 	compose(SA, B, S) 	<=>	compose(S0, B, SB)
+	%
+:- pred update(hlds_goals::in, hlds_goals::in, set(prog_var)::in,
+		prog_vars::in, pair(prog_var)::out) is nondet.
+
+update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars, StateA - StateB) :-
+	reorder(PCalls, QCalls, LHSCalls, RHSCalls),
+	process_two_linked_calls(LHSCalls, UniversiallyQuantifiedVars, PredId,
+			SA, PairsL, Vs),
+	process_two_linked_calls(RHSCalls, UniversiallyQuantifiedVars, PredId,
+			SB, PairsR, _),
+
+	assoc_list__from_corresponding_lists(PairsL, PairsR, Pairs0),
+	list__filter((pred(X-Y::in) is semidet :- X \= Y), Pairs0, Pairs),
+	list__length(Pairs) = 2,
+
+		% If you read the predicate documentation, you will note
+		% that for each pair of variables on the left hand side
+		% there is an equivalent pair of variables on the right
+		% hand side.  As the pairs of variables are not
+		% symmetric, the call to list__perm will only succeed
+		% once, if at all.
+	list__perm(Pairs, [(S0 - SA) - (SB - S0), (SA - S) - (S - SB)]),
+
+	assoc_list__from_corresponding_lists(Vs, CallVars, AssocList),
+	list__filter((pred(X-_Y::in) is semidet :- X = S0),
+			AssocList, [_S0 - StateA]),
+	list__filter((pred(X-_Y::in) is semidet :- X = SA),
+			AssocList, [_SA - StateB]).
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% process_two_linked_calls(Gs, UQVs, PId, LV, AL, VAs)
+	%
+	% is true iff the list of goals, Gs, with universally quantified
+	% variables, UQVs, is two calls to the same predicate, PId, with
+	% one variable that links them, LV.  AL will be the assoc list
+	% that is the each variable from the first call with its
+	% corresponding variable in the second call, and VAs are the
+	% variables of the first call.
+	%
+:- pred process_two_linked_calls(hlds_goals::in, set(prog_var)::in,
+		pred_id::out, prog_var::out,
+		assoc_list(prog_var)::out, prog_vars::out) is semidet.
+
+process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
+		LinkingVar, Vars, VarsA) :-
+	Goals = [call(PredId, _, VarsA, _, _, _) - _,
+			call(PredId, _, VarsB, _, _, _) - _],
+
+		% Determine the linking variable, L.
+		% By definition it must be existentially quantified and
+		% a member of both variable lists.
+	CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
+	set__singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
+			LinkingVar),
+
+		% Set up mapping between the variables in the two calls.
+	assoc_list__from_corresponding_lists(VarsA, VarsB, Vars).
+
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+assertion__is_construction_equivalence_assertion(AssertId, Module,
+		ConsId, PredId) :-
+	assertion__goal(AssertId, Module, Goal),
+	equivalent(Goal, P, Q),
+	(
+		single_construction(P, ConsId)
+	->
+		predicate_call(Q, PredId)
+	;
+		single_construction(Q, ConsId),
+		predicate_call(P, PredId)
+	).
+
+	%
+	% One side of the equivalence must be just the single
+	% unification with the correct cons_id.
+	% 
+:- pred single_construction(hlds_goal::in, cons_id::in) is semidet.
+
+single_construction(unify(_, UnifyRhs, _, _, _) - _,
+		cons(QualifiedSymName, Arity)) :-
+	UnifyRhs = functor(cons(UnqualifiedSymName, Arity), _),
+	match_sym_name(UnqualifiedSymName, QualifiedSymName).
+
+	%
+	% The side containing the predicate call must be a single call
+	% to the predicate with 0 or more construction unifications
+	% which setup the arguments to the predicates.
+	%
+:- pred predicate_call(hlds_goal::in, pred_id::in) is semidet.
+
+predicate_call(Goal, PredId) :-
+	(
+		Goal = conj(Goals) - _
+	->
+		list__member(Call, Goals),
+		Call = call(PredId, _, _, _, _, _) - _,
+		list__delete(Goals, Call, Unifications),
+		P = (pred(G::in) is semidet :-
+			not (
+				G = unify(_, UnifyRhs, _, _, _) - _,
+				UnifyRhs = functor(_, _)
+			)
+		),
+		list__filter(P, Unifications, [])
+	;
+		Goal = call(PredId, _, _, _, _, _) - _
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 assertion__goal(AssertId, Module, Goal) :-
 	module_info_assertion_table(Module, AssertTable),
 	assertion_table_lookup(AssertTable, AssertId, PredId),
@@ -149,7 +483,15 @@ assertion__goal(AssertId, Module, Goal) :-
 
 implies(Goal, P, Q) :-
 		% Goal = (P => Q)
-	Goal = not(conj([P, NotQ]) - _) - _,
+	Goal = not(conj(GoalList) - GI) - _,
+	list__reverse(GoalList) = [NotQ | Ps],
+	(
+		Ps = [P0]
+	->
+		P = P0
+	;
+		P = conj(list__reverse(Ps)) - GI
+	),
 	NotQ = not(Q) - _.
 
 :- pred equivalent(hlds_goal::in, hlds_goal::out, hlds_goal::out) is semidet.
@@ -206,9 +548,9 @@ equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA, _) - _,
 	equal_goals(IfA, IfB, Subst1, Subst2),
 	equal_goals(ThenA, ThenB, Subst2, Subst3),
 	equal_goals(ElseA, ElseB, Subst3, Subst).
-equal_goals(pragma_c_code(Attribs, PredId, _, VarsA, _, _, _) - _,
-		pragma_c_code(Attribs, PredId, _, VarsB, _, _, _) - _,
-		Subst0, Subst) :-
+equal_goals(pragma_foreign_code(Lang, Attribs, PredId, _, VarsA, _, _, _) - _,
+		pragma_foreign_code(Lang, Attribs, PredId, _, VarsB, _, _, _) -
+			_, Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
 equal_goals(par_conj(GoalAs, _) - _, par_conj(GoalBs, _) - _, Subst0, Subst) :-
 	equal_goals_list(GoalAs, GoalBs, Subst0, Subst).
@@ -310,8 +652,8 @@ update_pred_info(AssertId, PredId, Module0, Module) :-
 assertion__normalise_goal(call(A,B,C,D,E,F) - GI, call(A,B,C,D,E,F) - GI).
 assertion__normalise_goal(generic_call(A,B,C,D) - GI, generic_call(A,B,C,D)-GI).
 assertion__normalise_goal(unify(A,B,C,D,E) - GI, unify(A,B,C,D,E) - GI).
-assertion__normalise_goal(pragma_c_code(A,B,C,D,E,F,G) - GI,
-		pragma_c_code(A,B,C,D,E,F,G) - GI).
+assertion__normalise_goal(pragma_foreign_code(A,B,C,D,E,F,G,H) - GI,
+		pragma_foreign_code(A,B,C,D,E,F,G,H) - GI).
 assertion__normalise_goal(conj(Goals0) - GI, conj(Goals) - GI) :-
 	assertion__normalise_conj(Goals0, Goals).
 assertion__normalise_goal(switch(A,B,Case0s,D) - GI, switch(A,B,Cases,D)-GI) :-
@@ -386,8 +728,8 @@ assertion__in_interface_check(unify(Var,RHS,_,_,_) - GoalInfo,
 	{ goal_info_get_context(GoalInfo, Context) },
 	assertion__in_interface_check_unify_rhs(RHS, Var, Context,
 			PredInfo, Module0, Module).
-assertion__in_interface_check(pragma_c_code(_,PredId,_,_,_,_,_) - GoalInfo,
-		_PredInfo, Module0, Module) -->
+assertion__in_interface_check(pragma_foreign_code(_,_,PredId,_,_,_,_,_) - 
+		GoalInfo, _PredInfo, Module0, Module) -->
 	{ module_info_pred_info(Module0, PredId, PragmaPredInfo) },
 	{ pred_info_import_status(PragmaPredInfo, ImportStatus) },
 	(

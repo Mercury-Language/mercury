@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +22,9 @@
 
 :- pred tree234__init(tree234(K, V)).
 :- mode tree234__init(uo) is det.
+
+:- pred tree234__is_empty(tree234(K, V)).
+:- mode tree234__is_empty(in) is semidet.
 
 :- pred tree234__member(tree234(K, V), K, V).
 :- mode tree234__member(in, out, out) is nondet.
@@ -101,6 +104,13 @@
 :- mode tree234__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode tree234__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+:- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
+	A, A).
+:- mode tree234__map_foldl(pred(in, in, out, in, out) is det,
+	in, out, in, out) is det.
+:- mode tree234__map_foldl(pred(in, in, out, in, out) is semidet,
+	in, out, in, out) is semidet.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -148,6 +158,9 @@
 %------------------------------------------------------------------------------%
 
 tree234__init(empty).
+
+tree234__is_empty(Tree) :-
+	Tree = empty.
 
 %------------------------------------------------------------------------------%
 
@@ -848,8 +861,8 @@ tree234__insert(Tin, K, V, Tout) :-
 
 tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
 	->
 		compare(Result, K, K0),
 		(
@@ -943,9 +956,9 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
 
 tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty,
-		T2 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
+		% T2 = empty implied by T0 = empty
 	->
 		compare(Result0, K, K0),
 		(
@@ -1144,8 +1157,8 @@ tree234__set(Tin, K, V, Tout) :-
 
 tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
 	->
 		compare(Result, K, K0),
 		(
@@ -1241,9 +1254,9 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 
 tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(
-		T0 = empty,
-		T1 = empty,
-		T2 = empty
+		T0 = empty
+		% T1 = empty implied by T0 = empty
+		% T2 = empty implied by T0 = empty
 	->
 		compare(Result0, K, K0),
 		(
@@ -2452,6 +2465,34 @@ tree234__map_values(Pred, Tree0, Tree) :-
 
 %------------------------------------------------------------------------------%
 
+tree234__map_foldl(_Pred, empty, empty, A, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = two(K0, V0, Left0, Right0),
+	Tree  = two(K0, W0, Left, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, Right0, Right, A2, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+	Tree  = three(K0, W0, K1, W1, Left, Middle, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, Middle0, Middle, A2, A3),
+	call(Pred, K1, V1, W1, A3, A4),
+	tree234__map_foldl(Pred, Right0, Right, A4, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+	Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, LMid0, LMid, A2, A3),
+	call(Pred, K1, V1, W1, A3, A4),
+	tree234__map_foldl(Pred, RMid0, RMid, A4, A5),
+	call(Pred, K2, V2, W2, A5, A6),
+	tree234__map_foldl(Pred, Right0, Right, A6, A).
+
+%------------------------------------------------------------------------------%
+
 	% count the number of elements in a tree
 tree234__count(empty, 0).
 tree234__count(two(_, _, T0, T1), N) :-
@@ -2538,4 +2579,3 @@ tree234__foldl(F, T, A) = B :-
 tree234__map_values(F, T1) = T2 :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
 	tree234__map_values(P, T1, T2).
-

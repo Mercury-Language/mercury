@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,13 +15,14 @@ VPATH=$(LIBRARY_DIR)
 
 #-----------------------------------------------------------------------------#
 
-# Specify which compilers to use to compile the compiler.
+# Specify which compilers to use to compile the profiler.
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
 M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR)  \
 		MERCURY_ALL_C_INCL_DIRS="\
 			-I$(TRACE_DIR) \
+			-I$(LIBRARY_DIR) \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
@@ -39,13 +40,16 @@ C2INIT	=	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY
                 MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--mercury-libs none
-MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
-		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).a \
-		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).a \
-		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).a ` \
+MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
+		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
+		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A ` \
 		    case $(GRADE) in \
-			*.gc*.prof*)    echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
-			*.gc*)          echo $(BOEHM_GC_DIR)/libgc.a ;; \
+			*.par*.gc*.prof*) \
+				echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
+			*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
+			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
+			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
 		    esac \
 		` -lm
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
@@ -65,9 +69,9 @@ all : mercury_profile
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).a
-mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).a
-# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
+mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
 

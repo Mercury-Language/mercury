@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
 :- import_module globals.
-:- import_module list, io.
+:- import_module list, io, counter.
 
 		% Translate a HLDS module to LLDS.
 
@@ -47,7 +47,7 @@
 
 :- pred generate_proc_code(pred_info::in, proc_info::in,
 	proc_id::in, pred_id::in, module_info::in, globals::in,
-	global_data::in, global_data::out, int::in, int::out,
+	global_data::in, global_data::out, counter::in, counter::out,
 	c_procedure::out) is det.
 
 		% Translate a HLDS goal to LLDS.
@@ -64,7 +64,7 @@
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
 :- import_module continuation_info, trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
-:- import_module code_util, type_util, mode_util.
+:- import_module code_util, type_util, mode_util, goal_util.
 :- import_module prog_data, prog_out, instmap.
 :- import_module bool, char, int, string.
 :- import_module map, assoc_list, set, term, tree, std_util, require, varset.
@@ -133,32 +133,33 @@ generate_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 	;
 		[]
 	),
-	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
+	{ module_info_get_cell_counter(ModuleInfo0, CellCounter0) },
 	globals__io_get_globals(Globals),
 	{ generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCounter0, CellCounter,
 		[], Code) },
-	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo) }.
+	{ module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo) }.
 
 	% Translate all the procedures of a HLDS predicate to LLDS.
 
 :- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
 	module_info::in, globals::in, global_data::in, global_data::out,
-	int::in, int::out, list(c_procedure)::in, list(c_procedure)::out)
-	is det.
+	counter::in, counter::out,
+	list(c_procedure)::in, list(c_procedure)::out) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo, _Globals,
-		GlobalData, GlobalData, CellCount, CellCount, Procs, Procs).
+		GlobalData, GlobalData, CellCounter, CellCounter,
+		Procs, Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
+		Globals, GlobalData0, GlobalData, CellCounter0, CellCounter,
 		Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
 	map__lookup(ProcInfos, ProcId, ProcInfo),
 	generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
-		Globals, GlobalData0, GlobalData1, CellCount0, CellCount1,
+		Globals, GlobalData0, GlobalData1, CellCounter0, CellCounter1,
 		Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Globals, GlobalData1, GlobalData, CellCount1, CellCount,
+		Globals, GlobalData1, GlobalData, CellCounter1, CellCounter,
 		[Proc | Procs0], Procs).
 
 %---------------------------------------------------------------------------%
@@ -181,7 +182,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
-		GlobalData0, GlobalData, CellCount0, CellCount, Proc) :-
+		GlobalData0, GlobalData, CellCounter0, CellCounter, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -209,7 +210,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
 	code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo,
-		FollowVars, ModuleInfo, CellCount0, OutsideResumePoint,
+		FollowVars, ModuleInfo, CellCounter0, OutsideResumePoint,
 		TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
@@ -217,7 +218,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
 		CodeInfo0, CodeInfo),
 	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
-	code_info__get_cell_count(CellCount, CodeInfo, _),
+	code_info__get_cell_counter(CellCounter, CodeInfo, _),
 
 		% Turn the code tree into a list.
 	tree__flatten(CodeTree, FragmentList),
@@ -255,26 +256,32 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
 	global_data_add_new_non_common_static_datas(GlobalData1,
 		NonCommonStatics, GlobalData2),
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
-		GlobalData2, GlobalData),
+		ProcLabel, GlobalData2, GlobalData),
 
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
+
+	( goal_contains_reconstruction(Goal) ->
+		ContainsReconstruction = contains_reconstruction
+	;
+		ContainsReconstruction = does_not_contain_reconstruction
+	),
+
 		% Construct a c_procedure structure with all the information.
-	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
+	code_info__get_label_counter(LabelCounter, CodeInfo, _),
+	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions,
+		ProcLabel, LabelCounter, ContainsReconstruction).
 
 :- pred maybe_add_tabling_pointer_var(module_info, pred_id, proc_id, proc_info,
-		global_data, global_data).
-:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, out) is det.
+	proc_label, global_data, global_data).
+:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, in, out) is det.
 
-maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
+maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
 		GlobalData0, GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
-	(
-		EvalMethod \= eval_normal
-	->
-		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
-			ProcLabel),
+	( eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes ->
 		module_info_name(ModuleInfo, ModuleName),
 		Var = tabling_pointer_var(ModuleName, ProcLabel),
 		global_data_add_new_proc_var(GlobalData0,
@@ -569,7 +576,8 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		{ code_info__resume_point_stack_addr(OutsideResumePoint,
 			OutsideResumeAddress) },
 		(
-			{ Goal = pragma_c_code(_,_,_,_,_,_, PragmaCode) - _},
+			{ Goal = pragma_foreign_code(_, _, _, _, _, _, _,
+				PragmaCode) - _},
 			{ PragmaCode = nondet(Fields, FieldsContext,
 				_,_,_,_,_,_,_) }
 		->
@@ -586,7 +594,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 				mkframe(NondetFrameInfo, OutsideResumeAddress)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
-					will_not_call_mercury, no, no, no)
+					will_not_call_mercury, no, no, no, no)
 					- ""
 			]) },
 			{ NondetPragma = yes }
@@ -673,7 +681,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
 		{ UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no, no, no)
+				will_not_call_mercury, no, no, no, no)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code
@@ -718,17 +726,17 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			TraceSlotInfo = trace_slot_info(_, _, yes(_)),
 			CodeModel \= model_non
 		->
-			DiscardTraceTicketCode = node([
-				discard_ticket - "discard retry ticket"
+			PruneTraceTicketCode = node([
+				prune_ticket - "prune retry ticket"
 			])
 		;
-			DiscardTraceTicketCode = empty
+			PruneTraceTicketCode = empty
 		},
 
 		{ RestoreDeallocCode =
 			tree(RestoreSuccipCode,
 			tree(DeallocCode,
-			     DiscardTraceTicketCode))
+			     PruneTraceTicketCode))
 		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
@@ -861,8 +869,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		code_info__post_goal_update(GoalInfo)
 	;
 		{ Code = empty }
-	),
-	!.
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -904,7 +911,7 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(pragma_c_code(Attributes,
+code_gen__generate_goal_2(pragma_foreign_code(c, Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,

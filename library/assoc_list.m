@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,6 +60,9 @@
 :- pred assoc_list__remove(assoc_list(K, V), K, V,
 	assoc_list(K, V)).
 :- mode assoc_list__remove(in, in, out, out) is semidet.
+
+:- func assoc_list__map_values(func(K, V) = W, assoc_list(K, V))
+	= assoc_list(K, W).
 
 %-----------------------------------------------------------------------------%
 
@@ -136,7 +139,8 @@ assoc_list__remove([K - V | KVs], Key, Value, Rest) :-
 
 :- func assoc_list__reverse_members(assoc_list(K, V)) = assoc_list(V, K).
 
-:- func assoc_list__from_corresponding_lists(list(K), list(V)) = assoc_list(K,V).
+:- func assoc_list__from_corresponding_lists(list(K), list(V))
+	= assoc_list(K,V).
 
 :- func assoc_list__keys(assoc_list(K, V)) = list(K).
 
@@ -159,4 +163,7 @@ assoc_list__keys(AL) = Ks :-
 assoc_list__values(AL) = Vs :-
 	assoc_list__values(AL, Vs).
 
-
+assoc_list__map_values(_F, []) = [].
+assoc_list__map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
+	V = apply(F, K, V0),
+	KVs = assoc_list__map_values(F, KVs0).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,6 +8,11 @@
 
 #ifndef MERCURY_DEBUG_H
 #define MERCURY_DEBUG_H
+
+#include "mercury_types.h"	/* for `MR_Word' and `MR_Code' */
+#include <stdio.h>		/* for `FILE' */
+
+/*---------------------------------------------------------------------------*/
 
 #ifdef DEBUG_ON
 	#define DEBUG(X) X
@@ -136,5 +141,52 @@
 
 #endif /* MR_LOWLEVEL_DEBUG */
 
-#endif /* not MERCURY_DEBUG_H */
+/*---------------------------------------------------------------------------*/
 
+#ifdef MR_LOWLEVEL_DEBUG
+extern	void	mkframe_msg(const char *);
+extern	void	succeed_msg(void);
+extern	void	succeeddiscard_msg(void);
+extern	void	fail_msg(void);
+extern	void	redo_msg(void);
+extern	void	call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont);
+extern	void	tailcall_msg(/* const */ MR_Code *proc);
+extern	void	proceed_msg(void);
+extern	void	cr1_msg(MR_Word val0, const MR_Word *addr);
+extern	void	cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr);
+extern	void	incr_hp_debug_msg(MR_Word val, const MR_Word *addr);
+extern	void	incr_sp_msg(MR_Word val, const MR_Word *addr);
+extern	void	decr_sp_msg(MR_Word val, const MR_Word *addr);
+extern	void	push_msg(MR_Word val, const MR_Word *addr);
+extern	void	pop_msg(MR_Word val, const MR_Word *addr);
+#endif
+
+#ifdef MR_DEBUG_GOTOS
+extern	void	goto_msg(/* const */ MR_Code *addr);
+extern	void	reg_msg(void);
+#endif
+
+#ifdef MR_LOWLEVEL_DEBUG
+extern	void	printint(MR_Word n);
+extern	void	printstring(const char *s);
+extern	void	printheap(const MR_Word *h);
+extern	void	dumpframe(/* const */ MR_Word *);
+extern	void	dumpnondstack(void);
+extern	void	printlist(MR_Word p);
+extern	void	printframe(const char *);
+extern	void	printregs(const char *msg);
+#endif
+
+extern	void	printdetstack(const MR_Word *s);
+extern	void	MR_printdetstackptr(const MR_Word *s);
+extern	void	MR_print_detstackptr(FILE *fp, const MR_Word *s);
+extern	void	printnondstack(const MR_Word *s);
+extern	void	MR_printnondstackptr(const MR_Word *s);
+extern	void	MR_print_nondstackptr(FILE *fp, const MR_Word *s);
+extern	void	MR_print_heapptr(FILE *fp, const MR_Word *s);
+extern	void	MR_print_label(FILE *fp, /* const */ MR_Code *w);
+extern	void	printlabel(/* const */ MR_Code *w);
+
+/*---------------------------------------------------------------------------*/
+
+#endif /* not MERCURY_DEBUG_H */

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,21 +96,21 @@ ops__op_specifier_to_class(fyx, binary_prefix(y,x)).
 ops__op_specifier_to_class(fxy, binary_prefix(x,y)).
 
 ops__lookup_infix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
-	ops__op_table(Name, after, Specifier, Priority), !,
+	ops__op_table(Name, after, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier,
 		infix(LeftAssoc, RightAssoc)).
 
 ops__lookup_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
-	ops__op_table(Name, before, Specifier, Priority), !,
+	ops__op_table(Name, before, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier, prefix(LeftAssoc)).
 
 ops__lookup_binary_prefix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
-	ops__op_table(Name, before, Specifier, Priority), !,
+	ops__op_table(Name, before, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier,
 		binary_prefix(LeftAssoc, RightAssoc)).
 
 ops__lookup_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
-	ops__op_table(Name, after, Specifier, Priority), !,
+	ops__op_table(Name, after, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier, postfix(LeftAssoc)).
 
 ops__lookup_op(_OpTable, Name) :-
@@ -125,10 +125,12 @@ ops__lookup_op(_OpTable, Name) :-
 ops__op_table("*", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("**", after, xfy, 200).		% standard ISO Prolog
 ops__op_table("+", after, yfx, 500).		% standard ISO Prolog
+ops__op_table("++", after, xfy, 500).		% Mercury extension
 ops__op_table("+", before, fx, 500).		% traditional Prolog (not ISO)
 ops__op_table(",", after, xfy, 1000).		% standard ISO Prolog
 ops__op_table("&", after, xfy, 1025).		% Mercury extension
 ops__op_table("-", after, yfx, 500).		% standard ISO Prolog
+ops__op_table("--", after, yfx, 500).		% Mercury extension
 ops__op_table("-", before, fx, 200).		% standard ISO Prolog
 ops__op_table("--->", after, xfy, 1179).	% Mercury extension
 ops__op_table("-->", after, xfx, 1200).		% standard ISO Prolog
@@ -141,6 +143,7 @@ ops__op_table(":", after, yfx, 600).		% `xfy' in ISO Prolog
 ops__op_table(":-", after, xfx, 1200).		% standard ISO Prolog
 ops__op_table(":-", before, fx, 1200).		% standard ISO Prolog
 ops__op_table("::", after, xfx, 1175).		% Mercury extension
+ops__op_table(":=", after, xfx, 650).		% Mercury extension
 ops__op_table(";", after, xfy, 1100).		% standard ISO Prolog
 ops__op_table("<", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("<<", after, yfx, 400).		% standard ISO Prolog
@@ -154,6 +157,7 @@ ops__op_table("==", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table("==>", after, xfx, 1175).		% Mercury extension
 ops__op_table("=>", after, xfy, 920).		% Mercury/NU-Prolog extension
 ops__op_table("=\\=", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("=^", after, xfx, 650).		% Mercury extension
 ops__op_table(">", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">=", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">>", after, yfx, 400).		% standard ISO Prolog
@@ -167,7 +171,11 @@ ops__op_table("\\+", before, fy, 900).		% standard ISO Prolog
 ops__op_table("\\/", after, yfx, 500).		% standard ISO Prolog
 ops__op_table("\\=", after, xfx, 700).		% standard ISO Prolog
 ops__op_table("\\==", after, xfx, 700).		% standard ISO Prolog (*)
-ops__op_table("^", after, xfy, 200).		% standard ISO Prolog
+ops__op_table("^", after, xfy, 99).		% ISO Prolog (prec. 200,
+						%	bitwise xor)
+						% Mercury (record syntax)
+ops__op_table("^", before, fx, 100).		% Mercury extension
+						% (record syntax)
 ops__op_table("aditi_bottom_up", before, fx, 500). % Mercury extension
 ops__op_table("aditi_top_down", before, fx, 500). % Mercury extension
 ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension

@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,7 +469,7 @@ goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
 :- mode goedel_output_func_type(in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
-	{ list__map(lambda([Type::in, Arg::out] is det, (Arg = "" - Type)),
+	{ list__map((pred(Type::in, Arg::out) is det :- Arg = no - Type),
 		Types, Args) },
 	goedel_output_ctors([ctor([], [], FuncName, Args)], RetType, VarSet).
 
@@ -668,7 +668,14 @@ goedel_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
 	goedel_output_call(term__functor(term__atom(Name0), Term,
 		Context0), VarSet, Indent).
 
-goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
+goedel_output_goal_2(unify(A, B, Purity), VarSet, _Indent) -->
+	(   { Purity = pure } ->
+		[]
+	;
+		io__write_string("/* "),
+		write_purity(Purity),
+		io__write_string(" */ ")
+	),
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).

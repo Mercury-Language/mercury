@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,15 +134,14 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
+		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
 		GoalExpr0 = bi_implication(_, _),
 		% these should have been expanded out by now
 		error("detect_cse_in_goal_2: unexpected bi_implication")
-	),
-	!.
+	).
 
 %-----------------------------------------------------------------------------%
 

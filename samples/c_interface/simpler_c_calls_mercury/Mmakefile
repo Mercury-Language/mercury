@@ -7,10 +7,12 @@ MAIN_TARGET=all
 depend: mercury_lib.depend
 all: c_main
 
-OBJECTS = c_main.o mercury_lib_init.o $(mercury_lib.os)
+OBJECTS = c_main.o mercury_lib_init.o
+LIBS = libmercury_lib
+LIBSLINK = libmercury_lib.a
 
-c_main: $(OBJECTS)
-	$(ML) $(MLFLAGS) -o c_main $(OBJECTS) $(MLLIBS)
+c_main: $(OBJECTS) $(LIBS)
+	$(ML) $(MLFLAGS) -o c_main $(OBJECTS) $(LIBSLINK)
 
 #-----------------------------------------------------------------------------#
 
@@ -26,7 +28,7 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-c_main.o: mercury_lib.h
+c_main.o: mercury_lib.h c_main.c
 
 # to make mercury_lib.h, just compile mercury_lib.m;
 # the Mercury compiler will create mercury_lib.h as a side-effect.

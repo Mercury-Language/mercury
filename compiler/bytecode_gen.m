@@ -1,10 +1,11 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module generates the bytecode used by the debugger.
+% This module generates bytecode, which is intended to be used by a
+% (not yet implemented) bytecode interpreter/debugger.
 %
 % Author: zs.
 %
@@ -21,15 +22,31 @@
 	io__state::di, io__state::uo) is det.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds, arg_info.
-:- import_module passes_aux, call_gen, mode_util, code_util, goal_util.
-:- import_module globals, tree, varset, term.
+% We make use of some stuff from the LLDS back-end, in particular the stuff
+% relating to the argument passing convention in arg_info.m and call_gen.m.
+% The intent here is to use the same argument passing convention as for
+% the LLDS, to allow interoperability between code compiled to bytecode
+% and code compiled to machine code.
+%
+% XXX It might be nice to move the argument passing related stuff
+% in call_gen.m that we use here into arg_info.m, and to then rework
+% arg_info.m so that it didn't depend on the LLDS.
+
+:- import_module arg_info, call_gen. % XXX for arg passing convention
+:- import_module llds.		% XXX for code_model
+:- import_module code_util.	% XXX for cons_id_to_tag
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module passes_aux, mode_util, goal_util, builtin_ops.
+:- import_module globals, tree.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term.
+
+%---------------------------------------------------------------------------%
 
 bytecode_gen__module(ModuleInfo, Code) -->
 	{ module_info_predids(ModuleInfo, PredIds) },
@@ -249,7 +266,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			tree(ElseCode,
 			     EndofIfCode))))))
 	;
-		GoalExpr = pragma_c_code(_, _, _, _, _, _, _),
+		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _, _),
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
 	;
@@ -351,73 +368,76 @@ bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
 	(
-		code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, MaybeTest, MaybeAssign)
+		builtin_ops__translate_builtin(ModuleName, PredName, ProcId,
+			Args, SimpleCode)
 	->
-		( MaybeTest = yes(Test) ->
-			bytecode_gen__map_test(ByteInfo, Test, TestCode)
+		(
+			SimpleCode = test(Test),
+			bytecode_gen__map_test(ByteInfo, Test, Code)
 		;
-			TestCode = empty
-		),
-		( MaybeAssign = yes(Var - Rval) ->
-			bytecode_gen__map_assign(ByteInfo, Var, Rval,
-				AssignCode)
-		;
-			AssignCode = empty
-		),
-		Code = tree(TestCode, AssignCode)
+			SimpleCode = assign(Var, Expr),
+			bytecode_gen__map_assign(ByteInfo, Var, Expr,
+				Code)
+		)
 	;
 		string__append("unknown builtin predicate ", PredName, Msg),
 		error(Msg)
 	).
 
-:- pred bytecode_gen__map_test(byte_info::in, rval::in, byte_tree::out) is det.
+:- pred bytecode_gen__map_test(byte_info::in,
+		simple_expr(prog_var)::in(simple_test_expr),
+		byte_tree::out) is det.
 
-bytecode_gen__map_test(ByteInfo, Rval, Code) :-
-	( Rval = binop(Binop, X, Y) ->
+bytecode_gen__map_test(ByteInfo, TestExpr, Code) :-
+	(
+		TestExpr = binary(Binop, X, Y),
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		bytecode_gen__map_arg(ByteInfo, Y, ByteY),
 		Code = node([builtin_bintest(Binop, ByteX, ByteY)])
-	; Rval = unop(Unop, X) ->
+	;
+		TestExpr = unary(Unop, X),
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		Code = node([builtin_untest(Unop, ByteX)])
-	;
-		error("builtin test is not in a recognized form")
 	).
 
-:- pred bytecode_gen__map_assign(byte_info::in, prog_var::in, rval::in,
-	byte_tree::out) is det.
+:- pred bytecode_gen__map_assign(byte_info::in, prog_var::in,
+		simple_expr(prog_var)::in(simple_assign_expr),
+		byte_tree::out) is det.
 
-bytecode_gen__map_assign(ByteInfo, Var, Rval, Code) :-
-	( Rval = binop(Binop, X, Y) ->
+bytecode_gen__map_assign(ByteInfo, Var, Expr, Code) :-
+	(
+		Expr = binary(Binop, X, Y),
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		bytecode_gen__map_arg(ByteInfo, Y, ByteY),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		Code = node([builtin_binop(Binop, ByteX, ByteY, ByteVar)])
-	; Rval = unop(Unop, X) ->
+	;
+		Expr = unary(Unop, X),
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		Code = node([builtin_unop(Unop, ByteX, ByteVar)])
-	; Rval = var(X) ->
+	;
+		Expr = leaf(X),
 		bytecode_gen__map_var(ByteInfo, X, ByteX),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		Code = node([assign(ByteVar, ByteX)])
-	;
-		error("builtin assignment is not in a recognized form")
 	).
 
-:- pred bytecode_gen__map_arg(byte_info::in, rval::in, byte_arg::out) is det.
+:- pred bytecode_gen__map_arg(byte_info::in,
+		simple_expr(prog_var)::in(simple_arg_expr),
+		byte_arg::out) is det.
 
-bytecode_gen__map_arg(ByteInfo, Rval, ByteArg) :-
-	( Rval = var(Var) ->
+bytecode_gen__map_arg(ByteInfo, Expr, ByteArg) :-
+	(
+		Expr = leaf(Var),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		ByteArg = var(ByteVar)
-	; Rval = const(int_const(IntVal)) ->
-		ByteArg = int_const(IntVal)
-	; Rval = const(float_const(FloatVal)) ->
-		ByteArg = float_const(FloatVal)
 	;
-		error("unknown kind of builtin argument")
+		Expr = int_const(IntVal),
+		ByteArg = int_const(IntVal)
+	;
+		Expr = float_const(FloatVal),
+		ByteArg = float_const(FloatVal)
 	).
 
 %---------------------------------------------------------------------------%

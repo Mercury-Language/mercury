@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,44 +9,111 @@
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"
 #include <stdio.h>
+#include <string.h>
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** this part defines the functions
-**	MR_int_hash_lookup_or_add(),
-**	MR_float_hash_lookup_or_add(), and
-** 	MR_string_hash_lookup_or_add().
+** This part deals with tabling using resizable hash tables.
 */
-
-/* Initial size of a new table */
-#define TABLE_START_SIZE primes[0]
 
 /*
-** Maximum ratio of used to unused buckets in the table. Must be less than
-** 0.9 if you want even poor lookup times.
+** All hash table slot structures have the same fields, since they are
+** manipulated by the same macro (MR_GENERIC_HASH_LOOKUP_OR_ADD).
+** The variable size part is at the end, in order to make all the offsets
+** the same.
 */
-#define MAX_EL_SIZE_RATIO 0.65
 
-/* Extract info from a table */
-#define SIZE(table)		(((TableRoot *) table)->size)
-#define ELEMENTS(table)	 	(((TableRoot *) table)->used_elements)
-#define BUCKET(table, Bucket) 	((TableNode **) &(((TableRoot *) table)-> \
-					elements))[(Bucket)]
-typedef struct {
-	Word key;
-	Word * data;
-} TableNode;
+typedef struct MR_IntHashTableSlot_Struct	MR_IntHashTableSlot;
+typedef struct MR_FloatHashTableSlot_Struct	MR_FloatHashTableSlot;
+typedef struct MR_StringHashTableSlot_Struct	MR_StringHashTableSlot;
 
-typedef struct {
-	Word size;
-	Word used_elements;
-	Word elements;
-} TableRoot;
+typedef struct MR_AllocRecord_Struct		MR_AllocRecord;
 
-static Word next_prime(Word);
-static Word * create_hash_table(Word);
-static void re_hash(Word *, Word, TableNode * Node);
+struct MR_IntHashTableSlot_Struct {
+	MR_IntHashTableSlot	*next;
+	MR_TableNode		data;
+	MR_Integer			key;
+};
+
+struct MR_FloatHashTableSlot_Struct {
+	MR_FloatHashTableSlot	*next;
+	MR_TableNode		data;
+	MR_Float			key;
+};
+
+struct MR_StringHashTableSlot_Struct {
+	MR_StringHashTableSlot	*next;
+	MR_TableNode		data;
+	MR_String			key;
+};
+
+typedef	union {
+	MR_IntHashTableSlot	*int_slot_ptr;
+	MR_FloatHashTableSlot	*float_slot_ptr;
+	MR_StringHashTableSlot	*string_slot_ptr;
+} MR_HashTableSlotPtr;
+
+struct MR_AllocRecord_Struct {
+	MR_HashTableSlotPtr	chunk;
+	MR_AllocRecord		*next;
+};
+
+/*
+** Our hash table design uses separate chaining to avoid the bad worst case
+** behavior of open addressing. This is important, because the worst case
+** can be expected to occur reasonably often in tabling workloads. The reason
+** is that successive queries are not independent. Often, query N is a
+** recursive call made from query N-1, which means that its input values are
+** much more likely to fall into the same or next hash bucket than an
+** independent query's input values would, especially for integer values.
+** Repeated over many queries, such input pattern can give rise to "convoys",
+** long sequences of occupied hash table slots. Any input value whose search
+** for a free slot runs into the convoy will have very long search time.
+**
+** The `hash_table' field points to an array of `size' slots, each of which
+** is a pointer to a hash table slot; hash table slots have embedded `next'
+** pointers to chain together all the values that hash to the same value.
+**
+** To keep maximum chain lengths bounded (in a statistical sense), we record
+** the number of values in the table (in the `value_count' field), and when
+** this exceeds a certain fraction of the size of the hash table, we increase
+** the size of the hash table and rehash all the existing entries. We do this
+** when the value in the `value_count' field exceeds the one in the `threshold'
+** field, which is set to `size' times MAX_LOAD_FACTOR whenever the size
+** is changed. (This avoids a float multiplication on each insertion.)
+**
+** The reason why the hash table array contains pointers to slots instead of
+** the slots themselves is that the latter would equire the addresses of some
+** hash table slots (those in the array itself and not in a chain) to change
+** when the table is resized. As for why this is bad, see the documentation
+** of the MR_TableNode type in mercury_tabling.h.
+**
+** To avoid calling GC_malloc on each insertion, we allocate memory in chunks,
+** with each chunk containing CHUNK_SIZE hash table slots. The `freeleft'
+** field contains count of the number of hash table slots left in the space
+** allocated but not yet used; the `freespace' field point to the first
+** of these slots.
+**
+** This design leads to pointers into the middle of GC_malloc'd memory.
+** To make sure that the code works even without the boehm gc being compiled
+** with interior pointers, we retain pointers to all the chunks we have
+** allocated in the `allocrecord' field. This field has no purpose other than
+** to serve as roots for boehm gc.
+*/
+
+struct MR_HashTable_Struct {
+	MR_Integer			size;
+	MR_Integer			threshold;
+	MR_Integer			value_count;
+	MR_HashTableSlotPtr	*hash_table;
+	MR_HashTableSlotPtr	freespace;
+	MR_Integer			freeleft;
+	MR_AllocRecord		*allocrecord;
+};
+
+#define	CHUNK_SIZE	256
+#define MAX_LOAD_FACTOR	0.65
 
 /*
 ** Prime numbers which are close to powers of 2.  Used for choosing
@@ -54,16 +121,22 @@ static void re_hash(Word *, Word, TableNode * Node);
 */
 
 #define NUM_OF_PRIMES 16
-static Word primes[NUM_OF_PRIMES] =
-    {127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
-       262147, 524287, 1048573, 2097143, 4194301};
+static MR_Word primes[NUM_OF_PRIMES] =
+	{127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
+	262147, 524287, 1048573, 2097143, 4194301};
+
+/* Initial size of a new table */
+#define HASH_TABLE_START_SIZE primes[0]
+
+static	MR_Integer	next_prime(MR_Integer);
 
 /*
 ** Return the next prime number greater than the number received.
 ** If no such prime number can be found, compute an approximate one.
 */
-static Word
-next_prime(Word old_size)
+
+static MR_Integer
+next_prime(MR_Integer old_size)
 {
 	int i;
 
@@ -79,409 +152,470 @@ next_prime(Word old_size)
 	}
 }
 
-/* Create a new empty hash table. */
-static Word *
-create_hash_table(Word table_size)
-{
-   	Word i;
-	TableRoot * table =
-		table_allocate_bytes(sizeof(Word) * 2 +
-				table_size * sizeof(TableNode *));
-
-	table->size = table_size;
-	table->used_elements = 0;
-
-	for (i = 0; i < table_size; i++) {
-		BUCKET(table, i) = NULL;
-	}
-
-	return (Word *) table;
-}
-
 /*
-** Insert key and Data into a new hash table using the given hash.
-** this function does not have to do compares as the given key
-** is definitely not in the table.
+** The MR_GENERIC_HASH_LOOKUP_OR_ADD macro is intended to be the body of
+** a function that looks to see if the given key is in the given hash table.
+** If it is, it returns the address of the data pointer associated with
+** the key. If it is not, it creates a new slot for the key in the table
+** and returns the address of its data pointer.
+**
+** It in turn relies on three groups of macros to perform part of the task.
+**
+** The first group optionally records statistics about the number of successful
+** and unsuccessful searches, and the number of probes they needed. From this
+** information, one can compute the average successful and unsuccessful
+** search lengths.
+**
+** The second optionally prints debugging messages.
+**
+** The third implements the initial creation of the hash table.
 */
-static void
-re_hash(Word * table, Word hash, TableNode * node)
-{
-	Word bucket = hash % SIZE(table);
 
-	while (BUCKET(table, bucket)) {
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-	}
+#ifdef	MR_TABLE_STATISTICS
+static	MR_Unsigned	MR_table_hash_resizes = 0;
+static	MR_Unsigned	MR_table_hash_allocs  = 0;
+static	MR_Unsigned	MR_table_hash_lookups = 0;
+static	MR_Unsigned	MR_table_hash_inserts = 0;
+static	MR_Unsigned	MR_table_hash_lookup_probes = 0;
+static	MR_Unsigned	MR_table_hash_insert_probes = 0;
+#endif
 
-	BUCKET(table, bucket) = node;
-	++ELEMENTS(table);
-}
+#ifdef	MR_TABLE_STATISTICS
+  #define DECLARE_PROBE_COUNT	MR_Integer	probe_count = 0;
+  #define record_probe_count()	do { probe_count++; } while (0)
+  #define record_lookup_count()	do {					      \
+					MR_table_hash_lookup_probes +=	      \
+						probe_count;		      \
+					MR_table_hash_lookups++;	      \
+				} while (0)
+  #define record_insert_count()	do {					      \
+					MR_table_hash_insert_probes +=	      \
+						probe_count;		      \
+					MR_table_hash_inserts++;	      \
+				} while (0)
+  #define record_resize_count()	do { MR_table_hash_resizes++; } while (0)
+  #define record_alloc_count()	do { MR_table_hash_allocs++; } while (0)
+#else
+  #define DECLARE_PROBE_COUNT
+  #define record_probe_count()	((void) 0)
+  #define record_lookup_count()	((void) 0)
+  #define record_insert_count()	((void) 0)
+  #define record_resize_count()	((void) 0)
+  #define record_alloc_count()	((void) 0)
+#endif
 
-/*
-** Look to see if the given integer key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not; create a new element for the key in the table and
-** return the address of its data pointer.
-*/
+#ifdef	MR_TABLE_DEBUG
+  #define debug_key_msg(keyvalue, keyformat, keycast)			      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search key " keyformat "\n",		      \
+				(keycast) keyvalue);			      \
+		}							      \
+	} while (0)
+
+  #define debug_resize_msg(oldsize, newsize, newthreshold)		      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT expanding table from %d to %d(%d)\n",      \
+				(oldsize), (newsize), (newthreshold));	      \
+		}							      \
+	} while (0)
+
+  #define debug_rehash_msg(rehash_bucket)				      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT rehashing bucket: %d\n",		      \
+				(rehash_bucket));			      \
+		}							      \
+	} while (0)
+
+  #define debug_probe_msg(probe_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT probing bucket: %d\n", (probe_bucket));    \
+		}							      \
+	} while (0)
+
+  #define debug_lookup_msg(home_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search successful in bucket: %d\n",	      \
+				(home_bucket));				      \
+		}							      \
+	} while (0)
+
+  #define debug_insert_msg(home_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search unsuccessful in bucket: %d\n",      \
+				(home_bucket));				      \
+		}							      \
+	} while (0)
+#else
+  #define debug_key_msg(keyvalue, keyformat, keycast)		((void) 0)
+  #define debug_resize_msg(oldsize, newsize, newthreshold)	((void) 0)
+  #define debug_rehash_msg(rehash_bucket)			((void) 0)
+  #define debug_probe_msg(probe_bucket)				((void) 0)
+  #define debug_lookup_msg(home_bucket)				((void) 0)
+  #define debug_insert_msg(home_bucket)				((void) 0)
+#endif
+
+#define	MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)  \
+	do {								      \
+		MR_Word		i;					      \
+		MR_HashTable	*newtable;				      \
+									      \
+		newtable = MR_TABLE_NEW(MR_HashTable);			      \
+									      \
+		newtable->size = table_size;				      \
+		newtable->threshold = (MR_Integer) ((float) table_size	      \
+				* MAX_LOAD_FACTOR);			      \
+		newtable->value_count = 0;				      \
+		newtable->freespace.table_field = NULL;			      \
+		newtable->freeleft = 0;					      \
+		newtable->allocrecord = NULL;				      \
+		newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,\
+				table_size);				      \
+									      \
+		for (i = 0; i < table_size; i++) {			      \
+			newtable->hash_table[i].table_field = NULL;	      \
+		}							      \
+									      \
+		table_ptr = newtable;					      \
+	} while (0)
+
+#define	MR_GENERIC_HASH_LOOKUP_OR_ADD					      \
+	MR_HashTable	*table;						      \
+	table_type	*slot;						      \
+	MR_Integer		abs_hash;					      \
+	MR_Integer		home;						      \
+	DECLARE_PROBE_COUNT						      \
+									      \
+	debug_key_msg(key, key_format, key_cast);			      \
+									      \
+	/* Has the table been built? */					      \
+	if (t->MR_hash_table == NULL) {					      \
+		MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,	      \
+			table_field, HASH_TABLE_START_SIZE);		      \
+	}								      \
+									      \
+	table = t->MR_hash_table; /* Deref the table pointer */		      \
+									      \
+	/* Rehash the table if it has grown too full */			      \
+	if (table->value_count > table->threshold) {			      \
+		MR_HashTableSlotPtr	*new_hash_table;		      \
+		int			new_size;			      \
+		int			new_threshold;			      \
+		int			old_bucket;			      \
+		int			new_bucket;			      \
+		table_type		*next_slot;			      \
+									      \
+		new_size = next_prime(table->size);			      \
+		new_threshold = (MR_Integer) ((float) new_size		      \
+				* MAX_LOAD_FACTOR);			      \
+		debug_resize_msg(table->size, new_size, new_threshold);	      \
+		record_resize_count();					      \
+									      \
+		new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
+				new_size);				      \
+		for (new_bucket = 0; new_bucket < new_size; new_bucket++) {   \
+			new_hash_table[new_bucket].table_field = NULL;	      \
+		}							      \
+									      \
+		for (old_bucket = 0; old_bucket < table->size; old_bucket++) {\
+			slot = table->hash_table[old_bucket].table_field;     \
+			while (slot != NULL) {				      \
+				debug_rehash_msg(old_bucket);		      \
+									      \
+				abs_hash = hash(slot->key);		      \
+				if (abs_hash < 0) {			      \
+					abs_hash = -abs_hash;		      \
+				}					      \
+									      \
+				new_bucket = abs_hash % new_size;	      \
+				next_slot = slot->next;			      \
+				slot->next = new_hash_table[new_bucket].      \
+					table_field;			      \
+				new_hash_table[new_bucket].table_field = slot;\
+									      \
+				slot = next_slot;			      \
+			}						      \
+		}							      \
+									      \
+		table_free(table->hash_table);				      \
+		table->hash_table = new_hash_table;			      \
+		table->size = new_size;					      \
+		table->threshold = new_threshold;			      \
+	}								      \
+									      \
+	abs_hash = hash(key);						      \
+	if (abs_hash < 0) {						      \
+		abs_hash = -abs_hash;					      \
+	}								      \
+									      \
+	home = abs_hash % table->size;					      \
+									      \
+	/* Find if the element is present. If not add it */		      \
+	slot = table->hash_table[home].table_field;			      \
+	while (slot != NULL) {						      \
+		debug_probe_msg(home);					      \
+		record_probe_count();					      \
+									      \
+		if (equal_keys(key, slot->key)) {			      \
+			record_lookup_count();				      \
+			debug_lookup_msg(home);				      \
+			return &slot->data;				      \
+		}							      \
+									      \
+		slot = slot->next;					      \
+	}								      \
+									      \
+	debug_insert_msg(home);						      \
+	record_insert_count();						      \
+									      \
+	if (table->freeleft == 0) {					      \
+		MR_AllocRecord	*record;				      \
+									      \
+		table->freespace.table_field = MR_TABLE_NEW_ARRAY(	      \
+				table_type, CHUNK_SIZE);		      \
+		table->freeleft = CHUNK_SIZE;				      \
+									      \
+		record = MR_TABLE_NEW(MR_AllocRecord);			      \
+		record->chunk.table_field = table->freespace.table_field;     \
+		record->next = table->allocrecord;			      \
+		table->allocrecord = record;				      \
+									      \
+		record_alloc_count();					      \
+	}								      \
+									      \
+	slot = table->freespace.table_field;				      \
+	table->freespace.table_field++;					      \
+	table->freeleft--;						      \
+									      \
+	slot->key = key;						      \
+	slot->data.MR_integer = 0;					      \
+	slot->next = table->hash_table[home].table_field;		      \
+	table->hash_table[home].table_field = slot;			      \
+									      \
+	table->value_count++;						      \
+									      \
+	return &slot->data;
+
 MR_TrieNode
-MR_int_hash_lookup_or_add(MR_TrieNode t, Integer key)
+MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 {
-	TableNode * p, * q;
-	Word * table = *t;	/* Deref the table pointer */
-	Word bucket;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	bucket = key % SIZE(table);
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. If not add it */
-	while (p) {
-		if (key == p->key) {
-			return &p->data;
-		}
-
-		bucket++;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = key;
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table, q->key, q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(table);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element */
-		re_hash(new_table, key, p);
-	} else {
-		BUCKET(table, bucket) = p;
-		++ELEMENTS(table);
-	}
-
-	return &p->data;
+#define	key_format		"%ld"
+#define	key_cast		long
+#define	table_type		MR_IntHashTableSlot
+#define	table_field		int_slot_ptr
+#define	hash(key)		(key)
+#define	equal_keys(k1, k2)	(k1 == k2)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	table_type
+#undef	table_field
+#undef	hash
+#undef	equal_keys
 }
 
 /*
-** Look to see if the given float key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not create a new element for the key in the table and
-** return the address of its data pointer.
+** Note that the equal_keys operation should compare two floats for
+** bit-for-bit equality. This is different from the usual == operator
+** in the presence of NaNs, infinities, etc.
 */
+
 MR_TrieNode
-MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
+MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 {
-	TableNode	*p, *q;
-	Word		*table = *t;	/* Deref the table pointer */
-	Word		bucket;
-	Word		hash;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	hash = hash_float(key);
-	bucket = hash % SIZE(table);
-
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. If not add it */
-	while (p) {
-		if (key == word_to_float(p->key)) {
-			return &p->data;
-		}
-
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = float_to_word(key);
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table, hash_float(q->key), q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(table);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element */
-		re_hash(new_table, hash, p);
-	} else {
-		++ELEMENTS(table);
-		BUCKET(table, bucket) = p;
-	}
-
-	return &p->data;
+#define	key_format		"%f"
+#define	key_cast		double
+#define	table_type		MR_FloatHashTableSlot
+#define	table_field		float_slot_ptr
+#define	hash(key)		(hash_float(key))
+#define	equal_keys(k1, k2)	(memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	debug_search_key
+#undef	table_type
+#undef	table_field
+#undef	hash
+#undef	equal_keys
 }
 
-
-
-/*
-** Look to see if the given string key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not create a new element for the key in the table and
-** return the address of its data pointer.
-*/
 MR_TrieNode
-MR_string_hash_lookup_or_add(MR_TrieNode t, String key)
+MR_string_hash_lookup_or_add(MR_TrieNode t, MR_String key)
 {
-	TableNode * p, * q;
-	Word * table = *t;	/* Deref the table pointer */
-	Word bucket;
-	Word hash;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	hash = hash_string((Word) key);
-	bucket = hash % SIZE(table);
-
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. */
-	while (p) {
-		int res = strtest((String)p->key, key);
-
-		if (res == 0) {
-			return &p->data;
-		}
-
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = (Word) key;
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table,
-					hash_string((Word) q->key), q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(t);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element to rehashed table */
-		re_hash(new_table, hash, p);
-	} else {
-		BUCKET(table, bucket) = p;
-		++ELEMENTS(table);
-	}
-
-	return &p->data;
+#define	key_format		"%s"
+#define	key_cast		char *
+#define	table_type		MR_StringHashTableSlot
+#define	table_field		string_slot_ptr
+#define	hash(key)		(MR_hash_string((MR_Word) key))
+#define	equal_keys(k1, k2)	(strtest(k1, k2) == 0)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	debug_search_key
+#undef	table_type
+#undef	table_field
+#undef	hash
+#undef	equal_keys
 }
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** This part defines the MR_int_index_lookup_or_add() function.
-*/
-
-#define ELEMENT(Table, Key) ((Word**)&((Table)[Key]))
-
-/*
-**  MR_int_index_lookup_or_add() : This function maintains a simple indexed
-**	table of size Range.
+** This part deals with tabling using fixed size tables simply indexed
+** by a given integer. t->MR_fix_table[i] contains the trie node for
+** key i.
 */
 
 MR_TrieNode
-MR_int_index_lookup_or_add(MR_TrieNode t, Integer range, Integer key)
+MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 {
-	Word *table = *t;		/* Deref table */
+	if (t->MR_fix_table == NULL) {
+		t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
+		memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
+	}
 
 #ifdef	MR_TABLE_DEBUG
 	if (key >= range) {
-		fatal_error("MR_int_index_lookup_or_add: key out of range");
+		fatal_error("MR_int_fix_index_lookup_or_add: key out of range");
 	}
 #endif
 
-	if (table == NULL) {
-		*t = table = table_allocate_words(range);
-		memset(table, 0, sizeof(Word *) * range);
-	}
-
-	return ELEMENT(table, key);
+	return &t->MR_fix_table[key];
 }
-
-#undef ELEMENT
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** This part defines the type_info_lookup_or_add() function.
+** This part deals with tabling using expandable tables simply indexed
+** by the given integer minus a given starting point. t->MR_start_table[i+1]
+** contains the trie node for key i - start. t->MR_start_table[0] contains
+** the number of trienode slots currently allocated for the array; this does
+** not include the slot used for the zeroeth element.
 */
 
-typedef struct TreeNode_struct {
-	Word * key;
-	Word value;
-	struct TreeNode_struct * right;
-	struct TreeNode_struct * left;
-} TreeNode;
+#define	MR_START_TABLE_INIT_SIZE	1024
 
 MR_TrieNode
-MR_type_info_lookup_or_add(MR_TrieNode table, Word * type_info)
+MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer key)
 {
-	TreeNode *p, *q;
-	int i;
+	MR_Integer	diff, size;
 
-	if (*table == NULL) {
-		p = table_allocate_bytes(sizeof(TreeNode));
+	diff = key - start;
 
-		p->key = type_info;
-		p->value = (Word) NULL;
-		p->left = NULL;
-		p->right = NULL;
-
-		*table = (Word *) p;
-
-		return (Word**) &p->value;
+#ifdef	MR_TABLE_DEBUG
+	if (key < start) {
+		fatal_error("MR_int_start_index_lookup_or_add: small too key");
 	}
+#endif
 
-	p = (TreeNode *) *table;
-
-	while (p != NULL) {
-		i = MR_compare_type_info((Word) p->key, (Word) type_info);
-
-		if (i == COMPARE_EQUAL) {
-			return (Word **) &p->value;
-		}
-
-		q = p;
-
-		if (i == COMPARE_LESS) {
-			p = p->left;
-		} else {
-			p = p->right;
-		}
-	}
-
-	p = table_allocate_bytes(sizeof(TreeNode));
-	p->key = type_info;
-	p->value = (Word) NULL;
-	p->left = NULL;
-	p->right = NULL;
-
-	if (i == COMPARE_LESS) {
-		q->left = p;
+	if (table->MR_start_table == NULL) {
+		size = max(MR_START_TABLE_INIT_SIZE, diff + 1);
+		table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
+					size + 1);
+		memset(table->MR_start_table + 1, 0,
+					sizeof(MR_TableNode) * size);
+		table->MR_start_table[0].MR_integer = size;
 	} else {
-		q ->right = p;
+		size = table->MR_start_table[0].MR_integer;
 	}
 
-	return (Word **) &p->value;
+	if (diff >= size) {
+		MR_TableNode	*new_array;
+		MR_Integer		new_size, i;
+
+		new_size = max(2 * size, diff + 1);
+		new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
+
+		new_array[0].MR_integer = new_size;
+
+		for (i = 0; i < size; i++) {
+			new_array[i + 1] = table->MR_start_table[i + 1];
+		}
+
+		for (; i < new_size; i++) {
+			new_array[i + 1].MR_integer = 0;
+		}
+
+		table->MR_start_table = new_array;
+	}
+
+	return &table->MR_start_table[diff + 1];
 }
 
 /*---------------------------------------------------------------------------*/
 
+MR_TrieNode
+MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
+{
+	MR_TypeCtorInfo		type_ctor_info;
+	MR_TrieNode		node;
+	MR_TypeInfo		*arg_vector;
+	int			arity;
+	int			i;
+
+	/* XXX memory allocation here should be optimized */
+	type_info = MR_collapse_equivalences(type_info);
+
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+	node = MR_int_hash_lookup_or_add(table, (MR_Integer) type_ctor_info);
+
+	/*
+	** All calls to MR_type_info_lookup_or_add that have the same value
+	** of node at this point agree on the type_ctor_info of the type
+	** being tabled. They must therefore also agree on its arity.
+	** This is why looping over all the arguments works.
+	**
+	** If type_info has a zero-arity type_ctor, then it may be stored
+	** using a one-cell type_info, and type_info_args does not make
+	** sense. This is OK, because in that case it will never be used.
+	*/
+
+	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
+		arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
+			type_info);
+		node = MR_int_hash_lookup_or_add(node, arity);
+	} else {
+		arity = type_ctor_info->arity;
+		arg_vector = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+	}
+
+	for (i = 1; i <= arity; i++) {
+		node = MR_type_info_lookup_or_add(node, arg_vector[i]);
+	}
+
+	return node;
+}
+
+MR_TrieNode
+MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
+{
+	fatal_error("tabling of typeclass_infos not yet implemented");
+	return NULL;
+}
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** This part defines the MR_table_type() function.
-*/
-
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
-
-/*
+**
 ** Due to the depth of the control here, we'll use 4 space indentation.
 **
-** NOTE : changes to this function will probably also have to be reflected
-** in mercury_deep_copy.c and std_util::ML_expand().
+** NOTE: changes to this function will probably also have to be reflected
+** in the places listed in mercury_type_info.h.
 */
 
 MR_TrieNode
-MR_table_type(MR_TrieNode table, Word *type_info, Word data)
+MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 {
-    MR_TypeCtorInfo	type_ctor_info;
-    MR_TypeCtorLayout	type_ctor_layout;
-    MR_TypeCtorFunctors	type_ctor_functors;
-    MR_DiscUnionTagRepresentation tag_rep;
-    MR_MemoryList	allocated_memory_cells = NULL;
-
-    Word		layout_for_tag;
-    Word		*layout_vector_for_tag;
-    Word		*data_value;
-    int			data_tag;
-
-    data_tag = MR_tag(data);
-    data_value = (Word *) MR_body(data, data_tag);
+    MR_TypeCtorInfo type_ctor_info;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-    type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
-    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
-                    type_ctor_info);
-
-    layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) MR_strip_tag(layout_for_tag);
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
@@ -493,105 +627,147 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
     switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
-	{
-            int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-                                layout_vector_for_tag);
-            MR_DEBUG_TABLE_ENUM(table, functors, data);
+            MR_DEBUG_TABLE_ENUM(table,
+                    type_ctor_info->type_ctor_num_functors, data);
             break;
-        }
+
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
-	{
-            tag_rep = MR_get_tag_representation((Word) layout_for_tag);
-            switch(tag_rep) {
-            case MR_DISCUNIONTAG_SHARED_LOCAL: {
-                int functors = MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_NUM_FUNCTORS(
-                                layout_vector_for_tag);
-                MR_DEBUG_TABLE_TAG(table, data_tag);
-                MR_DEBUG_TABLE_ENUM(table, functors, MR_unmkbody(data));
-                break;
-            }
-            case MR_DISCUNIONTAG_UNSHARED: {
-                int arity, i;
-                Word *argument_vector, *type_info_vector, *new_type_info;
-    
-                argument_vector = data_value;
-    
-                arity = layout_vector_for_tag[
-                            TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
-                type_info_vector = &layout_vector_for_tag[
-                            TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+            {
+                MR_MemoryList           allocated_memory_cells = NULL;
+                const MR_DuPtagLayout   *ptag_layout;
+                const MR_DuFunctorDesc  *functor_desc;
+                const MR_DuExistInfo    *exist_info;
+                MR_TypeInfo             arg_type_info;
+                int                     ptag;
+                MR_Word                    sectag;
+                MR_Word                    *arg_vector;
+                int                     meta_args;
+                int                     i;
 
-                MR_DEBUG_TABLE_TAG(table, data_tag);
+                ptag = MR_tag(data);
+                ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
 
-                     /* copy arguments */
-                for (i = 0; i < arity; i++) {
-                    new_type_info = MR_make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated_memory_cells);
-
-                    MR_DEBUG_TABLE_ANY(table, new_type_info,
-                        argument_vector[i]);
+                switch (ptag_layout->MR_sectag_locn) {
+                case MR_SECTAG_NONE:
+                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
+                    arg_vector = (MR_Word *) MR_body(data, ptag);
+                    break;
+                case MR_SECTAG_LOCAL:
+                    sectag = MR_unmkbody(data);
+                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+                    assert(functor_desc->MR_du_functor_orig_arity == 0);
+                    assert(functor_desc->MR_du_functor_exist_info == NULL);
+                    arg_vector = NULL;
+                    break;
+                case MR_SECTAG_REMOTE:
+                    sectag = MR_field(ptag, data, 0);
+                    functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+                    arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
+                    break;
+                default:
+                    fatal_error("MR_table_type(): unknown sectag_locn");
                 }
-                break;
-            }
-            case MR_DISCUNIONTAG_SHARED_REMOTE: {
-                int     arity, i;
-                Word    *argument_vector;
-                Word    *type_info_vector;
-                Word    *new_type_info;
-                Word    secondary_tag;
-                Word    num_sharers;
-                Word    *new_layout_vector;
 
-                secondary_tag = *data_value;
-                argument_vector = data_value + 1;
+                MR_DEBUG_TABLE_ENUM(table,
+                        type_ctor_info->type_ctor_num_functors,
+                        functor_desc->MR_du_functor_ordinal);
 
-                num_sharers = MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_NUM_SHARERS(
-                                layout_vector_for_tag);
-                new_layout_vector =
-                    MR_TYPE_CTOR_LAYOUT_SHARED_REMOTE_VECTOR_GET_FUNCTOR_DESCRIPTOR(
-                    layout_vector_for_tag, secondary_tag);
-                arity = new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARITY_OFFSET];
-                type_info_vector =
-                    &new_layout_vector[TYPE_CTOR_LAYOUT_UNSHARED_ARGS_OFFSET];
+                exist_info = functor_desc->MR_du_functor_exist_info;
+                if (exist_info != NULL) {
+                    int                     num_ti_plain;
+                    int                     num_ti_in_tci;
+                    int                     num_tci;
+                    const MR_DuExistLocn    *locns;
 
-                MR_DEBUG_TABLE_TAG(table, data_tag);
-                MR_DEBUG_TABLE_ENUM(table, num_sharers, secondary_tag);
+                    num_ti_plain = exist_info->MR_exist_typeinfos_plain;
+                    num_ti_in_tci = exist_info->MR_exist_typeinfos_in_tci;
+                    num_tci = exist_info->MR_exist_tcis;
+                    locns = exist_info->MR_exist_typeinfo_locns;
 
-                for (i = 0; i < arity; i++) {
-                    new_type_info = MR_make_type_info(type_info,
-                        (Word *) type_info_vector[i], &allocated_memory_cells);
-
-                    MR_DEBUG_TABLE_ANY(table, new_type_info,
-                        argument_vector[i]);
+                    for (i = 0; i < num_ti_plain + num_ti_in_tci; i++) {
+                        if (locns[i].MR_exist_offset_in_tci < 0) {
+                            MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo)
+                                arg_vector[locns[i].MR_exist_arg_num]);
+                        } else {
+                            MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo)
+                                MR_typeclass_info_type_info(
+                                    arg_vector[locns[i].MR_exist_arg_num],
+                                    locns[i].MR_exist_offset_in_tci));
+                        }
+                    }
+                    meta_args = num_ti_plain + num_tci;
+                } else {
+                    meta_args = 0;
                 }
-                break;
-            }
+
+                for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
+                    if (MR_arg_type_may_contain_var(functor_desc, i)) {
+                        arg_type_info = MR_make_type_info_maybe_existq(
+                            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                            functor_desc->MR_du_functor_arg_types[i],
+                            (MR_Word *) MR_body(data, ptag),
+                            functor_desc, &allocated_memory_cells);
+                    } else {
+                        arg_type_info = MR_pseudo_type_info_is_ground(
+                            functor_desc->MR_du_functor_arg_types[i]);
+                    }
+
+                    MR_DEBUG_TABLE_ANY(table, arg_type_info,
+                        arg_vector[meta_args + i]);
+                }
+
+                MR_deallocate(allocated_memory_cells);
             }
             break;
-        }
+
         case MR_TYPECTOR_REP_NOTAG: 
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
-	{
-            Word *new_type_info;
-            new_type_info = MR_make_type_info(type_info,
-                (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
-                    layout_vector_for_tag),
-                &allocated_memory_cells);
-            MR_DEBUG_TABLE_ANY(table, new_type_info, data);
+            {
+                MR_MemoryList       allocated_memory_cells = NULL;
+                MR_TypeInfo         eqv_type_info;
+
+                eqv_type_info = MR_make_type_info(
+                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    type_ctor_info->type_layout.layout_notag->
+                        MR_notag_functor_arg_type, &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            }
             break;
-        }
-        case MR_TYPECTOR_REP_EQUIV: {
-            Word *new_type_info;
-            new_type_info = MR_make_type_info(type_info,
-                (Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE(layout_vector_for_tag),
-                &allocated_memory_cells);
-            MR_DEBUG_TABLE_ANY(table, new_type_info, data);
+
+        case MR_TYPECTOR_REP_NOTAG_GROUND: 
+        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+            MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
+                type_ctor_info->type_layout.layout_notag->
+                MR_notag_functor_arg_type), data);
             break;
-        }
+
+        case MR_TYPECTOR_REP_EQUIV:
+            {
+                MR_MemoryList       allocated_memory_cells = NULL;
+                MR_TypeInfo         eqv_type_info;
+
+                eqv_type_info = MR_make_type_info(
+                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    type_ctor_info->type_layout.layout_equiv,
+                    &allocated_memory_cells);
+                MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
+                MR_deallocate(allocated_memory_cells);
+            }
+            break;
+
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+            MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
+                type_ctor_info->type_layout.layout_equiv), data);
+            break;
+
         case MR_TYPECTOR_REP_EQUIV_VAR:
-            MR_DEBUG_TABLE_ANY(table,
-                (Word *) type_info[(Word) layout_vector_for_tag], data);
+            /*
+            ** The current version of the RTTI gives all equivalence types
+            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
+            */
+            fatal_error("unexpected EQUIV_VAR type_ctor_rep");
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -607,41 +783,51 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
 
         case MR_TYPECTOR_REP_STRING:
-            MR_DEBUG_TABLE_STRING(table, data);
+            MR_DEBUG_TABLE_STRING(table, (MR_String) data);
             break;
 
-        case MR_TYPECTOR_REP_PRED: {
-	    /*
-	    ** XXX tabling of the closures by tabling their code address
-	    ** and arguments is not yet implemented, due to the difficulty
-	    ** of figuring out the closure argument types.
-	    */
-	#if 0
-	    MR_closure closure = (MR_Closure *) data_value;
-            Word num_hidden_args = closure->MR_closure_num_hidden_args;
-            int i;
+        case MR_TYPECTOR_REP_PRED:
+            {
+                /*
+                ** XXX tabling of the closures by tabling their code address
+                ** and arguments is not yet implemented, due to the difficulty
+                ** of figuring out the closure argument types.
+                */
+        #if 0
+                MR_closure  closure;
+                MR_Word        num_hidden_args;
+                int         i;
 
-            MR_DEBUG_TABLE_INT(table, closure->MR_closure_code);
-            for (i = 1; i <= num_hidden_args; i++) {
-        	MR_DEBUG_TABLE_ANY(table,
-                    <type_info for hidden closure argument number i>,
-                    closure->MR_closure_hidden_args(i));
+                closure = (MR_Closure *) data;
+                num_hidden_args = closure->MR_closure_num_hidden_args;
+                MR_DEBUG_TABLE_INT(table, closure->MR_closure_code);
+                for (i = 1; i <= num_hidden_args; i++) {
+                    MR_DEBUG_TABLE_ANY(table,
+                        <type_info for hidden closure argument number i>,
+                        closure->MR_closure_hidden_args(i));
+                }
+        #else
+                /*
+                ** Instead, we use the following rather simplistic means of
+                ** tabling closures: we just table based on the closure address.
+                */
+                MR_DEBUG_TABLE_INT(table, data);
+        #endif
+                break;
             }
-            break;
-	#endif
-	    /*
-	    ** Instead, we use the following rather simplistic means of
-	    ** tabling closures: we just table based on the closure address.
-	    */
-            MR_DEBUG_TABLE_INT(table, (Word) data_value);
-        }
+
         case MR_TYPECTOR_REP_UNIV:
-            MR_DEBUG_TABLE_TYPEINFO(table,
-                (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO]);
-            MR_DEBUG_TABLE_ANY(table,
-                (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
-                data_value[UNIV_OFFSET_FOR_DATA]);
-            break;
+            {
+                MR_Word    *data_value;
+
+                data_value = (MR_Word *) data;
+                MR_DEBUG_TABLE_TYPEINFO(table,
+                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO]);
+                MR_DEBUG_TABLE_ANY(table,
+                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                    data_value[UNIV_OFFSET_FOR_DATA]);
+                break;
+            }
 
         case MR_TYPECTOR_REP_VOID:
             fatal_error("Cannot table a void type");
@@ -652,30 +838,36 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
-            MR_DEBUG_TABLE_TYPEINFO(table, (Word *) data_value);
+            MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo) data);
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             fatal_error("Attempt to table a type_class_info");
             break;
 
-        case MR_TYPECTOR_REP_ARRAY: {
-            int i;
-            MR_ArrayType *array;
-            Word *new_type_info;
-            Integer array_size;
+        case MR_TYPECTOR_REP_ARRAY:
+            {
+                MR_TypeInfo     new_type_info;
+                MR_MemoryList   allocated_memory_cells = NULL;
+                MR_ArrayType    *array;
+                MR_Integer         array_size;
+                int             i;
 
-            array = (MR_ArrayType *) data_value;
-            array_size = array->size;
+                array = (MR_ArrayType *) data;
+                array_size = array->size;
 
-            new_type_info = MR_make_type_info(type_info, (Word *) 1,
-                &allocated_memory_cells);
+                new_type_info = MR_make_type_info(
+                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    (MR_PseudoTypeInfo) 1, &allocated_memory_cells);
 
-            for (i = 0; i < array_size; i++) {
-                MR_DEBUG_TABLE_ANY(table, new_type_info, array->elements[i]);
+                for (i = 0; i < array_size; i++) {
+                    MR_DEBUG_TABLE_ANY(table, new_type_info,
+                        array->elements[i]);
+                }
+
+                MR_deallocate(allocated_memory_cells);
+                break;
             }
-            break;
-        }
 
         case MR_TYPECTOR_REP_SUCCIP:
             fatal_error("Attempt to table a saved succip");
@@ -715,10 +907,47 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
     }
 
-    MR_deallocate(allocated_memory_cells);
-
     return table;
 } /* end table_any() */
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_table_report_statistics(FILE *fp)
+{
+	fprintf(fp, "hash table search statistics:\n");
+
+#ifdef	MR_TABLE_STATISTICS
+	if (MR_table_hash_lookups == 0) {
+		fprintf(fp, "no successful searches\n");
+	} else {
+		fprintf(fp, "successful   %6d, "
+				"with an average of %6.3f comparisons\n",
+			MR_table_hash_lookups,
+			(float) MR_table_hash_lookup_probes /
+				(float) MR_table_hash_lookups);
+	}
+
+	if (MR_table_hash_inserts == 0) {
+		fprintf(fp, "no unsuccessful searches\n");
+	} else {
+		fprintf(fp, "unsuccessful %6d, "
+				"with an average of %6.3f comparisons\n",
+			MR_table_hash_inserts,
+			(float) MR_table_hash_insert_probes /
+				(float) MR_table_hash_inserts);
+	}
+
+	fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
+			MR_table_hash_resizes,
+			(float) (100 * MR_table_hash_resizes) /
+			(float) (MR_table_hash_lookups
+				 + MR_table_hash_inserts));
+	fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
+#else
+	fprintf(fp, "not enabled\n");
+#endif
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -736,11 +965,15 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 
 static void
 save_state(MR_SavedState *saved_state,
-	Word *generator_maxfr, Word *generator_sp,
+	MR_Word *generator_maxfr, MR_Word *generator_sp,
 	const char *who, const char *what)
 {
 	restore_transient_registers();
 
+  #ifdef MR_HIGHLEVEL_CODE
+	fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+  #else
 	saved_state->succ_ip = MR_succip;
 	saved_state->s_p = MR_sp;
 	saved_state->cur_fr = MR_curfr;
@@ -772,6 +1005,8 @@ save_state(MR_SavedState *saved_state,
 		saved_state->det_stack_block = NULL;
 	}
 
+  #endif /* ! MR_HIGHLEVEL_CODE */
+
 	saved_state->gen_next = MR_gen_next;
 	saved_state->generator_stack_block = table_allocate_bytes(
 			MR_gen_next * sizeof(MR_GeneratorStackFrame));
@@ -784,7 +1019,7 @@ save_state(MR_SavedState *saved_state,
 	table_copy_bytes(saved_state->cut_stack_block,
 		MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
 
-#ifdef MR_USE_TRAIL
+  #ifdef MR_USE_TRAIL
 	/*
 	** Saving the trail state here would not be sufficient to handle
 	** the combination of trailing and minimal model tabling.
@@ -809,9 +1044,9 @@ save_state(MR_SavedState *saved_state,
 
 	fatal_error("Sorry, not implemented: "
 		"can't have both minimal model tabling and trailing");
-#endif
+  #endif
 
-#ifdef	MR_TABLE_DEBUG
+  #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("\n%s saves %s stacks: ", who, what);
 		printf("%d non, %d det, %d generator, %d cut\n",
@@ -819,6 +1054,10 @@ save_state(MR_SavedState *saved_state,
 			saved_state->det_stack_block_size,
 			MR_gen_next, MR_cut_next);
 
+    #ifdef MR_HIGHLEVEL_CODE
+		fatal_error("sorry, not implemented: "
+			"minimal model tabling with --high-level-code");
+    #else
 		printf("non region from ");
 		MR_printnondstackptr(saved_state->non_stack_block_start);
 		printf(" to ");
@@ -846,14 +1085,17 @@ save_state(MR_SavedState *saved_state,
 		printf(", curfr = ");
 		MR_printnondstackptr(MR_curfr);
 		printf("\n\n");
+    #endif
 
 		MR_print_gen_stack(stdout);
 
+    #ifndef MR_HIGHLEVEL_CODE
 		if (MR_tablestackdebug) {
 			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
 		}
+    #endif
 	}
-#endif
+  #endif /* MR_TABLE_DEBUG */
 
 	save_transient_registers();
 }
@@ -866,6 +1108,13 @@ static void
 restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 {
 	restore_transient_registers();
+
+  #ifdef MR_HIGHLEVEL_CODE
+
+	fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+
+  #else
 
 	MR_succip = saved_state->succ_ip;
 	MR_sp = saved_state->s_p;
@@ -880,6 +1129,8 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 		saved_state->det_stack_block,
 		saved_state->det_stack_block_size);
 
+  #endif
+
 	MR_gen_next = saved_state->gen_next;
 	table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
 		saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
@@ -888,7 +1139,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 	table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
 		saved_state->cut_next * sizeof(MR_CutStackFrame));
 
-#ifdef	MR_TABLE_DEBUG
+  #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("\n%s restores %s stacks: ", who, what);
 		printf("%d non, %d det, %d generator, %d cut\n",
@@ -932,7 +1183,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
 		}
 	}
-#endif
+  #endif /* MR_table_debug */
 
 	save_transient_registers();
 }
@@ -985,14 +1236,14 @@ Declare_entry(mercury__table_nondet_resume_1_0);
 static void
 extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 {
-	Word	*arena_block;
-	Word	*arena_start;
-	Word	arena_size;
-	Word	extension_size;
-	Word	*saved_fr;
-	Word	*real_fr;
-	Word	frame_size;
-	Word	offset;
+	MR_Word	*arena_block;
+	MR_Word	*arena_start;
+	MR_Word	arena_size;
+	MR_Word	extension_size;
+	MR_Word	*saved_fr;
+	MR_Word	*real_fr;
+	MR_Word	frame_size;
+	MR_Word	offset;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tablestackdebug) {
@@ -1090,7 +1341,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 		if (saved_fr - frame_size
 			> suspension->saved_state.non_stack_block)
 		{
-			*MR_redoip_addr(saved_fr) = (Word) ENTRY(do_fail);
+			*MR_redoip_addr(saved_fr) = (MR_Word) ENTRY(do_fail);
 
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tabledebug) {
@@ -1102,7 +1353,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 			}
 #endif
 		} else {
-			*MR_redoip_addr(saved_fr) = (Word)
+			*MR_redoip_addr(saved_fr) = (MR_Word)
 				ENTRY(mercury__table_nondet_resume_1_0);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tabledebug) {
@@ -1199,16 +1450,17 @@ BEGIN_CODE
 
 Define_entry(mercury__table_nondet_suspend_2_0);
 {
-	MR_Subgoal	*table;
+	MR_TrieNode	table;
+	MR_Subgoal	*subgoal;
 	MR_Consumer	*consumer;
 	MR_ConsumerList	listnode;
-	Integer		cur_gen;
-	Integer		cur_cut;
-	Word		*fr;
-	Word		*prev_fr;
-	Word		*stop_addr;
-	Word		offset;
-	Word		*clobber_addr;
+	MR_Integer		cur_gen;
+	MR_Integer		cur_cut;
+	MR_Word		*fr;
+	MR_Word		*prev_fr;
+	MR_Word		*stop_addr;
+	MR_Word		offset;
+	MR_Word		*clobber_addr;
 
 	/*
 	** This frame is not used in table_nondet_suspend, but it is copied
@@ -1219,13 +1471,14 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	*/
 	MR_mkframe("mercury__table_nondet_suspend", 1, ENTRY(do_fail));
 
-	table = MR_SUBGOAL(r1);
+	table = (MR_TrieNode) r1;
+	subgoal = table->MR_subgoal;
 	consumer = table_allocate_bytes(sizeof(MR_Consumer));
-	consumer->remaining_answer_list_ptr = &table->answer_list;
+	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
 
 	save_transient_registers();
 	save_state(&(consumer->saved_state),
-		table->generator_maxfr, table->generator_sp,
+		subgoal->generator_maxfr, subgoal->generator_sp,
 		"suspension", "consumer");
 	restore_transient_registers();
 
@@ -1247,14 +1500,16 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 #endif
 
 		if (fr == MR_gen_stack[cur_gen].generator_frame) {
-			if (MR_gen_stack[cur_gen].generator_table == table) {
+			if (MR_gen_stack[cur_gen].generator_table->MR_subgoal
+					== subgoal)
+			{
 				/*
 				** This is the nondet stack frame of the
 				** generator corresponding to this consumer.
 				*/
 
 				assert(MR_prevfr_slot(fr) == (stop_addr - 1));
-				*clobber_addr = (Word)
+				*clobber_addr = (MR_Word)
 					ENTRY(mercury__table_nondet_resume_1_0);
 #ifdef	MR_TABLE_DEBUG
 				if (MR_tablestackdebug) {
@@ -1280,7 +1535,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 				assert(MR_prevfr_slot(fr) != (stop_addr - 1));
 
-				*clobber_addr = (Word) ENTRY(do_fail);
+				*clobber_addr = (MR_Word) ENTRY(do_fail);
 #ifdef	MR_TABLE_DEBUG
 				if (MR_tablestackdebug) {
 					printf("clobbering redoip "
@@ -1292,14 +1547,15 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 				save_transient_registers();
 				make_subgoal_follow_leader(
-					MR_gen_stack[cur_gen].generator_table,
-					table);
+					MR_gen_stack[cur_gen].
+						generator_table->MR_subgoal,
+					subgoal);
 				restore_transient_registers();
 			}
 
 			cur_gen--;
 		} else if (cur_cut > 0 && fr == MR_cut_stack[cur_cut].frame) {
-			*clobber_addr = (Word) ENTRY(MR_table_nondet_commit);
+			*clobber_addr = (MR_Word) ENTRY(MR_table_nondet_commit);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tablestackdebug) {
 				printf("committing redoip of frame at ");
@@ -1310,7 +1566,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 			cur_cut--;
 		} else {
-			*clobber_addr = (Word) ENTRY(do_fail);
+			*clobber_addr = (MR_Word) ENTRY(do_fail);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tablestackdebug) {
 				printf("clobbering redoip of frame at ");
@@ -1324,15 +1580,15 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("adding suspension node %p to table %p",
-			(void *) consumer, (void *) table);
-		printf(" at slot %p\n", table->consumer_list_tail);
+			consumer, subgoal);
+		printf(" at slot %p\n", subgoal->consumer_list_tail);
 	}
 #endif
 
-	assert(*(table->consumer_list_tail) == NULL);
-	listnode = table_allocate_bytes(sizeof(struct MR_ConsumerListNode));
-	*(table->consumer_list_tail) = listnode;
-	table->consumer_list_tail = &(listnode->next);
+	assert(*(subgoal->consumer_list_tail) == NULL);
+	listnode = table_allocate_bytes(sizeof(MR_ConsumerListNode));
+	*(subgoal->consumer_list_tail) = listnode;
+	subgoal->consumer_list_tail = &(listnode->next);
 	listnode->item = consumer;
 	listnode->next = NULL;
 }
@@ -1439,7 +1695,7 @@ Define_entry(mercury__table_nondet_resume_1_0);
 		}
 #endif
 	} else {
-		MR_cur_leader->resume_info = MR_GC_NEW(MR_ResumeInfo);
+		MR_cur_leader->resume_info = MR_TABLE_NEW(MR_ResumeInfo);
 
 		save_transient_registers();
 		save_state(&(MR_cur_leader->resume_info->leader_state),
@@ -1574,7 +1830,7 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
 	MR_redoip_slot(MR_maxfr) =
 		LABEL(mercury__table_nondet_resume_1_0_RedoPoint);
 	MR_redofr_slot(MR_maxfr) = MR_maxfr;
-	MR_based_framevar(MR_maxfr, 1) = (Word) MR_cur_leader;
+	MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
 
 Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 
@@ -1586,8 +1842,7 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	** since will not have changed in the meantime.
 	*/
 
-
-	r1 = (Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
+	r1 = (MR_Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
 		answer_data;
 
 	MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
@@ -1690,7 +1945,7 @@ Define_entry(MR_table_nondet_commit);
 	MR_fail();
 END_MODULE
 
-#endif
+#endif	/* MR_USE_MINIMAL_MODEL */
 
 /* Ensure that the initialization code for the above modules gets to run. */
 /*

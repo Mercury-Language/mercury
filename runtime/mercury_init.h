@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1999 The University of Melbourne.
+** Copyright (C) 1993-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -78,7 +78,7 @@ extern	int	mercury_terminate(void);
 
 #include "mercury_regs.h"	/* must come before system headers */
 #include "mercury_goto.h"	/* for Declare_entry */
-#include "mercury_types.h"	/* for `Word' */
+#include "mercury_types.h"	/* for `MR_Word' */
 #include "mercury_wrapper.h"	/* for do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
@@ -88,6 +88,10 @@ extern	int	mercury_terminate(void);
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
+#endif
+
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.h"
 #endif
 
 /*
@@ -104,67 +108,53 @@ extern	int	mercury_terminate(void);
 ** directory.
 */
 
-/* in the user's program */
-Declare_entry(mercury__main_2_0);
-
 /* in library/io.h */
 extern	void	mercury_init_io(void);
 extern	void	ML_io_init_state(void);
 extern	void	ML_io_finalize_state(void);
-extern	void	ML_io_stderr_stream(Word *);
-extern	void	ML_io_stdout_stream(Word *);
-extern	void	ML_io_stdin_stream(Word *);
-extern	void	ML_io_print_to_cur_stream(Word, Word);
-extern	void	ML_io_print_to_stream(Word, Word, Word);
+extern	void	ML_io_stderr_stream(MR_Word *);
+extern	void	ML_io_stdout_stream(MR_Word *);
+extern	void	ML_io_stdin_stream(MR_Word *);
+
+extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Box);
+extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Box);
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
+extern	char	*MR_trace_get_command(const char *, FILE *, FILE *);
 
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
 
 /* in browser/debugger_interface.h */
-extern	void	ML_DI_output_current_vars(Word, Word, Word);
+extern	void	ML_DI_output_current_vars(MR_Word, MR_Word, MR_Word);
 		/* output_current_vars/4 */
-extern	void	ML_DI_output_current_nth_var(Word, Word);
+extern	void	ML_DI_output_current_nth_var(MR_Word, MR_Word);
 		/* output_current_nth_var/3 */
-extern	void	ML_DI_output_current_live_var_names(Word, Word, Word);
+extern	void	ML_DI_output_current_live_var_names(MR_Word, MR_Word, MR_Word);
 		/* output_current_live_var_names/5 */
-extern	void	ML_DI_output_current_slots(Integer, Integer, Integer, Word,
-		String, String, Integer, Integer, Integer, String, Word);
+extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+		MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer, MR_String, MR_Word);
 		/* output_current_slots/13 */
-extern	bool	ML_DI_found_match(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word);
+extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
+		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word);
 		/* found_match/12 */
-extern	Integer	ML_DI_get_var_number(Word);
-extern	void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
+extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *, MR_Integer *);
+extern	MR_Integer	ML_DI_get_var_number(MR_Word);
 
 /* in library/std_util.m  */
-extern	String	ML_type_name(Word);
+extern	MR_String	ML_type_name(MR_Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
 
 /* in trace/mercury_trace.c */
-extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_real(const MR_Stack_Layout_Label *);
 extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */
 extern	void	MR_register_module_layout_real(const MR_Module_Layout *);
-
-/* in library/std_util.h  */
-extern	String	ML_type_name(Word);
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** mercury__load_aditi_rl_code() is defined in the <module>_init.c file.
-** It uploads all the Aditi-RL code for the program to a database to
-** which the program currently has a connection, returning a status value
-** as described in aditi2/src/api/aditi_err.h in the Aditi sources.
-*/
-extern	int	mercury__load_aditi_rl_code(void);
 
 /*---------------------------------------------------------------------------*/
 

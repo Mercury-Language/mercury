@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -129,7 +129,7 @@
 
 :- implementation.
 
-:- import_module bytecode_data, hlds_pred, prog_out, llds_out.
+:- import_module bytecode_data, hlds_pred, prog_out, c_util.
 :- import_module library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
@@ -1089,10 +1089,10 @@ unop_debug((not),		"not").
 
 debug_cstring(Str) -->
 	io__write_char('"'),
-	output_c_quoted_string(Str),
+	c_util__output_quoted_string(Str),
+	io__write_char('"'),
 	% XXX: We need the trailing space in case something follows
 	% the string as a bytecode argument. This is not very elegant.
-	io__write_char('"'),
 	io__write_char(' ').
 
 :- pred debug_string(string, io__state, io__state).

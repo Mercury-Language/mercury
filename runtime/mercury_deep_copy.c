@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,9 +18,6 @@
 #include "mercury_ho_call.h"
 #include "mercury_memory.h"
 
-
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 /*
 ** deep_copy(): see mercury_deep_copy.h for documentation.
@@ -97,7 +94,6 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 #include "mercury_deep_copy_body.h"
 
-
 /*---------------------------------------------------------------------------*/
 
 #define SWAP(val1, val2, type)		\
@@ -109,13 +105,15 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 	} while (0)
 
 #ifndef CONSERVATIVE_GC
+
 /*
 ** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
 */
-Word
-MR_make_long_lived(Word term, Word *type_info, Word *lower_limit)
+
+MR_Word
+MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 {
-	Word result;
+	MR_Word result;
 
 	restore_transient_hp();	/* Because we play with MR_hp */
 
@@ -126,7 +124,7 @@ MR_make_long_lived(Word term, Word *type_info, Word *lower_limit)
 
 	/* temporarily swap the heap with the global heap */
 	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, Word *);
+	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	/* copy values from the heap to the global heap */
 	save_transient_hp();
@@ -136,11 +134,11 @@ MR_make_long_lived(Word term, Word *type_info, Word *lower_limit)
 
 	/* swap the heap and global heap back again */
 	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, Word *);
+	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	save_transient_hp();	/* Because we played with MR_hp */
 
 	return result;
 }
-#endif	/* not CONSERVATIVE_GC */
 
+#endif	/* not CONSERVATIVE_GC */

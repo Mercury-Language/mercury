@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,7 @@
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_stack_layout.h"
+#include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 
 #include <stdio.h>
@@ -55,8 +56,8 @@ typedef struct {
 	bool				MR_var_is_headvar;
 	bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
-	Word				MR_var_type;
-	Word				MR_var_value;
+	MR_TypeInfo			MR_var_type;
+	MR_Word				MR_var_value;
 } MR_Var_Details;
 
 /*
@@ -91,26 +92,32 @@ typedef struct {
 
 typedef struct {
 	const MR_Stack_Layout_Label	*MR_point_top_layout;
-	Word				*MR_point_top_saved_regs;
+	MR_Word				*MR_point_top_saved_regs;
 	MR_Trace_Port			MR_point_top_port;
 	const char			*MR_point_problem;
 	int				MR_point_level;
 	const MR_Stack_Layout_Entry	*MR_point_level_entry;
 	const char			*MR_point_level_filename;
 	int				MR_point_level_linenumber;
-	Word				*MR_point_level_base_sp;
-	Word				*MR_point_level_base_curfr;
+	MR_Word				*MR_point_level_base_sp;
+	MR_Word				*MR_point_level_base_curfr;
 	int				MR_point_var_count;
 	int				MR_point_var_max;
 	MR_Var_Details			*MR_point_vars;
 } MR_Point;
 
-static	bool	MR_trace_type_is_ignored(Word type_info);
-static	int	MR_trace_compare_var_details(const void *arg1,
-			const void *arg2);
-static	void	MR_trace_browse_var(FILE *out, MR_Var_Details *var,
-			MR_Browser browser);
-static	int	MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
+static	bool		MR_trace_type_is_ignored(
+				MR_PseudoTypeInfo pseudo_type_info);
+static	int		MR_trace_compare_var_details(const void *arg1,
+				const void *arg2);
+static	const char *	MR_trace_browse_one_path(FILE *out,
+			MR_Var_Spec var_spec, char *path, MR_Browser browser,
+			bool must_be_unique);
+static	char *		MR_trace_browse_var(FILE *out, MR_Var_Details *var,
+				char *path, MR_Browser browser);
+static	const char *	MR_trace_bad_path(const char *path);
+static	int		MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
+static	const char *	MR_trace_valid_var_number(int var_number);
 
 #define	MR_INIT_VAR_DETAIL_COUNT	20
 #define	MR_TRACE_PADDED_VAR_NAME_LENGTH	23
@@ -123,68 +130,82 @@ static	MR_Point			MR_point;
 ** do not export them. The types are a lie, but a safe lie.
 */
 
-extern	Word	mercury_data_private_builtin__type_ctor_info_type_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
-extern	Word	mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
-extern	Word	mercury_data___type_ctor_info_func_0;
-extern	Word	mercury_data___type_ctor_info_pred_0;
-extern	Word	mercury_data___type_ctor_info_void_0;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_type_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_std_util__type_ctor_info_type_desc_0;
+extern	struct MR_TypeCtorInfo_Struct
+	mercury_data_std_util__type_ctor_info_type_ctor_desc_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_void_0;
 
-#ifdef	NATIVE_GC
-extern	Word	mercury_data___type_ctor_info_succip_0;
-extern	Word	mercury_data___type_ctor_info_hp_0;
-extern	Word	mercury_data___type_ctor_info_curfr_0;
-extern	Word	mercury_data___type_ctor_info_maxfr_0;
-extern	Word	mercury_data___type_ctor_info_redoip_0;
-extern	Word	mercury_data___type_ctor_info_redofr_0;
+#ifdef MR_HIGHLEVEL_CODE
+  extern struct MR_TypeCtorInfo_Struct   mercury_data___type_ctor_info_func_0;
+  extern struct MR_TypeCtorInfo_Struct   mercury_data___type_ctor_info_pred_0;
 #endif
 
-static	Word *
+#ifdef	NATIVE_GC
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_succip_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_hp_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_curfr_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_maxfr_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redoip_0;
+extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redofr_0;
+#endif
+
+static	MR_TypeCtorInfo
 MR_trace_ignored_type_ctors[] =
 {
 	/* we ignore these until the debugger can handle their varying arity */
-	(Word *) &mercury_data_private_builtin__type_ctor_info_type_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
-	(Word *) &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+#ifndef MR_HIGHLEVEL_CODE
+	&mercury_data_private_builtin__type_ctor_info_type_info_1,
+	&mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
+	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
+	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+	&mercury_data_std_util__type_ctor_info_type_desc_0,
+	&mercury_data_std_util__type_ctor_info_type_ctor_desc_0,
 
 	/* we ignore these until the debugger can print higher-order terms */
-	(Word *) &mercury_data___type_ctor_info_func_0,
-	(Word *) &mercury_data___type_ctor_info_pred_0,
+	&mercury_data___type_ctor_info_func_0,
+	&mercury_data___type_ctor_info_pred_0,
 
 	/* we ignore these because they should never be needed */
-	(Word *) &mercury_data___type_ctor_info_void_0,
+	&mercury_data___type_ctor_info_void_0,
+#endif
 
 #ifdef	NATIVE_GC
 	/* we ignore these because they are not interesting */
-	(Word *) &mercury_data___type_ctor_info_succip_0,
-	(Word *) &mercury_data___type_ctor_info_hp_0,
-	(Word *) &mercury_data___type_ctor_info_curfr_0,
-	(Word *) &mercury_data___type_ctor_info_maxfr_0,
-	(Word *) &mercury_data___type_ctor_info_redoip_0,
-	(Word *) &mercury_data___type_ctor_info_redofr_0,
+	&mercury_data___type_ctor_info_succip_0,
+	&mercury_data___type_ctor_info_hp_0,
+	&mercury_data___type_ctor_info_curfr_0,
+	&mercury_data___type_ctor_info_maxfr_0,
+	&mercury_data___type_ctor_info_redoip_0,
+	&mercury_data___type_ctor_info_redofr_0,
 #endif
+	/* dummy member */
+	NULL
 };
 
 static bool
-MR_trace_type_is_ignored(Word type_info_as_word)
+MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 {
-	Word	*type_info;
-	Word	*type_ctor_info;
-	int	ignore_type_ctor_count;
-	int	i;
+	MR_TypeCtorInfo	type_ctor_info;
+	int		ignore_type_ctor_count;
+	int		i;
 
-	type_info = (Word *) type_info_as_word;
-
-	if (type_info[OFFSET_FOR_COUNT] == 0) {
-		type_ctor_info = type_info;
-	} else {
-		type_ctor_info = (Word *) type_info[0];
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
+		return FALSE;
 	}
 
-	ignore_type_ctor_count = sizeof(MR_trace_ignored_type_ctors)
-					/ sizeof(Word *);
+	type_ctor_info =
+		MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
+	ignore_type_ctor_count =
+		sizeof(MR_trace_ignored_type_ctors) / sizeof(MR_Word *);
 
 	for (i = 0; i < ignore_type_ctor_count; i++) {
 		if (type_ctor_info == MR_trace_ignored_type_ctors[i]) {
@@ -197,7 +218,7 @@ MR_trace_type_is_ignored(Word type_info_as_word)
 
 void
 MR_trace_init_point_vars(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, MR_Trace_Port port)
+	MR_Word *saved_regs, MR_Trace_Port port)
 {
 	MR_point.MR_point_top_layout = top_layout;
 	MR_point.MR_point_top_saved_regs = saved_regs;
@@ -210,18 +231,19 @@ const char *
 MR_trace_set_level(int ancestor_level)
 {
 	const char			*problem;
-	Word				*base_sp;
-	Word				*base_curfr;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 	const MR_Stack_Layout_Label	*top_layout;
 	const MR_Stack_Layout_Label	*level_layout;
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Vars	*vars;
 	const MR_Var_Name		*var_info;
-	Word				*valid_saved_regs;
+	MR_Word				*valid_saved_regs;
 	int				var_count;
-	Word				*type_params;
-	Word				value;
-	Word				type_info;
+	MR_TypeInfo			*type_params;
+	MR_Word				value;
+	MR_TypeInfo			type_info;
+	MR_PseudoTypeInfo		pseudo_type_info;
 	int				i;
 	int				slot;
 	int				slot_max;
@@ -230,7 +252,7 @@ MR_trace_set_level(int ancestor_level)
 	char				*s;
 	const char			*name;
 	const char			*string_table;
-	Integer				string_table_size;
+	MR_Integer				string_table_size;
 	const char			*filename;
 	int				linenumber;
 
@@ -249,7 +271,7 @@ MR_trace_set_level(int ancestor_level)
 		}
 	} else {
 		if (problem == NULL) {
-			fatal_error("MR_find_nth_ancestor failed "
+			MR_fatal_error("MR_find_nth_ancestor failed "
 					"without reporting a problem");
 		}
 
@@ -336,7 +358,7 @@ MR_trace_set_level(int ancestor_level)
 		}
 
 		if (var_info->MR_var_name_offset > string_table_size) {
-			fatal_error("array bounds error on string table");
+			MR_fatal_error("array bounds error on string table");
 		}
 
 		name = string_table + var_info->MR_var_name_offset;
@@ -345,14 +367,15 @@ MR_trace_set_level(int ancestor_level)
 			continue;
 		}
 
+		pseudo_type_info = MR_var_pti(vars, i);
+		if (MR_trace_type_is_ignored(pseudo_type_info)) {
+			continue;
+		}
+
 		if (! MR_get_type_and_value_base(vars, i, valid_saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value))
 		{
 			/* this value is not a variable */
-			continue;
-		}
-
-		if (MR_trace_type_is_ignored(type_info)) {
 			continue;
 		}
 
@@ -379,7 +402,8 @@ MR_trace_set_level(int ancestor_level)
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
 		} else {
 			if (MR_isdigit(*s)) {
-				fatal_error("variable name starts with digit");
+				MR_fatal_error(
+					"variable name starts with digit");
 			}
 
 			MR_point.MR_point_vars[slot].MR_var_has_suffix = TRUE;
@@ -500,10 +524,10 @@ MR_trace_current_level(void)
 void
 MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
 	const char **filename_ptr, int *linenumber_ptr,
-	Word **base_sp_ptr, Word **base_curfr_ptr)
+	MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr)
 {
 	if (MR_point.MR_point_problem != NULL) {
-		fatal_error("cannot get details about current level");
+		MR_fatal_error("cannot get details about current level");
 	}
 
 	if (entry_ptr != NULL) {
@@ -557,19 +581,18 @@ MR_trace_list_vars(FILE *out)
 
 const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
-	Word *type_info_ptr, Word *value_ptr)
+	MR_TypeInfo *type_info_ptr, MR_Word *value_ptr)
 {
-	const MR_Var_Details *details;
+	const MR_Var_Details	*details;
+	const char		*problem;
 
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
-	if (var_number < 1) {
-		return "invalid variable number";
-	}
-	if (var_number > MR_point.MR_point_var_count) {
-		return "there aren't that many variables";
+	problem = MR_trace_valid_var_number(var_number);
+	if (problem != NULL) {
+		return problem;
 	}
 
 	details = &MR_point.MR_point_vars[var_number - 1];
@@ -588,26 +611,118 @@ MR_trace_return_var_info(int var_number, const char **name_ptr,
 }
 
 const char *
+MR_trace_headvar_num(int var_number, int *arg_pos)
+{
+	const MR_Var_Details	*details;
+	const char		*problem;
+
+	if (MR_point.MR_point_problem != NULL) {
+		return MR_point.MR_point_problem;
+	}
+
+	problem = MR_trace_valid_var_number(var_number);
+	if (problem != NULL) {
+		return problem;
+	}
+
+	details = &MR_point.MR_point_vars[var_number - 1];
+
+	if (!details->MR_var_is_headvar) {
+		return "not a head variable";
+	}
+
+	*arg_pos = details->MR_var_num_suffix;
+	return NULL;
+}
+
+const char *
+MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
+	bool must_be_unique)
+{
+	MR_Var_Spec	var_spec;
+	char		*path;
+	char		*s;
+	int		n;
+
+	s = strpbrk(word_spec, "^/");
+
+	if (s == NULL) {
+		path = NULL;
+	} else {
+		path = s;
+
+		do {
+			if (*s == '^' || *s == '/') {
+				s++;
+			} else {
+				return "bad component selector";
+			}
+
+			if (MR_isdigit(*s)) {
+				s++;
+			} else {
+				return "bad component selector";
+			}
+
+			while (MR_isdigit(*s)) {
+				s++;
+			}
+		} while (*s != '\0');
+
+		*path = '\0';
+		path++;
+	}
+
+	if (MR_trace_is_number(word_spec, &n)) {
+		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
+		var_spec.MR_var_spec_number = n;
+		return MR_trace_browse_one_path(out, var_spec, path,
+			browser, must_be_unique);
+	} else {
+		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
+		var_spec.MR_var_spec_name = word_spec;
+		return MR_trace_browse_one_path(out, var_spec, path,
+			browser, must_be_unique);
+	}
+}
+
+const char *
 MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 	bool must_be_unique)
 {
-	int	i;
-	bool	found;
+	return MR_trace_browse_one_path(out, var_spec, NULL, browser,
+		must_be_unique);
+}
+
+static const char *
+MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
+	MR_Browser browser, bool must_be_unique)
+{
+	int		i;
+	bool		found;
+	const char	*problem;
+	char		*bad_path;
 
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
 	if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
-		if (var_spec.MR_var_spec_number < 1) {
-			return "invalid variable number";
+		int	varno;
+
+		problem = MR_trace_valid_var_number(
+					var_spec.MR_var_spec_number);
+		if (problem != NULL) {
+			return problem;
 		}
-		if (var_spec.MR_var_spec_number > MR_point.MR_point_var_count)
-		{
-			return "there aren't that many variables";
+
+		varno = var_spec.MR_var_spec_number - 1;
+		bad_path = MR_trace_browse_var(out,
+				&MR_point.MR_point_vars[varno],
+				path, browser);
+		if (bad_path != NULL) {
+			return MR_trace_bad_path(bad_path);
 		}
-		MR_trace_browse_var(out, &MR_point.MR_point_vars
-			[var_spec.MR_var_spec_number - 1], browser);
 	} else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
 		found = FALSE;
 		for (i = 0; i < MR_point.MR_point_var_count; i++) {
@@ -624,26 +739,63 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 		}
 
 		if (MR_point.MR_point_vars[i].MR_var_is_ambiguous) {
+			int	success_count;
+
 			if (must_be_unique) {
 				return "variable name is not unique";
 			}
 
+			success_count = 0;
 			do {
-				MR_trace_browse_var(out,
-					&MR_point.MR_point_vars[i], browser);
+				bad_path = MR_trace_browse_var(out,
+					&MR_point.MR_point_vars[i], path,
+					browser);
+
+				if (bad_path == NULL) {
+					success_count++;
+				}
+
 				i++;
 			} while (i < MR_point.MR_point_var_count &&
 				streq(var_spec.MR_var_spec_name,
 				MR_point.MR_point_vars[i].MR_var_fullname));
+
+			if (success_count == 0) {
+				return "the selected path does not exist in any of the variables with that name";
+			}
 		} else {
-			MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
+			bad_path = MR_trace_browse_var(out,
+				&MR_point.MR_point_vars[i], path,
 				browser);
+			if (bad_path != NULL) {
+				return MR_trace_bad_path(bad_path);
+			}
 		}
 	} else {
-		fatal_error("internal error: bad var_spec kind");
+		MR_fatal_error("internal error: bad var_spec kind");
 	}
 
 	return NULL;
+}
+
+#define	BAD_PATH_BUFFER_SIZE	128
+#define	BAD_PATH_MSG_PREFIX	"the path "
+#define	BAD_PATH_MSG_SUFFIX	" does not exist"
+
+static const char *
+MR_trace_bad_path(const char *path)
+{
+	static	char	buffer[BAD_PATH_BUFFER_SIZE];
+
+	if (strlen(BAD_PATH_MSG_PREFIX) + strlen(path) +
+		strlen(BAD_PATH_MSG_SUFFIX) < BAD_PATH_BUFFER_SIZE)
+	{
+		sprintf(buffer, "%s%s%s", BAD_PATH_MSG_PREFIX, path,
+			BAD_PATH_MSG_SUFFIX);
+		return buffer;
+	} else {
+		return "the given path does not exist";
+	}
 }
 
 const char *
@@ -660,16 +812,57 @@ MR_trace_browse_all(FILE *out, MR_Browser browser)
 	}
 
 	for (i = 0; i < MR_point.MR_point_var_count; i++) {
-		MR_trace_browse_var(out, &MR_point.MR_point_vars[i], browser);
+		(void) MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
+			NULL, browser);
 	}
 
 	return NULL;
 }
 
-static void
-MR_trace_browse_var(FILE *out, MR_Var_Details *var, MR_Browser browser)
+/* ML_arg() is defined in std_util.m */
+extern	bool 	ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr);
+
+static char *
+MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
+	MR_Browser browser)
 {
-	int	len;
+	MR_TypeInfo	typeinfo;
+	MR_TypeInfo	new_typeinfo;
+	MR_Word		*value;
+	MR_Word		*new_value;
+	char		*old_path;
+	int		arg_num;
+	int		len;
+
+	typeinfo = var->MR_var_type;
+	value = &var->MR_var_value;
+
+	if (path != NULL) {
+		while (*path != '\0') {
+			old_path = path;
+
+			arg_num = 0;
+			while (MR_isdigit(*path)) {
+				arg_num = arg_num * 10 + *path - '0';
+				path++;
+			}
+
+			if (*path != '\0') {
+				path++; /* step over / or ^ */
+			}
+
+			/* ML_arg starts indexing fields from 0, not 1 */
+			if (ML_arg(typeinfo, value, arg_num - 1,
+				&new_typeinfo, &new_value))
+			{
+				typeinfo = new_typeinfo;
+				value = new_value;
+			} else {
+				return old_path;
+			}
+		}
+	}
 
 	if (out != NULL) {
 		/*
@@ -692,7 +885,8 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, MR_Browser browser)
 		fflush(out);
 	}
 
-	(*browser)(var->MR_var_type, var->MR_var_value);
+	(*browser)((MR_Word) typeinfo, *value);
+	return NULL;
 }
 
 static int
@@ -711,4 +905,17 @@ MR_trace_print_var_name(FILE *out, MR_Var_Details *var)
 	}
 
 	return len;
+}
+
+static	const char *
+MR_trace_valid_var_number(int var_number)
+{
+	if (var_number < 1) {
+		return "invalid variable number";
+	}
+	if (var_number > MR_point.MR_point_var_count) {
+		return "there aren't that many variables";
+	}
+
+	return NULL;
 }

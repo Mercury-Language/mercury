@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,13 +51,7 @@
 %  This type is implemented in C.
 :- type reference(T) ---> reference(c_pointer).
 
-:- pragma c_header_code("#include ""mercury_trail.h""").
-:- pragma c_header_code("
-	typedef struct {
-		void *value;
-		MR_ChoicepointId id;
-	} ME_Reference;
-").
+:- pragma c_header_code("#include ""c_reference.h""").
 
 :- pragma inline(new_reference/2).
 :- pragma c_code(new_reference(X::in, Ref::out), will_not_call_mercury, "
@@ -81,3 +75,23 @@
 	}
 	ref->value = (void *) X;
 ").
+
+:- interface.
+
+% init(Ref, Value)
+%	Initialise a reference Ref to have value Value.
+%	This is for use with user-declared ME_References (see
+%	c_reference.h), and must be called before using such a reference.
+%	Attempting to access the reference before it is initialised or
+%	after the init call is backtracked is undefined.
+
+:- impure pred init(reference(T)::in, T::in) is det.
+
+:- implementation.
+
+:- pragma inline(init/2).
+:- pragma c_code(init(Ref::in, X::in), will_not_call_mercury, "
+	((ME_Reference *) Ref)->value = (void *) X;
+	((ME_Reference *) Ref)->id = MR_current_choicepoint_id();
+").
+

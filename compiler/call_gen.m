@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,9 +55,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_util, rl.
+:- import_module hlds_module, hlds_data, code_util, builtin_ops, rl.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
-:- import_module trace, globals, options.
+:- import_module polymorphism, trace, globals, options.
 :- import_module std_util, bool, int, tree, map.
 :- import_module varset, require, string.
 
@@ -144,9 +144,29 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	% the runtime system leaves them in.
 	%
 
-call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
-		Modes, Det, GoalInfo, Code) -->
-	list__map_foldl(code_info__variable_type, Args, Types),
+call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args0,
+		Modes0, Det, GoalInfo, Code) -->
+	list__map_foldl(code_info__variable_type, Args0, Types0),
+
+	{ GenericCall = aditi_builtin(aditi_tuple_insert_delete(_, _), _) ->
+		% Remove the `aditi__state' argument and its type-info from
+		% the tuple to insert or delete. This must be done after
+		% mode analysis (so that removal of the `aditi__state' does
+		% not stuff up the argument numbers in error messages).
+		% Here is as good a place as any.
+		get_state_args_det(Types0, TupleTypes, _, _),
+		call_gen__remove_tuple_state_arg(TupleTypes,
+			Args0, Args),
+		call_gen__remove_tuple_state_arg(TupleTypes,
+			Types0, Types),
+		call_gen__remove_tuple_state_arg(TupleTypes,
+			Modes0, Modes)
+	;
+		Args = Args0,
+		Types = Types0,
+		Modes = Modes0
+	},
+
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_module_info(ModuleInfo),
 	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos) },
@@ -219,6 +239,24 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
 		     FailHandlingCode))))))
 	}.
 
+:- pred call_gen__remove_tuple_state_arg(list(type), list(T), list(T)).
+:- mode call_gen__remove_tuple_state_arg(in, in, out) is det.
+
+call_gen__remove_tuple_state_arg(TupleTypes, Args0, Args) :-
+	get_state_args_det(Args0, OtherArgs0, State0Arg, StateArg),
+	assoc_list__from_corresponding_lists(TupleTypes, OtherArgs0,
+		TypesAndArgs0),
+	list__filter(
+		(pred((Type - _)::in) is semidet :-
+			\+ type_is_aditi_state(Type),
+			\+ (
+				polymorphism__type_info_type(Type, TheType),
+				type_is_aditi_state(TheType)
+			)
+		), TypesAndArgs0, TypesAndArgs),
+	assoc_list__values(TypesAndArgs, OtherArgs),
+	list__append(OtherArgs, [State0Arg, StateArg], Args).
+
 	% The registers before the first input argument are all live.
 :- pred call_gen__extra_livevals(int, list(lval)).
 :- mode call_gen__extra_livevals(in, out) is det.
@@ -252,23 +290,37 @@ call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_call(_,_,_,_),_),
 	; CodeModel = model_semi, CodeAddr = do_semidet_aditi_call
 	; CodeModel = model_non, CodeAddr = do_nondet_aditi_call
 	).
-call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_insert(_), _),
-		do_aditi_insert, 3) :-
-	require(unify(CodeModel, model_det), "aditi_insert not model_det").
-call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_delete(_,_), _),
-		do_aditi_delete, 2) :-
-	require(unify(CodeModel, model_det), "aditi_delete not model_det").
 call_gen__generic_call_info(CodeModel,
-		aditi_builtin(aditi_bulk_operation(BulkOp, _), _),
-		CodeAddr, 2) :-
-	( BulkOp = insert, CodeAddr = do_aditi_bulk_insert
-	; BulkOp = delete, CodeAddr = do_aditi_bulk_delete
+		aditi_builtin(aditi_tuple_insert_delete(InsertDelete, _), _),
+		CodeAddr, 5) :-
+	( InsertDelete = insert, CodeAddr = do_aditi_insert
+	; InsertDelete = delete, CodeAddr = do_aditi_delete
 	),
 	require(unify(CodeModel, model_det),
-		"aditi_bulk_operation not model_det").
-call_gen__generic_call_info(CodeModel, aditi_builtin(aditi_modify(_,_), _),
-		do_aditi_modify, 2) :-
-	require(unify(CodeModel, model_det), "aditi_modify not model_det").
+		"aditi_insert/delete not model_det").
+call_gen__generic_call_info(CodeModel,
+		aditi_builtin(
+			aditi_insert_delete_modify(InsertDelMod, _, _), _),
+		CodeAddr, FirstReg) :-
+	call_gen__aditi_insert_delete_modify_info(InsertDelMod,
+		CodeAddr, FirstReg),
+	require(unify(CodeModel, model_det),
+		"aditi_insert_delete_modify not model_det").
+
+:- pred call_gen__aditi_insert_delete_modify_info(aditi_insert_delete_modify,
+		code_addr, int).
+:- mode call_gen__aditi_insert_delete_modify_info(in, out, out) is det.
+
+call_gen__aditi_insert_delete_modify_info(bulk_insert,
+		do_aditi_bulk_insert, 3).
+call_gen__aditi_insert_delete_modify_info(delete(filter), _, _) :-
+	error("Sorry, not yet implemented: aditi_delete(filter)").
+call_gen__aditi_insert_delete_modify_info(delete(bulk),
+		do_aditi_bulk_delete, 3).
+call_gen__aditi_insert_delete_modify_info(modify(filter), _, _) :-
+	error("Sorry, not yet implemented: aditi_modify(filter)").
+call_gen__aditi_insert_delete_modify_info(modify(bulk),
+		do_aditi_bulk_modify, 3).
 
 	% Produce code to set up the arguments to a generic call
 	% that are always present, such as the closure for a higher-order call,
@@ -349,23 +401,97 @@ call_gen__aditi_builtin_setup(
 		assign(reg(r, 4), const(int_const(NumOutputs))) -
 			"Assign number of output arguments"
 	]) }.
-call_gen__aditi_builtin_setup(aditi_insert(PredId), Inputs, _, SetupCode) -->
+
+call_gen__aditi_builtin_setup(
+		aditi_tuple_insert_delete(InsertOrDelete, PredId),
+		InputArgs, _, SetupCode) -->
 	call_gen__setup_base_relation_name(PredId, NameCode),
-	{ list__length(Inputs, NumInputs) },
-	{ SetupCode =
-		tree(NameCode,
-		node([
-			assign(reg(r, 2), const(int_const(NumInputs))) -
+
+	code_info__get_module_info(ModuleInfo),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_arity(PredInfo, PredArity) },
+	% The `aditi__state' was removed.
+	{ TupleArity = PredArity - 1 },
+	{ ArityCode = node([
+			assign(reg(r, 2), const(int_const(TupleArity))) -
 				"Assign arity of relation to insert into"
-		])
-	) }.
-call_gen__aditi_builtin_setup(aditi_delete(PredId, _), _, _, SetupCode) -->
-	call_gen__setup_base_relation_name(PredId, SetupCode).
-call_gen__aditi_builtin_setup(aditi_bulk_operation(_, PredId), _, _,
-		SetupCode) -->
-	call_gen__setup_base_relation_name(PredId, SetupCode).
-call_gen__aditi_builtin_setup(aditi_modify(PredId, _), _, _, SetupCode) -->
-	call_gen__setup_base_relation_name(PredId, SetupCode).
+		]) },
+
+	(
+		{ InsertOrDelete = insert },
+		{ ProcCode = empty }
+	;
+		{ InsertOrDelete = delete },
+
+		%
+		% For now tuple deletions need to be done as bulk
+		% deletions. The API function to delete a single
+		% tuple only works if the relation being
+		% deleted from has an index.
+		%
+
+		call_gen__setup_update_proc_name(rl__get_delete_proc_name,
+			PredId, reg(r, 3), ProcNameCode),
+
+		%
+		% Work out the schema of the input relation of the
+		% deletion procedure
+		%
+		{ list__reverse(InputArgs, RevInputArgs) },
+		{
+			RevInputArgs = [_DiState | RevTupleArgs],
+			list__reverse(RevTupleArgs, TupleArgs0),
+			list__length(TupleArgs0, TupleArityTimes2),
+
+			% Remove the type-infos for the tuple arguments.
+			list__drop(TupleArityTimes2 // 2,
+				TupleArgs0, TupleArgs1)
+		->
+			TupleArgs = TupleArgs1
+		;
+			error(
+	"call_gen__aditi_builtin_setup: error in schema for aditi_delete")
+		},
+		list__map_foldl(code_info__variable_type,
+			TupleArgs, TupleTypes),
+		{ rl__schema_to_string(ModuleInfo, TupleTypes, InputSchema) },
+		{ ProcSchemaCode =
+			node([
+				assign(reg(r, 4),
+					const(string_const(InputSchema))) -
+				"Assign schema of tuple to insert/delete"
+			]) },
+
+		{ ProcCode = tree(ProcNameCode, ProcSchemaCode) }
+	),
+	{ SetupCode = tree(NameCode, tree(ArityCode, ProcCode)) }.
+
+call_gen__aditi_builtin_setup(
+		aditi_insert_delete_modify(InsertDelMod, PredId, _),
+		_, _, SetupCode) -->
+	call_gen__aditi_insert_delete_modify_setup(InsertDelMod,
+		PredId, SetupCode).
+
+:- pred call_gen__aditi_insert_delete_modify_setup(aditi_insert_delete_modify,
+		pred_id, code_tree, code_info, code_info).
+:- mode call_gen__aditi_insert_delete_modify_setup(in, in, out,
+		in, out) is det.
+
+call_gen__aditi_insert_delete_modify_setup(bulk_insert, PredId, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, RelNameCode),
+	call_gen__setup_update_proc_name(rl__get_insert_proc_name,
+		PredId, reg(r, 2), ProcNameCode),
+	{ SetupCode = tree(RelNameCode, ProcNameCode) }.
+call_gen__aditi_insert_delete_modify_setup(delete(_), PredId, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, RelNameCode),
+	call_gen__setup_update_proc_name(rl__get_delete_proc_name,
+		PredId, reg(r, 2), ProcNameCode),
+	{ SetupCode = tree(RelNameCode, ProcNameCode) }.
+call_gen__aditi_insert_delete_modify_setup(modify(_), PredId, SetupCode) -->
+	call_gen__setup_base_relation_name(PredId, RelNameCode),
+	call_gen__setup_update_proc_name(rl__get_modify_proc_name,
+		PredId, reg(r, 2), ProcNameCode),
+	{ SetupCode = tree(RelNameCode, ProcNameCode) }.
 
 :- pred call_gen__setup_base_relation_name(pred_id,
 		code_tree, code_info, code_info).
@@ -378,6 +504,24 @@ call_gen__setup_base_relation_name(PredId, SetupCode) -->
 		assign(reg(r, 1), const(string_const(ProcStr))) -
 			"Assign name of base relation"
 	]) }.
+
+:- pred call_gen__setup_update_proc_name(
+		pred(module_info, pred_id, rl_proc_name),
+		pred_id, lval, code_tree, code_info, code_info).
+:- mode call_gen__setup_update_proc_name(pred(in, in, out) is det,
+		in, in, out, in, out) is det.
+
+call_gen__setup_update_proc_name(NamePred, PredId, Lval, ProcNameCode) -->
+	code_info__get_module_info(ModuleInfo),
+	{ NamePred(ModuleInfo, PredId, ProcName) },
+	{ rl__proc_name_to_string(ProcName, ProcNameStr) },
+	{ ProcNameCode =
+		node([
+			assign(Lval,
+				const(string_const(ProcNameStr))) -
+				"Assign name of update RL procedure"
+		])
+	}.
 
 %---------------------------------------------------------------------------%
 
@@ -439,18 +583,17 @@ call_gen__call_comment(model_non,  "branch to nondet procedure").
 call_gen__save_variables(OutArgs, Code) -->
 	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(PredId),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	code_info__get_globals(Globals),
-	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
-	( 
-		{ TypeInfoLiveness = yes }
-	->
-		code_info__get_proc_info(ProcInfo),
-		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars0, 
-			TypeInfoVars) },
-		{ set__union(Vars0, TypeInfoVars, Vars1) }
-	;
-		{ Vars1 = Vars0 }
-	),
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) },
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
+	{ proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
+		VarTypes, TVarMap, Vars1) },
 	{ set__difference(Vars1, OutArgs, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
@@ -498,20 +641,19 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{
-		code_util__translate_builtin(ModuleName, PredName,
-			ProcId, Args, MaybeTestPrime, MaybeAssignPrime)
+		builtin_ops__translate_builtin(ModuleName, PredName,
+			ProcId, Args, SimpleCode0)
 	->
-		MaybeTest = MaybeTestPrime,
-		MaybeAssign = MaybeAssignPrime
+		SimpleCode = SimpleCode0
 	;
 		error("Unknown builtin predicate")
 	},
 	(
 		{ CodeModel = model_det },
 		(
-			{ MaybeTest = no },
-			{ MaybeAssign = yes(Var - Rval) }
+			{ SimpleCode = assign(Var, AssignExpr) }
 		->
+			{ Rval = convert_simple_expr(AssignExpr) },
 			code_info__cache_expression(Var, Rval),
 			{ Code = empty }
 		;
@@ -520,25 +662,11 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 	;
 		{ CodeModel = model_semi },
 		(
-			{ MaybeTest = yes(Test) }
+			{ SimpleCode = test(TestExpr) }
 		->
-			( { Test = binop(BinOp, X0, Y0) } ->
-				call_gen__generate_builtin_arg(X0, X, CodeX),
-				call_gen__generate_builtin_arg(Y0, Y, CodeY),
-				{ Rval = binop(BinOp, X, Y) },
-				{ ArgCode = tree(CodeX, CodeY) }
-			; { Test = unop(UnOp, X0) } ->
-				call_gen__generate_builtin_arg(X0, X, ArgCode),
-				{ Rval = unop(UnOp, X) }
-			;
-				{ error("Malformed semi builtin predicate") }
-			),
+			call_gen__generate_simple_test(TestExpr, Rval,
+				ArgCode),
 			code_info__fail_if_rval_is_false(Rval, TestCode),
-			( { MaybeAssign = yes(Var - AssignRval) } ->
-				code_info__cache_expression(Var, AssignRval)
-			;
-				[]
-			),
 			{ Code = tree(ArgCode, TestCode) }
 		;
 			{ error("Malformed semi builtin predicate") }
@@ -548,7 +676,34 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 		{ error("Nondet builtin predicate") }
 	).
 
-%---------------------------------------------------------------------------%
+:- func convert_simple_expr(simple_expr(prog_var)) = rval.
+convert_simple_expr(leaf(Var)) = var(Var).
+convert_simple_expr(int_const(Int)) = const(int_const(Int)).
+convert_simple_expr(float_const(Float)) = const(float_const(Float)).
+convert_simple_expr(unary(UnOp, Expr)) =
+	unop(UnOp, convert_simple_expr(Expr)).
+convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
+	binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
+
+:- pred call_gen__generate_simple_test(simple_expr(prog_var), rval,
+		code_tree, code_info, code_info).
+:- mode call_gen__generate_simple_test(in(simple_test_expr), out, out, in, out)
+		is det.
+call_gen__generate_simple_test(TestExpr, Rval, ArgCode) -->
+	(
+		{ TestExpr = binary(BinOp, X0, Y0) },
+		{ X1 = convert_simple_expr(X0) },
+		{ Y1 = convert_simple_expr(Y0) },
+		call_gen__generate_builtin_arg(X1, X, CodeX),
+		call_gen__generate_builtin_arg(Y1, Y, CodeY),
+		{ Rval = binop(BinOp, X, Y) },
+		{ ArgCode = tree(CodeX, CodeY) }
+	;
+		{ TestExpr = unary(UnOp, X0) },
+		{ X1 = convert_simple_expr(X0) },
+		call_gen__generate_builtin_arg(X1, X, ArgCode),
+		{ Rval = unop(UnOp, X) }
+	).
 
 :- pred call_gen__generate_builtin_arg(rval, rval, code_tree,
 	code_info, code_info).

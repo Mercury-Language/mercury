@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1411,7 +1411,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		convert_constructors(ModuleName, Body, Constrs)
 	->
 		% check that all type variables in the body
-		% are either explicitly existentally quantified
+		% are either explicitly existentially quantified
 		% or occur in the head.
 		(
 			list__member(Ctor, Constrs),
@@ -1433,18 +1433,15 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		;
 			list__member(Ctor, Constrs),
 			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
-					CtorArgs),
+					_CtorArgs),
 			list__member(Var, ExistQVars),
-			assoc_list__values(CtorArgs, CtorArgTypes),
-			\+ term__contains_var_list(CtorArgTypes, Var)
+			term__contains_var_list(Args, Var)
 		->
 			Result = error( "type variable has overlapping scopes (explicit type quantifier shadows argument type)", Body)
 
 		% check that all type variables in existential quantifiers
-		% occur somewhere in the body
-		% (maybe this should just be a warning, not an error?
-		% If we were to allow it, we should at this point delete any
-		% such unused type variables from the list of quantifiers.)
+		% occur somewhere in the constructor argument types
+		% (not just the constraints)
 		;
 			list__member(Ctor, Constrs),
 			Ctor = ctor(ExistQVars, _Constraints, _CtorName,
@@ -1454,7 +1451,7 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			\+ term__contains_var_list(CtorArgTypes, Var)
 		->
 			Result = error(
-			"var occurs only in existential quantifier",
+"type variable in existential quantifier does not occur in arguments of constructor",
 					Body)
 		% check that all type variables in existential constraints
 		% occur in the existential quantifiers
@@ -1468,8 +1465,8 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			Ctor = ctor(ExistQVars, Constraints, _CtorName,
 					_CtorArgs),
 			list__member(Constraint, Constraints),
-			Constraint = constraint(_Name, Args),
-			term__contains_var_list(Args, Var),
+			Constraint = constraint(_Name, ConstraintArgs),
+			term__contains_var_list(ConstraintArgs, Var),
 			\+ list__member(Var, ExistQVars)
 		->
 			Result = error("type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some'",
@@ -1613,7 +1610,7 @@ convert_constructor(ModuleName, Term0, Result) :-
 	),
 	parse_implicitly_qualified_term(ModuleName,
 		Term5, Term0, "constructor definition", ok(F, As)),
-	convert_constructor_arg_list(As, Args),
+	convert_constructor_arg_list(ModuleName, As, Args),
 	Result = ctor(ExistQVars, Constraints, F, Args).
 
 %-----------------------------------------------------------------------------%
@@ -1893,7 +1890,7 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 :- mode process_func_3(in, in, in, in, in, in, in, in, in, out) is det.
 
 process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
-		ExistQVars, ClassContext, Attributes, Result) :-
+		ExistQVars, ClassContext, Attributes0, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( \+ verify_type_and_mode_list(As) ->
 			Result = error("some but not all arguments have modes",
@@ -1914,16 +1911,7 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 		"function result has mode, but function arguments don't",
 					FuncTerm)
 			;
-				ReturnType = type_only(_),
-				MaybeDet = yes(_)
-			->
-				Result = error(
-"function declaration specifies a determinism but does not specify the mode",
-					FuncTerm)
-			;
-				% note: impure or semipure functions are not
-				% allowed
-				Purity = (pure),
+				get_purity(Attributes0, Purity, Attributes),
 				varset__coerce(VarSet0, TVarSet),
 				varset__coerce(VarSet0, IVarSet),
 				Result0 = ok(func(TVarSet, IVarSet, ExistQVars,
@@ -2012,6 +2000,10 @@ process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
 
 	% Parse a `:- inst <InstDefn>.' declaration.
 	%
+	% `==' is the correct operator to use, although we accept
+	% `=' as well.  Since `=' was once the standard operator, make
+	% sure warnings are given before it is phased out.
+	%
 :- pred parse_inst_decl(module_name, varset, term, maybe1(item)).
 :- mode parse_inst_decl(in, in, in, out) is det.
 parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
@@ -2041,7 +2033,7 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 		convert_inst_defn(ModuleName, H, Body1, R),
 		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
 	;
-		Result = error("`=' expected in `:- inst' definition", InstDefn)
+		Result = error("`==' expected in `:- inst' definition", InstDefn)
 	).
 		% we should check the condition for errs
 		% (don't bother at the moment, since we ignore
@@ -2169,14 +2161,31 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
 	).
 
-	% People never seem to remember what the right operator to use in a
-	% `:- mode' declaration is, so the syntax is forgiving.  We allow
-	% `::', the standard one which has the right precedence, but we
-	% also allow `==' just to be nice.
+	% People never seemed to remember what the right operator to use
+	% in a `:- mode' declaration is, so the syntax is accepted both
+	% `::' and `==', with `::' formerly the standard operator.  
+	%
+	%	% Old syntax
+	% :- mode foo :: someinst -> someotherinst.
+	%
+	% But using `==' was a pain, because the precedence of `->' was
+	% too high.  We now accept `>>' as an alternative to `->', and
+	% `==' is now the standard operator to use in a `:- mode'
+	% declaration.  This is part of a long term plan to free up
+	% `::' as an operator so we can use it for mode qualification.
+	%
+	%	% New syntax
+	% :- mode foo == someinst >> someotherinst.
+	%
+	% We still support `::' in mode declarations for backwards
+	% compatibility, but it might be removed one day.
+	% Before phasing it out, a deprecated syntax warning should be
+	% given for a version or two.
+	%
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
-	( Op = "::" ; Op = "==" ).
+	( Op = "==" ; Op = "::" ).
 
 :- pred convert_mode_defn(module_name, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn(in, in, in, out) is det.
@@ -2320,12 +2329,12 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 :- pred process_maybe1(maker(T1, T2), maybe1(T1), maybe1(T2)).
 :- mode process_maybe1(maker, in, out) is det.
-process_maybe1(Maker, ok(X), ok(Y)) :- !, call(Maker, X, Y).
+process_maybe1(Maker, ok(X), ok(Y)) :- call(Maker, X, Y).
 process_maybe1(_, error(M, T), error(M, T)).
 
 :- pred process_maybe1_to_t(maker(T1, maybe1(T2)), maybe1(T1), maybe1(T2)).
 :- mode process_maybe1_to_t(maker, in, out) is det.
-process_maybe1_to_t(Maker, ok(X), Y) :- !, call(Maker, X, Y).
+process_maybe1_to_t(Maker, ok(X), Y) :- call(Maker, X, Y).
 process_maybe1_to_t(_, error(M, T), error(M, T)).
 
 %-----------------------------------------------------------------------------%
@@ -2843,22 +2852,25 @@ make_op_specifier(X, sym(X)).
 parse_type(T0, ok(T)) :-
 	term__coerce(T0, T).
 
-:- pred convert_constructor_arg_list(list(term), list(constructor_arg)).
-:- mode convert_constructor_arg_list(in, out) is det.
+:- pred convert_constructor_arg_list(module_name,
+		list(term), list(constructor_arg)).
+:- mode convert_constructor_arg_list(in, in, out) is semidet.
 
-convert_constructor_arg_list([], []).
-convert_constructor_arg_list([Term | Terms], [Arg | Args]) :-
+convert_constructor_arg_list(_, [], []).
+convert_constructor_arg_list(ModuleName, [Term | Terms], [Arg | Args]) :-
 	(
-		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _),
-		NameTerm = term__functor(term__atom(Name), [], _)
+		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _)
 	->
+		parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
+			"field name", NameResult),
+		NameResult = ok(SymName, []),
 		convert_type(TypeTerm, Type),
-		Arg = Name - Type
+		Arg = yes(SymName) - Type
 	;
 		convert_type(Term, Type),
-		Arg = "" - Type
+		Arg = no - Type
 	),
-	convert_constructor_arg_list(Terms, Args).
+	convert_constructor_arg_list(ModuleName, Terms, Args).
 
 :- pred convert_type(term, type).
 :- mode convert_type(in, out) is det.

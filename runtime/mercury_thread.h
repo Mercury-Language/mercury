@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,6 +131,8 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** Create and initialize a new Mercury engine running in the current
 ** POSIX thread.
 ** See the comments above for the meaning of the argument.
+** If there is already a Mercury engine running in the current POSIX
+** thread then init_thread is just a no-op.
 */
 void	init_thread(MR_when_to_use);
 

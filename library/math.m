@@ -227,7 +227,9 @@
 			""Software error: Domain error in call to `%s'\\n"",
 			where);
 		MR_trace_report(stderr);
+	#ifndef MR_HIGHLEVEL_CODE
 		MR_dump_stack(MR_succip, MR_sp, MR_curfr, FALSE);
+	#endif
 		exit(1);
 	}
 

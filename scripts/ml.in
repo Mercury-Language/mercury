@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne.
+# Copyright (C) 1995-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -33,6 +33,13 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 TMPDIR=${TMPDIR=/tmp}
+
+# When compiling in the hlc.gc grade using the Microsoft Visual C
+# compiler, the default maximum stack size of 4Mb is too low for a
+# recursive language.
+# XXX at some stage this should become an option to ml
+LINK=/stack:10485760	# 10 Mb
+export LINK
 
 # On some systems (Solaris for exemple), we need libraries to be able to 
 # use sockets. The name of the needed libraries is determined by autoconf
@@ -74,6 +81,9 @@ MAYBE_STATIC_OPT=""
 make_shared_lib=false
 leave_shlib_dirs_relative=false
 user_shlib_dirs=""
+use_thread_libs=false
+print_grade=false
+print_gc_grade=false
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -99,6 +109,14 @@ Diagnostics options:
 		executables, unresolved symbols are always errors.
 		This option is useful when building shared libraries
 		that are not intended to be self-contained.
+	--print-grade
+		Compute the grade of the Mercury libraries to link with based
+		on the command line options, print it to the standard output,
+		and then exit (don't actually link anything).
+	--print-gc-grade
+		Compute the base name of the garbage collection library to
+		link with based on the command line options, print it to the
+		standard output, and then exit (don't actually link anything).
 
 Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
@@ -108,7 +126,7 @@ Dynamic/static linking options:
 				Link with the shared libraries (*.so),
 				if possible, otherwise with the static ones.
 			--mercury-libs static
-				Link with the static libraries (*.a).
+				Link with the static libraries (*.@LIB_SUFFIX@).
 			--mercury-libs none
 				Don't link in the Mercury standard libraries.
 	-shared, --shared
@@ -147,6 +165,12 @@ Debugging options:
 		Don't link in the GPL'd GNU Readline Library.
 	-g, --c-debug, --no-strip
 		Do not strip C debugging information.
+
+Threads options:
+	--use-thread-libs
+		Link with the POSIX thread libraries. This option is useful
+		if a C library being linked with uses threads, but the
+		Mercury code being linked doesn't.
 
 $grade_usage"
 
@@ -234,7 +258,7 @@ EOF
 		;;
 	-L|--lib-dir)
 		dir="$2"
-		user_libdir_opts="$user_libdir_opts -L$dir"
+		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
 		shift
 		;;
 	-L*)
@@ -270,6 +294,26 @@ EOF
 		user_shlib_dirs="$user_shlib_dirs $dir"
 		;;
 
+	--use-thread-libs)
+		use_thread_libs=true
+		;;
+	--no-use-thread-libs)
+		use_thread_libs=false
+		;;
+
+	--print-grade)
+		print_grade=true
+		;;
+	--no-print-grade)
+		print_grade=false
+		;;
+	--print-gc-grade)
+		print_gc_grade=true
+		;;
+	--no-print-gc-grade)
+		print_gc_grade=false
+		;;
+
 	# include the file `parse_grade_options.sh-subr'
 	@PARSE_GRADE_OPTIONS@
 
@@ -296,7 +340,7 @@ esac
 # it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
-	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin32)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
 		# Likewise for FreeBSD
@@ -313,7 +357,7 @@ esac
 # (shared on most systems).
 case $all_libs in default)
 	all_libs=shared
-	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*|i?86-*-cygwin32)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
 		# Likewise for FreeBSD
@@ -359,6 +403,29 @@ case $asm_labels in
 	true)		GRADE="asm_$GRADE" ;;
 	false)		;;
 esac
+case $highlevel_code,$highlevel_data,$GRADE in
+	true,true,none)		
+		GRADE="hl" ;;
+	true,false,none)	
+		GRADE="hlc" ;;
+	false,false,*)
+		# GRADE was set above
+		;;
+	false,true,*)
+		echo "\`--high-level-data' requires \`--high-level-code'" 1>&2
+		exit 1
+		;;
+	*)
+		echo "\`--high-level-code' is incompatible with the use of" 1>&2
+		echo "low-level gcc extensions implied by grade \`$GRADE'" 1>&2
+		exit 1
+		;;
+esac
+case $gcc_nested_functions,$highlevel_code in
+	true,true)	GRADE="${GRADE}_nest" ;;
+	*)		;;
+esac
+	
 case $thread_safe in
 	true)	GRADE="$GRADE.par" ;;
 	false)	;;
@@ -413,20 +480,45 @@ case $stack_trace,$require_tracing in
 	false,false)	;;
 esac
 
+# if the --print-grade option is specified,
+# then all we do is print the grade and then exit
+case "$print_grade" in true)
+	echo $GRADE
+	exit 0
+esac
+
+# Compute the gc grade from the grade
 case "$GRADE" in
-	*.gc.prof*)
-		LIBGC="-lgc_prof"
-		LIBGC_STATIC="$LIBDIR/$FULLARCH/libgc_prof.a"
-		;;
+	*.par*.gc*.prof*)
+		gc_grade=par_gc_prof ;;
+	*.par*.gc*)
+		gc_grade=par_gc ;;
+	*.gc*.prof*)
+		gc_grade=gc_prof ;;
 	*.gc*)
-		LIBGC="-lgc"
-		LIBGC_STATIC="$LIBDIR/$FULLARCH/libgc.a"
-		;;
+		gc_grade=gc ;;
 	*)
+		gc_grade=nogc ;;
+esac
+
+# if the --print-gc-grade option is specified,
+# then all we do is print the gc grade and then exit
+case "$print_gc_grade" in true)
+	echo $gc_grade
+	exit 0
+esac
+
+case "$gc_grade" in
+	nogc)	
 		LIBGC=
 		LIBGC_STATIC=
 		;;
+	*)
+		LIBGC="-l$gc_grade"
+		LIBGC_STATIC=`@CYGPATH@ $LIBDIR/$FULLARCH/lib$gc_grade.@LIB_SUFFIX@`
+		;;
 esac
+
 
 case $readline in
 	true)	;;
@@ -439,8 +531,8 @@ case $trace in
 		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
 			$READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
-			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a"
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+		  `@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@`"
 		;;
 	false)	TRACE_LIBS=
 		TRACE_LIBS_SYSTEM=
@@ -453,10 +545,14 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
-case $thread_safe in
+case $thread_safe in true)
+	use_thread_libs=true ;;
+esac
+
+case $use_thread_libs in
 	true)
 		case "$FULLARCH" in
-		*-osf*)		THREAD_LIBS="-lpthreads -lc_r" ;;
+ 		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
 		*-linux*)	THREAD_LIBS="-lpthread" ;;
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*)		echo "$0: warning: don't know which" \
@@ -488,9 +584,9 @@ case $make_shared_lib in
 esac
 
 merc_libdir_opts="\
-	-L$LIBDIR/$GRADE/$FULLARCH
-	-L$LIBDIR/$FULLARCH
-	-L/usr/local/lib
+	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
+	@LIB_LIBPATH@$LIBDIR/$FULLARCH
+	@LIB_LIBPATH@/usr/local/lib
 "
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 
@@ -503,8 +599,8 @@ case $mercury_libs in
 		;;
 	static)
 		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
-			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+			`@CYGPATH@ $LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
 			$LIBGC_STATIC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""
@@ -572,17 +668,27 @@ case "$MKFIFO" in
     none) demangle=false ;;
 esac
 
+#
+# The MLDS (--high-level-code) back-end uses a different
+# name mangling scheme which the current demangler doesn't
+# know how to demangle.
+#
+case "$highlevel_code" in
+    true) demangle=false ;;
+esac
+
+LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+LINKER_POST_FLAGS="@LINK_OPT_SEP@ $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
+
 case $verbose in
     true)
 	echo "ml: using grade \`$GRADE'"
 	case $demangle in
 	    false)
-		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
-			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS
 		;;
 	    true)
-		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
-			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
+		echo $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
@@ -623,11 +729,9 @@ case $demangle in
 		# execute $CC with stdout & stderr redirected to
 		# go via the pipe to $DEMANGLER and then to stderr
 	case $# in
-		0) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS >$PIPE 2>&1 ;;
-
-		*) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS >$PIPE 2>&1 ;;
+    		0) $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS >$PIPE 2>&1 ;;
+    		*) $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS \
+			>$PIPE 2>&1 ;;
 	esac
 	linker_status=$?
 		# now we can remove the pipe; since is an open file, it will
@@ -639,10 +743,8 @@ case $demangle in
 	;;
 false)
 	case $# in
-		0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-		*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+    		0) exec $LINKER $LINKER_PRE_FLAGS $LINKER_POST_FLAGS ;;
+    		*) exec $LINKER $LINKER_PRE_FLAGS "$@" $LINKER_POST_FLAGS ;;
 	esac
 	;;
 esac

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
 :- import_module continuation_info, prog_data, hlds_data, globals.
 
-:- import_module bool, set, list, map, std_util, assoc_list.
+:- import_module bool, set, list, map, std_util, assoc_list, counter.
 
 :- implementation.
 
@@ -65,155 +65,147 @@
 		% Create a new code_info structure. Also return the
 		% outermost resumption point, and info about the non-fixed
 		% stack slots used for tracing purposes.
-:- pred code_info__init(bool, globals, pred_id, proc_id, proc_info,
-	follow_vars, module_info, int, resume_point_info,
-	trace_slot_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, out, out, out) is det.
+:- pred code_info__init(bool::in, globals::in, pred_id::in, proc_id::in,
+	proc_info::in, follow_vars::in, module_info::in, counter::in,
+	resume_point_info::out, trace_slot_info::out, code_info::out) is det.
 
 		% Get the globals table.
-:- pred code_info__get_globals(globals, code_info, code_info).
-:- mode code_info__get_globals(out, in, out) is det.
+:- pred code_info__get_globals(globals::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the HLDS of the entire module.
-:- pred code_info__get_module_info(module_info, code_info, code_info).
-:- mode code_info__get_module_info(out, in, out) is det.
+:- pred code_info__get_module_info(module_info::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the id of the predicate we are generating code for.
-:- pred code_info__get_pred_id(pred_id, code_info, code_info).
-:- mode code_info__get_pred_id(out, in, out) is det.
+:- pred code_info__get_pred_id(pred_id::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the id of the procedure we are generating code for.
-:- pred code_info__get_proc_id(proc_id, code_info, code_info).
-:- mode code_info__get_proc_id(out, in, out) is det.
+:- pred code_info__get_proc_id(proc_id::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the HLDS of the procedure we are generating code for.
-:- pred code_info__get_proc_info(proc_info, code_info, code_info).
-:- mode code_info__get_proc_info(out, in, out) is det.
+:- pred code_info__get_proc_info(proc_info::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the variables for the current procedure.
-:- pred code_info__get_varset(prog_varset, code_info, code_info).
-:- mode code_info__get_varset(out, in, out) is det.
+:- pred code_info__get_varset(prog_varset::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_maybe_trace_info(maybe(trace_info),
-	code_info, code_info).
-:- mode code_info__get_maybe_trace_info(out, in, out) is det.
+:- pred code_info__get_maybe_trace_info(maybe(trace_info)::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the set of currently forward-live variables.
-:- pred code_info__get_forward_live_vars(set(prog_var), code_info, code_info).
-:- mode code_info__get_forward_live_vars(out, in, out) is det.
+:- pred code_info__get_forward_live_vars(set(prog_var)::out,
+	code_info::in, code_info::out) is det.
 
 		% Set the set of currently forward-live variables.
-:- pred code_info__set_forward_live_vars(set(prog_var), code_info, code_info).
-:- mode code_info__set_forward_live_vars(in, in, out) is det.
+:- pred code_info__set_forward_live_vars(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
 		% Get the table mapping variables to the current
 		% instantiation states.
-:- pred code_info__get_instmap(instmap, code_info, code_info).
-:- mode code_info__get_instmap(out, in, out) is det.
+:- pred code_info__get_instmap(instmap::out,
+	code_info::in, code_info::out) is det.
 
 		% Set the table mapping variables to the current
 		% instantiation states.
-:- pred code_info__set_instmap(instmap, code_info, code_info).
-:- mode code_info__set_instmap(in, in, out) is det.
+:- pred code_info__set_instmap(instmap::in,
+	code_info::in, code_info::out) is det.
+
+		% The number of the last local label allocated.
+:- pred code_info__get_label_counter(counter::out,
+	code_info::in, code_info::out) is det.
 
 		% The current value of the counter we use to give
 		% each "create" rval its unique cell number, for use
 		% in case the cell can be allocated statically.
-:- pred code_info__get_cell_count(int, code_info, code_info).
-:- mode code_info__get_cell_count(out, in, out) is det.
+:- pred code_info__get_cell_counter(counter::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_cell_count(int, code_info, code_info).
-:- mode code_info__set_cell_count(in, in, out) is det.
+:- pred code_info__set_cell_counter(counter::in,
+	code_info::in, code_info::out) is det.
 
 		% Get the flag that indicates whether succip is used or not.
-:- pred code_info__get_succip_used(bool, code_info, code_info).
-:- mode code_info__get_succip_used(out, in, out) is det.
+:- pred code_info__get_succip_used(bool::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the label layout information created by tracing
 		% during code generation.
-:- pred code_info__get_layout_info(map(label, internal_layout_info), 
-	code_info, code_info).
-:- mode code_info__get_layout_info(out, in, out) is det.
+:- pred code_info__get_layout_info(map(label, internal_layout_info)::out,
+	code_info::in, code_info::out) is det.
 
 		% Get the global static data structures that have
 		% been created during code generation and which do
 		% not have to be scanned by llds_common, since they
 		% have no common parts by construction.
-:- pred code_info__get_non_common_static_data(list(comp_gen_c_data),
-	code_info, code_info).
-:- mode code_info__get_non_common_static_data(out, in, out) is det.
+:- pred code_info__get_non_common_static_data(list(comp_gen_c_data)::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_max_reg_in_use_at_trace(int, code_info, code_info).
-:- mode code_info__get_max_reg_in_use_at_trace(out, in, out) is det.
+:- pred code_info__get_max_reg_in_use_at_trace(int::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_max_reg_in_use_at_trace(int, code_info, code_info).
-:- mode code_info__set_max_reg_in_use_at_trace(in, in, out) is det.
+:- pred code_info__set_max_reg_in_use_at_trace(int::in,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pred code_info__get_var_slot_count(int, code_info, code_info).
-:- mode code_info__get_var_slot_count(out, in, out) is det.
+:- pred code_info__get_var_slot_count(int::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_maybe_trace_info(maybe(trace_info),
-	code_info, code_info).
-:- mode code_info__set_maybe_trace_info(in, in, out) is det.
+:- pred code_info__set_maybe_trace_info(maybe(trace_info)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_zombies(set(prog_var), code_info, code_info).
-:- mode code_info__get_zombies(out, in, out) is det.
+:- pred code_info__get_zombies(set(prog_var)::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_zombies(set(prog_var), code_info, code_info).
-:- mode code_info__set_zombies(in, in, out) is det.
+:- pred code_info__set_zombies(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_exprn_info(exprn_info, code_info, code_info).
-:- mode code_info__get_exprn_info(out, in, out) is det.
+:- pred code_info__get_exprn_info(exprn_info::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_exprn_info(exprn_info, code_info, code_info).
-:- mode code_info__set_exprn_info(in, in, out) is det.
+:- pred code_info__set_exprn_info(exprn_info::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_temps_in_use(set(lval), code_info, code_info).
-:- mode code_info__get_temps_in_use(out, in, out) is det.
+:- pred code_info__get_temps_in_use(set(lval)::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_temps_in_use(set(lval), code_info, code_info).
-:- mode code_info__set_temps_in_use(in, in, out) is det.
+:- pred code_info__set_temps_in_use(set(lval)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_fail_info(fail_info, code_info, code_info).
-:- mode code_info__get_fail_info(out, in, out) is det.
+:- pred code_info__get_fail_info(fail_info::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_fail_info(fail_info, code_info, code_info).
-:- mode code_info__set_fail_info(in, in, out) is det.
+:- pred code_info__set_fail_info(fail_info::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_label_count(int, code_info, code_info).
-:- mode code_info__get_label_count(out, in, out) is det.
+:- pred code_info__set_label_counter(counter::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_label_count(int, code_info, code_info).
-:- mode code_info__set_label_count(in, in, out) is det.
+:- pred code_info__set_succip_used(bool::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_succip_used(bool, code_info, code_info).
-:- mode code_info__set_succip_used(in, in, out) is det.
+:- pred code_info__set_layout_info(map(label, internal_layout_info)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_layout_info(map(label, internal_layout_info), 
-	code_info, code_info).
-:- mode code_info__set_layout_info(in, in, out) is det.
+:- pred code_info__get_max_temp_slot_count(int::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_max_temp_slot_count(int, code_info, code_info).
-:- mode code_info__get_max_temp_slot_count(out, in, out) is det.
+:- pred code_info__set_max_temp_slot_count(int::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_max_temp_slot_count(int, code_info, code_info).
-:- mode code_info__set_max_temp_slot_count(in, in, out) is det.
+:- pred code_info__get_temp_content_map(map(lval, slot_contents)::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_temp_content_map(map(lval, slot_contents),
-	code_info, code_info).
-:- mode code_info__get_temp_content_map(out, in, out) is det.
+:- pred code_info__set_temp_content_map(map(lval, slot_contents)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__set_temp_content_map(map(lval, slot_contents),
-	code_info, code_info).
-:- mode code_info__set_temp_content_map(in, in, out) is det.
-
-:- pred code_info__set_non_common_static_data(list(comp_gen_c_data),
-	code_info, code_info).
-:- mode code_info__set_non_common_static_data(in, in, out) is det.
+:- pred code_info__set_non_common_static_data(list(comp_gen_c_data)::in,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -235,54 +227,71 @@
 :- type code_info	--->
 	code_info(
 		% STATIC fields
-		globals,	% For the code generation options.
-		module_info,	% The module_info structure - you just
+		globals :: globals,
+				% For the code generation options.
+		module_info :: module_info,
+				% The module_info structure - you just
 				% never know when you might need it.
-		pred_id,	% The id of the current predicate.
-		proc_id,	% The id of the current procedure.
-		proc_info,	% The proc_info for the this procedure.
-		prog_varset,	% The variables in this procedure.
-		int,		% The number of stack slots allocated.
+		pred_id :: pred_id,
+				% The id of the current predicate.
+		proc_id :: proc_id,
+				% The id of the current procedure.
+		proc_info :: proc_info,
+				% The proc_info for the this procedure.
+		varset :: prog_varset,
+				% The variables in this procedure.
+		var_slot_count :: int,
+				% The number of stack slots allocated.
 				% for storing variables.
 				% (Some extra stack slots are used
 				% for saving and restoring registers.)
-		maybe(trace_info),
+		maybe_trace_info :: maybe(trace_info),
 				% Information about which stack slots
 				% the call sequence number and depth
 				% are stored in, provided tracing is
 				% switched on.
 
 		% LOCATION DEPENDENT fields
-		set(prog_var),	% Variables that are forward live
+		forward_live_vars :: set(prog_var),
+				% Variables that are forward live
 				% after this goal.
- 		instmap,	% Current insts of the live variables.
-		set(prog_var),	% Zombie variables; variables that are not
+ 		instmap :: instmap,
+				% Current insts of the live variables.
+		zombies :: set(prog_var),
+				% Zombie variables; variables that are not
 				% forward live but which are protected by
 				% an enclosing resume point.
-		exprn_info,	% A map storing the information about
+		exprn_info :: exprn_info,
+				% A map storing the information about
 				% the status of each known variable.
 				% (Known vars = forward live vars + zombies)
-		set(lval),	% The set of temporary locations currently in
+		temps_in_use :: set(lval),
+				% The set of temporary locations currently in
 				% use. These lvals must be all be keys in the
 				% map of temporary locations ever used, which
 				% is one of the persistent fields below. Any
 				% keys in that map which are not in this set
 				% are free for reuse.
-		fail_info,	% Information about how to manage failures.
+		fail_info :: fail_info,
+				% Information about how to manage failures.
 
 		% PERSISTENT fields
- 		int,		% Counter for the local labels used
+ 		label_num_src :: counter,
+				% Counter for the local labels used
 				% by this procedure.
-		int,		% Counter for cells in this proc.
-		bool,		% do we need to store succip?
-		map(label, internal_layout_info),
+		cell_num_src :: counter,
+				% Counter for cells in this proc.
+		store_succip :: bool,
+				% do we need to store succip?
+		label_info :: map(label, internal_layout_info),
 				% Information on which values
 				% are live and where at which labels,
-				% for tracing. Accurate gc 
-		int,		% The maximum number of extra
+				% for tracing and/or accurate gc.
+		stackslot_max :: int,
+				% The maximum number of extra
 				% temporary stackslots that have been
 				% used during the procedure.
-		map(lval, slot_contents),
+		temp_contents :: map(lval, slot_contents),
 				% The temporary locations that have ever been
 				% used on the stack, and what they contain.
 				% Once we have used a stack slot to store
@@ -293,11 +302,12 @@
 				% which would make it impossible to describe
 				% to gc what the slot contains after the end
 				% of the branched control structure.
-		list(comp_gen_c_data),
+		comp_gen_c_data :: list(comp_gen_c_data),
 				% Static data structures created for this
 				% procedure which do not need to be scanned
 				% by llds_common.
-		int		% At each call to MR_trace, we compute the
+		max_reg_used :: int
+				% At each call to MR_trace, we compute the
 				% highest rN register number that contains
 				% a useful value. This slot contains the
 				% maximum of these highest values. Therefore
@@ -311,7 +321,8 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
-		ModuleInfo, CellCount, ResumePoint, TraceSlotInfo, CodeInfo) :-
+		ModuleInfo, CellCounter, ResumePoint, TraceSlotInfo, CodeInfo)
+		:-
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -359,8 +370,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 		TempsInUse,
 		DummyFailInfo,		% code_info__init_fail_info
 					% will override this dummy value
-		0,
-		CellCount,
+		counter__init(1),
+		CellCounter,
 		SaveSuccip,
 		LayoutMap,
 		0,
@@ -392,185 +403,46 @@ code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 
 %---------------------------------------------------------------------------%
 
-code_info__get_globals(SA, CI, CI) :-
-	CI  = code_info(SA, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_module_info(SB, CI, CI) :-
-	CI  = code_info(_, SB, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_pred_id(SC, CI, CI) :-
-	CI  = code_info(_, _, SC, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_proc_id(SD, CI, CI) :-
-	CI  = code_info(_, _, _, SD, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_proc_info(SE, CI, CI) :-
-	CI  = code_info(_, _, _, _, SE, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_varset(SF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, SF, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_var_slot_count(SG, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, SG, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_maybe_trace_info(SH, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, SH,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_forward_live_vars(LA, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		LA, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_instmap(LB, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, LB, _, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_zombies(LC, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, LC, _, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_exprn_info(LD, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, LD, _, _, _, _, _, _, _, _, _, _).
-
-code_info__get_temps_in_use(LE, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, LE, _, _, _, _, _, _, _, _, _).
-
-code_info__get_fail_info(LF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, LF, _, _, _, _, _, _, _, _).
-
-code_info__get_label_count(PA, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, PA, _, _, _, _, _, _, _).
-
-code_info__get_cell_count(PB, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, PB, _, _, _, _, _, _).
-
-code_info__get_succip_used(PC, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, PC, _, _, _, _, _).
-
-code_info__get_layout_info(PD, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, PD, _, _, _, _).
-
-code_info__get_max_temp_slot_count(PE, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, PE, _, _, _).
-
-code_info__get_temp_content_map(PF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, PF, _, _).
-
-code_info__get_non_common_static_data(PG, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, PG, _).
-
-code_info__get_max_reg_in_use_at_trace(PH, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, PH).
+code_info__get_globals(CI^globals, CI, CI).
+code_info__get_module_info(CI^module_info, CI, CI).
+code_info__get_pred_id(CI^pred_id, CI, CI).
+code_info__get_proc_id(CI^proc_id, CI, CI).
+code_info__get_proc_info(CI^proc_info, CI, CI).
+code_info__get_varset(CI^varset, CI, CI).
+code_info__get_var_slot_count(CI^var_slot_count, CI, CI).
+code_info__get_maybe_trace_info(CI^maybe_trace_info, CI, CI).
+code_info__get_forward_live_vars(CI^forward_live_vars, CI, CI).
+code_info__get_instmap(CI^instmap, CI, CI).
+code_info__get_zombies(CI^zombies, CI, CI).
+code_info__get_exprn_info(CI^exprn_info, CI, CI).
+code_info__get_temps_in_use(CI^temps_in_use, CI, CI).
+code_info__get_fail_info(CI^fail_info, CI, CI).
+code_info__get_label_counter(CI^label_num_src, CI, CI).
+code_info__get_cell_counter(CI^cell_num_src, CI, CI).
+code_info__get_succip_used(CI^store_succip, CI, CI).
+code_info__get_layout_info(CI^label_info, CI, CI).
+code_info__get_max_temp_slot_count(CI^stackslot_max, CI, CI).
+code_info__get_temp_content_map(CI^temp_contents, CI, CI).
+code_info__get_non_common_static_data(CI^comp_gen_c_data, CI, CI).
+code_info__get_max_reg_in_use_at_trace(CI^max_reg_used, CI, CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__set_maybe_trace_info(SH, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, _,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_forward_live_vars(LA, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_instmap(LB, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_zombies(LC, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_exprn_info(LD, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_temps_in_use(LE, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_fail_info(LF, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_label_count(PA, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_cell_count(PB, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_succip_used(PC, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_layout_info(PD, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_max_temp_slot_count(PE, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_temp_content_map(PF, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ , PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_non_common_static_data(PG, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, _ , PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
-
-code_info__set_max_reg_in_use_at_trace(PH, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, _ ),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_maybe_trace_info(TI, CI, CI^maybe_trace_info := TI).
+code_info__set_forward_live_vars(LV, CI, CI^forward_live_vars := LV).
+code_info__set_instmap(IM, CI, CI^instmap := IM).
+code_info__set_zombies(Zs, CI, CI^zombies := Zs).
+code_info__set_exprn_info(EI, CI, CI^exprn_info := EI).
+code_info__set_temps_in_use(TI, CI, CI^temps_in_use := TI).
+code_info__set_fail_info(FI, CI, CI^fail_info := FI).
+code_info__set_label_counter(LC, CI, CI^label_num_src := LC).
+code_info__set_cell_counter(CC, CI, CI^cell_num_src := CC).
+code_info__set_succip_used(SU, CI, CI^store_succip := SU).
+code_info__set_layout_info(LI, CI, CI^label_info := LI).
+code_info__set_max_temp_slot_count(TM, CI, CI^stackslot_max := TM).
+code_info__set_temp_content_map(CM, CI, CI^temp_contents := CM).
+code_info__set_non_common_static_data(CG, CI, CI^comp_gen_c_data := CG).
+code_info__set_max_reg_in_use_at_trace(MR, CI, CI^max_reg_used := MR).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -848,16 +720,16 @@ code_info__get_next_label(Label) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	code_info__get_label_count(N0),
-	{ N is N0 + 1 },
-	code_info__set_label_count(N),
+	code_info__get_label_counter(C0),
+	{ counter__allocate(N, C0, C) },
+	code_info__set_label_counter(C),
 	{ code_util__make_internal_label(ModuleInfo, PredId, ProcId, N,
 		Label) }.
 
 code_info__get_next_cell_number(N) -->
-	code_info__get_cell_count(N0),
-	{ N is N0 + 1 },
-	code_info__set_cell_count(N).
+	code_info__get_cell_counter(C0),
+	{ counter__allocate(N, C0, C) },
+	code_info__set_cell_counter(C).
 
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
@@ -963,7 +835,7 @@ code_info__remember_position(position_info(C), C, C).
 
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 		% The static fields in PosCI and CurCI should be identical.
-	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _, 
+	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _,
 		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _,  _ ),
 	CurCI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
 		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG, PH),
@@ -1154,7 +1026,7 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 
 :- type simple_neg_info.
 
-:- pred code_info__enter_simple_neg(set(prog_var)::in, hlds_goal_info::in, 
+:- pred code_info__enter_simple_neg(set(prog_var)::in, hlds_goal_info::in,
 	simple_neg_info::out, code_info::in, code_info::out) is det.
 
 :- pred code_info__leave_simple_neg(hlds_goal_info::in, simple_neg_info::in,
@@ -1802,7 +1674,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			],
 			MarkCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no, no) - ""
+					no, no, no, no) - ""
 			])
 		;
 			UseMinimalModel = no,
@@ -1880,7 +1752,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 			],
 			CutCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no, no)
+					no, no, no, no)
 					- "commit for temp frame hijack"
 			])
 		;
@@ -2575,22 +2447,20 @@ code_info__maybe_restore_trail_info(MaybeTrailSlots,
 		{ RestoreCode = empty }
 	;
 		{ MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot) },
-		{ CommitTrailCode = node([
+		{ CommitCode = node([
 			reset_ticket(lval(TrailPtrSlot), commit)
-				- "discard trail entries and restore trail ptr"
+				- "discard trail entries and restore trail ptr",
+			prune_tickets_to(lval(CounterSlot))
+				- "restore ticket counter (but not high water mark)"
 		]) },
-		{ RestoreTrailCode = node([
+		{ RestoreCode = node([
 			reset_ticket(lval(TrailPtrSlot), undo)
-				- "apply trail entries and restore trail ptr"
-		]) },
-		{ RestoreCounterCode = node([
-			discard_tickets_to(lval(CounterSlot))
-				- "restore the ticket counter"
+				- "apply trail entries and restore trail ptr",
+			discard_ticket
+				- "restore ticket counter and high water mark"
 		]) },
 		code_info__release_temp_slot(CounterSlot),
-		code_info__release_temp_slot(TrailPtrSlot),
-		{ CommitCode = tree(CommitTrailCode, RestoreCounterCode) },
-		{ RestoreCode = tree(RestoreTrailCode, RestoreCounterCode) }
+		code_info__release_temp_slot(TrailPtrSlot)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2788,6 +2658,15 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__release_ticket(lval, code_info, code_info).
 :- mode code_info__release_ticket(in, in, out) is det.
 
+:- pred code_info__reset_and_prune_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
+:- mode code_info__reset_and_prune_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__reset_prune_and_release_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
+:- mode code_info__reset_prune_and_release_ticket(in, in, out, in, out)
+	is det.
+
 :- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason,
 	code_tree, code_info, code_info).
 :- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
@@ -2807,6 +2686,15 @@ code_info__pickup_zombies(Zombies) -->
 
 :- pred code_info__maybe_release_ticket(maybe(lval), code_info, code_info).
 :- mode code_info__maybe_release_ticket(in, in, out) is det.
+
+:- pred code_info__maybe_reset_and_prune_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_and_prune_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__maybe_reset_prune_and_release_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_prune_and_release_ticket(in, in, out, in, out)
+	is det.
 
 :- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
@@ -2889,6 +2777,19 @@ code_info__reset_ticket(TicketSlot, Reason, Code) -->
 code_info__release_ticket(TicketSlot) -->
 	code_info__release_temp_slot(TicketSlot).
 
+code_info__reset_and_prune_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
+		prune_ticket - "Prune ticket stack"
+	]) }.
+
+code_info__reset_prune_and_release_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
+		prune_ticket - "Prune ticket stack"
+	]) },
+	code_info__release_temp_slot(TicketSlot).
+
 code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
 	{ Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
@@ -2925,6 +2826,22 @@ code_info__maybe_release_ticket(MaybeTicketSlot) -->
 		code_info__release_ticket(TicketSlot)
 	;
 		[]
+	).
+
+code_info__maybe_reset_and_prune_ticket(MaybeTicketSlot, Reason, Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__reset_and_prune_ticket(TicketSlot, Reason, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot, Reason,
+		Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__reset_prune_and_release_ticket(TicketSlot, Reason,
+			Code)
+	;
+		{ Code = empty }
 	).
 
 code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->

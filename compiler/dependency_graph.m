@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,6 +50,9 @@
 	% negation or aggregation are merged into the parent SCC. This makes
 	% the low-level RL optimizations more effective while maintaining
 	% stratification. 
+	% dead_proc_elim.m should be be run before this is called
+	% to avoid missing some opportunities for merging where
+	% a procedure is called from a dead procedure.
 :- pred module_info_ensure_aditi_dependency_info(module_info, module_info).
 :- mode module_info_ensure_aditi_dependency_info(in, out) is det.
 
@@ -271,9 +274,9 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	    DepGraph0 = DepGraph
 	).
 
-% There can be no dependencies within a pragma_c_code
-dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _), _,
-	DepGraph, DepGraph).
+% There can be no dependencies within a pragma_foreign_code
+dependency_graph__add_arcs_in_goal_2(
+	pragma_foreign_code(_, _, _, _, _, _, _, _), _, DepGraph, DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(bi_implication(LHS, RHS), Caller, 
 		DepGraph0, DepGraph) :-
@@ -603,8 +606,8 @@ dependency_graph__build_aditi_scc_info([SCC | SCCs]) -->
 		{ list__member(PredProcId, SCC) },
 		{ PredProcId = proc(PredId, _) },
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ check_marker(Markers, aditi) }
+		{ hlds_pred__pred_info_is_aditi_relation(PredInfo) },
+		{ \+ hlds_pred__pred_info_is_base_relation(PredInfo) }
 	->
 		aditi_scc_info_add_scc(SCC, SCCs, SCCid),
 		list__foldl(dependency_graph__process_aditi_pred_proc_id(SCCid),
@@ -627,7 +630,17 @@ dependency_graph__process_aditi_pred_proc_id(SCCid, PredProcId) -->
 	proc_info::in, aditi_scc_info::in, aditi_scc_info::out) is det.
 
 dependency_graph__process_aditi_proc_info(CurrSCC, PredInfo, ProcInfo) -->
-	( { pred_info_is_exported(PredInfo) } ->
+	(
+		{ pred_info_is_exported(PredInfo) }
+	->
+		aditi_scc_info_add_no_merge_scc(CurrSCC)
+	;
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ check_marker(Markers, context) }
+	->
+		% The context transformation can only be applied
+		% to a single predicate SCC, so don't merge
+		% other SCCs with a context-transformed SCC.
 		aditi_scc_info_add_no_merge_scc(CurrSCC)
 	;
 		[]
@@ -691,7 +704,7 @@ process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _,
 	).
 process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, 
 		Map, Map) --> [].
-process_aditi_goal(_IsNeg, pragma_c_code(_, _, _, _, _, _, _) - _,
+process_aditi_goal(_IsNeg, pragma_foreign_code(_, _, _, _, _, _, _, _) - _,
 		Map, Map) --> [].
 process_aditi_goal(_, bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now
@@ -703,7 +716,8 @@ process_aditi_goal(_, bi_implication(_, _) - _, _, _) -->
 		aditi_dependency_ordering::out) is det.
 
 dependency_graph__merge_aditi_sccs(Info, Ordering) :-
-	Info = aditi_scc_info(_, _PredSCC, SCCPred, _, SCCRel, NoMerge, _),
+	Info = aditi_scc_info(ModuleInfo, _PredSCC, SCCPred,
+			_, SCCRel, NoMerge, _),
 	( relation__tsort(SCCRel, SCCTsort) ->
 		eqvclass__init(EqvSCCs0),
 		set__init(MergedSCCs),
@@ -712,24 +726,42 @@ dependency_graph__merge_aditi_sccs(Info, Ordering) :-
 				eqvclass__new_element(Eqv0, Elem, Eqv)	
 			)),
 		list__foldl(AddElement, SCCTsort, EqvSCCs0, EqvSCCs),
-		dependency_graph__merge_aditi_sccs_2(SCCTsort, EqvSCCs, 
-			MergedSCCs, NoMerge, SCCRel, SCCPred, [], Ordering)
+		dependency_graph__merge_aditi_sccs_2(SCCTsort, ModuleInfo,
+			EqvSCCs, MergedSCCs, NoMerge, SCCRel,
+			SCCPred, [], Ordering)
 	;
 		error("dependency_graph__merge_aditi_sccs: SCC dependency relation is cyclic")
 	).
 
 :- pred dependency_graph__merge_aditi_sccs_2(list(scc_id)::in,
-	eqvclass(scc_id)::in, set(scc_id)::in, set(scc_id)::in,
-	relation(scc_id)::in, scc_pred_map::in, 
+	module_info::in, eqvclass(scc_id)::in, set(scc_id)::in,
+	set(scc_id)::in, relation(scc_id)::in, scc_pred_map::in, 
 	aditi_dependency_ordering::in, aditi_dependency_ordering::out) is det.
 
-dependency_graph__merge_aditi_sccs_2([], _, _, _, _, _, Ordering, Ordering).
-dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], EqvSCCs0, 
+dependency_graph__merge_aditi_sccs_2([], _, _, _, _, _, _, Ordering, Ordering).
+dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], ModuleInfo, EqvSCCs0, 
 		MergedSCCs0, NoMergeSCCs, SCCRel, 
 		SCCPreds, Ordering0, Ordering) :-
-	( set__member(SCCid, MergedSCCs0) ->
+	(
+		set__member(SCCid, MergedSCCs0)
+	->
 			% This SCC has been merged into its parent.
 		Ordering1 = Ordering0,
+		EqvSCCs = EqvSCCs0,
+		SCCs = SCCs0
+	; 
+		map__lookup(SCCPreds, SCCid, SCC0 - EntryPoints), 
+		some [PredProcId] (
+			list__member(proc(PredId, _), SCC0),
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
+			pred_info_get_markers(PredInfo, Markers),
+			check_marker(Markers, context)
+		)
+	->
+		% Don't merge predicates for which the context
+		% transformation has been requested with other SCCs --
+		% their magic predicates are incompatible.
+		Ordering1 = [aditi_scc([SCC0], EntryPoints) | Ordering0],
 		EqvSCCs = EqvSCCs0,
 		SCCs = SCCs0
 	;
@@ -742,8 +774,9 @@ dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], EqvSCCs0,
 			aditi_scc([SCC0], EntryPoints), SCC),
 		Ordering1 = [SCC | Ordering0]
 	),
-	dependency_graph__merge_aditi_sccs_2(SCCs, EqvSCCs, MergedSCCs0,
-		NoMergeSCCs, SCCRel, SCCPreds, Ordering1, Ordering).
+	dependency_graph__merge_aditi_sccs_2(SCCs, ModuleInfo, EqvSCCs,
+		MergedSCCs0, NoMergeSCCs, SCCRel, SCCPreds,
+		Ordering1, Ordering).
 
 	% Find the SCCs called from a given SCC.
 :- pred dependency_graph__get_called_scc_ids(scc_id::in, relation(scc_id)::in,

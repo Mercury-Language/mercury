@@ -83,16 +83,6 @@
 :- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out, out,
 		in, out) is det.
 
-        % Generate the appropriate MLDS type for a continuation function
-        % for a nondet procedure whose output arguments have the
-        % specified types.
-        % 
-        %
-:- pred ml_gen_cont_params(list(mlds__type), mlds__func_params,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_cont_params(in, out, in, out) is det.
-
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -100,7 +90,6 @@
 :- import_module hlds_module.
 :- import_module builtin_ops.
 :- import_module type_util, mode_util.
-:- import_module options, globals.
 
 :- import_module bool, int, string, std_util, term, varset, require, map.
 
@@ -141,7 +130,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	%
 	% insert the `closure_arg' parameter
 	%
-	{ ClosureArgType = mlds__generic_type },
+	{ ClosureArgType = mlds__generic_env_ptr_type },
 	{ ClosureArg = data(var("closure_arg")) - ClosureArgType },
 	{ Params0 = mlds__func_params(ArgParams0, RetParam) },
 	{ Params = mlds__func_params([ClosureArg | ArgParams0], RetParam) },
@@ -201,9 +190,8 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	ml_gen_var_list(ArgVars, ArgLvals),
 	ml_variable_types(ArgVars, ActualArgTypes),
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
-		ArgModes, CodeModel, Context,
-		InputRvals, OutputLvals, OutputTypes,
-		ConvArgDecls, ConvOutputStatements),
+		ArgModes, Context, InputRvals, OutputLvals, ConvArgDecls,
+		ConvOutputStatements),
 	{ ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)) },
 
 	%
@@ -216,7 +204,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	%
 	{ ObjectRval = no },
 	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
-		[ClosureRval | InputRvals], OutputLvals, OutputTypes,
+		[ClosureRval | InputRvals], OutputLvals,
 		CodeModel, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
@@ -312,9 +300,8 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	% to pass as the function call's arguments and return values
 	%
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-		ArgModes, CodeModel, Context,
-		InputRvals, OutputLvals, OutputTypes,
-		ConvArgDecls, ConvOutputStatements),
+		ArgModes, Context, InputRvals, OutputLvals, ConvArgDecls,
+		ConvOutputStatements),
 
 	%
 	% Construct a closure to generate the call
@@ -325,7 +312,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	%
 	{ ObjectRval = no },
 	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
-		InputRvals, OutputLvals, OutputTypes, CodeModel, Context) },
+		InputRvals, OutputLvals, CodeModel, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
 		DoGenCall(MLDS_Decls, MLDS_Statements)
@@ -359,28 +346,24 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 
 	%
 	% This generates a call in the specified code model.
-	% This is a lower-level routine called by both ml_gen_call
+	% This is a lower-level routine called by both ml_gen_call_parts
 	% and ml_gen_generic_call.
 	%
 :- pred ml_gen_mlds_call(mlds__func_signature, maybe(mlds__rval), mlds__rval,
-		list(mlds__rval), list(mlds__lval), list(mlds__type),
-		code_model, prog_context, mlds__defns, mlds__statements,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_mlds_call(in, in, in, in, in, in, in, in, out, out, in, out)
-		is det.
+		list(mlds__rval), list(mlds__lval), code_model, prog_context,
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_mlds_call(in, in, in, in, in, in, in, out, out, in, out) is det.
 
 ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
-		RetTypes0, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
+		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	%
-	% append the extra arguments or return val for this code_model
+	% append the extra argument or return val for this code_model
 	%
 	(
 		{ CodeModel = model_non },
-		% create a new success continuation, if necessary
-		ml_gen_success_cont(RetTypes0, RetLvals0, Context,
-			Cont, ContDecls),
-		% append the success continuation to the ordinary arguments
-		{ Cont = success_cont(FuncPtrRval, EnvPtrRval, _, _) },
+		% pass the current success continuation
+		ml_gen_info_current_success_cont(Cont),
+		{ Cont = success_cont(FuncPtrRval, EnvPtrRval) },
 		ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
 		( { UseNestedFuncs = yes } ->
 			{ ArgRvals = list__append(ArgRvals0, [FuncPtrRval]) }
@@ -388,29 +371,17 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 			{ ArgRvals = list__append(ArgRvals0,
 				[FuncPtrRval, EnvPtrRval]) }
 		),
-		% for --nondet-copy-out, the output arguments will be
-		% passed to the continuation rather than being returned
-		ml_gen_info_get_globals(Globals),
-		{ globals__lookup_bool_option(Globals, nondet_copy_out,
-			NondetCopyOut) },
-		( { NondetCopyOut = yes } ->
-			{ RetLvals = [] }
-		;
-			{ RetLvals = RetLvals0 }
-		),
-		{ MLDS_Decls = ContDecls }
+		{ RetLvals = RetLvals0 }
 	;
 		{ CodeModel = model_semi },
 		% return a bool indicating whether or not it succeeded
 		ml_success_lval(Success),
 		{ ArgRvals = ArgRvals0 },
-		{ RetLvals = list__append([Success], RetLvals0) },
-		{ MLDS_Decls = [] }
+		{ RetLvals = list__append([Success], RetLvals0) }
 	;
 		{ CodeModel = model_det },
 		{ ArgRvals = ArgRvals0 },
-		{ RetLvals = RetLvals0 },
-		{ MLDS_Decls = [] }
+		{ RetLvals = RetLvals0 }
 	),
 
 	%
@@ -421,102 +392,8 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 			CallOrTailcall) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) },
-	{ MLDS_Statements = [MLDS_Statement] }.
-
-:- pred ml_gen_success_cont(list(mlds__type), list(mlds__lval), prog_context,
-		success_cont, mlds__defns, ml_gen_info, ml_gen_info).
-:- mode ml_gen_success_cont(in, in, in, out, out, in, out) is det.
-
-ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
-		Cont, ContDecls) -->
-	ml_gen_info_current_success_cont(CurrentCont),
-	{ CurrentCont = success_cont(_FuncPtrRval, _EnvPtrRval,
-		CurrentContArgTypes, CurrentContArgLvals) },
-	(
-		%
-		% As an optimization, check if the parameters expected by
-		% the current continuation are the same as the ones
-		% expected by the new continuation that we're generating;
-		% if so, we can just use the current continuation rather
-		% than creating a new one.
-		%
-		{ CurrentContArgTypes = OutputArgTypes },
-		{ CurrentContArgLvals = OutputArgLvals }
-	->
-		{ Cont = CurrentCont },
-		{ ContDecls = [] }
-	;
-		% 
-		% Create a new continuation function
-		% that just copies the outputs to locals
-		% and then calls the original current continuation
-		%
-		ml_gen_cont_params(OutputArgTypes, Params),
-		ml_gen_new_func_label(yes(Params),
-			ContFuncLabel, ContFuncLabelRval),
-		/* push nesting level */
-		ml_gen_copy_args_to_locals(OutputArgLvals, Context,
-			CopyDecls, CopyStatements),
-		ml_gen_call_current_success_cont(Context, CallCont),
-		{ CopyStatement = ml_gen_block(CopyDecls,
-			list__append(CopyStatements, [CallCont]), Context) },
-		/* pop nesting level */
-		ml_gen_label_func(ContFuncLabel, Params, Context,
-			CopyStatement, ContFuncDefn),
-		{ ContDecls = [ContFuncDefn] },
-
-		ml_get_env_ptr(EnvPtrRval),
-		{ NewSuccessCont = success_cont(ContFuncLabelRval,
-			EnvPtrRval, OutputArgTypes, OutputArgLvals) },
-		ml_gen_info_push_success_cont(NewSuccessCont),
-		{ Cont = NewSuccessCont }
-	).
-
-ml_gen_cont_params(OutputArgTypes, Params) -->
-	ml_gen_cont_params_2(OutputArgTypes, 1, Args0),
-	ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
-	( { UseNestedFuncs = yes } ->
-		{ Args = Args0 }
-	;
-		ml_declare_env_ptr_arg(EnvPtrArg),
-		{ Args = list__append(Args0, [EnvPtrArg]) }
-	),
-	{ Params = mlds__func_params(Args, []) }.
-
-:- pred ml_gen_cont_params_2(list(mlds__type), int, mlds__arguments,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_cont_params_2(in, in, out, in, out) is det.
-
-ml_gen_cont_params_2([], _, []) --> [].
-ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) -->
-	{ ArgName = ml_gen_arg_name(ArgNum) },
-	{ Argument = data(var(ArgName)) - Type },
-	ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
-
-:- pred ml_gen_copy_args_to_locals(list(mlds__lval), prog_context,
-		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_copy_args_to_locals(in, in, out, out, in, out) is det.
-
-ml_gen_copy_args_to_locals(ArgLvals, Context, CopyDecls, CopyStatements) -->
-	{ CopyDecls = [] },
-	ml_gen_copy_args_to_locals_2(ArgLvals, 1, Context, CopyStatements).
-
-:- pred ml_gen_copy_args_to_locals_2(list(mlds__lval), int, prog_context,
-		mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_copy_args_to_locals_2(in, in, in, out, in, out) is det.
-
-ml_gen_copy_args_to_locals_2([], _, _, []) --> [].
-ml_gen_copy_args_to_locals_2([LocalLval | LocalLvals], ArgNum, Context,
-		[Statement | Statements]) -->
-	{ ArgName = ml_gen_arg_name(ArgNum) },
-	ml_qualify_var(ArgName, ArgLval),
-	{ Statement = ml_gen_assign(LocalLval, lval(ArgLval), Context) },
-	ml_gen_copy_args_to_locals_2(LocalLvals, ArgNum + 1, Context,
-		Statements).
-
-:- func ml_gen_arg_name(int) = string.
-ml_gen_arg_name(ArgNum) = ArgName :-
-	string__format("arg%d", [i(ArgNum)], ArgName).
+	{ MLDS_Statements = [MLDS_Statement] },
+	{ MLDS_Decls = [] }.
 
 %
 % Generate an rval containing the address of the specified procedure
@@ -536,15 +413,14 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 % Generate rvals and lvals for the arguments of a procedure call
 %
 :- pred ml_gen_arg_list(list(var_name), list(mlds__lval), list(prog_type),
-		list(prog_type), list(mode), code_model, prog_context,
-		list(mlds__rval), list(mlds__lval), list(mlds__type),
-		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_arg_list(in, in, in, in, in, in, in, out, out, out, out, out,
+		list(prog_type), list(mode), prog_context, list(mlds__rval),
+		list(mlds__lval), mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_arg_list(in, in, in, in, in, in, out, out, out, out,
 		in, out) is det.
 
-ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
-		Context, InputRvals, OutputLvals, OutputTypes,
-		ConvDecls, ConvOutputStatements) -->
+ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
+		InputRvals, OutputLvals, ConvDecls, ConvOutputStatements) -->
 	(
 		{ VarNames = [] },
 		{ VarLvals = [] },
@@ -554,7 +430,6 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 	->
 		{ InputRvals = [] },
 		{ OutputLvals = [] },
-		{ OutputTypes = [] },
 		{ ConvDecls = [] },
 		{ ConvOutputStatements = [] }
 	;
@@ -565,20 +440,17 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 		{ Modes = [Mode | Modes1] }
 	->
 		ml_gen_arg_list(VarNames1, VarLvals1,
-			CallerTypes1, CalleeTypes1, Modes1, CodeModel, Context,
-			InputRvals1, OutputLvals1, OutputTypes1,
+			CallerTypes1, CalleeTypes1, Modes1, Context,
+			InputRvals1, OutputLvals1,
 			ConvDecls1, ConvOutputStatements1),
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-		(
-			{ type_util__is_dummy_argument_type(CalleeType) }
-		->
+		( { type_util__is_dummy_argument_type(CalleeType) } ->
 			%
 			% exclude arguments of type io__state etc.
 			%
 			{ InputRvals = InputRvals1 },
 			{ OutputLvals = OutputLvals1 },
-			{ OutputTypes = OutputTypes1 },
 			{ ConvDecls = ConvDecls1 },
 			{ ConvOutputStatements = ConvOutputStatements1 }
 		; { mode_to_arg_mode(ModuleInfo, Mode, CalleeType, top_in) } ->
@@ -600,7 +472,6 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 				VarRval, ArgRval),
 			{ InputRvals = [ArgRval | InputRvals1] },
 			{ OutputLvals = OutputLvals1 },
-			{ OutputTypes = OutputTypes1 },
 			{ ConvDecls = ConvDecls1 },
 			{ ConvOutputStatements = ConvOutputStatements1 }
 		;
@@ -615,28 +486,25 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 				ConvDecls1) },
 			{ ConvOutputStatements = list__append(
 				ThisArgConvOutput, ConvOutputStatements1) },
-			ml_gen_info_get_globals(Globals),
-			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
 			(
+		/************
 				%
 				% if the target language allows multiple
 				% return values, then use them
 				%
-				{ CopyOut = yes }
+				{ UseMultipleOutputs = yes }
 			->
-				{ InputRvals = InputRvals1 },
+				{ InputRvals = InputLvals1 },
 				{ OutputLvals = [ArgLval | OutputLvals1] },
-				ml_gen_type(CalleeType, OutputType),
-				{ OutputTypes = [OutputType | OutputTypes1] }
 			;
+		************/
 				%
 				% otherwise use the traditional C style
 				% of passing the address of the output value
 				%
 				{ InputRvals = [ml_gen_mem_addr(ArgLval)
 					| InputRvals1] },
-				{ OutputLvals = OutputLvals1 },
-				{ OutputTypes = OutputTypes1 }
+				{ OutputLvals = OutputLvals1 }
 			)
 		)
 	;

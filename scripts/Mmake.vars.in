@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -121,9 +121,10 @@ LIB_C2INITARGS	= $(patsubst %,%.init,$(ALL_EXTRA_LIBRARIES))
 
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
-		  $(ALL_CFLAGS)
+		  $(LIB_MGNUCFLAGS) $(ALL_CFLAGS)
 MGNUCFLAGS	=
 EXTRA_MGNUCFLAGS =
+LIB_MGNUCFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 ALL_CFLAGS	= $(CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CFLAGS)
 CFLAGS		=
@@ -178,10 +179,11 @@ ALL_MSPFLAGS	= $(MSPFLAGS) $(EXTRA_MSPFLAGS) $(TARGET_MSPFLAGS)
 MSPFLAGS	=
 EXTRA_MSPFLAGS	=
 
-AR		= ar
+AR		= @AR@
 ALL_ARFLAGS	= $(ARFLAGS) $(EXTRA_ARFLAGS) $(TARGET_ARFLAGS)
-ARFLAGS		= cr
+ARFLAGS		= @ARFLAGS@
 EXTRA_ARFLAGS	=
+AR_LIBFILE_OPT	= @AR_LIBFILE_OPT@
 
 RANLIB		= @RANLIB@
 ALL_RANLIBFLAGS	= $(RANLIBFLAGS) $(EXTRA_RANLIBFLAGS) $(TARGET_RANLIBFLAGS)
@@ -404,6 +406,13 @@ default_target: main_target
 
 #-----------------------------------------------------------------------------#
 
+# Specify commands for installing things.
+
+INSTALL = cp
+INSTALL_MKDIR = mkdir -p
+
+#-----------------------------------------------------------------------------#
+
 # Specify the locations for installing things.
 # These directories can all be modified independantly.
 # In particular, you might want to find a better place for the DVI and
@@ -464,5 +473,16 @@ FINAL_INSTALL_MERC_LIB_DIR = \
 
 # Specify the additional compilation models to install by default
 LIBGRADES		= @LIBGRADES@
+
+#-----------------------------------------------------------------------------#
+
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in @OBJFILE_OPT@
+empty_string=
+OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
+
+EXT_FOR_EXE=@EXE_SUFFIX@
+O=@OBJ_SUFFIX@
+A=@LIB_SUFFIX@
 
 #-----------------------------------------------------------------------------#

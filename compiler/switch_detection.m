@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -216,8 +216,8 @@ detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
 		VarTypes, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
 
-detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, _, _,
-		pragma_c_code(A,B,C,D,E,F,G)).
+detect_switches_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), _, _, _, _,
+		pragma_foreign_code(A,B,C,D,E,F,G,H)).
 detect_switches_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("detect_switches_in_goal_2: unexpected bi_implication").
@@ -592,24 +592,10 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, ModuleInfo,
 :- pred switch_covers_all_cases(sorted_case_list, type, module_info).
 :- mode switch_covers_all_cases(in, in, in) is semidet.
 
-switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-
-	Type = term__functor(term__atom("character"), [], _),
-	% XXX the following code uses the source machine's character size,
-	% not the target's, so it won't work if cross-compiling to a
-	% machine with a different size character.
-	char__max_char_value(MaxChar),
-	char__min_char_value(MinChar),
-	NumChars is MaxChar - MinChar + 1,
-	list__length(CasesList, NumChars).
-
 switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
-	type_to_type_id(Type, TypeId, _),
-	module_info_types(ModuleInfo, TypeTable),
-	map__search(TypeTable, TypeId, TypeDefn),
-	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = du_type(_, ConsTable, _, _),
-	map__keys(ConsTable, Constructors),
-	list__same_length(CasesList, Constructors).
+	type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors),
+	list__length(CasesList, NumCases),
+	NumCases = NumFunctors.
 
 	% convert the assoc_list(cons_id, list(hlds_goal) back into
 	% a plain list(case).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,6 +71,21 @@
 %	which means it's inefficient and that the compiler can't deduce
 %	that it is semidet.  Use list__remove_suffix instead.
 % :- mode list__append(out, in, in) is semidet.
+
+	% associativity of append
+:- promise all [A, B, C, ABC]
+	(
+		( some [AB]
+			(list__append(A, B, AB), list__append(AB, C, ABC)) )
+	<=>
+		( some [BC]
+			(list__append(B, C, BC), list__append(A, BC, ABC)) )
+	).
+	% construction equivalence law.
+	% XXX when we implement rewrite rules, we should change this law
+	% to a rewrite rule.
+:- promise all [L,H,T] ( append([H], T, L) <=> L = [H|T] ).
+
 
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that
@@ -293,7 +308,11 @@
 
 	% list__zip(ListA, ListB, List):
 	%	List is the result of alternating the elements
-	%	of ListA and ListB.  When one of the lists goes to empty,
+	%	of ListA and ListB, starting with the first element
+	%	of ListA (followed by the first element of ListB,
+	%	then the second element of listA, then the second
+	%	element of ListB, etc.).  When there are no more
+	%	elements remaining in one of the lists,
 	% 	the remainder of the nonempty list is appended.
 	%
 :- pred list__zip(list(T), list(T), list(T)).
@@ -398,7 +417,7 @@
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
 	% each element of InList (working left-to-right) to transform
-	% InList into OutList.  The final value of the acumulator is
+	% InList into OutList.  The final value of the accumulator is
 	% returned in End.
 :- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
@@ -480,7 +499,6 @@
 	list(X), list(X), list(X)).
 :- mode list__merge_and_remove_dups(pred(in, in, out) is det,
 	in, in, out) is det.
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

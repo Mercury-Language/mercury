@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module llds_out.
+:- import_module rtti, llds_out.
 :- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info
@@ -123,6 +123,8 @@ llds_common__process_data(
 		comp_gen_c_data(Name, DataName, Export, Args, ArgTypes, Refs),
 		Info0, Info) :-
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info).
+llds_common__process_data(rtti_data(RttiData), rtti_data(RttiData),
+		Info, Info).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.
@@ -136,9 +138,11 @@ llds_common__process_procs([Proc0 | Procs0], [Proc | Procs], Info0, Info) :-
 	common_info::in, common_info::out) is det.
 
 llds_common__process_proc(Proc0, Proc, Info0, Info) :-
-	Proc0 = c_procedure(Name, Arity, PredProcId, Instrs0),
+	Proc0 = c_procedure(Name, Arity, PredProcId, Instrs0,
+		ProcLabel, N, Reconstruction),
 	llds_common__process_instrs(Instrs0, Instrs, Info0, Info),
-	Proc = c_procedure(Name, Arity, PredProcId, Instrs).
+	Proc = c_procedure(Name, Arity, PredProcId, Instrs,
+		ProcLabel, N, Reconstruction).
 
 :- pred llds_common__process_instrs(list(instruction)::in,
 	list(instruction)::out, common_info::in, common_info::out) is det.
@@ -214,6 +218,10 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		llds_common__process_rval(Rval0, Rval, Info0, Info),
 		Instr = restore_hp(Rval)
 	;
+		Instr0 = free_heap(_),
+		Instr = Instr0,
+		Info = Info0
+	;
 		Instr0 = store_ticket(_),
 		Instr = Instr0,
 		Info = Info0
@@ -227,11 +235,15 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		Instr = Instr0,
 		Info = Info0
 	;
+		Instr0 = prune_ticket,
+		Instr = Instr0,
+		Info = Info0
+	;
 		Instr0 = mark_ticket_stack(_),
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = discard_tickets_to(_),
+		Instr0 = prune_tickets_to(_),
 		Instr = Instr0,
 		Info = Info0
 	;
@@ -259,7 +271,7 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = pragma_c(_, _, _, _, _, _),
+		Instr0 = pragma_c(_, _, _, _, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	).
@@ -276,7 +288,8 @@ llds_common__process_rval(Rval0, Rval, Info0, Info) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, ArgTypes, StatDyn, _LabelNo, _Msg),
+		Rval0 = create(Tag, Args, ArgTypes, StatDyn,
+				_LabelNo, _Msg, _Reuse),
 		( StatDyn \= must_be_dynamic ->
 			llds_common__process_create(Tag, Args, ArgTypes, Rval,
 				Info0, Info)
@@ -324,19 +337,25 @@ llds_common__process_rvals([Rval0 | Rvals0], [Rval | Rvals], Info0, Info) :-
 	llds_common__process_rval(Rval0, Rval, Info0, Info1),
 	llds_common__process_rvals(Rvals0, Rvals, Info1, Info).
 
-:- pred llds_common__process_maybe_rvals(list(maybe(rval))::in,
-	list(maybe(rval))::out,	common_info::in, common_info::out) is det.
+:- pred llds_common__process_maybe_rval(maybe(rval)::in,
+	maybe(rval)::out, common_info::in, common_info::out) is det.
 
-llds_common__process_maybe_rvals([], [], Info, Info).
-llds_common__process_maybe_rvals([MaybeRval0 | MaybeRvals0],
-		[MaybeRval | MaybeRvals], Info0, Info) :-
+llds_common__process_maybe_rval(MaybeRval0, MaybeRval, Info0, Info) :-
 	(
 		MaybeRval0 = yes(Rval0),
-		llds_common__process_rval(Rval0, Rval, Info0, Info1),
+		llds_common__process_rval(Rval0, Rval, Info0, Info),
 		MaybeRval = yes(Rval)
 	;
 		MaybeRval0 = no,
 		MaybeRval = no,
-		Info1 = Info0
-	),
+		Info = Info0
+	).
+
+:- pred llds_common__process_maybe_rvals(list(maybe(rval))::in,
+	list(maybe(rval))::out, common_info::in, common_info::out) is det.
+
+llds_common__process_maybe_rvals([], [], Info, Info).
+llds_common__process_maybe_rvals([MaybeRval0 | MaybeRvals0],
+		[MaybeRval | MaybeRvals], Info0, Info) :-
+	llds_common__process_maybe_rval(MaybeRval0, MaybeRval, Info0, Info1),
 	llds_common__process_maybe_rvals(MaybeRvals0, MaybeRvals, Info1, Info).

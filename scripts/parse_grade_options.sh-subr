@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -18,6 +18,21 @@
 # init_grade_options.sh-subr.
 #
 #---------------------------------------------------------------------------#
+
+	--high-level-code|-H)
+		highlevel_code=true ;;
+	--no-high-level-code|-H-)
+		highlevel_code=false ;;
+
+	--high-level-data)
+		highlevel_data=true ;;
+	--no-high-level-data)
+		highlevel_data=false ;;
+
+	--gcc-nested-functions)
+		gcc_nested_functions=true ;;
+	--no-gcc-nested-functions)
+		gcc_nested_functions=false ;;
 
 	--asm-labels)
 		asm_labels=true ;;
@@ -148,6 +163,9 @@
 		# may also require changes to all the files indicated by
 		# runtime/mercury_grade.h.
 
+		highlevel_code=false
+		gcc_nested_functions=false
+		highlevel_data=false
 		asm_labels=false
 		non_local_gotos=false
 		global_regs=false
@@ -170,35 +188,85 @@
 		for grade_piece in $grade_pieces
 		do
 			case "$grade_piece" in
+				hl)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
+					;;
+				hlc)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
+				hl_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=true
+					highlevel_data=true
+					;;
+				hlc_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=true
+					highlevel_data=false
+					;;
 				asm_fast)
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 				asm_jump)
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 				fast)
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 				jump)
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 				reg)
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=true
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 				none)
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
+					highlevel_code=false
+					gcc_nested_functions=false
+					highlevel_data=false
 					;;
 
 				par)
@@ -286,6 +354,11 @@
 				debug)
 					stack_trace=true
 					require_tracing=true
+					;;
+				*)
+					echo "$0: unknown grade component" \
+						"\`$grade_piece'" 1>&2
+					exit 1
 					;;
 			esac
 		done

@@ -1,6 +1,6 @@
 /*****************************************************************
     File   : test_glb.c
-    RCS    : $Id: test_glb.c,v 1.1 2000-03-10 05:17:22 dmo Exp $
+    RCS    : $Id: test_glb.c,v 1.1.2.1 2000-09-21 01:27:43 dgj Exp $
     Author : Peter Schachte
     Origin : Thu Jul 13 14:25:12 1995
     Purpose: Timing test for bryant graph glb code

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne.
+# Copyright (C) 1995-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -25,7 +25,7 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 
 # maximum number of calls to put in a single function
 maxcalls=40
-defentry=mercury__main_2_0
+defentry_opt=""
 init_opt=""
 trace_opt=""
 library_opt=""
@@ -70,7 +70,7 @@ Options:
 		locate \`.init' files.
 	-w <label>, --entry-point <label>
 		Set entry point to <label>.
-		(Default value is \`mercury__main_2_0'.)
+		(Default value corresponds to main/2.)
 	-x, --extra-inits
 		Search \`.c' files for extra initialization functions.
 		(This may be necessary if the C files contain
@@ -87,9 +87,9 @@ Environment variables:
 while true; do
 	case "$1" in
 	-a|--aditi)
-		aditi_opt="-a"; shift;;	
+		aditi_opt="-a";;	
 	-a-|--no-aditi)
-		aditi_opt=""; shift;;	
+		aditi_opt="";;	
 	-c|--max-calls)
 		maxcalls="$2"; shift;;
 
@@ -109,7 +109,7 @@ while true; do
 		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
 
 	-w|--entry-point)
-		defentry="$2"; shift;;
+		defentry_opt="-w$2"; shift;;
 
 	-x|--extra-inits)
 		extra_inits_opt="-x";;
@@ -170,11 +170,11 @@ esac
 
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
-		$library_opt -w"$defentry" $extra_inits_opt \
+		$library_opt $defentry_opt $extra_inits_opt \
 		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
-		$library_opt -w"$defentry" $extra_inits_opt \
+		$library_opt $defentry_opt $extra_inits_opt \
 		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
 	   ;;
 esac

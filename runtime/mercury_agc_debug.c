@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,7 +19,7 @@
 ** Function prototypes.
 */
 static	void	dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone,
-			Word * stack_pointer, Word *current_frame,
+			MR_Word * stack_pointer, MR_Word *current_frame,
 			bool do_regs);
 
 /*---------------------------------------------------------------------------*/
@@ -28,7 +28,7 @@ static	void	dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone,
 void
 MR_agc_dump_roots(MR_RootList roots)
 {
-	Word	saved_regs[MAX_FAKE_REG];
+	MR_Word	saved_regs[MAX_FAKE_REG];
 
 	fflush(NULL);
 	fprintf(stderr, "Dumping roots\n");
@@ -52,7 +52,7 @@ MR_agc_dump_roots(MR_RootList roots)
 		MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
 
 		fflush(NULL);
-		MR_write_variable((Word) roots->type_info, *roots->root);
+		MR_write_variable((MR_Word) roots->type_info, *roots->root);
 		fflush(NULL);
 		fprintf(stderr, "\n");
 
@@ -67,15 +67,15 @@ MR_agc_dump_roots(MR_RootList roots)
 
 void
 MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
-	Word *stack_pointer, Word *current_frame)
+	MR_Word *stack_pointer, MR_Word *current_frame)
 {
-	Word saved_regs[MAX_FAKE_REG];
+	MR_Word saved_regs[MAX_FAKE_REG];
 	int i, var_count;
 	const MR_Stack_Layout_Vars *vars;
-	Word *type_params, type_info, value;
+	MR_Word *type_params, type_info, value;
 	MR_Stack_Layout_Entry *entry_layout;
 	const MR_Stack_Layout_Label *layout;
-	const Code *success_ip;
+	const MR_Code *success_ip;
 	bool top_frame = TRUE;
 
 	layout = label->i_layout;
@@ -179,7 +179,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 				fatal_error("can only handle stackvars");
 			}
 			                                
-			success_ip = (Code *) 
+			success_ip = (MR_Code *) 
 				MR_based_stackvar(stack_pointer, number);
 			stack_pointer = stack_pointer - 
 				entry_layout->MR_sle_stack_slots;
@@ -194,11 +194,11 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 }
 
 static void
-dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
-	Word *current_frame, bool do_regs)
+dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, MR_Word *stack_pointer,
+	MR_Word *current_frame, bool do_regs)
 {
 	int	locn_num;
-	Word	value = 0;
+	MR_Word	value = 0;
 	int	difference;
 	bool 	have_value = FALSE;
 
@@ -263,9 +263,9 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			break;
 	}
 	if (have_value) {
-		if (value >= (Word) heap_zone->min && 
-				value < (Word) heap_zone->hardmax) {
-			difference = (Word *) value - (Word *) heap_zone->min;
+		if (value >= (MR_Word) heap_zone->min && 
+				value < (MR_Word) heap_zone->hardmax) {
+			difference = (MR_Word *) value - (MR_Word *) heap_zone->min;
 			fprintf(stderr, "\thp[%d]\t(%lx)", difference,
 				(long) value);
 		} else {

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -26,6 +26,7 @@ Grade options:
 	--asm-labels
 	--gcc-non-local-gotos
 	--gcc-global-registers
+	-H, --high-level-code
 	--parallel
 	--gc {conservative, accurate, none}
 	-p, --profiling
@@ -44,7 +45,14 @@ Grade options:
 		of the Mercury User's Guide."
 
 # --profile-deep is not yet documented because it is not yet implemented
+# --gcc-nested-functions is not yet documented because it is not yet stable
+# --high-level-data is not yet documented because it is not yet implemented
+# --high-level is not yet documented because --high-level-data is
+#		not yet implemented
 
+highlevel_code=false
+highlevel_data=false
+gcc_nested_functions=false
 asm_labels=true
 non_local_gotos=true
 global_regs=true

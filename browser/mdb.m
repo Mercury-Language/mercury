@@ -16,7 +16,6 @@
 :- include_module interactive_query.
 :- include_module debugger_interface, collect_lib.
 :- include_module declarative_debugger, declarative_execution.
-:- include_module program_representation.
 
 :- implementation.
 

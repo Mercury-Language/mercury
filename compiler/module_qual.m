@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ process_assert(if_then_else(_, GA, GB, GC) - _, Symbols, Success) :-
 	list__append(Symbols0, SymbolsC, Symbols),
 	bool__and(SuccessA, SuccessB, Success0),
 	bool__and(Success0, SuccessC, Success).
-process_assert(call(SymName, Args0, _) - _, Symbols, Success) :-
+process_assert(call(SymName, Args0, _Purity) - _, Symbols, Success) :-
 	(
 		SymName = qualified(_, _)
 	->
@@ -421,7 +421,7 @@ process_assert(call(SymName, Args0, _) - _, Symbols, Success) :-
 		Symbols = [],
 		Success = no
 	).
-process_assert(unify(LHS0, RHS0) - _, Symbols, Success) :-
+process_assert(unify(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
 	term__coerce(LHS0, LHS),
 	term__coerce(RHS0, RHS),
 	(
@@ -879,9 +879,10 @@ qualify_type(Type0, Type, Info0, Info) -->
 
 qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
 qualify_pragma(c_header_code(Code), c_header_code(Code), Info, Info) --> [].
-qualify_pragma(c_code(Code), c_code(Code), Info, Info) --> [].
-qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
-		c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
+qualify_pragma(foreign(L, C), foreign(L, C), Info, Info) --> [].
+qualify_pragma(
+	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
+	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
 		Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
 qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 
@@ -1022,9 +1023,9 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% done when the item is parsed.
 qualify_class_method(
 		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			MaybeDet, Cond, ClassContext0, Context), 
+			MaybeDet, Cond, Purity, ClassContext0, Context), 
 		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			MaybeDet, Cond, ClassContext, Context), 
+			MaybeDet, Cond, Purity, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -1033,9 +1034,11 @@ qualify_class_method(
 		MQInfo1, MQInfo).
 qualify_class_method(
 		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			ReturnMode0, MaybeDet, Cond, ClassContext0, Context), 
+			ReturnMode0, MaybeDet, Cond, Purity, ClassContext0,
+			Context), 
 		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			ReturnMode, MaybeDet, Cond, ClassContext, Context), 
+			ReturnMode, MaybeDet, Cond, Purity, ClassContext,
+			Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -1068,16 +1071,11 @@ qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
 		Ms = M0s
 	;
 		sym_name_get_module_name(ClassName, unqualified(""), Module),
-		Qualify = lambda([M0::in, M::out] is det,
-			(
-				M0 = pred_instance(Method0, A, B, C),
-				add_module_qualifier(Module, Method0, Method),
-				M = pred_instance(Method, A, B, C)
-			;
-				M0 = func_instance(Method0, A, B, C),
-				add_module_qualifier(Module, Method0, Method),
-				M = func_instance(Method, A, B, C)
-			)),
+		Qualify = lambda([M0::in, M::out] is det, (
+			M0 = instance_method(A, Method0, C, D, E),
+			add_module_qualifier(Module, Method0, Method),
+			M = instance_method(A, Method, C, D, E)
+		)),
 		list__map(Qualify, M0s, Ms)
 	).
 
@@ -1305,6 +1303,7 @@ write_id(SymName - Arity) -->
 
 maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 	globals__io_lookup_bool_option(warn_interface_imports, Warn),
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	(
 		{ UnusedImports = []
 		; Warn = no
@@ -1335,7 +1334,14 @@ maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 			IsOrAre, " not\n"
 		]),
 		prog_out__write_context(Context),
-		io__write_string("  used in the interface.\n")
+		io__write_string("  used in the interface.\n"),
+		(
+			{ HaltAtWarn = yes }
+		->
+			io__set_exit_status(1)
+		;
+			[]
+		)
 	).
 
 :- pred is_or_are(list(T)::in, string::out) is det.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -190,12 +190,6 @@ a variable live if its value will be used later on in the computation.
 
 	% Modecheck a unification.
 
- 	% given the right-hand-side of a unification, return a list of
-	% the potentially non-local variables of that unification.
-	%
-:- pred unify_rhs_vars(unify_rhs, list(prog_var)).
-:- mode unify_rhs_vars(in, out) is det.
-
 	% Given a list of variables, and a list of livenesses,
 	% select the live variables.
 	%
@@ -354,14 +348,14 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc,
 		UnsafeToContinue),
 	( { WhatToCheck = check_unique_modes },
 		write_mode_inference_messages(PredIds, yes, ModuleInfo1),
-		{ ModuleInfo2 = ModuleInfo1 }
+		check_eval_methods(ModuleInfo1, ModuleInfo2)
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
 			write_mode_inference_messages(PredIds, no, ModuleInfo1)
 		;
 			[]
 		),
-		check_eval_methods(ModuleInfo1, ModuleInfo2)
+		{ ModuleInfo2 = ModuleInfo1 }
 	),
 	{ ModuleInfo = ModuleInfo2 }.
 
@@ -977,10 +971,11 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 	mode_info_get_instmap(ModeInfo1, InstMap0),
 
-	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo),
+	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo2),
 
 	mode_info_get_instmap(ModeInfo, InstMap),
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
+		ModeInfo2, ModeInfo),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
@@ -1016,7 +1011,7 @@ modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
 	% conjunctions properly.
 modecheck_goal_expr(par_conj(List0, SM), GoalInfo0, par_conj(List, SM)) -->
 	mode_checkpoint(enter, "par_conj"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 	modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList),
 	instmap__unify(NonLocals, InstMapNonlocalList),
 	mode_checkpoint(exit, "par_conj").
@@ -1028,7 +1023,7 @@ modecheck_goal_expr(disj(List0, SM), GoalInfo0, Goal) -->
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 		modecheck_disj_list(List0, List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj),
 		{ disj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo) }
@@ -1037,8 +1032,8 @@ modecheck_goal_expr(disj(List0, SM), GoalInfo0, Goal) -->
 
 modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "if-then-else"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	{ goal_get_nonlocals(B0, B_Vars) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_goal_completed_nonlocals(B0, B_Vars),
 	mode_info_dcg_get_instmap(InstMap0),
 	%
 	% We need to lock the non-local variables, to ensure
@@ -1070,7 +1065,7 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 
 modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 	mode_info_dcg_get_instmap(InstMap0),
 	%
 	% when analyzing a negated goal, nothing is forward-live
@@ -1178,7 +1173,7 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 		modecheck_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
@@ -1186,9 +1181,11 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
-		ArgNameMap, OrigArgTypes, PragmaCode), GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code"),
+modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
+		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
+		GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_foreign_code"),
+
 	=(ModeInfo0),
 	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
 
@@ -1198,29 +1195,17 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
-	{ Pragma = pragma_c_code(IsRecursive, PredId, ProcId, Args0,
-			ArgNameMap, OrigArgTypes, PragmaCode) },
+	{ Pragma = pragma_foreign_code(Language, Attributes, PredId, ProcId,
+			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 			InstMap0, Goal),
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(exit, "pragma_foreign_code").
 
 modecheck_goal_expr(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now
 	{ error("modecheck_goal_expr: unexpected bi_implication") }.
-
- 	% given the right-hand-side of a unification, return a list of
-	% the potentially non-local variables of that unification.
-
-unify_rhs_vars(var(Var), [Var]).
-unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(_PredOrFunc, _EvalMethod, _Fix, LambdaNonLocals,
-		LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, LambdaVars, NonLocals1),
-	set__insert_list(NonLocals1, LambdaNonLocals, NonLocals),
-	set__to_sorted_list(NonLocals, Vars).
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),
@@ -1261,7 +1246,8 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 		%
 
 		% recompute the new set of non-local variables for the main goal
-		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals0,
+			ModeInfo0, ModeInfo1),
 		set__list_to_set(Args0, OldArgVars),
 		set__list_to_set(Args, NewArgVars),
 		set__difference(NewArgVars, OldArgVars, IntroducedVars),
@@ -1276,19 +1262,19 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
 		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList0),
 
-		mode_info_get_may_change_called_proc(ModeInfo0,
+		mode_info_get_may_change_called_proc(ModeInfo1,
 			MayChangeCalledProc0),
 
 		% Make sure we don't go into an infinite loop if
 		% there is a bug in the code to add extra goals.
-		mode_info_set_checking_extra_goals(yes, ModeInfo0, ModeInfo1),
+		mode_info_set_checking_extra_goals(yes, ModeInfo1, ModeInfo2),
 
 		% We've already worked out which procedure should be called,
 		% we don't need to do it again.
 		mode_info_set_may_change_called_proc(
-			may_not_change_called_proc, ModeInfo1, ModeInfo2),
+			may_not_change_called_proc, ModeInfo2, ModeInfo3),
 
-		mode_info_set_instmap(InstMap0, ModeInfo2, ModeInfo3),
+		mode_info_set_instmap(InstMap0, ModeInfo3, ModeInfo4),
 
 		% Recheck the goals to compute the instmap_deltas.
 		%
@@ -1302,13 +1288,13 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 		% is not, the main unification will be delayed until after the
 		% argument unifications, which turns them into assignments,
 		% and we end up repeating the process forever.
-		mode_info_add_goals_live_vars(GoalList0, ModeInfo3, ModeInfo4),
+		mode_info_add_goals_live_vars(GoalList0, ModeInfo4, ModeInfo5),
 		modecheck_conj_list_no_delay(GoalList0, GoalList,
-			ModeInfo4, ModeInfo5),
+			ModeInfo5, ModeInfo6),
 		Goal = conj(GoalList),
-		mode_info_set_checking_extra_goals(no, ModeInfo5, ModeInfo6),
+		mode_info_set_checking_extra_goals(no, ModeInfo6, ModeInfo7),
 		mode_info_set_may_change_called_proc(MayChangeCalledProc0,
-			ModeInfo6, ModeInfo)
+			ModeInfo7, ModeInfo)
 	;
 		Goal = MainGoal,
 		ModeInfo = ModeInfo0
@@ -1325,12 +1311,6 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	handle_extra_goals_contexts(Goals0, Context, Goals).
 
-:- pred goal_get_nonlocals(hlds_goal, set(prog_var)).
-:- mode goal_get_nonlocals(in, out) is det.
-
-goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals).
-
 %-----------------------------------------------------------------------------%
 
 	% Modecheck a conjunction without doing any reordering.
@@ -1342,7 +1322,7 @@ goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 
 modecheck_conj_list_no_delay([], []) --> [].
 modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals]) -->
-	{ goal_get_nonlocals(Goal0, NonLocals) },
+	mode_info_get_goal_completed_nonlocals(Goal0, NonLocals),
 	mode_info_remove_live_vars(NonLocals),
 	modecheck_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
@@ -1416,13 +1396,20 @@ modecheck_conj_list(Goals0, Goals) -->
 
 mode_info_add_goals_live_vars([]) --> [].
 mode_info_add_goals_live_vars([Goal | Goals]) -->
-	{ goal_get_nonlocals(Goal, Vars) },
-	mode_info_add_live_vars(Vars),
-	mode_info_add_goals_live_vars(Goals).
+	% We add the live vars for the goals in the goal list
+	% in reverse order, because this ensures that in the
+	% common case (where there is no delaying), when we come
+	% to remove the live vars for the first goal
+	% they will have been added last and will thus be
+	% at the start of the list of live vars sets, which
+	% makes them cheaper to remove.
+	mode_info_add_goals_live_vars(Goals),
+	mode_info_get_goal_completed_nonlocals(Goal, Vars),
+	mode_info_add_live_vars(Vars).
 
 mode_info_remove_goals_live_vars([]) --> [].
 mode_info_remove_goals_live_vars([Goal | Goals]) -->
-	{ goal_get_nonlocals(Goal, Vars) },
+	mode_info_get_goal_completed_nonlocals(Goal, Vars),
 	mode_info_remove_live_vars(Vars),
 	mode_info_remove_goals_live_vars(Goals).
 
@@ -1462,7 +1449,7 @@ modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
 
 		% Modecheck the goal, noting first that the non-locals
 		% which occur in the goal might not be live anymore.
-	{ goal_get_nonlocals(Goal0, NonLocalVars) },
+	mode_info_get_goal_completed_nonlocals(Goal0, NonLocalVars),
 	mode_info_remove_live_vars(NonLocalVars),
 	modecheck_goal(Goal0, Goal),
 
@@ -1692,11 +1679,11 @@ modecheck_functor_test(Var, ConsId) -->
 		mode_info_di, mode_info_uo) is det.
 
 modecheck_par_conj_list([], [], _NonLocals, []) --> [].
-modecheck_par_conj_list([Goal0|Goals0], [Goal|Goals], NonLocals, 
-		[InstMap - GoalNonLocals|InstMaps]) -->
+modecheck_par_conj_list([Goal0 | Goals0], [Goal|Goals], NonLocals, 
+		[InstMap - GoalNonLocals | InstMaps]) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	{ Goal0 = _ - GoalInfo },
-	{ goal_info_get_nonlocals(GoalInfo, GoalNonLocals) },
+	mode_info_get_completed_nonlocals(GoalInfo, GoalNonLocals),
 	mode_info_get_parallel_vars(PVars0),
 	{ set__init(Bound0) },
 	mode_info_set_parallel_vars([NonLocals - Bound0|PVars0]),
@@ -1724,18 +1711,6 @@ modecheck_par_conj_list([Goal0|Goals0], [Goal|Goals], NonLocals,
 	mode_info_lock_vars(par_conj, Bound1),
 	modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMaps),
 	mode_info_unlock_vars(par_conj, Bound1).
-
-:- pred get_all_conjunct_nonlocals(list(hlds_goal), set(prog_var),
-		set(prog_var)).
-:- mode get_all_conjunct_nonlocals(in, in, out) is det.
-
-get_all_conjunct_nonlocals([], NonLocals, NonLocals).
-get_all_conjunct_nonlocals([G|Gs], NonLocals0, NonLocals) :-
-	G = _ - GoalInfo,
-	goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
-	set__union(GoalNonLocals, NonLocals0, NonLocals1),
-	get_all_conjunct_nonlocals(Gs, NonLocals1, NonLocals).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -2125,6 +2100,9 @@ mode_context_to_unify_context(uninitialized, _, _) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% check that the evaluation method is OK for the given mode(s).
+% we also check the mode of main/2 here.
+
 :- pred check_eval_methods(module_info, module_info, io__state, io__state).
 :- mode check_eval_methods(in, out, di, uo) is det.
 
@@ -2151,69 +2129,39 @@ pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) -->
 proc_check_eval_methods([], _, M, M) --> [].
 proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) --> 
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
-		_, ProcInfo) },
+		PredInfo, ProcInfo) },
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	( { EvalMethod \= eval_normal } ->
-		{ proc_info_context(ProcInfo, Context) },
-		{ eval_method_to_string(EvalMethod, EvalMethodS) },
-		globals__io_lookup_bool_option(verbose_errors, 
-			VerboseErrors),
-		{ proc_info_argmodes(ProcInfo, Modes) },
-		( 
-			\+ { only_fully_in_out_modes(Modes, 
-				ModuleInfo0) } 
-		->
-			prog_out__write_context(Context),
-			io__write_string("Sorry, not implemented: `pragma "),
-			io__write_string(EvalMethodS),
-			io__write_string("'\n"),
-			prog_out__write_context(Context),
-			io__write_string(
-			    "  declaration not allowed for procedure with\n"),
-			prog_out__write_context(Context),
-			io__write_string(
-			    "  partially instantiated modes.\n"), 
-			( { VerboseErrors = yes } ->
-				io__write_string(
-"	Tabling of predicates/functions with partially instantiated modes
-	is not currently implemented.\n")
-			;
-				[]
-			),
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
-		;
-			{ ModuleInfo1 = ModuleInfo0 }	
-		),	
-		( 
-			\+ { only_nonunique_modes(Modes, 
-				ModuleInfo1) } 
-		->
-			prog_out__write_context(Context),
-			io__write_string("Error: `pragma "),
-			io__write_string(EvalMethodS),
-			io__write_string("'\n"),
-			prog_out__write_context(Context),
-			io__write_string(
-			    "  declaration not allowed for procedure with\n"),
-			prog_out__write_context(Context),
-			io__write_string("  unique modes.\n"), 
-			( { VerboseErrors = yes } ->
-				io__write_string(
-"	Tabling of predicates/functions with unique modes is not allowed
-	as this would lead to a copying of the unique arguments which 
-	would result in them no longer being unique.\n")
-			;
-				[]
-			),
-			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
-		;
-			{ ModuleInfo2 = ModuleInfo1 }	
-		)
+	{ proc_info_argmodes(ProcInfo, Modes) },
+	( 
+		{ eval_method_requires_ground_args(EvalMethod) = yes },
+		\+ { only_fully_in_out_modes(Modes, ModuleInfo0) } 
+	->
+		report_eval_method_requires_ground_args(ProcInfo,
+			ModuleInfo0, ModuleInfo1)
 	;
-		{ ModuleInfo2 = ModuleInfo0 }	
-		
+		{ ModuleInfo1 = ModuleInfo0 }	
+	),	
+	( 
+		{ eval_method_destroys_uniqueness(EvalMethod) = yes },
+		\+ { only_nonunique_modes(Modes, ModuleInfo1) } 
+	->
+		report_eval_method_destroys_uniqueness(ProcInfo,
+			ModuleInfo1, ModuleInfo2)
+	;
+		{ ModuleInfo2 = ModuleInfo1 }	
 	),
-	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
+	(
+		{ pred_info_name(PredInfo, "main") },
+		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_is_exported(PredInfo) },
+		{ \+ check_mode_of_main(Modes, ModuleInfo2) }
+	->
+		report_wrong_mode_for_main(ProcInfo,
+			ModuleInfo2, ModuleInfo3)
+	;
+		{ ModuleInfo3 = ModuleInfo2 }
+	),
+	proc_check_eval_methods(Rest, PredId, ModuleInfo3, ModuleInfo).
 
 :- pred only_fully_in_out_modes(list(mode), module_info).
 :- mode only_fully_in_out_modes(in, in) is semidet.
@@ -2242,6 +2190,92 @@ only_nonunique_modes([Mode|Rest], ModuleInfo) :-
 	inst_is_not_partly_unique(ModuleInfo, InitialInst),
 	inst_is_not_partly_unique(ModuleInfo, FinalInst),
 	only_nonunique_modes(Rest, ModuleInfo).
+
+:- pred check_mode_of_main(list(mode), module_info).
+:- mode check_mode_of_main(in, in) is semidet.
+
+check_mode_of_main([Di, Uo], ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Di, DiInitialInst, DiFinalInst),
+	mode_get_insts(ModuleInfo, Uo, UoInitialInst, UoFinalInst),
+	%
+	% Note that we hard-code these tests,
+	% rather than using `inst_is_free', `inst_is_unique', etc.,
+	% since for main/2 we're looking for an exact match
+	% (modulo inst synonyms) with what the language reference
+	% manual specifies, rather than looking for a particular
+	% abstract property.
+	%
+	inst_expand(ModuleInfo, DiInitialInst, ground(unique, no)),
+	inst_expand(ModuleInfo, DiFinalInst, ground(clobbered, no)),
+	inst_expand(ModuleInfo, UoInitialInst, Free),
+	( Free = free ; Free = free(_Type) ),
+	inst_expand(ModuleInfo, UoFinalInst, ground(unique, no)).
+
+:- pred report_eval_method_requires_ground_args(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_eval_method_requires_ground_args(in, in, out, di, uo) is det.
+
+report_eval_method_requires_ground_args(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	prog_out__write_context(Context),
+	io__write_string("Sorry, not implemented: `pragma "),
+	io__write_string(EvalMethodS),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  declaration not allowed for procedure with\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  partially instantiated modes.\n"), 
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"	Tabling of predicates/functions with partially instantiated modes
+	is not currently implemented.\n")
+	;
+		[]
+	),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+
+:- pred report_eval_method_destroys_uniqueness(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_eval_method_destroys_uniqueness(in, in, out, di, uo) is det.
+
+report_eval_method_destroys_uniqueness(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	prog_out__write_context(Context),
+	io__write_string("Error: `pragma "),
+	io__write_string(EvalMethodS),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  declaration not allowed for procedure with\n"),
+	prog_out__write_context(Context),
+	io__write_string("  unique modes.\n"), 
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"	Tabling of predicates/functions with unique modes is not allowed
+	as this would lead to a copying of the unique arguments which 
+	would result in them no longer being unique.\n")
+	;
+		[]
+	),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+
+:- pred report_wrong_mode_for_main(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_wrong_mode_for_main(in, in, out, di, uo) is det.
+
+report_wrong_mode_for_main(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_context(ProcInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Error: main/2 must have mode `(di, uo)'.\n"),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

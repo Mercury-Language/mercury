@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,15 +28,8 @@
 #ifndef MERCURY_GRADES_H
 #define MERCURY_GRADES_H
 
-#include "mercury_tags.h" /* for TAGBITS */
-
-/* convert a macro to a string */
-#define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
-#define MR_STRINGIFY_2(x)	#x
-
-/* paste two macros together */
-#define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
-#define MR_PASTE2_2(p1,p2)	p1##p2
+#include "mercury_std.h"	/* for MR_STRINGIFY and MR_PASTE2 */
+#include "mercury_tags.h"	/* for TAGBITS */
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -59,27 +52,45 @@
 ** RTTI version number.
 */
 
-#define MR_GRADE_PART_0		v2_
+#define MR_GRADE_PART_0	v3_
 
-#ifdef USE_ASM_LABELS
-  #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
-#else
-  #define MR_GRADE_PART_1	MR_GRADE_PART_0
-#endif
+#ifdef MR_HIGHLEVEL_CODE
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
-  #ifdef USE_GCC_GLOBAL_REGISTERS
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
+  #ifdef MR_HIGHLEVEL_DATA
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hl)
   #else
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hlc)
   #endif
-#else
-  #ifdef USE_GCC_GLOBAL_REGISTERS
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
+
+  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
+    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, _nest)
   #else
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
+    #define MR_GRADE_PART_2	MR_GRADE_PART_1
   #endif
-#endif
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
+  #ifdef USE_ASM_LABELS
+    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
+  #else
+    #define MR_GRADE_PART_1	MR_GRADE_PART_0
+  #endif
+
+  #ifdef USE_GCC_NONLOCAL_GOTOS
+    #ifdef USE_GCC_GLOBAL_REGISTERS
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
+    #else
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
+    #endif
+  #else
+    #ifdef USE_GCC_GLOBAL_REGISTERS
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
+    #else
+      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
+    #endif
+  #endif
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 #ifdef MR_THREAD_SAFE
   #define MR_GRADE_PART_3	MR_PASTE2(MR_GRADE_PART_2, _par)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,8 +37,8 @@
 % Similarly, a lambda expression may not bind any of the type_infos for
 % those variables; that is, none of the non-local variables
 % should be existentially typed (from the perspective of the lambda goal).
-% When we run the polymorphism.m pass before mode checking, this will
-% be checked by mode analysis.  XXX But currently it is not checked.
+% Now that we run the polymorphism.m pass before mode checking, this is
+% also checked by mode analysis.
 %
 % It might be OK to allow the parameters of the lambda goal to be
 % existentially typed, but currently that is not supported.
@@ -82,8 +82,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_data.
-:- import_module hlds_data, make_hlds, globals, options, type_util.
+:- import_module hlds_goal, prog_data, quantification.
+:- import_module hlds_data, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
 :- import_module list, map, set.
@@ -105,7 +105,8 @@
 			pred_or_func,
 			string,			% pred/func name
 			aditi_owner,
-			module_info
+			module_info,
+			bool	% true iff we need to recompute the nonlocals
 		).
 
 %-----------------------------------------------------------------------------%
@@ -171,19 +172,36 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, Constraints0),
 	pred_info_get_aditi_owner(PredInfo0, Owner),
+	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
+	MustRecomputeNonLocals0 = no,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
 		TVarMap0, TCVarMap0, Markers, PredOrFunc, 
-		PredName, Owner, ModuleInfo0),
-	lambda__process_goal(Goal0, Goal, Info0, Info),
-	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, _, _, ModuleInfo),
+		PredName, Owner, ModuleInfo0, MustRecomputeNonLocals0),
+	lambda__process_goal(Goal0, Goal1, Info0, Info1),
+	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet, 
+		TVarMap, TCVarMap, _, _, _, _, ModuleInfo,
+		MustRecomputeNonLocals),
+
+	% check if we need to requantify
+	( MustRecomputeNonLocals = yes ->
+		module_info_globals(ModuleInfo, Globals),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
+		implicitly_quantify_clause_body(HeadVars,
+			Goal1, VarSet1, VarTypes1, TVarMap, TypeInfoLiveness,
+			Goal, VarSet, VarTypes, _Warnings)
+	;
+		Goal = Goal1,
+		VarSet = VarSet1,
+		VarTypes = VarTypes1
+	),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
@@ -252,8 +270,8 @@ lambda__process_goal_2(generic_call(A,B,C,D), GoalInfo,
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
-lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F,G), GoalInfo,
-			pragma_c_code(A,B,C,D,E,F,G) - GoalInfo) -->
+lambda__process_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), GoalInfo,
+			pragma_foreign_code(A,B,C,D,E,F,G,H) - GoalInfo) -->
 	[].
 lambda__process_goal_2(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now
@@ -290,7 +308,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
 		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo0),
+		ModuleInfo0, MustRecomputeNonLocals0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -327,7 +345,17 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 	% We need all the typeinfos, including the ones that are not used,
 	% for the layout structure describing the closure.
-	set__union(NonLocals1, ExtraTypeInfos, NonLocals),
+	NewTypeInfos = ExtraTypeInfos `set__difference` NonLocals1,
+	NonLocals = NonLocals1 `set__union` NewTypeInfos,
+
+	% If we added variables to the nonlocals of the lambda goal,
+	% then we need to recompute the nonlocals for the procedure
+	% that contains it.
+	( \+ set__empty(NewTypeInfos) ->
+		MustRecomputeNonLocals = yes
+	;
+		MustRecomputeNonLocals = MustRecomputeNonLocals0
+	),
 
 	set__to_sorted_list(NonLocals, ArgVars1),
 
@@ -373,10 +401,15 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
 			% and semidet is not compatible with nondet,
-			% since the arguments go in different registers.
-			% But det is compatible with nondet.
+			% since the calling conventions are different.
+			% But if we're using the LLDS back-end
+			% (i.e. not --high-level-code),
+			% det is compatible with nondet.
 		( CodeModel = Call_CodeModel
-		; CodeModel = model_non, Call_CodeModel = model_det
+		; CodeModel = model_non, Call_CodeModel = model_det,
+			module_info_globals(ModuleInfo0, Globals),
+			globals__lookup_bool_option(Globals,
+				highlevel_code, no)
 		),
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
@@ -390,10 +423,17 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		PredId = PredId0,
 		ProcId = ProcId0,
 		PredName = PredName0,
-		ModuleInfo = ModuleInfo0,
 		NumArgVars = NumInitialVars,
 		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
-			ModuleInfo0, UniModes)
+			ModuleInfo0, UniModes),
+		%
+		% we need to mark the procedure as having had its
+		% address taken
+		%
+		proc_info_set_address_taken(Call_ProcInfo, address_is_taken,
+			Call_NewProcInfo),
+		module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
+			Call_PredInfo, Call_NewProcInfo, ModuleInfo)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
@@ -512,13 +552,12 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId, EvalMethod),
 
-	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,
-		VarToReuse, cell_is_unique, RLExprnId),
+		construct_dynamically, cell_is_unique, RLExprnId),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
 		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo).
+		ModuleInfo, MustRecomputeNonLocals).
 
 :- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
 :- mode lambda__constraint_contains_vars(in, in) is semidet.

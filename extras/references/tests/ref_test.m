@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998,2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,38 +20,32 @@
 :- import_module int.
 :- import_module reference, nb_reference, scoped_update.
 
-main -->
-	{ impure new_reference(3,X) },
-	{ impure new_nb_reference(3,Y) },
+main(IO, IO) :-
+	impure new_reference(3, X),
+	impure new_nb_reference(3, Y),
 	(
-		{ impure update(X, 42) },
-		{ impure update(Y, 42) },
-		{ semipure value(X,V1) },
-		{ semipure value(Y,W1) },
-		print(V1),
-		nl,
-		print(W1),
-		nl,
-		{same(X, X1)},
-		{same(Y, Y1)},
-		{ impure update(X1, 7) },
-		{ impure update(Y1, 7) },
-		{ semipure value(X, V2) },
-		{ semipure value(Y, W2) },
-		print(V2),
-		nl,
-		print(W2),
-		nl,
-		{ impure scope_test }
+		impure update(X, 42),
+		impure update(Y, 42),
+		semipure value(X, V1),
+		semipure value(Y, W1),
+		impure dump_integer(V1),
+		impure dump_integer(W1),
+		same(X, X1),
+		same(Y, Y1),
+		impure update(X1, 7),
+		impure update(Y1, 7),
+		semipure value(X, V2),
+		semipure value(Y, W2),
+		impure dump_integer(V2),
+		impure dump_integer(W2),
+		impure scope_test
 	;
-		{ impure scope_test2 }
+		impure scope_test2
 	;
-		{ semipure value(X, V3) },
-		print(V3),
-		nl,
-		{ semipure value(Y, W3) },
-		print(W3),
-		nl
+		semipure value(X, V3),
+		impure dump_integer(V3),
+		semipure value(Y, W3),
+		impure dump_integer(W3)
 	).
 
 
@@ -142,5 +136,12 @@ small_int(3).
 		will_not_call_mercury, "
 	printf(""%s scope ref = %d; reset to %d\n"", (char *) Prefix,
 			(int) Old, (int) New);
+").
+
+
+:- impure pred dump_integer(int::in) is det.
+
+:- pragma c_code(dump_integer(X::in), will_not_call_mercury, "
+	printf(""%d\n"", X);
 ").
 

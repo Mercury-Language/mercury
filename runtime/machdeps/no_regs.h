@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1997, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,7 +22,7 @@
 /* A pair of macros to save/restore all of the physical machine
    registers.  They should copy/restore the physical machine
    registers to/from the memory pointed to by the supplied `save_area'
-   parameter (which should be a pointer of type `Word *').
+   parameter (which should be a pointer of type `MR_Word *').
 */
 #define save_regs_to_mem(save_area)		((void)0)
 #define restore_regs_from_mem(save_area)	((void)0)
@@ -31,7 +31,7 @@
    registers that get clobbered by calling a C function.  This is used
    for machines with register windows.  They should copy/restore the windowed
    registers to/from the memory pointed to by the supplied `save_area'
-   parameter (which should be a pointer of type `Word *').
+   parameter (which should be a pointer of type `MR_Word *').
 */
 
 #define save_transient_regs_to_mem(save_area)		((void)0)

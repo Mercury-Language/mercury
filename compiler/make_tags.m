@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-1999 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,25 +69,36 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		% determine if we need to reserve a tag
 		% (this also disables enumerations and no_tag types)
 	globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
+	( ReserveTag = yes, \+ type_constructors_are_type_info(Ctors) ->
+		InitTag = 1
+	;
+		InitTag = 0
+	), 
 
 		% now assign them
 	map__init(CtorTags0),
 	(
+			% All the constructors must be constant, and we
+			% must be allowed to make unboxed enums.
+		globals__lookup_bool_option(Globals, unboxed_enums, yes),
 		ctors_are_all_constants(Ctors),
 		ReserveTag = no
 	->
 		IsEnum = yes,
-		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
+		assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags)
 	;
 		IsEnum = no,
 		(
 			% assign single functor of arity one a `no_tag' tag
 			% (unless it is type_info/1 or we are reserving a tag)
-			type_is_no_tag_type(Ctors, Globals, SingleFunc,
-					SingleArg),
+			globals__lookup_bool_option(Globals,
+				unboxed_no_tag_types, yes),
+			type_constructors_are_no_tag_type(Ctors, SingleFunc,
+				SingleArg),
 			ReserveTag = no
 		->
-			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
+			make_cons_id_from_qualified_sym_name(SingleFunc,
+				[SingleArg], SingleConsId),
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		;
 			NumTagBits = 0
@@ -107,11 +118,6 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 					CtorTags0, CtorTags)
 			)
 		;
-			( ReserveTag = yes, \+ type_is_type_info(Ctors) ->
-				InitTag = 1
-			;
-				InitTag = 0
-			),
 			max_num_tags(NumTagBits, MaxNumTags),
 			MaxTag is MaxNumTags - 1,
 			split_constructors(Ctors, Constants, Functors),
@@ -129,7 +135,7 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 assign_enum_constants([], _, CtorTags, CtorTags).
 assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	Val1 is Val + 1,
@@ -166,7 +172,7 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, InitTag, NextTag) :-
 assign_unshared_tags([], _, _, CtorTags, CtorTags).
 assign_unshared_tags([Ctor | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 		% if we're about to run out of unshared tags, start assigning
 		% shared remote tags instead
 	( Val = MaxTag, Rest \= [] ->
@@ -187,7 +193,7 @@ assign_shared_remote_tags([], _, _, CtorTags, CtorTags).
 assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 		CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = shared_remote_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
@@ -202,7 +208,7 @@ assign_shared_local_tags([], _, _, CtorTags, CtorTags).
 assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 			CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	create_cons_id(Name, Args, ConsId),
+	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 is SecondaryVal + 1,
@@ -245,14 +251,6 @@ split_constructors([Ctor | Ctors], Constants, Functors) :-
 		Functors = [Ctor | Functors0]
 	),
 	split_constructors(Ctors, Constants0, Functors0).
-
-%-----------------------------------------------------------------------------%
-
-:- pred create_cons_id(sym_name, list(_), cons_id).
-:- mode create_cons_id(in, in, out) is det.
-
-create_cons_id(SymName, Args, cons(SymName, Arity)) :-
-	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,7 +155,7 @@ parse_dcg_goal_2("semipure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N,
 parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	new_dcg_var(VarSet0, N0, VarSet, N, Var),
-	Goal = unify(term__variable(Var0), term__variable(Var)) - Context.
+	Goal = unify(term__variable(Var0), term__variable(Var), pure) - Context.
 
 	% Non-empty list of terminals.  Append the DCG output arg
 	% as the new tail of the list, and unify the result with
@@ -166,12 +166,19 @@ parse_dcg_goal_2(".", [X, Xs], Context, VarSet0, N0, Var0,
 	ConsTerm0 = term__functor(term__atom("."), [X, Xs], Context),
 	term__coerce(ConsTerm0, ConsTerm),
 	term_list_append_term(ConsTerm, term__variable(Var), Term), 
-	Goal = unify(term__variable(Var0), Term) - Context.
+	Goal = unify(term__variable(Var0), Term, pure) - Context.
 
 	% Call to '='/1 - unify argument with DCG input arg.
 parse_dcg_goal_2("=", [A0], Context, VarSet, N, Var, Goal, VarSet, N, Var) :-
 	term__coerce(A0, A),
-	Goal = unify(A, term__variable(Var)) - Context.
+	Goal = unify(A, term__variable(Var), pure) - Context.
+
+	% Call to ':='/1 - unify argument with DCG output arg.
+parse_dcg_goal_2(":=", [A0], Context, VarSet0, N0, _Var0,
+		Goal, VarSet, N, Var) :-
+	new_dcg_var(VarSet0, N0, VarSet, N, Var),
+	term__coerce(A0, A),
+	Goal = unify(A, term__variable(Var), pure) - Context.
 
 	% If-then (Prolog syntax).
 	% We need to add an else part to unify the DCG args.
@@ -202,7 +209,7 @@ parse_dcg_goal_2("if", [
 	( Var = Var0 ->
 		Goal = if_then(SomeVars, Cond, Then) - Context
 	;
-		Unify = unify(term__variable(Var), term__variable(Var0)),
+		Unify = unify(term__variable(Var), term__variable(Var0), pure),
 		Goal = if_then_else(SomeVars, Cond, Then, Unify - Context)
 			- Context
 	).
@@ -237,13 +244,13 @@ parse_dcg_goal_2(";", [A0, B0], Context, VarSet0, N0, Var0,
 		; VarA = Var0 ->
 			Var = VarB,
 			Unify = unify(term__variable(Var),
-				term__variable(VarA)),
+				term__variable(VarA), pure),
 			append_to_disjunct(A1, Unify, Context, A2),
 			Goal = (A2 ; B1) - Context
 		; VarB = Var0 ->
 			Var = VarA,
 			Unify = unify(term__variable(Var),
-				term__variable(VarB)),
+				term__variable(VarB), pure),
 			append_to_disjunct(B1, Unify, Context, B2),
 			Goal = (A1 ; B2) - Context
 		;
@@ -301,6 +308,8 @@ parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, Purity, Goal, VarSet,
 	parse_dcg_goal(G, VarSet0, N0, Var0, Goal1, VarSet, N, Var),
 	(   Goal1 = call(Pred, Args, pure) - Context ->
 		Goal = call(Pred, Args, Purity) - Context
+	;   Goal1 = unify(ProgTerm1, ProgTerm2, pure) - Context ->
+		Goal = unify(ProgTerm1, ProgTerm2, Purity) - Context
 	;
 		% Inappropriate placement of an impurity marker, so we treat
 		% it like a predicate call.  typecheck.m prints out something
@@ -373,7 +382,7 @@ parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
 		Var2),
 	( Var0 \= Var1, Var1 = Var2 ->
 		new_dcg_var(VarSet2, N2, VarSet, N, Var),
-		Unify = unify(term__variable(Var), term__variable(Var2)),
+		Unify = unify(term__variable(Var), term__variable(Var2), pure),
 		Then = (Then1, Unify - Context) - Context
 	;
 		Then = Then1,
@@ -399,13 +408,15 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
 		Else = Else1
 	; VarThen = Var0 ->
 		Var = VarElse,
-		Unify = unify(term__variable(Var), term__variable(VarThen)),
+		Unify = unify(term__variable(Var), term__variable(VarThen),
+			pure),
 		Then = (Then1, Unify - Context) - Context,
 		Else = Else1
 	; VarElse = Var0 ->
 		Var = VarThen,
 		Then = Then1,
-		Unify = unify(term__variable(Var), term__variable(VarElse)),
+		Unify = unify(term__variable(Var), term__variable(VarElse),
+			pure),
 		Else = (Else1, Unify - Context) - Context
 	;
 		% We prefer to substitute the then part since it is likely

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,7 +21,33 @@
 ** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
 */
 
+#define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
+
+
 #ifndef MR_NO_BACKWARDS_COMPAT
+
+/* 
+** For a long time the Mercury C types were defined as Char, Float,
+** Integer, Word, etc.  There will doubtless be lots of C code in
+** libraries that relies upon these names.  
+**
+** People may have written code that relies upon these names, so  
+** if you remove these names you need to give warning (unlike some of
+** the other changes in this file).
+*/
+
+typedef MR_Word 		Word;
+typedef MR_Code 		Code;
+typedef MR_Char 		Char;
+typedef MR_Float 		Float;
+typedef MR_Float64 		Float64;
+typedef MR_Integer 		Integer;
+typedef MR_Unsigned 		Unsigned;
+typedef MR_UnsignedChar 	UnsignedChar;
+typedef MR_String 		String;
+typedef MR_ConstString 		ConstString;
+typedef MR_Bool 		Bool;
+
 
 #define	COMPARE_EQUAL		MR_COMPARE_EQUAL
 #define	COMPARE_LESS		MR_COMPARE_LESS
@@ -31,6 +57,8 @@
 #define make_aligned_string(a,b)	MR_make_aligned_string((a),(b))
 #define string_equal(a,b)		MR_string_equal((a),(b))
 #define string_const(a,b)		MR_string_const((a),(b))
+#define hash_string(s)			MR_hash_string((s))
+#define fatal_error(s)			MR_fatal_error((s))
 
 /*
 ** The list manipulation macros are available for use by ordinary Mercury
@@ -70,7 +98,7 @@
 #define	decr_sp(n)		MR_decr_sp(n)
 
 #define	push(w)		(					\
-				*MR_sp = (Word) (w),		\
+				*MR_sp = (MR_Word) (w),		\
 				debugpush(*MR_sp, MR_sp),	\
 				MR_sp = MR_sp + 1,		\
 				detstack_overflow_check(),	\

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -175,6 +175,21 @@ TEXI2DVI=@TEXI2DVI@
 DVIPS=@DVIPS@
 MAKEINFO=@MAKEINFO@
 PERL=@PERL@
+
+#-----------------------------------------------------------------------------#
+
+# Extensions to use
+O=@OBJ_SUFFIX@
+A=@LIB_SUFFIX@
+
+# The option needed to name object files.
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in -o
+empty_string=
+OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
+
+# Which makefile to use when compiling the garbage collector.
+BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 
 #-----------------------------------------------------------------------------#
 

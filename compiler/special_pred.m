@@ -16,7 +16,7 @@
 :- module special_pred.
 :- interface.
 :- import_module prog_data, hlds_data, hlds_pred.
-:- import_module bool, list, map, std_util.
+:- import_module list, map, std_util.
 :- import_module globals.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
@@ -48,9 +48,6 @@
 :- pred special_pred_mode_num(special_pred_id, int).
 :- mode special_pred_mode_num(in, out) is det.
 
-:- pred special_pred_list(list(special_pred_id), io__state, io__state).
-:- mode special_pred_list(out, di, uo) is det.
-
 :- pred special_pred_list(globals, list(special_pred_id)).
 :- mode special_pred_list(in, out) is det.
 
@@ -63,12 +60,7 @@
 :- implementation.
 
 :- import_module type_util, mode_util, prog_util.
-:- import_module options.
-
-special_pred_list(PredList) -->
-	io_lookup_bool_option(use_solve_equal, UseSolveEqual),
-	io_lookup_bool_option(use_init, UseInit),
-	{ special_pred_list_2(UseSolveEqual, UseInit, PredList) }.
+:- import_module options, bool.
 
 special_pred_list(Globals, PredList) :-
 	lookup_bool_option(Globals, use_solve_equal, UseSolveEqual),

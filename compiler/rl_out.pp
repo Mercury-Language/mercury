@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,8 @@
 
 :- import_module code_util, hlds_data, hlds_pred, prog_data, prog_out.
 :- import_module llds, globals, options, rl_code, tree, type_util, passes_aux.
-:- import_module rl_file, getopt, modules, prog_util, magic_util.
+:- import_module rl_file, getopt, modules, prog_util, magic_util, hlds_goal.
+:- import_module code_aux, det_analysis, instmap.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- import_module rl_exprn.
@@ -149,6 +150,12 @@ rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :-
 			map__lookup(Relations, Arg, ArgInfo),
 			ArgInfo = relation_info(_, ArgSchema, _, _)
 		), Args, ArgSchemas),
+	rl_out__get_proc_schema(ModuleInfo, ArgSchemas, SchemaString).
+
+:- pred rl_out__get_proc_schema(module_info::in, list(list(type))::in,
+		string::out) is det.
+
+rl_out__get_proc_schema(ModuleInfo, ArgSchemas, SchemaString) :-
 	rl__schemas_to_strings(ModuleInfo, ArgSchemas,
 		TypeDecls, ArgSchemaStrings),
 	list__map_foldl(
@@ -162,7 +169,7 @@ rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :-
 				ArgSchemaString, ") "],
 				ArgSchemaDecl)
 		), ArgSchemaStrings, ArgSchemaDeclList, 1, _),
-	rl_out__get_proc_schema_2(1, Args, "", SchemaString0),
+	rl_out__get_proc_schema_2(1, ArgSchemaDeclList, "", SchemaString0),
 	list__condense([[TypeDecls | ArgSchemaDeclList], ["("],
 		[SchemaString0, ")"]], SchemaStrings),
 	string__append_list(SchemaStrings, SchemaString).
@@ -201,23 +208,27 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	{ list__foldl(rl_out__generate_proc_bytecode, Procs, 
 		RLInfo0, RLInfo1) },
 
+	{ module_info_predids(ModuleInfo, PredIds) },
+	{ list__foldl(rl_out__generate_update_procs, PredIds,
+		RLInfo1, RLInfo2) },
+
 	globals__io_lookup_string_option(aditi_user, Owner),
 	{ rl_out_info_assign_const(string(Owner), OwnerIndex,
-		RLInfo1, RLInfo2) },
+		RLInfo2, RLInfo3) },
 	{ prog_out__sym_name_to_string(ModuleName0, ModuleName) },
 	module_name_to_file_name(ModuleName0, ".m", no, SourceFileName),
 	module_name_to_file_name(ModuleName0, ".int", no, IntFileName),
 	{ rl_out_info_assign_const(string(ModuleName), ModuleIndex, 
-		RLInfo2, RLInfo3) },
-	{ rl_out_info_assign_const(string(IntFileName), IntIndex, 
 		RLInfo3, RLInfo4) },
+	{ rl_out_info_assign_const(string(IntFileName), IntIndex, 
+		RLInfo4, RLInfo5) },
 	{ rl_out_info_assign_const(string(SourceFileName), 
-		SourceIndex, RLInfo4, RLInfo5) },
-	{ rl_out_info_get_procs(RLProcs, RLInfo5, RLInfo6) },
-	{ rl_out_info_get_consts(Consts, RLInfo6, RLInfo7) },
+		SourceIndex, RLInfo5, RLInfo6) },
+	{ rl_out_info_get_procs(RLProcs, RLInfo6, RLInfo7) },
+	{ rl_out_info_get_consts(Consts, RLInfo7, RLInfo8) },
 	{ rl_out_info_get_permanent_relations(PermRelsSet, 
-		RLInfo7, RLInfo8) },
-	{ rl_out_info_get_relation_variables(RelVars, RLInfo8, _) },
+		RLInfo8, RLInfo9) },
+	{ rl_out_info_get_relation_variables(RelVars, RLInfo9, _) },
 
 	{ map__to_assoc_list(Consts, ConstsAL) },
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
@@ -330,6 +341,291 @@ rl_out__generate_rl_bytecode(_, _, MaybeRLFile) -->
 #endif
 	
 #if INCLUDE_ADITI_OUTPUT
+
+	% For each base relation defined in this module, generate
+	% a procedure to be used by aditi_bulk_modify to update
+	% the relation.
+	%
+	% In the procedure below, UpdateRel is the relation returned
+	% by the closure passed to aditi_bulk_modify. Each tuple returned
+	% by that closure contains two sets of arguments -- the tuple
+	% to delete, and the tuple to insert.
+	%
+	% DummyOutput is not actually used -- it is there just so
+	% that the procedure matches the usual convention for calling
+	% Aditi procedures from Mercury.
+	%
+	% ModifyProcFor__p_3(UpdateRel, DummyOutput)
+	% {
+	%	delete(p/3, project(UpdateRel, FirstTuple);
+	%	insert(p/3, project(UpdateRel, SecondTuple),
+	%	init(DummyOutput).
+	% }
+:- pred rl_out__generate_update_procs(pred_id::in, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out__generate_update_procs(PredId) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	{ pred_info_module(PredInfo, PredModule) },
+	(
+		{ ModuleName = PredModule },
+		{ hlds_pred__pred_info_is_base_relation(PredInfo) }
+	->
+		rl_out__generate_update_proc(insert, PredId, PredInfo),
+		rl_out__generate_update_proc(delete, PredId, PredInfo),
+		rl_out__generate_update_proc(modify, PredId, PredInfo)
+	;
+		[]
+	).
+
+:- type update_type
+	--->	insert
+	;	delete
+	;	modify
+	.
+
+:- pred rl_out__generate_update_proc(update_type::in, pred_id::in,
+		pred_info::in, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_update_proc(UpdateType, PredId, PredInfo) -->
+	{ map__init(Relations) },
+	rl_out_info_init_proc(Relations),
+
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
+	{ pred_info_get_indexes(PredInfo, Indexes) },
+
+	rl_out__schema_to_string(ArgTypes, PermSchemaOffset),
+
+	rl_out_info_add_relation_variable(PermSchemaOffset,
+		PermanentAddr),
+	rl_out__collect_permanent_relation(PredId,
+		PermanentAddr, OpenPermanentCode, UnsetPermanentCode),
+
+	{ 
+		UpdateType = insert,
+		InputRelTypes = ArgTypes
+	;
+		UpdateType = delete,
+		InputRelTypes = ArgTypes
+	;
+		UpdateType = modify,
+		list__append(ArgTypes, ArgTypes, InputRelTypes)
+	},
+
+	rl_out__schema_to_string(InputRelTypes, InputRelSchemaOffset),
+	rl_out_info_add_relation_variable(InputRelSchemaOffset,
+		InputRelAddr),
+
+	rl_out__schema_to_string([], NullSchemaOffset),
+	rl_out_info_add_relation_variable(NullSchemaOffset,
+		DummyOutputAddr),
+
+	rl_out_info_get_module_info(ModuleInfo),
+
+	{ LockSpec = 0 }, % default lock spec
+	(
+		{ UpdateType = insert },
+		{ rl__get_insert_proc_name(ModuleInfo, PredId, ProcName) },
+		rl_out_info_get_next_materialise_id(MaterialiseId),
+		{ InsertCode =
+			node([
+				rl_PROC_materialise(MaterialiseId),
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+
+				rl_PROC_var_list_cons(PermanentAddr, LockSpec),
+				rl_PROC_var_list_nil
+			]) },
+		{ DeleteCode = empty }
+	;
+		{ UpdateType = delete },
+		{ rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) },
+		{ DeleteInputStream =
+			node([
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end
+			]) },
+		{ InsertCode = empty },
+		rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
+			PermSchemaOffset, DeleteInputStream, DeleteCode)
+	;
+		{ UpdateType = modify },
+		{ rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) },
+		rl_out__generate_modify_project_exprn(ArgTypes,
+			PermSchemaOffset, one, DeleteProjectExpr),
+		rl_out__generate_modify_project_exprn(ArgTypes,
+			PermSchemaOffset, two, InsertProjectExpr),
+
+		%
+		% Project the input relation onto
+		% the first half of its attributes,
+		% deleting the result from the base
+		% relation.
+		% 
+
+		{ DeleteInputStream =
+			node([
+				rl_PROC_stream,
+
+				rl_PROC_project_tee,
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+				rl_PROC_expr(DeleteProjectExpr),
+				rl_PROC_var_list_nil,
+				rl_PROC_expr_list_nil,
+
+				rl_PROC_stream_end
+		]) },
+		rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
+			PermSchemaOffset, DeleteInputStream, DeleteCode),
+
+		rl_out_info_get_next_materialise_id(MaterialiseId),
+		{ InsertCode =
+			node([
+				%
+				% Project the input relation onto
+				% the second half of its attributes,
+				% inserting the result into the base
+				% relation.
+				% 
+				rl_PROC_materialise(MaterialiseId),
+				rl_PROC_stream,
+
+				rl_PROC_project_tee,
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+				rl_PROC_expr(InsertProjectExpr),
+				rl_PROC_var_list_nil,
+				rl_PROC_expr_list_nil,
+
+				rl_PROC_stream_end,
+
+				rl_PROC_var_list_cons(PermanentAddr, LockSpec),
+				rl_PROC_var_list_nil
+			]) }
+	),
+
+
+	{ Codes = tree(
+		%
+		% Open the permanent relation.
+		%
+		node([OpenPermanentCode]),
+
+		%
+		% Do the deletion.
+		% 
+		tree(DeleteCode,
+
+		%
+		% Do the insertion for an `aditi_bulk_modify'
+		% or `aditi_bulk_insert' goal.
+		%
+		tree(InsertCode,	
+
+		node([
+			%
+			% Clean up.
+			%
+			UnsetPermanentCode,
+			rl_PROC_unsetrel(InputRelAddr),
+
+			%
+			% Create the dummy output variable.
+			%
+			rl_PROC_createtemprel(DummyOutputAddr,
+				NullSchemaOffset),
+
+			rl_PROC_ret
+		])
+	))) },
+	{ tree__flatten(Codes, CodeList) },
+	{ list__condense(CodeList, Code) },
+
+	{ ArgSchemas = [InputRelTypes, []] },
+	{ rl_out__get_proc_schema(ModuleInfo, ArgSchemas, ProcSchemaString) },
+	rl_out_info_assign_const(string(ProcSchemaString),
+		ProcSchemaConst),
+
+	{ Args = [InputRelAddr, DummyOutputAddr] },
+	rl_out__package_proc(ProcName, Args, Code, ProcSchemaConst).
+
+
+:- pred rl_out__generate_delete_code(int::in, list(index_spec)::in,
+		list(type)::in, int::in, byte_tree::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_delete_code(PermanentAddr, _Indexes, ArgTypes, SchemaOffset,
+		DeleteInputStream, DeleteCode) -->
+	(
+		{ ArgTypes = [] },
+		{ CondCode = 
+			tree(node([rl_PROC_empty]),
+			DeleteInputStream
+		) },
+		{ ThenCode = empty },
+
+		% We use clear here because otherwise the relation manager
+		% may complain about deleting a tuple from an empty relation.
+		{ ElseCode = node([rl_PROC_clear(PermanentAddr)]) },
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, DeleteCode)
+	;
+		{ ArgTypes = [_ | _] },
+
+		%
+		% The tuples to delete must come from the relation to
+		% delete from -- Aditi does the deletion by tuple-id,
+		% not tuple contents. To get the correct tuples, we must
+		% do a sem-join of the tuples to delete against the relation
+		% to delete from.
+		%
+		% Note that the indexed semi-join won't work because it returns
+		% tuples from the non-indexed relation, which are no good for
+		% deleting from the indexed relation.
+		%
+		% XXX For a permanent relation with a unique B-tree index
+		% on all attributes, we may be able to use a sort-merge
+		% semi-join to collect the tuples to delete.
+		%
+		{ list__length(ArgTypes, Arity) },
+		{ list__foldl2(
+			(pred(_::in, L0::in, L::out, N0::in, N::out) is det :-
+				L = [N0 | L0],
+				N = N0 - 1
+			),
+			ArgTypes, [], Attrs, Arity, _) },
+		rl_out__do_generate_hash_exprn(ArgTypes, SchemaOffset,
+			Attrs, HashExprn),
+		rl_out__do_generate_equijoin_exprn(ArgTypes, Attrs, JoinCond),
+		{ LockSpec = 0 }, % default lock spec
+		{ DeleteCode =
+			tree(node([
+				rl_PROC_delete(PermanentAddr),
+				rl_PROC_stream,
+				rl_PROC_semijoin_hj,
+				rl_PROC_stream,
+				rl_PROC_var(PermanentAddr, LockSpec),
+				rl_PROC_stream_end
+			]),
+			tree(DeleteInputStream,
+			node([
+				% Both relations can use the same
+				% hash expression.
+				rl_PROC_expr(HashExprn),
+				rl_PROC_expr(HashExprn),
+				rl_PROC_expr(JoinCond),
+
+				rl_PROC_stream_end
+			])
+		)) }
+	).
+
 :- pred rl_out__generate_proc_bytecode(rl_proc::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 
@@ -337,10 +633,8 @@ rl_out__generate_proc_bytecode(Proc) -->
 	{ Proc = rl_proc(Name, Inputs, Outputs, MemoedRels,
 			Relations, RLInstrs, _) },
 
-	{ Name = rl_proc_name(Owner, Module, ProcName, _) },
-
 	{ list__append(Inputs, Outputs, Args) },
-	rl_out_info_init_proc(Relations, Args),
+	rl_out_info_init_proc(Relations),
 	rl_out__generate_instr_list(RLInstrs, RLInstrCodeTree0),
 	
 	{ set__to_sorted_list(MemoedRels, MemoedList) },
@@ -352,6 +646,7 @@ rl_out__generate_proc_bytecode(Proc) -->
 		% If one memoed relation is dropped, all must be 
 		% dropped for correctness. We could possibly be a
 		% little smarter about this.
+		{ Name = rl_proc_name(Owner, _, _, _) },
 		rl_out__collect_memoed_relations(Owner, Name, MemoedList, 0,
 			CollectCode, NameCode),
 		rl_out__get_rel_var_list(MemoedList, RelVarCodes),
@@ -360,10 +655,8 @@ rl_out__generate_proc_bytecode(Proc) -->
 
 	rl_out_info_get_relation_addrs(Addrs),
 	{ map__to_assoc_list(Addrs, AddrsAL) },
-	rl_out__collect_permanent_relations(AddrsAL, [], PermRelCodes),
-
-	rl_out_info_get_proc_expressions(Exprns),
-	{ list__length(Exprns, NumExprns) },
+	rl_out__collect_permanent_relations(AddrsAL, [],
+		PermRelCodes, [], PermUnsetCodes),
 
 	rl_out__resolve_proc_addresses(RLInstrCodeTree0, RLInstrCodeTree1),
 
@@ -373,22 +666,37 @@ rl_out__generate_proc_bytecode(Proc) -->
 		tree(RLInstrCodeTree1,
 		tree(node(NameCode),
 		tree(GroupCode,
+		tree(node(PermUnsetCodes),
 		node([rl_PROC_ret])	
-	))))) },
+	)))))) },
 	{ tree__flatten(RLInstrCodeTree, CodeLists) },
 	{ list__condense(CodeLists, Codes) },
+
+	list__map_foldl(rl_out_info_get_relation_addr, Args, ArgLocs),
+	rl_out__generate_proc_schema(Args, ProcSchemaConst),
+
+	rl_out__package_proc(Name, ArgLocs, Codes, ProcSchemaConst).
+
+:- pred rl_out__package_proc(rl_proc_name::in, list(int)::in,
+		list(bytecode)::in, int::in,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__package_proc(Name, ArgLocs, Codes, ProcSchemaConst) -->
+
+	{ Name = rl_proc_name(Owner, Module, ProcName, _) },
+
+	rl_out_info_get_proc_expressions(Exprns),
+	{ list__length(Exprns, NumExprns) },
 
 	rl_out_info_assign_const(string(Owner), OwnerConst),
 	rl_out_info_assign_const(string(Module), ModuleConst),
 	rl_out_info_assign_const(string(ProcName), NameConst),
 	{ rl_out__instr_code_size(node(Codes), CodeLength) },
 
-	{ list__length(Args, NumArgs) },
-	list__map_foldl(rl_out_info_get_relation_addr, Args, ArgLocs),
-	rl_out__generate_proc_schema(Args, SchemaConst),
+	{ list__length(ArgLocs, NumArgs) },
 
-	{ RLProc = procedure(OwnerConst, ModuleConst, NameConst, SchemaConst,
-			NumArgs, ArgLocs, NumExprns, Exprns,
+	{ RLProc = procedure(OwnerConst, ModuleConst, NameConst,
+			ProcSchemaConst, NumArgs, ArgLocs, NumExprns, Exprns,
 			CodeLength, Codes) },
 	rl_out_info_add_proc(RLProc).
 
@@ -459,45 +767,56 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 	% Put pointers to all the permanent relations
 	% used by the procedure into variables.
 :- pred rl_out__collect_permanent_relations(assoc_list(relation_id, int)::in,
-		list(bytecode)::in, list(bytecode)::out,
-		rl_out_info::in, rl_out_info::out) is det.
+		list(bytecode)::in, list(bytecode)::out, list(bytecode)::in,
+		list(bytecode)::out, rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__collect_permanent_relations([], Codes, Codes) --> [].
+rl_out__collect_permanent_relations([], Codes, Codes,
+		UnsetCodes, UnsetCodes) --> [].
 rl_out__collect_permanent_relations([RelationId - Addr | Rels],
-		Codes0, Codes) -->
+		Codes0, Codes, UnsetCodes0, UnsetCodes) -->
 	rl_out_info_get_relations(Relations),
 	{ map__lookup(Relations, RelationId, RelInfo) },
 	{ RelInfo = relation_info(RelType, _Schema, _Index, _) },
 	(
 		{ RelType = permanent(proc(PredId, _)) }
 	->
-		rl_out_info_get_module_info(ModuleInfo),
-
-		{ rl__get_permanent_relation_info(ModuleInfo, PredId,
-			Owner, PredModule, _, _, RelName, SchemaString) },
-
-		rl_out_info_assign_const(string(Owner), OwnerConst), 
-		rl_out_info_assign_const(string(PredModule), PredModuleConst),
-		rl_out_info_assign_const(string(SchemaString), SchemaOffset),
-		rl_out_info_assign_const(string(RelName), RelNameConst),
-
-		rl_out_info_get_permanent_relations(PermRels0),
-		{ set__insert(PermRels0, 
-			relation(OwnerConst, PredModuleConst, 
-				RelNameConst, SchemaOffset), 
-			PermRels) },
-		rl_out_info_set_permanent_relations(PermRels),
-
-		{ string__format("%s/%s/%s", 
-			[s(Owner), s(PredModule), s(RelName)], Name) },
-		rl_out_info_assign_const(string(Name), RelNameOffset),
-		{ SetCode = rl_PROC_openpermrel(Addr, RelNameOffset, 
-				SchemaOffset) },
+		rl_out__collect_permanent_relation(PredId, Addr,
+			SetCode, UnsetCode),
+		{ UnsetCodes1 = [UnsetCode | UnsetCodes0] },
 		{ Codes1 = [SetCode | Codes0] }
 	;
+		{ UnsetCodes1 = UnsetCodes0 },
 		{ Codes1 = Codes0 }
 	),
-	rl_out__collect_permanent_relations(Rels, Codes1, Codes).
+	rl_out__collect_permanent_relations(Rels, Codes1, Codes,
+		UnsetCodes1, UnsetCodes).
+
+:- pred rl_out__collect_permanent_relation(pred_id::in, int::in,
+		bytecode::out, bytecode::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__collect_permanent_relation(PredId, Addr, SetCode, UnsetCode) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl__get_permanent_relation_info(ModuleInfo, PredId,
+		Owner, PredModule, _, _, RelName, SchemaString) },
+
+	rl_out_info_assign_const(string(Owner), OwnerConst), 
+	rl_out_info_assign_const(string(PredModule), PredModuleConst),
+	rl_out_info_assign_const(string(SchemaString), SchemaOffset),
+	rl_out_info_assign_const(string(RelName), RelNameConst),
+
+	rl_out_info_get_permanent_relations(PermRels0),
+	{ set__insert(PermRels0, 
+		relation(OwnerConst, PredModuleConst, 
+			RelNameConst, SchemaOffset), 
+		PermRels) },
+	rl_out_info_set_permanent_relations(PermRels),
+
+	{ string__format("%s/%s/%s", 
+		[s(Owner), s(PredModule), s(RelName)], Name) },
+	rl_out_info_assign_const(string(Name), RelNameOffset),
+	{ SetCode = rl_PROC_openpermrel(Addr, RelNameOffset, SchemaOffset) },
+	{ UnsetCode = rl_PROC_unsetrel(Addr) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -556,99 +875,16 @@ rl_out__generate_instr_list([RLInstr | RLInstrs], Code) -->
 :- pred rl_out__generate_instr(rl_instruction::in, byte_tree::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_instr(join(Output, Input1, Input2, Type, Cond) - _, Code) -->
-	(
-		{ Type = nested_loop },
-		rl_out__generate_join(rl_PROC_join_nl, Output,
-			Input1, Input2, Cond, Code)
-	;
-		{ Type = sort_merge(_, _) },
-		rl_out__generate_join(rl_PROC_join_sm, Output,
-			Input1, Input2, Cond, Code)
-	;
-		{ Type = index(IndexSpec, Range) },
-		{ rl_out__index_spec_to_string(IndexSpec, IndexStr) },
-		rl_out_info_assign_const(string(IndexStr), IndexConst),
-		rl_out__generate_stream(Input1, Stream1Code),
-		rl_out_info_get_relation_addr(Input2, Input2Addr),
-		rl_out__generate_key_range(Range, RangeExprn),
-		rl_out_info_get_output_relation_schema_offset(Output,
-			OutputSchemaOffset),
-		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
-		{ InstrCode =
-			tree(node([rl_PROC_join_index_simple]),
-			tree(Stream1Code,
-			node([
-				rl_PROC_indexed_var(Input2Addr, 0, IndexConst),
-				rl_PROC_expr(RangeExprn),
-				rl_PROC_expr(CondExprn)
-			])
-		)) },
-		rl_out__generate_stream_instruction(Output, InstrCode, Code)
-	;
-		{ Type = cross },
-		rl_out__generate_join(rl_PROC_join_cross, Output,
-			Input1, Input2, Cond, Code)
-	;
-		{ Type = semi },
-		%
-		% Optimize a common case here - if the output does not depend
-		% on the second relation, we generate this as:
-		% if (empty(rel2)) {
-		% 	init(output);
-		% } else {
-		%	output = rel1;
-		% }
-		%
-		% This happens for joins with zero-arity input relations.
-		(
-			{ rl__goal_is_independent_of_input(two,
-				Cond, _Cond1) }
-		->
-			rl_out__generate_stream(Input1, Stream1Code),
-			rl_out__generate_stream(Input2, Stream2Code),
-			{ CondCode =
-				tree(node([rl_PROC_empty]),
-				Stream2Code) },
-			rl_out__generate_instr(init(Output) - "", ThenCode),
-			rl_out__generate_stream_instruction(Output,
-				Stream1Code, ElseCode),
-			rl_out__generate_ite(CondCode, ThenCode, ElseCode,
-				Code)
-		;
-			rl_out__generate_join(rl_PROC_join_sm, Output,
-				Input1, Input2, Cond, Code)
-		)
-	).
-
-rl_out__generate_instr(subtract(Output, Input1, Input2, Type, Cond) - _, 
+rl_out__generate_instr(join(Output, Input1, Input2, Type, Cond,
+		SemiJoin, TrivialJoin) - _, Code) -->
+	rl_out__generate_join(Output, Input1, Input2, Type,
+		Cond, SemiJoin, TrivialJoin, Code).
+rl_out__generate_instr(
+		subtract(Output, Input1, Input2,
+			Type, Cond, TrivialSubtract) - _, 
 		Code) -->
-	rl_out__generate_stream(Input1, Stream1Code),
-	rl_out__generate_stream(Input2, Stream2Code),
-	rl_out_info_get_output_relation_schema_offset(Output,
-		OutputSchemaOffset),
-	rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
-	(
-		{ Type = nested_loop },
-		{ SubtractCode = rl_PROC_subtract_nl }
-	;
-		{ Type = semi },
-		{ SubtractCode = rl_PROC_semisubtract_nl }
-	;
-		{ Type = sort_merge(_, _) },
-		{ SubtractCode = rl_PROC_subtract_sm }
-	;
-		{ Type = index(_IndexSpec, _) },
-		{ error(
-		"rl_out__generate_instr: subtract_index not yet implemented") }
-	),
-	{ InstrCode =
-		tree(node([SubtractCode]), 
-		tree(Stream1Code, 
-		tree(Stream2Code,
-		node([rl_PROC_expr(CondExprn)])
-	))) },
-	rl_out__generate_stream_instruction(Output, InstrCode, Code).
+	rl_out__generate_subtract(Output, Input1, Input2, Type,
+		Cond, TrivialSubtract, Code).
 rl_out__generate_instr(difference(Output, Input1, Input2, Type) - _,
 		Code) -->
 	rl_out__generate_stream(Input1, Stream1Code),
@@ -665,97 +901,8 @@ rl_out__generate_instr(difference(Output, Input1, Input2, Type) - _,
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).	
 rl_out__generate_instr(project(Output, Input, Cond0,
 		OtherOutputs, ProjectType) - _, Code) -->
-	rl_out_info_get_output_relation_schema_offset(Output,
-		OutputSchemaOffset),
-
-	% If the produced tuple is independent of the input tuple,
-	% generate:
-	% if (empty(Input)) {
-	% 	init(Output);
-	% } else
-	% 	init(Output);
-	%	insert_tuple(Output, Tuple);
-	% } 
-	%
-	% This can happen for tables of facts.
-	%
-	% Projections of this type are never combined with
-	% other projections of the same input relation in the
-	% one instruction by rl_block_opt.m.
-	(
-		{ OtherOutputs = [] },
-		{ rl__goal_is_independent_of_input(one, Cond0, Cond) }
-	->
-		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
-		rl_out__generate_stream(Input, StreamCode),
-		{ CondCode = tree(node([rl_PROC_empty]), StreamCode) },
-		rl_out__generate_instr(init(Output) - "", ThenCode),
-		{ TupleCode = node([
-			rl_PROC_insert_tuple_stream,
-			rl_PROC_stream,
-			rl_PROC_empty_stream(OutputSchemaOffset),
-			rl_PROC_stream_end,
-			rl_PROC_expr(CondExprn)
-		]) },
-		rl_out__generate_stream_instruction(Output, TupleCode,
-			ElseCode),
-		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
-	;
-		(
-			{ ProjectType = filter },
-			rl_out__generate_stream(Input, StreamCode)
-		;
-			% For an indexed project/select we do a btree_scan
-			% to select out the range of tuples we're interested
-			% in, then proceed as normal.
-			{ ProjectType = index(IndexSpec, Range) },
-			{ rl_out__index_spec_to_string(IndexSpec, IndexStr) },
-			rl_out_info_get_relation_addr(Input, InputAddr),
-			rl_out_info_assign_const(string(IndexStr), IndexConst),
-			rl_out__generate_key_range(Range, RangeExprn),
-			{ StreamCode = node([
-				rl_PROC_stream,
-				rl_PROC_btree_scan,
-				rl_PROC_indexed_var(InputAddr, 0, IndexConst),
-				rl_PROC_expr(RangeExprn),
-				rl_PROC_stream_end
-			]) }
-		),
-
-		rl_out__generate_exprn(Cond0, OutputSchemaOffset, CondExprn),
-
-		%
-		% Initialise the other output relations.
-		%
-		{ assoc_list__keys(OtherOutputs, OtherOutputRels) },
-		list__map_foldl(
-		    (pred(TheOutput::in, RelInitCode::out, in, out) is det -->
-			rl_out__generate_instr(init(TheOutput) - "",
-				RelInitCode)
-		    ),
-		    OtherOutputRels, OtherOutputInitCodeList),
-		{ list__foldl(
-		    (pred(InitCode::in, Tree0::in, Tree::out) is det :-
-			Tree = tree(Tree0, InitCode)
-		    ),
-		    OtherOutputInitCodeList, empty, OtherOutputInitCode) },
-
-		{ list__map(rl__output_rel_relation,
-			OtherOutputRels, OtherOutputRelations) },
-		rl_out__get_rel_var_list(OtherOutputRelations, VarListCode),
-		list__foldl2(rl_out__generate_project_exprn, OtherOutputs,
-			empty, ExprnListCode),
-		{ InstrCode = 
-			tree(node([rl_PROC_project_tee]), 
-			tree(StreamCode, 
-			tree(node([rl_PROC_expr(CondExprn)]),
-			tree(VarListCode,
-			tree(ExprnListCode,
-			node([rl_PROC_expr_list_nil])
-		))))) },
-		rl_out__generate_stream_instruction(Output, InstrCode, Code0),
-		{ Code = tree(OtherOutputInitCode, Code0) }
-	).
+	rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
+		ProjectType, Code).
 rl_out__generate_instr(union(Output, Inputs, Type) - _, Code) -->
 	{ UnionCode = rl_PROC_union_sm },
 	{ Type = sort_merge(Spec) },
@@ -814,8 +961,28 @@ rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 		node([rl_PROC_expr(CompareExprn)])
 	)) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
-rl_out__generate_instr(add_index(output_rel(Rel, Indexes)) - _, Code) -->
-	rl_out__add_indexes_to_rel(may_have_index, Rel, Indexes, Code).
+rl_out__generate_instr(add_index(output_rel(Rel, Indexes), Input) - _,
+		Code) -->
+	% Generated as 
+	% if (is_permanent(Input) and !has_index(Input, Indexes)) {
+	% 	copy(Output, Input);
+	% } else {
+	%	ref(Output, Input);
+	% 	if (has_index(Input, Indexes)) {
+	%		;
+	%	} else {
+	%		rl_PROC_add_index(Output, Indexes);
+	%	}
+	% }
+	%
+	rl_out__generate_test_for_non_indexed_permanent(Input,
+		Indexes, CondCode),
+	rl_out__generate_instr(copy(output_rel(Rel, Indexes), Input) - "",
+		ThenCode),
+	rl_out__generate_instr(ref(Rel, Input) - "", RefCode),
+	rl_out__add_indexes_to_rel(may_have_index, Rel, Indexes, IndexCode),
+	{ ElseCode = tree(RefCode, IndexCode) },
+	rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code).
 rl_out__generate_instr(clear(Rel) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
 	{ Code = node([rl_PROC_clear(Addr)]) }.
@@ -894,19 +1061,17 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	) }.
 rl_out__generate_instr(make_unique(OutputRel, Input) - Comment, Code) -->
 	% 	if (one_reference(InputRel)) {
-	% 		OutputRel = ref(InputRel)
+	% 		OutputRel = add_index(InputRel)
 	% 	} else {
 	% 		OutputRel = copy(InputRel)
 	%	}
 	rl_out_info_get_relation_addr(Input, InputAddr),
 	{ CondCode = node([rl_PROC_one_reference(InputAddr)]) },
 
-	{ OutputRel = output_rel(Output, _) },
-	rl_out__generate_instr(ref(Output, Input) - Comment, ThenCode0),
 	% We may not need to generate this instruction - rl_sort.m
 	% has enough information to work out whether this is actually needed.
-	rl_out__generate_instr(add_index(OutputRel) - Comment, ThenCode1),
-	{ ThenCode = tree(ThenCode0, ThenCode1) },
+	rl_out__generate_instr(add_index(OutputRel, Input) - Comment,
+		ThenCode),
 
 	rl_out__generate_instr(copy(OutputRel, Input) - Comment, ElseCode),
 
@@ -928,7 +1093,7 @@ rl_out__generate_instr(call(ProcName, Inputs, OutputRels, SaveRels) - _,
 	rl_out_info_assign_const(string(ProcNameStr), ProcNameConst),
 	rl_out_info_return_tmp_vars(SaveTmpVars, SaveClearCode),
 	rl_out_info_return_tmp_vars(OverlapTmpVars, OverlapClearCode),
-	rl_out__add_indexes_to_rels(does_not_have_index,
+	rl_out__add_indexes_to_rels_copy_permanents(may_have_index,
 		OutputRels, IndexCode),
 	{ Code =
 		tree(SaveCode,
@@ -955,23 +1120,486 @@ rl_out__generate_instr(comment - _, empty) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_out__generate_join(bytecode::in, output_rel::in,
-		relation_id::in, relation_id::in, rl_goal::in,
-		byte_tree::out, rl_out_info::in, rl_out_info::out) is det.
+:- pred rl_out__generate_join(output_rel::in, relation_id::in,
+	relation_id::in, join_type::in, rl_goal::in, maybe(semi_join_info)::in,
+	maybe(trivial_join_info)::in, byte_tree::out,
+	rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_join(JoinCode, Output, Input1, Input2, Cond, Code) -->
+rl_out__generate_join(Output, Input1a, Input2a, JoinType0, Cond0,
+		MaybeSemiJoin, MaybeTrivialJoin, Code) -->
+	%
+	% Work out the bytecode to use for the join, and whether the
+	% join is actually a semi-join.
+	%
+	{ rl_out__compute_join_bytecode(JoinType0, MaybeSemiJoin,
+		JoinBytecode, SwapInputs) },
+		
+	{
+		MaybeSemiJoin = yes(_),
+		rl__strip_goal_outputs(Cond0, Cond1)
+	;
+		MaybeSemiJoin = no,
+		Cond1 = Cond0
+	},
+
+	{
+		SwapInputs = yes,
+		Input1 = Input2a,
+		Input2 = Input1a,
+		rl__swap_goal_inputs(Cond1, Cond),
+		rl__swap_join_type_inputs(JoinType0, JoinType)
+	;
+		SwapInputs = no,
+		Input1 = Input1a,
+		Input2 = Input2a,
+		Cond = Cond1,
+		JoinType = JoinType0
+	},
+
+	%
+	% Optimize a common case here - if the join condition does not
+	% depend on the second relation, we generate this as:
+	% if (empty(rel2)) {
+	% 	init(output);
+	% } else {
+	%	output = project(rel1);
+	% }
+	%
+	% This happens often for joins with zero-arity input relations.
+	%
+	% The projection will be unnecessary for a semi-join where
+	% the condition is deterministic.
+	%
+	(
+		{ MaybeTrivialJoin = yes(TrivialJoinInfo) },
+		{ TrivialJoinInfo = trivial_join_or_subtract_info(
+					ProjectTupleNum0, MaybeProjectType) },
+		{
+			SwapInputs = yes,
+			rl__swap_tuple_num(ProjectTupleNum0, ProjectTupleNum)
+		;
+			SwapInputs = no,
+			ProjectTupleNum = ProjectTupleNum0
+		},
+
+		{
+			ProjectTupleNum = one,
+			ProjectInput = Input1,
+			TestRel = Input2
+		;
+			ProjectTupleNum = two,
+			ProjectInput = Input2,
+			TestRel = Input1
+		},
+
+		(
+			{ MaybeProjectType = yes(ProjectType) },
+			{ rl__swap_tuple_num(ProjectTupleNum, InputToRemove) },
+			{ rl__remove_goal_input(InputToRemove,
+				Cond, ProjectCond) },
+			{ ProjectInstr = project(Output, ProjectInput,
+					ProjectCond, [], ProjectType) - "" },
+			rl_out__generate_instr(ProjectInstr, ElseCode)
+		;
+			{ MaybeProjectType = no },
+			rl_out__maybe_materialise(Output,
+				ProjectInput, ElseCode)
+		),
+
+		rl_out__generate_stream(TestRel, TestStreamCode),
+		{ CondCode = tree(node([rl_PROC_empty]), TestStreamCode) },	
+		rl_out__generate_instr(init(Output) - "", ThenCode),
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
+	;
+		{ MaybeTrivialJoin = no },
+		rl_out__generate_join_or_subtract(Output, Input1, Input2,
+			JoinType, JoinBytecode, Cond, Code)
+	).
+
+:- pred rl_out__compute_join_bytecode(join_type::in, maybe(semi_join_info)::in,
+		bytecode::out, bool::out) is det.
+
+rl_out__compute_join_bytecode(nested_loop, no, rl_PROC_join_nl, no).
+rl_out__compute_join_bytecode(nested_loop, yes(Tuple),
+		rl_PROC_semijoin_nl, Swap) :-
+	rl_out__should_swap_inputs(Tuple, Swap).
+
+rl_out__compute_join_bytecode(sort_merge(_, _), no, rl_PROC_join_sm, no).
+rl_out__compute_join_bytecode(sort_merge(_, _), yes(Tuple),
+		rl_PROC_semijoin_sm, Swap) :-
+	rl_out__should_swap_inputs(Tuple, Swap).
+
+rl_out__compute_join_bytecode(hash(_, _), no, rl_PROC_join_hj, no).
+rl_out__compute_join_bytecode(hash(_, _), yes(Tuple),
+		rl_PROC_semijoin_hj, Swap) :-
+	rl_out__should_swap_inputs(Tuple, Swap).
+
+rl_out__compute_join_bytecode(index(_, _), no,
+		rl_PROC_join_index_simple(IndexRangeTypes), no) :-
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0.
+
+rl_out__compute_join_bytecode(index(_, _), yes(Tuple),
+		rl_PROC_semijoin_index(Output, IndexRangeTypes), no) :-
+
+		% The tuple from the non-indexed relation is returned --
+		% returning the tuple from the index relation is not
+		% yet implemented in Aditi.
+	Output = 0,
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0,
+	require(unify(Tuple, one),
+		"indexed semi_join doesn't return first tuple").
+
+	% For semi_joins, the first input tuple is the one returned.
+:- pred rl_out__should_swap_inputs(tuple_num::in, bool::out) is det.
+
+rl_out__should_swap_inputs(one, no).
+rl_out__should_swap_inputs(two, yes).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out__generate_subtract(output_rel::in, relation_id::in,
+		relation_id::in, subtract_type::in, rl_goal::in,
+		maybe(trivial_subtract_info)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_subtract(Output, Input1, Input2, Type,
+		Cond, TrivialSubtract, Code) -->
+	(
+	    { TrivialSubtract = yes(
+		trivial_join_or_subtract_info(TupleNum, MaybeProject)) },
+	    (
+		{ TupleNum = one },
+		% Output = subtract(Input1, Input2, Cond),
+		% 	where Cond is independent of input two,
+		%	is generated as:
+		%  
+		% if (empty(Input2)) {
+		%	Output = Input1	
+		% else {
+		% 	Output = select(Input1, not(Cond))
+		% }
+		(
+			{ MaybeProject = yes(ProjectType) },
+			{ rl__remove_goal_input(two, Cond, ProjectCond0) },
+			{ Goals0 = ProjectCond0 ^ goal },
+			{ goal_list_nonlocals(Goals0, NonLocals) },
+			{ goal_list_determinism(Goals0, Detism0) },
+			{ det_negation_det(Detism0, MaybeDetism) },
+			{ MaybeDetism = yes(NegDetism0) ->
+				NegDetism = NegDetism0
+			;
+				% This should probably never happen,
+				% but semidet is a safe approximation.
+				NegDetism = semidet
+			},
+			{ instmap_delta_init_reachable(IMDelta) },
+			{ goal_info_init(NonLocals, IMDelta, Detism0,
+				GoalInfo) },
+			{ conj_list_to_goal(Goals0, GoalInfo, Conj) },
+			{ goal_info_init(NonLocals, IMDelta, NegDetism,
+				NegGoalInfo) },
+			{ NegGoal = not(Conj) - NegGoalInfo },
+			{ ProjectCond = ProjectCond0 ^ goal := [NegGoal] },
+			{ ProjectInstr = project(Output, Input1,
+				ProjectCond, [], ProjectType) - "" },
+			rl_out__generate_instr(ProjectInstr, ElseCode)
+		;
+			{ MaybeProject = no },
+			% The selection is not removed by
+			% rl__is_trivial_subtract in this case.
+			{ error(
+	"rl_out__generate_subtract: trivial subtract without select") }
+		),
+
+		rl_out__generate_stream(Input2, InputStream2Code),
+		{ CondCode = tree(node([rl_PROC_empty]), InputStream2Code) },	
+		rl_out__generate_instr(init(Output) - "", ThenCode),
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
+	    ;
+		{ TupleNum = two },
+		% Output = subtract(Input1, Input2, Cond),
+		% 	where Cond is independent of input one,
+		%	is generated as:
+		%  
+		% if (empty(select(Input2, Cond))) {
+		%	Output = Input1	
+		% else {
+		% 	init(Output)
+		% }
+
+		(
+			{ MaybeProject = yes(ProjectType) },
+			{ rl__remove_goal_input(one, Cond, ProjectCond) },
+
+			rl_out_info_get_relation_schema(Input2, Input2Schema),
+			rl_out_info_add_temporary_relation(Input2Schema,
+				stream, TmpRel),
+			{ ProjectInstr = project(output_rel(TmpRel, []),
+				Input2, ProjectCond, [], ProjectType) - "" },
+			rl_out__generate_instr(ProjectInstr, ProjectCode),
+			{ ProjectRel = TmpRel }
+		;
+			{ MaybeProject = no },
+			{ ProjectRel = Input2 },
+			{ ProjectCode = empty }
+		),
+		rl_out__generate_stream(ProjectRel, ProjectStreamCode),
+		{ CondCode = tree(node([rl_PROC_empty]), ProjectStreamCode) },
+		rl_out__maybe_materialise(Output, Input1, ThenCode),
+		rl_out__generate_instr(init(Output) - "", ElseCode),
+
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, ITECode),
+		{ Code = tree(ProjectCode, ITECode) }
+	    )
+	;
+		{ TrivialSubtract = no },
+		{ rl_out__compute_subtract_bytecode(Type, SubtractBytecode,
+			JoinType) },
+		rl_out__generate_join_or_subtract(Output, Input1, Input2,
+			JoinType, SubtractBytecode, Cond, Code)
+	).
+
+	% Work out which bytecode to use, and which join type
+	% uses the same instruction format.
+:- pred rl_out__compute_subtract_bytecode(subtract_type::in, bytecode::out,
+		join_type::out) is det.
+
+rl_out__compute_subtract_bytecode(semi_nested_loop, rl_PROC_semisubtract_nl,
+		nested_loop).
+rl_out__compute_subtract_bytecode(semi_sort_merge(_, _), _, _) :-
+	error(
+	"rl_out__compute_subtract_bytecode: subtract_sm not yet implemented").
+rl_out__compute_subtract_bytecode(semi_hash(Attrs1, Attrs2),
+		rl_PROC_semisubtract_hj, hash(Attrs1, Attrs2)).
+rl_out__compute_subtract_bytecode(semi_index(IndexSpec, KeyRange),
+		rl_PROC_semisubtract_index(IndexRangeTypes),
+		index(IndexSpec, KeyRange)) :-
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0.
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out__generate_join_or_subtract(output_rel::in, relation_id::in,
+	relation_id::in, join_type::in, bytecode::in,
+	rl_goal::in, byte_tree::out, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_join_or_subtract(Output, Input1, Input2, JoinType,
+		JoinBytecode, Cond, Code) -->
+	(
+		{ JoinType = nested_loop },
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
+			Input1, Input2, [], Cond, Code)
+	;
+		{ JoinType = hash(Attrs1, Attrs2) },
+		%
+		% Hash values are not necessarily unique, so
+		% the entire join condition must run when
+		% performing the nested loop join on tuples
+		% with the same hash value.
+		%
+		rl_out__generate_hash_exprn(Input1, Attrs1, HashExprn1),
+		rl_out__generate_hash_exprn(Input2, Attrs2, HashExprn2),
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
+			Input1, Input2, [HashExprn1, HashExprn2], Cond, Code)
+	;
+		{ JoinType = sort_merge(Spec1, Spec2) },
+		rl_out_info_get_relation_schema(Input1, Schema1),
+		rl_out_info_get_relation_schema(Input1, Schema2),
+		rl_out__generate_sort_merge_compare_exprn(Spec1, Schema1,
+			Spec2, Schema2, CompareExprn),
+
+		%
+		% XXX We should strip out the parts of the join
+		% condition which are already tested by the CompareExprns.
+		%
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
+			Input1, Input2, [CompareExprn],
+			Cond, Code)
+	;
+		{ JoinType = index(IndexSpec, Range) },
+		{ rl_out__index_spec_to_string(IndexSpec, IndexStr) },
+		rl_out_info_assign_const(string(IndexStr), IndexConst),
+		rl_out__generate_stream(Input1, Stream1Code),
+		rl_out_info_get_relation_addr(Input2, Input2Addr),
+		rl_out__generate_key_range(Range, RangeExprn),
+		rl_out_info_get_output_relation_schema_offset(Output,
+			OutputSchemaOffset),
+		%
+		% XXX We should strip out the parts of the join
+		% condition which are already tested by the comparison
+		% against the ends of the key range.
+		%
+		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
+		{ InstrCode =
+			tree(node([JoinBytecode]),
+			tree(Stream1Code,
+			node([
+				rl_PROC_indexed_var(Input2Addr, 0, IndexConst),
+				rl_PROC_expr(RangeExprn),
+				rl_PROC_expr(CondExprn)
+			])
+		)) },
+		rl_out__generate_stream_instruction(Output, InstrCode, Code)
+	).
+
+:- pred rl_out__generate_join_or_subtract_2(bytecode::in, output_rel::in,
+		relation_id::in, relation_id::in,
+		list(int)::in, rl_goal::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_join_or_subtract_2(JoinCode, Output, Input1, Input2,
+		ExtraExprns, Cond, Code) -->
 	rl_out_info_get_output_relation_schema_offset(Output,
 		OutputSchemaOffset),
 	rl_out__generate_stream(Input1, Stream1Code),
 	rl_out__generate_stream(Input2, Stream2Code),
 	rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
+	{ list__append(ExtraExprns, [CondExprn], Exprns) },
+	{ list__map(pred(Exprn::in, rl_PROC_expr(Exprn)::out) is det,
+		Exprns, ExprnInstrs) },
 	{ InstrCode =
 		tree(node([JoinCode]), 
 		tree(Stream1Code, 
 		tree(Stream2Code, 
-		node([rl_PROC_expr(CondExprn)])
+		node(ExprnInstrs)
 	))) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out__generate_project(output_rel::in, relation_id::in,
+		rl_goal::in, assoc_list(output_rel, rl_goal)::in,
+		project_type::in, byte_tree::out, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
+		ProjectType, Code) -->
+	rl_out_info_get_output_relation_schema_offset(Output,
+		OutputSchemaOffset),
+
+	%
+	% If the goal passes the input tuple through unmodified,
+	% the projection is actually a selection.
+	%
+	{ rl__goal_returns_input_tuple(Cond0, one) ->
+		rl__strip_goal_outputs(Cond0, Cond)
+	;
+		Cond = Cond0
+	},
+
+	(
+		{ OtherOutputs = [] },
+		{ rl__goal_is_independent_of_input(one, Cond) }
+	->
+		%
+		% If the produced tuple is independent of the input tuple,
+		% generate:
+		% if (empty(Input)) {
+		% 	init(Output);
+		% } else
+		% 	init(Output);
+		%	insert_tuple(Output, Tuple);
+		% } 
+		%
+		% This can happen for tables of facts.
+		%
+		% Projections of this type are never combined with
+		% other projections of the same input relation in the
+		% one instruction by rl_block_opt.m.
+		%
+		{ rl__remove_goal_input(one, Cond, TupleGoal) },
+		rl_out__generate_exprn(TupleGoal,
+			OutputSchemaOffset, CondExprn),
+		rl_out__generate_stream(Input, StreamCode),
+		{ CondCode = tree(node([rl_PROC_empty]), StreamCode) },
+		rl_out__generate_instr(init(Output) - "", ThenCode),
+		{ TupleCode = node([
+			rl_PROC_insert_tuple_stream,
+			rl_PROC_stream,
+			rl_PROC_empty_stream(OutputSchemaOffset),
+			rl_PROC_stream_end,
+			rl_PROC_expr(CondExprn)
+		]) },
+		rl_out__generate_stream_instruction(Output, TupleCode,
+			ElseCode),
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
+	;
+		(
+			{ ProjectType = filter },
+			rl_out__generate_stream(Input, StreamCode)
+		;
+			%
+			% For an indexed project/select we do a btree_scan
+			% to select out the range of tuples we're interested
+			% in, then proceed as normal.
+			%
+			% XXX We should strip out the parts of the join
+			% condition which are already tested by the
+			% CompareExprns. The project_tee operation
+			% may not be necessary.
+			%
+
+			{ ProjectType = index(IndexSpec, Range) },
+			{ rl_out__index_spec_to_string(IndexSpec, IndexStr) },
+			rl_out_info_get_relation_addr(Input, InputAddr),
+			rl_out_info_assign_const(string(IndexStr), IndexConst),
+			rl_out__generate_key_range(Range, RangeExprn),
+
+				% both ends of the key range are closed.
+				% XXX we should detect and use open ranges
+			{ IndexRangeTypes = 0 },
+
+			{ StreamCode = node([
+				rl_PROC_stream,
+				rl_PROC_btree_scan(IndexRangeTypes),
+				rl_PROC_indexed_var(InputAddr, 0, IndexConst),
+				rl_PROC_expr(RangeExprn),
+				rl_PROC_stream_end
+			]) }
+		),
+
+		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
+
+		%
+		% Initialise the other output relations.
+		%
+		{ assoc_list__keys(OtherOutputs, OtherOutputRels) },
+		list__map_foldl(
+		    (pred(TheOutput::in, RelInitCode::out, in, out) is det -->
+			rl_out__generate_instr(init(TheOutput) - "",
+				RelInitCode)
+		    ),
+		    OtherOutputRels, OtherOutputInitCodeList),
+		{ list__foldl(
+		    (pred(InitCode::in, Tree0::in, Tree::out) is det :-
+			Tree = tree(Tree0, InitCode)
+		    ),
+		    OtherOutputInitCodeList, empty, OtherOutputInitCode) },
+
+		{ list__map(rl__output_rel_relation,
+			OtherOutputRels, OtherOutputRelations) },
+		rl_out__get_rel_var_list(OtherOutputRelations, VarListCode),
+		list__foldl2(rl_out__generate_project_exprn, OtherOutputs,
+			empty, ExprnListCode),
+		{ InstrCode = 
+			tree(node([rl_PROC_project_tee]), 
+			tree(StreamCode, 
+			tree(node([rl_PROC_expr(CondExprn)]),
+			tree(VarListCode,
+			tree(ExprnListCode,
+			node([rl_PROC_expr_list_nil])
+		))))) },
+		rl_out__generate_stream_instruction(Output, InstrCode, Code0),
+		{ Code = tree(OtherOutputInitCode, Code0) }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1156,6 +1784,40 @@ rl_out__index_attr_to_string(Attr, Str) :-
 	;	does_not_have_index
 	.
 
+:- pred rl_out__add_indexes_to_rels_copy_permanents(check_index::in, 
+		list(output_rel)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__add_indexes_to_rels_copy_permanents(CheckIndex,
+		OutputRels, IndexCode) -->
+	list__foldl2(rl_out__add_indexes_to_rel_copy_permanent(CheckIndex),
+		OutputRels, empty, IndexCode).
+
+:- pred rl_out__add_indexes_to_rel_copy_permanent(check_index::in,
+		output_rel::in, byte_tree::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__add_indexes_to_rel_copy_permanent(CheckIndex,
+		OutputRel, Code0, Code) -->
+	{ OutputRel = output_rel(Output, Indexes) },
+	(
+		{ Indexes = [] },
+		{ Code = Code0 }
+	;
+		{ Indexes = [_ | _] },
+		rl_out__generate_test_for_non_indexed_permanent(Output,
+			Indexes, CondCode),
+	
+		% Copy the base relation, because queries can't add
+		% indexes to a base relation.
+		rl_out__generate_instr(copy(OutputRel, Output) - "",
+			CopyCode),	
+
+		rl_out__add_indexes_to_rel(CheckIndex, Output,
+			Indexes, IndexCode),
+		rl_out__generate_ite(CondCode, CopyCode, IndexCode, Code)
+	).
+
 :- pred rl_out__add_indexes_to_rels(check_index::in,
 		list(output_rel)::in, byte_tree::out,
 		rl_out_info::in, rl_out_info::out) is det.
@@ -1200,6 +1862,54 @@ rl_out__add_indexes_to_rel(CheckIndex, Output,
 		OutputAddr, Indexes, IndexCode1),
 	{ IndexCode = tree(IndexCode0, IndexCode1) }.
 
+	% Test whether the input relation is a base relation which does
+	% not have one of the given indexes. If we are going to add
+	% the indexes, the base relation needs to be copied (queries should
+	% never add indexes to base relations).
+:- pred rl_out__generate_test_for_non_indexed_permanent(relation_id::in,
+		list(index_spec)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_test_for_non_indexed_permanent(Input, Indexes, CondCode) -->
+	rl_out_info_get_relation_addr(Input, InputAddr),
+	{ GenerateHasIndexCode =
+	    (pred(Index::in, HasIndexCode::out, Info0::in, Info::out) is det :-
+			rl_out__index_spec_to_string(Index, IndexStr),
+			rl_out_info_assign_const(string(IndexStr), IndexConst,
+				Info0, Info),
+			HasIndexCode = node([
+				rl_PROC_not,
+				rl_PROC_has_index(InputAddr, IndexConst)
+			])
+	    ) },
+	list__map_foldl(GenerateHasIndexCode, Indexes, IndexTests),
+
+	{
+		IndexTests = [IndexTest | IndexTests1],
+		CombineTest =
+			(pred(Test1::in, CombinedCode0::in,
+					CombinedCode::out) is det :-
+				CombinedCode =
+					tree(node([rl_PROC_or]),
+					tree(Test1,
+					CombinedCode0
+				))
+			),
+		list__foldl(CombineTest, IndexTests1,
+			IndexTest, IndexTestCode),
+		CondCode =
+			tree(node([
+				rl_PROC_and,
+				rl_PROC_is_permanent(InputAddr)
+			]),
+			IndexTestCode
+		)
+	;
+		IndexTests = [],
+		error(
+	"rl_out__generate_test_for_non_indexed_permanent: no indexes")
+	}.
+
 %-----------------------------------------------------------------------------%
 
 	% Generate code to handle an instruction that could return a
@@ -1229,13 +1939,13 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 	;
 		rl_out_info_get_relation_schema_offset(Output, SchemaOffset),
 		rl_out_info_get_tmp_var(SchemaOffset, TmpVar),
-		rl_out_info_return_tmp_var(SchemaOffset,
-			TmpVar, TmpClearCode),
 
 		{ LockSpec = 0 },	% default lock spec
 		rl_out__add_indexes_to_rel(does_not_have_index,
 			Output, Indexes, IndexInstrs),
 		rl_out_info_get_next_materialise_id(Id),
+		rl_out_info_return_tmp_var(SchemaOffset,
+			TmpVar, TmpClearCode),
 		{ Code = 
 			tree(node([
 				rl_PROC_createtemprel(TmpVar, SchemaOffset)
@@ -1257,6 +1967,32 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 			]),
 			TmpClearCode
 		))))) }
+	).
+
+:- pred rl_out__maybe_materialise(output_rel::in, relation_id::in,
+		byte_tree::out, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__maybe_materialise(OutputRel, Input, Code) -->
+	{ OutputRel = output_rel(Output, Indexes) },
+	rl_out_info_get_relation_type(Input, InputType),
+	rl_out_info_get_relation_type(Output, OutputType),
+
+	(
+		{ InputType = temporary(stream) },
+		{ OutputType = temporary(materialised) }
+	->
+		%
+		% Materialise the input into the output.
+		%
+		rl_out__generate_instr(copy(OutputRel, Input) - "", Code)
+	;
+		( { Indexes = [] } ->
+			rl_out__generate_instr(ref(Output, Input) - "", Code)
+		;
+			rl_out__generate_instr(
+				add_index(OutputRel, Input) - "",
+				Code)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1503,6 +2239,43 @@ rl_out__generate_compare_exprn(Spec, Schema, ExprnNum) -->
 		rl_out_info_set_compare_exprns(CompareExprns)
 	).
 
+	% Generate an expression to compare the join attributes 
+	% in a sort-merge equi-join.
+:- pred rl_out__generate_sort_merge_compare_exprn(sort_spec::in,
+	list(type)::in, sort_spec::in, list(type)::in, int::out,
+	rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_sort_merge_compare_exprn(Attrs1, Schema1,
+		Attrs2, Schema2, ExprnNum) -->
+	rl_out_info_get_sort_merge_compare_exprns(CompareExprns0),
+	rl_out__schema_to_string(Schema1, Schema1Offset),
+	rl_out__schema_to_string(Schema2, Schema2Offset),
+
+	{ CompareExprnId = (Attrs1 - Schema1Offset)
+				- (Attrs2 - Schema2Offset) },
+
+	( { map__search(CompareExprns0, CompareExprnId, ExprnNum0) } ->
+		{ ExprnNum = ExprnNum0 }
+	;
+		rl_out_info_get_module_info(ModuleInfo),
+		{ rl_exprn__generate_sort_merge_compare_exprn(ModuleInfo,
+			Attrs1, Schema1, Attrs2, Schema2, Instrs) },
+
+		% Comparison expressions don't use any variables
+		% or create an output tuple.
+		rl_out__schema_to_string([], EmptySchemaOffset),
+
+		% Nothing is built on the stack, so this will be enough.
+		{ StackSize = 10 },
+		{ Decls = [] },
+		rl_out__package_exprn(Instrs, 2, test, EmptySchemaOffset,
+			EmptySchemaOffset, StackSize, Decls, ExprnNum),
+
+		{ map__det_insert(CompareExprns0, CompareExprnId,
+			ExprnNum, CompareExprns) },
+		rl_out_info_set_sort_merge_compare_exprns(CompareExprns)
+	).
+
 :- pred rl_out__generate_key_range(key_range::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
@@ -1521,6 +2294,86 @@ rl_out__generate_key_range(Range, RangeExprn) -->
 		Output1SchemaOffset, Output2SchemaOffset, StackSize,
 		Decls, RangeExprn).
 	
+:- pred rl_out__generate_hash_exprn(relation_id::in, list(int)::in, int::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_hash_exprn(Input, Attrs, ExprnNum) -->
+	rl_out_info_get_relation_schema(Input, InputSchema),
+	rl_out__schema_to_string(InputSchema, InputSchemaOffset),
+	rl_out__do_generate_hash_exprn(InputSchema,
+		InputSchemaOffset, Attrs, ExprnNum).
+
+:- pred rl_out__do_generate_hash_exprn(list(type)::in, int::in,
+		list(int)::in, int::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__do_generate_hash_exprn(InputSchema, InputSchemaOffset,
+		Attrs, ExprnNum) -->
+	rl_out_info_get_hash_exprns(HashExprns0),
+	( { map__search(HashExprns0, Attrs - InputSchemaOffset, ExprnNum0) } ->
+		{ ExprnNum = ExprnNum0 }
+	;
+		rl_out_info_get_module_info(ModuleInfo),
+		{ rl_exprn__generate_hash_function(ModuleInfo,
+			Attrs, InputSchema, ExprnCode) },
+		rl_out__schema_to_string([], EmptySchemaOffset),
+
+		% Nothing is built on the stack, so this will be enough.
+		{ StackSize = 10 },
+		{ NumParams = 1 },
+		{ Decls = [] },
+		rl_out__package_exprn(ExprnCode, NumParams, test,
+			EmptySchemaOffset, EmptySchemaOffset, StackSize,
+			Decls, ExprnNum),
+		{ map__det_insert(HashExprns0, Attrs - InputSchemaOffset,
+			ExprnNum, HashExprns) },
+		rl_out_info_set_hash_exprns(HashExprns)
+	).
+
+	% This is only used by the code to generate the modification
+	% and deletion procedures for base relations, so avoiding
+	% generating multiple copies of one of these is pointless --
+	% only one will ever be generated for each procedure.
+:- pred rl_out__do_generate_equijoin_exprn(list(type)::in, list(int)::in,
+		int::out, rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__do_generate_equijoin_exprn(InputSchema, Attrs, ExprnNum) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl_exprn__generate_equijoin_exprn(ModuleInfo,
+		Attrs, InputSchema, ExprnCode) },
+
+	% Nothing is built on the stack, so this will be enough.
+	{ StackSize = 10 },
+	{ NumParams = 2 },
+	{ Decls = [] },
+	rl_out__schema_to_string([], EmptySchemaOffset),
+	rl_out__package_exprn(ExprnCode, NumParams, test,
+		EmptySchemaOffset, EmptySchemaOffset, StackSize,
+		Decls, ExprnNum).
+
+	% This is only used by the code to generate the modification
+	% procedures for base relations, so avoiding generating multiple
+	% copies of one of these is pointless -- only one will ever be
+	% generated for each procedure.
+:- pred rl_out__generate_modify_project_exprn(list(type)::in, int::in,
+		tuple_num::in, int::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_modify_project_exprn(Schema, SchemaOffset,
+		TupleNum, ExprnNum) -->
+	rl_out_info_get_module_info(ModuleInfo),
+	{ rl_exprn__generate_modify_project_exprn(ModuleInfo,
+		TupleNum, Schema, Code) },
+
+	% Nothing is built on the stack, so this will be enough.
+	{ StackSize = 10 },
+	{ NumParams = 1 },
+	{ ExprnMode = generate },
+	{ Decls = [] },
+	rl_out__schema_to_string([], EmptySchemaOffset),
+	rl_out__package_exprn(Code, NumParams, ExprnMode, SchemaOffset,
+		EmptySchemaOffset, StackSize, Decls, ExprnNum).
+
 :- pred rl_out__package_exprn(list(bytecode)::in, int::in, exprn_mode::in,
 		int::in, int::in, int::in, list(type)::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
@@ -1543,43 +2396,57 @@ rl_out__package_exprn(ExprnCode, NumParams, ExprnMode, OutputSchemaOffset,
 
 :- type rl_out_info
 	---> rl_out_info(
-		int,				% PC
-		compare_exprns,
-		map(relation_id, int),		% relation vars
-		int,				% next relation address
-		map(relation_id, relation_info),
-		map(label_id, int),		% proc label offsets
-		unit,
-		module_info,
-		int,				% expression PC
-		map(rl_const, int),		% procedure consts
-		int,				% next proc const address
-		int,				% next materialise number -
+		module_info :: module_info,
+
+		pc :: int,
+
+		procs :: list(procedure),	% bytecodes for each procedure,
+						% in reverse order.
+
+
+			%
+			% Tables used to avoid generating multiple
+			% copies of the expressions used to
+			% compare tuples and compute hash values.
+			% 
+		compare_exprns :: compare_exprns,
+		sort_merge_compare_exprns :: sort_merge_compare_exprns,
+		hash_exprns :: hash_exprns,
+
+		permanent_relations :: set(relation),
+
+		relation_addrs :: map(relation_id, int), % relation vars
+		next_relation_addr :: int,		% next relation address
+
+		relation_variables :: list(variable),		
+						% variables used in
+						% reverse order.
+
+		relations :: map(relation_id, relation_info),
+
+		proc_labels :: map(label_id, int), % proc label offsets
+		next_proc_label :: int,
+
+		consts :: map(rl_const, int),	% procedure consts
+		next_const :: int,		% next proc const address
+
+		next_materialise :: int,	% next materialise number -
 						% used for debugging the
 						% generated code.
-		unit,
-		unit,
-		unit,
-		int,				% next proc label.
-		list(procedure),		% procedure bytecodes
-						% in reverse order.
-		unit,
-		unit,
-		unit,
-		set(relation),			% permanent relations.
-		list(variable),			% variables used in
-						% reverse order.
-		list(expression),		% expressions for the current
+
+		exprns :: list(expression),	% expressions for the current
 						% procedure in reverse order.
-		int,				% next expression.
-		multi_map(int, int)		% temporary relation variables:
+		next_exprn :: int,		% next expression.
+
+		tmp_vars :: multi_map(int, int)	
+						% temporary relation variables:
 						% map from schema constant
 						% to list of variables.
 						% These must only be used 
 						% within one rl.m instruction.
 	).
 
-	% We only want to generate a single comparison expression for
+	% We only want to generate a single comparison or hash expression for
 	% each combination of attributes and types.
 	% Key:
 	% 	The int gives the offset of the schema of the input relation
@@ -1588,67 +2455,110 @@ rl_out__package_exprn(ExprnCode, NumParams, ExprnMode, OutputSchemaOffset,
 	% 	The number of the expression.
 :- type compare_exprns == map(pair(sort_spec, int), int).
 
+	% The comparison in a sort-merge join takes for each relation
+	% the list of attributes being joined on and the schema offset.
+:- type sort_merge_compare == pair(pair(sort_spec, int)).
+:- type sort_merge_compare_exprns == map(sort_merge_compare, int).
+
+:- type hash_exprns == map(pair(list(int), int), int).
+
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_init(module_info::in, rl_out_info::out) is det.
 
 rl_out_info_init(ModuleInfo, Info0) :-
 	map__init(CompareExprns),
+	map__init(SortMergeCompareExprns),
+	map__init(HashExprns),
 	map__init(Relations),
 	map__init(RelationAddrs),
 	map__init(Consts),
 	map__init(Labels),
-	set__init(PermRels),
 	map__init(TmpVars),
 	PC = 0,
 	FirstRelAddr = 0,
 	FirstConst = 1,
 	FirstMaterialise = 1,
-	Label = 0,
-	NextExprn = 0,
-	Info0 = rl_out_info(PC, CompareExprns, RelationAddrs, FirstRelAddr, 
-		Relations, Labels, unit, ModuleInfo, PC, Consts, 
-		FirstConst, FirstMaterialise, unit, unit, unit, Label, 
-		[], unit, unit, unit, PermRels, [], [], 
-		NextExprn, TmpVars).
+	FirstLabel = 0,
+	Exprns = [],
+	FirstExprn = 0,
+	Procs = [],
+	set__init(PermanentRelations),
+	RelationVariables = [],
+
+	Info0 = rl_out_info(ModuleInfo, PC, Procs,
+			CompareExprns, SortMergeCompareExprns, HashExprns, 
+			PermanentRelations, RelationAddrs, FirstRelAddr, 
+			RelationVariables, Relations, Labels, FirstLabel,
+			Consts, FirstConst, FirstMaterialise, Exprns,
+			FirstExprn, TmpVars).
 
 :- pred rl_out_info_init_proc(map(relation_id, relation_info)::in,
-	list(relation_id)::in, rl_out_info::in, rl_out_info::out) is det.
+	rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_init_proc(Relations, _Args, Info0, Info) :-
-	map__init(Labels),
-	map__init(RelationAddrs),
-	map__init(CompareExprns),
-	PC = 0,
-	Label = 0,
-	NextExprn = 0,
-	map__init(TmpVars),
-	Info0 = rl_out_info(_, _, _, NextAddr, _, _, _, 
-		ModuleInfo, _, ProcConsts, NextConst, Materialise, _, _,
-		_, _, Procs, _, _, _, PermRelations, Variables, _, _, _),
-	Info = rl_out_info(PC, CompareExprns, RelationAddrs, NextAddr,
-		Relations, Labels, unit, ModuleInfo, PC, ProcConsts,
-		NextConst, Materialise, unit, unit, unit, Label, Procs,
-		unit, unit, unit, PermRelations, Variables, [], 
-		NextExprn, TmpVars).
+rl_out_info_init_proc(Relations) -->
+	^ relations := Relations,
+
+	{ map__init(Labels) },
+	^ proc_labels := Labels,
+	^ next_proc_label := 0,
+
+	{ map__init(RelationAddrs) },
+	^ relation_addrs := RelationAddrs,
+
+	{ map__init(CompareExprns) },
+	^ compare_exprns := CompareExprns,
+
+	{ map__init(HashExprns) },
+	^ hash_exprns := HashExprns,
+
+	^ pc := 0,
+
+	^ exprns := [],
+	^ next_exprn := 0,
+
+	{ map__init(TmpVars) },
+	^ tmp_vars := TmpVars.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_compare_exprns(compare_exprns::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_compare_exprns(Exprns, Info, Info) :-
-	Info = rl_out_info(_,Exprns,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,_,_,_,_,_,_,_).
+rl_out_info_get_compare_exprns(Exprns) --> Exprns =^ compare_exprns.
 
 :- pred rl_out_info_set_compare_exprns(compare_exprns::in,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_set_compare_exprns(Exprns, Info0, Info) :-
-	Info0 = rl_out_info(A,_,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,W,X,Y),
-	Info = rl_out_info(A,Exprns,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,
-			V,W,X,Y).
+rl_out_info_set_compare_exprns(Exprns) --> ^ compare_exprns := Exprns.
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out_info_get_sort_merge_compare_exprns(
+		sort_merge_compare_exprns::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out_info_get_sort_merge_compare_exprns(Exprns) -->
+		Exprns =^ sort_merge_compare_exprns.
+
+:- pred rl_out_info_set_sort_merge_compare_exprns(
+		sort_merge_compare_exprns::in,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out_info_set_sort_merge_compare_exprns(Exprns) -->
+		^ sort_merge_compare_exprns := Exprns.
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out_info_get_hash_exprns(hash_exprns::out, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out_info_get_hash_exprns(HashExprns) --> HashExprns =^ hash_exprns.
+
+:- pred rl_out_info_set_hash_exprns(hash_exprns::in, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out_info_set_hash_exprns(HashExprns) --> ^ hash_exprns := HashExprns.
 
 %-----------------------------------------------------------------------------%
 
@@ -1670,18 +2580,13 @@ rl_out_info_get_relation_addr(RelationId, Addr) -->
 :- pred rl_out_info_get_relation_addrs(map(relation_id, int)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_relation_addrs(Addrs, Info, Info) :-
-	Info = rl_out_info(_,_,Addrs,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,_,_,_,_,_,_,_).
+rl_out_info_get_relation_addrs(Addrs) -->
+	Addrs =^ relation_addrs.
 
 :- pred rl_out_info_set_relation_addrs(map(relation_id, int)::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_set_relation_addrs(Addrs, Info0, Info) :-
-	Info0 = rl_out_info(A,B,_,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,W,X,Y),
-	Info = rl_out_info(A,B,Addrs,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,
-			V,W,X,Y).
+rl_out_info_set_relation_addrs(Addrs) --> ^ relation_addrs := Addrs.
 
 :- pred rl_out_info_add_relation_variable(int::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
@@ -1696,116 +2601,112 @@ rl_out_info_add_relation_variable(Schema, Addr) -->
 :- pred rl_out_info_add_relation_variable_2(int::in, int::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_add_relation_variable_2(Name, Schema, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,Vars0,W,X,Y),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,
-			[variable(Name, Schema) | Vars0], W,X,Y).
+rl_out_info_add_relation_variable_2(Name, Schema) -->
+	Vars0 =^ relation_variables,
+	^ relation_variables := [variable(Name, Schema) | Vars0].
 
 :- pred rl_out_info_get_next_relation_addr(int::out, 
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_next_relation_addr(NextAddr0, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,NextAddr0,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,W,X,Y),
-	NextAddr is NextAddr0 + 1,
-	Info = rl_out_info(A,B,C,NextAddr,E,F,G,H,
-			I,J,K,L,M, N,O,P,Q,R,S,T,U,V,W,X,Y).
+rl_out_info_get_next_relation_addr(NextAddr0) -->
+	NextAddr0 =^ next_relation_addr,
+	^ next_relation_addr := NextAddr0 + 1.
 
 :- pred rl_out_info_get_relation_variables(list(variable)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
 rl_out_info_get_relation_variables(Vars, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			Vars0,_,_,_),
-	list__reverse(Vars0, Vars).
+	list__reverse(Info ^ relation_variables, Vars).
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_add_label(label_id::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_add_label(LabelId, NextLabel, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,Labels0,G,H,I,J,K,L,M,N,O,NextLabel,
-			Q,R,S,T,U,V,W,X,Y),
-	map__det_insert(Labels0, LabelId, NextLabel, Labels),
-	NextLabel1 is NextLabel + 1,
-	Info = rl_out_info(A,B,C,D,E,Labels,G,H,I,J,K,L,M,N,O,NextLabel1,
-			Q,R,S,T,U,V,W,X,Y).
+rl_out_info_add_label(LabelId, NextLabel) -->
+	rl_out_info_add_label(NextLabel),
+	Labels0 =^ proc_labels,
+	{ map__det_insert(Labels0, LabelId, NextLabel, Labels) },
+	^ proc_labels := Labels.
 
 :- pred rl_out_info_add_label(int::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_add_label(NextLabel, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NextLabel,
-			Q,R,S,T,U,V,W,X,Y),
-	NextLabel1 is NextLabel + 1,
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,NextLabel1,
-			Q,R,S,T,U,V,W,X,Y).
+rl_out_info_add_label(NextLabel) -->
+	NextLabel =^ next_proc_label,
+	^ next_proc_label := NextLabel + 1.
 
 :- pred rl_out_info_get_labels(map(label_id, int)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_labels(Labels, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,Labels,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,_,_,_,_,_).
+rl_out_info_get_labels(Labels) --> Labels =^ proc_labels.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_module_info(module_info::out, rl_out_info::in,
 		rl_out_info::out) is det.
 
-rl_out_info_get_module_info(ModuleInfo, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,ModuleInfo,
-			_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
+rl_out_info_get_module_info(ModuleInfo) --> ModuleInfo =^ module_info.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_assign_const(rl_const::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_assign_const(Const, ConstOffset, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,Consts0,NextAddr0,
-			L,M,N,O,P,Q,R,S,T,U,V,W,X,Y),
-	( map__search(Consts0, Const, Addr1) ->
-		ConstOffset = Addr1,
-		NextAddr = NextAddr0,
-		Consts = Consts0
+rl_out_info_assign_const(Const, ConstOffset) -->
+	Consts0 =^ consts,
+	( { map__search(Consts0, Const, ConstOffset0) } ->
+		{ ConstOffset = ConstOffset0 }
 	;
-		map__det_insert(Consts0, Const, NextAddr0, Consts),
-		ConstOffset = NextAddr0,
-		NextAddr is NextAddr0 + 1
-	),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,Consts,NextAddr,
-			L,M,N,O,P,Q,R,S,T,U,V,W,X,Y).
+		ConstOffset =^ next_const,
+		{ map__det_insert(Consts0, Const, ConstOffset, Consts) },
+		^ consts := Consts,
+		^ next_const := ConstOffset + 1
+	).
 
 :- pred rl_out_info_get_consts(map(rl_const, int)::out, 
-		rl_out_info::in,
-		rl_out_info::out) is det.
+		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_consts(Consts, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,Consts,
-			_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
+rl_out_info_get_consts(Consts) --> Consts =^ consts.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_next_materialise_id(int::out, 
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_next_materialise_id(MaterialiseId, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,
-			MaterialiseId, M,N,O,P,Q,R,S,T,U,V,W,X,Y),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,
-			MaterialiseId + 1, M,N,O,P,Q,R,S,T,U,V,W,X,Y).
+rl_out_info_get_next_materialise_id(MaterialiseId) -->
+	MaterialiseId =^ next_materialise,
+	^ next_materialise := MaterialiseId + 1.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_relations(map(relation_id, relation_info)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_relations(Relations, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,Relations,
-			_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
+rl_out_info_get_relations(Relations) --> Relations =^ relations.
+
+:- pred rl_out_info_add_temporary_relation(list(type)::in, relation_state::in,
+		relation_id::out, rl_out_info::in, rl_out_info::out) is det.
+	
+rl_out_info_add_temporary_relation(Schema, State, RelationId) -->
+	Relations0 =^ relations,
+
+	% This should be pretty rare (this predicate is currently only
+	% used in optimizing one type of trivial subtract), so efficiency
+	% isn't a concern.
+	{ map__sorted_keys(Relations0, RelationIds0) },
+	{ list__last(RelationIds0, HighestRelationId) ->
+		RelationId = HighestRelationId + 1
+	;
+		RelationId = 0
+	},
+
+	{ rl__relation_id_to_string(RelationId, RelName) },
+	{ RelationInfo = relation_info(temporary(State),
+				Schema, [], RelName) },
+
+	{ map__det_insert(Relations0, RelationId, RelationInfo, Relations) },
+	^ relations := Relations.
 
 %-----------------------------------------------------------------------------%
 
@@ -1858,76 +2759,61 @@ rl_out_info_get_relation_schema_offset(RelId, SchemaOffset) -->
 :- pred rl_out_info_incr_pc(int::in, rl_out_info::in,
 		rl_out_info::out) is det.
 	
-rl_out_info_incr_pc(Incr, Info0, Info) :-
-	Info0 = rl_out_info(PC0,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,
-			S,T,U,V,W,X,Y),
-	PC = PC0 + Incr,
-	Info = rl_out_info(PC,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,
-			T,U,V,W,X,Y).
+rl_out_info_incr_pc(Incr) -->
+	PC0 =^ pc,
+	^ pc := PC0 + Incr.
 
 :- pred rl_out_info_get_pc(int::out, rl_out_info::in,
 		rl_out_info::out) is det.
 
-rl_out_info_get_pc(PC0, Info, Info) :-
-	Info = rl_out_info(PC0,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,_,_,_,_,_).
+rl_out_info_get_pc(PC) --> PC =^ pc.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_add_proc(procedure::in,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_add_proc(Proc, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Procs0,
-			R,S,T,U,V,W,X,Y),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,[Proc | Procs0],
-			R,S,T,U,V,W,X,Y).
+rl_out_info_add_proc(Proc) -->
+	Procs0 =^ procs,
+	^ procs := [Proc | Procs0].
 
 :- pred rl_out_info_get_procs(list(procedure)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_procs(Procs, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Procs0,
-			_,_,_,_,_,_,_,_),
-	list__reverse(Procs0, Procs).
+rl_out_info_get_procs(Procs) -->
+	Procs0 =^ procs,
+	{ list__reverse(Procs0, Procs) }.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_permanent_relations(set(relation)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_permanent_relations(Rels, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			Rels,_,_,_,_).
+rl_out_info_get_permanent_relations(Rels) --> Rels =^ permanent_relations.
 
 :- pred rl_out_info_set_permanent_relations(set(relation)::in,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_set_permanent_relations(Rels, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,_,V,W,X,Y),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,Rels, V,W,X,Y).
+rl_out_info_set_permanent_relations(Rels) --> ^ permanent_relations := Rels.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out_info_get_proc_expressions(list(expression)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_proc_expressions(Exprns, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,Exprns0,_,_),
-	list__reverse(Exprns0, Exprns).
+rl_out_info_get_proc_expressions(Exprns) -->
+	Exprns0 =^ exprns,
+	{ list__reverse(Exprns0, Exprns) }.
 
 :- pred rl_out_info_add_expression(expression::in, int::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_add_expression(Exprn, NextExprn0, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,Exprns0,NextExprn0,Y),
-	NextExprn is NextExprn0 + 1,
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,[Exprn | Exprns0], NextExprn,Y).
+rl_out_info_add_expression(Exprn, NextExprn0) -->
+	Exprns0 =^ exprns,
+	NextExprn0 =^ next_exprn,
+
+	^ exprns := [Exprn | Exprns0],
+	^ next_exprn := NextExprn0 + 1.
 
 %-----------------------------------------------------------------------------%
 
@@ -1969,18 +2855,12 @@ rl_out_info_return_tmp_vars([Schema - Var | Vars], tree(Clear0, Clear1)) -->
 :- pred rl_out_info_get_tmp_vars(multi_map(int, int)::out, 
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out_info_get_tmp_vars(TmpVars, Info, Info) :-
-	Info = rl_out_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			_,_,_,_, TmpVars).
+rl_out_info_get_tmp_vars(TmpVars) --> TmpVars =^ tmp_vars.
 
 :- pred rl_out_info_set_tmp_vars(multi_map(int, int)::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 		
-rl_out_info_set_tmp_vars(TmpVars, Info0, Info) :-
-	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,W,X,_),
-	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
-			N,O,P,Q,R,S,T,U,V,W,X,TmpVars).
+rl_out_info_set_tmp_vars(TmpVars) --> ^ tmp_vars := TmpVars.
 
 #else	% !INCLUDE_ADITI_OUTPUT
 #endif

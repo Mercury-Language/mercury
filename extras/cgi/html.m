@@ -19,7 +19,7 @@
 
 :- module html.
 :- interface.
-:- import_module bool, io, string, std_util.
+:- import_module bool, io, string, std_util, list.
 
 %-----------------------------------------------------------------------------%
 

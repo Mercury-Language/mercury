@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,9 +43,11 @@
 
 :- interface.
 
-:- import_module list, llds.
+:- import_module llds.
+:- import_module list, counter.
 
-:- pred dupelim_main(list(instruction)::in, list(instruction)::out) is det.
+:- pred dupelim_main(list(instruction)::in, proc_label::in,
+	counter::in, counter::out, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,8 +67,8 @@
 	% OtherLabels must be nonempty.
 :- type cluster		--->	cluster(label, list(label)).
 
-dupelim_main(Instrs0, Instrs) :-
-	create_basic_blocks(Instrs0, Comments, _ProcLabel, _N,
+dupelim_main(Instrs0, ProcLabel, C0, C, Instrs) :-
+	create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
 		LabelSeq0, BlockMap0),
 	map__init(StdMap0),
 	set__init(Fixed0),
@@ -115,8 +117,20 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	AddPragmaReferredLabels = lambda(
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
-		( Instr = pragma_c(_, _, _, yes(FixedLabel), _, _) - _ ->
-			set__insert(FoldFixed0, FixedLabel, FoldFixed)
+		(
+			Instr = pragma_c(_, _, _,
+				MaybeFixedLabel, MaybeLayoutLabel, _, _) - _
+		->
+			( MaybeFixedLabel = yes(FixedLabel) ->
+				set__insert(FoldFixed0, FixedLabel, FoldFixed1)
+			;
+				FoldFixed1 = FoldFixed0
+			),
+			( MaybeLayoutLabel = yes(LayoutLabel) ->
+				set__insert(FoldFixed1, LayoutLabel, FoldFixed)
+			;
+				FoldFixed = FoldFixed1
+			)
 		;
 			FoldFixed = FoldFixed0
 		)
@@ -327,6 +341,10 @@ standardize_instr(Instr1, Instr) :-
 		standardize_rval(Rval1, Rval),
 		Instr = restore_hp(Rval)
 	;
+		Instr1 = free_heap(Rval1),
+		standardize_rval(Rval1, Rval),
+		Instr = free_heap(Rval)
+	;
 		Instr1 = store_ticket(Lval1),
 		standardize_lval(Lval1, Lval),
 		Instr = store_ticket(Lval)
@@ -338,13 +356,16 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = discard_ticket,
 		Instr = Instr1
 	;
+		Instr1 = prune_ticket,
+		Instr = Instr1
+	;
 		Instr1 = mark_ticket_stack(Lval1),
 		standardize_lval(Lval1, Lval),
 		Instr = mark_ticket_stack(Lval)
 	;
-		Instr1 = discard_tickets_to(Rval1),
+		Instr1 = prune_tickets_to(Rval1),
 		standardize_rval(Rval1, Rval),
-		Instr = discard_tickets_to(Rval)
+		Instr = prune_tickets_to(Rval)
 	;
 		Instr1 = incr_sp(_, _),
 		Instr = Instr1
@@ -367,7 +388,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_lval(Lval1, Lval),
 		Instr = join_and_continue(Lval, N)
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -442,7 +463,7 @@ standardize_rval(Rval1, Rval) :-
 		Rval1 = var(_),
 		error("var in standardize_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _, _),
 		Rval = Rval1
 	;
 		Rval1 = mkword(_, _),
@@ -604,6 +625,11 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		most_specific_rval(Rval1, Rval2, Rval),
 		Instr = restore_hp(Rval)
 	;
+		Instr1 = free_heap(Rval1),
+		Instr2 = free_heap(Rval2),
+		most_specific_rval(Rval1, Rval2, Rval),
+		Instr = free_heap(Rval)
+	;
 		Instr1 = store_ticket(Lval1),
 		Instr2 = store_ticket(Lval2),
 		most_specific_lval(Lval1, Lval2, Lval),
@@ -618,15 +644,19 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
+		Instr1 = prune_ticket,
+		Instr2 = Instr1,
+		Instr = Instr1
+	;
 		Instr1 = mark_ticket_stack(Lval1),
 		Instr2 = mark_ticket_stack(Lval2),
 		most_specific_lval(Lval1, Lval2, Lval),
 		Instr = mark_ticket_stack(Lval)
 	;
-		Instr1 = discard_tickets_to(Rval1),
-		Instr2 = discard_tickets_to(Rval2),
+		Instr1 = prune_tickets_to(Rval1),
+		Instr2 = prune_tickets_to(Rval2),
 		most_specific_rval(Rval1, Rval2, Rval),
-		Instr = discard_tickets_to(Rval)
+		Instr = prune_tickets_to(Rval)
 	;
 		Instr1 = incr_sp(_, _),
 		Instr2 = Instr1,
@@ -636,7 +666,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).
@@ -736,7 +766,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = var(_),
 		error("var in most_specific_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _, _),
 		Rval2 = Rval1,
 		Rval = Rval1
 	;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,21 +54,65 @@
 :- import_module hlds_module, hlds_pred, rl, rl_code, rl_file, prog_data.
 :- import_module list.
 
+	% rl_exprn__generate_compare_exprn(ModuleInfo, SortSpec,
+	% 	InputSchema, CompareCodes).
+	%
 	% Generate an expression to compare tuples with the
 	% given schema on the given attributes.
 :- pred rl_exprn__generate_compare_exprn(module_info::in, sort_spec::in,
 	list(type)::in, list(bytecode)::out) is det.
 
+	% rl_exprn__generate_sort_merge_compare_exprn(ModuleInfo, Attrs1,
+	% 	Schema1, Attrs2, Schema2, CompareCodes).
+	%
+	% Generate an expression to compare the join attributes in
+	% a sort-merge equi-join.
+:- pred rl_exprn__generate_sort_merge_compare_exprn(module_info::in,
+	sort_spec::in, list(type)::in, sort_spec::in, list(type)::in,
+	list(bytecode)::out) is det.
+
+	% rl_exprn__generate_equijoin_exprn(ModuleInfo, Attrs,
+	% 	Schema, Code)
+	%
+	% Generate an expression to compare the join attributes in
+	% an equi-join.
+:- pred rl_exprn__generate_equijoin_exprn(module_info::in, list(int)::in,
+	list(type)::in, list(bytecode)::out) is det.
+	
+	% rl_exprn__generate_hash_function(ModuleInfo, HashAttrs,
+	%	InputSchema, ExprnCode).
+	%
+	% Generate an expression to compute a hash value for the given
+	% attributes of a tuple.
+:- pred rl_exprn__generate_hash_function(module_info::in, list(int)::in,
+	list(type)::in, list(bytecode)::out) is det.
+
+	% rl_exprn__generate_key_range(ModuleInfo, KeyRange, ExprnCode,
+	% 	NumParams, LowerBoundSchema, UpperBoundSchema,
+	%	MaxTermDepth, ExprnVarTypes).
+	%
 	% Generate an expression to produce the upper and lower
 	% bounds for a B-tree access.
 :- pred rl_exprn__generate_key_range(module_info::in, key_range::in,
 	list(bytecode)::out, int::out, list(type)::out, list(type)::out,
 	int::out, list(type)::out) is det.
 
+	% Generate an expression to produce either the tuple
+	% to insert or the tuple to delete for a modification
+	% query.
+:- pred rl_exprn__generate_modify_project_exprn(module_info::in,
+	tuple_num::in, list(type)::in, list(bytecode)::out) is det.
+
+	% rl_exprn__generate(ModuleInfo, Goal, ExprnCode, NumParams,
+	%	ExprnMode, ExprnVarTypes).
+	%
 	% Generate an expression for a join/project/subtract condition.
 :- pred rl_exprn__generate(module_info::in, rl_goal::in, list(bytecode)::out,
 	int::out, exprn_mode::out, list(type)::out) is det.
 
+	% rl_exprn__aggregate(ModuleInfo, InitAccPred, UpdateAccPred,
+	% 	GrpByType, NonGrpByType, AccType, ExprnCode, Decls).	
+	%
 	% Given the closures used to create the initial accumulator for each
 	% group and update the accumulator for each tuple, create
 	% an expression to evaluate the aggregate.
@@ -83,11 +127,7 @@
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
 :- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
-
-% Note: the reason that we need to import llds and builtin_ops here is that
-% we generate code for builtins by first converting the builtin to LLDS
-% and then converting the LLDS to RL.
-:- import_module llds, builtin_ops.
+:- import_module builtin_ops.
 
 :- import_module assoc_list, bool, char, int, map.
 :- import_module require, set, std_util, string, term, varset.
@@ -97,17 +137,38 @@
 rl_exprn__generate_compare_exprn(_ModuleInfo, Spec, Schema, Code) :-
 	(
 		Spec = attributes(Attrs0),
-		list__map(
-			(pred((Attr0 - Dir)::in, (Attr - Dir)::out) is det :-
-				rl_exprn__adjust_arg_number(Attr0, Attr)
-			),
-			Attrs0, Attrs),
-		list__foldl(rl_exprn__generate_compare_instrs(Schema),
-				Attrs, empty, CompareCode)
+
+		% We're comparing corresponding attributes from each tuple.
+		assoc_list__from_corresponding_lists(Attrs0, Attrs0,
+			CompareAttrs)
 	;
 		Spec = sort_var(_),
 		error("rl_exprn__generate_compare_exprn: unbound sort_var")
 	),
+	rl_exprn__do_generate_compare_exprn(Schema, CompareAttrs, Code).
+
+rl_exprn__generate_sort_merge_compare_exprn(_ModuleInfo, Spec1, Schema1,
+		Spec2, _Schema2, Code) :-
+
+	(
+		Spec1 = attributes(Attrs1),
+		Spec2 = attributes(Attrs2)
+	->
+		assoc_list__from_corresponding_lists(Attrs1, Attrs2,
+			CompareAttrs)
+	;
+		error(
+	"rl_exprn__generate_sort_merge_compare_exprn: unbound sort_var")
+	),
+	rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code).
+
+:- pred rl_exprn__do_generate_compare_exprn(list(type)::in, 
+	assoc_list(pair(int, sort_dir))::in, list(bytecode)::out) is det.
+
+rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
+
+	list__foldl(rl_exprn__generate_compare_instrs(Schema1),
+		CompareAttrs, empty, CompareCode),
 
 	ExprnCode = 
 		tree(node([rl_PROC_expr_frag(2)]),
@@ -123,16 +184,23 @@ rl_exprn__generate_compare_exprn(_ModuleInfo, Spec, Schema, Code) :-
 	list__condense(Instrs0, Code).
 
 :- pred rl_exprn__generate_compare_instrs(list(type)::in,
-	pair(int, sort_dir)::in, byte_tree::in, byte_tree::out) is det.
+	pair(pair(int, sort_dir))::in, byte_tree::in, byte_tree::out) is det.
 
-rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
-	list__index0_det(Types, Attr, Type),
+rl_exprn__generate_compare_instrs(Types1, (Attr1a - Dir1) - (Attr2a - Dir2),
+		Code0, Code) :-
+	require(unify(Dir1, Dir2),
+	    "rl_exprn__generate_compare_instrs: sort directions not equal"),
+
+	rl_exprn__adjust_arg_number(Attr1a, Attr1),
+	rl_exprn__adjust_arg_number(Attr2a, Attr2),
+
+	list__index0_det(Types1, Attr1, Type),
 	rl_exprn__type_to_aditi_type(Type, AType),
 	rl_exprn__compare_bytecode(AType, CompareByteCode),
-	rl_exprn__get_input_field_code(one, AType, Attr, FieldCode1),
-	rl_exprn__get_input_field_code(two, AType, Attr, FieldCode2),
+	rl_exprn__get_input_field_code(one, AType, Attr1, FieldCode1),
+	rl_exprn__get_input_field_code(two, AType, Attr2, FieldCode2),
 	(
-		Dir = ascending,
+		Dir1 = ascending,
 		CompareAttr = node([
 				FieldCode1,
 				FieldCode2,
@@ -140,7 +208,7 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 				rl_EXP_return_if_nez
 			])
 	;
-		Dir = descending,
+		Dir1 = descending,
 		CompareAttr = node([
 				FieldCode2,
 				FieldCode1,
@@ -149,6 +217,90 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 			])
 	),
 	Code = tree(Code0, CompareAttr).
+
+%-----------------------------------------------------------------------------%
+
+rl_exprn__generate_equijoin_exprn(_, Attrs0, Schema, Code) :-
+	list__map(rl_exprn__adjust_arg_number, Attrs0, Attrs),
+	rl_exprn__generate_equijoin_instrs(Attrs, Schema,
+		empty, TestCode),
+	ExprnCode =
+		tree(node([rl_PROC_expr_frag(2)]),
+		tree(TestCode,
+		node([rl_PROC_expr_end])
+	)),
+
+	tree__flatten(ExprnCode, Instrs0),
+	list__condense(Instrs0, Code).
+
+:- pred rl_exprn__generate_equijoin_instrs(list(int)::in, list(type)::in,
+		byte_tree::in, byte_tree::out) is det.
+
+rl_exprn__generate_equijoin_instrs([], _, Code, Code).
+rl_exprn__generate_equijoin_instrs([Attr | Attrs], Schema, Code0, Code) :-
+	list__index0_det(Schema, Attr, AttrType),
+	rl_exprn__type_to_aditi_type(AttrType, AType),
+	rl_exprn__test_bytecode(AType, TestBytecode),
+	rl_exprn__get_input_field_code(one, AType, Attr, FieldCode1),
+	rl_exprn__get_input_field_code(two, AType, Attr, FieldCode2),
+	Code1 =
+		tree(Code0,
+		node([
+			FieldCode1,
+			FieldCode2,
+			TestBytecode,
+			rl_EXP_fail_if_false
+		])
+	),
+	rl_exprn__generate_equijoin_instrs(Attrs, Schema, Code1, Code).
+
+%-----------------------------------------------------------------------------%
+
+rl_exprn__generate_hash_function(_ModuleInfo, Attrs0, Schema, Code) :-
+	list__map(rl_exprn__adjust_arg_number, Attrs0, Attrs),
+	IsFirst = yes,
+	rl_exprn__generate_hash_function_2(Attrs, Schema, IsFirst,
+		empty, HashCode),
+	ExprnCode =
+		tree(node([rl_PROC_expr_frag(2)]),
+		tree(HashCode,
+		node([rl_EXP_hash_result, rl_PROC_expr_end])
+	)),
+
+	tree__flatten(ExprnCode, Instrs0),
+	list__condense(Instrs0, Code).
+
+:- pred rl_exprn__generate_hash_function_2(list(int)::in, list(type)::in,
+		bool::in, byte_tree::in, byte_tree::out) is det.
+
+rl_exprn__generate_hash_function_2([], _, _, Code, Code).
+rl_exprn__generate_hash_function_2([Attr | Attrs], Schema,
+		IsFirst, Code0, Code) :-
+	list__index0_det(Schema, Attr, Type),
+	rl_exprn__type_to_aditi_type(Type, AType),
+	rl_exprn__hash_bytecode(AType, HashCode),
+	rl_exprn__get_input_field_code(one, AType, Attr, FieldCode),
+	( IsFirst = no ->
+		CombineCode = node([rl_EXP_hash_combine])
+	;
+		CombineCode = empty
+	),
+
+	Code1 =
+		tree(Code0,
+		tree(node([FieldCode, HashCode]),
+		CombineCode
+	)),
+	IsFirst1 = no,
+	rl_exprn__generate_hash_function_2(Attrs, Schema, IsFirst1,
+		Code1, Code).
+
+:- pred rl_exprn__hash_bytecode(aditi_type::in, bytecode::out) is det.
+
+rl_exprn__hash_bytecode(int, rl_EXP_int_hash).
+rl_exprn__hash_bytecode(string, rl_EXP_str_hash).
+rl_exprn__hash_bytecode(float, rl_EXP_flt_hash).
+rl_exprn__hash_bytecode(term(_), rl_EXP_term_hash).
 
 %-----------------------------------------------------------------------------%
 
@@ -374,6 +526,43 @@ rl_exprn__set_term_arg_cons_id_code_2(string, _, FieldNum,
 		yes, rl_EXP_set_str_arg(FieldNum)).
 rl_exprn__set_term_arg_cons_id_code_2(term(_), _, _, _, _) :-
 	error("rl_exprn__set_term_arg_cons_id_code_2").
+
+%-----------------------------------------------------------------------------%
+
+rl_exprn__generate_modify_project_exprn(_ModuleInfo, TupleNum, Types, Codes) :-
+	list__length(Types, NumAttrs),
+	rl_exprn__generate_modify_project_exprn_2(Types,
+		NumAttrs, TupleNum, 0, empty, ProjectCode),
+	CodeTree =
+		tree(node([rl_PROC_expr_frag(3)]),
+		tree(ProjectCode,
+		node([rl_PROC_expr_end])
+	)),
+	tree__flatten(CodeTree, CodeList),
+	list__condense(CodeList, Codes).
+
+:- pred rl_exprn__generate_modify_project_exprn_2(list(type)::in, int::in,
+		tuple_num::in, int::in, byte_tree::in, byte_tree::out) is det.
+
+rl_exprn__generate_modify_project_exprn_2([], _, _, _, Code, Code).
+rl_exprn__generate_modify_project_exprn_2([Type | Types],
+		NumAttrs, TupleNum, Attr, Code0, Code) :-
+	rl_exprn__type_to_aditi_type(Type, AType),
+	(
+		TupleNum = one,
+		InputAttr = Attr
+	;
+		TupleNum = two,
+		InputAttr = Attr + NumAttrs
+	),
+	rl_exprn__get_input_field_code(one, AType, InputAttr, InputFieldCode),
+	rl_exprn__set_output_field_code(one, AType, Attr, OutputFieldCode),
+	Code1 =
+		tree(Code0,
+		node([InputFieldCode, OutputFieldCode])
+	),
+	rl_exprn__generate_modify_project_exprn_2(Types,
+		NumAttrs, TupleNum, Attr + 1, Code1, Code).
 
 %-----------------------------------------------------------------------------%
 
@@ -664,7 +853,7 @@ rl_exprn__goal(switch(Var, _, Cases, _) - _, Fail, Code) -->
 	{ Code = tree(SwitchCode, node([rl_PROC_label(EndSwitch)])) }.
 rl_exprn__goal(generic_call(_, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: higher-order and class-method calls not yet implemented") }.
-rl_exprn__goal(pragma_c_code(_, _, _, _, _, _, _) - _, _, _) -->
+rl_exprn__goal(pragma_foreign_code(_, _, _, _, _, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: pragma_c_code not yet implemented") }.
 rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code).
@@ -1015,19 +1204,8 @@ rl_exprn__test(Var1Loc, Var2Loc, Type, Fail, Code) -->
 	rl_exprn__generate_push(Var2Loc, Type, PushCode2),
 	rl_exprn_info_get_next_label_id(Label),
 	{ rl_exprn__type_to_aditi_type(Type, AditiType) },
-	{
-		AditiType = int,
-		EqInstr = rl_EXP_int_eq
-	;
-		AditiType = float,
-		EqInstr = rl_EXP_flt_eq
-	;
-		AditiType = string,
-		EqInstr = rl_EXP_str_eq
-	;
-		AditiType = term(_),
-		EqInstr = rl_EXP_term_eq
-	},
+
+	{ rl_exprn__test_bytecode(AditiType, EqInstr) },
 	{ Code = 
 		tree(PushCode1, 
 		tree(PushCode2, 
@@ -1036,6 +1214,13 @@ rl_exprn__test(Var1Loc, Var2Loc, Type, Fail, Code) -->
 		tree(Fail,
 		node([rl_PROC_label(Label)])
 	))))) }.
+
+:- pred rl_exprn__test_bytecode(aditi_type::in, bytecode::out) is det.
+
+rl_exprn__test_bytecode(int, rl_EXP_int_eq).
+rl_exprn__test_bytecode(float, rl_EXP_flt_eq).
+rl_exprn__test_bytecode(string, rl_EXP_str_eq).
+rl_exprn__test_bytecode(term(_), rl_EXP_term_eq).
 
 :- pred rl_exprn__functor_test(prog_var::in, cons_id::in, byte_tree::in, 
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
@@ -1336,11 +1521,12 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 	% Generate LLDS for the builtin, then convert that to Aditi bytecode.
 	%
 	(
-		{ code_util__translate_builtin(PredModule0, PredName, 
-			ProcId, Args, MaybeTest, MaybeAsg) } 
+		{ builtin_ops__translate_builtin(PredModule0, PredName, 
+			ProcId, Args, SimpleCode) } 
 	->
-		( { MaybeTest = yes(TestRval) } ->
-			( rl_exprn__llds_rval_to_rl_rval(TestRval, RvalCode) ->
+		(
+			{ SimpleCode = test(TestExpr) },
+			( rl_exprn__simple_expr_to_rl_rval(TestExpr, RvalCode) ->
 				rl_exprn_info_get_next_label_id(SuccLabel),
 				{ Code =
 					tree(RvalCode,
@@ -1351,16 +1537,15 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 			;
 				{ error("rl_exprn__generate_exprn_instr: invalid test") }
 			)
-		 ; { MaybeAsg = yes(OutputVar - AsgRval) } ->
+		 ;
+		 	{ SimpleCode = assign(OutputVar, AssignExpr) },
 			rl_exprn_info_lookup_var(OutputVar, OutputLoc),
 			rl_exprn_info_lookup_var_type(OutputVar, Type),
 			{ rl_exprn__type_to_aditi_type(Type, AditiType) },
-			rl_exprn__maybe_llds_rval_to_rl_rval(yes(AsgRval),
+			rl_exprn__maybe_simple_expr_to_rl_rval(yes(AssignExpr),
 				AditiType, RvalCode),
 			rl_exprn__generate_pop(reg(OutputLoc), Type, PopCode),
 			{ Code = tree(RvalCode, PopCode) }
-		;
-			{ error("rl_exprn__builtin_call: invalid builtin result") }
 		)
 	;
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
@@ -1370,52 +1555,40 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		{ error(Msg) }
 	).
 
-:- pred rl_exprn__maybe_llds_rval_to_rl_rval(maybe(rval)::in, 
+:- pred rl_exprn__maybe_simple_expr_to_rl_rval(maybe(simple_expr(prog_var))::in, 
 		aditi_type::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__maybe_llds_rval_to_rl_rval(no, _, empty) --> [].
-rl_exprn__maybe_llds_rval_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
-	( rl_exprn__llds_rval_to_rl_rval(LLDSRval, RvalCode) ->
+rl_exprn__maybe_simple_expr_to_rl_rval(no, _, empty) --> [].
+rl_exprn__maybe_simple_expr_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
+	( rl_exprn__simple_expr_to_rl_rval(LLDSRval, RvalCode) ->
 		{ Code = RvalCode }
 	;
-		{ error("rl_exprn__maybe_llds_rval_to_rl_rval: invalid llds rval") }
+		{ error("rl_exprn__maybe_simple_expr_to_rl_rval: invalid simple_expr") }
 	).
 
-:- pred rl_exprn__llds_rval_to_rl_rval(rval::in, byte_tree::out,
+:- pred rl_exprn__simple_expr_to_rl_rval(simple_expr(prog_var)::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is semidet.
 
-rl_exprn__llds_rval_to_rl_rval(var(Var), Code) -->
+rl_exprn__simple_expr_to_rl_rval(leaf(Var), Code) -->
 	rl_exprn_info_lookup_var(Var, VarLoc),
 	rl_exprn_info_lookup_var_type(Var, Type),
 	rl_exprn__generate_push(reg(VarLoc), Type, Code).
-rl_exprn__llds_rval_to_rl_rval(const(RvalConst), PushCode) -->
-	{ 
-		RvalConst = true,
-		Const = int(1),
-		Type = int
-	;
-		RvalConst = false,
-		Const = int(0),
-		Type = int
-	;
-		RvalConst = int_const(Int),
-		Const = int(Int),
-		Type = int
-	;
-		RvalConst = float_const(Float),
-		Const = float(Float), 
-		Type = float
-	;
-		RvalConst = string_const(String),
-		Const = string(String),
-		Type = string
-	},
-	{ rl_exprn__aditi_type_to_type(Type, Type1) },
-	rl_exprn__generate_push(const(Const), Type1, PushCode).
-rl_exprn__llds_rval_to_rl_rval(binop(BinOp, Rval1, Rval2), Code) -->
-	rl_exprn__llds_rval_to_rl_rval(Rval1, Code1),
-	rl_exprn__llds_rval_to_rl_rval(Rval2, Code2),
+rl_exprn__simple_expr_to_rl_rval(int_const(Int), PushCode) -->
+	{ rl_exprn__aditi_type_to_type(int, Type1) },
+	rl_exprn__generate_push(const(int(Int)), Type1, PushCode).
+rl_exprn__simple_expr_to_rl_rval(float_const(Float), PushCode) -->
+	{ rl_exprn__aditi_type_to_type(float, Type1) },
+	rl_exprn__generate_push(const(float(Float)), Type1, PushCode).
+rl_exprn__simple_expr_to_rl_rval(unary(_UnOp, _Expr), _Code) -->
+	% None of the MLDS/LLDS unary builtins are implemented in Aditi.
+	% The only one which is returned by builtin_ops__translate_builtin
+	% is `bitwise_complement', for which there is no corresponding
+	% bytecode in Aditi-RL.
+	{ fail }.
+rl_exprn__simple_expr_to_rl_rval(binary(BinOp, Expr1, Expr2), Code) -->
+	rl_exprn__simple_expr_to_rl_rval(Expr1, Code1),
+	rl_exprn__simple_expr_to_rl_rval(Expr2, Code2),
 	{ rl_exprn__binop_bytecode(BinOp, Bytecode) },
 	{ Code = 
 		tree(Code1, 

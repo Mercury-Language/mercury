@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,8 +157,9 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, SimplifyInfo0) },
+		VarSet0, VarTypes0, TVarMap, SimplifyInfo0) },
 
 	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo) },
 
@@ -663,11 +664,18 @@ combine_vars(Vars0, BranchNo, [ExtraVar | ExtraVars], Vars) :-
 %-----------------------------------------------------------------------------%
 
 pd_util__requantify_goal(Goal0, NonLocals, Goal) -->
+	pd_info_get_pred_info(PredInfo),
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ implicitly_quantify_goal(Goal0, VarSet0, VarTypes0, NonLocals,
-			Goal, VarSet, VarTypes, _) },
+	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
+	pd_info_get_module_info(ModuleInfo0),
+	{ module_info_globals(ModuleInfo0, Globals) },
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) },
+	{ implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
+		TVarMap, TypeInfoLiveness, NonLocals,
+		Goal, VarSet, VarTypes, _) },
 	{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
 	{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo).
@@ -675,10 +683,12 @@ pd_util__requantify_goal(Goal0, NonLocals, Goal) -->
 pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	pd_info_get_module_info(ModuleInfo0),
 	pd_info_get_instmap(InstMap),
+	pd_info_get_pred_info(PredInfo),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ recompute_instmap_delta(yes, Goal0, Goal, VarTypes, InstMap, 
-		ModuleInfo0, ModuleInfo) },
+	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
+	{ recompute_instmap_delta(yes, PredInfo, Goal0, Goal,
+		VarTypes, TVarMap, InstMap, ModuleInfo0, ModuleInfo) },
 	pd_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1009,13 +1019,11 @@ match_generic_call(aditi_builtin(Builtin1, CallId),
 	% The other fields are all implied by the pred_proc_id.
 match_aditi_builtin(aditi_call(PredProcId, _, _, _),
 		aditi_call(PredProcId, _, _, _)).
-match_aditi_builtin(aditi_insert(PredId), aditi_insert(PredId)).
+match_aditi_builtin(aditi_tuple_insert_delete(InsertDelete, PredId),
+		aditi_tuple_insert_delete(InsertDelete, PredId)).
 	% The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_delete(PredId, _), aditi_delete(PredId, _)).
-match_aditi_builtin(aditi_bulk_operation(Op, PredId),
-		aditi_bulk_operation(Op, PredId)).
-	% The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_modify(PredId, _), aditi_modify(PredId, _)).
+match_aditi_builtin(aditi_insert_delete_modify(Op, PredId, _),
+		aditi_insert_delete_modify(Op, PredId, _)).
 
 %-----------------------------------------------------------------------------%
 

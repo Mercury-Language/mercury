@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,15 +16,12 @@
 :- import_module hlds_module, hlds_pred, hlds_goal.
 :- import_module list.
 
-:- pred move_follow_code_in_proc(proc_info, proc_info,
-	module_info, module_info).
-% :- mode move_follow_code_in_proc(di, uo, di, uo) is det.
-:- mode move_follow_code_in_proc(in, out, in, out) is det.
+:- pred move_follow_code_in_proc(pred_info::in, proc_info::in, proc_info::out,
+	module_info::in, module_info::out) is det.
 
 	% Split a list of goals into the prefix of builtins and the rest.
-:- pred move_follow_code_select(list(hlds_goal), list(hlds_goal),
-	list(hlds_goal)).
-:- mode move_follow_code_select(in, out, out) is det.
+:- pred move_follow_code_select(list(hlds_goal)::in, list(hlds_goal)::out,
+	list(hlds_goal)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,7 +34,8 @@
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo) :-
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, follow_code, FollowCode),
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
@@ -53,12 +51,16 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 			% we need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
 		proc_info_headvars(ProcInfo0, HeadVars),
+		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
+		body_should_use_typeinfo_liveness(PredInfo, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_clause_body(HeadVars, Goal1,
-			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
+			Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
+			Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstMap0,
-			ModuleInfo0, ModuleInfo)
+		recompute_instmap_delta(no, PredInfo, Goal2, Goal,
+			VarTypes, TVarMap, InstMap0, ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
 		Varset = Varset0,
@@ -122,8 +124,8 @@ move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
-move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), 
-			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
+move_follow_code_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), 
+			pragma_foreign_code(A,B,C,D,E,F,G,H), _, R, R).
 
 move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
 	% these should have been expanded out by now

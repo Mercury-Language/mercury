@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,16 +8,17 @@
 #define	MERCURY_LAYOUT_UTIL_H
 
 #include "mercury_std.h"
-#include "mercury_types.h"
-#include "mercury_stack_layout.h"
+#include "mercury_types.h"		/* for MR_Word, etc. */
+#include "mercury_stack_layout.h"	/* for MR_Stack_Layout_Vars, etc. */
+#include "mercury_type_info.h"		/* for MR_TypeInfoParams, etc. */
 
 /*
 ** These two functions copy the register state to and from the provided
-** saved_regs array, which should have room for MAX_FAKE_REG Words.
+** saved_regs array, which should have room for MAX_FAKE_REG MR_Words.
 */
 
-extern	void	MR_copy_regs_to_saved_regs(int max_mr_num, Word *saved_regs);
-extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs);
+extern	void	MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs);
+extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 
 /*
 ** A MR_Stack_Layout_Vars describes the variables that are live at a given
@@ -47,11 +48,13 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs);
 ** is non-null.
 */ 
 
-extern	Word	*MR_materialize_typeinfos(
-			const MR_Stack_Layout_Vars *vars, Word *saved_regs);
-extern	Word	*MR_materialize_typeinfos_base(
-			const MR_Stack_Layout_Vars *vars, Word *saved_regs,
-			Word *base_sp, Word *base_curfr);
+extern	MR_TypeInfoParams	MR_materialize_typeinfos(
+					const MR_Stack_Layout_Vars *vars,
+					MR_Word *saved_regs);
+extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
+					const MR_Stack_Layout_Vars *vars,
+					MR_Word *saved_regs,
+					MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
 ** If the given encoded location refers to a register, return its number.
@@ -74,15 +77,15 @@ extern	int	MR_get_register_number_short(MR_Short_Lval locn);
 ** non-null.
 */ 
 
-extern	Word	MR_lookup_long_lval(MR_Long_Lval locn,
-			Word *saved_regs, bool *succeeded);
-extern	Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
-			Word *saved_regs, Word *base_sp, Word *base_curfr,
+extern	MR_Word	MR_lookup_long_lval(MR_Long_Lval locn,
+			MR_Word *saved_regs, bool *succeeded);
+extern	MR_Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
+			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 			bool *succeeded);
-extern	Word	MR_lookup_short_lval(MR_Short_Lval locn,
-			Word *saved_regs, bool *succeeded);
-extern	Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
-			Word *saved_regs, Word *base_sp, Word *base_curfr,
+extern	MR_Word	MR_lookup_short_lval(MR_Short_Lval locn,
+			MR_Word *saved_regs, bool *succeeded);
+extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
+			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 			bool *succeeded);
 
 /*
@@ -111,17 +114,19 @@ extern	Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 */
 
 extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Vars *vars,
-			int var, Word *saved_regs,
-			Word *type_params, Word *type_info, Word *value);
+			int var, MR_Word *saved_regs, MR_TypeInfo *type_params,
+			MR_TypeInfo *type_info, MR_Word *value);
 extern	bool	MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars,
-			int var, Word *saved_regs,
-			Word *base_sp, Word *base_curfr,
-			Word *type_params, Word *type_info, Word *value);
+			int var, MR_Word *saved_regs,
+			MR_Word *base_sp, MR_Word *base_curfr,
+			MR_TypeInfo *type_params, MR_TypeInfo *type_info,
+			MR_Word *value);
 extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
-			Word *saved_regs, Word *type_params, Word *type_info);
+			MR_Word *saved_regs, MR_TypeInfo *type_params,
+			MR_TypeInfo *type_info);
 extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
-			Word *saved_regs, Word *base_sp, Word *base_curfr,
-			Word *type_params, Word *type_info);
+			MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
+			MR_TypeInfo *type_params, MR_TypeInfo *type_info);
 
 /*
 ** MR_write_variable:
@@ -130,6 +135,6 @@ extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
 **	and it may also clobber the real registers.
 */
 
-extern	void	MR_write_variable(Word type_info, Word value);
+extern	void	MR_write_variable(MR_Word type_info, MR_Word value);
 
 #endif	/* MERCURY_LAYOUT_UTIL_H */

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-1999 The University of Melbourne.
+# Copyright (C) 1998-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -11,6 +11,7 @@ MAIN_TARGET=trace
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.trace.params
 
 #-----------------------------------------------------------------------------#
 
@@ -61,6 +62,7 @@ CFILES		= 	\
 			mercury_trace_readline.c	\
 			mercury_trace_spy.c		\
 			mercury_trace_tables.c		\
+			mercury_trace_util.c		\
 			mercury_trace_vars.c
 
 # The object files in this directory depend on many of the header files
@@ -71,13 +73,15 @@ CFILES		= 	\
 RUNTIME_HDRS	=	\
 			../runtime/mercury_stack_layout.h
 
-OBJS		= $(CFILES:.c=.o)
+OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
 LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
 			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
 		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
 		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
@@ -118,13 +122,14 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: trace
-trace: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+trace: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 trace: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
-lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
-	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
+	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A $(OBJS)
+	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
 
 lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)	\
@@ -159,9 +164,9 @@ install_headers: $(HDRS) $(LIB_GLOBALS_H)
 	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 
 .PHONY: install_lib
-install_lib: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+install_lib: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find lib$(TRACE_LIB_NAME).a \
+	cp `vpath_find lib$(TRACE_LIB_NAME).$A \
 		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
@@ -179,6 +184,6 @@ clean_o:
 	rm -f $(OBJS) $(PIC_OBJS) 
 
 realclean_local:
-	rm -f lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).so
+	rm -f lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).so
 
 #-----------------------------------------------------------------------------#

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -77,24 +77,24 @@ if test "$BOOTSTRAP_MC" != ""; then
 	cat > conftest.m << EOF
 		% this module contains features which didn't work in
 		% previous versions of the Mercury compiler
+		% We may also test to see if the installed compiler is
+		% recent enough by checking what flags mmc takes.
 		% Use [[ ]] for lists.
 		:- module conftest.
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		:- import_module list.
-		% Check that promise declarations can be parsed
-		% and that every variable in the assertion doesn't
-		% need to be explicitly quantified.
-		:- promise all [[H,T,L]] (list__last([[H|T]], L)).
 		main --> 
+				% Currently we test that mmc accepts
+				% the --object-file-extension flag.
 			print("Hello, world\n").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC conftest </dev/null >&AC_FD_CC 2>&1 &&
-		 test "`./conftest 2>&1`" = "Hello, world"
+	 	 $BOOTSTRAP_MC --object-file-extension "o" conftest \
+		 	</dev/null >&AC_FD_CC 2>&1 &&
+		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
 	else
@@ -221,8 +221,74 @@ LIBS="-L/usr/local/lib $LIBS"
 
 AC_PROG_CPP
 AC_C_CROSS
-AC_PROG_RANLIB
 AC_RETSIGTYPE
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for use of a Microsoft compiler)
+AC_EGREP_CPP(yes,
+[
+#ifdef _MSC_VER
+	yes
+#endif
+],
+[ac_microsoft=yes
+] AC_MSG_RESULT(yes), [ac_microsoft=no
+] AC_MSG_RESULT(no))
+
+if test "$ac_microsoft" = "yes" ; then
+	EXE_SUFFIX=".exe"
+	OBJ_SUFFIX="obj"
+	LIB_SUFFIX="lib"
+	LIB_PREFIX="lib"
+	LIB_LIBPATH="/LIBPATH:"
+	LINK_LIB=""
+	LINK_OPT_SEP="/link"
+
+	OBJFILE_OPT="/Fo"
+	AR="lib"
+	ARFLAGS=""
+	AR_LIBFILE_OPT="/OUT:"
+	BOEHMGC_MAKEFILE="-f NT_MAKEFILE"
+
+	CYGPATH="cygpath -w"
+
+		# MS doesn't use a ranlib.
+	RANLIB="echo"
+	AC_SUBST(RANLIB)
+else
+	EXE_SUFFIX=""
+	OBJ_SUFFIX="o"
+	LIB_SUFFIX="a"
+	LIB_PREFIX=""
+	LIB_LIBPATH="-L"
+	LINK_LIB="-l"
+	LINK_OPT_SEP=""
+
+	OBJFILE_OPT="-o "
+	AR="ar"
+	ARFLAGS="cr"
+	AR_LIBFILE_OPT=""
+	BOEHMGC_MAKEFILE=""
+
+	CYGPATH=echo
+
+	AC_PROG_RANLIB
+fi
+
+AC_SUBST(OBJFILE_OPT)
+AC_SUBST(AR)
+AC_SUBST(ARFLAGS)
+AC_SUBST(AR_LIBFILE_OPT)
+AC_SUBST(BOEHMGC_MAKEFILE)
+AC_SUBST(EXE_SUFFIX)
+AC_SUBST(OBJ_SUFFIX)
+AC_SUBST(LIB_SUFFIX)
+AC_SUBST(LIB_PREFIX)
+AC_SUBST(LIB_LIBPATH)
+AC_SUBST(LINK_LIB)
+AC_SUBST(LINK_OPT_SEP)
+AC_SUBST(CYGPATH)
+
+#-----------------------------------------------------------------------------#
 # Don't try to use mprotect() on gnu-win32, since it is broken
 # (at least for version b18, anyway) and trying it can crash Win95.
 case "$host" in
@@ -231,6 +297,12 @@ case "$host" in
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
 AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
+AC_HAVE_FUNCS(vsnprintf _vsnprintf)
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
+if test "$HAVE_UNISTD_H" = 1; then
+	AC_DEFINE(HAVE_UNISTD_H)
+fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
 if test "$HAVE_SYS_WAIT_H" = 1; then
@@ -764,6 +836,18 @@ AC_MSG_RESULT($mercury_cv_word_type)
 AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
 AC_SUBST(MR_WORD_TYPE)
+
+if test "$mercury_cv_word_type" = int; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "")
+elif test "$mercury_cv_word_type" = long; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "l")
+elif test "$mercury_cv_word_type" = "long long"; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "ll")
+else
+	AC_MSG_ERROR("Cannot determine the length modifier for the MR_Integer type.")
+fi
+AC_SUBST(MR_INTEGER_LENGTH_MODIFIER)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for an integer type of at least 64 bits)
 AC_CACHE_VAL(mercury_cv_int_least64_type,
@@ -1224,8 +1308,8 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
 )
 AC_MSG_RESULT($mercury_cv_normal_system_retval)
 if test "$mercury_cv_normal_system_retval" = no; then
-	AC_MSG_ERROR(Unable to interpret return values from system)
-	exit 1
+		# Warn since VC++6 compiler fails this test
+	AC_MSG_WARN(Unable to interpret return values from system)
 fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for tempnam)
@@ -1599,10 +1683,14 @@ if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 else
-	MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+	# If we are using the MS compiler we want to install all the
+	# none.* and hlc.* grades.  The easiest way to do this is to
+	# pretend we want to use the none.gc grade and then override it
+	# later.
+	if test $ac_microsoft = no; then
+		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+	fi
 fi
-
-AC_SUBST(GRADE)
 
 if test "$DEFAULT_GRADE" = ""; then
 	DEFAULT_GRADE=$GRADE
@@ -1615,8 +1703,6 @@ if test "$DEFAULT_GRADE" = ""; then
 			;;
 	esac
 fi
-MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
-AC_SUBST(DEFAULT_GRADE)
 
 #
 # Figure out which grades to use if --enable-all-grades is specified.
@@ -1680,9 +1766,42 @@ fi
 # add `.debug' (--debug) grades
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 
+# add `hlc' (--high-level-code, i.e. MLDS back-end) grades
+LIBGRADES="$LIBGRADES hlc.gc"
+
+AC_ARG_ENABLE(all-hlc-grades,
+[  --enable-all-hlc-grades install all the hlc grades],
+enable_all_hlc_grades=yes,enable_all_hlc_grades=no)
+
+if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
+	# add `hlc' grade
+	LIBGRADES="$LIBGRADES hlc"
+
+	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# and a `.memprof' (--memory-profiling) grade.
+	if test $mercury_cv_profiling = yes; then
+		LIBGRADES="$LIBGRADES hlc.gc.prof"
+	fi
+	LIBGRADES="$LIBGRADES hlc.gc.memprof"
+fi
+
+# If we are using the Microsoft compiler then use hlc.gc as the default
+# grade.
+if test $ac_microsoft = yes; then
+	GRADE=hlc.gc
+	DEFAULT_GRADE=hlc.gc
+	MERCURY_MSG("\`GRADE=$GRADE' to compile the compiler")
+fi
+AC_SUBST(GRADE)
+
+# Output default grade
+MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
+AC_SUBST(DEFAULT_GRADE)
+
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
+
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 #
@@ -1692,8 +1811,8 @@ AC_SUBST(LIBGRADES)
 AC_ARG_ENABLE(decl-debug,
 [  --disable-decl-debug    disable the declarative debugger],
 mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
-if test "$mercury_cv_enable_decl_debug" = "yes"; then
-	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
+if test "$mercury_cv_enable_decl_debug" = "no"; then
+	AC_DEFINE(MR_DISABLE_DECLARATIVE_DEBUGGER)
 fi
 #-----------------------------------------------------------------------------#
 
@@ -1794,14 +1913,16 @@ EOF
 	else
 		AS="gcc -c -x assembler-with-cpp"
 		mercury_cv_asm_does_full_preprocessing="no"
-		AC_MSG_RESULT(no)	
 	fi
 	rm -f conftest*
 else
-	AS="gcc -c -x assembler-with-cpp"
+	mercury_cv_asm_does_full_preprocessing="no"
 fi
 ])
 AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
+if test $mercury_cv_asm_does_full_preprocessing = "no"; then
+	AS="gcc -c -x assembler-with-cpp"
+fi
 AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
@@ -1847,7 +1968,7 @@ SHLIB_RPATH_OPT="-Wl,-rpath,"
 SHLIB_RPATH_SEP=" -Wl,-rpath,"
 CFLAGS_FOR_PIC="-fpic -DPIC"
 EXT_FOR_PIC_OBJECTS=pic_o
-EXT_FOR_SHARED_LIB=a
+EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
 # The following variables specify options to $LINK_SHARED_OBJ to
 # allow/disallow unresolved symbols when building shared libraries.
@@ -2281,6 +2402,20 @@ fi
 LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
+AC_ARG_ENABLE(new-mercuryfile-struct,
+[  --enable-new-mercuryfile-struct   enable new MercuryFile struct.],
+ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
+
+if test "$ac_new_mercuryfile_struct" = "yes"; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_NEW_MERCURYFILE_STRUCT)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
 #
 # Add an option that enables the external debugger support.
 # By default, external debugger support is enabled if and only if
@@ -2332,7 +2467,7 @@ if test "$BOOTSTRAP_MC" != "" ; then
             to_keep="$to_keep $c_file"
             ;;
         *)
-            sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
+            sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
             if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
 	    	confscratch > /dev/null 2>&1
             then

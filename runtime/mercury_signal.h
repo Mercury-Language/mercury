@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,7 +27,7 @@
 	** TRUE.  Note that on some platforms, signal information is
 	** provided regardless of the value of need_info.
 	*/
-extern void MR_setup_signal(int sig, Code *handler, bool need_info, 
+extern void MR_setup_signal(int sig, MR_Code *handler, bool need_info, 
 	const char * error_message);
 
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1997,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,7 +12,9 @@
 #ifndef MERCURY_PROF_H
 #define MERCURY_PROF_H
 
-#include "mercury_types.h"	/* for `Code *' */
+#include "mercury_types.h"	/* for `MR_Code *' */
+
+#include <stdio.h>
 
 /*
 ** This variable holds the address of the "current" procedure so that
@@ -20,7 +22,7 @@
 ** so that it can credit the time to the appropriate procedure.
 */
 
-extern	Code *	volatile	MR_prof_current_proc;
+extern MR_Code *	volatile	MR_prof_current_proc;
 
 /*
 ** The following two macros are used to ensure that the profiler can
@@ -28,6 +30,7 @@ extern	Code *	volatile	MR_prof_current_proc;
 ** being executed when a profiling interrupt occurs.
 */
 
+#define MR_set_prof_current_proc(target)	set_prof_current_proc(target)
 #ifdef PROFILE_TIME
   #define set_prof_current_proc(target)		\
 		(MR_prof_current_proc = (target))
@@ -49,7 +52,7 @@ extern	Code *	volatile	MR_prof_current_proc;
 #endif
 
 #ifdef PROFILE_CALLS
-  extern void	MR_prof_call_profile(Code *, Code *);
+  extern void	MR_prof_call_profile(MR_Code *, MR_Code *);
 #endif
 
 
@@ -58,14 +61,15 @@ extern	Code *	volatile	MR_prof_current_proc;
 ** mercury_label.c to record the address of each entry label.
 */
 
-extern void	MR_prof_output_addr_decl(const char *name, const Code *address);
+extern void	MR_prof_output_addr_decl(const char *name, const MR_Code *address);
 
 
 /*
 ** The following functions are used by mercury_wrapper.c to
 ** initiate profiling, at the start of the the program,
-** and to finish up profiling (writing the profiling data to files)
-** at the end of the program.
+** to finish up profiling (writing the profiling data to files)
+** at the end of the program, and to close the `Prof.Decl' file at end of
+** module initialization.
 ** Note that prof_init() calls atexit(prof_finish), so that it can handle
 ** the case where the program exits by calling exit() rather than just
 ** returning, so it is actually not necessary to call prof_finish()
@@ -74,6 +78,7 @@ extern void	MR_prof_output_addr_decl(const char *name, const Code *address);
 
 extern	void	MR_prof_init(void);
 extern	void	MR_prof_finish(void);
+extern	void	MR_close_prof_decl_file(void);
 
 #ifdef PROFILE_TIME
   extern void 	MR_prof_turn_on_time_profiling(void);

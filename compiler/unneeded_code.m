@@ -195,14 +195,20 @@
 
 unneeded_code__process_proc_msg(PredId, ProcId, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
+	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo) },
+	{ module_info_globals(ModuleInfo0, Globals) },
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Removing dead code in "),
 		hlds_out__write_pred_proc_id(ModuleInfo0, PredId, ProcId),
 		io__write_string(": "),
-		{ unneeded_code__pre_process_proc(ProcInfo0, ProcInfo1) },
-		{ unneeded_code__process_proc(ProcInfo1, ProcInfo,
-			ModuleInfo0, ModuleInfo, Successful) },
+		{ unneeded_code__pre_process_proc(TypeInfoLiveness,
+			ProcInfo0, ProcInfo1) },
+		{ unneeded_code__process_proc(PredInfo, ProcInfo1, ProcInfo,
+			ModuleInfo0, ModuleInfo, TypeInfoLiveness,
+			Successful) },
 		(
 			{ Successful = yes },
 			io__write_string("done.\n")
@@ -211,20 +217,23 @@ unneeded_code__process_proc_msg(PredId, ProcId, ProcInfo0, ProcInfo,
 			io__write_string("none found.\n")
 		)
 	;
-		{ unneeded_code__pre_process_proc(ProcInfo0, ProcInfo1) },
-		{ unneeded_code__process_proc(ProcInfo1, ProcInfo,
-			ModuleInfo0, ModuleInfo, _) }
+		{ unneeded_code__pre_process_proc(TypeInfoLiveness,
+			ProcInfo0, ProcInfo1) },
+		{ unneeded_code__process_proc(PredInfo, ProcInfo1, ProcInfo,
+			ModuleInfo0, ModuleInfo, TypeInfoLiveness, _) }
 	).
 
-:- pred unneeded_code__pre_process_proc(proc_info::in, proc_info::out) is det.
+:- pred unneeded_code__pre_process_proc(bool::in, proc_info::in,
+	proc_info::out) is det.
 
-unneeded_code__pre_process_proc(ProcInfo0, ProcInfo) :-
+unneeded_code__pre_process_proc(TypeInfoLiveness, ProcInfo0, ProcInfo) :-
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
-		Goal, Varset, VarTypes, _Warnings),
+		TVarMap, TypeInfoLiveness, Goal, Varset, VarTypes, _Warnings),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
@@ -262,11 +271,12 @@ unneeded_code__pre_process_proc(ProcInfo0, ProcInfo) :-
 			copy_limit	::	int
 		).
 
-:- pred unneeded_code__process_proc(proc_info::in, proc_info::out,
-	module_info::in, module_info::out, bool::out) is det.
+:- pred unneeded_code__process_proc(pred_info::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out,
+	bool::in, bool::out) is det.
 
-unneeded_code__process_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
-		Successful) :-
+unneeded_code__process_proc(PredInfo, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo, TypeInfoLiveness, Successful) :-
 	goal_path__fill_slots(ProcInfo0, ModuleInfo0, ProcInfo1),
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset0),
@@ -301,16 +311,18 @@ unneeded_code__process_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
 			% We need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
 		proc_info_headvars(ProcInfo0, HeadVars),
+		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 		implicitly_quantify_clause_body(HeadVars,
 			Goal2, Varset0, VarTypes0,
+			TVarMap, TypeInfoLiveness,
 			Goal3, Varset, VarTypes, _Warnings),
-		recompute_instmap_delta(no, Goal3, Goal,
-			VarTypes, InstMap0, ModuleInfo0, ModuleInfo1),
+		recompute_instmap_delta(no, PredInfo, Goal3, Goal,
+			VarTypes, TVarMap, InstMap0, ModuleInfo0, ModuleInfo1),
 		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
 		proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-		unneeded_code__process_proc(ProcInfo4, ProcInfo,
-			ModuleInfo1, ModuleInfo, _),
+		unneeded_code__process_proc(PredInfo, ProcInfo4, ProcInfo,
+			ModuleInfo1, ModuleInfo, TypeInfoLiveness, _),
 		Successful = yes
 	;
 		ProcInfo = ProcInfo0,

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,10 +34,14 @@
 :- pred dir__basename(string::in, string::out) is det.
 :- pred dir__dirname(string::in, string::out) is det.
 
+	% Given a directory name and a filename, return the pathname of that
+	% file in that directory.
+:- func dir__make_path_name(string, string) = string.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, require, string.
+:- import_module int, list, require, string.
 
 dir__directory_separator('/').
 
@@ -47,7 +51,8 @@ dir__split_name(FileName, DirName, BaseName) :-
 	string__length(FileName, Length),
 	dir__split_name_2(FileName, Length, DirName, BaseName).
 
-:- pred dir__split_name_2(string::in, int::in, string::out, string::out) is det.
+:- pred dir__split_name_2(string::in, int::in, string::out, string::out)
+	is det.
 
 dir__split_name_2(FileName, N, DirName, BaseName) :-
 	N1 is N - 1,
@@ -75,6 +80,16 @@ dir__basename(FileName, BaseName) :-
 
 dir__dirname(FileName, DirName) :-
 	dir__split_name(FileName, DirName, _).
+
+dir__make_path_name(DirName, FileName) = PathName :-
+		% Using string__append_list has a fixed overhead of six
+		% words, whereas using two string__appends back to back
+		% would have a memory overhead proportional to the size
+		% of the string copied twice. We prefer the former because
+		% it is bounded.
+	string__append_list([DirName,
+		string__char_to_string(dir__directory_separator),
+		FileName], PathName).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -107,4 +122,3 @@ dir__basename(S1) = S2 :-
 
 dir__dirname(S1) = S2 :-
 	dir__dirname(S1, S2).
-

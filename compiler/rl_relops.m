@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,20 +206,8 @@ rl_relops__select_and_project(InputRel, OutputRel, InputArgs,
 rl_relops__join(InputRel1, InputRel2, Args1, Args2, InstMap,
 		JoinCondGoals, OutputVars, OutputSchema, OutputRel, Code) -->
 	rl_relops__join_2(InputRel1, InputRel2, Args1, Args2, InstMap,
-		JoinCondGoals, OutputVars, OutputSchema, JoinOutputRel,
-		JoinType, JoinOutputs, JoinCode), 
-
-	% Semi-join doesn't create an output tuple, so we may need
-	% to do a projection on the output relation.
-	( { JoinType = semi } ->
-		rl_relops__select_and_project(JoinOutputRel, OutputRel,
-			JoinOutputs, OutputVars, InstMap, JoinCondGoals,
-			ProjectCode)
-	;
-		{ ProjectCode = empty },
-		{ OutputRel = JoinOutputRel }
-	),
-	{ Code = tree(JoinCode, ProjectCode) }.
+		JoinCondGoals, OutputVars, OutputSchema, OutputRel,
+		_JoinType, _JoinOutputs, Code).
 
 :- pred rl_relops__join_2(relation_id::in, relation_id::in, list(prog_var)::in,
 	list(prog_var)::in, instmap::in, list(hlds_goal)::in,
@@ -237,24 +225,20 @@ rl_relops__join_2(InputRel1, InputRel2, Args1, Args2, InstMap,
 	{ rl_relops__maybe_reverse_inputs(ReverseInputs,
 		Args1, Args2, ReorderedArgs1, ReorderedArgs2) },
 
-	( { JoinType = semi } ->
-		rl_info_get_proc_info(ProcInfo),
-		{ proc_info_vartypes(ProcInfo, VarTypes) },
-		{ map__apply_to_list(JoinOutputs, VarTypes, JoinOutputTypes) },
-		{ JoinOutputSchema = schema(JoinOutputTypes) },
-		{ MaybeOutputs = no }
-	;
-		{ JoinOutputSchema = OutputSchema },
-		{ MaybeOutputs = yes(OutputVars) }
-	),
-	
 	rl_relops__goal(InstMap, two_inputs(ReorderedArgs1, ReorderedArgs2),
-		MaybeOutputs, JoinCondGoals, JoinCond),
+		yes(OutputVars), JoinCondGoals, JoinCond),
 	rl_info__comment(Comment),
 		
-	rl_info_get_new_temporary(JoinOutputSchema, OutputRel),
+	rl_info_get_new_temporary(OutputSchema, OutputRel),
+	{ rl__is_semi_join(JoinType, JoinCond, SemiJoin) },
+
+	rl_info_get_module_info(ModuleInfo),
+	{ rl__is_trivial_join(ModuleInfo, JoinType, JoinCond,
+		SemiJoin, TrivialJoin) },
+		
 	{ Code = node([join(output_rel(OutputRel, []), ReorderedInput1,
-		ReorderedInput2, JoinType, JoinCond) - Comment]) }.
+		ReorderedInput2, JoinType, JoinCond,
+		SemiJoin, TrivialJoin) - Comment]) }.
 
 rl_relops__diff_diff_join(DiffRel1, FullRel1, DiffRel2, FullRel2,
 		Args1, Args2, InstMap, JoinCondGoals, RuleOutputs, 
@@ -274,51 +258,25 @@ rl_relops__diff_diff_join(DiffRel1, FullRel1, DiffRel2, FullRel2,
 	},
 
 	rl_relops__union(yes, RuleSchema, [OutputRel1, OutputRel2],
-		no, UnionResult, UnionCode),
+		no, RuleResult, UnionCode),
 
-	% Delay the projection until after the union so that the
-	% projection isn't run on duplicates tuples in each relation.
-	( { JoinType = semi } ->
-		rl_relops__select_and_project(UnionResult, RuleResult,
-			JoinOutputs, RuleOutputs, InstMap, JoinCondGoals,
-			ProjectCode)
-	;
-		{ RuleResult = UnionResult },
-		{ ProjectCode = empty }
-	),
 	{ JoinCode = 
 		tree(JoinCode1,
 		tree(JoinCode2,
-		tree(UnionCode,
-		ProjectCode
-	))) }.
+		UnionCode
+	)) }.
 
-	% If the outputs of a join are the same as the attributes
-	% of an input relation, we can do a semi-join. If so, the
-	% inputs may need to be reversed so that the relation from
-	% which the outputs are to be taken is the first argument
-	% of the join.
-	% XXX Aditi's implementation of semi-join is buggy.
+	% All joins start out as nested loop joins, and are specialized later.
 :- pred rl_relops__classify_join_condition(list(prog_var)::in,
 	list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::in,
 	join_type::out, list(prog_var)::out, bool::out,
 	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
-rl_relops__classify_join_condition(Args1, Args2, Outputs, _Goals,
+rl_relops__classify_join_condition(_, _, Outputs, _,
 		Type, JoinOutputs, ReverseInputRels) -->
-	{ Args1 = Outputs, semidet_fail ->
-		Type = semi,
-		ReverseInputRels = no,
-		JoinOutputs = Args1
-	; Args2 = Outputs, semidet_fail ->
-		Type = semi,
-		ReverseInputRels = yes,
-		JoinOutputs = Args2
-	;
-		Type = nested_loop,
-		ReverseInputRels = no,
-		JoinOutputs = Outputs
-	}.
+	{ Type = nested_loop },
+	{ ReverseInputRels = no },
+	{ JoinOutputs = Outputs }.
 
 :- pred rl_relops__maybe_reverse_inputs(bool::in,
 		T::in, T::in, T::out, T::out) is det.
@@ -335,8 +293,14 @@ rl_relops__subtract(Rel1, Rel2, OutputArgs1, OutputArgs2, InstMap,
 	rl_relops__goal(InstMap, two_inputs(OutputArgs1, OutputArgs2), no,
 		SubtractGoals, SubtractCond),
 	rl_info_get_new_temporary(same_as_relation(Rel1), TempRel),
+	rl_info_get_module_info(ModuleInfo),
+
+	{ rl__is_trivial_subtract(ModuleInfo, SubtractType, SubtractCond,
+		TrivialSubtract) },
+		
 	{ Subtract = subtract(output_rel(TempRel, []),
-		Rel1, Rel2, SubtractType, SubtractCond) - Comment },
+		Rel1, Rel2, SubtractType, SubtractCond,
+		TrivialSubtract) - Comment },
 	rl_info__comment(Comment),
 
 	% The output projection for subtracts must be done as a separate
@@ -348,10 +312,12 @@ rl_relops__subtract(Rel1, Rel2, OutputArgs1, OutputArgs2, InstMap,
 		ProjectCode
 	) }.
 
+	% All subtracts start out as semi_nested_loop subtracts,
+	% and are specialized later.
 :- pred rl_relops__classify_subtract_condition(list(hlds_goal)::in,
 	subtract_type::out, rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
-rl_relops__classify_subtract_condition(_, semi) --> [].
+rl_relops__classify_subtract_condition(_, semi_nested_loop) --> [].
 
 rl_relops__difference(OldRel, NewRel, DiffRel, Code) -->
 	rl_info_get_relation_schema(OldRel, Schema),

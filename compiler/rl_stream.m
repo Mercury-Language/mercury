@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -258,8 +258,44 @@ rl_stream__inside_and_after(CalledBlocks, BlockId,
 		stream_info::in, stream_info::out) is det.
 
 rl_stream__detect_streams_instr(Instr) -->
-	( { Instr = ref(Output, Input) - _ } ->
+	(
+		{ Instr = ref(Output, Input) - _ }
+	->
 		rl_stream__add_alias(Output, Input)
+	;
+		{ Instr = join(output_rel(Output, _), Input1, Input2,
+			_, _, _, Trivial) - "" },
+		{ Trivial = yes(
+			trivial_join_or_subtract_info(ReturnedTuple, no)) }
+	->
+		% For a trivial join with no projection,
+		% a reference may be taken to the relation
+		% on which the join condition depends.
+		(
+			{ ReturnedTuple = one },
+			rl_stream__add_alias(Output, Input1),
+			rl_stream__update_counts([Input2])
+		;
+			{ ReturnedTuple = two },
+			rl_stream__add_alias(Output, Input2),
+			rl_stream__update_counts([Input1])
+		)
+	;
+		% For a trivial semi-subtract, a reference may be
+		% taken to the relation being subtracted from.
+		{ Instr = subtract(output_rel(Output, _), Input1, Input2,
+			_, _, Trivial) - "" },
+		{ Trivial = yes(
+			trivial_join_or_subtract_info(UsedTuple, _)) }
+	->
+		rl_stream__add_alias(Output, Input1),
+		(
+			{ UsedTuple = one },
+			rl_stream__update_counts([Input1, Input2])
+		;
+			{ UsedTuple = two },
+			rl_stream__update_counts([Input2])
+		)
 	;
 		{ rl__instr_relations(Instr, Inputs, _) },
 		rl_stream__update_counts(Inputs)
@@ -273,9 +309,12 @@ rl_stream__end_block_list(Info0, Info) :-
 	Info0 = stream_info(Materialise0, Uses, Aliases0),
 	relation__rtc(Aliases0, Aliases),
 	relation__domain(Aliases, AliasedRels0),
-	set__to_sorted_list(AliasedRels0, AliasedRels),
+	bag__to_assoc_list(Uses, UsesAL),
+	assoc_list__keys(UsesAL, UsedRels),
+	set__insert_list(AliasedRels0, UsedRels, RelsToCheck0),
+	set__to_sorted_list(RelsToCheck0, RelsToCheck),
 	list__foldl(rl_stream__end_block_check_relation(Uses, Aliases),
-		AliasedRels, Materialise0, Materialise),
+		RelsToCheck, Materialise0, Materialise),
 	Info = stream_info(Materialise, Uses, Aliases).
 
 	% Work out which relations used in this block need to be materialised.
@@ -364,9 +403,10 @@ rl_stream__add_alias(Rel1, Rel2, Info0, Info) :-
 :- pred rl_stream__must_materialise_rels(rl_instruction, list(relation_id)).
 :- mode rl_stream__must_materialise_rels(in, out) is det.
 
-rl_stream__must_materialise_rels(join(Output, _, _, _, _) - _, Materialise) :-
+rl_stream__must_materialise_rels(join(Output, _, _, _, _, _, _) - _,
+		Materialise) :-
 	rl_stream__output_is_indexed(Output, Materialise).	
-rl_stream__must_materialise_rels(subtract(Output, _, _, _, _) - _,
+rl_stream__must_materialise_rels(subtract(Output, _, _, _, _, _) - _,
 		Materialise) :-
 	rl_stream__output_is_indexed(Output, Materialise).
 rl_stream__must_materialise_rels(difference(Output, _, _, _) - _,
@@ -406,7 +446,8 @@ rl_stream__must_materialise_rels(insert_tuple(Output, _, _) - _,
 	rl_stream__output_is_indexed(Output, Materialise).
 
 	% Indexed relations must always be materialised.
-rl_stream__must_materialise_rels(add_index(output_rel(Rel, _)) - _, [Rel]).
+rl_stream__must_materialise_rels(add_index(output_rel(Output, _), Input) - _,
+		[Input, Output]).
 rl_stream__must_materialise_rels(clear(Rel) - _, [Rel]).
 rl_stream__must_materialise_rels(ref(_, _) - _, []).
 rl_stream__must_materialise_rels(copy(output_rel(Output, _), Input) - _,

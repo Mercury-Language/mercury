@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -269,7 +269,7 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 			B1 = raw_mem_p[6];
 			B0 = raw_mem_p[7];
 		#else
-			#error	Weird-endian architecture
+			#error	""Weird-endian architecture""
 		#endif
 	}
 	

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -64,7 +64,10 @@
   #include <signal.h>
 #endif
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -93,7 +96,19 @@
 #if defined(HAVE_SYSCONF) && defined(_SC_PAGESIZE)
   #define	getpagesize()	sysconf(_SC_PAGESIZE)
 #elif !defined(HAVE_GETPAGESIZE)
-  #define	getpagesize()	8192
+  #if defined(MR_WIN32_GETSYSTEMINFO)
+    #include <windows.h>
+
+    static size_t
+    getpagesize(void)
+    {
+	SYSTEM_INFO SysInfo;
+	GetSystemInfo(&SysInfo);
+	return (size_t) SysInfo.dwPageSize;
+    }
+  #else
+    #define	getpagesize()	8192
+  #endif
 #endif
 
 /*---------------------------------------------------------------------------*/

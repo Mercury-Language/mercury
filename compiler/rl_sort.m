@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -7,18 +7,17 @@
 % Main author: stayl
 %
 % Work out what sorting and indexing is available, and introduce
-% sort-merge or indexed operations where possible. 
+% sort-merge, hashed or indexed operations where possible. 
 %
 % Remove unnecessary sort and add_index operations.
 %
 % 
 % Eventually this module should:
 %
-% Generate sort and add_index instructions where required. This should be
-% performed after other optimization passes which introduce sort-merge
-% operations. (There are none yet). At the moment sorts are inserted where
-% they might be required by rl_gen.m, but for example a union may be optimized
-% into a union_diff and no longer require sorted input.
+% Generate sort and add_index instructions where required.
+% At the moment sorts are inserted where they might be required by
+% rl_gen.m, but for example a union may be optimized into a union_diff
+% and no longer require sorted input.
 %
 % For some operations such as sort-merge union, all that is required
 % is that all inputs are sorted on all of their attributes.
@@ -140,7 +139,9 @@ rl_sort__proc_2(IO0, IO) -->
 	% Go through the instructions removing unnecessary
 	% sorts and add_indexes.
 	%
-	list__foldl(rl_sort__remove_useless_ops(NeededSortMap), Order),
+	list__foldl(
+		rl_sort__add_indexing_and_remove_useless_ops(NeededSortMap),
+		Order),
 
 	%
 	% Remove the arc we added for memoed relations.
@@ -171,7 +172,8 @@ rl_sort__proc_2(IO0, IO) -->
 	;	index(index_spec)	
 	.
 
-:- type relation_sort_map == map(relation_id, map(sort_index, sort_req)).
+:- type relation_sort_map == map(relation_id, sort_req_map).
+:- type sort_req_map == map(sort_index, sort_req).
 :- type var_sort_map == map(int, set(relation_id)).
 
 	% Possible sortednesses for each sortedness variable.
@@ -299,57 +301,140 @@ rl_sort__confluence(CalledBlockId - CalledSortData0,
 :- pred rl_sort__merge_maps(map(T, set(U))::in, map(T, set(U))::in, 
 		map(T, set(U))::out) is det.
 
-rl_sort__merge_maps(Map1, Map2, Map) :-
-	AddToMap =
-	    lambda([Key::in, Value::in, MergedMap0::in, MergedMap::out] is det, 
-	    (
-	    	( map__search(MergedMap0, Key, Value0) ->
-			set__union(Value0, Value, MergedValue),
-			map__det_update(MergedMap0, Key,
-				MergedValue, MergedMap)
-		;
-			map__det_insert(MergedMap0, Key, Value, MergedMap)
-		)
-	    )),
-	map__foldl(AddToMap, Map2, Map1, Map).
+rl_sort__merge_maps(Map1, Map2, NewMap) :-
+	UnionValues =
+		(pred(_::in, Value1::in, Value2::in, Value::out) is semidet :-
+			set__union(Value1, Value2, Value)
+		),
+	Id = (pred(_::in, Value::in, Value::out) is semidet),
+	merge_map_keys(UnionValues, Id, Map1, Map2, NewMap).
+
+:- pred merge_map_keys(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+
+merge_map_keys(UnionValues, Id, Map1, Map2, MergedMap) :-
+	map__keys(Map1, Keys1),
+	map__keys(Map2, Keys2),
+	list__append(Keys1, Keys2, Keys),
+	list__sort_and_remove_dups(Keys, SortedKeys),
+	map__init(MergedMap0),
+	list__foldl(merge_map_key(UnionValues, Id, Map1, Map2),
+		SortedKeys, MergedMap0, MergedMap).
+
+:- pred merge_map_key(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		map(K, V)::in, map(K, V)::in, K::in,
+		map(K, V)::in, map(K, V)::out) is det.
+
+merge_map_key(Merge, Single, Map1, Map2, Key, MergedMap0, MergedMap) :-
+	maybe_map_search(Map1, Key, MaybeValue1),
+	maybe_map_search(Map2, Key, MaybeValue2),
+	(
+		merge_maybes(Merge, Single, Key, MaybeValue1, MaybeValue2,
+			Value)
+	->
+		map__det_insert(MergedMap0, Key, Value, MergedMap)
+	;
+		MergedMap = MergedMap0
+	).
+
+:- pred maybe_map_search(map(K, V)::in, K::in, maybe(V)::out) is det.
+
+maybe_map_search(Map, Key, MaybeValue) :-
+	( map__search(Map, Key, Value) ->
+		MaybeValue = yes(Value)
+	;
+		MaybeValue = no
+	).
+
+:- pred merge_maybes(pred(K, V, V, V)::(pred(in, in, in, out) is semidet),
+		pred(K, V, V)::(pred(in, in, out) is semidet),
+		K::in, maybe(V)::in, maybe(V)::in, V::out) is semidet.
+
+merge_maybes(Merge, _, K, yes(V1), yes(V2), V) :- Merge(K, V1, V2, V).
+merge_maybes(_, Single, K, yes(V1), no, V) :- Single(K, V1, V).
+merge_maybes(_, Single, K, no, yes(V2), V) :- Single(K, V2, V).
+
+:- pred rl_sort__semidet_merge_sort_maps(relation_sort_map::in,
+		relation_sort_map::in, relation_sort_map::out) is semidet.
+
+rl_sort__semidet_merge_sort_maps(A, B, C) :-
+	rl_sort__merge_sort_maps(A, B, C),
+	semidet_succeed.
 
 :- pred rl_sort__merge_sort_maps(relation_sort_map::in, relation_sort_map::in,
 		relation_sort_map::out) is det.
 
-rl_sort__merge_sort_maps(SortSpecs, Specs0, Specs) :-
+rl_sort__merge_sort_maps(RelSortMap1, RelSortMap2, RelSortMap) :-
+	MergeValues = semidet_merge_sort_req_map,
+	SingleValue = semidet_definite_to_maybe_sort_req_map,
+	merge_map_keys(MergeValues, SingleValue,
+		RelSortMap1, RelSortMap2, RelSortMap).
 
-	MergeMaps =
-	    lambda([Key::in, Value1::in, MergedMap0::in, MergedMap::out] is det,
-	    (
-	    	( map__search(MergedMap0, Key, Value0) ->
-			rl_sort__merge_sort_maps_2(Value1, Value0, Value),
-			map__det_update(MergedMap0, Key, Value, MergedMap)
-		;
-			map__det_insert(MergedMap0, Key, Value1, MergedMap)
-		)
-	    )),
-	map__foldl(MergeMaps, SortSpecs, Specs0, Specs).
+:- pred rl_sort__semidet_merge_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is semidet.
 
-:- pred rl_sort__merge_sort_maps_2(map(sort_index, sort_req)::in, 
-	map(sort_index, sort_req)::in, map(sort_index, sort_req)::out) is det. 
+rl_sort__semidet_merge_sort_req_map(A, B, C, D) :-
+	rl_sort__merge_sort_req_map(A, B, C, D),
+	semidet_succeed.
 
-rl_sort__merge_sort_maps_2(Map0, Map1, Map) :-
-	MergeMaps =
-	    lambda([Spec::in, Req1::in, MergedMap0::in, MergedMap::out] is det,
-	    (
-	    	( map__search(MergedMap0, Spec, Req0) ->
-			rl_sort__merge_sort_reqs(Req0, Req1, Req),
-			map__det_update(MergedMap0, Spec, Req, MergedMap)
-		;
-			map__det_insert(MergedMap0, Spec, Req1, MergedMap)
-		)
-	    )),
-	map__foldl(MergeMaps, Map0, Map1, Map).
+:- pred rl_sort__merge_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is det.
 
-:- pred rl_sort__merge_sort_reqs(sort_req::in,
+rl_sort__merge_sort_req_map(_, SortReqMap1, SortReqMap2, SortReqMap) :-
+	MergeValue = rl_sort__semidet_merge_sort_reqs,
+	SingleValue = rl_sort__semidet_definite_to_maybe_sort_req,
+	merge_map_keys(MergeValue, SingleValue, SortReqMap1,
+		SortReqMap2, SortReqMap).
+
+:- pred rl_sort__union_sort_req_map(relation_id::in, sort_req_map::in,
+		sort_req_map::in, sort_req_map::out) is det.
+
+rl_sort__union_sort_req_map(_, SortReqMap1, SortReqMap2, SortReqMap) :-
+	MergeValue = rl_sort__semidet_merge_sort_reqs,
+	SingleValue = (pred(_::in, X::in, X::out) is semidet),
+	merge_map_keys(MergeValue, SingleValue, SortReqMap1,
+		SortReqMap2, SortReqMap).
+
+:- pred semidet_definite_to_maybe_sort_req_map(relation_id::in,
+		sort_req_map::in, sort_req_map::out) is semidet.
+
+semidet_definite_to_maybe_sort_req_map(A, B, C) :-
+	definite_to_maybe_sort_req_map(A, B, C),
+	semidet_succeed.
+
+:- pred definite_to_maybe_sort_req_map(relation_id::in,
+		sort_req_map::in, sort_req_map::out) is det.
+
+definite_to_maybe_sort_req_map(_, SortReqMap0, SortReqMap) :-
+	map__map_values(rl_sort__definite_to_maybe_sort_req,
+		SortReqMap0, SortReqMap).
+
+:- pred rl_sort__semidet_definite_to_maybe_sort_req(sort_index::in,
+		sort_req::in, sort_req::out) is semidet.
+
+rl_sort__semidet_definite_to_maybe_sort_req(A, B, C) :-
+	rl_sort__definite_to_maybe_sort_req(A, B, C),
+	semidet_succeed.
+
+:- pred rl_sort__definite_to_maybe_sort_req(sort_index::in, sort_req::in,
+		sort_req::out) is det.
+
+rl_sort__definite_to_maybe_sort_req(_, sort_req(_, BlockIds),
+		sort_req(maybe, BlockIds)).
+
+:- pred rl_sort__semidet_merge_sort_reqs(sort_index::in, sort_req::in,
+		sort_req::in, sort_req::out) is semidet.
+
+rl_sort__semidet_merge_sort_reqs(A, B, C, D) :-
+	rl_sort__merge_sort_reqs(A, B, C, D),
+	semidet_succeed.
+
+:- pred rl_sort__merge_sort_reqs(sort_index::in, sort_req::in,
 		sort_req::in, sort_req::out) is det.
 
-rl_sort__merge_sort_reqs(Req0, Req1, Req) :-
+rl_sort__merge_sort_reqs(_, Req0, Req1, Req) :-
 	Req0 = sort_req(Definite0, BlockIds0),
 	Req1 = sort_req(Definite1, BlockIds1),
 	set__union(BlockIds0, BlockIds1, BlockIds),
@@ -412,7 +497,7 @@ rl_sort__add_relation_sortedness_map(NewSortSpecs, RelationId,
 		map__keys(SortSpecs0, Specs0),
 		set__sorted_list_to_set(Specs0, SpecSet0),
 		rl_sort__get_vars(SpecSet0, Vars0),
-		rl_sort__merge_sort_maps_2(NewSortSpecs,
+		rl_sort__union_sort_req_map(RelationId, NewSortSpecs,
 			SortSpecs0, SortSpecs),
 		map__det_update(RelMap0, RelationId, SortSpecs, RelMap)
 	;
@@ -624,11 +709,11 @@ rl_sort__needed_block_update(BlockId, InValue0,
 		sort_info::in, sort_info::out) is det.
 
 rl_sort__instr_needed(BlockId,
-		join(_Output, Input1, Input2, Type, _Exprn) - _) -->
+		join(_Output, Input1, Input2, Type, _Exprn, _, _) - _) -->
 	( 
 		{ Type = nested_loop }
 	;
-		{ Type = semi }
+		{ Type = hash(_, _) }
 	;
 		{ Type = sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),
@@ -639,23 +724,21 @@ rl_sort__instr_needed(BlockId,
 		{ Type = index(Index, _) },
 		rl_sort__add_relation_sortedness(BlockId, index(Index),
 			Input2)
-	;
-		{ Type = cross }
 	).
 rl_sort__instr_needed(BlockId,
-		subtract(_Output, Input1, Input2, Type, _Exprn) - _) -->
+		subtract(_Output, Input1, Input2, Type, _Exprn, _Semi) - _) -->
 	(
-		{ Type = nested_loop }
+		{ Type = semi_nested_loop }
 	;
-		{ Type = semi }
+		{ Type = semi_hash(_, _) }
 	;
-		{ Type = sort_merge(SortSpec1, SortSpec2) },
+		{ Type = semi_sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),
 			Input1),
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec2),
 			Input2)
 	;
-		{ Type = index(Index, _) },
+		{ Type = semi_index(Index, _) },
 		rl_sort__add_relation_sortedness(BlockId, index(Index),
 			Input2)
 	).
@@ -701,7 +784,7 @@ rl_sort__instr_needed(BlockId, aggregate(_Output, Input, _, _) - _) -->
 	% An aggregate's input is sorted on both attributes.
 	rl_sort__add_relation_sortedness(BlockId,
 		sort(attributes([1 - ascending, 2 - ascending])), Input).
-rl_sort__instr_needed(_BlockId, add_index(_Output) - _) --> [].
+rl_sort__instr_needed(_BlockId, add_index(_Output, _) - _) --> [].
 rl_sort__instr_needed(_, clear(_) - _) --> [].
 rl_sort__instr_needed(_, unset(Relation) - _) -->
 	rl_sort__unset_relation(Relation).
@@ -781,11 +864,45 @@ rl_sort__avail_block_update(BlockId, InValue0, _SortData0, SortData,
 		sort_info::in, sort_info::out) is det.
 
 rl_sort__instr_avail(BlockId,
-		join(Output, _Input1, _Input2, _Type, _Exprn) - _) -->
-	rl_sort__handle_output_indexing(BlockId, Output).
+		join(Output, Input1, Input2, _Type, _Exprn,
+			SemiJoin, Trivial) - _)
+		-->
+	(
+		{ SemiJoin = yes(_) },
+		{ Trivial = yes(trivial_join_or_subtract_info(TupleNum, no)) }
+	->
+		%
+		% For trivial semi-joins, which test one of the inputs
+		% for emptiness and return the other, the sortedness
+		% and indexing for the returned relation is passed through
+		% to the output.
+		%
+		{ TupleNum = one, PassedInput = Input1
+		; TupleNum = two, PassedInput = Input2
+		},
+		{ Output = output_rel(OutputRel, _) },
+		rl_sort__assign_sortedness_and_indexing(BlockId,
+			OutputRel, PassedInput)
+	;
+		rl_sort__handle_output_indexing(BlockId, Output)
+	).
 rl_sort__instr_avail(BlockId,
-		subtract(Output, _Input1, _Input2, _Type, _Exprn) - _) -->
-	rl_sort__handle_output_indexing(BlockId, Output).
+		subtract(Output, Input1, _Input2, _Type,
+			_Exprn, TrivialSubtract) - _)
+		-->
+	(
+		{ TrivialSubtract = yes(_) }
+	->
+		%
+		% For trivial subtracts, the sortedness and indexing for
+		% the first input relation is passed through to the output.
+		%
+		{ Output = output_rel(OutputRel, _) },
+		rl_sort__assign_sortedness_and_indexing(BlockId,
+			OutputRel, Input1)
+	;
+		rl_sort__handle_output_indexing(BlockId, Output)
+	).
 rl_sort__instr_avail(BlockId,
 		difference(Output, _Input1, _Input2, _Type) - _) -->
 	% { Type = sort_merge(SortSpec) },
@@ -838,7 +955,7 @@ rl_sort__instr_avail(BlockId, aggregate(Output, _Input, _, _) - _) -->
 	rl_sort__add_relation_sortedness(BlockId,
 		sort(attributes([1 - ascending, 2 - ascending])), OutputRel),
 	rl_sort__handle_output_indexing(BlockId, Output).
-rl_sort__instr_avail(BlockId, add_index(Output) - _) -->
+rl_sort__instr_avail(BlockId, add_index(Output, _) - _) -->
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(_, clear(_) - _) --> [].
 rl_sort__instr_avail(_, unset(Relation) - _) -->
@@ -953,14 +1070,21 @@ rl_sort__exploit_sorting_and_indexing(AvailSortMap, BlockId, Info0, Info) :-
 
 rl_sort__specialize_instr(BlockId, Instr0, Instrs0, Instrs) -->
 	(
-		{ Instr0 = join(Output, Input1, Input2, Type, Exprn)
-			- Comment }
+		{ Instr0 = join(Output, Input1, Input2, Type, Exprn,
+				SemiJoin, TrivialJoin) - Comment }
 	->
 		rl_sort__specialize_join(Instr0, Output, Input1, Input2,
-			Exprn, Type, Comment, Instrs0, Instrs)
+			Type, Exprn, SemiJoin, TrivialJoin,
+			Comment, Instrs0, Instrs)
 	;
-		{ Instr0 = project(Output, Input, Exprn,
-			OtherOutputs, Type) - Comment }
+		{ Instr0 = subtract(Output, Input1, Input2, Type, Exprn,
+				TrivialSubtract) - Comment }
+	->
+		rl_sort__specialize_subtract(Instr0, Output, Input1, Input2,
+			Type, Exprn, TrivialSubtract, Comment, Instrs0, Instrs)
+	;
+		{ Instr0 = project(Output, Input, Exprn, OtherOutputs, Type)
+				- Comment }
 	->
 		rl_sort__specialize_project(Instr0, Output, Input, Exprn,
 			OtherOutputs, Type, Comment, Instrs0, Instrs)
@@ -971,17 +1095,184 @@ rl_sort__specialize_instr(BlockId, Instr0, Instrs0, Instrs) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Attempt to use an indexed join algorithm.
+	% Attempt to use an index/sort/hash join algorithm.
 :- pred rl_sort__specialize_join(rl_instruction::in, output_rel::in,
-	relation_id::in, relation_id::in, rl_goal::in, join_type::in,
-	string::in, list(rl_instruction)::in, list(rl_instruction)::out,
-	sort_info::in, sort_info::out) is det.
+	relation_id::in, relation_id::in, join_type::in, rl_goal::in,
+	maybe(semi_join_info)::in, maybe(trivial_join_info)::in,
+	string::in, list(rl_instruction)::in,
+	list(rl_instruction)::out, sort_info::in, sort_info::out) is det.
 
-rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
-		_Type, Comment, Instrs0, Instrs,
+rl_sort__specialize_join(Instr0, Output, Input1, Input2, JoinType,
+		Exprn, SemiJoin, TrivialJoin, Comment, Instrs0, Instrs,
 		SortInfo0, SortInfo) :-
 	SortInfo0 = sort_info(Sortedness0, SortVars, RLInfo0),
 	Sortedness0 = sortedness(RelSortMap, _),
+
+	rl_sort__introduce_indexed_join(RelSortMap, Output, Input1, Input2,
+		JoinType, Exprn, SemiJoin, TrivialJoin, Comment,
+		MaybeIndexJoinInstrs, RLInfo0, RLInfo1),
+	( MaybeIndexJoinInstrs = yes(IndexJoinInstrs) ->
+		RLInfo = RLInfo1,
+		JoinInstrs = IndexJoinInstrs
+	;
+		rl_sort__introduce_sort_join(RelSortMap,
+			Output, Input1, Input2, JoinType, Exprn, SemiJoin,
+			Comment, MaybeSortJoinInstrs, RLInfo1, RLInfo2),
+		( MaybeSortJoinInstrs = yes(SortJoinInstrs) ->
+			RLInfo = RLInfo2,
+			JoinInstrs = SortJoinInstrs
+		;
+			rl_sort__introduce_hash_join(Output,
+				Input1, Input2, JoinType, Exprn, SemiJoin,
+				Comment, MaybeHashJoinInstrs, RLInfo2, RLInfo),
+			( MaybeHashJoinInstrs = yes(HashJoinInstrs) ->
+				JoinInstrs = HashJoinInstrs
+			;
+				JoinInstrs = [Instr0]
+			)
+		)
+	),
+	list__reverse(JoinInstrs, RevJoinInstrs),
+	list__append(RevJoinInstrs, Instrs0, Instrs),
+	SortInfo = sort_info(Sortedness0, SortVars, RLInfo).
+
+	% Attempt to use an index/hash subtract algorithm.
+:- pred rl_sort__specialize_subtract(rl_instruction::in, output_rel::in,
+	relation_id::in, relation_id::in, subtract_type::in, rl_goal::in,
+	maybe(trivial_subtract_info)::in, string::in,
+	list(rl_instruction)::in, list(rl_instruction)::out,
+	sort_info::in, sort_info::out) is det.
+
+rl_sort__specialize_subtract(Instr0, Output, Input1, Input2, SubtractType,
+		Exprn, TrivialSubtract, Comment, Instrs0, Instrs,
+		SortInfo0, SortInfo) :-
+	SortInfo0 = sort_info(Sortedness0, SortVars, RLInfo0),
+	Sortedness0 = sortedness(RelSortMap, _),
+
+	rl_sort__introduce_indexed_subtract(RelSortMap, Output, Input1, Input2,
+		SubtractType, Exprn, TrivialSubtract, Comment,
+		MaybeIndexSubtractInstrs, RLInfo0, RLInfo1),
+	( MaybeIndexSubtractInstrs = yes(IndexSubtractInstrs) ->
+		RLInfo = RLInfo1,
+		SubtractInstrs = IndexSubtractInstrs
+	;
+		RLInfo2 = RLInfo1,
+		/*
+		rl_sort__introduce_sort_subtract(RelSortMap,
+			Output, Input1, Input2, SubtractType, Exprn, Comment,
+			MaybeSortSubtractInstrs, RLInfo1, RLInfo2),
+		( MaybeSortSubtractInstrs = yes(SortSubtractInstrs) ->
+			RLInfo = RLInfo2,
+			SubtractInstrs = SortSubtractInstrs
+		;
+		*/
+			rl_sort__introduce_hash_subtract(Output,
+				Input1, Input2, SubtractType, Exprn, Comment,
+				MaybeHashSubtractInstrs, RLInfo2, RLInfo),
+			( MaybeHashSubtractInstrs = yes(HashSubtractInstrs) ->
+				SubtractInstrs = HashSubtractInstrs
+			;
+				SubtractInstrs = [Instr0]
+			)
+		%)
+	),
+	list__reverse(SubtractInstrs, RevSubtractInstrs),
+	list__append(RevSubtractInstrs, Instrs0, Instrs),
+	SortInfo = sort_info(Sortedness0, SortVars, RLInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_sort__introduce_indexed_join(relation_sort_map::in, output_rel::in,
+	relation_id::in, relation_id::in, join_type::in,
+	rl_goal::in, maybe(semi_join_info)::in, maybe(trivial_join_info)::in,
+	string::in, maybe(list(rl_instruction))::out,
+	rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__introduce_indexed_join(RelSortMap, Output, Input1, Input2, _JoinType0,
+		Exprn0, _SemiJoin0, _TrivialJoin0, Comment,
+		MaybeIndexJoinInstrs, RLInfo0, RLInfo) :-
+
+	CanSwapInputs = yes,
+	rl_sort__is_indexed_join_or_subtract(RelSortMap, Input1, Input2,
+		CanSwapInputs, Exprn0, MaybeIndexInfo, RLInfo0, RLInfo1),
+
+	(
+		MaybeIndexInfo = no,
+		MaybeIndexJoinInstrs = no,
+		RLInfo = RLInfo1
+	;
+		MaybeIndexInfo = yes(
+			index_instr_info(Index, KeyRange, SwapInputs)),
+		JoinType = index(Index, KeyRange),
+		(
+			SwapInputs = yes,
+			rl__swap_goal_inputs(Exprn0, Exprn),
+			JoinInput1 = Input2,
+			JoinInput2 = Input1
+		;
+			SwapInputs = no,
+			Exprn = Exprn0,
+			JoinInput1 = Input1,
+			JoinInput2 = Input2
+		),
+
+		rl__is_semi_join(JoinType, Exprn, SemiJoin),
+
+		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
+		rl__is_trivial_join(ModuleInfo, JoinType, Exprn, SemiJoin,
+			TrivialJoin),
+		
+		JoinInstr = join(Output, JoinInput1, JoinInput2,
+			JoinType, Exprn, SemiJoin, TrivialJoin) - Comment,
+		MaybeIndexJoinInstrs = yes([JoinInstr])
+	).
+
+:- pred rl_sort__introduce_indexed_subtract(relation_sort_map::in,
+	output_rel::in, relation_id::in, relation_id::in, subtract_type::in,
+	rl_goal::in, maybe(trivial_subtract_info)::in, string::in,
+	maybe(list(rl_instruction))::out,
+	rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__introduce_indexed_subtract(RelSortMap, Output, Input1, Input2,
+		_SubtractType0, Exprn, _TrivialSubtract0, Comment,
+		MaybeIndexSubtractInstrs, RLInfo0, RLInfo) :-
+
+	CanSwapInputs = no,
+	rl_sort__is_indexed_join_or_subtract(RelSortMap, Input1, Input2,
+		CanSwapInputs, Exprn, MaybeIndexInfo, RLInfo0, RLInfo1),
+
+	(
+		MaybeIndexInfo = no,
+		MaybeIndexSubtractInstrs = no,
+		RLInfo = RLInfo1
+	;
+		MaybeIndexInfo = yes(index_instr_info(Index, KeyRange, _)),
+		SubtractType = semi_index(Index, KeyRange),
+
+		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
+		rl__is_trivial_subtract(ModuleInfo, SubtractType, Exprn,
+			TrivialSubtract),
+		
+		SubtractInstr = subtract(Output, Input1, Input2,
+			SubtractType, Exprn, TrivialSubtract) - Comment,
+		MaybeIndexSubtractInstrs = yes([SubtractInstr])
+	).
+
+:- type index_instr_info
+	---> index_instr_info(
+		index_spec,
+		key_range,
+		bool		% Do the inputs need to be swapped
+	).
+
+:- pred rl_sort__is_indexed_join_or_subtract(relation_sort_map::in,
+		relation_id::in, relation_id::in, bool::in,
+		rl_goal::in, maybe(index_instr_info)::out,
+		rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__is_indexed_join_or_subtract(RelSortMap, Input1, Input2,
+		CanSwapInputs, Exprn, MaybeIndexInfo, RLInfo0, RLInfo) :-
+
 	rl_opt_info_get_relation_info_map(RelMap, RLInfo0, RLInfo1),
 	rl_sort__get_relation_indexes(RelSortMap, RelMap,
 		Input1, Input1Indexes, IsBaseRelation1), 
@@ -989,11 +1280,10 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 		Input2, Input2Indexes, IsBaseRelation2), 
 
 	( Input1Indexes = [], Input2Indexes = [] ->
-		% XXX maybe introduce sort-merge joins.
-		Instrs = [Instr0 | Instrs0],
+		MaybeIndexInfo = no,
 		RLInfo = RLInfo1
 	;
-		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo2),
+		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
 		rl_sort__find_useful_join_indexes(ModuleInfo, Input1Indexes, 
 			Exprn, one, IndexRanges1),
 		rl_sort__find_useful_join_indexes(ModuleInfo, Input2Indexes, 
@@ -1001,7 +1291,6 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 
 		% XXX the choice of index here is slightly cheap and nasty
 		% when there are multiple possibilities.
-		RLInfo = RLInfo2,
 		(
 			IndexRanges1 = [],
 			IndexRanges2 = [],
@@ -1012,8 +1301,13 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 			IndexRanges2 = [],
 			rl_sort__choose_join_index(IndexRanges1a,
 				IndexRange1a, IndexRange),
-			Optimize = yes(IndexRange),
-			SwapInputs = yes
+			( CanSwapInputs = yes ->
+				Optimize = yes(IndexRange),
+				SwapInputs = yes
+			;
+				Optimize = no,
+				SwapInputs = no
+			)
 		;
 			IndexRanges1 = [],
 			IndexRanges2 = [IndexRange2a | IndexRanges2a],
@@ -1034,7 +1328,8 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 			% (XXX this isn't necessarily correct).
 			(
 				IsBaseRelation1 = yes,
-				IsBaseRelation2 = no
+				IsBaseRelation2 = no,
+				CanSwapInputs = yes
 			->
 				SwapInputs = yes,
 				Optimize = yes(BestIndexRange1)
@@ -1053,24 +1348,12 @@ rl_sort__specialize_join(Instr0, Output, Input1, Input2, Exprn,
 		),
 		% XXX handle multiple key ranges.
 		( Optimize = yes(Index - [KeyRange]) ->
-			JoinType = index(Index, KeyRange),
-			( SwapInputs = yes ->
-				rl__swap_goal_inputs(Exprn, Exprn1),
-				JoinInput1 = Input2,
-				JoinInput2 = Input1
-			;
-				Exprn1 = Exprn,
-				JoinInput1 = Input1,
-				JoinInput2 = Input2
-			),
-			JoinInstr = join(Output, JoinInput1, JoinInput2,
-				JoinType, Exprn1) - Comment
+			MaybeIndexInfo = yes(
+				index_instr_info(Index, KeyRange, SwapInputs))
 		;
-			JoinInstr = Instr0
-		),
-		Instrs = [JoinInstr | Instrs0]
-	),
-	SortInfo = sort_info(Sortedness0, SortVars, RLInfo).
+			MaybeIndexInfo = no
+		)
+	).
 
 :- pred rl_sort__find_useful_join_indexes(module_info::in,
 		list(index_spec)::in, rl_goal::in, tuple_num::in,
@@ -1108,6 +1391,172 @@ rl_sort__find_useful_join_indexes(ModuleInfo, Indexes,
 		index_range::in, index_range::out) is det.
 
 rl_sort__choose_join_index(_IndexRanges, IndexRange, IndexRange).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_sort__introduce_sort_join(relation_sort_map::in, output_rel::in,
+	relation_id::in, relation_id::in, join_type::in,
+	rl_goal::in, maybe(semi_join_info)::in, string::in,
+	maybe(list(rl_instruction))::out,
+	rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__introduce_sort_join(SortMap, Output, Input1, Input2, _JoinType0,
+		Exprn, SemiJoin, Comment, MaybeSortJoinInstrs,
+		RLInfo, RLInfo) :-
+	Exprn = rl_goal(_, _, _, _, Inputs, _, _, VarBounds),
+	(
+		rl_key__is_equijoin(Inputs, VarBounds, Attrs1, Attrs2),
+
+		map__search(SortMap, Input1, SortSpecs1),
+		find_equijoin_sort_spec(Attrs1, SortSpecs1, SortSpec1),
+
+		map__search(SortMap, Input2, SortSpecs2),
+		find_equijoin_sort_spec(Attrs2, SortSpecs2, SortSpec2)
+	->
+		JoinType = sort_merge(SortSpec1, SortSpec2),
+		% The join condition of an equi-join always depends
+		% on both input tuples.
+		TrivialJoin = no,
+		JoinInstr = join(Output, Input1, Input2,
+			JoinType, Exprn, SemiJoin, TrivialJoin) - Comment,
+		MaybeSortJoinInstrs = yes([JoinInstr])
+	;
+		MaybeSortJoinInstrs = no
+	).
+
+	%
+	% Look for sort_specs which match all equijoin attributes.
+	% We could look for partial matches, but that could
+	% cause inefficient code to be generated if the attributes
+	% sorted on are not selective enough - we could end
+	% up doing nested loop joins on large numbers of tuples.
+	%
+:- pred find_equijoin_sort_spec(list(int)::in, map(sort_index, sort_req)::in,
+		sort_spec::out) is semidet.
+
+find_equijoin_sort_spec(Attrs, SortSpecs0, SortSpec) :-
+
+	find_definite_sort_specs(SortSpecs0, SortSpecs),
+	list__filter_map(matching_sort_spec(Attrs),
+		SortSpecs, MatchingSortSpecs),
+	MatchingSortSpecs = [SortSpec | _].
+
+	%
+	% Succeed if the sort_spec sorts on all the given
+	% attributes in the correct order.
+	%
+:- pred matching_sort_spec(list(int)::in,
+		sort_spec::in, sort_spec::out) is semidet.
+
+matching_sort_spec(AttrNums, Spec0, Spec) :-
+	Spec0 = attributes(SortAttrs0),
+	assoc_list__keys(SortAttrs0, SortAttrNums0),
+	assoc_list__values(SortAttrs0, SortDirs0),
+	list__length(AttrNums, NumRequiredAttrs),
+
+	% The sort_spec can sort on more attributes -
+	% take the prefix that is needed.
+	list__take(NumRequiredAttrs, SortAttrNums0, AttrNums),
+	list__take(NumRequiredAttrs, SortDirs0, SortDirs),
+	assoc_list__from_corresponding_lists(AttrNums, SortDirs, SortAttrs),
+	Spec = attributes(SortAttrs).
+
+:- pred find_definite_sort_specs(map(sort_index, sort_req)::in, 
+		list(sort_spec)::out) is det.
+
+find_definite_sort_specs(SortMap, SortSpecs) :-
+    map__foldl(
+	(pred(SortIndex::in, SortReq::in, Specs0::in, Specs::out) is det :-
+		(
+			SortReq = sort_req(definite, _),
+			%(
+				SortIndex = sort(SortSpec),
+				SortSpec = attributes(SortAttrs),
+				\+ (
+					% We could probably handle
+					% relations sorted in descending
+					% order, but it might be a bit
+					% trickier. We don't generate
+					% sort instructions to produce
+					% reverse sorted relations, so
+					% it doesn't matter.
+					list__member(SortAttr, SortAttrs),
+					SortAttr = _ - descending
+				)
+			/*
+				% If a relation is definitely indexed, we
+				% should be doing an indexed join.
+			;
+				% B-tree indexed relations are sorted
+				% on the indexed attributes.
+				SortIndex = index(IndexSpec),
+				IndexSpec = index_spec(IndexType, Attrs),
+				( IndexType = unique_B_tree
+				; IndexType = non_unique_B_tree
+				),
+				list__length(Attrs, NumAttrs),
+				list__duplicate(NumAttrs, ascending, SortDirs),
+				assoc_list__from_corresponding_lists(Attrs,
+					SortDirs, SortAttrs),
+				SortSpec = attributes(SortAttrs)
+			)
+			*/
+		->
+			Specs = [SortSpec | Specs0]
+		;
+			Specs = Specs0
+		)
+	), SortMap, [], SortSpecs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_sort__introduce_hash_join(output_rel::in,
+	relation_id::in, relation_id::in, join_type::in,
+	rl_goal::in, maybe(semi_join_info)::in,
+	string::in, maybe(list(rl_instruction))::out,
+	rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__introduce_hash_join(Output, Input1, Input2, _JoinType0, Exprn,
+		SemiJoin, Comment, MaybeHashJoinInstrs,
+		RLInfo, RLInfo) :-
+	Inputs = Exprn ^ inputs,
+	VarBounds = Exprn ^ bounds,
+	(
+		rl_key__is_equijoin(Inputs, VarBounds, Attrs1, Attrs2)
+	->
+		JoinType = hash(Attrs1, Attrs2),
+		% The join condition of an equi-join always depends
+		% on both input tuples.
+		TrivialJoin = no,
+		JoinInstr = join(Output, Input1, Input2,
+			JoinType, Exprn, SemiJoin, TrivialJoin) - Comment,
+		MaybeHashJoinInstrs = yes([JoinInstr])
+	;
+		MaybeHashJoinInstrs = no
+	).
+
+:- pred rl_sort__introduce_hash_subtract(output_rel::in,
+	relation_id::in, relation_id::in, subtract_type::in,
+	rl_goal::in, string::in, maybe(list(rl_instruction))::out,
+	rl_opt_info::in, rl_opt_info::out) is det.
+
+rl_sort__introduce_hash_subtract(Output, Input1, Input2, _SubtractType0, Exprn,
+		Comment, MaybeHashSubtractInstrs, RLInfo, RLInfo) :-
+	Inputs = Exprn ^ inputs,
+	VarBounds = Exprn ^ bounds,
+	(
+		rl_key__is_equijoin(Inputs, VarBounds, Attrs1, Attrs2)
+	->
+		SubtractType = semi_hash(Attrs1, Attrs2),
+		% The subtract condition of an equi-subtract always depends
+		% on both input tuples.
+		TrivialSubtract = no,
+		SubtractInstr = subtract(Output, Input1, Input2,
+			SubtractType, Exprn, TrivialSubtract) - Comment,
+		MaybeHashSubtractInstrs = yes([SubtractInstr])
+	;
+		MaybeHashSubtractInstrs = no
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1268,10 +1717,11 @@ rl_sort__get_relation_indexes(RelSortMap, RelMap,
 %-----------------------------------------------------------------------------%
 
 	% Remove unnecessary indexing and sorting operations.
-:- pred rl_sort__remove_useless_ops(sort_data_map::in, block_id::in, 
-		rl_opt_info::in, rl_opt_info::out) is det.
+:- pred rl_sort__add_indexing_and_remove_useless_ops(sort_data_map::in,
+		block_id::in, rl_opt_info::in, rl_opt_info::out) is det.
 
-rl_sort__remove_useless_ops(NeededSortMap, BlockId, Info0, Info) :-
+rl_sort__add_indexing_and_remove_useless_ops(NeededSortMap,
+		BlockId, Info0, Info) :-
 	rl_opt_info_get_block(BlockId, Block0, Info0, Info1),
 	Block0 = block(Label, Instrs0, EndInstr, BlockInfo),
 
@@ -1280,28 +1730,34 @@ rl_sort__remove_useless_ops(NeededSortMap, BlockId, Info0, Info) :-
 	map__init(VarRequests),
 	SortInfo0 = sort_info(NeededSorts, VarRequests, Info1),
 	
-	list__foldl2(rl_sort__remove_useless_ops_instr(BlockId),
+	list__foldl2(
+		rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId),
 		RevInstrs0, [], Instrs, SortInfo0, sort_info(_, _, Info2)),
 	Block = block(Label, Instrs, EndInstr, BlockInfo),
 	rl_opt_info_set_block(BlockId, Block, Info2, Info).
 
-:- pred rl_sort__remove_useless_ops_instr(block_id::in, 
+:- pred rl_sort__add_indexing_and_remove_useless_ops_instr(block_id::in, 
 	rl_instruction::in, list(rl_instruction)::in,
 	list(rl_instruction)::out, sort_info::in, sort_info::out) is det.
 
-rl_sort__remove_useless_ops_instr(BlockId, Instr, Instrs0, Instrs) -->
+rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
+		Instr, Instrs0, Instrs) -->
 	=(sort_info(sortedness(RelSortMap, _), _, _)),
-	( { Instr = add_index(OutputRel0) - Comm } ->
+	(
+		{ Instr = add_index(OutputRel0, Input) - Comm }
+	->
 		{ rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec,
 			OutputRel0, OutputRel) },
 		{ OutputRel = output_rel(Relation, NeededIndexes) },
 		{ NeededIndexes = [] ->
-			Instrs = Instrs0
+			Instrs = [ref(Relation, Input) - Comm | Instrs0]
 		;
 			Instrs = [add_index(output_rel(Relation, 
-				NeededIndexes)) - Comm | Instrs0]
+				NeededIndexes), Input) - Comm | Instrs0]
 		}
-	; { Instr = sort(Output0, Input, SortSpec) - Comm } ->
+	;
+		{ Instr = sort(Output0, Input, SortSpec) - Comm }
+	->
 		{ rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec,
 			Output0, Output) },
 		{ Output = output_rel(OutputRel, _) },
@@ -1320,9 +1776,9 @@ rl_sort__remove_useless_ops_instr(BlockId, Instr, Instrs0, Instrs) -->
 		(
 			{ SpecNeeded = no },
 			list__foldl2(
-			    rl_sort__remove_useless_ops_instr(BlockId),
-				[add_index(Output) - Comm,
-				ref(OutputRel, Input) - Comm],
+			    rl_sort__add_indexing_and_remove_useless_ops_instr(
+			    	BlockId),
+				[add_index(Output, Input) - Comm],
 				Instrs0, Instrs)
 		;
 			{ SpecNeeded = yes },
@@ -1330,6 +1786,26 @@ rl_sort__remove_useless_ops_instr(BlockId, Instr, Instrs0, Instrs) -->
 			{ Instrs = [sort(Output, Input, SortSpec1) - Comm |
 					Instrs0] }
 		)
+	;
+		{ Instr = join(Output0, Input1, Input2, Type,
+			Exprn, SemiJoin, TrivialJoin) - Comm },
+		{ TrivialJoin = yes(trivial_join_or_subtract_info(_, no)) }
+	->
+		{ rl_sort__trivial_join_or_subtract_output_indexes(RelSortMap,
+			Output0, Output) },
+		{ Instr1 = join(Output, Input1, Input2, Type,
+				Exprn, SemiJoin, TrivialJoin) - Comm },
+		{ Instrs = [Instr1 | Instrs0] }
+	;
+		{ Instr = subtract(Output0, Input1, Input2, Type,
+			Exprn, TrivialSubtract) - Comm },
+		{ TrivialSubtract = yes(_) }
+	->
+		{ rl_sort__trivial_join_or_subtract_output_indexes(RelSortMap,
+			Output0, Output) },
+		{ Instr1 = subtract(Output, Input1, Input2, Type,
+			Exprn, TrivialSubtract) - Comm },
+		{ Instrs = [Instr1 | Instrs0] }
 	;
 		{ rl_sort__map_sort_and_index_specs(
 			rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec),
@@ -1339,7 +1815,30 @@ rl_sort__remove_useless_ops_instr(BlockId, Instr, Instrs0, Instrs) -->
 	),
 	rl_sort__instr_needed(BlockId, Instr).
 
-	% Eventually this will need to instantiate sort variables.
+	% In the cases where a trivial join or subtract creates its output
+	% relation instead of just passing out one of the inputs,
+	% make sure the created relation has the correct indexes.
+:- pred rl_sort__trivial_join_or_subtract_output_indexes(relation_sort_map::in,
+		output_rel::in, output_rel::out) is det.
+
+rl_sort__trivial_join_or_subtract_output_indexes(RelSortMap, Output0, Output) :-
+	rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec,
+		Output0, Output1),
+	Output1 = output_rel(OutputRel, Indexes0),
+	( map__search(RelSortMap, OutputRel, NeededSorts0) ->
+		map__to_assoc_list(NeededSorts0, NeededSortsAL0),
+		list__filter_map(
+			(pred(SortIndex::in, Index::out) is semidet :-
+				SortIndex = index(Index) - _
+			), NeededSortsAL0, NeededIndexes),
+		list__delete_elems(NeededIndexes, Indexes0, Indexes1),
+		list__append(Indexes0, Indexes1, Indexes),
+		Output = output_rel(OutputRel, Indexes)
+	;
+		Output = Output1
+	).
+
+		% Eventually this will need to instantiate sort variables.
 :- pred rl_sort__map_spec(T::in, T::out) is det.
 
 rl_sort__map_spec(Spec, Spec).
@@ -1374,8 +1873,8 @@ rl_sort__index_is_needed(NeededMap, Index) :-
 		rl_instruction::in, rl_instruction::out) is det.
 
 rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
-		join(Output0, B, C, Type0, E) - F,
-		join(Output, B, C, Type, E) - F) :-
+		join(Output0, B, C, Type0, E, F, G) - H,
+		join(Output, B, C, Type, E, F, G) - H) :-
 	call(OutputPred, Output0, Output),
 	( Type0 = sort_merge(Sort1a, Sort2a) ->
 		call(SortPred, Sort1a, Sort1),
@@ -1388,16 +1887,16 @@ rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
 		Type = Type0		
 	).
 rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
-		subtract(Output0, B, C, Type0, E) - F,
-		subtract(Output, B, C, Type, E) - F) :-
+		subtract(Output0, B, C, Type0, E, F) - G,
+		subtract(Output, B, C, Type, E, F) - G) :-
 	call(OutputPred, Output0, Output),
-	( Type0 = sort_merge(Sort1a, Sort2a) ->
+	( Type0 = semi_sort_merge(Sort1a, Sort2a) ->
 		call(SortPred, Sort1a, Sort1),
 		call(SortPred, Sort2a, Sort2),
-		Type = sort_merge(Sort1, Sort2)
-	; Type0 = index(Index0, Range) ->
+		Type = semi_sort_merge(Sort1, Sort2)
+	; Type0 = semi_index(Index0, Range) ->
 		call(IndexPred, Index0, Index),
-		Type = index(Index, Range)
+		Type = semi_index(Index, Range)
 	;
 		Type = Type0		
 	).
@@ -1503,8 +2002,8 @@ rl_sort__map_sort_and_index_specs(OutputPred, _, _,
 		aggregate(Output, B, C, D) - E) :-
 	call(OutputPred, Output0, Output).
 rl_sort__map_sort_and_index_specs(OutputPred, _, _,
-		add_index(Output0) - Comm,
-		add_index(Output) - Comm) :-
+		add_index(Output0, Input) - Comm,
+		add_index(Output, Input) - Comm) :-
 	call(OutputPred, Output0, Output).
 rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 	Instr = clear(_) - _.

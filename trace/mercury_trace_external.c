@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,10 +29,15 @@
 #include "mercury_trace_browse.h"
 #include "mercury_trace_vars.h"
 
-#include "debugger_interface.h"
-#include "collect_lib.h"
+#include "mdb.debugger_interface.h"
+#include "mdb.collect_lib.h"
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+#else
+  #include "std_util.h"
+#endif
+
 #include "mercury_deep_copy.h"
-#include "std_util.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -52,7 +57,7 @@
 
 /*
 ** This type must match the definition of classify_request in
-** library/debugger_interface.m.
+** browser/debugger_interface.m.
 */
 
 typedef enum {
@@ -98,7 +103,7 @@ typedef enum {
 MercuryFile MR_debugger_socket_in;
 MercuryFile MR_debugger_socket_out;
 
-static String	MR_mmc_options;
+static MR_String	MR_mmc_options;
 
 /*
 ** Type of a static variable that indicates in which mode the external 
@@ -120,21 +125,21 @@ static	MR_external_debugger_mode_type
 ** a collect request.
 */
 
-static  Word	MR_collecting_variable;
+static  MR_Word	MR_collecting_variable;
 
 /*
 ** Function pointer used to sent the collecting variable to the external 
 ** debugger.
 */
 
-static	void	(*send_collect_result_ptr)(Word, Word);
+static	void	(*send_collect_result_ptr)(MR_Word, MR_Word);
 
 /*
 ** Variable generated during the dynamic linking that is needed to close
 ** this linking properly.
 */
 
-static	Word	collect_lib_maybe_handle;
+static	MR_Word	collect_lib_maybe_handle;
 
 /*
 ** Static variable that tells whether the list of arguments is available 
@@ -160,45 +165,45 @@ static void MR_send_message_to_socket_format(const char *format, ...)
 
 static void	MR_send_message_to_socket(const char *message);
 static void	MR_read_request_from_socket(
-			Word *debugger_request_ptr, 
-			Integer *debugger_request_type_ptr);
+			MR_Word *debugger_request_ptr, 
+			MR_Integer *debugger_request_type_ptr);
 	
 static bool	MR_found_match(const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 			/* XXX registers */
-			const char *path, Word search_data);
+			const char *path, MR_Word search_data);
 static void	MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth, 
 			const char *path);
-static void	MR_output_current_vars(Word var_list, Word string_list);
-static void	MR_output_current_nth_var(Word var);
-static void	MR_output_current_live_var_names(Word var_names_list, 
-						 Word type_list);
-static Word	MR_trace_make_var_list(void);
-static Word	MR_trace_make_var_names_list(void);
-static Word	MR_trace_make_type_list(void);
-static Word	MR_trace_make_nth_var(Word debugger_request);
-static int	MR_get_var_number(Word debugger_request);
+static void	MR_output_current_vars(MR_Word var_list, MR_Word string_list);
+static void	MR_output_current_nth_var(MR_Word var);
+static void	MR_output_current_live_var_names(MR_Word var_names_list, 
+						 MR_Word type_list);
+static MR_Word	MR_trace_make_var_list(void);
+static MR_Word	MR_trace_make_var_names_list(void);
+static MR_Word	MR_trace_make_type_list(void);
+static MR_Word	MR_trace_make_nth_var(MR_Word debugger_request);
+static int	MR_get_var_number(MR_Word debugger_request);
 static void	MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
-			const char *extra, Word *base_sp, Word *base_curfr);
+			const char *extra, MR_Word *base_sp, MR_Word *base_curfr);
 static void	MR_dump_stack_record_print_to_socket(FILE *fp, 
 			const MR_Stack_Layout_Entry *entry_layout, int count,
-			int start_level, Word *base_sp, Word *base_curfr,
+			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
 			bool context_mismatch);
-static void	MR_get_list_modules_to_import(Word debugger_request, 
-			Integer *modules_list_length_ptr,
-			Word *modules_list_ptr);
-static void	MR_get_mmc_options(Word debugger_request, 
-			String *mmc_options_ptr);
-static void	MR_get_object_file_name(Word debugger_request, 
-			String *object_file_name_ptr);
-static void	MR_get_variable_name(Word debugger_request,
-			String *var_name_ptr);
+static void	MR_get_list_modules_to_import(MR_Word debugger_request, 
+			MR_Integer *modules_list_length_ptr,
+			MR_Word *modules_list_ptr);
+static void	MR_get_mmc_options(MR_Word debugger_request, 
+			MR_String *mmc_options_ptr);
+static void	MR_get_object_file_name(MR_Word debugger_request, 
+			MR_String *object_file_name_ptr);
+static void	MR_get_variable_name(MR_Word debugger_request,
+			MR_String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
-static void	MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, 
-			Word, Word, String, String, String, Integer, Integer, 
-			Word, Integer, String, Word, Word *, Char *), Unsigned seqno, 
+static void	MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, 
+			MR_Word, MR_Word, MR_String, MR_String, MR_String, MR_Integer, MR_Integer, 
+			MR_Word, MR_Integer, MR_String, MR_Word, MR_Word *, MR_Char *), Unsigned seqno, 
 			Unsigned depth, MR_Trace_Port port, 
 			const MR_Stack_Layout_Label *layout, const char *path, 
 			bool *stop_collecting);
@@ -254,7 +259,7 @@ MR_init_unix_address(const char *name, struct sockaddr_un *unix_addr)
 		len = strlen(unix_addr->sun_path) +
 			sizeof(unix_addr->sun_family);
 		if (len != 16) {
-			fatal_error("unix socket: length != 16");
+			MR_fatal_error("unix socket: length != 16");
 		}
 	#endif
 }
@@ -275,12 +280,12 @@ MR_trace_init_external(void)
 	struct sockaddr_un unix_address;
 	struct sockaddr_in inet_address;
 	struct sockaddr* addr;
-	Word debugger_request;
-	Integer debugger_request_type;
+	MR_Word debugger_request;
+	MR_Integer debugger_request_type;
 
 	/* 
 	** MR_mmc_options contains the options to pass to mmc when compiling 
-	** queries. We initialize it to the String "".
+	** queries. We initialize it to the MR_String "".
 	*/
 	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
@@ -295,13 +300,13 @@ MR_trace_init_external(void)
 	unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
 	inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
 	if (unix_socket == NULL && inet_socket == NULL) {
-		fatal_error("you must set either the "
+		MR_fatal_error("you must set either the "
 			"MERCURY_DEBUGGER_UNIX_SOCKET\n"
 			"or MERCURY_DEBUGGER_INET_SOCKET "
 			"environment variable");
 	}
 	if (unix_socket != NULL && inet_socket != NULL) {
-		fatal_error("you must set only one of the "
+		MR_fatal_error("you must set only one of the "
 			"MERCURY_DEBUGGER_UNIX_SOCKET "
 			"and MERCURY_DEBUGGER_INET_SOCKET\n"
 			"environment variables");
@@ -338,15 +343,15 @@ MR_trace_init_external(void)
 		if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
 			!= 2)
 		{
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
 		}
 		host_addr = inet_addr(hostname);
 		if (host_addr == -1) {
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 				"invalid address");
 		}
 		if (sscanf(port_string, "%hu", &port) != 1) {
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 				"invalid port");
 		}
 
@@ -370,7 +375,7 @@ MR_trace_init_external(void)
 	if (fd < 0) {
 		fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
 			strerror(errno));
-		fatal_error("cannot open socket for debugger");
+		MR_fatal_error("cannot open socket for debugger");
 	} else if (MR_debug_socket) {
 		fprintf(stderr,"Mercury runtime: creation of socket ok\n");
 	}
@@ -381,7 +386,7 @@ MR_trace_init_external(void)
 	if (connect(fd, addr, len) < 0) {
 		fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
 			strerror(errno));
-		fatal_error("can't connect to debugger socket");
+		MR_fatal_error("can't connect to debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
 	}
@@ -394,16 +399,13 @@ MR_trace_init_external(void)
 	if ((file_in == NULL)||(file_out == NULL)) {
 		fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
 			strerror(errno));
-		fatal_error("cannot open debugger socket");
+		MR_fatal_error("cannot open debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
 	}
 
-	MR_debugger_socket_in.file = file_in;
-	MR_debugger_socket_in.line_number = 1;
-
-	MR_debugger_socket_out.file = file_out;
-	MR_debugger_socket_out.line_number = 1;
+	MR_mercuryfile_init(file_in, 1, &MR_debugger_socket_in);
+	MR_mercuryfile_init(file_out, 1, &MR_debugger_socket_out);
 
 	/*
 	** Send hello
@@ -421,7 +423,7 @@ MR_trace_init_external(void)
 	MR_read_request_from_socket(&debugger_request, &debugger_request_type);
 
 	if (debugger_request_type != MR_REQUEST_HELLO_REPLY) {
-		fatal_error("unexpected command on debugger socket");
+		MR_fatal_error("unexpected command on debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: read hello_reply\n");
 	}
@@ -457,7 +459,7 @@ MR_trace_final_external(void)
 			break;
 
 		default:
-			fatal_error("Error in the external debugger");
+			MR_fatal_error("Error in the external debugger");
 	}
 	/*
 	** Maybe we should loop to process requests from the
@@ -471,20 +473,20 @@ MR_trace_final_external(void)
 Code *
 MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
-	static Word	search_data;
-	static void	(*initialize_ptr)(Word *);
-	static void    	(*filter_ptr)(Integer, Integer, Integer, Word,
-				Word, String, String, String, Integer,
-				Integer, Word, Integer, String, Word, Word *, Char *);
-	static void	(*get_collect_var_type_ptr)(Word *);
+	static MR_Word	search_data;
+	static void	(*initialize_ptr)(MR_Word *);
+	static void    	(*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+				MR_Word, MR_String, MR_String, MR_String, MR_Integer,
+				MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word, MR_Word *, MR_Char *);
+	static void	(*get_collect_var_type_ptr)(MR_Word *);
 	static bool    	collect_linked = FALSE;
 	bool    	stop_collecting = FALSE;
-	Integer		debugger_request_type;
-	Word		debugger_request;
-	Word		var_list;
-	Word		var_names_list;
-	Word		type_list;
-	Word		var;
+	MR_Integer		debugger_request_type;
+	MR_Word		debugger_request;
+	MR_Word		var_list;
+	MR_Word		var_names_list;
+	MR_Word		type_list;
+	MR_Word		var;
 	Code		*jumpaddr = NULL;
 	MR_Event_Details	event_details;
 	const char	*message;
@@ -494,10 +496,10 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Unsigned	depth = event_info->MR_call_depth;
 	MR_Trace_Port	port = event_info->MR_trace_port;
 	const char	*path = event_info->MR_event_path;
-	Word		*saved_regs = event_info->MR_saved_regs;
-	Integer		modules_list_length;
-	Word		modules_list;
-	static String	MR_object_file_name;
+	MR_Word		*saved_regs = event_info->MR_saved_regs;
+	MR_Integer		modules_list_length;
+	MR_Word		modules_list;
+	static MR_String	MR_object_file_name;
 
 	MR_trace_enabled = FALSE;
 
@@ -549,7 +551,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			break;
 
 		default:
-	       		fatal_error("Software error in the debugger.\n");
+	       		MR_fatal_error("Software error in the debugger.\n");
 	}
 
 	/* loop to process requests read from the debugger socket */
@@ -761,8 +763,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 
 			case MR_REQUEST_LINK_COLLECT:
 			  {
-			        Char	result;
-				Word	MR_collecting_variable_type;
+			        MR_Char	result;
+				MR_Word	MR_collecting_variable_type;
 
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
@@ -773,10 +775,10 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				MR_TRACE_CALL_MERCURY(
 					ML_CL_link_collect(
 			       		    MR_object_file_name,
-					    (Word *) &filter_ptr,
-					    (Word *) &initialize_ptr,
-					    (Word *) &send_collect_result_ptr,
-					    (Word *) &get_collect_var_type_ptr,
+					    (MR_Word *) &filter_ptr,
+					    (MR_Word *) &initialize_ptr,
+					    (MR_Word *) &send_collect_result_ptr,
+					    (MR_Word *) &get_collect_var_type_ptr,
 					    &collect_lib_maybe_handle,
 					    &result
 					    ));
@@ -790,7 +792,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					MR_collecting_variable = 
 					    MR_make_permanent(
 						MR_collecting_variable,
-						(Word *) 
+						(MR_TypeInfo) 
 						MR_collecting_variable_type);
 				} else {
 					MR_send_message_to_socket(
@@ -867,7 +869,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				break;
 			  }
 			default:
-				fatal_error("unexpected request read from "
+				MR_fatal_error("unexpected request read from "
 					"debugger socket");
 		}
 	}
@@ -907,19 +909,19 @@ MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			seqno,
 			depth,
 			port,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
 			layout->MR_sll_entry->MR_sle_detism,
-			(String) (Word) path,
-			(Word) &MR_debugger_socket_out);
+			(MR_String) (MR_Word) path,
+			(MR_Word) &MR_debugger_socket_out);
 		    );
 	} else {
 		MR_TRACE_CALL_MERCURY(
@@ -929,63 +931,63 @@ MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			depth,
 			port,
 			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_name,
 			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 			layout->MR_sll_entry->MR_sle_detism,
-			(String) (Word) path,
-			(Word) &MR_debugger_socket_out);
+			(MR_String) (MR_Word) path,
+			(MR_Word) &MR_debugger_socket_out);
 		    );
 	}
 }
 
 static void
-MR_output_current_vars(Word var_list, Word string_list)
+MR_output_current_vars(MR_Word var_list, MR_Word string_list)
 {
     MR_TRACE_CALL_MERCURY(
 	ML_DI_output_current_vars(
 		var_list,
 		string_list,
-		(Word) &MR_debugger_socket_out);
+		(MR_Word) &MR_debugger_socket_out);
     );
 }
 
 static void
-MR_output_current_nth_var(Word var)
+MR_output_current_nth_var(MR_Word var)
 {
     MR_TRACE_CALL_MERCURY(
 	ML_DI_output_current_nth_var(
 		var,
-		(Word) &MR_debugger_socket_out);
+		(MR_Word) &MR_debugger_socket_out);
     );
 }
 
 static void
-MR_output_current_live_var_names(Word var_names_list, Word type_list)
+MR_output_current_live_var_names(MR_Word var_names_list, MR_Word type_list)
 {
     MR_TRACE_CALL_MERCURY(
 	ML_DI_output_current_live_var_names(
 		var_names_list,
 		type_list,
-		(Word) &MR_debugger_socket_out);
+		(MR_Word) &MR_debugger_socket_out);
     );
 }
 
 static void
 MR_read_request_from_socket(
-			Word *debugger_request_ptr, 
-			Integer *debugger_request_type_ptr)
+			MR_Word *debugger_request_ptr, 
+			MR_Integer *debugger_request_type_ptr)
 {		
-	fflush(MR_debugger_socket_in.file);
+	fflush(MR_file(MR_debugger_socket_in));
 
     MR_TRACE_CALL_MERCURY(
 	ML_DI_read_request_from_socket(
-		(Word) &MR_debugger_socket_in, 
+		(MR_Word) &MR_debugger_socket_in, 
 		debugger_request_ptr, 
 		debugger_request_type_ptr);
     );
@@ -995,12 +997,12 @@ static bool
 MR_found_match(const MR_Stack_Layout_Label *layout,
 	MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 	/* XXX live vars */
-	const char *path, Word search_data)
+	const char *path, MR_Word search_data)
 {
 	bool result;
 
 	/* XXX get live vars from registers */
-	Word arguments = /* XXX FIXME!!! */ 0;
+	MR_Word arguments = /* XXX FIXME!!! */ 0;
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		MR_TRACE_CALL_MERCURY(
 		    result = ML_DI_found_match_comp(
@@ -1008,19 +1010,19 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 			seqno,
 			depth,
 			port,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			arguments,
-			(String) (Word) path,
+			(MR_String) (MR_Word) path,
 			search_data);
 		    );
 	} else {
@@ -1031,17 +1033,17 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 			depth,
 			port,
 			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-			(String)
+			(MR_String)
 			layout->MR_sll_entry->MR_sle_user.MR_user_name,
 			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			arguments,
-			(String) path,
+			(MR_String) path,
 			search_data);
 		    );
 	}
@@ -1054,18 +1056,18 @@ MR_send_message_to_socket_format(const char *format, ...)
 	va_list args;
 
 	va_start(args, format);
-	vfprintf(MR_debugger_socket_out.file, format, args);
+	vfprintf(MR_file(MR_debugger_socket_out), format, args);
 	va_end(args);
-	fflush(MR_debugger_socket_out.file);
-	MR_debugger_socket_out.line_number++;
+	fflush(MR_file(MR_debugger_socket_out));
+	MR_line_number(MR_debugger_socket_out)++;
 }
 
 static void
 MR_send_message_to_socket(const char *message)
 {
-	fprintf(MR_debugger_socket_out.file, "%s.\n", message);
-	fflush(MR_debugger_socket_out.file);
-	MR_debugger_socket_out.line_number++;
+	fprintf(MR_file(MR_debugger_socket_out), "%s.\n", message);
+	fflush(MR_file(MR_debugger_socket_out));
+	MR_line_number(MR_debugger_socket_out)++;
 }
 
 /*
@@ -1077,16 +1079,16 @@ MR_send_message_to_socket(const char *message)
 ** are no live variables, return the empty list.
 */
 
-static Word
+static MR_Word
 MR_trace_make_var_list(void)
 {
 	const char	*problem;
 	int		var_count;
 	int		i;
-	Word		type_info;
-	Word		value;
-	Word		univ;
-	Word		var_list;
+	MR_TypeInfo	type_info;
+	MR_Word		value;
+	MR_Word		univ;
+	MR_Word		var_list;
 
 	var_count = MR_trace_var_count();
 
@@ -1098,7 +1100,7 @@ MR_trace_make_var_list(void)
 		problem = MR_trace_return_var_info(i, NULL,
 				&type_info, &value);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_USE_HP(
@@ -1106,7 +1108,7 @@ MR_trace_make_var_list(void)
 		);
 
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
-			= type_info;
+			= (MR_Word) type_info;
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 
 		MR_TRACE_USE_HP(
@@ -1126,14 +1128,14 @@ MR_trace_make_var_list(void)
 ** are no live variables, return the empty list.
 */
 
-static Word
+static MR_Word
 MR_trace_make_var_names_list(void)
 {
 	const char	*problem;
 	int		var_count;
 	int		i;
 	const char	*name;
-	Word		var_names_list;
+	MR_Word		var_names_list;
 
 	var_count = MR_trace_var_count();
 
@@ -1144,7 +1146,7 @@ MR_trace_make_var_names_list(void)
 	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, &name, NULL, NULL);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_USE_HP(
@@ -1163,15 +1165,15 @@ MR_trace_make_var_names_list(void)
 ** are no live variables, return the empty list.
 */
 
-static Word
+static MR_Word
 MR_trace_make_type_list(void)
 {
 	const char	*problem;
 	int		var_count;
 	int		i;
-	Word		type_info;
-	String		type_info_string;
-	Word		type_list;
+	MR_TypeInfo	type_info;
+	MR_String		type_info_string;
+	MR_Word		type_list;
 
 	var_count = MR_trace_var_count();
 
@@ -1182,11 +1184,11 @@ MR_trace_make_type_list(void)
 	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, NULL, &type_info, NULL);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_CALL_MERCURY(
-			type_info_string = ML_type_name(type_info);
+			type_info_string = ML_type_name((MR_Word) type_info);
 		);
 	        MR_TRACE_USE_HP(
 			type_list = MR_list_cons(type_info_string, type_list);
@@ -1201,14 +1203,14 @@ MR_trace_make_type_list(void)
 ** Any memory needed will be allocated on the Mercury heap.
 */
 
-static Word
-MR_trace_make_nth_var(Word debugger_request)
+static MR_Word
+MR_trace_make_nth_var(MR_Word debugger_request)
 {
 	const char	*problem;
 	int		var_number;
-	Word		type_info;
-	Word		value;
-	Word		univ;
+	MR_TypeInfo	type_info;
+	MR_Word		value;
+	MR_Word		univ;
 
 	var_number = MR_get_var_number(debugger_request);
 		/* debugger_request should be of the form: 
@@ -1221,14 +1223,14 @@ MR_trace_make_nth_var(Word debugger_request)
 			&type_info, &value);
 	if (problem == NULL) {
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO)
-			= type_info;
+			= (MR_Word) type_info;
 		MR_field(MR_mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 	} else {
 		/*
 		** Should never occur since we check in the external debugger
 		** process if a variable is live before retrieving it.
 		*/
-		fatal_error(problem);
+		MR_fatal_error(problem);
 	}
 
 	return univ;
@@ -1240,7 +1242,7 @@ MR_trace_make_nth_var(Word debugger_request)
 */
 
 static int
-MR_get_var_number(Word debugger_request)
+MR_get_var_number(MR_Word debugger_request)
 {
 	int num;
 	MR_TRACE_CALL_MERCURY(
@@ -1279,7 +1281,7 @@ MR_get_var_number(Word debugger_request)
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, 
 	const MR_Stack_Layout_Entry *entry_layout, int count, int start_level, 
-	Word *base_sp, Word *base_curfr, const char *filename, int linenumber,
+	MR_Word *base_sp, MR_Word *base_curfr, const char *filename, int linenumber,
 	bool context_mismatch)
 {
 	MR_send_message_to_socket_format("level(%d).\n", start_level);
@@ -1288,16 +1290,16 @@ MR_dump_stack_record_print_to_socket(FILE *fp,
 
 static void
 MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
-	const char *extra, Word *base_sp, Word *base_curfr)
+	const char *extra, MR_Word *base_sp, MR_Word *base_curfr)
 {
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		fatal_error("cannot retrieve procedure id without layout");
+		MR_fatal_error("cannot retrieve procedure id without layout");
 	}
 
 	if (base_sp != NULL && base_curfr != NULL) {
 		bool print_details = FALSE;
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			Integer maybe_from_full =
+			MR_Integer maybe_from_full =
 				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
@@ -1369,7 +1371,7 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 		{
 			MR_send_message_to_socket("func");
 		} else {
-			fatal_error("procedure is not pred or func");
+			MR_fatal_error("procedure is not pred or func");
 		}
 		
 		MR_send_message_to_socket_format(
@@ -1395,8 +1397,8 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 }
 
 static void
-MR_get_list_modules_to_import(Word debugger_request, 
-	Integer *modules_list_length_ptr, Word *modules_list_ptr)
+MR_get_list_modules_to_import(MR_Word debugger_request, 
+	MR_Integer *modules_list_length_ptr, MR_Word *modules_list_ptr)
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_DI_get_list_modules_to_import(
@@ -1407,7 +1409,7 @@ MR_get_list_modules_to_import(Word debugger_request,
 }
 
 static void
-MR_get_mmc_options(Word debugger_request, String *mmc_options_ptr)
+MR_get_mmc_options(MR_Word debugger_request, MR_String *mmc_options_ptr)
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_DI_get_mmc_options(
@@ -1417,7 +1419,7 @@ MR_get_mmc_options(Word debugger_request, String *mmc_options_ptr)
 }
 
 static void
-MR_get_object_file_name(Word debugger_request, String *object_file_name_ptr)
+MR_get_object_file_name(MR_Word debugger_request, MR_String *object_file_name_ptr)
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_DI_get_object_file_name(
@@ -1427,7 +1429,7 @@ MR_get_object_file_name(Word debugger_request, String *object_file_name_ptr)
 }
 
 static void
-MR_get_variable_name(Word debugger_request, String *var_name_ptr)
+MR_get_variable_name(MR_Word debugger_request, MR_String *var_name_ptr)
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_DI_get_variable_name(
@@ -1462,14 +1464,14 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 ** and dynamically link with the execution.
 */
 static void
-MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word, 
-	String, String, String, Integer, Integer, Word, Integer, String, Word, 
-	Word *, Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
+MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_Word, 
+	MR_String, MR_String, MR_String, MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word, 
+	MR_Word *, MR_Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
 	const MR_Stack_Layout_Label *layout, const char *path, 
 	bool *stop_collecting)
 {
-	Char	result;		
-	Word	arguments;
+	MR_Char	result;		
+	MR_Word	arguments;
 
 	/* 
 	** Only pass the arguments list down filter
@@ -1493,14 +1495,14 @@ MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word,
 		depth,
 		port,
 		layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-		(String) layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
-		(String) layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-		(String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
+		(MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+		(MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+		(MR_String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
 		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
 		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 		arguments,
 		layout->MR_sll_entry->MR_sle_detism,
-		(String) path,
+		(MR_String) path,
 		MR_collecting_variable,
 		&MR_collecting_variable,
 		&result));
@@ -1513,7 +1515,7 @@ MR_send_collect_result(void)
 	MR_TRACE_CALL_MERCURY(
 		(*send_collect_result_ptr)(
 			MR_collecting_variable, 
-			(Word) &MR_debugger_socket_out));
+			(MR_Word) &MR_debugger_socket_out));
 #if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
 	MR_TRACE_CALL_MERCURY(
        		ML_CL_unlink_collect(collect_lib_maybe_handle));

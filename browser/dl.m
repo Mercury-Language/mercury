@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,10 +14,10 @@
 % see the documentation for those procedures (i.e. `man dlopen').
 
 %-----------------------------------------------------------------------------%
-:- module dl.
+:- module mdb__dl.
 :- interface.
 :- import_module io.
-:- import_module name_mangle.
+:- import_module mdb__name_mangle.
 
 :- type (mode) ---> lazy ; now.		% RTLD_LAZY or RTLD_NOW
 :- type scope ---> local ; global.	% RTLD_GLOBAL or not.

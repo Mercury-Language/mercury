@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,10 +37,11 @@
 
 :- implementation.
 
-:- import_module builtin_ops.
+:- import_module rtti, builtin_ops.
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module globals, options, continuation_info, stack_layout.
+:- import_module rl.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -309,8 +310,9 @@ unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
+	{ Reuse = no },
 	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
+		CellNo, VarTypeMsg, Reuse) },
 	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 		Var, Args, Modes, _, Code) -->
@@ -326,8 +328,9 @@ unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
+	{ Reuse = no },
 	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
+		CellNo, VarTypeMsg, Reuse) },
 	code_info__cache_expression(Var, Expr).
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
 		Var, _Args, _Modes, _, Code) -->
@@ -342,8 +345,9 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		{ error("unify_gen: type-info constant has args") }
 	),
 	{ Code = empty },
-	code_info__cache_expression(Var, const(data_addr_const(data_addr(
-		ModuleName, type_ctor(info, TypeName, TypeArity))))).
+	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, _, Code) -->
 	( { Args = [] } ->
@@ -506,48 +510,64 @@ unify_gen__generate_construction_2(
 	    )
 	;
 		{ Code = empty },
+
+		code_info__make_entry_label(ModuleInfo,
+			PredId, ProcId, no, CodeAddr),
+		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
+			ProcLabel) },
 		(
-			{ EvalMethod = normal }
+			{ EvalMethod = normal },
+			{ AddrConst = const(code_addr_const(CodeAddr)) }
 		;
 			{ EvalMethod = (aditi_bottom_up) },
-			% XXX The closure_layout code needs to be changed
-			% to handle these.
-			{ error(
-			"Sorry, not implemented: `aditi_bottom_up' closures") }
+			{ rl__get_c_interface_rl_proc_name(ModuleInfo,
+				proc(PredId, ProcId), RLProcName) },
+			{ rl__proc_name_to_string(RLProcName, RLProcNameStr) },
+			list__map_foldl(code_info__variable_type,
+				Args, InputTypes),
+			{ rl__schema_to_string(ModuleInfo,
+				InputTypes, InputSchemaStr) },
+			{ AditiCallArgs = [
+				yes(const(string_const(RLProcNameStr))),
+				yes(const(string_const(InputSchemaStr)))
+			] },
+			code_info__get_next_cell_number(AditiCallCellNo),
+			{ Reuse = no },
+			{ AddrConst = create(0, AditiCallArgs, uniform(no),
+				must_be_static, AditiCallCellNo,
+				"aditi_call_info", Reuse) }
 		;
 			{ EvalMethod = (aditi_top_down) },
-			% XXX The closure_layout code needs to be changed
-			% to handle these.
+			% XXX Need to work out how to encode the procedure
+			% name. The update goals which take aditi_top_down
+			% closures aren't implemented on the Aditi side anyway.
 			{ error(
 			"Sorry, not implemented: `aditi_top_down' closures") }
 		),
 		{ continuation_info__generate_closure_layout(
 			ModuleInfo, PredId, ProcId, ClosureInfo) },
-		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
-			CodeAddr),
-		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
-			ProcLabel) },
-		code_info__get_cell_count(CNum0),
+		code_info__get_cell_counter(C0),
 		{ stack_layout__construct_closure_layout(ProcLabel,
 			ClosureInfo, ClosureLayoutMaybeRvals,
-			ClosureLayoutArgTypes, CNum0, CNum) },
-		code_info__set_cell_count(CNum),
+			ClosureLayoutArgTypes, C0, C) },
+		code_info__set_cell_counter(C),
 		code_info__get_next_cell_number(ClosureLayoutCellNo),
+		{ Reuse = no },
 		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals,
 			ClosureLayoutArgTypes, must_be_static,
-			ClosureLayoutCellNo, "closure_layout") },
+			ClosureLayoutCellNo, "closure_layout", Reuse) },
 		{ list__length(Args, NumArgs) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [
 			yes(ClosureLayout),
-			yes(const(code_addr_const(CodeAddr))),
+			yes(AddrConst),
 			yes(const(int_const(NumArgs)))
 			| PredArgs
 		] },
 		code_info__get_next_cell_number(ClosureCellNo),
 		{ Value = create(0, Vector, uniform(no), can_be_either,
-			ClosureCellNo, "closure") }
+			ClosureCellNo, "closure", Reuse) }
 	),
 	code_info__cache_expression(Var, Value).
 

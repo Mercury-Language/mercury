@@ -29,7 +29,7 @@
 
 :- implementation.
 :- import_module prog_data.
-:- import_module pseudo_type_info, prog_util, prog_out, type_util.
+:- import_module pseudo_type_info, prog_util, prog_out.
 :- import_module ml_code_util, ml_unify_gen.
 :- import_module bool, list, std_util, string, term, require.
 
@@ -127,10 +127,7 @@ gen_init_rtti_data_defn(exist_info(RttiTypeId, _Ordinal, Plain, InTci, Tci,
 	]).
 gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames), _, _,
 		Init, []) :-
-	Init = gen_init_array(gen_init_maybe(
-			mercury_type(functor(atom("string"), [],
-				context("", 0)), str_type),
-			gen_init_string), MaybeNames).
+	Init = gen_init_array(gen_init_maybe(gen_init_string), MaybeNames).
 gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
 		ModuleName, _, Init, []) :-
 	Init = gen_init_array(
@@ -161,11 +158,9 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		gen_init_int(Stag),
 		gen_init_int(Ordinal),
 		gen_init_rtti_name(ModuleName, RttiTypeId, ArgTypes),
-		gen_init_maybe(mlds__rtti_type(field_names(0)),
-			gen_init_rtti_name(ModuleName, RttiTypeId),
+		gen_init_maybe(gen_init_rtti_name(ModuleName, RttiTypeId),
 			MaybeNames),
-		gen_init_maybe(mlds__rtti_type(exist_info(0)),
-			gen_init_rtti_name(ModuleName, RttiTypeId),
+		gen_init_maybe(gen_init_rtti_name(ModuleName, RttiTypeId),
 			MaybeExist)
 	]).
 gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors),
@@ -254,7 +249,7 @@ gen_init_functors_info(du_functors(DuFunctorsInfo), ModuleName,
 	gen_init_cast_rtti_name(mlds__generic_type,
 		ModuleName, RttiTypeId, DuFunctorsInfo).
 gen_init_functors_info(no_functors, _, _) =
-	gen_init_null_pointer(mlds__rtti_type(du_name_ordered_table)).
+	gen_init_null_pointer.
 
 :- func gen_init_layout_info(type_ctor_layout_info, module_name,
 		rtti_type_id) = mlds__initializer.
@@ -272,16 +267,13 @@ gen_init_layout_info(equiv_layout(EquivTypeInfo), ModuleName, _RttiTypeId) =
 	gen_init_cast_rtti_data(mlds__generic_type, ModuleName,
 		EquivTypeInfo).
 gen_init_layout_info(no_layout, _, _) =
-	gen_init_null_pointer(mlds__rtti_type(du_ptag_ordered_table)).
+	gen_init_null_pointer.
 
 :- func gen_init_maybe_proc_id(module_info, maybe(rtti_proc_label)) =
 	mlds__initializer.
 
-	% XXX the type here is a bit of a lie, but it is only used if we
-	% generate a null constant, so it's pretty harmless right now. 
 gen_init_maybe_proc_id(ModuleInfo, MaybeProcLabel) =
-	gen_init_maybe(mlds__func_type(mlds__func_params([], [])),
-		gen_init_proc_id(ModuleInfo), MaybeProcLabel).
+	gen_init_maybe(gen_init_proc_id(ModuleInfo), MaybeProcLabel).
 
 :- func gen_init_pseudo_type_info_defn(pseudo_type_info, module_name) =
 	mlds__initializer.
@@ -559,16 +551,17 @@ gen_init_builtin_const(Name) = init_obj(Rval) :-
 
 gen_init_array(Conv, List) = init_array(list__map(Conv, List)).
 
-:- func gen_init_maybe(mlds__type, func(T) = mlds__initializer, maybe(T)) =
+:- func gen_init_maybe(func(T) = mlds__initializer, maybe(T)) =
 	mlds__initializer.
 
-gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
-gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
+gen_init_maybe(Conv, yes(X)) = Conv(X).
+gen_init_maybe(_, no) = gen_init_null_pointer.
 	
-:- func gen_init_null_pointer(mlds__type) = mlds__initializer.
+:- func gen_init_null_pointer = mlds__initializer.
 
-gen_init_null_pointer(Type) =
-	init_obj(mlds__unop(cast(mlds__generic_type), const(null(Type)))).
+gen_init_null_pointer =
+	% XXX the MLDS ought to have a null pointer constant
+	init_obj(mlds__unop(cast(mlds__generic_type), const(int_const(0)))).
 
 :- func gen_init_string(string) = mlds__initializer.
 

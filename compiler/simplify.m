@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,6 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 	{
 		% Don't warn for compiler-generated procedures.
 		list__member(warn_simple_code, Simplifications0),
-		module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
 		code_util__compiler_generated(PredInfo0)
 	->
 		list__delete_all(Simplifications0, warn_simple_code,
@@ -155,10 +154,11 @@ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_goal(ProcInfo0, Goal0),
 
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, Info0),
+		VarSet0, VarTypes0, TVarMap, Info0),
 	simplify__process_goal(Goal0, Goal, Info0, Info),
 	
 	simplify_info_get_varset(Info, VarSet),
@@ -208,8 +208,14 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 	( simplify_info_requantify(Info1) ->
 		Goal1 = _ - GoalInfo1,
 		goal_info_get_nonlocals(GoalInfo1, NonLocals),
-
-		implicitly_quantify_goal(Goal1, VarSet0, VarTypes0, NonLocals,
+		simplify_info_get_type_info_varmap(Info1, TVarMap),
+		simplify_info_get_pred_info(Info1, PredInfo0),
+		simplify_info_get_module_info(Info1, ModuleInfo1),
+		module_info_globals(ModuleInfo1, Globals),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
+		implicitly_quantify_goal(Goal1, VarSet0, VarTypes0,
+			TVarMap, TypeInfoLiveness, NonLocals,
 			Goal2, VarSet, VarTypes, _),
 
 		simplify_info_set_varset(Info1, VarSet, Info2),
@@ -222,8 +228,9 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		RecomputeAtomic = yes,
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, InstMap0, ModuleInfo3, ModuleInfo4),
+		recompute_instmap_delta(RecomputeAtomic, PredInfo0,
+			Goal2, Goal3, VarTypes, TVarMap, InstMap0,
+			ModuleInfo3, ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
@@ -695,7 +702,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		% Don't warn about directly recursive calls.
 		% (That would cause spurious warnings, particularly
 		% with builtin predicates, or preds defined using
-		% pragma c_code.)
+		% pragma foreign.)
 		%
 		simplify_info_get_det_info(Info0, DetInfo0),
 		det_info_get_pred_id(DetInfo0, ThisPredId),
@@ -927,7 +934,15 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	; CondSolns0 = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		det_negation_det(CondDetism0, MaybeNegDetism),
-		( Cond0 = not(NegCond) - _ ->
+		(
+			Cond0 = not(NegCond) - _,
+			% XXX BUG! This optimization is only safe if it
+			% preserves mode correctness, which means in particular
+			% that the the negated goal must not clobber any
+			% variables.
+			% For now I've just disabled the optimization.
+			semidet_fail
+		->
 			Cond = NegCond
 		;
 			(
@@ -1050,7 +1065,12 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Info = Info3
 	;
 		% remove double negation
-		Goal1 = not(SubGoal - SubGoalInfo) - _
+		Goal1 = not(SubGoal - SubGoalInfo) - _,
+		% XXX BUG! This optimization is only safe if it preserves
+		% mode correctness, which means in particular that the
+		% the negated goal must not clobber any variables.
+		% For now I've just disabled the optimization.
+		semidet_fail
 	->
 		simplify__maybe_wrap_goal(GoalInfo0, SubGoalInfo, SubGoal,
 			Goal, GoalInfo, Info3, Info)
@@ -1083,7 +1103,7 @@ simplify__goal_2(some(Vars1, CanRemove0, Goal1), SomeInfo,
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = pragma_c_code(_, PredId, ProcId, Args, _, _, _),
+	Goal0 = pragma_foreign_code(_, _, PredId, ProcId, Args, _, _, _),
 	(
 		simplify_do_calls(Info0),
 		goal_info_is_pure(GoalInfo)
@@ -1124,30 +1144,8 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		% are being unified.
 		%
 		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
-		{ ArgVars = [TypeInfoVar, XVar, YVar] },
-
-		{ module_info_get_predicate_table(ModuleInfo,
-			PredicateTable) },
-		{ mercury_public_builtin_module(MercuryBuiltin) },
-		{ predicate_table_search_pred_m_n_a(PredicateTable,
-			MercuryBuiltin, "unify", 2, [CallPredId])
-		->
-			PredId = CallPredId
-		;
-			error("simplify.m: can't find `builtin:unify/2'")
-		},
-		% Note: the mode for polymorphic unifications
-		% should be `in, in'. 
-		% (This should have been checked by mode analysis.)
-		{ hlds_pred__in_in_unification_proc_id(ProcId) },
-
-		{ SymName = unqualified("unify") },
-		{ code_util__builtin_state(ModuleInfo, PredId, ProcId,
-			BuiltinState) },
-		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
-		{ Call = call(PredId, ProcId, ArgVars,
-			BuiltinState, yes(CallContext), SymName)
-			- GoalInfo0 }
+		{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
+			ModuleInfo, Context, GoalInfo0, Call) }
 
 	; { type_is_higher_order(Type, _, _, _) } ->
 		%
@@ -1176,45 +1174,100 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		simplify__goal_2(Call0, GoalInfo0, Call1, GoalInfo),
 		{ Call = Call1 - GoalInfo },
 		{ ExtraGoals = [] }
-
-	; { type_to_type_id(Type, TypeId, TypeArgs) } ->
-		%
-		% Convert other complicated unifications into
-		% calls to specific unification predicates,
-		% inserting extra typeinfo arguments if necessary.
-		%
-
-		% generate code to construct the new type_info arguments
-		simplify__make_type_info_vars(TypeArgs, TypeInfoVars,
-			ExtraGoals),
-
-		% create the new call goal
-		{ list__append(TypeInfoVars, [XVar, YVar], ArgVars) },
-		{ module_info_get_special_pred_map(ModuleInfo,
-			SpecialPredMap) },
-		{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
-		{ determinism_components(Det, CanFail, at_most_one) },
-		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
-		 	UniMode, Det, ProcId) },
-		{ SymName = unqualified("__Unify__") },
-		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
-		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
-			yes(CallContext), SymName) },
-
-		% add the extra type_info vars to the nonlocals for the call
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		{ set__insert_list(NonLocals0, TypeInfoVars, NonLocals) },
-		{ goal_info_set_nonlocals(GoalInfo0, NonLocals,
-			CallGoalInfo0) },
-
-		% recursively simplify the call goal
-		simplify__goal_2(Call0, CallGoalInfo0, Call1, CallGoalInfo1),
-		{ Call = Call1 - CallGoalInfo1 }
 	;
-		{ error("simplify: type_to_type_id failed") }
+		{ type_to_type_id(Type, TypeIdPrime, TypeArgsPrime) ->
+			TypeId = TypeIdPrime,
+			TypeArgs = TypeArgsPrime
+		;
+			error("simplify: type_to_type_id failed")
+		},
+		{ determinism_components(Det, CanFail, at_most_one) },
+		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det,
+			ProcId) },
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, special_preds,
+			SpecialPreds) },
+		(
+			{ SpecialPreds = no },
+			{ proc_id_to_int(ProcId, ProcIdInt) },
+			{ ProcIdInt = 0 }
+		->
+			simplify__make_type_info_vars([Type], TypeInfoVars,
+				ExtraGoals),
+			{ TypeInfoVars = [TypeInfoVarPrime] ->
+				TypeInfoVar = TypeInfoVarPrime
+			;
+				error("simplify__process_compl_unify: more than one typeinfo for one type var")
+			},
+			{ simplify__call_generic_unify(TypeInfoVar, XVar, YVar,
+				ModuleInfo, Context, GoalInfo0, Call) }
+		;
+			%
+			% Convert other complicated unifications into
+			% calls to specific unification predicates,
+			% inserting extra typeinfo arguments if necessary.
+			%
+
+			simplify__make_type_info_vars(TypeArgs,
+				TypeInfoVars, ExtraGoals),
+			{ simplify__call_specific_unify(TypeId, TypeInfoVars,
+				XVar, YVar, ProcId, ModuleInfo, Context,
+				GoalInfo0, Call0, CallGoalInfo0) },
+			simplify__goal_2(Call0, CallGoalInfo0,
+				Call1, CallGoalInfo1),
+			{ Call = Call1 - CallGoalInfo1 }
+		)
 	),
 	{ list__append(ExtraGoals, [Call], ConjList) },
 	{ conj_list_to_goal(ConjList, GoalInfo0, Goal) }.
+
+:- pred simplify__call_generic_unify(prog_var::in, prog_var::in,  prog_var::in, 
+	module_info::in, unify_context::in, hlds_goal_info::in, hlds_goal::out)
+	is det.
+
+simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
+		GoalInfo, Call) :-
+	ArgVars = [TypeInfoVar, XVar, YVar],
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	mercury_public_builtin_module(MercuryBuiltin),
+	( predicate_table_search_pred_m_n_a(PredicateTable,
+		MercuryBuiltin, "unify", 2, [CallPredId])
+	->
+		PredId = CallPredId
+	;
+		error("simplify.m: can't find `builtin:unify/2'")
+	),
+	% Note: the mode for polymorphic unifications
+	% should be `in, in'. 
+	% (This should have been checked by mode analysis.)
+	hlds_pred__in_in_unification_proc_id(ProcId),
+
+	SymName = unqualified("unify"),
+	code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState),
+	CallContext = call_unify_context(XVar, var(YVar), Context),
+	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
+		SymName) - GoalInfo.
+
+:- pred simplify__call_specific_unify(type_id::in, list(prog_var)::in,
+	prog_var::in, prog_var::in, proc_id::in,
+	module_info::in, unify_context::in, hlds_goal_info::in,
+	hlds_goal_expr::out, hlds_goal_info::out) is det.
+
+simplify__call_specific_unify(TypeId, TypeInfoVars, XVar, YVar, ProcId,
+		ModuleInfo, Context, GoalInfo0, CallExpr, CallGoalInfo) :-
+	% create the new call goal
+	list__append(TypeInfoVars, [XVar, YVar], ArgVars),
+	module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
+	map__lookup(SpecialPredMap, unify - TypeId, PredId),
+	SymName = unqualified("__Unify__"),
+	CallContext = call_unify_context(XVar, var(YVar), Context),
+	CallExpr = call(PredId, ProcId, ArgVars, not_builtin,
+		yes(CallContext), SymName),
+
+	% add the extra type_info vars to the nonlocals for the call
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__insert_list(NonLocals0, TypeInfoVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, CallGoalInfo).
 
 :- pred simplify__make_type_info_vars(list(type)::in, list(prog_var)::out,
 	list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
@@ -1274,7 +1327,7 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 
 simplify__type_info_locn(TypeVar, TypeInfoVar, Goals) -->
 	=(Info0),
-	{ simplify_info_get_typeinfo_map(Info0, TypeInfoMap) },
+	{ simplify_info_get_type_info_varmap(Info0, TypeInfoMap) },
 	{ map__lookup(TypeInfoMap, TypeVar, TypeInfoLocn) },
 	(
 			% If the typeinfo is available in a variable,
@@ -1837,31 +1890,38 @@ simplify__contains_multisoln_goal(Goals) :-
 
 :- type simplify_info
 	--->	simplify_info(
-			det_info,
-			set(det_msg),
-			set(simplification),
-			common_info,	% Info about common subexpressions.
-			instmap,
-			prog_varset,
-			map(prog_var, type),
-			bool,		% Does the goal need requantification.
-			bool,		% Do we need to recompute
+			det_info	::	det_info,
+			msgs		::	set(det_msg),
+			simplifications	::	set(simplification),
+			common_info	::	common_info,
+					% Info about common subexpressions.
+			instmap		::	instmap,
+			varset		::	prog_varset,
+			var_types	::	map(prog_var, type),
+			requantify	::	bool,
+					% Does the goal need requantification.
+			recompute_atomic ::	bool,
+					% Do we need to recompute
 					% instmap_deltas for atomic goals
-			bool,		% Does determinism analysis need to
+			rerun_det	::	bool,
+					% Does determinism analysis need to
 					% be rerun.
-			int,		% Measure of the improvement in
+			cost_delta	::	int,
+					% Measure of the improvement in
 					% the goal from simplification.
-			int		% Count of the number of lambdas
+			lambdas		::	int,
+					% Count of the number of lambdas
 					% which enclose the current goal.
+			type_info_varmap ::	type_info_varmap
 		).
 
 simplify_info_init(DetInfo, Simplifications0, InstMap,
-		VarSet, VarTypes, Info) :-
+		VarSet, VarTypes, TVarMap, Info) :-
 	common_info_init(CommonInfo),
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
-			InstMap, VarSet, VarTypes, no, no, no, 0, 0). 
+			InstMap, VarSet, VarTypes, no, no, no, 0, 0, TVarMap). 
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
@@ -1869,10 +1929,10 @@ simplify_info_init(DetInfo, Simplifications0, InstMap,
 
 simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 	Info0 = simplify_info(DetInfo, Msgs, _, _, _,
-		VarSet, VarTypes, _, _, _, CostDelta, _),
+		VarSet, VarTypes, _, _, _, CostDelta, _, TVarMap),
 	common_info_init(Common),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, Common, InstMap0,
-		VarSet, VarTypes, no, no, no, CostDelta, 0).
+		VarSet, VarTypes, no, no, no, CostDelta, 0, TVarMap).
 
 	% exported for common.m
 :- interface.
@@ -1881,8 +1941,8 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 :- import_module set.
 
 :- pred simplify_info_init(det_info, list(simplification), instmap,
-		prog_varset, map(prog_var, type), simplify_info).
-:- mode simplify_info_init(in, in, in, in, in, out) is det.
+		prog_varset, vartypes, type_info_varmap, simplify_info).
+:- mode simplify_info_init(in, in, in, in, in, in, out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_msgs(simplify_info::in, set(det_msg)::out) is det.
@@ -1893,37 +1953,46 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 		common_info::out) is det.
 :- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
 :- pred simplify_info_get_var_types(simplify_info::in,
-		map(prog_var, type)::out) is det.
+		vartypes::out) is det.
 :- pred simplify_info_requantify(simplify_info::in) is semidet.
 :- pred simplify_info_recompute_atomic(simplify_info::in) is semidet.
 :- pred simplify_info_rerun_det(simplify_info::in) is semidet.
 :- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
+:- pred simplify_info_get_type_info_varmap(simplify_info::in,
+		type_info_varmap::out) is det.
 
 :- pred simplify_info_get_module_info(simplify_info::in,
 		module_info::out) is det.
+:- pred simplify_info_get_pred_info(simplify_info::in,
+		pred_info::out) is det.
 
 :- implementation.
 
-simplify_info_get_det_info(simplify_info(Det, _,_,_,_,_,_,_,_,_,_,_), Det). 
-simplify_info_get_msgs(simplify_info(_, Msgs, _,_,_,_,_,_,_,_,_,_), Msgs).
-simplify_info_get_simplifications(simplify_info(_,_,Simplify,_,_,_,_,_,_,_,_,_),
-	Simplify). 
-simplify_info_get_common_info(simplify_info(_,_,_,Common, _,_,_,_,_,_,_,_),
-	Common).
-simplify_info_get_instmap(simplify_info(_,_,_,_, InstMap,_,_,_,_,_,_,_),
-	InstMap). 
-simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_,_,_), VarSet).
-simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_,_,_),
-	VarTypes). 
-simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_,_,_)).
-simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_,_,_)).
-simplify_info_rerun_det(simplify_info(_,_,_,_,_,_,_,_,_, yes,_,_)).
-simplify_info_get_cost_delta(simplify_info(_,_,_,_,_,_,_,_,_,_,CostDelta, _),
-	CostDelta).
+simplify_info_get_det_info(SI, SI^det_info).
+simplify_info_get_msgs(SI, SI^msgs).
+simplify_info_get_simplifications(SI, SI^simplifications).
+simplify_info_get_common_info(SI, SI^common_info).
+simplify_info_get_instmap(SI, SI^instmap).
+simplify_info_get_varset(SI, SI^varset).
+simplify_info_get_var_types(SI, SI^var_types).
+simplify_info_requantify(SI) :-
+	SI^requantify = yes.
+simplify_info_recompute_atomic(SI) :-
+	SI^recompute_atomic = yes.
+simplify_info_rerun_det(SI) :-
+	SI^rerun_det = yes.
+simplify_info_get_cost_delta(SI, SI^cost_delta).
+simplify_info_get_type_info_varmap(SI, SI^type_info_varmap).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
 	simplify_info_get_det_info(Info, DetInfo),
 	det_info_get_module_info(DetInfo, ModuleInfo).
+
+simplify_info_get_pred_info(Info, PredInfo) :-
+	simplify_info_get_det_info(Info, DetInfo),
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	det_info_get_pred_id(DetInfo, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo).
 
 :- interface.
 
@@ -1967,37 +2036,19 @@ simplify_info_get_module_info(Info, ModuleInfo) :-
 
 :- implementation.
 
-simplify_info_set_det_info(simplify_info(_, B, C, D, E, F, G, H, I, J, K, L),
-		Det, simplify_info(Det, B, C, D, E, F, G, H, I, J, K, L)).
-simplify_info_set_msgs(simplify_info(A, _, C, D, E, F, G, H, I, J, K, L), Msgs,
-		simplify_info(A, Msgs, C, D, E, F, G, H, I, J, K, L)). 
-simplify_info_set_simplifications(
-		simplify_info(A, B, _, D, E, F, G, H, I, J, K, L),
-		Simp, simplify_info(A, B, Simp, D, E, F, G, H, I, J, K, L)).
-simplify_info_set_instmap(simplify_info(A, B, C, D, _, F, G, H, I, J, K, L), 
-		InstMap, 
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L)). 
-simplify_info_set_common_info(simplify_info(A, B, C, _, E, F, G, H, I, J, K, L),
-		Common, 
-		simplify_info(A, B, C, Common, E, F, G, H, I, J, K, L)). 
-simplify_info_set_varset(simplify_info(A, B, C, D, E, _, G, H, I, J, K, L), 
-		VarSet, 
-		simplify_info(A, B, C, D, E, VarSet, G, H, I, J, K, L)). 
-simplify_info_set_var_types(simplify_info(A, B, C, D, E, F, _, H, I, J, K, L),
-		VarTypes, simplify_info(A, B, C, D, E, F, VarTypes, H,I,J,K,L)).
-simplify_info_set_requantify(simplify_info(A, B, C, D, E, F, G, _, I, J, K, L),
-		simplify_info(A, B, C, D, E, F, G, yes, I, J, K, L)). 
-simplify_info_set_recompute_atomic(simplify_info(A, B, C, D, E, F, G,H,_,J,K,L),
-		simplify_info(A, B, C, D, E, F, G, H, yes, J, K, L)). 
-simplify_info_set_rerun_det(simplify_info(A, B, C, D, E, F, G,H,I,_,K,L),
-		simplify_info(A, B, C, D, E, F, G, H, I, yes, K, L)). 
-simplify_info_set_cost_delta(simplify_info(A, B, C, D, E, F, G, H, I, J, _, L),
-		Delta, simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L)). 
+simplify_info_set_det_info(SI, Det, SI^det_info := Det).
+simplify_info_set_msgs(SI, Msgs, SI^msgs := Msgs). 
+simplify_info_set_simplifications(SI, Simp, SI^simplifications := Simp).
+simplify_info_set_instmap(SI, InstMap, SI^instmap := InstMap). 
+simplify_info_set_common_info(SI, Common, SI^common_info := Common). 
+simplify_info_set_varset(SI, VarSet, SI^varset := VarSet). 
+simplify_info_set_var_types(SI, VarTypes, SI^var_types := VarTypes).
+simplify_info_set_requantify(SI, SI^requantify := yes).
+simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
+simplify_info_set_rerun_det(SI, SI^rerun_det := yes).
+simplify_info_set_cost_delta(SI, Delta, SI^cost_delta := Delta).
 
-simplify_info_incr_cost_delta(
-		simplify_info(A, B, C, D, E, F,G,H,I,J, Delta0, L),
-		Incr, simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L)) :-
-	Delta is Delta0 + Incr.
+simplify_info_incr_cost_delta(SI, Incr, SI^cost_delta := SI^cost_delta + Incr).
 
 simplify_info_add_msg(Info0, Msg, Info) :-
 	( simplify_do_warn(Info0) ->
@@ -2011,14 +2062,9 @@ simplify_info_do_add_msg(Info0, Msg, Info) :-
 	set__insert(Msgs0, Msg, Msgs),
 	simplify_info_set_msgs(Info0, Msgs, Info).
 
-simplify_info_enter_lambda(
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount0),
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount)) :-
-	LambdaCount is LambdaCount0 + 1.
-simplify_info_leave_lambda(
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount0),
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount)) :-
-	LambdaCount1 is LambdaCount0 - 1,
+simplify_info_enter_lambda(SI, SI^lambdas := SI^lambdas + 1).
+simplify_info_leave_lambda(SI, SI^lambdas := LambdaCount) :-
+	LambdaCount1 is SI^lambdas - 1,
 	(
 		LambdaCount1 >= 0
 	->
@@ -2026,9 +2072,8 @@ simplify_info_leave_lambda(
 	;
 		error("simplify_info_leave_lambda: Left too many lambdas")
 	).
-simplify_info_inside_lambda(
-		simplify_info(_,_,_,_,_,_,_,_,_,_,_,LambdaCount)) :-
-	LambdaCount > 0.
+simplify_info_inside_lambda(SI) :-
+	SI^lambdas > 0.
 
 simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 	simplify_info_get_det_info(Info0, DetInfo0),
@@ -2073,25 +2118,11 @@ simplify_do_more_common(Info) :-
 	simplify_info_get_simplifications(Info, Simplifications),
 	set__member(extra_common_struct, Simplifications).
 
-:- pred simplify_info_get_typeinfo_map(simplify_info::in,
-		map(tvar, type_info_locn)::out) is det.
-
-simplify_info_get_typeinfo_map(Info0, TypeInfoMap) :-
-	simplify_info_get_det_info(Info0, DetInfo0),
-	det_info_get_module_info(DetInfo0, ModuleInfo),
-	det_info_get_pred_id(DetInfo0, ThisPredId),
-	det_info_get_proc_id(DetInfo0, ThisProcId),
-	module_info_pred_proc_info(ModuleInfo, ThisPredId, ThisProcId,
-		_PredInfo, ProcInfo),
-	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap).
-
 :- pred simplify_info_update_instmap(simplify_info::in, hlds_goal::in,
 		simplify_info::out) is det.
 
-simplify_info_update_instmap(
-		simplify_info(A, B, C, D, InstMap0, F, G, H, I, J, K, L), Goal,
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L)) :-
-	update_instmap(Goal, InstMap0, InstMap).
+simplify_info_update_instmap(SI, Goal, SI^instmap := InstMap) :-
+	update_instmap(Goal, SI^instmap, InstMap).
 
 :- type before_after
 	--->	before
@@ -2126,7 +2157,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
 			GoalExpr \= generic_call(_, _, _, _),
-			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _)
+			GoalExpr \= pragma_foreign_code(_, _, _, _, _, _, _, _)
 		)
 	->
 		simplify_info_get_common_info(Info0, CommonInfo0),

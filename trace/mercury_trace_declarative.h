@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,26 +35,10 @@ extern	bool	MR_trace_start_decl_debug(const char *out,
 ** values in the definitions in browser/declarative_execution.m.
 */
 
-typedef Word MR_Trace_Node;
+typedef MR_Word MR_Trace_Node;
 
-#define	MR_trace_call_node_answer(node)					\
-		MR_field(MR_mktag(0), (node), (Integer) 1)
-
-#define MR_trace_cond_node_status(node)					\
-		MR_field(MR_mktag(3), (node), (Integer) 3)
-
-#define MR_trace_neg_node_status(node)					\
-		MR_field(MR_mktag(3), (node), (Integer) 3)
-
-#define MR_TRACE_STATUS_SUCCEEDED	(Word) 0
-#define MR_TRACE_STATUS_FAILED		(Word) 1
-#define MR_TRACE_STATUS_UNDECIDED	(Word) 2
-
-#define MR_trace_atom(atom, name, args)					\
-	do {								\
-		tag_incr_hp((atom), MR_mktag(0), 2);			\
-		MR_field(MR_mktag(0), (atom), 0) = (Word) (name);       \
-		MR_field(MR_mktag(0), (atom), 1) = (args);              \
-	} while(0)
+#define MR_TRACE_STATUS_SUCCEEDED	(MR_Word) 0
+#define MR_TRACE_STATUS_FAILED		(MR_Word) 1
+#define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,7 +85,7 @@
 ** At the moment, we use variable length arrays that are indexed by
 ** closure argument numbers or by type parameter numbers. We therefore
 ** use a default MR_VARIABLE_SIZED value that is at least as big as
-** both MAX_VIRTUAL_REG and TYPE_CTOR_LAYOUT_MAX_VARINT.
+** both MAX_VIRTUAL_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
 */
 
 #if __STDC_VERSION__ >= 199901	/* January 1999 */
@@ -98,6 +98,78 @@
   /* Just fake it by pretending that the array has a fixed size */
   #define	MR_VARIABLE_SIZED	1024
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+/* Macros for inlining */
+
+#if defined(__GNUC__) 
+  /* GNU C */
+  #define MR_INLINE __inline__
+  #define MR_EXTERN_INLINE extern __inline__
+#elif defined(__cplusplus) || __STDC_VERSION__ >= 199901
+  /* C++ or C99 */
+  #define MR_INLINE inline
+  #define MR_EXTERN_INLINE extern inline
+#else
+  /* C89 */
+  #define MR_INLINE static
+  #define MR_EXTERN_INLINE static
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/* A macro for declaring functions that never return */
+
+#if __GNUC__
+  #define NO_RETURN __attribute__((noreturn))
+#else
+  #define NO_RETURN
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** C preprocessor tricks.
+*/
+
+/* convert a macro to a string */
+#define MR_STRINGIFY(x)		MR_STRINGIFY_2(x)
+#define MR_STRINGIFY_2(x)	#x
+
+/* paste two macros together */
+#define MR_PASTE2(a,b)			MR_PASTE2_2(a,b)
+#define MR_PASTE2_2(a,b)		a##b
+#define MR_PASTE3(a,b,c)		MR_PASTE3_2(a,b,c)
+#define MR_PASTE3_2(a,b,c)		a##b##c
+#define MR_PASTE4(a,b,c,d)		MR_PASTE4_2(a,b,c,d)
+#define MR_PASTE4_2(a,b,c,d)		a##b##c##d
+#define MR_PASTE5(a,b,c,d,e)		MR_PASTE5_2(a,b,c,d,e)
+#define MR_PASTE5_2(a,b,c,d,e)		a##b##c##d##e
+#define MR_PASTE6(a,b,c,d,e,f)		MR_PASTE6_2(a,b,c,d,e,f)
+#define MR_PASTE6_2(a,b,c,d,e,f)	a##b##c##d##e##f
+#define MR_PASTE7(a,b,c,d,e,f,g)	MR_PASTE7_2(a,b,c,d,e,f,g)
+#define MR_PASTE7_2(a,b,c,d,e,f,g)	a##b##c##d##e##f##g
+
+/*
+** MR_CHECK_EXPR_TYPE(expr, type):
+** This macro checks that the given expression has a type
+** which is compatible with (assignable to) the specified type,
+** forcing a compile error if it does not.
+** It does not evaluate the expression.
+** Note that the specified type must be a complete type,
+** i.e. it must not be a pointer to a struct which has
+** not been defined.
+**
+** This macro is useful for defining type-safe function-like macros.
+**
+** The implementation of this macro looks like it dereferences
+** a null pointer, but because that code is inside sizeof(), it will
+** not get executed; the compiler will instead just check that it is
+** type-correct.
+*/
+#define MR_CHECK_EXPR_TYPE(expr, type) \
+	((void) sizeof(*(type *)NULL = (expr)))
 
 /*---------------------------------------------------------------------------*/
 

@@ -333,8 +333,8 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 			term_io__write_term_args(Xs, VarSet1, N1, VarSet, N),
 			io__write_char(')')
 		;
-			{ N = N0,
-			  VarSet = VarSet0 }
+			{ N = N0 },
+			  { VarSet = VarSet0 }
 		)
 	).
 

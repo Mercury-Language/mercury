@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,17 @@
 	% of their corresponding modes, and a determinism.  The syntax
 	% of a higher-order func expression is
 	% 	`(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
-	%		:- Goal)'.
+	%		:- Goal)'
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1) is Det :- Goal)'
+	% 		where the modes are assumed to be `in' for the
+	% 		function arguments and `out' for the result
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1) :- Goal)'
+	% 		where the modes are assumed as above, and the
+	% 		determinism is assumed to be det
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1). '
 	%
 :- pred parse_func_expression(term, lambda_eval_method, list(prog_term),
 		list(mode), determinism).
@@ -137,7 +147,7 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 :- mode parse_goal_2(in, in, in, out, out) is semidet.
 parse_goal_2("true", [], V, true, V).
 parse_goal_2("fail", [], V, fail, V).
-parse_goal_2("=", [A0, B0], V, unify(A, B), V) :-
+parse_goal_2("=", [A0, B0], V, unify(A, B, pure), V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
 /******
@@ -217,7 +227,7 @@ parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [A0, B0], V, unify(A, B), V) :-
+parse_goal_2("is", [A0, B0], V, unify(A, B, pure), V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
 parse_goal_2("impure", [A0], V0, A, V) :-
@@ -234,6 +244,8 @@ parse_goal_with_purity(A0, V0, Purity, A, V) :-
 	parse_goal(A0, V0, A1, V),
 	(   A1 = call(Pred, Args, pure) - _ ->
 		A = call(Pred, Args, Purity)
+	;   A1 = unify(ProgTerm1, ProgTerm2, pure) - _ ->
+		A = unify(ProgTerm1, ProgTerm2, Purity)
 	;
 		% Inappropriate placement of an impurity marker, so we treat
 		% it like a predicate call.  typecheck.m prints out something
@@ -324,16 +336,33 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	standard_det(DetString, Det),
 	parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
 	FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
-	parse_pred_expr_args(FuncArgsList, Args0, Modes0),
-	parse_lambda_arg(RetTerm, RetArg, RetMode),
-	list__append(Args0, [RetArg], Args),
-	list__append(Modes0, [RetMode], Modes).
+
+	( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
+		parse_lambda_arg(RetTerm, RetArg, RetMode),
+		list__append(Args0, [RetArg], Args),
+		list__append(Modes0, [RetMode], Modes)
+	;
+		%
+		% the argument modes default to `in',
+		% the return mode defaults to `out'
+		%
+		in_mode(InMode),
+		out_mode(OutMode),
+		list__length(FuncArgsList, NumArgs),
+		list__duplicate(NumArgs, InMode, Modes0),
+		RetMode = OutMode,
+		list__append(Modes0, [RetMode], Modes),
+		list__append(FuncArgsList, [RetTerm], Args1),
+		list__map(term__coerce, Args1, Args)
+	).
+
+
 parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	%
 	% parse a func expression with unspecified modes and determinism
 	%
 	FuncTerm = term__functor(term__atom("="),
-		[FuncEvalArgsTerm, RetArg], _),
+		[FuncEvalArgsTerm, RetTerm], _),
 	parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
 	FuncArgsTerm = term__functor(term__atom("func"), Args0, _),
 	%
@@ -348,7 +377,7 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	RetMode = OutMode,
 	Det = det,
 	list__append(Modes0, [RetMode], Modes),
-	list__append(Args0, [RetArg], Args1),
+	list__append(Args0, [RetTerm], Args1),
 	list__map(term__coerce, Args1, Args).
 
 parse_lambda_eval_method(Term0, EvalMethod, Term) :-

@@ -40,10 +40,12 @@ garbage_collect -->
 
 :- pragma c_code(garbage_collect, [will_not_call_mercury], "
 #ifdef CONSERVATIVE_GC
+  #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */
 	MR_clear_zone_for_GC(MR_CONTEXT(detstack_zone), MR_sp + 1);
 	MR_clear_zone_for_GC(MR_CONTEXT(nondetstack_zone), MR_maxfr + 1);
 	MR_clear_regs_for_GC();
+  #endif
 
 	GC_gcollect();
 #endif

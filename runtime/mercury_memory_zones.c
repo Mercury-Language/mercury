@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,7 +24,10 @@
 
 #include "mercury_imp.h"
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -48,9 +51,86 @@
   #include "mercury_thread.h"
 #endif
 
+#ifdef MR_WIN32_VIRTUAL_ALLOC
+  #include <windows.h>
+#endif
+
 /*---------------------------------------------------------------------------*/
 
-#ifdef	CONSERVATIVE_GC
+/*
+** MR_PROTECTPAGE is now defined if we have some sort of mprotect like
+** functionality, all checks for HAVE_MPROTECT should now use MR_PROTECTPAGE.
+*/
+#if defined(HAVE_MPROTECT)
+int
+MR_protect_pages(void *addr, size_t size, int prot_flags)
+{
+	return mprotect((char *) addr, size, prot_flags);
+}
+#elif defined(MR_WIN32_VIRTUAL_ALLOC)
+/*
+** Emulate mprotect under Win32.
+** Return -1 on failure
+*/
+int
+MR_protect_pages(void *addr, size_t size, int prot_flags)
+{
+	int rc;
+	DWORD flags;
+
+	if (prot_flags & PROT_WRITE) {
+		flags = PAGE_READWRITE;
+	} else if (prot_flags & PROT_READ) {
+		flags = PAGE_READONLY;
+	} else {
+		flags = PAGE_NOACCESS;
+	}
+	
+	rc = (VirtualAlloc(addr, size, MEM_COMMIT, flags) ? 0 : -1);
+	if (rc < 0) {
+		fprintf(stderr,
+			"Error in VirtualAlloc(addr=0x%08lx, size=0x%08lx):"
+			" 0x%08lx\n", (unsigned long) addr,
+			(unsigned long) size, (unsigned long) GetLastError());
+	}
+
+	return rc;
+}
+#endif	/* MR_WIN32_VIRTUAL_ALLOC */
+
+
+/*---------------------------------------------------------------------------*/
+
+
+#if defined(MR_WIN32_VIRTUAL_ALLOC)
+/*
+** Under Win32, we use VirtualAlloc instead of the standard malloc,
+** since we will have to call VirtualProtect later on the pages
+** allocated here.
+*/
+void *
+memalign(size_t unit, size_t size)
+{
+	void *ptr;
+
+	/*
+	** We don't need to use the 'unit' value as the memory is always
+	** aligned under Win32.
+	*/
+	ptr = VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+	if (ptr == NULL) {
+		fprintf(stderr, "Error in VirtualAlloc(size=0x%08lx):"
+				" 0x%08lx\n", (unsigned long) size,
+				(unsigned long) GetLastError());
+	}
+
+  #ifdef CONSERVATIVE_GC
+	if (ptr != NULL)
+		GC_add_roots((char *)ptr, (char *)ptr + size);
+  #endif
+	return ptr;
+}
+#elif defined(CONSERVATIVE_GC)
   #define	memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
 #elif defined(HAVE_MEMALIGN)
   extern void	*memalign(size_t, size_t);
@@ -71,7 +151,7 @@
 ** PROT_EXEC    page can be executed
 ** PROT_NONE    page can not be accessed
 */
-#ifdef  HAVE_MPROTECT
+#ifdef MR_PROTECTPAGE
 
   #ifdef CONSERVATIVE_GC
     /*
@@ -91,17 +171,15 @@
     #define PROT_NONE 0
   #endif
 
-#endif /* HAVE_MPROTECT */
+#endif /* MR_PROTECTPAGE */
 
 /*---------------------------------------------------------------------------*/
 
-Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
+MR_Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
 unsigned long	num_uses[MAX_RN];
 
 #define MAX_ZONES	16
-
-static MemoryZone *zone_table = NULL;
 
 static MemoryZone *used_memory_zones = NULL;
 static MemoryZone *free_memory_zones = NULL;
@@ -149,7 +227,7 @@ init_offsets()
 
 	offset_vector = MR_GC_NEW_ARRAY(size_t, CACHE_SLICES - 1);
 
-	fake_reg_offset = (Unsigned) MR_fake_reg % pcache_size;
+	fake_reg_offset = (MR_Unsigned) MR_fake_reg % pcache_size;
 
 	for (i = 0; i < CACHE_SLICES - 1; i++) {
 		offset_vector[i] =
@@ -183,6 +261,10 @@ get_zone(void)
 	return zone;
 }
 
+#if 0
+
+/* this function is not currently used */
+
 static void 
 unget_zone(MemoryZone *zone)
 {
@@ -212,6 +294,8 @@ unget_zone(MemoryZone *zone)
 	MR_UNLOCK(free_memory_zones_lock, "unget_zone");
 }
 
+#endif
+
 /*
 ** successive calls to next_offset return offsets modulo the primary
 ** cache size (carefully avoiding ever giving an offset that clashes
@@ -237,9 +321,9 @@ next_offset(void)
 MemoryZone *
 create_zone(const char *name, int id, size_t size,
 		size_t offset, size_t redsize,
-		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
+		bool ((*handler)(MR_Word *addr, MemoryZone *zone, void *context)))
 {
-	Word		*base;
+	MR_Word		*base;
 	size_t		total_size;
 
 		/*
@@ -249,13 +333,13 @@ create_zone(const char *name, int id, size_t size,
 		**	unit		(an extra page for protection if
 		**			 mprotect is being used)
 		*/
-#ifdef	HAVE_MPROTECT
+#ifdef	MR_PROTECTPAGE
 	total_size = size + 2 * unit;
 #else
 	total_size = size + unit;
 #endif
 
-	base = memalign(unit, total_size);
+	base = (MR_Word *) memalign(unit, total_size);
 	if (base == NULL) {
 		char buf[2560];
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
@@ -266,7 +350,7 @@ create_zone(const char *name, int id, size_t size,
 } /* end create_zone() */
 
 MemoryZone *
-construct_zone(const char *name, int id, Word *base,
+construct_zone(const char *name, int id, MR_Word *base,
 		size_t size, size_t offset, size_t redsize,
 		ZoneHandler handler)
 {
@@ -288,14 +372,14 @@ construct_zone(const char *name, int id, Word *base,
 
 	zone->bottom = base;
 
-#ifdef 	HAVE_MPROTECT
+#ifdef 	MR_PROTECTPAGE
 	total_size = size + unit;
 #else
 	total_size = size;
-#endif	/* HAVE_MPROTECT */
+#endif	/* MR_PROTECTPAGE */
 
-	zone->top = (Word *) ((char *)base + total_size);
-	zone->min = (Word *) ((char *)base + offset);
+	zone->top = (MR_Word *) ((char *)base + total_size);
+	zone->min = (MR_Word *) ((char *)base + offset);
 #ifdef	MR_LOWLEVEL_DEBUG
 	zone->max = zone->min;
 #endif	/* MR_LOWLEVEL_DEBUG */
@@ -304,9 +388,11 @@ construct_zone(const char *name, int id, Word *base,
 	** setup the redzone
 	*/
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-	zone->redzone_base = zone->redzone = (Word *)
-			round_up((Unsigned)base + size - redsize, unit);
-	if (mprotect((char *)zone->redzone, redsize + unit, MY_PROT) < 0) {
+	zone->redzone_base = zone->redzone = (MR_Word *)
+			round_up((MR_Unsigned)base + size - redsize, unit);
+	if (MR_protect_pages((char *)zone->redzone,
+			redsize + unit, MY_PROT) < 0)
+	{
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d redzone\n"
 			"base=%p, redzone=%p",
@@ -318,9 +404,9 @@ construct_zone(const char *name, int id, Word *base,
 	/*
 	** setup the hardzone
 	*/
-#if	defined(HAVE_MPROTECT)
-	zone->hardmax = (Word *) round_up((Unsigned)zone->top - unit, unit);
-	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0) {
+#if	defined(MR_PROTECTPAGE)
+	zone->hardmax = (MR_Word *) round_up((MR_Unsigned)zone->top - unit, unit);
+	if (MR_protect_pages((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"
 			"base=%p, hardmax=%p top=%p",
@@ -328,7 +414,7 @@ construct_zone(const char *name, int id, Word *base,
 			zone->top);
 		fatal_error(buf);
 	}
-#endif	/* HAVE_MPROTECT */
+#endif	/* MR_PROTECTPAGE */
 
 
 	return zone;
@@ -340,9 +426,8 @@ reset_redzone(MemoryZone *zone)
 #ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone = zone->redzone_base;
 
-	if (mprotect((char *)zone->redzone,
-		((char *)zone->top) - ((char *) zone->redzone), MY_PROT) < 0)
-	{
+	if (MR_protect_pages((char *)zone->redzone,
+		((char *)zone->top) - ((char *) zone->redzone), MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to reset %s#%d redzone\n"
 			"base=%p, redzone=%p",
@@ -390,7 +475,7 @@ debug_memory(void)
 		fprintf(stderr, "%-16s#%d-redzone_base	= %p\n",
 			zone->name, zone->id, (void *) zone->redzone_base);
 #endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
-#ifdef	HAVE_MPROTECT
+#ifdef	MR_PROTECTPAGE
 		fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
 			zone->name, zone->id, (void *) zone->hardmax);
 		fprintf(stderr, "%-16s#%d-size		= %lu\n",
@@ -400,7 +485,7 @@ debug_memory(void)
 		fprintf(stderr, "%-16s#%d-size		= %lu\n",
 			zone->name, zone->id, (unsigned long)
 			((char *)zone->top - (char *)zone->min));
-#endif	/* HAVE_MPROTECT */
+#endif	/* MR_PROTECTPAGE */
 		fprintf(stderr, "\n");
 	}
 }

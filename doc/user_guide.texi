@@ -9,7 +9,7 @@
 @c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
-@c @set aditi
+@set aditi
 
 @c @smallbook
 @c @cropmarks
@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-1999 The University of Melbourne.
+Copyright (C) 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -78,19 +78,14 @@ how to build and debug Mercury programs.
 * Running::         Execution of programs built with the Mercury compiler.
 * Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
 * Libraries::       Creating and using libraries of Mercury modules.
+* Using Aditi::     Executing Mercury predicates using the Aditi
+                    deductive database.
 * Debugging::       The Mercury debugger @samp{mdb}.
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
                     program performance.
 * Invocation::      List of options for the Mercury compiler.
 * Environment::     Environment variables used by the compiler and utilities.
 * C compilers::     How to use a C compiler other than GNU C.
-@ifset aditi 
-* Using Aditi::     Executing Mercury predicates using the Aditi
-                    deductive database.
-@end ifset 
-@c XXX I'd like to put the Aditi section below the Using libraries section
-@c in the menu but texinfo doesn't seem to like `@ifset's in menus.
-@c (complains about the next entry not having an `Up' node)
 @end menu
 @end ifinfo
 
@@ -433,8 +428,11 @@ Builds and installs a library whose top-level module is @var{main-module}.
 This target will build and install a static object library and
 (for platforms that support it) a shared object library,
 for the default grade and also for the additional grades specified
-in the LIBGRADES variable.  It will also build and install the
-necessary interface files.
+in the @code{LIBGRADES} variable.  It will also build and install the
+necessary interface files. The variable @code{INSTALL} specifies
+the name of the command to use to install each file, by default
+@samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
+to create directories, by default @samp{mkdir -p}.
 For more information, see @ref{Supporting multiple grades and architectures}.
 
 @item @var{main-module}.clean
@@ -470,12 +468,6 @@ and also the various possible executables, libraries and dependency files
 for the program as a whole ---
 @samp{@var{main-module}},
 @samp{@var{main-module}.split},
-@samp{@var{main-module}.nu},
-@samp{@var{main-module}.nu.save},
-@samp{@var{main-module}.nu.debug},
-@samp{@var{main-module}.nu.debug.save},
-@samp{@var{main-module}.sicstus},
-@samp{@var{main-module}.sicstus.debug},
 @samp{lib@var{main-module}.a},
 @samp{lib@var{main-module}.so},
 @samp{@var{main-module}.split.a},
@@ -576,6 +568,16 @@ looking for extra libraries.
 The path to the root of the directory hierarchy where the libraries,
 etc. you are building should be installed.  The default is to install in
 the same location as the Mercury compiler being used to do the install.
+
+@item INSTALL
+The command used to install each file in a library. The command should
+take a list of files to install and the location to install them.
+The default command is @samp{cp}.
+
+@item INSTALL_MKDIR
+The command used to create each directory in the directory hierarchy
+where the libraries are to be installed. The default command is
+@samp{mkdir -p}.
 
 @item LIBGRADES
 A list of additional grades which should be built when installing libraries.
@@ -876,6 +878,12 @@ One can override the list of grades to install for a given library
 @samp{lib@var{foo}} by setting the @samp{LIBGRADES-@var{foo}} variable,
 or add to it by setting @samp{EXTRA_LIBGRADES-@var{foo}}.
 
+The command used to install each file is specified by @samp{INSTALL}.
+If @samp{INSTALL} is not specified, @samp{cp} will be used.
+
+The command used to create directories is specified by @samp{INSTALL_MKDIR}.
+If @samp{INSTALL_MKDIR} is not specified, @samp{mkdir -p} will be used.
+
 Note that currently it is not possible to set the installation prefix
 on a library-by-library basis.
 
@@ -1089,13 +1097,13 @@ file in your home directory.
 For more information on buffers, windows, and frames,
 see the Emacs documentation.
 
-Another useful Emacs variable is @samp{gud-mdb-search-directories}.
+Another useful Emacs variable is @samp{gud-mdb-directories}.
 This specifies the list of directories to search for source files.
 You can use a command such as
 
 @example
 M-x set-variable @key{RET}
-gud-mdb-search-directories @key{RET}
+gud-mdb-directories @key{RET}
 (list "/foo/bar" "../other" "/home/guest") @key{RET}
 @end example
 
@@ -1103,7 +1111,7 @@ gud-mdb-search-directories @key{RET}
 to set it interactively, or you can put a command like
 
 @example
-(setq gud-mdb-search-directories
+(setq gud-mdb-directories
   (list "/foo/bar" "../other" "/home/guest"))
 @end example
 
@@ -1113,7 +1121,7 @@ in your @file{.emacs} file.
 At each trace event, the debugger will search for the
 source file corresponding to that event, first in the
 same directory as the program, and then in the directories
-specified by the @samp{gud-mdb-search-directories} variable.
+specified by the @samp{gud-mdb-directories} variable.
 It will display the source file, with the line number
 corresponding to that trace event marked by
 an arrow (@samp{=>}) at the start of the line.
@@ -1192,7 +1200,17 @@ a call event and a fail event
 a call event
 @end table
 
-Besides the event types call, exit, redo and fail,
+In addition to these four event types,
+Mercury supports @emph{exception} events.
+An exception event occurs
+when an exception has been thrown inside a procedure,
+and control is about to propagate this exception to the caller.
+An exception event can replace the final exit or fail event
+in the event sequences above
+or, in the case of erroneous procedures,
+can come after the call event.
+
+Besides the event types call, exit, redo, fail and exception,
 which describe the @emph{interface} of a call,
 Mercury also supports several types of events
 that report on what is happening @emph{internal} to a call.
@@ -1800,12 +1818,41 @@ the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
+@item next [-NSans] [@var{num}]
+Continues execution until it reaches the next event of
+the @var{num}'th ancestor of the call to which the current event refers.
+The default value of @var{num} is zero,
+which means skipping to the next event of the current call.
+Reports an error if execution is already at the end of the specified call.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
 @item finish [-NSans] [@var{num}]
-Continues execution until it reaches a final (EXIT or FAIL) port of
+Continues execution until it reaches a final (EXIT, FAIL or EXCP) port of
 the @var{num}'th ancestor of the call to which the current event refers.
 The default value of @var{num} is zero,
 which means skipping to the end of the current call.
 Reports an error if execution is already at the desired port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item exception [-NSans]
+Continues the program until execution reaches an exception event.
+Reports an error if the current event is already an exception event.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
 @samp{-a} or @samp{--all} specify the print level to use
@@ -1963,6 +2010,10 @@ the @samp{set} command in the browser.
 @item print *
 Prints the values of all the known variables in the current environment.
 @sp 1
+@item print exception
+Prints the value of the exception at an EXCP port.
+Reports an error if the current event does not refer to such a port.
+@sp 1
 @item browse @var{name}
 @itemx browse @var{num}
 Invokes an interactive term browser to browse the value of the
@@ -1979,6 +2030,11 @@ within a single screen.
 For further documentation on the interactive term browser,
 invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
+@sp 1
+@item browse exception
+Invokes the interactive term browser to browse
+the value of the exception at an EXCP port.
+Reports an error if the current event does not refer to such a port.
 @sp 1
 @item stack [-d]
 Prints the names of the ancestors of the call
@@ -2066,9 +2122,20 @@ The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
 specify the action to be taken at the break point.
 @sp 1
 By default, the initial state of the break point is @samp{stop}.
-@item break [-PSaei] @var{proc-spec}
+@item break [-AOPSaei] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
+@sp 1
+The options @samp{-A} or @samp{--select-all},
+and @samp{-O} or @samp{--select-one}
+select the action to be taken
+if the specification matches more than one procedure.
+If you have specified option @samp{-A} or @samp{--select-all},
+mdb will put a breakpoint on all matched procedures,
+whereas if you have specified option @samp{-O} or @samp{--select-one},
+mdb will report an error.
+By default, mdb will ask you whether you want to put a breakpoint
+on all matched procedures or just one, and if so, which one.
 @sp 1
 The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
 specify the action to be taken at the break point,
@@ -2226,12 +2293,12 @@ Whenever a command line has @var{name} as its first word,
 the debugger will substitute the given command and parameters for this word
 before executing the command line.
 @sp 1
-If @var{command} is the upper-case word @samp{EMPTY},
+If @var{name} is the upper-case word @samp{EMPTY},
 the debugger will substitute the given command and parameters
 whenever the user types in an empty command line.
 @sp 1
 @sp 1
-If @var{command} is the upper-case word @samp{NUMBER},
+If @var{name} is the upper-case word @samp{NUMBER},
 the debugger will insert the given command and parameters
 before the command line
 whenever the user types in a command line that consists of a single number.
@@ -2328,8 +2395,8 @@ End-of-file on the debugger's input is considered a quit command.
 @chapter Using Aditi
 
 The Mercury compiler allows compilation of predicates for execution
-using the Aditi deductive database. There are several sources of useful
-information:
+using the Aditi2 deductive database system. There are several sources
+of useful information:
 
 @itemize @bullet
 @item
@@ -2337,22 +2404,21 @@ the ``Aditi deductive database interface'' section of the
 ``Implementation-dependent extensions'' chapter in the
 Mercury Language Reference Manual
 @item
-the Aditi Reference Manual (doesn't exist yet) @c XXX
+the Aditi web site at <http://www.cs.mu.oz.au/aditi>
 @item
-the file @file{extras/aditi/aditi.m} in the @samp{mercury-extras} distribution
+the documentation supplied with Aditi, especially the file
+@file{$ADITI_HOME/doc/aditi.m}
+@item
+the samples provided with the Aditi distribution in @file{$ADITI_HOME/demos}
 @end itemize
 
 As an alternative to compiling stand-alone programs, you can execute
 queries using the Aditi query shell.
-@c XXX reference.
 
-To compile code which accesses an Aditi database, you will need to install
-the Aditi library in the @samp{extras/aditi} subdirectory of the
-@samp{mercury-extras} distribution. Once you have done that, use the
-Mmakefile in @samp{extras/aditi/samples} as a template, changing the values
-of the variables @samp{MADITI_DIR}, @samp{ADITI_API_INCL_DIR} and
-@samp{ADITI_API_LIB_DIR}. You should then be able to compile as
-normal using Mmake (@pxref{Using Mmake}).
+The Aditi interface library is installed as part of the Aditi
+installation process. To use the Aditi library in your programs, use
+the Mmakefile in @file{$ADITI_HOME/demos/transactions} as a template.
+
 @end ifset
 
 @node Profiling
@@ -2737,6 +2803,11 @@ after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
 
 @sp 1
+@item --inhibit-accumulator-warnings
+Don't warn about argument order rearrangement caused by
+@samp{--introduce-accumulators}.
+
+@sp 1
 @item --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 
@@ -3101,7 +3172,7 @@ I - imported predicates,
 M - mode and inst information,
 P - path information,
 T - type and typeclass information,
-U - unify predicates.
+U - unify and compare predicates.
 
 @ifset aditi
 @sp 1
@@ -3266,10 +3337,11 @@ grade options to set. The grade options may be given in any order.
 The available options each belong to a set of mutually
 exclusive alternatives governing a single aspect of the compilation model.
 The set of aspects and their alternatives are:
+
 @table @asis
-@item What combination of GNU-C extensions to use:
+@item What combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, and @samp{asm_fast} (the default is system dependent).
+@samp{fast}, @samp{asm_fast}, and @samp{hlc} (the default is system dependent).
 
 @item What garbage collection strategy to use:
 @samp{gc}, and @samp{agc} (the default is no garbage collection).
@@ -3326,6 +3398,9 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{asm_fast}
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
+@item @samp{hlc}
+@code{--high-level-code}.
+
 @item @samp{.gc}
 @code{--gc conservative}.
 
@@ -3365,17 +3440,26 @@ and grade modifier; they are followed by descriptions of those options.
 @item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
 @itemx @code{--no-gcc-global-registers} (grades: none, jump, asm_jump)
 Specify whether or not to use GNU C's global register variables extension.
+This option is ignored if the @samp{--high-level-code} option is enabled.
 
 @sp 1
 @item @code{--gcc-non-local-gotos} (grades: jump, fast, asm_jump, asm_fast)
-@item @code{--no-gcc-non-local-gotos} (grades: none, reg)
+@itemx @code{--no-gcc-non-local-gotos} (grades: none, reg)
 Specify whether or not to use GNU C's ``labels as values'' extension.
+This option is ignored if the @samp{--high-level-code} option is enabled.
 
 @sp 1
 @item @code{--asm-labels} (grades: asm_jump, asm_fast)
 @itemx @code{--no-asm-labels} (grades: none, reg, jump, fast)
 Specify whether or not to use GNU C's asm extensions
 for inline assembler labels.
+This option is ignored if the @samp{--high-level-code} option is enabled.
+
+@sp 1
+@item @code{-H}, @code{--high-level-code} (grades: hlc)
+Use an alternative back-end that generates high-level C code
+rather than the very low-level C code that is generated by our
+original back-end.
 
 @sp 1
 @item @code{--gc @{none, conservative, accurate@}}
@@ -3522,7 +3606,10 @@ Specify which C compiler to use.
 
 @sp 1
 @item --c-include-directory @var{dir}
-Specify the directory containing the Mercury C header files.
+Append @var{dir} to the list of directories to be searched for
+C header files.  Note that if you want to override this list, rather than
+append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
+environment variable to a sequence of @samp{--c-include-directory} options.
 
 @sp 1
 @item --cflags @var{options}
@@ -3761,6 +3848,18 @@ generate more efficient code for polymorphic predicates.
 Perform unused argument removal across module boundaries.
 This option implies @samp{--optimize-unused-args} and
 @samp{--intermodule-optimization}.
+
+@sp 1
+@item --unneeded-code
+Remove goals from computation paths where their outputs are not needed,
+provided the semantics options allow the deletion or movement of the goal.
+
+@sp 1
+@item --unneeded-code-copy-limit
+Gives the maximum number of places to which a goal may be copied
+when removing it from computation paths on which its outputs are not needed.
+A value of zero forbids goal movement and allows only goal deletion;
+a value of one prevents any increase in the size of the code.
 
 @sp 1
 @item --optimize-higher-order
@@ -4148,8 +4247,9 @@ The default grade to use if no @samp{--grade} option is specified.
 @item MERCURY_C_INCL_DIR
 Directory for the C header files for the Mercury runtime system (@file{*.h}).
 This environment variable is used
-only to define the default value of MERCURY_ALL_C_INCL_DIRS,
-so if you define that environment variable separately,
+only to define the default values of MERCURY_ALL_C_INCL_DIRS
+and MERCURY_ALL_MC_INCL_DIRS,
+so if you define those environment variables separately,
 the value of MERCURY_C_INCL_DIR is ignored.
 
 @sp 1
@@ -4157,8 +4257,23 @@ the value of MERCURY_C_INCL_DIR is ignored.
 A list of options for the C compiler that specifies
 all the directories the C compiler should search for the C header files
 of the Mercury runtime system and garbage collector.
-The default value of this option is -I$MERCURY_C_INCL_DIR,
+The default value of this option is @samp{-I$MERCURY_C_INCL_DIR},
 since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mgnuc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_MC_C_INCL_DIRS}, which is used by @samp{mmc}.
+
+@sp 1
+@item MERCURY_ALL_MC_C_INCL_DIRS
+A list of options for mmc that specifies
+all the directories it should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this option is
+@samp{--c-include-directory $MERCURY_C_INCL_DIR},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mmc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_C_INCL_DIRS}, which is used by @samp{mgnuc}.
 
 @sp 1
 @item MERCURY_INT_DIR
@@ -4171,8 +4286,8 @@ Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
 
 @sp 1
 @item MERCURY_C_LIB_DIR
-Base directory containing the Mercury libraries (@file{libmer.a} and
-possibly @file{libmer.so}) for each configuration and grade.
+Base directory containing the Mercury libraries (@file{libmer_*.a} and
+possibly @file{libmer_*.so}) for each configuration and grade.
 The libraries for each configuration and grade should
 be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,8 +12,11 @@
 
 #include        "mercury_imp.h"
 
+#ifdef HAVE_UNISTD_H
+  #include	<unistd.h>
+#endif
+
 #include	<stdio.h>
-#include	<unistd.h>
 #include	<errno.h>
 #include	<string.h>
 
@@ -58,15 +61,15 @@ static const char * MR_time_method;
 */
 
 typedef struct s_prof_call_node {
-        Code			*Callee;
-        Code			*Caller;
+        MR_Code			*Callee;
+        MR_Code			*Caller;
         unsigned long		count;
         struct s_prof_call_node	*left;
         struct s_prof_call_node	*right;
 } prof_call_node;
 
 typedef struct s_prof_time_node {
-        Code			*Addr;
+        MR_Code			*Addr;
         unsigned long		count;
         struct s_prof_time_node	*left;
         struct s_prof_time_node	*right;
@@ -88,7 +91,7 @@ typedef struct s_prof_time_node {
 ** Global Variables
 */
 
-Code *		volatile	MR_prof_current_proc;
+MR_Code *		volatile	MR_prof_current_proc;
 
 /* 
 ** Private global variables
@@ -98,7 +101,7 @@ static volatile	int		in_profiling_code = FALSE;
 
 
 #ifdef PROFILE_CALLS
-  static FILE 		*decl_fptr = NULL;
+  static FILE 		*MR_prof_decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 
@@ -297,7 +300,7 @@ prof_init_time_profile_method(void)
 */
 
 void
-MR_prof_call_profile(Code *Callee, Code *Caller)
+MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 {
 	prof_call_node	*node, **node_addr, *new_node;
 	int		 hash_value;
@@ -353,7 +356,7 @@ prof_time_profile(int signum)
 {
 	prof_time_node	*node, **node_addr, *new_node;
 	int		hash_value;
-	Code 		*current_proc;
+	MR_Code 		*current_proc;
 
 	/* Ignore any signals we get in this function or in prof_call_profile */
 	if (in_profiling_code) {
@@ -464,12 +467,12 @@ print_addr_pair_node(FILE *fptr, prof_call_node *node)
 */
 
 void
-MR_prof_output_addr_decl(const char *name, const Code *address)
+MR_prof_output_addr_decl(const char *name, const MR_Code *address)
 {
-	if (!decl_fptr) {
-		decl_fptr = checked_fopen("Prof.Decl", "create", "w");
+	if (!MR_prof_decl_fptr) {
+		MR_prof_decl_fptr = checked_fopen("Prof.Decl", "create", "w");
 	}
-	fprintf(decl_fptr, "%ld\t%s\n", (long) address, name);
+	fprintf(MR_prof_decl_fptr, "%ld\t%s\n", (long) address, name);
 }
 
 #endif /* PROFILE_CALLS */
@@ -610,20 +613,26 @@ MR_prof_finish(void)
 	if (done) return;
 	done = TRUE;
 
+#ifdef PROFILE_CALLS
+	prof_output_addr_pair_table();
+#endif
+
 #ifdef PROFILE_TIME
 	MR_prof_turn_off_time_profiling();
 	prof_output_addr_table();
 #endif
 
-#ifdef PROFILE_CALLS
-	if (decl_fptr) {
-		checked_fclose(decl_fptr, "Prof.Decl");
-	}
-	prof_output_addr_pair_table();
-#endif
-
 #ifdef PROFILE_MEMORY
 	prof_output_mem_tables();
+#endif
+}
+
+void MR_close_prof_decl_file(void)
+{
+#ifdef PROFILE_CALLS
+	if (MR_prof_decl_fptr) {
+		checked_fclose(MR_prof_decl_fptr, "Prof.Decl");
+	}
 #endif
 }
 

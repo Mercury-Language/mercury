@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,33 +145,24 @@
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module trace, globals, polymorphism, passes_aux.
+:- import_module trace, globals, polymorphism, passes_aux, prog_util.
 :- import_module term, varset.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module string.
 
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
-	requantify_proc(ProcInfo0, ProcInfo1),
+	module_info_globals(ModuleInfo, Globals),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
+	requantify_proc(TypeInfoLiveness, ProcInfo0, ProcInfo1),
+
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
-	module_info_globals(ModuleInfo, Globals),
-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	(
-		polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity)
-	->
-		TypeInfoLiveness = no
-	;
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness)
-	),
-	live_info_init(ModuleInfo, ProcInfo1, TypeInfoLiveness,
-		VarTypes, Varset, LiveInfo),
+	proc_info_typeinfo_varmap(ProcInfo1, TVarMap),
+	live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, TVarMap, Varset,
+		LiveInfo),
 
 	initial_liveness(ProcInfo1, PredId, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
@@ -322,8 +313,9 @@ detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 detect_liveness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
 	error("unify in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _) :-
-	error("pragma_c_code in detect_liveness_in_goal_2").
+detect_liveness_in_goal_2(pragma_foreign_code(_,_,_,_,_,_,_,_),
+		_, _, _, _, _) :-
+	error("pragma_foreign_code in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	error("bi_implication in detect_liveness_in_goal_2").
@@ -472,7 +464,7 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 detect_deadness_in_goal_2(par_conj(Goals0, SM), GoalInfo, Deadness0, LiveInfo,
 		Deadness, par_conj(Goals, SM)) :-
 	set__init(Union0),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals),
 	detect_deadness_in_par_conj(Goals0, Deadness0, NonLocals,
 		LiveInfo, Union0, Union, Goals),
 	set__union(Union, Deadness0, Deadness).
@@ -528,8 +520,9 @@ detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
 	error("unify in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _) :-
-	error("pragma_c_code in detect_deadness_in_goal_2").
+detect_deadness_in_goal_2(pragma_foreign_code(_, _, _, _, _, _, _, _),
+		_, _, _, _, _) :-
+	error("pragma_foreign_code in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	error("bi_implication in detect_deadness_in_goal_2").
@@ -679,7 +672,10 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	Else0 = _ElseExpr0 - ElseInfo0,
 	goal_info_get_pre_deaths(ElseInfo0, ElsePreDeath0),
 	set__difference(Liveness0, ElsePreDeath0, CondResumeVars0),
-	set__union(CondResumeVars0, ResumeVars0, CondResumeVars),
+	liveness__maybe_complete_with_typeinfos(LiveInfo, CondResumeVars0,
+		CondResumeVars1),
+		% ResumeVars0 should already have been completed.
+	set__union(CondResumeVars1, ResumeVars0, CondResumeVars),
 
 	detect_resume_points_in_goal(Cond0, Liveness0, LiveInfo,
 		CondResumeVars, Cond1, LivenessCond),
@@ -722,7 +718,10 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 		not(Goal), Liveness) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
 		_, Liveness),
-	set__union(Liveness, ResumeVars0, ResumeVars1),
+	liveness__maybe_complete_with_typeinfos(LiveInfo, Liveness,
+		CompletedLiveness),
+		% ResumeVars0 should already have been completed.
+	set__union(CompletedLiveness, ResumeVars0, ResumeVars1),
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars1,
 		Goal1, _Liveness),
 
@@ -751,9 +750,8 @@ detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 detect_resume_points_in_goal_2(unify(A,B,C,D,E), _, Liveness, _, _,
 		unify(A,B,C,D,E), Liveness).
 
-detect_resume_points_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, Liveness,
-		_, _,
-		pragma_c_code(A,B,C,D,E,F,G), Liveness).
+detect_resume_points_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), _,
+		Liveness, _, _, pragma_foreign_code(A,B,C,D,E,F,G,H), Liveness).
 
 detect_resume_points_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
 	% these should have been expanded out by now
@@ -777,6 +775,14 @@ detect_resume_points_in_conj([Goal0 | Goals0], Liveness0, LiveInfo,
 	% we stop generating code after the first cannot_fail disjunct.
 	% Second, an empty pruned disjunction is legal, while an empty
 	% nondet disjunction isn't.
+	%
+	% For both kinds of disjunctions, the resume points to be attached to
+	% the non-last disjuncts must be completed with the required typeinfos
+	% if --typeinfo-liveness is set. ResumeVars0 should already be so
+	% completed, so we need only complete the sets added here. We therefore
+	% perform this completion when we return the set of variables needed by
+	% the last disjunct, and when we add to this set the set of variables
+	% needed by a non-last disjunct.
 
 :- pred detect_resume_points_in_non_disj(list(hlds_goal), set(prog_var),
 		live_info, set(prog_var), list(hlds_goal),
@@ -876,7 +882,10 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	Goal = _ - GoalInfo,
 	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
 	set__difference(Liveness0, PreDeaths, NeededFirst),
-	set__union(NeededFirst, NeededRest, Needed),
+	liveness__maybe_complete_with_typeinfos(LiveInfo, NeededFirst,
+		CompletedNeededFirst),
+		% NeededRest has already been completed.
+	set__union(CompletedNeededFirst, NeededRest, Needed),
 
 	require_equal(Liveness, LivenessRest, "disjunction", LiveInfo).
 
@@ -886,12 +895,14 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 	is det.
 
 detect_resume_points_in_last_disjunct(Goal0, Liveness0, LiveInfo,
-		ResumeVars0, Goal, Liveness, Needed) :-
+		ResumeVars0, Goal, Liveness, CompletedNeeded) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo,
 		ResumeVars0, Goal, Liveness),
 	Goal = _ - GoalInfo,
 	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
-	set__difference(Liveness0, PreDeaths, Needed).
+	set__difference(Liveness0, PreDeaths, Needed),
+	liveness__maybe_complete_with_typeinfos(LiveInfo, Needed,
+		CompletedNeeded).
 
 :- pred detect_resume_points_in_cases(list(case), set(prog_var), live_info,
 		set(prog_var), list(case), set(prog_var)).
@@ -933,7 +944,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 	->
 		true
 	;
-		live_info_get_varset(LiveInfo, Varset),
+		Varset = LiveInfo^varset,
 		set__to_sorted_list(LivenessFirst, FirstVarsList),
 		set__to_sorted_list(LivenessRest, RestVarsList),
 		list__map(varset__lookup_name(Varset),
@@ -979,23 +990,12 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 		% typeinfo vars.
 	module_info_globals(ModuleInfo, Globals),
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	( 	
-		TypeinfoLiveness = yes,
-		\+ polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity)
-	->
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
-			TypeInfoNonLocals),
-		set__union(NonLocals0, TypeInfoNonLocals, NonLocals)
-	;
-		NonLocals = NonLocals0
-	),
+	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
+	proc_info_maybe_complete_with_typeinfo_vars(NonLocals0,
+		TypeinfoLiveness, VarTypes, TVarMap, NonLocals),
 	set__intersect(Liveness2, NonLocals, Liveness).
 
 :- pred initial_liveness_2(list(prog_var), list(mode), list(type), module_info,
@@ -1037,16 +1037,9 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
 
 		% If doing alternate liveness, the corresponding
 		% typeinfos need to be added to these.
-	live_info_get_typeinfo_liveness(LiveInfo, TypeinfoLiveness),
-	( 
-		TypeinfoLiveness = yes
-	->
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, Deadness2,
-			TypeInfoVars),
-		set__union(Deadness2, TypeInfoVars, Deadness)
-	;
-		Deadness = Deadness2
-	).
+	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+	proc_info_maybe_complete_with_typeinfo_vars(Deadness2,
+		LiveInfo^typeinfo_liveness, VarTypes, TVarMap, Deadness).
 
 :- pred initial_deadness_2(list(prog_var), list(mode), list(type),
 		module_info, set(prog_var), set(prog_var)).
@@ -1101,11 +1094,11 @@ add_deadness_before_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 find_value_giving_occurrences([], _, _, ValueVars, ValueVars).
 find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ValueVars0, ValueVars) :-
-	live_info_get_var_types(LiveInfo, VarTypes),
-	live_info_get_module_info(LiveInfo, ModuleInfo),
+	VarTypes = LiveInfo^vartypes,
 	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_search_var(InstMapDelta, Var, Inst),
+		ModuleInfo = LiveInfo^module_info,
 		mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
 	->
 		set__insert(ValueVars0, Var, ValueVars1)
@@ -1116,73 +1109,43 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ValueVars1, ValueVars).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- type live_info	--->	live_info(
-					module_info,
-					proc_info,
-					bool,		% Do we use typeinfo
-							% liveness for this
-							% proc?
-					map(prog_var, type),
-					prog_varset
-				).
-
-:- pred live_info_init(module_info, proc_info, bool, map(prog_var, type),
-	prog_varset, live_info).
-:- mode live_info_init(in, in, in, in, in, out) is det.
-
-live_info_init(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset,
-	live_info(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset)).
-
-:- pred live_info_get_module_info(live_info, module_info).
-:- mode live_info_get_module_info(in, out) is det.
-
-live_info_get_module_info(live_info(ModuleInfo, _, _, _, _), ModuleInfo).
-
-:- pred live_info_get_proc_info(live_info, proc_info).
-:- mode live_info_get_proc_info(in, out) is det.
-
-live_info_get_proc_info(live_info(_, ProcInfo, _, _, _), ProcInfo).
-
-:- pred live_info_get_typeinfo_liveness(live_info, bool).
-:- mode live_info_get_typeinfo_liveness(in, out) is det.
-
-live_info_get_typeinfo_liveness(live_info(_, _, TypeInfoLiveness, _, _),
-	TypeInfoLiveness).
-
-:- pred live_info_get_var_types(live_info, map(prog_var, type)).
-:- mode live_info_get_var_types(in, out) is det.
-
-live_info_get_var_types(live_info(_, _, _, VarTypes, _), VarTypes).
-
-:- pred live_info_get_varset(live_info, prog_varset).
-:- mode live_info_get_varset(in, out) is det.
-
-live_info_get_varset(live_info(_, _, _, _, Varset), Varset).
-
-%-----------------------------------------------------------------------------%
 
 	% Get the nonlocals, and, if doing alternate liveness, add the
 	% typeinfo vars for the nonlocals.
 
-:- pred liveness__get_nonlocals_and_typeinfos(live_info, hlds_goal_info,
-		set(prog_var)).
-:- mode liveness__get_nonlocals_and_typeinfos(in, in, out) is det.
+:- pred liveness__get_nonlocals_and_typeinfos(live_info::in, hlds_goal_info::in,
+	set(prog_var)::out) is det.
 
 liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, 
 		NonLocals) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	live_info_get_typeinfo_liveness(LiveInfo, TypeinfoLiveness),
-	( 
-		TypeinfoLiveness = yes
-	->
-		live_info_get_proc_info(LiveInfo, ProcInfo),
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
-			TypeInfoVarsNonLocals),
-		set__union(NonLocals0, TypeInfoVarsNonLocals, NonLocals)
-	;
-		NonLocals = NonLocals0
-	).
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
+	liveness__maybe_complete_with_typeinfos(LiveInfo,
+		NonLocals0, NonLocals).
+
+:- pred liveness__maybe_complete_with_typeinfos(live_info::in,
+	set(prog_var)::in, set(prog_var)::out) is det.
+
+liveness__maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
+	proc_info_maybe_complete_with_typeinfo_vars(Vars0,
+		LiveInfo^typeinfo_liveness, LiveInfo^vartypes,
+		LiveInfo^type_info_varmap, Vars).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type live_info
+	--->	live_info(
+			module_info		::	module_info,
+			typeinfo_liveness	::	bool,
+			vartypes		::	vartypes,
+			type_info_varmap	::	type_info_varmap,
+			varset			::	prog_varset
+		).
+
+:- pred live_info_init(module_info::in, bool::in, vartypes::in,
+	type_info_varmap::in, prog_varset::in, live_info::out) is det.
+
+live_info_init(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset,
+	live_info(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset)).
 
 %-----------------------------------------------------------------------------%

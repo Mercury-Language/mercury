@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -599,7 +599,7 @@ rl_opt_info_init(ModuleInfo, RelationInfoMap, Inputs, Outputs,
 	relation__init(FlowGraph0),
 	FirstBlockId = 0,
 
-	map__keys(RelationInfoMap, RelationIds),
+	map__sorted_keys(RelationInfoMap, RelationIds),
 	( list__last(RelationIds, HighestRelationId) ->
 		NextRelationId is HighestRelationId + 1
 	;

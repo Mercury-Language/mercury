@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -89,14 +89,15 @@
 :- interface.
 
 :- import_module llds.
-:- import_module bool, list.
+:- import_module bool, list, counter.
 
 	% The first bool output says whether we performed any modifications.
 	% If yes, then we also introduced some extra labels that should be
 	% deleted. The second says whether we introduced any jumps that
 	% can be profitably be short-circuited.
 
-:- pred frameopt_main(list(instruction)::in, list(instruction)::out,
+:- pred frameopt_main(list(instruction)::in, proc_label::in,
+	counter::in, counter::out, list(instruction)::out,
 	bool::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -106,18 +107,16 @@
 :- import_module livemap, prog_data, opt_util, code_util, opt_debug.
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
-frameopt_main(Instrs0, Instrs, Mod, Jumps) :-
-	opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr,
-		Comments0, Instrs1),
+frameopt_main(Instrs0, ProcLabel, C0, C, Instrs, Mod, Jumps) :-
+	opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
 	(
 		frameopt__detstack_setup(Instrs1, FrameSize, Msg, _, _, _)
 	->
-		opt_util__new_label_no(Instrs0, 1000, N0),
 		map__init(BlockMap0),
-		divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel, N0,
-			BasicInstrs, N1),
+		divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel, C0,
+			BasicInstrs, C1),
 		build_block_map(BasicInstrs, FrameSize, LabelSeq0,
-			BlockMap0, BlockMap1, ProcLabel, N1, N2),
+			BlockMap0, BlockMap1, ProcLabel, C1, C2),
 		analyze_block_map(LabelSeq0, BlockMap1, BlockMap2, KeepFrame),
 		(
 			KeepFrame = yes(FirstLabel - SecondLabel),
@@ -131,14 +130,15 @@ frameopt_main(Instrs0, Instrs, Mod, Jumps) :-
 			list__append(Comments0, [NewComment], Comments),
 			flatten_block_seq(LabelSeq, BlockMap, BodyInstrs),
 			list__append(Comments, BodyInstrs, Instrs),
+			C = C2,
 			Mod = yes,
 			Jumps = yes
 		;
 			KeepFrame = no,
 			( can_delay_frame(LabelSeq0, BlockMap2, yes) ->
 				delay_frame(LabelSeq0, BlockMap2,
-					FrameSize, Msg,
-					ProcLabel, N2, LabelSeq, BlockMap),
+					FrameSize, Msg, ProcLabel, C2, C,
+					LabelSeq, BlockMap),
 				NewComment = comment("delaying stack frame")
 					- "",
 				list__append(Comments0, [NewComment], Comments),
@@ -149,12 +149,14 @@ frameopt_main(Instrs0, Instrs, Mod, Jumps) :-
 				Jumps = no
 			;
 				Instrs = Instrs0,
+				C = C0,
 				Mod = no,
 				Jumps = no
 			)
 		)
 	;
 		Instrs = Instrs0,
+		C = C0,
 		Mod = no,
 		Jumps = no
 	).
@@ -212,36 +214,36 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
 	% every basic block has labels around it.
 
 :- pred divide_into_basic_blocks(list(instruction)::in, proc_label::in,
-	int::in, list(instruction)::out, int::out) is det.
+	counter::in, list(instruction)::out, counter::out) is det.
 
-divide_into_basic_blocks([], _, N, [], N).
+divide_into_basic_blocks([], _, C, [], C).
 	% Control can fall of the end of a procedure if that procedure
 	% ends with a call to another procedure that cannot succeed.
 	% This is the only situation in which the base case can be reached.
-divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, N0, Instrs, N) :-
+divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, C0, Instrs, C) :-
 	Instr0 = Uinstr0 - _Comment,
 	( opt_util__can_instr_branch_away(Uinstr0, yes) ->
 		(
 			Instrs0 = [Instr1 | _],
 			( Instr1 = label(_) - _ ->
 				divide_into_basic_blocks(Instrs0, ProcLabel,
-					N0, Instrs1, N),
+					C0, Instrs1, C),
 				Instrs = [Instr0 | Instrs1]
 			;
-				N1 is N0 + 1,
-				NewLabel = local(ProcLabel, N0),
+				counter__allocate(N, C0, C1),
+				NewLabel = local(ProcLabel, N),
 				NewInstr = label(NewLabel) - "",
 				divide_into_basic_blocks(Instrs0, ProcLabel,
-					N1, Instrs1, N),
+					C1, Instrs1, C),
 				Instrs = [Instr0, NewInstr | Instrs1]
 			)
 		;
 			Instrs0 = [],
 			Instrs = [Instr0],
-			N = N0
+			C = C0
 		)
 	;
-		divide_into_basic_blocks(Instrs0, ProcLabel, N0, Instrs1, N),
+		divide_into_basic_blocks(Instrs0, ProcLabel, C0, Instrs1, C),
 		Instrs = [Instr0 | Instrs1]
 	).
 
@@ -268,12 +270,12 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, N0, Instrs, N) :-
 	% order.
 
 :- pred build_block_map(list(instruction)::in, int::in, list(label)::out,
-	block_map::in, block_map::out, proc_label::in, int::in, int::out)
-	is det.
+	block_map::in, block_map::out, proc_label::in,
+	counter::in, counter::out) is det.
 
-build_block_map([], _, [], BlockMap, BlockMap, _, N, N).
+build_block_map([], _, [], BlockMap, BlockMap, _, C, C).
 build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
-		ProcLabel, N0, N) :-
+		ProcLabel, C0, C) :-
 	( Instr0 = label(Label) - _ ->
 		( 
 			frameopt__detstack_setup(Instrs0, _, _, Setup,
@@ -289,16 +291,16 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 				Instrs1 = [Instr1 | _],
 				Instr1 = label(_) - _
 			->
-				N1 = N0,
+				C1 = C0,
 				Instrs2 = Instrs1
 			;
-				N1 is N0 + 1,
-				NewLabel = local(ProcLabel, N0),
+				counter__allocate(N, C0, C1),
+				NewLabel = local(ProcLabel, N),
 				NewInstr = label(NewLabel) - "",
 				Instrs2 = [NewInstr | Instrs1]
 			),
 			build_block_map(Instrs2, FrameSize, LabelSeq0,
-				BlockMap0, BlockMap1, ProcLabel, N1, N),
+				BlockMap0, BlockMap1, ProcLabel, C1, C),
 			map__det_insert(BlockMap1, Label, BlockInfo, BlockMap),
 			LabelSeq = [Label | LabelSeq0]
 		;
@@ -310,7 +312,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 			list__append(Succip, Teardown1, Teardown),
 			( Tail = [] ->
 				MaybeTailInfo = no,
-				N1 = N0,
+				C1 = C0,
 				LabelledBlock = [Instr0 | Teardown],
 				TeardownLabel = Label,
 				TeardownInfo = block_info(TeardownLabel,
@@ -321,8 +323,8 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 				TailInfo = block_info(Label, [Instr0 | Tail],
 					[], no, ordinary(Needs)),
 				MaybeTailInfo = yes(TailInfo - Label),
-				N1 is N0 + 1,
-				NewLabel = local(ProcLabel, N0),
+				counter__allocate(N, C0, C1),
+				NewLabel = local(ProcLabel, N),
 				NewInstr = label(NewLabel) - "",
 				LabelledBlock = [NewInstr | Teardown],
 				TeardownLabel = NewLabel,
@@ -331,7 +333,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 					teardown(Succip, Livevals, Goto))
 			),
 			build_block_map(Remain, FrameSize, LabelSeq0,
-				BlockMap0, BlockMap1, ProcLabel, N1, N),
+				BlockMap0, BlockMap1, ProcLabel, C1, C),
 			(
 				MaybeTailInfo = no,
 				map__det_insert(BlockMap1, TeardownLabel,
@@ -352,7 +354,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 			BlockInfo = block_info(Label, [Instr0 | Block],
 				[], no, ordinary(Needs)),
 			build_block_map(Instrs1, FrameSize, LabelSeq0,
-				BlockMap0, BlockMap1, ProcLabel, N0, N),
+				BlockMap0, BlockMap1, ProcLabel, C0, C),
 			map__det_insert(BlockMap1, Label, BlockInfo, BlockMap),
 			LabelSeq = [Label | LabelSeq0]
 		)
@@ -539,11 +541,11 @@ block_needs_frame(Instrs, NeedsFrame) :-
 				Uinstr = c_code(_)
 			;
 				Uinstr = pragma_c(_, _, MayCallMercury,
-					MaybeFixed, _, NeedStack),
+					_, MaybeLayout, _, NeedStack),
 				(
 					MayCallMercury = may_call_mercury
 				;
-					MaybeFixed = yes(_)
+					MaybeLayout = yes(_)
 				;
 					NeedStack = yes
 				)
@@ -668,7 +670,7 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 			Uinstr = call(_, _, _, _, _)
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
-			Uinstr = pragma_c(_, _, may_call_mercury, _, _, _)
+			Uinstr = pragma_c(_, _, may_call_mercury, _, _, _, _)
 		)
 	->
 		CanClobberSuccip = yes
@@ -833,9 +835,10 @@ can_delay_frame([Label | Labels], BlockMap, First) :-
 	%	either just before or just after the original block.
 
 :- pred delay_frame(list(label)::in, block_map::in, int::in, string::in,
-	proc_label::in, int::in, list(label)::out, block_map::out) is det.
+	proc_label::in, counter::in, counter::out,
+	list(label)::out, block_map::out) is det.
 
-delay_frame(LabelSeq0, BlockMap0, FrameSize, Msg, ProcLabel, N0,
+delay_frame(LabelSeq0, BlockMap0, FrameSize, Msg, ProcLabel, C0, C,
 		LabelSeq, BlockMap) :-
 	map__init(RevMap0),
 	queue__init(Queue0),
@@ -847,7 +850,7 @@ delay_frame(LabelSeq0, BlockMap0, FrameSize, Msg, ProcLabel, N0,
 	map__init(ParMap0),
 	set__init(FallIntoParallel0),
 	process_frame_delay(LabelSeq0, BlockMap0, ParMap0, FallIntoParallel0,
-		FramedLabels, FrameSize, Msg, ProcLabel, N0,
+		FramedLabels, FrameSize, Msg, ProcLabel, C0, C,
 		LabelSeq1, BlockMap1, ParMap, FallIntoParallel),
 	create_parallels(LabelSeq1, BlockMap1, ParMap, FallIntoParallel,
 		LabelSeq, BlockMap).
@@ -958,14 +961,14 @@ propagate_framed_labels(Queue0, BlockMap, RevMap,
 	% see the comment at the top of delay_frame.
 
 :- pred process_frame_delay(list(label)::in, block_map::in,
-	par_map::in, set(label)::in,
-	set(label)::in, int::in, string::in, proc_label::in, int::in,
+	par_map::in, set(label)::in, set(label)::in, int::in, string::in,
+	proc_label::in, counter::in, counter::out,
 	list(label)::out, block_map::out, par_map::out, set(label)::out) is det.
 
-process_frame_delay([], BlockMap, ParMap, FallIntoParallel, _, _, _, _, _,
+process_frame_delay([], BlockMap, ParMap, FallIntoParallel, _, _, _, _, C, C,
 		[], BlockMap, ParMap, FallIntoParallel).
 process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
-		FramedLabels, FrameSize, Msg, ProcLabel, N0,
+		FramedLabels, FrameSize, Msg, ProcLabel, C0, C,
 		Labels, BlockMap, ParMap, FallIntoParallel) :-
 	map__lookup(BlockMap0, Label0, BlockInfo0),
 	BlockInfo0 = block_info(Label0Copy, Instrs0, SideLabels0,
@@ -1000,6 +1003,7 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 			% we can't delay the frame setup,
 			% so return everything unchanged
 			Labels = [Label0 | Labels0],
+			C = C0,
 			BlockMap = BlockMap0,
 			ParMap = ParMap0,
 			FallIntoParallel = FallIntoParallel0
@@ -1010,7 +1014,7 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 				BlockMap1),
 			process_frame_delay(Labels0, BlockMap1,
 				ParMap0, FallIntoParallel0, FramedLabels,
-				FrameSize, Msg, ProcLabel, N0,
+				FrameSize, Msg, ProcLabel, C0, C,
 				Labels1, BlockMap, ParMap, FallIntoParallel),
 			Labels = [Label0 | Labels1]
 		)
@@ -1024,7 +1028,7 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 			% successors expect one, so we need not do anything.
 			process_frame_delay(Labels0, BlockMap0,
 				ParMap0, FallIntoParallel0, FramedLabels,
-				FrameSize, Msg, ProcLabel, N0,
+				FrameSize, Msg, ProcLabel, C0, C,
 				Labels1, BlockMap, ParMap, FallIntoParallel),
 			Labels = [Label0 | Labels1]
 		;
@@ -1038,30 +1042,30 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 			% instead.
 			transform_ordinary_block(Label0, Labels0, BlockInfo0,
 				BlockMap0, ParMap0, FallIntoParallel0,
-				FramedLabels, FrameSize, Msg, ProcLabel, N0,
+				FramedLabels, FrameSize, Msg, ProcLabel, C0, C,
 				Labels, BlockMap, ParMap, FallIntoParallel)
 		)
 	;
 		Type = teardown(_, _, _),
 		process_frame_delay(Labels0, BlockMap0,
 			ParMap0, FallIntoParallel0, FramedLabels,
-			FrameSize, Msg, ProcLabel, N0,
+			FrameSize, Msg, ProcLabel, C0, C,
 			Labels1, BlockMap, ParMap, FallIntoParallel),
 		Labels = [Label0 | Labels1]
 	).
 
 :- pred transform_ordinary_block(label::in, list(label)::in, block_info::in,
-	block_map::in, par_map::in, set(label)::in,
-	set(label)::in, int::in, string::in, proc_label::in, int::in,
+	block_map::in, par_map::in, set(label)::in, set(label)::in, int::in,
+	string::in, proc_label::in, counter::in, counter::out,
 	list(label)::out, block_map::out, par_map::out, set(label)::out) is det.
 
 transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
-		FallIntoParallel0, FramedLabels, FrameSize, Msg,
-		ProcLabel, N0, Labels, BlockMap, ParMap, FallIntoParallel) :-
+		FallIntoParallel0, FramedLabels, FrameSize, Msg, ProcLabel,
+		C0, C, Labels, BlockMap, ParMap, FallIntoParallel) :-
 	BlockInfo0 = block_info(_, Instrs0, SideLabels0,
 		MaybeFallThrough0, Type),
 	mark_parallels_for_teardown(SideLabels0, SideLabels,
-		AssocLabelMap, BlockMap0, ProcLabel, N0, N1, ParMap0, ParMap1),
+		AssocLabelMap, BlockMap0, ProcLabel, C0, C1, ParMap0, ParMap1),
 	pick_last(Instrs0, PrevInstrs, LastInstr0),
 	map__from_assoc_list(AssocLabelMap, LabelMap),
 	opt_util__replace_labels_instruction(LastInstr0, LabelMap, no,
@@ -1083,10 +1087,10 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 				% stack frame to a block which needs a
 				% stack frame, so we must create one.
 
-				NewLabel = local(ProcLabel, N1),
+				counter__allocate(N, C1, C2),
+				NewLabel = local(ProcLabel, N),
 				MaybeFallThrough = yes(NewLabel),
 				MaybeNewLabel = yes(NewLabel),
-				N2 is N1 + 1,
 				SetupCode = [
 					label(NewLabel)
 						- "late setup label",
@@ -1104,7 +1108,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 				MaybeFallThrough = yes(FallThrough),
 				BlockMap1 = BlockMap0,
 				MaybeNewLabel = no,
-				N2 = N1
+				C2 = C1
 			)
 		;
 			FallThroughType = teardown(_, _, _),
@@ -1113,7 +1117,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 			set__insert(FallIntoParallel0,
 				FallThrough, FallIntoParallel1),
 			MaybeNewLabel = no,
-			mark_parallel(FallThrough, _, ProcLabel, N1, N2,
+			mark_parallel(FallThrough, _, ProcLabel, C1, C2,
 				ParMap1, ParMap2)
 		)
 	;
@@ -1123,13 +1127,13 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 		FallIntoParallel1 = FallIntoParallel0,
 		ParMap2 = ParMap1,
 		MaybeNewLabel = no,
-		N2 = N1
+		C2 = C1
 	),
 	BlockInfo = block_info(Label0, Instrs, SideLabels,
 		MaybeFallThrough, Type),
 	map__set(BlockMap1, Label0, BlockInfo, BlockMap2),
 	process_frame_delay(Labels0, BlockMap2, ParMap2, FallIntoParallel1,
-		FramedLabels, FrameSize, Msg, ProcLabel, N2,
+		FramedLabels, FrameSize, Msg, ProcLabel, C2, C,
 		Labels1, BlockMap, ParMap, FallIntoParallel),
 	( MaybeNewLabel = yes(NewLabel2) ->
 		Labels = [Label0, NewLabel2 | Labels1]
@@ -1149,12 +1153,13 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 
 :- pred mark_parallels_for_teardown(list(label)::in, list(label)::out,
 	assoc_list(label)::out, block_map::in,
-	proc_label::in, int::in, int::out, par_map::in, par_map::out) is det.
+	proc_label::in, counter::in, counter::out,
+	par_map::in, par_map::out) is det.
 
-mark_parallels_for_teardown([], [], [], _, _, N, N, ParMap, ParMap).
+mark_parallels_for_teardown([], [], [], _, _, C, C, ParMap, ParMap).
 mark_parallels_for_teardown([Label0 | Labels0], [Label | Labels],
 		[Label0 - Label | LabelMap], BlockMap,
-		ProcLabel, N0, N, ParMap0, ParMap) :-
+		ProcLabel, C0, C, ParMap0, ParMap) :-
 	map__lookup(BlockMap, Label0, BlockInfo),
 	BlockInfo = block_info(_, _, _, _, Type),
 	(
@@ -1163,31 +1168,31 @@ mark_parallels_for_teardown([Label0 | Labels0], [Label | Labels],
 	;
 		Type = ordinary(_),
 		Label = Label0,
-		N1 = N0,
+		C1 = C0,
 		ParMap1 = ParMap0
 	;
 		Type = teardown(_, _, _),
-		mark_parallel(Label0, Label, ProcLabel, N0, N1,
+		mark_parallel(Label0, Label, ProcLabel, C0, C1,
 			ParMap0, ParMap1)
 	),
 	mark_parallels_for_teardown(Labels0, Labels, LabelMap,
-		BlockMap, ProcLabel, N1, N, ParMap1, ParMap).
+		BlockMap, ProcLabel, C1, C, ParMap1, ParMap).
 
 	% Given the label of a teardown block, allocate a label for its
 	% non-teardown parallel if it doesn't already have one.
 
-:- pred mark_parallel(label::in, label::out,
-	proc_label::in, int::in, int::out, par_map::in, par_map::out) is det.
+:- pred mark_parallel(label::in, label::out, proc_label::in,
+	counter::in, counter::out, par_map::in, par_map::out) is det.
 
-mark_parallel(Label0, Label, ProcLabel, N0, N, ParMap0, ParMap) :-
+mark_parallel(Label0, Label, ProcLabel, C0, C, ParMap0, ParMap) :-
 	( map__search(ParMap0, Label0, OldParallel) ->
 		Label = OldParallel,
-		N = N0,
+		C = C0,
 		ParMap = ParMap0
 	;
-		NewParallel = local(ProcLabel, N0),
+		counter__allocate(N, C0, C),
+		NewParallel = local(ProcLabel, N),
 		Label = NewParallel,
-		N is N0 + 1,
 		map__det_insert(ParMap0, Label0, NewParallel, ParMap)
 	).
 

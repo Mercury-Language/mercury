@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,7 @@
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
+		;	inhibit_accumulator_warnings
 		;	halt_at_warn
 		;	halt_at_syntax_errors
 		;	warn_singleton_vars
@@ -109,7 +110,7 @@
 		;	dump_hlds
 		;	dump_hlds_alias
 		;	dump_hlds_options
-		;	verbose_dump_hlds
+		;	dump_mlds
 		;	generate_schemas
 		;	dump_rl
 		;	dump_rl_bytecode
@@ -164,9 +165,12 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
-		;	highlevel_c
+		;	highlevel_code
+		;	highlevel_data
 		;	gcc_nested_functions
 		;	unboxed_float
+		;       unboxed_enums
+		;       unboxed_no_tag_types
 		;	sync_term_size % in words
 		;	type_layout
 	% Options for internal use only
@@ -259,6 +263,8 @@
 		;	cflags_for_gotos
 		;	c_debug
 		;	c_include_directory
+		;	c_flag_to_name_object_file
+		;	object_file_extension
 		;	max_jump_table_size
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
@@ -293,6 +299,8 @@
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
+		;	unneeded_code
+		;	unneeded_code_copy_limit
 		;	type_specialization
 		;	user_guided_type_specialization
 		;	higher_order_size_limit
@@ -406,6 +414,7 @@ option_defaults(Option, Default) :-
 option_defaults_2(warning_option, [
 		% Warning Options
 	inhibit_warnings	-	bool_special,
+	inhibit_accumulator_warnings -	bool(no),
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
 	%
@@ -481,7 +490,7 @@ option_defaults_2(aux_output_option, [
 	dump_hlds		-	accumulating([]),
 	dump_hlds_alias		-	string(""),
 	dump_hlds_options	-	string(""),
-	verbose_dump_hlds	-	string(""),
+	dump_mlds		-	accumulating([]),
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
 	generate_schemas	-	bool(no)
@@ -557,9 +566,12 @@ option_defaults_2(compilation_model_option, [
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
 	rtti_line_numbers	-	bool(yes),
-	highlevel_c		-	bool(no),
+	highlevel_code		-	bool(no),
+	highlevel_data		-	bool(no),
 	gcc_nested_functions	-	bool(no),
-	unboxed_float		-	bool(no)
+	unboxed_float           -       bool(no),
+	unboxed_enums           -       bool(yes),
+	unboxed_no_tag_types    -       bool(yes)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -592,7 +604,15 @@ option_defaults_2(code_gen_option, [
 					% above two defaults with values
 					% determined at configuration time
 	c_debug			-	bool(no),
-	c_include_directory	-	string(""),
+	c_include_directory	-	accumulating([]),
+					% the `mmc' script will override the
+					% above default with a value determined
+					% at configuration time
+	c_flag_to_name_object_file -	string("-o "),
+					% the `mmc' script will override the
+					% above default with a value determined
+					% at configuration time
+	object_file_extension	-	string("o"),
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
@@ -651,6 +671,8 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	unneeded_code		-	bool(no),
+	unneeded_code_copy_limit	-	int(10),
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
@@ -746,6 +768,7 @@ short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
 short_option('G', 			convert_to_goedel).
 short_option('h', 			help).
+short_option('H', 			highlevel_code).
 short_option('i', 			make_interface).
 short_option('I', 			search_directories).
 short_option('l', 			link_libraries).
@@ -767,6 +790,7 @@ short_option('?', 			help).
 
 % warning options
 long_option("inhibit-warnings",		inhibit_warnings).
+long_option("inhibit-accumulator-warnings",	inhibit_accumulator_warnings).
 long_option("halt-at-warn",		halt_at_warn).
 long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
@@ -851,7 +875,7 @@ long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
-long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-mlds",		dump_mlds).
 long_option("dump-rl",			dump_rl).
 long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("generate-schemas",		generate_schemas).
@@ -914,12 +938,19 @@ long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
 long_option("rtti-line-numbers",	rtti_line_numbers).
-long_option("highlevel-C",		highlevel_c).
-long_option("highlevel-c",		highlevel_c).
-long_option("high-level-C",		highlevel_c).
-long_option("high-level-c",		highlevel_c).
+long_option("highlevel-code",		highlevel_code).
+long_option("high-level-code",		highlevel_code).
+long_option("highlevel-C",		highlevel_code).
+long_option("highlevel-c",		highlevel_code).
+long_option("high-level-C",		highlevel_code).
+long_option("high-level-c",		highlevel_code).
+long_option("highlevel-data",		highlevel_data).
+long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("unboxed-float",		unboxed_float).
+long_option("unboxed-enums",		unboxed_enums).
+long_option("unboxed-no-tag-types",	unboxed_no_tag_types).
+
 
 % code generation options
 long_option("low-level-debug",		low_level_debug).
@@ -944,6 +975,8 @@ long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
+long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
+long_option("object-file-extension",	object_file_extension).
 long_option("max-jump-table-size",	max_jump_table_size).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
@@ -994,6 +1027,8 @@ long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("unneeded-code",		unneeded_code).
+long_option("unneeded-code-copy-limit",	unneeded_code_copy_limit).
 long_option("type-specialization",	type_specialization).
 long_option("type-specialisation",	type_specialization).
 long_option("user-guided-type-specialization",
@@ -1043,6 +1078,12 @@ long_option("middle-rec",		middle_rec).
 long_option("simple-neg",		simple_neg).
 long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
+
+% MLDS optimizations
+% Option `optimize' is used for both MLDS and LLDS optimizations, but since
+% you can't use both at the same time it doesn't really matter.
+long_option("mlds-optimize",		optimize).
+long_option("mlds-optimise",		optimize).
 
 % LLDS optimizations
 long_option("common-data",		common_data).
@@ -1180,6 +1221,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 		:-
 	bool__not(Inhibit, Enable),
 	override_options([
+			inhibit_accumulator_warnings	-	bool(Inhibit),
 			warn_singleton_vars	-	bool(Enable),
 			warn_overlapping_scopes	-	bool(Enable),
 			warn_det_decls_too_lax	-	bool(Enable),
@@ -1255,6 +1297,7 @@ override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
 :- pred opt_space(list(pair(option, option_data))::out) is det.
 
 opt_space([
+	unneeded_code_copy_limit -	int(1),
 	optimize_dead_procs	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
@@ -1327,7 +1370,11 @@ opt_level(2, _, [
 % when we have fixed that bug.
 	optimize_duplicate_calls -	bool(yes),
 ****/
-	simple_neg		-	bool(yes)
+	simple_neg		-	bool(yes),
+
+	optimize_rl		-	bool(yes),
+	optimize_rl_index	-	bool(yes),
+	detect_rl_streams	-	bool(yes)
 ]).
 
 % Optimization level 3: apply optimizations which usually have a good
@@ -1340,6 +1387,8 @@ opt_level(3, _, [
 	optimize_higher_order	-	bool(yes),
 	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
+	% Disabled until a bug in extras/trailed_update/var.m is resolved.
+	%introduce_accumulators	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
 
@@ -1423,6 +1472,9 @@ options_help_warning -->
 		"\tThis option causes the compiler to halt immediately",
 		"\tafter syntax checking and not do any semantic checking",
 		"\tif it finds any syntax errors in the program.",
+		"--inhibit-accumulator-warnings",
+		"\tDon't warn about argument order rearrangement caused",
+		"\tby --introduce-accumulators.",
 		"--no-warn-singleton-variables",
 		"\tDon't warn about variables which only occur once.",
 		"--no-warn-overlapping-scopes",
@@ -1496,13 +1548,11 @@ options_help_verbosity -->
 		"\tdifferent types of tracing messages.",
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
-		"\tdeduction and deforestation process."
-/***** ADITI is not yet useful 
+		"\tdeduction and deforestation process.",
 		"--debug-rl-gen",
 		"\tOutput detailed debugging traces of Aditi-RL code generation.",
 		"--debug-rl-opt",
 		"\tOutput detailed debugging traces of Aditi-RL optimization."
-*****/
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -1558,11 +1608,9 @@ options_help_output -->
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
-/***** ADITI is not yet useful.
-		"--aditi-only"),
+		"--aditi-only",
 		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
 		"\tdo not compile to C.",
-*****/
 		"--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
@@ -1622,7 +1670,7 @@ options_help_aux_output -->
 		"--show-dependency-graph",
 		"\tWrite out the dependency graph to `<module>.dependency_graph'.",
 		"-d <n>, --dump-hlds <stage number or name>",
-		"\tDump the HLDS (intermediate representation) after",
+		"\tDump the HLDS (high level intermediate representation) after",
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
@@ -1635,8 +1683,12 @@ options_help_aux_output -->
 		"\tWith `--dump-hlds', include extra detail in the dump.",
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
-		"\t(see the Mercury User's Guide for details)."
-/***** ADITI is not yet useful.
+		"\t(see the Mercury User's Guide for details).",
+		"--dump-mlds <stage number or name>",
+		"\tDump the MLDS (medium level intermediate representation) after",
+		"\tthe specified stage to `<module>.mlds_dump.<num>-<name>'.",
+		"\tStage numbers range from 1-99.",
+		"\tMultiple dump options accumulate.",
 		"--dump-rl",
 		"\tOutput a human readable form of the compiler's internal",
 		"\trepresentation of the generated Aditi-RL code to",
@@ -1651,7 +1703,6 @@ options_help_aux_output -->
 		"\trelations to `<module>.derived_schema'.",
 		"\tA schema string is a representation of the types",
 		"\tof a relation."
-*****/
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
@@ -1736,10 +1787,11 @@ options_help_compilation_model -->
 		"library which has been compiled with the same setting.",
 		"-s <grade>, --grade <grade>",
 		"\tSelect the compilation model. The <grade> should be one of",
-		"\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast',",
-% These grades are not yet implemented.
-% The --high-level-c option is not yet documented.
-%		"\t`ansi', `nest'",
+		"\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast', `hlc'",
+% These grades (hl, hl_nest, and hlc_nest) are not yet documented, because
+% the --high-level-data option is not yet implemented,
+% and the --gcc-nested-functions option is not yet documented.
+%		"\t`hl', `hl_nest', `hlc_nest'",
 		"\tor one of those with `.gc', `.prof', `.proftime',",
 		"\t`.profcalls', `.tr', `.sa', `.debug', and/or `.pic_reg'",
 		"\tappended (in that order).",
@@ -1751,37 +1803,46 @@ options_help_compilation_model -->
 		"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tglobal register variables extension.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
+		"\tThis option is ignored if the `--high-level-code' option is enabled.",
 		"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
 		"--no-gcc-non-local-gotos\t(grades: none, reg)",
 		"\tSpecify whether or not to use GNU C's",
 		"\t""labels as values"" extension.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
+		"\tThis option is ignored if the `--high-level-code' option is enabled.",
 		"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
 		"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tasm extensions for inline assembler labels.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
-% The --high-level-c option is not yet documented,
-% because the MLDS back-end is not yet complete enough to be useful.
-%		"--high-level-c\t\t\t(grades: ansi, nest)",
-%		"\tUse an alternative back-end that generates high-level C code",
-%		"\trather than the very low-level C code that is generated by our",
-%		"\toriginal back-end.",
+		"\tThis option is ignored if the `--high-level-code' option is enabled.",
+% These grades (hl, hl_nest, and hlc_nest) are not yet documented, because
+% the --high-level-data option is not yet implemented,
+% and the --gcc-nested-functions option is not yet documented.
+%		"-H, --high-level-code\t\t\t(grades: hl, hlc, hl_nest, hlc_nest)",
+		"-H, --high-level-code\t\t\t(grades: hlc)",
+		"\tUse an alternative back-end that generates high-level C code",
+		"\trather than the very low-level C code that is generated by our",
+		"\toriginal back-end.",
+% The --high-level-data option is not yet documented,
+% because it is not yet implemented
+%		"--high-level-data\t\t\t(grades: hl, hl_nest)",
+%		"\tUse an alternative higher-level data representation.",
+% The --high-level option is not yet documented,
+% because --high-level-data is not yet implemented
+%		"--high-level\t\t\t(grades: hl, hl_nest)",
+%		"\tAn abbreviation for `--high-level-code --high-level-data'.",
 % The --gcc-nested-functions option is not yet documented,
-% because it is not yet implemented.
-%		"--gcc-nested-functions\t\t(grades: nest)",
+% because it has not been thoroughly tested, and it is
+% probably not very useful.
+%		"--gcc-nested-functions\t\t(grades: hl_nest, hlc_nest)",
 %		"\tSpecify whether or not to use GNU C's nested functions extension.",
-%		"\tThis option is ignored if the `--high-level-c' option is not enabled.",
+%		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
 		"\t\t\t\t(`.gc' grades use `--gc conservative',",
 		"\t\t\t\tother grades use `--gc none'.)",
 		"\tSpecify which method of garbage collection to use",
 		"\t(default: conservative).  `accurate' GC is not yet implemented.",
+		"\t`--high-level-code' requires `conservative' GC.",
 		"--use-trail\t\t\t(grade modifier: `.tr')",
 		"\tEnable use of a trail.",
 		"\tThis is necessary for interfacing with constraint solvers,",
@@ -1905,6 +1966,16 @@ your program compiled with different options.
 		"\tIt may also need to be compiled with",
 		"\t`-DUSE_SINGLE_PREC_FLOAT', if double precision",
 		"\tfloats don't fit into a word."
+
+		% This is a developer only option.
+%		"--no-unboxed-enums",
+%		"(This option is not for general use.)",
+%		"\tBox enumerations.  This option is disabled by default.",
+
+		% This is a developer only option.
+%		"--no-unboxed-no-tag-types",
+%		"(This option is not for general use.)",
+%		"\tBox no-tag types.  This option is disabled by default."
 	]).
 
 :- pred options_help_code_generation(io__state::di, io__state::uo) is det.
@@ -1940,7 +2011,12 @@ options_help_code_generation -->
 		"--cc <compiler-name>",
 		"\tSpecify which C compiler to use.",
 		"--c-include-directory <dir>",
-		"\tSpecify the directory containing the Mercury C header files.",
+		"\tAppend <dir> to the list of directories to be searched for",
+		"\tC header files.  Note that if you want to override",
+		"\tthis list, rather than append to it, then you can set the",
+		"\t`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
+		"\tsequence of `--c-include-directory' options.",
+
 		"--cflags <options>",
 		"\tSpecify options to be passed to the C compiler.",
 		% The --cflags-for-regs and --cflags-for-gotos options
@@ -1951,6 +2027,14 @@ options_help_code_generation -->
 		"\tEnable debugging of the generated C code.",
 		"\t(This has the same effect as",
 		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
+
+		"--c-flag-to-name-object-file <flag>",
+		"\tThe flag the C compiler uses to name object files.",
+		"\t('-o ' for gcc and '/Fo' for Visual C.)",
+
+		"--object-file-extension <extension>",
+		"\tThe extension used to signify object files.",
+		"\t('o' under unix and 'obj' under windows.)",
 
 		"--max-jump-table-size",
 		"\tThe maximum number of entries a jump table can have.",
@@ -1966,10 +2050,10 @@ options_help_code_generation -->
 		"\tshould be allowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
 
-% This option is not yet documented because the `--high-level-c' MLDS backend
-% is still not yet complete.
+% This option is not yet documented because the `--gcc-nested-functions' option
+% is not documented.
 %		"--gcc-local-labels",
-%		"\tThis option has no effect unless both the `--high-level-c' option",
+%		"\tThis option has no effect unless both the `--high-level-code' option",
 %		"\tand the `--gcc-nested-functions' options are enabled.",
 %		"\tIf this option is enabled, the Mercury compiler will generate",
 %		"\tC code that uses GNU C's local labels extension to allow",
@@ -2099,6 +2183,16 @@ options_help_hlds_hlds_optimization -->
 
 		"--optimize-higher-order",
 		"\tEnable specialization of higher-order predicates.",
+		"--unneeded-code",
+		"\tRemove goals from computation paths where their outputs are",
+		"\tnot needed, provided the semantics options allow the deletion",
+		"\tor movement of the goal.",
+		"--unneeded-code-copy-limit",
+		"\tGives the maximum number of places to which a goal may be copied",
+		"\twhen removing it from computation paths on which its outputs are",
+		"\tnot needed. A value of zero forbids goal movement and allows only",
+		"\tgoal deletion; a value of one prevents any increase in the",
+		"\tsize of the code.",
 		"--type-specialization",
 		"\tEnable specialization of polymorphic predicates where the",
 		"\tpolymorphic types are known.",
@@ -2226,25 +2320,25 @@ options_help_llds_llds_optimization -->
 :- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
 
 options_help_rl_rl_optimization -->
-	[].
-/***** ADITI is not yet useful
 	io__write_string("\n    Aditi-RL optimizations:\n"),
 	write_tabbed_lines([
 		"--optimize-rl",
 		"\tEnable the optimizations of Aditi-RL procedures",
 		"\tdescribed below.",
-		"--optimize-rl-cse",
-		"\tOptimize common subexpressions in Aditi-RL procedures.",
 		"\t--optimize-rl-invariants",
 		"\tOptimize loop invariants in Aditi-RL procedures.",
 		"\t--optimize-rl-index",
-		"\tUse indexing to optimize access to relations in Aditi-RL".
+		"\tUse indexing to optimize access to relations in Aditi-RL",
 		"\tprocedures.",
 		"\t--detect-rl-streams",
 		"\tDetect cases where intermediate results in Aditi-RL",
 		"\tprocedures do not need to be materialised."
+		/*
+		% This option is not yet used.
+		"--optimize-rl-cse",
+		"\tOptimize common subexpressions in Aditi-RL procedures.",
+		*/
 	]).
-*****/
 
 :- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
 
@@ -2312,7 +2406,8 @@ options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	write_tabbed_lines([
 		"-I <dir>, --search-directory <dir>",
-		"\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.",
+		"\tAppend <dir> to the list of directories to be searched for",
+		"\timported modules.",
 		"--intermod-directory <dir>",
 		"\tAdd <dir> to the list of directories to be",
 		"\tsearched for `.opt' files.",
@@ -2328,8 +2423,7 @@ options_help_misc -->
 		"\tfile name from the standard input. Repeat this until EOF",
 		"\tis reached. (This allows a program or user to interactively",
 		"\tcompile several modules without the overhead of process",
-		"\tcreation for each one.)"
-/***** ADITI is not yet useful.
+		"\tcreation for each one.)",
 		"--aditi",
 		"\tEnable Aditi compilation. You need to enable this",
 		"\toption if you are making use of the Aditi deductive",
@@ -2341,8 +2435,7 @@ options_help_misc -->
 		"\tpredicates, and is also used for security checks.",
 		"\tDefaults to the value of the `USER' environment",
 		"\tvariable. If `$USER' is not set, `--aditi-user'",
-		"\tdefaults to the string ""guest"".".
-*****/
+		"\tdefaults to the string ""guest""."
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).

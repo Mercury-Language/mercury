@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-1999 The University of Melbourne.
+# Copyright (C) 1998-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,6 +10,7 @@ MAIN_TARGET=runtime
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.runtime.params
 
 #-----------------------------------------------------------------------------#
 
@@ -25,8 +26,12 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #-----------------------------------------------------------------------------#
 
+# All the headers in $(HDRS) should be syntactically well-formed
+# header files, unlike the headers in $(BODY_HDRS).
+
 #		  keep this list in alphabetical order, please
 HDRS		=	\
+			mercury.h		\
 			mercury_accurate_gc.h	\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
@@ -37,10 +42,10 @@ HDRS		=	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deep_copy.h	\
-			mercury_deep_copy_body.h \
 			mercury_dummy.h		\
 			mercury_dlist.h		\
 		  	mercury_engine.h	\
+			mercury_file.h		\
 			mercury_float.h		\
 			mercury_getopt.h	\
 			mercury_goto.h		\
@@ -71,6 +76,7 @@ HDRS		=	\
 			mercury_stacks.h	\
 			mercury_string.h	\
 			mercury_tabling.h	\
+			mercury_tabling_macros.h	\
 			mercury_tags.h		\
 			mercury_thread.h	\
 			mercury_timing.h	\
@@ -81,8 +87,17 @@ HDRS		=	\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
-# Note that $(LIB_GLOBALS_H) cannot be part of $(HDR), since it depends on
-# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a, and $(OBJ) : $(HDR) would create a
+# The headers in $(BODY_HDRS) contain code schemes included multiple times
+# in one source file each. Their dependencies must be explicitly listed.
+# They do not have to be syntactically well-formed.
+
+BODY_HDRS	=	\
+			mercury_deep_copy_body.h \
+			mercury_make_type_info_body.h	\
+			mercury_unify_compare_body.h
+
+# Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ) : $(HDRS) would create a
 # circular dependency.
 
 MACHHDRS	= 	machdeps/no_regs.h	\
@@ -96,14 +111,17 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 
 #		  keep this list in alphabetical order, please
 CFILES		= 	\
+			mercury.c		\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
 			mercury_context.c	\
+			mercury_debug.c		\
 			mercury_deep_copy.c	\
 			mercury_dlist.c		\
 			mercury_dummy.c		\
 			mercury_engine.c	\
+			mercury_file.c		\
 			mercury_float.c		\
 			mercury_getopt.c	\
 			mercury_getopt1.c	\
@@ -124,6 +142,7 @@ CFILES		= 	\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
 			mercury_stacks.c	\
+			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_thread.c	\
 			mercury_timing.c	\
@@ -132,14 +151,16 @@ CFILES		= 	\
 			mercury_type_info.c	\
 			mercury_wrapper.c
 
-OBJS		= $(CFILES:.c=.o)
+OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
 LDFLAGS		= -L$(BOEHM_GC_DIR)
 LDLIBS		= \
 		` case "$(GRADE)" in 					\
-		    *.gc*.prof*) echo "-lgc_prof" ;;			\
-		    *.gc*)	echo "-lgc" ;;				\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
 		`
 THREADLIBS	= \
@@ -149,7 +170,7 @@ THREADLIBS	= \
 		`
 
 HDR_CHECK_CS = $(HDRS:.h=_check.c)
-HDR_CHECK_OBJS = $(HDRS:.h=_check.o)
+HDR_CHECK_OBJS = $(HDRS:.h=_check.$O)
 HDR_CHECK_NMS = $(HDRS:.h=_check.nms)
 HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
 
@@ -180,17 +201,22 @@ endif
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
+mercury_deep_copy.o:	mercury_deep_copy_body.h
+mercury_type_info.o:	mercury_make_type_info_body.h
+mercury_ho_call.o:	mercury_unify_compare_body.h
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: runtime
-runtime: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+runtime: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 runtime: $(RT_LIB_NAME).init
 runtime: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
-lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
-	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
+	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A $(OBJS)
+	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A
 
 lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o lib$(RT_LIB_NAME).so $(PIC_OBJS)		\
@@ -211,8 +237,8 @@ mercury_conf.h: mercury_conf.h.date
 .PHONY: cs
 cs: $(CFILES)
 
-tags: $(CFILES) $(HDRS)
-	ctags $(CFILES) $(HDRS)
+tags: $(CFILES) $(HDRS) $(BODY_HDRS)
+	ctags $(CFILES) $(HDRS) $(BODY_HDRS)
 
 #-----------------------------------------------------------------------------#
 #
@@ -222,7 +248,7 @@ tags: $(CFILES) $(HDRS)
 
 #
 # $(HDR_CHECK_OBJS) is used to check that the header files are self-contained.
-# The rule for foo_check.o checks that the header file foo.h is properly
+# The rule for foo_check.$O checks that the header file foo.h is properly
 # self-contained, i.e. that the header file foo.h includes any other
 # header files that define types used by foo.h.
 # It does this by compiling a foo_check.c file that contains only a single
@@ -234,7 +260,7 @@ tags: $(CFILES) $(HDRS)
 
 # The mercury_deep_copy_body.h header is not meant to be self-contained.
 # So the following rule is used to suppress that check for this header.
-mercury_deep_copy_body_check.o:
+mercury_deep_copy_body_check.$O:
 	@true
 	
 #
@@ -278,9 +304,9 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_headers
-install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
-	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
-	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
+	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
@@ -292,9 +318,9 @@ install_init: $(RT_LIB_NAME).init install_dirs
 	rm -f $(INSTALL_MODULE_DIR)/runtime.init
 
 .PHONY: install_lib
-install_lib: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs
-	cp `vpath_find lib$(RT_LIB_NAME).a \
+	cp `vpath_find lib$(RT_LIB_NAME).$A \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
@@ -316,7 +342,7 @@ clean_check:
 	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
 
 realclean_local:
-	rm -f lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
+	rm -f lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
 	rm -f mercury_conf.h mercury_conf.h.date
 
 #-----------------------------------------------------------------------------#

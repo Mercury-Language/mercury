@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,23 +26,23 @@
 	% of a C function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
 	% procedure from C.
-:- pred export__get_c_export_decls(module_info, c_export_decls).
+:- pred export__get_c_export_decls(module_info, foreign_export_decls).
 :- mode export__get_c_export_decls(in, out) is det.
 
 	% From the module_info, get a list of c_export_defns,
 	% each of which is a string containing the C code
 	% for defining a C function named in a `pragma export' decl.
-:- pred export__get_c_export_defns(module_info, c_export_defns).
+:- pred export__get_c_export_defns(module_info, foreign_export_defns).
 :- mode export__get_c_export_defns(in, out) is det.
 
 	% Produce a header file containing prototypes for the exported C
 	% functions
-:- pred export__produce_header_file(c_export_decls, module_name,
+:- pred export__produce_header_file(foreign_export_decls, module_name,
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
 	% Convert the type, to a string corresponding to its C type.
-	% (Defaults to Word).
+	% (Defaults to MR_Word).
 :- pred export__type_to_type_string(type, string).
 :- mode export__type_to_type_string(in, out) is det.
 
@@ -79,17 +79,17 @@ export__get_c_export_decls(HLDS, C_ExportDecls) :-
 	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
 
 :- pred export__get_c_export_decls_2(pred_table, list(pragma_exported_proc),
-	list(c_export_decl)).
+	list(foreign_export_decl)).
 :- mode export__get_c_export_decls_2(in, in, out) is det.
 
 export__get_c_export_decls_2(_Preds, [], []).
 export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
-	E = pragma_exported_proc(PredId, ProcId, C_Function),
+	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
-	C_ExportDecl = c_export_decl(C_RetType, C_Function, ArgDecls),
+	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
 	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
@@ -109,11 +109,12 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	% #if SEMIDET
 	%   bool
 	% #elif FUNCTION
-	%   Word
+	%   MR_Word
 	% #else
 	%   void
 	% #endif
-	% <function name>(Word Mercury__Argument1, Word *Mercury__Argument2...)
+	% <function name>(MR_Word Mercury__Argument1, 
+	%			MR_Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
 	% #if NUM_REAL_REGS > 0
@@ -126,10 +127,24 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		/* save the registers that our C caller may be using */
 	%	save_regs_to_mem(c_regs);
 	%
-	%		/* restore Mercury's registers that were saved as */
-	%		/* we entered C from Mercury (the process must    */
-	%		/* always start in Mercury so that we can 	  */
-	%		/* init_engine() etc.)				  */
+	%		/* 
+	%		** start a new Mercury engine inside this POSIX 
+	%		** thread, if necessary (the C code may be 
+	%		** multi-threaded itself).
+	%		*/
+	%
+	% #if MR_THREAD_SAFE
+	% 	init_thread(MR_use_now);
+	% #endif 
+	%
+	%		/* 
+	%		** restore Mercury's registers that were saved as
+	%		** we entered C from Mercury.  For single threaded
+	%		** programs the process must always start in Mercury
+	%		** so that we can init_engine() etc.  For
+	%		** multi-threaded init_thread (above) takes care
+	%		** of making a new engine if required.
+	%		*/
 	%	restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
@@ -164,7 +179,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
-	E = pragma_exported_proc(PredId, ProcId, C_Function),
+	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, Exported,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
@@ -190,11 +205,14 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if NUM_REAL_REGS > 0\n",
-				"\tWord c_regs[NUM_REAL_REGS];\n",
+				"\tMR_Word c_regs[NUM_REAL_REGS];\n",
 				"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
 				"\tsave_regs_to_mem(c_regs);\n", 
+				"#if MR_THREAD_SAFE\n",
+				"\tinit_thread(MR_use_now);\n", 
+				"#endif\n",
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
@@ -433,7 +451,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
-		string__append("(Word) ", Rval, ConvertedRval)
+		string__append("(MR_Word) ", Rval, ConvertedRval)
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
@@ -454,7 +472,7 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
-		string__append("(String) ", Rval, ConvertedRval)
+		string__append("(MR_String) ", Rval, ConvertedRval)
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
@@ -480,7 +498,7 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 		{ library__version(Version) },
 		io__write_strings(["/*\n** Automatically generated from `", 
 			SourceFileName,
-			".m' by the\n** Mercury compiler, version ", Version,
+			"' by the\n** Mercury compiler, version ", Version,
 			".  Do not edit.\n*/\n"]),
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
@@ -516,11 +534,12 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 		io__set_exit_status(1)
 	).
 
-:- pred export__produce_header_file_2(c_export_decls, io__state, io__state).
+:- pred export__produce_header_file_2(foreign_export_decls, 
+		io__state, io__state).
 :- mode export__produce_header_file_2(in, di, uo) is det.
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
-	{ E = c_export_decl(C_RetType, C_Function, ArgDecls) },
+	{ E = foreign_export_decl(c, C_RetType, C_Function, ArgDecls) },
 
 		% output the function header
 	io__write_string(C_RetType),
@@ -534,18 +553,20 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 
 	% Convert a term representation of a variable type to a string which
 	% represents the C type of the variable
-	% Apart from special cases, local variables become Words
+	% Apart from special cases, local variables become MR_Words
 export__type_to_type_string(Type, Result) :-
 	( Type = term__functor(term__atom("int"), [], _) ->
-		Result = "Integer"
+		Result = "MR_Integer"
 	; Type = term__functor(term__atom("float"), [], _) ->
-		Result = "Float"
+		Result = "MR_Float"
 	; Type = term__functor(term__atom("string"), [], _) ->
-		Result = "String"
+		Result = "MR_String"
 	; Type = term__functor(term__atom("character"), [], _) ->
-		Result = "Char"
+		Result = "MR_Char"
+	; Type = term__variable(_) ->
+		Result = "MR_Box"
 	;
-		Result = "Word"
+		Result = "MR_Word"
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -153,6 +153,10 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
+		Uinstr = free_heap(Rval),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost = RvalCost
+	;
 		Uinstr = store_ticket(Lval),
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
@@ -164,11 +168,14 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = discard_ticket,
 		Cost = 0
 	;
+		Uinstr = prune_ticket,
+		Cost = 0
+	;
 		Uinstr = mark_ticket_stack(Lval),
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
-		Uinstr = discard_tickets_to(Rval),
+		Uinstr = prune_tickets_to(Rval),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
@@ -178,7 +185,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = decr_sp(_),
 		Cost = 0
 	;
-		Uinstr = pragma_c(_, _, _, _, _, _),
+		Uinstr = pragma_c(_, _, _, _, _, _, _),
 		error("pragma_c found in vn_block_cost")
 	;
 		Uinstr = init_sync_term(_, _),
@@ -306,7 +313,7 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		Rval = var(_),
 		error("var found in rval_cost")
 	;
-		Rval = create(_, _, _, _, _, _),
+		Rval = create(_, _, _, _, _, _, _),
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),

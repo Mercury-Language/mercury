@@ -12,12 +12,12 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module list, string, std_util.
+:- import_module exception, list, string, std_util.
 :- import_module odbc.
 
 main -->
@@ -50,6 +50,7 @@ main -->
 	),
 	io__write_list(TableMessages, "\n", io__write),
 	io__nl,
+
 	odbc__transaction("test", "", "", test_trans, 
 		TransResult - TransMessages),
 	( 
@@ -66,13 +67,40 @@ main -->
 		io__write_string("error in transaction:\n")
 	),
 	io__write_list(TransMessages, "\n", io__write),
-	io__nl.
+	io__nl,
+
+	try_io(odbc__transaction("test", "", "", test_trans_2),
+		ExceptionResult),
+	(
+		{ ExceptionResult = succeeded(Results2) },
+		io__set_exit_status(1),
+		io__write_string("Error: expected exception, got results:"),
+		io__write(Results2),
+		io__nl
+	;
+		{ ExceptionResult = exception(Exception) },
+		{ det_univ_to_type(Exception, ExceptionString) },
+		io__write_string("Got exception: "),
+		io__write_string(ExceptionString),
+		io__nl
+	).
 
 :- pred test_trans(list(odbc__row)::out,
 		odbc__state::di, odbc__state::uo) is det.
 
 test_trans(Results) -->
 	odbc__solutions("select * from test", Results).
+
+:- pred test_trans_2(list(odbc__row)::out,
+		odbc__state::di, odbc__state::uo) is det.
+
+test_trans_2(Results) -->
+	odbc__solutions("select * from test", Results),
+	( { semidet_succeed } ->
+		{ throw("exception in test_trans_2") }
+	;	
+		[]
+	).
 
 :- pred output_results(list(odbc__row)::in,
 		io__state::di, io__state::uo) is det.

@@ -9,7 +9,7 @@
 @c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
-@c @set aditi
+@set aditi
 
 @c @smallbook
 @c @cropmarks
@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1999 The University of Melbourne.
+Copyright (C) 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -51,7 +51,7 @@ into another language, under the above conditions for modified versions.
 @author Chris Speirs
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1999 The University of Melbourne.
+Copyright @copyright{} 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -184,7 +184,7 @@ for clauses.
 Tokens in Mercury are the same as in ISO Prolog.
 The only differences are the @samp{#@var{line}} token, which
 is used as a line number directive (see below) and the
-@samp{backquote (`)} token.
+backquote (@samp{`}) token.
 
 The different tokens are as follows.  Tokens may be separated by
 whitespace or line number directives.
@@ -307,8 +307,8 @@ The end of file.
 
 Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as extensions we permit higher-order terms and the
-introduction of infix operators by the use of grave accents (backquotes)
-, as described below.
+introduction of infix operators by the use of grave accents (backquotes),
+as described below.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  @xref{Data-terms}.
 
@@ -317,27 +317,38 @@ A term is either a variable or a functor.
 A functor is an integer, a float, a string, a name, a compound term,
 or a higher-order term.
 
-A compound term is a name followed without any intervening
+A compound term is a simple compound term, an operator term,
+or a parenthesized term.
+
+A simple compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
-parenthesis.  Compound terms may also be specified using
-operator notation, as in Prolog.
+parenthesis.  
 
-Operators can also be formed by enclosing an variable or name between grave
+An operator term is a term specified using operator notation, as in Prolog.
+Operators can also be formed by enclosing a variable or name between grave
 accents (backquotes).  Any variable or name may
 be used as an operator in this way.  If @var{fun} is a variable or name,
-then a term of the form @code{x `fun` y} is equivalent to 
-@code{fun(x,y)}.  The operator is treated as having the highest precedence
-possible and is left associative.
+then a term of the form @code{@var{X} `@var{fun}` @var{Y}} is equivalent to 
+@code{@var{fun}(@var{X}, @var{Y})}.  The operator is treated as having the
+highest precedence possible and is left associative.
 
-A higher-order term is a variable followed without any intervening
-whitespace by an open parenthesis (i.e. an open_ct token),
+A parenthesized term is just an open parenthesis
+followed by a term and a close parenthesis.
+
+A higher-order term is a ``closure'' term, which can be any term 
+other than a name or an operator term, followed without
+any intervening whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
-parenthesis.  A higher-order term is equivalent to a compound term
+parenthesis.  A higher-order term is equivalent to a simple compound term
 whose functor is the empty name, and whose arguments are the 
-the variable followed by the arguments of the higher-order term.
-That is, a term such as @code{Var(Arg1, @dots{}, ArgN)} is
-parsed as @code{''(Var, Arg1, @dots{}, ArgN)},
+closure term followed by the argument terms of the higher-order term.
+That is, a term such as @code{Term(Arg1, @dots{}, ArgN)} is
+parsed as @code{''(Term, Arg1, @dots{}, ArgN)}.
+Note that the closure term can be a parenthesized
+term; for example, @code{(Term^FieldName)(Arg1, Arg2)}
+is a higher-order term, and so it gets parsed as
+if it were @code{''((Term^FieldName), Arg1, Arg2)}.
 
 @node Items
 @section Items
@@ -546,9 +557,10 @@ higher-order call using the @code{call/N} syntax, i.e.
 
 @item @code{aditi_bulk_delete(@dots{})}
 @item @code{aditi_bulk_insert(@dots{})}
+@item @code{aditi_bulk_modify(@dots{})}
 @item @code{aditi_delete(@dots{})}
 @item @code{aditi_insert(@dots{})}
-@item @code{aditi_modify(@dots{})}
+
 These goal forms are used for the Aditi database interface.
 @xref{Aditi update syntax}.
 
@@ -713,6 +725,45 @@ Semantics:
 transform(V_in, V_out, =(Term)) = (Term = V_in, V_out = V_in)
 @end example
 
+@item :=(@var{Term})
+A DCG output unification.  Unifies @var{Term} with the implicit DCG output
+argument, ignoring the input DCG argument.
+@var{Term} must be a valid data-term.
+
+Semantics:
+@example
+transform(V_in, V_out, :=(Term)) = (V_out = Term)
+@end example
+
+@item @var{Term} =^ @var{field1} ^ @dots{} ^ @var{fieldN}
+A DCG field selection.
+Unifies @var{Term} with the result of applying the functions
+@var{field1} @dots{} @var{fieldN} to the implicit DCG argument.
+@var{Term} must be a valid data-term.
+For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
+a visible function named @samp{@var{field}/1}.
+@xref{Record syntax}.
+
+Semantics:
+@example
+transform(V_in, V_out, Term =^ field1 ^ @dots{} ^ fieldN) =
+        (Term = V_in ^ field1 ^ @dots{} ^ fieldN, V_out = V_in)
+@end example
+
+@item ^ @var{field} := @var{Term}
+A DCG field update.
+Replaces a field in the implicit DCG argument. 
+@var{Term} must be a valid data-term.
+For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
+visible functions named @samp{@var{field}/1} and @samp{'@var{field}:='/2}.
+@xref{Record syntax}.
+
+Semantics:
+@example
+transform(V_in, V_out, ^ field1 ^ @dots{} ^ fieldN := Term) =
+        (V_out = V_in ^ field1 ^ @dots{} ^ fieldN := Term)
+@end example
+
 @item @var{DCG-call}
 Any term which does not match any of the above forms
 must be a DCG predicate call.
@@ -745,6 +796,7 @@ or a higher-order function application.
 
 @menu
 * Data-functors::
+* Record syntax::
 * Conditional expressions::
 * Lambda expressions::
 * Higher-order function applications::
@@ -761,6 +813,55 @@ function application and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
+
+@node Record syntax
+@subsection Record syntax
+
+Record syntax provides a convenient way to select or update fields
+of data constructors, independent of the definition of the constructor.
+
+Record syntax expressions are transformed into sequences of calls
+to field selection or update functions (@pxref{Field access functions}).
+
+@table @code
+@item @var{Term} ^ @var{field}
+
+A field selection, equivalent to @code{@var{field}(@var{Term})}.
+
+@var{Term} must be a valid data-term.
+@var{field} must be the name of a visible unary function, possibly a
+function generated for a labelled field of a data constructor.
+
+Field selections may be chained, as in @code{Term ^ field1 ^ field2},
+which is equivalent to @code{field2(field1(Term))}.
+
+@item @var{Term} ^ @var{field1} ^ @dots{} ^ @var{fieldN} := @var{FieldValue}
+
+A field update.
+
+@var{Term} must be a valid data-term.
+For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
+visible functions named @samp{@var{field}/1} and @samp{'@var{field}:='/2}.
+Typically, these functions will be automatically generated by the compiler
+for a labelled field of a data constructor, although they may be supplied
+by the user.
+
+The term @code{Term ^ field := FieldValue} is equivalent
+to @code{'field:='(Term, FieldValue)}.
+
+The general case above is equivalent to the code:
+@example
+OldField1 = @var{field1}(Term),
+OldField2 = @var{field2}(OldField1),
+@dots{}
+OldField_N_Minus_1 = @var{field_N_Minus_2}(OldField_N_Minus_2),
+NewField_N_Minus_1 = '@var{fieldN}:='(OldField_N_Minus_1, FieldValue),
+@dots{}
+NewField1 = '@var{field2}:='(OldField1, NewField2),
+Result = '@var{field1}:='(Term, NewField1)
+@end example
+
+@end table
 
 @node Conditional expressions
 @subsection Conditional expressions
@@ -789,6 +890,7 @@ lambda([Arg1::Mode1, Arg2::Mode2, @dots{}] is Det, Goal)
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}) is Det :- Goal
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
 func(Arg1::Mode1, Arg2::Mode2, @dots{}) = (Result::Mode) is Det :- Goal
+func(Arg1, Arg2, @dots{}) = (Result) is Det :- Goal
 func(Arg1, Arg2, @dots{}) = Result :- Goal
 @end example
 
@@ -915,6 +1017,16 @@ The type system is based on many-sorted logic, and supports polymorphism,
 type classes (@pxref{Type classes}), and existentially quantified types
 (@pxref{Existential types}).
 
+@menu
+* Builtin types::
+* User-defined types::
+* Predicate and function type declarations::
+* Field access functions::
+@end menu
+
+@node Builtin types
+@section Builtin types
+
 Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
@@ -945,13 +1057,22 @@ In this way, we can give a declarative semantics to code that performs I/O.
 
 @end table
 
+@node User-defined types
+@section User-defined types
+
 New types can be introduced with @samp{:- type} declarations.
 There are several categories of derived types:
 
-@itemize @bullet
-@item
-Discriminated unions: these encompass both enumeration and
-record types in other languages.
+@menu
+* Discriminated unions::
+* Equivalence types::
+* Abstract types::
+@end menu
+
+@node Discriminated unions
+@subsection Discriminated unions
+
+These encompass both enumeration and record types in other languages.
 A derived type is defined using @samp{:- type @var{type} ---> @var{body}}. 
 (Note there are @emph{three} dashes in that arrow.
 It should not be confused with the two-dash arrow used for DCGs
@@ -976,6 +1097,14 @@ class constraint.  For details, see @ref{Existential types}.
 Existentially typed discriminated union definitions need not be
 transparent.
 
+The arguments of constructor definitions may be labelled.
+These labels cause the compiler to generate functions which can
+be used to conveniently select and update fields of a term
+in a manner independent of the definition of the type
+(@pxref{Field access functions}). A labelled argument is of the
+form @w{@code{@var{fieldname} :: @var{Type}}}. It is an error for
+two fields in the same module to have the same label.
+
 Here are some examples of discriminated union definitions:
 
 @example
@@ -991,9 +1120,9 @@ Here are some examples of discriminated union definitions:
 
 :- type employee
         --->    employee(
-                       string,               % name
-                       int,                  % age
-                       string                % department
+                       name        :: string,
+                       age         :: int,
+                       department  :: string
                 ).
 
 :- type tree
@@ -1033,8 +1162,22 @@ to be distinct types (name equivalence).
 Having two different definitions of a type with the same name and arity in
 the same module is an error.
 
-@item
-Equivalence types: these are type abbreviations.
+Constructors may be overloaded among different types:
+there may be any number of constructors with a given name and arity,
+so long as they all have different types.
+However, there must not be more than one constructor
+with the same name, arity, and result type in the same module.
+(There is no particularly good reason for this restriction;
+in the future we may allow several such functors
+as long as they have different argument types.)
+Note that excessive overloading of constructors can slow down type checking
+and can make the program confusing for human readers,
+so overloading should not be over-used.
+
+@node Equivalence types
+@subsection Equivalence types
+
+These are type abbreviations.
 They are defined using @samp{==} as follows.
 They may be polymorphic.
 
@@ -1056,8 +1199,10 @@ as an abbreviation for the type on the right hand side of the definition;
 the two are equivalent in all respects
 in scopes where the equivalence type is visible.
 
-@item
-Abstract types: these are types whose implementation is hidden.
+@node Abstract types
+@subsection Abstract types
+
+These are types whose implementation is hidden.
 The type declarations
 
 @example
@@ -1076,19 +1221,8 @@ named in the interface section of the module.
 Abstract types may be defined as either discriminated union types
 or as equivalence types.
 
-@end itemize
-
-Constructors may be overloaded among different types:
-there may be any number of constructors with a given name and arity,
-so long as they all have different types.
-However, there must not be more than one constructor
-with the same name, arity, and result type in the same module.
-(There is no particularly good reason for this restriction;
-in the future we may allow several such functors
-as long as they have different argument types.)
-Note that excessive overloading of constructors can slow down type checking
-and can make the program confusing for human readers,
-so overloading should not be over-used.
+@node Predicate and function type declarations
+@section Predicate and function type declarations
 
 The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
@@ -1183,6 +1317,163 @@ A clause is @dfn{type-correct}
 if there is a unique (up to renaming) most general valid type assignment.
 Every clause in a Mercury program must be type-correct.
 
+@node Field access functions
+@section Field access functions
+
+Fields of constructors of discriminated union types may be
+labelled (@pxref{Discriminated unions}). These labels cause the
+compiler to generate functions which can be used to select and update
+fields of a term in a manner independent of the definition of the type.
+
+The Mercury language includes syntactic sugar to make it more convenient
+to select and update fields inside nested terms (@pxref{Record syntax})
+and to select and update fields of the DCG arguments of a
+clause (@pxref{DCG-goals}).
+
+@menu
+* Field selection::
+* Field update::
+* User-supplied field access function declarations::
+* Field access examples::
+@end menu
+
+@node Field selection 
+@subsection Field selection
+
+@example
+@var{field}(@var{Term})
+@end example
+
+Each field label @samp{@var{field}} in a constructor causes generation
+of a field selection function @samp{@var{field}/1}, which takes a data-term
+of the same type as the constructor and returns the value of the
+labelled field, failing if the top-level constructor of the argument
+is not the constructor containing the field.
+
+If the declaration of the field is in the interface section of the module,
+the corresponding field selection function is also exported from the module.
+
+By default, this function has no declared modes --- the modes are inferred at
+each call to the function. However, the modes of this function may be
+explicitly declared, in which case it will have only the declared modes.
+
+To create a higher-order term from a field selection function, an
+explicit lambda expression must be used, unless a single mode
+declaration is supplied for the field selection function.
+
+@node Field update
+@subsection Field update
+
+@example
+'@var{field}:='(@var{Term}, @var{ValueTerm})
+@end example
+
+Each field label @samp{@var{field}} in a constructor causes generation
+of a field update function @samp{'@var{field}:='/2}.
+The first argument of this function is a data-term of the same type as the
+constructor. The second argument is a data-term of the same type as the
+labelled field. The return value is a copy of the first argument with
+value of the labelled field replaced by the second argument.
+@samp{'@var{field}:='/2} fails if the top-level constructor of the
+first argument is not the constructor containing the labelled field.
+
+If the declaration of the field is in the interface section of the module,
+the corresponding field update function is also exported from the module.
+
+By default, this function has no declared modes --- the modes are inferred at
+each call to the function. However, the modes of this function may be
+explicitly declared, in which case it will have only the declared modes.
+
+To create a higher-order term from a field update function, an
+explicit lambda expression must be used, unless a single mode
+declaration is supplied for the field update function.
+
+Some fields cannot be updated using field update functions.
+For the constructor @samp{unsettable/2} below, neither field may be updated
+because the resulting term would not be well-typed. A future release
+may allow multiple fields to be updated by a single expression to avoid
+this problem.
+
+@example
+:- type unsettable
+        ---> some [T] unsettable(
+                unsettable1 :: T,
+                unsettable2 :: T
+        ).
+@end example
+
+@node User-supplied field access function declarations
+@subsection User-supplied field access function declarations
+
+Type and mode declarations for compiler-generated field access functions
+for fields of constructors local to a module may be placed in the interface
+section of the module. This allows the implementation of a type to be hidden
+while still allowing client modules to use record syntax to manipulate values
+of the type. Supplying a single mode declaration also allows higher-order
+terms to be created from a field access function without using explicit
+lambda expressions.
+
+Declarations for field access functions for fields occurring in the interface
+section of a module must also occur in the interface section.
+
+Declarations and clauses for field access functions can also be supplied
+for fields which are not a part of any type. This is useful when the data
+structures of a program change so that a value which was previously stored
+as part of a type is now computed each time it is requested. It also
+allows record syntax to be used for type class methods.
+
+@node Field access examples
+@subsection Field access examples
+
+The examples make use of the following type declarations:
+
+@example
+:- type type1
+        ---> type1(
+                field1 :: type2,
+                field2 :: string
+        ).
+
+:- type type2
+        ---> type2(
+                field3 :: int,
+                field4 :: int
+        ).
+
+@end example
+
+The compiler generates some field access functions for @samp{field1}.
+The functions generated for the other fields are similar.
+
+@example
+:- func field1(type1) = type2.
+field1(type1(Field1, _)) = Field1.
+
+:- func 'field1:='(type1, type2) = type1.
+'field1:='(type1(_, Field2), Field1) = type1(Field1, Field2).
+@end example
+
+Using these functions and the syntactic sugar described in
+@ref{Record syntax}, programmers can write code such as
+
+@example
+:- func increment_field3(type1) = type1.
+
+increment_field3(Term0) =
+        Term0^field1^field3 := Term0^field1^field3 + 1.
+@end example
+
+The compiler expands this into
+
+@example
+incremental_field3(Term0) = Term :-
+        OldField3 = field3(field1(Term0)),
+
+        OldField1 = field1(Term0),
+        NewField1 = 'field3:='(OldField1, OldField3 + 1),
+        Term = 'field1:='(Term0, NewField1).
+@end example
+
 @node Modes
 @chapter Modes
 
@@ -1234,7 +1525,7 @@ Mercury's mode system allows users
 to declare names for instantiatedness trees using declarations such as
 
 @example
-:- inst listskel = bound( [] ; [free | listskel] ).
+:- inst listskel == bound( [] ; [free | listskel] ).
 @end example
 
 This instantiatedness tree describes lists
@@ -1256,27 +1547,31 @@ from an initial instantiatedness tree to a final instantiatedness tree,
 with the constraint that no node of the type tree
 is transformed from bound to free.
 Mercury allows the user to specify mode mappings directly
-by expressions such as @code{inst1 -> inst2},
+by expressions such as @code{inst1 >> inst2},
 or to give them a name using declarations such as
 
 @example
-:- mode m :: inst1 -> inst2.
+:- mode m == inst1 >> inst2.
 @end example
+
+It is also possible to write mode declarations using @code{::}
+and @code{->} instead of @code{==} and @code{>>} respectively,
+however this syntax is deprecated and may not be supported in future.
 
 Two standard shorthand modes are provided,
 corresponding to the standard notions of inputs and outputs:
 
 @example
-:- mode in :: ground -> ground.
-:- mode out :: free -> ground.
+:- mode in == ground >> ground.
+:- mode out == free >> ground.
 @end example
 
 Prolog fans who want to use the symbols @samp{+} and @samp{-}
 can do so by simply defining them using a mode declaration:
 
 @example
-:- mode (+) :: in.
-:- mode (-) :: out.
+:- mode (+) == in.
+:- mode (-) == out.
 @end example
 
 These two modes are enough for most functions and predicates.
@@ -1295,19 +1590,19 @@ the database over a network, you would need declarations such as
 :- type operation
         --->    lookup(key, data)
         ;       set(key, data).
-:- inst request =
+:- inst request ==
         bound(  lookup(ground, free)
         ;       set(ground, ground)
         ).
-:- mode create_request :: free -> request.
-:- mode satisfy_request :: request -> ground.
+:- mode create_request == free >> request.
+:- mode satisfy_request == request >> ground.
 @end example
 
 @samp{inst} and @samp{mode} declarations can be parametric.
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) = bound( [] ; [Inst | listskel(Inst)] ).
+:- inst listskel(Inst) == bound( [] ; [Inst | listskel(Inst)] ).
 @end example
 
 @noindent
@@ -1548,7 +1843,7 @@ occupied by a value that will not be used.
 
 Note that a value is not considered @samp{unique} if it might be
 needed on backtracking.  This means that unique modes are generally
-only useful for code whose determinism is @samp{det} or @samp{cc_multidet}
+only useful for code whose determinism is @samp{det} or @samp{cc_multi}
 (@pxref{Determinism}).
 
 @node Backtrackable destructive update
@@ -1693,7 +1988,7 @@ For example:
 :- mode length(in) = in is semidet.
 @end example
 
-An annotation of @samp{det} or @samp{multidet} is an assertion that
+An annotation of @samp{det} or @samp{multi} is an assertion that
 for every value each of the inputs, there exists at least one value
 of the outputs for which the predicate is true, or (in the case
 of functions) for which the function term is equal to the result term.
@@ -1713,6 +2008,10 @@ then the determinism annotation goes on the @code{:- pred} declaration
 (and similarly for functions).
 In particular, this is necessary
 if a predicate does not have any argument variables.
+If the determinism declaration is given on a @code{:- func} declaration
+without the mode, the function is assumed to have the default mode
+(see @ref{Modes} for more information on default modes of functions).
+
 For example:
 
 @example
@@ -2076,33 +2375,42 @@ nondeterministic operation,
 but no matter which order you remove them,
 the maximum value in the set should be the same.
 
-We may eventually extend Mercury to allow users to write
+If you know that there will only ever be at most one distinct
+solution, then you can use the function
+@samp{promise_only_solution/1}, which is defined
+as a builtin function in the Mercury standard library.
 
 @example
-unique [X] Goal
+:- func promise_only_solution(pred(T)) = T.
+:- mode promise_only_solution(pred(out) is cc_multi) = out is det.
+:- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
 @end example
 
 @noindent
-as a special quantifier, meaning
-``there exists a unique @code{X} for which @samp{Goal} is true''.
-This would allow the implementation
-to prune alternative solutions for @samp{Goal}
-if @samp{X} was the only output variable of @samp{Goal}.  
+A call to that function, e.g. @samp{promise_only_solution(Pred)}, constitutes a
+promise on the part of the caller that the argument @samp{Pred} has at most
+one solution, i.e. that
+
+@example
+not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)
+@end example
+
+@noindent
+holds.  @samp{promise_only_solution(Pred)} presumes that this
+assumption is satisfied, and returns the value of @samp{X} for which
+@samp{Pred(X)} is true, if any.  If the assumption is not
+satisfied, then the behaviour is undefined.
 
 Note that specifying a user-defined equivalence relation
 as the equality predicate for user-defined types (@pxref{Equality preds})
-means that the @samp{unique} quantifier
-could be used to express more general forms of equivalence.
+means that the @samp{promise_only_solution/1} function
+can be used to express more general forms of equivalence.
 For example, if you define a set type which represents sets as unsorted lists,
 you would want to define a user-defined equivalence relation for that type,
 which could sort the lists before comparing them.
-The @samp{unique} quantifier could then be used for sets
+The @samp{promise_only_solution/1} function could then be used for sets
 even though the lists used to represent the sets
 might not be in the same order in every solution.
-
-Currently the language does not support the @samp{unique} quantifier. 
-(However, it is possible to achieve a similar effect by using the C interface
-to type-cast a higher-order predicate term.)
 
 @node Committed choice nondeterminism
 @section Committed choice nondeterminism
@@ -2260,18 +2568,29 @@ set_equals(S1, S2) :-
         subset(S2, S1).
 @end example
 
-A type declaration for a type @var{T} may contain a
+A type declaration for a type @samp{foo(T1, @dots{}, TN)} may contain a
 @samp{where equality is @var{equalitypred}} specification only
 if the following conditions are satisfied:
 
 @itemize @bullet
 @item
-@var{T} must be a discriminated union type; it may not be an
-equivalence type
+The type @samp{foo(T1, @dots{}, TN)} must be a discriminated union type;
+it may not be an equivalence type
 
 @item
-@var{equalitypred} must be the name of a predicate with type
-@samp{pred(T, T)} and mode @samp{(in, in) is semidet}.
+@var{equalitypred} must be the name of a predicate which can
+be called with two ground arguments of type @samp{pred(foo(T1, @dots{}, TN))},
+and whose determinism in that mode is @samp{semidet}.
+Typically the equality predicate would have type
+@samp{pred(foo(T1, @dots{}, TN), foo(T1, @dots{}, TN)}
+and mode @samp{(in, in) is semidet}, but it is also legal
+for the type, mode and determinism to be more permissive:
+the type or the mode's initial insts may be more general
+(e.g. the type could be just the polymorphic type @samp{pred(T, T)})
+and the mode's final insts or the determinism may be more
+specific (e.g. the determinism could be any of @samp{det},
+@samp{failure} or @samp{erroneous}).
+The equality predicate must also be ``pure'' (@pxref{Impurity}).
 
 @end itemize
 
@@ -2759,8 +3078,8 @@ entities are only used in the implementation section, the
 @code{import_module} or @code{use_module} declaration should be in 
 the implementation section.
 
-The names of predicates, functions, constructors, types, modes, insts,
-type classes,
+The names of predicates, functions, constructors, constructor fields,
+types, modes, insts, type classes,
 and (sub-)modules can be explicitly module qualified using the @samp{:}
 operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
 This is useful both for readability and for resolving name conflicts.
@@ -3050,6 +3369,14 @@ is allowed:
 @end example
 
 The parameters must be distinct variables.
+Each @code{typeclass} declaration must have at least one parameter.
+
+It is OK for a @code{typeclass} declaration to declare no methods,
+e.g.
+
+@example
+:- typeclass foo(T) where [].
+@end example
 
 There must not be more than one type class declaration with the
 same name and arity in the same module.
@@ -3106,6 +3433,10 @@ the point of the call.  A method call will invoke the
 predicate or function specified for that method in the
 instance declaration that matches the types of the arguments
 to the call.
+
+Note that even if a type class has no methods, an explicit instance
+declaration is required for a type to be considered an instance
+of that type class.
 
 Here's an example of some code using an instance declaration:
 
@@ -3270,11 +3601,11 @@ types with a particular set of numerical operations defined:
 
 @example
 :- typeclass ring(T) where [
-        func zero = (T::out) is det,                    % '+' identity
-        func one = (T::out) is det,                     % '*' identity
-        func plus(T::in, T::in) = (T::out) is det,      % '+'/2 (forward mode)
-        func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
-        func negative(T::in) = (T::out) is det          % '-'/1 (forward mode)
+        func zero = (T::out) is det,               % '+' identity
+        func one = (T::out) is det,                % '*' identity
+        func plus(T::in, T::in) = (T::out) is det, % '+'/2 (forward mode)
+        func mult(T::in, T::in) = (T::out) is det, % '*'/2 (forward mode)
+        func negative(T::in) = (T::out) is det     % '-'/1 (forward mode)
 ].
 @end example
 
@@ -3828,6 +4159,7 @@ which is now mode-correct, executing that, and so on.
 (There is no interleaving of different individual conjuncts or function calls,
 however; the sub-goals are reordered, not split and interleaved.)
 Function application is strict, not lazy.
+@c XXX should document the operational semantics of switches and if-then-elses
 
 Mercury implementations are required to provide a method of processing
 Mercury programs which is equivalent to the strict sequential
@@ -4007,7 +4339,7 @@ Mercury arguments declared with input modes are passed by value to the
 C function.  For output arguments, the Mercury implementation will pass
 to the C function an address in which to store the result. 
 If the Mercury procedure can fail, then its C function should return a
-truth value of type @samp{Integer} indicating success or failure:
+truth value of type @samp{MR_Integer} indicating success or failure:
 non-zero indicates success, and zero indicates failure.
 If the Mercury procedure is a Mercury function that cannot fail, and
 the function result has an output mode, then the C function should
@@ -4299,12 +4631,16 @@ Note that procedures implemented in C using either
 unless declared otherwise (@pxref{Impurity}), and they must
 be type-correct and mode-correct.  (Determinism-correctness
 is also required, but it follows from the rules already stated
-above.)  They may perform destructive update on their
+above.)  Pure or semipure procedures may perform destructive update on their
 arguments only if those arguments have an appropriate
 unique mode declaration.
-They may perform I/O only if their arguments
+Impure predicates may perform destructive update on data pointed to by
+C pointer arguments, even without unique modes.  But they cannot
+destructively update the arguments themselves.
+Procedures may perform I/O only if their arguments
 include an @samp{io__state} pair (see the @samp{io} chapter
-of the Mercury Library Reference Manual).
+of the Mercury Library Reference Manual), or if they are declared impure
+(@pxref{Impurity}).
 The Mercury implementation is allowed to assume that
 these rules are followed, and to optimize accordingly.
 If the C code is not type-correct, mode-correct,
@@ -4335,6 +4671,12 @@ undesirable optimizations (e.g. reordering, duplicate
 call elimination, tabling, lazy evaluation, @dots{})
 to this procedure, which could effect the behaviour
 of the program in unpredictable ways.
+
+Impure C code relaxes some of these restrictions.  
+Impure C code may perform I/O and although it cannot update its
+arguments directly (unless they have an appropriate unique mode, e.g.
+@samp{di}) it may update something pointed to by its arguments.
+Impure C code procedures must still be type correct and mode correct.
 
 @node Including C headers
 @section Including C headers
@@ -4500,19 +4842,20 @@ Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 For each of the Mercury types @code{int}, @code{float}, @code{char},
 and @code{string}, there is a C typedef for the corresponding type in C:
-@code{Integer}, @code{Float}, @code{Char}, and @code{String} respectively.
+@code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
+and @code{MR_String} respectively.
 
-In the current implementation, @samp{Integer} is a typedef for an
-integral type whose size is the same size as a pointer; @samp{Float} is
+In the current implementation, @samp{MR_Integer} is a typedef for an
+integral type whose size is the same size as a pointer; @samp{MR_Float} is
 a typedef for @samp{double} (unless the program and the Mercury library
 was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
-a typedef for @samp{float}); @samp{Char} is a typedef for @samp{char};
-and @samp{String} is a typedef for @samp{Char *}.
+a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
+and @samp{MR_String} is a typedef for @samp{MR_Char *}.
 
 Mercury variables of type @code{int}, @code{float}, @code{char}, or
 @code{string} are passed to and from C as C variables whose type is
 given by the corresponding typedef.  Mercury variables of any other
-type are passed as a @samp{Word}, which in the current implementation
+type are passed as a @samp{MR_Word}, which in the current implementation
 is a typedef for an unsigned type whose size is the same size as a pointer.
 (Note: it would in fact be better for each Mercury type to map to a distinct
 abstract type in C, since that would be more type-safe, and thus we may
@@ -4559,7 +4902,8 @@ between C functions which are called from Mercury.  For example:
 :- implementation.
 
 % Our C structure is implemented as a c_pointer.
-:- type complicated_c_structure == c_pointer.
+:- type complicated_c_structure --->
+        complicated_c_structure(c_pointer).
 
 :- pragma c_header_code("
         extern struct foo *init_struct(void);
@@ -4651,7 +4995,8 @@ For examples of the use of this interface, see the modules
 @subsection Choice points
 
 A ``choice point'' is a point in the computation to
-which execution might backtrack.  The ``current''
+which execution might backtrack when a goal fails or
+throws an exception.  The ``current''
 choice point is the one that was most recently
 encountered; that is also the one to which execution
 will branch if the current computation fails.
@@ -4679,16 +5024,16 @@ on backtracking.
 @item @bullet{} @code{MR_trail_value()}
 Prototype:
 @example
-void MR_trail_value(Word *@var{address}, Word @var{value});
+void MR_trail_value(MR_Word *@var{address}, MR_Word @var{value});
 @end example
 
 Ensures that if future execution backtracks to the
 current choice point, then @var{value} will be placed in @var{address}.
-
+@sp 1
 @item @bullet{} @code{MR_trail_current_value()}
 Prototype:
 @example
-void MR_trail_current_value(Word *@var{address});
+void MR_trail_current_value(MR_Word *@var{address});
 @end example
 
 Ensures that if future execution backtracks to the
@@ -4705,14 +5050,13 @@ will be restored.
 
 For more complicated uses of trailing, you can store the address
 of a C function on the trail and have the Mercury runtime call your
-function back whenever future execution backtracks to the current choice point,
-or whenever that choice point is pruned, either because execution
-commits to never backtracking over that point, or because an
-exception was thrown, or possibly during garbage collection.
+function back whenever future execution backtracks to the current choice point
+or earlier, or whenever that choice point is pruned, because execution
+commits to never backtracking over that point,
+or whenever that choice point is garbage collected.
 
-Note that currently Mercury does not support exception handling,
-and the garbage collector in the current Mercury implementation
-does not garbage-collect the trail; these two cases are mentioned
+Note the garbage collector in the current Mercury implementation
+does not garbage-collect the trail; this case is mentioned
 only so that we can cater for possible future extensions.
 
 @table @b
@@ -4722,13 +5066,14 @@ Prototype:
 typedef enum @{
         MR_undo,
         MR_exception,
+        MR_retry,
         MR_commit,
         MR_solve,
         MR_gc
 @} MR_untrail_reason;
 
 void MR_trail_function(
-        void (*@var{untrail_func})(Word, MR_untrail_reason),
+        void (*@var{untrail_func})(MR_Word, MR_untrail_reason),
         void *@var{value}
 );
 @end example
@@ -4737,9 +5082,15 @@ A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
 adds an entry to the function trail.
 The Mercury implementation ensures that
 if future execution ever backtracks to current choicepoint,
-then @code{(*@var{untrail_func})(@var{value}, MR_undo)} will be called.
-It also ensures that if the current choice point is pruned because
-execution commits to never backtracking to it,
+or backtracks past the current choicepoint to some earlier choicepoint,
+then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
+where @var{reason} will be @samp{MR_undo} if the backtracking was due to
+a goal failing, @samp{MR_exception} if the backtracking was due to
+a goal throwing an exception, or @samp{MR_retry} if the backtracking
+was due to the use of the "retry" command in mdb, the Mercury debugger,
+or any similar user request in a debugger.
+The Mercury implementation also ensures that if the current choice point is
+pruned because execution commits to never backtracking to it,
 then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
 It also ensures that if execution requires that the current goal be
 solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
@@ -4749,17 +5100,17 @@ to a solution and prune away the alternative solutions; @code{MR_solve}
 is used for ``soft'' commits, i.e. when we must commit to a solution
 but do not prune away all the alternatives.)
 
-MR_exception and MR_gc are currently not used ---
-they are reserved for future use.
+MR_gc is currently not used ---
+it is reserved for future use.
 
 @end table
 
 Typically if the @var{untrail_func} is called with @var{reason} being
-@samp{MR_undo} or @samp{MR_exception}, then it should undo the effects
-of the update(s) specified by @var{value}, and the free any resources
-associated with that trail entry.  If it is called with @var{reason}
-being @samp{MR_commit} or @samp{MR_solve}, then it not undo the update(s);
-instead, it may check for floundering (see the next section).
+@samp{MR_undo}, @samp{MR_exception}, or @samp{MR_retry}, then it should undo
+the effects of the update(s) specified by @var{value}, and then free any
+resources associated with that trail entry.  If it is called with @var{reason}
+being @samp{MR_commit} or @samp{MR_solve}, then it should not undo the
+update(s); instead, it may check for floundering (see the next section).
 In the @samp{MR_commit} case it may, in some cases, be possible to
 also free resources associated with the trail entry.
 If it is called with anything else (such as @samp{MR_gc}),
@@ -4815,23 +5166,36 @@ redundant trailing.
 
 @table @b
 @item @bullet{} @code{MR_ChoicepointId}
-@itemx @bullet{} @code{MR_current_choicepoint_id()}
-@itemx @bullet{} @code{MR_null_choicepoint_id()}
-Prototypes:
+Declaration:
 @example
 typedef @dots{} MR_ChoicepointId;
-MR_ChoicepointId MR_current_choicepoint_id(void);
-MR_ChoicepointId MR_null_choicepoint_id(void);
 @end example
 
 The type @code{MR_ChoicepointId} is an abstract type used
 to hold the identity of a choice point.  Values of this
-type can be compared using C's @samp{==} operator.
+type can be compared using C's @samp{==} operator
+or using @samp{MR_choicepoint_newer()}.
+@sp 1
+@item @bullet{} @code{MR_current_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_current_choicepoint_id(void);
+@end example
 
 @code{MR_current_choicepoint_id()} returns a value indicating
 the identity of the most recent choice point; that is, the
 point to which execution would backtrack if the current computation
 failed.
+The value remains meaningful if the choicepoint is pruned
+away by a commit, but is not meaningful after backtracking
+past the point where the choicepoint was created (since
+choicepoint ids may be reused after backtracking).
+@sp 1
+@item @bullet{} @code{MR_null_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_null_choicepoint_id(void);
+@end example
 
 @code{MR_null_choicepoint_id()} returns a ``null'' value that is
 distinct from any value ever returned by @code{MR_current_choicepoint_id}.
@@ -4839,6 +5203,18 @@ distinct from any value ever returned by @code{MR_current_choicepoint_id}.
 is a macro that is guaranteed to be suitable for use as a
 static initializer, so that it can for example be used to
 provide the initial value of a C global variable.)
+@sp 1
+@item @bullet{} @code{MR_choicepoint_newer()}
+Prototype:
+@example
+bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
+@end example
+
+@code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
+@samp{x} is newer than (i.e. was created more recently than) the
+choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
+older than any non-null ChoicepointId.  If either of the choice points
+have been backtracked over, the behaviour is undefined.
 
 @end table
 
@@ -4852,15 +5228,18 @@ for the initial value of this @samp{prev_choicepoint} field.)
 When you are about to modify your mutable data structure,
 you can then call @code{MR_current_choicepoint_id()} again and
 compare the result from that call with the value saved in
-the @samp{prev_choicepoint} field in the data structure. 
-If they are different, then you must trail the update,
-and update the prev_choicepoint field with the new value;
+the @samp{prev_choicepoint} field in the data structure
+using @code{MR_choicepoint_newer()}.
+If the current choicepoint is newer, then you must trail the update,
+and update the @samp{prev_choicepoint} field with the new value;
 furthermore, you must also take care that on backtracking the
 previous value of the @samp{prev_choicepoint} field in your data
 structure is restored to its previous value, by trailing that update too.
-But if @code{MR_current_choice_id()} and the @code{prev_choicepoint} field
-are equal, then you can safely perform the update to your data
-structure without trailing it.
+But if @code{MR_current_choice_id()} is not newer than the
+@code{prev_choicepoint} field, then you can safely perform
+the update to your data structure without trailing it.
+
+For an example, see the sample module below.
 
 Note that there is a cost to this -- you have to include
 an extra field in your data structure for each part of
@@ -4870,6 +5249,80 @@ or not to trail it, and if you do need to trail the update,
 then you have an extra field that you need to trail.
 Whether or not the benefits from avoiding redundant trailing
 outweigh these costs will depend on your application.
+
+@example
+:- module trailing_example.
+:- interface.
+
+:- type int_ref.
+
+    % Create a new int_ref with the specified value.
+:- pred new_int_ref(int_ref::uo, int::in) is det.
+
+    % update_int_ref(Ref0, Ref, OldVal, NewVal):
+    % Ref0 has value OldVal and Ref has value NewVal.
+:- pred update_int_ref(int_ref::mdi, int_ref::muo,
+        int::out, int::in) is det.
+
+:- implementation.
+
+:- type int_ref ---> int_ref(c_pointer).
+
+:- pragma import(new_int_ref(uo, in),
+	"new_int_ref").
+:- pragma import(update_int_ref(mdi, muo, out, in),
+	"update_int_ref").
+
+:- pragma c_header_code("
+typedef MR_Word Mercury_IntRef;
+void new_int_ref(Mercury_IntRef *ref, MR_Integer value);
+void update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
+    MR_Integer *old_value, MR_Integer new_value);
+").
+
+:- pragma c_code("
+typedef struct @{
+    MR_ChoicepointId prev_choicepoint;
+    MR_Integer data;
+@} C_IntRef;
+
+void
+new_int_ref(Mercury_IntRef *ref, MR_Integer value)
+@{
+    C_IntRef *x = malloc(sizeof(C_IntRef));
+    x->prev_choicepoint = MR_current_choicepoint_id();
+    x->data = value;
+    *ref = (Mercury_IntRef) x;
+@}
+
+void
+update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
+    MR_Integer *old_value, MR_Integer new_value)
+@{
+    C_IntRef *x = (C_IntRef *) ref0;
+    *old_value = x->data;
+
+    /* check whether we need to trail this update */
+    if (MR_choicepoint_newer(MR_current_choicepoint_id(),
+        x->prev_choicepoint))
+    @{
+        /* trail both x->data and x->prev_choicepoint,
+	   since we're about to update them both*/
+        assert(sizeof(x->data) == sizeof(MR_Word));
+        assert(sizeof(x->prev_choicepoint) == sizeof(MR_Word));
+        MR_trail_current_value((MR_Word *)&x->data);
+        MR_trail_current_value((MR_Word *)&x->prev_choicepoint);
+
+        /* update x->prev_choicepoint to indicate that
+           x->data's previous value has been trailed
+           at this choice point */
+        x->prev_choicepoint = MR_current_choicepoint_id();
+    @}
+    x->data = new_value;
+    *ref = ref0;
+@}
+").
+@end example
 
 @c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
 @c 
@@ -4899,22 +5352,25 @@ C code.
 
 One important aim of Mercury's impurity system is to make the
 distinction between the pure and impure code very clear.  This is done
-by requiring every impure predicate to be so declared, and by requiring
-every call to an impure predicate to be flagged as such.  Predicates
-that are implemented in terms of impure predicates are assumed to be
-impure themselves unless they are explicitly promised to be pure.
+by requiring every impure predicate or function to be so declared, and
+by requiring every call to an impure predicate or function to be flagged as
+such.
+Predicates or functions that are implemented in terms of impure predicates
+or functions are assumed to be impure themselves unless they are
+explicitly promised to be pure.
 
 Please note that the facilities described here are needed only very
 rarely.  The main intent is for implementing language primitives such as
-the all solutions predicates.  Any use of @samp{impure} or @samp{semipure}
-probably indicates either a weakness in the Mercury standard library, or
-the programmer's lack of familiarity with the standard library.
-Newcomers to Mercury are hence encouraged to @strong{skip this section}.
-
-
+the all solutions predicates, or for implementing interfaces to C
+libraries using the C interface.  Any other use of @samp{impure} or
+@samp{semipure} probably indicates either a weakness in the Mercury
+standard library, or the programmer's lack of familiarity with the
+standard library.  Newcomers to Mercury are hence encouraged to
+@strong{skip this section}.
 
 @menu
 * Purity levels::       Choosing the right level of purity.
+* Purity ordering::     How purity levels are ordered 
 * Impurity semantics::  What impure code means.
 * Declaring impurity::  Declaring predicates impure.
 * Impure calls::        Marking a call as impure.
@@ -4930,17 +5386,20 @@ Mercury distinguishes three ``levels'' of purity:
 
 @table @dfn
 @item pure
-Pure predicates and functions always return the same outputs given the
-same inputs.  They do not interact with the ``real'' world (i.e., do any
+For pure procedures, the set of solutions depends only on the
+values of the input arguments.
+They do not interact with the ``real'' world (i.e., do any
 input/output) without taking an io__state (@pxref{Types}) as input and
 returning one as output, and do not make any changes to any data
 structure that will not be undone on backtracking (unless the data
-structure would be unreachable on backtracking).  The behaviour of other
-predicates is never affected by the invocation of pure predicates, nor
-is the behaviour of pure predicates ever affected by the invocation of
-other predicates.
+structure would be unreachable on backtracking).  The behaviour of pure
+predicates is never affected by the invocation of pure predicates.
+It is possible for the invocation of pure predicates to affect the
+behaviour of non-pure predicates and vice versa.
 
-The vast majority of Mercury predicates are pure.  
+By default, Mercury predicates and functions are pure.
+Without using the foreign function interface or calling other impure
+predicates and functions it is impossible to write impure code in Mercury.
 
 @item semipure
 Semipure predicates are just like pure predicates, except that their
@@ -4950,11 +5409,17 @@ reflected by their input arguments, though they do not affect the state
 themselves.
 
 @item impure
-Impure predicates may do anything, including changing the state of the
+Impure predicates may do almost anything, including changing the state of the
 computation.
+They must be type-, mode-, determinism - and uniqueness correct. 
 
 @end table
 
+@node Purity ordering 
+@section Purity ordering
+
+The three levels of purity have a total ordering defined upon them
+(which we will simply call the purity), where @code{pure > semipure > impure}.
 
 @node Impurity semantics
 @section Semantics
@@ -4974,16 +5439,17 @@ which by definition are not part of their declarative semantics.  Thus
 it is the @emph{operational} semantics of impure predicates that Mercury
 must specify, and Mercury compilers must respect.
 
-The operational semantics of a Mercury predicate which invokes impure
-code is a modified form of the @emph{strict sequential} semantics
-(@pxref{Semantics}).  @emph{Impure} goals may not be reordered relative
-to any other goals; not even ``minimal'' reordering as implied by the
-modes is permitted.  If any such reordering is needed, this is a mode
-error.  However, @emph{pure} and @emph{semipure} goals may be reordered
-as long as they are not moved across an impure goal.  Execution of
-impure goals is strict: they must be executed if they are reached, even
-if it can be determined that that computation cannot lead to successful
-termination.
+The operational semantics of a Mercury predicate which invokes
+@emph{impure} code is a modified form of the @emph{strict sequential}
+semantics (@pxref{Semantics}).  @emph{Impure} goals may not be reordered
+relative to any other goals; not even ``minimal'' reordering as implied
+by the modes is permitted.  If any such reordering is needed, this is a
+mode error.  However, @emph{pure} and @emph{semipure} goals may be
+reordered as the compiler desires (within the bounds of the semantics
+the user has specified for the program) as long as they are not moved
+across an impure goal.  Execution of impure goals is strict: they must
+be executed if they are reached, even if it can be determined that that
+computation cannot lead to successful termination.
 
 Semipure goals can be given a ``contextual'' declarative semantics.
 They cannot have any side-effects, so it is expected that, given the
@@ -4998,35 +5464,73 @@ compiler may treat a semipure goal as if it were pure.
 
 
 @node Declaring impurity
-@section Declaring predicate impurity
+@section Declaring impure functions and predicates
+
+Every Mercury predicate or function has exactly two purity values
+associated with it.
+One is the @emph{declared} purity of the predicate or function, which is
+given by the programmer.
+The other value is the @emph{inferred} purity,
+which is calculated from the purity of goals in the body of the
+predicate or function.
 
 A predicate is declared to be impure or semipure by preceding the word
 @code{pred} in its @code{pred} declaration with @code{impure}
-or @code{semipure}, respectively.  That is, a declaration of the form:
+or @code{semipure}, respectively.  
+Similarly, a function is declared impure or semipure by preceding the
+word @code{func} in its @code{func} declaration with @code{impure} or
+@code{semipure}.
+That is, a declaration of the form:
 
 @example
 :- impure pred @var{Pred}(@var{Arguments}@dots{}).
+:- semimpure pred @var{Pred}(@var{Arguments}@dots{}).
 @end example
 
 @noindent
 or
 
 @example
-:- semipure pred @var{Pred}(@var{Arguments}@dots{}).
+:- impure func @var{Func}(@var{Arguments}@dots{}) = Result.
+:- semipure func @var{Func}(@var{Arguments}@dots{}) = Result.
 @end example
 
 @noindent
-declares the predicate @var{Pred} to be impure or semipure, respectively.
+declares the predicate @var{Pred} to be impure and the function
+@var{Func} to be semipure, respectively.
 
+Type class methods may also be declared as @code{impure} or
+@code{semipure} by preceeding the word @code{pred} or @code{func} with the
+appropriate purity level.  An instance of the type class must provide
+method implementations that are at least as pure as the method
+declaration. 
 
 @node Impure calls
 @section Marking a call as impure
 
+Every call to a Mercury predicate or function also has exactly two
+purity values associated with it.
+One is the declared purity of the call, which is
+given by the programmer as an annotation of the call.
+The other value is the inferred purity,
+which is the purity of the predicate or function.
+
+It is an error for the declared purity of a goal to be more pure than
+the inferred purity; the compiler should flag this as an error.
+The compiler should issue a warning if the declared purity of a goal is
+less pure than its inferred purity.
+
 If a predicate is impure or semipure, all calls to it must be preceded
-with the word @code{impure} or @code{semipure}, respectively.  Note
-that only predicate calls need to (and are permitted to) be prefixed
-with @code{impure} or @code{semipure}, compound goals never need this.
-See @ref{Impurity Example} for an example of this.
+with the word @code{impure} or @code{semipure}, respectively. 
+
+If a function is impure or semipure, it must be called as part of a
+simple unification with a variable, and this unification must be
+prefixed by the word @code{impure} or @code{semipure}, respectively.
+
+Note that only predicate calls and unifications of variables with 
+functions need to (and are permitted to) be prefixed
+with @code{impure} or @code{semipure}.  Compound goals never need this.
+See @ref{Impurity Example} for an example of this syntax.
 
 The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 
@@ -5040,10 +5544,22 @@ declarative semantics, without hidden side-effects.
 @node Promising purity
 @section Promising that a predicate is pure
 
-Some predicates which call impure or semipure predicates are themselves
-pure.  In fact, the main purpose of the Mercury impurity system is to
-allow programmers to write pure predicates using impure ones, while protecting
-the procedural implementation from aggressive compiler optimizations.
+Predicates that are implemented in terms of impure or semipure predicates are
+assumed to have the least of the purity of the goals in their body.
+The declared purity of a predicate must not be more pure
+than the inferred purity; if it is, the compiler must generate an error.
+If the declared purity is less pure than the inferred purity, the
+compiler should issue a warning (this is similar to the above case for
+goals).
+Because the inferred purity of the predicate is calculated from the
+declared purity of the calls it executes,  the lowest purity bound is
+propagated up from callee to caller through the program.
+
+However, some predicates which call impure or semipure predicates are
+themselves pure. 
+The only way for the programmer to stop the propagation of impurity is
+to explicitly promise that a predicate or function is pure.
+
 Of course, the Mercury compiler cannot verify that a predicate is pure,
 so it is the programmer's responsibility to ensure this.  If a predicate
 is promised pure and is not, the behaviour of the program is undefined.
@@ -5065,7 +5581,7 @@ and so is not useful as is.  It is meant only as an example.
 
 @example
 :- pragma c_header_code("#include <limits.h>").
-:- pragma c_header_code("Integer max;").
+:- pragma c_header_code("MR_Integer max;").
 
 :- impure pred init_max is det.
 :- pragma c_code(init_max,
@@ -5077,8 +5593,8 @@ and so is not useful as is.  It is meant only as an example.
         [will_not_call_mercury],
         "if (X > max) max = X;").
 
-:- semipure pred get_max(int::out) is det.
-:- pragma c_code(get_max(X::out),
+:- semipure func get_max = (int::out) is det.
+:- pragma c_code(get_max = (X::out),
         [will_not_call_mercury],
         "X = max;").
 
@@ -5091,7 +5607,7 @@ max_solution(Generator, Max) :-
         (   Generator(X),
             impure set_max(X),
             fail
-        ;   semipure get_max(Max)
+        ;   semipure Max = get_max
         ).
 @end example
 
@@ -5305,11 +5821,9 @@ extensions to the Mercury language:
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
 * Termination analysis::        Support for automatic proofs of termination.
-@ifset aditi
 * Aditi deductive database interface::
                                 Support for bottom-up evaluation of Mercury
                                 predicates.
-@end ifset
 @end menu
 
 @node Fact tables
@@ -5566,10 +6080,11 @@ function then the compiler will quit with an error message.
 @subsection Aditi overview
 
 The University of Melbourne Mercury implementation includes support for
-compiling Mercury predicates for bottom-up evaluation using the Aditi
+compiling Mercury predicates for bottom-up evaluation using the Aditi2
 deductive database system. The Aditi system is not yet publicly available,
 so this is currently not very useful to anyone other than the Mercury and
-Aditi developers.
+Aditi developers. For more information see the Aditi web site
+at <http://www.cs.mu.oz.au/aditi>.
 
 Evaluation by a deductive database system is useful for predicates which
 use large amounts of data, since the database system can use efficient join
@@ -5601,8 +6116,8 @@ variables from database predicates, and enforces the restriction that
 top-down Mercury code called from within the database cannot call bottom-up
 code, which is currently impossible for Aditi to handle.
 
-Some useful predicates are defined in @file{extras/aditi/aditi.m} in the
-@samp{mercury-extras} distribution.
+Some useful predicates are defined in @file{$ADITI_HOME/doc/aditi.m}
+in the Aditi distribution.
 
 The Aditi interface currently has the major restriction that recursive or
 imported top-down Mercury predicates or functions cannot be called from
@@ -5723,7 +6238,8 @@ The Aditi deductive database can store the results of procedures within
 a transaction to avoid unnecessary recomputations. This is unrelated to
 the type of memoing described in @ref{Tabled evaluation}.
 @samp{aditi_no_memo} is the default.
-@c XXX this will probably change
+Memoing is not yet implemented, so any @samp{pragma aditi_memo}
+declarations will be ignored.
 
 @example
 :- pragma owner(@var{Name}/@var{Arity}, @var{UserName}).
@@ -5760,8 +6276,7 @@ generated yet.
 
 @menu 
 * Aditi update notes::
-* Insertion::
-* Deletion::
+* Insertion and deletion::
 * Bulk insertion and deletion::
 * Modification::
 @end menu
@@ -5785,18 +6300,18 @@ Predicate and function names in Aditi update goals may be module qualified.
 
 The examples make use of the following declarations:
 @example
-:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred p(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma base_relation(p/3).
 
-:- func f(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- func f(aditi__state::aditi_mui, int::out) = (int::out) is nondet.
 :- pragma base_relation(f/2).
 
-:- pred ancestor(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pred ancestor(aditi__state::aditi_mui, int::out, int::out) is nondet.
 :- pragma aditi(ancestor/3).
 @end example
 
-@node Insertion
-@subsubsection Insertion
+@node Insertion and deletion
+@subsubsection Insertion and deletion
 
 @example
 aditi_insert(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB}).
@@ -5804,7 +6319,23 @@ aditi_insert(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB
 aditi_insert(@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal}, @var{DB0}, @var{DB}).
 @end example
 
+@sp 1
+
 Insert the specified tuple into a relation.
+
+@sp 1
+
+@example
+aditi_delete(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB}).
+
+aditi_delete(@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal}, @var{DB0}, @var{DB}).
+@end example
+
+@sp 1
+
+Delete the specified tuple from a relation.
+
+@sp 1
 
 @itemize @bullet
 @item
@@ -5827,10 +6358,15 @@ which has mode @samp{unused}.
 @samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
+@sp 1
+
 Note that @w{@samp{@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{})}}
-in an @samp{aditi_insert} goal is not a higher-order term.
+in an @samp{aditi_insert} or @samp{aditi_delete} goal is not a
+higher-order term.
 @w{@samp{Pred = p(DB0, X, Y), aditi_insert(Pred, DB0, DB)}}
 is a syntax error.
+
+@sp 1
 
 Examples:
 @example
@@ -5839,135 +6375,47 @@ insert_example_1(DB0, DB) :-
 
 insert_example_2(DB0, DB) :-
         aditi_insert(f(_, 1) = 2, DB0, DB).
-@end example
 
-@node Deletion
-@subsubsection Deletion
-
-@example
-aditi_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
-
-aditi_delete((@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal} :- @var{Goal}), @var{DB0}, @var{DB}).
-
-aditi_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
-@end example
-
-Delete all tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} 
-succeeds from the named base relation. 
-
-@itemize @bullet
-@item
-@samp{@var{PredName}} must be the name of a predicate. 
-
-@item
-@samp{@var{FuncName}} must be the name of a function.
-
-@item
-@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
-If it is @samp{pred}, then @samp{@var{Name}} must be the name of
-a predicate, and if it is @samp{func}, then @samp{@var{Name}}
-must be the name of a function.
-
-@item
-@samp{@var{Arity}} must be the arity of the predicate or function
-being updated.
-
-@item
-@samp{@var{Arg1}}, @samp{@var{Arg2}}, @dots{} and @samp{@var{RetVal}}
-must be data-terms. The head of the deletion rule must have the same
-type signature as the relation being deleted from. The arguments
-(including the return value of a function) all have mode @samp{in},
-except for the @samp{aditi__state} argument, which has mode
-@samp{unused} --- it is not possible to call an Aditi relation
-from the deletion goal.
-
-@item
-@samp{@var{Goal}} must be a Mercury goal.
-
-@item
-@samp{@var{Closure}} must be a data-term which has a higher-order type.
-
-When deleting from a predicate with type declaration
-@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}},
-@samp{@var{Closure}} must have type
-@w{@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{})}},
-and inst @w{@samp{pred(unused, in, @dots{}) is semidet}}.
-
-When deleting from a function with type declaration
-@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
-@samp{@var{Closure}} must have type
-@w{@samp{aditi_top_down func(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
-and inst @w{@samp{func(unused, in, @dots{}) = in is semidet}}.
-
-The @samp{aditi_top_down} annotation on the lambda expression is needed to 
-tell the compiler to generate code for execution by the
-Aditi database using the normal Mercury execution algorithm.
-
-The @samp{aditi__state} argument of @samp{@var{Closure}} must have
-mode @samp{unused} --- it is not possible to call an Aditi
-relation from the deletion condition. All other arguments of
-@samp{@var{Closure}} must have mode @samp{in}.
-
-If the construction of @samp{@var{Closure}} is in the same conjunction
-as the @samp{aditi_delete} call, the compiler may be able to do a better
-job of optimizing the deletion using indexes.
-
-@item
-@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
-@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
-@end itemize
-
-Examples:
-@example
 delete_example_1(DB0, DB) :-
-        aditi_delete((p(_, X, Y) :- X + Y = 2), DB0, DB).
+        aditi_delete(p(_, 1, 2), DB0, DB).
 
 delete_example_2(DB0, DB) :-
-        aditi_delete(f(_, 2) = _Y, DB0, DB).
-
-delete_example_3(DB0, DB) :-
-        DeleteP = (aditi_top_down
-               pred(_::unused, X::in, Y::in) is semidet :-
-                        X = 2
-               ),
-        aditi_delete(pred p/3, DeleteP, DB0, DB).
-
-delete_example_4(DB0, DB) :-
-        DeleteQ = (aditi_top_down
-               func(_::unused, X::in) = (Y::in) is semidet :-
-                        X = 2
-               ),
-        aditi_delete(func f/2, DeleteQ, DB0, DB).
-
-delete_example_5 -->
-        aditi_delete((p(_, X, Y) :- X = 2, Y = 2)). 
+        aditi_delete(f(_, 1) = 2, DB0, DB).
 
 @end example
-
-The type of @samp{DeleteP} is
-@w{@samp{aditi_top_down pred(aditi__state, int, int)}}.
-Its inst is @w{@samp{pred(unused, in, in) is semidet}}, as for a normal
-lambda expression.
-
-Note that in @samp{delete_example_5} the extra set of parentheses around
-the goal are needed, otherwise the second goal in the conjunction
-in the deletion goal would be parsed as an extra argument of the
-@samp{aditi_delete} call, resulting in a syntax error.
 
 @node Bulk insertion and deletion
 @subsubsection Bulk insertion and deletion
 
 @example
+aditi_bulk_insert((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_bulk_insert((@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal} :- @var{Goal}), @var{DB0}, @var{DB}).
+
 aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example
 
-Insert all solutions of @samp{@var{Closure}} into the named relation.
+@sp 1
+
+Insert all solutions of @samp{@var{Goal}} or @samp{@var{Closure}} into
+the named relation.
+
+@sp 1
 
 @example
+aditi_bulk_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_bulk_delete((@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal} :- @var{Goal}), @var{DB0}, @var{DB}).
+
 aditi_bulk_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example
 
-Delete all solutions of @samp{@var{Closure}} from the named relation.
+@sp 1
+
+Delete all solutions of @samp{@var{Goal}} or @samp{@var{Closure}}
+from the named relation.
+
+@sp 1
 
 @itemize @bullet
 @item
@@ -5979,13 +6427,16 @@ must be the name of a function.
 @item
 @samp{@var{Arity}} must be the arity of the predicate or function
 being updated.
+
+@item
+@samp{@var{Goal}} must be a Mercury goal.
 
 @item
 @samp{@var{Closure}} must be a data-term which has a higher-order type with
 the same type signature as the base relation being updated.
 
 The @samp{aditi__state} argument of @samp{@var{Closure}} must have
-mode @samp{aditi_ui}. All other arguments must have mode @samp{out}.
+mode @samp{aditi_mui}. All other arguments must have mode @samp{out}.
 The determinism of @samp{@var{Closure}} must be @samp{nondet}.
 
 @samp{@var{Closure}} must be evaluable bottom-up by the Aditi
@@ -5999,58 +6450,129 @@ on the lambda expression.
 @samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
+@c Don't delete the blank lines here -- they are needed for readability.
+@c @sp commands have no effect on the info file.
+@example
+
+
+aditi_bulk_insert((@var{PredName}(@var{DB1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+@end example 
+
+is equivalent to 
+
+@example
+Closure = (aditi_bottom_up
+        pred(@var{DB1}::aditi_mui, @var{Arg2}::out, @dots{}) is nondet :- @var{Goal}),
+aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example 
+
+bulk_insert_example_1, bulk_insert_example_2 and bulk_insert_example_3 below
+are all equivalent.
+
+@c Don't delete the blank lines here -- they are needed for readability.
+@c @sp commands have no effect on the info file.
+@example
+
+
+aditi_bulk_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+@end example 
+
+is equivalent to
+
+@example
+DeleteClosure = (aditi_bottom_up
+        pred(@var{DB1}::aditi_mui, @var{Arg2}::out, @dots{}) is nondet :-
+        @var{PredName}(@var{DB1}, @var{Arg2}, @dots{}),
+        @var{Goal}
+),
+aditi_bulk_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example 
+
+bulk_delete_example_1 and bulk_delete_example_2 below are equivalent.
+
+@sp 2
+
 Examples:
 @example
 bulk_insert_example_1(DB0, DB) :-
-        aditi_bulk_insert(pred p/3, ancestor, DB0, DB).
-
-bulk_delete_example_1(DB0, DB) :-
-        aditi_bulk_delete(pred p/3, ancestor, DB0, DB).
+        aditi_bulk_insert(p(DB1, X, Y) :- ancestor(DB1, X, Y), DB0, DB).
 
 bulk_insert_example_2(DB0, DB) :-
+        aditi_bulk_insert(pred p/3, ancestor, DB0, DB).
+
+bulk_insert_example_3(DB0, DB) :-
         InsertP = (aditi_bottom_up
-                pred(DB1::aditi_ui, X::out, Y::out) is nondet :-
+                pred(DB1::aditi_mui, X::out, Y::out) is nondet :-
                         ancestor(DB1, X, Y)
                 ),
         aditi_bulk_insert(pred p/3, InsertP, DB0, DB).
 
+bulk_delete_example_1 -->
+        aditi_bulk_delete(
+                (p(DB1, X, _) :-
+                        X > 1,
+                        X < 5
+                )).
+
 bulk_delete_example_2(DB0, DB) :-
+        DeleteP = (aditi_bottom_up
+                pred(DB1::aditi_mui, X::out, Y::out) is nondet :-
+                        p(DB1, X, Y),
+                        X > 1,
+                        X < 5
+                ),
+        aditi_bulk_delete(DeleteP, DB0, DB).
+
+bulk_delete_example_3(DB0, DB) :-
+        aditi_bulk_delete(f(DB1, X) = _Y :- X = 1, DB0, DB).
+
+bulk_delete_example_4(DB0, DB) :-
         DeleteQ = (aditi_bottom_up
-                func(DB1::aditi_ui, X::out) = (Y::out) is nondet :-
-                        ancestor(DB1, X, Y)
+                func(DB1::aditi_mui, X::out) = (Y::out) is nondet :-
+                        q(DB1, X) = Y,
+                        X > 1,
+                        X < 5
                 ),
         aditi_bulk_delete(func f/2, DeleteQ, DB0, DB).
 @end example
 
 The type of @samp{InsertP} is
 @w{@samp{aditi_bottom_up pred(aditi__state, int, int)}}.
-Its inst is @w{@samp{pred(aditi_ui, out, out) is nondet}},
+Its inst is @w{@samp{pred(aditi_mui, out, out) is nondet}},
 as for a normal lambda expression.
+
+Note that in @samp{bulk_delete_example_1} the extra set of parentheses around
+the goal are needed, otherwise the second goal in the conjunction in the
+deletion goal would be parsed as an extra argument
+of the @samp{aditi_bulk_delete} call, resulting in a syntax error.
 
 @node Modification
 @subsubsection Modification
 
 @example
-aditi_modify(
+aditi_bulk_modify(
         (@var{PredName}(@var{OldArg1}, @var{OldArg2}, @dots{}) ==>
         @var{PredName}(@var{NewArg1}, @var{NewArg2}, @dots{}) :-
                 @var{Goal}
         ),
         @var{DB0}, @var{DB}).
 
-aditi_modify(
+aditi_bulk_modify(
         ((@var{FuncName}(@var{OldArg1}, @var{OldArg2}, @dots{}) = @var{OldRetVal}) ==>
         (@var{FuncName}(@var{NewArg1}, @var{NewArg2}, @dots{}) = @var{NewRetVal}) :-
                 @var{Goal}
         ),
         @var{DB0}, @var{DB}).
 
-aditi_modify(@var{PredOrFunc} @var{PredName}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
-
+aditi_bulk_modify(@var{PredOrFunc} @var{PredName}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
 @end example
+
+@sp 1
 
 Modify tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} succeeds,
 leaving any other tuples unchanged.
+
+@sp 1
 
 @itemize @bullet
 @item
@@ -6075,10 +6597,11 @@ being updated.
 must be data-terms.
 
 The original tuple is given by the first set of arguments, which
-have mode @samp{in}. The updated tuple is given by the second set
+have mode @samp{out}. The updated tuple is given by the second set
 of arguments, which have mode @samp{out}. The @samp{aditi__state}
-arguments for both tuples have mode @samp{unused} --- it is not possible
-to call an Aditi relation from the modification goal.
+argument for the original tuple has mode @samp{aditi_mui}.
+The @samp{aditi__state} argument for the updated tuple has mode
+@samp{unused}.
 
 The argument types of each tuple must match the argument types
 of the base relation being modified.
@@ -6092,68 +6615,130 @@ of the base relation being modified.
 When modifying a predicate with type declaration
 @w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}}, @samp{@var{Closure}}
 must have type
-@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
-and inst @w{@samp{pred(unused, in, @dots{}, unused, out, @dots{}) is semidet}}.
+@samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
+and inst
+@w{@samp{pred(aditi_mui, out, @dots{}, unused, out, @dots{}) is nondet}}.
 
 When modifying a function with type declaration
 @w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
 @samp{@var{Closure}} must have type
-@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
+@samp{aditi_bottom_up pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
 and inst
-@w{@samp{pred(unused, in, @dots{}, in, unused, out, @dots{}, out) is semidet}}.
+@w{@samp{pred(aditi_mui, out, @dots{}, out, unused, out, @dots{}, out) is nondet}}.
 
-The @samp{aditi__state} arguments of @samp{@var{Closure}} must have
-mode @samp{unused} --- it is not possible to call an Aditi
-relation from the modification goal.
-
-If the construction of @samp{@var{Closure}} is in the same conjunction
-as the @samp{aditi_modify} call, the compiler may be able to do a better
-job of optimizing the modification using indexes.
+It is an error for the closure to return a solution for which the arguments
+corresponding to the original tuple do not match a tuple in the relation
+being modified.
 
 @item
 @samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
 @samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
 @end itemize
 
+@sp 2
+
+The first syntax can be rewritten into the second:
+
+@example
+aditi_bulk_modify(
+        (@var{PredName}(@var{DB1}, @var{OldArg1}, @var{OldArg2}, @dots{}) ==>
+        @var{PredName}(@var{_DB}, @var{NewArg1}, @var{NewArg2}, @dots{}) :-
+                @var{Goal}
+        ),
+        @var{DB0}, @var{DB}).
+@end example
+
+is equivalent to
+
+@example
+ModifyClosure =
+        (aditi_bottom_up pred(@var{DB1}::aditi_mui, @var{OldArg1}::out, @var{OldArg2}::out, @dots{},
+                @var{_DB}::unused, @var{NewArg1}::out, @var{NewArg2}::out, @dots{}) is nondet :-
+                @var{PredName}(@var{DB1}, @var{OldArg1}, @var{OldArg2}, @dots{}),
+                @var{Goal}
+        ),
+aditi_bulk_modify(pred @var{PredName}/@var{PredArity}, ModifyClosure, DB0, DB).
+@end example
+
+@c Don't delete the blank lines here -- they are needed for readability.
+@c @sp commands have no effect on the info file.
+@example
+
+
+aditi_bulk_modify(pred p/3, Closure, DB0, DB).
+@end example
+
+is almost equivalent to
+
+@example
+DeleteClosure =
+        (aditi_bottom_up pred(DB1::aditi_mui, X1::out, Y1::out) is nondet :-
+                Closure(DB1, X1, Y1, _, _)
+        ),
+InsertClosure =
+        (aditi_bottom_up pred(DB1::aditi_mui, X2::out, Y2::out) is nondet :-
+                Closure(DB1, _, _, X2, Y2)
+        ),
+aditi_bulk_delete(pred p/3, DeleteClosure, DB0, DB1),
+aditi_bulk_insert(pred p/3, InsertClosure, DB1, DB).
+@end example
+
+They are not quite equivalent because @var{InsertClosure}
+is executed using the contents of @samp{p/3} before the deletion
+is applied.
+
+@sp 2
+
 Examples:
 @example
-modify_example_1(DB0, DB) :-
-        aditi_modify(
-                (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
+bulk_modify_example_1(DB0, DB) :-
+        aditi_bulk_modify(
+                (p(DB1, X, Y0) ==> p(_DB, X, Y) :-
+                        X > 2,
+                        X < 5,
+                        Y = Y0 + 1
+                ), DB0, DB).
+
+bulk_modify_example_2(DB0, DB) :-
+        aditi_bulk_modify(
+                (f(_DB0, X) = Y0 ==> f(_DB, X) = Y :-
                         X > 2, X < 5, Y = Y0 + 1
                 ), DB0, DB).
 
-modify_example_2(DB0, DB) :-
-        aditi_modify(
-                ((f(_DB0, X) = Y0) ==> (f(_DB, X) = Y) :-
-                        X > 2, X < 5, Y = Y0 + 1
-                ), DB0, DB).
+bulk_modify_example_3(DB0, DB) :-
+        ModifyP = (aditi_bottom_up pred(DB1::aditi_mui, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is nondet :-
+                    p(DB1, X, Y0),
+                    X > 2,
+                    X < 5,
+                    Y = Y0 + 1
+                 ),
+        aditi_bulk_modify(pred p/3, ModifyP, DB0, DB).
 
-modify_example_3(DB0, DB) :-
-        ModifyP = (aditi_top_down pred(_::unused, X::in, Y0::in,
-                        _::unused, X::out, Y::out) is semidet :-
+bulk_modify_example_4(DB0, DB) :-
+        ModifyF = (aditi_bottom_up pred(DB1::aditi_mui, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is nondet :-
+                    f(DB1, X) = Y0,
                     X > 2, X < 5, Y = Y0 + 1
                  ),
-        aditi_modify(pred p/3, ModifyP, DB0, DB).
+        aditi_bulk_modify(func f/2, ModifyQ, DB0, DB).
 
-modify_example_4(DB0, DB) :-
-        ModifyQ = (aditi_top_down pred(_::unused, X::in, Y0::in,
-                        _::unused, X::out, Y::out) is semidet :-
-                    X > 2, X < 5, Y = Y0 + 1
-                 ),
-        aditi_modify(func f/2, ModifyQ, DB0, DB).
-
-modify_example_5 -->
-        aditi_modify(
+bulk_modify_example_5 -->
+        aditi_bulk_modify(
                 (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
                         X > 2, X < 5, Y = Y0 + 1
                 )).
 @end example
 
-Note that in @samp{modify_example_5} the extra set of parentheses around
+Note that in @samp{bulk_modify_example_5} the extra set of parentheses around
 the goal are needed, otherwise the second and third goals in
 the conjunction in the modification goal would be parsed as extra arguments
-of the @samp{aditi_modify} call, resulting in a syntax error.
+of the @samp{aditi_bulk_modify} call, resulting in a syntax error.
+
+The type of @samp{ModifyP} is
+@w{@samp{aditi_bottom_up pred(aditi__state, int, int, aditi__state, int, int)}}.
+Its inst is @w{@samp{pred(aditi_mui, out, out, unused, out, out) is nondet}},
+as for a normal lambda expression.
 
 @node Aditi glossary
 @subsection Aditi glossary
@@ -6168,8 +6753,8 @@ The basic instructions in Aditi-RL are relational database operations such as
 @item aggregate
 Aggregates are used to compute a value such as a sum over all the solutions
 for a predicate. Aggregates can be computed over Aditi predicates using
-@samp{aditi__aggregate_compute_initial} defined in @file{extras/aditi/aditi.m}
-in the @samp{mercury-extras} distribution.
+@samp{aditi__aggregate_compute_initial} defined in
+@file{$ADITI_HOME/doc/aditi.m} in the Aditi distribution.
 
 @item base relation
 A base relation is a predicate consisting of a set of facts
@@ -6202,8 +6787,8 @@ A transaction is a database operation which is executed atomically. If
 part of a transaction fails, the database reverts to its original state
 before the transaction. For details on how transactions are implemented
 in Mercury, see @cite{Database transactions in a purely declarative logic
-programming language} @ref{[7]} and @file{extras/aditi/aditi.m} in the
-@samp{mercury-extras} distribution.
+programming language} @ref{[7]} and @file{$ADITI_HOME/doc/aditi.m} in the
+Aditi distribution.
 
 @end table
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,6 +364,11 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
+			Vn_instr = vn_free_heap(Vn),
+			vn_order__find_links(Vn, node_ctrl(Ctrl),
+				VnTables0, VnTables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
+		;
 			Vn_instr = vn_store_ticket(Vnlval),
 			vn_util__vnlval_access_vns(Vnlval, Vns),
 			vn_order__find_all_links(Vns, node_ctrl(Ctrl),
@@ -380,13 +385,18 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 			Predmap1 = Predmap0,
 			VnTables1 = VnTables0
 		;
+			Vn_instr = vn_prune_ticket,
+			Succmap1 = Succmap0,
+			Predmap1 = Predmap0,
+			VnTables1 = VnTables0
+		;
 			Vn_instr = vn_mark_ticket_stack(Vnlval),
 			vn_util__vnlval_access_vns(Vnlval, Vns),
 			vn_order__find_all_links(Vns, node_ctrl(Ctrl),
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
-			Vn_instr = vn_discard_tickets_to(Vn),
+			Vn_instr = vn_prune_tickets_to(Vn),
 			vn_order__find_links(Vn, node_ctrl(Ctrl),
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -111,17 +111,19 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 	code_info__pickup_zombies(Zombies),
 	code_info__make_vars_forward_dead(Zombies),
 
-		% Discard hp and trail ticket if the condition succeeded
+		% Discard hp and prune trail ticket if the condition succeeded
 	( { CondCodeModel = model_non } ->
 		% We cannot release the stack slots used for the heap pointer
 		% and the trail ticket if the condition can be backtracked
-		% into.
-		code_info__maybe_reset_and_discard_ticket(
-			MaybeTicketSlot, commit, DiscardTicketCode)
+		% into.  Nor can we prune the trail ticket that we allocated,
+		% since the condition may have allocated other trail tickets
+		% since then which have not yet been pruned.
+		code_info__maybe_reset_ticket(
+			MaybeTicketSlot, solve, ResetTicketCode)
 	;
 		code_info__maybe_release_hp(MaybeHpSlot),
-		code_info__maybe_reset_discard_and_release_ticket(
-			MaybeTicketSlot, commit, DiscardTicketCode)
+		code_info__maybe_reset_prune_and_release_ticket(
+			MaybeTicketSlot, commit, ResetTicketCode)
 	),
 
 	code_info__get_instmap(EndCondInstMap),
@@ -175,7 +177,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		tree(CondTraceCode,
 		tree(CondCode,
 		tree(ThenNeckCode,
-		tree(DiscardTicketCode,
+		tree(ResetTicketCode,
 		tree(ThenTraceCode,
 		tree(ThenCode,
 		tree(ThenSaveCode,
@@ -305,7 +307,7 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 
 	( { CodeModel = model_det } ->
 			% the then branch will never be reached
-		{ DiscardTicketCode = empty },
+		{ PruneTicketCode = empty },
 		{ FailTraceCode = empty },
 		{ FailCode = empty }
 	;
@@ -313,8 +315,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		% The call to reset_ticket(..., commit) here is necessary
 		% in order to properly detect floundering.
 		code_info__maybe_release_hp(MaybeHpSlot),
-		code_info__maybe_reset_discard_and_release_ticket(
-			MaybeTicketSlot, commit, DiscardTicketCode),
+		code_info__maybe_reset_prune_and_release_ticket(
+			MaybeTicketSlot, commit, PruneTicketCode),
 		trace__maybe_generate_negated_event_code(Goal, neg_failure,
 			FailTraceCode),
 		code_info__generate_failure(FailCode),
@@ -345,7 +347,7 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		tree(EnterTraceCode,
 		tree(GoalCode,
 		tree(ThenNeckCode,
-		tree(DiscardTicketCode,
+		tree(PruneTicketCode,
 		tree(FailTraceCode,
 		tree(FailCode,
 		tree(ResumeCode,

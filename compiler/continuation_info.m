@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,28 +61,37 @@
 	%
 :- type proc_layout_info
 	--->	proc_layout_info(
-			label,		% The entry label.
-			determinism,	% Determines which stack is used.
-			int,		% Number of stack slots.
-			maybe(int),	% Location of succip on stack.
-			maybe(label),	% If the trace level is not none,
-					% this contains the label associated
-					% with the call event, whose stack
-					% layout says which variables were
-					% live and where on entry.
-			int,		% The number of the highest numbered
+			entry_label	:: label,
+					% Determines which stack is used.
+			detism		:: determinism,
+					% Number of stack slots.
+			stack_slot_count :: int,
+					% Location of succip on stack.
+			succip_slot	:: maybe(int),
+					% If the trace level is not none, this
+					% contains the label associated with
+					% the call event, whose stack layout
+					% gives the locations of the input
+					% arguments on procedure entry, for
+					% use in implementing retry in the
+					% debugger.
+			call_label	:: maybe(label),
+					% The number of the highest numbered
 					% rN register that can contain useful
 					% information during a call to MR_trace
 					% from within this procedure.
-			trace_slot_info,% Info about the stack slots used
+			max_trace_reg	:: int,
+					% Info about the stack slots used
 					% for tracing.
-			bool,		% Do we require the procedure id
+			trace_slot_info	:: trace_slot_info,
+					% Do we require the procedure id
 					% section of the procedure layout
 					% to be present, even if the option
 					% procid_stack_layout is not set?
-			proc_label_layout_info
+			need_proc_id	:: bool,
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
+			internal_map	:: proc_label_layout_info
 		).
 
 	%
@@ -297,7 +306,7 @@
 
 continuation_info__maybe_process_llds([], _) --> [].
 continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo) -->
-	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
+	{ Proc = c_procedure(_, _, PredProcId, Instrs, _, _, _) },
 	continuation_info__maybe_process_proc_llds(Instrs, PredProcId,
 		ModuleInfo),
 	continuation_info__maybe_process_llds(Procs, ModuleInfo).
@@ -338,7 +347,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 
 		% Get all the continuation info from the call instructions.
 	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
-	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, H, Internals0),
+	Internals0 = ProcLayoutInfo0^internal_map,
 	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
 		Instr = call(Target, label(ReturnLabel), LiveInfo, Context, _)
 			- _Comment,
@@ -350,7 +359,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	list__foldl(continuation_info__process_continuation(WantReturnInfo),
 		Calls, Internals0, Internals),
 
-	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, H, Internals),
+	ProcLayoutInfo = ProcLayoutInfo0^internal_map := Internals,
 	global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo,
 		GlobalData).
 
@@ -623,7 +632,7 @@ continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo,
 		LldsInst = partial(Inst)
 	),
 	LiveValueType = var(Var, Name, Type, LldsInst),
-	type_util__vars(Type, TypeVars).
+	type_util__real_vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -667,7 +676,7 @@ continuation_info__build_closure_info([Var | Vars], [Type | Types],
 	Layout = closure_arg_info(Type, Inst),
 	set__singleton_set(Locations, lval(reg(r, ArgLoc))),
 	map__det_insert(VarLocs0, Var, Locations, VarLocs1),
-	type_util__vars(Type, VarTypeVars),
+	type_util__real_vars(Type, VarTypeVars),
 	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
 	continuation_info__build_closure_info(Vars, Types, ArgInfos, Layouts,
 		InstMap, VarLocs1, VarLocs, TypeVars1, TypeVars).

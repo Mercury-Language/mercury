@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -40,7 +40,10 @@
   #include <signal.h>
 #endif
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -80,7 +83,7 @@
 #endif
 
 void
-MR_setup_signal(int sig, Code *handler, bool need_info, 
+MR_setup_signal(int sig, MR_Code *handler, bool need_info, 
 		const char *error_message)
 {
 #if	defined(HAVE_SIGACTION)

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,7 +23,7 @@
 #include <setjmp.h>
 
 #include "mercury_std.h"		/* for `bool' */
-#include "mercury_types.h"		/* for `Code *' */
+#include "mercury_types.h"		/* for `MR_Code *' */
 #include "mercury_goto.h"		/* for `Define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
 #include "mercury_context.h"		/* for MR_Context, MR_IF_USE_TRAIL */
@@ -47,9 +47,10 @@ extern	bool	MR_debugflag[];
 #define	MR_SREGFLAG		8
 #define	MR_TRACEFLAG		9
 #define	MR_TABLEFLAG		10
-#define	MR_TABLESTACKFLAG	11
-#define	MR_DETAILFLAG		12
-#define	MR_MAXFLAG		13
+#define	MR_TABLEHASHFLAG	11
+#define	MR_TABLESTACKFLAG	12
+#define	MR_DETAILFLAG		13
+#define	MR_MAXFLAG		14
 /* MR_DETAILFLAG should be the last real flag */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -63,6 +64,7 @@ extern	bool	MR_debugflag[];
 #define	MR_sregdebug		MR_debugflag[MR_SREGFLAG]
 #define	MR_tracedebug		MR_debugflag[MR_TRACEFLAG]
 #define	MR_tabledebug		MR_debugflag[MR_TABLEFLAG]
+#define	MR_hashdebug		MR_debugflag[MR_TABLEHASHFLAG]
 #define	MR_tablestackdebug	MR_debugflag[MR_TABLESTACKFLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
@@ -82,15 +84,16 @@ typedef struct {
 		jmp_buf env;		/* 
 					** used by calls to setjmp and longjmp 
 					*/
-		Word *saved_succip;
-		Word *saved_sp;
-		Word *saved_curfr;
-		Word *saved_maxfr;
-		MR_IF_USE_TRAIL(Word *saved_trail_ptr;)
-		MR_IF_USE_TRAIL(Word *saved_ticket_counter;)
+		MR_Word *saved_succip;
+		MR_Word *saved_sp;
+		MR_Word *saved_curfr;
+		MR_Word *saved_maxfr;
+		MR_IF_USE_TRAIL(MR_TrailEntry *saved_trail_ptr;)
+		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_counter;)
+		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_high_water;)
 
 #if NUM_REAL_REGS > 0
-		Word regs[NUM_REAL_REGS];
+		MR_Word regs[NUM_REAL_REGS];
 #endif /* NUM_REAL_REGS > 0 */
 
 	} MR_jmp_buf;
@@ -131,6 +134,8 @@ typedef struct {
 				MR_trail_ptr);				\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_counter =	\
 				MR_ticket_counter);			\
+		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_high_water =	\
+				MR_ticket_high_water);			\
 		if (setjmp((setjmp_env)->env)) {			\
 			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
 			restore_regs_from_mem((setjmp_env)->regs);	\
@@ -142,6 +147,8 @@ typedef struct {
 					(setjmp_env)->saved_trail_ptr);	\
 			MR_IF_USE_TRAIL(MR_ticket_counter = 		\
 				(setjmp_env)->saved_ticket_counter);	\
+			MR_IF_USE_TRAIL(MR_ticket_high_water = 		\
+				(setjmp_env)->saved_ticket_high_water);	\
 			goto longjmp_label;				\
 		}							\
 	    } while (0)
@@ -168,14 +175,14 @@ typedef struct MR_mercury_thread_list_struct {
 */
 
 typedef struct MR_mercury_engine_struct {
-	Word		fake_reg[MAX_FAKE_REG];
+	MR_Word		fake_reg[MAX_FAKE_REG];
 		/* The fake reg vector for this engine. */
 #ifndef CONSERVATIVE_GC
-	Word		*e_hp;
+	MR_Word		*e_hp;
 		/* The heap pointer for this engine */
-	Word		*e_sol_hp;
+	MR_Word		*e_sol_hp;
 		/* The solutions heap pointer for this engine */
-	Word		*e_global_hp;
+	MR_Word		*e_global_hp;
 		/* The global heap pointer for this engine */
 #endif
 	MR_Context	*this_context;
@@ -212,7 +219,7 @@ typedef struct MR_mercury_engine_struct {
 		*/
 #endif
 	jmp_buf		*e_jmp_buf;
-	Word		*e_exception;
+	MR_Word		*e_exception;
 #ifndef	CONSERVATIVE_GC
 	MemoryZone	*heap_zone;
 	MemoryZone	*solutions_heap_zone;
@@ -256,13 +263,15 @@ typedef struct MR_mercury_engine_struct {
 	#define	MR_engine_base	MR_thread_engine_base
   #endif
 
-  #define MR_ENGINE(x)		(((MercuryEngine *)MR_engine_base)->x)
-  #define MR_get_engine()	MR_thread_engine_base
+  #define MR_ENGINE(x)		(((MercuryEngine *) MR_engine_base)->x)
+  #define MR_cur_engine()	((MercuryEngine *) MR_engine_base)
+  #define MR_get_engine()	((MercuryEngine *) MR_thread_engine_base)
 
 #else 	/* !MR_THREAD_SAFE */
 
   extern MercuryEngine	MR_engine_base;
   #define MR_ENGINE(x)		(MR_engine_base.x)
+  #define MR_cur_engine()	(&MR_engine_base)
   #define MR_get_engine()	(&MR_engine_base)
 
 #endif	/* !MR_THREAD_SAFE */
@@ -316,7 +325,7 @@ extern	void	finalize_engine(MercuryEngine *engine);
 ** Functions that act on the current Mercury engine.
 ** See the comments in mercury_engine.c for documentation on MR_call_engine().
 */
-extern	Word *	MR_call_engine(Code *entry_point, bool catch_exceptions);
+extern	MR_Word *	MR_call_engine(MR_Code *entry_point, bool catch_exceptions);
 extern	void	terminate_engine(void);
 extern	void	dump_prev_locations(void);
 

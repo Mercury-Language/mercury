@@ -49,5 +49,5 @@ done
 
 # delete all the backups over 7 days old
 find . -name "*.diff.gz" -mtime +7 -exec rm '{}' ';'
-find . -name "*.revision.gz" -mtime +7 -exec rm '{}' ';'
+find . -name "*.revisions.gz" -mtime +7 -exec rm '{}' ';'
 

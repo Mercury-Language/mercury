@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -59,7 +59,7 @@
 %		".."
 %
 
-:- module parse.
+:- module mdb__parse.
 
 :- interface.
 
@@ -120,7 +120,7 @@
 :- implementation.
 
 :- import_module char, int, std_util.
-:- import_module util.
+:- import_module mdb__util.
 
 
 :- type token
@@ -136,22 +136,13 @@
 	.
 
 parse__read_command(Prompt, Comm) -->
-	util__trace_getline(Prompt, Result),
-	( { Result = ok(Line) },
-		{ string__to_char_list(Line, Cs) },
-		{ lexer(Cs, Tokens) },
-		( { parse(Tokens, Comm2) } ->
-			{ Comm = Comm2 }
-		;
-			{ Comm = unknown }
-		)
-	; { Result = eof },
-		{ Comm = quit }
-	; { Result = error(Error) },
-		{ io__error_message(Error, Msg) },
-		io__write_string(Msg),
-		io__nl,
-		parse__read_command(Prompt, Comm)
+	util__trace_get_command(Prompt, Line),
+	{ string__to_char_list(Line, Cs) },
+	{ lexer(Cs, Tokens) },
+	( { parse(Tokens, Comm2) } ->
+		{ Comm = Comm2 }
+	;
+		{ Comm = unknown }
 	).
 
 parse__read_command_external(Comm) -->
@@ -308,7 +299,7 @@ start([Tok | Toks], Comm) :-
 		)
 	).
 
-default_depth(10).
+default_depth(3).
 
 :- pred parse_path(list(token), path).
 :- mode parse_path(in, out) is semidet.

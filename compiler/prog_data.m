@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,6 +104,16 @@
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
 
+	% We only support C right now.
+:- type foreign_language
+	--->	c
+% 	;	cplusplus
+% 	;	csharp
+% 	;	managedcplusplus
+% 	;	java
+% 	;	il
+	.
+
 :- type pred_or_func
 	--->	predicate
 	;	function.
@@ -136,13 +146,14 @@
 :- type pragma_type 
 	--->	c_header_code(string)
 
-	;	c_code(string)
+	;	foreign(foreign_language, string)
 
-	;	c_code(pragma_c_code_attributes, sym_name, pred_or_func,
-			list(pragma_var), prog_varset, pragma_c_code_impl)
+	;	foreign(foreign_language, pragma_foreign_code_attributes,
+			sym_name, pred_or_func, list(pragma_var),
+			prog_varset, pragma_foreign_code_impl)
 			% Set of C code attributes, eg.:
-			%	whether or not the C code may call Mercury,
-			%	whether or not the C code is thread-safe
+			%	whether or not the code may call Mercury,
+			%	whether or not the code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
 	
@@ -168,12 +179,12 @@
 			% C function name.
 
 	;	import(sym_name, pred_or_func, list(mode),
-			pragma_c_code_attributes, string)
+			pragma_foreign_code_attributes, string)
 			% Predname, Predicate/function, Modes,
-			% Set of C code attributes, eg.:
-			%	whether or not the C code may call Mercury,
-			%	whether or not the C code is thread-safe
-			% C function name.
+			% Set of foreign code attributes, eg.:
+			%    whether or not the foreign code may call Mercury,
+			%    whether or not the foreign code is thread-safe
+			% foreign function name.
 
 	;	source_file(string)
 			% Source file name.
@@ -333,35 +344,43 @@
 :- type type_subst == assoc_list(tvar, type).
 
 %
-% Stuff for `c_code' pragma.
+% Stuff for `foreign_code' pragma.
 %
 
 	% This type holds information about the implementation details
-	% of procedures defined via `pragma c_code'.
+	% of procedures defined via `pragma foreign_code'.
 	%
 	% All the strings in this type may be accompanied by the context
 	% of their appearance in the source code. These contexts are
-	% used to tell the C compiler where the included C code comes from,
-	% to allow it to generate error messages that refer to the original
-	% appearance of the code in the Mercury program.
-	% The context is missing if the C code was constructed by the compiler.
-:- type pragma_c_code_impl
-	--->	ordinary(		% This is a C definition of a model_det
-					% or model_semi procedure. (We also
-					% allow model_non, until everyone has
-					% had time to adapt to the new way
+	% used to tell the foreign language compiler where the included
+	% code comes from, to allow it to generate error messages that
+	% refer to the original appearance of the code in the Mercury
+	% program.
+	% The context is missing if the foreign code was constructed by
+	% the compiler.
+	% Note that nondet pragma foreign definitions might not be
+	% possible in all foreign languages.
+:- type pragma_foreign_code_impl
+	--->	ordinary(		% This is a foreign language
+					% definition of a model_det
+					% or model_semi procedure. (We
+					% also allow model_non, until
+					% everyone has had time to adapt
+					% to the new way
 					% of handling model_non pragmas.)
-			string,		% The C code of the procedure.
+			string,		% The code of the procedure.
 			maybe(prog_context)
 		)
-	;	nondet(			% This is a C definition of a model_non
+	;	nondet(			% This is a foreign language
+					% definition of a model_non
 					% procedure.
 			string,
 			maybe(prog_context),
 					% The info saved for the time when
 					% backtracking reenters this procedure
-					% is stored in a C struct. This arg
-					% contains the field declarations.
+					% is stored in a data structure.
+					% This arg contains the field
+					% declarations.
 
 			string,
 			maybe(prog_context),
@@ -385,6 +404,15 @@
 					% Shared code that is executed after
 					% both the previous code fragments.
 					% May not access the input variables.
+		)
+	;	import(
+			string,		% Pragma imported C func name
+			string,		% Code to handle return value
+			string,		% Comma seperated variables which
+					% the import function is called
+					% with.
+
+			maybe(prog_context)
 		).
 
 	% The use of this type is explained in the comment at the top of
@@ -426,21 +454,21 @@
 :- type class_method
 	--->	pred(tvarset, inst_varset, existq_tvars, sym_name,
 			list(type_and_mode), maybe(determinism), condition,
-			class_constraints, prog_context)
+			purity, class_constraints, prog_context)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantifiedTypeVars,
 		%	PredName, ArgTypes, Determinism, Cond
-		%	ClassContext, Context
+		%	Purity, ClassContext, Context
 
 	; 	func(tvarset, inst_varset, existq_tvars, sym_name,
 			list(type_and_mode), type_and_mode,
 			maybe(determinism), condition,
-			class_constraints, prog_context)
+			purity, class_constraints, prog_context)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantfiedTypeVars,
 		%	PredName, ArgTypes, ReturnType,
 		%	Determinism, Cond
-		%	ClassContext, Context
+		%	Purity, ClassContext, Context
 
 	; 	pred_mode(inst_varset, sym_name, list(mode),
 			maybe(determinism), condition,
@@ -459,13 +487,10 @@
 	.
 
 :- type instance_method	
-	--->	func_instance(sym_name, sym_name, arity, prog_context)
-				% Method, Instance, Arity, 
+	--->	instance_method(pred_or_func, sym_name,
+			sym_name, arity, prog_context).
+				% PredOrFunc, Method, Instance, Arity, 
 				% Line number of declaration
-	;	pred_instance(sym_name, sym_name, arity, prog_context)
-				% Method, Instance, Arity, 
-				% Line number of declaration
-	.
 
 :- type instance_body
 	--->	abstract
@@ -480,23 +505,23 @@
 
 		% an abstract type for representing a set of
 		% `pragma_c_code_attribute's.
-:- type pragma_c_code_attributes.
+:- type pragma_foreign_code_attributes.
 
-:- pred default_attributes(pragma_c_code_attributes).
+:- pred default_attributes(pragma_foreign_code_attributes).
 :- mode default_attributes(out) is det.
 
-:- pred may_call_mercury(pragma_c_code_attributes, may_call_mercury).
+:- pred may_call_mercury(pragma_foreign_code_attributes, may_call_mercury).
 :- mode may_call_mercury(in, out) is det.
 
-:- pred set_may_call_mercury(pragma_c_code_attributes, may_call_mercury,
-		pragma_c_code_attributes).
+:- pred set_may_call_mercury(pragma_foreign_code_attributes, may_call_mercury,
+		pragma_foreign_code_attributes).
 :- mode set_may_call_mercury(in, in, out) is det.
 
-:- pred thread_safe(pragma_c_code_attributes, thread_safe).
+:- pred thread_safe(pragma_foreign_code_attributes, thread_safe).
 :- mode thread_safe(in, out) is det.
 
-:- pred set_thread_safe(pragma_c_code_attributes, thread_safe,
-		pragma_c_code_attributes).
+:- pred set_thread_safe(pragma_foreign_code_attributes, thread_safe,
+		pragma_foreign_code_attributes).
 :- mode set_thread_safe(in, in, out) is det.
 
 	% For pragma c_code, there are two different calling conventions,
@@ -563,7 +588,7 @@
 
 	% atomic goals
 	;	call(sym_name, list(prog_term), purity)
-	;	unify(prog_term, prog_term).
+	;	unify(prog_term, prog_term, purity).
 
 :- type goals		==	list(goal).
 
@@ -611,7 +636,7 @@
 			% one day we might allow types to take
 			% value parameters as well as type parameters.
 
-% type_defn/3 define above
+% type_defn/3 is defined above as a constructor for item/0
 
 :- type type_defn	
 	--->	du_type(sym_name, list(type_param), list(constructor),
@@ -629,7 +654,13 @@
 			list(constructor_arg)
 		).
 
-:- type constructor_arg	==	pair(string, type).
+:- type constructor_arg	==
+		pair(
+			maybe(ctor_field_name),
+			type
+		).
+
+:- type ctor_field_name == sym_name.
 
 	% An equality_pred specifies the name of a user-defined predicate
 	% used for equality on a type.  See the chapter on them in the
@@ -883,7 +914,7 @@
 
 :- implementation.
 
-:- type pragma_c_code_attributes
+:- type pragma_foreign_code_attributes
 	--->	attributes(
 			may_call_mercury,
 			thread_safe

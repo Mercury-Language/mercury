@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.9 of the Mercury system.
+We are pleased to announce the release of version 0.9.1 of the Mercury system.
 
 Mercury is a new general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -180,6 +180,7 @@ The "mercury-extras" distribution contains some extra libraries for:
      o  POSIX interface
      o  backtrackable (trailed) destructive update
      o  an ODBC database interface
+     o  the Morphine trace analysis system
      o  a CLP(R) interface, i.e. constraint solving over real numbers
 
 The "mercury-tests" distribution contains a test suite.

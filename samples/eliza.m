@@ -134,9 +134,9 @@ eliza__read_line(Line, Ok) -->
 	io__read_line(Stdin, Result),
 	io__write_string("\n"),
 	( { Result = ok(Line1) } ->
-	   { Ok = yes, Line = Line1 }
+	   { Ok = yes } , { Line = Line1 }
 	;
-	   { Ok = no, Line = [] }
+	   { Ok = no }, { Line = [] }
 	).
 
 %-----------------------------------------------------------------------------%

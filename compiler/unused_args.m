@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -247,25 +247,15 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		OptProcs1 = OptProcs0,
 		VarUsage1 = VarUsage0
 	;
-		proc_info_argmodes(ProcInfo, ArgModes),
-		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__keys(VarTypes, Vars),
 		initialise_vardep(VarDep0, Vars, VarDep1),
-		setup_output_args(ModuleInfo, HeadVars,
-			ArgModes, VarDep1, VarDep2),
+		setup_output_args(ModuleInfo, ProcInfo, VarDep1, VarDep2),
 		
 		module_info_globals(ModuleInfo, Globals),
 		proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
 			Globals, TypeInfoLiveness),
-		( 
-			TypeInfoLiveness = yes,
-			pred_info_module(PredInfo, PredModule),
-			pred_info_name(PredInfo, PredName),
-			pred_info_arity(PredInfo, PredArity),
-			\+ polymorphism__no_type_info_builtin(PredModule,
-				PredName, PredArity)
-		->
+		( TypeInfoLiveness = yes ->
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			setup_typeinfo_deps(Vars, VarTypes, 
 				proc(PredId, ProcId), TVarMap, VarDep2,
@@ -327,32 +317,13 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.
-:- pred setup_output_args(module_info::in, list(prog_var)::in, list(mode)::in,
+:- pred setup_output_args(module_info::in, proc_info::in,
 			var_dep::in, var_dep::out) is det.
 
-setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
-	(
-		HVars = [Var | Vars], ArgModes = [Mode | Modes]
-	->
-		(
-			% Any argument which has its instantiatedness
-			% changed by the predicate is used.
-			mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-			\+ inst_matches_binding(Inst1, Inst2, ModuleInfo)
-		->
-			set_var_used(VarDep0, Var, VarDep1)		
-		;
-			VarDep1 = VarDep0	
-		),
-		setup_output_args(ModuleInfo, Vars, Modes, VarDep1, VarDep)
-	;
-		HVars = [], ArgModes = []
-	->
-		VarDep = VarDep0	
-	;
-		error("setup_output_args: invalid call")
-	).
-
+setup_output_args(ModuleInfo, ProcInfo, VarDep0, VarDep) :-
+	proc_info_instantiated_head_vars(ModuleInfo, ProcInfo,
+		ChangedInstHeadVars),
+	list__foldl(set_var_used, ChangedInstHeadVars, VarDep0, VarDep).
 
 	% searches for the dependencies of a variable, succeeds if the variable
 	%	is definitely used
@@ -391,9 +362,9 @@ add_aliases(UseInf0, Var, Aliases, UseInf) :-
 set_list_vars_used(UseInfo0, Vars, UseInfo) :-
 	map__delete_list(UseInfo0, Vars, UseInfo).
 
-:- pred set_var_used(var_dep::in, prog_var::in, var_dep::out) is det.
+:- pred set_var_used(prog_var::in, var_dep::in, var_dep::out) is det.
 
-set_var_used(UseInfo0, Var, UseInfo) :-
+set_var_used(Var, UseInfo0, UseInfo) :-
 	map__delete(UseInfo0, Var, UseInfo).
 
 
@@ -424,7 +395,7 @@ traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
 
 % handle switch
 traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
-	set_var_used(UseInf0, Var, UseInf1),
+	set_var_used(Var, UseInf0, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
 
@@ -457,9 +428,10 @@ traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, CallArgs, UseInf1),
 	set_list_vars_used(UseInf1, Args, UseInf).
 
-% handle pragma c_code(...) -
+% handle pragma foreign(...) -
 % only those arguments which have C names can be used in the C code.
-traverse_goal(_, pragma_c_code(_, _, _, Args, Names, _, _), UseInf0, UseInf) :-
+traverse_goal(_, pragma_foreign_code(_, _, _, _, Args, Names, _, _),
+		UseInf0, UseInf) :-
 	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
 	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
 				ArgAndName = Arg - MaybeName,
@@ -471,13 +443,13 @@ traverse_goal(_, pragma_c_code(_, _, _, Args, Names, _, _), UseInf0, UseInf) :-
 % cases to handle all the different types of unification
 traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
 		:-
-	set_var_used(UseInf0, Var1, UseInf1),
-	set_var_used(UseInf1, Var2, UseInf).
+	set_var_used(Var1, UseInf0, UseInf1),
+	set_var_used(Var2, UseInf1, UseInf).
 		
 traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 	( local_var_is_used(UseInf0, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
-		set_var_used(UseInf0, Var2, UseInf)
+		set_var_used(Var2, UseInf0, UseInf)
 	;
 		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
@@ -497,7 +469,7 @@ traverse_goal(ModuleInfo,
 		CanFail = can_fail	
 	->
 		% a deconstruction that can_fail uses its left arg
-		set_var_used(UseInf2, Var1, UseInf)
+		set_var_used(Var1, UseInf2, UseInf)
 	;
 		UseInf = UseInf2	
 	).
@@ -517,8 +489,8 @@ traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _, _), _),
 	% with --error-check-only and polymorphism has not been run.
 	% Complicated unifications should only be var-var.
 	( Rhs = var(RhsVar) ->
-		set_var_used(UseInf0, RhsVar, UseInf1),
-		set_var_used(UseInf1, Var, UseInf)
+		set_var_used(RhsVar, UseInf0, UseInf1),
+		set_var_used(Var, UseInf1, UseInf)
 	;
 		error("complicated unifications should only be var-var")
 	).
@@ -714,7 +686,7 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 			)
 		->
 			% set the current variable to used
-			set_var_used(LocalVars0, Var, LocalVars1),
+			set_var_used(Var, LocalVars0, LocalVars1),
 			Changed1 = yes
 		;
 			Changed1 = Changed0,
@@ -851,6 +823,9 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 		map__det_insert(ProcCallInfo0, proc(PredId, ProcId),
 		    call_info(NewPredId, NewProcId, PredSymName, UnusedArgs),
 		    ProcCallInfo),
+		module_info_globals(ModuleInfo0, Globals),
+		body_should_use_typeinfo_liveness(NewPredInfo, Globals,
+			TypeInfoLiveness),
 		(
 			Status0 = exported,
 			IntermodUnusedArgs = yes(UnusedArgs2)
@@ -862,7 +837,8 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 				UnusedArgs2, "__ua", exported,
 				proc(PredId, ProcId), ExtraPredInfo0),
 			create_call_goal(UnusedArgs, NewPredId, NewProcId,
-				PredModule, PredName, OldProc0, ExtraProc0),
+				PredModule, PredName, TypeInfoLiveness,
+				OldProc0, ExtraProc0),
 			proc_info_headvars(OldProc0, HeadVars0),
 			remove_listof_elements(HeadVars0, 1, UnusedArgs2,
 				IntermodHeadVars),
@@ -888,7 +864,8 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 		predicate_table_get_preds(PredTable2, Preds0),
 		pred_info_procedures(PredInfo0, Procs0),
 		create_call_goal(UnusedArgs, NewPredId, NewProcId,
-			PredModule, PredName, OldProc0, OldProc),
+			PredModule, PredName, TypeInfoLiveness,
+			OldProc0, OldProc),
 		map__set(Procs0, ProcId, OldProc, Procs),
 		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 		map__det_update(Preds0, PredId, PredInfo, Preds1),
@@ -987,11 +964,11 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	% Replace the goal in the procedure with one to call the given
 	% pred_id and proc_id.
 :- pred create_call_goal(list(int)::in, pred_id::in, proc_id::in,
-		module_name::in, string::in, proc_info::in, proc_info::out)
-		is det.
+		module_name::in, string::in, bool::in, proc_info::in,
+		proc_info::out) is det.
 
 create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
-		PredName, OldProc0, OldProc) :-
+		PredName, TypeInfoLiveness, OldProc0, OldProc) :-
 	proc_info_headvars(OldProc0, HeadVars),
 	proc_info_goal(OldProc0, Goal0), 
 	Goal0 = _GoalExpr - GoalInfo0,
@@ -1006,12 +983,13 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
 		      not_builtin, no, qualified(PredModule, PredName)),
 	Goal1 = GoalExpr - GoalInfo0,
-	implicitly_quantify_goal(Goal1, Varset0, VarTypes1, NonLocals, 
-			Goal, Varset, VarTypes, _),
+	proc_info_typeinfo_varmap(OldProc0, TVarMap),
+	implicitly_quantify_goal(Goal1, Varset0, VarTypes1,
+		TVarMap, TypeInfoLiveness, NonLocals, 
+		Goal, Varset, VarTypes, _),
 	proc_info_set_goal(OldProc0, Goal, OldProc1),
 	proc_info_set_varset(OldProc1, Varset, OldProc2),
 	proc_info_set_vartypes(OldProc2, VarTypes, OldProc).
-
 
 	% Create a pred_info for an imported pred with a pragma unused_args
 	% in the .opt file.
@@ -1173,8 +1151,13 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 		Changed = yes,
 			% if anything has changed, rerun quantification
 		set__list_to_set(HeadVars, NonLocals),
-		implicitly_quantify_goal(Goal1, Varset0, VarTypes0, NonLocals,
-						Goal, Varset, VarTypes, _),
+		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
+		module_info_globals(Mod0, Globals),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
+		implicitly_quantify_goal(Goal1, Varset0, VarTypes0,
+			TVarMap, TypeInfoLiveness, NonLocals,
+			Goal, Varset, VarTypes, _),
 		proc_info_set_goal(FixedProc2, Goal, FixedProc3),
 		proc_info_set_varset(FixedProc3, Varset, FixedProc4),
 		proc_info_set_vartypes(FixedProc4, VarTypes, FixedProc5)
@@ -1289,7 +1272,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = pragma_c_code(_, _, _, _, _, _, _).
+	GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _, _).
 
 fixup_goal_expr(_, _, _, _, bi_implication(_, _) - _, _) :-
 	% these should have been expanded out by now

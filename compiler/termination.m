@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
 :- interface.
 
 :- import_module io, bool, std_util, list.
-:- import_module prog_data, hlds_module, term_util.
+:- import_module prog_data, hlds_module, hlds_pred, term_util.
 
 	% Perform termination analysis on the module.
 
@@ -65,6 +65,13 @@
 :- pred termination__write_maybe_termination_info(maybe(termination_info)::in,
 	bool::in, io__state::di, io__state::uo) is det.
 
+	% Write out a termination_info pragma for the predicate if it
+	% is exported, it is not a builtin and it is not a predicate used
+	% to force type specialization.
+:- pred termination__write_pred_termination_info(module_info, pred_id,
+	io__state, io__state).
+:- mode termination__write_pred_termination_info(in, in, di, uo) is det.
+
 	% This predicate outputs termination_info pragmas;
 	% such annotations can be part of .opt and .trans_opt files.
 
@@ -79,7 +86,7 @@
 
 :- import_module term_pass1, term_pass2, term_errors.
 :- import_module inst_match, passes_aux, options, globals.
-:- import_module hlds_data, hlds_goal, hlds_pred, dependency_graph, varset.
+:- import_module hlds_data, hlds_goal, dependency_graph, varset.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, type_util, special_pred.
 :- import_module modules.
@@ -681,7 +688,8 @@ termination__make_opt_int(PredIds, Module) -->
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) },
 		io__set_output_stream(OptFile, OldStream),
-		termination__make_opt_int_preds(PredIds, Module),
+		list__foldl(termination__write_pred_termination_info(Module),
+			PredIds),
 		io__set_output_stream(OldStream, _),
 		io__close_output(OptFile),
 		maybe_write_string(Verbose, " done.\n")
@@ -694,18 +702,21 @@ termination__make_opt_int(PredIds, Module) -->
 		io__set_exit_status(1)
 	).
 
-:- pred termination__make_opt_int_preds(list(pred_id), module_info, 
-	io__state, io__state).
-:- mode termination__make_opt_int_preds(in, in, di, uo) is det.
-
-termination__make_opt_int_preds([], _Module) --> [].
-termination__make_opt_int_preds([ PredId | PredIds ], Module) -->
-	{ module_info_preds(Module, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
+termination__write_pred_termination_info(Module, PredId) -->
+	{ module_info_pred_info(Module, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
+	{ module_info_type_spec_info(Module, TypeSpecInfo) },
+	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
+
 	( 
 		{ ImportStatus = exported },
-		{ \+ code_util__compiler_generated(PredInfo) }
+		{ \+ code_util__compiler_generated(PredInfo) },
+
+		% XXX These should be allowed, but the predicate
+		% declaration for the specialized predicate is not produced
+		% before the termination pragmas are read in, resulting
+		% in an undefined predicate error.
+		\+ { set__member(PredId, TypeSpecForcePreds) }
 	->
 		{ pred_info_name(PredInfo, PredName) },
 		{ pred_info_procedures(PredInfo, ProcTable) },
@@ -718,8 +729,7 @@ termination__make_opt_int_preds([ PredId | PredIds ], Module) -->
 			PredOrFunc, SymName, Context)
 	;
 		[]
-	),
-	termination__make_opt_int_preds(PredIds, Module).
+	).
 
 :- pred termination__make_opt_int_procs(pred_id, list(proc_id), proc_table,
 	pred_or_func, sym_name, prog_context, io__state, io__state).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1998,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,6 +43,12 @@
 :- pred random__randmax(int, random__supply, random__supply).
 :- mode random__randmax(out, mdi, muo) is det.
 
+	% random__permutation(List0, List, RS0, RS):
+	% binds List to a random permutation of List0,
+	% and binds RS to the new state of the random number supply.
+:- pred random__permutation(list(T), list(T), random__supply, random__supply).
+:- mode random__permutation(in, out, mdi, muo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -59,7 +65,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int.
+:- import_module int, map.
 
 :- type random__supply		==	int.	% I(j)
 
@@ -82,6 +88,53 @@ random__randmax(M1, Rs, Rs) :-
 	M1 is M - 1.
 
 %---------------------------------------------------------------------------%
+
+	% The random permutation is implemented via a "sampling without
+	% replacement" method. In init_record, we build up a map in which
+	% every integer in the range 0 .. Length - 1 is mapped to the
+	% corresponding element in the list.  The sampling stage
+	% iterates from Length - 1 down to 0. The invariant being
+	% maintained is that at iteration I, the elements in the image of
+	% the part of the map indexed by 0 .. I-1 are the elements that have
+	% not been selected yet. At each iteration, perform_sampling generates
+	% a random number Index in the range 0 .. I-1, adds the element that
+	% Index is mapped to, Next, to the permutation, and then ensures that
+	% Next is not generated again by swapping it with the image of I-1.
+
+random__permutation(List0, List, RS0, RS) :-
+	map__init(Samples0),
+	init_record(List0, 0, Samples0, Len, Samples),
+	perform_sampling(Len, Samples, [], List, RS0, RS).
+
+:- pred init_record(list(T)::in, int::in, map(int, T)::in, 
+		int::out, map(int, T)::out) is det.
+
+init_record([], N, Record, N, Record).
+init_record([X|Xs], N0, Record0, N, Record) :-
+	map__det_insert(Record0, N0, X, Record1),
+	N1 = N0 + 1,
+	init_record(Xs, N1, Record1, N, Record).
+
+:- pred perform_sampling(int::in, map(int, T)::in,
+	list(T)::in, list(T)::out,
+	random__supply::mdi, random__supply::muo) is det.
+
+perform_sampling(I, Record0, Order0, Order, RS0, RS) :-
+	( I =< 0 ->
+		Order = Order0,
+		RS = RS0
+	;
+		I1 = I - 1,
+		random__random(Random, RS0, RS1),
+		Index = Random mod I,
+		map__lookup(Record0, Index, Next),
+		map__lookup(Record0, I1, MaxImage),
+		Order1 = [Next | Order0],
+		map__det_update(Record0, Index, MaxImage, Record1),
+		map__det_update(Record1, I1, Next, Record2),
+		perform_sampling(I1, Record2, Order1, Order, RS1, RS)
+	).
+
 %---------------------------------------------------------------------------%
 
 random__test(Seed, N, Nums, Max) :-

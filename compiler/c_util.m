@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,17 +145,7 @@ c_util__reset_line_num -->
 %-----------------------------------------------------------------------------%
 
 c_util__output_quoted_string(S0) -->
-	( { string__first_char(S0, Char, S1) } ->
-		( { c_util__quote_char(Char, QuoteChar) } ->
-			io__write_char('\\'),
-			io__write_char(QuoteChar)
-		;
-			io__write_char(Char)
-		),
-		c_util__output_quoted_string(S1)
-	;
-		[]
-	).
+	c_util__output_quoted_multi_string(string__length(S0), S0).
 
 c_util__output_quoted_multi_string(Len, S) -->
 	c_util__output_quoted_multi_string_2(0, Len, S).
@@ -165,6 +155,17 @@ c_util__output_quoted_multi_string(Len, S) -->
 
 c_util__output_quoted_multi_string_2(Cur, Len, S) -->
 	( { Cur < Len } ->
+			% Avoid a limitation in the MSVC compiler where
+			% string literals can be no longer then 2048
+			% chars.  However if you output the string in
+			% chunks, eg "part a" "part b" it will accept a
+			% string longer then 2048 chars, go figure!
+		( { Cur \= 0, Cur mod 512 = 0 } ->
+			io__write_string("\" \"")
+		;
+			[]
+		),
+
 			% we must use unsafe index, because we want to be able
 			% to access chars beyond the first NUL
 		{ string__unsafe_index(S, Cur, Char) },
@@ -205,7 +206,7 @@ c_util__unary_prefix_op(unmktag,		"MR_unmktag").
 c_util__unary_prefix_op(mkbody,			"MR_mkbody").
 c_util__unary_prefix_op(body,			"MR_body").
 c_util__unary_prefix_op(unmkbody,		"MR_unmkbody").
-c_util__unary_prefix_op(hash_string,		"hash_string").
+c_util__unary_prefix_op(hash_string,		"MR_hash_string").
 c_util__unary_prefix_op(bitwise_complement,	"~").
 c_util__unary_prefix_op(not,			"!").
 c_util__unary_prefix_op(cast_to_unsigned,	"(Unsigned)").

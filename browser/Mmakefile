@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-1999 The University of Melbourne.
+# Copyright (C) 1998-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -37,6 +37,7 @@ RM_C	=	$(LIBRARY_RM_C)
 M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
 		MERCURY_ALL_C_INCL_DIRS="\
 			-I$(TRACE_DIR) \
+			-I$(LIBRARY_DIR) \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
@@ -55,8 +56,10 @@ MGNUCFLAGS =	$(DLL_CFLAGS)
 LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
-		    *.gc*.prof*) echo "-lgc_prof" ;;			\
-		    *.gc*)	 echo "-lgc" ;;				\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
 		`
 
@@ -87,79 +90,77 @@ endif
 all : library browse_test declarative_test
 
 .PHONY: depend
-depend		: browser_library.depend browse_test.depend \
-		  declarative_test.depend
+depend		: mdb.depend browse_test.depend declarative_test.depend
 
 .PHONY: check
-check		: browser_library.check
+check		: mdb.check
 
 .PHONY: all-ints 
 all-ints: ints int3s
 
 .PHONY: ints 
-ints		: browser_library.ints browse_test.ints declarative_test.ints
+ints		: mdb.ints browse_test.ints declarative_test.ints
 
 .PHONY: int3s 
-int3s		: browser_library.int3s
+int3s		: mdb.int3s
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) $(browser_library.ms)
-	$(MTAGS) $(browser_library.ms) ../library/*.m
+tags		: $(MTAGS) $(mdb.ms)
+	$(MTAGS) $(mdb.ms) ../library/*.m
 
-browser_library.stats : $(COMPILER_DIR)/source_stats.awk $(browser_library.ms)
+mdb.stats : $(COMPILER_DIR)/source_stats.awk $(mdb.ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
-		`vpath_find $(browser_library.ms)` > $@
+		`vpath_find $(mdb.ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates		:
-	touch $(browser_library.dates)
+	touch $(mdb.dates)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
-os: $(browser_library.os)
-cs: $(browser_library.cs)
+os: $(mdb.os)
+cs: $(mdb.cs)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: library
-library: lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+library: lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 library: $(BROWSER_LIB_NAME).init
 
-lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a : $(browser_library.os)
-	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a $(browser_library.os)
-	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A : $(mdb.os)
+	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A \
+		$(mdb.os)
+	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 
-lib$(BROWSER_LIB_NAME).so : $(browser_library.pic_os)
+lib$(BROWSER_LIB_NAME).so : $(mdb.pic_os)
 	$(LINK_SHARED_OBJ) -o lib$(BROWSER_LIB_NAME).so \
-		$(browser_library.pic_os)				\
+		$(mdb.pic_os)				\
 		$(RPATH_1)$(RPATH_2)					\
 		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
-$(BROWSER_LIB_NAME).init: $(deps_subdir)browser_library.dep
-	for file in $(browser_library.ms); do \
-		grep '^INIT ' $$file; \
-		echo "INIT mercury__`basename $$file .m`__init"; \
-	done > $(BROWSER_LIB_NAME).init
+$(BROWSER_LIB_NAME).init: $(deps_subdir)mdb.dep mdb.init
+	cp mdb.init $(BROWSER_LIB_NAME).init
 
-# Ensure we recompile browser_library__version if VERSION is changed.
-$(os_subdir)browser_library.o \
-$(os_subdir)browser_library.pic_o \
+# Ensure we recompile mdb__version if VERSION is changed.
+$(os_subdir)mdb.o \
+$(os_subdir)mdb.pic_o \
         : $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).so \
-		$(BROWSER_LIB_NAME).init
+	rm -f lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).so \
+		$(BROWSER_LIB_NAME).init mdb.init
 	rm -f tags
 
 #-----------------------------------------------------------------------------#
@@ -179,8 +180,8 @@ install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
-install_library: lib$(BROWSER_LIB_NAME).a \
+install_library: lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
-	cp `vpath_find lib$(BROWSER_LIB_NAME).a \
+	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,7 +12,7 @@
 #ifndef MERCURY_ARRAY_MACROS_H
 #define MERCURY_ARRAY_MACROS_H
 
-#include	"mercury_misc.h"	/* for MR_memcpy */
+#include	"mercury_reg_workarounds.h"	/* for MR_memcpy */
 
 /*
 ** This macro defines a safe way to perform assignment between
@@ -43,7 +43,7 @@
 ** The MR_ensure_room_for_next macro works with a group of three variables
 ** that follow the pattern
 **
-**	Item	widgets = NULL;
+**	Item	*widgets = NULL;
 **	int	widget_max = 0;
 **	int	widget_next = 0;
 **

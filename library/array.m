@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -289,48 +289,20 @@ Define_extern_entry(mercury____SolveEqual___array__array_1_0);
 Define_extern_entry(mercury____Init___array__array_1_0);
 #endif
 
-MR_MODULE_STATIC_OR_EXTERN 
-const struct mercury_data_array__type_ctor_layout_array_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_array__type_ctor_layout_array_1 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
-};
+#ifdef MR_HIGHLEVEL_CODE
+void sys_init_array_module_builtins(void);
+void sys_init_array_module_builtins(void) {
+	return;
+}
+#else
 
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_functors_array_1_struct {
-	Integer f1;
-} mercury_data_array__type_ctor_functors_array_1 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
-
-MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
-mercury_data_array__type_ctor_info_array_1 = {
-	(Integer) 1,
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___array__array_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___array__array_1_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___array__array_1_0)),
-#ifdef MR_USE_SOLVE_EQUAL
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____SolveEqual___array__array_1_0)),
-#endif
-#ifdef MR_USE_INIT
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Init___array__array_1_0)),
-#endif
-	MR_TYPECTOR_REP_ARRAY,
-	(Word *) &mercury_data_array__type_ctor_functors_array_1,
-	(Word *) &mercury_data_array__type_ctor_layout_array_1,
-	MR_string_const(""array"", 5),
-	MR_string_const(""array"", 5),
-	MR_RTTI_VERSION
-};
-
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
 
 BEGIN_MODULE(array_module_builtins)
 	init_entry(mercury____Unify___array__array_1_0);
-	init_entry(mercury____Index___array__array_1_0);
 	init_entry(mercury____Compare___array__array_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___array__array_1_0);
@@ -344,10 +316,6 @@ Define_entry(mercury____Unify___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
 	tailcall(ENTRY(mercury__array__array_equal_2_0),
 		ENTRY(mercury____Unify___array__array_1_0));
-
-Define_entry(mercury____Index___array__array_1_0);
-	r1 = -1;
-	proceed();
 
 Define_entry(mercury____Compare___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
@@ -385,6 +353,8 @@ void sys_init_array_module_builtins(void) {
 		mercury_data_array__type_ctor_info_array_1,
 		array__array_1_0);
 }
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
 
@@ -467,6 +437,11 @@ array__solve_equal_elements(N, Size, Array1, Array2) :-
 */
 
 %-----------------------------------------------------------------------------%
+
+:- pragma c_header_code("
+#include ""mercury_library_types.h""	/* for MR_ArrayType */
+#include ""mercury_misc.h""		/* for MR_fatal_error() */
+").
 
 :- pragma c_header_code("
 MR_ArrayType *ML_make_array(Integer size, Word item);
@@ -564,7 +539,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__lookup: array index out of bounds"");
+		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
 	Item = array->elements[Index];
@@ -574,7 +549,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__lookup: array index out of bounds"");
+		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
 	Item = array->elements[Index];
@@ -588,7 +563,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__set: array index out of bounds"");
+		MR_fatal_error(""array__set: array index out of bounds"");
 	}
 #endif
 	array->elements[Index] = Item;	/* destructive update! */
@@ -660,7 +635,8 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
 	if (old_array_size < array_size) {
-		fatal_error(""array__shrink: can't shrink to a larger size"");
+		MR_fatal_error(
+			""array__shrink: can't shrink to a larger size"");
 	}
 
 	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
@@ -855,15 +831,19 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__min(array(_T)) = int.
 :- mode array__min(array_ui) = out is det.
+:- mode array__min(in) = out is det.
 
 :- func array__max(array(_T)) = int.
 :- mode array__max(array_ui) = out is det.
+:- mode array__max(in) = out is det.
 
 :- func array__size(array(_T)) = int.
 :- mode array__size(array_ui) = out is det.
+:- mode array__size(in) = out is det.
 
 :- func array__lookup(array(T), int) = T.
 :- mode array__lookup(array_ui, in) = out is det.
+:- mode array__lookup(in, in) = out is det.
 
 :- func array__set(array(T), int, T) = array(T).
 :- mode array__set(array_di, in, in) = array_uo is det.
@@ -874,6 +854,7 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__copy(array(T)) = array(T).
 :- mode array__copy(array_ui) = array_uo is det.
+:- mode array__copy(in) = array_uo is det.
 
 :- func array__resize(array(T), int, T) = array(T).
 :- mode array__resize(array_di, in, in) = array_uo is det.
@@ -886,12 +867,15 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__to_list(array(T)) = list(T).
 :- mode array__to_list(array_ui) = out is det.
+:- mode array__to_list(in) = out is det.
 
 :- func array__fetch_items(array(T), int, int) = list(T).
 :- mode array__fetch_items(array_ui, in, in) = out is det.
+:- mode array__fetch_items(in, in, in) = out is det.
 
 :- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
 :- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
+:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
 
 :- func array__map(func(T1) = T2, array(T1)) = array(T2).
 :- mode array__map(func(in) = out is det, array_di) = array_uo is det.

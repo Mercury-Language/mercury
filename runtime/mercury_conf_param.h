@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,8 +37,11 @@
 */
 
 /*
-** Code generation options:
+** MR_Code generation options:
 **
+** MR_HIGHLEVEL_CODE
+** MR_HIGHLEVEL_DATA
+** MR_USE_GCC_NESTED_FUNCTIONS
 ** USE_GCC_GLOBAL_REGISTERS
 ** USE_GCC_NONLOCAL_GOTOS
 ** USE_ASM_LABELS
@@ -49,6 +52,9 @@
 ** MR_USE_TRAIL
 ** MR_USE_MINIMAL_MODEL
 **	See the documentation for
+**		--high-level-code
+**		--high-level-data
+**		--gcc-nested-functions
 **		--gcc-global-registers
 **		--gcc-non-local-gotos
 **		--gcc-asm-labels
@@ -62,11 +68,7 @@
 **
 ** USE_SINGLE_PREC_FLOAT:
 **	Use C's `float' rather than C's `double' for the
-**	Mercury floating point type (`Float').
-**
-** USE_TYPE_TO_TERM:
-**	Include `type_to_term' and `term_to_type' fields in type_infos.
-**	[This is obsolete. USE_TYPE_LAYOUT is a better solution.]
+**	Mercury floating point type (`MR_Float').
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
@@ -149,6 +151,13 @@
 ** MR_DEBUG_AGC
 ** 	Turn on all debugging information for accurate garbage
 ** 	collection.  (Equivalent to all MR_DEBUG_AGC_* macros above).
+**
+** MR_TABLE_DEBUG
+** 	Enables low-level debugging messages from the tabling system.
+**
+** MR_DEBUG_JMPBUFS
+** 	Enables low-level debugging messages from MR_call_engine and the
+** 	code handling exceptions.
 */
 
 #if MR_DEBUG_AGC
@@ -189,12 +198,15 @@
 ** Enable this if you want to count the number of execution tracing events
 ** at various call depths.
 **
-** MR_CTOR_REP_STATS
+** MR_TYPE_CTOR_STATS
 ** If you want to keep statistics on the number of times the generic unify,
-** index and compare functions are invoked with type constructors of the
-** various kinds of representations, then set this macro to a string giving
-** the name of the file to which the statistics should be appended when the
-** program exits.
+** index and compare functions are invoked with various kinds of type
+** constructors, then set this macro to a string giving the name of the file
+** to which the statistics should be appended when the program exits.
+**
+** MR_TABLE_STATISTICS
+** Enable this if you want to gather statistics about the operation of the
+** tabling system. The results are reported via io__report_tabling_stats.
 */
 
 /*---------------------------------------------------------------------------*/
@@ -310,6 +322,19 @@
   #define MR_MAY_NEED_INITIALIZATION
 #endif
 
+/*
+** MR_USE_DECLARATIVE_DEBUGGER -- include support for declarative
+**				  debugging in the internal debugger.
+**
+** MR_USE_DECL_STACK_SLOT      -- reserve a stack slot for use by the
+**				  declarative debugger.  Requires programs
+**				  to be compiled with the flag `--trace-decl'.
+*/
+
+#if defined(CONSERVATIVE_GC) && !defined(MR_DISABLE_DECLARATIVE_DEBUGGER)
+  #define MR_USE_DECLARATIVE_DEBUGGER
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -320,8 +345,49 @@
   #define MR_CAN_GET_PC_AT_SIGNAL
 #endif
 
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+/*
+** MR_CHECK_OVERFLOW_VIA_MPROTECT  --	Can check for overflow of various
+**					memory zones using mprotect() like
+**					functionality.
+*/
+#if (defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)) || defined(_WIN32)
   #define MR_CHECK_OVERFLOW_VIA_MPROTECT
+#endif
+
+/*
+** MR_PROTECTPAGE   -- 	MR_protect_pages() can be defined to provide the same
+**			functionality as the system call mprotect().
+*/
+#if defined(HAVE_MPROTECT) || defined(_WIN32)
+  #define MR_PROTECTPAGE
+#endif
+
+/*
+** MR_MSVC_STRUCTURED_EXCEPTIONS
+** 	Use Microsoft Visual C structured exceptions for signal handling.
+*/
+#if defined(_MSC_VER)
+  #define MR_MSVC_STRUCTURED_EXCEPTIONS
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Win32 API specific.
+*/
+
+/*
+** MR_WIN32 -- The Win32 API is available.
+**
+** MR_WIN32_GETSYSTEMINFO -- Is GetSystemInfo() available?
+**
+** MR_WIN32_VIRTUAL_ALLOC -- Is VirtualAlloc() available?
+*/
+#if _WIN32
+  #define MR_WIN32
+  #define MR_WIN32_GETSYSTEMINFO
+  #define MR_WIN32_VIRTUAL_ALLOC
+  #define MR_WIN32_GETPROCESSTIMES
 #endif
 
 /*---------------------------------------------------------------------------*/

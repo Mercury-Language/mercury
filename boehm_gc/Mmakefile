@@ -1,27 +1,30 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 University of Melbourne. 
+# Copyright (C) 1995-2000 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 # Mmake - Mmake file for Hans Boehm's conservative garbage collector.
 
-PROF=
-MAIN_TARGET=libgc$(PROF)
+# The invoker is expected to set GC_GRADE on the command line
+# in cases when this default is not appropriate.
+GC_GRADE=gc
+
+MAIN_TARGET=lib$(GC_GRADE)
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: libgc$(PROF)
-libgc$(PROF): submake
+.PHONY: lib$(GC_GRADE)
+lib$(GC_GRADE): submake
 
-libgc$(PROF).a: submake
+lib$(GC_GRADE).$A: submake
 
-libgc$(PROF).so: submake
+lib$(GC_GRADE).so: submake
 
-libgc$(PROF).dll: submake
+lib$(GC_GRADE).dll: submake
 
 MMAKEFLAGS=
 
@@ -31,16 +34,18 @@ MMAKEFLAGS=
 #	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) PROF=$(PROF) libgc$(PROF).a \
-		libgc$(PROF).$(EXT_FOR_SHARED_LIB) $(EXT_FOR_SHARED_LIB)
+	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) GRADE=$(GRADE) \
+		GC_GRADE=$(GC_GRADE) \
+		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
+		$(EXT_FOR_SHARED_LIB)
 
 .PHONY: force
 force:
 
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(MMAKEFLAGS) clean
-	rm -f libgc.a libgc.so
+	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
+	rm -f libgc.$A libgc.so
 
 #-----------------------------------------------------------------------------#
 
@@ -84,8 +89,8 @@ install_headers: install_dirs
 	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
 
 .PHONY: install_lib
-install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB) install_dirs
-	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
-		$(INSTALL_MERC_GC_LIB_DIR) \
+install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
+	cp `vpath_find lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_GC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#

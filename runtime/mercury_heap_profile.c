@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997, 1999 The University of Melbourne.
+** Copyright (C) 1997, 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,7 +59,7 @@ MR_increment_counter(MR_memprof_counter *counter, int size)
 */
 static void
 MR_increment_table_entry(MR_memprof_table *table, const char *name,
-	Code *addr, int size)
+	MR_Code *addr, int size)
 {
 	bool			found;
 	int			diff;
@@ -121,7 +121,7 @@ MR_increment_table_entry(MR_memprof_table *table, const char *name,
 ** in procedure `proc' for an object of type `type'.
 */
 void
-MR_record_allocation(int size, Code *proc_addr,
+MR_record_allocation(int size, MR_Code *proc_addr,
 	const char *proc_name, const char *type)
 {
 	/*

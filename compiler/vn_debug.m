@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -400,7 +400,7 @@ vn_debug__order_equals_msg(Msg, Order) -->
 
 vn_debug__cost_header_msg(Header) -->
 	vn_debug__cost_msg_flag(Flag),
-	opt_debug__msg(Flag, Header).
+	opt_debug__msg(Flag, -1, Header).
 
 vn_debug__cost_msg(Used, OrigCost, VnCost) -->
 	vn_debug__cost_msg_flag(Flag),

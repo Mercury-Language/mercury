@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -47,9 +47,9 @@ library/$(deps_subdir)library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_browser
-dep_browser: browser/$(deps_subdir)browser_library.dep
+dep_browser: browser/$(deps_subdir)mdb.dep
 
-browser/$(deps_subdir)browser_library.dep:
+browser/$(deps_subdir)mdb.dep:
 	cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
@@ -104,15 +104,8 @@ scripts:
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	case $(GRADE) in \
-	    *.prof*) \
-		prof=_prof \
-		;; \
-	    *) \
-		prof= \
-		;; \
-	esac; \
-	cd boehm_gc && $(SUBDIR_MMAKE) PROF=$$prof
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
 
 .PHONY: runtime
 runtime: scripts boehm_gc
@@ -235,7 +228,6 @@ tar: README INSTALL
 		mv $$ROOTNAME/trial	stuff-to-exclude;		\
 		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
 		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
-		mv $$ROOTNAME/extras/morphine	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
@@ -251,7 +243,6 @@ tar: README INSTALL
 		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
 		mv mercury-tests-$(VERSION)	tests;			\
 		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
-		mv stuff-to-exclude/morphine	$$ROOTNAME/extras/morphine;\
 		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
@@ -305,15 +296,8 @@ install_trace: trace
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	case $(GRADE) in \
-	    *.prof*) \
-		prof=_prof \
-		;; \
-	    *) \
-		prof= \
-		;; \
-	esac; \
-	cd boehm_gc && $(SUBDIR_MMAKE) install PROF=$$prof
+	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
 
 .PHONY: install_library
 install_library: dep_library library
@@ -336,19 +320,28 @@ install_profiler: profiler
 	cd profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_grades
-install_grades: scripts dep_library dep_browser
+install_grades: scripts
 	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so \
-			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
 	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so \
-			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
 	        case "$$grade" in \
@@ -368,22 +361,26 @@ install_grades: scripts dep_library dep_browser
 		        ;; \
 	        esac; \
 	        ( cd boehm_gc && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
+		  	install_lib ) && \
 		( cd runtime && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd library && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_library ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_hdrs && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_library ) && \
 		( cd browser && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd trace && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
-		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
-		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
-		( cd library && rm -f *.c *.o *.pic_o *.a *.so \
-				Mercury/cs/*.c Mercury/os/*.o ) && \
-		( cd browser && rm -f *.c *.o *.pic_o *.a *.so \
-				Mercury/cs/*.c Mercury/os/*.o ) && \
-		( cd trace && rm -f *.o *.pic_o *.a *.so ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
+		( cd boehm_gc && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd runtime && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd library && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd browser && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd trace && rm -f *.$O *.pic_o *.$A *.so ) && \
 		true \
 		|| { scripts/mercury_cleanup_install; exit 1; }; \
 	    fi; \
@@ -391,28 +388,39 @@ install_grades: scripts dep_library dep_browser
 	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 .PHONY: install_split_library
 install_split_library: scripts dep_library
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f *.dir *.c *.o *.pic_o *.a *.so \
-		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
+	{ mv -f *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+		Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
-	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
-	        rm -rf *.dir *.c *.o *.pic_o *.a *.so \
-			Mercury/cs/*.c Mercury/os/*.o; \
+	        rm -rf *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/cs/*.c Mercury/os/*.$O; \
 	done && \
-	{ [ -d Mercury/cs ] && mv tmp_dir/cs/*.c Mercury/cs; \
-	  [ -d Mercury/os ] && mv tmp_dir/os/*.o Mercury/os; \
+	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+	  [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
+	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
 	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,7 +22,8 @@
 
 MemoryZone	*MR_trail_zone;
 MR_TrailEntry	*MR_trail_ptr_var;
-Unsigned	MR_ticket_counter_var = 1;
+MR_Unsigned	MR_ticket_counter_var = 1;
+MR_Unsigned	MR_ticket_high_water_var = 1;
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)

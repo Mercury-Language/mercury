@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module llds.
-:- import_module list, map, std_util.
+:- import_module list, map, std_util, counter.
 
 :- type block_map	==	map(label, block_info).
 
@@ -40,7 +40,8 @@
 		).
 
 :- pred create_basic_blocks(list(instruction)::in, list(instruction)::out,
-	proc_label::out, int::out, list(label)::out, block_map::out) is det.
+	proc_label::in, counter::in, counter::out,
+	list(label)::out, block_map::out) is det.
 
 :- pred flatten_basic_blocks(list(label)::in, block_map::in,
         list(instruction)::out) is det.
@@ -52,15 +53,14 @@
 :- import_module opt_util.
 :- import_module bool, int, require.
 
-create_basic_blocks(Instrs0, Comments, ProcLabel, N,
+create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
 		LabelSeq, BlockMap) :-
-	opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr,
-		Comments, AfterLabelInstrs),
+	opt_util__get_prologue(Instrs0, LabelInstr, Comments,
+		AfterLabelInstrs),
 	Instrs1 = [LabelInstr | AfterLabelInstrs],
-	opt_util__new_label_no(Instrs0, 1000, N0),
 	map__init(BlockMap0),
 	build_block_map(Instrs1, LabelSeq, BlockMap0, BlockMap,
-		ProcLabel, N0, N).
+		ProcLabel, C0, C).
 
 	% Add labels to the given instruction sequence so that
 	% every basic block has labels around it.
@@ -68,27 +68,27 @@ create_basic_blocks(Instrs0, Comments, ProcLabel, N,
 %-----------------------------------------------------------------------------%
 
 :- pred build_block_map(list(instruction)::in, list(label)::out,
-	block_map::in, block_map::out, proc_label::in, int::in, int::out)
-	is det.
+	block_map::in, block_map::out, proc_label::in,
+	counter::in, counter::out) is det.
 
-build_block_map([], [], BlockMap, BlockMap, _, N, N).
+build_block_map([], [], BlockMap, BlockMap, _, C, C).
 build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, BlockMap0, BlockMap,
-		ProcLabel, N0, N) :-
+		ProcLabel, C0, C) :-
 	( OrigInstr0 = label(OrigLabel) - _ ->
 		Label = OrigLabel,
 		LabelInstr = OrigInstr0,
 		RestInstrs = OrigInstrs0,
-		N1 = N0
+		C1 = C0
 	;
-		N1 is N0 + 1,
-		Label = local(ProcLabel, N0),
+		counter__allocate(N, C0, C1),
+		Label = local(ProcLabel, N),
 		LabelInstr = label(Label) - "",
 		RestInstrs = [OrigInstr0 | OrigInstrs0]
 	),
 	( 
 		take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
 		build_block_map(Instrs1, LabelSeq0,
-			BlockMap0, BlockMap1, ProcLabel, N1, N),
+			BlockMap0, BlockMap1, ProcLabel, C1, C),
 		( list__last(BlockInstrs, LastInstr) ->
 			LastInstr = LastUinstr - _,
 			possible_targets(LastUinstr, SideLabels),

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1999 The University of Melbourne.
+** Copyright (C) 1993-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -140,7 +140,7 @@
   #define restore_registers()					\
   	do {							\
 		MR_engine_base = MR_thread_engine_base;		\
-		MR_fake_reg[0] = (Word) MR_engine_base;		\
+		MR_fake_reg[0] = (MR_Word) MR_engine_base;		\
 		restore_regs_from_mem(MR_fake_reg);		\
 	} while (0)
 #else
@@ -160,7 +160,7 @@
   #define restore_transient_registers()					\
   	do {								\
 		MR_engine_base = MR_thread_engine_base;			\
-		MR_fake_reg[0] = (Word) MR_engine_base;			\
+		MR_fake_reg[0] = (MR_Word) MR_engine_base;		\
 		restore_transient_regs_from_mem(MR_fake_reg);		\
 	} while (0)
 #else
@@ -252,8 +252,8 @@
 ** Currently they're buggy for n>32 and are not used except for debugging.
 */
 
-extern	Word	get_reg(int);
-extern	Word	set_reg(int, Word);
+extern	MR_Word	get_reg(int);
+extern	MR_Word	set_reg(int, MR_Word);
 
 /*
 ** the following macros define a mapping from registers to indices into the
@@ -272,14 +272,15 @@ extern	Word	set_reg(int, Word);
 #define	MR_MF_RN		(MR_ORD_RN + 4)
 #define MR_TRAIL_PTR_RN		(MR_ORD_RN + 5)
 #define MR_TICKET_COUNTER_RN	(MR_ORD_RN + 6)
-#define	MR_SOL_HP_RN		(MR_ORD_RN + 7)
-#define	MR_MIN_HP_REC		(MR_ORD_RN + 8)
-#define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
-#define	MR_GLOBAL_HP_RN		(MR_ORD_RN + 10)
-#define	MR_GEN_STACK_RN		(MR_ORD_RN + 11)
-#define	MR_GEN_NEXT_RN		(MR_ORD_RN + 12)
-#define	MR_CUT_STACK_RN		(MR_ORD_RN + 13)
-#define	MR_CUT_NEXT_RN		(MR_ORD_RN + 14)
-#define	MAX_RN			(MR_ORD_RN + 15)
+#define MR_TICKET_HIGH_WATER_RN	(MR_ORD_RN + 7)
+#define	MR_SOL_HP_RN		(MR_ORD_RN + 8)
+#define	MR_MIN_HP_REC		(MR_ORD_RN + 9)
+#define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 10)
+#define	MR_GLOBAL_HP_RN		(MR_ORD_RN + 11)
+#define	MR_GEN_STACK_RN		(MR_ORD_RN + 12)
+#define	MR_GEN_NEXT_RN		(MR_ORD_RN + 13)
+#define	MR_CUT_STACK_RN		(MR_ORD_RN + 14)
+#define	MR_CUT_NEXT_RN		(MR_ORD_RN + 15)
+#define	MAX_RN			(MR_ORD_RN + 16)
 
 #endif /* not MERCURY_REGS_H */

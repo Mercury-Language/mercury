@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,9 +40,14 @@
 :- interface.
 
 :- import_module prog_data, prog_io.
-:- import_module std_util, bool, list, io.
+:- import_module std_util, bool, list, set, io.
 
 %-----------------------------------------------------------------------------%
+
+	% Succeeds iff the string is the (unqualified) name of one of the
+	% modules in the Mercury standard library.
+	%
+:- pred mercury_std_library_module(string::in) is semidet.
 
 	% module_name_to_file_name(Module, Extension, Mkdir, FileName):
 	%	Convert a module name and file extension to the
@@ -66,7 +71,7 @@
 	%		FileName):
 	%	Like module_name_to_file_name, but also allows a prefix.
 	%
-	%	Used for creating library names, e.g. `lib<foo>.a'
+	%	Used for creating library names, e.g. `lib<foo>.$A'
 	%	and `lib<foo>.so'.
 	%
 :- pred module_name_to_lib_file_name(string, module_name, string, bool,
@@ -81,7 +86,7 @@
 	%	`module_name_to_file_name(Module, ".dir", DirName)'.
 	%	This predicate does not create that directory.
 	%
-	%	This predicate is used for the names of .c and .o files
+	%	This predicate is used for the names of .c and .$O files
 	%	for --split-c-files.
 	%
 :- pred module_name_to_split_c_file_name(module_name, int, string, file_name,
@@ -381,16 +386,21 @@
 
 %-----------------------------------------------------------------------------%
 
-	% write_dependency_file(Module, MaybeTransOptDeps):
+	% write_dependency_file(Module, AllDeps, MaybeTransOptDeps):
 	%	Write out the per-module makefile dependencies (`.d') file
 	%	for the specified module.
+	%	AllDeps is the set of all module names which the generated
+	%	code for this module might depend on, i.e. all that have been
+	%	used or imported, directly or indirectly, into this module,
+	%	including via .opt or .trans_opt files, and including
+	%	parent modules of nested modules.
 	%	MaybeTransOptDeps is a list of module names which the
 	%	`.trans_opt' file may depend on.  This is set to `no' if the
 	%	dependency list is not available.
 	%
-:- pred write_dependency_file(module_imports, maybe(list(module_name)),
-				io__state, io__state).
-:- mode write_dependency_file(in, in, di, uo) is det.
+:- pred write_dependency_file(module_imports, set(module_name),
+		maybe(list(module_name)), io__state, io__state).
+:- mode write_dependency_file(in, in, in, di, uo) is det.
 
 	%	maybe_read_dependency_file(ModuleName, MaybeTransOptDeps).
 	%	If transitive intermodule optimization has been enabled,
@@ -483,11 +493,67 @@
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, module_qual.
 
-:- import_module string, set, map, term, varset, dir, library.
+:- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
 :- import_module getopt, term, varset.
 
 %-----------------------------------------------------------------------------%
+
+mercury_std_library_module("array").
+mercury_std_library_module("assoc_list").
+mercury_std_library_module("bag").
+mercury_std_library_module("benchmarking").
+mercury_std_library_module("bimap").
+mercury_std_library_module("bintree").
+mercury_std_library_module("bintree_set").
+mercury_std_library_module("bool").
+mercury_std_library_module("bt_array").
+mercury_std_library_module("builtin").
+mercury_std_library_module("char").
+mercury_std_library_module("counter").
+mercury_std_library_module("dir").
+mercury_std_library_module("eqvclass").
+mercury_std_library_module("exception").
+mercury_std_library_module("float").
+mercury_std_library_module("gc").
+mercury_std_library_module("getopt").
+mercury_std_library_module("graph").
+mercury_std_library_module("group").
+mercury_std_library_module("int").
+mercury_std_library_module("integer").
+mercury_std_library_module("io").
+mercury_std_library_module("lexer").
+mercury_std_library_module("library").
+mercury_std_library_module("list").
+mercury_std_library_module("map").
+mercury_std_library_module("math").
+mercury_std_library_module("mercury_builtin").
+mercury_std_library_module("multi_map").
+mercury_std_library_module("ops").
+mercury_std_library_module("parser").
+mercury_std_library_module("pprint").
+mercury_std_library_module("pqueue").
+mercury_std_library_module("private_builtin").
+mercury_std_library_module("prolog").
+mercury_std_library_module("queue").
+mercury_std_library_module("random").
+mercury_std_library_module("rational").
+mercury_std_library_module("rbtree").
+mercury_std_library_module("relation").
+mercury_std_library_module("require").
+mercury_std_library_module("set").
+mercury_std_library_module("set_bbbtree").
+mercury_std_library_module("set_ordlist").
+mercury_std_library_module("set_unordlist").
+mercury_std_library_module("stack").
+mercury_std_library_module("std_util").
+mercury_std_library_module("store").
+mercury_std_library_module("string").
+mercury_std_library_module("term").
+mercury_std_library_module("term_io").
+mercury_std_library_module("time").
+mercury_std_library_module("tree234").
+mercury_std_library_module("varset").
 
 	% It is not really clear what the naming convention
 	% should be.  Currently we assume that the module
@@ -522,10 +588,10 @@ extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, FileName) -->
 			io__state, io__state).
 :- mode choose_file_name(in, in, in, in, out, di, uo) is det.
 
-choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
+choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
 	( { UseSubdirs = no } ->
-		{ FileName = BaseName }
+		{ FileName0 = BaseName }
 	;
 		%
 		% the source files, the final executables,
@@ -537,15 +603,13 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% executable files
 		; Ext = ""
 		; Ext = ".split"
-		; Ext = ".nu"
-		; Ext = ".nu.debug"
-		; Ext = ".sicstus"
-		; Ext = ".sicstus.debug"
 		% library files
 		; Ext = ".a"
+		; Ext = ".$A"
 		; Ext = ".so"
 		; Ext = ".$(EXT_FOR_SHARED_LIB)"
 		; Ext = ".split.a"
+		; Ext = ".split.$A"
 		; Ext = ".split.so"
 		; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
 		; Ext = ".init"
@@ -560,34 +624,45 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".rl_dump"
 		% Mmake targets
 		; Ext = ".clean"
-		; Ext = ".clean_nu"
-		; Ext = ".clean_sicstus"
 		; Ext = ".realclean"
 		; Ext = ".depend"
 		; Ext = ".install_ints"
+		; Ext = ".install_hdrs"
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
 		; Ext = ".opts"
 		; Ext = ".trans_opts"
+		% The current interface to `mercury_update_interface'
+		% requires .h.tmp files to be in the same directory as
+		% the .h files
+		; Ext = ".h.tmp"
 		}
 	->
-		{ FileName = BaseName }
+		{ FileName0 = BaseName }
 	;
 		%
 		% we need to handle a few cases specially
 		%
 		{
-			Ext = ".dir/*.o"
+			( Ext = ".dir/*.o"
+			; Ext = ".dir/*.$O"
+			)
+
 		->
 			SubDirName = "dirs"
 		;
-			% .o and .pic_o files need to go in the
+			% .$O and .pic_o files need to go in the
 			% same directory, so that using
 			% .$(EXT_FOR_PIC_OBJECTS) will work.
 			( Ext = ".o"
+			; Ext = ".$O"
 			; Ext = ".pic_o"
 			; Ext = "$(EXT_FOR_PIC_OBJECTS)"
+			; Ext = "_init.o"
+			; Ext = "_init.$O"
+			; Ext = "_init.pic_o"
+			; Ext = "_init.$(EXT_FOR_PIC_OBJECTS)"
 			)
 		->
 			SubDirName = "os"
@@ -630,8 +705,24 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		;
 			[]
 		),
-		{ string__append_list([DirName, Slash, BaseName], FileName) }
-	).
+		{ string__append_list([DirName, Slash, BaseName], FileName0) }
+	),
+	%
+	% For --high-level-code, the header files for the standard
+	% library are named specially (they get a `mercury.' prefix).
+	%
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	{
+		HighLevelCode = yes,
+		( Ext = ".h" ; Ext = ".h.tmp" ),
+		ModuleName = unqualified(UnqualModuleName),
+		mercury_std_library_module(UnqualModuleName),
+		\+ string__prefix(FileName0, "mercury.")
+	->
+		string__append("mercury.", FileName0, FileName)
+	;
+		FileName = FileName0
+	}.
 
 module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName) -->
 	module_name_to_file_name(ModuleName, ".dir", no, DirName),
@@ -895,8 +986,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % header file, which currently we don't.
 
 pragma_allowed_in_interface(c_header_code(_), no).
-pragma_allowed_in_interface(c_code(_), no).
-pragma_allowed_in_interface(c_code(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign(_, _), no).
+pragma_allowed_in_interface(foreign(_, _, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -1031,7 +1122,7 @@ update_interface(OutputFileName) -->
 		{ Command = "mercury_update_interface " }
 	),
 	{ string__append(Command, OutputFileName, ShellCommand) },
-	invoke_system_command(ShellCommand, Succeeded),
+	invoke_shell_command(ShellCommand, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem updating interface files.")
 	;
@@ -1144,7 +1235,7 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 	process_module_long_interfaces(ImpUsedModules, ".int",
 		ImpIndirectImports1, ImpIndirectImports, Module9, Module10),
 
-		% Process the short interfaces for indireclty imported modules.
+		% Process the short interfaces for indirectly imported modules.
 		% The short interfaces are treated as if
 		% they are imported using `use_module'.
 	{ append_pseudo_decl(Module10, used(interface), Module11) },
@@ -1454,7 +1545,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(Module, MaybeTransOptDeps) -->
+write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
 			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
 			_Items, _Error) },
@@ -1494,6 +1585,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		{ set__delete(ShortDepsSet1, ModuleName, ShortDepsSet) },
 		{ set__to_sorted_list(LongDepsSet, LongDeps) },
 		{ set__to_sorted_list(ShortDepsSet, ShortDeps) },
+		{ set__to_sorted_list(AllDepsSet, AllDeps) },
 		{ list__sort_and_remove_dups(FactDeps0, FactDeps) },
 
 		( { MaybeTransOptDeps = yes(TransOptDeps0) } ->
@@ -1525,7 +1617,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				io__write_strings(DepStream, [
 					"\n\n", MakeVarName,
 					".fact_tables.os = $(", MakeVarName,
-					".fact_tables:%=$(os_subdir)%.o)\n\n",
+					".fact_tables:%=$(os_subdir)%.$O)\n\n",
 					MakeVarName,
 					".fact_tables.cs = $(", MakeVarName,
 					".fact_tables:%=$(cs_subdir)%.c)\n\n"
@@ -1538,7 +1630,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				io__write_strings(DepStream, ["\n\n", 
 					MakeVarName, ".fact_tables.os ="]),
 				write_fact_table_dependencies_list(ModuleName,
-					FactDeps, ".o", DepStream),
+					FactDeps, ".$O", DepStream),
 				io__nl(DepStream)
 			)
 		;
@@ -1556,11 +1648,11 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".optdate", no,
 					OptDateFileName),
 		module_name_to_file_name(ModuleName, ".c", no, CFileName),
-		module_name_to_file_name(ModuleName, ".o", no, ObjFileName),
+		module_name_to_file_name(ModuleName, ".$O", no, ObjFileName),
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
-		module_name_to_split_c_file_pattern(ModuleName, ".o",
+		module_name_to_split_c_file_pattern(ModuleName, ".$O",
 			SplitObjPattern),
 		io__write_strings(DepStream, ["\n\n",
 			OptDateFileName, " ",
@@ -1649,6 +1741,38 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			[]
 		),
 
+		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+		( { HighLevelCode = yes } ->
+			%
+			% For --high-level-code, we need to make sure that we
+			% generate the header files for imported modules
+			% before compiling the C files, since the generated C
+			% files #include those header files.
+			%
+			io__write_strings(DepStream, [
+				"\n\n", 
+				PicObjFileName, " ",
+				ObjFileName, " ",
+				SplitObjPattern, " :"
+			]),
+			write_dependencies_list(AllDeps, ".h", DepStream),
+
+			%
+			% We also need to tell make how to make the header
+			% files.  The header files are actually built by
+			% the same command that creates the .c files, so
+			% we just make them depend on the .c files.
+			%
+			module_name_to_file_name(ModuleName, ".h", no,
+							HeaderFileName),
+			io__write_strings(DepStream, [
+					"\n\n", HeaderFileName, 
+					" : ", CFileName
+			])
+		;
+			[]
+		),
+
 		module_name_to_file_name(ModuleName, ".date", no,
 						DateFileName),
 		module_name_to_file_name(ModuleName, ".date0", no,
@@ -1663,7 +1787,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
 			
 		module_name_to_file_name(ModuleName, ".dir", no, DirFileName),
-		module_name_to_split_c_file_name(ModuleName, 0, ".o",
+		module_name_to_split_c_file_name(ModuleName, 0, ".$O",
 			SplitCObj0FileName),
 		io__write_strings(DepStream, [
 			"\n\n",
@@ -1672,6 +1796,46 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			"\trm -rf ", DirFileName, "\n",
 			"\t$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) ",
 				SourceFileName, "\n"
+		]),
+
+		module_name_to_file_name(ModuleName, ".int0", no,
+							Int0FileName),
+		module_name_to_file_name(ModuleName, ".int", no,
+							IntFileName),
+		module_name_to_file_name(ModuleName, ".int2", no,
+							Int2FileName),
+		module_name_to_file_name(ModuleName, ".int3", no,
+							Int3FileName),
+		module_name_to_file_name(ModuleName, ".opt", no,
+							OptFileName),
+		module_name_to_file_name(ModuleName, ".trans_opt", no,
+							TransOptFileName),
+		module_name_to_file_name(ModuleName, ".date3", no,
+							Date3FileName),
+
+		/*
+		** Be very careful about changing the following rules.
+		** The `@:' is a silent do-nothing command.
+		** It is used to force GNU Make to recheck the timestamp
+		** on the target file.  (It is a pity that GNU Make doesn't
+		** have a way of handling these sorts of rules in a nicer
+		** manner.)
+		*/
+
+		io__write_strings(DepStream, [
+			"\n",
+			Int0FileName, " : ", Date0FileName, "\n",
+			"\t@:\n",
+			IntFileName, " : ", DateFileName, "\n",
+			"\t@:\n",
+			Int2FileName, " : ", DateFileName, "\n",
+			"\t@:\n",
+			Int3FileName, " : ", Date3FileName, "\n",
+			"\t@:\n",
+			OptFileName, " : ", OptDateFileName, "\n",
+			"\t@:\n",
+			TransOptFileName, " : ", TransOptDateFileName, "\n",
+			"\t@:\n"
 		]),
 
 		module_name_to_file_name(ModuleName, ".m", no,
@@ -1696,8 +1860,6 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			% changes to scripts/Mmake.rules.  See that
 			% file for documentation on these rules.
 			%
-			module_name_to_file_name(ModuleName, ".date3", no,
-							Date3FileName),
 			io__write_strings(DepStream, [
 				"\n",
 				Date0FileName, " : ", SourceFileName, "\n",
@@ -2037,9 +2199,21 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		{ relation__compose(ImplDepsRel, TransIntDepsRel,
 			IndirectDepsRel) },
 
+		%
+		% Compute the indirect optimization dependencies: indirect
+		% dependencies including those via `.opt' or `.trans_opt' files.
+		% Actually we can't compute that, since we don't know
+		% which modules the `.opt' files will import!
+		% Instead, we need to make a conservative (over-)approximation,
+		% and assume that the each module's `.opt' file might import any
+		% of that module's implementation dependencies; in actual fact,
+		% it will be some subset of that.
+		%
+		{ relation__tc(ImplDepsRel, IndirectOptDepsRel) },
+
 		generate_dependencies_write_d_files(DepsList,
 			IntDepsRel, ImplDepsRel, IndirectDepsRel,
-			TransOptDepsOrdering, DepsMap)
+			IndirectOptDepsRel, TransOptDepsOrdering, DepsMap)
 	).
 
 :- pred maybe_output_module_order(module_name::in, list(set(module_name))::in,
@@ -2078,20 +2252,28 @@ write_module_scc(Stream, SCC0) -->
 	io__write_list(Stream, SCC, "\n", prog_out__write_sym_name).
 
 
-% generate_dependencies_write_d_files(Modules, IntDepsRel, TransOptOrder,
+% generate_dependencies_write_d_files(Modules, IntDepsRel, ImplDepsRel,
+%	IndirectDepsRel, IndirectOptDepsRel, TransOptOrder,
 %	DepsMap, IO0, IO):
 %		This predicate writes out the .d files for all the modules
 %		in the Modules list.  
-%		IntDepsRel gives the interface dependency relation
-%		(computed from the DepsMap).
+%		IntDepsRel gives the interface dependency relation.
+%		ImplDepsRel gives the implementation dependency relation
+%		IndirectDepsRel gives the indirect dependency relation
+%		(this includes dependencies on `*.int2' files).
+%		IndirectOptDepsRel gives the indirect optimization
+%		dependencies (this includes dependencies via `.opt'
+%		and `.trans_opt' files).
+%		These are all computed from the DepsMap.
 %		TransOptOrder gives the ordering that is used to determine
 %		which other modules the .trans_opt files may depend on.
 :- pred generate_dependencies_write_d_files(list(deps)::in, 
-	deps_rel::in, deps_rel::in, deps_rel::in, list(module_name)::in,
-	deps_map::in, io__state::di, io__state::uo) is det.
-generate_dependencies_write_d_files([], _, _, _, _, _) --> [].
+	deps_rel::in, deps_rel::in, deps_rel::in, deps_rel::in,
+	list(module_name)::in, deps_map::in,
+	io__state::di, io__state::uo) is det.
+generate_dependencies_write_d_files([], _, _, _, _, _, _) --> [].
 generate_dependencies_write_d_files([Dep | Deps],
-		IntDepsRel, ImplDepsRel, IndirectDepsRel,
+		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
 		TransOptOrder, DepsMap) --> 
 	{ Dep = deps(_, Module0) },
 
@@ -2105,6 +2287,8 @@ generate_dependencies_write_d_files([Dep | Deps],
 	{ get_dependencies_from_relation(ImplDepsRel, ModuleName, ImplDeps) },
 	{ get_dependencies_from_relation(IndirectDepsRel, ModuleName,
 			IndirectDeps) },
+	{ get_dependencies_from_relation(IndirectOptDepsRel, ModuleName,
+			IndirectOptDeps) },
 	{ module_imports_set_int_deps(Module0, IntDeps, Module1) },
 	{ module_imports_set_impl_deps(Module1, ImplDeps, Module2) },
 	{ module_imports_set_indirect_deps(Module2, IndirectDeps, Module) },
@@ -2131,12 +2315,13 @@ generate_dependencies_write_d_files([Dep | Deps],
 	% though it probably contains incorrect information.
 	{ module_imports_get_error(Module, Error) },
 	( { Error \= fatal } ->
-		write_dependency_file(Module, yes(TransOptDeps))
+		write_dependency_file(Module,
+			set__list_to_set(IndirectOptDeps), yes(TransOptDeps))
 	;
 		[]
 	),
 	generate_dependencies_write_d_files(Deps,
-		IntDepsRel, ImplDepsRel, IndirectDepsRel,
+		IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
 		TransOptOrder, DepsMap).
 
 :- pred get_dependencies_from_relation(deps_rel, module_name,
@@ -2407,18 +2592,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	{ get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
 
 	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".nos = "),
-	write_compact_dependencies_list(Modules, "$(nos_subdir)", ".no",
-					Basis, DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".qls = "),
-	write_compact_dependencies_list(Modules, "$(qls_subdir)", ".ql",
-					Basis, DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".init_cs = "),
 	write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
 					Basis, DepStream),
@@ -2433,9 +2606,9 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
-	write_compact_dependencies_list(Modules, "$(os_subdir)", ".o",
+	write_compact_dependencies_list(Modules, "$(os_subdir)", ".$O",
 					Basis, DepStream),
-	write_extra_link_dependencies_list(ExtraLinkObjs, ".o", DepStream),
+	write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -2459,7 +2632,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dir_os = "),
-	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.o",
+	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.$O",
 					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
@@ -2602,7 +2775,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".init", yes, InitFileName),
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
 	module_name_to_file_name(ModuleName, "_init.s", no, InitAsmFileName),
-	module_name_to_file_name(ModuleName, "_init.o", yes, InitObjFileName),
+	module_name_to_file_name(ModuleName, "_init.$O", yes, InitObjFileName),
 	module_name_to_file_name(ModuleName, "_init.pic_o", yes,
 							InitPicObjFileName),
 
@@ -2624,9 +2797,33 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		All_C2InitArgsDepString = "$(ALL_C2INITARGS)"
 	},
 
+	%
+	% We include $(foo.cs) first in the dependency list, before $(foo.os).
+	% This is not strictly necessary, since the .$O files themselves depend
+	% on the .c files, but we do it to ensure that Make will try to
+	% create all the C files first, thus detecting errors early,
+	% rather than first spending time compiling C files to .$O,
+	% which could be a waste of time if the program contains errors.
+	%
+	% But we can only do this if we don't remove the .c files,
+	% i.e. if RM_C=:
+	% So we define $(foo.maybe_cs) here and use it in the rules below.
+	% This needs to be defined here in the .dep file rather than
+	% in the .dv file since it depends on the setting of the $(RM_C) file
+	% which can be overridden by the user's Mmakefile.
+	%
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
-		ExeFileName, " : $(", MakeVarName, ".os) ",
+		"ifeq ($(RM_C),:)\n",
+		MakeVarName, ".maybe_cs=$(", MakeVarName, ".cs)\n",
+		"else\n",
+		MakeVarName, ".maybe_cs=\n",
+		"endif\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		ExeFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".os) ",
 			InitObjFileName, " $(MLOBJS) ", All_MLLibsDepString,
 			"\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
@@ -2636,7 +2833,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	module_name_to_file_name(SourceModuleName, ".split", yes,
 				SplitExeFileName),
-	module_name_to_file_name(ModuleName, ".split.a", yes, SplitLibFileName),
+	module_name_to_file_name(ModuleName, ".split.$A",
+			yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
 			InitObjFileName, " ", All_MLLibsDepString, "\n",
@@ -2648,8 +2846,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
-		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
-		"\tfind $(", MakeVarName, ".dirs) -name ""*.o"" -print | \\\n",
+		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)",
+		SplitLibFileName, " $(MLOBJS)\n",
+		"\tfind $(", MakeVarName, ".dirs) -name ""*.$O"" -print | \\\n",
 		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
@@ -2669,7 +2868,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		MaybeTransOptsVar = ""
 	},
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
-	module_name_to_lib_file_name("lib", ModuleName, ".a", yes, LibFileName),
+	module_name_to_lib_file_name("lib", ModuleName, ".$A",
+			yes, LibFileName),
 	module_name_to_lib_file_name("lib", ModuleName, ".so", yes,
 							SharedLibFileName),
 	module_name_to_lib_file_name("lib", ModuleName,
@@ -2686,8 +2886,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SharedLibFileName, " : $(", MakeVarName,
-			".pic_os) $(MLPICOBJS) ", All_MLLibsDepString, "\n",
+		SharedLibFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".pic_os) ",
+			"$(MLPICOBJS) ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
 			"-o ", SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) ",
@@ -2695,9 +2896,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		LibFileName, " : $(", MakeVarName, ".os) $(MLOBJS)\n",
+		LibFileName, " : $(", MakeVarName, ".maybe_cs) ",
+			"$(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\trm -f ", LibFileName, "\n",
-		"\t$(AR) $(ALL_ARFLAGS) ", LibFileName, " ",
+		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
@@ -2719,54 +2921,29 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			InitCFileName, "\n\n"
 	]),
 
-	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),
-	module_name_to_file_name(SourceModuleName, ".nu.debug", yes,
-						NU_DebugExeFileName),
-	io__write_strings(DepStream, [
-		NU_ExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) $(ALL_MNLFLAGS) -o ", NU_ExeFileName, " ",
-			"$(", MakeVarName, ".nos)\n\n",
-
-		NU_DebugExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) --debug $(ALL_MNLFLAGS) -o ", NU_DebugExeFileName,
-			" $(", MakeVarName, ".nos)\n\n"
-	]),
-
-	module_name_to_file_name(SourceModuleName, ".sicstus", yes,
-						SicstusExeFileName),
-	module_name_to_file_name(SourceModuleName, ".sicstus.debug", yes,
-						SicstusDebugExeFileName),
-	io__write_strings(DepStream, [
-		SicstusExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) $(ALL_MSLFLAGS) -o ", SicstusExeFileName, " ",
-			"$(", MakeVarName, ".qls)\n\n",
-
-		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) --debug $(ALL_MSLFLAGS) -o ", SicstusDebugExeFileName,
-			" $(", MakeVarName, ".qls)\n\n"
-	]),
-
 	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
 				LibInstallIntsTargetName),
 	{ InstallIntsRuleBody =
 "		for file in $$files; do \\
-			target=$(INSTALL_INT_DIR)/`basename $$file`; \\
-			if cmp -s $$file $$target; then \\
+			target=""$(INSTALL_INT_DIR)/`basename $$file`""; \\
+			if cmp -s ""$$file"" ""$$target""; then \\
 				echo \"$$target unchanged\"; \\
 			else \\
 				echo \"installing $$target\"; \\
-				cp $$file $$target; \\
+				$(INSTALL) ""$$file"" ""$$target""; \\
 			fi; \\
 		done
 		# The following is needed to support the `--use-subdirs' option
-		# We try using `ln -s', but if that fails, then we just use `cp'.
+		# We try using `ln -s', but if that fails, then we just use
+		# `$(INSTALL)'.
 		for ext in int int2 int3 opt trans_opt; do \\
-			dir=$${ext}s; \\
-			rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \\
-			ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \\
-				mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \\
-				cp $(INSTALL_INT_DIR)/*.$$ext \\
-					$(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
+			rm -f ""$$dir""; \\
+			ln -s .. ""$$dir"" || { \\
+				{ [ -d ""$$dir"" ] || \\
+					$(INSTALL_MKDIR) ""$$dir""; } && \\
+				$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext \\
+					""$$dir""; \\
 			} || exit 1; \\
 		done\n\n" },
 
@@ -2780,6 +2957,39 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"""; \\\n",
 		InstallIntsRuleBody
 	]),
+
+	module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs", no,
+				LibInstallHdrsTargetName),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	( { HighLevelCode = yes } ->
+		%
+		% XXX  Note that we install the header files in two places:
+		% in the `inc' directory, so that the C compiler will find
+		% them, and also in the `ints' directory, so that Mmake
+		% will find them.  That's not ideal, but it works.
+		% (A better fix would be to change the VPATH setting
+		% in scripts/Mmake.vars.in so that Mmake also searches
+		% the `inc' directory, but doing that properly is non-trivial.)
+		%
+		io__write_strings(DepStream, [
+			".PHONY : ", LibInstallHdrsTargetName, "\n",
+			LibInstallHdrsTargetName, " : ",
+				"$(", MakeVarName, ".hs) ",
+				"install_lib_dirs\n",
+			"\tfor hdr in $(", MakeVarName, ".hs); do \\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\\n",
+			"\tdone\n\n"
+		])
+	;
+		% for non-MLDS grades, we don't need to install the header
+		% files, so this rule does nothing
+		io__write_strings(DepStream, [
+			".PHONY : ", LibInstallHdrsTargetName, "\n",
+			LibInstallHdrsTargetName, " :\n",
+			"\t\n\n"
+		])
+	),
 
 	module_name_to_file_name(SourceModuleName, ".check", no,
 				CheckTargetName),
@@ -2828,8 +3038,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
 									"\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
-		"\t-rm -f $(", MakeVarName, ".nos)\n",
-		"\t-rm -f $(", MakeVarName, ".qls)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
 	]),
@@ -2858,42 +3066,16 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".hs)\n",
 		"\t-rm -f $(", MakeVarName, ".rlos)\n"
 	]),
-	module_name_to_file_name(SourceModuleName, ".nu.save", no,
-						NU_SaveExeFileName),
-	module_name_to_file_name(SourceModuleName, ".nu.debug.save", no,
-						NU_DebugSaveExeFileName),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
-			ExeFileName, " ",
+			ExeFileName, "$(EXT_FOR_EXE) ",
 			SplitExeFileName, " ",
 			SplitLibFileName, " ",
 			InitFileName, " ",
 			LibFileName, " ",
 			SharedLibFileName, " ",
-			NU_ExeFileName, " ",
-			NU_SaveExeFileName, " ",
-			NU_DebugExeFileName, " ",
-			NU_DebugSaveExeFileName, " ",
-			SicstusExeFileName, " ",
-			SicstusDebugExeFileName, " ",
 			DepFileName, " ",
 			DvFileName, "\n\n"
-	]),
-
-	module_name_to_file_name(SourceModuleName, ".clean_nu", no,
-						CleanNU_TargetName),
-	module_name_to_file_name(SourceModuleName, ".clean_sicstus", no,
-						CleanSicstusTargetName),
-	io__write_strings(DepStream, [
-		"clean_nu : ", CleanNU_TargetName, "\n",
-		".PHONY : ", CleanNU_TargetName, "\n",
-		CleanNU_TargetName, " :\n",
-		"\t-rm -f $(", MakeVarName, ".nos)\n\n",
-
-		"clean_sicstus : ", CleanSicstusTargetName, "\n",
-		".PHONY : ", CleanSicstusTargetName, "\n",
-		CleanSicstusTargetName, " :\n",
-		"\t-rm -f $(", MakeVarName, ".qls)\n\n"
 	]).
 
 :- pred get_source_file(deps_map, module_name, file_name).
@@ -2925,7 +3107,7 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 
 %-----------------------------------------------------------------------------%
 	% get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
-	% Find any extra .o files that should be linked into the executable.
+	% Find any extra .$O files that should be linked into the executable.
 	% Currently only looks for fact table object files.
 :- pred get_extra_link_objects(list(module_name), deps_map,
 		assoc_list(file_name, module_name)).
@@ -3624,7 +3806,7 @@ drop_one_qualifier(ParentQual, ChildName, PartialQual) :-
 
 	% get_children(Items, IncludeDeps):
 	%	IncludeDeps is the list of sub-modules declared with
-	% 	`:- import_module' in Items.
+	% 	`:- include_module' in Items.
 	%
 :- pred get_children(item_list, list(module_name)).
 :- mode get_children(in, out) is det.

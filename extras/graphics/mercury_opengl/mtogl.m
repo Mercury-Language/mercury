@@ -86,7 +86,8 @@
 			Stat = 1;
 			break;
 		default:
-			fatal_error(""Togl_Init returned neither TCL_OK or TCL_ERROR"");
+			MR_fatal_error(
+			""Togl_Init returned neither TCL_OK or TCL_ERROR"");
 	}
 	IO = IO0;
 }").

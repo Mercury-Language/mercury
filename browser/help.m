@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module help.
+:- module mdb__help.
 
 :- interface.
 
@@ -61,7 +61,7 @@
 %-----------------------------------------------------------------------------%
 
 	% Return the type_info for the type help__system, for use by C code.
-:- pred help__help_system_type(type_info::out) is det.
+:- pred help__help_system_type(type_desc::out) is det.
 
 	% Help interpret a help__res for C code.
 :- pred help__result_is_error(help__res::in, string::out) is semidet.

@@ -27,6 +27,9 @@ Options:
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
+	-l, --library-only
+		Check the successful creation of the stage3 .c files in the
+		library, but do not compile the compiler directory.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
 	-o <filename>, --output-file <filename>
@@ -49,6 +52,7 @@ alltestdirs="benchmarks general hard_coded invalid valid warnings"
 bootcheck="true"
 compile_only="false"
 dependency_only="false"
+library_only="false"
 jfactor=""
 mmake_opts=""
 outfile="DIFF.BINARY"
@@ -81,6 +85,9 @@ while [ $# -gt 0 ]; do
 		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-l|--library-only)
+		library_only="true" ;;
 
 	-m|--mmake)
 		mmake_opts="$mmake_opts $2"; shift ;;
@@ -157,7 +164,36 @@ touch stage2/compiler/*.c
 
 sleep 2
 
+touch stage2/library/*.int3
+touch stage2/compiler/*.int3
+
+sleep 2
+
+touch stage2/library/*.date3
+touch stage2/compiler/*.date3
+
+touch stage2/library/*.int2
+touch stage2/library/*.int
+touch stage2/compiler/*.int2
+touch stage2/compiler/*.int
+
+sleep 2
+
+touch stage2/library/*.date
+touch stage2/compiler/*.date
+
+touch stage2/library/*.opt
+
+sleep 2
+
+touch stage2/library/*.optdate
+touch stage2/library/*.trans_opt
+
+sleep 2
+
+touch stage2/library/*.trans_opt_date
 touch stage2/library/*.o
+touch stage2/library/*.pic_o
 touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
@@ -174,6 +210,7 @@ then
 	echo "building of stage 2 library successful"
 else
 	echo "building of stage 2 library not successful"
+	touch .stage2_problem
 	exit 1
 fi
 
@@ -182,6 +219,7 @@ then
 	echo "building of stage 2 compiler successful"
 else
 	echo "building of stage 2 compiler not successful"
+	touch .stage2_problem
 	exit 1
 fi
 
@@ -193,7 +231,7 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage3/library
 export MERCURY_INT_DIR
 
-ulimit -t 600
+ulimit -t 200
 
 if test "$single_command" != ""
 then
@@ -216,18 +254,22 @@ then
 	/bin/rm -f stage3/library/*.c
 	/bin/rm -f stage3/library/*.d
 	/bin/rm -f stage3/library/*.optdate
+	/bin/rm -f stage3/library/*.trans_opt_date
 	/bin/rm -f stage3/library/*.date3
 	/bin/rm -f stage3/library/*.date
 	/bin/rm -f stage3/library/*.opt
+	/bin/rm -f stage3/library/*.trans_opt
 	/bin/rm -f stage3/library/*.int3
 	/bin/rm -f stage3/library/*.int2
 	/bin/rm -f stage3/library/*.int
 	/bin/rm -f stage3/compiler/*.c
 	/bin/rm -f stage3/compiler/*.d
 	/bin/rm -f stage3/compiler/*.optdate
+	/bin/rm -f stage3/compiler/*.trans_opt_date
 	/bin/rm -f stage3/compiler/*.date3
 	/bin/rm -f stage3/compiler/*.date
 	/bin/rm -f stage3/compiler/*.opt
+	/bin/rm -f stage3/compiler/*.trans_opt
 	/bin/rm -f stage3/compiler/*.int3
 	/bin/rm -f stage3/compiler/*.int2
 	/bin/rm -f stage3/compiler/*.int
@@ -235,7 +277,7 @@ then
 	if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
-		if test "$dependency_only" = "true"
+		if $dependency_only
 		then
 			exit 0
 		fi
@@ -252,6 +294,10 @@ then
 	if (cd stage3/library ; mmake -S $mmake_opts $jfactor ints ; mmake -S $mmake_opts $jfactor cs)
 	then
 		echo "building of stage 3 library successful"
+		if $library_only
+		then
+			exit 0
+		fi
 	else
 		echo "building of stage 3 library not successful"
 		exit 1

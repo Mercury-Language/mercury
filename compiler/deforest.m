@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 University of Melbourne.
+% Copyright (C) 1999-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,13 +117,18 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 
 	( { Changed = yes } ->
 		pd_info_get_module_info(ModuleInfo2),
-		{ requantify_proc(ProcInfo2, ProcInfo3) },
+		{ module_info_globals(ModuleInfo2, Globals0) },
+		{ body_should_use_typeinfo_liveness(PredInfo0, Globals0,
+			TypeInfoLiveness) },
+		{ requantify_proc(TypeInfoLiveness, ProcInfo2, ProcInfo3) },
 		{ proc_info_goal(ProcInfo3, Goal3) },
 		{ proc_info_get_initial_instmap(ProcInfo3,
 			ModuleInfo2, InstMap0) },
 		{ proc_info_vartypes(ProcInfo3, VarTypes) },
-		{ recompute_instmap_delta(yes, Goal3, Goal, 
-			VarTypes, InstMap0, ModuleInfo2, ModuleInfo3) },
+		{ proc_info_typeinfo_varmap(ProcInfo3, TVarMap) },
+		{ recompute_instmap_delta(yes, PredInfo0, Goal3, Goal,
+			VarTypes, TVarMap, InstMap0,
+			ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
@@ -200,7 +205,7 @@ deforest__goal(switch(Var, CanFail, Cases0, SM) - Info,
 	deforest__cases(Var, Cases0, Cases).
 
 deforest__goal(Goal, Goal) -->
-	{ Goal = pragma_c_code(_, _, _, _, _, _, _) - _ }.
+	{ Goal = pragma_foreign_code(_, _, _, _, _, _, _, _) - _ }.
 
 deforest__goal(Goal, Goal) -->
 	{ Goal = generic_call(_, _, _, _) - _ }.

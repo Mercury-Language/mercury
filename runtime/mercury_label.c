@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,7 +87,7 @@ MR_do_init_label_tables(void)
 #ifdef	MR_NEED_ENTRY_LABEL_INFO
 
 void
-MR_insert_entry_label(const char *name, Code *addr,
+MR_insert_entry_label(const char *name, MR_Code *addr,
 	const MR_Stack_Layout_Entry *entry_layout)
 {
 	MR_do_init_label_tables();
@@ -156,7 +156,7 @@ compare_entry_addr(const void *e1, const void *e2)
 }
 
 MR_Entry *
-MR_prev_entry_by_addr(const Code *addr)
+MR_prev_entry_by_addr(const MR_Code *addr)
 {
 	int	lo;
 	int	hi;
@@ -201,7 +201,7 @@ MR_prev_entry_by_addr(const Code *addr)
 #endif
 
 void
-MR_insert_internal_label(const char *name, Code *addr,
+MR_insert_internal_label(const char *name, MR_Code *addr,
 	const MR_Stack_Layout_Label *label_layout)
 {
 	MR_Internal	*internal;
@@ -236,7 +236,7 @@ MR_insert_internal_label(const char *name, Code *addr,
 }
 
 MR_Internal *
-MR_lookup_internal_by_addr(const Code *addr)
+MR_lookup_internal_by_addr(const MR_Code *addr)
 {
 	MR_do_init_label_tables();
 	do_init_modules();
@@ -264,13 +264,13 @@ internal_addr(const void *internal)
 static bool 
 equal_addr(const void *addr1, const void *addr2)
 {
-	return ((const Code *) addr1) == ((const Code *) addr2);
+	return ((const MR_Code *) addr1) == ((const MR_Code *) addr2);
 }
 
 static int 
 hash_addr(const void *addr)
 {
-	return (((Unsigned) addr) >> 3) % INTERNAL_SIZE;
+	return (((MR_Unsigned) addr) >> 3) % INTERNAL_SIZE;
 }
 
 void

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module globals, hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
 :- import_module term.
 :- import_module list, map.
 
@@ -59,6 +59,9 @@
 :- pred type_util__is_dummy_argument_type(type).
 :- mode type_util__is_dummy_argument_type(in) is semidet.
 
+:- pred type_is_io_state(type).
+:- mode type_is_io_state(in) is semidet.
+
 :- pred type_is_aditi_state(type).
 :- mode type_is_aditi_state(in) is semidet.
 
@@ -66,12 +69,13 @@
 :- pred type_util__remove_aditi_state(list(type), list(T), list(T)).
 :- mode type_util__remove_aditi_state(in, in, out) is det.
 
-	% A test for types that are defined by hand (not including
-	% the builtin types).  Don't generate type_ctor_*
-	% for these types.
+	% A test for types that are defined in Mercury, but whose definitions
+	% are `lies', i.e. they are not sufficiently accurate for RTTI
+	% structures describing the types. Since the RTTI will be hand defined,
+	% the compiler shouldn't generate RTTI for these types.
 
-:- pred type_id_is_hand_defined(type_id).
-:- mode type_id_is_hand_defined(in) is semidet.
+:- pred type_id_has_hand_defined_rtti(type_id).
+:- mode type_id_has_hand_defined_rtti(in) is semidet.
 
 	% A test for type_info-related types that are introduced by
 	% polymorphism.m.  Mode inference never infers unique modes
@@ -165,10 +169,26 @@
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
 
+	% Given a type on which it is possible to have a complete switch,
+	% return the number of alternatives. (It is possible to have a complete
+	% switch on any du type and on the builtin type character. It is not
+	% feasible to have a complete switch on the builtin types integer,
+	% float, and switch. One cannot have a switch on an abstract type,
+	% and equivalence types will have been expanded out by the time
+	% we consider switches.)
+:- pred type_util__switch_type_num_functors(module_info::in, (type)::in,
+	int::out) is semidet.
+
 	% Work out the types of the arguments of a functor.
 	% Aborts if the functor is existentially typed.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
+
+	% Given a type and a cons_id, look up the definitions of that
+	% type and constructor. Aborts if the cons_id is not user-defined.
+:- pred type_util__get_type_and_cons_defn(module_info, (type), cons_id,
+		hlds_type_defn, hlds_cons_defn).
+:- mode type_util__get_type_and_cons_defn(in, in, in, out, out) is det.
 
 	% Given a type and a cons_id, look up the definition of that
 	% constructor; if it is existentially typed, return its definition,
@@ -191,22 +211,34 @@
 			(type)		% functor result type
 		).
 
-	% Given a list of constructors for a type,
-	% check whether that type is a no_tag type
+	% Check whether a type is a no_tag type
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument,
 	% and which is not private_builtin:type_info/1),
 	% and if so, return its constructor symbol and argument type.
 	% Note that this should fail if we are reserving a tag.
 
-:- pred type_is_no_tag_type(list(constructor), globals, sym_name, type).
+:- pred type_is_no_tag_type(module_info, type, sym_name, type).
 :- mode type_is_no_tag_type(in, in, out, out) is semidet.
+
+	% Check whether some constructors are a no_tag type
+	% (i.e. one with only one constructor, and
+	% whose one constructor has only one argument,
+	% and which is not private_builtin:type_info/1),
+	% and if so, return its constructor symbol and argument type.
+	%
+	% This doesn't do any checks for options that might be set
+	% (such as turning off no_tag_types).  If you want those checks
+	% you should use type_is_no_tag_type/4, or if you really know
+	% what you are doing, perform the checks yourself.
+:- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type).
+:- mode type_constructors_are_no_tag_type(in, out, out) is semidet.
 
 	% Given a list of constructors for a type, check whether that
 	% type is a private_builtin:type_info/n or similar type.
 
-:- pred type_is_type_info(list(constructor)).
-:- mode type_is_type_info(in) is semidet.
+:- pred type_constructors_are_type_info(list(constructor)).
+:- mode type_constructors_are_type_info(in) is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -224,12 +256,31 @@
 :- pred type_util__vars(type, list(tvar)).
 :- mode type_util__vars(in, out) is det.
 
+	% Return a list of the type variables of a type,
+	% ignoring any type variables if the variable in
+	% question is a type-info
+
+:- pred type_util__real_vars(type, list(tvar)).
+:- mode type_util__real_vars(in, out) is det.
+
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
 
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
+
+	% arg_type_list_subsumes(TVarSet, ArgTypes,
+	%       CalleeTVarSet, CalleeExistQVars, CalleeArgTypes).
+	%
+	% Check that the argument types of the called predicate,
+	% function or constructor subsume the types of the
+	% arguments of the call. This checks that none
+	% of the existentially quantified type variables of
+	% the callee are bound.
+:- pred arg_type_list_subsumes(tvarset, list(type),
+		tvarset, existq_tvars, list(type)).
+:- mode arg_type_list_subsumes(in, in, in, in, in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
@@ -345,12 +396,17 @@
 :- pred constraint_get_tvars(class_constraint, list(tvar)).
 :- mode constraint_get_tvars(in, out) is det.
 
+:- pred get_unconstrained_tvars(list(tvar), list(class_constraint), list(tvar)).
+:- mode get_unconstrained_tvars(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, require, std_util, string.
-:- import_module prog_io, prog_io_goal, prog_util, options.
+
+:- import_module prog_io, prog_io_goal, prog_util, options, globals.
+:- import_module bool, char, int, string.
+:- import_module assoc_list, require, std_util, varset.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
 	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
@@ -368,18 +424,14 @@ type_is_atomic(Type, ModuleInfo) :-
 
 type_util__var(term__variable(Var), Var).
 
-type_id_is_hand_defined(qualified(unqualified("builtin"), "c_pointer") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "univ") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "type_info") - 0).
-type_id_is_hand_defined(qualified(unqualified("array"), "array") - 1).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_ctor_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "base_typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
+type_id_has_hand_defined_rtti(qualified(PB, "type_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "type_ctor_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "base_typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
 
 is_introduced_type_info_type(Type) :-
 	sym_name_and_args(Type, TypeName, _),
@@ -509,6 +561,10 @@ type_util__is_dummy_argument_type(Type) :-
 % XXX should we include aditi:state/0 in this list?
 type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
 type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
+
+type_is_io_state(Type) :-
+        type_to_type_id(Type,
+		qualified(unqualified("io"), "state") - 0, []).
 
 type_is_aditi_state(Type) :-
         type_to_type_id(Type,
@@ -661,22 +717,34 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 
 %-----------------------------------------------------------------------------%
 
+type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
+	( Type = term__functor(term__atom("character"), [], _) ->
+		% XXX the following code uses the source machine's character
+		% size, not the target's, so it won't work if cross-compiling
+		% to a machine with a different size character.
+		char__max_char_value(MaxChar),
+		char__min_char_value(MinChar),
+		NumFunctors is MaxChar - MinChar + 1
+	;
+		type_to_type_id(Type, TypeId, _),
+		module_info_types(ModuleInfo, TypeTable),
+		map__search(TypeTable, TypeId, TypeDefn),
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		TypeBody = du_type(_, ConsTable, _, _),
+		map__count(ConsTable, NumFunctors)
+	).
+
+%-----------------------------------------------------------------------------%
+
 type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	(
-		type_to_type_id(VarType, TypeId, TypeArgs),
-		module_info_ctors(ModuleInfo, Ctors),
-		% will fail for builtin cons_ids.
-		map__search(Ctors, ConsId, ConsDefns),
-		CorrectCons = lambda([ConsDefn::in] is semidet, (
-				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
-			)),
-		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(ExistQVars0, _Constraints0, ArgTypes0,
-				_, _)]),
-		ArgTypes0 \= []
+		type_to_type_id(VarType, _, TypeArgs),
+		type_util__do_get_type_and_cons_defn(ModuleInfo, VarType,
+			ConsId, TypeDefn, ConsDefn),
+		ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0,
+				Args, _, _),
+		Args \= []
 	->
-		module_info_types(ModuleInfo, Types),
-		map__lookup(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
 
@@ -685,6 +753,7 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	"type_util__get_cons_id_arg_types: existentially typed cons_id"),
 
 		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
+		assoc_list__values(Args, ArgTypes0),
 		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
 	;
 		ArgTypes = []
@@ -697,14 +766,8 @@ type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
 		(type)::in, cons_id::in, hlds_cons_defn::out) is semidet.
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
-	type_to_type_id(VarType, TypeId, _TypeArgs),
-	module_info_ctors(ModuleInfo, Ctors),
-	% will fail for builtin cons_ids.
-	map__search(Ctors, ConsId, ConsDefns),
-	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
-			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
-		)),
-	list__filter(MatchingCons, ConsDefns, [ConsDefn]), 
+	type_to_type_id(VarType, TypeId, _),
+	type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn),
 	ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
 	ExistQVars \= [].
 
@@ -713,17 +776,63 @@ type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
 	% otherwise fail.
 type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
-	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _),
+	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
+	assoc_list__values(Args, ArgTypes),
 	module_info_types(ModuleInfo, Types),
 	type_to_type_id(VarType, TypeId, _),
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+	type_to_type_id(VarType, TypeId, _),
 	construct_type(TypeId, TypeDefnParams, RetType),
 	CtorDefn = ctor_defn(TypeVarSet, ExistQVars, Constraints,
 		ArgTypes, RetType).
 
+type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
+		TypeDefn, ConsDefn) :-
+	(
+		type_util__do_get_type_and_cons_defn(ModuleInfo,
+			Type, ConsId, TypeDefn0, ConsDefn0)
+	->
+		TypeDefn = TypeDefn0,
+		ConsDefn = ConsDefn0
+	;
+		error("type_util__get_type_and_cons_defn")
+	).
+
+:- pred type_util__do_get_type_and_cons_defn(module_info::in,
+		(type)::in, cons_id::in, hlds_type_defn::out,
+		hlds_cons_defn::out) is semidet.
+
+type_util__do_get_type_and_cons_defn(ModuleInfo, VarType, ConsId,
+		TypeDefn, ConsDefn) :-
+	type_to_type_id(VarType, TypeId, _TypeArgs),
+	type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn),
+	module_info_types(ModuleInfo, Types),
+	map__lookup(Types, TypeId, TypeDefn).
+
+:- pred type_util__get_cons_defn(module_info::in, type_id::in, cons_id::in,
+		hlds_cons_defn::out) is semidet.
+
+type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn) :-
+	module_info_ctors(ModuleInfo, Ctors),
+	% will fail for builtin cons_ids.
+	map__search(Ctors, ConsId, ConsDefns),
+	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
+			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+		)),
+	list__filter(MatchingCons, ConsDefns, [ConsDefn]).
+	
 %-----------------------------------------------------------------------------%
+
+type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
+		% Make sure no_tag_types are allowed
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes),
+	globals__lookup_bool_option(Globals, reserve_tag, no),
+		% Check for a single ctor with a single arg
+	type_constructors(Type, ModuleInfo, Ctors),
+	type_constructors_are_no_tag_type(Ctors, Ctor, ArgType).
 
 	% The checks for type_info and type_ctor_info
 	% are needed because those types lie about their
@@ -734,15 +843,14 @@ type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 	% etc. rather than just checking the unqualified type name,
 	% but I found it difficult to verify that the constructors
 	% would always be fully module-qualified at points where
-	% type_is_no_tag_type/3 is called.
+	% type_constructors_are_no_tag_type/3 is called.
 
-type_is_no_tag_type(Ctors, Globals, Ctor, Type) :-
-	globals__lookup_bool_option(Globals, reserve_tag, no),
-	type_is_single_ctor_single_arg(Ctors, Ctor, Type),
+type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
+	type_is_single_ctor_single_arg(Ctors, Ctor, ArgType),
 	unqualify_name(Ctor, Name),
 	\+ name_is_type_info(Name).
 
-type_is_type_info(Ctors) :-
+type_constructors_are_type_info(Ctors) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, _),
 	unqualify_name(Ctor, Name),
 	name_is_type_info(Name).
@@ -822,6 +930,51 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
+
+
+arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
+		CalleeExistQVars0, CalleeArgTypes0) :-
+
+	%
+	% rename the type variables in the callee's argument types.
+	%
+	varset__merge_subst(TVarSet, CalleeTVarSet, _TVarSet1, Subst),
+	term__apply_substitution_to_list(CalleeArgTypes0, Subst,
+				CalleeArgTypes),
+	map__apply_to_list(CalleeExistQVars0, Subst, CalleeExistQTypes0),
+
+	%
+	% check that the types of the candidate predicate/function
+	% subsume the actual argument types
+	% [This is the right thing to do even for calls to
+	% existentially typed preds, because we're using the
+	% type variables from the callee's pred decl (obtained
+	% from the pred_info via pred_info_arg_types) not the types
+	% inferred from the callee's clauses (and stored in the
+	% clauses_info and proc_info) -- the latter
+	% might not subsume the actual argument types.]
+	%
+	type_list_subsumes(CalleeArgTypes, ArgTypes, TypeSubst),
+
+	%
+	% check that the type substitution did not bind any
+	% existentially typed variables to non-ground types
+	%
+	( CalleeExistQTypes0 = [] ->
+		% optimize common case
+		true
+	;
+		term__apply_rec_substitution_to_list(CalleeExistQTypes0,
+			TypeSubst, CalleeExistQTypes),
+		all [T] (list__member(T, CalleeExistQTypes) =>
+				type_util__var(T, _))	
+
+		% it might make sense to also check that
+		% the type substitution did not bind any
+		% existentially typed variables to universally 
+		% quantified type variables in the caller's
+		% argument types
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -926,9 +1079,8 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 	% XXX Instead of just failing if the functors' name/arity is different,
 	% we should check here if these types have been defined
 	% to be equivalent using equivalence types.  But this
-	% is difficult because (1) it causes typevarset synchronization
-	% problems, and (2) the relevant variables TypeInfo, TVarSet0, TVarSet
-	% haven't been passed in to here.
+	% is difficult because the relevant variable
+	% TypeTable hasn't been passed in to here.
 
 /*******
 	...
@@ -951,16 +1103,15 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 
 replace_eqv_type(Functor, Arity, Args, EqvType) :-
 
-	% XXX magically_obtain(TypeTable, TVarSet0, TVarSet)
+	% XXX magically_obtain(TypeTable)
 
 	make_type_id(Functor, Arity, TypeId),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds_type_defn(TypeVarSet, TypeParams0,
-			eqv_type(EqvType0), _Condition, Context, _Status),
-	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
-			TVarSet, [EqvType1, TypeParams1]),
-	type_param_to_var_list(TypeParams1, TypeParams),
-	term__substitute_corresponding(EqvType1, TypeParams, AsX,
+	get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = eqv_type(EqvType0),
+	get_type_defn_tparams(TypeDefn, TypeParams0),
+	type_param_to_var_list(TypeParams0, TypeParams),
+	term__substitute_corresponding(EqvType0, TypeParams, AsX,
 		EqvType).
 
 ******/
@@ -993,6 +1144,14 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 
 type_util__vars(Type, Tvars) :-
 	term__vars(Type, Tvars).
+
+type_util__real_vars(Type, Tvars) :-
+	( is_introduced_type_info_type(Type) ->
+		% for these types, we don't add the type parameters
+		Tvars = []
+	;
+		type_util__vars(Type, Tvars)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1284,5 +1443,10 @@ constraint_list_get_tvars(Constraints, TVars) :-
 
 constraint_get_tvars(constraint(_Name, Args), TVars) :-
 	term__vars_list(Args, TVars).
+
+get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
+	constraint_list_get_tvars(Constraints, ConstrainedTvars),
+	list__delete_elems(Tvars, ConstrainedTvars, Unconstrained0),
+	list__remove_dups(Unconstrained0, Unconstrained).
 
 %-----------------------------------------------------------------------------%

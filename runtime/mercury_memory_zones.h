@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,7 +22,7 @@
 
 #include <stdlib.h>		/* for size_t */
 
-#include "mercury_types.h"	/* for Word */
+#include "mercury_types.h"	/* for MR_Word */
 #include "mercury_std.h"		/* for bool */
 
 
@@ -40,7 +40,7 @@
 				/* mr0 .. mr37, mr(38) ... mr(1000) ... */
 
 /* used to lookup the fake_reg for a given real reg */
-extern	Word	virtual_reg_map[MAX_REAL_REG];
+extern	MR_Word	virtual_reg_map[MAX_REAL_REG];
 
 /* used for counting register usage */
 extern	unsigned long 	num_uses[MAX_RN];
@@ -84,7 +84,7 @@ extern	unsigned long 	num_uses[MAX_RN];
 
 typedef struct MEMORY_ZONE	MemoryZone;
 
-typedef bool ZoneHandler(Word *addr, struct MEMORY_ZONE *zone, void *context);
+typedef bool ZoneHandler(MR_Word *addr, struct MEMORY_ZONE *zone, void *context);
 
 struct MEMORY_ZONE {
 	struct MEMORY_ZONE *next; /* the memory zones are organized as a
@@ -95,19 +95,19 @@ struct MEMORY_ZONE {
 				  */
 	const char *name;	/* name identifier */
 	int	id;		/* number */
-	Word	*bottom;	/* beginning of the allocated area */
-	Word	*top;		/* end of the allocated area */
-	Word	*min;		/* lowest word of the area to be used */
-	Word	*max;		/* highest word of the area to be used;
+	MR_Word	*bottom;	/* beginning of the allocated area */
+	MR_Word	*top;		/* end of the allocated area */
+	MR_Word	*min;		/* lowest word of the area to be used */
+	MR_Word	*max;		/* highest word of the area to be used;
 				   computed only if MR_LOWLEVEL_DEBUG is
 				   enabled */
-#ifdef HAVE_MPROTECT
-	Word	*hardmax;	/* last page of the zone which can't be
+#ifdef MR_PROTECTPAGE
+	MR_Word	*hardmax;	/* last page of the zone which can't be
 				   unprotected */
-#endif	/* HAVE_MPROTECT */
+#endif	/* MR_PROTECTPAGE */
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-	Word	*redzone_base;	/* beginning of the original redzone */
-	Word	*redzone;	/* beginning of the current redzone */
+	MR_Word	*redzone_base;	/* beginning of the original redzone */
+	MR_Word	*redzone;	/* beginning of the current redzone */
 	ZoneHandler *handler;   /* handler for page faults in the redzone */
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
@@ -118,7 +118,7 @@ struct MEMORY_ZONE {
 	*/
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	#define MR_zone_end	redzone
-#elif defined(HAVE_MPROTECT)
+#elif defined(MR_PROTECTPAGE)
 	#define MR_zone_end	hardmax
 #else
 	#define MR_zone_end	top
@@ -135,6 +135,27 @@ struct MEMORY_ZONE {
 #define MR_clear_zone_for_GC(zone, start_address) \
 	((void) memset((start_address), 0, \
 		(char*)((zone)->MR_zone_end) - (char *)(start_address)))
+
+/*
+** Rather then using mprotect directly, we call MR_protect_pages which
+** is OS independent.
+*/
+#ifdef MR_PROTECTPAGE
+
+  #ifdef MR_WIN32
+    #ifndef PROT_NONE
+      #define PROT_NONE  0x0000
+    #endif
+    #ifndef PROT_READ
+      #define PROT_READ  0x0001
+    #endif
+    #ifndef PROT_WRITE
+      #define PROT_WRITE 0x0002
+    #endif
+  #endif
+
+int MR_protect_pages(void *addr, size_t size, int prot_flags);
+#endif
 
 /*
 ** init_memory_arena() allocates (if necessary) the top-level memory pool
@@ -175,7 +196,7 @@ MemoryZone	*create_zone(const char *name, int id,
 ** construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
 ** has the same behaviour as create_zone, except instread of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
-** least Size + unit[*] bytes, or if HAVE_MPROTECT is defined, then it
+** least Size + unit[*] bytes, or if MR_PROTECTPAGE is defined, then it
 ** must be at least Size + 2 * unit[*] bytes.
 ** If it fails to protect the redzone then it exits.
 ** If MR_CHECK_OVERFLOW_VIA_MPROTECT is unavailable, then the last two
@@ -184,7 +205,7 @@ MemoryZone	*create_zone(const char *name, int id,
 ** [*] unit is a global variable containing the page size in bytes
 */
 
-MemoryZone	*construct_zone(const char *name, int Id, Word *base,
+MemoryZone	*construct_zone(const char *name, int Id, MR_Word *base,
 			size_t size, size_t offset, size_t redsize,
 			ZoneHandler *handler);
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,13 +24,13 @@
 
 #define NUM_REAL_REGS 7
 
-register 	Word	mr0 __asm__("$9");	/* register s0 */
-register	Word	mr1 __asm__("$10");	/* register s1 */
-register	Word	mr2 __asm__("$11");	/* register s2 */
-register	Word	mr3 __asm__("$12");	/* register s3 */
-register	Word	mr4 __asm__("$13");	/* register s4 */
-register	Word	mr5 __asm__("$14");	/* register s5 */
-register	Word	mr6 __asm__("$15");	/* the frame pointer (fp) */
+register 	MR_Word	mr0 __asm__("$9");	/* register s0 */
+register	MR_Word	mr1 __asm__("$10");	/* register s1 */
+register	MR_Word	mr2 __asm__("$11");	/* register s2 */
+register	MR_Word	mr3 __asm__("$12");	/* register s3 */
+register	MR_Word	mr4 __asm__("$13");	/* register s4 */
+register	MR_Word	mr5 __asm__("$14");	/* register s5 */
+register	MR_Word	mr6 __asm__("$15");	/* the frame pointer (fp) */
 
 #define MR_real_reg_number_mr0	9
 #define MR_real_reg_number_mr1	10

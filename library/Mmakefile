@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,8 +15,16 @@ MAIN_TARGET=mercury
 VPATH=.
 
 #-----------------------------------------------------------------------------#
+#
+# XXX The following is needed only for bootstrapping
+# the new modes of int__xor.
+#
 
-# If we're going to generate both `.o' files and `.pic_o' files, then
+MCFLAGS-int = --no-halt-at-warn
+
+#-----------------------------------------------------------------------------#
+
+# If we're going to generate both `.$O' files and `.pic_o' files, then
 # don't remove the intermediate `.c' files.
 RM_C	=	$(LIBRARY_RM_C)
 
@@ -72,13 +80,26 @@ LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
 LDLIBS	=	-l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
-		    *.gc*.prof*) echo "-lgc_prof" ;;			\
-		    *.gc*)	 echo "-lgc" ;;				\
+		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
 		`
 ALL_LDLIBS =	$(LDLIBS) $(EXTRA_LDLIBS)
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+# We need to override library.hs manually here, since the default
+# definition of library.hs does not include the `mercury.' prefix.
+# (We could modify compiler/modules.m to generate it correctly,
+# but it's easier to just manually override it here.)
+# This definition is only correct for MLDS grades, but fortunately
+# it is also only used for MLDS grades.
+
+library.hs = $(library.mods:%=mercury.%.h)
 
 #-----------------------------------------------------------------------------#
 
@@ -169,15 +190,17 @@ cs: $(library.cs)
 
 .PHONY: lib_std
 # the following dependency is just there to improve compilation speed;
-# making tree234.o first improves effective parallelism with parallel makes.
-lib_std: $(os_subdir)tree234.o
-lib_std: lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+# making tree234.$O first improves effective parallelism with parallel makes.
+lib_std: $(os_subdir)tree234.$O
+lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 lib_std: $(STD_LIB_NAME).init
 
-lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a : $(library.os)
-	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a $(library.os)
-	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : $(library.os)
+	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A \
+		$(library.os)
+	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
@@ -197,7 +220,7 @@ $(STD_LIB_NAME).init: $(deps_subdir)library.dep
 #-----------------------------------------------------------------------------#
 
 # Ensure we recompile library__version if VERSION is changed.
-$(os_subdir)library.o \
+$(os_subdir)library.$O \
 $(os_subdir)library.pic_o \
 	: $(RUNTIME_DIR)/mercury_conf.h
 
@@ -206,16 +229,17 @@ $(os_subdir)library.pic_o \
 # a global make clean. Here we list only the header files from the runtime
 # whose changes don't usually require a make clean but which nevertheless
 # require some files in the library to be recompiled.
-$(os_subdir)benchmarking.o \
+$(os_subdir)benchmarking.$O \
 $(os_subdir)benchmarking.pic_o \
-$(os_subdir)std_util.o \
+$(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_stack_layout.h
 
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
+	rm -f $(library.mods:%=%.h)
+	rm -f lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
 	rm -f tags
 
 #-----------------------------------------------------------------------------#
@@ -237,45 +261,21 @@ install: install_mercury
 install_all: install_mercury
 
 .PHONY: install_mercury
-install_mercury: install_ints install_init install_library
-
-.PHONY: install_dirs
-install_dirs:
-	#-[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
-	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
-		mkdir -p $(INSTALL_INT_DIR)/Mercury
-	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+install_mercury: install_ints install_hdrs install_init install_library
 
 .PHONY: install_ints
-install_ints: $(library.ints) $(library.int3s) \
-		$(library.opts) $(library.trans_opts) install_dirs
-	for file in $(library.ints) $(library.int3s) \
-			$(library.opts) $(library.trans_opts); \
-	do \
-		target=$(INSTALL_INT_DIR)/`basename $$file`; \
-		if cmp -s $$file $$target; then \
-			echo "$$target unchanged"; \
-		else \
-			echo "installing $$target"; \
-			cp $$file $$target; \
-		fi; \
-	done
-	# The following is needed to support the `--use-subdirs' option
-	# We try using `ln -s', but if that fails, then we just use `cp'.
-	for ext in int int2 int3 opt trans_opt; do \
-		dir=$${ext}s; \
-		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
-		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \
-			[ -d $(INSTALL_INT_DIR)/Mercury/$$dir ] || \
-				mkdir -p $(INSTALL_INT_DIR)/Mercury/$$dir; \
-			cp $(INSTALL_INT_DIR)/*.$$ext \
-				$(INSTALL_INT_DIR)/Mercury/$$dir; \
-		} || exit 1; \
-	done
+install_ints: liblibrary.install_ints
+
+.PHONY: install_hdrs
+install_hdrs: liblibrary.install_hdrs
+
+# The following rules are hand-coded, rather than using the
+# liblibrary.* targets automatically generated by `mmake depend',
+# because they override the name used for the standard library:
+# they use $(STD_LIB_NAME) rather than `library'.
 
 .PHONY: install_init
-install_init: $(STD_LIB_NAME).init install_dirs
+install_init: $(STD_LIB_NAME).init install_lib_dirs
 	cp `vpath_find $(STD_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 	# "$(STD_LIB_NAME).init" used to be called "library.init" or
 	# "libmercury.init". If there is still a version with an old name
@@ -285,18 +285,18 @@ install_init: $(STD_LIB_NAME).init install_dirs
 		$(INSTALL_MODULE_DIR)/libmercury.init
 
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).a \
-		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
-	cp `vpath_find lib$(STD_LIB_NAME).a \
+install_library: lib$(STD_LIB_NAME).$A \
+		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_grade_dirs
+	cp `vpath_find lib$(STD_LIB_NAME).$A \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
-# library.split.a is a version of lib$(STD_LIB_NAME).a that has been compiled
+# library.split.$A is a version of lib$(STD_LIB_NAME).$A that has been compiled
 # with `--split-c-files'.
 .PHONY: install_split_library
-install_split_library: library.split.a install_dirs
-	cp `vpath_find library.split.a` \
-		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).a
+install_split_library: library.split.$A install_grade_dirs
+	cp `vpath_find library.split.$A` \
+		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).$A
 
 else
 
@@ -314,6 +314,10 @@ install_mercury:
 
 .PHONY: install_ints
 install_ints:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_hdrs
+install_hdrs:
 	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
 
 .PHONY: install_init

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,101 +8,227 @@
 % Purpose:
 % 	This module performs all the user interaction of the front
 % end of the declarative debugger.  It is responsible for displaying
-% edt_nodes in a human-readable format, and for getting responses to
-% debugger queries from the user.
+% questions and bugs in a human-readable format, and for getting
+% responses to debugger queries from the user.
 %
 
-:- module declarative_user.
+:- module mdb__declarative_user.
 :- interface.
-:- import_module declarative_debugger, declarative_oracle.
+:- import_module mdb__declarative_debugger.
+:- import_module list, io.
 
-	%
+:- type user_response
+	--->	user_answer(decl_answer)
+	;	no_user_answer
+	;	abort_diagnosis.
+
+:- type user_state.
+
+:- pred user_state_init(io__input_stream, io__output_stream, user_state).
+:- mode user_state_init(in, in, out) is det.
+
 	% This predicate handles the interactive part of the declarative
 	% debugging process.  The user is presented with an EDT node,
 	% and is asked to respond about the truth of the node in the
 	% intended interpretation.
 	%
+:- pred query_user(list(decl_question), user_response, user_state, user_state,
+		io__state, io__state).
+:- mode query_user(in, out, in, out, di, uo) is det.
 
-:- pred query_user(edt_node, oracle_answer, io__state, io__state).
-:- mode query_user(in, out, di, uo) is det.
-
+	% Confirm that the node found is indeed an e_bug or an i_bug.
 	%
-	% Display the node in user readable form on the current
-	% output stream.
-	%
-:- pred write_edt_node(edt_node, io__state, io__state).
-:- mode write_edt_node(in, di, uo) is det.
-
-	%
-	% These are the responses the user can give.
-	%
-:- type user_response
-	--->	yes			% The node is correct.
-	;	no			% The node is incorrect.
-	;	inadmissible		% The node is inadmissible.
-	;	do_not_know		% The user has no answer.
-	;	browse			% Browse the data before answering.
-	;	tree			% Browse the EDT.
-	;	help			% Request help before answering.
-	;	illegal_command.	% None of the above.
+:- pred user_confirm_bug(decl_bug, decl_confirmation, user_state, user_state,
+		io__state, io__state).
+:- mode user_confirm_bug(in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module declarative_execution, util.
-:- import_module std_util, io, bool, list, char, string.
+:- import_module mdb__declarative_execution, mdb__browse, mdb__util.
+:- import_module std_util, char, string, bool, int.
 
-query_user(Node, Answer) -->
-	write_edt_node(Node),
-	io__nl,
-	get_command("Valid? ", Command),
+:- type user_state
+	--->	user(
+			instr	:: io__input_stream,
+			outstr	:: io__output_stream,
+			browser	:: browser_state
+		).
+
+user_state_init(InStr, OutStr, User) :-
+	browse__init_state(Browser),
+	User = user(InStr, OutStr, Browser).
+
+%-----------------------------------------------------------------------------%
+
+query_user(Nodes, Response, User0, User) -->
+	query_user_2(Nodes, [], Response, User0, User).
+
+:- pred query_user_2(list(decl_question), list(decl_question), user_response,
+		user_state, user_state, io__state, io__state).
+:- mode query_user_2(in, in, out, in, out, di, uo) is det.
+
+query_user_2([], _, no_user_answer, User, User) -->
+	[].
+query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
+	write_decl_question(Node, User0),
+	{ decl_question_prompt(Node, Question) },
+	get_command(Question, Command, User0, User1),
 	(
 		{ Command = yes },
-		{ Answer = truth_value(yes) }
+		{ Response = user_answer(Node - yes) },
+		{ User = User1 }
 	;
 		{ Command = no },
-		{ Answer = truth_value(no) }
+		{ Response = user_answer(Node - no) },
+		{ User = User1 }
 	;
 		{ Command = inadmissible },
-		io__write_string("Sorry, not implemented.\n"),
-		query_user(Node, Answer)
+		io__write_string("Sorry, not implemented,\n"),
+		query_user_2([Node | Nodes], Skipped, Response, User1, User)
 	;
-		{ Command = do_not_know },
-		{ Answer = deferred(do_not_know) }
+		{ Command = skip },
+		query_user_2(Nodes, [Node | Skipped], Response, User1, User)
 	;
-		{ Command = browse },
-		io__write_string("Sorry, not implemented.\n"),
-		query_user(Node, Answer)
+		{ Command = restart },
+		{ reverse_and_append(Skipped, [Node | Nodes], Questions) },
+		query_user_2(Questions, [], Response, User1, User)
 	;
-		{ Command = tree },
-		io__write_string("Sorry, not implemented.\n"),
-		query_user(Node, Answer )
+		{ Command = browse(Arg) },
+		browse_edt_node(Node, Arg, User1, User2),
+		query_user_2([Node | Nodes], Skipped, Response, User2, User)
+	;
+		{ Command = abort },
+		{ Response = abort_diagnosis },
+		{ User = User1 }
 	;
 		{ Command = help },
-		io__write_strings([
-			"According to the intended interpretation",
-			" of the program, answer one of:\n",
-			"\ty\tyes\n",
-			"\tn\tno\n",
-%			"\ti\tinadmissible (not yet)\n",
-			"\td\tdon't know\n",
-%			"\tb\tbrowse the atom arguments (not yet)\n",
-%			"\tt\tprint the evaluation tree (not yet)\n",
-			"\th, ?\tthis help message\n"
-		]),
-		query_user(Node, Answer )
+		user_help_message(User1),
+		query_user_2([Node | Nodes], Skipped, Response, User1, User)
 	;
 		{ Command = illegal_command },
 		io__write_string("Unknown command, 'h' for help.\n"),
-		query_user(Node, Answer)
+		query_user_2([Node | Nodes], Skipped, Response, User1, User)
 	).
 
+:- pred decl_question_prompt(decl_question, string).
+:- mode decl_question_prompt(in, out) is det.
 
-:- pred get_command(string, user_response, io__state, io__state).
-:- mode get_command(in, out, di, uo) is det.
+decl_question_prompt(wrong_answer(_), "Valid? ").
+decl_question_prompt(missing_answer(_, _), "Complete? ").
+decl_question_prompt(unexpected_exception(_, _), "Expected? ").
 
-get_command(Prompt, Command) -->
-	util__trace_getline(Prompt, Result),
+:- pred browse_edt_node(decl_question, int, user_state, user_state,
+		io__state, io__state).
+:- mode browse_edt_node(in, in, in, out, di, uo) is det.
+
+browse_edt_node(Node, ArgNum, User0, User) -->
+	{
+		Node = wrong_answer(Atom)
+	;
+		Node = missing_answer(Atom, _)
+	;
+		Node = unexpected_exception(Atom, _)
+	},
+	browse_atom_argument(Atom, ArgNum, User0, User).
+
+:- pred browse_decl_bug(decl_bug, int, user_state, user_state,
+		io__state, io__state).
+:- mode browse_decl_bug(in, in, in, out, di, uo) is det.
+
+browse_decl_bug(Bug, ArgNum, User0, User) -->
+	{
+		Bug = e_bug(EBug),
+		(
+			EBug = incorrect_contour(Atom, _, _)
+		;
+			EBug = partially_uncovered_atom(Atom, _)
+		;
+			EBug = unhandled_exception(Atom, _, _)
+		)
+	;
+		Bug = i_bug(inadmissible_call(_, _, Atom, _))
+	},
+	browse_atom_argument(Atom, ArgNum, User0, User).
+
+:- pred browse_atom_argument(decl_atom, int, user_state, user_state,
+		io__state, io__state).
+:- mode browse_atom_argument(in, in, in, out, di, uo) is det.
+
+browse_atom_argument(Atom, ArgNum, User0, User) -->
+	{ Atom = atom(_, Args) },
+	(
+		{ list__index1(Args, ArgNum, MaybeArg) },
+		{ MaybeArg = yes(Arg) }
+	->
+		browse(Arg, User0^instr, User0^outstr, User0^browser, Browser),
+		{ User = User0^browser := Browser }
+	;
+		io__write_string(User^outstr, "Invalid argument number\n"),
+		{ User = User0 }
+	).
+
+	% Reverse the first argument and append the second to it.
+	%
+:- pred reverse_and_append(list(T), list(T), list(T)).
+:- mode reverse_and_append(in, in, out) is det.
+
+reverse_and_append([], Bs, Bs).
+reverse_and_append([A | As], Bs, Cs) :-
+	reverse_and_append(As, [A | Bs], Cs).
+
+%-----------------------------------------------------------------------------%
+
+:- type user_command
+	--->	yes			% The node is correct.
+	;	no			% The node is incorrect.
+	;	inadmissible		% The node is inadmissible.
+	;	skip			% The user has no answer.
+	;	restart			% Ask the skipped questions again.
+	;	browse(int)		% Browse the nth argument before
+					% answering.
+	;	abort			% Abort this diagnosis session.
+	;	help			% Request help before answering.
+	;	illegal_command.	% None of the above.
+
+:- pred user_help_message(user_state, io__state, io__state).
+:- mode user_help_message(in, di, uo) is det.
+
+user_help_message(User) -->
+	io__write_strings(User^outstr, [
+		"According to the intended interpretation of the program,",
+		" answer one of:\n",
+		"\ty\tyes\t\tthe node is correct\n",
+		"\tn\tno\t\tthe node is incorrect\n",
+%		"\ti\tinadmissible\tthe input arguments are out of range\n",
+		"\ts\tskip\t\tskip this question\n",
+		"\tr\trestart\t\task the skipped questions again\n",
+		"\tb <n>\tbrowse <n>\tbrowse the nth argument of the atom\n",
+		"\ta\tabort\t\t",
+			"abort this diagnosis session and return to mdb\n",
+		"\th, ?\thelp\t\tthis help message\n"
+	]).
+
+:- pred user_confirm_bug_help(user_state, io__state, io__state).
+:- mode user_confirm_bug_help(in, di, uo) is det.
+
+user_confirm_bug_help(User) -->
+	io__write_strings(User^outstr, [
+		"Answer one of:\n",
+		"\ty\tyes\t\tconfirm that the suspect is a bug\n",
+		"\tn\tno\t\tdo not accept that the suspect is a bug\n",
+%		"\tb\tbrowse\t\tbrowse the suspect\n",
+		"\ta\tabort\t\t",
+			"abort this diagnosis session and return to mdb\n",
+		"\th, ?\thelp\t\tthis help message\n"
+	]).
+
+:- pred get_command(string, user_command, user_state, user_state,
+		io__state, io__state).
+:- mode get_command(in, out, in, out, di, uo) is det.
+
+get_command(Prompt, Command, User, User) -->
+	util__trace_getline(Prompt, Result, User^instr, User^outstr),
 	( { Result = ok(String) },
 		{ string__to_char_list(String, Line) },
 		{
@@ -114,58 +240,227 @@ get_command(Prompt, Command) -->
 		}
 	; { Result = error(Error) },
 		{ io__error_message(Error, Msg) },
-		io__write_string(Msg),
-		io__nl,
-		get_command(Prompt, Command)
+		io__write_string(User^outstr, Msg),
+		io__nl(User^outstr),
+		{ Command = abort }
 	; { Result = eof },
-		% XXX this should definitely be handled better.
-		{ Command = illegal_command }
+		{ Command = abort }
 	).
 
-
-:- pred command_chars(list(char), user_response).
+:- pred command_chars(list(char), user_command).
 :- mode command_chars(in, out) is semidet.
 
 command_chars(['y' | _], yes).
 command_chars(['n' | _], no).
 command_chars(['i' | _], inadmissible).
-command_chars(['d' | _], do_not_know).
-command_chars(['b' | _], browse).
-command_chars(['t' | _], tree).
+command_chars(['s' | _], skip).
+command_chars(['r' | _], restart).
+command_chars(['a' | _], abort).
 command_chars(['h' | _], help).
 command_chars(['?' | _], help).
-
-
-write_edt_node(Node) -->
-	{
-		Node = wrong_answer(atom(Name, Args))
-	;
-		% XXX this is wrong, but most of the module is
-		% going to be re-written again soon anyway, so I
-		% won't fix it yet.
-		%
-		Node = missing_answer(atom(Name, Args), _)
-	},
-	io__write_string(Name),
+command_chars(['b' | Line0], browse(Arg)) :-
 	(
-		{ Args = [Arg1 | Args0] }
+		Line0 = ['r','o','w','s','e' | Line1]
 	->
-		io__write_char('('),
-		io__print(Arg1),
-		write_args_rest(Args0),
-		io__write_char(')')
+		Line2 = Line1
 	;
-		[]
+		Line2 = Line0
+	),
+	list__takewhile(char__is_whitespace, Line2, _, ArgChars),
+	parse_integer(ArgChars, 0, Arg).
+
+:- pred parse_integer(list(char), int, int).
+:- mode parse_integer(in, in, out) is semidet.
+
+parse_integer([], N, N).
+parse_integer([D | Ds], N0, N) :-
+	char__digit_to_int(D, I),
+	parse_integer(Ds, N0 * 10 + I, N).
+
+%-----------------------------------------------------------------------------%
+
+user_confirm_bug(Bug, Response, User0, User) -->
+	write_decl_bug(Bug, User0),
+	get_command("Is this a bug? ", Command, User0, User1),
+	(
+		{ Command = yes }
+	->
+		{ Response = confirm_bug },
+		{ User = User1 }
+	;
+		{ Command = no }
+	->
+		{ Response = overrule_bug },
+		{ User = User1 }
+	;
+		{ Command = abort }
+	->
+		{ Response = abort_diagnosis },
+		{ User = User1 }
+	;
+		{ Command = browse(Arg) }
+	->
+		browse_decl_bug(Bug, Arg, User1, User2),
+		user_confirm_bug(Bug, Response, User2, User)
+	;
+		user_confirm_bug_help(User1),
+		user_confirm_bug(Bug, Response, User1, User)
 	).
 
+%-----------------------------------------------------------------------------%
 
-:- pred write_args_rest(list(univ), io__state, io__state).
-:- mode write_args_rest(in, di, uo) is det.
+	% Display the node in user readable form on the current
+	% output stream.
+	%
+:- pred write_decl_question(decl_question, user_state, io__state, io__state).
+:- mode write_decl_question(in, in, di, uo) is det.
 
-write_args_rest([]) -->
+write_decl_question(wrong_answer(Atom), User) -->
+	write_decl_atom(User, "", Atom).
+	
+write_decl_question(missing_answer(Call, Solns), User) -->
+	write_decl_atom(User, "Call ", Call),
+	(
+		{ Solns = [] }
+	->
+		io__write_string(User^outstr, "No solutions.\n")
+	;
+		io__write_string(User^outstr, "Solutions:\n"),
+		list__foldl(write_decl_atom(User, "\t"), Solns)
+	).
+
+write_decl_question(unexpected_exception(Call, Exception), User) -->
+	write_decl_atom(User, "Call ", Call),
+	io__write_string(User^outstr, "Throws "),
+	io__print(User^outstr, Exception),
+	io__nl(User^outstr).
+
+:- pred write_decl_bug(decl_bug, user_state, io__state, io__state).
+:- mode write_decl_bug(in, in, di, uo) is det.
+
+write_decl_bug(e_bug(EBug), User) -->
+	(
+		{ EBug = incorrect_contour(Atom, _, _) },
+		io__write_string(User^outstr, "Found incorrect contour:\n"),
+		write_decl_atom(User, "", Atom)
+	;
+		{ EBug = partially_uncovered_atom(Atom, _) },
+		io__write_string(User^outstr,
+				"Found partially uncovered atom:\n"),
+		write_decl_atom(User, "", Atom)
+	;
+		{ EBug = unhandled_exception(Atom, Exception, _) },
+		io__write_string(User^outstr, "Found unhandled exception:\n"),
+		write_decl_atom(User, "", Atom),
+		io__write(User^outstr, univ_value(Exception)),
+		io__nl(User^outstr)
+	).
+
+write_decl_bug(i_bug(IBug), User) -->
+	{ IBug = inadmissible_call(Parent, _, Call, _) },
+	io__write_string(User^outstr, "Found inadmissible call:\n"),
+	write_decl_atom(User, "Parent ", Parent),
+	write_decl_atom(User, "Call ", Call).
+
+:- pred write_decl_atom(user_state, string, decl_atom, io__state, io__state).
+:- mode write_decl_atom(in, in, in, di, uo) is det.
+
+write_decl_atom(User, Indent, Atom) -->
+	io__write_string(User^outstr, Indent),
+		%
+		% Check whether the atom is likely to fit on one line.
+		% If it's not, then call the browser to print the term
+		% to a limited depth.  If it is, then we prefer to print
+		% it out directly so that all arguments are put on the
+		% same line.
+		%
+	(
+		{ check_decl_atom_size(Indent, Atom) }
+	->
+		write_decl_atom_direct(User^outstr, Atom)
+	;
+		write_decl_atom_limited(Atom, User)
+	).
+
+:- pred check_decl_atom_size(string, decl_atom).
+:- mode check_decl_atom_size(in, in) is semidet.
+
+check_decl_atom_size(Indent, atom(Functor, Args)) :-
+	decl_atom_size_limit(RemSize0),
+	string__length(Indent, I),
+	string__length(Functor, F),
+	P = 2,		% parentheses
+	RemSize1 = RemSize0 - I - F - P,
+	size_left_after_args(Args, RemSize1, RemSize),
+	RemSize > 0.
+
+:- pred size_left_after_args(list(maybe(univ)), int, int).
+:- mode size_left_after_args(in, in, out) is det.
+
+size_left_after_args([]) -->
 	[].
-write_args_rest([Arg | Args]) -->
-	io__write_string(", "),
-	io__print(Arg),
-	write_args_rest(Args).
+size_left_after_args([yes(A) | As]) -->
+	term_size_left_from_max(A),
+	size_left_after_args(As).
+size_left_after_args([no | As]) -->
+	size_left_after_args(As).
+
+:- pred decl_atom_size_limit(int).
+:- mode decl_atom_size_limit(out) is det.
+
+decl_atom_size_limit(79).
+
+:- pred write_decl_atom_limited(decl_atom, user_state, io__state, io__state).
+:- mode write_decl_atom_limited(in, in, di, uo) is det.
+
+write_decl_atom_limited(atom(Functor, Args), User) -->
+	io__write_string(User^outstr, Functor),
+	io__nl(User^outstr),
+	foldl(print_decl_atom_arg(User), Args).
+
+:- pred print_decl_atom_arg(user_state, maybe(univ), io__state, io__state).
+:- mode print_decl_atom_arg(in, in, di, uo) is det.
+
+print_decl_atom_arg(User, yes(Arg)) -->
+	io__write_string(User^outstr, "\t"),
+	browse__print(univ_value(Arg), User^outstr, User^browser).
+print_decl_atom_arg(User, no) -->
+	io__write_string(User^outstr, "\t_\n").
+
+:- pred write_decl_atom_direct(io__output_stream, decl_atom,
+		io__state, io__state).
+:- mode write_decl_atom_direct(in, in, di, uo) is det.
+
+write_decl_atom_direct(OutStr, atom(Functor, Args)) -->
+	io__write_string(OutStr, Functor),
+	(
+		{ Args = [] }
+	;
+		{ Args = [Arg | Args0] },
+		io__write_char(OutStr, '('),
+		write_decl_atom_arg(OutStr, Arg),
+		write_decl_atom_args(OutStr, Args0),
+		io__write_char(OutStr, ')')
+	),
+	io__nl(OutStr).
+
+:- pred write_decl_atom_args(io__output_stream, list(maybe(univ)),
+		io__state, io__state).
+:- mode write_decl_atom_args(in, in, di, uo) is det.
+
+write_decl_atom_args(_, []) -->
+	[].
+write_decl_atom_args(OutStr, [Arg | Args]) -->
+	io__write_string(OutStr, ", "),
+	write_decl_atom_arg(OutStr, Arg),
+	write_decl_atom_args(OutStr, Args).
+
+:- pred write_decl_atom_arg(io__output_stream, maybe(univ),
+		io__state, io__state).
+:- mode write_decl_atom_arg(in, in, di, uo) is det.
+
+write_decl_atom_arg(OutStr, yes(Arg)) -->
+	io__print(OutStr, Arg).
+write_decl_atom_arg(OutStr, no) -->
+	io__write_char(OutStr, '_').
 

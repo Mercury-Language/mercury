@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,20 +9,24 @@
 #ifndef MERCURY_HEAP_H
 #define MERCURY_HEAP_H
 
-#include "mercury_types.h"		/* for `Word' */
+#include "mercury_types.h"		/* for `MR_Word' */
 #include "mercury_context.h"		/* for min_heap_reclamation_point() */
 #include "mercury_heap_profile.h"	/* for MR_record_allocation() */
+#include "mercury_std.h"		/* for MR_EXTERN_INLINE */
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.h"			/* for MR_new_object() */
+#endif
 
 #ifdef CONSERVATIVE_GC
 
   #include "gc.h"
 
   #define tag_incr_hp_n(dest, tag, count) \
-	((dest) = (Word) MR_mkword((tag), \
-			(Word) GC_MALLOC((count) * sizeof(Word))))
+	((dest) = (MR_Word) MR_mkword((tag), \
+			(MR_Word) GC_MALLOC((count) * sizeof(MR_Word))))
   #define tag_incr_hp_atomic(dest, tag, count) \
-	((dest) = (Word) MR_mkword((tag), \
-			(Word) GC_MALLOC_ATOMIC((count) * sizeof(Word))))
+	((dest) = (MR_Word) MR_mkword((tag), \
+			(MR_Word) GC_MALLOC_ATOMIC((count) * sizeof(MR_Word))))
 
   #ifdef INLINE_ALLOC
 
@@ -59,9 +63,9 @@
 	( __builtin_constant_p(count) && (count) < 16 			\
 	? ({ 	void * temp; 						\
 		/* if size > 1, round up to an even number of words */	\
-		Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2));\
+		MR_Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2));\
 		GC_MALLOC_WORDS(temp, num_words);			\
-		(dest) = (Word) MR_mkword((tag), temp);			\
+		(dest) = (MR_Word) MR_mkword((tag), temp);			\
 	  })								\
 	: tag_incr_hp_n((dest), (tag), (count))				\
 	)
@@ -78,12 +82,12 @@
 
 			/* we use `MR_hp' as a convenient temporary here */
   #define hp_alloc(count) (						\
-		incr_hp(LVALUE_CAST(Word, MR_hp), (count)),		\
+		incr_hp(LVALUE_CAST(MR_Word, MR_hp), (count)),		\
 		MR_hp += (count),					\
 		(void)0							\
 	)
   #define hp_alloc_atomic(count) (					\
-		incr_hp_atomic(LVALUE_CAST(Word, MR_hp), (count)), 	\
+		incr_hp_atomic(LVALUE_CAST(MR_Word, MR_hp), (count)), 	\
 		MR_hp += (count),					\
 		(void)0							\
 	)
@@ -94,7 +98,7 @@
 
   #define tag_incr_hp(dest, tag, count) 			\
 	(							\
-		(dest) = (Word) MR_mkword(tag, (Word) MR_hp),	\
+		(dest) = (MR_Word) MR_mkword(tag, (MR_Word) MR_hp),	\
 		debugincrhp(count, MR_hp),			\
 		MR_hp += (count),				\
 		heap_overflow_check(),				\
@@ -103,7 +107,7 @@
   #define tag_incr_hp_atomic(dest, tag, count) \
 	tag_incr_hp((dest), (tag), (count))
 
-  #define mark_hp(dest)		((dest) = (Word) MR_hp)
+  #define mark_hp(dest)		((dest) = (MR_Word) MR_hp)
 
   /*
   ** When restoring MR_hp, we must make sure that we don't truncate the heap
@@ -112,21 +116,21 @@
   ** the set_min_heap_reclamation_point() macro.
   */
   #define	restore_hp(src)	(					\
-  			LVALUE_CAST(Word, MR_hp) = (src),		\
+  			LVALUE_CAST(MR_Word, MR_hp) = (src),		\
   			(void)0						\
   		)
 
   /*
   #define	restore_hp(src)	(					\
-  			LVALUE_CAST(Word, MR_hp) =			\
-  			  ( (Word) MR_min_hp_rec < (src) ?		\
-  			  (src) : (Word) MR_min_hp_rec ),		\
+  			LVALUE_CAST(MR_Word, MR_hp) =			\
+  			  ( (MR_Word) MR_min_hp_rec < (src) ?		\
+  			  (src) : (MR_Word) MR_min_hp_rec ),		\
   			(void)0						\
   		)
   */
   
-  #define hp_alloc(count)  	 incr_hp(LVALUE_CAST(Word, MR_hp), count)
-  #define hp_alloc_atomic(count) incr_hp_atomic(LVALUE_CAST(Word, MR_hp), count)
+  #define hp_alloc(count)  	 incr_hp(LVALUE_CAST(MR_Word, MR_hp), count)
+  #define hp_alloc_atomic(count) incr_hp_atomic(LVALUE_CAST(MR_Word, MR_hp), count)
 
   #define MR_free_heap(ptr)	((void)0)
   
@@ -169,6 +173,48 @@
 		tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
 
+#ifdef MR_HIGHLEVEL_CODE
+
+MR_EXTERN_INLINE MR_Word create1(MR_Word w1);
+MR_EXTERN_INLINE MR_Word create2(MR_Word w1, MR_Word w2);
+MR_EXTERN_INLINE MR_Word create3(MR_Word w1, MR_Word w2, MR_Word w3) ;
+
+MR_EXTERN_INLINE MR_Word
+create1(MR_Word w1) 
+{
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word), "create1");
+	p[0] = w1;
+	return (MR_Word) p;
+}
+
+MR_EXTERN_INLINE MR_Word
+create2(MR_Word w1, MR_Word w2) 
+{
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
+	p[0] = w1;
+	p[1] = w2;
+	return (MR_Word) p;
+}
+
+MR_EXTERN_INLINE MR_Word
+create3(MR_Word w1, MR_Word w2, MR_Word w3) 
+{
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word), "create3");
+	p[0] = w1;
+	p[1] = w2;
+	p[2] = w3;
+	return (MR_Word) p;
+}
+
+#define MR_create1_msg(w1, proclabel, type) \
+	create1((w1))
+#define MR_create2_msg(w1, w2, proclabel, type)	\
+	create2((w1), (w2))
+#define MR_create3_msg(w1, w2, w3, proclabel, type) \
+	create3((w1), (w2), (w3))
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'
 ** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
@@ -179,29 +225,29 @@
 #define create1(w1)						\
 	(							\
 		hp_alloc(1),					\
-		MR_hp[-1] = (Word) (w1),			\
+		MR_hp[-1] = (MR_Word) (w1),			\
 		debugcr1(MR_hp[-1], MR_hp),			\
-		/* return */ (Word) (MR_hp - 1)			\
+		/* return */ (MR_Word) (MR_hp - 1)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
 #define create2(w1, w2)						\
 	(							\
 		hp_alloc(2),					\
-		MR_hp[-2] = (Word) (w1),			\
-		MR_hp[-1] = (Word) (w2),			\
+		MR_hp[-2] = (MR_Word) (w1),			\
+		MR_hp[-1] = (MR_Word) (w2),			\
 		debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),		\
-		/* return */ (Word) (MR_hp - 2)			\
+		/* return */ (MR_Word) (MR_hp - 2)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
 #define create3(w1, w2, w3)					\
 	(							\
 		hp_alloc(3),					\
-		MR_hp[-3] = (Word) (w1),			\
-		MR_hp[-2] = (Word) (w2),			\
-		MR_hp[-1] = (Word) (w3),			\
-		/* return */ (Word) (MR_hp - 3)			\
+		MR_hp[-3] = (MR_Word) (w1),			\
+		MR_hp[-2] = (MR_Word) (w2),			\
+		MR_hp[-1] = (MR_Word) (w3),			\
+		/* return */ (MR_Word) (MR_hp - 3)			\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
@@ -209,9 +255,9 @@
 	(								\
 		MR_maybe_record_allocation(1, proclabel, (type)),	\
 		hp_alloc(1),						\
-		MR_hp[-1] = (Word) (w1),				\
+		MR_hp[-1] = (MR_Word) (w1),				\
 		debugcr1(MR_hp[-1], MR_hp),				\
-		/* return */ (Word) (MR_hp - 1)				\
+		/* return */ (MR_Word) (MR_hp - 1)				\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
@@ -219,10 +265,10 @@
 	(								\
 		MR_maybe_record_allocation(2, proclabel, (type)),	\
 		hp_alloc(2),						\
-		MR_hp[-2] = (Word) (w1),				\
-		MR_hp[-1] = (Word) (w2),				\
+		MR_hp[-2] = (MR_Word) (w1),				\
+		MR_hp[-1] = (MR_Word) (w2),				\
 		debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),			\
-		/* return */ (Word) (MR_hp - 2)				\
+		/* return */ (MR_Word) (MR_hp - 2)				\
 	)
 
 /* used only by hand-written code not by the automatically generated code */
@@ -230,11 +276,13 @@
 	(								\
 		MR_maybe_record_allocation(3, proclabel, (type)),	\
 		hp_alloc(3),						\
-		MR_hp[-3] = (Word) (w1),				\
-		MR_hp[-2] = (Word) (w2),				\
-		MR_hp[-1] = (Word) (w3),				\
-		/* return */ (Word) (MR_hp - 3)				\
+		MR_hp[-3] = (MR_Word) (w1),				\
+		MR_hp[-2] = (MR_Word) (w2),				\
+		MR_hp[-1] = (MR_Word) (w3),				\
+		/* return */ (MR_Word) (MR_hp - 3)				\
 	)
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 /*
 ** Indended for use in handwritten C code where the Mercury registers

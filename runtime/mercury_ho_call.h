@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -68,7 +68,7 @@
 typedef struct MR_Closure_Layout_Struct {
 	MR_Stack_Layout_Proc_Id	proc_id;
 	MR_Type_Param_Locns	*type_params;
-	Integer			num_all_args;
+	MR_Integer			num_all_args;
 	MR_PseudoTypeInfo	arg_pseudo_type_info[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
 
@@ -93,9 +93,9 @@ typedef struct MR_Closure_Layout_Struct {
 
 typedef struct MR_Closure_Struct {
 	MR_Closure_Layout	*MR_closure_layout;
-	Code			*MR_closure_code;
-	Unsigned                MR_closure_num_hidden_args;
-	Word                    MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
+	MR_Code			*MR_closure_code;
+	MR_Unsigned                MR_closure_num_hidden_args;
+	MR_Word                    MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
 } MR_Closure;
 
 #define	MR_closure_hidden_args(i)	MR_closure_hidden_args_0[(i) - 1]

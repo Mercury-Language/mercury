@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,9 +207,15 @@
 % the C interface, since Mercury doesn't allow different code for different
 % modes.
 
-% The enumeration constants in this enum must be in the same order as the
-% functors in the Mercury type `determinism' defined above.
 :- pragma c_header_code("
+/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
+#ifndef ML_DETERMINISM_GUARD
+#define ML_DETERMINISM_GUARD
+	/*
+	** The enumeration constants in this enum must be in the same
+	** order as the functors in the Mercury type `determinism'
+	** defined above.
+	*/
 	typedef enum {
 		ML_DET,
 		ML_SEMIDET,
@@ -220,6 +226,7 @@
 		ML_ERRONEOUS,
 		ML_FAILURE
 	} ML_Determinism;
+#endif
 ").
 
 :- pragma c_code(
@@ -272,6 +279,13 @@
 	will_not_call_mercury,
 	"Det = ML_CC_MULTI"
 ).
+
+% These are not worth inlining, since they will
+% (presumably) not be called frequently, and so
+% any increase in speed from inlining is not worth
+% the increase in code size.
+:- pragma no_inline(throw/1).
+:- pragma no_inline(rethrow/1).
 
 throw(Exception) :-
 	type_to_univ(Exception, Univ),
@@ -406,14 +420,24 @@ try_io(cc_multi, IO_Goal, Result) -->
 :- pred very_unsafe_perform_io(pred(T, io__state, io__state), T).
 :- mode very_unsafe_perform_io(pred(out, di, uo) is det, out) is det.
 :- mode very_unsafe_perform_io(pred(out, di, uo) is cc_multi, out)
-								is det.
+								is cc_multi.
 % Mercury doesn't support impure higher-order pred terms, so if we want
 % to form a closure from unsafe_perform_io, as we need to do above,
 % then we must (falsely!) promise that it is pure.
 :- pragma promise_pure(very_unsafe_perform_io/2). % XXX this is a lie
 
 very_unsafe_perform_io(Goal, Result) :-
-	impure unsafe_perform_io(Goal, Result).
+	impure make_io_state(IOState0),
+	Goal(Result, IOState0, IOState),
+	impure consume_io_state(IOState).
+
+:- impure pred make_io_state(io__state::uo) is det.
+:- pragma c_code(make_io_state(_IO::uo),
+		[will_not_call_mercury, thread_safe], "").
+
+:- impure pred consume_io_state(io__state::di) is det.
+:- pragma c_code(consume_io_state(_IO::di),
+		[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
 wrap_exception(Exception, exception(Exception)).
@@ -448,8 +472,414 @@ wrap_exception(Exception, exception(Exception)).
 :- external(builtin_catch/3).
 
 %-----------------------------------------------------------------------------%
+%
+% The --high-level-code implementation
+%
 
 :- pragma c_header_code("
+#ifdef MR_HIGHLEVEL_CODE
+
+	/* det ==> model_det */
+	#define mercury__exception__builtin_catch_3_p_0 \
+		mercury__exception__builtin_catch_model_det
+
+	/* semidet ==> model_semi */
+	#define mercury__exception__builtin_catch_3_p_1 \
+		mercury__exception__builtin_catch_model_semi
+
+	/* cc_multi ==> model_det */
+	#define mercury__exception__builtin_catch_3_p_2 \
+		mercury__exception__builtin_catch_model_det
+
+	/* cc_nondet ==> model_semi */
+	#define mercury__exception__builtin_catch_3_p_3 \
+		mercury__exception__builtin_catch_model_semi
+
+	/* multi ==> model_non */
+	#define mercury__exception__builtin_catch_3_p_4 \
+		mercury__exception__builtin_catch_model_non
+
+	/* nondet ==> model_non */
+	#define mercury__exception__builtin_catch_3_p_5 \
+		mercury__exception__builtin_catch_model_non
+
+	void mercury__exception__builtin_throw_1_p_0(MR_Univ);
+
+	void mercury__exception__builtin_throw_1_p_0(MR_Univ exception);
+	void mercury__exception__builtin_catch_model_det(
+		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Box *output);
+	bool mercury__exception__builtin_catch_model_semi(
+		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Box *output);
+	void mercury__exception__builtin_catch_model_non(
+		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Box *output,
+#ifdef MR_USE_GCC_NESTED_FUNCTIONS
+		MR_NestedCont cont
+#else
+		MR_Cont cont, void *cont_env
+#endif
+	);
+#endif /* MR_HIGHLEVEL_CODE */
+").
+
+:- pragma c_code("
+#ifdef MR_HIGHLEVEL_CODE
+
+/*---------------------------------------------------------------------------*/
+
+static void
+ML_call_goal_det(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+{
+	typedef void FuncType(void *, MR_Box *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, result);
+}
+
+static bool
+ML_call_goal_semi(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+{
+	typedef bool FuncType(void *, MR_Box *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	return (*code)((void *) closure, result);
+}
+
+#ifdef MR_USE_GCC_NESTED_FUNCTIONS
+
+static void
+ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
+	MR_NestedCont cont)
+{
+	typedef void FuncType(void *, MR_Box *, MR_NestedCont);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, result, cont);
+}
+
+#else
+
+static void
+ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
+	MR_Cont cont, void *cont_env)
+{
+	typedef void FuncType(void *, MR_Box *, MR_Cont, void *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, result, cont, cont_env);
+}
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+static void
+ML_call_handler_det(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
+	MR_Box *result)
+{
+	typedef void FuncType(void *, MR_Box, MR_Box *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, (MR_Box) exception, result);
+}
+
+static bool
+ML_call_handler_semi(MR_Type_Info type_info, MR_Pred closure,
+	MR_Univ exception, MR_Box *result)
+{
+	typedef bool FuncType(void *, MR_Box, MR_Box *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	return (*code)((void *) closure, (MR_Box) exception, result);
+}
+
+#ifdef MR_USE_GCC_NESTED_FUNCTIONS
+
+static void
+ML_call_handler_non(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
+	MR_Box *result, MR_NestedCont cont)
+{
+	typedef void FuncType(void *, MR_Box, MR_Box *, MR_NestedCont);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, (MR_Box) exception, result, cont);
+}
+
+#else
+
+static void
+ML_call_handler_non(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
+	MR_Box *result, MR_Cont cont, void *cont_env)
+{
+	typedef void FuncType(void *, MR_Box, MR_Box *, MR_Cont, void *);
+	FuncType *code = (FuncType *)
+		MR_field(MR_mktag(0), closure, (Integer) 1);
+	(*code)((void *) closure, (MR_Box) exception, result, cont, cont_env);
+}
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+#include <stdlib.h>
+#include <setjmp.h>
+
+typedef struct ML_ExceptionHandler_struct {
+	struct ML_ExceptionHandler_struct *prev;
+	jmp_buf		handler;
+	MR_Univ		exception;
+} ML_ExceptionHandler;
+
+ML_ExceptionHandler *ML_exception_handler;
+
+void
+mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
+{
+	if (ML_exception_handler == NULL) {
+		ML_report_uncaught_exception((MR_Word) exception);
+		exit(EXIT_FAILURE);
+	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""throw longjmp %p\\n"",
+			ML_exception_handler->handler);
+#endif
+		ML_exception_handler->exception = exception;
+		longjmp(ML_exception_handler->handler, 1);
+	}
+}
+
+void
+mercury__exception__builtin_catch_model_det(MR_Type_Info type_info,
+	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
+{
+	ML_ExceptionHandler this_handler;
+
+	this_handler.prev = ML_exception_handler;
+	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""detcatch setjmp %p\\n"", this_handler.handler);
+#endif
+
+	if (setjmp(this_handler.handler) == 0) {
+		ML_call_goal_det(type_info, pred, output);
+		ML_exception_handler = this_handler.prev;
+	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""detcatch caught jmp %p\\n"",
+			this_handler.handler);
+#endif
+
+		ML_exception_handler = this_handler.prev;
+		ML_call_handler_det(type_info, handler_pred,
+			this_handler.exception, output);
+	}
+}
+
+bool
+mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
+	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
+{
+	ML_ExceptionHandler this_handler;
+
+	this_handler.prev = ML_exception_handler;
+	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""semicatch setjmp %p\\n"", this_handler.handler);
+#endif
+
+	if (setjmp(this_handler.handler) == 0) {
+		bool result = ML_call_goal_semi(type_info, pred, output);
+		ML_exception_handler = this_handler.prev;
+		return result;
+	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""semicatch caught jmp %p\\n"",
+			this_handler.handler);
+#endif
+
+		ML_exception_handler = this_handler.prev;
+		return ML_call_handler_semi(type_info, handler_pred,
+			this_handler.exception, output);
+	}
+}
+
+#ifdef MR_USE_GCC_NESTED_FUNCTIONS
+
+void
+mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
+	MR_NestedCont cont)
+{
+	ML_ExceptionHandler this_handler;
+
+	auto void success_cont(void);
+	void success_cont(void) {
+		/*
+		** If we reach here, it means that
+		** the nondet goal has succeeded, so we
+		** need to restore the previous exception
+		** handler before calling its continuation
+		*/
+		ML_exception_handler = this_handler.prev;
+		(*cont)();
+
+		/* 
+		** If we get here, it means that the continuation
+		** has failed, and so we are about to redo the
+		** nondet goal.  Thus we need to re-establish
+		** its exception handler.
+		*/
+		ML_exception_handler = &this_handler;
+	}
+
+	this_handler.prev = ML_exception_handler;
+	ML_exception_handler = &this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""noncatch setjmp %p\\n"", this_handler.handler);
+#endif
+
+	if (setjmp(this_handler.handler) == 0) {
+		ML_call_goal_non(type_info, pred, output, success_cont);
+		ML_exception_handler = this_handler.prev;
+	} else {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""noncatch caught jmp %p\\n"",
+			this_handler.handler);
+#endif
+
+		ML_exception_handler = this_handler.prev;
+		ML_call_handler_non(type_info, handler_pred,
+			this_handler.exception, output, cont);
+	}
+}
+
+#else /* ! MR_USE_GCC_NESTED_FUNCTIONS */
+
+struct ML_catch_env {
+	ML_ExceptionHandler	this_handler;
+	MR_Cont			cont;
+	void			*cont_env;
+};
+
+static void
+ML_catch_success_cont(void *env_ptr) {
+	struct ML_catch_env *env = (struct ML_catch_env *) env_ptr;
+
+	/*
+	** If we reach here, it means that
+	** the nondet goal has succeeded, so we
+	** need to restore the previous exception
+	** handler before calling its continuation
+	*/
+	ML_exception_handler = env->this_handler.prev;
+	(*env->cont)(env->cont_env);
+
+	/* 
+	** If we get here, it means that the continuation
+	** has failed, and so we are about to redo the
+	** nondet goal.  Thus we need to re-establish
+	** its exception handler.
+	*/
+	ML_exception_handler = &env->this_handler;
+}
+
+void
+mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
+	MR_Cont cont, void *cont_env)
+{
+	struct ML_catch_env locals;
+	locals.cont = cont;
+	locals.cont_env = cont_env;
+
+	locals.this_handler.prev = ML_exception_handler;
+	ML_exception_handler = &locals.this_handler;
+
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""noncatch setjmp %p\\n"", locals.this_handler.handler);
+#endif
+
+	if (setjmp(locals.this_handler.handler) == 0) {
+		ML_call_goal_non(type_info, pred, output,
+			ML_catch_success_cont, &locals);
+		/*
+		** If we reach here, it means that
+		** the nondet goal has failed, so we
+		** need to restore the previous exception
+		** handler 
+		*/
+		ML_exception_handler = locals.this_handler.prev;
+		return;
+	} else {
+		/*
+		** We caught an exception.
+		** Restore the previous exception handler,
+		** and then invoke the handler predicate
+		** for this handler.
+		*/
+
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""noncatch caught jmp %p\\n"",
+			locals.this_handler.handler);
+#endif
+
+
+		ML_exception_handler = locals.this_handler.prev;
+		ML_call_handler_non(type_info, handler_pred,
+			locals.this_handler.exception, output,
+			cont, cont_env);
+	}
+}
+
+#endif /* ! MR_USE_GCC_NESTED_FUNCTIONS */
+
+#endif /* MR_HIGHLEVEL_CODE */
+").
+
+/*********
+This causes problems because the LLDS back-end
+does not let you export code with determinism `nondet'.
+Instead we hand-code it... see below.
+
+:- pred call_goal(pred(T), T).
+:- mode call_goal(pred(out) is det, out) is det.
+:- mode call_goal(pred(out) is semidet, out) is semidet.
+:- mode call_goal(pred(out) is nondet, out) is nondet.
+
+call_goal(Goal, Result) :- Goal(Result).
+
+:- pred call_handler(pred(univ, T), univ, T).
+:- mode call_handler(pred(in, out) is det, in, out) is det.
+:- mode call_handler(pred(in, out) is semidet, in, out) is semidet.
+:- mode call_handler(pred(in, out) is nondet, in, out) is nondet.
+
+call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
+
+:- pragma export(call_goal(pred(out) is det,     out), "ML_call_goal_det").
+:- pragma export(call_goal(pred(out) is semidet, out), "ML_call_goal_semidet").
+% :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
+
+:- pragma export(call_handler(pred(in, out) is det,     in, out),
+	"ML_call_handler_det").
+:- pragma export(call_handler(pred(in, out) is semidet, in, out),
+	"ML_call_handler_semidet").
+% :- pragma export(call_handler(pred(in, out) is nondet,  in, out),
+%	"ML_call_handler_nondet").
+
+*******/
+
+%-----------------------------------------------------------------------------%
+%
+% The --no-high-level-code implementation
+%
+
+:- pragma c_header_code("
+#ifndef MR_HIGHLEVEL_CODE
 	#include <assert.h>
 	#include <stdio.h>
 	#include ""mercury_deep_copy.h""
@@ -459,9 +889,14 @@ wrap_exception(Exception, exception(Exception)).
 
 	MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
 			mercury_data_std_util__type_ctor_info_univ_0);
+#endif
 ").
 
 :- pragma c_code("
+#ifdef MR_HIGHLEVEL_CODE
+void mercury_sys_init_exceptions(void);
+void mercury_sys_init_exceptions(void) { return; }
+#else
 
 /*
 ** MR_trace_throw():
@@ -480,9 +915,12 @@ wrap_exception(Exception, exception(Exception)).
 */
 
 #define WARNING(msg)							\\
-	fprintf(stderr, ""mdb: warning: %s\\n""				\\
-		""This may result in some exception events\\n""		\\
-		""being omitted from the trace.\\n"", (msg))
+	do {								\\
+		fflush(stdout);						\\
+		fprintf(stderr, ""mdb: warning: %s\\n""			\\
+			""This may result in some exception events\\n""	\\
+			""being omitted from the trace.\\n"", (msg));	\\
+	} while (0)
 
 static Code *
 MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
@@ -522,7 +960,7 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 		** invoke MR_trace() to trace the exception
 		*/
 		if (return_label_layout->MR_sll_port != MR_PORT_EXCEPTION) {
-			fatal_error(""return layout port is not exception"");
+			MR_fatal_error(""return layout port is not exception"");
 		}
 
 		MR_jumpaddr = MR_trace(return_label_layout);
@@ -690,7 +1128,7 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 	** were allocated by MR_create_exception_handler().
 	*/
 #ifdef MR_USE_TRAIL
-	MR_discard_ticket();
+	MR_prune_ticket();
 #endif
 	MR_succeed_discard();
 
@@ -741,7 +1179,11 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 	** back to our caller.
 	*/
 #ifdef MR_USE_TRAIL
-	MR_discard_ticket();
+	if (r1) {
+		MR_prune_ticket();
+	} else {
+		MR_discard_ticket();
+	}
 #endif
 	MR_succeed_discard();
 
@@ -831,6 +1273,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	if (MR_trace_enabled) {
 		Code *MR_jumpaddr;
+		MR_trace_set_exception_value(exception);
 		save_transient_registers();
 		MR_jumpaddr = MR_trace_throw(MR_succip, MR_sp, MR_curfr);
 		restore_transient_registers();
@@ -962,7 +1405,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy(&exception,
-		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
+		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		MR_EXCEPTION_FRAMEVARS->heap_ptr,
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	restore_transient_registers();
@@ -979,7 +1422,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		MR_solutions_heap_zone->top);
 	save_transient_registers();
 	exception = deep_copy(&exception,
-		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
+		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
 	restore_transient_registers();
 
@@ -1014,14 +1457,23 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** since it invalidates all the framevars.)
 	*/
 	MR_maxfr = MR_prevfr_slot(MR_curfr);
-	MR_curfr = MR_maxfr;
+	MR_curfr = MR_succfr_slot(MR_curfr);
 
 	/*
 	** Now longjmp to the catch, which will invoke the handler
 	** that we found.
 	*/
 
+#ifdef	MR_DEBUG_JMPBUFS
+	fprintf(stderr, ""throw catch_code_model %d\\n"", catch_code_model);
+#endif
+
 	if (catch_code_model == MR_C_LONGJMP_HANDLER) {
+#ifdef	MR_DEBUG_JMPBUFS
+		fprintf(stderr, ""throw longjmp %p\\n"",
+			*(MR_ENGINE(e_jmp_buf)));
+#endif
+
 		MR_ENGINE(e_exception) = (Word *) exception;
 		save_registers();
 		longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
@@ -1076,6 +1528,8 @@ void mercury_sys_init_exceptions(void) {
 	exceptions_module();
 }
 
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1098,6 +1552,7 @@ report_uncaught_exception(Exception) -->
 :- mode report_uncaught_exception_2(in, out, di, uo) is det.
 
 report_uncaught_exception_2(Exception, unit) -->
+	io__flush_output,
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, "Uncaught exception:\n"),
 	( { univ_to_type(Exception, software_error(Message)) } ->
@@ -1105,39 +1560,7 @@ report_uncaught_exception_2(Exception, unit) -->
 	;
 		io__write(StdErr, univ_value(Exception)),
 		io__nl(StdErr)
-	).
-
-/*
-** unsafe_perform_io/2 is the same as unsafe_perform_io/1
-** (see extras/trailed_update/unsafe.m)
-** except that it also allows the predicate to return an output argument.
-*/
-:- impure pred unsafe_perform_io(pred(T, io__state, io__state), T).
-:- mode unsafe_perform_io(pred(out, di, uo) is det, out) is det.
-:- mode unsafe_perform_io(pred(out, di, uo) is cc_multi, out) is det.
-
-:- pragma c_code(
-unsafe_perform_io(P::(pred(out, di, uo) is det), X::out),
-	may_call_mercury,
-"{
-	ML_exception_call_io_pred_det(TypeInfo_for_T, P, &X);
-}").
-:- pragma c_code(
-unsafe_perform_io(P::(pred(out, di, uo) is cc_multi), X::out),
-	may_call_mercury,
-"{
-	ML_exception_call_io_pred_cc_multi(TypeInfo_for_T, P, &X);
-}").
-
-:- pred call_io_pred(pred(T, io__state, io__state), T, io__state, io__state).
-:- mode call_io_pred(pred(out, di, uo) is det, out, di, uo) is det.
-:- mode call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
-
-:- pragma export(call_io_pred(pred(out, di, uo) is det, out, di, uo),
-		"ML_exception_call_io_pred_det").
-:- pragma export(call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo),
-		"ML_exception_call_io_pred_cc_multi").
-
-call_io_pred(P, X) --> P(X).
+	),
+	io__flush_output(StdErr).
 
 %-----------------------------------------------------------------------------%

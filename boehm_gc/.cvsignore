@@ -7,3 +7,8 @@ on_sparc_sunos5_so
 gctest
 libgc_dll.h
 mercury_boehm_gc_conf.h
+gc.lib
+libgc.lib
+*.ilk
+*.pdb
+gc_cpp.cpp

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -129,6 +129,11 @@
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
+
+	% Test whether the goal contains a reconstruction
+	% (a construction where the `cell_to_reuse' field is `yes(_)').
+:- pred goal_contains_reconstruction(hlds_goal).
+:- mode goal_contains_reconstruction(in) is semidet.
 
 	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
 	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
@@ -368,8 +373,8 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,E,F,G), Must, Subn,
-		pragma_c_code(A,B,C,Vars,E,F,G)) :-
+goal_util__name_apart_2(pragma_foreign_code(A,B,C,D,Vars0,F,G,H), Must, Subn,
+		pragma_foreign_code(A,B,C,D,Vars,F,G,H)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 
 goal_util__name_apart_2(bi_implication(LHS0, RHS0), Must, Subn,
@@ -426,16 +431,21 @@ goal_util__rename_unify_rhs(
 :- mode goal_util__rename_unify(in, in, in, out) is det.
 
 goal_util__rename_unify(
-		construct(Var0, ConsId, Vars0, Modes, Reuse0, Uniq, Aditi),
+		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, Aditi),
 		Must, Subn,
-		construct(Var, ConsId, Vars, Modes, Reuse, Uniq, Aditi)) :-
+		construct(Var, ConsId, Vars, Modes, How, Uniq, Aditi)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
-	( Reuse0 = yes(cell_to_reuse(ReuseVar0, B, C)) ->
+	(
+		How0 = reuse_cell(cell_to_reuse(ReuseVar0, B, C)),
 		goal_util__rename_var(ReuseVar0, Must, Subn, ReuseVar),
-		Reuse = yes(cell_to_reuse(ReuseVar, B, C))
+		How = reuse_cell(cell_to_reuse(ReuseVar, B, C))
 	;
-		Reuse = no
+		How0 = construct_dynamically,
+		How = How0
+	;
+		How0 = construct_statically(_),
+		How = How0
 	).
 goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat),
 		Must, Subn, deconstruct(Var, ConsId, Vars, Modes, Cat)) :-
@@ -551,7 +561,7 @@ goal_util__goal_vars(Goal - _GoalInfo, Set) :-
 goal_util__goal_vars_2(unify(Var, RHS, _, Unif, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
 	( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
-		( CellToReuse = yes(cell_to_reuse(Var, _, _)) ->
+		( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
 			set__insert(Set1, Var, Set2)
 		;
 			Set2 = Set1
@@ -596,7 +606,7 @@ goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _, _), Set0, Set) :-
 	goal_util__goal_vars_2(B, Set2, Set3),
 	goal_util__goal_vars_2(C, Set3, Set).
 
-goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
+goal_util__goal_vars_2(pragma_foreign_code(_, _, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
@@ -740,7 +750,7 @@ goal_expr_size(some(_, _, Goal), Size) :-
 goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
+goal_expr_size(pragma_foreign_code(_, _, _, _, _, _, _, _), 1).
 goal_expr_size(bi_implication(LHS, RHS), Size) :-
 	goal_size(LHS, Size1),
 	goal_size(RHS, Size2),
@@ -785,6 +795,8 @@ cases_calls([case(_, Goal) | Cases], PredProcId) :-
 :- mode goal_expr_calls(in, out) is nondet.
 
 goal_expr_calls(conj(Goals), PredProcId) :-
+	goals_calls(Goals, PredProcId).
+goal_expr_calls(par_conj(Goals, _), PredProcId) :-
 	goals_calls(Goals, PredProcId).
 goal_expr_calls(disj(Goals, _), PredProcId) :-
 	goals_calls(Goals, PredProcId).
@@ -844,6 +856,8 @@ cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
 
 goal_expr_calls_pred_id(conj(Goals), PredId) :-
 	goals_calls_pred_id(Goals, PredId).
+goal_expr_calls_pred_id(par_conj(Goals, _), PredId) :-
+	goals_calls_pred_id(Goals, PredId).
 goal_expr_calls_pred_id(disj(Goals, _), PredId) :-
 	goals_calls_pred_id(Goals, PredId).
 goal_expr_calls_pred_id(switch(_, _, Goals, _), PredId) :-
@@ -862,6 +876,43 @@ goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
+%-----------------------------------------------------------------------------%
+ 
+goal_contains_reconstruction(_Goal - _) :-
+	% This will only succeed on the alias branch with structure reuse.
+	semidet_fail.
+	%goal_expr_contains_reconstruction(Goal).
+
+:- pred goal_expr_contains_reconstruction(hlds_goal_expr).
+:- mode goal_expr_contains_reconstruction(in) is semidet.
+
+goal_expr_contains_reconstruction(conj(Goals)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(disj(Goals, _)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(par_conj(Goals, _)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(switch(_, _, Cases, _)) :-
+	list__member(Case, Cases),
+	Case = case(_, Goal),
+ 	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else, _)) :-
+ 	goals_contain_reconstruction([Cond, Then, Else]).
+goal_expr_contains_reconstruction(not(Goal)) :-
+	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(some(_, _, Goal)) :-
+	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
+	Unify = construct(_, _, _, _, HowToConstruct, _, _),
+	HowToConstruct = reuse_cell(_).
+
+:- pred goals_contain_reconstruction(list(hlds_goal)).
+:- mode goals_contain_reconstruction(in) is semidet.
+
+goals_contain_reconstruction(Goals) :-
+	list__member(Goal, Goals),
+	goal_contains_reconstruction(Goal).
+ 
 %-----------------------------------------------------------------------------%
 
 	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,

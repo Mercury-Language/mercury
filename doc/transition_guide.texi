@@ -15,7 +15,7 @@
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-1999 The University of Melbourne.
+Copyright (C) 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -44,7 +44,7 @@ into another language, under the above conditions for modified versions.
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1999 The University of Melbourne.
+Copyright @copyright{} 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -112,9 +112,11 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 *               yfx             400
 **              xfy             300
 +               yfx             500
+++              xfy             500
 +               fx              500
 ,               xfy             1000
 -               yfx             500
+--              yfx             500
 -               fx              500
 --->            xfy             1179
 -->             xfx             1200
@@ -126,6 +128,7 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 :-              xfx             1200
 :-              fx              1200
 ::              xfx             1175
+:=              xfx             650
 ;               xfy             1100
 <               xfx             700
 <<              yfx             400
@@ -136,6 +139,7 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 ==              xfx             700
 ==>             xfx             1175
 =>              xfy             920
+=^              xfx             650
 >               xfx             700
 >=              xfx             700
 >>              yfx             400
@@ -143,7 +147,8 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 \+              fy              900
 \/              yfx             500
 \=              xfx             700
-^               xfy             200
+^               xfy             99
+^               fx              100
 ~               fy              900
 aditi_bottom_up fx              500
 aditi_top_down  fx              500

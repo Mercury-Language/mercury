@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 :- import_module llds, builtin_ops, livemap, options.
-:- import_module getopt, map, set, list, std_util.
+:- import_module getopt, map, set, list, std_util, counter.
 
 :- type vn == int.
 
@@ -79,11 +79,13 @@
 			;	vn_if_val(vn, code_addr)
 			;	vn_mark_hp(vnlval)
 			;	vn_restore_hp(vn)
+			;	vn_free_heap(vn)
 			;	vn_store_ticket(vnlval)
 			;	vn_reset_ticket(vn, reset_trail_reason)
 			;	vn_discard_ticket
+			;	vn_prune_ticket
 			;	vn_mark_ticket_stack(vnlval)
-			;	vn_discard_tickets_to(vn)
+			;	vn_prune_tickets_to(vn)
 			;	vn_incr_sp(int, string)
 			;	vn_decr_sp(int).
 
@@ -97,7 +99,7 @@
 :- type flushmapentry	==	map(vnlval, vn).
 :- type parmap		==	map(int, list(parallel)).
 
-:- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, int, parmap).
+:- type vn_ctrl_tuple	--->	tuple(int, ctrlmap, flushmap, counter, parmap).
 
 :- type vn_params.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,8 +62,9 @@
 			% you can get the tvarset from the hlds__type_defn.
 			existq_tvars,		% existential type vars
 			list(class_constraint), % existential class constraints
-			list(type),		% The types of the arguments
-						% of this functor (if any)
+			list(constructor_arg),	% The field names and types of
+						% the arguments of this functor
+						% (if any)
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
@@ -71,6 +72,36 @@
 						% ctor definition in the
 						% original source code
 		).
+
+%-----------------------------------------------------------------------------%
+
+:- type ctor_field_table == map(ctor_field_name, list(hlds_ctor_field_defn)).
+
+:- type hlds_ctor_field_defn
+	---> hlds_ctor_field_defn(
+		prog_context,	% context of the field definition
+		import_status,
+		type_id,	% type containing the field
+		cons_id,	% constructor containing the field
+		int		% argument number (counting from 1)
+	).
+
+	%
+	% Field accesses are expanded into inline unifications by
+	% post_typecheck.m after typechecking has worked out which 
+	% field is being referred to.
+	%
+	% Function declarations and clauses are not generated for these
+	% because it would be difficult to work out how to mode them.
+	%
+	% Users can supply type and mode declarations, for example
+	% to export a field of an abstract data type or to allow
+	% taking the address of a field access function.
+	%
+:- type field_access_type
+	--->	get
+	;	set
+	.
 
 %-----------------------------------------------------------------------------%
 
@@ -101,6 +132,18 @@
 
 :- pred make_cons_id(sym_name, list(constructor_arg), type_id, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
+
+	% Another way of making a cons_id from a functor.
+	% Given the name, argument types, and type_id of a functor,
+	% create a cons_id for that functor.
+	%
+	% Differs from make_cons_id in that (a) it requires the sym_name
+	% to be already module qualified, which means that it does not
+	% need the module qualification of the type, (b) it can compute the
+	% arity from any list of the right length.
+
+:- pred make_cons_id_from_qualified_sym_name(sym_name, list(_), cons_id).
+:- mode make_cons_id_from_qualified_sym_name(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -162,6 +205,9 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 	),
 	list__length(Args, Arity).
 
+make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
+	list__length(Args, Arity).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -205,6 +251,10 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- pred hlds_data__set_type_defn_status(hlds_type_defn, import_status,
 			hlds_type_defn).
 :- mode hlds_data__set_type_defn_status(in, in, out) is det.
+
+:- pred hlds_data__set_type_defn_body(hlds_type_defn, hlds_type_body,
+			hlds_type_defn).
+:- mode hlds_data__set_type_defn_body(in, in, out) is det.
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
@@ -308,10 +358,14 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% and a secondary tag, but this time the secondary
 			% tag is stored in the rest of the main word rather
 			% than in the first word of the argument vector.
-	;	no_tag.
+	;	no_tag
 			% This is for types with a single functor of arity one.
 			% In this case, we don't need to store the functor,
 			% and instead we store the argument directly.
+	% XXX do we need this?
+	%;	var_tag
+			% This is for the var tag, reserved for use by HAL
+	.
 
 	% The type `tag_bits' holds a primary tag value.
 
@@ -352,6 +406,8 @@ hlds_data__get_type_defn_body(hlds_type_defn(_, _, Body, _, _), Body).
 hlds_data__get_type_defn_status(hlds_type_defn(_, _, _, Status, _), Status).
 hlds_data__get_type_defn_context(hlds_type_defn(_, _, _, _, Context), Context).
 
+hlds_data__set_type_defn_body(hlds_type_defn(A, B, _, D, E), Body,
+				hlds_type_defn(A, B, Body, D, E)).
 hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status, 
 				hlds_type_defn(A, B, C, Status, E)).
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 :- mode main(di, uo) is det.
 
 :- implementation.
-:- import_module declarative_debugger, declarative_execution.
+:- import_module mdb, mdb__declarative_debugger, mdb__declarative_execution.
 :- import_module list, std_util, map, require.
 
 main -->
@@ -26,11 +26,10 @@ main -->
 		{ MaybeFile = yes(File) }
 	->
 		load_trace_node_map(File, Map, Key),
-		{ diagnoser_state_init(State) },
 		io__stdin_stream(StdIn),
 		io__stdout_stream(StdOut),
-		{ det_trace_node_from_id(Map, Key, Node) },
-		diagnosis(StdIn, StdOut, Map, Node, Response, State, _),
+		{ diagnoser_state_init(StdIn, StdOut, State) },
+		diagnosis(Map, Key, Response, State, _),
 		io__write_string("Diagnoser response:\n"),
 		io__write(Response),
 		io__nl

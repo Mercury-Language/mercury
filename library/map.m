@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,7 +47,6 @@
 
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
-:- mode map__search(in, in, in) is semidet.	% implied
 :- mode map__search(in, in, out) is semidet.
 
 	% Search map for key, but abort if search fails.
@@ -213,6 +212,14 @@
 :- mode map__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode map__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+	% Apply a transformation predicate to all the values
+	% in a map, while continuously updating an accumulator.
+:- pred map__map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map__map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
+	is det.
+:- mode map__map_foldl(pred(in, in, out, in, out) is semidet, in, out, in, out)
+	is semidet. 
+
 	% Given two maps M1 and M2, create a third map M3 that has only the
 	% keys that occur in both M1 and M2. For keys that occur in both M1
 	% and M2, compute the value in the final map by applying the supplied
@@ -259,7 +266,7 @@ map__init(M) :-
 	tree234__init(M).
 
 map__is_empty(M) :-
-	tree234__init(M).
+	tree234__is_empty(M).
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).
@@ -487,6 +494,9 @@ map__foldl(Pred, Map, Acc0, Acc) :-
 map__map_values(Pred, Map0, Map) :-
 	tree234__map_values(Pred, Map0, Map).
 
+map__map_foldl(Pred, Map0, Map, Acc0, Acc) :-
+	tree234__map_foldl(Pred, Map0, Map, Acc0, Acc).
+
 %-----------------------------------------------------------------------------%
 
 map__intersect(CommonPred, Map1, Map2, Common) :-
@@ -608,6 +618,9 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 
 :- interface.
 
+:- func map__init = map(K, V).
+:- mode map__init = uo is det.
+
 :- func map__lookup(map(K,V), K) = V.
 
 :- func map__det_insert(map(K,V), K, V) = map(K,V).
@@ -671,6 +684,9 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 % ---------------------------------------------------------------------------- %
 
 :- implementation.
+
+map__init = M :-
+	map__init(M).
 
 map__lookup(M, K) = V :-
 	map__lookup(M, K, V).
@@ -761,4 +777,3 @@ map__union(F, M1, M2) = M3 :-
 map__det_union(F, M1, M2) = M3 :-
 	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
 	map__det_union(P, M1, M2, M3).
-

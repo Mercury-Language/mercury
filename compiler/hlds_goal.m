@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,10 +155,11 @@
 					% information.
 		)
 
-		% C code from a pragma c_code(...) decl.
+		% Foreign code from a pragma foreign_code(...) decl.
 
-	;	pragma_c_code(
-			pragma_c_code_attributes,
+	;	pragma_foreign_code(
+			foreign_language, % the language we are using
+			pragma_foreign_code_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(prog_var),	% The (Mercury) argument variables
@@ -174,9 +175,9 @@
 			list(type),	% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
-			pragma_c_code_impl
+			pragma_foreign_code_impl
 					% Extra information for model_non
-					% pragma_c_codes; none for others.
+					% pragma_foreign_codes; none for others.
 		)
 
 		% parallel conjunction
@@ -241,44 +242,73 @@
 			int		% number of outputs
 		)
 
-		% Insert a single tuple into a predicate.
+		% Insert or delete a single tuple into/from a base relation.
 		% Arguments:
 		%   type-infos for the arguments of the tuple to insert
 		%   the arguments of tuple to insert
 		% aditi__state::di, aditi__state::uo
-	;	aditi_insert(
+	;	aditi_tuple_insert_delete(
+			aditi_insert_delete,
 			pred_id		% base relation to insert into
 		)
 
-		% Apply a filter to a relation.
-		% Arguments:
-		%   deletion condition (semidet `aditi_top_down' closure). 
-		%   aditi__state::di, aditi__state::uo
-	;	aditi_delete(
-			pred_id,	% base relation to delete from
+		% Insert/delete/modify operations which take
+		% an input closure.
+		% These operations all have two variants. 
+		%
+		% A pretty syntax:
+		%
+		% aditi_bulk_insert(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_delete(p(DB, X, Y) :- q(DB, X, Y)).
+		% aditi_bulk_modify(
+		%	(p(DB, X0, Y0) ==> p(_, X, Y) :-
+		%		X = X0 + 1,
+		%		Y = Y0 + 3
+		%	)).
+		%
+		% An ugly syntax:
+		%
+		% InsertPred = (aditi_bottom_up
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_insert(pred p/3, InsertPred).
+		%
+		% DeletePred = (aditi_bottom_up
+		%	pred(DB::aditi_mui, X::out, Y::out) :- 
+		%		p(DB, X, Y),
+		%		q(DB, X, Y)
+		% ),
+		% aditi_bulk_delete(pred p/3, DeletePred).
+	;	aditi_insert_delete_modify(
+			aditi_insert_delete_modify,
+			pred_id,
 			aditi_builtin_syntax
 		)
+	.
 
-		% Insert or delete the tuples returned by a query.
-		% Arguments:
-		%   query to generate tuples to insert or delete
-		% 	(nondet `aditi_bottom_up' closure).
-		%   aditi__state::di, aditi__state::uo
-	;	aditi_bulk_operation(
-			aditi_bulk_operation,
-			pred_id		% base relation to insert into
-		)
+:- type aditi_insert_delete
+	--->	delete			% `aditi_delete'
+	;	insert			% `aditi_insert'
+	.
 
-		% Modify the tuples in a relation.
-		% Arguments:
-		%   semidet `aditi_top_down' closure to construct a
-		%	new tuple from the old tuple.
-		%	The tuple is not changed if the closure fails.
- 		%   aditi__state::di, aditi__state::uo.
-	;	aditi_modify(
-			pred_id,	% base relation to modify
-			aditi_builtin_syntax
-		)
+:- type aditi_insert_delete_modify
+	--->	delete(bulk_or_filter)	% `aditi_bulk_delete' or `aditi_filter'
+	;	bulk_insert		% `aditi_bulk_insert'
+	;	modify(bulk_or_filter)	% `aditi_bulk_modify' or `aditi_modify'
+	.
+
+	% Deletions and modifications can either be done by computing
+	% all tuples for which the update applies, then applying the
+	% update for all tuples in one go (`bulk'), or by applying
+	% the update to each tuple during a pass over the relation
+	% being modified (`filter').
+	%
+	% The `filter' updates are not yet implemented in Aditi, and
+	% it may be difficult to ever implement them.
+:- type bulk_or_filter
+	--->	bulk
+	;	filter
 	.
 
 	% Which syntax was used for an `aditi_delete' or `aditi_modify'
@@ -287,17 +317,13 @@
 	% (See the "Aditi update syntax" section of the Mercury Language
 	% Reference Manual).
 :- type aditi_builtin_syntax
-	--->	pred_term		% e.g.	aditi_delete(p(_, X) :- X = 1).
+	--->	pred_term		% e.g.
+					% aditi_bulk_insert(p(_, X) :- X = 1).
 	;	sym_name_and_closure	% e.g.
-					% aditi_delete(p/2,
-					%    (pred(_::in, X::in) is semidet :-
+					% aditi_insert(p/2,
+					%    (pred(_::in, X::out) is nondet:-
 					%	X = 1)
 					%    )
-	.
-
-:- type aditi_bulk_operation
-	--->	insert
-	;	delete
 	.
 
 :- type can_remove
@@ -398,8 +424,14 @@
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
-			maybe(cell_to_reuse),
-					% Cell to destructively update.
+			how_to_construct,
+					% Specify whether to allocate
+					% statically, to allocate dynamically,
+					% or to reuse an existing cell
+					% (and if so, which cell).
+					% Constructions for which this
+					% field is `reuse_cell(_)' are
+					% described as "reconstructions".
 			cell_is_unique,	% Can the cell be allocated
 					% in shared data.
 			maybe(rl_exprn_id)
@@ -543,6 +575,36 @@
 			unify_context	% the context of the unification
 		).
 
+	% Information on how to construct the cell for a
+	% construction unification.  The `construct_statically'
+	% alternative is set by the `mark_static_terms.m' pass,
+	% and is currently only used for the MLDS back-end
+	% (for the LLDS back-end, the same optimization is
+	% handled by code_exprn.m).
+	% The `reuse_cell' alternative is not yet used.
+:- type how_to_construct
+	--->	construct_statically(		% Use a statically initialized
+						% constant
+			args :: list(static_cons)
+		)
+	;	construct_dynamically		% Allocate a new term on the
+						% heap
+	;	reuse_cell(cell_to_reuse)	% Reuse an existing heap cell
+	.
+
+	% Information on how to construct an argument for
+	% a static construction unification.  Each such
+	% argument must itself have been constructed
+	% statically; we store here a subset of the fields
+	% of the original `construct' unification for the arg.
+	% This is used by the MLDS back-end.
+:- type static_cons
+	--->	static_cons(
+			cons_id,		% the cons_id of the functor
+			list(prog_var),		% the list of arg variables
+			list(static_cons)	% how to construct the args
+		).
+
 	% Information used to perform structure reuse on a cell.
 :- type cell_to_reuse
 	---> cell_to_reuse(
@@ -586,14 +648,20 @@
 	% We can think of the goal that defines a procedure to be a tree,
 	% whose leaves are primitive goals and whose interior nodes are
 	% compound goals. These two types describe the position of a goal
-	% in this tree. The first says which branch to take at an interior
-	% node (the integer counts start at one). The second gives the
-	% sequence of steps from the root to the given goal *in reverse order*,
-	% so that the step closest to the root is last.
+	% in this tree. A goal_path_step type says which branch to take at an
+	% interior node; the integer counts start at one. (For switches,
+	% the second int gives the total number of function symbols in the type
+	% of the switched-on var; for builtin types such as integer and string,
+	% for which this number is effectively infinite, we store a negative
+	% number.) The goal_path type gives the sequence of steps from the root
+	% to the given goal *in reverse order*, so that the step closest to
+	% the root is last. (Keeping the list in reverse order makes the
+	% common operations constant-time instead of linear in the length
+	% of the list.)
 
 :- type goal_path_step	--->	conj(int)
 			;	disj(int)
-			;	switch(int)
+			;	switch(int, int)
 			;	ite_cond
 			;	ite_then
 			;	ite_else
@@ -604,10 +672,11 @@
 
 :- type goal_path == list(goal_path_step).
 
-	% Given the variable info field from a pragma c_code, get all the
+	% Given the variable info field from a pragma foreign_code, get all the
 	% variable names.
-:- pred get_pragma_c_var_names(list(maybe(pair(string, mode))), list(string)).
-:- mode get_pragma_c_var_names(in, out) is det.
+:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode))),
+		list(string)).
+:- mode get_pragma_foreign_var_names(in, out) is det.
 
 	% Get a description of a generic_call goal.
 :- pred hlds_goal__generic_call_id(generic_call, call_id).
@@ -621,20 +690,22 @@
 	% if this structure is modified.
 :- type hlds_goal_info
 	---> goal_info(
-		set(prog_var),	% the pre-birth set
-		set(prog_var),	% the post-birth set
-		set(prog_var),	% the pre-death set
-		set(prog_var),	% the post-death set
+		pre_births :: set(prog_var),	% the pre-birth set
+		post_births :: set(prog_var),	% the post-birth set
+		pre_deaths :: set(prog_var),	% the pre-death set
+		post_deaths :: set(prog_var),	% the post-death set
 				% (all four are computed by liveness.m)
 				% NB for atomic goals, the post-deadness
 				% should be applied _before_ the goal
 
-		determinism, 	% the overall determinism of the goal
+		determinism :: determinism, 
+				% the overall determinism of the goal
 				% (computed during determinism analysis)
 				% [because true determinism is undecidable,
 				% this may be a conservative approximation]
 
-		instmap_delta,	% the change in insts over this goal
+		instmap_delta :: instmap_delta,
+				% the change in insts over this goal
 				% (computed during mode analysis)
 				% [because true unreachability is undecidable,
 				% the instmap_delta may be reachable even
@@ -652,10 +723,18 @@
 				% unreachability, but both will be
 				% conservative approximations, so if either
 				% says a goal is unreachable then it is.
+				%
+				% Normally the instmap_delta will list only
+				% the nonlocal variables of the goal. However,
+				% with typeinfo liveness, it may also list
+				% typeinfo or typeclass info variables that
+				% describe (part of) the type of a nonlocal
+				% variable.
 
-		prog_context,
+		context :: prog_context,
 
-		set(prog_var),	% the non-local vars in the goal,
+		nonlocals :: set(prog_var),
+				% the non-local vars in the goal,
 				% i.e. the variables that occur both inside
 				% and outside of the goal.
 				% (computed by quantification.m)
@@ -663,38 +742,59 @@
 				% conservative approximation: it may be
 				% a superset of the real non-locals]
 
-		maybe(follow_vars),
+		/*
+		code_gen_nonlocals :: maybe(set(prog_var)),
+				% the non-local vars in the goal,
+				% modified slightly for code generation.
+				% The difference between the code-gen nonlocals
+				% and the ordinary nonlocals is that arguments
+				% of a reconstruction which are taken from the
+				% reused cell are not considered to be
+				% `code_gen_nonlocals' of the goal.
+				% This avoids allocating stack slots and
+				% generating unnecessary field extraction
+				% instructions for those arguments.
+				% Mode information is still computed using
+				% the ordinary non-locals.
+				% 
+				% If the field has value `no', the ordinary
+				% nonlocals are used instead. This will
+				% be the case if the procedure body does not
+				% contain any reconstructions.
+		*/
+
+		follow_vars :: maybe(follow_vars),
 				% advisory information about where variables
 				% ought to be put next. The legal range
 				% includes the nonexistent register r(-1),
 				% which indicates any available register.
 
-		set(goal_feature),
+		features :: set(goal_feature),
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
 
-		resume_point,
+		resume_point :: resume_point,
 				% If this goal establishes a resumption point,
 				% state what variables need to be saved for
 				% that resumption point, and which entry
 				% labels of the resumption point will be
 				% needed. (See compiler/notes/allocation.html)
 
-		goal_path
+		goal_path :: goal_path
 				% The path to this goal from the root in
 				% reverse order.
 	).
 
-get_pragma_c_var_names(MaybeVarNames, VarNames) :-
-	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
+get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
+	get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
 
-:- pred get_pragma_c_var_names_2(list(maybe(pair(string, mode)))::in,
+:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
 	list(string)::in, list(string)::out) is det.
 
-get_pragma_c_var_names_2([], Names, Names).
-get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
+get_pragma_foreign_var_names_2([], Names, Names).
+get_pragma_foreign_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	(
 		MaybeName = yes(Name - _),
 		Names1 = [Name | Names0]
@@ -702,7 +802,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 		MaybeName = no,
 		Names1 = Names0
 	),
-	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
+	get_pragma_foreign_var_names_2(MaybeNames, Names1, Names).
 
 hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
 		generic_call(higher_order(PorF, Arity))).
@@ -732,6 +832,10 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
+
+:- pred goal_info_init(prog_context, hlds_goal_info).
+:- mode goal_info_init(in, out) is det.
+
 
 :- pred goal_info_init(set(prog_var), instmap_delta, determinism,
 		hlds_goal_info).
@@ -782,8 +886,15 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred goal_info_get_nonlocals(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
 
+:- pred goal_info_get_code_gen_nonlocals(hlds_goal_info, set(prog_var)).
+:- mode goal_info_get_code_gen_nonlocals(in, out) is det.
+
 :- pred goal_info_set_nonlocals(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_nonlocals(in, in, out) is det.
+
+:- pred goal_info_set_code_gen_nonlocals(hlds_goal_info,
+		set(prog_var), hlds_goal_info).
+:- mode goal_info_set_code_gen_nonlocals(in, in, out) is det.
 
 :- pred goal_info_get_features(hlds_goal_info, set(goal_feature)).
 :- mode goal_info_get_features(in, out) is det.
@@ -948,6 +1059,12 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
 :- mode set_goal_contexts(in, in, out) is det.
 
+	% Create the hlds_goal for a unification, filling in all the as yet
+	% unknown slots with dummy values.
+:- pred create_atomic_unification(prog_var, unify_rhs, prog_context,
+			unify_main_context, unify_sub_contexts, hlds_goal).
+:- mode create_atomic_unification(in, in, in, in, in, out) is det.
+
 	%
 	% Produce a goal to construct a given constant.
 	% These predicates all fill in the non-locals, instmap_delta
@@ -1020,7 +1137,7 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- implementation.
 
-:- import_module det_analysis, type_util.
+:- import_module det_analysis, prog_util, type_util.
 :- import_module require, string, term, varset.
 
 goal_info_init(GoalInfo) :-
@@ -1037,111 +1154,83 @@ goal_info_init(GoalInfo) :-
 		Detism, InstMapDelta, Context, NonLocals, no, Features,
 		no_resume_point, []).
 
+goal_info_init(Context, GoalInfo) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo).
+
 goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
 	goal_info_init(GoalInfo0),
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
 
-goal_info_get_pre_births(GoalInfo, PreBirths) :-
-	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _).
+goal_info_get_pre_births(GoalInfo, GoalInfo ^ pre_births).
 
-goal_info_get_post_births(GoalInfo, PostBirths) :-
-	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _).
+goal_info_get_post_births(GoalInfo, GoalInfo ^ post_births).
 
-goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
-	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _).
+goal_info_get_pre_deaths(GoalInfo, GoalInfo ^ pre_deaths).
 
-goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
-	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _).
+goal_info_get_post_deaths(GoalInfo, GoalInfo ^ post_deaths).
 
-goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, _, _, Determinism, _, _, _, _, _, _, _).
+goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 
-goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, _, _, InstMapDelta, _, _, _, _, _, _).
+goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
 
-goal_info_get_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _).
+goal_info_get_context(GoalInfo, GoalInfo ^ context).
 
-goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, NonLocals, _, _, _, _).
+goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
 
-goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, MaybeFollowVars, _, _, _).
+	% The code-gen non-locals are always the same as the
+	% non-locals when structure reuse is not being performed.
+goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
-goal_info_get_features(GoalInfo, Features) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, Features, _, _).
+goal_info_get_follow_vars(GoalInfo, GoalInfo ^ follow_vars).
 
-goal_info_get_resume_point(GoalInfo, ResumePoint) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, ResumePoint, _).
+goal_info_get_features(GoalInfo, GoalInfo ^ features).
 
-goal_info_get_goal_path(GoalInfo, GoalPath) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, GoalPath).
+goal_info_get_resume_point(GoalInfo, GoalInfo ^ resume_point).
 
-% :- type hlds_goal_info
-% 	--->	goal_info(
-% 		A	set(prog_var),	% the pre-birth set
-% 		B	set(prog_var),	% the post-birth set
-% 		C	set(prog_var),	% the pre-death set
-% 		D	set(prog_var),	% the post-death set
-% 		E	determinism, 	% the overall determinism of the goal
-% 		F	instmap_delta,	% the change in insts over this goal
-% 		G	prog_context,
-% 		H	set(prog_var),	% the non-local vars in the goal
-% 		I	maybe(follow_vars),
-% 		J	set(goal_feature),
-%		K	resume_point,
-%		L	goal_path
-% 	).
+goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
 
-goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L).
+goal_info_set_pre_births(GoalInfo0, PreBirths,
+		GoalInfo0 ^ pre_births := PreBirths).
 
-goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L).
+goal_info_set_post_births(GoalInfo0, PostBirths,
+		GoalInfo0 ^ post_births := PostBirths).
 
-goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L).
+goal_info_set_pre_deaths(GoalInfo0, PreDeaths,
+		GoalInfo0 ^ pre_deaths := PreDeaths).
 
-goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L).
+goal_info_set_post_deaths(GoalInfo0, PostDeaths,
+		GoalInfo0 ^ post_deaths := PostDeaths).
 
-goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, Determinism, F, G, H, I, J, K, L).
+goal_info_set_determinism(GoalInfo0, Determinism,
+		GoalInfo0 ^ determinism := Determinism).
 
-goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L).
+goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
+		GoalInfo0 ^ instmap_delta := InstMapDelta).
 
-goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, F, Context, H, I, J, K, L).
+goal_info_set_context(GoalInfo0, Context, GoalInfo0 ^ context := Context).
 
-goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L).
+goal_info_set_nonlocals(GoalInfo0, NonLocals,
+		GoalInfo0 ^ nonlocals := NonLocals).
 
-goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L).
+	% The code-gen non-locals are always the same as the
+	% non-locals when structure reuse is not being performed.
+goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
 
-goal_info_set_features(GoalInfo0, Features, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, Features, K, L).
+goal_info_set_follow_vars(GoalInfo0, FollowVars,
+		GoalInfo0 ^ follow_vars := FollowVars).
 
-goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, ResumePoint, L).
+goal_info_set_features(GoalInfo0, Features, GoalInfo0 ^ features := Features).
 
-goal_info_set_goal_path(GoalInfo0, GoalPath, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, GoalPath).
+goal_info_set_resume_point(GoalInfo0, ResumePoint,
+		GoalInfo0 ^ resume_point := ResumePoint).
+
+goal_info_set_goal_path(GoalInfo0, GoalPath,
+		GoalInfo0 ^ goal_path := GoalPath).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
@@ -1306,7 +1395,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_foreign_code(_,_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1401,11 +1490,22 @@ set_goal_contexts_2(_, Goal, Goal) :-
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
-	Goal = pragma_c_code(_, _, _, _, _, _, _).
+	Goal = pragma_foreign_code(_, _, _, _, _, _, _, _).
 set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),
 	set_goal_contexts(Context, RHS0, RHS).
+
+%-----------------------------------------------------------------------------%
+
+create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
+		Goal) :-
+	UMode = ((free - free) -> (free - free)),
+	Mode = ((free -> free) - (free -> free)),
+	UnifyInfo = complicated_unify(UMode, can_fail, []),
+	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
+	goal_info_init(Context, GoalInfo),
+	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -1476,10 +1576,9 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	RHS = functor(ConsId, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	Mode = (free -> Inst) - (Inst -> Inst),
-	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, [], [],
-		VarToReuse, cell_is_unique, RLExprnId),
+		construct_dynamically, cell_is_unique, RLExprnId),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context),
 	set__singleton_set(NonLocals, Var),

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,7 +9,8 @@
 #ifndef	MERCURY_DEEP_COPY_H
 #define	MERCURY_DEEP_COPY_H
 
-#include "mercury_types.h"	/* for `Word' */
+#include "mercury_types.h"	/* for `MR_Word' */
+#include "mercury_type_info.h"	/* for `MR_TypeInfo' */
 
 /*
 ** deep_copy:
@@ -63,8 +64,8 @@
 **	deep_copy to do both.
 */
 
-Word deep_copy(const Word *data_ptr, const Word *type_info, 
-	const Word *lower_limit, const Word *upper_limit);
+MR_Word deep_copy(const MR_Word *data_ptr, MR_TypeInfo type_info, 
+	const MR_Word *lower_limit, const MR_Word *upper_limit);
 
 /*
 ** agc_deep_copy:
@@ -90,8 +91,8 @@ Word deep_copy(const Word *data_ptr, const Word *type_info,
 **	Note: You cannot pass NULL as the lower_limit to agc_deep_copy
 **	(which is possible with normal deep_copy).
 */
-Word agc_deep_copy(Word *data_ptr, const Word *type_info, 
-	const Word *lower_limit, const Word *upper_limit);
+MR_Word agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info, 
+	const MR_Word *lower_limit, const MR_Word *upper_limit);
 
 /*
 ** MR_make_permanent:
@@ -129,7 +130,7 @@ Word agc_deep_copy(Word *data_ptr, const Word *type_info,
 #ifdef CONSERVATIVE_GC
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
-  Word MR_make_long_lived(Word term, Word *type_info, Word *lower_limit);
+  MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit);
 #endif
 
 #endif /* not MERCURY_DEEP_COPY_H */

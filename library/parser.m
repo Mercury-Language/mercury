@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -369,7 +369,18 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 				% infix manner.
 			{ Op0 = "`" }
 		->
-			parser__get_token(name(Op), _),
+			parser__get_token(OpToken, _),
+			(
+				{ OpToken = name(NameOp) }
+			->
+				{ Op = NameOp },
+				{ VariableTerm = [] }
+			;
+				{ OpToken = variable(VariableOp) },
+				{ Op = "" },
+				parser__add_var(VariableOp, Var),
+				{ VariableTerm = [term__variable(Var)] }
+			),
 			parser__get_token(name("`"), _),
 
 			{ OpPriority = 100 },
@@ -377,6 +388,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 			{ RightAssoc = x }
 		;
 			{ Op = Op0 },
+			{ VariableTerm = [] },
 			parser__get_ops_table(OpTable),
 			{ ops__lookup_infix_op(OpTable, Op,
 					OpPriority, LeftAssoc, RightAssoc) }
@@ -390,7 +402,9 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		( { RightTerm0 = ok(RightTerm) } ->
 			parser__get_term_context(Context, TermContext),
 			{ OpTerm = term__functor(term__atom(Op),
-				[LeftTerm, RightTerm], TermContext) },
+				list__append(VariableTerm,
+					[LeftTerm, RightTerm]),
+				TermContext) },
 			parser__parse_rest(MaxPriority, IsArg, OpPriority,
 				OpTerm, Term)
 		;
@@ -421,7 +435,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 
 parser__parse_simple_term(Token, Context, Priority, Term) -->
     ( parser__parse_simple_term_2(Token, Context, Priority, Term0) ->
-	{ Term = Term0 }
+	parser__check_for_higher_order_term(Term0, Context, Term)
     ;
 	parser__unexpected_tok(Token, Context,
 		"unexpected token at start of (sub)term", Term)
@@ -472,29 +486,9 @@ parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 		{ Term = ok(term__functor(term__atom(Atom), [], TermContext)) }
 	).
 
-parser__parse_simple_term_2(variable(VarName), Context, _, Term) -->
+parser__parse_simple_term_2(variable(VarName), _, _, Term) -->
 	parser__add_var(VarName, Var),
-	%
-	% As an extension to ISO Prolog syntax,
-	% we check for the syntax "Var(Args)", and parse it
-	% as the term ''(Var, Args).  The aim of this extension
-	% is to provide a nicer syntax for higher-order stuff.
-	%
-	( parser__get_token(open_ct) ->
-		parser__get_term_context(Context, TermContext),
-		parser__parse_args(Args0),
-		(	{ Args0 = ok(Args) },
-			{ Term = ok(term__functor(term__atom(""),
-				[term__variable(Var) | Args],
-				TermContext)) }
-		;
-			% propagate error upwards
-			{ Args0 = error(Message, Tokens) },
-			{ Term = error(Message, Tokens) }
-		)
-	;
-		{ Term = ok(term__variable(Var)) }
-	).
+	{ Term = ok(term__variable(Var)) }.
 
 parser__parse_simple_term_2(integer(Int), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
@@ -550,6 +544,34 @@ parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 			% propagate error upwards
 			{ Term = SubTerm0 }
 		)
+	).
+
+:- pred parser__check_for_higher_order_term(parse(term(T)), token_context,
+		parse(term(T)), parser__state(T), parser__state(T)).
+:- mode parser__check_for_higher_order_term(in, in, out, in, out) is det.
+
+parser__check_for_higher_order_term(Term0, Context, Term) -->
+	%
+	% As an extension to ISO Prolog syntax,
+	% we check for the syntax "Term(Args)", and parse it
+	% as the term ''(Term, Args).  The aim of this extension
+	% is to provide a nicer syntax for higher-order stuff.
+	%
+	( { Term0 = ok(Term1) }, parser__get_token(open_ct) ->
+		parser__get_term_context(Context, TermContext),
+		parser__parse_args(Args0),
+		(	{ Args0 = ok(Args) },
+			{ Term2 = ok(term__functor(term__atom(""),
+				[Term1 | Args],
+				TermContext)) },
+			parser__check_for_higher_order_term(Term2, Context, Term)
+		;
+			% propagate error upwards
+			{ Args0 = error(Message, Tokens) },
+			{ Term = error(Message, Tokens) }
+		)
+	;
+		{ Term = Term0 }
 	).
 
 :- pred parser__parse_special_atom(string, term__context, parse(term(T)),

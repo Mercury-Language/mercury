@@ -28,7 +28,7 @@ case $HOST in
 	munta) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.2 ;;
 	muse) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
 	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
-	taifun) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.6 ;;
+	taifun) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.7 ;;
 	murlibobo) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	quicksilver) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
@@ -64,6 +64,8 @@ tmpscript=/tmp/test_mercury$$
 cd /home/mercury/public/test_mercury/scripts;
 cvs checkout mercury/tools/test_mercury
 cp mercury/tools/test_mercury $tmpscript
+
+cvs checkout mercury/tools/generate_index_html
 
 #-----------------------------------------------------------------------------#
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,14 +102,26 @@ rl_dump__declare_relation(ModuleInfo, RelationInfos, RelId) -->
 %-----------------------------------------------------------------------------%
 
 rl_dump__write_instruction(ModuleInfo, RelationInfo,
-		join(Output, Input1, Input2, JoinType, Exprn) - Comment) -->
+		join(Output, Input1, Input2, JoinType, Exprn,
+			SemiJoinInfo, TrivialJoinInfo) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = join("),
 	rl_dump__write_relation_id(RelationInfo, Input1),
 	comma,
 	rl_dump__write_relation_id(RelationInfo, Input2),
 	comma,
+	io__nl,
+	io__write_string("\t\t"),
 	rl_dump__write_join_type(ModuleInfo, JoinType),
+	(
+		{ SemiJoinInfo = yes(SemiTuple) },
+		io__write_string(" (semi-join tuple "),
+		io__write(SemiTuple),
+		io__write_string(")")
+	;
+		{ SemiJoinInfo = no }
+	),
+	rl_dump__write_trivial_join_or_subtract(TrivialJoinInfo),
 	comma,
 	io__nl,
 	rl_dump__write_goal(ModuleInfo, Exprn),
@@ -118,7 +130,8 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	io__nl.
 
 rl_dump__write_instruction(ModuleInfo, RelationInfo, 
-		subtract(Output, Input1, Input2, SubType, Exprn) - Comment) -->
+		subtract(Output, Input1, Input2, SubType,
+			Exprn, TrivialSubtractInfo) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = subtract("),
 	rl_dump__write_relation_id(RelationInfo, Input1),
@@ -127,6 +140,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	comma,
 	rl_dump__write_subtract_type(ModuleInfo, SubType),
 	comma,
+	rl_dump__write_trivial_join_or_subtract(TrivialSubtractInfo),
 	io__nl,
 	rl_dump__write_goal(ModuleInfo, Exprn),
 	io__write_string(").\t"),
@@ -243,9 +257,10 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	io__nl.
 
 rl_dump__write_instruction(_ModuleInfo, RelationInfo,
-		add_index(OutputRel) - Comment) -->
-	io__write_string("add_index("),
-	rl_dump__write_output_rel(RelationInfo, OutputRel),
+		add_index(Output, Input) - Comment) -->
+	rl_dump__write_output_rel(RelationInfo, Output),
+	io__write_string(" = add_index("),
+	rl_dump__write_relation_id(RelationInfo, Input),
 	io__write_string(")."),
 	rl_dump__write_comment(Comment),
 	io__nl.
@@ -369,6 +384,12 @@ rl_dump__write_instruction(_, _, comment - Comment) -->
 
 rl_dump__write_join_type(_, nested_loop) -->
 	io__write_string("nested_loop").
+rl_dump__write_join_type(_, hash(Attrs1, Attrs2)) -->
+	io__write_string("hash("),
+	rl_dump__write_list(io__write, ", ", Attrs1),
+	io__write_string(", "),
+	rl_dump__write_list(io__write, ", ", Attrs2),
+	io__write_string(")").
 rl_dump__write_join_type(_, sort_merge(Attr1, Attr2)) -->
 	io__write_string("sort_merge("),
 	rl_dump__write_sort_spec(Attr1),
@@ -381,26 +402,26 @@ rl_dump__write_join_type(ModuleInfo, index(Spec, Range)) -->
 	comma,
 	rl_dump__write_key_range(ModuleInfo, Range),
 	io__write_string(")").
-rl_dump__write_join_type(_, cross) -->
-	io__write_string("cross").
-rl_dump__write_join_type(_, semi) -->
-	io__write_string("semi").
 
 :- pred rl_dump__write_subtract_type(module_info::in, subtract_type::in,
 		io__state::di, io__state::uo) is det.
 
-rl_dump__write_subtract_type(_, nested_loop) -->
-	io__write_string("nested_loop").
-rl_dump__write_subtract_type(_, semi) -->
-	io__write_string("semi").
-rl_dump__write_subtract_type(_, sort_merge(SortAttr1, SortAttr2)) -->
-	io__write_string("sort_merge("),
+rl_dump__write_subtract_type(_, semi_nested_loop) -->
+	io__write_string("semi_nested_loop").
+rl_dump__write_subtract_type(_, semi_sort_merge(SortAttr1, SortAttr2)) -->
+	io__write_string("semi_sort_merge("),
 	rl_dump__write_sort_spec(SortAttr1),
 	comma,
 	rl_dump__write_sort_spec(SortAttr2),
 	io__write_string(")").
-rl_dump__write_subtract_type(ModuleInfo, index(Spec, Range)) -->
-	io__write_string("index("),
+rl_dump__write_subtract_type(_, semi_hash(Attrs1, Attrs2)) -->
+	io__write_string("semi_hash("),
+	rl_dump__write_list(io__write, ", ", Attrs1),
+	io__write_string(", "),
+	rl_dump__write_list(io__write, ", ", Attrs2),
+	io__write_string(")").
+rl_dump__write_subtract_type(ModuleInfo, semi_index(Spec, Range)) -->
+	io__write_string("semi_index("),
 	mercury_output_index_spec(Spec),
 	comma,
 	rl_dump__write_key_range(ModuleInfo, Range),
@@ -443,6 +464,28 @@ rl_dump__write_insert_type(_ModuleInfo, index(IndexSpec)) -->
 	io__write_string("index("),
 	mercury_output_index_spec(IndexSpec),
 	io__write_string(")").
+
+:- pred rl_dump__write_trivial_join_or_subtract(
+		maybe(trivial_join_or_subtract_info)::in,
+		io__state::di, io__state::uo) is det.
+
+rl_dump__write_trivial_join_or_subtract(TrivialJoinInfo) -->
+	(
+		{ TrivialJoinInfo = yes(trivial_join_or_subtract_info(Tuple,
+					MaybeProject)) },
+		io__write_string(" (trivial input "),
+		io__write(Tuple),
+		(
+			{ MaybeProject = yes(_) },
+			io__write_string(" projected")
+		;
+			{ MaybeProject = no },
+			io__write_string(" not projected")
+		),
+		io__write_string(")")
+	;
+		{ TrivialJoinInfo = no }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -559,8 +602,8 @@ rl_dump__write_output_rel(RelationInfo, output_rel(RelationId, Indexes)) -->
 		relation_id::in, io__state::di, io__state::uo) is det.
 
 rl_dump__write_relation_id(_, RelationId) -->
-	io__write_string("Rel_"),
-	io__write_int(RelationId).
+	{ rl__relation_id_to_string(RelationId, RelationIdStr) },
+	io__write_string(RelationIdStr).
 
 :- pred rl_dump__verbose_write_relation_id(
 		map(relation_id, relation_info)::in,

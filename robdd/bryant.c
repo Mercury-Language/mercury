@@ -1,6 +1,6 @@
 /*****************************************************************
   File     : bryant.c
-  RCS      : $Id: bryant.c,v 1.1 2000-03-10 05:17:21 dmo Exp $
+  RCS      : $Id: bryant.c,v 1.1.2.1 2000-09-21 01:27:39 dgj Exp $
   Author   : Peter Schachte, based on code by Tania Armstrong
   Purpose  : Manipulation of boolean functions
   Copyright: © 1995 Peter Schachte.  All rights reserved.

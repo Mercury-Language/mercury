@@ -3,7 +3,7 @@ INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -110,9 +110,16 @@ init_context(MR_Context *c)
 			nondstack_size, next_offset(), nondstack_zone_size,
 			default_handler);
 	}
-	c->context_maxfr = c->nondetstack_zone->min;
-	c->context_curfr = c->nondetstack_zone->min;
+	/*
+	** Note that maxfr and curfr point to the last word in the frame,
+	** not to the first word, so we need to add the size of the frame,
+	** minus one word, to the base address to get the maxfr/curfr pointer
+	** for the first frame on the nondet stack.
+	*/
+	c->context_maxfr = c->nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
+	c->context_curfr = c->context_maxfr;
 	MR_redoip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_redofr_slot(c->context_curfr) = NULL;
 	MR_prevfr_slot(c->context_curfr) = NULL;
 	MR_succip_slot(c->context_curfr) = ENTRY(do_not_reached);
 	MR_succfr_slot(c->context_curfr) = NULL;
@@ -146,7 +153,8 @@ init_context(MR_Context *c)
 			default_handler);
 	}
 	c->context_trail_ptr = (MR_TrailEntry *) c->trail_zone->min;
-	c->context_ticket_counter = 0;
+	c->context_ticket_counter = 1;
+	c->context_ticket_high_water = 1;
 #endif
 
 	c->context_hp = NULL;
@@ -199,7 +207,7 @@ flounder(void)
 ** block or not.
 */
 static int
-check_pending_contexts(Bool block)
+check_pending_contexts(MR_Bool block)
 {
 #ifdef	MR_CAN_DO_PENDING_IO
 
@@ -308,7 +316,7 @@ Define_entry(do_runnext);
 	while (1) {
 		if (MR_exit_now == TRUE) {
 			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
-			destroy_thread(MR_engine_base);
+			destroy_thread(MR_cur_engine());
 		}
 		tmp = MR_runqueue_head;
 		/* XXX check pending io */

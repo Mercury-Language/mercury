@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,14 +146,16 @@ vn_filter__user_instr(c_code(_), _):-
 vn_filter__user_instr(incr_hp(_, _, Rval, _), yes(Rval)).
 vn_filter__user_instr(mark_hp(_), no).
 vn_filter__user_instr(restore_hp(Rval), yes(Rval)).
+vn_filter__user_instr(free_heap(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
 vn_filter__user_instr(reset_ticket(Rval, _Reason), yes(Rval)).
 vn_filter__user_instr(discard_ticket, no).
+vn_filter__user_instr(prune_ticket, no).
 vn_filter__user_instr(mark_ticket_stack(_), no).
-vn_filter__user_instr(discard_tickets_to(Rval), yes(Rval)).
+vn_filter__user_instr(prune_tickets_to(Rval), yes(Rval)).
 vn_filter__user_instr(incr_sp(_, _), no).
 vn_filter__user_instr(decr_sp(_), no).
-vn_filter__user_instr(pragma_c(_, _, _, _, _, _), _):-
+vn_filter__user_instr(pragma_c(_, _, _, _, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 vn_filter__user_instr(init_sync_term(_, _), _):-
 	error("init_sync_term instruction in vn__filter").
@@ -205,6 +207,9 @@ vn_filter__replace_in_user_instr(mark_hp(_), _, _, _) :-
 vn_filter__replace_in_user_instr(restore_hp(Rval0), Temp, Defn,
 		restore_hp(Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
+vn_filter__replace_in_user_instr(free_heap(Rval0), Temp, Defn,
+		free_heap(Rval)) :-
+	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(store_ticket(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(reset_ticket(Rval0, Reason), Temp, Defn,
@@ -212,16 +217,18 @@ vn_filter__replace_in_user_instr(reset_ticket(Rval0, Reason), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(discard_ticket, _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
+vn_filter__replace_in_user_instr(prune_ticket, _, _, _) :-
+	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(mark_ticket_stack(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(discard_tickets_to(Rval0), Temp, Defn,
-		discard_tickets_to(Rval)) :-
+vn_filter__replace_in_user_instr(prune_tickets_to(Rval0), Temp, Defn,
+		prune_tickets_to(Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(incr_sp(_, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(decr_sp(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(pragma_c(_, _, _, _, _, _), _, _, _):-
+vn_filter__replace_in_user_instr(pragma_c(_, _, _, _, _, _, _), _, _, _):-
 	error("inappropriate instruction in vn__filter").
 vn_filter__replace_in_user_instr(init_sync_term(_, _), _, _, _):-
 	error("init_sync_term instruction in vn__filter").
@@ -253,14 +260,16 @@ vn_filter__defining_instr(c_code(_), _):-
 vn_filter__defining_instr(incr_hp(Lval, _, _, _), yes(Lval)).
 vn_filter__defining_instr(mark_hp(Lval), yes(Lval)).
 vn_filter__defining_instr(restore_hp(_), no).
+vn_filter__defining_instr(free_heap(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
 vn_filter__defining_instr(reset_ticket(_, _), no).
 vn_filter__defining_instr(discard_ticket, no).
+vn_filter__defining_instr(prune_ticket, no).
 vn_filter__defining_instr(mark_ticket_stack(Lval), yes(Lval)).
-vn_filter__defining_instr(discard_tickets_to(_), no).
+vn_filter__defining_instr(prune_tickets_to(_), no).
 vn_filter__defining_instr(incr_sp(_, _), no).
 vn_filter__defining_instr(decr_sp(_), no).
-vn_filter__defining_instr(pragma_c(_, _, _, _, _, _), _):-
+vn_filter__defining_instr(pragma_c(_, _, _, _, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 vn_filter__defining_instr(init_sync_term(_, _), _):-
 	error("init_sync_term instruction in vn__filter").
@@ -310,6 +319,8 @@ vn_filter__replace_in_defining_instr(mark_hp(Lval0), Temp, Defn,
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
 vn_filter__replace_in_defining_instr(restore_hp(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
+vn_filter__replace_in_defining_instr(free_heap(_), _, _, _) :-
+	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(store_ticket(Lval0), Temp, Defn,
 		store_ticket(Lval)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
@@ -317,10 +328,12 @@ vn_filter__replace_in_defining_instr(reset_ticket(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(discard_ticket, _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
+vn_filter__replace_in_defining_instr(prune_ticket, _, _, _) :-
+	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(mark_ticket_stack(Lval0), Temp, Defn,
 		mark_ticket_stack(Lval)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
-vn_filter__replace_in_defining_instr(discard_tickets_to(_), _, _, _) :-
+vn_filter__replace_in_defining_instr(prune_tickets_to(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(incr_sp(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
@@ -334,7 +347,7 @@ vn_filter__replace_in_defining_instr(join_and_terminate(_), _, _, _):-
 	error("join_and_terminate instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(join_and_continue(_, _), _, _, _):-
 	error("join_and_continue instruction in vn_filter__replace_in_defining_instr").
-vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _, _, _), _, _, _):-
+vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _, _, _, _), _, _, _) :-
 	error("inappropriate instruction in vn__filter").
 
 	% vn_filter__replace_in_lval(Lval0, Old, New, Lval):
@@ -388,8 +401,8 @@ vn_filter__replace_in_rval(lval(Lval0), Temp, Defn, Rval) :-
 	).
 vn_filter__replace_in_rval(var(_), _, _, _) :-
 	error("found var in vn_filter__replace_in_rval").
-vn_filter__replace_in_rval(create(Tag, Args, AT, StatDyn, Label, Msg), _, _,
-		create(Tag, Args, AT, StatDyn, Label, Msg)).
+vn_filter__replace_in_rval(create(Tag, Args, AT, StatDyn, Label, Msg, Reuse),
+		_, _, create(Tag, Args, AT, StatDyn, Label, Msg, Reuse)).
 vn_filter__replace_in_rval(mkword(Tag, Rval0), Temp, Defn, mkword(Tag, Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_rval(const(Const), _, _, const(Const)).

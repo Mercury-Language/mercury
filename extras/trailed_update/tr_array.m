@@ -183,7 +183,7 @@ lower bounds other than zero are not supported
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array0;
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""tr_array__set: array index out of bounds"");
+		MR_fatal_error(""tr_array__set: array index out of bounds"");
 	}
 	MR_trail_current_value(&array->elements[Index]);
 	array->elements[Index] = Item;	/* destructive update! */
@@ -263,7 +263,7 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array;
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""tr_array__lookup: ""
+		MR_fatal_error(""tr_array__lookup: ""
 			""array index out of bounds"");
 	}
 	Item = array->elements[Index];
@@ -273,7 +273,7 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array;
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""tr_array__lookup: array index out of bounds"");
+		MR_fatal_error(""tr_array__lookup: array index out of bounds"");
 	}
 	Item = array->elements[Index];
 }").
@@ -353,7 +353,8 @@ ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
 	if (old_array_size < array_size) {
-		fatal_error(""tr_array__shrink: can't shrink to a larger size"");
+		MR_fatal_error(
+			""tr_array__shrink: can't shrink to a larger size"");
 	}
 
 	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,21 +38,46 @@ extern	void	mercury_runtime_main(void);
 extern	int	mercury_runtime_terminate(void);
 
 /*
+** MR_load_aditi_rl_code() uploads all the Aditi-RL code for
+** the program to a database to which the program currently has a
+** connection, returning a status value as described in
+** aditi2/src/api/aditi_err.h in the Aditi sources.
+** It aborts if the executable was not compiled for Aditi execution. 
+*/
+extern	int	MR_load_aditi_rl_code(void);
+
+/*
+** MR_init_conservative_GC() initializes the Boehm (et al)
+** conservative collector.  For the LLDS back-end, it is normally
+** called from mercury_runtime_init(), but for the MLDS
+** (--high-level-code) back-end, it may be called directly
+** from main().
+*/
+#ifdef CONSERVATIVE_GC
+  extern void	MR_init_conservative_GC(void);
+#endif
+
+/*
 ** The following global variables are set by mercury_init() on startup.
 ** The entry points are set based on the options to mkinit.c.
 ** The address_of_foo pointers are set to the address of
 ** the corresponding foo.
 */
-extern	Code 		*program_entry_point; /* normally mercury__main_2_0; */
+
+#ifdef MR_HIGHLEVEL_CODE
+extern	void		(*program_entry_point)(void); /* normally main_2_p_0 */
+#else
+extern	MR_Code 		*program_entry_point; /* normally mercury__main_2_0; */
+#endif
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
 
-extern	void		(*MR_io_stderr_stream)(Word *);
-extern	void		(*MR_io_stdout_stream)(Word *);
-extern	void		(*MR_io_stdin_stream)(Word *);
-extern	void		(*MR_io_print_to_cur_stream)(Word, Word);
-extern	void		(*MR_io_print_to_stream)(Word, Word, Word);
+extern	void		(*MR_io_stderr_stream)(MR_Word *);
+extern	void		(*MR_io_stdout_stream)(MR_Word *);
+extern	void		(*MR_io_stdin_stream)(MR_Word *);
+extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
+extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
@@ -61,14 +86,19 @@ extern	void		(*address_of_init_modules)(void);
 extern	void		(*address_of_init_gc)(void);
 #endif
 
+extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
+
 /*
-** MR_trace_getline(const char *, FILE *, FILE *) is defined in
-** trace/mercury_trace_internal.c but is called in browser/util.m.  As
-** we cannot do direct calls from browser/ to trace/, we do an indirect 
-** call via the following pointer.
+** MR_trace_getline(const char *, FILE *, FILE *) and
+** MR_trace_get_command(const char *, FILE *, FILE *) are defined in
+** trace/mercury_trace_internal.c but are called in browser/util.m.  As
+** we cannot do direct calls from browser/ to trace/, we do indirect 
+** calls via the following pointers.
 */
 
 extern	char *		(*MR_address_of_trace_getline)(const char *,
+				FILE *, FILE *);
+extern	char *		(*MR_address_of_trace_get_command)(const char *,
 				FILE *, FILE *);
 
 /*
@@ -90,7 +120,7 @@ extern	void		(*MR_address_of_trace_final_external)(void);
 ** been retired.
 */
 
-extern	Code		*MR_library_trace_browser;
+extern	MR_Code		*MR_library_trace_browser;
 
 /*
 ** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
@@ -104,7 +134,7 @@ extern	Code		*MR_library_trace_browser;
 ** Since it is set from a signal handler, it must be declared `volatile'.
 */
 
-extern	Code		*(*volatile MR_trace_func_ptr)(
+extern	MR_Code		*(*volatile MR_trace_func_ptr)(
 				const MR_Stack_Layout_Label *);
 
 /*
@@ -173,12 +203,20 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
-extern	bool MR_profiling;
+extern	bool		MR_profiling;
 
-#ifdef  MR_CTOR_REP_STATS
-extern	long	MR_ctor_rep_unify[];
-extern	long	MR_ctor_rep_index[];
-extern	long	MR_ctor_rep_compare[];
+#ifdef  MR_TYPE_CTOR_STATS
+
+typedef	struct MR_TypeStat_Struct	MR_TypeStat;
+
+extern	MR_TypeStat	MR_type_stat_mer_unify;
+extern	MR_TypeStat	MR_type_stat_c_unify;
+extern	MR_TypeStat	MR_type_stat_mer_compare;
+extern	MR_TypeStat	MR_type_stat_c_compare;
+
+extern	void		MR_register_type_ctor_stat(MR_TypeStat *type_stat,
+				MR_TypeCtorInfo type_ctor_info);
+
 #endif
 
 #endif /* not MERCURY_WRAPPER_H */

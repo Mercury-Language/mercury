@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -250,9 +250,13 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
-	option_implies(highlevel_c, gcc_non_local_gotos, bool(no)),
-	option_implies(highlevel_c, gcc_global_registers, bool(no)),
-	option_implies(highlevel_c, asm_labels, bool(no)),
+	% --high-level-code disables the use of low-level gcc extensions
+	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
+	option_implies(highlevel_code, gcc_global_registers, bool(no)),
+	option_implies(highlevel_code, asm_labels, bool(no)),
+
+	% --no-gcc-nested-functions implies --no-gcc-local-labels
+	option_neg_implies(gcc_nested_functions, gcc_local_labels, bool(no)),
 
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
@@ -531,7 +535,7 @@ usage -->
 	{ library__version(Version) },
  	io__write_strings(StdErr, [
 		"Mercury Compiler, version ", Version, "\n",
-		"Copyright (C) 1993-1999 The University of Melbourne\n",
+		"Copyright (C) 1993-2000 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",
 		"Use `mmc --help' for more information.\n"
 	]).
@@ -539,7 +543,7 @@ usage -->
 long_usage -->
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-1999 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-2000 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
 	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
@@ -571,7 +575,8 @@ long_usage -->
 	% actually matters is for constructing the pathname for the
 	% grade of the library, etc for linking (and installation).
 :- type grade_component
-	--->	gcc_ext		% gcc extensions -- see grade_component_table
+	--->	gcc_ext		% gcc extensions etc. -- see
+				% grade_component_table
 	;	par		% parallelism / multithreading
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
@@ -663,18 +668,76 @@ compute_grade_components(Options, GradeComponents) :-
 :- mode grade_component_table(out, out, out) is multi.
 
 	% GCC-hack components
-grade_component_table("none", gcc_ext, [asm_labels - bool(no),
-	gcc_non_local_gotos - bool(no), gcc_global_registers - bool(no)]).
-grade_component_table("reg", gcc_ext, [asm_labels - bool(no),
-	gcc_non_local_gotos - bool(no), gcc_global_registers - bool(yes)]).
-grade_component_table("jump", gcc_ext, [asm_labels - bool(no),
-	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(no)]).
-grade_component_table("asm_jump", gcc_ext, [asm_labels - bool(yes),
-	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(no)]).
-grade_component_table("fast", gcc_ext, [asm_labels - bool(no),
-	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
-grade_component_table("asm_fast", gcc_ext, [asm_labels - bool(yes),
-	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
+grade_component_table("none", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("reg", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(yes),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("jump", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(yes),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("asm_jump", gcc_ext, [
+		asm_labels		- bool(yes),
+		gcc_non_local_gotos	- bool(yes),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("fast", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(yes),
+		gcc_global_registers	- bool(yes),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("asm_fast", gcc_ext, [
+		asm_labels		- bool(yes),
+		gcc_non_local_gotos	- bool(yes),
+		gcc_global_registers	- bool(yes),
+		highlevel_code		- bool(no),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("hl", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(yes)]).
+grade_component_table("hlc", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no)]).
+grade_component_table("hl_nest", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(yes),
+		highlevel_data		- bool(yes)]).
+grade_component_table("hlc_nest", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(yes),
+		highlevel_data		- bool(no)]).
 
 	% Parallelism/multithreading components.
 grade_component_table("par", par, [parallel - bool(yes)]).
@@ -745,6 +808,9 @@ reset_grade_options(Options0, Options) :-
 grade_start_values(asm_labels - bool(no)).
 grade_start_values(gcc_non_local_gotos - bool(no)).
 grade_start_values(gcc_global_registers - bool(no)).
+grade_start_values(highlevel_code - bool(no)).
+grade_start_values(highlevel_data - bool(no)).
+grade_start_values(gcc_nested_functions - bool(no)).
 grade_start_values(parallel - bool(no)).
 grade_start_values(gc - string("none")).
 grade_start_values(profile_deep - bool(no)).

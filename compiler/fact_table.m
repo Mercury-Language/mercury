@@ -3394,7 +3394,7 @@ Define_label(%s_i1);
 %s
 				break;
 			default:
-				fatal_error(""fact table hash lookup: nondet stack corrupted?"");
+				MR_fatal_error(""fact table hash lookup: nondet stack corrupted?"");
 		}
 	success_code_%s:
 		/* lookup fact table */

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
-:- import_module modes, mode_util, make_hlds, quantification, instmap.
+:- import_module modes, mode_util, quantification, instmap.
 :- import_module prog_data, switch_detection, det_util, inst_match.
 :- import_module switch_detection, term, varset.
 
@@ -152,9 +152,14 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		% ModuleInfo should not be changed by detect_cse_in_goal
 		CseInfo = cse_info(Varset1, VarTypes1, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
+		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 
+		module_info_globals(ModuleInfo0, Globals),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
-			VarTypes1, Goal, Varset, VarTypes, _Warnings),
+			VarTypes1, TVarMap, TypeInfoLiveness,
+			Goal, Varset, VarTypes, _Warnings),
 
 		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 		proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
@@ -203,8 +208,8 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 	cse_info, cse_info, bool, hlds_goal_expr).
 :- mode detect_cse_in_goal_2(in, in, in, in, out, out, out) is det.
 
-detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, CseInfo, CseInfo,
-	no, pragma_c_code(A,B,C,D,E,F,G)).
+detect_cse_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), _, _, CseInfo,
+	CseInfo, no, pragma_foreign_code(A,B,C,D,E,F,G,H)).
 
 detect_cse_in_goal_2(generic_call(A,B,C,D), _, _, CseInfo, CseInfo,
 	no, generic_call(A,B,C,D)).

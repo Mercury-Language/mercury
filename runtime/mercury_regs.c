@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 
-Word 
+MR_Word 
 get_reg(int num)
 {
 	restore_transient_registers();
@@ -57,8 +57,8 @@ get_reg(int num)
 	return 0;
 } /* end get_reg() */
 
-Word 
-set_reg(int num, Word val)
+MR_Word 
+set_reg(int num, MR_Word val)
 {
 	restore_transient_registers();
  	switch (num) {

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,12 +12,13 @@
 
 #include "mercury_imp.h"
 #include "mercury_stack_trace.h"
+#include "mercury_debug.h"
 #include <stdio.h>
 
 static	void	MR_dump_stack_record_init(bool include_contexts);
 static	void	MR_dump_stack_record_frame(FILE *fp,
 			const MR_Stack_Layout_Label *,
-			Word *base_sp, Word *base_curfr, 
+			MR_Word *base_sp, MR_Word *base_curfr, 
 			MR_Print_Stack_Record print_stack_record);
 static	void	MR_dump_stack_record_flush(FILE *fp, 
 			MR_Print_Stack_Record print_stack_record);
@@ -28,12 +29,12 @@ static	void	MR_maybe_print_parent_context(FILE *fp, bool print_parent,
 			bool verbose, const char *filename, int lineno);
 
 /* see comments in mercury_stack_trace.h */
-Code	*MR_stack_trace_bottom;
-Word	*MR_nondet_stack_trace_bottom;
+MR_Code	*MR_stack_trace_bottom;
+MR_Word	*MR_nondet_stack_trace_bottom;
 
 void
-MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
-	Word *current_frame, bool include_trace_data)
+MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
+	MR_Word *current_frame, bool include_trace_data)
 {
 #ifndef	MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
@@ -64,7 +65,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
-	Word *det_stack_pointer, Word *current_frame, bool include_trace_data,
+	MR_Word *det_stack_pointer, MR_Word *current_frame, bool include_trace_data,
 	bool include_contexts, MR_Print_Stack_Record print_stack_record)
 {
 	MR_Stack_Walk_Step_Result	result;
@@ -72,10 +73,10 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 	const MR_Stack_Layout_Label	*cur_label_layout;
 	const MR_Stack_Layout_Label	*prev_label_layout;
 	const char			*problem;
-	Word				*stack_trace_sp;
-	Word				*stack_trace_curfr;
-	Word				*old_trace_sp;
-	Word				*old_trace_curfr;
+	MR_Word				*stack_trace_sp;
+	MR_Word				*stack_trace_curfr;
+	MR_Word				*old_trace_sp;
+	MR_Word				*old_trace_curfr;
 
 	do_init_modules();
 	MR_dump_stack_record_init(include_contexts);
@@ -131,7 +132,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 
 const MR_Stack_Layout_Label *
 MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
-	int ancestor_level, Word **stack_trace_sp, Word **stack_trace_curfr,
+	int ancestor_level, MR_Word **stack_trace_sp, MR_Word **stack_trace_curfr,
 	const char **problem)
 {
 	MR_Stack_Walk_Step_Result	result;
@@ -168,7 +169,7 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 MR_Stack_Walk_Step_Result
 MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	const MR_Stack_Layout_Label **return_label_layout,
-	Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,
+	MR_Word **stack_trace_sp_ptr, MR_Word **stack_trace_curfr_ptr,
 	const char **problem_ptr)
 {
 	MR_Internal		*label;
@@ -176,7 +177,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	MR_Long_Lval_Type	type;
 	int			number;
 	int			determinism;
-	Code			*success;
+	MR_Code			*success;
 
 	*return_label_layout = NULL;
 
@@ -201,7 +202,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 			return STEP_ERROR_AFTER;
 		}
 
-		success = (Code *) MR_based_stackvar(*stack_trace_sp_ptr,
+		success = (MR_Code *) MR_based_stackvar(*stack_trace_sp_ptr,
 					number);
 		*stack_trace_sp_ptr = *stack_trace_sp_ptr -
 			entry_layout->MR_sle_stack_slots;
@@ -230,7 +231,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 }
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
+MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 {
 	int	frame_size;
 
@@ -288,8 +289,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 static	const MR_Stack_Layout_Entry	*prev_entry_layout;
 static	int				prev_entry_layout_count;
 static	int				prev_entry_start_level;
-static	Word				*prev_entry_base_sp;
-static	Word				*prev_entry_base_curfr;
+static	MR_Word				*prev_entry_base_sp;
+static	MR_Word				*prev_entry_base_curfr;
 static	const char			*prev_entry_filename;
 static	int				prev_entry_linenumber;
 static	bool				prev_entry_context_mismatch;
@@ -308,7 +309,7 @@ MR_dump_stack_record_init(bool include_contexts)
 
 static void
 MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Label *label_layout,
-	Word *base_sp, Word *base_curfr,
+	MR_Word *base_sp, MR_Word *base_curfr,
 	MR_Print_Stack_Record print_stack_record)
 {
 	const MR_Stack_Layout_Entry	*entry_layout;
@@ -382,7 +383,7 @@ MR_dump_stack_record_flush(FILE *fp, MR_Print_Stack_Record print_stack_record)
 
 void
 MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	int count, int start_level, Word *base_sp, Word *base_curfr,
+	int count, int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 	const char *filename, int linenumber, bool context_mismatch)
 {
 	fprintf(fp, "%4d ", start_level);
@@ -440,13 +441,13 @@ MR_find_context(const MR_Stack_Layout_Label *label, const char **fileptr,
 
 void
 MR_print_call_trace_info(FILE *fp, const MR_Stack_Layout_Entry *entry,
-	Word *base_sp, Word *base_curfr)
+	MR_Word *base_sp, MR_Word *base_curfr)
 {
 	bool	print_details;
 
 	if (base_sp != NULL && base_curfr != NULL) {
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			Integer maybe_from_full =
+			MR_Integer maybe_from_full =
 				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
@@ -549,7 +550,7 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry)
 
 void
 MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
-	const MR_Stack_Layout_Entry *entry, Word *base_sp, Word *base_curfr,
+	const MR_Stack_Layout_Entry *entry, MR_Word *base_sp, MR_Word *base_curfr,
 	const char *path, const char *filename, int lineno, bool print_parent, 
 	const char *parent_filename, int parent_lineno, int indent)
 {

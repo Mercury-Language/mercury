@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,13 +151,8 @@
 	% bitwise exclusive or (xor)
 :- func int__xor(int, int) = int.
 :- mode int__xor(in, in) = uo is det.
-
-	% bitwise exclusive or (xor)
-	% This version will be removed soon - the operator
-	% is needed for record syntax.
-:- func int ^ int = int.
-:- mode in  ^ in  = uo  is det.
-:- pragma obsolete(('^')/2).
+:- mode int__xor(in, uo) = in is det.
+:- mode int__xor(uo, in) = in is det.
 
 	% bitwise complement
 :- func \ int = int.
@@ -200,11 +195,13 @@
 
 %-----------------------------------------------------------------------------%
 
-	% commutivity of +
+	% commutivity and associativity of +
 :- promise all [A,B,C] ( C = B + A <=> C = A + B ).
+:- promise all [A,B,C,ABC] ( ABC = (A + B) + C <=> ABC = A + (B + C) ).
 
-	% commutivity of *
+	% commutivity and associativity of *
 :- promise all [A,B,C] ( C = B * A <=> C = A * B ).
+:- promise all [A,B,C,ABC] ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
 
 %-----------------------------------------------------------------------------%
 
@@ -422,7 +419,7 @@ is(X, X).
 	else if (sizeof(Integer) == sizeof(long))
 		Max = LONG_MAX;
 	else
-		fatal_error(""Unable to figure out max integer size"");
+		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
 :- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
@@ -431,7 +428,7 @@ is(X, X).
 	else if (sizeof(Integer) == sizeof(long))
 		Min = LONG_MIN;
 	else
-		fatal_error(""Unable to figure out min integer size"");
+		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
 :- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "

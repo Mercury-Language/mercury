@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,6 +82,9 @@
 :- pred hlds_out__write_simple_call_id(pred_or_func, sym_name, arity,
 	io__state, io__state).
 :- mode hlds_out__write_simple_call_id(in, in, in, di, uo) is det.
+
+:- pred hlds_out__simple_call_id_to_string(simple_call_id, string).
+:- mode hlds_out__simple_call_id_to_string(in, out) is det.
 
 	% Write "argument %i of call to pred_or_func `foo/n'".
 :- pred hlds_out__write_call_arg_id(call_id, int, io__state, io__state).
@@ -237,7 +240,7 @@
 
 :- import_module mercury_to_mercury, globals, options, purity, special_pred.
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
-:- import_module rl, termination, term_errors, check_typeclass.
+:- import_module rl, code_util, termination, term_errors, check_typeclass.
 
 :- import_module int, string, set, assoc_list, map, multi_map.
 :- import_module require, getopt, std_util, term_io, varset.
@@ -366,6 +369,15 @@ hlds_out__simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
 		SymName/OrigArity) :-
 	adjust_func_arity(PredOrFunc, OrigArity, Arity).
 
+hlds_out__simple_call_id_to_string(CallId, String) :-
+	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, NameArity),
+	CallId = PredOrFunc - _,
+	( PredOrFunc = predicate, PorFString = "predicate"
+	; PredOrFunc = function, PorFString = "function"
+	),
+	prog_out__sym_name_and_arity_to_string(NameArity, NameArityString),
+	string__append_list([PorFString, " `", NameArityString, "'"], String).
+
 hlds_out__write_call_id(call(PredCallId)) -->
 	hlds_out__write_simple_call_id(PredCallId).
 hlds_out__write_call_id(generic_call(GenericCallId)) -->
@@ -467,46 +479,35 @@ hlds_out__write_aditi_builtin_arg_number(aditi_call(_, _, _, _), _, ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
 
-hlds_out__write_aditi_builtin_arg_number(aditi_insert(_),
+hlds_out__write_aditi_builtin_arg_number(
+		aditi_tuple_insert_delete(InsertDelete, _),
 		_ - _/Arity, ArgNum) -->
 	io__write_string("argument "),
 	( { ArgNum =< Arity } ->
 		io__write_int(ArgNum),
-		io__write_string(" of the inserted tuple")
+		io__write_string(" of the "),
+		{ InsertDelete = insert, Str = "inserted"
+		; InsertDelete = delete, Str = "deleted"
+		},
+		io__write_string(Str),
+		io__write_string(" tuple")
 	;
 		io__write_int(ArgNum - Arity + 1)
 	).
 
-hlds_out__write_aditi_builtin_arg_number(aditi_delete(_, pred_term),
+hlds_out__write_aditi_builtin_arg_number(
+		aditi_insert_delete_modify(_, _, pred_term),
 		_, ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
 
-hlds_out__write_aditi_builtin_arg_number(aditi_delete(_, sym_name_and_closure),
+hlds_out__write_aditi_builtin_arg_number(
+		aditi_insert_delete_modify(_, _, sym_name_and_closure),
 		_, ArgNum) -->
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
 	io__write_string("argument "),
 	io__write_int(ArgNum + 1).
-
-hlds_out__write_aditi_builtin_arg_number(aditi_bulk_operation(_, _),
-		_, ArgNum) -->
-	% The original goal had a sym_name/arity
-	% at the front of the argument list.
-	io__write_string("argument "),
-	io__write_int(ArgNum + 1).
-
-hlds_out__write_aditi_builtin_arg_number(aditi_modify(_, pred_term),
-		_, ArgNum) -->
-	io__write_string("argument "),
-	io__write_int(ArgNum).
-
-hlds_out__write_aditi_builtin_arg_number(aditi_modify(_, sym_name_and_closure),
-		_, ArgNum) -->
-	% The original goal had a sym_name/arity
-	% at the front of the argument list.
-	io__write_string("argument "),
-	io__write_int(ArgNum + 1).	
 
 hlds_out__write_pred_or_func(predicate) -->
 	io__write_string("predicate").
@@ -674,15 +675,12 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		->
 			[]
 		;
-			% We dump unification predicates if suboption
-			% 'U' is on. We don't really need that
-			% information to understand how the program has
-			% been transformed.
+			% We dump unification and other compiler-generated
+			% special predicates if suboption 'U' is on. We don't
+			% need that information to understand how the program
+			% has been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
-			{ pred_info_arity(PredInfo, Arity) },
-			{ Arity = 2 },
-			{ pred_info_name(PredInfo, PredName) },
-			{ PredName =  "__Unify__" }
+			{ code_util__compiler_generated(PredInfo) }
 		->
 			[]
 		;
@@ -1513,13 +1511,16 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
-			PragmaCode), _, _, _, Indent, Follow, _) -->
+hlds_out__write_goal_2(pragma_foreign_code(Language, _, _, _, ArgVars,
+		ArgNames, _, PragmaCode), _, _, _, Indent, Follow, _) -->
+	% XXX handle other languages
 	hlds_out__write_indent(Indent),
-	io__write_string("$pragma_c_code(["),
+	io__write_string("$pragma_foreign_code( /* "),
+	io__write(Language),
+	io__write_string(" */ ["),
 	hlds_out__write_varnum_list(ArgVars),
 	io__write_string("], ["),
-	{ get_pragma_c_var_names(ArgNames, Names) },
+	{ get_pragma_foreign_var_names(ArgNames, Names) },
 	hlds_out__write_string_list(Names),
 	io__write_string("], "),
 	(
@@ -1553,6 +1554,11 @@ hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
 		),
 		io__write_string(Shared),
 		io__write_string(""")")
+	;
+		{ PragmaCode = import(Name, _, _, _Context) },
+		io__write_string(""""),
+		io__write_string(Name),
+		io__write_string("""")
 	),
 	io__write_string(")"),
 	io__write_string(Follow).
@@ -1638,12 +1644,17 @@ hlds_out__write_aditi_builtin(ModuleInfo,
 	io__write_string(Follow),
 	io__nl.
 
-hlds_out__write_aditi_builtin(_ModuleInfo, aditi_insert(PredId), CallId,
+hlds_out__write_aditi_builtin(_ModuleInfo,
+		aditi_tuple_insert_delete(InsertDelete, PredId), CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
 	% make_hlds.m checks the arity so this cannot fail. 
 	{ get_state_args_det(ArgVars, Args, State0Var, StateVar) },
 	hlds_out__write_indent(Indent),	
-	io__write_string("aditi_insert("),
+
+	( { InsertDelete = insert }, io__write_string("aditi_insert(")
+	; { InsertDelete = delete }, io__write_string("aditi_delete(")
+	),
+
 	{ CallId = PredOrFunc - SymName/_ },
 	(
 		{ PredOrFunc = predicate },
@@ -1668,38 +1679,11 @@ hlds_out__write_aditi_builtin(_ModuleInfo, aditi_insert(PredId), CallId,
 	io__nl,
 	hlds_out__write_aditi_builtin_pred_id(Indent, PredId).
 
-hlds_out__write_aditi_builtin(_ModuleInfo,
-		aditi_delete(PredId, _), CallId,
+hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
-	hlds_out__write_aditi_builtin_2("aditi_delete", PredId, CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow).
-
-hlds_out__write_aditi_builtin(_ModuleInfo,
-		aditi_bulk_operation(BulkOp, PredId), CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
-	{
-		BulkOp = insert,
-		Name = "aditi_bulk_insert"
-	;
-		BulkOp = delete,
-		Name = "aditi_bulk_delete"
-	},
-	hlds_out__write_aditi_builtin_2(Name, PredId, CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow).
-
-hlds_out__write_aditi_builtin(_ModuleInfo, aditi_modify(PredId, _), CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
-	hlds_out__write_aditi_builtin_2("aditi_modify", PredId, CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow).
-
-:- pred hlds_out__write_aditi_builtin_2(string, pred_id, simple_call_id,
-	list(prog_var), prog_varset, bool, int, string, io__state, io__state).
-:- mode hlds_out__write_aditi_builtin_2(in, in, in, in, in, in, in, in,
-	di, uo) is det.
-
-hlds_out__write_aditi_builtin_2(UpdateName, PredId, CallId,
-		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
+	{ Builtin = aditi_insert_delete_modify(_, PredId, _Syntax) },
 	hlds_out__write_indent(Indent),	
+	{ hlds_out__aditi_builtin_name(Builtin, UpdateName) },
 	io__write_string(UpdateName),
 	io__write_string("("),
 	{ CallId = PredOrFunc - _ },
@@ -1727,18 +1711,20 @@ hlds_out__write_aditi_builtin_pred_id(Indent, PredId) -->
 	io__write_string(".\n").
 
 hlds_out__aditi_builtin_name(aditi_call(_, _, _, _), "aditi_call").
-hlds_out__aditi_builtin_name(aditi_insert(_), "aditi_insert").
-hlds_out__aditi_builtin_name(aditi_delete(_, _), "aditi_delete").
-hlds_out__aditi_builtin_name(aditi_bulk_operation(BulkOp, _), Name) :-
-	(
-		BulkOp = insert,
-		Name = "aditi_bulk_insert"
-	;
-		BulkOp = delete,
-		Name = "aditi_bulk_delete"
-	).
+hlds_out__aditi_builtin_name(aditi_tuple_insert_delete(_, _), "aditi_insert").
+hlds_out__aditi_builtin_name(aditi_insert_delete_modify(InsertDelMod, _, _),
+		Name) :-
+	hlds_out__aditi_insert_delete_modify_name(InsertDelMod, Name).
 
-hlds_out__aditi_builtin_name(aditi_modify(_, _), "aditi_modify").
+:- pred hlds_out__aditi_insert_delete_modify_name(aditi_insert_delete_modify,
+		string).
+:- mode hlds_out__aditi_insert_delete_modify_name(in, out) is det.
+
+hlds_out__aditi_insert_delete_modify_name(bulk_insert, "aditi_bulk_insert").
+hlds_out__aditi_insert_delete_modify_name(delete(bulk), "aditi_bulk_delete").
+hlds_out__aditi_insert_delete_modify_name(delete(filter), "aditi_delete").
+hlds_out__aditi_insert_delete_modify_name(modify(bulk), "aditi_bulk_modify").
+hlds_out__aditi_insert_delete_modify_name(modify(filter), "aditi_modify").
 
 :- pred hlds_out__write_unification(unification, module_info, prog_varset,
 		inst_varset, bool, int, io__state, io__state).
@@ -1782,7 +1768,6 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	; { CanFail = cannot_fail },
 		io__write_string(" => ")
 	),
-	!,
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
 
@@ -1795,7 +1780,6 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail, TypeInfoVars),
 	; { CanFail = cannot_fail },
 		io__write_string("cannot_fail, ")
 	),
-	!,
 	io__write_string("mode: "),
 	mercury_output_uni_mode(Mode, InstVarSet),
 	io__write_string("\n"),
@@ -2830,6 +2814,11 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
 	{ Indent1 is Indent + 1 },
 
+	hlds_out__write_indent(Indent1),
+	io__write_string("% pred id "),
+	{ pred_id_to_int(PredId, PredInt) },
+	io__write_int(PredInt),
+	io__nl,
 	hlds_out__write_indent(Indent1),
 	io__write_string("% mode number "),
 	{ proc_id_to_int(ProcId, ProcInt) },

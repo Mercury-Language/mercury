@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,7 +15,7 @@
 #ifndef	MERCURY_LABEL_H
 #define	MERCURY_LABEL_H
 
-#include "mercury_types.h"		/* for `Code *' */
+#include "mercury_types.h"		/* for `MR_Code *' */
 #include "mercury_dlist.h" 		/* for `List' */
 #include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_*' */
 
@@ -37,7 +37,7 @@
 */
 
 typedef struct s_entry {
-	const Code			*e_addr;
+	const MR_Code			*e_addr;
 	const MR_Stack_Layout_Entry	*e_layout;
 	const char			*e_name;
 } MR_Entry;
@@ -51,7 +51,7 @@ typedef struct s_entry {
 */
 
 typedef struct s_internal {
-	const Code			*i_addr;
+	const MR_Code			*i_addr;
 	const MR_Stack_Layout_Label	*i_layout;
 	const char			*i_name;
 } MR_Internal;
@@ -59,19 +59,19 @@ typedef struct s_internal {
 extern	void		MR_do_init_label_tables(void);
 
 #ifdef	MR_NEED_ENTRY_LABEL_INFO
-  extern void		MR_insert_entry_label(const char *name, Code *addr,
+  extern void		MR_insert_entry_label(const char *name, MR_Code *addr,
 				const MR_Stack_Layout_Entry *entry_layout);
 #else
   #define MR_insert_entry_label(n, a, l)	/* nothing */
 #endif	/* not MR_NEED_ENTRY_LABEL_INFO */
 
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
-  extern MR_Entry	*MR_prev_entry_by_addr(const Code *addr);
+  extern MR_Entry	*MR_prev_entry_by_addr(const MR_Code *addr);
 #endif	/* MR_NEED_ENTRY_LABEL_ARRAY */
 
-extern	void		MR_insert_internal_label(const char *name, Code *addr,
+extern	void		MR_insert_internal_label(const char *name, MR_Code *addr,
 				const MR_Stack_Layout_Label *label_layout);
-extern	MR_Internal	*MR_lookup_internal_by_addr(const Code *addr);
+extern	MR_Internal	*MR_lookup_internal_by_addr(const MR_Code *addr);
 extern	void		MR_process_all_internal_labels(void f(const void *));
 
 #endif /* not MERCURY_LABEL_H */

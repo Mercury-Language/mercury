@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -231,16 +231,19 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			% We can backtrack to the next disjunct from outside,
 			% so we make sure every variable in the resume set
 			% is in its stack slot.
-			code_info__flush_resume_vars_to_stack(ResumeVarsCode)
+			code_info__flush_resume_vars_to_stack(ResumeVarsCode),
 
 			% We hang onto any temporary slots holding saved
 			% heap pointers and/or tickets, thus ensuring that
 			% they will still be reserved after the disjunction.
+			{ PruneTicketCode = empty }
 		;
 			{ ResumeVarsCode = empty },
 
 			code_info__maybe_release_hp(MaybeHpSlot),
-			code_info__maybe_release_ticket(MaybeTicketSlot),
+			% we're committing to this disjunct
+			code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+				commit, PruneTicketCode),
 
 			code_info__reset_resume_known(BranchStart)
 		),
@@ -271,9 +274,10 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			tree(TraceCode,
 			tree(GoalCode,
 			tree(ResumeVarsCode,
+			tree(PruneTicketCode,
 			tree(SaveCode,
 			tree(BranchCode,
-			     RestCode))))))))))
+			     RestCode)))))))))))
 		}
 	;
 		% Emit code for the last disjunct

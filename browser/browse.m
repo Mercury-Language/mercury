@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,19 +16,19 @@
 % authors: aet
 % stability: low
 
-:- module browse.
+:- module mdb__browse.
 
 :- interface.
 
-:- import_module io.
+:- import_module io, std_util.
 
 	% an abstract data type that holds persistent browser settings,
 	% e.g. the maximum print depth
 :- type browser_state.
 
 	% initialize the browser state with default values
-:- pred browse__init_state(browser_state, io__state, io__state).
-:- mode browse__init_state(out, di, uo) is det.
+:- pred browse__init_state(browser_state).
+:- mode browse__init_state(out) is det.
 
 	% The interactive term browser.
 :- pred browse__browse(T, io__input_stream, io__output_stream,
@@ -44,11 +44,29 @@
 			io__state, io__state).
 :- mode browse__print(in, in, in, di, uo) is det.
 
+	% Estimate the total term size, in characters,
+	% We count the number of characters in the functor,
+	% plus two characters for each argument: "(" and ")"
+	% for the first, and ", " for each of the rest,
+	% plus the sizes of the arguments themselves.
+	% This is only approximate since it doesn't take into
+	% account all the special cases such as operators.
+	%
+	% This predicate returns not the estimated total term size,
+	% but the difference between the given maximum size the caller
+	% is interested in and the estimated total term size.
+	% This difference is positive if the term is smaller than the
+	% maximum and negative if it is bigger. If the difference is
+	% negative, term_size_left_from_max will return a negative difference
+	% but the value will usually not be accurate, since in such cases
+	% by definition the caller is not interested in the accurate value.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse, util, frame.
-:- import_module string, list, parser, require, std_util, int, char.
+:- import_module mdb__parse, mdb__util, mdb__frame.
+:- import_module string, list, parser, require, std_util, int, char, pprint.
 
 %---------------------------------------------------------------------------%
 %
@@ -56,7 +74,7 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__init_state(out, di, uo),
+:- pragma export(browse__init_state(out),
 	"ML_BROWSE_init_state").
 :- pragma export(browse__browse(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse").
@@ -90,15 +108,28 @@
 
 %---------------------------------------------------------------------------%
 
-browse__init_state(State) -->
-	{ default_state(State) }.
+browse__init_state(State) :-
+	% We need to supply an object to initialize the state,
+	% but this object won't be used, since the first call
+	% to browse__browse will overwrite it.  So we just supply
+	% a dummy object -- it doesn't matter what its type or value is.
+	DummyObject = "",
+	type_to_univ(DummyObject, Univ),
+	default_depth(DefaultDepth),
+	MaxTermSize = 10,
+	DefaultFormat = verbose,
+	ClipX = 79,
+	ClipY = 25,
+	State = browser_state(Univ, DefaultDepth, MaxTermSize, [],
+			DefaultFormat, ClipX, ClipY).
+
 
 % return the type_info for a browser_state type
-:- pred browse__browser_state_type(type_info).
+:- pred browse__browser_state_type(type_desc).
 :- mode browse__browser_state_type(out) is det.
 
 browse__browser_state_type(Type) :-
-	default_state(State),
+	browse__init_state(State),
 	Type = type_of(State).
 
 %---------------------------------------------------------------------------%
@@ -160,23 +191,6 @@ term_size(Univ, TotalSize) :-
 	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
 	TotalSize = TotalArgsSize + FunctorSize.
 
-	% Estimate the total term size, in characters,
-	% We count the number of characters in the functor,
-	% plus two characters for each argument: "(" and ")"
-	% for the first, and ", " for each of the rest,
-	% plus the sizes of the arguments themselves.
-	% This is only approximate since it doesn't take into
-	% account all the special cases such as operators.
-	%
-	% This predicate returns not the estimated total term size,
-	% but the difference between the given maximum size the caller
-	% is interested in and the estimated total term size.
-	% This difference is positive if the term is smaller than the
-	% maximum and negative if it is bigger. If the difference is
-	% negative, term_size_left_from_max will return a negative difference
-	% but the value will usually not be accurate, since in such cases
-	% by definition the caller is not interested in the accurate value.
-:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
 term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 	( MaxSize < 0 ->
 		RemainingSize = MaxSize
@@ -324,30 +338,32 @@ run_command(Debugger, Command, State, NewState) -->
 		{ true }
 	).
 
-	% XXX: default depth is hardwired to 10.
 :- pred help(debugger::in, io__state::di, io__state::uo) is det.
 help(Debugger) -->
-	write_string_debugger(Debugger,
-"Commands are:\n\
-\tls [path]      -- list subterm (expanded)\n\
-\tcd [path]      -- cd current subterm (default is root)\n\
-\thelp           -- show this help message\n\
-\tset var value  -- set a setting\n\
-\tset            -- show settings\n\
-\tprint          -- show single line representation of current term\n\
-\tquit           -- quit browser\n\
-SICStus Prolog style commands are:\n\
-\tp              -- print\n\
-\t< [n]          -- set depth (default is 10)\n\
-\t^ [path]       -- cd [path]\n\
-\t?              -- help\n\
-\th              -- help\n\
-\n\
--- settings:\n\
---    size; depth; path; format (flat pretty verbose); clipx; clipy\n\
---    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n\
-\n"
-	).
+	{ default_depth(Default) },
+	{ string__int_to_string(Default, DefaultStr) },
+	{ string__append_list([
+"Commands are:\n",
+"\tls [path]      -- list subterm (expanded)\n",
+"\tcd [path]      -- cd current subterm (default is root)\n",
+"\thelp           -- show this help message\n",
+"\tset var value  -- set a setting\n",
+"\tset            -- show settings\n",
+"\tprint          -- show single line representation of current term\n",
+"\tquit           -- quit browser\n",
+"SICStus Prolog style commands are:\n",
+"\tp              -- print\n",
+"\t< [n]          -- set depth (default is ", DefaultStr, ")\n",
+"\t^ [path]       -- cd [path]\n",
+"\t?              -- help\n",
+"\th              -- help\n",
+"\n",
+"-- settings:\n",
+"--    size; depth; path; format (flat pretty verbose); clipx; clipy\n",
+"--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
+"\n"],
+		HelpMessage) },
+	write_string_debugger(Debugger, HelpMessage).
 
 %---------------------------------------------------------------------------%
 %
@@ -429,12 +445,12 @@ portray_verbose(Debugger, State) -->
 :- pred portray_pretty(debugger, browser_state, io__state, io__state).
 :- mode portray_pretty(in, in, di, uo) is det.
 portray_pretty(Debugger, State) -->
-	{ get_size(State, MaxSize) },
+	{ get_clipx(State, Width) },
 	{ get_depth(State, MaxDepth) },
 	{ get_term(State, Univ) },
 	{ get_dirs(State, Dir) },
 	( { deref_subterm(Univ, Dir, SubUniv) } ->
-		{ term_to_string_pretty(SubUniv, MaxSize, MaxDepth, Str) },
+		{ term_to_string_pretty(SubUniv, Width, MaxDepth, Str) },
 		write_string_debugger(Debugger, Str)
 	;
 		write_string_debugger(Debugger, "error: no such subterm")
@@ -528,92 +544,18 @@ term_compress(Univ, Str) :-
 
 %---------------------------------------------------------------------------%
 %
-% Simple indented view of a term. This isn't really
-% pretty printing since parentheses and commas are omitted.
-% XXX: Should do proper pretty printing?
+% Print using the pretty printer from the standard library.
+% XXX the size of the term is not limited---the pretty printer
+% provides no way of doing this.
 %
 
 :- pred term_to_string_pretty(univ, int, int, string).
 :- mode term_to_string_pretty(in, in, in, out) is det.
-term_to_string_pretty(Univ, MaxSize, MaxDepth, Str) :-
-	CurSize = 0,
-	CurDepth = 0,
-	term_to_string_pretty_2(Univ, MaxSize, CurSize, _NewSize,
-		MaxDepth, CurDepth, Lines),
-	unlines(Lines, Str).
 
-:- pred term_to_string_pretty_2(univ, int, int, int, int, int, list(string)).
-:- mode term_to_string_pretty_2(in, in, in, out, in, in, out) is det.
-term_to_string_pretty_2(Univ, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lines) :-
-	( ((CurSize >= MaxSize) ; (CurDepth >= MaxDepth)) ->
-		term_compress(Univ, Line),
-		Lines = [Line],
-		% Lines = ["..."],
-		NewSize = CurSize
-	;
-		deconstruct(Univ, Functor, Arity, Args),
-		CurSize1 is CurSize + 1,
-		CurDepth1 is CurDepth + 1,
-		( Arity >= 1 ->
-			string__append(Functor, "(", Functor1)
-		;
-			Functor1 = Functor
-		),
-		term_to_string_pretty_list(Args, MaxSize, CurSize1,
-			NewSize, MaxDepth, CurDepth1, ArgsLines),
-		list__condense(ArgsLines, ArgsLineses),
-		map(indent, ArgsLineses, IndentedArgLines),
-		list__append([Functor1], IndentedArgLines, Lines1),
-		( Arity >= 1 ->
-			list__append(Lines1, [")"], Lines)
-		;
-			Lines = Lines1
-		)
-	).
-
-
-:- pred term_to_string_pretty_list(list(univ), int, int, int, int, int,
-	list(list(string))).
-:- mode term_to_string_pretty_list(in, in, in, out, in, in, out) is det.
-term_to_string_pretty_list([], _MaxSize, CurSize, NewSize,
-		_MaxDepth, _CurDepth, Lines) :-
-	Lines = [],
-	NewSize = CurSize.
-term_to_string_pretty_list([Univ], MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lineses) :-
-	term_to_string_pretty_2(Univ, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lines),
-	Lineses = [Lines].
-term_to_string_pretty_list([Univ1, Univ2 | Univs], MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lineses) :-
-	term_to_string_pretty_2(Univ1, MaxSize, CurSize, NewSize1,
-		MaxDepth, CurDepth, Lines1),
-	comma_last(Lines1, Lines),
-	term_to_string_pretty_list([Univ2 | Univs], MaxSize, NewSize1, NewSize,
-		MaxDepth, CurDepth, RestLineses),
-	Lineses = [Lines | RestLineses].
-
-:- pred comma_last(list(string), list(string)).
-:- mode comma_last(in, out) is det.
-comma_last([], []).
-comma_last([S], [Sc]) :-
-	string__append(S, ",", Sc).
-comma_last([S1, S2 | Ss], [S1 | Rest]) :-
-	comma_last([S2 | Ss], Rest).
-
-	
-:- pred indent(string::in, string::out) is det.
-indent(Str, IndentedStr) :-
-	string__append("  ", Str, IndentedStr).
-
-:- pred unlines(list(string)::in, string::out) is det.
-unlines([], "").
-unlines([Line | Lines], Str) :-
-	string__append(Line, "\n", NLine),
-	unlines(Lines, Strs),
-	string__append(NLine, Strs, Str).
-
+term_to_string_pretty(Univ, Width, MaxDepth, Str) :-
+	Value = univ_value(Univ),
+	Doc = to_doc(MaxDepth, Value),
+	Str = to_string(Width, Doc).
 
 %---------------------------------------------------------------------------%
 %
@@ -684,6 +626,13 @@ term_to_string_verbose_list([Univ1, Univ2 | Univs], ArgNum, MaxSize, CurSize,
 	frame__vglue([BranchFrameS], VBranchFrame, LeftFrame),
 	frame__hglue(LeftFrame, TreeFrame, TopFrame),
 	frame__vglue(TopFrame, RestTreesFrame, Frame).
+
+:- pred unlines(list(string)::in, string::out) is det.
+unlines([], "").
+unlines([Line | Lines], Str) :-
+	string__append(Line, "\n", NLine),
+	unlines(Lines, Strs),
+	string__append(NLine, Strs, Str).
 
 %---------------------------------------------------------------------------%
 %
@@ -783,18 +732,6 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 		).
 
 	% access predicates
-
-:- pred default_state(browser_state).
-:- mode default_state(out) is det.
-default_state(State) :-
-	% We need to supply an object to initialize the state,
-	% but this object won't be used, since the first call
-	% to browse__browse will overwrite it.  So we just supply
-	% a dummy object -- it doesn't matter what its type or value is.
-	DummyObject = "",
-	type_to_univ(DummyObject, Univ),
-	default_depth(DefaultDepth),
-	State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25).
 
 :- pred get_term(browser_state, univ).
 :- mode get_term(in, out) is det.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,7 +126,9 @@
 			relation_id,		% input 1
 			relation_id,		% input 2
 			join_type,
-			rl_goal			% join condition
+			rl_goal,		% join condition
+			maybe(semi_join_info),
+			maybe(trivial_join_info)
 		)
 	;
 		subtract(	% output = input 1 - input 2
@@ -134,7 +136,8 @@
 			relation_id,		% input 1
 			relation_id,		% input 2
 			subtract_type,
-			rl_goal			% subtraction condition
+			rl_goal,		% subtraction condition
+			maybe(trivial_subtract_info)
 		)
 	;
 		% A difference is just a special case of subtract.
@@ -217,7 +220,7 @@
 		% Make a copy of the input relation, making sure the
 		% output has the given set of indexes.
 		% This could be a bit slow, because the system can't just
-		% copy the files, but has to do a full 
+		% copy the files, but has to do a full tuple-by-tuple copy.
 		copy(
 			output_rel,		% output
 			relation_id		% input
@@ -227,7 +230,10 @@
 		% input to the output, otherwise make the output a reference
 		% to the input. To introduce this, the compiler must know that
 		% there are no later references in the code to the input
-		% relation.
+		% relation. Base relations and named temporaries are always
+		% copied, because they have an implicit reference in the
+		% database's `relation name -> relation contents' mapping. 
+		%
 		% Make sure the output has the given set of indexes, even
 		% if it isn't copied.
 		make_unique(
@@ -265,10 +271,20 @@
 						% accumulator for each tuple.
 		)	
 	;
-		% Make sure the relation has the given index.
+		% Assign the input relation to the output, ensuring
+		% that the output has the appropriate indexes.
+		% If the input relation is a base relation, this will
+		% copy the input to the output. This sounds expensive,
+		% but currently in all cases where an index is added
+		% to something that might be a base relation, a copy
+		% needs to be made anyway because the relation is
+		% destructively updated by a uniondiff operation --
+		% all that will happen is that the make_unique instruction
+		% later will not need to make a copy.
+		%
 		% We don't include a remove_index operation because it
 		% would be very expensive and probably not very useful.
-		add_index(output_rel)
+		add_index(output_rel, relation_id)
 	;
 		% Empty a relation. This will be expensive for permanent
 		% relations due to logging.
@@ -306,6 +322,12 @@
 :- type join_type
 	--->	nested_loop
 	;	sort_merge(sort_spec, sort_spec)
+	;	hash(list(int), list(int))
+				% Hash join, used for joins where
+				% the condition tests equality of
+				% one or more attributes of the input
+				% relations.
+				% Attribute numbers start at 1.
 	;	index(index_spec, key_range)
 				% The second relation is indexed.
 				% Each tuple in the first relation
@@ -314,19 +336,83 @@
 				% builds the lower and upper bounds
 				% on the key range from the input
 				% tuple from the first relation.
-	;	cross
-	;	semi		% The output tuple is copied from the
-				% first input tuple. An output projection
-				% must be done as a separate operation.
 	.
 
+
+	% A semi-join does not do a projection on the output - it
+	% just returns one of the input tuples.
+:- type semi_join_info == tuple_num.
+
+	% For some joins the join condition does not depend on
+	% one of the input tuples. This commonly happens for joins
+	% with a zero-arity input relation at the start of a procedure.
+	%
+	% Output = join(Input1, Input2, Cond), where Cond does
+	% not depend on Input2, can be generated as:
+	%
+	%	if (empty(Input2)) {
+	%		Output = project(Input1, Cond)
+	%	} else {
+	%		init(Output)
+	%	}
+	%
+	% If the join is a semi-join with a deterministic
+	% condition, the project is not necessary.
+	%
+	% Subtracts are similar.
+	%
+	%	Output = semi_subtract(Input1, Input2, Cond).
+	%
+	% If Cond does not depend on Input1, this can be generated
+	% as:
+	%
+	%	if (empty(select(Input2, Cond))) {
+	%		Output = Input1
+	%	} else {
+	%		init(Output)
+	%	}
+	%
+	% If Cond does not depend on Input2, this can be generated
+	% as:
+	%
+	%	if (empty(Input2)) {
+	%		Output = Input1
+	%	} else {
+	%		Output = select(Input1, not(Cond))
+	%	}
+	%
+	%
+	% We don't just do this optimization in the intermediate RL
+	% because it introduces extra branching which can interfere
+	% with other optimizations (e.g. rl_block_opt.m, rl_stream.m).
+:- type trivial_join_or_subtract_info
+	---> trivial_join_or_subtract_info(
+		tuple_num,	% which tuple does the join depend on
+		maybe(project_type)
+				% the type of selection/projection to use,
+				% if one is needed
+	).
+
+:- type trivial_join_info == trivial_join_or_subtract_info.
+:- type trivial_subtract_info == trivial_join_or_subtract_info.
+
+	% All subtracts are done using the semi-subtract operator.
+	% There is no advantage in including any post projection
+	% in the operation because the projection cannot use any
+	% of the intermediate results of the test -- the projection
+	% is only done if the test fails for all negated tuples.
 :- type subtract_type
-	--->	nested_loop
-	;	semi		% The output tuple is copied from the
-				% first input tuple. An output projection
-				% must be done as a separate operation.
-	;	sort_merge(sort_spec, sort_spec)
-	;	index(index_spec, key_range)
+	--->	semi_nested_loop
+	;	semi_sort_merge(sort_spec, sort_spec)
+				% Hash join, used for joins where
+				% the condition tests equality of
+				% one or more attributes of the input
+				% relations.
+				% Attribute numbers start at 1.
+	;	semi_hash(list(int), list(int))
+	;	semi_index(index_spec, key_range)
+				% The negated (second) input relation
+				% is indexed.
 	.
 
 :- type difference_type
@@ -372,18 +458,18 @@
 	% hlds_goal form.
 :- type rl_goal
 	---> rl_goal(
-		maybe(pred_proc_id),	
+		pred_proc_id :: maybe(pred_proc_id),	
 				% Predicate from which the expression was
 				% taken - used to avoid unnecessarily merging 
 				% varsets. Should be `no' if the varset
 				% contains vars from multiple procs.
-		prog_varset,
-		map(prog_var, type),
-		instmap,	% instmap before goal
-		rl_goal_inputs,
-		rl_goal_outputs,
-		list(hlds_goal),
-		list(rl_var_bounds)
+		varset :: prog_varset,
+		vartypes :: map(prog_var, type),
+		instmap:: instmap,	% instmap before goal
+		inputs :: rl_goal_inputs,
+		outputs :: rl_goal_outputs,
+		goal :: list(hlds_goal),
+		bounds :: list(rl_var_bounds)
 	).
 
 :- type rl_goal_inputs
@@ -406,6 +492,11 @@
         .
 
 :- type rl_var_bounds == map(prog_var, pair(key_term)).
+
+:- type tuple_num
+	--->	one
+	;	two
+	.
 
 %-----------------------------------------------------------------------------%
 
@@ -437,29 +528,101 @@
 	% Get a list of all attributes for a given schema.
 :- pred rl__attr_list(list(T)::in, list(int)::out) is det.
 
+:- pred rl__is_semi_join(join_type::in, rl_goal::in,
+		maybe(semi_join_info)::out) is det.
+
+	% See the comment on type trivial_join_or_subtract_info.
+:- pred rl__is_trivial_join(module_info::in, join_type::in,
+	rl_goal::in, maybe(semi_join_info)::in,
+	maybe(trivial_join_info)::out) is det.
+
+	% See the comment on type trivial_join_or_subtract_info.
+:- pred rl__is_trivial_subtract(module_info::in, subtract_type::in,
+	rl_goal::in, maybe(trivial_subtract_info)::out) is det.
+
+	% Find the project type which is equivalent to the join type,
+	% useful for a trivial join which can be converted into a projection.
+:- pred rl__join_type_to_project_type(join_type::in,
+		maybe(project_type)::out) is det.
+
+	% Find the project type which is equivalent to the subtract type.
+	% useful for a trivial subtract which can be converted into a
+	% projection.
+:- pred rl__subtract_type_to_project_type(subtract_type::in,
+		maybe(project_type)::out) is det.
+
 	% Succeed if the goal contain any of the variables corresponding
 	% to the attributes of the given input tuple.
 :- pred rl__goal_is_independent_of_input(tuple_num::in,
-		rl_goal::in, rl_goal::out) is semidet.
+		rl_goal::in) is semidet.
+
+	% Remove the specified input tuple from the goal, aborting
+	% if the goal is not independent of that input tuple.
+:- pred rl__remove_goal_input(tuple_num::in, rl_goal::in, rl_goal::out) is det.
+
+:- pred rl__swap_join_type_inputs(join_type::in, join_type::out) is det.
 
 	% Swap the inputs of a goal such as a join condition which
-	% as two input relations.
+	% has two input relations.
 :- pred rl__swap_goal_inputs(rl_goal::in, rl_goal::out) is det.
+	
+	% Remove the output tuple from a goal, converting a join
+	% into a semi-join. 
+:- pred rl__strip_goal_outputs(rl_goal::in, rl_goal::out) is det.
 
 	% Succeed if the goal produces an output tuple.
 :- pred rl__goal_produces_tuple(rl_goal::in) is semidet.
 
-:- type tuple_num
-	--->	one
-	;	two
-	.
+	% Succeed if a project/select with the given condition
+	% can be removed without changing the semantics of the
+	% program.
+:- pred rl__goal_can_be_removed(module_info::in,
+		list(hlds_goal)::in) is semidet.
+
+	% If the goal has an output tuple, check whether the
+	% output tuple is the same as one of the input tuples.
+	% If the operator is a join, the semi-join operator can be used.
+:- pred rl__goal_returns_input_tuple(rl_goal::in, tuple_num::out) is semidet.
+
+:- pred rl__swap_tuple_num(tuple_num::in, tuple_num::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Find out the name of the RL procedure corresponding
 	% to the given Mercury procedure.
-:- pred rl__get_entry_proc_name(module_info, pred_proc_id, rl_proc_name).
-:- mode rl__get_entry_proc_name(in, in, out) is det.
+:- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
+		rl_proc_name::out) is det.
+
+	% rl__get_insert_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a bulk insertion
+	% to a base relation.
+:- pred rl__get_insert_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_delete_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a deletion
+	% to a base relation.
+:- pred rl__get_delete_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_modify_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a modification
+	% to a base relation.
+:- pred rl__get_modify_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_c_interface_proc_name(ModuleInfo, PredProcId, ProcName).
+	%
+	% Get the name of the RL procedure used to call an Aditi
+	% procedure from ordinary Mercury code.
+:- pred rl__get_c_interface_proc_name(module_info::in, pred_proc_id::in,
+		string::out) is det.
+
+:- pred rl__get_c_interface_rl_proc_name(module_info::in, pred_proc_id::in,
+		rl_proc_name::out) is det.
 
 	% Work out the name for a permanent relation.
 :- pred rl__permanent_relation_name(module_info::in,
@@ -507,8 +670,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_util, globals, llds_out, options, prog_out.
-:- import_module prog_util, type_util.
+:- import_module code_util, code_aux, globals, llds_out, options, prog_out.
+:- import_module mode_util, prog_util, type_util, llds.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -525,10 +688,11 @@ rl__default_temporary_state(ModuleInfo, TmpState) :-
 
 %-----------------------------------------------------------------------------%
 
-rl__instr_relations(join(output_rel(Output, _), Input1, Input2, _, _) - _, 
+rl__instr_relations(
+		join(output_rel(Output, _), Input1, Input2, _, _, _, _) - _, 
 		[Input1, Input2], [Output]).
 rl__instr_relations(subtract(output_rel(Output, _),
-		Input1, Input2, _, _) - _, [Input1, Input2], [Output]).
+		Input1, Input2, _, _, _) - _, [Input1, Input2], [Output]).
 rl__instr_relations(difference(output_rel(Output, _),
 		Input1, Input2, _) - _, [Input1, Input2], [Output]).
 rl__instr_relations(project(OutputRel,
@@ -549,7 +713,8 @@ rl__instr_relations(sort(output_rel(Output, _), Input, _) - _,
 rl__instr_relations(init(output_rel(Rel, _)) - _, [], [Rel]).
 rl__instr_relations(insert_tuple(output_rel(Output, _), Input, _) - _,
 		[Input], [Output]).
-rl__instr_relations(add_index(output_rel(Rel, _)) - _, [Rel], [Rel]).
+rl__instr_relations(add_index(output_rel(Output, _), Input) - _,
+		[Input], [Output]).
 rl__instr_relations(clear(Rel) - _, [], [Rel]).
 rl__instr_relations(unset(Rel) - _, [], [Rel]).
 rl__instr_relations(label(_) - _, [], []).
@@ -615,9 +780,210 @@ rl__attr_list_2(Index, [_ | Types], [Index | Attrs]) :-
 
 %-----------------------------------------------------------------------------%
 
-rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, MaybeOutputs, Goals, H),
-	rl__select_input_args(InputNo, Inputs0, Inputs, InputArgs),
+rl__is_semi_join(JoinType, Exprn, SemiJoinInfo) :-
+	(
+		rl__goal_returns_input_tuple(Exprn, SemiTupleNum),
+
+		% XXX sort-merge semi-joins are
+		% not yet implemented in Aditi.
+		JoinType \= sort_merge(_, _),
+
+		%
+		% An indexed semi-join where the tuple from the
+		% indexed relation is returned is not
+		% strictly a semi-join. A semi-join is normally
+		% guaranteed to return each tuple only once, but
+		% the indexed tuples may match against multiple
+		% tuples in the non-indexed relation.
+		%
+		( JoinType = index(_, _) => SemiTupleNum = one )
+	->
+		SemiJoinInfo = yes(SemiTupleNum)
+	;
+		SemiJoinInfo = no
+	).
+
+rl__is_trivial_join(ModuleInfo, JoinType, Cond,
+		SemiJoinInfo, TrivialJoinInfo) :-
+	(
+		rl__join_type_to_project_type(JoinType, yes(ProjectType))
+	->
+		rl__is_trivial_join_or_subtract(ModuleInfo, join,
+			ProjectType, Cond, SemiJoinInfo, TrivialJoinInfo)
+	;
+		TrivialJoinInfo = no
+	).
+
+rl__is_trivial_subtract(ModuleInfo, SubtractType, Cond, TrivialSubtractInfo) :-
+	(
+		rl__subtract_type_to_project_type(SubtractType,
+			yes(ProjectType))
+	->
+		% Subtracts always return the first input tuple.
+		SemiJoinInfo = yes(one),
+		rl__is_trivial_join_or_subtract(ModuleInfo, subtract,
+			ProjectType, Cond, SemiJoinInfo, TrivialSubtractInfo)
+	;
+		TrivialSubtractInfo = no
+	).
+
+:- type join_or_subtract
+	--->	join
+	;	subtract
+	.
+
+:- pred rl__is_trivial_join_or_subtract(module_info::in, join_or_subtract::in,
+		project_type::in, rl_goal::in, maybe(semi_join_info)::in,
+		maybe(trivial_join_or_subtract_info)::out) is det.
+
+rl__is_trivial_join_or_subtract(ModuleInfo, JoinOrSubtract, ProjectType, Cond,
+		SemiJoinInfo, TrivialJoinInfo) :-
+	( rl__goal_is_independent_of_input(one, Cond) ->
+		rl__make_trivial_join_or_subtract_info(ModuleInfo,
+			JoinOrSubtract, ProjectType, Cond, two, SemiJoinInfo,
+			TrivialJoinInfo)
+	; rl__goal_is_independent_of_input(two, Cond) ->
+		rl__make_trivial_join_or_subtract_info(ModuleInfo,
+			JoinOrSubtract, ProjectType, Cond, one,
+			SemiJoinInfo, TrivialJoinInfo)
+	;
+		TrivialJoinInfo = no
+	).
+
+:- pred rl__make_trivial_join_or_subtract_info(module_info::in,
+		join_or_subtract::in, project_type::in, rl_goal::in,
+		tuple_num::in, maybe(semi_join_info)::in,
+		maybe(trivial_join_or_subtract_info)::out) is det.
+
+rl__make_trivial_join_or_subtract_info(ModuleInfo, JoinOrSubtract, ProjectType,
+		Cond, UsedTupleNum, SemiJoin, TrivialJoinInfo) :-
+	Goals = Cond ^ goal,
+
+	(
+		%
+		% A projection is not needed for semi-joins with
+		% deterministic conditions.
+		% 
+		SemiJoin = yes(_),
+		\+ ( 
+			% For this type of trivial subtract,
+			% the selection will use the negation
+			% of the condition, which will pretty
+			% much always be semidet.
+			% The select can only be removed if the
+			% condition has determinism failure, in
+			% which case the negation should have been
+			% removed earlier.
+			JoinOrSubtract = subtract,
+			UsedTupleNum = one
+		),
+		rl__goal_can_be_removed(ModuleInfo, Goals)
+	->
+		MaybeProjectType = no
+	;
+		MaybeProjectType = yes(ProjectType)
+	),
+
+	TrivialJoinInfo =
+		yes(trivial_join_or_subtract_info(UsedTupleNum,
+			MaybeProjectType)).
+
+	% Check whether a projection is needed.
+	% A projection is not needed if it is a selection
+	% (there is no output tuple) and the selection condition
+	% is deterministic.
+:- pred rl__is_removeable_project(module_info::in, project_type::in,
+		rl_goal::in, bool::out) is det.
+
+rl__is_removeable_project(ModuleInfo, ProjectType, RLGoal, IsRemoveable) :-
+	(
+		ProjectType = filter,
+		(
+			\+ rl__goal_produces_tuple(RLGoal),
+			Goals = RLGoal ^ goal,
+
+			rl__goal_can_be_removed(ModuleInfo, Goals)
+        	->
+			IsRemoveable = yes
+		;
+			IsRemoveable = no
+		)
+	;
+		%
+		% Indexed projections contain a selection
+		% which must always be performed.
+		%
+		ProjectType = index(_, _),
+		IsRemoveable = no
+	).
+
+rl__goal_can_be_removed(ModuleInfo, Goals) :-
+	goal_list_determinism(Goals, Detism),
+	determinism_components(Detism, cannot_fail, MaxSoln),
+	MaxSoln \= at_most_zero,
+
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
+
+	% I'm not sure whether this test is actually worthwhile --
+	% the optimization passes which introduce index, sort-merge
+	% and hash joins and subtracts prune away large chunks of
+	% computation without caring about the semantics.
+	(
+		FullyStrict = no
+	;
+		all [Goal] (	
+			list__member(Goal, Goals)
+		=>
+			code_aux__goal_cannot_loop(ModuleInfo, Goal)
+		)
+	).
+
+rl__join_type_to_project_type(nested_loop, yes(filter)).
+rl__join_type_to_project_type(index(IndexSpec, KeyRange0),
+		yes(index(IndexSpec, KeyRange))) :-
+	join_key_range_to_project_key_range(KeyRange0, KeyRange).
+	
+	%
+	% Introducing sort-merge and hash joins means that there is a
+	% connection between the arguments of the two input tuples, so
+	% the join cannot be turned into a projection.
+	%
+join_type_to_project_type(sort_merge(_, _), no).
+join_type_to_project_type(hash(_, _), no).
+
+
+subtract_type_to_project_type(semi_nested_loop, yes(filter)).
+subtract_type_to_project_type(semi_index(IndexSpec, KeyRange0),
+		yes(index(IndexSpec, KeyRange))) :-
+	join_key_range_to_project_key_range(KeyRange0, KeyRange).
+
+	%
+	% Introducing sort-merge and hash subtracts means that there is a
+	% connection between the arguments of the two input tuples, so
+	% the subtract cannot be turned into a projection.
+	%
+subtract_type_to_project_type(semi_sort_merge(_, _), no).
+subtract_type_to_project_type(semi_hash(_, _), no).
+
+	% The expression to create a key range for a project/select does
+	% not take an input tuple.
+:- pred join_key_range_to_project_key_range(key_range::in,
+		key_range::out) is det.
+
+join_key_range_to_project_key_range(key_range(A, B, _, D),
+	key_range(A, B, no, D)).
+
+rl__remove_goal_input(InputNo, RLGoal0, RLGoal) :-
+	require(rl__goal_is_independent_of_input(InputNo, RLGoal0),
+		"rl__remove_goal_input: not independent"),
+	rl__select_input_args(InputNo, RLGoal0 ^ inputs, Inputs, _),
+	RLGoal = RLGoal0 ^ inputs := Inputs.
+
+rl__goal_is_independent_of_input(InputNo, RLGoal) :-
+	rl__select_input_args(InputNo, RLGoal ^ inputs, _, InputArgs),
+	MaybeOutputs = RLGoal ^ outputs,
+	Goals = RLGoal ^ goal,
 	set__list_to_set(InputArgs, InputArgSet),
 	\+ (
 		MaybeOutputs = yes(Outputs),
@@ -631,8 +997,7 @@ rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__intersect(NonLocals, InputArgSet, Intersection),
 		\+ set__empty(Intersection)  
-	),
-	RLGoal = rl_goal(A, B, C, D, Inputs, MaybeOutputs, Goals, H).
+	).
 
 :- pred rl__select_input_args(tuple_num::in, rl_goal_inputs::in,
 		rl_goal_inputs::out, list(prog_var)::out) is det.
@@ -647,29 +1012,122 @@ rl__select_input_args(one, two_inputs(Args, Args2),
 rl__select_input_args(two, two_inputs(Args1, Args),
 		one_input(Args1), Args).
 
+rl__swap_join_type_inputs(nested_loop, nested_loop).
+rl__swap_join_type_inputs(sort_merge(A, B), sort_merge(B, A)).
+rl__swap_join_type_inputs(hash(A, B), hash(B, A)).
+rl__swap_join_type_inputs(index(_, _), _) :-
+	error("rl__swap_join_type_inputs: can't swap inputs of index join"). 
+
 rl__swap_goal_inputs(RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, F, G, H),
+	Inputs0 = RLGoal0 ^ inputs,
 	( Inputs0 = two_inputs(Inputs1, Inputs2) ->
-		RLGoal = rl_goal(A, B, C, D, two_inputs(Inputs2, Inputs1),
-			F, G, H)
+		RLGoal = RLGoal0 ^ inputs := two_inputs(Inputs2, Inputs1)
 	;
 		error("rl__swap_inputs: goal does not have two inputs to swap")
 	).
 
+rl__strip_goal_outputs(RLGoal0, RLGoal0 ^ outputs := no).
+
 rl__goal_produces_tuple(RLGoal) :-
-	RLGoal = rl_goal(_, _, _, _, _, yes(_), _, _).
+	RLGoal ^ outputs = yes(_).
+
+rl__goal_returns_input_tuple(RLGoal, TupleReturned) :-
+	Inputs = RLGoal ^ inputs,
+	yes(OutputVars) = RLGoal ^ outputs,
+	(
+		Inputs = two_inputs(InputVars1, InputVars2),
+		( InputVars1 = OutputVars ->
+			TupleReturned = one
+		; InputVars2 = OutputVars ->
+			TupleReturned  = two
+		;
+			fail
+		)
+	;
+		Inputs = one_input(OutputVars),
+		TupleReturned = one
+	).
+
+rl__swap_tuple_num(one, two).
+rl__swap_tuple_num(two, one).
 
 %-----------------------------------------------------------------------------%
 
-rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName) :-
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, Label),
-	llds_out__get_proc_label(Label, no, ProcLabel),
+rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) :-
+	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule0),
-	pred_info_get_aditi_owner(PredInfo, Owner),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
-	ProcName = rl_proc_name(Owner, PredModule, ProcLabel, 2).
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	rl__get_entry_proc_name(ModuleInfo, PredProcId,
+		PredInfo, PredName, Arity, ProcName).
 
+:- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
+	pred_info::in, string::in, arity::in, rl_proc_name::out) is det.
+
+rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
+		ProcName) :-
+	PredProcId = proc(_, ProcId),
+	module_info_name(ModuleInfo, ModuleName),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, PredModule),
+	pred_info_get_aditi_owner(PredInfo, Owner),
+	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
+	code_util__make_user_proc_label(ModuleName, IsImported,
+		PredOrFunc, PredModule, PredName, Arity, ProcId, ProcLabel),
+	llds_out__get_proc_label(ProcLabel, no, ProcLabelStr),
+	prog_out__sym_name_to_string(PredModule, PredModuleStr),
+	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).
+
+rl__get_insert_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Insert_Proc_For_", ProcName).
+
+rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Delete_Proc_For_", ProcName).
+
+rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Modify_Proc_For_", ProcName).
+
+:- pred rl__get_update_proc_name(module_info::in,
+		pred_id::in, string::in, rl_proc_name::out) is det.
+
+rl__get_update_proc_name(ModuleInfo, PredId, ProcNamePrefix, ProcName) :-
+	hlds_pred__initial_proc_id(ProcId),
+	rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName0),
+	ProcName0 = rl_proc_name(Owner, Module, Name0, Arity),
+	string__append(ProcNamePrefix, Name0, Name),
+	ProcName = rl_proc_name(Owner, Module, Name, Arity).
+
+rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName) :-
+	PredProcId = proc(PredId, ProcId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_name(PredInfo, PredName0),
+	proc_id_to_int(ProcId, ProcInt),
+	string__int_to_string(ProcInt, ProcStr),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	list__length(ArgTypes, Arity),
+	string__int_to_string(Arity, ArityStr),
+	string__append_list(["Aditi_C_Interface_Proc_For_Mode_", ProcStr,
+		"_Of_", PredName0, "_", ArityStr], PredName).
+
+rl__get_c_interface_rl_proc_name(ModuleInfo, PredProcId, ProcName) :-
+	rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName),
+	module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+	pred_info_arg_types(PredInfo, ArgTypes0),
+	proc_info_argmodes(ProcInfo, ArgModes0),
+	type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes),
+	partition_args(ModuleInfo, ArgModes, ArgModes, _, OutputArgModes),
+
+	% The interface procedure includes only the output arguments
+	% from the original procedure and the input closure argument
+	% introduced by magic.m.
+	list__length(OutputArgModes, NumOutputArgs),
+	InterfaceArity = NumOutputArgs + 1,
+	rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo,
+		PredName, InterfaceArity, ProcName).
+			
 rl__permanent_relation_name(ModuleInfo, PredId, ProcName) :-
 	rl__get_permanent_relation_info(ModuleInfo, PredId, Owner,
 		Module, _, _, Name, _),

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -71,30 +71,33 @@ init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
 
+#ifdef MR_THREAD_SAFE
+		/* 
+		** Check to see whether there is already an engine 
+		** that is initialized in this thread.  If so we just
+		** return, there's nothing for us to do.
+		*/
+	if (pthread_getspecific(MR_engine_base_key)) {
+		return;
+	}
+#endif
 	eng = create_engine();
 
-#ifdef	MR_THREAD_SAFE
+#ifdef MR_THREAD_SAFE
 	pthread_setspecific(MR_engine_base_key, eng);
-#endif
-
-#ifdef MR_ENGINE_BASE_REGISTER
 	restore_registers();
-
+  #ifdef MR_ENGINE_BASE_REGISTER
 	MR_engine_base = eng;
-	load_engine_regs(eng);
-	load_context(eng->this_context);
-
-	save_registers();
+  #endif
 #else
-	MR_memcpy((void *) &MR_engine_base, (void *) eng,
+	MR_memcpy(&MR_engine_base, eng,
 		sizeof(MercuryEngine));
 	restore_registers();
-
-	load_engine_regs(&MR_engine_base);
-	load_context(MR_engine_base.this_context);
+#endif
+	load_engine_regs(MR_cur_engine());
+	load_context(MR_ENGINE(this_context));
 
 	save_registers();
-#endif
 
 #ifdef	MR_THREAD_SAFE
 	MR_ENGINE(owner_thread) = pthread_self();

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 University of Melbourne.
+% Copyright (C) 1997-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -239,7 +239,7 @@
 :- interface.
 
 :- import_module continuation_info, hlds_module, llds.
-:- import_module std_util, list, set_bbbtree.
+:- import_module std_util, list, set_bbbtree, counter.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
 	global_data::in,
@@ -248,13 +248,13 @@
 
 :- pred stack_layout__construct_closure_layout(proc_label::in,
 	closure_layout_info::in, list(maybe(rval))::out,
-	create_arg_types::out, int::in, int::out) is det.
+	create_arg_types::out, counter::in, counter::out) is det.
 
 :- implementation.
 
 :- import_module globals, options, llds_out, trace.
-:- import_module hlds_data, hlds_pred, base_type_layout, prog_data, prog_out.
-:- import_module (inst), code_util.
+:- import_module hlds_data, hlds_pred, prog_data, prog_out.
+:- import_module rtti, ll_pseudo_type_info, (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set.
 
@@ -268,7 +268,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList),
 
 	module_info_name(ModuleInfo0, ModuleName),
-	module_info_get_cell_count(ModuleInfo0, CellCount),
+	module_info_get_cell_counter(ModuleInfo0, CellCounter0),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
@@ -280,7 +280,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	map__init(StringMap0),
 	map__init(LabelTables0),
 	StringTable0 = string_table(StringMap0, [], 0),
-	LayoutInfo0 = stack_layout_info(ModuleName, CellCount,
+	LayoutInfo0 = stack_layout_info(ModuleName, CellCounter0,
 		AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr,
 		[], [], LayoutLabels0, [], StringTable0, LabelTables0),
 	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
@@ -304,9 +304,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
 		stack_layout__get_next_cell_number(ProcVectorCellNum,
 			LayoutInfo3, LayoutInfo4),
+		Reuse = no,
 		ProcLayoutVector = create(0, ProcLayoutArgs,
 			uniform(yes(data_ptr)), must_be_static, 
-			ProcVectorCellNum, "proc_layout_vector"),
+			ProcVectorCellNum, "proc_layout_vector", Reuse),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
 			LineNumbers),
 		( LineNumbers = yes ->
@@ -333,8 +334,8 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		LayoutInfo = LayoutInfo3
 	),
 	PossiblyDynamicLayouts = ProcLayouts,
-	stack_layout__get_cell_number(FinalCellCount, LayoutInfo, _),
-	module_info_set_cell_count(ModuleInfo0, FinalCellCount, ModuleInfo).
+	stack_layout__get_cell_counter(CellCounter, LayoutInfo, _),
+	module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -367,7 +368,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		sprintf(msg, ""internal error in creating string table;\\n""
 			""cur_offset = %ld, ArenaSize = %ld\\n"",
 			(long) cur_offset, (long) ArenaSize);
-		fatal_error(msg);
+		MR_fatal_error(msg);
 	}
 }").
 
@@ -385,9 +386,10 @@ stack_layout__format_label_tables(LabelTableMap, NumSourceFiles,
 		SourceFileRvals, LayoutInfo0, LayoutInfo1),
 	stack_layout__get_next_cell_number(SourceFileVectorCellNum,
 		LayoutInfo1, LayoutInfo),
+	Reuse = no,
 	SourceFilesVector = create(0, SourceFileRvals,
 		uniform(yes(data_ptr)), must_be_static, 
-		SourceFileVectorCellNum, "source_files_vector").
+		SourceFileVectorCellNum, "source_files_vector", Reuse).
 
 :- pred stack_layout__format_label_table(pair(string, label_table)::in,
 	maybe(rval)::out, stack_layout_info::in, stack_layout_info::out) is det.
@@ -437,16 +439,17 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 	list__map(ProjectLineNos, FlatLineNoList, LineNoRvals),
 	stack_layout__get_next_cell_number(LineNoVectorCellNum,
 		LayoutInfo1, LayoutInfo2),
+	Reuse = no,
 	LineNoVector = create(0, LineNoRvals,
 		uniform(yes(int_least16)), must_be_static, 
-		LineNoVectorCellNum, "line_number_vector"),
+		LineNoVectorCellNum, "line_number_vector", Reuse),
 
 	list__map(ProjectLabels, FlatLineNoList, LabelRvals),
 	stack_layout__get_next_cell_number(LabelsVectorCellNum,
 		LayoutInfo2, LayoutInfo3),
 	LabelsVector = create(0, LabelRvals,
 		uniform(yes(data_ptr)), must_be_static, 
-		LabelsVectorCellNum, "label_vector"),
+		LabelsVectorCellNum, "label_vector", Reuse),
 
 % We do not include the callees vector in the table because it makes references
 % to the proc layouts of procedures from other modules without knowing whether
@@ -468,7 +471,7 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 %		LayoutInfo3, LayoutInfo4),
 %	CalleesVector = create(0, CalleeRvals,
 %		uniform(no), must_be_static, 
-%		CalleesVectorCellNum, "callee_vector"),
+%		CalleesVectorCellNum, "callee_vector", Reuse),
 
 	SourceFileRvals = [
 		yes(const(string_const(FileName))),
@@ -483,7 +486,7 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 		initial([1 - yes(string), 1 - yes(integer),
 			2 - yes(data_ptr)], none),
 		must_be_static, 
-		SourceFileVectorCellNum, "source_file_vector").
+		SourceFileVectorCellNum, "source_file_vector", Reuse).
 
 :- pred stack_layout__flatten_label_table(
 	assoc_list(int, list(line_no_info))::in,
@@ -945,10 +948,10 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
 		{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
 		stack_layout__construct_liveval_arrays(SortedLiveLvals,
 			VarLengthRval, LiveValRval, NamesRval),
-		stack_layout__get_cell_number(CNum0),
+		stack_layout__get_cell_counter(C0),
 		{ stack_layout__construct_tvar_vector(TVarLocnMap,
-			TypeParamRval, CNum0, CNum) },
-		stack_layout__set_cell_number(CNum),
+			TypeParamRval, C0, C) },
+		stack_layout__set_cell_counter(C),
 		{ RvalList = [yes(VarLengthRval), yes(LiveValRval),
 			yes(NamesRval), yes(TypeParamRval)] },
 		{ ArgTypes = initial([1 - yes(integer), 3 - yes(data_ptr)],
@@ -959,19 +962,20 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
 	).
 
 :- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
-	rval::out, int::in, int::out) is det.
+	rval::out, counter::in, counter::out) is det.
 
-stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, CNum0, CNum) :-
+stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, C0, C) :-
 	( map__is_empty(TVarLocnMap) ->
 		TypeParamRval = const(int_const(0)),
-		CNum = CNum0
+		C = C0
 	;
 		stack_layout__construct_tvar_rvals(TVarLocnMap,
 			Vector, VectorTypes),
-		CNum is CNum0 + 1,
+		counter__allocate(CNum, C0, C),
+		Reuse = no,
 		TypeParamRval = create(0, Vector, VectorTypes,
 			must_be_static, CNum,
-			"stack_layout_type_param_locn_vector")
+			"stack_layout_type_param_locn_vector", Reuse)
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -1082,12 +1086,11 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 			NextSlot, VectorTail),
 		Vector = [yes(Rval) | VectorTail]
 	; TVarNum > CurSlot ->
-		stack_layout__construct_type_param_locn_vector(TVarLocns,
-			NextSlot, VectorTail),
+		stack_layout__construct_type_param_locn_vector(
+			[TVar - Locns | TVarLocns], NextSlot, VectorTail),
 			% This slot will never be referred to.
 		Vector = [yes(const(int_const(0))) | VectorTail]
 	;
-
 		error("unsorted tvars in construct_type_param_locn_vector")
 	).
 
@@ -1164,9 +1167,10 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 			ByteArrayLength - yes(uint_least8)] },
 	{ list__append(AllTypeTypes, LocnArgTypes, ArgTypes) },
 	stack_layout__get_next_cell_number(CNum1),
+	{ Reuse = no },
 	{ TypeLocnVector = create(0, TypeLocnVectorRvals,
 		initial(ArgTypes, none), must_be_static, CNum1,
-		"stack_layout_locn_vector") },
+		"stack_layout_locn_vector", Reuse) },
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
 	( { TraceStackLayout = yes } ->
@@ -1176,7 +1180,7 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 		stack_layout__get_next_cell_number(CNum2),
 		{ NameVector = create(0, VarNumNameRvals,
 			uniform(yes(uint_least16)), must_be_static,
-			CNum2, "stack_layout_num_name_vector") }
+			CNum2, "stack_layout_num_name_vector", Reuse) }
 	;
 		{ NameVector = const(int_const(0)) }
 	).
@@ -1243,15 +1247,15 @@ stack_layout__construct_liveval_name_rvals(var_info(_, LiveValueType),
 	% the data structures we build here.
 
 stack_layout__construct_closure_layout(ProcLabel, ClosureLayoutInfo,
-		Rvals, ArgTypes, CNum0, CNum) :-
+		Rvals, ArgTypes, C0, C) :-
 	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals,
 		ProcIdTypes),
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs,
 		TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
-		ClosureArgRvals, ClosureArgTypes, CNum0, CNum1),
+		ClosureArgRvals, ClosureArgTypes, C0, C1),
 	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
-		CNum1, CNum),
+		C1, C),
 	TVarVectorRvals = [yes(TVarVectorRval)],
 	TVarVectorTypes = [1 - yes(data_ptr)],
 	list__append(TVarVectorRvals, ClosureArgRvals, LayoutRvals),
@@ -1260,13 +1264,13 @@ stack_layout__construct_closure_layout(ProcLabel, ClosureLayoutInfo,
 		initial(ClosureArgTypes, none))).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
-	list(maybe(rval))::out, initial_arg_types::out, int::in, int::out)
-	is det.
+	list(maybe(rval))::out, initial_arg_types::out,
+	counter::in, counter::out) is det.
 
 stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
-		ClosureArgTypes, CNum0, CNum) :-
+		ClosureArgTypes, C0, C) :-
 	list__map_foldl(stack_layout__construct_closure_arg_rval,
-		ClosureArgs, MaybeArgRvalsTypes, CNum0, CNum),
+		ClosureArgs, MaybeArgRvalsTypes, C0, C),
 	assoc_list__keys(MaybeArgRvalsTypes, MaybeArgRvals),
 	AddOne = lambda([Pair::in, CountLldsType::out] is det, (
 		Pair = _ - LldsType,
@@ -1278,10 +1282,10 @@ stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
 	ClosureArgTypes = [1 - yes(integer) | ArgRvalTypes].
 
 :- pred stack_layout__construct_closure_arg_rval(closure_arg_info::in,
-	pair(maybe(rval), llds_type)::out, int::in, int::out) is det.
+	pair(maybe(rval), llds_type)::out, counter::in, counter::out) is det.
 
 stack_layout__construct_closure_arg_rval(ClosureArg,
-		yes(ArgRval) - ArgRvalType, CNum0, CNum) :-
+		yes(ArgRval) - ArgRvalType, C0, C) :-
 	ClosureArg = closure_arg_info(Type, _Inst),
 
 		% For a stack layout, we can treat all type variables as
@@ -1290,11 +1294,10 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 		% variables that are and aren't in scope; we can take the
 		% variable number directly from the procedure's tvar set.
 	ExistQTvars = [],
-	base_type_layout__max_varint(Max),
-	NumUnivQTvars = Max - 1,
+	NumUnivQTvars = -1,
 
-	base_type_layout__construct_typed_pseudo_type_info(Type, 
-		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, CNum0, CNum).
+	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type, 
+		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, C0, C).
 
 %---------------------------------------------------------------------------%
 
@@ -1313,44 +1316,44 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 :- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
 
 stack_layout__represent_live_value_type(succip, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "succip", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "succip", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(hp, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "hp", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "hp", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(curfr, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "curfr", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "curfr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(maxfr, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "maxfr", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "maxfr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(redofr, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "redofr", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "redofr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(redoip, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "redoip", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "redoip", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(trail_ptr, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "trail_ptr", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "trail_ptr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(ticket, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "ticket", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "ticket", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
-	{ TypeCtor = type_ctor(info, "succip", 0) },
-	{ AddrConst = data_addr_const(data_addr(unqualified(""), TypeCtor)) },
-	{ Rval = const(AddrConst) }.
+	{ RttiTypeId = rtti_type_id(unqualified(""), "unwanted", 0) },
+	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		-->
-	stack_layout__get_cell_number(CNum0),
+	stack_layout__get_cell_counter(C0),
 
 		% For a stack layout, we can treat all type variables as
 		% universally quantified. This is not the argument of a
@@ -1358,12 +1361,11 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		% variables that are and aren't in scope; we can take the
 		% variable number directly from the procedure's tvar set.
 	{ ExistQTvars = [] },
-	{ base_type_layout__max_varint(Max) },
-	{ NumUnivQTvars = Max - 1 },
-	{ base_type_layout__construct_typed_pseudo_type_info(Type,
+	{ NumUnivQTvars = -1 },
+	{ ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
 		NumUnivQTvars, ExistQTvars,
-		Rval, LldsType, CNum0, CNum) },
-	stack_layout__set_cell_number(CNum).
+		Rval, LldsType, C0, C) },
+	stack_layout__set_cell_counter(C).
 
 %---------------------------------------------------------------------------%
 
@@ -1618,31 +1620,33 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 
 :- type stack_layout_info 	--->
 	stack_layout_info(
-		module_name,	% module name
-		int,		% next available cell number
-		bool,		% generate agc layout info?
-		bool,		% generate tracing layout info?
-		bool,           % generate procedure id layout info?
-		bool,		% have static code addresses?
-		list(comp_gen_c_data),	% generated proc layouts
-		list(comp_gen_c_data),	% generated internal layouts
-		set_bbbtree(label),
-				% the set of labels (both entry and internal)
-				% with layouts
-		list(maybe(rval)),
-				% the list of proc_layouts in the module,
-				% represented as create args
-		string_table,
-		map(string, label_table)
-				% maps each filename that contributes labels
-				% to this module to a table describing those
-				% labels.
+		module_name		:: module_name,
+		cell_counter		:: counter,
+		agc_stack_layout	:: bool, % generate agc info?
+		trace_stack_layout	:: bool, % generate tracing info?
+		procid_stack_layout	:: bool, % generate proc id info?
+		static_code_addresses	:: bool, % have static code addresses?
+		proc_layouts		:: list(comp_gen_c_data),
+		internal_layouts	:: list(comp_gen_c_data),
+		label_set		:: set_bbbtree(label),
+					   % the set of labels (both entry
+					   % and internal) with layouts
+		proc_layout_args	:: list(maybe(rval)),
+					   % the list of proc_layouts in
+					   % the module, represented as create
+					   % args
+		string_table		:: string_table,
+		label_tables		:: map(string, label_table)
+					   % maps each filename that
+					   % contributes labels to this module
+					   % to a table describing those
+					   % labels.
 	).
 
 :- pred stack_layout__get_module_name(module_name::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_cell_number(int::out,
+:- pred stack_layout__get_cell_counter(counter::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__get_agc_stack_layout(bool::out,
@@ -1672,86 +1676,67 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 :- pred stack_layout__get_label_tables(map(string, label_table)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_module_name(A, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(A, _, _, _, _, _, _, _, _, _, _, _).
-
-stack_layout__get_cell_number(B, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, B, _, _, _, _, _, _, _, _, _, _).
-
-stack_layout__get_agc_stack_layout(C, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, C, _, _, _, _, _, _, _, _, _).
-
-stack_layout__get_trace_stack_layout(D, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, D, _, _, _, _, _, _, _, _).
-
-stack_layout__get_procid_stack_layout(E, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, E, _, _, _, _, _, _, _).
-
-stack_layout__get_static_code_addresses(F, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, F, _, _, _, _, _, _).
-
-stack_layout__get_proc_layout_data(G, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, G, _, _, _, _, _).
-
-stack_layout__get_internal_layout_data(H, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, H, _, _, _, _).
-
-stack_layout__get_label_set(I, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, I, _, _, _).
-
-stack_layout__get_string_table(K, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, _, _, K, _).
-
-stack_layout__get_label_tables(L, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, _, _, _, L).
+stack_layout__get_module_name(LI^module_name, LI, LI).
+stack_layout__get_cell_counter(LI^cell_counter, LI, LI).
+stack_layout__get_agc_stack_layout(LI^agc_stack_layout, LI, LI).
+stack_layout__get_trace_stack_layout(LI^trace_stack_layout, LI, LI).
+stack_layout__get_procid_stack_layout(LI^procid_stack_layout, LI, LI).
+stack_layout__get_static_code_addresses(LI^static_code_addresses, LI, LI).
+stack_layout__get_proc_layout_data(LI^proc_layouts, LI, LI).
+stack_layout__get_internal_layout_data(LI^internal_layouts, LI, LI).
+stack_layout__get_label_set(LI^label_set, LI, LI).
+stack_layout__get_string_table(LI^string_table, LI, LI).
+stack_layout__get_label_tables(LI^label_tables, LI, LI).
 
 :- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in, data_name::in,
 	label::in, stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__add_proc_layout_data(NewG, NewJ, NewI, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G0, H, I0, J0, K, L),
-	G = [NewG | G0],
-	set_bbbtree__insert(I0, NewI, I),
-	J = [yes(const(data_addr_const(data_addr(A, NewJ)))) | J0],
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G , H, I , J , K, L).
+stack_layout__add_proc_layout_data(NewProcLayout, NewDataName, NewLabel,
+		LI0, LI) :-
+	ProcLayouts0 = LI0^proc_layouts,
+	ProcLayouts = [NewProcLayout | ProcLayouts0],
+	LabelSet0 = LI0^label_set,
+	set_bbbtree__insert(LabelSet0, NewLabel, LabelSet),
+	ModuleName = LI0^module_name,
+	NewProcLayoutArg = yes(const(data_addr_const(
+		data_addr(ModuleName, NewDataName)))),
+	ProcLayoutArgs0 = LI0^proc_layout_args,
+	ProcLayoutArgs = [NewProcLayoutArg | ProcLayoutArgs0],
+	LI = (((LI0^proc_layouts := ProcLayouts)
+		^label_set := LabelSet)
+		^proc_layout_args := ProcLayoutArgs).
 
 :- pred stack_layout__add_internal_layout_data(comp_gen_c_data::in,
 	label::in, stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__add_internal_layout_data(NewH, NewI, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H0, I0, J, K, L),
-	H = [NewH | H0],
-	set_bbbtree__insert(I0, NewI, I),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H , I , J, K, L).
+stack_layout__add_internal_layout_data(NewInternalLayout, NewLabel, LI0, LI) :-
+	InternalLayouts0 = LI0^internal_layouts,
+	InternalLayouts = [NewInternalLayout | InternalLayouts0],
+	LabelSet0 = LI0^label_set,
+	set_bbbtree__insert(LabelSet0, NewLabel, LabelSet),
+	LI = ((LI0^internal_layouts := InternalLayouts)
+		^label_set := LabelSet).
 
 :- pred stack_layout__get_next_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_next_cell_number(B, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B0, C, D, E, F, G, H, I, J, K, L),
-	B is B0 + 1,
-	LayoutInfo  = stack_layout_info(A, B,  C, D, E, F, G, H, I, J, K, L).
+stack_layout__get_next_cell_number(CN, LI0, LI) :-
+	C0 = LI0^cell_counter,
+	counter__allocate(CN, C0, C),
+	LI = LI0^cell_counter := C.
 
-:- pred stack_layout__set_cell_number(int::in,
+:- pred stack_layout__set_cell_counter(counter::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__set_cell_number(B, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, _, C, D, E, F, G, H, I, J, K, L),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K, L).
 
 :- pred stack_layout__set_string_table(string_table::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__set_string_table(K, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H, I, J, _, L),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K, L).
-
 :- pred stack_layout__set_label_tables(map(string, label_table)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__set_label_tables(L, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K, _),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K, L).
+stack_layout__set_cell_counter(CC, LI0, LI0^cell_counter := CC).
+stack_layout__set_string_table(ST, LI0, LI0^string_table := ST).
+stack_layout__set_label_tables(LT, LI0, LI0^label_tables := LT).
 
 %---------------------------------------------------------------------------%
 

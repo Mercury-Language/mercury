@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -261,9 +261,12 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, prog_data, builtin_ops.
+:- import_module hlds_module, hlds_pred, hlds_data.
+:- import_module prog_data, builtin_ops, rtti.
+:- import_module type_util.
 
-% To avoid duplication, we use a few things from the LLDS.
+% To avoid duplication, we use a few things from the LLDS
+% (specifically stuff for the C interface).
 % It would be nice to avoid this dependency...
 :- import_module llds.
 
@@ -314,6 +317,11 @@
 % MLDS package.
 :- func mlds_module_name_to_sym_name(mlds__package_name) = sym_name.
 
+% Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
+% (e.g. for a class `baz'), and return the result (e.g. `foo.bar.baz').
+% The `arity' argument specifies the arity of the class.
+:- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name, arity) =
+	mlds_module_name.
 
 :- type mlds__defns == list(mlds__defn).
 :- type mlds__defn
@@ -363,6 +371,7 @@
 				% for additional information.
 			pred_id			% Specifies the HLDS pred_id.
 		)
+	;	export(string)	% A pragma export name.
 	.
 
 :- type mlds__func_sequence_num == int.
@@ -380,7 +389,7 @@
 		% constants or variables
 	--->	mlds__data(
 			mlds__type,
-			maybe(mlds__initializer)
+			mlds__initializer
 		)
 		% functions
 	;	mlds__function(
@@ -395,7 +404,12 @@
 			mlds__class_defn
 		).
 
-:- type mlds__initializer == list(mlds__rval).
+:- type mlds__initializer
+	--->	init_obj(mlds__rval)
+	;	init_struct(list(mlds__initializer))
+	;	init_array(list(mlds__initializer))
+	;	no_initializer
+	.
 
 :- type mlds__func_params
 	---> mlds__func_params(
@@ -442,12 +456,14 @@
 
 :- type mlds__class_defn
 	---> mlds__class_defn(
-		mlds__class_kind,
-		mlds__imports,			% imports these classes (or
+		kind	::	mlds__class_kind,
+		imports	::	mlds__imports,	% imports these classes (or
 						% modules, packages, ...)
-		list(mlds__class_id),		% inherits these base classes
-		list(mlds__interface_id),	% implements these interfaces
-		mlds__defns			% contains these members
+		inherits ::	list(mlds__class_id),
+						% inherits these base classes
+		implements ::	list(mlds__interface_id),
+						% implements these interfaces
+		members ::	mlds__defns	% contains these members
 	).
 
 	% Note: the definition of the `mlds__type' type is subject to change.
@@ -455,7 +471,11 @@
 	% switching on this type.
 :- type mlds__type
 	--->	% Mercury data types
-		mercury_type(prog_data__type)
+		mercury_type(
+			prog_data__type,	% the exact Mercury type
+			builtin_type		% what kind of type it is:
+						% enum, float, etc.
+		)
 
 		% The type for the continuation functions used
 		% to handle nondeterminism
@@ -469,19 +489,35 @@
 		% These are the builtin types of the MLDS target language,
 		% whatever that may be.
 		% Currently we don't actually use many of these.
-	;	mlds__bool_type
-	;	mlds__int_type
-	;	mlds__float_type
-	;	mlds__char_type
+	;	mlds__native_bool_type
+	;	mlds__native_int_type
+	;	mlds__native_float_type
+	;	mlds__native_char_type
 
 		% MLDS types defined using mlds__class_defn
-	;	mlds__class_type(mlds__class, arity)	% name, arity
+	;	mlds__class_type(
+			mlds__class,		% name
+			arity,
+			mlds__class_kind
+		)
+
+		% MLDS array types.
+		% These are single-dimensional, and can be indexed
+		% using the `field' lval with an `offset' field_id;
+		% indices start at zero.
+		% Currently these are used for static constants
+		% that would otherwise be allocated with a `new_object'
+		% statement.
+	;	mlds__array_type(mlds__type)
 
 		% Pointer types.
 		% Currently these are used for handling output arguments.
 	;	mlds__ptr_type(mlds__type)
 
 		% Function types.
+		% For the C back-end, these are mapped to function
+		% pointer types, since C doesn't have first-class
+		% function types.
 	;	mlds__func_type(mlds__func_params)
 
 		% A generic type (e.g. `Word') that can hold any Mercury value.
@@ -492,16 +528,18 @@
 		% that can be used to point to the environment
 		% (set of local variables) of the containing function.
 		% This is used for handling nondeterminism,
-		% if the target language doesn't supported
+		% if the target language doesn't support
 		% nested functions, and also for handling
 		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type
 
-	;	mlds__base_type_info_type.
+	;	mlds__pseudo_type_info_type
+	
+	;	mlds__rtti_type(rtti_name).
 
 :- type mercury_type == prog_data__type.
 
-:- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
+:- func mercury_type_to_mlds_type(module_info, mercury_type) = mlds__type.
 
 % Hmm... this is tentative.
 :- type mlds__class_id == mlds__type.
@@ -561,19 +599,32 @@
 %-----------------------------------------------------------------------------%
 
 	%
-	% C code required for the C interface.
-	% When compiling to a language other than C,
-	% this part still needs to be generated as C code
-	% and compiled with a C compiler.
+	% Foreign code required for the foreign language interface.
+	% When compiling to a language other than the foreign language,
+	% this part still needs to be generated as C (or whatever) code
+	% and compiled with a C (or whatever) compiler.
 	%
 :- type mlds__foreign_code
 	---> mlds__foreign_code(
-		c_header_info,
-		list(user_c_code),
-		list(c_export)		% XXX we will need to modify
-					% export.m to handle different
-					% target languages
+		foreign_header_info,
+		list(user_foreign_code),
+		list(mlds__pragma_export)
 	).
+
+	%
+	% Information required to generate code for each
+	% `pragma export'.
+	%
+:- type mlds__pragma_export
+	---> ml_pragma_export(
+		string,			% Exported name
+		mlds__qualified_entity_name, % MLDS name for exported entity
+		mlds__func_params,	% MLDS function parameters
+		mlds__context,
+		bool			% is a det function with the
+					% final args mode top_out.
+	).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -803,7 +854,17 @@ XXX Full exception handling support is not yet implemented.
 					% The arguments to the constructor.
 			list(mlds__type)
 					% The types of the arguments to the
-					% constructor.
+					% constructor. 
+					%
+					% Note that currently we store all 
+					% fields as type mlds__generic_type.
+					% But the type here is the actual
+					% argument type, which does not
+					% have to be mlds__generic_type.
+					% It is the responsibility of the
+					% MLDS->target code output phase
+					% to box the arguments if necessary.
+					% 
 		)
 
 	;	mark_hp(mlds__lval)
@@ -832,14 +893,12 @@ XXX Full exception handling support is not yet implemented.
 	% foreign language interfacing
 	%
 
-	;	target_code(target_lang, string)
-			% Do whatever is specified by the string,
+	;	target_code(target_lang, list(target_code_component))
+			% Do whatever is specified by the target_code_compoenents,
 			% which can be any piece of code in the specified
 			% target language (C, assembler, or whatever)
 			% that does not have any non-local flow of control.
-
 	.
-
 
 	%
 	% This is just a random selection of possible languages
@@ -854,50 +913,40 @@ XXX Full exception handling support is not yet implemented.
 	;	lang_java_bytecode
 	.
 
+:- type target_code_component
+	--->	user_target_code(string, maybe(prog_context))
+			% user_target_code holds C code from
+			% the user's `pragma c_code' declaration
+	;	raw_target_code(string)
+			% raw_target_code holds C code that the
+			% compiler has generated.  To ensure that
+			% following `#line' directives work OK,
+			% either the string in a raw_target_code must
+			% end in `\n' (or `\n' followed by whitespace),
+			% or the following target_code_component must be 
+			% a `name(Name)' component, for which we do not
+			% output #line directives.
+	;	target_code_input(mlds__rval)
+	;	target_code_output(mlds__lval)
+	;	name(mlds__entity_name)
+	.
+
 	% XXX I'm not sure what representation we should use here
 :- type ctor_name == string.
 
 	%
 	% trail management
+	% For documentation, see the corresponding LLDS instructions
+	% in llds.m.
 	%
 :- type trail_op
-
 	--->	store_ticket(mlds__lval)
-			% Allocate a new "ticket" and store it in the lval.
-
 	;	reset_ticket(mlds__rval, mlds__reset_trail_reason)
-			% The rval must specify a ticket allocated with
-			% `store_ticket' and not yet invalidated or
-			% deallocated.
-			% If undo_reason is `undo' or `exception', restore
-			% any mutable global state to the state it was in when
-			% the ticket was obtained with store_ticket();
-			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit' or `solve', leave the state
-			% unchanged, just check that it is safe to commit
-			% to this solution (i.e. that there are no outstanding
-			% delayed goals -- this is the "floundering" check).
-			% Note that we do not discard trail entries after
-			% commits, because that would in general be unsafe.
-			%
-			% Any invalidated ticket is useless and should
-			% be deallocated with either `discard_ticket'
-			% or `discard_tickets_to'.
-
 	;	discard_ticket
-			% Deallocates the most-recently allocated ticket.
-
+	;	prune_ticket
 	;	mark_ticket_stack(mlds__lval)
-			% Tell the trail sub-system to store a ticket counter
-			% (for later use in discard_tickets_upto)
-			% in the specified lval.
-
-	;	discard_tickets_to(mlds__rval)
-			% The rval must be a ticket counter obtained via
-			% `mark_ticket_stack' and not yet invalidated.
-			% Deallocates any trail tickets allocated after
-			% the corresponding call to mark_ticket_stack.
-			% Invalidates any later ticket counters.
+	;	prune_tickets_to(mlds__rval)
+% 	;	discard_tickets_to(mlds__rval)	% used only by the library
 	.
 
 %-----------------------------------------------------------------------------%
@@ -910,9 +959,17 @@ XXX Full exception handling support is not yet implemented.
 	--->		% offset(N) represents the field
 			% at offset N Words.
 	 	offset(mlds__rval)
-	;		% named_field(Name) represents the field
-			% with the specified name.
-		named_field(mlds__fully_qualified_name(field_name))
+	;		% named_field(Name, CtorType) represents the field
+			% with the specified name.  The CtorType gives the
+			% MLDS type for this particular constructor.
+			% The type of the object is given by the PtrType
+			% in the field(..) lval; CtorType may either be
+			% the same as PtrType, or it may be a pointer to
+			% a derived class.  In the latter case, the
+			% MLDS->target code back-end is responsible
+			% for inserting a downcast from PtrType to CtorType
+			% before accessing the field.
+		named_field(mlds__fully_qualified_name(field_name), mlds__type)
 	.
 
 :- type field_name == string.
@@ -933,8 +990,10 @@ XXX Full exception handling support is not yet implemented.
 	% values on the heap
 	% or fields of a structure
 	%
-	--->	field(maybe(mlds__tag), mlds__rval, field_id)
-				% field(Tag, Address, FieldName)
+	--->	field(maybe(mlds__tag), mlds__rval, field_id, 
+			mlds__type, mlds__type)
+				% field(Tag, Address, FieldName, FieldType,
+				%	PtrType)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
 				% on the heap; the offset into the cell
@@ -944,13 +1003,29 @@ XXX Full exception handling support is not yet implemented.
 				% The value of the tag should be given if
 				% it is known, since this will lead to
 				% faster code.
+				% The FieldType is the type of the field.
+				% The PtrType is the type of the pointer
+				% from which we are fetching the field.
+				%
+				% Note that currently we store all fields
+				% of objects created with new_object
+				% as type mlds__generic_type. For such objects,
+				% the type here should be mlds__generic_type,
+				% not the actual type of the field.
+				% If the actual type is different, then it
+				% is the HLDS->MLDS code generator's
+				% responsibility to insert the necessary
+				% code to handle boxing/unboxing.
 
 	%
 	% values somewhere in memory
 	% this is the deference operator (e.g. unary `*' in C)
 	%
-	;	mem_ref(mlds__rval)	% The rval should have
-				% originally come from a mem_addr rval.
+	;	mem_ref(mlds__rval, mlds__type)	
+				% The rval should have originally come
+				% from a mem_addr rval.
+				% The type is the type of the value being
+				% dereferenced
 
 	%
 	% variables
@@ -990,6 +1065,8 @@ XXX Full exception handling support is not yet implemented.
 :- type mlds__unary_op
 	--->	box(mlds__type)
 	;	unbox(mlds__type)
+	;	cast(mlds__type) % XXX it might be worthwhile adding the 
+				 % type that we cast from.
 	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const
@@ -1007,8 +1084,9 @@ XXX Full exception handling support is not yet implemented.
 	;	data_addr_const(mlds__data_addr).
 
 :- type mlds__code_addr
-	--->	proc(mlds__qualified_proc_label)
-	;	internal(mlds__qualified_proc_label, mlds__func_sequence_num).
+	--->	proc(mlds__qualified_proc_label, mlds__func_signature)
+	;	internal(mlds__qualified_proc_label, mlds__func_sequence_num,
+			mlds__func_signature).
 
 :- type mlds__data_addr
 	--->	data_addr(mlds_module_name, mlds__data_name).
@@ -1022,10 +1100,9 @@ XXX Full exception handling support is not yet implemented.
 			% global constants.  These are called "common"
 			% because they may be common sub-expressions.
 	%
-	% Stuff for handling polymorphism and type classes
+	% Stuff for handling polymorphism/RTTI and type classes.
 	%
-	;	type_ctor(mlds__base_data, string, arity)
-			% base_data, type name, type arity
+	;	rtti(rtti_type_id, rtti_name)
 	;	base_typeclass_info(hlds_data__class_id, string)
 			% class name & class arity, names and arities of the
 			% types
@@ -1051,10 +1128,10 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 %
-% Note: the types `tag', `base_data', and `reset_trail_reason' here are all
+% Note: the types `tag' and `reset_trail_reason' here are all
 % defined exactly the same as the ones in llds.m.  The definitions are
 % duplicated here because we don't want mlds.m to depend on llds.m.
-% (Alternatively, we could move all these definitions into a new module
+% (Alternatively, we could move both these definitions into a new module
 % imported by both mlds.m and llds.m, but these definitions are small enough
 % and simple enough that I don't think it is worth creating a new module
 % just for them.)
@@ -1062,18 +1139,6 @@ XXX Full exception handling support is not yet implemented.
 
 	% A tag should be a small non-negative integer.
 :- type tag == int.
-
-	% See the definition in llds.m for comments about the meaning
-	% of the `base_data' type.
-	% For some targets, the target language and runtime system might
-	% provide all the necessary information about type layouts,
-	% in which case we won't need to define the type_functors and
-	% type_layout stuff, and we may also be able to use the language's
-	% RTTI rather than defining the type_infos ourselves.
-:- type base_data
-	--->	info
-	;	functors
-	;	layout.
 
 	% see runtime/mercury_trail.h
 :- type reset_trail_reason
@@ -1127,7 +1192,8 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, term, require.
+:- import_module modules.
+:- import_module int, term, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -1145,10 +1211,15 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 %-----------------------------------------------------------------------------%
 
-% Currently mlds__types are just the same as Mercury types.
-% XXX something more complicated may be needed here...
+% Currently we return mlds__types that are just the same as Mercury types,
+% except that we also store the type category, so that we
+% can tell if the type is an enumeration or not, without
+% needing to refer to the HLDS type_table.
+% XXX It might be a better idea to get rid of the mercury_type/2
+% MLDS type and instead fully convert all Mercury types to MLDS types.
 
-mercury_type_to_mlds_type(Type) = mercury_type(Type).
+mercury_type_to_mlds_type(ModuleInfo, Type) = mercury_type(Type, Category) :-
+	classify_type(Type, ModuleInfo, Category).
 
 %-----------------------------------------------------------------------------%
 
@@ -1175,62 +1246,12 @@ mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
 		MLDS_Package = MercuryModule
 	).
 
-:- pred mercury_std_library_module(string::in) is semidet.
-mercury_std_library_module("array").
-mercury_std_library_module("assoc_list").
-mercury_std_library_module("bag").
-mercury_std_library_module("benchmarking").
-mercury_std_library_module("bimap").
-mercury_std_library_module("bintree").
-mercury_std_library_module("bintree_set").
-mercury_std_library_module("bool").
-mercury_std_library_module("bt_array").
-mercury_std_library_module("builtin").
-mercury_std_library_module("char").
-mercury_std_library_module("dir").
-mercury_std_library_module("eqvclass").
-mercury_std_library_module("exception").
-mercury_std_library_module("float").
-mercury_std_library_module("gc").
-mercury_std_library_module("getopt").
-mercury_std_library_module("graph").
-mercury_std_library_module("group").
-mercury_std_library_module("int").
-mercury_std_library_module("integer").
-mercury_std_library_module("io").
-mercury_std_library_module("lexer").
-mercury_std_library_module("library").
-mercury_std_library_module("list").
-mercury_std_library_module("map").
-mercury_std_library_module("math").
-mercury_std_library_module("mercury_builtin").
-mercury_std_library_module("multi_map").
-mercury_std_library_module("ops").
-mercury_std_library_module("parser").
-mercury_std_library_module("pqueue").
-mercury_std_library_module("private_builtin").
-mercury_std_library_module("prolog").
-mercury_std_library_module("queue").
-mercury_std_library_module("random").
-mercury_std_library_module("rational").
-mercury_std_library_module("rbtree").
-mercury_std_library_module("relation").
-mercury_std_library_module("require").
-mercury_std_library_module("set").
-mercury_std_library_module("set_bbbtree").
-mercury_std_library_module("set_ordlist").
-mercury_std_library_module("set_unordlist").
-mercury_std_library_module("stack").
-mercury_std_library_module("std_util").
-mercury_std_library_module("store").
-mercury_std_library_module("string").
-mercury_std_library_module("term").
-mercury_std_library_module("term_io").
-mercury_std_library_module("time").
-mercury_std_library_module("tree234").
-mercury_std_library_module("varset").
-
 mlds_module_name_to_sym_name(MLDS_Package) = MLDS_Package.
+
+mlds__append_class_qualifier(Package, ClassName, ClassArity) =
+		qualified(Package, ClassQualifier) :-
+	string__format("%s_%d", [s(ClassName), i(ClassArity)],
+		ClassQualifier).
 
 %-----------------------------------------------------------------------------%
 

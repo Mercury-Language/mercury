@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne.
+# Copyright (C) 1995-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -18,7 +18,7 @@ main_target: $(MAIN_TARGET)
 		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
-		.c .nu .o .pic_o \
+		.c .nu .$O .pic_o \
 		.i .s .pic_s \
 		.ql .pl \
 		.rlo
@@ -83,7 +83,7 @@ $(qls_subdir)%.ql : %.nl
 
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
-	$(MCD) $(ALL_MCDFLAGS) $*
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
@@ -95,7 +95,7 @@ endif
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 .PHONY: %.depend
 %.depend :
-	$(MCD) $(ALL_MCDFLAGS) $*
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
@@ -176,33 +176,34 @@ $(rlos_subdir)%.rlo : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
 
 # If we are removing the .c files, we need to tell Make that we're
-# generating the .o files directly from the .m files, but
+# generating the .$O files directly from the .m files, but
 # in order to avoid remaking the .c files if they're already there,
 # we need to invoke mmake recursively for each .c file.
 # This can be pretty inefficient.
 
 ifneq ($(RM_C),:)
 
-$(os_subdir)%.o : %.m
+$(os_subdir)%.$O : %.m
 	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c \
+		$(OBJFILE_OPT)$@
 	$(RM_C) $(cs_subdir)$*.c
 
 $(os_subdir)%.pic_o : %.m
 	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $(cs_subdir)$*.c -o $@
+		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
 
 endif # RM_C != :
 
-# For --split-c-files, we generate the .o files directly from the .m files.
+# For --split-c-files, we generate the .$O files directly from the .m files.
 # (One reason for this is that there's no easy of telling Make how many
-# `.o' files it should make, since the number of them depends on what's
+# `.$O' files it should make, since the number of them depends on what's
 # in the source files.)
 
-$(dirs_subdir)%.dir/*.o: %.m
+$(dirs_subdir)%.dir/*.$O: %.m
 	rm -f $@
 	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $<
 
@@ -224,12 +225,12 @@ $(dirs_subdir)%.dir/*.o: %.m
 # Rules for compiling C files in the user's source directory.
 #
 
-.c.o:
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
+.c.$O:
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
 .c.pic_o:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $< -o $@
+		-c $< $(OBJFILE_OPT)$@
 
 .c.s:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
@@ -251,8 +252,8 @@ $(dirs_subdir)%.dir/*.o: %.m
 
 ifneq ("$(cs_subdir)","")
 
-$(os_subdir)%.o : $(cs_subdir)%.c
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
+$(os_subdir)%.$O : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
 $(os_subdir)%.pic_o : $(cs_subdir)%.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
@@ -327,10 +328,13 @@ clean_local: clean_prof_files
 
 # Note: the `lib%.install_ints' rule is generated in each module's `.dep'
 # file so it can be more easily customised based on the desired level of
-# intermodule optimisation.
+# intermodule optimisation.  Likewise the `lib%.install_hdrs' is also
+# generated in the `.dep' file, since it depends on the setting of
+# the `--high-level-code' option.
 
 .PHONY: lib%.install
-lib%.install: lib%.install_ints lib%.install_init lib%.install_library
+lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
+		lib%.install_library
 	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
 
 .PHONY: lib%.install_split
@@ -341,58 +345,71 @@ lib%.install_split: lib%.install_ints lib%.install_init \
 
 .PHONY: lib%.install_init
 lib%.install_init: %.init install_lib_dirs
-	cp `vpath_find $*.init` $(INSTALL_MODULE_DIR)
+	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: lib%.install_library
 lib%.install_library: lib%.a lib%.$(EXT_FOR_SHARED_LIB) install_grade_dirs
-	cp `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
+	$(INSTALL) `vpath_find lib$*.a lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
 
 lib%.install_split_library: %.split.a install_grade_dirs
-	cp `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
+	$(INSTALL) `vpath_find $*.split.a` $(INSTALL_MERC_LIB_DIR)/lib$*.a
 
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) $($*.pic_os) \
+		*.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade $*.depend || \
+				exit 1; \
+			$(MMAKE) GRADE=$$grade lib$*.install_hdrs || \
+				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
-			rm -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so; \
+			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) \
+				$($*.pic_os) *.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.c $(cs_subdir). ; \
-	  mv tmp_dir/*.o $(os_subdir). ; \
+	  mv tmp_dir/*.$O $(os_subdir). ; \
 	  mv tmp_dir/*.pic_o $(os_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 lib%.install_split_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $($*.dirs) *.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.dirs) *.a *.so \
+		tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade $*.depend || \
+				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
 				exit 1; \
-			rm -rf $($*.dirs) *.a *.so; \
+			rm -rf $(deps_subdir)$*.dep $($*.hs) $($*.dirs) \
+				*.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true }
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
+	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 
 .PHONY: install_lib_dirs
 install_lib_dirs:
-	-[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
-	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
-	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	-[ -d $(INSTALL_INT_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INT_DIR)
+	-[ -d $(INSTALL_INC_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INC_DIR)
+	-[ -d $(INSTALL_MODULE_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_MODULE_DIR)
 	# The following is needed to support the `--use-subdirs' option
 	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
-		mkdir -p $(INSTALL_INT_DIR)/Mercury
+		$(INSTALL_MKDIR) $(INSTALL_INT_DIR)/Mercury
 
 .PHONY: install_grade_dirs
 install_grade_dirs: #install_lib_dirs
-	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || \
+		$(INSTALL_MKDIR) $(INSTALL_MERC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#

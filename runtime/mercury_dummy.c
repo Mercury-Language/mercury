@@ -12,8 +12,8 @@
 ** that gcc can't inline it. Similarly for the two pointers.
 */
 
-void	*global_pointer;
-void	*global_pointer_2;
+void	*volatile global_pointer;
+void	*volatile global_pointer_2;
 
 void
 dummy_function_call(void)

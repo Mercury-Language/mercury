@@ -215,7 +215,7 @@ Tcl_AppInit(Tcl_Interp *interp)
 			RStatus = 1;
 			break;
 		default:
-			fatal_error(""Tcl_Eval returned neither ""
+			MR_fatal_error(""Tcl_Eval returned neither ""
 					""TCL_OK or TCL_ERROR"");
 	}
 	Result = mtcltk_strdup(((Tcl_Interp *)Interp)->result);

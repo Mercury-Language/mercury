@@ -1,10 +1,10 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module util.
+:- module mdb__util.
 
 :- interface.
 
@@ -45,6 +45,16 @@
 :- pred util__trace_getline(string, io__result(string), io__input_stream,
 		io__output_stream, io__state, io__state).
 :- mode util__trace_getline(in, out, in, in, di, uo) is det.
+
+	% trace_get_command is similar to trace_getline except that it
+	% breaks lines into semicolon separated commands, and replaces
+	% EOF with the command 'quit'.
+:- pred util__trace_get_command(string, string, io__state, io__state).
+:- mode util__trace_get_command(in, out, di, uo) is det.
+
+:- pred util__trace_get_command(string, string, io__input_stream,
+		io__output_stream, io__state, io__state).
+:- mode util__trace_get_command(in, out, in, in, di, uo) is det.
 
 :- pred util__zip_with(pred(T1, T2, T3), list(T1), list(T2), list(T3)).
 :- mode util__zip_with(pred(in, in, out) is det, in, in, out) is det.
@@ -90,13 +100,12 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	[will_not_call_mercury],
 	"
 		char		*line;
-		char		*mercury_string;
 		MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
 		MercuryFile	*mdb_out = (MercuryFile *) MdbOut;
 
 		if (MR_address_of_trace_getline != NULL) {
 			line = (*MR_address_of_trace_getline)((char *) Prompt,
-					mdb_in->file, mdb_out->file);
+					MR_file(*mdb_in), MR_file(*mdb_out));
 		} else {
 			MR_tracing_not_enabled();
 			/* not reached */
@@ -105,11 +114,39 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 		if (line == NULL) {
 			SUCCESS_INDICATOR = FALSE;
 		} else {
-			MR_make_aligned_string_copy(mercury_string, line);
-			free(line);
-			Line = (String) mercury_string;
+			MR_make_aligned_string_copy(Line, line);
+			MR_free(line);
 			SUCCESS_INDICATOR = TRUE;
 		}
+	"
+).
+
+util__trace_get_command(Prompt, Result) -->
+	io__input_stream(MdbIn),
+	io__output_stream(MdbOut),
+	util__trace_get_command(Prompt, Result, MdbIn, MdbOut).
+
+:- pragma c_code(util__trace_get_command(Prompt::in, Line::out, MdbIn::in,
+			MdbOut::in, State0::di, State::uo),
+	[will_not_call_mercury],
+	"
+		char		*line;
+		MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
+		MercuryFile	*mdb_out = (MercuryFile *) MdbOut;
+
+		if (MR_address_of_trace_getline != NULL) {
+			line = (*MR_address_of_trace_get_command)(
+					(char *) Prompt,
+					MR_file(*mdb_in), MR_file(*mdb_out));
+		} else {
+			MR_tracing_not_enabled();
+			/* not reached */
+		}
+
+		MR_make_aligned_string_copy(Line, line);
+		MR_free(line);
+
+		State = State0;
 	"
 ).
 

@@ -29,7 +29,6 @@
 	% yield(IO0, IO) is logically equivalent to (IO = IO0) but
 	% operationally, yields the mercury engine to some other thread
 	% if one exists.
-	% This is not yet implemented in the hlc.par.gc grade.
 :- pred yield(io__state, io__state).
 :- mode yield(di, uo) is det.
 
@@ -43,7 +42,7 @@
 
 :- pragma no_inline(spawn/3).
 :- pragma c_code(spawn(Goal::(pred(di, uo) is cc_multi), IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		will_not_call_mercury, "{
 #ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
 	ctxt = create_context();
@@ -60,25 +59,22 @@ spawn_call_back_to_mercury_cc_multi:
 		destroy_context(MR_ENGINE(this_context));
 		runnext();
 	}
-#else
-	ME_create_thread(ME_thread_wrapper, (void *) Goal);
-#endif
 	IO = IO0;
+#else
+	MR_fatal_error(""spawn is not implemented for highlevel code"");
+#endif
 }").
 
 :- pragma no_inline(yield/2).
 :- pragma c_code(yield(IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe], "{
+		will_not_call_mercury, "{
 		/* yield() */
-#ifndef MR_HIGHLEVEL_CODE
 	save_context(MR_ENGINE(this_context));
 	MR_ENGINE(this_context)->resume = &&yield_skip_to_the_end;
 	schedule(MR_ENGINE(this_context));
 	runnext();
 yield_skip_to_the_end:
-#endif
 	IO = IO0;
-
 }").
 
 :- pred call_back_to_mercury(pred(io__state, io__state), io__state, io__state).
@@ -88,39 +84,3 @@ yield_skip_to_the_end:
 
 call_back_to_mercury(Goal) -->
 	call(Goal).
-
-:- pragma c_header_code("
-#ifdef MR_HIGHLEVEL_CODE
-  #include  <pthread.h>
-
-  int ME_create_thread(void *(*func)(void *), void *arg);
-  void *ME_thread_wrapper(void *arg);
-#endif
-").
-
-:- pragma c_code("
-#ifdef MR_HIGHLEVEL_CODE
-  int ME_create_thread(void *(*func)(void *), void *arg)
-  {
-	pthread_t	thread;
-
-	if (pthread_create(&thread, MR_THREAD_ATTR, func, arg)) {
-		MR_fatal_error(""Unable to create thread."");
-	}
-
-	/*
-	** How do we ensure that the parent thread doesn't terminate until
-	** the child thread has finished it's processing?
-	** By the use of mutvars, or leave it up to user?
-	*/
-	return TRUE;
-  }
-
-  void *ME_thread_wrapper(void *arg)
-  {
-  	call_back_to_mercury_cc_multi((MR_Word) arg);
-
-	return NULL;
-  }
-#endif
-").

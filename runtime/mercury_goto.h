@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,7 +10,7 @@
 #define MERCURY_GOTO_H
 
 #include "mercury_conf.h"
-#include "mercury_types.h"	/* for `Code *' */
+#include "mercury_types.h"	/* for `MR_Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
 #include "mercury_label.h"	/* for insert_{entry,internal}_label() */
 #include "mercury_dummy.h"	/* for dummy_identify_function() */
@@ -20,10 +20,12 @@
 #define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
 
-#define MR_ENTRY_LAYOUT(label)		(const MR_Stack_Layout_Entry *) (Word) \
+#define MR_ENTRY_LAYOUT(label)		(const MR_Stack_Layout_Entry *) (MR_Word) \
 				&(paste(mercury_data__layout__,label))
-#define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (Word) \
+#define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (MR_Word) \
 				&(paste(mercury_data__layout__,label))
+
+#define MR_init_entry(label)	init_entry(label)
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
@@ -565,9 +567,9 @@
   #else
     /* !defined(USE_ASM_LABELS) */
 
-    #define Declare_entry(label)	extern Code * entry(label)
-    #define Declare_static(label)	static Code * entry(label)
-    #define Define_extern_entry(label)	Code * entry(label)
+    #define Declare_entry(label)	extern MR_Code * entry(label)
+    #define Declare_static(label)	static MR_Code * entry(label)
+    #define Define_extern_entry(label)	MR_Code * entry(label)
     #define Define_entry(label)	\
 	}	\
 	entry(label): \
@@ -637,51 +639,51 @@
   /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
   /* Define the type of a module initialization function */
-  typedef Code * ModuleFunc(void);
+  typedef MR_Code * ModuleFunc(void);
 
   #define BEGIN_MODULE(module_name)	\
-	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void); \
-	MR_MODULE_STATIC_OR_EXTERN Code* module_name(void) {
+	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void); \
+	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
-  #define Declare_entry(label)		extern Code *label(void)
-  #define Declare_static(label)		static Code *label(void)
-  #define Define_extern_entry(label)	Code *label(void)
+  #define Declare_entry(label)		extern MR_Code *label(void)
+  #define Declare_static(label)		static MR_Code *label(void)
+  #define Define_extern_entry(label)	MR_Code *label(void)
   #define Define_entry(label)		\
 		GOTO_LABEL(label);	\
 	}				\
-	Code* label(void) {
+	MR_Code* label(void) {
   #define Define_static(label)		\
 		GOTO_LABEL(label);	\
 	}				\
-	static Code* label(void) {
+	static MR_Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label, label)
   #define init_entry_ai(label)	make_entry_ai(stringify(label), label, label)
   #define init_entry_sl(label)	make_entry_sl(stringify(label), label, label)
 
-  #define Declare_local(label)	static Code *label(void)
+  #define Declare_local(label)	static MR_Code *label(void)
   #define Define_local(label)		\
 		GOTO_LABEL(label);	\
 	}				\
-	static Code* label(void) {
+	static MR_Code* label(void) {
   #define init_local(label)	make_local(stringify(label), label, label)
   #define init_local_ai(label)	make_local_ai(stringify(label), label, label)
   #define init_local_sl(label)	make_local_sl(stringify(label), label, label)
 
-  #define Declare_label(label)	static Code *label(void)
+  #define Declare_label(label)	static MR_Code *label(void)
   #define Define_label(label)		\
 		GOTO_LABEL(label);	\
 	}				\
-	static Code* label(void) {
+	static MR_Code* label(void) {
   #define init_label(label)	make_label(stringify(label), label, label)
   #define init_label_ai(label)	make_label_ai(stringify(label), label, label)
   #define init_label_sl(label)	make_label_sl(stringify(label), label, label)
 
-  #define ENTRY(label) 		((Code *) (label))
-  #define STATIC(label) 	((Code *) (label))
-  #define LOCAL(label)		((Code *) (label))
-  #define LABEL(label)		((Code *) (label))
+  #define ENTRY(label) 		((MR_Code *) (label))
+  #define STATIC(label) 	((MR_Code *) (label))
+  #define LOCAL(label)		((MR_Code *) (label))
+  #define LABEL(label)		((MR_Code *) (label))
   /*
   ** The call to debuggoto() is in the driver function in mercury_engine.c,
   ** which is why the following definitions have no debuggoto().
@@ -697,7 +699,7 @@
 /* definitions for computed gotos */
 
 #define COMPUTED_GOTO(val, labels) 			\
-	{ static Code *jump_table[] = {			\
+	{ static MR_Code *jump_table[] = {			\
 		labels					\
 	  };						\
 	  GOTO(jump_table[val]);			\

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 University of Melbourne.
+% Copyright (C) 1997-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,8 +110,24 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 			Result0 = ok(typeclass(_, Name, Vars, Interface, 
 				VarSet0))
 		->
-			Result = ok(typeclass(ConstraintList, Name, Vars,
-				Interface, VarSet0))
+			(
+				%
+				% check for type variables in the constraints
+				% which do not occur in the type class
+				% parameters 
+				% 
+				type_util__constraint_list_get_tvars(
+					ConstraintList, ConstrainedVars),
+				list__member(Var, ConstrainedVars),
+				\+ list__member(Var, Vars)
+			->
+				Result = error(
+"type variable in superclass constraint is not a parameter of this type class",
+					Constraints)
+			;
+				Result = ok(typeclass(ConstraintList, Name,
+					Vars, Interface, VarSet0))
+			)
 		;
 				% if the item we get back isn't a typeclass,
 				% something has gone wrong...
@@ -198,15 +214,13 @@ list_term_to_term_list(Methods, MethodList) :-
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
 	(
-			% XXX Purity is ignored
-		Item = pred(A, B, C, D, E, F, G, _, I)
+		Item = pred(A, B, C, D, E, F, G, H, I)
 	->
-		Result = ok(pred(A, B, C, D, E, F, G, I, Context))
+		Result = ok(pred(A, B, C, D, E, F, G, H, I, Context))
 	;
-			% XXX Purity is ignored
-		Item = func(A, B, C, D, E, F, G, H, _, J)
+		Item = func(A, B, C, D, E, F, G, H, I, J)
 	->
-		Result = ok(func(A, B, C, D, E, F, G, H, J, Context))
+		Result = ok(func(A, B, C, D, E, F, G, H, I, J, Context))
 	;
 		Item = pred_mode(A, B, C, D, E)
 	->
@@ -476,8 +490,10 @@ parse_non_empty_instance(ModuleName, Name, Methods, TVarSet, Result) :-
 			ParsedNameAndTypes = ok(instance(Constraints,
 				NameString, Types, _, _))
 		->
-			Result = ok(instance(Constraints, NameString, Types,
-				concrete(MethodList), TVarSet))
+			Result0 = ok(instance(Constraints, NameString, Types,
+				concrete(MethodList), TVarSet)),
+			check_tvars_in_instance_constraint(Result0, Name,
+				Result)
 		;
 				% if the item we get back isn't a typeclass,
 				% something has gone wrong...
@@ -486,6 +502,33 @@ parse_non_empty_instance(ModuleName, Name, Methods, TVarSet, Result) :-
 	;
 		ParsedMethods = error(String, Term),
 		Result = error(String, Term)
+	).
+
+:- pred check_tvars_in_instance_constraint(maybe1(item), term, maybe1(item)).
+:- mode check_tvars_in_instance_constraint(in, in, out) is det.
+
+check_tvars_in_instance_constraint(error(M,E), _, error(M, E)).
+check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
+	( Item = instance(Constraints, _Name, Types, _Methods, _TVarSet) ->
+		%
+		% check that all of the type variables in the constraints
+		% on the instance declaration also occur in the type class
+		% argument types in the instance declaration
+		%
+		( 
+			type_util__constraint_list_get_tvars(Constraints,
+				TVars),
+			list__member(TVar, TVars),
+			\+ term__contains_var_list(Types, TVar)
+		->
+			Result = error(
+	"unbound type variable(s) in constraints on instance declaration",
+				InstanceTerm)
+		;
+			Result = ok(Item)
+		)
+	;
+		error("check_tvars_in_constraint: expecting instance item")
 	).
 
 :- pred parse_instance_methods(module_name, term,
@@ -532,9 +575,9 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethod, "instance method",
 					ok(InstanceMethodName, []))
 			->
-				Result = ok(pred_instance(ClassMethodName,
-					InstanceMethodName, ArityInt,
-					TermContext))
+				Result = ok(instance_method(predicate,
+					ClassMethodName, InstanceMethodName,
+					ArityInt, TermContext))
 			;
 				Result = error(
 				    "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
@@ -558,9 +601,9 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethod, "instance method",
 					ok(InstanceMethodName, []))
 			->
-				Result = ok(func_instance(ClassMethodName,
-					InstanceMethodName, ArityInt,
-					TermContext))
+				Result = ok(instance_method(function,
+					ClassMethodName, InstanceMethodName,
+					ArityInt, TermContext))
 			;
 				Result = error(
 				    "expected `func(<Name> / <Arity>) is <InstanceMethod>'",

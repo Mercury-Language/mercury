@@ -14,8 +14,8 @@ queries    - Commands for invoking goals interactively.
 end
 document_category 200 forward
 forward    - Commands that move execution forward.
-             The forward commands are `step', `goto', `finish', `forward',
-             `mindepth', `maxdepth' and `continue'.
+             The forward commands are `step', `goto', `next', `finish',
+             `exception', `forward', `mindepth', `maxdepth' and `continue'.
 
 end
 document_category 300 backward
@@ -38,7 +38,7 @@ end
 document_category 600 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `printlevel', `echo', `context',
-	     `scroll', `mmc_options', `alias' and `unalias'.
+             `scroll', `mmc_options', `alias' and `unalias'.
 
 end
 document_category 700 help

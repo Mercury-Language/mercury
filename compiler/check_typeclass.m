@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -143,17 +143,21 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		Errors2 = Errors0
 	;
 		InstanceBody = concrete(InstanceMethods),
-		list__foldl2(
+		InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
+				[], Errors0, ModuleInfo0),
+		list__foldl(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
-			PredIds, InstanceDefn0, InstanceDefn1,
-			Errors0 - ModuleInfo0, Errors1 - ModuleInfo1),
+			PredIds, InstanceCheckInfo0, InstanceCheckInfo),
+		InstanceCheckInfo = instance_check_info(InstanceDefn1,
+				RevInstanceMethods, Errors1, ModuleInfo1), 
+			
 		%
 		% We need to make sure that the MaybePredProcs field is
 		% set to yes(_) after this pass.  Normally that will be
 		% handled by check_instance_pred, but we also need to handle
 		% it below, in case the class has no methods.
 		%
-		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E, 
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, _, 
 				MaybePredProcs1, G, H),
 		(
 			MaybePredProcs1 = yes(_),
@@ -162,7 +166,25 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 			MaybePredProcs1 = no,
 			MaybePredProcs2 = yes([])
 		),
-		InstanceDefn2 = hlds_instance_defn(A, B, C, D, E, 
+
+		%
+		% Make sure the list of instance methods is in the same
+		% order as the methods in the class definition. intermod.m
+		% relies on this. If there were errors, don't change the
+		% list of methods.
+		%
+		(
+			list__length(RevInstanceMethods,
+				list__length(InstanceMethods))
+		->	
+			OrderedInstanceMethods =
+				list__reverse(RevInstanceMethods)
+		;
+			OrderedInstanceMethods = InstanceMethods
+		),
+			
+		InstanceDefn2 = hlds_instance_defn(A, B, C, D,
+				concrete(OrderedInstanceMethods),
 				MaybePredProcs2, G, H),
 		%
 		% Check if there are any instance methods left over,
@@ -209,6 +231,16 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 
 %----------------------------------------------------------------------------%
 
+:- type instance_check_info
+	---> instance_check_info(
+		hlds_instance_defn,
+		instance_methods,	% The instance methods in reverse
+					% order of the methods in the class
+					% declaration.
+		error_messages,
+		module_info
+	).
+
 	% This structure holds the information about a particular instance
 	% method
 :- type instance_method_info ---> instance_method_info(
@@ -240,13 +272,14 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 
 	% check one pred in one instance of one class
 :- pred check_instance_pred(class_id, list(tvar), hlds_class_interface, 
-	pred_id, hlds_instance_defn, hlds_instance_defn,
-	pair(error_messages, module_info), pair(error_messages, module_info)).
-:- mode check_instance_pred(in,in, in, in, in, out, in, out) is det.
+	pred_id, instance_check_info, instance_check_info).
+:- mode check_instance_pred(in,in, in, in, in, out) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
-		InstanceDefn0, InstanceDefn, 
-		Errors0 - ModuleInfo0, Errors - ModuleInfo):-
+		InstanceCheckInfo0, InstanceCheckInfo) :-
+
+	InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
+				OrderedMethods0, Errors0, ModuleInfo0),
 	solutions(
 		lambda([ProcId::out] is nondet, 
 			(
@@ -257,6 +290,8 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
 	pred_info_get_class_context(PredInfo, ClassContext0),
+	pred_info_get_markers(PredInfo, Markers0),
+	remove_marker(Markers0, class_method, Markers),
 		% The first constraint in the class context of a class method
 		% is always the constraint for the class of which it is
 		% a member. Seeing that we are checking an instance 
@@ -301,20 +336,27 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
 
-	check_instance_pred_procs(ClassId, ClassVars, MethodName,
-		InstanceDefn0, InstanceDefn, Info0, Info),
+	check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
+		InstanceDefn0, InstanceDefn, OrderedMethods0, OrderedMethods,
+		Info0, Info),
 
 	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
 		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
-		_ArgTypeVars, _Status, _PredOrFunc).
+		_ArgTypeVars, _Status, _PredOrFunc),
 
-:- pred check_instance_pred_procs(class_id, list(tvar), sym_name,
+	InstanceCheckInfo = instance_check_info(InstanceDefn,
+				OrderedMethods, Errors, ModuleInfo).
+
+:- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
 	hlds_instance_defn, hlds_instance_defn, 
+	instance_methods, instance_methods,
 	instance_method_info, instance_method_info).
-:- mode check_instance_pred_procs(in, in, in, in, out, in, out) is det.
+:- mode check_instance_pred_procs(in, in, in, in, in, out,
+	in, out, in, out) is det.
 
-check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
-		InstanceDefn, Info0, Info) :-
+check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
+		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
+		OrderedInstanceMethods, Info0, Info) :-
 	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
@@ -323,11 +365,15 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
 	get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
-		PredArity, InstanceNames),
+		PredArity, MatchingInstanceMethods),
 	(
-		InstanceNames = [InstancePredName - Context]
+		MatchingInstanceMethods = [InstanceMethod]
 	->
-		produce_auxiliary_procs(ClassVars, 
+		OrderedInstanceMethods =
+			[InstanceMethod | OrderedInstanceMethods0],
+		InstanceMethod = instance_method(_, _, InstancePredName,
+					_, Context),
+		produce_auxiliary_procs(ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
 			InstancePredName, Context,
@@ -352,9 +398,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			InstanceConstraints, InstanceTypes, InstanceBody,
 			yes(InstancePredProcs), InstanceVarSet, H)
 	;
-		InstanceNames = [I1, I2 | Is]
+		MatchingInstanceMethods = [I1, I2 | Is]
 	->
 			% one kind of error
+		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
@@ -378,13 +425,13 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			PredOrFuncString, " method `",
 			MethodNameString, "/", PredArityString, "'."],
 			ErrorHeader),
-		I1 = _ - I1Context, 
+		I1 = instance_method(_, _, _, _, I1Context), 
 		Heading = 
 			[I1Context - [words("First definition appears here.")],
 			InstanceContext - [words(ErrorHeader)]],
 		list__map(lambda([Definition::in, ContextAndError::out] is det,
 		(
-			Definition = _ - TheContext,
+			Definition = instance_method(_, _, _, _, TheContext),
 			Error = [words("Subsequent definition appears here.")],
 			ContextAndError = TheContext - Error
 		)), [I2|Is], SubsequentErrors),
@@ -397,6 +444,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 			ArgTypeVars, Status, PredOrFunc)
 	;
 			% another kind of error
+		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
@@ -427,52 +475,32 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 	).
 
 :- pred get_matching_instance_names(instance_body, pred_or_func,
-	sym_name, arity, list(pair(sym_name, prog_context))).
+	sym_name, arity, list(instance_method)).
 :- mode get_matching_instance_names(in, in, in, in, out) is det.
 
-get_matching_instance_names(InstanceBody, PredOrFunc, PredName,
-	PredArity, InstanceNames) :-
-	(
-		PredOrFunc = predicate,
-		solutions(
-			lambda([Pair::out] is nondet, 
-				(
-					InstanceBody =
-						concrete(InstanceMethods),
-					list__member(Method, InstanceMethods),
-					Method = pred_instance(PredName, 
-							SymName, PredArity,
-							Context),
-					Pair = SymName - Context
-				)),
-			InstanceNames)
-	;
-		PredOrFunc = function,
-		FuncArity is PredArity - 1,
-		solutions(
-			lambda([Pair::out] is nondet, 
-				(
-					InstanceBody =
-						concrete(InstanceMethods),
-					list__member(Method, InstanceMethods),
-					Method = func_instance(PredName, 
-							SymName, FuncArity,
-							Context),
-					Pair = SymName - Context
-				)),
-			InstanceNames)
-	).
-
+get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
+		MethodArity0, MatchingInstanceMethods) :-
+	adjust_func_arity(PredOrFunc, MethodArity, MethodArity0),
+	solutions(
+		(pred(Method::out) is nondet :-
+			InstanceBody = concrete(InstanceMethods),
+			list__member(Method, InstanceMethods),
+			Method = instance_method(PredOrFunc,
+				MethodName, _InstanceMethodName,
+				MethodArity, _Context)
+	    ),
+	    MatchingInstanceMethods).
+	
 	% Just a bit simpler than using a pair of pairs
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
-:- pred produce_auxiliary_procs(list(tvar), 
+:- pred produce_auxiliary_procs(list(tvar), pred_markers,
 	list(type), list(class_constraint), tvarset, sym_name, prog_context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, out, out, 
 	in, out) is det.
 
-produce_auxiliary_procs(ClassVars, 
+produce_auxiliary_procs(ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstancePredName, Context, PredId,
 		InstanceProcIds, Info0, Info) :-
@@ -519,7 +547,6 @@ produce_auxiliary_procs(ClassVars,
 
 	Cond = true,
 	map__init(Proofs),
-	init_markers(Markers0),
 	add_marker(Markers0, class_instance_method, Markers),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
@@ -565,7 +592,18 @@ produce_auxiliary_procs(ClassVars,
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 	set__list_to_set(HeadVars, NonLocals),
-	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+	(
+		check_marker(Markers, (impure))
+	->
+		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
+	;
+		check_marker(Markers, (semipure))
+	->
+		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
+	;
+		GoalInfo = GoalInfo2
+	),
 
 		% Then the goal itself
 	invalid_pred_id(InvalidPredId),

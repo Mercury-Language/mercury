@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
 :- mode string__append(in, in, out) is det.
-:- mode string__append(out, out, in) is multidet.
+:- mode string__append(out, out, in) is multi.
 %	Append two strings together.
 %
 %       The following mode is semidet in the sense that it doesn't
@@ -42,7 +42,7 @@
 
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
-:- mode string__prefix(in, out) is multidet.
+:- mode string__prefix(in, out) is multi.
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String.  Same as string__append(Prefix, _, String).
 
@@ -109,12 +109,11 @@
 
 :- pred string__to_char_list(string, list(char)).
 :- mode string__to_char_list(in, out) is det.
+:- mode string__to_char_list(out, in) is det.
 
 :- pred string__from_char_list(list(char), string).
 :- mode string__from_char_list(in, out) is det.
-:- mode string__from_char_list(out, in) is semidet.
-	% XXX second mode should be det too
-	% (but this turns out to be tricky to implement)
+:- mode string__from_char_list(out, in) is det.
 
 :- pred string__from_rev_char_list(list(char), string).
 :- mode string__from_rev_char_list(in, out) is det.
@@ -214,6 +213,16 @@
 %		list__foldl(Closure, Chars, Acc0, Acc)
 %	but is implemented more efficiently.)
 
+:- func string__words(pred(char), string) = list(string).
+:- mode string__words(pred(in) is semidet, in) = out is det.
+%	string__words(SepP, String) returns the list of
+%	non-empty substrings of String (in first to last
+%	order) that are delimited by non-empty sequences
+%	of chars matched by SepP.  For example,
+%
+%	string__words(char__is_whitespace, " the cat  sat on the  mat") =
+%		["the", "cat", "sat", "on", "the", "mat"]
+
 :- pred string__split(string, int, string, string).
 :- mode string__split(in, in, out, out) is det.
 %	string__split(String, Count, LeftSubstring, RightSubstring):
@@ -263,7 +272,6 @@
 
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, out) is det.
-:- mode string__append_list(out, in) is multidet.
 %	Append a list of strings together.
 
 :- pred string__hash(string, int).
@@ -289,9 +297,8 @@
 %	will return
 %		String = "Square-root of 2 = 1.41\n".
 %
-%	All the normal options available in C are supported, ie Flags [0+-# ],
-%	a field width (or *), '.', precision (could be a '*'), and a length
-%	modifier (currently ignored).
+%	The following options available in C are supported: flags [0+-# ],
+%	a field width (or *), and a precision (could be a ".*").
 %
 %	Valid conversion character types are {dioxXucsfeEgGp%}.  %n is not
 %	supported.  string__format will not return the length of the string.
@@ -321,17 +328,17 @@
 %	directly after the '%'.
 %
 %	Note:
-%		%#.0e, %#.0E won't print a '.' before the 'e' ('#' ignored).
+%		%#.0e, %#.0E now prints a '.' before the 'e'.
 %
 %		Asking for more precision than a float actually has will
 %		result in potentially misleading output.
 %
-%		If a width or precision is specified, without a `.', a number
-%		is assumed to be a width and a `*' is assumed to be a precision.
-%		It is always better to include a `.' to remove ambiguity.  This
-%		interpretation is non-standard and may change.
+%		Numbers are now rounded by precision value, not
+%		truncated as previously.
 %
-%		Numbers are truncated by a precision value, not rounded off.
+%		The implementation uses the sprintf() function, so the
+%		actual output will depend on the C standard library.
+
 
 %------------------------------------------------------------------------------%
 
@@ -567,15 +574,65 @@ string__int_to_base_string_2(NegN, Base, Str) :-
 		string__append(Str1, DigitString, Str)
 	).
 
-% NB: it would be more efficient to do this directly (using pragma c_code)
-string__to_char_list(String, CharList) :-
-	string__to_int_list(String, IntList),
-	string__int_list_to_char_list(IntList, CharList).
+string__from_char_list(CharList, Str) :-
+	string__to_char_list(Str, CharList).
 
-% NB: it would be more efficient to do this directly (using pragma c_code)
-string__from_char_list(CharList, String) :-
-	string__char_list_to_int_list(CharList, IntList),
-	string__to_int_list(String, IntList).
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__to_char_list(string, list(char)).
+:- mode string__to_char_list(in, out) is det.
+:- mode string__to_char_list(out, in) is det.
+*/
+
+:- pragma c_code(string__to_char_list(Str::in, CharList::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_ConstString p = Str + strlen(Str);
+	CharList = MR_list_empty_msg(MR_PROC_LABEL);
+	while (p > Str) {
+		p--;
+		CharList = MR_list_cons_msg((MR_UnsignedChar) *p, CharList,
+			MR_PROC_LABEL);
+	}
+}").
+
+:- pragma c_code(string__to_char_list(Str::out, CharList::in),
+		[will_not_call_mercury, thread_safe], "{
+		/* mode (out, in) is det */
+	MR_Word char_list_ptr;
+	size_t size;
+/*
+** loop to calculate list length + sizeof(MR_Word) in `size' using list in
+** `char_list_ptr'
+*/
+	size = sizeof(MR_Word);
+	char_list_ptr = CharList;
+	while (! MR_list_is_empty(char_list_ptr)) {
+		size++;
+		char_list_ptr = MR_list_tail(char_list_ptr);
+	}
+/*
+** allocate (length + 1) bytes of heap space for string
+** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
+*/
+	MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+
+/*
+** loop to copy the characters from the char_list to the string
+*/
+	size = 0;
+	char_list_ptr = CharList;
+	while (! MR_list_is_empty(char_list_ptr)) {
+		Str[size++] = MR_list_head(char_list_ptr);
+		char_list_ptr = MR_list_tail(char_list_ptr);
+	}
+/*
+** null terminate the string
+*/
+	Str[size] = '\\0';
+}").
+
+/*-----------------------------------------------------------------------*/
 
 %
 % We could implement from_rev_char_list using list__reverse and from_char_list,
@@ -585,14 +642,13 @@ string__from_char_list(CharList, String) :-
 :- pragma c_code(string__from_rev_char_list(Chars::in, Str::out),
 		[will_not_call_mercury, thread_safe], "
 {
-	Word list_ptr;
-	Word size, len;
-	Word str_ptr;
+	MR_Word list_ptr;
+	MR_Word size, len;
 /*
-** loop to calculate list length + sizeof(Word) in `size' using list in
+** loop to calculate list length + sizeof(MR_Word) in `size' using list in
 ** `list_ptr' and separately count the length of the string
 */
-	size = sizeof(Word);
+	size = sizeof(MR_Word);
 	len = 1;
 	list_ptr = Chars;
 	while (!MR_list_is_empty(list_ptr)) {
@@ -602,12 +658,10 @@ string__from_char_list(CharList, String) :-
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
 */
-	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
-		MR_PROC_LABEL,
-		""string:string/0"");
-	Str = (char *) str_ptr;
+	MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+
 /*
 ** set size to be the offset of the end of the string
 ** (ie the \\0) and null terminate the string.
@@ -619,7 +673,7 @@ string__from_char_list(CharList, String) :-
 */
 	list_ptr = Chars;
 	while (!MR_list_is_empty(list_ptr)) {
-		Str[--len] = (char) MR_list_head(list_ptr);
+		Str[--len] = (MR_Char) MR_list_head(list_ptr);
 		list_ptr = MR_list_tail(list_ptr);
 	}
 }").
@@ -738,10 +792,39 @@ string__duplicate_char(Char, Count, String) :-
 		string__duplicate_char(Char, Count1, String1)
 	).
 
-string__append_list([], "").
-string__append_list([S | Ss], L) :-
-	string__append_list(Ss, L0),
-	string__append(S, L0, L).
+%-----------------------------------------------------------------------------%
+
+string__append_list(Lists, string__append_list(Lists)).
+
+	% Implementation of append_list that uses C as this minimises the
+	% amount of garbage created.
+:- pragma c_code(string__append_list(Strs::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_Word	list = Strs;
+	MR_Word	tmp;
+	size_t	len = 0;
+
+		/* Determine the total len of all strings */
+	while (!MR_list_is_empty(list)) {
+		len += strlen((MR_String) MR_list_head(list));
+		list = MR_list_tail(list);
+	}
+
+		/* Allocate enough word aligned memory for the string */
+	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+
+		/* Copy the strings into the new memory */
+	len = 0;
+	list = Strs;
+	while (!MR_list_is_empty(list)) {
+		strcpy((MR_String) Str + len, (MR_String) MR_list_head(list));
+		len += strlen((MR_String) MR_list_head(list));
+		list = MR_list_tail(list);
+	}
+
+		/* Set the last character to the null char */
+	Str[len] = '\\0';
+}").
 
 %-----------------------------------------------------------------------------%
 
@@ -798,751 +881,413 @@ string__sub_string_search2(String0, SString, StrLen0,
 
 %-----------------------------------------------------------------------------%
 
-string__format(Format_string, Poly_list, Out_string ) :-
-	string__to_char_list(Format_string, Format_char_list),
-	string__format_2(Format_char_list, Poly_list, Out_string) .
-
-:- pred	string__format_2(list(char), list(string__poly_type), string).
-:- mode string__format_2(in, in, out) is det.
-%
-%	string__format_2(stream, char_f, vars, IO, IO).
-%		The main function, with different input types.
-%
-%	Accumulator recursion is not used, as it would involve adding a
-%	short string to the end of a long string many times, which I understand
-%	is not efficient.  Instead, many short strings are added to the front
-%	of a (long) and growing string.
-%
-string__format_2([], Vars_in, Result) :-
-	( Vars_in = [] ->
-		Result = ""
-	;
-		error(
-	"string__format: argument list has more elements than format string")
-	).
-string__format_2([Achar|As], Vars_in, Ostring) :-
+	% This predicate has been optimised to produce the least memory
+	% possible -- memory usage is a significant problem for programs
+	% which do a lot of formatted IO.
+string__format(FormatString, PolyList, String) :-
 	(
-		Achar = '%'
+		format_string(Specifiers, PolyList, [],
+				to_char_list(FormatString), [])
 	->
-		(
-			As = ['%' | Ass]
-		->
-			string__format_2(Ass, Vars_in, Temp_out),
-			string__first_char(Ostring, '%', Temp_out)
-		;
-			(
-				string__format_top_convert_variable(As, Vars_in,
-						As_out, Vars_out, String_1)
-			->
-				string__format_2(As_out, Vars_out, String_2),
-				string__append(String_1, String_2, Ostring)
-			;
-				error(
-	"string__format: argument list has fewer elements than format string")
-			)
+		String = string__append_list(
+				list__map(specifier_to_string, Specifiers))
+	;
+		error("string__format: format string invalid.")
+	).
+
+:- type specifier
+	--->	conv(
+			flags 		:: list(char),
+			width		:: maybe(list(char)),
+			precision	:: maybe(list(char)),
+			spec		:: spec
 		)
+	;	string(list(char)).
+
+	%
+	% A format string is parsed into alternate sections.
+	% We alternate between the list of characters which don't
+	% represent a conversion specifier and those that do.
+	%
+:- pred format_string(list(specifier)::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is det.
+
+format_string(Results, PolyTypes0, PolyTypes) -->
+	other(NonConversionSpecChars),
+	( conversion_specification(ConversionSpec, PolyTypes0, PolyTypes1) ->
+		format_string(Results0, PolyTypes1, PolyTypes),
+		{ Results = [string(NonConversionSpecChars),
+				ConversionSpec | Results0] }
 	;
-		string__format_2(As, Vars_in, Temp_out),
-		string__first_char(Ostring, Achar, Temp_out)
+		{ Results = [string(NonConversionSpecChars)] },
+		{ PolyTypes = PolyTypes0 }
 	).
 
-:- pred string__format_top_convert_variable(list(char), 
-			list(string__poly_type), list(char),
-			list(string__poly_type), string).
-:- mode string__format_top_convert_variable(in, in, out, out, out) is semidet.
-%
-%    string__format_top_convert_variable(formated string in, var in, formatted
-%			string out, var out, Out string)
-%		Return a string of the formatted variable.
-%
-string__format_top_convert_variable(['%'|Bs], [], Bs, [], "%").
-			% Above rule should not be executed... defensive rule.
-string__format_top_convert_variable(F_chars0, [Var0|Vars_list0],
-			F_chars, Vars_list, OutString ) :-
-	string__format_takewhile1(F_chars0, [Conv_char_0|F_chars],
-			Fmt_info),
-			     %	Seperate formatting info from formatting string.
-			     %	in, out, out
-	string__format_get_optional_args(Fmt_info, Flags, Width0, 
-			Precision0, Conv_modify),
-			     %	Parse formatting info.
-			     %	in, out, out, out, out.
-	string__format_read_star(Vars_list0,  Width0, Precision0, Vars_list,
-			Width1, Precision1),
-			     %	Do something if a precision or width was '*'
-			     %  in, in, in, out, out, out
-	string__format_mod_conv_char(Precision1, Var0, Conv_char_0, 
-			Conv_char_1, Precision),
-			     %	Modify(?) conversion character.
-			     %  in, in, in, out, out
-	string__format_do_mod_char(Conv_modify, Conv_char_1, Conv_char_2),
-			     %	Interperate input conversion modifiers.
-			     %	in, in, out
-	string__format_do_conversion(Conv_char_2, Var0, Precision,
-			Flags, Move_i0, OutString0),
-			     %	Actually convert a Variable to a string
-			     %	in, in, in, in, out, out
-	string__format_add_sign(OutString0, Flags, Var0, Move_i0, 
-			Move_i1, OutString1),
-			     %	Adds an optional '+' or ' ' to string.
-			     %	in, in, in, in, out, out
-	string__format_pad_width(OutString1, Width1, Flags, Move_i1,
-			OutString).
-			     %	Ensures that the string is at least width.
-			     %	in, in, in, out, in
+	%
+	% Parse a string which doesn't contain any conversion
+	% specifications.
+	%
+:- pred other(list(char)::out, list(char)::in, list(char)::out) is det.
 
-%
-%	Change conversion character.
-%
-%	Ideally the outer "->" symbols could be removed, the last case given
-%	a guard, and the compiler accept this as det, rather than non-det.
-%
-:- pred string__format_mod_conv_char(maybe(int), string__poly_type, char, 
-				char, maybe(int)).
-:- mode string__format_mod_conv_char(in, in, in, out, out) is det.
-string__format_mod_conv_char(Precision0, Poly_var, Conversion_in,
-				Conversion_out, Precision) :- 
-	( Precision0 = yes(Prec0) ->
-		Prec = Prec0
+other(Result) -->
+	( [Char], { Char \= '%' } ->
+		other(Result0),
+		{ Result = [Char | Result0] }
 	;
-		Prec = 0
-	),
-	( Conversion_in = 'i' ->
-		Conversion_out = 'd',		% %d = %i
-		Precision = Precision0
-	; 
-	Conversion_in = 'g' ->			%g is either %e of %f
-		(Poly_var = f(F) ->
-			Ft = float__abs(F),
-			int__pow(10, Prec, P),
-			int__to_float(P, Pe),
-			(
-				Ft > 0.0001,
-				Pe > Ft
-			->
-				Conversion_out = 'f',
-				Precision = yes(0)
-			;
-				Conversion_out = 'e',
-				Precision = Precision0
-			)
-		;
-			error("string__format:  %g without a f(Float).")
-		)
-	;
-	Conversion_in = 'G' ->		%G is either %E of %f
-		(Poly_var = f(F) ->
-			Ft = float__abs(F),
-			int__pow(10, Prec, P),
-			int__to_float(P, Pe),
-			(
-				Ft > 0.0001,
-				Pe > Ft
-			->
-				Conversion_out = 'f',
-				Precision = yes(0)
-			;
-				Conversion_out = 'E',
-				Precision = Precision0
-			)
-		;
-			error("string__format:  %G without a f(Float).")
-		)
-	;
-		Conversion_out = Conversion_in,
-		Precision = Precision0
+		{ Result = [] }
 	).
 
-%	This function glances at the input-modification flags, only applicable
-%	with a more complicated type system
-%
-%	Another function that would be better off as a switch.
-%
-:- pred string__format_do_mod_char(char, char, char).
-:- mode string__format_do_mod_char(in, in, out) is det.
-string__format_do_mod_char(Char_mods, C_in, C_out) :- 
+	%
+	% Each conversion specification is introduced by the character
+	% '%',  and ends with a conversion specifier.  In between there
+	% may be (in this order)  zero  or more  flags,  an optional
+	% minimum field width, and an optional precision.
+	%
+:- pred conversion_specification(specifier::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is semidet.
+
+conversion_specification(Specificier, PolyTypes0, PolyTypes) -->
+	['%'],
+	flags(Flags),
+	optional(width, MaybeWidth, PolyTypes0, PolyTypes1),
+	optional(prec, MaybePrec, PolyTypes1, PolyTypes2),
+	( spec(Spec, PolyTypes2, PolyTypes3) ->
+		{ Specificier = conv(Flags, MaybeWidth, MaybePrec, Spec) },
+		{ PolyTypes = PolyTypes3 }
+	;
+		{ error("string__format: invalid conversion specifier.") }
+	).
+	
+:- pred optional(pred(T, U, U, V, V), maybe(T), U, U, V, V).
+:- mode optional(pred(out, in, out, in, out) is semidet, out, in, out,
+		in, out) is det.
+
+optional(P, MaybeOutput, Init, Final) -->
+	( P(Output, Init, Final0) ->
+		{ MaybeOutput = yes(Output) },
+		{ Final = Final0 }
+	;
+		{ MaybeOutput = no },
+		{ Final = Init }
+	).
+
+:- pred flags(list(char)::out, list(char)::in, list(char)::out) is semidet.
+
+flags(Result) -->
+	( [Char], { flag(Char) } ->
+		flags(Result0),
+		{ Result = [Char | Result0] }
+	;
+		{ Result = [] }
+	).
+
+	%
+	% Is it a valid flag character?
+	%
+:- pred flag(char::in) is semidet.
+
+flag('#').
+flag('0').
+flag('-').
+flag(' ').
+flag('+').
+
+	%
+	% Do we have a minimum field width?
+	%
+:- pred width(list(char)::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is semidet.
+
+width(Width, PolyTypes0, PolyTypes) --> 
+	( ['*'] ->
+		{ PolyTypes0 = [i(Width0) | PolyTypes1] ->
+				% XXX maybe better done in C.
+			Width = to_char_list(int_to_string(Width0)),
+			PolyTypes = PolyTypes1
+		;
+			error("string__format: `*' width modifer not associated with an integer.")
+		}
+	;
+		=(Init),
+		non_zero_digit,
+		zero_or_more_occurences(digit),
+		=(Final),
+
+		{ list__remove_suffix(Init, Final, Width) },
+		{ PolyTypes = PolyTypes0 }
+	).
+
+	%
+	% Do we have a precision?
+	%
+:- pred prec(list(char)::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is semidet.
+
+prec(Prec, PolyTypes0, PolyTypes) --> 
+	['.'],
+	( ['*'] ->
+		{ PolyTypes0 = [i(Prec0) | PolyTypes1] ->
+				% XXX Best done in C
+			Prec = to_char_list(int_to_string(Prec0)),
+			PolyTypes = PolyTypes1
+		;
+			error("string__format: `*' precision modifer not associated with an integer.")
+		}
+	;
+		=(Init),
+		digit,
+		zero_or_more_occurences(digit),
+		=(Final)
+	->
+		{ list__remove_suffix(Init, Final, Prec) },
+		{ PolyTypes = PolyTypes0 }
+	;
+			% When no number follows the '.' the precision
+			% defaults to 0.
+		{ Prec = ['0'] },
+		{ PolyTypes = PolyTypes0 }
+	).
+
+% NB the capital letter specifiers are proceeded with a 'c'.
+:- type spec
+		% valid integer specifiers
+	--->	d(int)
+	;	i(int)
+	;	o(int)
+	;	u(int)
+	;	x(int)
+	;	cX(int)
+	;	p(int)
+
+		% valid float specifiers
+	;	e(float)
+	;	cE(float)
+	;	f(float)
+	;	cF(float)
+	;	g(float)
+	;	cG(float)
+
+		% valid char specifiers
+	;	c(char)
+
+		% valid string specifiers
+	;	s(string)
+
+		% specifier representing "%%"
+	;	percent
+	.
+		
+	%
+	% Do we have a valid conversion specifier?
+	% We check to ensure that the specifier also matches the type
+	% from the input list.
+	%
+:- pred spec(spec::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is semidet.
+
+	% valid integer conversion specifiers
+spec(d(Int), [i(Int) | Ps], Ps) --> ['d'].
+spec(i(Int), [i(Int) | Ps], Ps) --> ['i'].
+spec(o(Int), [i(Int) | Ps], Ps) --> ['o'].
+spec(u(Int), [i(Int) | Ps], Ps) --> ['u'].
+spec(x(Int), [i(Int) | Ps], Ps) --> ['x'].
+spec(cX(Int), [i(Int) | Ps], Ps) --> ['X'].
+spec(p(Int), [i(Int) | Ps], Ps) --> ['p'].
+
+	% valid float conversion specifiers
+spec(e(Float), [f(Float) | Ps], Ps) --> ['e'].
+spec(cE(Float), [f(Float) | Ps], Ps) --> ['E'].
+spec(f(Float), [f(Float) | Ps], Ps) --> ['f'].
+spec(cF(Float), [f(Float) | Ps], Ps) --> ['F'].
+spec(g(Float), [f(Float) | Ps], Ps) --> ['g'].
+spec(cG(Float), [f(Float) | Ps], Ps) --> ['G'].
+
+	% valid char conversion specifiers
+spec(c(Char), [c(Char) | Ps], Ps) --> ['c'].
+
+	% valid string conversion specifiers
+spec(s(Str), [s(Str) | Ps], Ps) --> ['s'].
+
+	% conversion specifier representing the "%" sign
+spec(percent, Ps, Ps) --> ['%'].
+
+	% A digit in the range [1-9]
+:- pred non_zero_digit(list(char)::in, list(char)::out) is semidet.
+
+non_zero_digit -->
+	[ Char ],
+	{ char__is_digit(Char) },
+	{ Char \= '0' }.
+
+	% A digit in the range [0-9]
+:- pred digit(list(char)::in, list(char)::out) is semidet.
+
+digit -->
+	[ Char ],
+	{ char__is_digit(Char) }.
+
+
+	% Zero or more occurences of the string parsed by the ho pred.
+:- pred zero_or_more_occurences(pred(list(T), list(T)), list(T), list(T)).
+:- mode zero_or_more_occurences(pred(in, out) is semidet, in, out) is det.
+
+zero_or_more_occurences(P) -->
+	( P ->
+		zero_or_more_occurences(P)
+	;
+		[]
+	).
+
+:- func specifier_to_string(specifier) = string. 
+
+specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	(
-		Char_mods = 'h'
-	->
-		C_out = C_in
+			% valid int conversion specifiers
+		Spec = d(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "d"), Int)
 	;
-		Char_mods = 'l'
-	->
-		C_out = C_in
+		Spec = i(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "i"), Int)
 	;
-		Char_mods = 'L'
-	->
-		C_out = C_in
+		Spec = o(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "o"), Int)
 	;
-		C_out = C_in
+		Spec = u(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "u"), Int)
+	;
+		Spec = x(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "x"), Int)
+	;
+		Spec = cX(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "X"), Int)
+	;
+		Spec = p(Int),
+		String = format_int(
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "p"), Int)
+	;
+			% valid float conversion specifiers
+		Spec = e(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "e"), Float)
+	;
+		Spec = cE(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "E"), Float)
+	;
+		Spec = f(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "f"), Float)
+	;
+		Spec = cF(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "F"), Float)
+	;
+		Spec = g(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "g"), Float)
+	;
+		Spec = cG(Float),
+		String = format_float(
+			make_format(Flags, Width, Prec, "L", "G"), Float)
+	;
+			% valid char conversion Specifiers
+		Spec = c(Char),
+		String = format_char(
+				make_format(Flags, Width, Prec, "", "c"), Char)
+	;
+			% valid string conversion Spec = ifiers
+		Spec = s(Str),
+		String = format_string(
+				make_format(Flags, Width, Prec, "", "s"), Str)
+	;
+			% conversion specifier representing the "%" sign
+		Spec = percent,
+		String = "%"
 	).
+specifier_to_string(string(Chars)) = from_char_list(Chars).
 
-%
-%	Change Width or Precision value, if '*' was spcified
-%
-:- pred string__format_read_star(list(string__poly_type), int, int,
-		list(string__poly_type), maybe(int), maybe(int)).
-:- mode string__format_read_star(in, in, in, out, out, out) is semidet.
-string__format_read_star(Polys_in, Int_width, Int_precis, Polys_out,
-		Width, Precision) :-
+	% Construct a format string suitable to passing to sprintf.
+:- func make_format(list(char), maybe(list(char)),
+		maybe(list(char)), string, string) = string.
+
+make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	(
-		string__special_precision_and_width(Int_width)
-	->
-		Polys_in = [ i(Width0) |  Poly_temp],
-		Width = yes(Width0)
+		MaybeWidth = yes(Width)
 	;
-		( string__default_precision_and_width(Int_width) ->
-			Width = no
-		;
-			Width = yes(Int_width)
-		),
-		Polys_in = Poly_temp
-	),
-	(
-		string__special_precision_and_width(Int_precis)
-	->
-		Poly_temp = [ i(Precision0) | Polys_out],
-		Precision = yes(Precision0)
-	;
-		( string__default_precision_and_width(Int_precis) ->
-			Precision = no
-		;
-			Precision = yes(Int_precis)
-		),
-		Polys_out = Poly_temp
-	).
-
-%
-%	This function did the variable conversion to string.
-%	Now done by string__do_conversion_0/6.
-%
-%
-%	Mv_width records the length of the prefix in front of the number,
-%	so that it is more easy to insert width and precision padding and 
-%	optional signs, in the correct place.
-%
-:- pred string__format_do_conversion(char, string__poly_type, maybe(int), 
-		list(char), int, string).
-:- mode string__format_do_conversion(in, in, in, in, out, out)
-		is det.
-string__format_do_conversion(Conversion, Poly_t, Precision, Flags, Mv_width,
-		Ostring) :-
-	(
-		string__do_conversion_0(Conversion, Poly_t, Ostring0, 
-				Precision, Flags, Mv_width0)
-	->
-		Mv_width = Mv_width0,
-		Ostring = Ostring0
-	;
-		string__do_conversion_fail(Conversion)
-	).
-
-:- pred string__do_conversion_0(char, string__poly_type, string, maybe(int), 
-		list(char), int).
-:- mode string__do_conversion_0(in, in, out, in, in, out) is semidet.
-string__do_conversion_0(Conversion, Poly_t, Ostring, Precision, Flags, 
-		Mv_width) :-
-	(
-	Conversion = 'd',
-		Poly_t = i(I),
-		string__int_to_string(I, S),
-		string__format_int_precision(S, Ostring, Precision, _),
-		(
-			I < 0
-		->
-			Mv_width is 1
-		;
-			Mv_width is 0 
-		)
-	; 
-	Conversion = 'o',
-		Poly_t = i(I),
-		( I = 0 ->
-			S = "0",
-			string__format_int_precision(S, Ostring, Precision, _),
-			Pfix_len = 0
-		;
-			string__int_to_base_string(I, 8, S),
-			string__format_int_precision(S, SS, Precision, _),
-			( list__member('#', Flags) ->
-				string__first_char(Ostring, '0', SS),
-				Pfix_len = 1
-			;
-				Ostring = SS,
-				Pfix_len = 0
-			)
-		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
-	;
-	Conversion = 'x' ,
-		Poly_t = i(I),
-		( I = 0 ->
-			SS = "0",
-			Pfix_len = 0,
-			string__format_int_precision(SS, Ostring, Precision, _)
-		;
-			string__int_to_base_string(I, 16, S0),
-			string__to_lower(S0, S),
-			string__format_int_precision(S, SS, Precision, _),
-			(
-				list__member('#', Flags)
-			->
-				string__append("0x", SS, Ostring),
-				Pfix_len = 2
-			;
-				Ostring = SS,
-				Pfix_len = 0
-			)
-		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
-	;
-	Conversion = 'X',
-		Poly_t = i(I),
-		( I = 0 ->
-			SS = "0",
-			Pfix_len = 0,
-			string__format_int_precision(SS, Ostring, Precision, _)
-		;
-			string__int_to_base_string(I, 16, Otemp),
-			string__to_upper(Otemp, S),
-			string__format_int_precision(S, SS, Precision, _),
-			( list__member('#', Flags) ->
-				string__append("0X", SS, Ostring),
-				Pfix_len = 2
-			;
-				SS = Ostring,
-				Pfix_len = 0
-			)
-		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
-	;
-	Conversion = 'u' ,
-		Poly_t = i(I),
-		int__abs(I, J),
-		string__int_to_string(J, S),
-		string__format_int_precision(S, Ostring, Precision, Mvt),
-		Mv_width = Mvt
-	;
-	Conversion = 'c' ,
-		Poly_t = c(C),
-		string__char_to_string(C, Ostring),
-		Mv_width = 0
-	;
-	Conversion = 's' ,
-		Poly_t = s(S),
-		( Precision = yes(Prec) ->
-			string__split(S, Prec, Ostring, _)
-		;
-			S = Ostring
-		),
-		Mv_width = 0
-	;
-	Conversion = 'f' ,
-		Poly_t = f(F),
-		string__float_to_f_string(F, Fstring),
-		string__format_calc_prec(Fstring, Ostring, Precision),
-		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
-	;
-	Conversion = 'e',
-		Poly_t = f(F),
-		string__format_calc_exp(F, Ostring, Precision, 0),
-		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
-	;
-	Conversion = 'E' ,
-		Poly_t = f(F),
-		string__format_calc_exp(F, Otemp, Precision, 0),
-		string__to_upper(Otemp, Ostring),
-		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
-	;
-	Conversion = 'p' ,
-		Poly_t = i(I),
-		string__int_to_string(I, Ostring),
-		((I < 0) -> Mv_width = 1 ; Mv_width = 0)
-	).
-
-:- pred string__do_conversion_fail(char).
-:- mode string__do_conversion_fail(in) is erroneous.
-string__do_conversion_fail(Conversion) :-
-	string__format("%s `%%%c', without a correct poly-variable.", 
-		[s("string__format: statement has used type"), c(Conversion)],
-		Error_message),
-	error(Error_message).
-
-%
-%	Use precision information to modify string.  - for integers
-%
-:- pred string__format_int_precision(string, string, maybe(int), int).
-:- mode string__format_int_precision(in, out, in, out) is semidet.
-string__format_int_precision(S, Ostring, Precision, Added_width) :-
-	( Precision = yes(Prec0) ->
-		Prec = Prec0
-	;
-		Prec = 0
-	),
-	string__length(S, L),
-	( string__first_char(S, '-', _) ->
-		Xzeros is Prec - L + 1
-	;
-		Xzeros is Prec - L
-	),
-	Added_width = Xzeros,
-	( Xzeros > 0 ->
-		string__duplicate_char('0', Xzeros, Pfix),
-		string__first_char(S, C, Rest),
-		(
-			C \= ('-'),
-			C \= ('+')
-		->
-			string__append(Pfix, S, Ostring)
-		;
-			string__append(Pfix, Rest, Temps),
-			string__first_char(Ostring, C, Temps)
-		)
-	;
-		Ostring = S
-	).
-
-%	Function  to calculate exponent for a %e conversion of a float
-%
-:- pred string__format_calc_exp(float, string, maybe(int), int).
-:- mode string__format_calc_exp(in, out, in, in) is det.
-string__format_calc_exp(F, Fstring, Precision, Exp) :-
-	( F < 0.0 -> 
-		Tf is 0.0 - F,
-		string__format_calc_exp(Tf, Tst, Precision, Exp),
-		string__first_char(Fstring, '-', Tst)
-	; F > 0.0, F < 1.0 ->
-		Texp is Exp - 1,
-		FF is 10.0 * F,
-		string__format_calc_exp(FF, Fstring, Precision, Texp)
-	; F >= 10.0 ->
-		Texp is Exp + 1,
-		FF is F / 10.0,
-		string__format_calc_exp(FF, Fstring, Precision, Texp)
-	;
-		string__float_to_f_string(F, Fs),
-		string__format_calc_prec(Fs, Fs2, Precision),
-		string__int_to_string(Exp, Exps),
-		( Exp < 0 ->
-			string__append("e", Exps, TFstring),
-			string__append(Fs2, TFstring, Fstring)
-		;
-			string__append("e+", Exps, TFstring),
-			string__append(Fs2, TFstring, Fstring)
-		)
-	).
-
-%
-%	This precision output-modification predicate handles floats.
-%
-:- pred string__format_calc_prec(string, string, maybe(int)).
-:- mode string__format_calc_prec(in, out, in) is det.
-string__format_calc_prec(Istring0, Ostring, Precision) :-
-	(
-		Precision = yes(Prec0)
-	->
-		Prec = Prec0
-	;
-		Prec = 15
+		MaybeWidth = no,
+		Width = []
 	),
 	(
-		string__find_index(Istring0, '.', Index)
-	->
-		TargetLength1 is Prec + Index,
-		Istring1 = Istring0
+		MaybePrec = yes(Prec0),
+		Prec = ['.' | Prec0]
 	;
-		string__length(Istring0, TargetLength0),
-		TargetLength1 is TargetLength0 + 1 + Prec,
-		string__append(Istring0, ".", Istring1)
-
-		%  This branch should never be called if mercury is implemented
-		%  in ansi-C, according to Kernighan and Ritchie p244, as a 
-		%  float converted to a string using sprintf should always have
-		%  a decimal point.  (where specified precision != 0.  
-		%  string__float_to_string doesn't specify a precision to be
-		%  used.)  
-		%
-		%  Unfortunately, this branch is called.
-		%  Often.
+		MaybePrec = no,
+		Prec = []
 	),
-	(
-		Prec = 0
-	->
-			%  Forget the '.'.
-		TargetLength is TargetLength1 - 1
-	;
-		TargetLength = TargetLength1
-	),
-	(
-		string__length(Istring1, Length),
-		Length < TargetLength
-	->
-			%  Ensure that there are "enough" chars in Istring.
-		string__duplicate_char('0', Prec, Suffix),
-		string__append(Istring1, Suffix, Istring)
-	;
-		Istring = Istring1
-	),
-	string__split(Istring, TargetLength, Ostring, _).
+	String = string__append_list(["%", from_char_list(Flags),
+				from_char_list(Width),
+				from_char_list(Prec), LengthMod, Spec]).
 
-%	string__find_index is a funky little predicate to find the first
-%	occurrence of a particular character in a string.
+:- func int_length_modifer = string.
+:- pragma c_code(int_length_modifer = (LengthModifier::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
+}").
 
-:- pred string__find_index(string, char, int).
-:- mode string__find_index(in, in, out) is semidet.
-string__find_index(Str, C, Index) :-
-	string__to_char_list(Str, List),
-	string__find_index_2(List, C, Index).
 
-:- pred string__find_index_2(list(char), char, int).
-:- mode string__find_index_2(in, in, out) is semidet.
-string__find_index_2([], _C, _Index) :- fail.
-string__find_index_2([X|Xs], C, Index) :-
-	(
-		X = C
-	->
-		Index = 1
-	;
-		string__find_index_2(Xs, C, Index0),
-		Index is Index0 + 1
-	).
+	% Create a string from a float using the format string.
+	% Note is is the responsibility of the caller to ensure that the
+	% format string is valid.
+:- func format_float(string, float) = string.
+:- pragma c_code(format_float(FormatStr::in, Val::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (long double) Val);
+}").
 
-%string__find_index(A, Ch, Check, Ret) :-
-%	(
-%		string__length(A, Len),
-%		Len < Check
-%	->
-%		fail
-%	;
-%		string__index(A, Check, Ch)
-%	->
-%		Ret = Check
-%	;
-%		Check2 is Check + 1,
-%		string__find_index(A, Ch, Check2, Ret)
-%	).
-%
+	% Create a string from a int using the format string.
+	% Note is is the responsibility of the caller to ensure that the
+	% format string is valid.
+:- func format_int(string, int) = string.
+:- pragma c_code(format_int(FormatStr::in, Val::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+}").
 
-%	Add a '+' or ' ' sign, if it is needed in this output.
-%
-:- pred string__format_add_sign(string, list(char), string__poly_type,
-			int, int, string).
-:- mode string__format_add_sign(in, in, in, in, out, out) is det.
-%			Mvw is the prefix-length in front of the number.
-string__format_add_sign(Istring, Flags, _V, MoveWidth0, Movewidth, Ostring) :-
-	MoveWidth1 is MoveWidth0 - 1,
-	(
-		string__index(Istring, MoveWidth1, '-')
-	->
-		Ostring = Istring,
-		Movewidth = MoveWidth0
-	;
-		string__split(Istring, MoveWidth0, Lstring, Rstring),
-		(
-			list__member(('+'), Flags)
-		->
-			string__append("+", Rstring, Astring),
-			string__append(Lstring, Astring, Ostring),
-			Movewidth is MoveWidth0 + 1
-		;
-			list__member(' ', Flags)
-		->
-			string__append(" ", Rstring, Astring),
-			string__append(Lstring, Astring, Ostring),
-			Movewidth is MoveWidth0 + 1
-		; 
-			Ostring = Istring,
-			Movewidth = MoveWidth0
-		)
-	).
+	% Create a string from a string using the format string.
+	% Note is is the responsibility of the caller to ensure that the
+	% format string is valid.
+:- func format_string(string, string) = string.
+:- pragma c_code(format_string(FormatStr::in, Val::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+}").
 
-%
-% This function pads some characters to the left or right of a string that is
-% shorter than it's width.
-%
-:- pred string__format_pad_width(string, maybe(int), list(char), int,  string).
-:- mode string__format_pad_width(in, in, in, in, out) is det.
-%		(String in, width, flags, #Moveables, Output string).
-string__format_pad_width(Istring, Width0, Flags, Mv_cs, Out_string) :-
-	string__length(Istring, Len),
-	(
-		Width0 = yes(Width),
-		Len < Width
-	->
-		% time for some FLAG tests
-		Xspace is Width - Len,
-		(
-			list__member('0', Flags)
-		->
-			Pad_char = '0'
-		;
-			Pad_char = ' '
-		),
-		string__duplicate_char(Pad_char, Xspace, Pad_string),
-		(
-			list__member('-', Flags)
-		->
-			string__append(Istring, Pad_string, Out_string)
-		;
-			list__member('0', Flags)
-		->
-			string__split(Istring, Mv_cs, B4, After),
-			string__append(Pad_string, After, Astring),
-			string__append(B4, Astring, Out_string)
-		;
-			string__append(Pad_string, Istring, Out_string)
-		)
-	;
-		Out_string = Istring
-	).
-
-:- pred string__format_get_optional_args(list(char), list(char), int, int,
-			char).
-:- mode string__format_get_optional_args(in, out, out, out, out) is det.
-%	string__format_get_optional_args(format info, flags, width, precision, modifier)
-%		format is assumed to be in ANSI C format.
-%		p243-4 of Kernighan & Ritchie 2nd Ed. 1988
-%		"Parse" format informtion.
-%
-% A function to do some basic parsing on the optional printf arguments.
-%
-% The ites make this det.  It would be nicer to see a det switch on A, but the
-% determinism checker does not `see' the equity tests that are hidden one layer
-% further down.
-%
-string__format_get_optional_args([], Flags, Width, Precision, Mods) :-
-		Flags = [],
-		Width = 0,
-		string__default_precision_and_width(Precision),
-		Mods = ' '.
-string__format_get_optional_args([A|As], Flags, Width, Precision, Mods) :-
-	(
-		(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
-	->
-		string__format_get_optional_args(As, Oflags, Width, Precision,
-				Mods),
-		UFlags = [A | Oflags],
-		list__sort_and_remove_dups(UFlags, Flags)
-	;
-	(
-		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
-		  A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
-	->
-		string__format_string_to_ints([A|As], Bs, Numl1, Numl2, yes),
-		string__format_int_from_char_list(Numl1, Width),
-		string__format_int_from_char_list(Numl2, Prec),
-		string__format_get_optional_args(Bs, Flags, _, Ptemp, Mods),
-		(Numl2 = [] ->
-			Precision = Ptemp
-		;
-			Precision = Prec
-		)
-	;
-	(	( A = 'h' ; A = 'l' ; A = 'L' )
-	->
-		Mods = A,
-		string__format_get_optional_args(As, Flags, Width, 
-			Precision, _)
-	;
-	(	A = ('*')
-	->
-		string__format_get_optional_args(As, Flags, W, P, Mods),
-		(
-			As = [(.)|_]
-		->
-			Precision = P, 
-			string__special_precision_and_width(Width)
-		;
-			Width = W,
-			string__special_precision_and_width(Precision)
-		)
-%		(
-%			string__default_precision_and_width(P)
-%		->
-%			string__special_precision_and_width(Precision)
-%		; 
-%			Precision = P
-%		),
-%		string__special_precision_and_width(Width)
-	;
-		error("string__format:  Unrecognised formatting information\n")
-		)
-	))) .
-
-:- pred string__format_takewhile1(list(char), list(char), list(char)).
-:- mode string__format_takewhile1(in, out, out) is det.
-%	string__format_takewhile(formatted string in, out, format info).
-%		A HACK.  Would be much nicer with a proper string__takewhile.
-%		Looses the format info from the front of the first argument,
-%		puts this in the last argument, while the second is the
-%		remainder of the string.
-%
-%		XXXXXX
-%
-string__format_takewhile1([], [], []).
-string__format_takewhile1([A|As], Rem, Finf) :-
-	(
-		( A = 'd' ; A = 'i' ; A = 'o' ; A = 'x' ; A = 'X' ; A = 'u' ;
-		  A = 's' ; A = '%' ; A = 'c' ; A = 'f' ; A = 'e' ; A = 'E' ;
-		  A = 'g' ; A = 'G' ; A = 'p')
-	->
-		Rem = [A|As],
-		Finf = []
-	;
-		string__format_takewhile1(As, Rem, F),
-		Finf = [A|F]
-	).
-
-:- pred string__format_string_to_ints(list(char), list(char), list(char),
-		list(char), bool).
-:- mode string__format_string_to_ints(in, out, out, out, in) is det.
-% 			(String in, out, Number1, Number2, seen '.' yet?)
-%		Takes in a char list and splits off the rational number at the 
-%		start of the list.  This is split into 2 parts - an int and a
-%		fraction.
-%
-string__format_string_to_ints([], [], [], [], _).
-string__format_string_to_ints([A|As], Bs, Int1, Int2, Bool) :-
-	(char__is_digit(A) ->
-		( Bool = yes ->
-			string__format_string_to_ints(As, Bs, I1, Int2, yes),
-			Int1 = [A|I1]
-		;
-			string__format_string_to_ints(As, Bs, Int1, I2, no),
-			Int2 = [A|I2]
-		)
-	;
-		( A = ('.') ->
-			string__format_string_to_ints(As, Bs, Int1, Int2, no)
-		;
-			Bs = [A|As],
-			Int1 = [],
-			Int2 = []
-		)
-	).
-
-:- pred string__format_int_from_char_list(list(char), int).
-:- mode string__format_int_from_char_list(in, out) is det.
-%		Convert a char_list to an int
-%
-string__format_int_from_char_list([], 0).
-string__format_int_from_char_list([L|Ls], I) :-
-	(
-		string__from_char_list([L|Ls], S),
-		string__to_int(S, I_0)
-	->
-		I = I_0
-	;
-		I = 0
-	).
-
-:- pred string__default_precision_and_width(int).
-:- mode string__default_precision_and_width(out) is det.
-string__default_precision_and_width(-15).
-
-:- pred string__special_precision_and_width(int).
-:- mode string__special_precision_and_width(out) is det.
-string__special_precision_and_width(-1).
+	% Create a string from a char using the format string.
+	% Note is is the responsibility of the caller to ensure that the
+	% format string is valid.
+:- func format_char(string, char) = string.
+:- pragma c_code(format_char(FormatStr::in, Val::in) = (Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+}").
 
 %-----------------------------------------------------------------------------%
 
@@ -1558,11 +1303,8 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__float_to_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
-	Word tmp;
 	sprintf(buf, ""%#.15g"", FloatVal);
-	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	FloatString = (char *)tmp;
+	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
 	strcpy(FloatString, buf);
 }").
 
@@ -1574,11 +1316,8 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__float_to_f_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
-	Word tmp;
 	sprintf(buf, ""%.15f"", FloatVal);
-	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	FloatString = (char *)tmp;
+	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
 	strcpy(FloatString, buf);
 }").
 
@@ -1602,7 +1341,7 @@ string__special_precision_and_width(-1).
 
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
-	const char *p = Str + strlen(Str);
+	MR_ConstString p = Str + strlen(Str);
 	IntList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
 		p--;
@@ -1614,14 +1353,14 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__to_int_list(Str::out, IntList::in),
 		[will_not_call_mercury, thread_safe], "{
 		/* mode (out, in) is det */
-	Word int_list_ptr;
+	MR_Word int_list_ptr;
 	size_t size;
-	Word str_ptr;
+	MR_Word str_ptr;
 /*
-** loop to calculate list length + sizeof(Word) in `size' using list in
+** loop to calculate list length + sizeof(MR_Word) in `size' using list in
 ** `int_list_ptr'
 */
-	size = sizeof(Word);
+	size = sizeof(MR_Word);
 	int_list_ptr = IntList;
 	while (! MR_list_is_empty(int_list_ptr)) {
 		size++;
@@ -1629,11 +1368,10 @@ string__special_precision_and_width(-1).
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
 */
-	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	Str = (char *) str_ptr;
+	MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+
 /*
 ** loop to copy the characters from the int_list to the string
 */
@@ -1668,7 +1406,7 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__index(Str::in, Index::in, Ch::out),
 		[will_not_call_mercury, thread_safe], "
-	if ((Word) Index >= strlen(Str)) {
+	if ((MR_Word) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		SUCCESS_INDICATOR = TRUE;
@@ -1701,7 +1439,7 @@ string__special_precision_and_width(-1).
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
 :- mode string__append(in, in, out) is det.
-:- mode string__append(out, out, in) is multidet.
+:- mode string__append(out, out, in) is multi.
 */
 
 /*
@@ -1721,7 +1459,6 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__append(S1::in, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
 	size_t len_1, len_2, len_3;
 
 	len_1 = strlen(S1);
@@ -1734,9 +1471,7 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic_msg(tmp, (len_2 + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		S2 = (char *) tmp;
+		MR_allocate_aligned_string_msg(S2, len_2, MR_PROC_LABEL);
 		strcpy(S2, S3 + len_1);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1748,12 +1483,9 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__append(S1::in, S2::in, S3::out),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2;
-	Word tmp;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
-	incr_hp_atomic_msg(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	S3 = (char *) tmp;
+	MR_allocate_aligned_string_msg(S3, len_1 + len_2, MR_PROC_LABEL);
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
@@ -1761,7 +1493,7 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__append(S1::out, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe],
 	local_vars("
-		String s;
+		MR_String s;
 		size_t len;
 		size_t count;
 	"),
@@ -1774,19 +1506,12 @@ string__special_precision_and_width(-1).
 		LOCALS->count++;
 	"),
 	common_code("
-		Word	temp;
-
-		incr_hp_atomic_msg(temp,
-			(LOCALS->count + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		S1 = (String) temp;
+		MR_allocate_aligned_string_msg(S1, LOCALS->count,
+			MR_PROC_LABEL);
 		memcpy(S1, LOCALS->s, LOCALS->count);
 		S1[LOCALS->count] = '\\0';
-		incr_hp_atomic_msg(temp,
-			(LOCALS->len - LOCALS->count + sizeof(Word))
-				/ sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		S2 = (String) temp;
+		MR_allocate_aligned_string_msg(S2, LOCALS->len - LOCALS->count,
+			MR_PROC_LABEL);
 		strcpy(S2, LOCALS->s + LOCALS->count);
 
 		if (LOCALS->count < LOCALS->len) {
@@ -1809,8 +1534,8 @@ string__special_precision_and_width(-1).
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	Integer len;
-	Word tmp;
+	MR_Integer len;
+	MR_Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
 		MR_make_aligned_string(LVALUE_CAST(ConstString, SubString),
@@ -1819,9 +1544,7 @@ string__special_precision_and_width(-1).
 		len = strlen(Str);
 		if (Start > len) Start = len;
 		if (Count > len - Start) Count = len - Start;
-		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		SubString = (char *) tmp;
+		MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
 		memcpy(SubString, Str + Start, Count);
 		SubString[Count] = '\\0';
 	}
@@ -1838,11 +1561,8 @@ string__special_precision_and_width(-1).
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	Integer len;
-	Word tmp;
-	incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	SubString = (char *) tmp;
+	MR_Integer len;
+	MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
 }").
@@ -1860,27 +1580,23 @@ string__special_precision_and_width(-1).
 
 :- pragma c_code(string__split(Str::in, Count::in, Left::out, Right::out),
 		[will_not_call_mercury, thread_safe], "{
-	Integer len;
-	Word tmp;
+	MR_Integer len;
+	MR_Word tmp;
 	if (Count <= 0) {
 		MR_make_aligned_string(LVALUE_CAST(ConstString, Left), """");
 		Right = Str;
 	} else {
 		len = strlen(Str);
 		if (Count > len) Count = len;
-		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		Left = (char *) tmp;
+		MR_allocate_aligned_string_msg(Left, Count, MR_PROC_LABEL);
 		memcpy(Left, Str, Count);
 		Left[Count] = '\\0';
 		/*
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic_msg(tmp,
-			(len - Count + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		Right = (char *) tmp;
+		MR_allocate_aligned_string_msg(Right, len - Count,
+			MR_PROC_LABEL);
 		strcpy(Right, Str + Count);
 	}
 }").
@@ -1925,7 +1641,6 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__first_char(Str::in, First::in, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
 	if (Str[0] != First || First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
@@ -1934,10 +1649,8 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic_msg(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		Rest = (char *) tmp;
+		MR_allocate_aligned_string_msg(Rest, strlen(Str),
+			MR_PROC_LABEL);
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1948,7 +1661,6 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__first_char(Str::in, First::out, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
 	First = Str[0];
 	if (First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
@@ -1958,10 +1670,8 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic_msg(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word),
-			MR_PROC_LABEL, ""string:string/0"");
-		Rest = (char *) tmp;
+		MR_allocate_aligned_string_msg(Rest, strlen(Str),
+			MR_PROC_LABEL);
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1973,10 +1683,7 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__first_char(Str::out, First::in, Rest::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len = strlen(Rest) + 1;
-	Word tmp;
-	incr_hp_atomic_msg(tmp, (len + sizeof(Word)) / sizeof(Word),
-		MR_PROC_LABEL, ""string:string/0"");
-	Str = (char *) tmp;
+	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 	Str[0] = First;
 	strcpy(Str + 1, Rest);
 }").
@@ -1987,6 +1694,8 @@ string__special_precision_and_width(-1).
 %       Functional forms added.
 
 :- interface.
+
+:- func string__length(string) = int.
 
 :- func string__append(string, string) = string.
 
@@ -2044,6 +1753,9 @@ string__special_precision_and_width(-1).
 % ---------------------------------------------------------------------------- %
 
 :- implementation.
+
+string__length(S) = L :-
+	string__length(S, L).
 
 string__append(S1, S2) = S3 :-
 	string__append(S1, S2, S3).
@@ -2115,14 +1827,53 @@ string__substring(S1, N1, N2) = S2 :-
 string__unsafe_substring(S1, N1, N2) = S2 :-
 	string__unsafe_substring(S1, N1, N2, S2).
 
-string__append_list(S1s) = S2 :-
-	string__append_list(S1s, S2).
-
 string__hash(S) = N :-
 	string__hash(S, N).
 
 string__format(S1, PT) = S2 :-
 	string__format(S1, PT, S2).
+
+% ---------------------------------------------------------------------------- %
+
+string__words(SepP, String) = Words :-
+	I = preceding_boundary(isnt(SepP), String, string__length(String) - 1),
+	Words = words_2(SepP, String, I, []).
+
+% ---------------------------------------------------------------------------- %
+
+:- func words_2(pred(char), string, int, list(string)) = list(string).
+:- mode words_2(pred(in) is semidet, in, in, in) = out is det.
+
+words_2(SepP, String, WordEnd, Words0) = Words :-
+	( if WordEnd < 0 then
+		Words = Words0
+	  else
+		WordPre = preceding_boundary(SepP, String, WordEnd),
+		Word = string__unsafe_substring(String, WordPre + 1,
+				WordEnd - WordPre),
+		PrevWordEnd = preceding_boundary(isnt(SepP), String, WordPre),
+		Words = words_2(SepP, String, PrevWordEnd, [Word | Words0])
+	).
+
+% ---------------------------------------------------------------------------- %
+
+	% preceding_boundary(SepP, String, I) returns the largest index J =< I
+	% in String of the char that is SepP and min(-1, I) if there is no
+	% such J.  preceding_boundary/3 is intended for finding (in reverse)
+	% consecutive maximal sequences of chars satisfying some property.
+	% Note that I *must not* exceed the largest valid index for String.
+
+:- func preceding_boundary(pred(char), string, int) = int.
+:- mode preceding_boundary(pred(in) is semidet, in, in) = out is det.
+
+preceding_boundary(SepP, String, I) =
+	( if I < 0 then
+		I
+	  else if SepP(string__unsafe_index(String, I)) then
+		I
+	  else
+		preceding_boundary(SepP, String, I - 1)
+	).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 				io__state, io__state))
 		;	update_pred_error(pred_error_task)
 		;	update_module(pred(
-				proc_info, proc_info,
+				pred_info, proc_info, proc_info,
 				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
@@ -93,7 +93,7 @@ about unbound type variables.
 				out, out, di, uo) is det)
 		;	update_pred_error(pred(in, in, out, in, out,
 				out, out, di, uo) is det)
-		;	update_module(pred(in, out, in, out) is det)
+		;	update_module(pred(in, in, out, in, out) is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
@@ -146,6 +146,11 @@ about unbound type variables.
 
 :- pred report_error(string::in, io__state::di, io__state::uo) is det.
 
+	% Invoke a shell script.
+:- pred invoke_shell_command(string::in, bool::out,
+	io__state::di, io__state::uo) is det.
+
+	% Invoke an executable.
 :- pred invoke_system_command(string::in, bool::out,
 	io__state::di, io__state::uo) is det.
 
@@ -168,7 +173,7 @@ about unbound type variables.
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
 :- import_module varset.
-:- import_module int, map, tree234, require.
+:- import_module int, map, tree234, require, string.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ True = lambda([_PredInfo::in] is semidet, true) },
@@ -274,7 +279,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 
 	(
 		Task0 = update_module(Closure),
-		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		call(Closure, Pred0, Proc0, Proc, ModuleInfo0, ModuleInfo8),
 		Task1 = Task0,
 		State9 = State0
 	;
@@ -398,6 +403,16 @@ passes_aux__handle_errors(WarnCnt, ErrCnt, ModuleInfo1, ModuleInfo8,
 		State9 = State2
 	).
 
+invoke_shell_command(Command0, Succeeded) -->
+	{
+		use_win32
+	->
+		string__append_list(["sh -c '", Command0, " '"], Command)
+	;
+		Command = Command0
+	},
+	invoke_system_command(Command, Succeeded).
+
 invoke_system_command(Command, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	( { Verbose = yes } ->
@@ -419,6 +434,18 @@ invoke_system_command(Command, Succeeded) -->
 		report_error("unable to invoke system command."),
 		{ Succeeded = no }
 	).
+
+	% Are we compiling in a win32 environment?
+:- pred use_win32 is semidet.
+:- pragma c_code(use_win32,
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_WIN32
+	SUCCESS_INDICATOR = 1;
+#else
+	SUCCESS_INDICATOR = 0;
+#endif
+").
 
 maybe_report_sizes(HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),

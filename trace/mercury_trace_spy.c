@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,11 +12,13 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_array_macros.h"
 #include "mercury_trace_base.h"
+
 #include "mercury_trace.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
-#include "mercury_array_macros.h"
+
 #include <stdlib.h>
 
 const char		*MR_spy_when_names[] =
@@ -166,8 +168,8 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 	MR_Spy_Action			action;
 	const MR_Stack_Layout_Label	*parent;
 	const char			*problem;
-	Word				*base_sp;
-	Word				*base_curfr;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 
 	enabled = FALSE;
 	action = MR_SPY_PRINT;
@@ -179,7 +181,7 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 				MR_spied_labels[slot].spy_point_num];
 			if (point->spy_enabled) {
 				if (point->spy_when != MR_SPY_LINENO) {
-					fatal_error("non-lineno spy "
+					MR_fatal_error("non-lineno spy "
 						"point in "
 						"spied labels array");
 				}
@@ -203,8 +205,8 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 					spy_point_num];
 				if (point->spy_enabled) {
 					if (point->spy_when != MR_SPY_LINENO) {
-						fatal_error("non-lineno spy "
-							"point in "
+						MR_fatal_error("non-lineno "
+							"spy point in "
 							"spied labels array");
 					}
 
@@ -266,11 +268,11 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 					break;
 
 				case MR_SPY_LINENO:
-					fatal_error("lineno spy point in "
+					MR_fatal_error("lineno spy point in "
 						"spied procs array");
 
 				default:
-					fatal_error("bad spy point when in "
+					MR_fatal_error("bad spy point when in "
 						"MR_event_matches_spy_point");
 			}
 		}
@@ -340,6 +342,13 @@ MR_add_line_spy_point(MR_Spy_Action action,
 	int		point_slot;
 	int		old_size, new_size;
 
+	/*
+	** The original filename string may have come from a buffer
+	** or other volatile storage.
+	*/
+
+	filename = MR_copy_string(filename);
+
 	point_slot = MR_spy_point_next;
 
 	old_size = MR_spied_label_next;
@@ -398,8 +407,8 @@ MR_compare_spied_labels(const void *l1, const void *l2)
 	label1 = (const MR_Spied_Label *) l1;
 	label2 = (const MR_Spied_Label *) l2;
 
-	return (int) ((Integer) label1->spy_label
-		- (Integer) label2->spy_label);
+	return (int) ((MR_Integer) label1->spy_label
+		- (MR_Integer) label2->spy_label);
 }
 
 void
@@ -418,6 +427,9 @@ MR_delete_spy_point(int point_table_slot)
 	point->spy_exists = FALSE;
 
 	if (point->spy_when == MR_SPY_LINENO) {
+		/* Release the storage acquired by MR_copy_string. */
+		MR_free(point->spy_filename);
+
 		/*
 		** Remove the spy point from the spied label table list.
 		*/
@@ -444,7 +456,7 @@ MR_delete_spy_point(int point_table_slot)
 
 		proc_table_slot = MR_search_spy_table_for_proc(point->spy_proc);
 		if (proc_table_slot < 0) {
-			fatal_error("deleted spy point "
+			MR_fatal_error("deleted spy point "
 				"was not indexed by proc addr");
 		}
 
@@ -456,7 +468,7 @@ MR_delete_spy_point(int point_table_slot)
 		}
 
 		if (cur == NULL) {
-			fatal_error("deleted spy point "
+			MR_fatal_error("deleted spy point "
 				"was not on proc index list");
 		}
 

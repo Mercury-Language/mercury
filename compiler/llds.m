@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,9 +17,9 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module builtin_ops.
+:- import_module rtti, builtin_ops.
 
-:- import_module bool, assoc_list, list, map, set, std_util.
+:- import_module bool, assoc_list, list, map, set, std_util, counter.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,30 +30,33 @@
 
 %-----------------------------------------------------------------------------%
 
-% c_interface_info holds information used when generating
-% code that uses the C interface.
-:- type c_interface_info
-	---> c_interface_info(
+% foreign_interface_info holds information used when generating
+% code that uses the foreign language interface.
+:- type foreign_interface_info
+	---> foreign_interface_info(
 		module_name,
 		% info about stuff imported from C:
-		c_header_info,
-		c_body_info,
+		foreign_header_info,
+		foreign_body_info,
 		% info about stuff exported to C:
-		c_export_decls,
-		c_export_defns
+		foreign_export_decls,
+		foreign_export_defns
 	).
 
-:- type c_header_info 	==	list(c_header_code).	% in reverse order
-:- type c_body_info 	==	list(c_body_code).	% in reverse order
+:- type foreign_header_info ==	list(foreign_header_code).	
+		% in reverse order
+:- type foreign_body_info   ==	list(foreign_body_code).
+		% in reverse order
 
-:- type c_header_code	==	pair(string, prog_context).
-:- type c_body_code	==	pair(string, prog_context).
+:- type foreign_header_code	==	pair(string, prog_context).
+:- type foreign_body_code	==	pair(string, prog_context).
 
-:- type c_export_defns == list(c_export).
-:- type c_export_decls == list(c_export_decl).
+:- type foreign_export_defns == list(foreign_export).
+:- type foreign_export_decls == list(foreign_export_decl).
 
-:- type c_export_decl
-	---> c_export_decl(
+:- type foreign_export_decl
+	---> foreign_export_decl(
+		foreign_language,	% language of the export
 		string,		% return type
 		string,		% function name
 		string		% argument declarations
@@ -61,7 +64,7 @@
 
 	% the code for `pragma export' is generated directly as strings
 	% by export.m.
-:- type c_export	==	string.
+:- type foreign_export	==	string.
 
 %-----------------------------------------------------------------------------%
 
@@ -106,19 +109,20 @@
 :- type c_file	
 	--->	c_file(
 			module_name,
-			c_header_info,
-			list(user_c_code),
-			list(c_export),
+			foreign_header_info,
+			list(user_foreign_code),
+			list(foreign_export),
 			list(comp_gen_c_var),
 			list(comp_gen_c_data),
 			list(comp_gen_c_module)
 		).
 
-	% Some C code from a `pragma c_code' declaration that is not
+	% Some code from a `pragma foreign_code' declaration that is not
 	% associated with a given procedure.
-:- type user_c_code
-	--->	user_c_code(
-			string,			% C code
+:- type user_foreign_code
+	--->	user_foreign_code(
+			foreign_language,	% language of this code
+			string,			% code
 			term__context		% source code location
 		).
 
@@ -150,6 +154,9 @@
 						% arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
+		)
+	;	rtti_data(
+			rtti_data
 		).
 
 :- type comp_gen_c_module
@@ -163,8 +170,19 @@
 			string,			% predicate name
 			int,			% arity
 			pred_proc_id,		% the pred_proc_id this code
-			list(instruction)	% the code for this procedure
+			list(instruction),	% the code for this procedure
+			proc_label,		% proc_label of this procedure
+			counter,		% source for new label numbers
+			contains_reconstruction	% value numbering needs
+						% to handle goals that
+						% perform structure reuse
+						% specially.
 		).
+
+:- type contains_reconstruction
+	--->	contains_reconstruction
+	;	does_not_contain_reconstruction
+	.
 
 :- type llds_proc_id	==	int.
 
@@ -293,12 +311,23 @@
 			% The effect is to deallocate all the memory which
 			% was allocated since that call to mark_hp.
 
+	;	free_heap(rval)
+			% Notify the garbage collector that the heap space
+			% associated with the top-level cell of the rval is
+			% no longer needed.
+			% `free' is useless but harmless without conservative
+			% garbage collection.
+
 	;	store_ticket(lval)
 			% Allocate a new "ticket" and store it in the lval.
+			%
+			% Operational semantics:
+			% 	MR_ticket_counter = ++MR_ticket_high_water;
+			% 	lval = MR_trail_ptr;
 
 	;	reset_ticket(rval, reset_trail_reason)
 			% The rval must specify a ticket allocated with
-			% `store_ticket' and not yet invalidated or
+			% `store_ticket' and not yet invalidated, pruned or
 			% deallocated.
 			% If reset_trail_reason is `undo', `exception', or
 			% `retry', restore any mutable global state to the
@@ -313,24 +342,58 @@
 			% Note that we do not discard trail entries after
 			% commits, because that would in general be unsafe.
 			%
-			% Any invalidated ticket is useless and should
-			% be deallocated with either `discard_ticket'
-			% or `discard_tickets_to'.
+			% Any invalidated ticket which has not yet been
+			% backtracked over should be pruned with
+			% `prune_ticket' or `prune_tickets_to'.
+			% Any invalidated ticket which has been backtracked
+			% over is useless and should be deallocated with
+			% `discard_ticket'.
+			%
+			% Operational semantics:
+			% 	MR_untrail_to(rval, reset_trail_reason);
+
+	;	prune_ticket
+			% Invalidates the most-recently allocated ticket.
+			%
+			% Operational semantics:
+			%	--MR_ticket_counter;
 
 	;	discard_ticket
 			% Deallocates the most-recently allocated ticket.
+			%
+			% Operational semantics:
+			%	MR_ticket_high_water = --MR_ticket_counter;
 
 	;	mark_ticket_stack(lval)
 			% Tell the trail sub-system to store a ticket counter
-			% (for later use in discard_tickets_upto)
+			% (for later use in prune_tickets_to)
 			% in the specified lval.
+			%
+			% Operational semantics:
+			%	lval = MR_ticket_counter;
 
-	;	discard_tickets_to(rval)
+	;	prune_tickets_to(rval)
+			% The rval must be a ticket counter obtained via
+			% `mark_ticket_stack' and not yet invalidated.
+			% Prunes any trail tickets allocated after
+			% the corresponding call to mark_ticket_stack.
+			% Invalidates any later ticket counters.
+			%
+			% Operational semantics:
+			%	MR_ticket_counter = rval;
+
+%	;	discard_tickets_to(rval)	% this is only used in
+						% the hand-written code in
+						% library/exception.m
 			% The rval must be a ticket counter obtained via
 			% `mark_ticket_stack' and not yet invalidated.
 			% Deallocates any trail tickets allocated after
 			% the corresponding call to mark_ticket_stack.
 			% Invalidates any later ticket counters.
+			%
+			% Operational semantics:
+			%	MR_ticket_counter = rval;
+			%	MR_ticket_high_water = MR_ticket_counter;
 
 	;	incr_sp(int, string)
 			% Increment the det stack pointer. The string is
@@ -343,7 +406,7 @@
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
 				may_call_mercury, maybe(label), maybe(label),
-				bool)
+				maybe(label), bool)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -367,12 +430,15 @@
 			% To make it known to labelopt, we mention it in
 			% the fourth or the fifth arg. The fourth argument
 			% may give the name of a label whose name is fixed
-			% (e.g. because it embedded in raw C code or because it
-			% has associated an label layout structure), while
-			% the fifth may give the name of a label that can
-			% be changed (because it is not mentioned in C code
-			% and has no associated layout structure, being
-			% mentioned only in pragma_c_fail_to components).
+			% because it embedded in raw C code, and which does
+			% not have a layout structure. The fifth argument
+			% may give the name of a label whose name is fixed
+			% because it does have an associated label layout
+			% structure (it may appear in C code as well).
+			% The sixth argument may give the name of a label
+			% that can be changed (because it is not mentioned
+			% in C code and has no associated layout structure,
+			% being mentioned only in pragma_c_fail_to components).
 			%
 			% The sixth argument says whether the contents
 			% of the pragma C code can refer to stack slots.
@@ -497,7 +563,7 @@
 
 	% A pragma_c_output represents the code that stores one of
 	% of the outputs for a pragma_c instruction.
-:- type pragma_c_output  
+:- type pragma_c_output
 	--->	pragma_c_output(lval, type, string).
 				% where to put the output val, type and name
 				% of variable containing the output val
@@ -566,7 +632,7 @@
 
 	% live_value_type describes the different sorts of data that
 	% can be considered live.
-:- type live_value_type 
+:- type live_value_type
 	--->	succip				% A stored succip.
 	;	curfr				% A stored curfr.
 	;	maxfr				% A stored maxfr.
@@ -720,9 +786,9 @@
 		% stage after code generation.
 
 	;	create(tag, list(maybe(rval)), create_arg_types,
-			static_or_dynamic, int, string)
+			static_or_dynamic, int, string, maybe(rval))
 		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
-		%	LabelNumber, CellKind):
+		%	LabelNumber, CellKind, CellToReuse):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
 		% (if the term is constant) as a static constant.
@@ -749,9 +815,12 @@
 		% we can construct the term at compile-time
 		% and just reference the label.
 		%
-		% The last argument gives the name of the type constructor
+		% The string argument gives the name of the type constructor
 		% of the function symbol of which this is a cell, for use
 		% in memory profiling.
+		%
+		% The maybe(rval) contains the location of a cell to reuse.
+		% This will always be `no' after code generation.
 		%
 		% For the time being, you must leave the argument types
 		% implicit if the cell is to be unique. This is because
@@ -824,13 +893,13 @@
 			% the address of the label (uses ENTRY macro).
 
 :- type data_addr
-	--->	data_addr(module_name, data_name).
+	--->	data_addr(module_name, data_name)
 			% module name; which var
+	;	rtti_addr(rtti_type_id, rtti_name).
+			% type id; which var
 
 :- type data_name
 	--->	common(int)
-	;	type_ctor(base_data, string, arity)
-			% base_data, type name, type arity
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
@@ -845,14 +914,6 @@
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
-
-:- type base_data
-	--->	info
-			% basic information, including special preds
-	;	layout
-			% layout information
-	;	functors.
-			% information on functors
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs
@@ -897,7 +958,7 @@
 	;	do_aditi_delete
 	;	do_aditi_bulk_insert
 	;	do_aditi_bulk_delete
-	;	do_aditi_modify
+	;	do_aditi_bulk_modify
 	;	do_not_reached.		% We should never jump to this address.
 
 	% A proc_label is a label used for the entry point to a procedure.
@@ -982,6 +1043,8 @@
 				% signed or unsigned
 				% (used for registers, stack slots, etc).
 
+:- pred llds__wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
+
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.
 
@@ -1011,7 +1074,10 @@
 :- pred llds__type_is_word_size_as_arg(llds_type::in, bool::out) is det.
 
 :- implementation.
+
 :- import_module require.
+
+llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
 
 llds__lval_type(reg(RegType, _), Type) :-
 	llds__register_type(RegType, Type).
@@ -1038,7 +1104,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 % from the file `libquery.so', looks up the address of the
 % procedure query/2 in that module, and then calls that procedure.
 
-:- module interactive_query.
+:- module mdb__interactive_query.
 :- interface.
 :- import_module io, list.
 
@@ -34,7 +34,8 @@
 
 :- implementation.
 :- import_module std_util, bool, string, term, varset, term_io, parser.
-:- import_module dl, name_mangle, util.
+:- import_module mdb__dl, mdb__name_mangle.
+:- import_module mdb__util.
 
 :- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
 

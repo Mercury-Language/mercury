@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -384,9 +384,11 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			FillThreeSlots, "\n",
 			"\t\t", RedoLayoutStr, " = (Word) (const Word *) &",
 			LayoutAddrStr, ";"
-		], FillFourSlots)
+		], FillFourSlots),
+		MaybeLayoutLabel = yes(RedoLayoutLabel)
 	;
-		FillFourSlots = FillThreeSlots
+		FillFourSlots = FillThreeSlots,
+		MaybeLayoutLabel = no
 	),
 	(
 		% This could be done by generating proper LLDS instead of C.
@@ -423,7 +425,8 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	),
 	TraceCode = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt)],
-			will_not_call_mercury, no, no, yes) - ""
+			will_not_call_mercury, no, MaybeLayoutLabel, no, yes)
+			- ""
 	])
 	}.
 
@@ -465,7 +468,7 @@ trace__maybe_generate_internal_event_code(Goal, Code) -->
 		{
 			Path = [LastStep | _],
 			(
-				LastStep = switch(_),
+				LastStep = switch(_, _),
 				PortPrime = switch
 			;
 				LastStep = disj(_),
@@ -647,7 +650,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 				% by another label, and this way we can
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, yes(Label), no, yes)
+				may_call_mercury, no, yes(Label), no, yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)
@@ -714,7 +717,8 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	),
 	LiveType = var(Var, Name, Type, LldsInst),
 	VarInfo = var_info(direct(Lval), LiveType),
-	type_util__vars(Type, TypeVars),
+	type_util__real_vars(Type, TypeVars),
+
 	set__insert_list(Tvars0, TypeVars, Tvars1)
 	},
 	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
@@ -782,7 +786,7 @@ trace__path_step_to_string(conj(N), Str) :-
 trace__path_step_to_string(disj(N), Str) :-
 	string__int_to_string(N, NStr),
 	string__append_list(["d", NStr, ";"], Str).
-trace__path_step_to_string(switch(N), Str) :-
+trace__path_step_to_string(switch(N, _), Str) :-
 	string__int_to_string(N, NStr),
 	string__append_list(["s", NStr, ";"], Str).
 trace__path_step_to_string(ite_cond, "?;").
