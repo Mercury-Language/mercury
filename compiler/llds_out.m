@@ -300,6 +300,8 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
+		output_c_data_init_list_decls(Datas),
+		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
 		output_rl_file(ModuleName, MaybeRLFile),
@@ -537,8 +539,30 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
+	% Output declarations for each module layout defined in this module
+	% (there should only be one, of course).
+:- pred output_c_data_init_list_decls(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_c_data_init_list_decls([]) --> [].
+output_c_data_init_list_decls([Data | Datas]) -->
+	(
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
+		{ DataName = module_layout }
+	->
+		{ decl_set_init(DeclSet0) },
+		output_data_addr_decls(data_addr(ModuleName, DataName), "", "",
+			0, _, DeclSet0, _DeclSet)
+	;
+		[]
+	),
+	output_c_data_init_list_decls(Datas).
+
 	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
 	% for each type_ctor_info defined in this module.
+	% Also output calls to MR_register_module_layout()
+	% for each module layout defined in this module
+	% (there should only be one, of course).
 
 :- pred output_c_data_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
@@ -570,9 +594,9 @@ output_c_data_init_list([Data | Datas]) -->
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
-		io__write_string("\t\tif (MR_register_module_layout != NULL)"),
-		io__write_string("{\n\t\t\t(*MR_register_module_layout)("),
-		io__write_string("(MR_Module_Layout *)\n\t\t\t\t& "),
+		io__write_string("\t\tif (MR_register_module_layout != NULL) {\n"),
+		io__write_string("\t\t\t(*MR_register_module_layout)("),
+		io__write_string("(MR_Module_Layout *)\n\t\t\t\t&"),
 		output_data_addr(ModuleName, DataName),
 		io__write_string(");\n\t\t}\n")
 	;
