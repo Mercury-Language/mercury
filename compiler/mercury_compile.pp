@@ -99,8 +99,7 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 	globals__io_init(OptionTable1, GC_Method, Tags_Method),
 
 	% --gc conservative implies --no-reclaim-heap-*
-	% XXX for the moment, accurate means the same (until it works).
-	( ( { GC_Method = conservative } ; { GC_Method = accurate } ) ->
+	( { GC_Method = conservative } ->
 		globals__io_set_option(
 			reclaim_heap_on_semidet_failure, bool(no)
 		),
@@ -714,7 +713,8 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 			     ModuleName, "_garb.o ",
 			     ModuleName, "_init.o $(", ModuleName, ".os)\n\n",
 
-			ModuleName, "_garb.c :\n",
+			ModuleName, "_garb.c : $(",
+			ModuleName, ".garbs)\n",
 			"\t$(MLINK) $(MLINKFLAGS) -o ", ModuleName, 
 			"_garb.c $(", ModuleName, ".garbs)\n\n"
 		])
@@ -952,7 +952,9 @@ read_mod(ModuleName, Extension, Descr, Search, Items, Error) -->
 	maybe_write_string(VeryVerbose, Descr),
 	maybe_write_string(VeryVerbose, " `"),
 	maybe_write_string(VeryVerbose, FileName),
-	maybe_write_string(Search, " (searching)"),
+	( { VeryVerbose = yes } ->
+		maybe_write_string(Search, " (searching)")
+	; [] ),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	prog_io__read_module(FileName, Module, Search, Error, Messages, Items),
@@ -978,7 +980,9 @@ read_mod_ignore_errors(ModuleName, Extension, Descr, Search, Items, Error) -->
 	maybe_write_string(VeryVerbose, Descr),
 	maybe_write_string(VeryVerbose, " `"),
 	maybe_write_string(VeryVerbose, Module),
-	maybe_write_string(Search, " (searching)"),
+	( { VeryVerbose = yes } ->
+		maybe_write_string(Search, " (searching)")
+	; [] ),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
 	{ string__append(ModuleName, Extension, FileName) },
@@ -2286,6 +2290,8 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = conservative ->
 		GC_Opt = "-DCONSERVATIVE_GC "
+	; GC_Method = conservative ->
+		GC_Opt = "-DNATIVE_GC"
 	;
 		GC_Opt = ""
 	},
