@@ -28,27 +28,27 @@ MR_get_user_cpu_miliseconds(void)
 {
 #ifndef MR_CLOCK_TICKS_PER_SECOND
   #ifdef MR_WIN32_GETPROCESSTIMES
-    #define FILETIME_TO_MILLISEC(ST, Msec)				\
+    #define FILETIME_TO_MILLISEC(time, msec)				\
 	do								\
 	{								\
 	  SYSTEMTIME tmp;						\
-	  FileTimeToSystemTime(&ST, &tmp);				\
-	  Msec = tmp.wMilliseconds +					\
+	  FileTimeToSystemTime(&time, &tmp);				\
+	  msec = tmp.wMilliseconds +					\
 	    1000 * (tmp.wSecond + 60 * (tmp.wMinute + 60 * tmp.wHour));	\
 	} while(0)
 
-	FILETIME CreationTime;
-	FILETIME ExitTime;
-	FILETIME KernelTime;
-	FILETIME UserTime;
-	int UserMsec, KernelMsec;
+	FILETIME creation_time;
+	FILETIME exit_time;
+	FILETIME kernel_time;
+	FILETIME user_time;
+	int user_msec, kernel_msec;
 	
 	GetProcessTimes(GetCurrentProcess(),
-					&CreationTime, &ExitTime,
-					&KernelTime, &UserTime);
-	FILETIME_TO_MILLISEC(UserTime, UserMsec);
-	FILETIME_TO_MILLISEC(KernelTime, KernelMsec);
-	return UserMsec + KernelMsec;
+					&creation_time, &exit_time,
+					&kernel_time, &user_time);
+	FILETIME_TO_MILLISEC(user_time, user_msec);
+	FILETIME_TO_MILLISEC(kernel_time, kernel_msec);
+	return user_msec + kernel_msec;
   #else
 	return -1;
   #endif
