@@ -1891,7 +1891,6 @@ output_pragma_outputs([O|Outputs]) -->
         	{ Type = term__functor(term__atom("string"), [], _) }
 	->
 		output_llds_type_cast(word),
-		io__write_string(" "),
 		io__write_string(VarName)
 	;
         	{ Type = term__functor(term__atom("float"), [], _) }
@@ -2516,11 +2515,12 @@ llds_out__rval_type_as_arg(Rval, ArgType) -->
 	% Same as output_llds_type, but will put parentheses
 	% around the llds_type.
 :- pred output_llds_type_cast(llds_type::in, 
-			io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
+
 output_llds_type_cast(LLDSType)   --> 
 	io__write_string("("),
 	output_llds_type(LLDSType),
-	io__write_string(")").
+	io__write_string(") ").
 
 :- pred output_llds_type(llds_type::in, io__state::di, io__state::uo) is det.
 
@@ -3623,11 +3623,11 @@ output_float_rval_as_data_ptr(Rval) -->
 		{ llds_out__float_const_expr_name(Rval, FloatName) }
 	->
 		output_llds_type_cast(data_ptr),
-		io__write_string(" &mercury_float_const_"),
+		io__write_string("&mercury_float_const_"),
 		io__write_string(FloatName)
 	;
 		output_llds_type_cast(data_ptr),
-		io__write_string(" float_to_word("),
+		io__write_string("float_to_word("),
 		output_rval(Rval),
 		io__write_string(")")
 	).
@@ -3651,7 +3651,7 @@ output_float_rval_as_word(Rval) -->
 		{ llds_out__float_const_expr_name(Rval, FloatName) }
 	->
 		output_llds_type_cast(word),
-		io__write_string(" &mercury_float_const_"),
+		io__write_string("&mercury_float_const_"),
 		io__write_string(FloatName)
 	;
 		io__write_string("float_to_word("),
@@ -3791,19 +3791,19 @@ output_rval(mem_addr(MemRef)) -->
 	(
 		{ MemRef = stackvar_ref(N) },
 		output_llds_type_cast(data_ptr),
-		io__write_string(" &MR_stackvar("),
+		io__write_string("&MR_stackvar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = framevar_ref(N) },
 		output_llds_type_cast(data_ptr),
-		io__write_string(" &MR_framevar("),
+		io__write_string("&MR_framevar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = heap_ref(Rval, Tag, FieldNum) },
 		output_llds_type_cast(data_ptr),
-		io__write_string(" &MR_field("),
+		io__write_string("&MR_field("),
 		output_tag(Tag),
 		io__write_string(", "),
 		output_rval(Rval),
@@ -3827,14 +3827,12 @@ output_rval_const(int_const(N)) -->
 	% things like 1 << 32 work when `Integer' is 64 bits
 	% but `int' is 32 bits.
 	output_llds_type_cast(integer),
-	io__write_string(" "),
 	io__write_int(N).
 output_rval_const(float_const(FloatVal)) -->
 	% the cast to (Float) here lets the C compiler
 	% do arithmetic in `float' rather than `double'
 	% if `Float' is `float' not `double'.
 	output_llds_type_cast(float),
-	io__write_string(" "),
 	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
@@ -3859,7 +3857,7 @@ output_rval_const(data_addr_const(DataAddr)) -->
 	% data addresses are all assumed to be of type `MR_Word *';
 	% we need to cast them here to avoid type errors
 	output_llds_type_cast(data_ptr),
-	io__write_string(" &"),
+	io__write_string("&"),
 	output_data_addr(DataAddr).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
@@ -3882,7 +3880,7 @@ output_static_rval(binop(_, _, _)) -->
 	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
 output_static_rval(mkword(Tag, Exprn)) -->
 	output_llds_type_cast(data_ptr),
-	io__write_string(" MR_mkword("),
+	io__write_string("MR_mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_static_rval(Exprn),
@@ -3933,7 +3931,7 @@ output_rval_static_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
 output_rval_static_const(data_addr_const(DataAddr)) -->
 	output_llds_type_cast(data_ptr),
-	io__write_string(" &"),
+	io__write_string("&"),
 	output_data_addr(DataAddr).
 output_rval_static_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
