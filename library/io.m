@@ -1674,7 +1674,8 @@ void sys_init_io_run_module(void) {
 ").
 
 :- pragma(c_code, io__write_byte(Byte::in, IO0::di, IO::uo), "
-	if (putc(Byte, mercury_current_binary_output->file) < 0) {
+	/* call putc with a strictly non-negative byte-sized integer */
+	if (putc((int) ((unsigned char) Byte), mercury_current_binary_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
