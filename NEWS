@@ -23,6 +23,9 @@ Changes to the standard library:
 * We've addes some new library predicates: assoc_list__keys_and_values,
   list__map2 and list__map3.
 
+* We've added func versions of the remaining preds in int.m that
+  did not already have them.
+
 NEWS for Mercury release 0.10:
 ------------------------------
 
@@ -125,9 +128,6 @@ Changes to the Mercury language:
   separate predicate or function for each type class method definition.
 
 Changes to the standard library:
-
-* We've added func versions of the remaining preds in int.m that
-  did not already have them.
 
 * We've added new predicates map__foldl2, tree234__foldl2 and
   std_util__aggregate2, and builtin__promise_only_solution_io.
