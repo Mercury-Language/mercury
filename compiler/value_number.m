@@ -427,6 +427,12 @@ vn__max_real_temps(5).
 value_number__post_main(Instrs0, Instrs) :-
 	value_number__post_main_2(Instrs0, 0, [], Instrs).
 
+	% N is the number of the highest numbered temp variable seen so far;
+	% N = 0 means we haven't seen any temp variables. RevSofar is a
+	% reversed list of instructions starting with the first instruction
+	% in this block that accesses a temp variable. Invariant: RevSofar
+	% is always empty if N = 0.
+
 :- pred value_number__post_main_2(list(instruction), int, list(instruction),
 	list(instruction)).
 :- mode value_number__post_main_2(in, in, in, out) is det.
@@ -443,27 +449,27 @@ value_number__post_main_2([Instr0 | Instrs0], N0, RevSofar, Instrs) :-
 	Instr0 = Uinstr0 - _Comment0,
 	opt_util__count_temps_instr(Uinstr0, N0, N1),
 	(
-		opt_util__can_instr_fall_through(Uinstr0, no)
+		N1 > 0
 	->
-		list__reverse([Instr0 | RevSofar], BlockInstrs),
-		value_number__post_main_2(Instrs0, 0, [], Instrs1),
-		Instrs = [block(N1, BlockInstrs) - "" | Instrs1]
+		(
+			opt_util__can_instr_fall_through(Uinstr0, no)
+		->
+			list__reverse([Instr0 | RevSofar], BlockInstrs),
+			value_number__post_main_2(Instrs0, 0, [], Instrs1),
+			Instrs = [block(N1, BlockInstrs) - "" | Instrs1]
+		;
+			Uinstr0 = label(_)
+		->
+			list__reverse(RevSofar, BlockInstrs),
+			value_number__post_main_2(Instrs0, 0, [], Instrs1),
+			Instrs = [block(N1, BlockInstrs) - "", Instr0 | Instrs1]
+		;
+			value_number__post_main_2(Instrs0,
+				N1, [Instr0 | RevSofar], Instrs)
+		)
 	;
-		Uinstr0 = label(_),
-		RevSofar = [_|_]
-	->
-		list__reverse(RevSofar, BlockInstrs),
-		value_number__post_main_2(Instrs0, 0, [], Instrs1),
-		Instrs = [block(N1, BlockInstrs) - "", Instr0 | Instrs1]
-	;
-		RevSofar = [],
-		N1 = 0
-	->
 		value_number__post_main_2(Instrs0, 0, [], Instrs1),
 		Instrs = [Instr0 | Instrs1]
-	;
-		value_number__post_main_2(Instrs0, N1, [Instr0 | RevSofar],
-			Instrs)
 	).
 
 %-----------------------------------------------------------------------------%
