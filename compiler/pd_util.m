@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -212,9 +212,10 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	% If we perform generalisation, we shouldn't change any called
 	% procedures, since that could cause a less efficient version to
 	% be chosen.
-	{ HowToCheck = check_unique_modes(may_not_change_called_proc) },
+	{ MayChangeCalledProc = may_not_change_called_proc },
 	{ mode_info_init(IO0, ModuleInfo1, InstTable0, PredId, ProcId, Context,
-		LiveVars, InstMap0, HowToCheck, ModeInfo0) },
+		LiveVars, InstMap0, check_unique_modes,
+		MayChangeCalledProc, ModeInfo0) },
 
 	{ unique_modes__check_goal(Goal1, Goal, ModeInfo0, ModeInfo1) },
 	pd_info_lookup_bool_option(debug_pd, Debug),

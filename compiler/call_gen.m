@@ -177,10 +177,8 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	{ Modes = argument_modes(ArgIKT, ArgModes) },
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_globals(ModuleInfo, Globals) },
-	{ arg_info__ho_call_args_method(Globals, ArgsMethod) },
 	{ instmap__init_reachable(BogusInstMap) },	% YYY
-	{ make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+	{ make_arg_infos(Types, ArgModes, CodeModel, BogusInstMap,
 		ArgIKT, ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
 	{ call_gen__partition_args(ArgsInfos, InVars, OutVars) },
@@ -278,18 +276,11 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		Types, ArgModes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
 
-	{ globals__get_args_method(Globals, ArgsMethod) },
-	( { ArgsMethod = compact } ->
-		[]
-	;
-		{ error("Sorry, typeclasses with simple args_method not yet implemented") }
-	),
 	{ ArgModes = argument_modes(InstTable, Modes) },
 	{ instmap__init_reachable(BogusInstMap) },	% YYY
-	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel,
+	{ make_arg_infos(Types, Modes, CodeModel,
 		BogusInstMap, InstTable, ModuleInfo, ArgInfo) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },

@@ -142,7 +142,10 @@ output_int(Writer, Bits, IntVal) -->
 	{ int__bits_per_int(IntBits) },
 	{ 
 		Bits < IntBits,
-		(IntVal /\ (\0 << Bits)) \= 0
+		int__pow(2, Bits - 1, MaxVal),
+		( IntVal >= MaxVal
+		; IntVal < -MaxVal
+		)
 	->
 		string__format(
 		"error: bytecode_data__output_int: %d does not fit in %d bits",

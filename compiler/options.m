@@ -182,6 +182,26 @@
 				% where typeinfos are live for any live data
 				% the includes that type variable.
 		;	typeinfo_liveness
+				% Generate unify and compare preds.  For
+				% measurement only. Code generated with
+				% this set to `no' is unlikely to
+				% actually work.
+		;	special_preds
+				% Generate type_ctor_info structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_info
+				% Generate type_ctor_layout structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_layout
+				% Generate type_ctor_functors structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_functors
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -475,7 +495,6 @@ option_defaults_2(compilation_model_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	args			-	string("compact"),
 	sync_term_size		-	int(8),
 					% 8 is the size on linux (at the time
 					% of writing) - will usually be over-
@@ -486,6 +505,10 @@ option_defaults_2(compilation_model_option, [
 	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
 	typeinfo_liveness	-	bool(no),
+	special_preds		-	bool(yes),
+	type_ctor_info		-	bool(yes),
+	type_ctor_layout	-	bool(yes),
+	type_ctor_functors	-	bool(yes),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -823,14 +846,16 @@ long_option("num-tag-bits",		num_tag_bits).
 long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
-long_option("args",			args).
-long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
 long_option("typeinfo-liveness",	typeinfo_liveness).
+long_option("special-preds",		special_preds).
+long_option("type-ctor-info",		type_ctor_info).
+long_option("type-ctor-layout",		type_ctor_layout).
+long_option("type-ctor-functors",	type_ctor_functors).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1725,19 +1750,6 @@ your program compiled with different options.
 
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
-
-		"--args {simple, compact}",
-		"--arg-convention {simple, compact}",
-		"(This option is not for general use.)",
-		"\tUse the specified argument passing convention",
-		"\tin the generated low-level C code. With the `simple'",
-		"\tconvention, the <n>th argument is passed in or out",
-		"\tusing register r<n>. With the `compact' convention,",
-		"\tthe <n>th input argument is passed using register r<n>,",
-		"\tand the <n>th output argument is returned using",
-		"\tregister r<n>. The compact convention generally leads to",
-		"\tmore efficient code. Use of the simple convention requires the",
-		"\tC code to be compiled with -UCOMPACT_ARGS.",
 
 		"--no-type-layout",
 		"(This option is not for general use.)",

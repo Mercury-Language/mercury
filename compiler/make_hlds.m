@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module equiv_type, module_qual, globals.
+:- import_module equiv_type, module_qual.
 
 :- import_module io, std_util, list, bool.
 
@@ -43,7 +43,7 @@
 
 :- pred add_new_proc(pred_info, arity, argument_modes, maybe(argument_modes),
 		maybe(list(is_live)), maybe(determinism),
-		prog_context, args_method, pred_info, proc_id).
+		prog_context, is_address_taken, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
@@ -58,13 +58,13 @@
 
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
 :- import_module modules, module_qual, prog_util, options, hlds_out.
-:- import_module make_tags, quantification, (inst), instmap, term, varset.
+:- import_module make_tags, quantification, (inst), instmap, globals.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds, rl.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
-:- import_module getopt, assoc_list, term_io.
+:- import_module term, varset, getopt, assoc_list, term_io.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
 		UndefTypes, UndefModes) -->
@@ -509,7 +509,7 @@ add_item_decl_pass_2(func(_TypeVarSet, _InstVarSet, _ExistQVars, FuncName,
 			FuncName, Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ maybe_add_default_modes(Module0, PredIds, Preds0, Preds) },
+		{ maybe_add_default_modes(PredIds, Preds0, Preds) },
 		{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 		{ module_info_set_predicate_table(Module0, PredTable, Module) }
 	;
@@ -1618,7 +1618,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, TypeId, T2) },
-		{ hlds_data__get_type_defn_tparams(T2, Params) },
+		{ hlds_data__get_type_defn_tvarset(T2, TVarSet_2) },
+		{ hlds_data__get_type_defn_tparams(T2, Params_2) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
 		{ hlds_data__get_type_defn_context(T2, OrigContext) },
 		{ hlds_data__get_type_defn_status(T2, OrigStatus) },
@@ -1634,8 +1635,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			->
 				Module = Module0
 			;
-				hlds_data__set_type_defn(TVarSet, Params,
-					Body_2, OrigStatus, OrigContext, T3),
+				hlds_data__set_type_defn(TVarSet_2, Params_2,
+					Body_2, Status, OrigContext, T3),
 				map__det_update(Types0, TypeId, T3, Types),
 				module_info_set_types(Module0, Types, Module)
 			}
@@ -2168,8 +2169,7 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 				ModuleName, Func, FuncArity, [PredId])
 		->
 			module_info_pred_info(Module0, PredId, PredInfo0),
-			maybe_add_default_mode(Module0, PredInfo0, 
-				PredInfo, MaybeProc),
+			maybe_add_default_mode(PredInfo0, PredInfo, MaybeProc),
 			(
 				MaybeProc = no,
 				PredProcIds1 = PredProcIds0,
@@ -2489,9 +2489,9 @@ add_special_pred_decl(SpecialPredId,
 		ArgTypes, Cond, Context, ClausesInfo0, Status, Markers,
 		none, predicate, ClassContext, Proofs, Owner, PredInfo0),
 	ArgLives = no,
-	globals__get_args_method(Globals, ArgsMethod),
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
-		ArgLives, yes(Det), Context, ArgsMethod, PredInfo, _),
+		ArgLives, yes(Det), Context, address_is_not_taken, PredInfo,
+		_),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
 	predicate_table_insert(PredicateTable0, PredInfo, may_be_unqualified, 
@@ -2531,12 +2531,12 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 	).
 
 add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
-		MaybeDet, Context, ArgsMethod, PredInfo, ModeId) :-
+		MaybeDet, Context, IsAddressTaken, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
 	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
-		MaybeArgLives, MaybeDet, Context, ArgsMethod, NewProc),
+		MaybeArgLives, MaybeDet, Context, IsAddressTaken, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -2613,9 +2613,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 
 		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
-	globals__io_get_args_method(ArgsMethod),
 	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-			MaybeDet, MContext, ArgsMethod, PredInfo, ProcId) },
+		MaybeDet, MContext, address_is_not_taken, PredInfo, ProcId) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -2786,7 +2785,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{
 		pred_info_clauses_info(PredInfo1, Clauses0),
 		pred_info_typevarset(PredInfo1, TVarSet0),
-		maybe_add_default_mode(ModuleInfo0, PredInfo1, PredInfo2, _),
+		maybe_add_default_mode(PredInfo1, PredInfo2, _),
 		pred_info_procedures(PredInfo2, Procs),
 		map__keys(Procs, ModeIds)
 		},

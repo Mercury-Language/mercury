@@ -108,6 +108,11 @@
 :- pred output_c_quoted_string(string, io__state, io__state).
 :- mode output_c_quoted_string(in, di, uo) is det.
 
+	% Like quote_c_quoted_string except that the string may have
+	% NULL characters embedded in it.
+:- pred output_c_quoted_multi_string(int, string, io__state, io__state).
+:- mode output_c_quoted_multi_string(in, in, di, uo) is det.
+
 	% Create a name for type_ctor_*
 
 :- pred llds_out__make_type_ctor_name(base_data, string, arity, string).
@@ -332,6 +337,8 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** Automatically generated from `", SourceFileName,
 			"' by the Mercury compiler,\n",
 		"** version ", Version, ".\n",
+		"** Do not edit.\n",
+		"**\n",
 		"** The autoconfigured grade settings governing\n",
 		"** the generation of this C file were\n",
 		"**\n",
@@ -339,7 +346,7 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
 		"**\n",
 		"** END_OF_C_GRADE_INFO\n",
-		"** Do not edit.\n*/\n"
+		"*/\n"
 	]).
 
 :- pred convert_bool_to_string(bool, string).
@@ -556,6 +563,15 @@ output_c_data_init_list([Data | Datas]) -->
 		io__write_string("_"),
 		io__write_int(Arity),
 		io__write_string("_0);\n")
+	;
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
+		{ DataName = module_layout }
+	->
+		io__write_string("\t\tif (MR_register_module_layout != NULL)"),
+		io__write_string("{\n\t\t\t(*MR_register_module_layout)("),
+		io__write_string("(MR_Module_Layout *)\n\t\t\t\t& "),
+		output_data_addr(ModuleName, DataName),
+		io__write_string(");\n\t\t}\n")
 	;
 		[]
 	),
@@ -2251,6 +2267,7 @@ data_name_would_include_code_address(type_ctor(info, _, _), yes).
 data_name_would_include_code_address(type_ctor(layout, _, _), no).
 data_name_would_include_code_address(type_ctor(functors, _, _), no).
 data_name_would_include_code_address(base_typeclass_info(_, _), yes).
+data_name_would_include_code_address(module_layout, no).
 data_name_would_include_code_address(proc_layout(_), yes).
 data_name_would_include_code_address(internal_layout(_), no).
 data_name_would_include_code_address(tabling_pointer(_), no).
@@ -2743,6 +2760,7 @@ linkage(type_ctor(info, _, _),     extern).
 linkage(type_ctor(layout, _, _),   static).
 linkage(type_ctor(functors, _, _), static).
 linkage(base_typeclass_info(_, _), extern).
+linkage(module_layout,             static).
 linkage(proc_layout(_),            static).
 linkage(internal_layout(_),        static).
 linkage(tabling_pointer(_),        static).
@@ -2963,17 +2981,17 @@ llds_out__make_stack_layout_name(Label, Name) :-
 
 output_data_addr(ModuleName, VarName) -->
 	(
+		{ VarName = common(N) },
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string("mercury_data_"),
-		{ VarName = common(N) },
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
+		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string("mercury_data_"),
-		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
 		io__write_string(MangledModuleName),
 		{ llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity,
 			Str) },
@@ -2990,6 +3008,11 @@ output_data_addr(ModuleName, VarName) -->
 			Str) },
 		io__write_string("mercury_data___"),
 		io__write_string(Str)
+	;
+		{ VarName = module_layout },
+		io__write_string("mercury_data__module_layout_"),
+		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		io__write_string(MangledModuleName)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = proc_layout(Label) },
@@ -3598,6 +3621,12 @@ output_rval_const(string_const(String)) -->
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
+output_rval_const(multi_string_const(Length, String)) -->
+	io__write_string("string_const("""),
+	output_c_quoted_multi_string(Length, String),
+	io__write_string(""", "),
+	io__write_int(Length),
+	io__write_string(")").
 output_rval_const(true) -->
 	io__write_string("TRUE").
 output_rval_const(false) -->
@@ -3663,6 +3692,12 @@ output_rval_static_const(string_const(String)) -->
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
+	io__write_string(")").
+output_rval_static_const(multi_string_const(Length, String)) -->
+	io__write_string("(String) string_const("""),
+	output_c_quoted_multi_string(Length, String),
+	io__write_string(""", "),
+	io__write_int(Length),
 	io__write_string(")").
 output_rval_static_const(true) -->
 	io__write_string("TRUE").
@@ -3787,6 +3822,30 @@ output_c_quoted_string(S0) -->
 			io__write_char(Char)
 		),
 		output_c_quoted_string(S1)
+	;
+		[]
+	).
+
+output_c_quoted_multi_string(Len, S) -->
+	output_c_quoted_multi_string_2(0, Len, S).
+
+:- pred output_c_quoted_multi_string_2(int::in, int::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+output_c_quoted_multi_string_2(Cur, Len, S) -->
+	( { Cur < Len } ->
+			% we must use unsafe index, because we want to be able
+			% to access chars beyond the first NULL
+		{ string__unsafe_index(S, Cur, Char) },
+		( { char__to_int(Char, 0) } ->
+			io__write_string("\\0")
+		; { quote_c_char(Char, QuoteChar) } ->
+			io__write_char('\\'),
+			io__write_char(QuoteChar)
+		;
+			io__write_char(Char)
+		),
+		output_c_quoted_multi_string_2(Cur + 1, Len, S)
 	;
 		[]
 	).

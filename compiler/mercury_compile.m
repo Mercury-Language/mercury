@@ -1560,12 +1560,19 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_type_ctor_infos(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_type_ctor_infos(HLDS0, Verbose, Stats, HLDS) -->
-	maybe_write_string(Verbose,
-		"% Generating type_ctor_info structures..."),
-	maybe_flush_output(Verbose),
-	{ base_type_info__generate_hlds(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	maybe_report_stats(Stats).
+	globals__io_lookup_bool_option(type_ctor_info, TypeCtorInfoOption),
+	( 
+		{ TypeCtorInfoOption = yes } 
+	->
+		maybe_write_string(Verbose,
+			"% Generating type_ctor_info structures..."),
+		maybe_flush_output(Verbose),
+		{ base_type_info__generate_hlds(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
 
 	% We only add type_ctor_layouts if shared-one-or-two-cell
 	% type_infos are being used (the layouts refer to the
@@ -1987,16 +1994,17 @@ mercury_compile__output_pass(HLDS0, Procs0, MaybeRLFile,
 	{ base_type_info__generate_llds(HLDS0, TypeCtorInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, TypeCtorLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS,
-		ProcLayouts, InternalLayouts, LayoutLabels) },
+		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) },
 	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 	{ module_info_get_global_data(HLDS, GlobalData) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
-	{ list__append(InternalLayouts, TypeCtorLayouts, StaticData0) },
+	{ list__append(StaticLayouts, TypeCtorLayouts, StaticData0) },
 	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData1) },
 	{ list__append(StaticData1, NonCommonStaticData, StaticData) },
-	{ list__condense([TypeCtorInfos, ProcLayouts, StaticData], AllData) },
+	{ list__condense([TypeCtorInfos, PossiblyDynamicLayouts, StaticData],
+		AllData) },
 	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
 		AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
@@ -2339,12 +2347,6 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		UseTrailOpt = ""
 	},
-	globals__io_get_args_method(ArgsMethod),
-	{ ArgsMethod = compact ->
-		ArgsOpt = "-DCOMPACT_ARGS "
-	;
-		ArgsOpt = ""
-	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
 		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
@@ -2394,7 +2396,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		C_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
-		UseTrailOpt, ArgsOpt, TypeLayoutOpt,
+		UseTrailOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),

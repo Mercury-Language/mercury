@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,10 +191,8 @@ find_follow_vars_in_goal_expr(
 	FVInfo = follow_vars_info(ModuleInfo, _),
 	determinism_to_code_model(Det, CodeModel),
 	Modes = argument_modes(ArgInstTable, ArgModes),
-	module_info_globals(ModuleInfo, Globals),
-	arg_info__ho_call_args_method(Globals, ArgsMethod),
 	instmap__init_reachable(BogusInstMap),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+	make_arg_infos(Types, ArgModes, CodeModel, BogusInstMap,
 		ArgInstTable, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
@@ -211,15 +209,8 @@ find_follow_vars_in_goal_expr(
 	FVInfo = follow_vars_info(ModuleInfo, _),
 	determinism_to_code_model(Det, CodeModel),
 	Modes = argument_modes(ArgInstTable, ArgModes),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
-	( ArgsMethod = compact ->
-		true
-	;
-		error("Sorry, typeclasses with simple args_method not yet implemented")
-	),
 	instmap__init_reachable(BogusInstMap),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+	make_arg_infos(Types, ArgModes, CodeModel, BogusInstMap,
 		ArgInstTable, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 

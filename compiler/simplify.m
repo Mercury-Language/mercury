@@ -105,9 +105,8 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 	{ simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo0,
 		ModuleInfo1, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) },
 	{ module_info_preds(ModuleInfo1, OldPredTable0) },
-	modecheck_queued_procs(check_unique_modes(may_change_called_proc),
-		OldPredTable0, ModuleInfo1, _OldPredTable, ModuleInfo,
-		_Changed),
+	modecheck_queued_procs(check_unique_modes, OldPredTable0, ModuleInfo1,
+		_OldPredTable, ModuleInfo, _Changed),
 	( { MaybeMsgs = yes(Msgs0 - Msgs1) } ->
 		{ set__union(Msgs0, Msgs1, Msgs2) },
 		{ set__to_sorted_list(Msgs2, Msgs) },
@@ -155,9 +154,8 @@ simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	{ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
 			ModuleInfo1, Proc0, Proc, _) },
 	{ module_info_preds(ModuleInfo1, OldPredTable0) },
-	modecheck_queued_procs(check_unique_modes(may_change_called_proc),
-		OldPredTable0, ModuleInfo1, _OldPredTable, ModuleInfo,
-		_Changed).
+	modecheck_queued_procs(check_unique_modes, OldPredTable0, ModuleInfo1,
+		_OldPredTable, ModuleInfo, _Changed).
 
 simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		ProcInfo0, ProcInfo, Msgs) :-

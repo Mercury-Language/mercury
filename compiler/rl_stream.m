@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 		bag(relation_id),		% use counts - must be one
 						% if the relation is to be
 						% streamed.
-		multi_map(relation_id, relation_id)
+		relation(relation_id)
 						% aliases introduced by `ref'.
 	).
 
@@ -75,7 +75,7 @@ rl_stream__detect_streams -->
 rl_stream__detect_streams_2([], Materialise, Materialise) --> [].
 rl_stream__detect_streams_2([Block | Order0], Materialise0, Materialise) -->
 	{ bag__init(Uses) },
-	{ multi_map__init(Aliases) },
+	{ relation__init(Aliases) },
 	{ Info0 = stream_info(Materialise0, Uses, Aliases) },
 	rl_opt_info_get_flow_graph(Graph), 
 	{ rl_stream__get_blocks_to_back_arc(Graph, [Block | Order0], Order,
@@ -151,6 +151,7 @@ rl_stream__detect_must_materialise_rels(Graph, BlockMap,
 	list__map(rl_stream__get_final_live_rels(BlockMap),
 		OutsideCallingBlocks, FinalLive0), 
 	list__condense(FinalLive0, FinalLive),
+
 	rl_stream__add_must_materialise_rels(FinalLive, Info0, Info1),
 
 	%
@@ -178,7 +179,7 @@ rl_stream__detect_must_materialise_rels(Graph, BlockMap,
 	    )),
 	list__foldl(AddMustMaterialiseRels, Instrs, Info2, Info3),
 	( MaybeBranch = yes(Branch) ->
-		list__foldl(AddMustMaterialiseRels, [Branch], Info3, Info)
+		AddMustMaterialiseRels(Branch, Info3, Info)
 	;
 		Info = Info3
 	).
@@ -269,21 +270,26 @@ rl_stream__detect_streams_instr(Instr) -->
 :- pred rl_stream__end_block_list(stream_info::in, stream_info::out) is det.
 
 rl_stream__end_block_list(Info0, Info) :-
-	Info0 = stream_info(Materialise0, Uses, Aliases),
-	bag__to_list_without_duplicates(Uses, UsedRels),
+	Info0 = stream_info(Materialise0, Uses, Aliases0),
+	relation__rtc(Aliases0, Aliases),
+	relation__domain(Aliases, AliasedRels0),
+	set__to_sorted_list(AliasedRels0, AliasedRels),
 	list__foldl(rl_stream__end_block_check_relation(Uses, Aliases),
-		UsedRels, Materialise0, Materialise),
+		AliasedRels, Materialise0, Materialise),
 	Info = stream_info(Materialise, Uses, Aliases).
 
 	% Work out which relations used in this block need to be materialised.
 :- pred rl_stream__end_block_check_relation(bag(relation_id)::in,
-		multi_map(relation_id, relation_id)::in, relation_id::in,
+		relation(relation_id)::in, relation_id::in,
 		set(relation_id)::in, set(relation_id)::out) is det.
 
 rl_stream__end_block_check_relation(Uses, Aliases, Relation,
 		Materialise0, Materialise) :-
-	( multi_map__search(Aliases, Relation, RelAliases) ->
-		Relations0 = [Relation | RelAliases]
+	( relation__search_element(Aliases, Relation, RelationKey) ->
+		relation__lookup_to(Aliases, RelationKey, AliasRelationKeys0),
+		set__to_sorted_list(AliasRelationKeys0, AliasRelationKeys),
+		list__map(relation__lookup_key(Aliases),
+			AliasRelationKeys, Relations0)
 	;
 		Relations0 = [Relation]
 	),
@@ -347,8 +353,8 @@ rl_stream__add_must_materialise_rels(Rels, Info0, Info) :-
 
 rl_stream__add_alias(Rel1, Rel2, Info0, Info) :-
 	Info0 = stream_info(A, B, Aliases0),
-	multi_map__set(Aliases0, Rel1, Rel2, Aliases1),
-	multi_map__set(Aliases1, Rel1, Rel2, Aliases),
+	relation__add_values(Aliases0, Rel1, Rel2, Aliases1),
+	relation__add_values(Aliases1, Rel2, Rel1, Aliases),
 	Info = stream_info(A, B, Aliases).
 
 %-----------------------------------------------------------------------------%

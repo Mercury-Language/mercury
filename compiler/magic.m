@@ -700,7 +700,8 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ hlds_pred__define_new_pred(Goal, CallGoal, HeadVars, ExtraArgs,
 		InstMap, LocalArgModes, PredName, TVarSet, VarTypes,
 		ClassContext, TVarMap, TCVarMap, VarSet, Markers, Owner,
-		InstTable, ModuleInfo1, ModuleInfo2, LocalPredProcId) },
+		address_is_not_taken, InstTable, ModuleInfo1, ModuleInfo2,
+		LocalPredProcId) },
 	{ ExtraArgs = [] ->
 		true
 	;
@@ -1174,7 +1175,7 @@ magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
 	{ proc_info_create(VarSet, DoCallAditiVarTypes, DoCallAditiHeadVars,
 		argument_modes(ArgInstTable, DoCallAditiArgModes),
 		Detism, DummyGoal, DummyContext, TVarMap, TCVarMap,
-		compact, InstTable, DoCallAditiProcInfo) },
+		address_is_not_taken, InstTable, DoCallAditiProcInfo) },
 
 	{ CPredProcId = proc(_, CProcId) },
 	magic_util__make_pred_name(CPredInfo1, CProcId, "Do_Aditi_Call_For",
@@ -1378,11 +1379,10 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ map__init(TVarMap) },
 	{ map__init(TCVarMap) },
 
-	{ DummyArgsMethod = compact }, % never used
 	{ proc_info_create(VarSet, VarTypes, AllArgs,
 		argument_modes(InstTable, AllArgModes),
 		nondet, Goal, Context, TVarMap, TCVarMap,
-		DummyArgsMethod, InstTable, MagicProcInfo) },
+		address_is_not_taken, InstTable, MagicProcInfo) },
 	
 	%
 	% Fill in the pred_info.

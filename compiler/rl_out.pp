@@ -98,30 +98,23 @@ rl_out__generate_schema_file_2(ModuleInfo, PredId) -->
 		{ Module = PredModule },
 		{ check_marker(Markers, base_relation) }
 	->
-		{ pred_info_procids(PredInfo, ProcIds) },
-		list__foldl(rl_out__generate_schema_file_3(ModuleInfo, PredId),
-			ProcIds)	
+		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
+			Owner, ModuleName, PredName, PredArity0,
+			RelName, RelSchema) },
+		{ string__int_to_string(PredArity0, PredArity) },
+		io__write_strings([ModuleName, ":", PredName, "/", PredArity,
+			"\t", Owner, "/", ModuleName, "/", RelName,
+			"\t", RelSchema, "\n"])
 	;	
 		[]
 	).
 
-:- pred rl_out__generate_schema_file_3(module_info::in, pred_id::in,
-		proc_id::in, io__state::di, io__state::uo) is det.
-
-rl_out__generate_schema_file_3(ModuleInfo, PredId, ProcId) -->
-	{ rl_out__get_perm_rel_info(ModuleInfo, proc(PredId, ProcId),
-		Owner, ModuleName, PredName, PredArity0, RelName, RelSchema) },
-	{ string__int_to_string(PredArity0, PredArity) },
-	io__write_strings([ModuleName, ":", PredName, "/", PredArity, "\t",
-		Owner, "/", ModuleName, "/", RelName, "\t", RelSchema, "\n"]).
-
-:- pred rl_out__get_perm_rel_info(module_info::in, pred_proc_id::in,
+:- pred rl_out__get_perm_rel_info(module_info::in, pred_id::in,
 		string::out, string::out, string::out, int::out,
 		string::out, string::out) is det.
 
-rl_out__get_perm_rel_info(ModuleInfo, PredProcId, Owner, PredModule,
+rl_out__get_perm_rel_info(ModuleInfo, PredId, Owner, PredModule,
 		PredName, PredArity, RelName, SchemaString) :-
-	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_name(PredInfo, PredName),
 	pred_info_module(PredInfo, PredModule0),
@@ -132,6 +125,7 @@ rl_out__get_perm_rel_info(ModuleInfo, PredProcId, Owner, PredModule,
 	pred_info_arg_types(PredInfo, ArgTypes0),
 	magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
 	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -205,8 +199,7 @@ rl_out__get_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
 	string__int_to_string(ArgNo, ArgString),
 	string__append_list([SchemaList0, ":T", ArgPrefix, ArgString, Comma],
 		SchemaList1),
-	rl_out__get_proc_schema_2(ArgNo + 1,
-		Args, SchemaList1, SchemaList).
+	rl_out__get_proc_schema_2(ArgNo + 1, Args, SchemaList1, SchemaList).
 
 %-----------------------------------------------------------------------------%
 
@@ -494,11 +487,11 @@ rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
 	{ map__lookup(Relations, RelationId, RelInfo) },
 	{ RelInfo = relation_info(RelType, _Schema, _Index, _) },
 	(
-		{ RelType = permanent(PredProcId) }
+		{ RelType = permanent(proc(PredId, _)) }
 	->
 		rl_out_info_get_module_info(ModuleInfo),
 
-		{ rl_out__get_perm_rel_info(ModuleInfo, PredProcId,
+		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
 			Owner, PredModule, _, _, RelName, SchemaString) },
 
 		rl_out_info_assign_const(string(Owner), OwnerConst), 
@@ -899,10 +892,11 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	% will also add any necessary indexes.
 	rl_out__generate_instr(init(OutputRel) - "", InitCode),
 
+	rl_out_info_get_next_materialise_id(Id),
 	{ Code = 
 		tree(InitCode,
 		node([
-			rl_PROC_materialise,
+			rl_PROC_materialise(Id),
 			rl_PROC_stream,
 			rl_PROC_var(InputAddr, 0),
 			rl_PROC_stream_end,
@@ -1215,13 +1209,14 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 
 		{ LockSpec = 0 },	% default lock spec
 		rl_out__add_indexes_to_rel(Output, Indexes, IndexInstrs),
+		rl_out_info_get_next_materialise_id(Id),
 		{ Code = 
 			tree(node([
 				rl_PROC_createtemprel(TmpVar, SchemaOffset) |
 				IndexInstrs
 			]),
 			tree(node([
-				rl_PROC_materialise
+				rl_PROC_materialise(Id)
 			]),
 			tree(Stream,
 			tree(node([
@@ -1530,7 +1525,9 @@ rl_out__package_exprn(ExprnCode, NumParams, ExprnMode, OutputSchemaOffset,
 		int,				% expression PC
 		map(rl_const, int),		% procedure consts
 		int,				% next proc const address
-		unit,
+		int,				% next materialise number -
+						% used for debugging the
+						% generated code.
 		unit,
 		unit,
 		unit,
@@ -1577,11 +1574,12 @@ rl_out_info_init(ModuleInfo, Info0) :-
 	PC = 0,
 	FirstRelAddr = 0,
 	FirstConst = 1,
+	FirstMaterialise = 1,
 	Label = 0,
 	NextExprn = 0,
 	Info0 = rl_out_info(PC, CompareExprns, RelationAddrs, FirstRelAddr, 
 		Relations, Labels, unit, ModuleInfo, PC, Consts, 
-		FirstConst, unit, unit, unit, unit, Label, 
+		FirstConst, FirstMaterialise, unit, unit, unit, Label, 
 		[], unit, unit, unit, PermRels, [], [], 
 		NextExprn, TmpVars).
 
@@ -1597,11 +1595,11 @@ rl_out_info_init_proc(Relations, _Args, Info0, Info) :-
 	NextExprn = 0,
 	map__init(TmpVars),
 	Info0 = rl_out_info(_, _, _, NextAddr, _, _, _, 
-		ModuleInfo, _, ProcConsts, NextConst, _, _, _, _, _, Procs, _,
-		_, _, PermRelations, Variables, _, _, _),
+		ModuleInfo, _, ProcConsts, NextConst, Materialise, _, _,
+		_, _, Procs, _, _, _, PermRelations, Variables, _, _, _),
 	Info = rl_out_info(PC, CompareExprns, RelationAddrs, NextAddr,
 		Relations, Labels, unit, ModuleInfo, PC, ProcConsts,
-		NextConst, unit, unit, unit, unit, Label, Procs,
+		NextConst, Materialise, unit, unit, unit, Label, Procs,
 		unit, unit, unit, PermRelations, Variables, [], 
 		NextExprn, TmpVars).
 
@@ -1759,6 +1757,17 @@ rl_out_info_assign_const(Const, ConstOffset, Info0, Info) :-
 rl_out_info_get_consts(Consts, Info, Info) :-
 	Info = rl_out_info(_,_,_,_,_,_,_,_,_,Consts,
 			_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out_info_get_next_materialise_id(int::out, 
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out_info_get_next_materialise_id(MaterialiseId, Info0, Info) :-
+	Info0 = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,
+			MaterialiseId, M,N,O,P,Q,R,S,T,U,V,W,X,Y),
+	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,
+			MaterialiseId + 1, M,N,O,P,Q,R,S,T,U,V,W,X,Y).
 
 %-----------------------------------------------------------------------------%
 

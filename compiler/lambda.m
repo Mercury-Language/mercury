@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -344,13 +344,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
 			Call_ProcInfo),
 
-			% check that this procedure uses an args_method which 
-			% is always directly higher-order callable.
-		proc_info_args_method(Call_ProcInfo, Call_ArgsMethod),
-		module_info_globals(ModuleInfo0, Globals),
-		arg_info__args_method_is_ho_callable(Globals,
-			Call_ArgsMethod, yes),
-
 		list__remove_suffix(CallVars, Vars, InitialVars),
 	
 		% check that none of the variables that we're trying to
@@ -473,18 +466,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			init_markers(LambdaMarkers)
 		),
 
-		% Choose an args_method which is always directly callable
-		% from do_call_*_closure even if the inputs don't preceed
-		% the outputs in the declaration. mercury_ho_call.c requires
-		% that procedures which are directly higher-order-called use
-		% the compact args_method.
-		%
-		% Previously we permuted the argument variables so that
-		% inputs came before outputs, but that resulted in the
-		% HLDS not being type or mode correct which caused problems
-		% for some transformations and for rerunning mode analysis.
-		arg_info__ho_call_args_method(Globals, ArgsMethod),
-
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
@@ -492,7 +473,8 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		NewArgModes = argument_modes(ArgInstTable, AllArgModes),
 		proc_info_create(VarSet, VarTypes, AllArgVars,
 			NewArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, ArgsMethod, ArgInstTable, ProcInfo),
+			TVarMap, TCVarMap, address_is_taken, ArgInstTable,
+			ProcInfo),
 
 		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
 			ArgTypes, true, LambdaContext, local, LambdaMarkers,

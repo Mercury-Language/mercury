@@ -328,7 +328,7 @@ base_type_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules) :-
 	module_info_get_cell_count(ModuleInfo0, CellCount),
 	LayoutInfo0 = layout_info(ModuleName, ConsTable, MaxTags, CellCount, 
 		unqualified("") - 0, []),
-	base_type_layout__construct_base_type_data(BaseGenInfos, 
+	base_type_layout__construct_base_type_data(BaseGenInfos, Globals,
 		LayoutInfo0, LayoutInfo),
 	LayoutInfo = layout_info(_, _, _, FinalCellCount, _, CModules),
 	module_info_set_cell_count(ModuleInfo0, FinalCellCount, ModuleInfo).
@@ -342,12 +342,12 @@ base_type_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules) :-
 	% functors, one for layout.
 	
 :- pred base_type_layout__construct_base_type_data(list(base_gen_layout),
-	layout_info, layout_info).
-:- mode base_type_layout__construct_base_type_data(in, in, out) is det.
+	globals, layout_info, layout_info).
+:- mode base_type_layout__construct_base_type_data(in, in, in, out) is det.
 
-base_type_layout__construct_base_type_data([], LayoutInfo, LayoutInfo).
+base_type_layout__construct_base_type_data([], _, LayoutInfo, LayoutInfo).
 base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
-		LayoutInfo0, LayoutInfo) :-
+		Globals, LayoutInfo0, LayoutInfo) :-
 	BaseGenInfo = base_gen_layout(TypeId, ModuleName, TypeName, TypeArity,
 		_Status, HldsType),
 	base_type_layout__set_type_id(LayoutInfo0, TypeId, LayoutInfo1),
@@ -427,14 +427,26 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		FunctorsDataName = type_ctor(functors, TypeName, TypeArity),
 		FunctorsCData = comp_gen_c_data(ModuleName, FunctorsDataName,
 			Exported, FunctorsTypeData, uniform(no), []),
-		base_type_layout__add_c_data(LayoutInfo3, LayoutCData, 
-			LayoutInfo4),
-		base_type_layout__add_c_data(LayoutInfo4, FunctorsCData, 
-			LayoutInfo5)
-	),
-	base_type_layout__construct_base_type_data(BaseGenInfos, LayoutInfo5,
-		LayoutInfo).
 
+		globals__lookup_bool_option(Globals, type_ctor_layout,
+			LayoutOption),
+		globals__lookup_bool_option(Globals, type_ctor_functors,
+			FunctorsOption),
+		( LayoutOption = yes ->
+			base_type_layout__add_c_data(LayoutInfo3,
+				LayoutCData, LayoutInfo4)
+		;	
+			LayoutInfo4 = LayoutInfo3
+		),
+		( FunctorsOption = yes ->
+			base_type_layout__add_c_data(LayoutInfo4,
+				FunctorsCData, LayoutInfo5)
+		;
+			LayoutInfo5 = LayoutInfo4
+		)
+	),
+	base_type_layout__construct_base_type_data(BaseGenInfos, Globals, 
+		LayoutInfo5, LayoutInfo).
 
 %---------------------------------------------------------------------------%
 

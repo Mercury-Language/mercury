@@ -401,16 +401,6 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-
-	% lambda.m adds wrapper procedures for procedures which don't
-	% use an args_method compatible with do_call_*_closure.
-	{ proc_info_args_method(ProcInfo, ArgsMethod) },
-	{ module_info_globals(ModuleInfo, Globals) },
-	( { arg_info__args_method_is_ho_callable(Globals, ArgsMethod, yes) } ->
-		[]
-	;	
-		{ error("unify_gen__generate_construction_2: pred constant not callable") }
-	),
 %
 % We handle currying of a higher-order pred variable as a special case.
 % We recognize
@@ -533,6 +523,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 			CodeAddr),
 		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
 			ProcLabel) },
+		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, typeinfo_liveness,
 			TypeInfoLiveness) },
 		{

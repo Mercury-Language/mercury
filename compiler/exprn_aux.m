@@ -135,6 +135,7 @@ exprn_aux__const_is_constant(float_const(_), ExprnOpts, IsConst) :-
 		IsConst = StaticGroundTerms
 	).
 exprn_aux__const_is_constant(string_const(_), _, yes).
+exprn_aux__const_is_constant(multi_string_const(_, _), _, yes).
 exprn_aux__const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(CodeAddr, ExprnOpts, IsConst).
 exprn_aux__const_is_constant(data_addr_const(_), _, yes).

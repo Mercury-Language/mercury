@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -640,9 +640,19 @@ rl_sort__instr_needed(BlockId, union(_Output, Inputs, Type) - _) -->
 	{ Type = sort_merge(SortSpec) },
 	list__foldl(rl_sort__add_relation_sortedness(BlockId, sort(SortSpec)),
 		Inputs).
-rl_sort__instr_needed(_, insert(_, _, _, _, _) - _) --> [].
-rl_sort__instr_needed(_, union_diff(_, _, _, _, _, _) - _) --> [].
-
+rl_sort__instr_needed(BlockId, insert(UoOutput, DiInput, _, InsertType, _) - _)
+		-->
+	( { InsertType = index(Index) } ->
+		rl_sort__assign_indexing(DiInput, UoOutput),
+		rl_sort__add_relation_sortedness(BlockId,
+			index(Index), DiInput)
+	;
+		[]
+	).
+rl_sort__instr_needed(BlockId,
+		union_diff(UoOutput, DiInput, _, _, Index, _) - _) -->
+	rl_sort__assign_indexing(DiInput, UoOutput),
+	rl_sort__add_relation_sortedness(BlockId, index(Index), DiInput).
 rl_sort__instr_needed(_BlockId, sort(_Output, _Input, _Attrs) - _) --> [].
 rl_sort__instr_needed(BlockId, ref(Output, Input) - _) -->
 	rl_sort__assign_relation_sortedness(BlockId, Input, Output).
@@ -765,9 +775,10 @@ rl_sort__instr_avail(BlockId, union(Output, _Inputs, Type) - _) -->
 rl_sort__instr_avail(_, insert(UoOutput, DiInput, _Input, _Type, _) - _)
 		-->
 	rl_sort__assign_indexing(UoOutput, DiInput).
-rl_sort__instr_avail(_,
-		union_diff(UoOutput, DiInput, _Input1, _Diff, _, _) - _) -->
-	rl_sort__assign_indexing(UoOutput, DiInput).
+rl_sort__instr_avail(BlockId,
+		union_diff(UoOutput, DiInput, _Input1, Diff, _, _) - _) -->
+	rl_sort__assign_indexing(UoOutput, DiInput),
+	rl_sort__handle_output_indexing(BlockId, Diff).
 rl_sort__instr_avail(BlockId, sort(Output, _Input, Attrs) - _) -->
 	{ Output = output_rel(OutputRel, _) },
 	rl_sort__add_relation_sortedness(BlockId,
@@ -1391,9 +1402,9 @@ rl_sort__map_sort_and_index_specs(OutputPred, _IndexPred, SortPred,
 	Type0 = sort_merge(SortSpec0),
 	call(SortPred, SortSpec0, SortSpec),
 	Type = sort_merge(SortSpec).
-rl_sort__map_sort_and_index_specs(_, IndexPred, _,
-		insert(A, B, C, Type0, E) - F,
-		insert(A, B, C, Type, E) - F) :-
+rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
+		insert(A, B, C, Type0, MaybeCopy0) - F,
+		insert(A, B, C, Type, MaybeCopy) - F) :-
 	(
 		Type0 = append,
 		Type = append
@@ -1401,11 +1412,28 @@ rl_sort__map_sort_and_index_specs(_, IndexPred, _,
 		Type0 = index(Index0),
 		call(IndexPred, Index0, Index),
 		Type = index(Index)
+	),
+	(
+		MaybeCopy0 = yes(Copy0),
+		call(OutputPred, Copy0, Copy),
+		MaybeCopy = yes(Copy)
+	;
+		MaybeCopy0 = no,
+		MaybeCopy = no
 	).
-rl_sort__map_sort_and_index_specs(_, IndexPred, _,
-		union_diff(A, B, C, D, Index0, F) - G,
-		union_diff(A, B, C, D, Index, F) - G) :-
-	call(IndexPred, Index0, Index).
+rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
+		union_diff(A, B, C, Diff0, Index0, MaybeCopy0) - G,
+		union_diff(A, B, C, Diff, Index, MaybeCopy) - G) :-
+	call(IndexPred, Index0, Index),
+	call(OutputPred, Diff0, Diff),
+	(
+		MaybeCopy0 = yes(Copy0),
+		call(OutputPred, Copy0, Copy),
+		MaybeCopy = yes(Copy)
+	;
+		MaybeCopy0 = no,
+		MaybeCopy = no
+	).
 rl_sort__map_sort_and_index_specs(OutputPred, _, SortPred,
 		sort(Output0, B, Attrs0) - D,
 		sort(Output, B, Attrs) - D) :-

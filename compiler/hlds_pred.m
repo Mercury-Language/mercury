@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,13 +14,13 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module purity, rl, globals, term_util.
+:- import_module purity, rl, term_util.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
-:- import_module make_hlds, prog_util, mode_util, type_util.
-:- import_module options, goal_util, code_aux.
+:- import_module code_aux, goal_util, make_hlds, prog_util.
+:- import_module mode_util, type_util, globals, options.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -365,8 +365,8 @@
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
 	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
-	%	VarSet, Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
-	%	PredProcId)
+	%	VarSet, Markers, Owner, IsAddressTaken, InstTable,
+	%	ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
 	% call the created predicate. ExtraArgs is the list of extra
@@ -377,10 +377,10 @@
 		list(prog_var), instmap, string, tvarset, map(prog_var, type),
 		class_constraints, map(tvar, type_info_locn),
 		map(class_constraint, prog_var), prog_varset, pred_markers,
-		aditi_owner, inst_table, module_info, module_info,
-		pred_proc_id).
+		aditi_owner, is_address_taken, inst_table, module_info,
+		module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in, in, in,
-		in, in, in, in, in, in, out, out) is det.
+		in, in, in, in, in, in, in, out, out) is det.
 
 	% Same as above, except that the argument modes are given explicitly
 	% rather than computed from the goal's instmap_delta. This is useful
@@ -390,10 +390,10 @@
 		list(prog_var), instmap, list(mode), string, tvarset,
 		map(prog_var, type), class_constraints,
 		map(tvar, type_info_locn), map(class_constraint, prog_var),
-		prog_varset, pred_markers, aditi_owner, inst_table,
-		module_info, module_info, pred_proc_id).
+		prog_varset, pred_markers, aditi_owner, is_address_taken,
+		inst_table, module_info, module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in, in, in,
-		in, in, in, in, in, in, in, out, out) is det.
+		in, in, in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
@@ -1100,8 +1100,8 @@ marker_list_to_markers(Markers, Markers).
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
-		PredProcId) :-
+		VarSet0, Markers, Owner, IsAddressTaken, InstTable,
+		ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -1110,11 +1110,12 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		InstMap0, ArgModes, PredName, TVarSet, VarTypes0,
 		ClassContext, TVarMap, TCVarMap, VarSet0, Markers,
-		Owner, InstTable, ModuleInfo0, ModuleInfo, PredProcId).
+		Owner, IsAddressTaken, InstTable, ModuleInfo0, ModuleInfo,
+		PredProcId).
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 		ArgModes, PredName, TVarSet, VarTypes0, ClassContext, TVarMap,
-		TCVarMap, VarSet0, Markers, Owner, InstTable,
+		TCVarMap, VarSet0, Markers, Owner, IsAddressTaken, InstTable,
 		ModuleInfo0, ModuleInfo, PredProcId) :-
 	% XXX The set of existentially quantified type variables
 	% here might not be correct.
@@ -1124,6 +1125,8 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 
 	% If typeinfo_liveness is set, all type_infos for the argument
 	% variables need to be passed in, not just the ones that are used.
+	% Similarly if the address of a procedure of this predicate is taken,
+	% so that we can copy the closure.
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, typeinfo_liveness,
 		TypeInfoLiveness),
@@ -1165,10 +1168,8 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 		TermInfo = no
 	),
 
-	globals__get_args_method(Globals, ArgsMethod),
-
 	proc_info_create(VarSet, VarTypes, ArgVars, Modes, Detism,
-		Goal0, Context, TVarMap, TCVarMap, ArgsMethod, InstTable,
+		Goal0, Context, TVarMap, TCVarMap, IsAddressTaken, InstTable,
 		ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
@@ -1204,9 +1205,14 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 
 :- interface.
 
+:- type is_address_taken
+	--->	address_is_taken
+	;	address_is_not_taken.
+
 :- pred proc_info_init(arity, list(type), argument_modes,
 	maybe(argument_modes), maybe(list(is_live)), maybe(determinism),
-	prog_context, args_method, proc_info).
+	prog_context, is_address_taken, proc_info).
+
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), prog_varset, map(prog_var, type),
@@ -1214,14 +1220,14 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 	prog_context, stack_slots, determinism, bool, list(arg_info),
 	liveness_info, map(tvar, type_info_locn),
 	map(class_constraint, prog_var), maybe(arg_size_info),
-	maybe(termination_info), args_method, inst_table, proc_info).
+	maybe(termination_info), is_address_taken, inst_table, proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, in, out) is det.
 
 :- pred proc_info_create(prog_varset, map(prog_var, type), list(prog_var),
-	argument_modes, determinism, hlds_goal, term__context,
+	argument_modes, determinism, hlds_goal, prog_context,
 	map(tvar, type_info_locn), map(class_constraint, prog_var),
-	args_method, inst_table, proc_info).
+	is_address_taken, inst_table, proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, in,
 	out) is det.
 
@@ -1363,17 +1369,14 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 :- pred proc_info_declared_argmodes(proc_info, argument_modes).
 :- mode proc_info_declared_argmodes(in, out) is det.
 
-:- pred proc_info_args_method(proc_info, args_method).
-:- mode proc_info_args_method(in, out) is det.
-
-:- pred proc_info_set_args_method(proc_info, args_method, proc_info).
-:- mode proc_info_set_args_method(in, in, out) is det.
-
 :- pred proc_info_inst_table(proc_info, inst_table).
 :- mode proc_info_inst_table(in, out) is det.
 
 :- pred proc_info_set_inst_table(proc_info, inst_table, proc_info).
 :- mode proc_info_set_inst_table(in, in, out) is det.
+
+:- pred proc_info_is_address_taken(proc_info, is_address_taken).
+:- mode proc_info_is_address_taken(in, out) is det.
 
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
@@ -1451,15 +1454,12 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 					% analysis.
 			maybe(argument_modes),
 					% declared modes of arguments.
-			args_method,
-					% The args_method to be used for
-					% the procedure. Usually this will
-					% be set to the value of the --args
-					% option stored in the globals. 
-					% lambda.m will set this field to
-					% `compact' for procedures it creates
-					% which must be directly callable by
-					% a higher_order_call goal.
+			is_address_taken,
+					% Is the address of this procedure
+					% taken? If yes, we will need to use
+					% typeinfo liveness for them, so that
+					% deep_copy and accurate gc have the
+					% RTTI they need for copying closures.
 			inst_table
 					% the inst_table for this proc
 		).
@@ -1472,7 +1472,7 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 	% will later provide the correct inferred determinism for it.
 
 proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
-		MaybeDet, MContext, ArgsMethod, NewProc) :-
+		MaybeDet, MContext, IsAddressTaken, NewProc) :-
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
@@ -1491,21 +1491,21 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
 		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
 		ArgInfo, InitialLiveness, TVarsMap, TCVarsMap, eval_normal,
-		no, no, DeclaredModes, ArgsMethod, InstTable
+		no, no, DeclaredModes, IsAddressTaken, InstTable
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
-		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap,
-		ArgSizes, Termination, ArgsMethod, InstTable, ProcInfo) :-
+		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, ArgSizes,
+		Termination, IsAddressTaken, InstTable, ProcInfo) :-
 	ProcInfo = procedure(
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, eval_normal, 
-		ArgSizes, Termination, no, ArgsMethod, InstTable).
+		ArgSizes, Termination, no, IsAddressTaken, InstTable).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
-		Context, TVarMap, TCVarsMap, ArgsMethod, InstTable,
+		Context, TVarMap, TCVarsMap, IsAddressTaken, InstTable,
 		ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
@@ -1513,7 +1513,7 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
 		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
 		Liveness, TVarMap, TCVarsMap, eval_normal, no, no, no, 
-			ArgsMethod, InstTable).
+		IsAddressTaken, InstTable).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, _, _, E, F, _,
@@ -1652,7 +1652,7 @@ proc_info_maybe_declared_argmodes(ProcInfo, S) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
 		_, _, S, _, _).
 
-proc_info_args_method(ProcInfo, T) :-
+proc_info_is_address_taken(ProcInfo, T) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
 		_, _, _, T, _).
 
@@ -1712,15 +1712,12 @@ proc_info_inst_table(ProcInfo, U) :-
 % 					% analysis.
 % S			maybe(argument_modes),
 % 					% declared modes of arguments.
-% T			args_method
-% 					% The args_method to be used for
-%					% the procedure. Usually this will
-%					% be set to the value of the --args
-%					% option stored in the globals. 
-%					% lambda.m will set this field to
-%					% `compact' for procedures it creates
-%					% which must be directly callable by
-%					% a higher_order_call goal.	
+% T			is_address_taken,
+%					% Is the address of this procedure
+%					% taken? If yes, we will need to use
+%					% typeinfo liveness for them, so that
+%					% deep_copy and accurate gc have the
+%					% RTTI they need for copying closures.
 % U			inst_table
 %					% the inst_table for this proc
 %		).
@@ -1818,12 +1815,6 @@ proc_info_set_maybe_arg_size_info(ProcInfo0, Q, ProcInfo) :-
 proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
 		P, Q, _, S, T, U),
-	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
-
-proc_info_set_args_method(ProcInfo0, T, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, _, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
 		P, Q, R, S, T, U).
 

@@ -507,6 +507,7 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 	dag_get_output_loc_map(Locs),
 	dag_get_node_info_map(NodeInfoMap0),
 	{ NodeInfo0 = node_info(Instr, OutputRels0) },
+	dag_get_flags(Flags),
 	(
 		% Look for a union and a difference which can be
 		% changed into a union_diff.
@@ -517,6 +518,8 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 
 		% B-tree indexing a zero arity relation would be pretty silly.
 		{ Schema \= [] },
+
+		{ list__member(add_uniondiff, Flags) },
 
 		{
 			UnionInputLocs = [DiffLoc0, IOLoc0],
@@ -567,11 +570,15 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 			[]	
 		)
 	;
+		{ list__member(merge_output_projections, Flags) }
+	->
 		% If there are multiple projections of this node,
 		% combine them into one instruction. If the conditions
 		% have a key range, we insist that they all have the
 		% same one.
 		rl_block_opt__merge_output_projections(Node, Changed)
+	;
+		{ Changed = no }	
 	).
 
 %-----------------------------------------------------------------------------%

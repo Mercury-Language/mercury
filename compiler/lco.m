@@ -578,11 +578,10 @@ output_arguments_match(Module, PredProcIdA, PredProcIdB, CallVars) :-
 get_top_out_arg_locs(Module, Pred, Proc, Vars, VarLocs) :-
 	pred_info_arg_types(Pred, Types),
 	proc_info_argmodes(Proc, argument_modes(InstTable, Modes)),
-	proc_info_args_method(Proc, Method),
 	proc_info_interface_code_model(Proc, CodeModel),
 	proc_info_get_initial_instmap(Proc, Module, InstMap),
 
-	make_arg_infos(Method, Types, Modes, CodeModel, InstMap,
+	make_arg_infos(Types, Modes, CodeModel, InstMap,
 		InstTable, Module, ArgInfos),
 
 	assoc_list__from_corresponding_lists(Vars, ArgInfos, VarInfos),
