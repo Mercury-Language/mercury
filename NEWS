@@ -66,6 +66,9 @@ DETAILED LISTING
 
 Changes to the Mercury language:
 
+* The deprecated support for NU-Prolog style `when' declarations has been
+  removed.	
+
 * We have experimental support for user-defined constrained types, as
   documented in the reference manual section on "Solver types".  Variables
   of a constrained type can have constraints placed upon them before they
