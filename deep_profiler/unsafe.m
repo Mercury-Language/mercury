@@ -51,8 +51,6 @@
 
 :- implementation.
 
-:- pragma c_header_code("#include ""unsafe.h""").
-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code(unsafe_promise_ground(X::in(any)) = (Y::out), "Y = X;").
