@@ -327,6 +327,7 @@ install_ints: $(library.ints) $(library.int3s) \
 	[ -d $(INSTALL_INT_DIR)/Mercury ] || \
 		mkdir -p $(INSTALL_INT_DIR)/Mercury
 	for dir in ints int2s int3s opts trans_opts; do \
+		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
 		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
 	done
 
