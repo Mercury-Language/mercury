@@ -9,3 +9,6 @@ mode_inf_bug double_error2 double_error frameopt_mkframe_bug
 commit_bug_2 nondet_ite_3
 determinism_inlining fail_detism liveness2 mu nondet_ite_4 space
 array_test prune_switch
+common_type_cast
+mode_inf
+intermod_type

@@ -13,6 +13,8 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+# Any program added here should also be added to the `.cvsignore' file.
+
 PROGS=		array_test \
 		commit_bug \
 		commit_bug_2 \
