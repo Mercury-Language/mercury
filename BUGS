@@ -143,3 +143,30 @@ main -->
 	write(f(c)), nl.
 
 -----------------------------------------------------------------------------
+Subject: inter-module optimization and abstract exported equivalence types.
+Date: Thu, 19 February 1998
+
+In some cases the compiler reports spurious ambiguity errors when compiling
+with `--intermodule-optimization'. This is due to the definition of abstract
+exported equivalence types being made visible by inter-module optimization.
+In this example, with `--intermodule-optimization' the compiler sees the
+declaration `:- type var == int' from term.m and then cannot determine whether
+`Elem' has type `int' or `pair(int)'.
+The work-around is to add an explicit type qualification.
+
+:- module foo.
+:- interface.
+:- import_module list, term.
+:- pred test(list(var)::in) is det.
+:- implementation.
+:- import_module int, std_util.
+
+test(Args0) :-
+	MakeIndex =
+		lambda([Elem0::in, Elem::out, Index0::in, Index::out] is det, (
+			Elem = Elem0 - Index0,
+			Index is Index0 + 1
+		)),
+	list__map_foldl(MakeIndex, Args0, _, 0, _).
+
+-----------------------------------------------------------------------------
