@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne. 
+# Copyright (C) 1995-2004 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -3700,7 +3700,7 @@ scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
 scripts/canonical_grade
 scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
 scripts/mercury_config scripts/Mercury.config scripts/Mercury.config.bootstrap
-tools/lmc tools/dotime runtime/mercury_dotnet.cs
+tools/lmc tools/dotime runtime/mercury_dotnet.cs java/runtime/Constants.java
 ,
 [
 # Only do this when compiling the source, not when reconfiguring

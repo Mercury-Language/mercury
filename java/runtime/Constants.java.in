@@ -1,0 +1,15 @@
+//
+// Copyright (C) 2001-2004 The University of Melbourne.
+// This file may only be copied under the terms of the GNU Library General
+// Public License - see the file COPYING.LIB in the Mercury distribution.
+//
+// This class is used to store miscellaneous Mercury-related constants.
+// At the moment it just stores the library version.
+//
+
+package mercury.runtime;
+
+public class Constants {
+	public static final java.lang.String MR_VERSION = "@VERSION@";
+	public static final java.lang.String MR_FULLARCH = "@FULLARCH@";
+}
