@@ -19,7 +19,7 @@ main -->
 	io__write_int(g(f(test2))),
 	io__write_string("\n").
 
-:- mode test2 :: out.
+:- mode test2 == out.
 
 :- func f(int) = int.
 :- mode f(in) = test2 is det.

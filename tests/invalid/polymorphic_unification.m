@@ -14,7 +14,7 @@ main -->
 :- import_module list.
 
 :- pred p(T, T).
-:- mode p(in, list_skel->dead).
+:- mode p(in, list_skel >> dead).
 
 p(X, X).
 

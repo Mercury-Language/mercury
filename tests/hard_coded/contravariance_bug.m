@@ -19,12 +19,12 @@ main -->
 :- inst list ---> [ground|list] ; [].
  
 :- pred p(intlist, intlist).
-:- mode p((list -> nonempty), (free -> nonempty)) is semidet.
+:- mode p((list >> nonempty), (free >> nonempty)) is semidet.
  
 p([X], [X]).
 p([X,Y|Zs], [Y,X|Zs]).
  
 :- pred q(pred(intlist, intlist)).
-:- mode q(pred((nonempty -> nonempty), (free -> list)) is semidet) is semidet.
+:- mode q(pred((nonempty >> nonempty), (free >> list)) is semidet) is semidet.
  
 q(P) :- P([1], L), L \= [].

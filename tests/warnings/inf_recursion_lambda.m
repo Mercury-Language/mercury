@@ -7,7 +7,7 @@
 :- interface.
 
 :- type closure ---> closure((func) = closure).
-:- inst closure = bound(closure((func) = out(closure) is det)).
+:- inst closure == bound(closure((func) = out(closure) is det)).
 
 :- func return_me = (closure :: out(closure)) is det.
 

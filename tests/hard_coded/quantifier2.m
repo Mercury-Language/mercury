@@ -18,7 +18,7 @@ testsum([X|L],I,X + N1) :- testsum(L,I,N1).
 
 
 :- pred foo(pred(int, int)).
-:- mode foo(free->pred(in, out) is semidet) is det.
+:- mode foo(free >> (pred(in, out) is semidet)) is det.
 
 foo(testsum([1,2,3])).
 

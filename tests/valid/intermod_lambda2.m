@@ -15,7 +15,7 @@
 
 :- implementation.
 
-:- mode in2 :: in.
+:- mode in2 == in.
 
 sol(Generator, List) :-
 	Test = ((pred) is semidet),

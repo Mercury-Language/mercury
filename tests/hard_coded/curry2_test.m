@@ -5,17 +5,17 @@
 :- interface.
 
 :- pred n(pred(int, T2, T3), pred(T2, T3)).
-:- mode n(pred(in, in, out) is det, free->pred(in, out) is det) is det.
+:- mode n(pred(in, in, out) is det, free >> (pred(in, out) is det)) is det.
 :- pred p(pred(int, T2, T3), pred(T2, T3)).
-:- mode p(pred(in, in, out) is det, free->pred(in, out) is det) is det.
+:- mode p(pred(in, in, out) is det, free >> (pred(in, out) is det)) is det.
 :- pred q(pred(int, T2, T3), pred(T2, T3)).
-:- mode q(pred(in, in, out) is det, free->pred(in, out) is det) is semidet.
+:- mode q(pred(in, in, out) is det, free >> (pred(in, out) is det)) is semidet.
 :- pred r(pred(int, int, int), int, pred(int, int)).
-:- mode r(pred(in, in, out) is det, in, free->pred(in, out) is det) is det.
+:- mode r(pred(in, in, out) is det, in, free >> (pred(in, out) is det)) is det.
 :- pred s(pred(int, int, int), int, pred(int, int)).
-:- mode s(pred(in, out, in) is det, in, free->pred(out, in) is det) is det.
+:- mode s(pred(in, out, in) is det, in, free >> (pred(out, in) is det)) is det.
 :- pred t(pred(int, int, int), int, pred(int, int)).
-:- mode t(pred(in, out, in) is det, in, free->pred(in, out) is det) is det.
+:- mode t(pred(in, out, in) is det, in, free >> (pred(in, out) is det)) is det.
 
 :- implementation.
 

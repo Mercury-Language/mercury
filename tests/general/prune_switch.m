@@ -32,7 +32,7 @@ main -->
 create_switch_var(Var) :-
 	create_switch_var_2(Var).
 
-:- pred create_switch_var_2(t :: (free->bound(f(ground);g(ground)))) is det.
+:- pred create_switch_var_2(t :: (free >> bound(f(ground);g(ground)))) is det.
 :- pragma no_inline(create_switch_var_2/1).
 
 create_switch_var_2(f(1)).

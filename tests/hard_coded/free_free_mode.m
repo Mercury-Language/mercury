@@ -4,8 +4,8 @@
 
 :- inst f == free.
 
-:- pred foo(int::(f->f)) is det.
-:- pred bar(int::(f->f)) is det.
+:- pred foo(int::(f>>f)) is det.
+:- pred bar(int::(f>>f)) is det.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

@@ -21,13 +21,13 @@ main -->
 :- inst bit == bound(0 ; 1).
  
 :- pred p(intlist, intlist).
-:- mode p((list(I) -> nonempty(I)), (free -> nonempty(I))) is semidet.
+:- mode p((list(I) >> nonempty(I)), (free >> nonempty(I))) is semidet.
  
 p([X], [X]).
 p([X,Y|Zs], [Y,X|Zs]).
  
 :- pred q(pred(intlist, intlist)).
-:- mode q(pred((nonempty(bit) -> nonempty(bit)), (free -> list(bit)))
+:- mode q(pred((nonempty(bit) >> nonempty(bit)), (free >> list(bit)))
 		is semidet) is semidet.
  
 q(P) :- P([1], L), L \= [].

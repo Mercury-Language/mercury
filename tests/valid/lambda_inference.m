@@ -5,7 +5,7 @@
 
 
 :- pred ok(int, pred(int)).
-:- mode ok(in, free -> pred(in) is semidet) is semidet.
+:- mode ok(in, free >> (pred(in) is semidet)) is semidet.
 
 :- implementation.
 

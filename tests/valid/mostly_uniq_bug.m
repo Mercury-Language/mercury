@@ -11,8 +11,8 @@
 
 :- type foo ---> f(int).
 
-:- pred p(foo::mostly_unique -> dead) is det.
-:- pred q(foo::unique(f(unique(42))) -> dead) is det.
+:- pred p(foo::mostly_unique >> dead) is det.
+:- pred q(foo::unique(f(unique(42))) >> dead) is det.
 
 p(_).
 q(X) :- p(X).

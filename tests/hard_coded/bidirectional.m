@@ -16,8 +16,8 @@ main -->
 	format_list_of_int(write, List).
 
 :- type rw --->	read ; write.
-:- mode read :: in(bound(read)).
-:- mode write :: in(bound(write)).
+:- mode read == in(bound(read)).
+:- mode write == in(bound(write)).
 
 :- pred format_list_of_int(rw, list(int), io__state, io__state).
 :- mode format_list_of_int(write, in, di, uo) is det.

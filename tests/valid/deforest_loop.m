@@ -45,7 +45,7 @@
 :- type ray == int.
 
 :- type object == pred(int, int).
-:- inst object = (pred(in, out) is nondet).
+:- inst object == (pred(in, out) is nondet).
 
 :- implementation.
 

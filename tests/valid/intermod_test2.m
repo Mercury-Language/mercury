@@ -17,8 +17,8 @@
 % in the `.opt' file.
 :- type int1 ---> int1(int).
 
-:- mode int_mode :: int_mode1.
-:- mode int_mode1 :: in.
+:- mode int_mode == int_mode1.
+:- mode int_mode1 == in.
 
 baz(X) :- T = f(1), bar(T, X).
 
@@ -36,5 +36,5 @@ bar(T, 2) :-
 % 		-- bromage  20 Nov 1997
 :- pragma inline(plusone/1).
 
-plusone(Int0) = Int :- Int is Int0 + 1.
+plusone(Int0) = Int :- Int = Int0 + 1.
 

@@ -3,7 +3,7 @@
 :- type foo.
 
 :- pred p(foo, foo).
-:- mode p(ground -> ground, free -> ground).
+:- mode p(ground >> ground, free >> ground).
 
 p(_, X) :-
 	p(_, X).

@@ -5,6 +5,6 @@
 :- type test_type
 	--->	ok.
 
-:- mode test_mode :: in.
+:- mode test_mode == in.
 
-:- inst inst1 = free.
+:- inst inst1 == free.

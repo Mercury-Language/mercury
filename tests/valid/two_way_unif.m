@@ -16,7 +16,7 @@
 :- implementation.
 
 :- pred p(face_vertex).
-:- mode p(mostly_unique(vertex(ground, free)) -> bound(vertex(ground, ground))) is semidet.
+:- mode p(mostly_unique(vertex(ground, free)) >> bound(vertex(ground, ground))) is semidet.
 
 p(vertex(I, V)) :-
 	I = 0,

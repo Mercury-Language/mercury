@@ -3,4 +3,4 @@
 :- interface.
 
 :- use_module io.
-:- mode e :: out.
+:- mode e == out.

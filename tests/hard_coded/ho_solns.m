@@ -28,7 +28,7 @@ main -->
 	use_list(List).
 
 :- type mypred == (pred(int, int, int)).
-:- inst mypred = (pred(in, in, out) is det).
+:- inst mypred == (pred(in, in, out) is det).
 
 :- pred convert_list(list(T), list(T)).
 :- mode convert_list(in, out(list_skel(mypred))) is det.

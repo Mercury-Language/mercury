@@ -2,7 +2,7 @@
 
 :- type t1 ---> a ; b ; c ; d(undef1).
 
-:- inst x = bound(a ; b ; c).
+:- inst x == bound(a ; b ; c).
 
 :- pred p.
 p.

@@ -97,7 +97,7 @@ run_benchmark(Iterations, Name, Closure) -->
 :- mode benchmark_list = list_skel_out(benchmark).
 
 :- type benchmark == pair(string, pred).
-:- inst benchmark = pair(ground, (pred) is semidet).
+:- inst benchmark == pair(ground, (pred) is semidet).
 
 use(_) :- semidet_succeed.
 

@@ -9,9 +9,9 @@
 :- import_module std_util.
 
 :- type agg_func(T, S) ---> agg(S, func(S, T) = S).
-:- inst agg_mode = bound(agg(ground, func(in, in) = out is det)).
-:- mode agg_in :: agg_mode -> agg_mode.
-:- mode agg_out :: free -> agg_mode.
+:- inst agg_mode == bound(agg(ground, func(in, in) = out is det)).
+:- mode agg_in == agg_mode >> agg_mode.
+:- mode agg_out == free >> agg_mode.
 
 :- func min(func(T) = int) = agg_func(T, maybe(int)).
 :- mode min(func(in) = out is det) = agg_out is det.

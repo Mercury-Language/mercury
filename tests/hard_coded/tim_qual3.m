@@ -5,6 +5,6 @@
 :- type test_type
 	--->    error.
 
-:- mode test_mode :: out.
+:- mode test_mode == out.
 
-:- inst inst1 = ground.
+:- inst inst1 == ground.

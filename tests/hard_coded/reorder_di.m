@@ -27,10 +27,10 @@ main -->
 	; X = 2, Str = "baz\n"
 	}.
 
-:- pred q(int::(free -> bound(1 ; 2))) is det.
+:- pred q(int::(free >> bound(1 ; 2))) is det.
 
 q(1).
 
-:- pred r(int::(free -> bound(1 ; 2))) is det.
+:- pred r(int::(free >> bound(1 ; 2))) is det.
 
 r(1).

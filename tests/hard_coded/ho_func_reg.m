@@ -18,7 +18,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- type bar == (func(int) = int).
-:- inst bar = (func(in) = out is det).
+:- inst bar == (func(in) = out is det).
 
 :- func foo(bar, int) = int.
 :- mode foo(in(bar), in) = out is det.

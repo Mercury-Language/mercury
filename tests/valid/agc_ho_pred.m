@@ -39,7 +39,7 @@
 				maybe_option_table(OptionType))
 		).
 
-:- inst option_ops =
+:- inst option_ops ==
 	bound((
 		option_ops(
 			pred(in, out) is semidet,	% short_option

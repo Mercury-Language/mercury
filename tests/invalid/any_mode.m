@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- mode p(any -> ground).
+:- mode p(any >> ground).
 p(X) :- q(X).
 
 :- mode q(in).

@@ -18,7 +18,7 @@ sum([X|L],X + N1) :- sum(L,N1).
 
 
 :- pred foo(pred(int)).
-:- mode foo(free->pred(out) is det) is det.
+:- mode foo(free >> (pred(out) is det)) is det.
 
 foo(sum([1,2,3])).
 

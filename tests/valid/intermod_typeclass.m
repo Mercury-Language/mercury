@@ -22,7 +22,7 @@ p(X) :-
 	local(Lambda, X),
 	intermod_typeclass2__baz(X).
 
-:- mode int_mode :: out.
+:- mode int_mode == out.
 
 :- pred local(pred(int), int).
 :- mode local(pred(int_mode) is det, out) is det.

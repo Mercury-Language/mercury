@@ -5,20 +5,20 @@
 
 :- import_module aditi.
 
-:- pred left_anc(aditi:state, int).
-:- mode left_anc(aditi:aditi_mui, out) is nondet.
+:- pred left_anc(aditi__state, int).
+:- mode left_anc(aditi__aditi_mui, out) is nondet.
 :- pragma aditi(left_anc/2).
 
-:- pred right_anc(aditi:state, int, int).
-:- mode right_anc(aditi:aditi_mui, in, out) is nondet.
+:- pred right_anc(aditi__state, int, int).
+:- mode right_anc(aditi__aditi_mui, in, out) is nondet.
 :- pragma aditi(right_anc/3).
 
-:- pred multi_anc(aditi:state, int, int).
-:- mode multi_anc(aditi:aditi_mui, in, out) is nondet.
+:- pred multi_anc(aditi__state, int, int).
+:- mode multi_anc(aditi__aditi_mui, in, out) is nondet.
 :- pragma aditi(multi_anc/3).
 
-:- pred chain(aditi:state, int, int).
-:- mode chain(aditi:aditi_mui, out, out) is nondet.
+:- pred chain(aditi__state, int, int).
+:- mode chain(aditi__aditi_mui, out, out) is nondet.
 :- pragma base_relation(chain/3).
 
 :- implementation.
@@ -27,8 +27,8 @@
 left_anc(DB, Y) :-
 	left_anc(DB, 2, Y).
 
-:- pred left_anc(aditi:state, int, int).
-:- mode left_anc(aditi:aditi_mui, in, out) is nondet.
+:- pred left_anc(aditi__state, int, int).
+:- mode left_anc(aditi__aditi_mui, in, out) is nondet.
 :- pragma aditi(left_anc/3).
 :- pragma aditi_no_memo(left_anc/3).
 :- pragma context(left_anc/3).

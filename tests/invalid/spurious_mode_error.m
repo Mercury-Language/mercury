@@ -16,7 +16,7 @@
 	;	c(pred(float, T, T))
 	.
 
-:- inst opt = bound((
+:- inst opt == bound((
 		a(pred(in, in, out) is det)
 	;	b(pred(in, in, out) is det)
 	;	c(pred(in, in, out) is det)
@@ -29,9 +29,9 @@
 			maybe(pred(float, T, T))
 		).
 
-:- inst m(I) = bound((no ; yes(I))).
+:- inst m(I) == bound((no ; yes(I))).
 
-:- inst f = bound(f(
+:- inst f == bound(f(
 		m(pred(in, in, out) is det),
 		m(pred(in, in, out) is det),
 		m(pred(in, in, out) is det)

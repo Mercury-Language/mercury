@@ -2,9 +2,9 @@
 :- interface.
 :- import_module list.
 
-:- mode my_input_list_skel :: list_skel -> list_skel.
-:- mode my_output_list_skel :: free -> list_skel.
-:- mode my_list_skel_output :: list_skel -> ground.
+:- mode my_input_list_skel == list_skel >> list_skel.
+:- mode my_output_list_skel == free >> list_skel.
+:- mode my_list_skel_output == list_skel >> ground.
 
 :- pred p is semidet.
 

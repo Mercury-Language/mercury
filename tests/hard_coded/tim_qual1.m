@@ -12,11 +12,11 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
-:- pred test(tim_qual2:test_type::tim_qual3:test_mode) is det.
+:- pred test(tim_qual2__test_type::tim_qual3__test_mode) is det.
 
-:- pred test2(tim_qual2:test_type::test_mode2) is det.
+:- pred test2(tim_qual2__test_type::test_mode2) is det.
 
-:- mode test_mode2 :: tim_qual2:inst1 -> tim_qual3:inst1.
+:- mode test_mode2 == tim_qual2__inst1 >> tim_qual3__inst1.
 
 :- implementation.
 

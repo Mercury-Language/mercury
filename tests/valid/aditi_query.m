@@ -3,7 +3,7 @@
 :- interface.
 
 :- import_module aditi.
-:- mode query(aditi:aditi_mui ,out) is nondet.
+:- mode query(aditi__aditi_mui, out) is nondet.
 :- pragma aditi(query/2).
 
 :- implementation.

@@ -18,7 +18,7 @@ main -->
 :- func my_append(list(T), list(T)) = list(T).
 my_append(A, B) = C :- list__append(A, B, C).
 
-:- inst func1 = (func(in) = out is det).
+:- inst func1 == (func(in) = out is det).
 
 :- func curry2(func(T1, T2) = T3) = (func(T1) = (func(T2) = T3)).
 :- mode curry2(func(in, in) = out is det) =

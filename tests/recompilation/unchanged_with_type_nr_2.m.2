@@ -5,14 +5,14 @@
 :- import_module list.
 
 :- type map_pred(T, U) == pred(T, U).
-:- inst map_pred = (pred(in, out) is det).
+:- inst map_pred == (pred(in, out) is det).
 
 :- pred with_type_1(T, list(_)) `with_type` map_pred(string, string).
 :- mode with_type_1(in, in) `with_inst` map_pred.
 :- pragma type_spec(with_type_1/4, T = list(_)).
 
 :- type map_func(T, U) == (func(T) = U).
-:- inst map_func = (func(in) = out is det).
+:- inst map_func == (func(in) = out is det).
 
 :- func with_type_2(T, list(_)) `with_type` map_func(string, string).
 :- mode with_type_2(in, in) `with_inst` map_func.

@@ -20,7 +20,7 @@
 	;	fill_color(string)
 	.
 
-:- inst widget = bound((
+:- inst widget == bound((
 		text(ground)
 	;	width(ground)
 	;	height(ground)

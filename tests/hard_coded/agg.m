@@ -8,9 +8,9 @@
 :- import_module std_util.
 
 :- type agg_func(T, S) ---> agg(S, func(S, T) = S).
-:- inst agg_mode = bound(agg(ground, func(in, in) = out is det)).
-:- mode agg_in :: agg_mode -> agg_mode.
-:- mode agg_out :: free -> agg_mode.
+:- inst agg_mode == bound(agg(ground, func(in, in) = out is det)).
+:- mode agg_in == agg_mode >> agg_mode.
+:- mode agg_out == free >> agg_mode.
 
 :- pred aggregate(pred(T), agg_func(T, S), S).
 :- mode aggregate(pred(out) is multi, agg_in, out) is det.

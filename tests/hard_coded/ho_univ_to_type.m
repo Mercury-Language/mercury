@@ -25,7 +25,7 @@
 
 :- type mypred == (pred(int, int, int)).
 :- type mypred2 == (pred(float, int, int)).
-:- inst mypred = (pred(in, in, out) is det).
+:- inst mypred == (pred(in, in, out) is det).
 
 main -->
 	{ foo(Pred0) },

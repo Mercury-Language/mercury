@@ -13,7 +13,7 @@
 q :- p1(X, Y), p2(X, Y).
 
 :- pred p1(int, int).
-:- mode p1(free -> free, out) is nondet.
+:- mode p1(free >> free, out) is nondet.
 
 :- pred p2(int, int).
 :- mode p2(out, in) is nondet.

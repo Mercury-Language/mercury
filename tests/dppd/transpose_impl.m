@@ -9,8 +9,8 @@
 :- mode transpose(in(matrix9), out) is nondet.
 :- mode transpose(in, out) is nondet.
 
-:- inst matrix9 = bound([list9, ground, ground]).
-:- inst list9 = bound([ground, ground, ground, ground, ground, ground, ground,
+:- inst matrix9 == bound([list9, ground, ground]).
+:- inst list9 == bound([ground, ground, ground, ground, ground, ground, ground,
 			ground, ground]).
 
 

@@ -27,15 +27,15 @@ main(IO, putStocks(getStocks(IO))).
 	;	closure(func(io__state) = iostocks)
 	.
 
-:- inst iostocks = unique(ios(unique, stocks)).
-:- inst stocks =
+:- inst iostocks == unique(ios(unique, stocks)).
+:- inst stocks ==
 	bound(	[]
 	;	[ground | stocks]
 	;	closure(func(di) = is_out is det)
 	).
 
-:- mode is_in  ::  di(iostocks).
-:- mode is_out :: out(iostocks).
+:- mode is_in  == di(iostocks).
+:- mode is_out == out(iostocks).
 
 :- func putStocks(iostocks) = io__state.
 :- mode putStocks(is_in) = uo is det.
