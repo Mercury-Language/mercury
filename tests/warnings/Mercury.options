@@ -21,6 +21,13 @@ MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
 MCFLAGS-inference_test		= --infer-all
 
+	# the infinite loop warning in simple_code.m doesn't show up unless
+	# the common-struct optimization is enabled (because proving that
+	# the recursive call is an infinite loop relies on argument
+	# equivalence information which is only computed when the
+	# common-struct optimization is enabled).
+MCFLAGS-simple_code		= --common-struct
+
 	# We need to explicitly enable these optimizations because
 	# some of the infinite recursion warnings don't show up at
 	# lower optimization levels.
