@@ -490,10 +490,13 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	map__init(Ctors),
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
+	map__init(ClassTable),
+	map__init(InstanceTable),
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
 		[], [], StratPreds, UnusedArgInfo, 0),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
-		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, Ctors, 0).
+		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, Ctors,
+		ClassTable, InstanceTable, 0).
 
 %-----------------------------------------------------------------------------%
 
