@@ -216,8 +216,13 @@ mlds_output_src_import(_Indent, Import) -->
 			ModuleName = ModuleName0
 		)
 	;
-		Import = foreign_import(_),
-		unexpected(this_file, "foreign import in C backend")
+		Import = foreign_import(ForeignImport),
+		% This case shouldn't happen when compiling to C,
+		% but we need to handle it for MLDS dumps when
+		% compiling to IL.
+		ForeignImport = il_assembly_name(ImportName),
+		ModuleName = mlds_module_name_to_sym_name(ImportName),
+		HeaderExt = ".dll"
 	},
 
 	module_name_to_search_file_name(ModuleName, HeaderExt, HeaderFile),
