@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -2765,10 +2765,18 @@ or
 
 @noindent
 means that any calls to the specified mode of @var{Pred} or @var{Func}
-will be replaced by the C code given in @var{C_Code}.
+will result in execution of the C code given in @var{C_Code}.
 The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.
+
+The C code fragment may declare local variables, but it should not
+declare any static variables unless there is also a Mercury
+@samp{pragma no_inline} declaration (@pxref{Inlining}) for the procedure.
+The reason for this is that otherwise the Mercury implementation may
+inline the procedure by duplicating the C code fragment for each call,
+which would result in the program having multiple instances of the
+static variable, rather than a single shared instance.
 
 If there is a @code{pragma c_code} declaration for a mode of a predicate
 or function, then that mode of the predicate may not have determinism
