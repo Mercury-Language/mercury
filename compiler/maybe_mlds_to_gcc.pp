@@ -42,6 +42,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 #else
 
 :- import_module passes_aux.
+:- import_module string.
 
 maybe_mlds_to_gcc__compile_to_asm(_MLDS, no) -->
 	report_error(
