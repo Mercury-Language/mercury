@@ -120,6 +120,10 @@ SINGLEMODULE_SOURCES= \
 SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 
 # we do not yet pass the following tests:
+#	duplicate_instance_3 (the error is only detected when doing
+#		normal static linking; the error goes undetected
+#		when doing dynamic linking, or when the library
+#		was built with `--split-c-files')
 #	parent.undeclared_child.m (just not yet implemented)
 #	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
