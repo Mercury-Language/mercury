@@ -889,6 +889,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
 			%
 			IntermodResults = list__filter(
 			    (pred(VersionUnusedArgs::in) is semidet :-
+				VersionUnusedArgs \= UnusedArgs,
 				set__subset(
 					sorted_list_to_set(VersionUnusedArgs),
 					sorted_list_to_set(UnusedArgs))
@@ -991,7 +992,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 	    import_status::in, pred_proc_id::in, pred_info::out) is det.
 
 make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, Status,
-		proc(_PredId, _ProcId), PredInfo) :-
+		proc(_PredId, ProcId), PredInfo) :-
 	pred_info_module(PredInfo0, PredModule),
 	pred_info_name(PredInfo0, Name0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
@@ -1027,7 +1028,16 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, Status,
 		Name1 = Name0
 	),
 	make_pred_name(PredModule, "UnusedArgs", yes(PredOrFunc),
-		Name1, unused_args(UnusedArgs), Name),
+		Name1, unused_args(UnusedArgs), Name2),
+	% The mode number is included because we want to
+	% avoid the creation of more than one predicate with the same
+	% name if more than one mode of a predicate is specialized.
+	% Since the names of e.g. deep profiling proc_static structures
+	% are derived from the names of predicates, duplicate predicate
+	% names lead to duplicate global variable names and hence to
+	% link errors.
+	proc_id_to_int(ProcId, ProcInt),
+	add_sym_name_suffix(Name2, "_" ++ int_to_string(ProcInt), Name),
 	pred_info_arity(PredInfo0, Arity),
 	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_elements(ArgTypes0, 1, UnusedArgs, ArgTypes),
