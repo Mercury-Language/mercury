@@ -416,12 +416,58 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 #    define LOCK() mutex_lock(&GC_allocate_ml);
 #    define UNLOCK() mutex_unlock(&GC_allocate_ml);
 #  endif
+#  ifdef LINUX_THREADS
+#    include <pthread.h>
+#ifdef __i386__
+     extern inline int GC_test_and_set(volatile unsigned int *addr) {
+	  int oldval;
+	  /* Note: the "xchg" instruction does not need a "lock" prefix */
+	  __asm__ __volatile__("xchgl %0, %1"
+		: "=r"(oldval), "=m"(*(addr))
+		: "0"(1), "m"(*(addr)));
+	  return oldval;
+     }
+#else
+#    error "Need implementation of GC_test_and_set()"
+#endif
+#    define GC_clear(addr) (*(addr) = 0)
+
+     extern volatile unsigned int GC_allocate_lock;
+	/* This is not a mutex because mutexes that obey the (optional)     */
+	/* POSIX scheduling rules are subject to convoys in high contention */
+	/* applications.  This is basically a spin lock.		    */
+     extern pthread_t GC_lock_holder;
+     extern void GC_lock(void);
+	/* Allocation lock holder.  Only set if acquired by client through */
+	/* GC_call_with_alloc_lock.					   */
+#    define SET_LOCK_HOLDER() GC_lock_holder = pthread_self()
+#    define NO_THREAD (pthread_t)(-1)
+#    define UNSET_LOCK_HOLDER() GC_lock_holder = NO_THREAD
+#    define I_HOLD_LOCK() (pthread_equal(GC_lock_holder, pthread_self()))
+#    ifdef UNDEFINED
+#    	define LOCK() pthread_mutex_lock(&GC_allocate_ml)
+#    	define UNLOCK() pthread_mutex_unlock(&GC_allocate_ml)
+#    else
+#	define LOCK() \
+		{ if (GC_test_and_set(&GC_allocate_lock)) GC_lock(); }
+#	define UNLOCK() \
+		GC_clear(&GC_allocate_lock)
+#    endif
+     extern bool GC_collecting;
+#    define ENTER_GC() \
+		{ \
+		    GC_collecting = 1; \
+		}
+#    define EXIT_GC() GC_collecting = 0;
+#  endif /* LINUX_THREADS */
 #  ifdef IRIX_THREADS
 #    include <pthread.h>
 #    include <mutex.h>
 
 #    if __mips < 3 || !(defined (_ABIN32) || defined(_ABI64))
-#         define __test_and_set(l,v) test_and_set(l,v)
+#         define GC_test_and_set(addr) test_and_set(addr,1)
+#    else
+#	  define GC_test_and_set(addr) __test_and_set(addr,1)
 #    endif
      extern unsigned long GC_allocate_lock;
 	/* This is not a mutex because mutexes that obey the (optional) 	*/
@@ -439,7 +485,7 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 #    	define LOCK() pthread_mutex_lock(&GC_allocate_ml)
 #    	define UNLOCK() pthread_mutex_unlock(&GC_allocate_ml)
 #    else
-#	define LOCK() { if (__test_and_set(&GC_allocate_lock, 1)) GC_lock(); }
+#	define LOCK() { if (GC_test_and_set(&GC_allocate_lock, 1)) GC_lock(); }
 #       if __mips >= 3 && (defined (_ABIN32) || defined(_ABI64))
 #	    define UNLOCK() __lock_release(&GC_allocate_lock)
 #	else
@@ -452,7 +498,7 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 		    GC_collecting = 1; \
 		}
 #    define EXIT_GC() GC_collecting = 0;
-#  endif
+#  endif /* IRIX_THREADS */
 #  ifdef WIN32_THREADS
 #    include <windows.h>
      GC_API CRITICAL_SECTION GC_allocate_ml;
@@ -505,7 +551,8 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 # else
 #   if defined(SRC_M3) || defined(AMIGA) || defined(SOLARIS_THREADS) \
 	|| defined(MSWIN32) || defined(MACOS) || defined(DJGPP) \
-	|| defined(NO_SIGNALS) || defined(IRIX_THREADS)
+	|| defined(NO_SIGNALS) || defined(IRIX_THREADS) \
+	|| defined(LINUX_THREADS)
 			/* Also useful for debugging.		*/
 	/* Should probably use thr_sigsetmask for SOLARIS_THREADS. */
 #     define DISABLE_SIGNALS()
@@ -532,7 +579,8 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
  				   PCR_allSigsBlocked, \
  				   PCR_waitForever);
 # else
-#   if defined(SOLARIS_THREADS) || defined(WIN32_THREADS) || defined(IRIX_THREADS)
+#   if defined(SOLARIS_THREADS) || defined(WIN32_THREADS) \
+	|| defined(IRIX_THREADS) || defined(LINUX_THREADS)
       void GC_stop_world();
       void GC_start_world();
 #     define STOP_WORLD() GC_stop_world()
@@ -1129,6 +1177,8 @@ extern ptr_t GC_greatest_plausible_heap_addr;
 				&= ~((word)1 << modWORDSZ(n))
 
 /* Important internal collector routines */
+
+ptr_t GC_approx_sp();
 
 void GC_apply_to_all_blocks(/*fn, client_data*/);
 			/* Invoke fn(hbp, client_data) for each 	*/

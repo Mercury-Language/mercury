@@ -1,6 +1,7 @@
 /* 
  * Copyright (c) 1994 by Xerox Corporation.  All rights reserved.
  * Copyright (c) 1996 by Silicon Graphics.  All rights reserved.
+ * Copyright (c) 1998 by Fergus Henderson.  All rights reserved.
  *
  * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
  * OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -12,16 +13,31 @@
  * modified is included with the above copyright notice.
  */
 /*
- * Support code for Irix (>=6.2) Pthreads.  This relies on properties
- * not guaranteed by the Pthread standard.  It may or may not be portable
- * to other implementations.
+ * Support code for LinuxThreads, the clone()-based kernel
+ * thread package for Linux which is included in libc6.
+ *
+ * This code relies on implementation details of LinuxThreads,
+ * (i.e. properties not guaranteed by the Pthread standard):
+ *
+ *	- it uses `kill(SIGSTOP, getpid())' to suspend the
+ *	  current thread.  According to POSIX, this should
+ *	  stop the whole process, not just the thread.
+ *	  (An alternative would be to use
+ *	  `pthread_kill(SIGSTOP, pthread_self())' instead,
+ *	  but we need to do it inside a signal handler,
+ *	  and the pthread_kill() implementation in LinuxThreads
+ *	  is not async-signal-safe.)
+ *
+ *	- the function GC_linux_thread_top_of_stack(void)
+ *	  relies on the way LinuxThreads lays out thread stacks
+ *	  in the address space.
  *
  * Note that there is a lot of code duplication between linux_threads.c
  * and irix_threads.c; any changes made here may need to be reflected
  * there too.
  */
 
-# if defined(IRIX_THREADS)
+# if defined(LINUX_THREADS)
 
 # include "gc_priv.h"
 # include <pthread.h>
@@ -30,6 +46,7 @@
 # include <unistd.h>
 # include <sys/mman.h>
 # include <sys/time.h>
+# include <semaphore.h>
 
 #undef pthread_create
 #undef pthread_sigmask
@@ -72,14 +89,13 @@ typedef struct GC_Thread_Rep {
     word flags;
 #	define FINISHED 1   	/* Thread has exited.	*/
 #	define DETACHED 2	/* Thread is intended to be detached.	*/
-#	define CLIENT_OWNS_STACK	4
-				/* Stack was supplied by client.	*/
-    ptr_t stack;
+#	define MAIN_THREAD 4	/* True for the original thread only.	*/
+
+    ptr_t stack_end;
     ptr_t stack_ptr;  		/* Valid only when stopped. */
-				/* But must be within stack region at	*/
-				/* all times.				*/
-    size_t stack_size;		/* 0 for original thread.	*/
-    void * status;		/* Used only to avoid premature 	*/
+    int	signal;
+    void * status;		/* The value returned from the thread.  */
+    				/* Used only to avoid premature 	*/
 				/* reclamation of any data it might 	*/
 				/* reference.				*/
 } * GC_thread;
@@ -88,101 +104,117 @@ GC_thread GC_lookup_thread(pthread_t id);
 
 /*
  * The only way to suspend threads given the pthread interface is to send
- * signals.  Unfortunately, this means we have to reserve
- * a signal, and intercept client calls to change the signal mask.
+ * signals.  We can't use SIGSTOP directly, because we need to get the
+ * thread to save its stack pointer in the GC thread table before
+ * suspending.  So we have to reserve a signal of our own for this.
+ * This means we have to intercept client calls to change the signal mask.
+ * The linuxthreads package already uses SIGUSR1 and SIGUSR2,
+ * so we need to reuse something else.  I chose SIGPWR.
+ * (Perhaps SIGUNUSED would be a better choice.)
  */
-# define SIG_SUSPEND (SIGRTMIN + 6)
+#define SIG_SUSPEND SIGPWR
 
-pthread_mutex_t GC_suspend_lock = PTHREAD_MUTEX_INITIALIZER;
-volatile unsigned GC_n_stopped = 0;
-				/* Number of threads stopped so far	*/
-pthread_cond_t GC_suspend_ack_cv = PTHREAD_COND_INITIALIZER;
-pthread_cond_t GC_continue_cv = PTHREAD_COND_INITIALIZER;
+#define SIG_RESTART SIGCONT
+
+sem_t GC_suspend_ack_sem;
+
+/*
+GC_linux_thread_top_of_stack() relies on implementation details of
+LinuxThreads, namely that thread stacks are allocated on 2M boundaries
+and grow to no more than 2M.
+To make sure that we're using LinuxThreads and not some other thread
+package, we generate a dummy reference to `__pthread_initial_thread_bos',
+which is a symbol defined in LinuxThreads, but (hopefully) not in other
+thread packages.
+*/
+extern char * __pthread_initial_thread_bos;
+char **dummy_var_to_force_linux_threads = &__pthread_initial_thread_bos;
+
+#define LINUX_THREADS_STACK_SIZE  (2 * 1024 * 1024)
+
+static inline ptr_t GC_linux_thread_top_of_stack(void)
+{
+  char *sp = GC_approx_sp();
+  ptr_t tos = (ptr_t) (((unsigned long)sp | (LINUX_THREADS_STACK_SIZE - 1)) + 1);
+#if DEBUG_THREADS
+  GC_printf1("SP = %lx\n", (unsigned long)sp);
+  GC_printf1("TOS = %lx\n", (unsigned long)tos);
+#endif
+  return tos;
+}
 
 void GC_suspend_handler(int sig)
 {
     int dummy;
+    pthread_t my_thread = pthread_self();
     GC_thread me;
     sigset_t all_sigs;
     sigset_t old_sigs;
     int i;
+    sigset_t mask;
 
     if (sig != SIG_SUSPEND) ABORT("Bad signal in suspend_handler");
-    pthread_mutex_lock(&GC_suspend_lock);
-    me = GC_lookup_thread(pthread_self());
+
+#if DEBUG_THREADS
+    GC_printf1("Suspending 0x%x\n", my_thread);
+#endif
+
+    me = GC_lookup_thread(my_thread);
     /* The lookup here is safe, since I'm doing this on behalf  */
     /* of a thread which holds the allocation lock in order	*/
     /* to stop the world.  Thus concurrent modification of the	*/
     /* data structure is impossible.				*/
     me -> stack_ptr = (ptr_t)(&dummy);
-    GC_n_stopped++;
-    pthread_cond_signal(&GC_suspend_ack_cv);
-    pthread_cond_wait(&GC_continue_cv, &GC_suspend_lock);
-    pthread_mutex_unlock(&GC_suspend_lock);
-    /* GC_printf1("Continuing 0x%x\n", pthread_self()); */
+    me -> stack_end = GC_linux_thread_top_of_stack();
+
+    /* Tell the thread that wants to stop the world that this   */
+    /* thread has been stopped.  Note that sem_post() is  	*/
+    /* the only async-signal-safe primitive in LinuxThreads.    */
+    sem_post(&GC_suspend_ack_sem);
+
+    /* Wait until that thread tells us to restart by sending    */
+    /* this thread a SIG_RESTART signal.			*/
+    if (sigfillset(&mask) != 0) ABORT("sigfillset() failed");
+    if (sigdelset(&mask, SIG_RESTART) != 0) ABORT("sigdelset() failed");
+    if (sigdelset(&mask, SIG_SUSPEND) != 0) ABORT("sigdelset() failed");
+    do {
+	    me->signal = 0;
+	    sigsuspend(&mask);             /* Wait for signal */
+    } while (me->signal != SIG_RESTART);
+
+#if DEBUG_THREADS
+    GC_printf1("Continuing 0x%x\n", my_thread);
+#endif
 }
 
+void GC_restart_handler(int sig)
+{
+    GC_thread me;
+
+    if (sig != SIG_RESTART) ABORT("Bad signal in suspend_handler");
+
+    /* Let the GC_suspend_handler() know that we got a SIG_RESTART. */
+    /* The lookup here is safe, since I'm doing this on behalf  */
+    /* of a thread which holds the allocation lock in order	*/
+    /* to stop the world.  Thus concurrent modification of the	*/
+    /* data structure is impossible.				*/
+    me = GC_lookup_thread(pthread_self());
+    me->signal = SIG_RESTART;
+
+    /*
+    ** Note: even if we didn't do anything useful here,
+    ** it would still be necessary to have a signal handler,
+    ** rather than ignoring the signals, otherwise
+    ** the signals will not be delivered at all, and
+    ** will thus not interrupt the sigsuspend() above.
+    */
+
+#if DEBUG_THREADS
+    GC_printf1("In GC_restart_handler for 0x%x\n", pthread_self());
+#endif
+}
 
 bool GC_thr_initialized = FALSE;
-
-size_t GC_min_stack_sz;
-
-size_t GC_page_sz;
-
-# define N_FREE_LISTS 25
-ptr_t GC_stack_free_lists[N_FREE_LISTS] = { 0 };
-		/* GC_stack_free_lists[i] is free list for stacks of 	*/
-		/* size GC_min_stack_sz*2**i.				*/
-		/* Free lists are linked through first word.		*/
-
-/* Return a stack of size at least *stack_size.  *stack_size is	*/
-/* replaced by the actual stack size.				*/
-/* Caller holds allocation lock.				*/
-ptr_t GC_stack_alloc(size_t * stack_size)
-{
-    register size_t requested_sz = *stack_size;
-    register size_t search_sz = GC_min_stack_sz;
-    register int index = 0;	/* = log2(search_sz/GC_min_stack_sz) */
-    register ptr_t result;
-    
-    while (search_sz < requested_sz) {
-        search_sz *= 2;
-        index++;
-    }
-    if ((result = GC_stack_free_lists[index]) == 0
-        && (result = GC_stack_free_lists[index+1]) != 0) {
-        /* Try next size up. */
-        search_sz *= 2; index++;
-    }
-    if (result != 0) {
-        GC_stack_free_lists[index] = *(ptr_t *)result;
-    } else {
-        result = (ptr_t) GC_scratch_alloc(search_sz + 2*GC_page_sz);
-        result = (ptr_t)(((word)result + GC_page_sz) & ~(GC_page_sz - 1));
-        /* Protect hottest page to detect overflow. */
-        /* mprotect(result, GC_page_sz, PROT_NONE); */
-        result += GC_page_sz;
-    }
-    *stack_size = search_sz;
-    return(result);
-}
-
-/* Caller holds allocation lock.					*/
-void GC_stack_free(ptr_t stack, size_t size)
-{
-    register int index = 0;
-    register size_t search_sz = GC_min_stack_sz;
-    
-    while (search_sz < size) {
-        search_sz *= 2;
-        index++;
-    }
-    if (search_sz != size) ABORT("Bad stack size");
-    *(ptr_t *)stack = GC_stack_free_lists[index];
-    GC_stack_free_lists[index] = stack;
-}
-
-
 
 # define THREAD_TABLE_SZ 128	/* Must be power of 2	*/
 volatile GC_thread GC_threads[THREAD_TABLE_SZ];
@@ -268,6 +300,8 @@ GC_thread GC_lookup_thread(pthread_t id)
     return(p);
 }
 
+extern volatile int volatile_counter;
+volatile int prev_counter;
 
 /* Caller holds allocation lock.	*/
 void GC_stop_world()
@@ -277,15 +311,26 @@ void GC_stop_world()
     register GC_thread p;
     register int n_live_threads = 0;
     register int result;
+
+    /*
+     * It is important to ensure that any threads which were
+     * previously stopped and then woken get time to actually
+     * wake up before we stop then again.  Otherwise,
+     * we might try to suspend a process that is already
+     * stopped, and I think that might not work properly.
+     * Hence the following call to sched_yield().
+     */
+    sched_yield();
     
-    GC_n_stopped = 0;
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
         if (p -> id != my_thread) {
             if (p -> flags & FINISHED) continue;
             n_live_threads++;
+	    #if DEBUG_THREADS
+	      GC_printf1("Sending suspend signal to 0x%x\n", p -> id);
+	    #endif
             result = pthread_kill(p -> id, SIG_SUSPEND);
-	    /* GC_printf1("Sent signal to 0x%x\n", p -> id); */
 	    switch(result) {
                 case ESRCH:
                     /* Not really there anymore.  Possible? */
@@ -299,46 +344,57 @@ void GC_stop_world()
         }
       }
     }
-    pthread_mutex_lock(&GC_suspend_lock);
-    while(GC_n_stopped < n_live_threads) {
-        /* GC_printf3("\nwaiting:%d %d %d\n", GC_gc_no,
-			GC_n_stopped, n_live_threads); */
-    	pthread_cond_wait(&GC_suspend_ack_cv, &GC_suspend_lock);
+    for (i = 0; i < n_live_threads; i++) {
+    	sem_wait(&GC_suspend_ack_sem);
     }
-    pthread_mutex_unlock(&GC_suspend_lock);
-    /* GC_printf1("World stopped 0x%x\n", pthread_self()); */
+    #if DEBUG_THREADS
+    GC_printf1("World stopped 0x%x\n", pthread_self());
+    #endif
+    prev_counter = volatile_counter;
 }
 
 /* Caller holds allocation lock.	*/
 void GC_start_world()
 {
-    /* GC_printf0("World starting\n"); */
-    pthread_mutex_lock(&GC_suspend_lock);
-    /* All other threads are at pthread_cond_wait in signal handler.	*/
-    /* Otherwise we couldn't have acquired the lock.			*/
-    pthread_mutex_unlock(&GC_suspend_lock);
-    pthread_cond_broadcast(&GC_continue_cv);
-}
-
-# ifdef MMAP_STACKS
---> not really supported yet.
-int GC_is_thread_stack(ptr_t addr)
-{
+    pthread_t my_thread = pthread_self();
     register int i;
     register GC_thread p;
+    register int n_live_threads = 0;
+    register int result;
+    
+    if (volatile_counter != prev_counter) {
+	ABORT("GC_stop_world didn't stop everything");
+    }
+    #if DEBUG_THREADS
+      GC_printf0("World starting\n");
+    #endif
 
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
-        if (p -> stack_size != 0) {
-            if (p -> stack <= addr &&
-                addr < p -> stack + p -> stack_size)
-                   return 1;
-       }
+        if (p -> id != my_thread) {
+            if (p -> flags & FINISHED) continue;
+            n_live_threads++;
+	    #if DEBUG_THREADS
+	      GC_printf1("Sending restart signal to 0x%x\n", p -> id);
+	    #endif
+            result = pthread_kill(p -> id, SIG_RESTART);
+	    switch(result) {
+                case ESRCH:
+                    /* Not really there anymore.  Possible? */
+                    n_live_threads--;
+                    break;
+                case 0:
+                    break;
+                default:
+                    ABORT("pthread_kill failed");
+            }
+        }
       }
     }
-    return 0;
+    #if DEBUG_THREADS
+      GC_printf0("World started\n");
+    #endif
 }
-# endif
 
 /* We hold allocation lock.  We assume the world is stopped.	*/
 void GC_push_all_stacks()
@@ -350,7 +406,9 @@ void GC_push_all_stacks()
     pthread_t me = pthread_self();
     
     if (!GC_thr_initialized) GC_thr_init();
-    /* GC_printf1("Pushing stacks from thread 0x%x\n", me); */
+    #if DEBUG_THREADS
+        GC_printf1("Pushing stacks from thread 0x%lx\n", (unsigned long) me);
+    #endif
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
         if (p -> flags & FINISHED) continue;
@@ -359,12 +417,21 @@ void GC_push_all_stacks()
 	} else {
 	    lo = p -> stack_ptr;
 	}
-        if (p -> stack_size != 0) {
-            hi = p -> stack + p -> stack_size;
+        if ((p -> flags & MAIN_THREAD) == 0) {
+	    if (pthread_equal(p -> id, me)) {
+		hi = GC_linux_thread_top_of_stack();
+	    } else {
+		hi = p -> stack_end;
+	    }
         } else {
             /* The original stack. */
             hi = GC_stackbottom;
         }
+        #if DEBUG_THREADS
+            GC_printf3("Stack for thread 0x%lx = [%lx,%lx)\n",
+    	        (unsigned long) p -> id,
+		(unsigned long) lo, (unsigned long) hi);
+        #endif
         GC_push_all_stack(lo, hi);
       }
     }
@@ -375,17 +442,41 @@ void GC_push_all_stacks()
 void GC_thr_init()
 {
     GC_thread t;
+    struct sigaction act;
 
     GC_thr_initialized = TRUE;
-    GC_min_stack_sz = HBLKSIZE;
-    GC_page_sz = sysconf(_SC_PAGESIZE);
-    if (sigset(SIG_SUSPEND, GC_suspend_handler) != SIG_DFL)
-    	ABORT("Previously installed SIG_SUSPEND handler");
+
+    if (sem_init(&GC_suspend_ack_sem, 0, 0) != 0)
+    	ABORT("sem_init failed");
+
+    act.sa_flags = SA_RESTART;
+    if (sigfillset(&act.sa_mask) != 0) {
+    	ABORT("sigfillset() failed");
+    }
+    if (sigdelset(&act.sa_mask, SIG_RESTART) != 0) {
+    	ABORT("sigdelset() failed");
+    }
+    act.sa_handler = GC_suspend_handler;
+    if (sigaction(SIG_SUSPEND, &act, NULL) != 0) {
+    	ABORT("Cannot set SIG_SUSPEND handler");
+    }
+
+    act.sa_flags = SA_RESTART;
+    if (sigfillset(&act.sa_mask) != 0) {
+    	ABORT("sigfillset() failed");
+    }
+    if (sigdelset(&act.sa_mask, SIG_RESTART) != 0) {
+    	ABORT("sigdelset() failed");
+    }
+    act.sa_handler = GC_restart_handler;
+    if (sigaction(SIG_RESTART, &act, NULL) != 0) {
+    	ABORT("Cannot set SIG_SUSPEND handler");
+    }
+
     /* Add the initial thread, so we can stop it.	*/
       t = GC_new_thread(pthread_self());
-      t -> stack_size = 0;
       t -> stack_ptr = (ptr_t)(&t);
-      t -> flags = DETACHED;
+      t -> flags = DETACHED | MAIN_THREAD;
 }
 
 int GC_pthread_sigmask(int how, const sigset_t *set, sigset_t *oset)
@@ -447,7 +538,15 @@ void * GC_start_routine(void * arg)
     me = GC_lookup_thread(pthread_self());
     UNLOCK();
     pthread_cleanup_push(GC_thread_exit_proc, 0);
+#   ifdef DEBUG_THREADS
+        GC_printf1("Starting thread 0x%x\n", pthread_self());
+        GC_printf1("pid = %ld\n", (long) getpid());
+        GC_printf1("sp = 0x%lx\n", (long) &arg);
+#   endif
     result = (*(si -> start_routine))(si -> arg);
+#if DEBUG_THREADS
+        GC_printf1("Finishing thread 0x%x\n", pthread_self());
+#endif
     me -> status = result;
     me -> flags |= FINISHED;
     pthread_cleanup_pop(1);
@@ -482,21 +581,8 @@ GC_pthread_create(pthread_t *new_thread,
 	(void) pthread_attr_init(&new_attr);
     } else {
         new_attr = *attr;
-	pthread_attr_getstackaddr(&new_attr, &stack);
     }
-    pthread_attr_getstacksize(&new_attr, &stacksize);
     pthread_attr_getdetachstate(&new_attr, &detachstate);
-    if (stacksize < GC_min_stack_sz) ABORT("Stack too small");
-    if (0 == stack) {
-     	stack = (void *)GC_stack_alloc(&stacksize);
-     	if (0 == stack) {
-     	    UNLOCK();
-     	    return(ENOMEM);
-     	}
-	pthread_attr_setstackaddr(&new_attr, stack);
-    } else {
-    	my_flags |= CLIENT_OWNS_STACK;
-    }
     if (PTHREAD_CREATE_DETACHED == detachstate) my_flags |= DETACHED;
     result = pthread_create(&my_new_thread, &new_attr, GC_start_routine, si);
     /* No GC can start until the thread is registered, since we hold	*/
@@ -504,13 +590,10 @@ GC_pthread_create(pthread_t *new_thread,
     if (0 == result) {
         t = GC_new_thread(my_new_thread);
         t -> flags = my_flags;
-        t -> stack = stack;
-        t -> stack_size = stacksize;
-	t -> stack_ptr = (ptr_t)stack + stacksize - sizeof(word);
+	t -> stack_ptr = 0;
+	t -> stack_end = 0;
         if (0 != new_thread) *new_thread = my_new_thread;
-    } else if (!(my_flags & CLIENT_OWNS_STACK)) {
-      	GC_stack_free(stack, stacksize);
-    }        
+    }
     UNLOCK();  
     /* pthread_attr_destroy(&new_attr); */
     return(result);
@@ -524,7 +607,7 @@ bool GC_collecting = 0; /* A hint that we're in the collector and       */
 /* as STL alloc.h.  This isn't really the right way to do this.   */
 /* but until the POSIX scheduling mess gets straightened out ...  */
 
-unsigned long GC_allocate_lock = 0;
+volatile unsigned int GC_allocate_lock = 0;
 
 void GC_lock()
 {
@@ -538,7 +621,7 @@ void GC_lock()
 #   define PAUSE junk *= junk; junk *= junk; junk *= junk; junk *= junk
     int i;
 
-    if (!GC_test_and_set(&GC_allocate_lock, 1)) {
+    if (!GC_test_and_set(&GC_allocate_lock)) {
         return;
     }
     my_spin_max = spin_max;
@@ -549,7 +632,7 @@ void GC_lock()
             PAUSE; 
             continue;
         }
-        if (!GC_test_and_set(&GC_allocate_lock, 1)) {
+        if (!GC_test_and_set(&GC_allocate_lock)) {
 	    /*
              * got it!
              * Spinning worked.  Thus we're probably not being scheduled
@@ -565,20 +648,12 @@ void GC_lock()
     spin_max = low_spin_max;
 yield:
     for (;;) {
-        if (!GC_test_and_set(&GC_allocate_lock, 1)) {
+        if (!GC_test_and_set(&GC_allocate_lock)) {
             return;
         }
         sched_yield();
     }
 }
 
-
-
-# else
-
-#ifndef LINT
-  int GC_no_Irix_threads;
-#endif
-
-# endif /* IRIX_THREADS */
+# endif /* LINUX_THREADS */
 

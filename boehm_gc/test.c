@@ -45,7 +45,7 @@
 #   include <synch.h>
 # endif
 
-# ifdef IRIX_THREADS
+# if defined(IRIX_THREADS) || defined(LINUX_THREADS)
 #   include <pthread.h>
 # endif
 
@@ -386,7 +386,7 @@ VOLATILE int dropped_something = 0;
     static mutex_t incr_lock;
     mutex_lock(&incr_lock);
 # endif
-# ifdef IRIX_THREADS
+# if defined(IRIX_THREADS) || defined(LINUX_THREADS)
     static pthread_mutex_t incr_lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_lock(&incr_lock);
 # endif
@@ -404,7 +404,7 @@ VOLATILE int dropped_something = 0;
 # ifdef SOLARIS_THREADS
     mutex_unlock(&incr_lock);
 # endif
-# ifdef IRIX_THREADS
+# if defined(IRIX_THREADS) || defined(LINUX_THREADS)
     pthread_mutex_unlock(&incr_lock);
 # endif
 # ifdef WIN32_THREADS
@@ -465,7 +465,7 @@ int n;
 	    static mutex_t incr_lock;
 	    mutex_lock(&incr_lock);
 #	  endif
-#         ifdef IRIX_THREADS
+#         if defined(IRIX_THREADS) || defined(LINUX_THREADS)
             static pthread_mutex_t incr_lock = PTHREAD_MUTEX_INITIALIZER;
             pthread_mutex_lock(&incr_lock);
 #         endif
@@ -481,7 +481,7 @@ int n;
 #	  ifdef SOLARIS_THREADS
 	    mutex_unlock(&incr_lock);
 #	  endif
-#	  ifdef IRIX_THREADS
+#	  if defined(IRIX_THREADS) || defined(LINUX_THREADS)
 	    pthread_mutex_unlock(&incr_lock);
 #	  endif
 #         ifdef WIN32_THREADS
@@ -914,7 +914,9 @@ void SetMinimumStack(long minSize)
 }
 
 
-#if !defined(PCR) && !defined(SOLARIS_THREADS) && !defined(WIN32_THREADS) && !defined(IRIX_THREADS) || defined(LINT)
+#if !defined(PCR) && !defined(SOLARIS_THREADS) && !defined(WIN32_THREADS) \
+	&& !defined(IRIX_THREADS) && !defined(LINUX_THREADS) \
+	|| defined(LINT)
 #ifdef MSWIN32
   int APIENTRY WinMain(HINSTANCE instance, HINSTANCE prev, LPSTR cmd, int n)
 #else
@@ -1042,7 +1044,7 @@ test()
 }
 #endif
 
-#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
+#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS) || defined(LINUX_THREADS)
 void * thr_run_one_test(void * arg)
 {
     run_one_test();
@@ -1103,7 +1105,9 @@ main()
 	*((char *)&code - 1024*1024) = 0;      /* Require 1 Mb */
 #   endif /* IRIX_THREADS */
     pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, 1000000);
+#   ifdef IRIX_THREADS
+        pthread_attr_setstacksize(&attr, 1000000);
+#   endif
     n_tests = 0;
     GC_enable_incremental();
     (void) GC_set_warn_proc(warn_proc);
@@ -1131,4 +1135,4 @@ main()
     return(0);
 }
 #endif /* pthreads */
-#endif /* SOLARIS_THREADS || IRIX_THREADS */
+#endif /* SOLARIS_THREADS || IRIX_THREADS || LINUX_THREADS */

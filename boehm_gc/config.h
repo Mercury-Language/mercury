@@ -572,20 +572,10 @@
 #	define MPROTECT_VDB
 #       ifdef __ELF__
 #            define DYNAMIC_LOADING
-#	     ifdef UNDEFINED	/* includes ro data */
-	       extern int _etext;
-#              define DATASTART ((ptr_t)((((word) (&_etext)) + 0xfff) & ~0xfff))
-#	     endif
-    	     extern char **__environ;
-#            define DATASTART ((ptr_t)(&__environ))
-			      /* hideous kludge: __environ is the first */
-			      /* word in crt0.o, and delimits the start */
-			      /* of the data segment, no matter which   */
-			      /* ld options were passed through.        */
-			      /* We could use _etext instead, but that  */
-			      /* would include .rodata, which may       */
-			      /* contain large read-only data tables    */
-			      /* that we'd rather not scan.		*/
+	     /* This may require a recent version of libc and/or binutils.
+	        Works with libc6 and binutils 2.9. */
+	     extern int __data_start;
+#            define DATASTART (&__data_start)
 	     extern int _end;
 #	     define DATAEND (&_end)
 #	else
@@ -906,10 +896,15 @@
 # if defined(IRIX_THREADS) && !defined(IRIX5)
 --> inconsistent configuration
 # endif
+# if defined(LINUX_THREADS) && !defined(LINUX)
+--> inconsistent configuration
+# endif
 # if defined(SOLARIS_THREADS) && !defined(SUNOS5)
 --> inconsistent configuration
 # endif
-# if defined(PCR) || defined(SRC_M3) || defined(SOLARIS_THREADS) || defined(WIN32_THREADS) || defined(IRIX_THREADS)
+# if defined(PCR) || defined(SRC_M3) || \
+	defined(SOLARIS_THREADS) || defined(WIN32_THREADS) || \
+	defined(IRIX_THREADS) || defined(LINUX_THREADS)
 #   define THREADS
 # endif
 

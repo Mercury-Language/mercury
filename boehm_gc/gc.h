@@ -629,7 +629,7 @@ GC_API void (*GC_is_visible_print_proc)
 # endif /* SOLARIS_THREADS */
 
 
-#ifdef IRIX_THREADS
+#if defined(IRIX_THREADS) || defined(LINUX_THREADS)
 /* We treat these similarly. */
 # include <pthread.h>
 # include <signal.h>
@@ -644,18 +644,21 @@ GC_API void (*GC_is_visible_print_proc)
 # define pthread_sigmask GC_pthread_sigmask
 # define pthread_join GC_pthread_join
 
-#endif /* IRIX_THREADS */
+#endif /* IRIX_THREADS || LINUX_THREADS */
 
-#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
+#if defined(THREADS) && !defined(SRC_M3)
 /* This returns a list of objects, linked through their first		*/
 /* word.  Its use can greatly reduce lock contention problems, since	*/
 /* the allocation lock can be acquired and released many fewer times.	*/
 GC_PTR GC_malloc_many(size_t lb);
 #define GC_NEXT(p) (*(GC_PTR *)(p)) 	/* Retrieve the next element	*/
 					/* in returned list.		*/
-extern void GC_thr_init();	/* Needed for Solaris/X86	*/
+#endif /* THREADS && !SRC_M3 */
 
-#endif /* SOLARIS_THREADS */
+#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS) || \
+	defined(LINUX_THREADS)
+extern void GC_thr_init();	/* Needed for Solaris/X86	*/
+#endif
 
 /*
  * If you are planning on putting

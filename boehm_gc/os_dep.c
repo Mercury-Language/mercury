@@ -1211,7 +1211,8 @@ void GC_default_push_other_roots()
 
 # endif /* SRC_M3 */
 
-# if defined(SOLARIS_THREADS) || defined(WIN32_THREADS) || defined(IRIX_THREADS)
+# if defined(SOLARIS_THREADS) || defined(WIN32_THREADS) \
+	|| defined(IRIX_THREADS) || defined(LINUX_THREADS)
 
 extern void GC_push_all_stacks();
 
