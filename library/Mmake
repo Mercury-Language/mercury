@@ -190,12 +190,12 @@ install_library: libmercury.a libmercury.$(SO)
 install_nuprolog: install_library_nu install_interpreter_nu
 
 .PHONY: install_library_nu
-install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
+install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) debug.no portray.no \
 			nc_builtin.nl np_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
-	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS)` \
+	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) debug.no portray.no` \
 		$(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
