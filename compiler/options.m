@@ -471,7 +471,9 @@
 		;	java_flags
 		;	java_classpath
 		;	java_object_file_extension
-
+			
+			% IL
+		;	dotnet_library_version
 
 	% Link options
 		;	output_file_name
@@ -909,6 +911,7 @@ option_defaults_2(optimization_option, [
 option_defaults_2(target_code_compilation_option, [
 		% Target code compilation options
 	target_debug		-	bool(no),
+
 % C
 					% the `mmc' script will override the
 					% following default with a value
@@ -937,7 +940,12 @@ option_defaults_2(target_code_compilation_option, [
 	java_compiler		-	string("javac"),
 	java_flags		-	accumulating([]),
 	java_classpath  	-	accumulating([]),
-	java_object_file_extension -	string(".class")
+	java_object_file_extension -	string(".class"),
+
+% IL
+		% We default to the version of the library that came
+		% with Beta2.
+	dotnet_library_version	-	string("1.0.2411.0")
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -1463,6 +1471,8 @@ long_option("java-flags",			cflags).
 long_option("java-debug",		target_debug).
 long_option("java-classpath",   	java_classpath).
 long_option("java-object-file-extension", java_object_file_extension).
+
+long_option("dotnet-library-version",	dotnet_library_version).
 
 % link options
 long_option("output-file",		output_file_name).
@@ -3069,7 +3079,11 @@ options_help_target_code_compilation -->
 
 		"--java-object-file-extension",
 		"\tSpecify an extension for Java object (bytecode) files",
-		"\tBy default this is `.class'."
+		"\tBy default this is `.class'.",
+
+		"--dotnet-library-version <version-number>",
+		"\tThe version number for the mscorlib assembly distributed",
+		"\twith the Microsoft .NET SDK."
 	]).
 
 :- pred options_help_link(io__state::di, io__state::uo) is det.
