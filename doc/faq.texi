@@ -226,6 +226,9 @@ foo.c:45: initializer is not computable at load time
 
 You're using an old version of @samp{gcc}. 
 Check that the version of @samp{gcc} in your PATH is version 2.6.3 or later.
+Mercury does not (at the current time) support versions of gcc earlier
+than 2.6.3.  (Using the @samp{--no-static-ground-terms} option may also solve
+this problem, but results in less efficient code.)
 
 @end enumerate
 
