@@ -128,7 +128,6 @@ ORDINARY_PROGS=	\
 	shift_test \
 	solve_quadratic \
 	space \
-	special_char \
 	split_c_files \
 	stable_sort \
 	string_alignment \
@@ -159,7 +158,7 @@ ORDINARY_PROGS=	\
 	write_reg2
 
 # These tests trigger a bug in lcc
-ifeq "$(findstring lcc,$(shell $(MGNUC) -v))" "lcc"
+ifeq "$(findstring lcc,$(shell $(MGNUC) -v 2>&1))" "lcc"
   BROKEN_FOR_LCC_PROGS =
 else
   BROKEN_FOR_LCC_PROGS = \
@@ -171,6 +170,15 @@ endif
 CLOSURE_LAYOUT_PROGS = \
 	copy_pred \
 	copy_pred_2
+
+# This test requires the implementation's representation of characters
+# to be the same as their representation in files, which is not true
+# for the IL and Java back-ends, which use Unicode internally.
+ifeq "$(filter il% java%,$(GRADE))" ""
+	CHAR_REP_PROGS = special_char
+else
+	CHAR_REP_PROGS =
+endif
 
 # We do not pass the following tests at all:
 #
@@ -256,7 +264,7 @@ else
 endif
 
 PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
-	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
+	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS) $(CHAR_REP_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
