@@ -4079,7 +4079,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
 			InInterface0, ThisModuleItems0, Items3, SubModules1),
 
 		%
-		% combine the sub-module declarations from the prevous two
+		% combine the sub-module declarations from the previous two
 		% steps
 		%
 		{ list__foldl(add_submodule, SubModules0, SubModules1,
