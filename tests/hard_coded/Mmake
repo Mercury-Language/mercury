@@ -8,6 +8,9 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 	pragma_c_code pragma_inline higher_order_func_test \
 	free_free_mode func_test string_alignment
 
+# we do not yet pass the following tests:
+#	nasty_func_test
+
 #-----------------------------------------------------------------------------#
 
 %.out: %
