@@ -428,7 +428,7 @@ MR_delete_spy_point(int point_table_slot)
 
 	if (point->spy_when == MR_SPY_LINENO) {
 		/* Release the storage acquired by MR_copy_string. */
-		MR_free((void *) point->spy_filename);
+		MR_free(point->spy_filename);
 
 		/*
 		** Remove the spy point from the spied label table list.
