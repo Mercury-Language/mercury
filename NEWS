@@ -184,3 +184,8 @@ DRAFT NEWS for Mercury release 0.7
     lists using a user-specified procedure to write the elements and separating
     the elements with a user-specified separator string.
 
+  - We've added a double accumulator version of list__foldl called
+    list__foldl2, which is a convenient generalisation for accumulators
+    that also do I/O.
+
+

@@ -388,6 +388,22 @@
 :- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
 :- mode list__sort(pred(in, in, out) is det, in, out) is det.
 
+	% list__foldl2(Pred, List, Start, End, Start2, End2) 
+	% calls Pred with each element of List (working left-to-right),
+	% 2 accumulators (with the initial values of Start and Start2),
+	% and returns the final values in End and End2.
+	% (Although no more expressive than list__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
+:- mode list__foldl2(pred(in, in, out, in, out) is det,
+		in, in, out, in, out) is det.
+:- mode list__foldl2(pred(in, in, out, di, uo) is det,
+		in, in, out, di, uo) is det.
+:- mode list__foldl2(pred(in, di, uo, di, uo) is det,
+		in, di, uo, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
 	% Sorted is a list containing the same elements as Unsorted, but with
 	% any duplicates removed. Where Sorted is a sorted list, with respect  
@@ -871,6 +887,11 @@ list__foldl(_, [], Acc, Acc).
 list__foldl(P, [H|T], Acc0, Acc) :-
 	call(P, H, Acc0, Acc1),
 	list__foldl(P, T, Acc1, Acc).
+
+list__foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
+list__foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
+	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
+	list__foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
 
 list__foldr(_, [], Acc, Acc).
 list__foldr(P, [H|T], Acc0, Acc) :-
