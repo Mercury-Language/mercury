@@ -201,14 +201,6 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
 		hlds__inst_defn(_, Args, Body, _, _)).
 
-	% XXX should be in hlds.nl.
-
-:- pred make_predid(string, sym_name, int, pred_id).
-:- mode make_predid(input, input, input, output).
-
-make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
-make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_mode_defn(module_info, varset, mode_defn, condition,

@@ -557,6 +557,10 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 :- pred predicate_arity(pred_id, int).
 :- mode predicate_arity(input, output).
 
+:- pred make_predid(string, sym_name, int, pred_id).
+:- mode make_predid(input, input, input, output).
+
+
 :- pred predinfo_proc_ids(pred_info, list(proc_id)).
 :- mode predinfo_proc_ids(input, output).
 
@@ -590,6 +594,9 @@ predicate_module(pred(Module,_Name,_Arity), Module).
 predicate_name(pred(_Module,Name,_Arity), Name).
 
 predicate_arity(pred(_Module,_Name,Arity), Arity).
+
+make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
+make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
 
 predinfo_proc_ids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
