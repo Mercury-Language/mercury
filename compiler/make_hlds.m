@@ -2748,11 +2748,40 @@ module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
 
 preds_add_implicit(ModuleInfo, PredicateTable0, ModuleName, PredName, Arity,
 		Status, Context, PredOrFunc, PredId, PredicateTable) :-
+	clauses_info_init(Arity, ClausesInfo),
+	preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0,
+			ModuleName, PredName, Arity, Status, Context,
+			PredOrFunc, PredId, PredicateTable).
+
+:- pred preds_add_implicit_for_assertion(prog_vars, module_info,
+		predicate_table, module_name, sym_name, arity,
+		import_status, prog_context, pred_or_func,
+		pred_id, predicate_table).
+:- mode preds_add_implicit_for_assertion(in, in, in,
+		in, in, in, in, in, in, out, out) is det.
+
+preds_add_implicit_for_assertion(HeadVars,
+		ModuleInfo, PredicateTable0, ModuleName,
+		PredName, Arity, Status, Context,
+		PredOrFunc, PredId, PredicateTable) :-
+	clauses_info_init_for_assertion(HeadVars, ClausesInfo),
+	preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0,
+			ModuleName, PredName, Arity, Status, Context,
+			PredOrFunc, PredId, PredicateTable).
+
+:- pred preds_add_implicit_2(clauses_info, module_info, predicate_table,
+		module_name, sym_name, arity, import_status, prog_context,
+		pred_or_func, pred_id, predicate_table).
+:- mode preds_add_implicit_2(in, in, in,
+		in, in, in, in, in, in, out, out) is det.
+
+preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0, ModuleName,
+		PredName, Arity, Status, Context,
+		PredOrFunc, PredId, PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars("T", Arity, TVarSet0, TypeVars, TVarSet),
 	term__var_list_to_term_list(TypeVars, Types),
 	Cond = true,
-	clauses_info_init(Arity, ClausesInfo),
 	map__init(Proofs),
 		% The class context is empty since this is an implicit
 		% definition. Inference will fill it in.
@@ -2898,16 +2927,22 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		(
 				% An assertion will not have a
 				% corresponding pred declaration.
-			{ IsAssertion = yes }
+			{ IsAssertion = yes },
+			{ term__term_list_to_var_list(Args, HeadVars) },
+			{ preds_add_implicit_for_assertion(HeadVars,
+					ModuleInfo0, PredicateTable0,
+					ModuleName, PredName, Arity, Status,
+					Context, PredOrFunc,
+					PredId, PredicateTable1) }
 		;
 			{ IsAssertion = no },
 			maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
-					Context, "clause")
-		),
-		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
-				ModuleName, PredName, Arity, Status, Context,
-				PredOrFunc,
-				PredId, PredicateTable1) }
+					Context, "clause"),
+			{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+					ModuleName, PredName, Arity, Status,
+					Context, PredOrFunc,
+					PredId, PredicateTable1) }
+		)
 	),
 		% Lookup the pred_info for this pred,
 		% add the clause to the clauses_info in the pred_info,
@@ -4341,6 +4376,17 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 
 %-----------------------------------------------------------------------------
 
+:- pred clauses_info_init_for_assertion(prog_vars::in,
+		clauses_info::out) is det.
+
+clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
+	map__init(VarTypes),
+	varset__init(VarSet),
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, [],
+		TI_VarMap, TCI_VarMap).
+
 clauses_info_init(Arity, ClausesInfo) :-
 	map__init(VarTypes),
 	varset__init(VarSet0),
@@ -4461,8 +4507,6 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 		Goal, VarSet, Warnings, Module0, Module, Info0, Info) -->
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1, Info0, Info1),
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
-	insert_arg_unifications(HeadVars, Args, Context, head, no,
-		Goal1, VarSet1, Goal2, VarSet2, Info1, Info),
 	{ map__init(Empty) },
 		
 		%
@@ -4470,15 +4514,21 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 		% explicitly quantified, as it has not been determined
 		% what the correct implicit quantification should be for
 		% assertions.
+		% Also the head variables of an assertion will always be
+		% variables, so it is unecessary to insert unifications.
 		%
 	(
 		{ IsAssertion = yes }
 	->
-			% Use Goal1, since HeadVar__* not yet introduced.
-		report_implicit_quant_errs(Goal1, Args, VarSet0,
-				Context, Module0, Module)
+		report_implicit_quant_errs(Goal1, Args, VarSet1,
+				Context, Module0, Module),
+		{ VarSet2 = VarSet1 },
+		{ Goal2 = Goal1 },
+		{ Info = Info0 }
 	;
-		{ Module = Module0 }
+		{ Module = Module0 },
+		insert_arg_unifications(HeadVars, Args, Context, head, no,
+			Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
 	),
 	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
 				Goal, VarSet, _, Warnings) }.

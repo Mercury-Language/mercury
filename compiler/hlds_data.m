@@ -833,6 +833,9 @@ determinism_to_code_model(failure,     model_semi).
 :- pred assertion_table_lookup(assertion_table::in, assert_id::in,
 		pred_id::out) is det.
 
+:- pred assertion_table_pred_ids(assertion_table::in,
+		list(pred_id)::out) is det.
+
 :- implementation.
 
 :- import_module int.
@@ -852,6 +855,9 @@ assertion_table_add_assertion(Assertion, AssertionTable0, Id, AssertionTable) :-
 assertion_table_lookup(AssertionTable, Id, Assertion) :-
 	AssertionTable = assertion_table(_MaxId, AssertionMap),
 	map__lookup(AssertionMap, Id, Assertion).
+
+assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
+	map__values(AssertionMap, PredIds).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -294,8 +294,8 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	(
 		{ pred_info_get_goal_type(PredInfo0, assertion) }
 	->
-		{ post_typecheck__finish_assertion(ModuleInfo1,
-				PredId, ModuleInfo2) }
+		post_typecheck__finish_assertion(ModuleInfo1,
+				PredId, ModuleInfo2)
 	;
 		{ ModuleInfo2 = ModuleInfo1 }
 	),

@@ -142,6 +142,12 @@
 :- mode hlds_out__write_clauses(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
 
+:- pred hlds_out__write_assertion(int, module_info, pred_id, prog_varset, bool,
+		list(prog_var), pred_or_func, clause, vartypes,
+		io__state, io__state).
+:- mode hlds_out__write_assertion(in, in, in, in, in, in, in, in, in, di, uo)
+	is det.
+
 	% Print out an HLDS goal. The module_info and prog_varset give
 	% the context of the goal. The boolean says whether variables should
 	% have their numbers appended to them. The integer gives the level
@@ -815,6 +821,25 @@ hlds_out__write_marker(Marker) -->
 	{ hlds_out__marker_name(Marker, Name) },
 	io__write_string(Name).
 
+hlds_out__write_assertion(Indent, ModuleInfo, _PredId, VarSet, AppendVarnums,
+		HeadVars, _PredOrFunc, Clause, TypeQual) -->
+
+		% curry the varset for term_io__write_variable/4
+	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
+			term_io__write_variable(VarName, VarSet, IO0, IO)
+		) },
+
+	hlds_out__write_indent(Indent),
+	io__write_string(":- assertion all["),
+	io__write_list(HeadVars, ", ", PrintVar),
+	io__write_string("] (\n"),
+
+	{ Clause = clause(_Modes, Goal, _Context) },
+	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
+			Indent+1, ").\n", TypeQual).
+
+
+
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 		HeadVars, PredOrFunc, Clauses0, TypeQual) -->
 	(
@@ -1369,14 +1394,26 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 	),
 	hlds_out__write_indent(Indent),
 	( { invalid_pred_id(PredId) } ->
-		[]
+			% If we don't know then the call must be treated
+			% as a predicate.
+		{ PredOrFunc = predicate }
 	;
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_get_purity(PredInfo, Purity) },
+		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		write_purity_prefix(Purity)
 	),
-	hlds_out__write_sym_name_and_args(PredName,
-		ArgVars, VarSet, AppendVarnums),
+	(
+		{ PredOrFunc = predicate },
+		{ NewArgVars = ArgVars }
+	;
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(ArgVars, NewArgVars, LHSVar) },
+		mercury_output_var(LHSVar, VarSet, AppendVarnums),
+		io__write_string(" = ")
+	),
+	hlds_out__write_sym_name_and_args(PredName, NewArgVars, VarSet,
+			AppendVarnums),
 	io__write_string(Follow),
 	( { string__contains_char(Verbose, 'l') } ->
 		{ pred_id_to_int(PredId, PredNum) },

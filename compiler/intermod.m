@@ -91,7 +91,10 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		{ ModuleInfo = ModuleInfo0 }
 	;
 		{ Result2 = ok },
-		{ module_info_predids(ModuleInfo0, PredIds) },
+		{ module_info_predids(ModuleInfo0, RealPredIds) },
+		{ module_info_assertion_table(ModuleInfo0, AssertionTable) },
+		{ assertion_table_pred_ids(AssertionTable, AssertPredIds) },
+		{ list__append(AssertPredIds, RealPredIds, PredIds) },
 		{ init_intermod_info(ModuleInfo0, IntermodInfo0) },
 		globals__io_lookup_int_option(
 			intermod_inline_simple_threshold, Threshold),
@@ -170,50 +173,9 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	{ module_info_type_spec_info(ModuleInfo0, TypeSpecInfo) },
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	(
-		%
-		% note: we can't include exported_to_submodules predicates
-		% in the `.opt' file, for reasons explained in
-		% the comments for intermod_info_add_proc
-		%
-		{ pred_info_is_exported(PredInfo0) },
-		{ pred_info_procids(PredInfo0, [ProcId | _ProcIds]) },
-		{ pred_info_procedures(PredInfo0, Procs) },
-		{ map__lookup(Procs, ProcId, ProcInfo) },
-		{ proc_info_goal(ProcInfo, Goal) },
-		(
-			% Don't export builtins since they will be
-			% recreated in the importing module anyway.
-			{ \+ code_util__compiler_generated(PredInfo0) },
-			{ \+ code_util__predinfo_is_builtin(PredInfo0) },
-
-			% These will be recreated in the importing module.
-			{ \+ set__member(PredId, TypeSpecForcePreds) },
-			(
-				{ inlining__is_simple_goal(Goal,
-						InlineThreshold) },
-				{ pred_info_get_markers(PredInfo0, Markers) },
-				{ \+ check_marker(Markers, no_inline) },
-				{ proc_info_eval_method(ProcInfo, 
-					eval_normal) }
-			;
-				{ pred_info_requested_inlining(PredInfo0) }
-			;
-				{ has_ho_input(ModuleInfo0, ProcInfo) }
-			;
-				{ Deforestation = yes },
-				% Double the inline-threshold since
-				% goals we want to deforest will have
-				% at least two disjuncts. This allows 
-				% one simple goal in each disjunct.
-				% The disjunction adds one to the goal
-				% size, hence the `+1'.
-				{ DeforestThreshold is
-					InlineThreshold * 2 + 1},
-				{ inlining__is_simple_goal(Goal,
-					DeforestThreshold) },
-				{ goal_is_deforestable(PredId, Goal) }
-			)
-		)
+		{ intermod__should_be_processed(PredId, PredInfo0,
+				TypeSpecForcePreds, InlineThreshold,
+				Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
@@ -261,6 +223,61 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	),
 	intermod__gather_preds(PredIds, CollectTypes,
 		InlineThreshold, Deforestation).
+
+
+:- pred intermod__should_be_processed(pred_id::in, pred_info::in,
+		set(pred_id)::in, int::in, bool::in,
+		module_info::in) is semidet.
+
+intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
+		InlineThreshold, Deforestation, ModuleInfo) :-
+	%
+	% note: we can't include exported_to_submodules predicates in
+	% the `.opt' file, for reasons explained in the comments for
+	% intermod_info_add_proc
+	%
+	pred_info_is_exported(PredInfo),
+	(
+		pred_info_procids(PredInfo, [ProcId | _ProcIds]),
+		pred_info_procedures(PredInfo, Procs),
+		map__lookup(Procs, ProcId, ProcInfo),
+		proc_info_goal(ProcInfo, Goal),
+		(
+			% Don't export builtins since they will be
+			% recreated in the importing module anyway.
+			\+ code_util__compiler_generated(PredInfo),
+			\+ code_util__predinfo_is_builtin(PredInfo),
+
+			% These will be recreated in the importing module.
+			\+ set__member(PredId, TypeSpecForcePreds),
+			(
+				inlining__is_simple_goal(Goal, InlineThreshold),
+				pred_info_get_markers(PredInfo, Markers),
+				\+ check_marker(Markers, no_inline),
+				proc_info_eval_method(ProcInfo, eval_normal)
+			;
+				pred_info_requested_inlining(PredInfo)
+			;
+				has_ho_input(ModuleInfo, ProcInfo)
+			;
+				Deforestation = yes,
+				% Double the inline-threshold since
+				% goals we want to deforest will have at
+				% least two disjuncts. This allows one
+				% simple goal in each disjunct.  The
+				% disjunction adds one to the goal size,
+				% hence the `+1'.
+				DeforestThreshold is InlineThreshold * 2 + 1,
+				inlining__is_simple_goal(Goal,
+					DeforestThreshold),
+				goal_is_deforestable(PredId, Goal)
+			)
+		)
+	;
+		% assertions that are in the interface should always get
+		% included in the .opt file.
+		pred_info_get_goal_type(PredInfo, assertion)
+	).
 
 :- pred dcg_set(T::in, T::unused, T::out) is det.
 dcg_set(T, _, T).
@@ -1127,6 +1144,18 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 		{ pred_info_procedures(PredInfo, Procs) },
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, VarSet,
 						Clauses, Procs)
+	;
+		{ pred_info_get_goal_type(PredInfo, assertion) }
+	->
+		(
+			{ Clauses = [Clause] }
+		->
+			hlds_out__write_assertion(0, ModuleInfo, PredId,
+					VarSet, no, HeadVars, PredOrFunc,
+					Clause, no)
+		;
+			{ error("intermod__write_preds: assertion not a single clause.") }
+		)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
 		hlds_out__write_clauses(1, ModuleInfo, PredId, VarSet, no,

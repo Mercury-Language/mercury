@@ -124,6 +124,7 @@
 	% have not been determined.
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
+:- mode goal_calls_pred_id(in, out) is nondet.
 
 	% Convert a switch back into a disjunction. This is needed 
 	% for the magic set transformation.
@@ -752,6 +753,7 @@ goal_calls_pred_id(GoalExpr - _, PredId) :-
 
 :- pred goals_calls_pred_id(list(hlds_goal), pred_id).
 :- mode goals_calls_pred_id(in, in) is semidet.
+:- mode goals_calls_pred_id(in, out) is nondet.
 
 goals_calls_pred_id([Goal | Goals], PredId) :-
 	(
@@ -762,6 +764,7 @@ goals_calls_pred_id([Goal | Goals], PredId) :-
 
 :- pred cases_calls_pred_id(list(case), pred_id).
 :- mode cases_calls_pred_id(in, in) is semidet.
+:- mode cases_calls_pred_id(in, out) is nondet.
 
 cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
 	(
@@ -772,6 +775,7 @@ cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
 
 :- pred goal_expr_calls_pred_id(hlds_goal_expr, pred_id).
 :- mode goal_expr_calls_pred_id(in, in) is semidet.
+:- mode goal_expr_calls_pred_id(in, out) is nondet.
 
 goal_expr_calls_pred_id(conj(Goals), PredId) :-
 	goals_calls_pred_id(Goals, PredId).

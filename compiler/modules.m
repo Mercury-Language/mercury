@@ -738,13 +738,16 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 		;
 			%
 			% Strip out the imported interfaces,
+			% assertions are also stripped since they should
+			% only be written to .opt files,
 			% check for some warnings, and then 
 			% write out the `.int' and `int2' files
 			% and touch the `.date' file.
 			%
 			{ strip_imported_items(InterfaceItems2, [],
 							InterfaceItems3) },
-			check_for_clauses_in_interface(InterfaceItems3,
+			{ strip_assertions(InterfaceItems3, InterfaceItems4) },
+			check_for_clauses_in_interface(InterfaceItems4,
 							InterfaceItems),
 			check_int_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
@@ -761,7 +764,10 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 	% information in the current module and writes out the .int3 file.
 make_short_interface(ModuleName, Items0) -->
 	{ get_interface(Items0, no, InterfaceItems0) },
-	check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
+		% assertions are also stripped since they should
+		% only be written to .opt files,
+	{ strip_assertions(InterfaceItems0, InterfaceItems1) },
+	check_for_clauses_in_interface(InterfaceItems1, InterfaceItems),
 	{ get_short_interface(InterfaceItems, ShortInterfaceItems0) },
 	module_qual__module_qualify_items(ShortInterfaceItems0,
 			ShortInterfaceItems, ModuleName, no, _, _, _, _),
@@ -782,6 +788,20 @@ strip_imported_items([Item - Context | Rest], Items0, Items) :-
 		list__reverse(Items0, Items)
 	;
 		strip_imported_items(Rest, [Item - Context | Items0], Items)
+	).
+
+:- pred strip_assertions(item_list::in, item_list::out) is det.
+
+strip_assertions([], []).
+strip_assertions([Item - Context | Rest], Items) :-
+	( 
+		Item = assertion(_, _)
+	->
+		strip_assertions(Rest, Items)
+	; 
+		strip_assertions(Rest, Items0),
+		Items = [Item - Context | Items0]
+
 	).
 
 :- pred check_for_clauses_in_interface(item_list, item_list,

@@ -72,6 +72,9 @@ into another language, under the above conditions for modified versions.
 @node Top,,, (mercury)
 @top
 @end ifinfo
+@c XXX Move to after Determinism
+@c * Assertions::        Assertion declarations allow you to declare laws
+@c                       that hold.
 @menu
 * Introduction::      A brief introduction to Mercury.
 * Syntax::            Mercury's syntax is similar to ISO Prolog.
@@ -366,6 +369,7 @@ The allowed declarations are:
 :- typeclass
 :- instance
 :- pragma
+:- assertion
 :- module
 :- interface
 :- implementation
@@ -2157,6 +2161,46 @@ Another is for dealing with types that use non-canonical representations
 And there are a variety of other applications.
 
 @c XXX fix semantics for I/O + committed choice + mode inference 
+
+@c @node Assertions
+@c @chapter Assertions
+@c 
+@c Mercury supports the declaration of laws that hold for predicates and
+@c functions.  
+@c These laws are only checked for type-correctness,
+@c it is the responsibility of the programmer to ensure overall correctness.
+@c The behaviour of programs with incorrect laws is undefined.
+@c 
+@c A new law is introduced with the @samp{:- assertion} declaration.
+@c 
+@c Here are some examples of @samp{:- assertion} declarations.
+@c The following example declares the function @samp{+} to be commutative.
+@c 
+@c @example
+@c :- assertion
+@c     all [A,B,R] (
+@c         R = A + B
+@c     <=>
+@c         R = B + A
+@c     ).
+@c @end example
+@c 
+@c Note that each variable in the declaration was explicitly quantified.
+@c The current Mercury compiler requires that each assertion begins with
+@c an @samp{all} quantification, and that every variable is explicitly
+@c quantified.
+@c 
+@c Here is a more complicated declaration. It declares that @samp{append} is
+@c associative.
+@c 
+@c @example
+@c :- assertion
+@c     all [A,B,C,ABC] (
+@c         (some [AB] (append(A, B, AB), append(AB, C, ABC)))
+@c     <=>
+@c         (some [BC] (append(B, C, BC), append(A, BC, ABC)))
+@c     ).
+@c @end example
 
 @node Equality preds
 @chapter User-defined equality predicates

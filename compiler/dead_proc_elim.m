@@ -759,6 +759,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% variables from inst `free' to inst `any'.
 			string__remove_suffix(PredName, "_init_any", _),
 			PredArity = 1
+		;
+			% Don't eliminate the clauses for assertions.
+			pred_info_get_goal_type(PredInfo, assertion)
 		)
 	->
 		set__insert(NeededNames0, qualified(PredModule, PredName), 

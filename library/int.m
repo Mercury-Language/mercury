@@ -72,6 +72,9 @@
 :- mode uo  + in  = in  is det.
 :- mode in  + uo  = in  is det.
 
+	% commutivity of +
+:- assertion all [A,B,C] ( C = B + A <=> C = A + B ).
+
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
@@ -82,6 +85,8 @@
 :- mode uo  * in  = in  is semidet.
 :- mode in  * uo  = in  is semidet.
 */
+	% commutivity of *
+:- assertion all [A,B,C] ( C = B * A <=> C = A * B ).
 
 	% subtraction
 :- func int - int = int.
