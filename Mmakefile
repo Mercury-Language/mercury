@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne. 
+# Copyright (C) 1995-2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -274,6 +274,7 @@ tar: README INSTALL
 	-rm -f config.status config.cache config.log configure.log a.out
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
+	-rm -f extras/Mmake.params
 	chmod -R a+r *
 	# Package up the mercury directory with some subdirectories
 	# excluded, into a gzipped tar archive that will unpack into
