@@ -88,7 +88,7 @@
 		;	convert_to_goedel
 		;	typecheck_only
 		;	errorcheck_only
-		;	compile_to_c
+		;	target_code_only
 		;	compile_only
 		;	aditi_only
 		;	output_grade_string
@@ -102,8 +102,11 @@
 		;	trace_decl
 		;	stack_trace_higher_order
 		;	generate_bytecode
-		;	generate_prolog
-		;	prolog_dialect
+		;	generate_prolog		% Currently not used
+				% XXX generate_prolog should probably be
+				% in the "Output options" section rather than
+				% in the "Auxiliary output options" section
+		;	prolog_dialect		% Currently not used
 		;	line_numbers
 		;	auto_comments
 		;	show_dependency_graph
@@ -127,6 +130,10 @@
 		;	mode_inference_iteration_limit
 	% Compilation Model options
 		;	grade
+		;	target
+		;	il			% target il
+		;	il_only			% target il + target_code_only
+		;	compile_to_c		% target c + target_code_only
 		;	gcc_non_local_gotos
 		;	gcc_global_registers
 		;	asm_labels
@@ -165,6 +172,8 @@
 		;	highlevel_code
 		;	highlevel_data
 		;	gcc_nested_functions
+		;	det_copy_out
+		;	nondet_copy_out
 		;	unboxed_float
 		;       unboxed_enums
 		;       unboxed_no_tag_types
@@ -338,7 +347,7 @@
 		;	allow_hijacks
 	%	- LLDS
 		;	common_data
-		;	optimize
+		;	optimize	% also used for MLDS->MLDS optimizations
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_fulljumps
@@ -366,6 +375,8 @@
 		;	everything_in_one_c_function
 		;	c_optimize
 		;	inline_alloc
+	%	- IL
+	%	(none yet)
 	% Link options
 		;	output_file_name
 		;	link_flags
@@ -378,7 +389,9 @@
 		;	use_search_directories_for_intermod
 		;	filenames_from_stdin
 		;	use_subdirs
-		;	aditi
+		;	aditi		% XXX this should be in the
+					% "Auxiliary output options"
+					% section
 		;	aditi_user
 		;	help.
 
@@ -463,7 +476,7 @@ option_defaults_2(output_option, [
 	convert_to_goedel 	-	bool(no),
 	typecheck_only		-	bool(no),
 	errorcheck_only		-	bool(no),
-	compile_to_c		-	bool(no),
+	target_code_only	-	bool(no),
 	compile_only		-	bool(no),
 	aditi_only		-	bool(no),
 	output_grade_string	-	bool(no)
@@ -511,6 +524,10 @@ option_defaults_2(compilation_model_option, [
 					% the `mmc' script will pass the
 					% default grade determined
 					% at configuration time
+	target			-	string("c"),
+	il			-	special,
+	il_only			-	special,
+	compile_to_c		-	special,
 	gcc_non_local_gotos	-	bool(yes),
 	gcc_global_registers	-	bool(yes),
 	asm_labels		-	bool(yes),
@@ -563,6 +580,8 @@ option_defaults_2(compilation_model_option, [
 	highlevel_code		-	bool(no),
 	highlevel_data		-	bool(no),
 	gcc_nested_functions	-	bool(no),
+	det_copy_out		-	bool(no),
+	nondet_copy_out		-	bool(no),
 	unboxed_float           -       bool(no),
 	unboxed_enums           -       bool(yes),
 	unboxed_no_tag_types    -       bool(yes)
@@ -755,7 +774,7 @@ option_defaults_2(miscellaneous_option, [
 
 	% please keep this in alphabetic order
 short_option('c', 			compile_only).
-short_option('C', 			compile_to_c).
+short_option('C', 			target_code_only).
 short_option('d', 			dump_hlds).
 short_option('D', 			dump_hlds_alias).
 short_option('e', 			errorcheck_only).
@@ -843,8 +862,7 @@ long_option("convert-to-goedel", 	convert_to_goedel).
 long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
-long_option("compile-to-c",		compile_to_c).
-long_option("compile-to-C",		compile_to_c).
+long_option("target-code-only",		target_code_only).
 long_option("compile-only",		compile_only).
 long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
@@ -863,6 +881,7 @@ long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
 long_option("prolog-dialect",		prolog_dialect).
+long_option("Prolog-dialect",		prolog_dialect).
 long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
@@ -891,6 +910,12 @@ long_option("mode-inference-iteration-limit",
 
 % compilation model options
 long_option("grade",			grade).
+long_option("target",			target).
+long_option("il",			il).
+long_option("il-only",			il_only).
+long_option("IL-only",			il_only).
+long_option("compile-to-c",		compile_to_c).
+long_option("compile-to-C",		compile_to_c).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
 long_option("asm-labels",		asm_labels).
@@ -938,6 +963,8 @@ long_option("high-level-c",		highlevel_code).
 long_option("highlevel-data",		highlevel_data).
 long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
+long_option("det-copy-out",		det_copy_out).
+long_option("nondet-copy-out",		nondet_copy_out).
 long_option("unboxed-float",		unboxed_float).
 long_option("unboxed-enums",		unboxed_enums).
 long_option("unboxed-no-tag-types",	unboxed_no_tag_types).
@@ -1157,6 +1184,14 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
 		string__append_list(["invalid grade `", Grade, "'"], Msg),
 		Result = error(Msg)
 	).
+special_handler(il, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, target, string("il"), OptionTable).
+special_handler(il_only, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, target, string("il"), OptionTable1),
+	map__set(OptionTable1, target_code_only, bool(yes), OptionTable).
+special_handler(compile_to_c, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, target, string("c"), OptionTable1),
+	map__set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(Value), OptionTable2),
@@ -1440,6 +1475,7 @@ options_help -->
 	options_help_hlds_hlds_optimization,
 	options_help_hlds_llds_optimization,
 	options_help_llds_llds_optimization,
+	options_help_mlds_mlds_optimization,
 	options_help_rl_rl_optimization,
 	options_help_output_optimization,
 	options_help_object_optimization,
@@ -1594,8 +1630,9 @@ options_help_output -->
 		"\tand don't generate any code.",
 		"-e, --errorcheck-only",
 		"\tCheck the module for errors, but do not generate any code.",
-		"-C, --compile-to-c",
-		"\tGenerate C code in `<module>.c', but not object code.",
+		"-C, --target-code-only",
+		"\tGenerate target code (i.e. C code in `<module>.c',",
+		"\t\tor IL code in `<module>.il') but not object code.",
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
@@ -1644,11 +1681,13 @@ options_help_aux_output -->
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",
-		"--generate-prolog",
-		"\tConvert the program to Prolog. Output to file `<module>.pl'",
-		"\tor `<module>.nl' (depending on the dialect).",
-		"--prolog-dialect {sicstus,nu}",
-		"\tTarget the named dialect if generating Prolog code.",
+% --generate-prolog is not documented because it is not yet implemented
+%		"--generate-prolog",
+%		"\tConvert the program to Prolog. Output to file `<module>.pl'",
+%		"\tor `<module>.nl' (depending on the dialect).",
+% --prolog-dialect is not documented because it is not yet used
+%		"--prolog-dialect {sicstus,nu}",
+%		"\tTarget the named dialect if generating Prolog code.",
 		"--no-line-numbers",
 		"\tDo not put source line numbers in the generated code.",
 		"\tThe generated code may be in C (the usual case),",
@@ -1709,6 +1748,8 @@ options_help_semantics -->
 		"\tExecute disjunctions strictly left-to-right.",
 		"--fully-strict",
 		"\tDon't optimize away loops or calls to error/1.",
+		"--infer-all",
+		"\tAbbreviation for `--infer-types --infer-modes --infer-det'.",
 		"--infer-types",
 		"\tIf there is no type declaration for a predicate or function,",
 		"\ttry to infer the type, rather than just reporting an error.",
@@ -1779,6 +1820,17 @@ options_help_compilation_model -->
 		"-s <grade>, --grade <grade>",
 		"\tSelect the compilation model. The <grade> should be one of",
 		"\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast', `hlc'",
+		"--target {c, il}",
+		"\tSpecify the target language: C or IL (default: C).",
+		"\tThe IL target implies `--high-level-code' (see below).",
+		"--il",
+		"\tAn abbreviation for `--target il'.",
+		"--il-only",
+		"\tAn abbreviation for `--target il --intermediate-code-only'.",
+		"\tGenerate IL code in `<module>.il', but do not generate object code.",
+		"--compile-to-c",
+		"\tAn abbreviation for `--target c --intermediate-code-only'.",
+		"\tGenerate C code in `<module>.c', but do not generate object code.",
 % These grades (hl, hl_nest, and hlc_nest) are not yet documented, because
 % the --high-level-data option is not yet implemented,
 % and the --gcc-nested-functions option is not yet documented.
@@ -1809,9 +1861,9 @@ options_help_compilation_model -->
 % the --high-level-data option is not yet implemented,
 % and the --gcc-nested-functions option is not yet documented.
 %		"-H, --high-level-code\t\t\t(grades: hl, hlc, hl_nest, hlc_nest)",
-		"-H, --high-level-code\t\t\t(grades: hlc)",
-		"\tUse an alternative back-end that generates high-level C code",
-		"\trather than the very low-level C code that is generated by our",
+		"-H, --high-level-code\t\t\t(grades: hlc, ilc)",
+		"\tUse an alternative back-end that generates high-level code",
+		"\trather than the very low-level code that is generated by our",
 		"\toriginal back-end.",
 % The --high-level-data option is not yet documented,
 % because it is not yet implemented
@@ -1826,6 +1878,19 @@ options_help_compilation_model -->
 % probably not very useful.
 %		"--gcc-nested-functions\t\t(grades: hl_nest, hlc_nest)",
 %		"\tSpecify whether or not to use GNU C's nested functions extension.",
+%		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
+% The --det-copy-out option is not yet documented,
+% because it is not yet tested and probably not very useful.
+%		"--det-copy-out",
+%		"\tSpecify whether to handle output arguments for det/semidet",
+%		"\tprocedures using return-by-value rather than pass-by-reference.",
+%		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
+% The --nondet-copy-out option is not yet documented,
+% because it is probably not very useful except for IL,
+% where it is the default.
+%		"--nondet-copy-out\t\t(grades: il, ilc)",
+%		"\tSpecify whether to handle output arguments for nondet",
+%		"\tprocedures using pass-by-value rather than pass-by-reference.",
 %		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
@@ -2295,6 +2360,16 @@ options_help_llds_llds_optimization -->
 		"--pred-value-number",
 		"\tExtend value numbering to entire predicates."
 	]).
+
+:- pred options_help_mlds_mlds_optimization(io__state::di, io__state::uo) is det.
+
+options_help_mlds_mlds_optimization -->
+	io__write_string("\n    MLDS -> MLDS optimizations:\n"),
+	write_tabbed_lines([
+		"--no-llds-optimize",
+		"\tDisable the MLDS->MLDS optimization passes."
+	]).
+
 
 :- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
 

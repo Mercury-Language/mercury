@@ -67,6 +67,7 @@
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 
+
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
 :- import_module mercury_to_mercury, mercury_to_goedel.
@@ -439,6 +440,8 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
+		globals__io_lookup_bool_option(target_code_only, 
+				TargetCodeOnly),
 
 		% magic sets can report errors.
 		{ module_info_num_errors(HLDS50, NumErrors) },
@@ -450,9 +453,9 @@ mercury_compile(Module) -->
 		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50, MLDS),
 			mercury_compile__mlds_to_high_level_c(MLDS),
-			globals__io_lookup_bool_option(compile_to_c, 
-				CompileToC),
-			( { CompileToC = no } ->
+			( { TargetCodeOnly = yes } ->
+				[]
+			;
 				module_name_to_file_name(ModuleName, ".c", no,
 					C_File),
 				object_extension(Obj),
@@ -460,8 +463,6 @@ mercury_compile(Module) -->
 					O_File),
 				mercury_compile__single_c_to_obj(
 					C_File, O_File, _CompileOK)
-			;
-			    []
 			)
 		    ;
 			mercury_compile__backend_pass(HLDS50, HLDS70,
@@ -2225,8 +2226,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	%
 	% Finally we invoke the C compiler to compile it.
 	%
-	globals__io_lookup_bool_option(compile_to_c, CompileToC),
-	( { CompileToC = no } ->
+	globals__io_lookup_bool_option(target_code_only, TargetCodeOnly),
+	( { TargetCodeOnly = no } ->
 		mercury_compile__c_to_obj(ModuleName, NumChunks, CompileOK),
 		{ bool__not(CompileOK, CompileErrors) }
 	;
@@ -2420,6 +2421,7 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 
 	{ MLDS = MLDS40 },
 	mercury_compile__maybe_dump_mlds(MLDS, "99", "final").
+
 
 :- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).
 :- mode mercury_compile__mlds_gen_rtti_data(in, in, out) is det.

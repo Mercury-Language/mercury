@@ -23,6 +23,8 @@
 grade_usage="\
 Grade options:
 	-s <grade>, --grade <grade>
+	--target {il, c}
+	--il
 	--asm-labels
 	--gcc-non-local-gotos
 	--gcc-global-registers
@@ -47,6 +49,7 @@ Grade options:
 # --high-level is not yet documented because --high-level-data is
 #		not yet implemented
 
+target=c
 highlevel_code=false
 highlevel_data=false
 gcc_nested_functions=false

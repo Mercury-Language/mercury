@@ -66,17 +66,23 @@
 % MLDS function signatures are determined by the HLDS procedure's
 % argument types, modes, and determinism.
 % Procedures arguments with type `io__state' or `store(_)' are not passed.
+% Procedure arguments with top_unused modes are not passed.
 % Procedures arguments with top_in modes are passed as input.
-% Procedures arguments with top_out modes may be returned by value
-% or alternatively may be passed by reference.
-% Procedure arguments with top_unused modes should not be passed
-% (except possibly in the case where they are polymorphically typed,
-% and even then, depending on how polymorphism is handled).]
+% Procedures arguments with top_out modes are normally passed by reference.
+% However, several alternative approaches are also supported (see below).
+%
 % Procedures with determinism model_det need no special handling.
 % Procedures with determinism model_semi must return a boolean.
 % Procedures with determinism model_non get passed a continuation;
 % if the procedure succeeds, it must call the continuation, and if
 % it fails, it must return.
+%
+% With the `--copy-out' option, arguments with top_out modes will be returned
+% by value.  This requires the target language to support multiple return
+% values.  The MLDS->target code generator can of course handle that by mapping
+% functions with multiple return values into functions that returns a struct.
+% With the `--nondet-copy-out' option, arguments for nondet procedures with
+% top_out modes will be passed as arguments to the continuation.
 
 % 4. Variables
 %
@@ -414,18 +420,20 @@
 :- type mlds__func_params
 	---> mlds__func_params(
 		mlds__arguments,	% names and types of arguments (inputs)
-		list(mlds__type)	% types of return values (outputs)
+		mlds__return_types	% types of return values (outputs)
 	).
 
 :- type mlds__arguments == assoc_list(mlds__entity_name, mlds__type).
+:- type mlds__arg_types == list(mlds__type).
+:- type mlds__return_types == list(mlds__type).
 
 	% An mlds__func_signature is like an mlds__func_params
 	% except that it only includes the function's type, not
 	% the parameter names.
 :- type mlds__func_signature
 	---> mlds__func_signature(
-		list(mlds__type),	% argument types
-		list(mlds__type)	% return types
+		mlds__arg_types,	% argument types
+		mlds__return_types	% return types
 	).
 
 :- func mlds__get_func_signature(mlds__func_params) = mlds__func_signature.
@@ -479,7 +487,7 @@
 
 		% The type for the continuation functions used
 		% to handle nondeterminism
-	;	mlds__cont_type
+	;	mlds__cont_type(mlds__return_types)
 
 		% The type used for storing information about a commit.
 		% This may be `jmp_buf' or `__label__'.
@@ -894,10 +902,11 @@ XXX Full exception handling support is not yet implemented.
 	%
 
 	;	target_code(target_lang, list(target_code_component))
-			% Do whatever is specified by the target_code_compoenents,
-			% which can be any piece of code in the specified
-			% target language (C, assembler, or whatever)
-			% that does not have any non-local flow of control.
+			% Do whatever is specified by the
+			% target_code_components, which can be any piece
+			% of code in the specified target language (C,
+			% assembler, or whatever) that does not have any
+			% non-local flow of control.
 	.
 
 	%

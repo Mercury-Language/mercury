@@ -39,6 +39,13 @@ case $stack_trace,$require_tracing,$use_minimal_model in
 esac
 
 #
+# IL implies --high-level-code
+#
+case $target in il)
+	highlevel_code=true ;;
+esac
+
+#
 # --high-level-code disables the use of low-level gcc extensions
 #
 case $highlevel_code in true)
