@@ -166,6 +166,15 @@ Module name `testmod' is ambiguous.
 The matches are:
 breakpoints.a.testmod
 breakpoints.b.testmod
+mdb> procedures a
+List of procedures in module `a'
+
+func breakpoints.a.afunc/0-0 (det)
+mdb> procedures a.testmod
+List of procedures in module `a.testmod'
+
+func breakpoints.a.testmod.test_in_ab/0-0 (det)
+func breakpoints.a.testmod.test_in_a/0-0 (det)
 mdb> break -O test_in_ab
 Ambiguous procedure specification. The matches are:
 0: func breakpoints.a.testmod.test_in_ab/0-0 (det)

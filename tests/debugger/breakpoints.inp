@@ -54,6 +54,8 @@ delete *
 break test_only_in_printlist
 delete *
 procedures testmod
+procedures a
+procedures a.testmod
 break -O test_in_ab
 break -O testmod.test_in_ab
 break -O a.testmod.test_in_ab

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -312,17 +312,13 @@ MR_dump_module_procs(FILE *fp, const char *name)
 	int				j;
 
 	module = MR_search_module_info_by_name(name);
-	if (module != NULL) {
-		fprintf(fp, "List of procedures in module `%s'\n\n", name);
-		for (j = 0; j < module->MR_ml_proc_count; j++) {
-			MR_print_proc_id_and_nl(fp, module->MR_ml_procs[j]);
-		}
-	} else {
+	if (module == NULL) {
 		modules = MR_search_module_info_by_nickname(name);
 		if (modules == NULL) {
 			fprintf(fp, "There is no debugging info "
 				"about module `%s'\n", name);
-		} else {
+			return;
+		} else if (MR_dlist_length(modules) != 1) {
 			fprintf(fp, "Module name `%s' is ambiguous.\n", name);
 			fprintf(fp, "The matches are:\n");
 			MR_for_dlist (element_ptr, modules) {
@@ -330,7 +326,16 @@ MR_dump_module_procs(FILE *fp, const char *name)
 					MR_dlist_data(element_ptr);
 				fprintf(fp, "%s\n", module->MR_ml_name);
 			}
+			return;
+		} else {
+			module = (const MR_Module_Layout *)
+				MR_dlist_first(modules);
 		}
+	}
+
+	fprintf(fp, "List of procedures in module `%s'\n\n", name);
+	for (j = 0; j < module->MR_ml_proc_count; j++) {
+		MR_print_proc_id_and_nl(fp, module->MR_ml_procs[j]);
 	}
 }
 
