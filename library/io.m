@@ -115,6 +115,11 @@
 :- mode io__read_line(out, di, uo) is det.
 %		Reads a line from the current input stream.
 
+:- pred io__read_file(io__result(list(char)), io__state, io__state).
+:- mode io__read_file(out, di, uo) is det.
+%		Reads all the characters from the current input stream until
+%		eof or error.
+
 :- pred io__putback_char(char, io__state, io__state).
 :- mode io__putback_char(in, di, uo) is det.
 %		Un-reads a character from the current input stream.
@@ -135,6 +140,12 @@
 							io__state, io__state).
 :- mode io__read_line(in, out, di, uo) is det.
 %		Reads a line from specified stream.
+
+:- pred io__read_file(io__input_stream, io__result(list(char)),
+							io__state, io__state).
+:- mode io__read_file(in, out, di, uo) is det.
+%		Reads all the characters from the given input stream until
+%		eof or error.
 
 :- pred io__putback_char(io__input_stream, char, io__state, io__state).
 :- mode io__putback_char(in, in, di, uo) is det.
@@ -523,6 +534,17 @@
 :- mode io__read_byte(in, out, di, uo) is det.
 %		Reads a single 8-bit byte from the specified binary input
 %		stream.
+
+:- pred io__read_binary_file(io__result(list(int)), io__state, io__state).
+:- mode io__read_binary_file(out, di, uo) is det.
+%		Reads all the bytes from the current binary input stream
+%		until eof or error.
+
+:- pred io__read_binary_file(io__input_stream, io__result(list(int)),
+							io__state, io__state).
+:- mode io__read_binary_file(in, out, di, uo) is det.
+%		Reads all the bytes from the given binary input stream until
+%		eof or error.
 
 :- pred io__putback_byte(int, io__state, io__state).
 :- mode io__putback_byte(in, di, uo) is det.
@@ -1101,6 +1123,56 @@ io__read_line(Stream, Result) -->
 				{ Result = ok([Char]) }
 			)
 		)
+	).
+
+io__read_file(Result) -->
+	io__input_stream(Stream),
+	io__read_file(Stream, Result).
+
+io__read_file(Stream, Result) -->
+	io__read_file_2(Stream, [], Result).
+
+:- pred io__read_file_2(io__input_stream, list(char), io__result(list(char)),
+		io__state, io__state).
+:- mode io__read_file_2(in, in, out, di, uo) is det.
+
+io__read_file_2(Stream, Chars0, Result) -->
+	io__read_char(Stream, Result0),
+	(
+		{ Result0 = eof },
+		{ list__reverse(Chars0, Chars) },
+		{ Result = ok(Chars) }
+	;
+		{ Result0 = error(Err) },
+		{ Result = error(Err) }
+	;
+		{ Result0 = ok(Char) },
+		io__read_file_2(Stream, [Char|Chars0], Result)
+	).
+
+io__read_binary_file(Result) -->
+	io__binary_input_stream(Stream),
+	io__read_binary_file(Stream, Result).
+
+io__read_binary_file(Stream, Result) -->
+	io__read_binary_file_2(Stream, [], Result).
+
+:- pred io__read_binary_file_2(io__input_stream, list(int),
+		io__result(list(int)), io__state, io__state).
+:- mode io__read_binary_file_2(in, in, out, di, uo) is det.
+
+io__read_binary_file_2(Stream, Bytes0, Result) -->
+	io__read_byte(Stream, Result0),
+	(
+		{ Result0 = eof },
+		{ list__reverse(Bytes0, Bytes) },
+		{ Result = ok(Bytes) }
+	;
+		{ Result0 = error(Err) },
+		{ Result = error(Err) }
+	;
+		{ Result0 = ok(Byte) },
+		io__read_binary_file_2(Stream, [Byte|Bytes0], Result)
 	).
 
 io__putback_char(Char) -->

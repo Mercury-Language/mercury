@@ -184,10 +184,11 @@ DRAFT NEWS for Mercury release 0.7
     lists using a user-specified procedure to write the elements and separating
     the elements with a user-specified separator string.
 
+  - We've add io__read_file/{3,4} and io__read_binary_file/{3,4} which read
+    whole files (until error or eof).
+
   - We've added a double accumulator version of list__foldl/4 called
     list__foldl2/6, which is a convenient generalisation for accumulators
     that also do I/O. Also, we've added have list__map_foldl/5, which is an
     amalgam of list__map/3 and list__foldl/4.
-
-
 
