@@ -40,8 +40,9 @@ EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
 
 See the file INSTALL for installation instructions.
 
-The installation process will install INFO, HTML, and DVI versions in the
-following default locations: /usr/local/mercury-<VERSION>/info,
+The installation process will install INFO, HTML, and DVI versions
+of the Mercury documentation in the following default locations:
+/usr/local/mercury-<VERSION>/info,
 /usr/local/mercury-<VERSION>/lib/mercury/html, and
 /usr/local/mercury-<VERSION>/lib/mercury/doc.
 
@@ -51,6 +52,12 @@ the Mercury compiler and the Mercury profiler are written in Mercury.
 
 For more information about Mercury, see the Mercury WWW home page at
 http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
+
+If you would like to join the Mercury mailing lists (there are two,
+mercury-users for general discussion, and mercury-announce for
+announcements), send mail with "subscribe" in the body to
+mercury-users-request@cs.mu.oz.au or mercury-announce-request@cs.mu.oz.au
+(respectively).
 
 Please send bug reports, enhancement requests, suggestions for improvements,
 and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
