@@ -3275,6 +3275,7 @@ grade options to set. The grade options may be given in any order.
 The available options each belong to a set of mutually
 exclusive alternatives governing a single aspect of the compilation model.
 The set of aspects and their alternatives are:
+
 @table @asis
 @item What combination of GNU-C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
