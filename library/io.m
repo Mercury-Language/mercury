@@ -2003,13 +2003,20 @@ void sys_init_io_stream_module(void) {
 /* miscellaneous predicates */
 
 :- pragma(c_code,
-	io__progname(DefaultProgname::in, Progname::out, IO0::di, IO::uo),
+	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
 "
-	/*
-	** XXX need to guarantee alignment of strings
-	** (in this case, the string `progname')
-	*/
-	Progname = (progname ? progname : DefaultProgname);
+	if (progname) {
+		/* The silly casting below is needed to avoid
+		   a gcc warning about casting away const.
+		   PrognameOut is of type `String' (char *);
+		   it should be of type `ConstString' (const char *),
+		   but fixing that requires a fair bit of work
+		   on the compiler.  */
+		make_aligned_string(PrognameOut,
+			(String) (Word) progname);
+	} else {
+		PrognameOut = DefaultProgname;
+	}
 	update_io(IO0, IO);
 ").
 
