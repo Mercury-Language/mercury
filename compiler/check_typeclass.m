@@ -262,7 +262,7 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 		Info0, Info) :-
 	InstanceDefn0 = hlds_instance_defn(A, InstanceConstraints,
 				InstanceTypes, InstanceInterface,
-				MaybeInstancePredProcs, E, F),
+				MaybeInstancePredProcs, InstanceVarSet, F),
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
 		ArgTypes, ClassContext, ArgModes, Errors0, ArgTypeVars,
 		Status, PredOrFunc, Context),
@@ -278,7 +278,8 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 		->
 			handle_instance_method_overloading(ClassVars, 
 				InstanceTypes, InstanceConstraints, 
-				InstancePredName, InstancePredIds,
+				InstanceVarSet, 
+				InstancePredName, InstancePredIds, 
 				InstancePredId, InstanceProcIds, Info0, Info),
 
 			MakeClassProc = 
@@ -302,7 +303,8 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 			InstanceDefn = hlds_instance_defn(A,
 					InstanceConstraints, InstanceTypes,
 					InstanceInterface,
-					yes(InstancePredProcs), E, F)
+					yes(InstancePredProcs), InstanceVarSet,
+					F)
 		;
 			InstanceDefn = InstanceDefn0,
 				% XXX make a better error message
@@ -382,23 +384,27 @@ get_matching_instance_pred_ids(ModuleInfo, InstancePredName0, PredOrFunc,
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
 :- pred handle_instance_method_overloading(list(var), 
-	list(type), list(class_constraint), sym_name, list(pred_id), 
+	list(type), list(class_constraint), varset, sym_name, list(pred_id), 
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
-:- mode handle_instance_method_overloading(in, in, in, in, in, out, out, 
+:- mode handle_instance_method_overloading(in, in, in, in, in, in, out, out, 
 	in, out) is det.
 
 handle_instance_method_overloading(ClassVars, 
-		InstanceTypes, InstanceConstraints, InstancePredName,
-		InstancePredIds, InstancePredId, InstanceProcIds, 
-		Info0, Info) :-
+		InstanceTypes0, InstanceConstraints, InstanceVarSet,
+		InstancePredName, InstancePredIds, InstancePredId, 
+		InstanceProcIds, Info0, Info) :-
 
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
-		ArgTypes0, ClassContext0, ArgModes, Errors0, ArgTypeVars,
+		ArgTypes0, ClassContext0, ArgModes, Errors0, ArgTypeVars0,
 		Status, PredOrFunc, Context),
 
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, PredTable),
 
+	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars,
+		RenameSubst),
+	term__apply_substitution_to_list(InstanceTypes0,
+		RenameSubst, InstanceTypes),
 	map__from_corresponding_lists(ClassVars,
 		InstanceTypes, TypeSubst),
 	term__apply_substitution_to_list(ArgTypes0,
@@ -408,7 +414,7 @@ handle_instance_method_overloading(ClassVars,
 		% constraints from the class method. This allows an instance
 		% method to have constraints on it which are part of the
 		% instance declaration as a whole.
-	apply_subst_to_constraints(TypeSubst, ClassContext0, ClassContext1),
+	apply_subst_to_constraints(RenameSubst, ClassContext0, ClassContext1),
 	list__append(InstanceConstraints, ClassContext1, ClassContext),
 
 	Info1 = instance_method_info(ModuleInfo, PredName, PredArity, 
