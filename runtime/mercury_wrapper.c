@@ -442,6 +442,7 @@ mercury_runtime_init(int argc, char **argv)
 	(*MR_address_of_mercury_init_io)();
 
 #ifdef MR_THREAD_SAFE
+	/* MR_init_thread_stuff() must be called prior to MR_init_memory() */
  	MR_init_thread_stuff();
 #endif
 
