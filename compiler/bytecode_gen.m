@@ -147,7 +147,8 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo,
 		GoalCode),
-	goal_info_get_context(GoalInfo, term__context(_, Line)),
+	goal_info_get_context(GoalInfo, Context),
+	term__context_line(Context, Line),
 	Code = tree(node([context(Line)]), GoalCode).
 
 :- pred bytecode_gen__goal_expr(hlds_goal_expr::in, hlds_goal_info::in,

@@ -297,7 +297,8 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
 	;
 		{ Result0 = error(Message, LineNum) },
 		io__input_stream_name(FileName),
-		prog_out__write_context(term__context(FileName, LineNum)),
+		{ term__context_init(FileName, LineNum, Context) },
+		prog_out__write_context(Context),
 		io__write_strings([Message, "\n"]),
 		io__set_exit_status(1),
 		{ NumFacts = NumFacts0 }

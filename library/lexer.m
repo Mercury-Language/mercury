@@ -55,6 +55,25 @@
 %	Keep reading until either we encounter either an `end' token
 %	(i.e. a full stop followed by whitespace) or the end-of-file.
 
+% The type `offset' represents a (zero-based) offset into a string.
+:- type offset == int.
+
+:- pred lexer__string_get_token_list(string, offset, token_list, posn, posn).
+:- mode lexer__string_get_token_list(in, in, out, in, out) is det.
+% lexer__string_get_token_list(String, MaxOffset, Tokens, InitialPos, FinalPos):
+%	Scan a list of tokens from a string,
+%	starting at the current offset specified by InitialPos.
+%	Keep scanning until either we encounter either an `end' token
+%	(i.e. a full stop followed by whitespace) or until
+%	we reach MaxOffset.  (MaxOffset must be =< the length of the string.)
+%	Return the tokens scanned in Tokens, and return the position
+%	one character past the end of the last token in FinalPos.
+
+:- pred lexer__string_get_token_list(string, token_list, posn, posn).
+:- mode lexer__string_get_token_list(in, out, in, out) is det.
+% lexer__string_get_token_list(String, Tokens, InitialPos, FinalPos):
+%	calls string_get_token_list/5 above with MaxPos = length of String.
+
 :- pred lexer__token_to_string(token, string).
 :- mode lexer__token_to_string(in, out) is det.
 %	Convert a token to a human-readable string describing the token.
@@ -72,7 +91,39 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, require, string, int.
+:- import_module list, term, require, string, int.
+
+%
+% Note that there are two implementations of most predicates here:
+% one which deals with strings, the other that deals with io__states.
+% We can't write the io__state version in terms of the string
+% version because we don't know how much string to slurp up
+% until after we've lexically analysed it.  Some interactive
+% applications require the old Prolog behaviour of stopping
+% after an end token (i.e. `.' plus whitespace) rather than
+% reading in whole lines.
+% Conversely, we can't write the string version using the io__state
+% version, since that would require either cheating with the io__state
+% or ruining the string interface.
+% 
+% An alternative would be to write both versions in terms
+% of a generic "char_stream" typeclass, with instances
+% for io__states and for strings.
+% However, for this to be acceptably efficient it would
+% require the compiler to specialize the code, which
+% currently (13 May 98) it is not capable of doing.
+%
+% In fact, the string version is still not as efficient as I would
+% like.  The compiler ought to (but currently doesn't) unfold all
+% the instances of the `posn' type.  We could do this type unfolding
+% by hand, but it would be very tedious and it would make the code
+% less readable.  If/when there is compiler support for this, we
+% should also think about moving the `String' and `Len' arguments
+% into the posn (or making a new `lexer_state' struct which contains
+% both the posn and the String and Len arguments).
+%
+
+%-----------------------------------------------------------------------------%
 
 lexer__token_to_string(name(Name), String) :-
 	string__append_list(["token '", Name, "'"], String).
@@ -128,11 +179,91 @@ lexer__get_token_list(Tokens) -->
 		lexer__get_token_list(Tokens1)
 	).
 
+lexer__string_get_token_list(String, Tokens) -->
+	{ string__length(String, Len) },
+	lexer__string_get_token_list(String, Len, Tokens).
+
+lexer__string_get_token_list(String, Len, Tokens) -->
+	lexer__string_get_token(String, Len, Token, Context),
+	( { Token = eof } ->
+		{ Tokens = token_nil }
+	; { Token = end ; Token = error(_) ; Token = io_error(_) } ->
+		{ Tokens = token_cons(Token, Context, token_nil) }
+	;
+		{ Tokens = token_cons(Token, Context, Tokens1) },
+		lexer__string_get_token_list(String, Len, Tokens1)
+	).
+
+%-----------------------------------------------------------------------------%
+
+% some low-level routines
+
 :- pred lexer__get_context(token_context, io__state, io__state).
 :- mode lexer__get_context(out, di, uo) is det.
 
 lexer__get_context(Context) -->
 	io__get_line_number(Context).
+
+:- type string_token_context == token_context.
+
+:- pred lexer__string_get_context(posn, string_token_context, posn, posn).
+:- mode lexer__string_get_context(in, out, in, out) is det.
+
+lexer__string_get_context(StartPosn, Context, EndPosn, EndPosn) :-
+	StartPosn = posn(StartLineNum, _, _),
+	Context = StartLineNum.
+	% In future, we might want to modify this code to read something
+	% like this:
+	%	posn_to_line_and_column(StartPosn, StartLineNum, StartColumn),
+	%	posn_to_line_and_column(EndPosn, EndLineNum, EndColumn),
+	%	Context = detailed(StartLine, StartColumn, EndLine, EndColumn).
+
+:- pred lexer__string_read_char(string, int, char, posn, posn).
+:- mode lexer__string_read_char(in, in, out, in, out) is semidet.
+
+:- pragma inline(lexer__string_read_char/5).
+
+lexer__string_read_char(String, Len, Char, Posn0, Posn) :-
+	Posn0 = posn(LineNum0, LineOffset0, Offset0),
+	Offset0 < Len,
+	string__unsafe_index(String, Offset0, Char),
+	Offset is Offset0 + 1,
+	( Char = '\n' ->
+		LineNum is LineNum0 + 1,
+		Posn = posn(LineNum, Offset, Offset)
+	;
+		Posn = posn(LineNum0, LineOffset0, Offset)
+	).
+
+:- pred lexer__string_ungetchar(string, posn, posn).
+:- mode lexer__string_ungetchar(in, in, out) is det.
+
+lexer__string_ungetchar(String, Posn0, Posn) :-
+	Posn0 = posn(LineNum0, LineOffset0, Offset0),
+	Offset is Offset0 - 1,
+	string__unsafe_index(String, Offset, Char),
+	( Char = '\n' ->
+		LineNum is LineNum0 - 1,
+		Posn = posn(LineNum, Offset, Offset)
+	;
+		Posn = posn(LineNum0, LineOffset0, Offset)
+	).
+
+:- pred lexer__grab_string(string, posn, string, posn, posn).
+:- mode lexer__grab_string(in, in, out, in, out) is det.
+
+lexer__grab_string(String, Posn0, SubString, Posn, Posn) :-
+	Posn0 = posn(_, _, Offset0),
+	Posn = posn(_, _, Offset),
+	Count is Offset - Offset0,
+	string__unsafe_substring(String, Offset0, Count, SubString).
+
+:- pred lexer__string_set_line_number(int, posn, posn).
+:- mode lexer__string_set_line_number(in, in, out) is det.
+
+lexer__string_set_line_number(LineNumber, Posn0, Posn) :-
+	Posn0 = posn(_, _, Offset),
+	Posn = posn(LineNumber, Offset, Offset).
 
 %-----------------------------------------------------------------------------%
 
@@ -188,6 +319,60 @@ lexer__get_token(Token, Context) -->
 			lexer__get_context(Context),
 			{ Token = junk(Char) }
 		)
+	).
+
+:- pred lexer__string_get_token(string, int, token, token_context, posn, posn).
+:- mode lexer__string_get_token(in, in, out, out, in, out) is det.
+
+lexer__string_get_token(String, Len, Token, Context) -->
+	=(Posn0),
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
+			lexer__string_get_token_2(String, Len, Token, Context)
+		; { char__is_upper(Char) ; Char = '_' } ->
+			lexer__string_get_variable(String, Len, Posn0,
+				Token, Context)
+		; { char__is_lower(Char) } ->
+			lexer__string_get_name(String, Len, Posn0,
+				Token, Context)
+		; { Char = '0' } ->
+			lexer__string_get_zero(String, Len, Posn0,
+				Token, Context)
+		; { char__is_digit(Char) } ->
+			lexer__string_get_number(String, Len, Posn0,
+				Token, Context)
+		; { lexer__special_token(Char, SpecialToken) } ->
+			lexer__string_get_context(Posn0, Context),
+			{ SpecialToken = open ->
+				Token = open_ct
+			;
+				Token = SpecialToken
+			}
+		; { Char = ('.') } ->
+			lexer__string_get_dot(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('%') } ->
+			lexer__string_skip_to_eol(String, Len, Token, Context)
+		; { Char = '"' ; Char = '''' } ->
+			lexer__string_get_quoted_name(String, Len, Char, [], 
+				Posn0, Token, Context)
+		; { Char = ('/') } ->
+			lexer__string_get_slash(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('#') } ->
+			=(Posn1),
+			lexer__string_get_source_line_number(String, Len,
+				Posn1, Token, Context)
+		; { lexer__graphic_token_char(Char) } ->
+			lexer__string_get_graphic(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_get_context(Posn0, Context),
+			{ Token = junk(Char) }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = eof }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -246,6 +431,59 @@ lexer__get_token_2(Token, Context) -->
 		)
 	).
 
+:- pred lexer__string_get_token_2(string, int, token, token_context,
+					posn, posn).
+:- mode lexer__string_get_token_2(in, in, out, out, in, out) is det.
+
+lexer__string_get_token_2(String, Len, Token, Context) -->
+	=(Posn0),
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
+			lexer__string_get_token_2(String, Len, Token, Context)
+		; { char__is_upper(Char) ; Char = '_' } ->
+			lexer__string_get_variable(String, Len, Posn0,
+				Token, Context)
+		; { char__is_lower(Char) } ->
+			lexer__string_get_name(String, Len, Posn0,
+				Token, Context)
+		; { Char = '0' } ->
+			lexer__string_get_zero(String, Len, Posn0,
+				Token, Context)
+		; { char__is_digit(Char) } ->
+			lexer__string_get_number(String, Len, Posn0,
+				Token, Context)
+		; { lexer__special_token(Char, SpecialToken) } ->
+			lexer__string_get_context(Posn0, Context),
+			{ Token = SpecialToken }
+		; { Char = ('.') } ->
+			lexer__string_get_dot(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('%') } ->
+			lexer__string_skip_to_eol(String, Len, Token, Context)
+		; { Char = '"' ; Char = '''' } ->
+			lexer__string_get_quoted_name(String, Len, Char, [],
+				Posn0, Token, Context)
+		; { Char = ('/') } ->
+			lexer__string_get_slash(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('#') } ->
+			=(Posn1),
+			lexer__string_get_source_line_number(String, Len,
+				Posn1, Token, Context)
+		; { lexer__graphic_token_char(Char) } ->
+			lexer__string_get_graphic(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_get_context(Posn0, Context),
+			{ Token = junk(Char) }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = eof }
+	).
+
+%-----------------------------------------------------------------------------%
+
 %-----------------------------------------------------------------------------%
 
 :- pred lexer__special_token(char, token).
@@ -303,6 +541,29 @@ lexer__get_dot(Token) -->
 		)
 	).
 
+:- pred lexer__string_get_dot(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_dot(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_dot(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { lexer__whitespace_after_dot(Char) } ->
+			lexer__string_ungetchar(String),
+			lexer__string_get_context(Posn0, Context),
+			{ Token = end }
+		; { lexer__graphic_token_char(Char) } ->
+			lexer__string_get_graphic(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__string_get_context(Posn0, Context),
+			{ Token = name(".") }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = end }
+	).
+
 :- pred lexer__whitespace_after_dot(char).
 :- mode lexer__whitespace_after_dot(in) is semidet.
 
@@ -334,6 +595,23 @@ lexer__skip_to_eol(Token, Context) -->
 		)
 	).
 
+:- pred lexer__string_skip_to_eol(string, int, token, token_context,
+					posn, posn).
+:- mode lexer__string_skip_to_eol(in, in, out, out, in, out) is det.
+
+lexer__string_skip_to_eol(String, Len, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = '\n' } ->
+			lexer__string_get_token_2(String, Len, Token, Context)
+		;
+			lexer__string_skip_to_eol(String, Len, Token, Context)
+		)
+	;
+		=(Posn),
+		lexer__string_get_context(Posn, Context),
+		{ Token = eof }
+	).
+
 :- pred lexer__get_slash(token, token_context, io__state, io__state).
 :- mode lexer__get_slash(out, out, di, uo) is det.
 
@@ -352,10 +630,32 @@ lexer__get_slash(Token, Context) -->
 			lexer__get_context(Context),
 			lexer__get_graphic([Char, '/'], Token)
 		;
-			lexer__get_context(Context),
 			io__putback_char(Char),
+			lexer__get_context(Context),
 			{ Token = name("/") }
 		)
+	).
+
+:- pred lexer__string_get_slash(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_slash(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_slash(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ('*') } ->
+			lexer__string_get_comment(String, Len, Posn0,
+				Token, Context)
+		; { lexer__graphic_token_char(Char) } ->
+			lexer__string_get_graphic(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__string_get_context(Posn0, Context),
+			{ Token = name("/") }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = name("/") }
 	).
 
 :- pred lexer__get_comment(token, token_context, io__state, io__state).
@@ -377,6 +677,24 @@ lexer__get_comment(Token, Context) -->
 		)
 	).
 
+:- pred lexer__string_get_comment(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_comment(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_comment(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ('*') } ->
+			lexer__string_get_comment_2(String, Len, Posn0,
+					Token, Context)
+		;
+			lexer__string_get_comment(String, Len, Posn0,
+					Token, Context)
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("unterminated '/*' comment") }
+	).
+
 :- pred lexer__get_comment_2(token, token_context, io__state, io__state).
 :- mode lexer__get_comment_2(out, out, di, uo) is det.
 
@@ -390,12 +708,34 @@ lexer__get_comment_2(Token, Context) -->
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
 		( { Char = ('/') } ->
+			% end of /* ... */ comment, so get next token
 			lexer__get_token_2(Token, Context)
 		; { Char = ('*') } ->
 			lexer__get_comment_2(Token, Context)
 		;
 			lexer__get_comment(Token, Context)
 		)
+	).
+
+:- pred lexer__string_get_comment_2(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_comment_2(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_comment_2(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ('/') } ->
+			% end of /* ... */ comment, so get next token
+			lexer__string_get_token_2(String, Len, Token, Context)
+		; { Char = ('*') } ->
+			lexer__string_get_comment_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_get_comment(String, Len, Posn0,
+				Token, Context)
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("unterminated '/*' comment") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -422,6 +762,29 @@ lexer__get_quoted_name(QuoteChar, Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_quoted_name(string, int, char, list(char), posn,
+				token, string_token_context, posn, posn).
+:- mode lexer__string_get_quoted_name(in, in, in, in, in, out, out, in, out)
+	is det.
+
+lexer__string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0,
+		Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = QuoteChar } ->
+			lexer__string_get_quoted_name_quote(String, Len,
+				QuoteChar, Chars, Posn0, Token, Context)
+		; { Char = ('\\') } ->
+			lexer__string_get_quoted_name_escape(String, Len,
+				QuoteChar, Chars, Posn0, Token, Context)
+		;
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				[Char | Chars], Posn0, Token, Context)
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("unterminated quote") }
+	).
+
 :- pred lexer__get_quoted_name_quote(char, list(char), token,
 				io__state, io__state).
 :- mode lexer__get_quoted_name_quote(in, in, out, di, uo) is det.
@@ -439,6 +802,27 @@ lexer__get_quoted_name_quote(QuoteChar, Chars, Token) -->
 			io__putback_char(Char),
 			{ lexer__finish_quoted_name(QuoteChar, Chars, Token) }
 		)
+	).
+
+:- pred lexer__string_get_quoted_name_quote(string, int, char, list(char),
+				posn, token, string_token_context, posn, posn).
+:- mode lexer__string_get_quoted_name_quote(in, in, in, in, in, out, out,
+				in, out) is det.
+
+lexer__string_get_quoted_name_quote(String, Len, QuoteChar, Chars, Posn0,
+		Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = QuoteChar } ->
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				[Char | Chars], Posn0, Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__string_get_context(Posn0, Context),
+			{ lexer__finish_quoted_name(QuoteChar, Chars, Token) }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ lexer__finish_quoted_name(QuoteChar, Chars, Token) }
 	).
 
 :- pred lexer__finish_quoted_name(char, list(char), token).
@@ -480,6 +864,38 @@ lexer__get_quoted_name_escape(QuoteChar, Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_quoted_name_escape(string, int, char, list(char),
+					posn, token, string_token_context,
+					posn, posn).
+:- mode lexer__string_get_quoted_name_escape(in, in, in, in, in, out, out,
+					in, out) is det.
+
+lexer__string_get_quoted_name_escape(String, Len, QuoteChar, Chars, Posn0,
+		Token, Context) -->
+	=(Posn1),
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = '\n' } ->
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				Chars, Posn0, Token, Context)
+		; { lexer__escape_char(Char, EscapedChar) } ->
+			{ Chars1 = [EscapedChar | Chars] },
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				Chars1, Posn0, Token, Context)
+		; { Char = 'x' } ->
+			lexer__string_get_hex_escape(String, Len, QuoteChar,
+				Chars, [], Posn0, Token, Context)
+		; { char__is_octal_digit(Char) } ->
+			lexer__string_get_octal_escape(String, Len, QuoteChar,
+				Chars, [Char], Posn0, Token, Context)
+		;
+			lexer__string_get_context(Posn1, Context),
+			{ Token = error("invalid escape character") }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("unterminated quoted name") }
+	).
+
 :- pred lexer__escape_char(char, char).
 :- mode lexer__escape_char(in, out) is semidet.
 
@@ -517,6 +933,30 @@ lexer__get_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_hex_escape(string, int, char, list(char), list(char),
+				posn, token, string_token_context, posn, posn).
+:- mode lexer__string_get_hex_escape(in, in, in, in, in, in, out, out, in, out)
+	is det.
+
+lexer__string_get_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
+		Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_hex_digit(Char) } ->
+			lexer__string_get_hex_escape(String, Len, QuoteChar,
+				    Chars, [Char | HexChars], Posn0,
+				    Token, Context)
+		; { Char = ('\\') } ->
+			lexer__string_finish_hex_escape(String, Len, QuoteChar,
+				    Chars, HexChars, Posn0, Token, Context)
+		;
+			lexer__string_get_context(Posn0, Context),
+			{ Token = error("unterminated hex escape") }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("unterminated quote") }
+	).
+
 :- pred lexer__finish_hex_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__finish_hex_escape(in, in, in, out, di, uo) is det.
@@ -532,6 +972,31 @@ lexer__finish_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		->
 			lexer__get_quoted_name(QuoteChar, [Char|Chars], Token) 
 		;
+			{ Token = error("invalid hex escape") }
+		)
+	).
+
+:- pred lexer__string_finish_hex_escape(string, int, char, list(char),
+				list(char), posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_finish_hex_escape(in, in, in, in, in, in, out, out, in, out)
+				is det.
+
+lexer__string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
+		Token, Context) -->
+	( { HexChars = [] } ->
+		lexer__string_get_context(Posn0, Context),
+		{ Token = error("empty hex escape") }
+	;
+		{ lexer__rev_char_list_to_string(HexChars, HexString) },
+		(
+			{ string__base_string_to_int(16, HexString, Int) },
+			{ char__to_int(Char, Int) }
+		->
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				[Char|Chars], Posn0, Token, Context)
+		;
+			lexer__string_get_context(Posn0, Context),
 			{ Token = error("invalid hex escape") }
 		)
 	).
@@ -566,6 +1031,40 @@ lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_octal_escape(string, int, char, list(char),
+				list(char), posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_octal_escape(in, in, in, in, in, in, out, out,
+				in, out) is det.
+
+lexer__string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
+		Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_octal_digit(Char) } ->
+			lexer__string_get_octal_escape(String, Len,
+				QuoteChar, Chars, [Char | OctalChars], Posn0,
+				Token, Context)
+		; { Char = ('\\') } ->
+			lexer__string_finish_octal_escape(String, Len,
+				QuoteChar, Chars, OctalChars, Posn0,
+				Token, Context)
+		;
+			/****** 
+				% We don't report this as an error since
+				% we need bug-for-bug compatibility with
+				% NU-Prolog
+			{ Token = error("unterminated octal escape") }
+			******/
+			lexer__string_ungetchar(String),
+			lexer__string_finish_octal_escape(String, Len,
+				QuoteChar, Chars, OctalChars, Posn0,
+				Token, Context)
+		)
+	;
+		{ Token = error("unterminated quote") },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__finish_octal_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__finish_octal_escape(in, in, in, out, di, uo) is det.
@@ -582,6 +1081,31 @@ lexer__finish_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 			lexer__get_quoted_name(QuoteChar, [Char|Chars], Token) 
 		;
 			{ Token = error("invalid octal escape") }
+		)
+	).
+
+:- pred lexer__string_finish_octal_escape(string, int, char, list(char),
+				list(char), posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_finish_octal_escape(in, in, in, in, in, in, out, out,
+				in, out) is det.
+
+lexer__string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
+		Posn0, Token, Context) -->
+	( { OctalChars = [] } ->
+		{ Token = error("empty octal escape") },
+		lexer__string_get_context(Posn0, Context)
+	;
+		{ lexer__rev_char_list_to_string(OctalChars, OctalString) },
+		(
+			{ string__base_string_to_int(8, OctalString, Int) },
+			{ char__to_int(Char, Int) }
+		->
+			lexer__string_get_quoted_name(String, Len, QuoteChar,
+				[Char|Chars], Posn0, Token, Context) 
+		;
+			{ Token = error("invalid octal escape") },
+			lexer__string_get_context(Posn0, Context)
 		)
 	).
 
@@ -607,6 +1131,27 @@ lexer__get_name(Chars, Token) -->
 			{ lexer__rev_char_list_to_string(Chars, Name) },
 			{ Token = name(Name) }
 		)
+	).
+
+:- pred lexer__string_get_name(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_name(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_name(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_alnum_or_underscore(Char) } ->
+			lexer__string_get_name(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, Name),
+			{ Token = name(Name) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, Name),
+		{ Token = name(Name) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 	%
@@ -664,6 +1209,48 @@ lexer__get_source_line_number(Chars, Token, Context) -->
 		)
 	).
 
+:- pred lexer__string_get_source_line_number(string, int, posn,
+		token, token_context, posn, posn).
+:- mode lexer__string_get_source_line_number(in, in, in, out, out, in, out)
+		is det.
+
+lexer__string_get_source_line_number(String, Len, Posn1, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_source_line_number(String, Len,
+				Posn1, Token, Context)
+		; { Char = '\n' } ->
+			lexer__grab_string(String, Posn1, LineNumString),
+			(
+				{ string__base_string_to_int(10, LineNumString,
+					LineNum) },
+				{ LineNum > 0 }
+			->
+				lexer__string_set_line_number(LineNum),
+				lexer__string_get_token(String, Len, Token, Context)
+			;
+				lexer__string_get_context(Posn1, Context),
+				{ string__append_list([
+					"invalid line number `", LineNumString,
+					"' in `#' line number directive"],
+					Message) },
+				{ Token = error(Message) }
+			)
+		;
+			lexer__string_get_context(Posn1, Context),
+			{ string__from_char_list([Char], DirectiveString) },
+			{ string__append_list([
+				"invalid character `", DirectiveString,
+				"' in `#' line number directive"],
+				Message) },
+			{ Token = error(Message) }
+		)
+	;
+		lexer__string_get_context(Posn1, Context),
+		{ Token = error(
+			"unexpected end-of-file in `#' line number directive") }
+	).
+
 :- pred lexer__get_graphic(list(char), token, io__state, io__state).
 :- mode lexer__get_graphic(in, out, di, uo) is det.
 
@@ -684,6 +1271,27 @@ lexer__get_graphic(Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_graphic(string, int, posn, token,
+			string_token_context, posn, posn).
+:- mode lexer__string_get_graphic(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_graphic(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { lexer__graphic_token_char(Char) } ->
+			lexer__string_get_graphic(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, Name),
+			{ Token = name(Name) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, Name),
+		lexer__string_get_context(Posn0, Context),
+		{ Token = name(Name) }
+	).
+
 :- pred lexer__get_variable(list(char), token, io__state, io__state).
 :- mode lexer__get_variable(in, out, di, uo) is det.
 
@@ -702,6 +1310,27 @@ lexer__get_variable(Chars, Token) -->
 			{ lexer__rev_char_list_to_string(Chars, VariableName) },
 			{ Token = variable(VariableName) }
 		)
+	).
+
+:- pred lexer__string_get_variable(string, int, posn, token,
+					string_token_context, posn, posn).
+:- mode lexer__string_get_variable(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_variable(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_alnum_or_underscore(Char) } ->
+			lexer__string_get_variable(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, VariableName),
+			{ Token = variable(VariableName) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, VariableName),
+		{ Token = variable(VariableName) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -738,6 +1367,43 @@ lexer__get_zero(Token) -->
 		)
 	).
 
+:- pred lexer__string_get_zero(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_zero(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_zero(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_number(String, Len, Posn0,
+				Token, Context)
+		; { Char = '''' } ->
+			lexer__string_get_char_code(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'b' } ->
+			lexer__string_get_binary(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'o' } ->
+			lexer__string_get_octal(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'x' } ->
+			lexer__string_get_hex(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('.') } ->
+			lexer__string_get_int_dot(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'e' ; Char = 'E' } ->
+			lexer__string_get_float_exponent(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__string_get_context(Posn0, Context),
+			{ Token = integer(0) }
+		)
+	;
+		lexer__string_get_context(Posn0, Context),
+		{ Token = integer(0) }
+	).
+
 :- pred lexer__get_char_code(token, io__state, io__state).
 :- mode lexer__get_char_code(out, di, uo) is det.
 
@@ -750,6 +1416,20 @@ lexer__get_char_code(Token) -->
 	; { Result = ok(Char) },
 		{ char__to_int(Char, CharCode) },
 		{ Token = integer(CharCode) }
+	).
+
+:- pred lexer__string_get_char_code(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_char_code(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_char_code(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		{ char__to_int(Char, CharCode) },
+		{ Token = integer(CharCode) },
+		lexer__string_get_context(Posn0, Context)
+	;
+		{ Token = error("unterminated char code constant") },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 :- pred lexer__get_binary(token, io__state, io__state).
@@ -770,6 +1450,25 @@ lexer__get_binary(Token) -->
 		)
 	).
 
+:- pred lexer__string_get_binary(string, int, posn, token, string_token_context,
+		posn, posn).
+:- mode lexer__string_get_binary(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_binary(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_binary_digit(Char) } ->
+			lexer__string_get_binary_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			{ Token = error("unterminated binary constant") },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		{ Token = error("unterminated binary constant") },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__get_binary_2(list(char), token, io__state, io__state).
 :- mode lexer__get_binary_2(in, out, di, uo) is det.
 
@@ -786,6 +1485,27 @@ lexer__get_binary_2(Chars, Token) -->
 			io__putback_char(Char),
 			{ lexer__rev_char_list_to_int(Chars, 2, Token) }
 		)
+	).
+
+:- pred lexer__string_get_binary_2(string, int, posn, token,
+			string_token_context, posn, posn).
+:- mode lexer__string_get_binary_2(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_binary_2(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_binary_digit(Char) } ->
+			lexer__string_get_binary_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, BinaryString),
+			{ lexer__conv_string_to_int(BinaryString, 2, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, BinaryString),
+		{ lexer__conv_string_to_int(BinaryString, 2, Token) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 :- pred lexer__get_octal(token, io__state, io__state).
@@ -806,6 +1526,25 @@ lexer__get_octal(Token) -->
 		)
 	).
 
+:- pred lexer__string_get_octal(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_octal(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_octal(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_octal_digit(Char) } ->
+			lexer__string_get_octal_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			{ Token = error("unterminated octal constant") },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		{ Token = error("unterminated octal constant") },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__get_octal_2(list(char), token, io__state, io__state).
 :- mode lexer__get_octal_2(in, out, di, uo) is det.
 
@@ -822,6 +1561,27 @@ lexer__get_octal_2(Chars, Token) -->
 			io__putback_char(Char),
 			{ lexer__rev_char_list_to_int(Chars, 8, Token) }
 		)
+	).
+
+:- pred lexer__string_get_octal_2(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_octal_2(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_octal_2(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_octal_digit(Char) } ->
+			lexer__string_get_octal_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, BinaryString),
+			{ lexer__conv_string_to_int(BinaryString, 8, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, BinaryString),
+		{ lexer__conv_string_to_int(BinaryString, 8, Token) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 :- pred lexer__get_hex(token, io__state, io__state).
@@ -842,6 +1602,26 @@ lexer__get_hex(Token) -->
 		)
 	).
 
+:- pred lexer__string_get_hex(string, int, posn, token, string_token_context,
+				posn, posn).
+:- mode lexer__string_get_hex(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_hex(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_hex_digit(Char) } ->
+			lexer__string_get_hex_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			{ Token = error("unterminated hex constant") },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		{ Token = error("unterminated hex constant") },
+		lexer__string_get_context(Posn0, Context)
+	).
+
+
 :- pred lexer__get_hex_2(list(char), token, io__state, io__state).
 :- mode lexer__get_hex_2(in, out, di, uo) is det.
 
@@ -859,6 +1639,28 @@ lexer__get_hex_2(Chars, Token) -->
 			{ lexer__rev_char_list_to_int(Chars, 16, Token) }
 		)
 	).
+
+:- pred lexer__string_get_hex_2(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_hex_2(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_hex_2(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_hex_digit(Char) } ->
+			lexer__string_get_hex_2(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, BinaryString),
+			{ lexer__conv_string_to_int(BinaryString, 16, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, BinaryString),
+		{ lexer__conv_string_to_int(BinaryString, 16, Token) },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 
 :- pred lexer__get_number(list(char), token, io__state, io__state).
 :- mode lexer__get_number(in, out, di, uo) is det.
@@ -880,6 +1682,33 @@ lexer__get_number(Chars, Token) -->
 			io__putback_char(Char),
 			{ lexer__rev_char_list_to_int(Chars, 10, Token) }
 		)
+	).
+
+:- pred lexer__string_get_number(string, int, posn, token,
+					string_token_context, posn, posn).
+:- mode lexer__string_get_number(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_number(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_number(String, Len, Posn0,
+				Token, Context)
+		; { Char = ('.') } ->
+			lexer__string_get_int_dot(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'e' ; Char = 'E' } ->
+			lexer__string_get_float_exponent(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, NumberString),
+			{ lexer__conv_string_to_int(NumberString, 10, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, NumberString),
+		{ lexer__conv_string_to_int(NumberString, 10, Token) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 	% XXX the float literal syntax doesn't match ISO Prolog
@@ -904,6 +1733,29 @@ lexer__get_int_dot(Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_int_dot(string, int, posn, token,
+					string_token_context, posn, posn).
+:- mode lexer__string_get_int_dot(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_int_dot(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_float_decimals(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, NumberString),
+			{ lexer__conv_string_to_int(NumberString, 10, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__string_ungetchar(String),
+		lexer__grab_string(String, Posn0, NumberString),
+		{ lexer__conv_string_to_int(NumberString, 10, Token) },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__get_float_decimals(list(char), token, io__state, io__state).
 :- mode lexer__get_float_decimals(in, out, di, uo) is det.
 
@@ -926,6 +1778,30 @@ lexer__get_float_decimals(Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_float_decimals(string, int, posn, token,
+					string_token_context, posn, posn).
+:- mode lexer__string_get_float_decimals(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_float_decimals(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_float_decimals(String, Len, Posn0,
+				Token, Context)
+		; { Char = 'e' ; Char = 'E' } ->
+			lexer__string_get_float_exponent(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, FloatString),
+			{ lexer__conv_to_float(FloatString, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, FloatString),
+		{ lexer__conv_to_float(FloatString, Token) },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__get_float_exponent(list(char), token, io__state, io__state).
 :- mode lexer__get_float_exponent(in, out, di, uo) is det.
 
@@ -945,6 +1821,30 @@ lexer__get_float_exponent(Chars, Token) -->
 			{ Token =
 			  error("unterminated exponent in float token") }
 		)
+	).
+
+:- pred lexer__string_get_float_exponent(string, int, posn, token, 	
+				string_token_context, posn, posn).
+:- mode lexer__string_get_float_exponent(in, in, in, out, out, in, out) is det.
+
+lexer__string_get_float_exponent(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { Char = ('+') ; Char = ('-') } ->
+			lexer__string_get_float_exponent_2(String, Len, Posn0,
+				Token, Context)
+		; { char__is_digit(Char) } ->
+			lexer__string_get_float_exponent_3(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			{ Token =
+			  error("unterminated exponent in float token") },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, FloatString),
+		{ lexer__conv_to_float(FloatString, Token) },
+		lexer__string_get_context(Posn0, Context)
 	).
 
 :- pred lexer__get_float_exponent_2(list(char), token,
@@ -971,6 +1871,31 @@ lexer__get_float_exponent_2(Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_float_exponent_2(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_float_exponent_2(in, in, in, out, out, in, out)
+				is det.
+
+	% we've read past the E signalling the start of the exponent -
+	% make sure that there's at least one digit following,
+	% and then get the remaining digits
+
+lexer__string_get_float_exponent_2(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_float_exponent_3(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			{ Token =
+			  error("unterminated exponent in float token") },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		{ Token = error("unterminated exponent in float token") },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 :- pred lexer__get_float_exponent_3(list(char), token,
 					io__state, io__state).
 :- mode lexer__get_float_exponent_3(in, out, di, uo) is det.
@@ -993,6 +1918,28 @@ lexer__get_float_exponent_3(Chars, Token) -->
 		)
 	).
 
+:- pred lexer__string_get_float_exponent_3(string, int, posn, token,
+				string_token_context, posn, posn).
+:- mode lexer__string_get_float_exponent_3(in, in, in, out, out, in, out)
+				is det.
+
+lexer__string_get_float_exponent_3(String, Len, Posn0, Token, Context) -->
+	( lexer__string_read_char(String, Len, Char) ->
+		( { char__is_digit(Char) } ->
+			lexer__string_get_float_exponent_3(String, Len, Posn0,
+				Token, Context)
+		;
+			lexer__string_ungetchar(String),
+			lexer__grab_string(String, Posn0, FloatString),
+			{ lexer__conv_to_float(FloatString, Token) },
+			lexer__string_get_context(Posn0, Context)
+		)
+	;
+		lexer__grab_string(String, Posn0, FloatString),
+		{ lexer__conv_to_float(FloatString, Token) },
+		lexer__string_get_context(Posn0, Context)
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Utility routines
@@ -1002,6 +1949,12 @@ lexer__get_float_exponent_3(Chars, Token) -->
 
 lexer__rev_char_list_to_int(RevChars, Base, Token) :-
 	lexer__rev_char_list_to_string(RevChars, String),
+	lexer__conv_string_to_int(String, Base, Token).
+
+:- pred lexer__conv_string_to_int(string, int, token).
+:- mode lexer__conv_string_to_int(in, in, out) is det.
+
+lexer__conv_string_to_int(String, Base, Token) :-
 	( string__base_string_to_int(Base, String, Int) ->
 		Token = integer(Int)
 	;
@@ -1013,6 +1966,12 @@ lexer__rev_char_list_to_int(RevChars, Base, Token) :-
 
 lexer__rev_char_list_to_float(RevChars, Token) :-
 	lexer__rev_char_list_to_string(RevChars, String),
+	lexer__conv_to_float(String, Token).
+
+:- pred lexer__conv_to_float(string, token).
+:- mode lexer__conv_to_float(in, out) is det.
+
+lexer__conv_to_float(String, Token) :-
 	( string__to_float(String, Float) ->
 		Token = float(Float)
 	;

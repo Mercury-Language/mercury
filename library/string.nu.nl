@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,6 +48,15 @@ string__append(A, B, C) :-
 
 string__length(String, Length) :-
 	list__length(String, Length).
+
+%-----------------------------------------------------------------------------%
+
+string__substring(String, Start, Count, Substring) :-
+	string__split(String, Start, _Left, Right),
+	string__left(Right, Count, Substring).
+
+string__unsafe_substring(String, Start, Count, Substring) :-
+	string__substring(String, Start, Count, Substring).
 
 %-----------------------------------------------------------------------------%
 
