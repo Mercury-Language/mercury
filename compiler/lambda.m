@@ -48,6 +48,11 @@
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
 		in, out, out, out) is det.
 
+	% Permute the list of variables so that inputs come before outputs.
+:- pred lambda__permute_argvars(list(var), list(mode), module_info,
+			list(var), list(mode)).
+:- mode lambda__permute_argvars(in, in, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -338,7 +343,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		% permute the argument variables so that all the inputs
 		% come before all the outputs.
 		
-		permute_argvars(AllArgVars, AllArgModes, ModuleInfo1,
+		lambda__permute_argvars(AllArgVars, AllArgModes, ModuleInfo1,
 			PermutedArgVars, PermutedArgModes),
 		map__apply_to_list(PermutedArgVars, VarTypes, ArgTypes),
 
@@ -401,21 +406,17 @@ inputs_precede_outputs([Mode | Modes], ModuleInfo) :-
 		)
 	).
 
-:- pred permute_argvars(list(var), list(mode), module_info,
-			list(var), list(mode)).
-:- mode permute_argvars(in, in, in, out, out) is det.
-
 	% permute a list of variables and a corresponding list of their modes
 	% so that all the input variables precede all the output variables.
 
-permute_argvars(AllArgVars, AllArgModes, ModuleInfo,
+lambda__permute_argvars(AllArgVars, AllArgModes, ModuleInfo,
 		PermutedArgVars, PermutedArgModes) :-
 	( split_argvars(AllArgVars, AllArgModes, ModuleInfo,
 		InArgVars, InArgModes, OutArgVars, OutArgModes) ->
 		list__append(InArgVars, OutArgVars, PermutedArgVars),
 		list__append(InArgModes, OutArgModes, PermutedArgModes)
 	;
-		error("lambda.m: permute_argvars: split_argvars failed")
+		error("lambda__permute_argvars: split_argvars failed")
 	).
 
 :- pred split_argvars(list(var), list(mode), module_info,

@@ -33,6 +33,7 @@ PROGS=	\
 	higher_order_syntax \
 	higher_order_type_manip \
 	ho_func_reg \
+	ho_order \
 	ho_solns \
 	ho_univ_to_type \
 	name_mangling \
@@ -57,6 +58,7 @@ PROGS=	\
 
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all
+MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
 # no_fully_strict is expected to fail (it calls error/1)

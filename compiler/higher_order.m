@@ -32,7 +32,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
-:- import_module type_util, options, prog_data, quantification.
+:- import_module type_util, options, prog_data, quantification, (lambda).
 :- import_module mercury_to_mercury.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
@@ -532,9 +532,10 @@ check_unify(complicated_unify(_, _)) -->
 maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
-	( Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes, _Det) ->
+	( Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0, _Det) ->
 		PredVar = PredVar0,
-		Args = Args0
+		Args = Args0,
+		Modes = Modes0
 	;
 		error("higher_order.m: higher_order_call expected")
 	),
@@ -548,7 +549,13 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		pred_info_module(PredInfo, ModuleName),
 		pred_info_name(PredInfo, PredName),
 		code_util__builtin_state(Module, PredId, ProcId, Builtin),
-		list__append(CurriedArgs, Args, AllArgs),
+
+		% We need to permute the arguments so that inputs come before
+		% outputs, since lambda.m will have done that to the arguments
+		% of the closure.
+		lambda__permute_argvars(Args, Modes, Module, PermutedArgs, _),
+
+		list__append(CurriedArgs, PermutedArgs, AllArgs),
 		MaybeContext = no,
 		Goal1 = call(PredId, ProcId, AllArgs,
 			Builtin, MaybeContext,
