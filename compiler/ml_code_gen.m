@@ -2123,16 +2123,17 @@ ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 		!Info) :-
 	(
 		PragmaImpl = ordinary(ForeignCode, MaybeContext),
-		( MaybeContext = yes(Context)
-		; MaybeContext = no,
+		(
+			MaybeContext = yes(Context)
+		;
+			MaybeContext = no,
 			Context = OuterContext
 		),
 		ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 			PredId, ProcId, Args, ExtraArgs, ForeignCode,
 			Context, Decls, Statements, !Info)
 	;
-		PragmaImpl = nondet(
-			LocalVarsDecls, LocalVarsContext,
+		PragmaImpl = nondet(LocalVarsDecls, LocalVarsContext,
 			FirstCode, FirstContext, LaterCode, LaterContext,
 			_Treatment, SharedCode, SharedContext),
 		require(unify(ExtraArgs, []),
@@ -2369,27 +2370,49 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 		!Info) :-
 	Lang = foreign_language(Attributes),
 	(
+		CodeModel = model_det,
+		OrdinaryKind = kind_det
+	;
+		CodeModel = model_semi,
+		ml_gen_info_get_module_info(!.Info, ModuleInfo),
+		module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+			_PredInfo, ProcInfo),
+		proc_info_interface_determinism(ProcInfo, Detism),
+		determinism_components(Detism, _, MaxSoln),
+		( MaxSoln = at_most_zero ->
+			OrdinaryKind = kind_failure
+		;
+			OrdinaryKind = kind_semi
+		)
+	;
+		CodeModel = model_non,
+		error("ml_gen_ordinary_pragma_foreign_proc: " ++
+			"unexpected code model")
+	),
+	(
 		Lang = c,
-		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
+		ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes,
 			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = managed_cplusplus,
-		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
+		ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
 			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = csharp,
-		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
+		ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
 			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = il,
+		% XXX should pass OrdinaryKind
 		ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
 			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = java,
+		% XXX should pass OrdinaryKind
 		ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
 			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
@@ -2401,8 +2424,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 	prog_context::in, mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-	% For ordinary (not model_non) pragma foreign_code in Java.
-	%
 ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
 		Args, ExtraArgs, JavaCode, Context, Decls, Statements,
 		!Info) :-
@@ -2445,17 +2466,22 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
 		]),
 	Decls = ConvDecls.
 
-:- pred ml_gen_ordinary_pragma_managed_proc(code_model::in,
-	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-	prog_context::in, mlds__defns::out, mlds__statements::out,
-	ml_gen_info::in, ml_gen_info::out) is det.
+:- type ordinary_pragma_kind
+	--->	kind_det
+	;	kind_semi
+	;	kind_failure.
 
 	% For ordinary (not model_non) pragma foreign_code in C# or MC++,
 	% we generate a call to an out-of-line procedure that contains
 	% the user's code.
 
-ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes, _PredId, _ProcId,
+:- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
+	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
+	ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
 		Args, ExtraArgs, ForeignCode, Context, Decls, Statements,
 		!Info) :-
 
@@ -2474,12 +2500,15 @@ ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes, _PredId, _ProcId,
 	module_info_name(ModuleInfo, ModuleName),
 	MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
 
-		% If the code is semidet, we should copy SUCCESS_INDICATOR
-		% out into "suceess".
-
 	ml_success_lval(!.Info, SucceededLval),
-
-	( CodeModel = model_semi ->
+	(
+		OrdinaryKind = kind_det,
+		SuccessVarLocals = [],
+		SuccessIndicatorStatements = []
+	;
+		OrdinaryKind = kind_semi,
+		% If the code is semidet, we should copy SUCCESS_INDICATOR
+		% out into "success".
 		SuccessIndicatorVarName = var_name("SUCCESS_INDICATOR", no),
 		SuccessIndicatorDecl = ml_gen_mlds_var_decl(
 			var(SuccessIndicatorVarName),
@@ -2492,8 +2521,9 @@ ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes, _PredId, _ProcId,
 		SuccessVarLocals = [SuccessIndicatorDecl],
 		SuccessIndicatorStatements = [SuccessIndicatorStatement]
 	;
-		SuccessVarLocals = [],
-		SuccessIndicatorStatements = []
+		OrdinaryKind = kind_failure,
+		error("ml_gen_ordinary_pragma_managed_proc: " ++
+			"kind_failure not yet implemented")
 	),
 
 	Statements = [
@@ -2683,12 +2713,6 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 	Defn = ml_gen_mlds_var_decl(var(NonMangledVarName), MLDSType,
 		Initializer, GC_TraceCode, MLDSContext).
 
-:- pred ml_gen_ordinary_pragma_c_proc(code_model::in,
-	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-	prog_context::in, mlds__defns::out, mlds__statements::out,
-	ml_gen_info::in, ml_gen_info::out) is det.
-
 	% For ordinary (not model_non) pragma c_proc,
 	% we generate code of the following form:
 	%
@@ -2747,7 +2771,13 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 	% different for targets other than C, e.g. when compiling to
 	% Java.
 	%
-ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes, PredId, _ProcId,
+:- pred ml_gen_ordinary_pragma_c_proc(ordinary_pragma_kind::in,
+	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
+	ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
 		OrigArgs, ExtraArgs, C_Code, Context, Decls, Statements,
 		!Info) :-
 
@@ -2786,7 +2816,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes, PredId, _ProcId,
 	% Put it all together
 	%
 	(
-		CodeModel = model_det,
+		OrdinaryKind = kind_det,
 		Starting_C_Code = list__condense([
 			[raw_target_code("{\n", [])],
 			HashDefine,
@@ -2803,7 +2833,32 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes, PredId, _ProcId,
 		]),
 		Ending_C_Code = [raw_target_code("}\n", [])]
 	;
-		CodeModel = model_semi,
+		OrdinaryKind = kind_failure,
+		% We need to treat this case separately, because for these
+		% foreign_procs the C code fragment won't assign anything
+		% SUCCESS_INDICATOR; the code we generate for CanSucceed = yes
+		% would test an undefined value.
+		ml_success_lval(!.Info, SucceededLval),
+		Starting_C_Code = list__condense([
+			[raw_target_code("{\n", [])],
+			HashDefine,
+			ArgDeclsList,
+			[raw_target_code("\n", [])],
+			AssignInputsList,
+			[raw_target_code(ObtainLock, []),
+			raw_target_code("\t\t{\n", []),
+			user_target_code(C_Code, yes(Context), []),
+			raw_target_code("\n\t\t;}\n", []),
+			raw_target_code("#undef MR_PROC_LABEL\n", []),
+			raw_target_code(ReleaseLock, [])]
+		]),
+		Ending_C_Code = [
+			target_code_output(SucceededLval),
+			raw_target_code(" = MR_FALSE;\n", []),
+			raw_target_code("}\n", [])
+		]
+	;
+		OrdinaryKind = kind_semi,
 		ml_success_lval(!.Info, SucceededLval),
 		Starting_C_Code = list__condense([
 			[raw_target_code("{\n", [])],
@@ -2827,9 +2882,6 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes, PredId, _ProcId,
 			raw_target_code(" = SUCCESS_INDICATOR;\n", []),
 			raw_target_code("}\n", [])
 		]
-	;
-		CodeModel = model_non,
-		error("ml_gen_ordinary_pragma_c_code: unexpected code model")
 	),
 	Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code),
 	Ending_C_Code_Stmt = inline_target_code(lang_C, Ending_C_Code),
@@ -2956,110 +3008,136 @@ var_is_singleton(Name) :-
 
 %-----------------------------------------------------------------------------%
 
+	% XXX Maybe this ought to be renamed as it works for, and
+	% is used by the Java back-end as well.
+	%
 :- pred ml_gen_pragma_c_input_arg_list(foreign_language::in,
 	list(foreign_arg)::in, list(target_code_component)::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-	% XXX Maybe this ought to be renamed as it works for, and
-	% is used by the Java back-end as well.
-	%
 ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
 	list__map_foldl(ml_gen_pragma_c_input_arg(Lang), ArgList,
 		AssignInputsList, !Info),
 	list__condense(AssignInputsList, AssignInputs).
 
-% ml_gen_pragma_c_input_arg generates C code to assign the value of an
-% input arg for a `pragma foreign_proc' declaration.
-%
+	% ml_gen_pragma_c_input_arg generates C code to assign the value of an
+	% input arg for a `pragma foreign_proc' declaration.
+	%
 :- pred ml_gen_pragma_c_input_arg(foreign_language::in, foreign_arg::in,
 	list(target_code_component)::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
-		AssignInput, !Info) :-
+ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
 	(
+		ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType),
 		MaybeNameAndMode = yes(ArgName - Mode),
 		\+ var_is_singleton(ArgName),
 		mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
 	->
-		ml_variable_type(!.Info, Var, VarType),
-		ml_gen_var(!.Info, Var, VarLval),
-		( type_util__is_dummy_argument_type(VarType) ->
-			% The variable may not have been declared,
-			% so we need to generate a dummy value for it.
-			% Using `0' here is more efficient than
-			% using private_builtin__dummy_var, which is
-			% what ml_gen_var will have generated for this
-			% variable.
-			ArgRval = const(int_const(0))
-		;
-			ml_gen_box_or_unbox_rval(VarType, OrigType,
-				lval(VarLval), ArgRval, !Info)
-		),
-		% At this point we have an rval with the right type for
-		% *internal* use in the code generated by the Mercury
-		% compiler's MLDS back-end. We need to convert this to
-		% the appropriate type to use for the C interface.
-		ExportedType = foreign__to_exported_type(ModuleInfo,
-			OrigType),
-		TypeString = foreign__to_type_string(Lang, ExportedType),
-		(
-			foreign__is_foreign_type(ExportedType) = yes,
-			Lang \= java
-		->
-			% For foreign types,
-			% we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE
-			AssignInput = [
-				raw_target_code("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
-					++ TypeString ++ ", ", []),
-				target_code_input(ArgRval),
-				raw_target_code(", " ++ ArgName ++ ");\n", [])
-			]
-		;
-			% In the usual case, we can just use an assignment
-			% and perhaps a cast.
-			module_info_globals(ModuleInfo, Globals),
-			globals__lookup_bool_option(Globals, highlevel_data,
-				HighLevelData),
-			( HighLevelData = yes ->
-				% In general, the types used for the C
-				% interface are not the same as the types
-				% used by --high-level-data, so we always
-				% use a cast here.
-				% (Strictly speaking the cast is not needed for
-				% a few cases like `int', but it doesn't do
-				% any harm.)
-				string__format("(%s)", [s(TypeString)], Cast)
-			;
-				% For --no-high-level-data, we only need to use
-				% a cast is for polymorphic types, which are
-				% `Word' in the C interface but `MR_Box' in the
-				% MLDS back-end.
-				% Except for MC++, where polymorphic types
-				% are MR_Box.
-				(
-					type_util__var(OrigType, _),
-					Lang \= managed_cplusplus
-				->
-					Cast = "(MR_Word) "
-				;
-					Cast = ""
-				)
-			),
-			string__format("\t%s = %s\n",
-				[s(ArgName), s(Cast)],
-				AssignToArgName),
-			AssignInput = [
-				raw_target_code(AssignToArgName, []),
-				target_code_input(ArgRval),
-				raw_target_code(";\n", [])
-			]
-		)
+		ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType,
+			AssignInput, !Info)
 	;
-		% if the variable doesn't occur in the ArgNames list,
-		% it can't be used, so we just ignore it
+		% If the variable doesn't occur in the ArgNames list,
+		% it can't be used, so we just ignore it.
 		AssignInput = []
+	).
+
+:- pred ml_gen_pragma_c_gen_input_arg(foreign_language::in, prog_var::in,
+	string::in, prog_type::in, list(target_code_component)::out,
+	ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
+		!Info) :-
+	ml_variable_type(!.Info, Var, VarType),
+	ml_gen_var(!.Info, Var, VarLval),
+	( type_util__is_dummy_argument_type(VarType) ->
+		% The variable may not have been declared, so we need
+		% to generate a dummy value for it. Using `0' here
+		% is more efficient than using private_builtin__dummy_var,
+		% which is what ml_gen_var will have generated for this
+		% variable.
+		ArgRval = const(int_const(0))
+	;
+		ml_gen_box_or_unbox_rval(VarType, OrigType, lval(VarLval),
+			ArgRval, !Info)
+	),
+	% At this point we have an rval with the right type for
+	% *internal* use in the code generated by the Mercury
+	% compiler's MLDS back-end. We need to convert this to
+	% the appropriate type to use for the C interface.
+	ml_gen_info_get_module_info(!.Info, ModuleInfo),
+	ExportedType = foreign__to_exported_type(ModuleInfo, OrigType),
+	TypeString = foreign__to_type_string(Lang, ExportedType),
+	IsForeign = foreign__is_foreign_type(ExportedType),
+	(
+		(
+			Lang = java,
+			MaybeCast = no
+		;
+			Lang = c,
+			IsForeign = no,
+			MaybeCast = no
+		;
+			Lang = c,
+			IsForeign = yes(Assertions),
+			list__member(can_pass_as_mercury_type, Assertions),
+			MaybeCast = yes("(" ++ TypeString ++ ") ")
+		)
+	->
+		% In the usual case, we can just use an assignment
+		% and perhaps a cast.
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData),
+		(
+			HighLevelData = yes,
+			% In general, the types used for the C
+			% interface are not the same as the types
+			% used by --high-level-data, so we always
+			% use a cast here.
+			% (Strictly speaking the cast is not needed for
+			% a few cases like `int', but it doesn't do
+			% any harm.)
+			string__format("(%s)", [s(TypeString)], Cast)
+		;
+			HighLevelData = no,
+			% For --no-high-level-data, we only need to use
+			% a cast is for polymorphic types, which are
+			% `Word' in the C interface but `MR_Box' in the
+			% MLDS back-end.
+			% Except for MC++, where polymorphic types
+			% are MR_Box.
+			(
+				type_util__var(OrigType, _),
+				Lang \= managed_cplusplus
+			->
+				Cast = "(MR_Word) "
+			;
+				MaybeCast = yes(CastPrime)
+			->
+				Cast = CastPrime
+			;
+				Cast = ""
+			)
+		),
+		string__format("\t%s = %s\n", [s(ArgName), s(Cast)],
+			AssignToArgName),
+		AssignInput = [
+			raw_target_code(AssignToArgName, []),
+			target_code_input(ArgRval),
+			raw_target_code(";\n", [])
+		]
+	;
+		% For foreign types,
+		% we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE
+		% XXX not if can_pass_as_mercury_type is set
+		AssignInput = [
+			raw_target_code("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
+				++ TypeString ++ ", ", []),
+			target_code_input(ArgRval),
+			raw_target_code(", " ++ ArgName ++ ");\n", [])
+		]
 	).
 
 :- pred ml_gen_pragma_java_output_arg_list(foreign_language::in,
@@ -3167,76 +3245,105 @@ ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
 		\+ type_util__is_dummy_argument_type(OrigType),
 		mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
 	->
-		ml_variable_type(!.Info, Var, VarType),
-		ml_gen_var(!.Info, Var, VarLval),
-		ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval,
-			mlds__var_name(ArgName, no), Context, no, 0,
-			ArgLval, ConvDecls, _ConvInputStatements,
-			ConvOutputStatements, !Info),
-		% At this point we have an lval with the right type for
-		% *internal* use in the code generated by the Mercury
-		% compiler's MLDS back-end. We need to convert this to
-		% the appropriate type to use for the C interface.
-		ExportedType = foreign__to_exported_type(ModuleInfo,
-			OrigType),
-		TypeString = foreign__to_type_string(Lang, ExportedType),
-		( foreign__is_foreign_type(ExportedType) = yes ->
-			% For foreign types,
-			% we need to call MR_MAYBE_BOX_FOREIGN_TYPE
-			AssignOutput = [
-				raw_target_code("\tMR_MAYBE_BOX_FOREIGN_TYPE("
-					++ TypeString ++ ", " ++ ArgName ++
-					", ", []),
-				target_code_output(ArgLval),
-				raw_target_code(");\n", [])
-			]
-		;
-			% In the usual case, we can just use an assignment,
-			% perhaps with a cast
-			module_info_globals(ModuleInfo, Globals),
-			globals__lookup_bool_option(Globals, highlevel_data,
-				HighLevelData),
-			( HighLevelData = yes ->
-				% In general, the types used for the C
-				% interface are not the same as the types
-				% used by --high-level-data, so we always
-				% use a cast here.
-				% (Strictly speaking the cast is not needed for
-				% a few cases like `int', but it doesn't do any
-				% harm.)
-				% Note that we can't easily obtain the type
-				% string for the RHS of the assignment, so
-				% instead we cast the LHS.
-				string__format("*(%s *)&", [s(TypeString)],
-					LHS_Cast),
-				RHS_Cast = ""
-			;
-				% For --no-high-level-data, we only need to use
-				% a cast is for polymorphic types, which are
-				% `Word' in the C interface but `MR_Box' in the
-				% MLDS back-end.
-				( type_util__var(OrigType, _) ->
-					RHS_Cast = "(MR_Box) "
-				;
-					RHS_Cast = ""
-				),
-				LHS_Cast = ""
-			),
-			string__format(" = %s%s;\n", [s(RHS_Cast),
-				s(ArgName)], AssignFromArgName),
-			string__format("\t%s\n", [s(LHS_Cast)], AssignTo),
-			AssignOutput = [
-				raw_target_code(AssignTo, []),
-				target_code_output(ArgLval),
-				raw_target_code(AssignFromArgName, [])
-			]
-		)
+		ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType,
+			Context, AssignOutput, ConvDecls, ConvOutputStatements,
+			!Info)
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
 		AssignOutput = [],
 		ConvDecls = [],
 		ConvOutputStatements = []
+	).
+
+:- pred ml_gen_pragma_c_gen_output_arg(foreign_language::in, prog_var::in,
+	string::in, prog_type::in, prog_context::in,
+	list(target_code_component)::out, mlds__defns::out,
+	mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
+		AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
+	ml_variable_type(!.Info, Var, VarType),
+	ml_gen_var(!.Info, Var, VarLval),
+	ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval,
+		mlds__var_name(ArgName, no), Context, no, 0,
+		ArgLval, ConvDecls, _ConvInputStatements,
+		ConvOutputStatements, !Info),
+	% At this point we have an lval with the right type for
+	% *internal* use in the code generated by the Mercury
+	% compiler's MLDS back-end. We need to convert this to
+	% the appropriate type to use for the C interface.
+	ml_gen_info_get_module_info(!.Info, ModuleInfo),
+	ExportedType = foreign__to_exported_type(ModuleInfo, OrigType),
+	TypeString = foreign__to_type_string(Lang, ExportedType),
+	IsForeign = foreign__is_foreign_type(ExportedType),
+	(
+		(
+			Lang = java,
+			IsForeign = no,
+			Cast = no
+		;
+			Lang = c,
+			IsForeign = no,
+			Cast = no
+		;
+			Lang = c,
+			IsForeign = yes(Assertions),
+			list__member(can_pass_as_mercury_type, Assertions),
+			Cast = yes
+		)
+	->
+		% In the usual case, we can just use an assignment,
+		% perhaps with a cast.
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData),
+		(
+			HighLevelData = yes,
+			% In general, the types used for the C interface
+			% are not the same as the types used by
+			% --high-level-data, so we always use a cast here.
+			% (Strictly speaking the cast is not needed for
+			% a few cases like `int', but it doesn't do any harm.)
+			% Note that we can't easily obtain the type string
+			% for the RHS of the assignment, so instead we cast
+			% the LHS.
+			string__format("*(%s *)&", [s(TypeString)], LHS_Cast),
+			RHS_Cast = ""
+		;
+			HighLevelData = no,
+			% For --no-high-level-data, we only need to use
+			% a cast is for polymorphic types, which are
+			% `Word' in the C interface but `MR_Box' in the
+			% MLDS back-end.
+			(
+				( type_util__var(OrigType, _)
+				; Cast = yes
+				)
+			->
+				RHS_Cast = "(MR_Box) "
+			;
+				RHS_Cast = ""
+			),
+			LHS_Cast = ""
+		),
+		string__format(" = %s%s;\n", [s(RHS_Cast),
+			s(ArgName)], AssignFromArgName),
+		string__format("\t%s\n", [s(LHS_Cast)], AssignTo),
+		AssignOutput = [
+			raw_target_code(AssignTo, []),
+			target_code_output(ArgLval),
+			raw_target_code(AssignFromArgName, [])
+		]
+	;
+		% For foreign types, we need to call MR_MAYBE_BOX_FOREIGN_TYPE.
+		AssignOutput = [
+			raw_target_code("\tMR_MAYBE_BOX_FOREIGN_TYPE("
+				++ TypeString ++ ", " ++ ArgName ++
+				", ", []),
+			target_code_output(ArgLval),
+			raw_target_code(");\n", [])
+		]
 	).
 
 % :- end_module ml_foreign.

@@ -15,7 +15,9 @@
 main(!IO) :-
 	test(!IO),
 	test(!IO),
-	test(!IO).
+	test(!IO),
+	test_no_input(!IO),
+	test_no_input(!IO).
 
 :- pred test(io::di, io::uo) is det.
 :- pragma no_inline(test/2).
@@ -50,4 +52,24 @@ foo_unused_args_semi(_, "bar") :- semidet_succeed.
 :- pred foo_fail(string::out) is semidet.
 :- pragma memo(foo_fail/1).
 
-foo_fail("") :- semidet_fail.
+foo_fail("FOO_FAIL SUCCEEDED (this is an error)") :-
+	semidet_fail.
+
+:- pred test_no_input(io::di, io::uo) is det.
+:- pragma no_inline(test_no_input/2).
+
+test_no_input(!IO) :-
+	no_input(X1),
+	io__write_string(X1, !IO),
+	io__nl(!IO).
+
+:- pred no_input(string::out) is det.
+:- pragma memo(no_input/1).
+
+:- pragma foreign_proc("C",
+	no_input(X::out),
+	[will_not_call_mercury, promise_pure],
+"
+	printf(""no_input executed\\n"");
+	X = ""no_input_output"";
+").

@@ -362,7 +362,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 						MaybeDeclareRetval),
 			% We need to unbox non-word-sized foreign types
 			% before returning them to C code
-			( foreign__is_foreign_type(Export_RetType) = yes ->
+			( foreign__is_foreign_type(Export_RetType) = yes(_) ->
 				string__append_list(
 					["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(",
 					C_RetType, ", ", RetArgString,
@@ -489,7 +489,7 @@ get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
 		Export_Type = foreign__to_exported_type(ModuleInfo, Type),
 		% We need to box non-word-sized foreign types
 		% before passing them to Mercury code
-		( foreign__is_foreign_type(Export_Type) = yes ->
+		( foreign__is_foreign_type(Export_Type) = yes(_) ->
 			C_Type = foreign__to_type_string(c, Export_Type),
 			string__append_list(
 				["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
@@ -530,7 +530,7 @@ copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 		Export_Type = foreign__to_exported_type(ModuleInfo, Type),
 		% We need to unbox non-word-sized foreign types
 		% before returning them to C code
-		( foreign__is_foreign_type(Export_Type) = yes ->
+		( foreign__is_foreign_type(Export_Type) = yes(_) ->
 			C_Type = foreign__to_type_string(c, Export_Type),
 			string__append_list(
 				["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(",

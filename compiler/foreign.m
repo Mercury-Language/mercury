@@ -24,7 +24,7 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, string, term.
+:- import_module bool, std_util, list, string, term.
 
 :- type foreign_decl_info 		== list(foreign_decl_code).
 					% in reverse order
@@ -80,7 +80,7 @@
 
 	% Given a type which is not defined as a foreign type, get the
 	% exported_type representation of that type.
-:- func foreign__non_foreign_type((type)) = exported_type.
+:- func non_foreign_type((type)) = exported_type.
 
 	% Does the foreign_type_body contain a definition usable
 	% when compiling to the given target.
@@ -89,26 +89,27 @@
 
 	% Given an arbitary mercury type, get the exported_type representation
 	% of that type on the current backend.
-:- func foreign__to_exported_type(module_info, (type)) = exported_type.
+:- func to_exported_type(module_info, (type)) = exported_type.
 
 	% Does the implementation of the given foreign type body on
 	% the current backend use a user-defined comparison predicate.
 :- func foreign_type_body_has_user_defined_eq_comp_pred(module_info,
 	foreign_type_body) = unify_compare is semidet.
 
-	% Given the exported_type representation for a type,
-	% determine whether or not it is a foreign type.
-:- func foreign__is_foreign_type(exported_type) = bool.
+	% Given the exported_type representation for a type, determine
+	% whether or not it is a foreign type, and if yes, return the foreign
+	% type's assertions.
+:- func is_foreign_type(exported_type) = maybe(list(foreign_type_assertion)).
 
 	% Given a representation of a type, determine the string which
 	% corresponds to that type in the specified foreign language,
 	% for use with foreign language interfacing (`pragma export' or
 	% `pragma foreign_proc').
-:- func foreign__to_type_string(foreign_language, exported_type) = string.
-:- func foreign__to_type_string(foreign_language, module_info, (type)) = string.
+:- func to_type_string(foreign_language, exported_type) = string.
+:- func to_type_string(foreign_language, module_info, (type)) = string.
 
 	%
-	% foreign__foreign_import_module_name(ForeignImport)
+	% foreign_import_module_name(ForeignImport)
 	%
 	% returns the module name which represents the ForeignImport.
 	%
@@ -117,34 +118,33 @@
 	% would return the module_name
 	% 	unqualified("module__cpp_code")
 	%
-:- func foreign__foreign_import_module_name(foreign_import_module)
-	= module_name.
+:- func foreign_import_module_name(foreign_import_module) = module_name.
 
-	% foreign__foreign_import_module_name(ForeignImport, CurrentModule)
+	% foreign_import_module_name(ForeignImport, CurrentModule)
 	%
 	% returns the module name needed to refer to ForeignImport from the
 	% CurrentModule.
 	%
-:- func foreign__foreign_import_module_name(foreign_import_module,
-	module_name) = module_name.
+:- func foreign_import_module_name(foreign_import_module, module_name)
+	= module_name.
 
 	% Filter the decls for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
-:- pred foreign__filter_decls(foreign_language::in, foreign_decl_info::in,
+:- pred filter_decls(foreign_language::in, foreign_decl_info::in,
 	foreign_decl_info::out, foreign_decl_info::out) is det.
 
 	% Filter the module imports for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
-:- pred foreign__filter_imports(foreign_language::in,
-	foreign_import_module_info::in, foreign_import_module_info::out,
-	foreign_import_module_info::out) is det.
+:- pred filter_imports(foreign_language::in, foreign_import_module_info::in,
+	foreign_import_module_info::out, foreign_import_module_info::out)
+	is det.
 
 	% Filter the bodys for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
-:- pred foreign__filter_bodys(foreign_language::in, foreign_body_info::in,
+:- pred filter_bodys(foreign_language::in, foreign_body_info::in,
 	foreign_body_info::out, foreign_body_info::out) is det.
 
 	% Given some foreign code, generate some suitable proxy code for
@@ -158,7 +158,7 @@
 	% code.
 	% XXX This implementation is currently incomplete, so in future
 	% this interface may change.
-:- pred foreign__extrude_pragma_implementation(list(foreign_language)::in,
+:- pred extrude_pragma_implementation(list(foreign_language)::in,
 	list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
 	module_info::in, module_info::out,
 	pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
@@ -171,7 +171,7 @@
 	% which imports the foreign function, and return the varset,
 	% pragma_vars, argument types and other information about the
 	% generated predicate body.
-:- pred foreign__make_pragma_import(pred_info::in, proc_info::in, string::in,
+:- pred make_pragma_import(pred_info::in, proc_info::in, string::in,
 	prog_context::in, module_info::in, pragma_foreign_code_impl::out,
 	prog_varset::out, list(pragma_var)::out, list(type)::out, arity::out,
 	pred_or_func::out) is det.
@@ -185,7 +185,7 @@
 	%
 	% Otherwise it will return no.
 
-:- func foreign__prefer_foreign_language(globals, compilation_target,
+:- func prefer_foreign_language(globals, compilation_target,
 	foreign_language, foreign_language) = bool.
 
 	% Sub-type of foreign_language for languages for which
@@ -283,30 +283,30 @@ prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
 	% foreign language, we should add it here.
 prefer_foreign_language(_Globals, java, _Lang1, _Lang2) = no.
 
-foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
+filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
 			WantedLang = Lang),
 		Decls0, LangDecls, NotLangDecls).
 
-foreign__filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
+filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
 	list__filter(
 		(pred(foreign_import_module(Lang, _, _)::in) is semidet :-
 			WantedLang = Lang),
 		Imports0, LangImports, NotLangImports).
 
-foreign__filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
+filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
 	list__filter((pred(foreign_body_code(Lang, _, _)::in) is semidet :-
 			WantedLang = Lang),
 		Bodys0, LangBodys, NotLangBodys).
 
-foreign__extrude_pragma_implementation([], _PragmaVars,
+extrude_pragma_implementation([], _PragmaVars,
 		_PredName, _PredOrFunc, _Context,
 		!ModuleInfo, !NewAttributes, !Impl) :-
 	unexpected(this_file, "no suitable target languages available").
 
 	% We just use the first target language for now, it might be nice
 	% to try a few others if the backend supports multiple ones.
-foreign__extrude_pragma_implementation([TargetLang | TargetLangs],
+extrude_pragma_implementation([TargetLang | TargetLangs],
 		_PragmaVars, _PredName, _PredOrFunc, _Context,
 		!ModuleInfo, !Attributes, !Impl) :-
 	ForeignLanguage = foreign_language(!.Attributes),
@@ -638,8 +638,10 @@ have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
 	have_foreign_type_for_backend(c, ForeignTypeBody, Result).
 
 :- type exported_type
-	--->	foreign(sym_name)	% A type defined by a
-					% pragma foreign_type.
+	--->	foreign(sym_name, list(foreign_type_assertion))
+					% A type defined by a pragma
+					% foreign_type, and the assertions
+					% on that foreign_type.
 	;	mercury((type)).	% Any other mercury type.
 
 non_foreign_type(Type) = mercury(Type).
@@ -653,8 +655,9 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		( Body = foreign_type(ForeignTypeBody, _IsSolverType) ->
 			foreign_type_body_to_exported_type(ModuleInfo,
-				ForeignTypeBody, ForeignTypeName, _),
-			ExportType = foreign(ForeignTypeName)
+				ForeignTypeBody, ForeignTypeName, _,
+				Assertions),
+			ExportType = foreign(ForeignTypeName, Assertions)
 		;
 			ExportType = mercury(Type)
 		)
@@ -665,87 +668,82 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body) =
 		UserEqComp :-
 	foreign_type_body_to_exported_type(ModuleInfo, Body, _,
-		MaybeUserEqComp),
+		MaybeUserEqComp, _),
 	MaybeUserEqComp = yes(UserEqComp).
 
 :- pred foreign_type_body_to_exported_type(module_info::in,
-	foreign_type_body::in, sym_name::out, maybe(unify_compare)::out)
-	is det.
+	foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
+	list(foreign_type_assertion)::out) is det.
 
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
-		MaybeUserEqComp) :-
+		MaybeUserEqComp, Assertions) :-
 	ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
-
 	(
 		Target = c,
 		(
 			MaybeC = yes(Data),
 			Data = foreign_type_lang_data(c(NameStr),
-				MaybeUserEqComp, _Assertions),
+				MaybeUserEqComp, Assertions),
 			Name = unqualified(NameStr)
 		;
 			MaybeC = no,
-			unexpected(this_file,
-				"to_exported_type: no C type")
+			unexpected(this_file, "to_exported_type: no C type")
 		)
 	;
 		Target = il,
 		(
 			MaybeIL = yes(Data),
 			Data = foreign_type_lang_data(il(_, _, Name),
-				MaybeUserEqComp, _Assertions)
+				MaybeUserEqComp, Assertions)
 		;
 			MaybeIL = no,
-			unexpected(this_file,
-				"to_exported_type: no IL type")
+			unexpected(this_file, "to_exported_type: no IL type")
 		)
 	;
 		Target = java,
 		(
 			MaybeJava = yes(Data),
 			Data = foreign_type_lang_data(java(NameStr),
-				MaybeUserEqComp, _Assertions),
+				MaybeUserEqComp, Assertions),
 			Name = unqualified(NameStr)
 		;
 			MaybeJava = no,
-			unexpected(this_file,
-				"to_exported_type: no Java type")
+			unexpected(this_file, "to_exported_type: no Java type")
 		)
 	;
 		Target = asm,
 		(
 			MaybeC = yes(Data),
 			Data = foreign_type_lang_data(c(NameStr),
-				MaybeUserEqComp, _Assertions),
+				MaybeUserEqComp, Assertions),
 			Name = unqualified(NameStr)
 		;
 			MaybeC = no,
-			unexpected(this_file,
-				"to_exported_type: no C type")
+			unexpected(this_file, "to_exported_type: no C type")
 		)
 	).
 
-is_foreign_type(foreign(_)) = yes.
+is_foreign_type(foreign(_, Assertions)) = yes(Assertions).
 is_foreign_type(mercury(_)) = no.
 
 to_type_string(Lang, ModuleInfo, Type) =
 	to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
 
-to_type_string(c, foreign(ForeignType)) = Result :-
+to_type_string(c, foreign(ForeignType, _)) = Result :-
 	( ForeignType = unqualified(Result0) ->
 		Result = Result0
 	;
 		unexpected(this_file, "to_type_string: qualified C type")
 	).
-to_type_string(csharp, foreign(ForeignType)) = Result :-
+to_type_string(csharp, foreign(ForeignType, _)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
-to_type_string(managed_cplusplus, foreign(ForeignType)) = Result ++ " *":-
+to_type_string(managed_cplusplus, foreign(ForeignType, _)) = Result ++ " *":-
 	sym_name_to_string(ForeignType, "::", Result).
-to_type_string(il, foreign(ForeignType)) = Result :-
+to_type_string(il, foreign(ForeignType, _)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
-to_type_string(java, foreign(ForeignType)) = Result :-
+to_type_string(java, foreign(ForeignType, _)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
 
 	% XXX does this do the right thing for high level data?
@@ -788,7 +786,7 @@ to_type_string(java, mercury(Type)) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-foreign__foreign_import_module_name(
+foreign_import_module_name(
 		foreign_import_module(Lang, ForeignImportModule, _)) =
 		ModuleName :-
 	( Lang = c,
@@ -805,25 +803,30 @@ foreign__foreign_import_module_name(
 				Lang)
 	).
 
-foreign__foreign_import_module_name(ModuleForeignImported, CurrentModule) =
+foreign_import_module_name(ModuleForeignImported, CurrentModule) =
 		ImportedForeignCodeModuleName :-
 	ModuleForeignImported = foreign_import_module(Lang, _, _),
 	ImportedForeignCodeModuleName1 = ModuleForeignImported ^
-			foreign__foreign_import_module_name,
-	( Lang = c,
+		foreign_import_module_name,
+	(
+		Lang = c,
 		ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
-	; Lang = il,
+	;
+		Lang = il,
 		ImportedForeignCodeModuleName = handle_std_library(
-				CurrentModule, ImportedForeignCodeModuleName1)
-	; Lang = managed_cplusplus,
+			CurrentModule, ImportedForeignCodeModuleName1)
+	;
+		Lang = managed_cplusplus,
 		ImportedForeignCodeModuleName = handle_std_library(
-				CurrentModule, ImportedForeignCodeModuleName1)
-	; Lang = csharp,
+			CurrentModule, ImportedForeignCodeModuleName1)
+	;
+		Lang = csharp,
 		ImportedForeignCodeModuleName = handle_std_library(
-				CurrentModule, ImportedForeignCodeModuleName1)
-	; Lang = java,
+			CurrentModule, ImportedForeignCodeModuleName1)
+	;
+		Lang = java,
 		ImportedForeignCodeModuleName = handle_std_library(
-				CurrentModule, ImportedForeignCodeModuleName1)
+			CurrentModule, ImportedForeignCodeModuleName1)
 	).
 
 	%
