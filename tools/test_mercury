@@ -255,9 +255,7 @@ esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender|roy|venus|earth|mars)
-		# XXX Add ceres to the list above once a compiler
-		# is installed there.
+	hg|ender|roy|venus|earth|mars|ceres)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -333,8 +331,8 @@ case $HOST in
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
 		INSTALL_LIBGRADES="hl.gc \
-			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
-			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc \
+			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc"
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
 		# since the asm_fast.gc.tr.rt grade is not yet implemented
 		# in the 0.10 branch.
@@ -619,6 +617,7 @@ esac
 #-----------------------------------------------------------------------------#
 
 : test and install the CLPR interface
+# CLPR requires trailing, so here we only test the trailing grades.
 case $HOST in
 	murlibobo)
 		# requires --enable-all-grades
@@ -631,7 +630,10 @@ case $HOST in
 		esac
 		;;
 	roy|ceres)
-		GRADES="hlc.gc.tr hl.gc.tr"
+		GRADES="hlc.gc.tr"
+    # XXX No point testing the hl.* grades; they don't work, because
+    # the hl.* header files are incompatible with the hlc.* header files.
+		## GRADES="$GRADES hl.gc.tr"
 		;;
 	*)
 		GRADES=""
@@ -793,8 +795,10 @@ case $HOST in
 		esac
 		;;
 	roy|ceres)
-		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
-			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc"
+      # XXX No point testing the hl.* grades; they don't work, because
+      # the hl.* header files are incompatible with the hlc.* header files.
+		  ## GRADES="$GRADES hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
 		# since the asm_fast.gc.tr.rt grade is not yet implemented
 		# in the 0.10 branch.
