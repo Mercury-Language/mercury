@@ -14,6 +14,7 @@ type system
   represented as unordered lists with possible duplicates.
   	[this is a subset of the functionality of type classes]
 
+- remove limitation that higher-order terms are monomorphic.
 
 mode analysis
 -------------
@@ -181,6 +182,8 @@ source-level transformations
   specialisation problem
 
 - deforestation
+
+- extended DCGs
 
 - transform non-tail-recursive predicates into tail-recursive form
   using accumulators
