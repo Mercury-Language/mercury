@@ -22,6 +22,8 @@ features should be documented in appropriate section
 of the Mercury documentation (usually the Mercury User's Guide
 and/or the Mercury Reference Manual).
 
+Any new compiler modules or other major design changes should
+be documented in `compiler/notes/COMPILER_DESIGN'.
 
 Naming
 ------
