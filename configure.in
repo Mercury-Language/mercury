@@ -2853,6 +2853,15 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
+# Check for the various IEEE predicates
+#
+MERCURY_CHECK_FOR_IEEE_FUNC(isnan)
+MERCURY_CHECK_FOR_IEEE_FUNC(isnanf)
+MERCURY_CHECK_FOR_IEEE_FUNC(isinf)
+MERCURY_CHECK_FOR_IEEE_FUNC(isinff)
+
+#-----------------------------------------------------------------------------#
+#
 # Check whether sockets work (we need them for the external debugger)
 #
 

@@ -126,6 +126,7 @@
 **	MR_HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
 **	MR_HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
 **	MR_HAVE_WINDOWS_H	we have <windows.h>
+**	MR_HAVE_IEEEFP_H	we have <ieeefp.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -145,6 +146,7 @@
 #undef	MR_HAVE_SYS_IOCTL_H
 #undef	MR_HAVE_SYS_STROPTS_H
 #undef	MR_HAVE_WINDOWS_H
+#undef	MR_HAVE_IEEEFP_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -216,6 +218,10 @@
 **	MR_HAVE_ACCESS		we have the access() function.
 **	MR_HAVE_SLEEP		we have the sleep() function.
 **	MR_HAVE_CAPITAL_S_SLEEP	we have the Sleep() function.
+**	MR_HAVE_ISNAN		we have the isnan() function.
+**	MR_HAVE_ISNANF		we have the isnanf() function.
+**	MR_HAVE_ISINF		we have the isinf() function.
+**	MR_HAVE_ISINFF		we have the isinff() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -259,6 +265,10 @@
 #undef	MR_HAVE_ACCESS
 #undef	MR_HAVE_SLEEP
 #undef	MR_HAVE_CAPITAL_S_SLEEP
+#undef	MR_HAVE_ISNAN
+#undef	MR_HAVE_ISNANF
+#undef	MR_HAVE_ISINF
+#undef	MR_HAVE_ISINFF
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

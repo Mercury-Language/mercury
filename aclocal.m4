@@ -24,6 +24,37 @@ AC_DEFUN(MERCURY_CHECK_FOR_HEADERS,
     done
 ])
 #-----------------------------------------------------------------------------#
+AC_DEFUN(MERCURY_CHECK_FOR_IEEEFP_H,
+[
+	MERCURY_CHECK_FOR_HEADERS(ieeefp.h)
+])
+
+AC_DEFUN(MERCURY_CHECK_FOR_IEEE_FUNC,
+[
+AC_REQUIRE([MERCURY_CHECK_FOR_IEEEFP_H])
+AC_MSG_CHECKING(for $1 function)
+mercury_cv_ieee_func_define="MR_HAVE_`echo $1 | \
+	tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
+
+AC_TRY_LINK([
+	#include <math.h>
+#ifdef MR_HAVE_IEEEFP_H
+	#include <ieeefp.h>
+#endif
+],[
+	float f;
+	$1(f);
+],[mercury_cv_have_ieee_func=yes],[mercury_cv_have_ieee_func=no])
+
+if test "$mercury_cv_have_ieee_func" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE_UNQUOTED($mercury_cv_ieee_func_define)
+else
+	AC_MSG_RESULT(no)
+fi
+])
+
+#-----------------------------------------------------------------------------#
 #
 # Turn off MacOS's so-called "smart" C preprocessor, if present,
 # since it causes lots of spurious warning messages,

@@ -143,6 +143,15 @@
 	% Compute a non-negative integer hash value for a float.
 :- func hash(float) = int.
 
+	% Is the float point number not a number or infinite?
+:- pred is_nan_or_inf(float::in) is semidet.
+
+	% Is the floating point number not a number?
+:- pred is_nan(float::in) is semidet.
+
+	% Is the floating point number infinite?
+:- pred is_inf(float::in) is semidet.
+
 %
 % System constants
 %
@@ -205,6 +214,9 @@
 	#include <float.h>
 	#include <math.h>
 
+#ifdef MR_HAVE_IEEEFP_H
+	#include <ieeefp.h>
+#endif
 ").
 
 %---------------------------------------------------------------------------%
@@ -425,6 +437,57 @@ float__hash(_) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("float__hash").
+
+%---------------------------------------------------------------------------%
+
+is_nan_or_inf(Float) :-
+	( is_nan(Float)
+	; is_inf(Float)
+	).
+
+:- pragma promise_pure(is_nan/1).
+:- pragma foreign_proc(c, is_nan(Flt::in),
+		[will_not_call_mercury, thread_safe], "
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISNANF)
+	SUCCESS_INDICATOR = isnanf(Flt);
+#elif defined(MR_HAVE_ISNAN)
+	SUCCESS_INDICATOR = isnan(Flt);
+#else
+	SUCCESS_INDICATOR = (Flt != Flt);
+#endif
+").
+:- pragma foreign_proc(il, is_nan(Flt::in),
+		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
+	ldloc 'Flt'
+	call bool [mscorlib]System.Double::IsNaN(float64)
+	stloc 'succeeded'
+").
+is_nan(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("float__is_nan").
+
+:- pragma promise_pure(is_inf/1).
+:- pragma foreign_proc(c, is_inf(Flt::in),
+		[will_not_call_mercury, thread_safe], "
+#if defined(MR_USE_SINGLE_PREC_FLOAT) && defined(MR_HAVE_ISINFF)
+	SUCCESS_INDICATOR = isinff(Flt);
+#elif defined(MR_HAVE_ISINF)
+	SUCCESS_INDICATOR = isinf(Flt);
+#else
+	SUCCESS_INDICATOR = (Flt == Flt / 2.0 && Flt != 0.0);
+#endif
+").
+:- pragma foreign_proc(il, is_inf(Flt::in),
+		[will_not_call_mercury, thread_safe, max_stack_size(1)], "
+	ldloc 'Flt'
+	call bool [mscorlib]System.Double::IsInfinity(float64)
+	stloc 'succeeded'
+").
+is_inf(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("float__is_inf").
 
 %---------------------------------------------------------------------------%
 %

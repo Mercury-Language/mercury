@@ -231,6 +231,10 @@ Changes to the Mercury standard library:
   float.m and extras/complex_numbers.  (Because of rounding errors,
   the functions aren't actually reversible.)
 
+* We've added the three predicates, `is_nan/1', `is_inf/1' and
+  `is_nan_or_inf/1' to float.m.  These predicates are for use only on
+  systems which support IEEE floating point arithmetic.
+
 * float__pow now works for negative exponents, and runs much faster
   for large exponents.
 

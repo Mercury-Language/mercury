@@ -526,7 +526,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, std_util, int, float, require.
+:- import_module bool, integer, std_util, int, float, require.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out) is det.
@@ -1548,74 +1548,149 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	(
 			% valid int conversion specifiers
 		Spec = d(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "d"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "d"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_int(Flags, conv(Width), conv(Prec),
+					Int)
+		)
 	;
 		Spec = i(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "i"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "i"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_int(Flags, conv(Width), conv(Prec),
+					Int)
+		)
 	;
 		Spec = o(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "o"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "o"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_unsigned_int(Flags, conv(Width),
+					conv(Prec), 8, Int, no, "")
+		)
 	;
 		Spec = u(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "u"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "u"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_unsigned_int(Flags, conv(Width),
+					conv(Prec), 10, Int, no, "")
+		)
 	;
 		Spec = x(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "x"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "x"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_unsigned_int(Flags, conv(Width),
+					conv(Prec), 16, Int, no, "0x")
+		)
 	;
 		Spec = cX(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "X"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "X"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_unsigned_int(Flags, conv(Width),
+					conv(Prec), 16, Int, no, "0X")
+		)
 	;
 		Spec = p(Int),
-		String = format_int(
-				make_format(Flags, Width,
-					Prec, int_length_modifer, "p"), Int)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width,
+					Prec, int_length_modifer, "p"),
+			String = native_format_int(FormatStr, Int)
+		;
+			String = format_unsigned_int(['#' | Flags],
+					conv(Width), conv(Prec),
+					16, Int, yes, "0x")
+		)
 	;
 			% valid float conversion specifiers
 		Spec = e(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "e"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "e"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_scientific_number(Flags,
+					conv(Width), conv(Prec), Float, "e")
+		)
 	;
 		Spec = cE(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "E"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "E"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_scientific_number(Flags,
+					conv(Width), conv(Prec), Float, "E")
+		)
 	;
 		Spec = f(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "f"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "f"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_float(Flags,
+					conv(Width), conv(Prec), Float)
+		)
 	;
 		Spec = cF(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "F"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "F"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_float(Flags,
+					conv(Width), conv(Prec), Float)
+		)
 	;
 		Spec = g(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "g"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "g"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_scientific_number_g(Flags,
+					conv(Width), conv(Prec), Float, "e")
+		)
 	;
 		Spec = cG(Float),
-		String = format_float(
-			make_format(Flags, Width, Prec, "", "G"), Float)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "G"),
+			String = native_format_float(FormatStr, Float)
+		;
+			String = format_scientific_number_g(Flags,
+					conv(Width), conv(Prec), Float, "E")
+		)
 	;
 			% valid char conversion Specifiers
 		Spec = c(Char),
-		String = format_char(
-				make_format(Flags, Width, Prec, "", "c"), Char)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "c"),
+			String = native_format_char(FormatStr, Char)
+		;
+			String = format_char(Flags, conv(Width), Char)
+		)
 	;
-			% valid string conversion Spec = ifiers
+			% valid string conversion Specifiers
 		Spec = s(Str),
-		String = format_string(
-				make_format(Flags, Width, Prec, "", "s"), Str)
+		( using_sprintf ->
+			FormatStr = make_format(Flags, Width, Prec, "", "s"),
+			String = native_format_string(FormatStr, Str)
+		;
+			String = format_string(Flags,
+					conv(Width), conv(Prec), Str)
+		)
 	;
 			% conversion specifier representing the "%" sign
 		Spec = percent,
@@ -1623,6 +1698,12 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	).
 specifier_to_string(string(Chars)) = from_char_list(Chars).
 
+:- func conv(maybe(list(character))) = maybe(int).
+
+conv(no) = no.
+conv(yes(X)) = yes(string__det_to_int(from_char_list(X))).
+
+%-----------------------------------------------------------------------------%
 
 	% Construct a format string.
 :- func make_format(list(char), maybe(list(char)),
@@ -1636,7 +1717,6 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 		make_format_dotnet(Flags, MaybeWidth, MaybePrec, LengthMod,
 			Spec)
 	).
-
 
 :- pred using_sprintf is semidet.
 
@@ -1712,19 +1792,12 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 %		from_char_list(Flags),
 		"}"]).
 
-
 :- func int_length_modifer = string.
 :- pragma foreign_proc("C", 
 	int_length_modifer = (LengthModifier::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_make_aligned_string(LengthModifier,
 		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
-}").
-
-:- pragma foreign_proc("C#", 
-	int_length_modifer = (LengthModifier::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	LengthModifier = """";
 }").
 int_length_modifer = _ :-
 	% This version is only used for back-ends for which there is no
@@ -1735,84 +1808,941 @@ int_length_modifer = _ :-
 	% Create a string from a float using the format string.
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
-:- func format_float(string, float) = string.
+:- func native_format_float(string, float) = string.
 :- pragma foreign_proc("C",
-	format_float(FormatStr::in, Val::in) = (Str::out),
+	native_format_float(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("C#",
-	format_float(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	Str = System.String.Format(FormatStr, Val);
-}").
-format_float(_, _) = _ :-
+native_format_float(_, _) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("format_float").
+	private_builtin__sorry("native_format_float").
 
 	% Create a string from a int using the format string.
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
-:- func format_int(string, int) = string.
+:- func native_format_int(string, int) = string.
 :- pragma foreign_proc("C",
-	format_int(FormatStr::in, Val::in) = (Str::out),
+	native_format_int(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("C#",
-	format_int(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	Str = System.String.Format(FormatStr, Val);
-}").
-format_int(_, _) = _ :-
+native_format_int(_, _) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("format_int").
+	private_builtin__sorry("native_format_int").
 
 	% Create a string from a string using the format string.
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
-:- func format_string(string, string) = string.
+:- func native_format_string(string, string) = string.
 :- pragma foreign_proc("C", 
-	format_string(FormatStr::in, Val::in) = (Str::out),
+	native_format_string(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
-:- pragma foreign_proc("C#", 
-	format_string(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	Str = System.String.Format(FormatStr, Val);
-}").
-format_string(_, _) = _ :-
+native_format_string(_, _) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("format_string").
+	private_builtin__sorry("native_format_string").
 
 	% Create a string from a char using the format string.
 	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
-:- func format_char(string, char) = string.
+:- func native_format_char(string, char) = string.
 :- pragma foreign_proc("C", 
-	format_char(FormatStr::in, Val::in) = (Str::out),
+	native_format_char(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("C#", 
-	format_char(FormatStr::in, Val::in) = (Str::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	Str = System.String.Format(FormatStr, Val);
-}").
-format_char(_, _) = _ :-
+native_format_char(_, _) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("format_char").
+	private_builtin__sorry("native_format_char").
+
+%-----------------------------------------------------------------------------%
+
+:- type flags == list(char).
+:- type maybe_width == maybe(int).
+:- type maybe_precision == maybe(int).
+
+	%
+	% Format a character (c).
+	%
+:- func format_char(flags, maybe_width, char) = string.
+format_char(Flags, Width, Char) = String :-
+	CharStr = string__char_to_string(Char),
+	String = justify_string(Flags, Width, CharStr).
+
+	%
+	% Format a string (s).
+	%
+:- func format_string(flags, maybe_width, maybe_precision, string) = string.
+format_string(Flags, Width, Prec, OldStr) = NewStr :-
+	( Prec = yes(NumChars) ->
+		PrecStr = string__substring(OldStr, 0, NumChars)
+ 	;
+		PrecStr = OldStr
+	),
+	NewStr = justify_string(Flags, Width, PrecStr).
+
+:- func format_int(flags, maybe_width, maybe_precision, int) = string.
+
+format_int(Flags, Width, Prec, Int) = String :-
+	%
+	% Find the integer's absolute value, and take care of the special
+	% case of precision zero with an integer of 0.
+	%
+	( Int = 0, Prec = yes(0) ->
+		AbsIntStr = ""
+	;
+		Integer = integer(Int),
+		AbsInteger = integer__abs(Integer),
+		AbsIntStr = integer__to_string(AbsInteger)
+	),
+	AbsIntStrLength = string__length(AbsIntStr),
+
+	%
+	% Do we need to increase precision?
+	%
+	( Prec = yes(Precision), Precision > AbsIntStrLength ->
+		PrecStr = string__pad_left(AbsIntStr, '0', Precision)
+	;
+		PrecStr = AbsIntStr
+	),
+
+	%
+	% Do we need to pad to the field width.
+	%
+	(
+		Width = yes(FieldWidth),
+		FieldWidth > string__length(PrecStr),
+		member('0', Flags),
+		\+ member('-', Flags),
+		Prec = no
+	->
+		FieldStr = string__pad_left(PrecStr, '0', FieldWidth - 1),
+		ZeroPadded = yes
+	;
+		FieldStr = PrecStr,
+		ZeroPadded = no
+	),
+
+	%
+	% Prefix with appropriate sign or zero padding.
+	% The previous step has deliberately left room for this.
+	%
+	( Int < 0 ->
+		SignedStr = "-" ++ FieldStr
+	; member('+', Flags) ->
+		SignedStr = "+" ++ FieldStr
+	; member(' ', Flags) ->
+		SignedStr = " " ++ FieldStr
+	; ZeroPadded = yes  ->
+		SignedStr = "0" ++ FieldStr
+	;
+		SignedStr = FieldStr
+	),
+
+	String = justify_string(Flags, Width, SignedStr).
+
+	%
+	% Format an unsigned int, unsigned octal, or unsigned hexadecimal
+	% (u,o,x,X).
+	%
+:- func format_unsigned_int(flags, maybe_width, maybe_precision,
+		int, int, bool, string) = string.
+
+format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
+		%
+		% Find the integer's absolute value, and take care of the
+		% special case of precision zero with an integer of 0.
+		%
+	( Int = 0, Prec = yes(0) ->
+		AbsIntStr = ""
+	;
+		integer__pow(integer(2), integer(int__bits_per_int), Div),
+		UnsignedInteger = integer(Int) mod Div,
+		( Base = 10 ->
+			AbsIntStr0 = integer__to_string(UnsignedInteger)
+		; Base = 8 ->
+			AbsIntStr0 = to_octal(UnsignedInteger)
+		; Prefix = "0x" ->
+			AbsIntStr0 = to_hex(UnsignedInteger)
+		;
+			AbsIntStr0 = to_capital_hex(UnsignedInteger)
+		),
+
+			%
+			% Just in case Int = 0 (base converters return "").
+			%
+		( AbsIntStr0 = "" ->
+			AbsIntStr = "0"
+		;
+			AbsIntStr = AbsIntStr0
+		)
+	),
+	AbsIntStrLength = string__length(AbsIntStr),
+
+		%
+		% Do we need to increase precision?
+		%
+	( Prec = yes(Precision), Precision > AbsIntStrLength ->
+		PrecStr = string__pad_left(AbsIntStr, '0', Precision)
+	;
+		PrecStr = AbsIntStr
+	),
+
+		%
+		% Do we need to increase the precision of an octal?
+		%
+	(
+		Base = 8,
+		member('#', Flags),
+		\+ string__prefix(PrecStr, "0")
+	->
+		PrecModStr = append("0", PrecStr)
+	;
+		PrecModStr = PrecStr
+	),
+
+		%
+		% Do we need to pad to the field width.
+		%
+	(
+		Width = yes(FieldWidth),
+		FieldWidth > string__length(PrecModStr),
+		member('0', Flags),
+		\+ member('-', Flags),
+		Prec = no
+	->
+			%
+			% Do we need to make room for "0x" or "0X" ?
+			%
+		(
+			Base = 16,
+			member('#', Flags),
+			( Int \= 0  ; IsTypeP = yes )
+		->
+			FieldStr = string__pad_left(PrecModStr,
+					'0', FieldWidth - 2)
+		;
+			FieldStr = string__pad_left(PrecModStr,
+					'0', FieldWidth)
+		)
+	;
+		FieldStr = PrecModStr
+	),
+
+		%
+		% Do we have to prefix "0x" or "0X"?
+		%
+	(
+		Base = 16,
+		member('#', Flags),
+		( Int \= 0 ; IsTypeP = yes )
+	->
+	 	FieldModStr = Prefix ++ FieldStr
+	;
+		FieldModStr = FieldStr
+	),
+
+	String = justify_string(Flags, Width, FieldModStr).
+
+	%
+	% Format a float (f)
+	%
+:- func format_float(flags, maybe_width, maybe_precision, float) = string.
+format_float(Flags, Width, Prec, Float) = NewFloat :-
+
+		%
+		% Determine absolute value of string.
+		%
+	Abs = abs(Float),
+
+		%
+		% Change precision (default is 6)
+		%
+	AbsStr = convert_float_to_string(Abs),
+	( is_nan_or_inf(Abs) ->
+		PrecModStr = AbsStr
+	;
+		( Prec = yes(Precision) ->
+			PrecStr = change_precision(Precision, AbsStr)
+		;
+			PrecStr = change_precision(6, AbsStr)
+		),
+
+			%
+			% Do we need to remove the decimal point?
+			%
+		( \+ member('#', Flags), Prec = yes(0) ->
+			PrecStrLen = string__length(PrecStr),
+			PrecModStr = string__substring(PrecStr,
+					0, PrecStrLen - 1)
+		;
+			PrecModStr = PrecStr
+		)
+	),
+
+		%
+		% Do we need to change field width?
+		%
+	(
+		Width = yes(FieldWidth),
+		FieldWidth > string__length(PrecModStr),
+		member('0', Flags),
+		\+ member('-', Flags)
+	->
+		FieldStr = string__pad_left(PrecModStr, '0', FieldWidth - 1),
+		ZeroPadded = yes
+	;
+		FieldStr = PrecModStr,
+		ZeroPadded = no
+
+	),
+		%
+		% Finishing up ..
+		%
+	( Float < 0.0 ->
+		SignedStr = "-" ++ FieldStr
+	; member('+', Flags) ->
+		SignedStr = "+" ++ FieldStr
+	; member(' ', Flags) ->
+		SignedStr = " " ++ FieldStr
+	; ZeroPadded = yes ->
+		SignedStr = "0" ++ FieldStr
+	;
+		SignedStr = FieldStr
+	),
+
+	NewFloat = justify_string(Flags, Width, SignedStr).
+
+	%
+	% Format a scientific number to a specified number of significant
+	% figures (g,G)
+	%
+:- func format_scientific_number_g(flags, maybe_width, maybe_precision,
+		float, string) = string.
+format_scientific_number_g(Flags, Width, Prec, Float, E) = NewFloat :-
+		%
+		% Determine absolute value of string.
+		%
+	Abs = abs(Float),
+
+		%
+		% Change precision (default is 6)
+		%
+	AbsStr = convert_float_to_string(Abs),
+	( is_nan_or_inf(Abs) ->
+		PrecStr = AbsStr
+	;
+		( Prec = yes(Precision) ->
+			(Precision = 0 ->
+				PrecStr = change_to_g_notation(AbsStr,
+						1, E, Flags)
+			;
+				PrecStr = change_to_g_notation(AbsStr,
+						Precision, E, Flags)
+			)
+		;
+			PrecStr = change_to_g_notation(AbsStr, 6, E, Flags)
+		)
+	),
+
+		%
+		% Do we need to change field width?
+		%
+	(
+		Width = yes(FieldWidth),
+		FieldWidth > string__length(PrecStr),
+		member('0', Flags),
+		\+ member('-', Flags)
+	->
+		FieldStr = string__pad_left(PrecStr, '0', FieldWidth - 1),
+		ZeroPadded = yes
+	;
+		FieldStr = PrecStr,
+		ZeroPadded = no
+	),
+
+		%
+		% Finishing up ..
+		%
+	( Float < 0.0 ->
+		SignedStr = "-" ++ FieldStr
+	; member('+', Flags) ->
+		SignedStr = "+" ++ FieldStr
+	; member(' ', Flags) ->
+		SignedStr = " " ++ FieldStr
+	; ZeroPadded = yes ->
+		SignedStr = "0" ++ FieldStr
+	;
+		SignedStr = FieldStr
+	),
+
+	NewFloat = justify_string(Flags, Width, SignedStr).
+
+	%
+	% Format a scientific number (e,E)
+	%
+:- func format_scientific_number(flags, maybe_width, maybe_precision,
+		float, string) = string.
+format_scientific_number(Flags, Width, Prec, Float, E) = NewFloat :-
+		%
+		% Determine absolute value of string.
+		%
+	Abs = abs(Float),
+
+		%
+		% Change precision (default is 6)
+		%
+	AbsStr = convert_float_to_string(Abs),
+	( is_nan_or_inf(Abs) ->
+		PrecModStr = AbsStr
+	;
+		( Prec = yes(Precision) ->
+			PrecStr = change_to_e_notation(AbsStr, Precision, E)
+		;
+			PrecStr = change_to_e_notation(AbsStr, 6, E)
+		),
+
+			%
+			% Do we need to remove the decimal point?
+			%
+		( \+ member('#', Flags), Prec = yes(0) ->
+			split_at_decimal_point(PrecStr, BaseStr, ExponentStr),
+			PrecModStr = BaseStr ++ ExponentStr
+		;
+			PrecModStr = PrecStr
+		)
+	),
+
+		%
+		% Do we need to change field width?
+		%
+	(
+		Width = yes(FieldWidth),
+		FieldWidth > string__length(PrecModStr),
+		member('0', Flags),
+		\+ member('-', Flags)
+	->
+		FieldStr = string__pad_left(PrecModStr, '0', FieldWidth - 1),
+		ZeroPadded = yes
+	;
+		FieldStr = PrecModStr,
+		ZeroPadded = no
+	),
+
+		%
+		% Finishing up ..
+		%
+	( Float < 0.0 ->
+		SignedStr = "-" ++ FieldStr
+	; member('+', Flags) ->
+		SignedStr = "+" ++ FieldStr
+	; member(' ', Flags) ->
+		SignedStr = " " ++ FieldStr
+	; ZeroPadded = yes ->
+		SignedStr = "0" ++ FieldStr
+	;
+		SignedStr = FieldStr
+	),
+
+	NewFloat = justify_string(Flags, Width, SignedStr).
+
+:- func justify_string(flags, maybe_width, string) = string.
+
+justify_string(Flags, Width, Str) =
+	( Width = yes(FWidth), FWidth > string__length(Str) ->
+		( member('-', Flags) ->
+			string__pad_right(Str, ' ', FWidth)
+		;
+			string__pad_left(Str, ' ', FWidth)
+		)
+	;
+		Str
+	).
+
+	%
+	% Convert an integer to an octal string.
+	%
+:- func to_octal(integer) = string.
+to_octal(Num) = NumStr :-
+	( Num > integer(0) ->
+		Rest = to_octal(Num // integer(8)),
+		Rem = Num rem integer(8),
+		RemStr = integer__to_string(Rem),
+		NumStr = append(Rest, RemStr)
+	;
+		NumStr = ""
+	).
+
+
+	%
+	% Convert an integer to a hexadecimal string using a-f.
+	%
+:- func to_hex(integer) = string.
+to_hex(Num) = NumStr :-
+	( Num > integer(0) ->
+		Rest = to_hex(Num // integer(16)),
+		Rem = Num rem integer(16),
+		RemStr = get_hex_int(Rem),
+		NumStr = append(Rest, RemStr)
+	;
+		NumStr = ""
+	).
+
+
+	%
+	% Convert an integer to a hexadecimal string using A-F.
+	%
+:- func to_capital_hex(integer) = string.
+to_capital_hex(Num) = NumStr :-
+	( Num > integer(0) ->
+		Rest = to_capital_hex(Num // integer(16)),
+		Rem = Num rem integer(16),
+		RemStr = get_capital_hex_int(Rem),
+		NumStr = append(Rest, RemStr)
+	;
+		NumStr = ""
+	).
+
+	%
+	% Given a decimal integer, return the hexadecimal equivalent
+	% (using % a-f).
+	%
+:- func get_hex_int(integer) = string.
+get_hex_int(Int) = HexStr :-
+	( Int < integer(10) ->
+		HexStr = integer__to_string(Int)
+	; Int = integer(10) ->
+		HexStr = "a"
+	; Int = integer(11) ->
+		HexStr = "b"
+	; Int = integer(12) ->
+		HexStr = "c"
+	; Int = integer(13) ->
+		HexStr = "d"
+	; Int = integer(14) ->
+		HexStr = "e"
+	;
+		HexStr = "f"
+	).
+
+	%
+	% Convert an integer to a hexadecimal string using A-F.
+	%
+:- func get_capital_hex_int(integer) = string.
+get_capital_hex_int(Int) = HexStr :-
+	( Int < integer(10) ->
+		HexStr = integer__to_string(Int)
+	; Int = integer(10) ->
+		HexStr = "A"
+	; Int = integer(11) ->
+		HexStr = "B"
+	; Int = integer(12) ->
+		HexStr = "C"
+	; Int = integer(13) ->
+		HexStr = "D"
+	; Int = integer(14) ->
+		HexStr = "E"
+	;
+		HexStr = "F"
+	).
+
+	%
+	% Unlike the standard library function, this function converts a float
+	% to a string without resorting to scientific notation.
+	%
+	% This predicate relies on the fact that string__float_to_string
+	% returns a float which is round-trippable, ie to the full precision
+	% needed.
+	%
+:- func convert_float_to_string(float) = string.
+convert_float_to_string(Float) = String :-
+	string__lowlevel_float_to_string(Float, FloatStr),
+
+		%
+		% check for scientific representation.
+		%
+	(
+		(
+			string__contains_char(FloatStr, 'e')
+		;
+			string__contains_char(FloatStr, 'E')
+		)
+	->
+		split_at_exponent(FloatStr, FloatPtStr, ExpStr),
+		split_at_decimal_point(FloatPtStr, MantissaStr, FractionStr),
+
+			%
+			% what is the exponent?
+			%
+		ExpInt = string__det_to_int(ExpStr),
+		( ExpInt >= 0 ->
+
+				%
+				% move decimal pt to the right.
+				%
+			ExtraDigits = ExpInt,
+			PaddedFracStr = string__pad_right(FractionStr,
+					'0', ExtraDigits),
+			string__split(PaddedFracStr, ExtraDigits,
+					MantissaRest, NewFraction),
+
+			NewMantissa = MantissaStr ++ MantissaRest,
+			MantAndPoint = NewMantissa ++ ".",
+			( NewFraction = "" ->
+				String = MantAndPoint ++ "0"
+			;
+				String = MantAndPoint ++ NewFraction
+			)
+		;
+				%
+				% move decimal pt to the left.
+				%
+			ExtraDigits = abs(ExpInt),
+			PaddedMantissaStr = string__pad_left(MantissaStr,
+					'0', ExtraDigits),
+			string__split(PaddedMantissaStr,
+					length(PaddedMantissaStr) - ExtraDigits,
+					NewMantissa, FractionRest),
+
+			( NewMantissa = "" ->
+				MantAndPoint = "0."
+			;
+				MantAndPoint = NewMantissa ++ "."
+			),
+			String = MantAndPoint ++ FractionRest ++ FractionStr
+		)
+	;
+		String = FloatStr
+	).
+
+	%
+	% Converts a floating point number to a specified number of standard
+	% figures.  The style used depends on the value converted; style e (or
+	% E) is used only if the exponent resulting from such a conversion is
+	% less than -4 or greater than or equal to the precision. Trailing
+	% zeros are removed from the fractional portion of the result unless
+	% the # flag is specified: a decimal-point character appears only if it
+	% is followed by a digit.
+	%
+:- func change_to_g_notation(string, int, string, flags) = string.
+change_to_g_notation(Float, Prec, E, Flags) = FormattedFloat :-
+	Exponent = size_of_required_exponent(Float, Prec),
+	( Exponent >= -4, Exponent < Prec ->
+			% Float will be represented normally.
+			% -----------------------------------
+			% Need to calculate precision to pass to the
+			% change_precision function, because the current
+			% precision represents significant figures, not decimal
+			% places.
+			%
+			% now change float's precision.
+			%
+		( Exponent =< 0 ->
+				%
+				% deal with floats such as 0.00000000xyz
+				%
+			DecimalPos = decimal_pos(Float),
+			FormattedFloat0 = change_precision(
+					abs(DecimalPos) - 1 + Prec, Float)
+		;
+				%
+				% deal with floats such as ddddddd.mmmmmmmm
+				%
+			ScientificFloat = change_to_e_notation(Float,
+					Prec - 1, "e"),
+			split_at_exponent(ScientificFloat,
+					BaseStr, ExponentStr),
+			Exp = string__det_to_int(ExponentStr),
+			split_at_decimal_point(BaseStr,
+					MantissaStr, FractionStr),
+			RestMantissaStr = substring(FractionStr, 0, Exp),
+			NewFraction = substring(FractionStr,
+					Exp, Prec - Exp - 1),
+			FormattedFloat0 = MantissaStr ++
+					RestMantissaStr ++ "." ++ NewFraction
+		),
+
+			%
+			% Do we remove trailing zeros?
+			%
+		( member('#', Flags) ->
+			FormattedFloat = FormattedFloat0
+		;
+			FormattedFloat = remove_trailing_zeros(FormattedFloat0)
+		)
+	;
+			% Float will be represented in scientific notation.
+			% -------------------------------------------------
+			%
+		UncheckedFloat = change_to_e_notation(Float, Prec - 1, E),
+
+			%
+			% Do we need to remove trailing zeros?
+			%
+		( member('#', Flags) ->
+			FormattedFloat = UncheckedFloat
+		;
+			split_at_exponent(UncheckedFloat,
+					BaseStr, ExponentStr),
+			NewBaseStr = remove_trailing_zeros(BaseStr),
+			FormattedFloat = NewBaseStr ++ E ++ ExponentStr
+		)
+	).
+
+	%
+	% convert floating point notation to scientific notation.
+	%
+:- func change_to_e_notation(string, int, string) = string.
+change_to_e_notation(Float, Prec, E) = ScientificFloat :-
+	UnsafeExponent = decimal_pos(Float),
+	UnsafeBase = calculate_base_unsafe(Float, Prec),
+
+		%
+		% Is mantissa greater than one digit long?
+		%
+	split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
+	( string__length(MantissaStr) > 1 ->
+		% need to append 0, to fix the problem of having no numbers
+		% after the decimal point.
+		SafeBase = calculate_base_unsafe(
+				string__append(UnsafeBase, "0"), Prec),
+		SafeExponent = UnsafeExponent + 1
+ 	;
+		SafeBase = UnsafeBase,
+		SafeExponent = UnsafeExponent
+ 	),
+		%
+		% Creating exponent.
+		%
+	( SafeExponent >= 0 ->
+		( SafeExponent < 10 ->
+			ExponentStr = string__append_list(
+				[E, "+0", string__int_to_string(SafeExponent)])
+		;
+			ExponentStr = string__append_list(
+				[E, "+", string__int_to_string(SafeExponent)])
+		)
+ 	;
+		( SafeExponent > -10 ->
+			ExponentStr = string__append_list(
+				[E, "-0", string__int_to_string(
+						int__abs(SafeExponent))])
+		;
+			ExponentStr = E ++ string__int_to_string(SafeExponent)
+		)
+ 	),
+	ScientificFloat = SafeBase ++ ExponentStr.
+
+	%
+	% Given a floating point number, this function calculates the size of
+	% the exponent needed to represent the float in scientific notation.
+	%
+:- func size_of_required_exponent(string, int) = int.
+size_of_required_exponent(Float, Prec) = Exponent :-
+	UnsafeExponent = decimal_pos(Float),
+	UnsafeBase = calculate_base_unsafe(Float, Prec),
+
+		%
+		% Is mantissa one digit long?
+		%
+	split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
+	( string__length(MantissaStr) > 1 ->
+			% we will need need to move decimal pt one place to the
+			% left: therefore, increment exponent.
+		Exponent = UnsafeExponent + 1
+	;
+		Exponent = UnsafeExponent
+	).
+
+	%
+	% Given a string representing a floating point number, function returns
+	% a string with all trailing zeros removed.
+	%
+:- func remove_trailing_zeros(string) = string.
+remove_trailing_zeros(Float) = TrimmedFloat :-
+	FloatCharList = string__to_char_list(Float),
+	FloatCharListRev = list__reverse(FloatCharList),
+	TrimmedFloatRevCharList = remove_zeros(FloatCharListRev),
+	TrimmedFloatCharList = list__reverse(TrimmedFloatRevCharList),
+	TrimmedFloat = string__from_char_list(TrimmedFloatCharList).
+
+	%
+	% Given a char list, this function removes all leading zeros, including
+	% decimal point, if need be.
+	%
+:- func remove_zeros(list(char)) = list(char).
+remove_zeros(CharNum) = TrimmedNum :-
+	( CharNum = ['0' | Rest] ->
+		TrimmedNum = remove_zeros(Rest)
+	; CharNum = ['.' | Rest] ->
+		TrimmedNum = Rest
+	;
+		TrimmedNum = CharNum
+	).
+
+	%
+	% Determine the location of the decimal point in the string that
+	% represents a floating point number.
+	%
+:- func decimal_pos(string) = int.
+decimal_pos(Float) = Pos :-
+	split_at_decimal_point(Float, MantissaStr, _FractionStr),
+	NumZeros = string__length(MantissaStr) - 1,
+	Pos = find_non_zero_pos(string__to_char_list(Float), NumZeros).
+
+	%
+	% Given a list of chars representing a floating point number, function
+	% determines the the first position containing a non-zero digit.
+	% Positions after the decimal point are negative, and those before the
+	% decimal point are positive.
+	%
+:- func find_non_zero_pos(list(char), int) = int.
+find_non_zero_pos(Xs, CurrentPos) = ActualPos :-
+	( Xs = [Y | Ys] ->
+		( is_decimal_point(Y) ->
+		  	ActualPos = find_non_zero_pos(Ys, CurrentPos)
+		; Y = '0' ->
+		 	ActualPos = find_non_zero_pos(Ys, CurrentPos - 1)
+		;
+			ActualPos = CurrentPos
+		)
+	;
+		ActualPos = 0
+	).
+
+	%
+	% Representing a floating point number in scientific notation requires
+	% a base and an exponent. This function returns the base. But it is
+	% unsafe, since particular input result in the base having a mantissa
+	% with more than one digit.  Therefore, the calling function must check
+	% for this problem.
+	%
+:- func calculate_base_unsafe(string, int) = string.
+calculate_base_unsafe(Float, Prec) = Exp :-
+	Place = decimal_pos(Float),
+	split_at_decimal_point(Float, MantissaStr, FractionStr),
+	( Place < 0 ->
+		DecimalPos = abs(Place),
+		PaddedMantissaStr = string__substring(FractionStr,
+				0, DecimalPos),
+
+			%
+			% get rid of superfluous zeros.
+			%
+		MantissaInt = string__det_to_int(PaddedMantissaStr),
+		ExpMantissaStr = string__int_to_string(MantissaInt),
+
+			%
+			% create fractional part
+			%
+		PaddedFractionStr = pad_right(FractionStr, '0', Prec + 1),
+		ExpFractionStr = string__substring(PaddedFractionStr,
+				DecimalPos, Prec + 1)
+	; Place > 0 ->
+		ExpMantissaStr = string__substring(MantissaStr, 0, 1),
+		FirstHalfOfFractionStr = string__substring(MantissaStr,
+				1, Place),
+		ExpFractionStr = FirstHalfOfFractionStr ++ FractionStr
+	;
+		ExpMantissaStr = MantissaStr,
+		ExpFractionStr = FractionStr
+ 	),
+	MantissaAndPoint = ExpMantissaStr ++ ".",
+	UnroundedExpStr = MantissaAndPoint ++ ExpFractionStr,
+	Exp = change_precision(Prec, UnroundedExpStr).
+
+	%
+	% Change the precision of a float to a specified number of decimal
+	% places.
+	%
+	% n.b. OldFloat must be positive for this function to work.
+	%
+:- func change_precision(int, string) = string.
+change_precision(Prec, OldFloat) = NewFloat :-
+	split_at_decimal_point(OldFloat, MantissaStr, FractionStr),
+	FracStrLen = string__length(FractionStr),
+	( Prec > FracStrLen ->
+		PrecFracStr = string__pad_right(FractionStr, '0', Prec),
+		PrecMantissaStr = MantissaStr
+	; Prec < FracStrLen ->
+		UnroundedFrac = string__substring(FractionStr, 0, Prec),
+		NextDigit = string__index_det(FractionStr, Prec),
+		(
+			UnroundedFrac \= "",
+			(char__to_int(NextDigit) - char__to_int('0')) >= 5
+		->
+			NewPrecFrac = string__det_to_int(UnroundedFrac) + 1,
+			NewPrecFracStrNotOK = string__int_to_string(
+					NewPrecFrac),
+			NewPrecFracStr = string__pad_left(NewPrecFracStrNotOK,
+					'0', Prec),
+			(
+				string__length(NewPrecFracStr) >
+					string__length(UnroundedFrac)
+			->
+				PrecFracStr = substring(NewPrecFracStr,
+						1, Prec),
+				PrecMantissaInt = det_to_int(MantissaStr) + 1,
+				PrecMantissaStr = int_to_string(PrecMantissaInt)
+			;
+				PrecFracStr = NewPrecFracStr,
+				PrecMantissaStr = MantissaStr
+			)
+
+		;
+			UnroundedFrac = "",
+			(char__to_int(NextDigit) - char__to_int('0')) >= 5
+		->
+			PrecMantissaInt = det_to_int(MantissaStr) + 1,
+			PrecMantissaStr = int_to_string(PrecMantissaInt),
+			PrecFracStr = ""
+		;
+			PrecFracStr = UnroundedFrac,
+			PrecMantissaStr = MantissaStr
+		)
+ 	;
+		PrecFracStr = FractionStr,
+		PrecMantissaStr = MantissaStr
+ 	),
+	HalfNewFloat = PrecMantissaStr ++ ".",
+	NewFloat = HalfNewFloat ++ PrecFracStr.
+
+:- pred split_at_exponent(string::in, string::out, string::out) is det.
+
+split_at_exponent(Str, Float, Exponent) :-
+	FloatAndExponent = string__words(is_exponent, Str),
+	list__index0_det(FloatAndExponent, 0, Float),
+	list__index0_det(FloatAndExponent, 1, Exponent).
+
+:- pred split_at_decimal_point(string::in, string::out, string::out) is det.
+
+split_at_decimal_point(Str, Mantissa, Fraction) :-
+	MantAndFrac = string__words(is_decimal_point, Str),
+	list__index0_det(MantAndFrac, 0, Mantissa),
+	( list__index0(MantAndFrac, 1, Fraction0) ->
+		Fraction = Fraction0
+	;
+		Fraction = ""
+	).
+
+:- pred is_decimal_point(char :: in) is semidet.
+is_decimal_point('.').
+
+:- pred is_exponent(char :: in) is semidet.
+is_exponent('e').
+is_exponent('E').
 
 %-----------------------------------------------------------------------------%
 
