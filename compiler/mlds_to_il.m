@@ -1010,7 +1010,14 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 		% Generate the code of the statement.
 	( 
 		{ MaybeStatement = defined_here(Statement) },
-		statement_to_il(Statement, InstrsTree1)
+		statement_to_il(Statement, InstrsTree1),
+			% Need to insert a ret for functions returning
+			% void (MLDS doesn't).
+		{ Returns = [] ->
+			MaybeRet = instr_node(ret)
+		;
+			MaybeRet = empty
+		}
 	; 
 		{ MaybeStatement = external },
 
@@ -1029,16 +1036,9 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			node(LoadInstrs),
 			instr_node(call(get_static_methodref(ClassName,
 				MemberName, ILRetType, TypeParams)))
-			]) }
+			]) },
+		{ MaybeRet = instr_node(ret) }
 	),
-
-		% Need to insert a ret for functions returning
-		% void (MLDS doesn't).
-	{ Returns = [] ->
-		MaybeRet = instr_node(ret)
-	;
-		MaybeRet = empty
-	},
 
 		% Retrieve the locals, put them in the enclosing
 		% scope.
