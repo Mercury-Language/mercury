@@ -121,6 +121,17 @@ mercury__io__read_char_code_4_0:
 	update_io(r3, r4);
 	proceed();
 
+mercury__io__putback_char_4_0:
+	if (r2 == '\n') {
+		((MercuryFile*)r1)->line_number--;
+	}
+	/* XXX should work even if ungetc() fails */
+	if (ungetc(r2, ((MercuryFile*)r1)->file) == EOF) {
+		fatal_error("io__putback_char: ungetc failed");
+	}
+	update_io(r3, r4);
+	proceed();
+
 /* output predicates - with output to mercury_current_output */
 
 mercury__io__write_string_3_0:
