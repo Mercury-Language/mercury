@@ -1,6 +1,6 @@
 echo on
 register --quiet
-break test
+break dependency2__test
 continue
 finish
 dd
