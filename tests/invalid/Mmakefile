@@ -112,6 +112,7 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #	typeclass_test_8.m (minor formatting error in the output --
 #			the type class name should be in quotes;
 #			also a software_error)
+#	typeclass_mode_{2,3,4}.m (compiler calls error/1)
 
 MCFLAGS-aditi_errors =		--aditi
 MCFLAGS-aditi_state_errors =	--aditi
