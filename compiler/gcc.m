@@ -683,7 +683,16 @@
 #include ""gcc/system.h""
 #include ""gcc/toplev.h""
 #include ""gcc/tree.h""
-/* XXX we should eliminate the dependency on the C front-end */
+
+/* XXX The inclusion of c-tree.h is an undesirable dependency on GCC's
+   C front-end.  It is only needed for versions of
+   the mercury-gcc distribution based on GCC 3.2 or earlier.
+   In later versions, I modified the mercury-gcc distribution so that 
+   it no longer depends on the C front-end, making the inclusion of
+   c-tree.h unnecessary.
+   This line should be removed once GCC 3.3 has been official released
+   and we have then officially released a version of Mercury that uses
+   GCC 3.3. */
 #include ""gcc/c-tree.h""
 #include ""gcc/ggc.h""
 
