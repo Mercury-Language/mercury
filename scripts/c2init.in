@@ -29,6 +29,9 @@ Options:
 		tracing to print (partial) stack traces, and to print the
 		values of variables in ancestors of the current call, even
 		in grades in which this not normally possible.
+	-t, --trace
+		Enable execution tracing in the generated executable.
+		Implies -i.
 	-l, --library
 		Don't generate a \`main()' function.
 		Instead, generate a function
@@ -60,43 +63,80 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 maxcalls=40
 defentry=mercury__main_2_0
 init_opt=""
+trace_opt=""
 library_opt=""
 extra_inits_opt=""
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
 while true; do
 	case "$1" in
 	-c|--max-calls)
-		maxcalls="$2"; shift; shift;;
+		maxcalls="$2"; shift;;
+
 	-i|--include-initialization-code)
-		init_opt="-i"; shift;;
+		init_opt="-i";;
+
+	-t|--trace)
+		trace_opt="-t";;
+
 	-l|--library)
-		library_opt="-l"; shift;;
+		library_opt="-l";;
+
 	-l-|--no-library)
-		library_opt=""; shift;;
+		library_opt="";;
+
 	-w|--entry-point)
-		defentry="$2"; shift; shift;;
+		defentry="$2"; shift;;
+
 	-x|--extra-inits)
-		extra_inits_opt="-x"; shift;;
+		extra_inits_opt="-x";;
+
 	-x-|--no-extra-inits)
-		extra_inits_opt=""; shift;;
+		extra_inits_opt="";;
+
 	-h|--help|"-?")
 		echo "$Help"
 		exit 0;;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
 	--)
-		shift; break;;
+		break;;
+
 	-*)
 		echo "`basename $0`: invalid option \`$1'" 1>&2;
 		echo "Try \`$0 --help' for help." 1>&2;
 		exit 1;;
+
 	*)
 		break;;
 	esac
+	shift
 done
 
+case $require_tracing in
+	true)
+		trace_opt="-t"
+esac
+
+case $stack_trace in
+	true)
+		init_opt="-i"
+esac
+
+case "$trace_opt" in
+	-t)
+		init_opt="-i"
+esac
+
 case $# in
-	0) exec $MKINIT -c"$maxcalls" $init_opt $library_opt \
+	0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt $library_opt \
 		-w"$defentry" $extra_inits_opt $MERCURY_MOD_LIB_MODS
 	   ;;
-	*) exec $MKINIT -c"$maxcalls" $init_opt $library_opt \
+	*) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt $library_opt \
 		-w"$defentry" $extra_inits_opt "$@" $MERCURY_MOD_LIB_MODS
 	   ;;
 esac

@@ -32,7 +32,6 @@
 :- import_module std_util, string, term, term_io, tree234, varset.
 :- import_module store, rbtree, parser, lexer, ops.
 :- import_module prolog.
-:- import_module debugger_interface.
 :- import_module integer, rational.
 
 % library__version must be implemented using pragma c_code,

@@ -85,6 +85,13 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 
+# If you change these, you will also need to change Mmake.common.in
+# and tools/bootcheck.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
 verbose=false
 case $FULLARCH in
 	*-win95|*-winnt|*-win32|*-cygwin32)
@@ -366,13 +373,16 @@ LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 
 case $mercury_libs in
 	shared)
-		LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC $STDLIBS"}
+		LIBS=${MERCURY_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC $STDLIBS"}
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
 		;;
-	static) LIBS=${MERCURY_LIBS="\
-			$LIBDIR/$GRADE/$FULLARCH/libmercury.a \
-			$LIBDIR/$GRADE/$FULLARCH/libmer.a \
+	static)
+		LIBS=${MERCURY_LIBS="\
+			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
+			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a \
+			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
+			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
 			$LIBGC_STATIC \
 			$STDLIBS"}
 		merc_shlib_dirs=""

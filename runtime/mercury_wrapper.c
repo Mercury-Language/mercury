@@ -37,7 +37,8 @@ ENDINIT
 #include	"mercury_timing.h"
 #include	"mercury_init.h"
 #include	"mercury_dummy.h"
-#include	"mercury_trace.h"
+#include	"mercury_stack_layout.h"
+#include	"mercury_trace_base.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -146,6 +147,9 @@ bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
 		Integer, Integer, Integer, Word, String, Word);
 		/* normally ML_DI_found_match (output_current/12) */
 void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
+
+void	(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_trace_port,
+		Word, Word, const char *, int);
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

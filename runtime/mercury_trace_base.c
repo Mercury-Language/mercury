@@ -14,10 +14,7 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_trace.h"
-#include "mercury_trace_util.h"
-#include "mercury_trace_internal.h"
-#include "mercury_trace_external.h"
+#include "mercury_trace_base.h"
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
@@ -88,6 +85,30 @@ Unsigned	MR_trace_event_number = 0;
 */
 
 Bool		MR_trace_from_full = 1;
+
+void
+MR_trace(const MR_Stack_Layout_Label *layout, MR_trace_port port,
+	Word seqno, Word depth, const char * path, int max_mr_num,
+	bool trace_this_event)
+{
+	if (MR_trace_enabled && trace_this_event) {
+		(*MR_trace_func_ptr)(layout, port, seqno, depth,
+			path, max_mr_num);
+	}
+}
+
+void
+MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_trace_port port,
+	Word seqno, Word depth, const char * path, int max_mr_num)
+{
+	fatal_error("This executable is not set up for debugging.\n"
+		"Rebuild the <main>_init.c file, "
+		"and give the -t flag to c2init when you do so.\n"
+		"If you are using mmake, you can do this by including "
+		"-t in C2INIT_FLAGS.\n");
+	/* XXX refer to the debugging chapter in the user guide */
+	/* when it is written */
+}
 
 void
 MR_trace_init(void)

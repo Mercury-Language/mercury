@@ -11,8 +11,41 @@
 ** is compiled with execution tracing.
 */
 
-#ifndef MERCURY_TRACE_PERMANENT_H
-#define MERCURY_TRACE_PERMANENT_H
+#ifndef MERCURY_TRACE_BASE_H
+#define MERCURY_TRACE_BASE_H
+
+#include <stdio.h>
+
+/*
+** This enum should EXACTLY match the definition of the `trace_port_type' type
+** in library/debugger_interface.
+*/
+
+typedef	enum {
+	MR_PORT_CALL,
+	MR_PORT_EXIT,
+	MR_PORT_FAIL,
+	MR_PORT_THEN,
+	MR_PORT_ELSE,
+	MR_PORT_DISJ,
+	MR_PORT_SWITCH,
+	MR_PORT_PRAGMA_FIRST,
+	MR_PORT_PRAGMA_LATER
+} MR_trace_port;
+
+/*
+** MR_trace is called from Mercury modules compiled with tracing.
+** It performs an indirect call through MR_trace_func_ptr, which
+** will point either to MR_trace_real, which is defined in the trace
+** library, or to MR_trace_fake, defined here, which just prints an
+** error message and aborts.
+*/
+
+extern	void	MR_trace(const MR_Stack_Layout_Label *, MR_trace_port,
+			Word, Word, const char *, int, bool);
+
+extern	void	MR_trace_fake(const MR_Stack_Layout_Label *, MR_trace_port,
+			Word, Word, const char *, int);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()
@@ -71,4 +104,4 @@ extern	Bool		MR_trace_from_full;
 extern	void	MR_trace_report(FILE *fp);
 extern	void	MR_trace_report_raw(int fd);
 
-#endif /* MERCURY_TRACE_PERMANENT_H */
+#endif /* MERCURY_TRACE_BASE_H */

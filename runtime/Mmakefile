@@ -6,7 +6,7 @@
 
 # Mmake - Mmake file for the Mercury runtime library
 
-MAIN_TARGET=lib
+MAIN_TARGET=runtime
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
@@ -69,21 +69,17 @@ HDRS		=	\
 			mercury_tags.h		\
 			mercury_thread.h	\
 			mercury_timing.h	\
-			mercury_trace.h		\
 			mercury_trace_base.h	\
-			mercury_trace_external.h \
-			mercury_trace_internal.h \
 			mercury_trace_util.h	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
 			mercury_wrapper.h	\
-			$(LIBMER_DLL_H)
+			$(LIB_DLL_H)
 
-# Note that `libmer_globals.h' cannot be part of $(HDR),
-# since it depends on libmer_def.a, and $(OBJ) : $(HDR) would create a
+# Note that $(LIB_GLOBALS_H) cannot be part of $(HDR), since it depends on
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a, and $(OBJ) : $(HDR) would create a
 # circular dependency.
-
 
 MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/i386_regs.h	\
@@ -127,10 +123,7 @@ CFILES		= 	\
 			mercury_table_type_info.c \
 			mercury_thread.c	\
 			mercury_timing.c	\
-			mercury_trace.c		\
 			mercury_trace_base.c	\
-			mercury_trace_external.c \
-			mercury_trace_internal.c \
 			mercury_trace_util.c	\
 			mercury_trail.c 	\
 			mercury_type_info.c	\
@@ -158,19 +151,19 @@ THREADLIBS	= \
 
 ifeq ($(USE_DLLS),yes)
 
-DLL_CFLAGS	= -Dlibmer_DEFINE_DLL
+DLL_CFLAGS	= -Dlib$(RT_LIB_NAME)_DEFINE_DLL
 
 # the following header files are created automatically by Makefile.DLLs
-LIBMER_DLL_H	 = libmer_dll.h
-LIBMER_GLOBALS_H = libmer_globals.h
+LIB_DLL_H     = lib$(RT_LIB_NAME)_dll.h
+LIB_GLOBALS_H = lib$(RT_LIB_NAME)_globals.h
 
 include $(MERCURY_DIR)/Makefile.DLLs
 
 else
 
 DLL_CFLAGS =
-LIBMER_DLL_H =
-LIBMER_GLOBALS_H =
+LIB_DLL_H =
+LIB_GLOBALS_H =
 DLL_DEF_LIB =
 
 endif
@@ -181,23 +174,24 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: lib
-lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init \
-	$(LIBMER_DLL_H) $(LIBMER_GLOBALS_H)
+.PHONY: runtime
+runtime: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+runtime: $(RT_LIB_NAME).init
+runtime: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
-libmer$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f libmer$(DLL_DEF_LIB).a
-	ar cr libmer$(DLL_DEF_LIB).a $(OBJS)
-	$(RANLIB) libmer$(DLL_DEF_LIB).a
+lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
+	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
+	ar cr lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
+	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
 
-libmer.so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
+lib$(RT_LIB_NAME).so: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) -o lib$(RT_LIB_NAME).so $(PIC_OBJS)		\
 		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
-runtime.init: $(CFILES)
-	cat `vpath_find $(CFILES)` | grep '^INIT ' > runtime.init
+$(RT_LIB_NAME).init: $(CFILES)
+	cat `vpath_find $(CFILES)` | grep '^INIT ' > $(RT_LIB_NAME).init
 
 mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
 	CONFIG_FILES= CONFIG_HEADERS=mercury_conf.h $(MERCURY_DIR)/config.status
@@ -229,22 +223,27 @@ check_headers:
 install: install_headers install_init install_lib
 
 .PHONY: install_headers
-install_headers: $(HDRS) $(MACHHDRS) $(LIBMER_GLOBALS_H)
+install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H)
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
-	cp `vpath_find $(HDRS) $(LIBMER_GLOBALS_H)` $(INSTALL_INC_DIR)
+	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
-install_init: runtime.init
+install_init: $(RT_LIB_NAME).init
 	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	cp `vpath_find runtime.init` $(INSTALL_MODULE_DIR)
+	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_MODULE_DIR)
+	# "$(RT_LIB_NAME).init" used to be called "runtime.init".
+	# If there is still a version with an old name lying around,
+	# then delete it; otherwise the initialization would get done twice.
+	rm -f $(INSTALL_MODULE_DIR)/runtime.init
 
 .PHONY: install_lib
-install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
+install_lib: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmer.a libmer.$(EXT_FOR_SHARED_LIB)` \
+	cp `vpath_find lib$(RT_LIB_NAME).a \
+		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
@@ -261,7 +260,7 @@ clean_o:
 	rm -f $(OBJS) $(PIC_OBJS) 
 
 realclean:
-	rm -f libmer.a libmer.so runtime.init
+	rm -f lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
 	rm -f mercury_conf.h mercury_conf.h.date
 
 #-----------------------------------------------------------------------------#

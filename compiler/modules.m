@@ -2424,8 +2424,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		InitCFileName, " : ", DepFileName, "\n",
-		"\t$(C2INIT) $(ALL_C2INITFLAGS) $(", MakeVarName, ".cs) > ",
-			InitCFileName, "\n\n"
+		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
+			MakeVarName, ".cs) > ", InitCFileName, "\n\n"
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),

@@ -48,13 +48,9 @@ static	void	MR_trace_event_report(const MR_Stack_Layout_Label *layout,
 */
 
 void
-MR_trace(const MR_Stack_Layout_Label *layout, MR_trace_port port,
-	Unsigned seqno, Unsigned depth, const char *path, int max_r_num,
-	bool trace_this)
+MR_trace_real(const MR_Stack_Layout_Label *layout, MR_trace_port port,
+	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
 {
-	if (! (MR_trace_enabled && trace_this))
-		return;
-
 	MR_trace_event_number++;
 
 	switch (MR_trace_ctrl.MR_trace_cmd) {

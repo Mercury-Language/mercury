@@ -5,15 +5,17 @@
 */
 
 /*
-** mercury_wrapper.h - defines the interface to wrapper.c.
-** See wrapper.c for documentation.
+** mercury_wrapper.h - defines the interface to mercury_wrapper.c.
+** See mercury_wrapper.c for documentation.
 */
 
 #ifndef	MERCURY_WRAPPER_H
 #define	MERCURY_WRAPPER_H
 
-#include <stddef.h>	/* for `size_t' */
-#include "mercury_std.h"	/* for `bool' */
+#include <stddef.h>			/* for `size_t' */
+#include "mercury_std.h"		/* for `bool' */
+#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' */
+#include "mercury_trace_base.h"		/* for `MR_trace_port' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -85,6 +87,8 @@ void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 String	(*MR_type_name)(Word);
 		/* normally ML_type_name (type_name/1) */ 
 
+void    (*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_trace_port,
+                Word, Word, const char *, int);
 
 extern	void		do_init_modules(void);
 

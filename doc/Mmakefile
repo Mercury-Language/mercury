@@ -95,17 +95,14 @@ mercury_library.info: library.texi
 
 # The following rules automatically build the library documentation
 # by extracting the module interfaces from the library source code.
-# Note that the debugger_interface.m module is just an implementation
+# Note that the private_builtin.m module is just an implementation
 # detail of the library, so it is not documented.
-# Same goes for private_builtin.m.
 
 library-menu.texi: $(LIBRARY_DIR)/*.m
 	{								\
 	echo "";							\
 	for filename in $(LIBRARY_DIR)/*.m; do				\
 		case $$filename in					\
-			$(LIBRARY_DIR)/debugger_interface.m)		\
-				;;					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			*)						\
@@ -118,8 +115,6 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 library-chapters.texi: $(LIBRARY_DIR)/*.m
 	for filename in $(LIBRARY_DIR)/*.m; do 				\
 		case $$filename in					\
-			$(LIBRARY_DIR)/debugger_interface.m)		\
-				;;					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			*)						\

@@ -22,7 +22,7 @@
 */
 #include "mercury_conf.h" /* for USE_DLLS */
 #if USE_DLLS
-  #include "libmer_dll.h"
+  #include "libmer_rt_dll.h"
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -83,6 +83,7 @@ extern	int	mercury_terminate(void);
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),
 				   etc. */
+#include "mercury_trace_base.h"	/* for MR_trace_port */
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
@@ -118,6 +119,13 @@ void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
 /* in library/std_util.m  */
 String	ML_type_name(Word);
 
+/* in runtime/mercury_trace_base.c */
+void	MR_trace_fake(const MR_Stack_Layout_Label *, MR_trace_port,
+		Word, Word, const char *, int);
+
+/* in trace/mercury_trace.c */
+void	MR_trace_real(const MR_Stack_Layout_Label *, MR_trace_port,
+		Word, Word, const char *, int);
 
 #endif /* not MERCURY_INIT_H */
 

@@ -65,7 +65,7 @@
 
 #include "mercury_imp.h"
 #include "mercury_signal.h"
-#include "mercury_trace.h"
+#include "mercury_trace_base.h"
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"
 

@@ -44,6 +44,7 @@ static char **files;
 static bool output_main_func = TRUE;
 static bool c_files_contain_extra_inits = FALSE;
 static bool need_initialization_code = FALSE;
+static bool need_tracing = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
@@ -146,6 +147,7 @@ static const char mercury_funcs[] =
 	"	MR_DI_found_match = ML_DI_found_match;\n"
 	"	MR_DI_read_request_from_socket = ML_DI_read_request_from_socket;\n"
 	"#endif\n"
+	"	MR_trace_func_ptr = %s;\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
@@ -260,7 +262,7 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:ilw:x")) != EOF) {
+	while ((c = getopt(argc, argv, "c:iltw:x")) != EOF) {
 		switch (c) {
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
@@ -273,6 +275,11 @@ parse_options(int argc, char *argv[])
 
 		case 'l':
 			output_main_func = FALSE;
+			break;
+
+		case 't':
+			need_tracing = TRUE;
+			need_initialization_code = TRUE;
 			break;
 
 		case 'w':
@@ -297,7 +304,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"Usage: mkinit [-c maxcalls] [-w entry] [-l] [-x] files...\n");
+		"Usage: mkinit [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
 	exit(1);
 }
 
@@ -367,7 +374,10 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	printf(mercury_funcs, entry_point, entry_point);
+	const char *trace_func;
+
+	trace_func = (need_tracing ? "MR_trace_real" : "MR_trace_fake");
+	printf(mercury_funcs, entry_point, trace_func, entry_point);
 	if (output_main_func) {
 		fputs(main_func, stdout);
 	}

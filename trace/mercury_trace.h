@@ -35,30 +35,13 @@
 #define	MR_trace_incr_depth()	(++MR_trace_call_depth)
 #define	MR_trace_reset_depth(d)	do { MR_trace_call_depth = (d); } while (0)
 
-/*
-** This enum should EXACTLY match the definition of the `trace_port_type' type
-** in library/debugger_interface.
-*/
-typedef	enum {
-	MR_PORT_CALL,
-	MR_PORT_EXIT,
-	MR_PORT_FAIL,
-	MR_PORT_THEN,
-	MR_PORT_ELSE,
-	MR_PORT_DISJ,
-	MR_PORT_SWITCH,
-	MR_PORT_PRAGMA_FIRST,
-	MR_PORT_PRAGMA_LATER
-} MR_trace_port;
-
-extern	void	MR_trace(
+extern	void	MR_trace_real(
 	const MR_Stack_Layout_Label *,	/* layout info for the event */
 	MR_trace_port,
 	Word,			/* call sequence number */
 	Word,			/* call depth */
 	const char *,		/* path to event goal within procedure */
-	int,			/* highest numbered rN register in use */
-	bool);			/* is this event supposed to be traced */
+	int);			/* highest numbered rN register in use */
 
 /* The interface between the debuggers and the tracing subsystem. */
 

@@ -13,7 +13,17 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
+SUBDIRS = \
+		scripts \
+		util \
+		boehm_gc \
+		runtime \
+		library \
+		trace \
+		browser \
+		compiler \
+		doc \
+		profiler
 
 MMAKEFLAGS =
 
@@ -37,13 +47,19 @@ POSTINSTALL_HACK =
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_compiler dep_profiler
+dep: dep_library dep_browser dep_compiler dep_profiler
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)library.dep
 
 library/$(deps_subdir)library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_browser
+dep_browser: browser/$(deps_subdir)browser.dep
+
+browser/$(deps_subdir)browser.dep:
+	cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
 dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
@@ -62,12 +78,17 @@ profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
 .PHONY: depend
 depend:
 	cd library && $(SUBDIR_MMAKE) depend
+	cd browser && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_library
 depend_library:
 	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_browser
+depend_browser:
+	cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_compiler
 depend_compiler:
@@ -82,13 +103,13 @@ depend_profiler:
 .PHONY: all
 all: README INSTALL $(SUBDIRS)
 
+.PHONY: util
+util: scripts
+	cd util && $(SUBDIR_MMAKE)
+
 .PHONY: scripts
 scripts:
 	cd scripts && $(SUBDIR_MMAKE)
-
-.PHONY: runtime
-runtime: scripts boehm_gc
-	cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: boehm_gc
 boehm_gc: scripts
@@ -102,30 +123,38 @@ boehm_gc: scripts
 	esac; \
 	cd boehm_gc && $(SUBDIR_MMAKE) PROF=$$prof
 
+.PHONY: runtime
+runtime: scripts boehm_gc
+	cd runtime && $(SUBDIR_MMAKE)
+
 .PHONY: library
-library: dep_library scripts runtime boehm_gc
+library: dep_library scripts util boehm_gc runtime
 	cd library && $(SUBDIR_MMAKE)
 
+.PHONY: browser
+browser: dep_browser scripts util boehm_gc runtime library
+	cd browser && $(SUBDIR_MMAKE)
+
+.PHONY: runtime
+trace: scripts boehm_gc runtime library browser
+	cd trace && $(SUBDIR_MMAKE)
+
 .PHONY: compiler
-compiler: dep_compiler scripts util runtime boehm_gc library
+compiler: dep_compiler scripts util boehm_gc runtime library browser trace
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
 doc: scripts
 	cd doc && $(SUBDIR_MMAKE)
 
-.PHONY: util
-util: scripts
-	cd util && $(SUBDIR_MMAKE)
-
 .PHONY: profiler
-profiler: dep_profiler scripts util runtime boehm_gc library
+profiler: dep_profiler scripts util boehm_gc runtime library
 	cd profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
-tags: tags_compiler tags_profiler tags_library
+tags: tags_compiler tags_library tags_browser tags_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -134,6 +163,10 @@ tags_compiler:
 .PHONY: tags_library
 tags_library:
 	cd library && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_browser
+tags_browser:
+	cd browser && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_profiler
 tags_profiler:
@@ -169,9 +202,12 @@ INSTALL: .INSTALL.in VERSION
 tar: README INSTALL
 	touch Mmake.params
 	cd util && mmake
-	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
+	cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
 	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) all-ints cs libmercury.init tags
+	cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	cd browser && $(SUBDIR_MMAKE) depend
+	cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
+	cd trace && $(SUBDIR_MMAKE) cs
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) cs tags
 	cd profiler && $(SUBDIR_MMAKE) depend
@@ -228,7 +264,8 @@ install: install_main install_grades
 .PHONY: install_main
 install_main: all $(PREINSTALL_HACK) \
 		install_scripts install_util install_runtime install_boehm_gc \
-  		install_library install_compiler install_profiler install_doc \
+  		install_library install_browser install_trace \
+		install_compiler install_profiler install_doc \
 		$(POSTINSTALL_HACK)
  
 .PHONY: install_scripts
@@ -242,6 +279,10 @@ install_util: util
 .PHONY: install_runtime
 install_runtime: runtime
 	cd runtime && $(SUBDIR_MMAKE) install
+
+.PHONY: install_trace
+install_trace: trace
+	cd trace && $(SUBDIR_MMAKE) install
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
@@ -259,6 +300,10 @@ install_boehm_gc: boehm_gc
 install_library: dep_library library
 	cd library && $(SUBDIR_MMAKE) install
 
+.PHONY: install_browser
+install_browser: dep_browser browser
+	cd browser && $(SUBDIR_MMAKE) install
+
 .PHONY: install_compiler
 install_compiler: dep_compiler compiler
 	cd compiler && $(SUBDIR_MMAKE) install
@@ -272,13 +317,17 @@ install_profiler: profiler
 	cd profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_grades
-install_grades: scripts dep_library
+install_grades: scripts dep_library dep_browser
 	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
+	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
+	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
 	        case "$$grade" in \
@@ -295,9 +344,15 @@ install_grades: scripts dep_library
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd library && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		( cd browser && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		( cd trace && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd library && rm -f *.c *.o *.pic_o *.a *.so ) && \
+		( cd browser && rm -f *.c *.o *.pic_o *.a *.so ) && \
+		( cd trace && rm -f *.o *.pic_o *.a *.so ) && \
 		true \
 		|| exit 1; \
 	    fi; \
@@ -305,6 +360,8 @@ install_grades: scripts dep_library
 	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd library  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd browser  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 .PHONY: install_split_library
 install_split_library: scripts dep_library
@@ -333,6 +390,10 @@ touch_files:
 	touch library/*.optdate
 	chmod +w library/*.dep
 	touch library/*.dep
+	touch browser/*.date*
+	touch browser/*.optdate
+	chmod +w browser/*.dep
+	touch browser/*.dep
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep
@@ -344,6 +405,8 @@ touch_files:
 	touch boehm_gc/*.c
 	touch runtime/*.c
 	touch library/*.c
+	touch browser/*.c
+	touch trace/*.c
 	touch compiler/*.c
 	touch profiler/*.c
 	touch doc/*.info doc/*.dvi doc/*.html config.status
@@ -387,7 +450,7 @@ clean: clean_subdirs
 
 .PHONY: clean_subdirs
 clean_subdirs:
-	rm -rf runtime/tmp_dir library/tmp_dir
+	rm -rf runtime/tmp_dir library/tmp_dir browser/tmp_dir trace/tmp_dir
 	for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
