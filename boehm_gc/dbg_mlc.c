@@ -343,10 +343,10 @@ void GC_start_debugging()
 }
 
 # ifdef GC_ADD_CALLER
-#   define EXTRA_ARGS word ra, char * s, int i
+#   define EXTRA_ARGS word ra, const char * s, int i
 #   define OPT_RA ra,
 # else
-#   define EXTRA_ARGS char * s, int i
+#   define EXTRA_ARGS const char * s, int i
 #   define OPT_RA
 # endif
 
