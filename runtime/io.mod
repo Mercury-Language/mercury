@@ -86,6 +86,10 @@ mercury_close(MercuryFile* mf)
 	oldmem(mf);
 }
 
+#define COMPARE_EQUAL 0
+#define COMPARE_LESS 1
+#define COMPARE_GREATER 2
+
 BEGIN_MODULE(io_module)
 	mercury_init_io();
 BEGIN_CODE
@@ -183,6 +187,16 @@ mercury__io__flush_output_3_0:
 
 mercury____Unify___io__stream_0_0:
 	r1 = ((MercuryFile*) r2 == (MercuryFile *)r3);
+	proceed();
+
+mercury____Compare___io__stream_0_0:
+	r1 = ((r2 < r3) ? COMPARE_LESS :
+	      (r2 > r3) ? COMPARE_GREATER :
+			  COMPARE_EQUAL);
+	proceed();
+
+mercury____Index___io__stream_0_0:
+	r2 = -1;
 	proceed();
 
 mercury__io__stdin_stream_3_0:
@@ -289,8 +303,10 @@ mercury__io__call_system_code_4_0:
 	proceed();
 
 mercury____Unify___io__external_state_0_0:
-	/* the unique mode system should prevent this */
-	fatal_error("cannot unify io__external_state");
+mercury____Compare___io__external_state_0_0:
+mercury____Index___io__external_state_0_0:
+	/* the unique mode system should prevent these */
+	fatal_error("cannot unify/compare/index io__external_state");
 
 /*---------------------------------------------------------------------------*/
 
@@ -324,7 +340,7 @@ mercury__report_stats_0_0:
 mercury__type_to_univ_2_0:
 	/*
 	 *  Forward mode - convert from type to univ.
-	 *  On entry r1 contains unification pred for type T,
+	 *  On entry r1 contains type_info for type T,
 	 *  and r2 contains the input argument of type T.
 	 *  On exit r3 contains the output argument of type univ.
 	 */
@@ -339,15 +355,12 @@ mercury__type_to_univ_2_0:
 mercury__type_to_univ_2_1:
 	/*
 	 *  Backward mode - convert from univ to type.
-	 *  On entry r2 contains unification pred for type T,
+	 *  On entry r2 contains type_info for type T,
 	 *  and r4 contains the input argument of type univ.
 	 *  On successful exit r3 contains the output argument of type T;
 	 *  r1 is for the success/failure indication.
 	 *
-	 *  We check that the addresses of the unification predicates match.
-	 *  This will still give false positive results, because the
-	 *  unification procedure address may be the same even if the types
-	 *  are not - for example, for different enumeration types.
+	 *  We check that the type_info addresses match.
 	 */
 	if (field(mktag(0), r4, 0) != r2) {
 		r1 = FALSE;
@@ -358,14 +371,49 @@ mercury__type_to_univ_2_1:
 	proceed();
 
 mercury____Unify___univ_0_0:
+	/* Unification for univ:
+	** This is probably bogus, but who cares?
+	*/
+
+	/* first check the type_info addresses match */
 	r1 = field(mktag(0), r2, 0);
 	if (r1 != field(mktag(0), r3, 0)) {
 		r1 = FALSE;
 		proceed();
 	}
-	r2 = field(mktag(0), r2, 1);
+
+	/* then invoke the generic unification predicate on the
+	   unwrapped args */
+	r4 = field(mktag(0), r3, 1);
+	r3 = field(mktag(0), r2, 1);
+	r2 = r1;
+	tailcallentry(mercury__unify_2_0);
+
+mercury____Compare___univ_0_0:
+	/* Comparison for univ:
+	** This is probably bogus, but who cares?
+	*/
+
+	/* first compare the type_info, then if
+	   they are equal invoke the generic compare/3 predicate on
+	   the unwrapped args */
+	r1 = field(mktag(0), r2, 0);
+	r4 = field(mktag(0), r3, 0);
+	if (r1 < r4) {
+		r1 = COMPARE_LESS;
+		proceed();
+	}
+	if (r1 > r4) {
+		r1 = COMPARE_GREATER;
+		proceed();
+	}
+	r4 = field(mktag(0), r3, 1);
 	r3 = field(mktag(0), r2, 1);
 	tailcall((Code *)r1);
+
+mercury____Index___univ_0_0:
+	r2 = -1;
+	proceed();
 
 /*---------------------------------------------------------------------------*/
 
