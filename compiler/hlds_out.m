@@ -658,9 +658,9 @@ hlds_out__write_string_list([Name1, Name2|Names]) -->
 	io__write_string(", "),
 	hlds_out__write_string_list([Name2|Names]).
 
-:- pred hlds_out__write_unification(unification, module_info, varset,
+:- pred hlds_out__write_unification(unification, module_info, varset, int,
 					io__state, io__state).
-:- mode hlds_out__write_unification(in, in, in, di, uo) is det.
+:- mode hlds_out__write_unification(in, in, in, in, di, uo) is det.
 
 hlds_out__write_unification(assign(X, Y), _ModuleInfo, VarSet, _Indent) -->
 	mercury_output_var(X, VarSet),
@@ -670,14 +670,14 @@ hlds_out__write_unification(simple_test(X, Y), _ModuleInfo, VarSet, _Indent) -->
 	mercury_output_var(X, VarSet),
 	io__write_string(" == "),
 	mercury_output_var(Y, VarSet).
-hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, Indent),
-		_ModuleInfo, VarSet) -->
+hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes),
+		ModuleInfo, VarSet, Indent) -->
 	mercury_output_var(Var, VarSet),
 	io__write_string(" := "),
 	mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
 			Indent).
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
-		CanFail), _ModuleInfo, VarSet, Indent) -->
+		CanFail), ModuleInfo, VarSet, Indent) -->
 	mercury_output_var(Var, VarSet),
 	( { CanFail = can_fail },
 		io__write_string(" ?= ")
@@ -700,18 +700,18 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail, _),
 
 :- pred mercury_output_functor(cons_id, list(var), list(uni_mode),
 			module_info, varset, int, io__state, io__state).
-:- mode mercury_output_functor(in, in, in, in, in, di, uo) is det.
+:- mode mercury_output_functor(in, in, in, in, in, in, di, uo) is det.
 
-mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
+mercury_output_functor(ConsId, ArgVars, ArgModes, _ModuleInfo, VarSet,
 		Indent) -->
 	hlds_out__write_cons_id(ConsId),
-	( ArgVars = [] ->
+	( { ArgVars = [] } ->
 		[]
 	;
 		io__write_string(" ("),
 		mercury_output_vars(ArgVars, VarSet),
 		io__write_string(")"),
-		mercury_output_indent(Indent),
+		mercury_output_newline(Indent),
 		io__write_string("% arg-modes "),
 		mercury_output_uni_mode_list(ArgModes, VarSet)
 	).
