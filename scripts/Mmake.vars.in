@@ -69,6 +69,7 @@ LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
 
 MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c
+MCE		= $(MC) --errorcheck-only
 MCD		= $(MC) --generate-dependencies
 MCI		= $(MC) --make-interface
 MCPI		= $(MC) --make-private-interface

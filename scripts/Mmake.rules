@@ -235,7 +235,7 @@ $(dirs_subdir)%.dir/*.$O: %.m
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MC) $(ALL_MCFLAGS) --errorcheck-only $< > $@ 2>&1
+	$(MCE) $(ALL_MCFLAGS) $< > $@ 2>&1
 	@touch $@
 
 .m.ugly:

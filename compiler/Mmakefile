@@ -51,6 +51,7 @@ MCSI	=	$(M_ENV) $(SMC) --make-short-interface
 MCOI	=	$(M_ENV) $(SMC) --make-optimization-interface
 MCTOI	=	$(M_ENV) $(SMC) --make-transitive-optimization-interface
 MCG	=	$(M_ENV) $(SMC) --compile-to-c
+MCE	=	$(M_ENV) $(SMC) --errorcheck-only
 MCS	=	$(M_ENV) $(SMC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 C2INIT =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
