@@ -17,8 +17,7 @@ public class SystemException : System.Exception
 {
     public SystemException(string Msg) : base(Msg)
     {
-		// the parent constructor sets the error message that
-		// will be printed.
+        // The parent constructor sets the error message that will be printed.
     }
 }
 
@@ -52,7 +51,7 @@ public class Constants
     // These constants are duplicated in library/private_builtin.m.
     // They must be kept sychronized.
 
-	// XXX it would be nice if these could be const or an enum.  But
+	// XXX It would be nice if these could be const or an enum, but
 	// there are some problems with accessing the values from IL if we do
 	// that because neither alternatives seem to define field names we
 	// can reference from IL.
