@@ -62,7 +62,11 @@ portray2(Term) :-
 list_of_char_codes([]).
 list_of_char_codes([X|Xs]) :-
 	integer(X),
-	X >= 0,
+	( X = 0'\t -> true
+	; X = 0'\n -> true
+	; X = 0'\r -> true
+	; X >= 32
+	),
 	X < 256,
 	list_of_char_codes(Xs).
 
