@@ -381,13 +381,13 @@ extern	void		MR_schedule(MR_Context *ctxt);
 				load_context_c->MR_ctxt_pnegstack_zone;	\
 		    MR_gen_stack = (MR_GenStackFrame *)			\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_genstack_zone;		\
+					MR_ctxt_genstack_zone->min;	\
 		    MR_cut_stack = (MR_CutStackFrame *)			\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_cutstack_zone;		\
+					MR_ctxt_cutstack_zone->min;	\
 		    MR_pneg_stack = (MR_PNegStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_pnegstack_zone;		\
+					MR_ctxt_pnegstack_zone->min;	\
 	    	  )							\
 	    	)							\
 		MR_set_min_heap_reclamation_point(load_context_c);	\
@@ -436,13 +436,13 @@ extern	void		MR_schedule(MR_Context *ctxt);
 					MR_ctxt_pnegstack_zone;		\
 		    assert(MR_gen_stack == (MR_GenStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_genstack_zone);		\
+					MR_ctxt_genstack_zone->min);	\
 		    assert(MR_cut_stack == (MR_CutStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_cutstack_zone);		\
+					MR_ctxt_cutstack_zone->min);	\
 		    assert(MR_pneg_stack == (MR_PNegStackFrame *)	\
 				MR_ENGINE(MR_eng_context).		\
-					MR_ctxt_pnegstack_zone);	\
+					MR_ctxt_pnegstack_zone->min);	\
 		  )							\
 		)							\
 		MR_save_hp_in_context(save_context_c);			\
