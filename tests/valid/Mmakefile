@@ -44,6 +44,7 @@ OTHER_SOURCES= \
 	indexing.m \
 	inhibit_warn_test.m \
 	inlining_bug.m \
+	instance_superclass.m \
 	intermod_lambda.m \
 	intermod_test.m \
 	lambda_inference.m\
