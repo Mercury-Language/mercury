@@ -1269,7 +1269,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- func format_float(string, float) = string.
 :- pragma c_code(format_float(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
+	save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (long double) Val);
+	restore_transient_hp();
 }").
 
 	% Create a string from a int using the format string.
@@ -1278,7 +1280,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- func format_int(string, int) = string.
 :- pragma c_code(format_int(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
+	save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+	restore_transient_hp();
 }").
 
 	% Create a string from a string using the format string.
@@ -1296,7 +1300,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- func format_char(string, char) = string.
 :- pragma c_code(format_char(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
+	save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+	restore_transient_hp();
 }").
 
 %-----------------------------------------------------------------------------%

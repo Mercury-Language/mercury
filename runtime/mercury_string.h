@@ -174,10 +174,10 @@ int	MR_hash_string(MR_Word);
 ** allocation as coming from proclabel.  The MR_String returned has been
 ** allocated on the mercury heap using MR_allocate_aligned_string_msg.
 **
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
-** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** BEWARE: this may modify the saved copy of `hp', so it must only be
+** called from places where the saved copy of `hp' is valid.
+** You will generally need to call save/restore_transient_hp()
+** before/after calling this function.
 */
 MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);
 
