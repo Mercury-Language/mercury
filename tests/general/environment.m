@@ -22,7 +22,7 @@ environment__test(Var, ShouldBeSet) -->
 	    { Ok = ShouldBeSet }
 	;
 	    io__write_string("not set. "),
-	    { bool__not(ShouldBeSet, Ok) }
+	    { std_util__bool_not(ShouldBeSet, Ok) }
 	),
 	( { Ok = yes } ->
 	    io__write_string("(passed)\n")
