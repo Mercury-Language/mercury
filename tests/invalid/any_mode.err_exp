@@ -10,7 +10,7 @@ any_mode.m:006: Warning: clause in module interface.
 any_mode.m:009: Warning: clause in module interface.
 any_mode.m:005: Inferred :- pred p((any_mode.foo)).
 any_mode.m:008: Inferred :- pred q((any_mode.foo)).
-any_mode.m:006: In clause for `p((any -> ground))':
+any_mode.m:006: In clause for `p((any >> ground))':
 any_mode.m:006:   in argument 1 of call to predicate `any_mode.q/1':
 any_mode.m:006:   mode error: variable `X' has instantiatedness `any',
 any_mode.m:006:   expected instantiatedness was `ground'.
