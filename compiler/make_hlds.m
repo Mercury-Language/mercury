@@ -1626,7 +1626,16 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 				Maybe = yes(Pred - Proc),
 				PredProcId = hlds_class_proc(Pred, Proc)
 			)) },
-		{ list__filter_map(IsYes, PredProcIds0, PredProcIds) },
+		{ list__filter_map(IsYes, PredProcIds0, PredProcIds1) },
+
+			%
+			% The list must be sorted on pred_id and then
+			% proc_id -- check_typeclass.m assumes this
+			% when it is generating the corresponding list
+			% of pred_proc_ids for instance definitions.
+			%
+		{ list__sort(PredProcIds1, PredProcIds) },
+
 		{ Value = hlds_class_defn(Constraints, Vars, PredProcIds, 
 			VarSet, Context) },
 		{ map__det_insert(Classes0, ClassId, Value, Classes) },

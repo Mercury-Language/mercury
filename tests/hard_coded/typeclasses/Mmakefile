@@ -11,6 +11,7 @@ TYPECLASS_PROGS=	\
 	extract_typeinfo \
 	existential_type_classes \
 	extra_typeinfo \
+	func_default_mode_bug \
 	ho_map \
 	implied_instance \
 	implied_instance_multi_constraint \
@@ -18,6 +19,7 @@ TYPECLASS_PROGS=	\
 	inference_test \
 	inference_test_2 \
 	lambda_multi_constraint_same_tvar \
+	mode_decl_order_bug \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
 	multi_parameter \
