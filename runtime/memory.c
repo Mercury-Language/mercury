@@ -368,7 +368,7 @@ void init_memory(void)
 		default_handler);
 	solutions_heap_pointer = solutions_heap_zone->bottom;
 #endif
-#else	/* !HAVE_SIGINFO */
+#else	/* !defined(HAVE_MPROTECT) || !defined(HAVE_SIGINFO) */
 	detstack_zone = construct_zone("det stack", 1, detstack_base,
 			detstack_size, detstack_offset);
 	nondetstack_zone = construct_zone("nondet stack", 1, nondetstack_base,
@@ -376,6 +376,12 @@ void init_memory(void)
 #ifndef CONSERVATIVE_GC
 	heap_zone = construct_zone("heap", 1, heap_base, heap_size,
 			heap_offset);
+		/* We won't worry about offsets for the solutions
+		 * heap, and it's not part of the arena.
+		 */
+	solutions_heap_zone = create_zone("solutions_heap", 1,
+		solutions_heap_size, 0);
+	solutions_heap_pointer = solutions_heap_zone->bottom;
 #endif
 #endif
 
