@@ -40,6 +40,7 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	exit
 fi
 #-----------------------------------------------------------------------------#
+remake_dependencies=false
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 AC_CANONICAL_HOST
@@ -212,6 +213,18 @@ case $enable_gcc_back_end in
 	no)
 		;;
 esac
+case $enable_gcc_back_end in
+	yes)
+		if test "$BOOTSTRAP_MC" = ""; then
+			AC_MSG_ERROR(--enable-gcc-back-end requires an already installed Mercury compiler.)
+			enable_gcc_back_end=no
+		else
+			# This will regenerate compiler/maybe_mlds_to_gcc.m.
+			remake_dependencies=true
+		fi
+		;;
+esac
+	
 AC_MSG_RESULT($enable_gcc_back_end)
 ENABLE_GCC_BACK_END=$enable_gcc_back_end
 GCC_SRC_DIR=$gcc_src_dir
@@ -226,6 +239,18 @@ AC_ARG_ENABLE(aditi-back-end,
                           disable the Mercury compiler's Aditi back-end],
 enable_aditi_back_end="$enableval",enable_aditi_back_end=yes)
 AC_MSG_CHECKING(whether to enable the Aditi back-end)
+case $enable_aditi_back_end in
+	no)
+		if test "$BOOTSTRAP_MC" = ""; then
+			AC_MSG_WARN(--disable-aditi-back-end requires an already installed Mercury compiler.)
+			enable_aditi_back_end=yes
+		else
+			# This will regenerate compiler/rl_out.m and
+			# compiler/rl_file.m.
+			remake_dependencies=true
+		fi
+		;;
+esac
 AC_MSG_RESULT($enable_aditi_back_end)
 ENABLE_ADITI_BACK_END=$enable_aditi_back_end
 AC_SUBST(ENABLE_ADITI_BACK_END)
@@ -2042,7 +2067,7 @@ case $BEST_LLDS_BASE_GRADE in
 esac
 
 # Choose whether to use $BOOTSTRAP_GRADE or $BEST_GRADE_FOR_COMPILER,
-# and if necessary remove the installed 
+# and if necessary remove the previously built C files.
 
 if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 	if test "$BOOTSTRAP_MC" = ""; then
@@ -3160,10 +3185,21 @@ rm -f conftest.junk
 
 # The --prefix is hard-coded in the scripts, which are regenerated every
 # time you run configure, and also (unfortunately) in the .so files.
-# The following rm command is here to ensure that things will work correctly
+# The following rm commands are here to ensure that things will work correctly
 # if you rerun configure with a new --prefix and then don't do a `make clean'
 # before running `make'.
-rm -f runtime/libmer.so library/libmercury.so bytecode/libmbi.so
+rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
+rm -f trace/libmer_trace.so browser/libmer_browse.so
 )
 
+case $remake_dependencies in true)
+	MERCURY_MSG("regenerating dependencies to enable GCC backend")
+	MERCURY_MSG("and/or disable Aditi backend.")
+
+	mmake depend >&AC_FD_CC 2>&1
+	if test $? != 0; then
+		exit $?
+	fi
+	;;
+esac
 #-----------------------------------------------------------------------------#
