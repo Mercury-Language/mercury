@@ -1124,26 +1124,26 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 			% these fields remain constant for each procedure
 			%
 
-			module_info,
-			pred_id,
-			proc_id,
-			prog_varset,
-			map(prog_var, prog_type),
-			list(prog_var),			% output arguments
+			module_info :: module_info,
+			pred_id :: pred_id,
+			proc_id :: proc_id,
+			varset :: prog_varset,
+			var_types :: map(prog_var, prog_type),
+			output_vars :: list(prog_var),	% output arguments
 
 			%
 			% these fields get updated as we traverse
 			% each procedure
 			%
 
-			mlds__func_sequence_num,
-			commit_sequence_num,
-			stack(success_cont),
+			func_label :: mlds__func_sequence_num,
+			commit_label :: commit_sequence_num,
+			success_cont_stack :: stack(success_cont),
 				% definitions of functions or global
 				% constants which should be inserted
 				% before the definition of the function
 				% for the current procedure
-			mlds__defns
+			extra_defns :: mlds__defns
 		).
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
@@ -1172,24 +1172,17 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			ExtraDefns
 		).
 
-ml_gen_info_get_module_info(ml_gen_info(ModuleInfo, _, _, _, _, _, _, _, _, _),
-	ModuleInfo).
+ml_gen_info_get_module_info(Info, Info^module_info).
 
 ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) :-
 	ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
 	module_info_name(ModuleInfo, ModuleName).
 
-ml_gen_info_get_pred_id(ml_gen_info(_, PredId, _, _, _, _, _, _, _, _), PredId).
-
-ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _, _, _), ProcId).
-
-ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _, _, _), VarSet).
-
-ml_gen_info_get_var_types(ml_gen_info(_, _, _, _, VarTypes, _, _, _, _, _),
-	VarTypes).
-
-ml_gen_info_get_output_vars(ml_gen_info(_, _, _, _, _, OutputVars, _, _, _, _),
-	OutputVars).
+ml_gen_info_get_pred_id(Info, Info^pred_id).
+ml_gen_info_get_proc_id(Info, Info^proc_id).
+ml_gen_info_get_varset(Info, Info^varset).
+ml_gen_info_get_var_types(Info, Info^var_types).
+ml_gen_info_get_output_vars(Info, Info^output_vars).
 
 ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 	=(Info),
@@ -1198,55 +1191,29 @@ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 	{ globals__lookup_bool_option(Globals, gcc_nested_functions,
 		UseNestedFuncs) }.
 
-ml_gen_info_new_func_label(Label,
-		ml_gen_info(A, B, C, D, E, F, Label0, H, I, J),
-		ml_gen_info(A, B, C, D, E, F, Label, H, I, J)) :-
-	Label is Label0 + 1.
+ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
+	Label = Info^func_label + 1.
 
-ml_gen_info_new_commit_label(CommitLabel,
-		ml_gen_info(A, B, C, D, E, F, G, CommitLabel0, I, J),
-		ml_gen_info(A, B, C, D, E, F, G, CommitLabel, I, J)) :-
-	CommitLabel is CommitLabel0 + 1.
+ml_gen_info_new_commit_label(CommitLabel, Info,
+		Info^commit_label := CommitLabel) :-
+	CommitLabel = Info^commit_label + 1.
 
-/******
-:- pred ml_gen_info_get_success_cont_stack(ml_gen_info,
-			stack(success_cont)).
-:- mode ml_gen_info_get_success_cont_stack(in, out) is det.
+ml_gen_info_push_success_cont(SuccCont, Info,
+	Info^success_cont_stack :=
+		stack__push(Info^success_cont_stack, SuccCont)).
 
-ml_gen_info_get_success_cont_stack(
-	ml_gen_info(_, _, _, _, _, _, _, _, SuccContStack, _), SuccContStack).
+ml_gen_info_pop_success_cont(Info0, Info) :-
+	Stack0 = Info0^success_cont_stack,
+	stack__pop_det(Stack0, _SuccCont, Stack),
+	Info = (Info0^success_cont_stack := Stack).
 
-:- pred ml_gen_info_set_success_cont_stack(stack(success_cont),
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_info_set_success_cont_stack(in, in, out) is det.
+ml_gen_info_current_success_cont(SuccCont, Info, Info) :-
+	stack__top_det(Info^success_cont_stack, SuccCont).
 
-ml_gen_info_set_success_cont_stack(SuccContStack,
-		ml_gen_info(A, B, C, D, E, F, G, H, _, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, SuccContStack, J)).
-********/
+ml_gen_info_add_extra_defn(ExtraDefn, Info,
+	Info^extra_defns := [ExtraDefn | Info^extra_defns]).
 
-ml_gen_info_push_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
-	stack__push(Stack0, SuccCont, Stack).
-
-ml_gen_info_pop_success_cont(
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
-	stack__pop_det(Stack0, _SuccCont, Stack).
-
-ml_gen_info_current_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
-	stack__top_det(Stack, SuccCont).
-
-ml_gen_info_add_extra_defn(ExtraDefn,
-		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns0),
-		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns)) :-
-	ExtraDefns = [ExtraDefn | ExtraDefns0].
-
-ml_gen_info_get_extra_defns(ml_gen_info(_, _, _, _, _, _, _, _, _, ExtraDefns),
-	ExtraDefns).
+ml_gen_info_get_extra_defns(Info, Info^extra_defns).
 
 %-----------------------------------------------------------------------------%
 
