@@ -13,6 +13,12 @@
 % -- If not, there is a bug in either the code for set__insert,
 %    or at least in the type declaration (the pred declaration
 %    for set__insert should have a `where' clause and be one of Lee's types).
+%    And there is still a problem in set__delete, since it should be
+%    semi-deterministic if both the set and the element are input, but
+%    the current implementation calls a non-deterministic predicate (delete/3)
+%    in a way which just happens to be semi-deterministic (since the list
+%    doesn't contain any duplicates - but the compiler couldn't be expected
+%    to know that.  (For the moment, we're going to just ignore this problem.)
 
 %--------------------------------------------------------------------------%
 
