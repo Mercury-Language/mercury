@@ -21,6 +21,8 @@ mercury_lib.o mercury_lib.depend mercury_lib.dep: mercury_lib.m
 mercury_main.depend mercury_main.dep: c_main_int.m mercury_main.m
 c_main_int.o: c_main.h
 
+depend_local: mercury_lib.depend
+
 clean_local: clean_2
 
 clean_2:
