@@ -12,76 +12,7 @@
 :- import_module value_number, bintree_set, llds, list, int.
 
 :- implementation.
-:- import_module require, std_util, map.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Submodule for the livemap building phase.
-
-:- interface.
-
-	% Set all lvals found in this rval to live.
-
-:- pred vn__make_live(rval, lvalset, lvalset).
-:- mode vn__make_live(in, di, uo) is det.
-
-	% Set this lval to dead.
-
-:- pred vn__make_dead(lval, lvalset, lvalset).
-:- mode vn__make_dead(in, di, uo) is det.
-
-:- implementation.
-
-vn__make_live(Rval, Livevals0, Livevals) :-
-	(
-		Rval = lval(Lval),
-		vn__make_live_lval(Lval, Livevals0, Livevals)
-	;
-		Rval = create(_, _, _),
-		Livevals = Livevals0
-	;
-		Rval = mkword(_, Rval1),
-		vn__make_live(Rval1, Livevals0, Livevals)
-	;
-		Rval = const(_),
-		Livevals = Livevals0
-	;
-		Rval = unop(_, Rval1),
-		vn__make_live(Rval1, Livevals0, Livevals)
-	;
-		Rval = binop(_, Rval1, Rval2),
-		vn__make_live(Rval1, Livevals0, Livevals1),
-		vn__make_live(Rval2, Livevals1, Livevals)
-	;
-		Rval = var(_),
-		error("var rval should not propagate to value_number")
-	).
-
-:- pred vn__make_live_all(list(rval), lvalset, lvalset).
-:- mode vn__make_live_all(in, di, uo) is det.
-
-vn__make_live_all([], Livevals, Livevals).
-vn__make_live_all([Rval | Rvals], Livevals0, Livevals) :-
-	vn__make_live(Rval, Livevals0, Livevals1),
-	vn__make_live_all(Rvals, Livevals1, Livevals).
-
-:- pred vn__make_live_lval(lval, lvalset, lvalset).
-:- mode vn__make_live_lval(in, di, uo) is det.
-
-vn__make_live_lval(Lval, Livevals0, Livevals) :-
-	% XXX find_subrvals(Lval, RvalList) is more robust
-	( Lval = field(_, Rval1, Rval2) ->
-		vn__make_live(Rval1, Livevals0, Livevals1),
-		vn__make_live(Rval2, Livevals1, Livevals)
-	;
-		bintree_set__insert(Livevals0, Lval, Livevals)
-	).
-
-vn__make_dead(Lval, Livevals0, Livevals) :-
-	bintree_set__delete(Livevals0, Lval, Livevals1),
-	vn__lval_access_rval(Lval, Rvals),
-	vn__make_live_all(Rvals, Livevals1, Livevals).
+:- import_module opt_debug, string, require, std_util, map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,17 +21,22 @@ vn__make_dead(Lval, Livevals0, Livevals) :-
 
 :- interface.
 
-	% Reflect the effect of a livevals instr on the set of live vnlvals.
-
-:- pred vn__handle_livevals(bool, lvalset, vnlvalset, vnlvalset).
-:- mode vn__handle_livevals(in, in, di, uo) is det.
-
 	% Reflect the action of an assignment in the vn tables.
 
 :- pred vn__handle_assign(lval, rval, vn_tables, vn_tables).
 :- mode vn__handle_assign(in, in, di, uo) is det.
 
+	% Reflect the effect of a livevals instr on the set of live vnlvals.
+
+:- pred vn__handle_livevals(bool, lvalset, vnlvalset, vnlvalset).
+:- mode vn__handle_livevals(in, in, di, uo) is det.
+
 :- implementation.
+
+vn__handle_assign(Lval, Rval, Vn_tables0, Vn_tables) :-
+	vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
+	vn__lval_to_vnlval(Lval, Vnlval, Vn_tables1, Vn_tables2),
+	vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables).
 
 vn__handle_livevals(Terminate, Livevals, Liveset0, Liveset) :-
 	( Terminate = yes ->
@@ -110,6 +46,9 @@ vn__handle_livevals(Terminate, Livevals, Liveset0, Liveset) :-
 	),
 	bintree_set__to_sorted_list(Livevals, Livelist),
 	vn__convert_to_vnlval_and_insert(Livelist, Liveset0, Liveset).
+
+	% Given a list of live lvals, convert the non-field ones to vnlvals
+	% and insert them into the given vnlvalset.
 
 :- pred vn__convert_to_vnlval_and_insert(list(lval), vnlvalset, vnlvalset).
 :- mode vn__convert_to_vnlval_and_insert(in, di, uo) is det.
@@ -125,11 +64,6 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 		Liveset1 = Liveset0
 	),
 	vn__convert_to_vnlval_and_insert(Lvals, Liveset1, Liveset).
-
-vn__handle_assign(Lval, Rval, Vn_tables0, Vn_tables) :-
-	vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
-	vn__lval_to_vnlval(Lval, Vnlval, Vn_tables1, Vn_tables2),
-	vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -444,6 +378,10 @@ vn__record_livevals([Lval | Livelist], Vn_tables0, Vn_tables,
 
 %-----------------------------------------------------------------------------%
 
+	% Insert the heap references that have been made so far into the
+	% live vnlval set, and record their currently desired value numbers
+	% into the given flushmap entry.
+
 :- pred vn__record_compulsory_lvals(vn_tables, vnlvalset, vnlvalset,
 	flushmapentry, flushmapentry).
 :- mode vn__record_compulsory_lvals(in, di, uo, di, uo) is det.
@@ -580,7 +518,12 @@ vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
 :- pred vn__is_const_expr(vn, vn_tables).
 :- mode vn__is_const_expr(in, in) is semidet.
 
-	% Find out what vn, if any, is needed to access a vnlval.
+	% Find out what rvals, if any, are needed to access an lval.
+
+:- pred vn__lval_access_rval(lval, list(rval)).
+:- mode vn__lval_access_rval(in, out) is det.
+
+	% Find out what vns, if any, are needed to access a vnlval.
 
 :- pred vn__vnlval_access_vn(vnlval, list(vn)).
 :- mode vn__vnlval_access_vn(in, out) is det.
@@ -796,9 +739,6 @@ vn__no_heap_lval_to_vnlval(temp(N),	yes(vn_temp(N))).
 vn__no_heap_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
 
-:- pred vn__lval_access_rval(lval, list(rval)).
-:- mode vn__lval_access_rval(in, out) is det.
-
 vn__lval_access_rval(reg(_), []).
 vn__lval_access_rval(stackvar(_), []).
 vn__lval_access_rval(framevar(_), []).
@@ -936,42 +876,78 @@ vn__lookup_desired_value(Vnlval, Vn, Vn_tables) :-
 		Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
-	map__lookup(Lval_to_vn_table, Vnlval, Vn).
+	( map__search(Lval_to_vn_table, Vnlval, VnPrime) ->
+		Vn = VnPrime
+	;
+		opt_debug__dump_vnlval(Vnlval, Value),
+		string__append("cannot find desired value for ", Value, Error),
+		error(Error)
+	).
 
 vn__lookup_assigned_vn(Vnrval, Vn, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
-	map__lookup(Rval_to_vn_table, Vnrval, Vn).
+	( map__search(Rval_to_vn_table, Vnrval, VnPrime) ->
+		Vn = VnPrime
+	;
+		opt_debug__dump_vnrval(Vnrval, Value),
+		string__append("cannot find assigned vn for ", Value, Error),
+		error(Error)
+	).
 
 vn__lookup_defn(Vn, Vnrval, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
-	map__lookup(Vn_to_rval_table, Vn, Vnrval).
+	( map__search(Vn_to_rval_table, Vn, VnrvalPrime) ->
+		Vnrval = VnrvalPrime
+	;
+		opt_debug__dump_vn(Vn, Value),
+		string__append("cannot find definition for ", Value, Error),
+		error(Error)
+	).
 
 vn__lookup_uses(Vn, Uses, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
-	map__lookup(Vn_to_uses_table, Vn, Uses).
+	( map__search(Vn_to_uses_table, Vn, UsesPrime) ->
+		Uses = UsesPrime
+	;
+		opt_debug__dump_vn(Vn, Value),
+		string__append("cannot find uses for ", Value, Error),
+		error(Error)
+	).
 
 vn__lookup_current_locs(Vn, Locs, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		Vn_to_locs_table, _Loc_to_vn_table),
-	map__lookup(Vn_to_locs_table, Vn, Locs).
+	( map__search(Vn_to_locs_table, Vn, LocsPrime) ->
+		Locs = LocsPrime
+	;
+		opt_debug__dump_vn(Vn, Value),
+		string__append("cannot find current locs for ", Value, Error),
+		error(Error)
+	).
 
 vn__lookup_current_value(Vnlval, Vn, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, Loc_to_vn_table),
-	map__lookup(Loc_to_vn_table, Vnlval, Vn).
+	( map__search(Loc_to_vn_table, Vnlval, VnPrime) ->
+		Vn = VnPrime
+	;
+		opt_debug__dump_vnlval(Vnlval, Value),
+		string__append("cannot find current value for ", Value, Error),
+		error(Error)
+	).
 
 vn__search_desired_value(Vnlval, Vn, Vn_tables) :-
 	Vn_tables = vn_tables(_NextVn,

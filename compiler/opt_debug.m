@@ -11,6 +11,27 @@
 :- interface.
 :- import_module llds, value_number, vn_util, opt_util, list, std_util, int.
 
+:- pred opt_debug__write(string).
+:- mode opt_debug__write(in) is det.
+
+:- pred opt_debug__dump_ctrlmap(ctrlmap, string).
+:- mode opt_debug__dump_ctrlmap(in, out) is det.
+
+:- pred opt_debug__dump_ctrl_list(assoc_list(int, vn_instr), string).
+:- mode opt_debug__dump_ctrl_list(in, out) is det.
+
+:- pred opt_debug__dump_vninstr(vn_instr, string).
+:- mode opt_debug__dump_vninstr(in, out) is det.
+
+:- pred opt_debug__dump_flushmap(flushmap, string).
+:- mode opt_debug__dump_flushmap(in, out) is det.
+
+:- pred opt_debug__dump_flush_list(assoc_list(int, flushmapentry), string).
+:- mode opt_debug__dump_flush_list(in, out) is det.
+
+:- pred opt_debug__dump_flush_entry(assoc_list(vnlval, int), string).
+:- mode opt_debug__dump_flush_entry(in, out) is det.
+
 :- pred opt_debug__dump_tables(vn_tables, string).
 :- mode opt_debug__dump_tables(in, out) is det.
 
@@ -62,6 +83,9 @@
 :- pred opt_debug__dump_label(label, string).
 :- mode opt_debug__dump_label(in, out) is det.
 
+:- pred opt_debug__dump_proclabel(proc_label, string).
+:- mode opt_debug__dump_proclabel(in, out) is det.
+
 :- pred opt_debug__dump_maybe_rvals(list(maybe(rval)), int, string).
 :- mode opt_debug__dump_maybe_rvals(in, in, out) is det.
 
@@ -77,23 +101,74 @@
 :- pred opt_debug__print_proclist(list(pair(label, list(instruction)))).
 :- mode opt_debug__print_proclist(in) is det.
 
+:- pred opt_debug__dump_code_addr(code_addr, string).
+:- mode opt_debug__dump_code_addr(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module map, string.
 
-:- external(opt_debug__dump_label/2).
+:- external(opt_debug__write/1).
 :- external(opt_debug__dump_rval/2).
 :- external(opt_debug__print_tailmap/1).
 :- external(opt_debug__print_instmap/1).
 :- external(opt_debug__print_proclist/1).
 
-opt_debug__dump_lval_to_vn([], "").
-opt_debug__dump_lval_to_vn([Vnlval - Vn | Lval_to_vn_list], Str) :-
-	opt_debug__dump_lval_to_vn(Lval_to_vn_list, Tail_str),
-	opt_debug__dump_vnlval(Vnlval, Vnlval_str),
+opt_debug__dump_ctrlmap(Ctrlmap, Comment) :-
+	map__to_assoc_list(Ctrlmap, Ctrllist),
+	opt_debug__dump_ctrl_list(Ctrllist, Str),
+	string__append("\nCtrl map\n", Str, Comment).
+
+opt_debug__dump_ctrl_list([], "").
+opt_debug__dump_ctrl_list([N - VnInstr | Ctrllist], Comment) :-
+	string__int_to_string(N, N_str),
+	opt_debug__dump_vninstr(VnInstr, Vni_str),
+	opt_debug__dump_ctrl_list(Ctrllist, Comment2),
+	string__append_list([N_str, " -> ", Vni_str, "\n", Comment2], Comment).
+
+opt_debug__dump_vninstr(vn_call(Proc, Ret, _), Str) :-
+	opt_debug__dump_code_addr(Proc, P_str),
+	opt_debug__dump_code_addr(Ret, R_str),
+	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
+opt_debug__dump_vninstr(vn_call_closure(_, Ret, _), Str) :-
+	opt_debug__dump_code_addr(Ret, R_str),
+	string__append_list(["call_closure(", R_str, ")"], Str).
+opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
+opt_debug__dump_vninstr(vn_modframe(_), "modframe").
+opt_debug__dump_vninstr(vn_label(Label), Str) :-
+	opt_debug__dump_label(Label, L_str),
+	string__append_list(["label(", L_str, ")"], Str).
+opt_debug__dump_vninstr(vn_goto(CodeAddr), Str) :-
+	opt_debug__dump_code_addr(CodeAddr, C_str),
+	string__append_list(["goto(", C_str, ")"], Str).
+opt_debug__dump_vninstr(vn_computed_goto(Vn, _), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
-	string__append_list([Vnlval_str, " -> ", Vn_str, "\n", Tail_str], Str).
+	string__append_list(["computed_goto(", Vn_str, ")"], Str).
+opt_debug__dump_vninstr(vn_if_val(Vn, CodeAddr), Str) :-
+	opt_debug__dump_vn(Vn, Vn_str),
+	opt_debug__dump_code_addr(CodeAddr, L_str),
+	string__append_list(["if_val(", Vn_str, ", ", L_str, ")"], Str).
+
+opt_debug__dump_flushmap(Flushmap, Comment) :-
+	map__to_assoc_list(Flushmap, Flushlist),
+	opt_debug__dump_flush_list(Flushlist, Str),
+	string__append("\nFlush map\n", Str, Comment).
+
+opt_debug__dump_flush_list([], "").
+opt_debug__dump_flush_list([N - FlushEntry | FlushList], Str) :-
+	string__int_to_string(N, N_str),
+	map__to_assoc_list(FlushEntry, FlushEntryList),
+	opt_debug__dump_flush_entry(FlushEntryList, Comment1),
+	opt_debug__dump_flush_list(FlushList, Comment2),
+	string__append_list([N_str, " -> ", Comment1, "\n", Comment2], Str).
+
+opt_debug__dump_flush_entry([], "").
+opt_debug__dump_flush_entry([Vnlval - Vn | FlushEntry], Str) :-
+	opt_debug__dump_vnlval(Vnlval, L_str),
+	opt_debug__dump_vn(Vn, Vn_str),
+	opt_debug__dump_flush_entry(FlushEntry, F_str),
+	string__append_list([" ", L_str, "/", Vn_str, F_str], Str).
 
 opt_debug__dump_tables(Vn_tables, Comment) :-
 	Vn_tables = vn_tables(Next_vn,
@@ -114,13 +189,20 @@ opt_debug__dump_tables(Vn_tables, Comment) :-
 	opt_debug__dump_vn_to_locs(Vn_to_locs_list, Vn_to_locs_str),
 	opt_debug__dump_lval_to_vn( Loc_to_vn_list,  Loc_to_vn_str),
 	string__append_list([
-		"Next vn\n",      Next_vn_str,
+		"\nNext vn\n",      Next_vn_str,
 		"\nLval to vn\n", Lval_to_vn_str,
 		"\nRval to vn\n", Rval_to_vn_str,
 		"\nVn to rval\n", Vn_to_rval_str,
 		"\nVn to uses\n", Vn_to_uses_str,
 		"\nVn to locs\n", Vn_to_locs_str,
 		"\nLoc to vn\n",  Loc_to_vn_str], Comment).
+
+opt_debug__dump_lval_to_vn([], "").
+opt_debug__dump_lval_to_vn([Vnlval - Vn | Lval_to_vn_list], Str) :-
+	opt_debug__dump_lval_to_vn(Lval_to_vn_list, Tail_str),
+	opt_debug__dump_vnlval(Vnlval, Vnlval_str),
+	opt_debug__dump_vn(Vn, Vn_str),
+	string__append_list([Vnlval_str, " -> ", Vn_str, "\n", Tail_str], Str).
 
 opt_debug__dump_rval_to_vn([], "").
 opt_debug__dump_rval_to_vn([Vnrval - Vn | Rval_to_vn_list], Str) :-
@@ -274,3 +356,32 @@ opt_debug__dump_maybe_rvals([MR | MRs], N, Str) :-
 	;
 		Str = "truncated"
 	).
+
+opt_debug__dump_code_addr(label(Label), Str) :-
+	opt_debug__dump_label(Label, Str).
+opt_debug__dump_code_addr(imported(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, Str).
+opt_debug__dump_code_addr(succip, "succip").
+opt_debug__dump_code_addr(do_succeed, "do_succeed").
+opt_debug__dump_code_addr(do_redo, "do_redo").
+opt_debug__dump_code_addr(do_fail, "do_fail").
+
+opt_debug__dump_label(local(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, P_str),
+	string__append_list([P_str], Str).
+opt_debug__dump_label(local(ProcLabel, N), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, P_str),
+	string__int_to_string(N, N_str),
+	string__append_list([P_str, "_", N_str], Str).
+opt_debug__dump_label(exported(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, P_str),
+	string__append_list([P_str], Str).
+
+opt_debug__dump_proclabel(proc(Module, Pred, Arity, Mode), Str) :-
+	string__int_to_string(Arity, A_str),
+	string__int_to_string(Mode, M_str),
+	string__append_list([Module, "_", Pred, "_", A_str, "_", M_str], Str).
+opt_debug__dump_proclabel(unify_proc(Module, Type, Arity, Mode), Str) :-
+	string__int_to_string(Arity, A_str),
+	string__int_to_string(Mode, M_str),
+	string__append_list([Module, "_", Type, "_", A_str, "_", M_str], Str).
