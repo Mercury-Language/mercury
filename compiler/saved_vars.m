@@ -13,7 +13,7 @@
 % At the moment the only opportunity we look for is the assignment of
 % constants to variables. These assignments should be delayed until
 % the value of the variable is needed. If the variable has several uses,
-% we generate a copy for each use, renaming the using goal to refer to
+% we generate a copy for each use, renaming the using goal to refer to the
 % variable by its new name.
 %
 % We thread the SlotInfo structure through the module; this allows us
