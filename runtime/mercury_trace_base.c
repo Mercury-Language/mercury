@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,6 +32,10 @@ ENDINIT
   #include <unistd.h>		/* for the write system call */
 #endif
 
+#ifdef HAVE_SYS_WAIT
+  #include <sys/wait.h>		/* for the wait system call */
+#endif
+
 /*
 ** Do we want to use the debugger within this process, or do want to use
 ** the Opium-style trace analyzer debugger implemented by an external process.
@@ -51,6 +55,9 @@ MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
 */
 
 bool		MR_trace_enabled = FALSE;
+
+bool		MR_have_mdb_window = FALSE;
+pid_t		MR_mdb_window_pid = 0;
 
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
@@ -210,6 +217,24 @@ MR_trace_final(void)
 			MR_address_of_trace_final_external();
 		} else {
 			MR_tracing_not_enabled();
+		}
+	}
+#endif
+
+#if defined(HAVE_KILL) && defined(HAVE_WAIT) && defined(SIGTERM)
+	/*
+	** If mdb started a window, make sure it dies now.
+	*/
+	if (MR_have_mdb_window) {
+		int status;
+		status = kill(MR_mdb_window_pid, SIGTERM);
+		if (status != -1) {
+			do {
+				status = wait(NULL);
+				if (status == -1 && errno != EINTR) {
+					break;
+				}
+			} while (status != MR_mdb_window_pid);
 		}
 	}
 #endif

@@ -282,10 +282,10 @@ MR_setup_signals(void)
 #ifndef MR_MSVC_STRUCTURED_EXCEPTIONS
   #ifdef SIGBUS
 	MR_setup_signal(SIGBUS, (MR_Code *) bus_handler, TRUE,
-		"Mercury runtime: cannot set SIGBUS handler");
+		"cannot set SIGBUS handler");
   #endif
 	MR_setup_signal(SIGSEGV, (MR_Code *) segv_handler, TRUE,
-		"Mercury runtime: cannot set SIGSEGV handler");
+		"cannot set SIGSEGV handler");
 #endif
 }
 

@@ -14,6 +14,7 @@
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
+#include "mercury_signal.h"
 
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
@@ -37,6 +38,35 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <signal.h>
+
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_TYPES_H
+  #include <sys/types.h>
+#endif
+
+#ifdef HAVE_SYS_WAIT
+  #include <sys/wait.h>
+#endif
+
+#ifdef HAVE_TERMIOS_H
+  #include <termios.h>
+#endif
+
+#ifdef HAVE_FCNTL_H
+  #include <fcntl.h>
+#endif
+
+#ifdef HAVE_SYS_IOCTL_H
+  #include <sys/ioctl.h>
+#endif
+
+#ifdef HAVE_SYS_STROPTS_H
+  #include <sys/stropts.h>
+#endif
 
 /* The initial size of arrays of words. */
 #define	MR_INIT_WORD_COUNT	20
@@ -167,6 +197,7 @@ typedef enum {
 } MR_MultiMatch;
 
 static	void	MR_trace_internal_ensure_init(void);
+static	bool	MR_trace_internal_create_mdb_window(void);
 static	void	MR_trace_internal_init_from_env(void);
 static	void	MR_trace_internal_init_from_local(void);
 static	void	MR_trace_internal_init_from_home_dir(void);
@@ -217,7 +248,7 @@ static	bool	MR_trace_options_param_set(MR_Word *print_set,
 static	bool	MR_trace_options_view(const char **window_cmd,
 			const char **server_cmd, const char **server_name,
 			int *timeout, bool *force, bool *verbose, bool *split,
-			bool *close, char ***words, int *word_count,
+			bool *close_window, char ***words, int *word_count,
 			const char *cat, const char*item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
@@ -362,9 +393,28 @@ MR_trace_internal_ensure_init(void)
 		char	*env;
 		int	n;
 
-		MR_mdb_in = MR_try_fopen(MR_mdb_in_filename, "r", stdin);
-		MR_mdb_out = MR_try_fopen(MR_mdb_out_filename, "w", stdout);
-		MR_mdb_err = MR_try_fopen(MR_mdb_err_filename, "w", stderr);
+		if (MR_mdb_in_window) {
+			/*
+			** If opening the window fails, fall back on
+			** using MR_mdb_*_filename, or stdin, stdout
+			** and stderr.
+			*/
+			MR_mdb_in_window =
+				MR_trace_internal_create_mdb_window();
+			if (! MR_mdb_in_window) {
+				MR_mdb_warning(
+				"Try `mdb --program-in-window' instead.\n");
+			}
+		}
+
+		if (! MR_mdb_in_window) {
+			MR_mdb_in = MR_try_fopen(MR_mdb_in_filename,
+					"r", stdin);
+			MR_mdb_out = MR_try_fopen(MR_mdb_out_filename,
+					"w", stdout);
+			MR_mdb_err = MR_try_fopen(MR_mdb_err_filename,
+					"w", stderr);
+		}
 
 		/* Ensure that MR_mdb_err is not buffered */
 		setvbuf(MR_mdb_err, NULL, _IONBF, 0);
@@ -389,6 +439,244 @@ MR_trace_internal_ensure_init(void)
 
 		MR_trace_internal_initialized = TRUE;
 	}
+}
+
+static volatile sig_atomic_t MR_got_alarm = FALSE;
+
+static void
+MR_trace_internal_alarm_handler(void)
+{
+	MR_got_alarm = TRUE;
+}
+
+static bool
+MR_trace_internal_create_mdb_window(void)
+{
+	/*
+	** XXX The code to find and open a pseudo-terminal is nowhere
+	** near as portable as I would like, but given the huge variety
+	** of methods for allocating pseudo-terminals it will have to do.
+	** Most systems seem to be standardising on this method (from UNIX98).
+	** See the xterm or expect source for a more complete version
+	** (it's a bit too entwined in the rest of the code to just lift
+	** it out and use it here).
+	**
+	** XXX Add support for MS Windows.
+	*/
+#if defined(HAVE_OPEN) && defined(O_RDWR) && defined(HAVE_FDOPEN) && \
+	defined(HAVE_CLOSE) && defined(HAVE_DUP) && defined(HAVE_DUP2) && \
+	defined(HAVE_FORK) && defined(HAVE_EXECLP) && \
+	defined(HAVE_DEV_PTMX) && defined(HAVE_GRANTPT) && \
+	defined(HAVE_UNLOCKPT) && defined(HAVE_PTSNAME)
+
+	int master_fd = -1;
+	int slave_fd = -1;
+	char *slave_name;
+	pid_t child_pid;
+#if defined(HAVE_TERMIOS_H) && defined(HAVE_TCGETATTR) && \
+		defined(HAVE_TCSETATTR) && defined(ECHO) && defined(TCSADRAIN)
+	struct termios termio;
+#endif
+	master_fd = open("/dev/ptmx", O_RDWR);
+	if (master_fd == -1 || grantpt(master_fd) == -1
+			|| unlockpt(master_fd) == -1)
+	{
+		close(master_fd);
+		MR_mdb_perror(
+		    "error opening master pseudo-terminal for mdb window");
+		return FALSE;
+	}
+	if ((slave_name = ptsname(master_fd)) == NULL) {
+		MR_mdb_perror(
+		    "error getting name of pseudo-terminal for mdb window");
+		close(master_fd);
+		return FALSE;
+	}
+	slave_fd = open(slave_name, O_RDWR);	
+	if (slave_fd == -1) {
+		close(master_fd);
+		MR_mdb_perror(
+		   "opening slave pseudo-terminal for mdb window failed");
+		return FALSE;
+	}
+
+#if defined(HAVE_IOCTL) && defined(I_PUSH)
+	/* Magic STREAMS incantations to make this work on Solaris. */
+	ioctl(slave_fd, I_PUSH, "ptem");
+	ioctl(slave_fd, I_PUSH, "ldterm");
+	ioctl(slave_fd, I_PUSH, "ttcompat");
+#endif
+
+#if defined(HAVE_TCGETATTR) && defined(HAVE_TCSETATTR) && \
+		defined(ECHO) && defined(TCSADRAIN)
+	/*
+	** Turn off echoing before starting the xterm so that
+	** the user doesn't see the window ID printed by xterm
+	** on startup (this behaviour is not documented in the
+	** xterm manual).
+	*/
+	tcgetattr(slave_fd, &termio);
+	termio.c_lflag &= ~ECHO;
+	tcsetattr(slave_fd, TCSADRAIN, &termio);
+#endif
+
+	child_pid = fork();
+	if (child_pid == -1) {
+		MR_mdb_perror("fork() for mdb window failed"); 
+		close(master_fd);
+		close(slave_fd);
+		return FALSE;
+	} else if (child_pid == 0) {
+		/*
+		** Child - exec() the xterm.
+		*/
+		char xterm_arg[50];
+
+		close(slave_fd);
+
+#if defined(HAVE_SETPGID)
+		/*
+		** Put the xterm in a new process group so it won't be
+		** killed by SIGINT signals sent to the program.
+		*/
+		if (setpgid(0, 0) < 0) {
+			MR_mdb_perror("setpgid() failed");
+			close(master_fd);
+			exit(EXIT_FAILURE);
+		}
+#endif
+
+		/*
+		** The XX part is required by xterm, but it's not
+		** needed for the way we are using xterm (it's meant
+		** to be an identifier for the pseudo-terminal).
+		** Different versions of xterm use different
+		** formats, so it's best to just leave it blank.
+		**
+		** XXX Some versions of xterm (such as that distributed
+		** with XFree86 3.3.6) give a warning about this (but it
+		** still works). The latest version distributed with
+		** XFree86 4 does not given a warning.
+		*/
+		sprintf(xterm_arg, "-SXX%d", master_fd);
+
+		execlp("xterm", "xterm", "-T", "mdb", xterm_arg, NULL);
+		MR_mdb_perror("execution of xterm failed");
+		exit(EXIT_FAILURE);
+	} else {
+		/*
+		** Parent - set up the mdb I/O streams to point
+		** to the pseudo-terminal.
+		*/
+		MR_signal_action old_alarm_action;
+		int wait_status;
+		int err_fd = -1;
+		int out_fd = -1;
+
+		MR_mdb_in = MR_mdb_out = MR_mdb_err = NULL;
+
+		close(master_fd);
+
+		/*
+		** Read the first line of output -- this is a window ID
+		** written by xterm. The alarm() and associated signal handling
+		** is to gracefully handle the case where the xterm failed to
+		** start, for example because the DISPLAY variable was invalid.
+		** We don't want to restart the read() below if it times out.
+		*/
+		MR_get_signal_action(SIGALRM, &old_alarm_action,
+			"error retrieving alarm handler");
+		MR_setup_signal_no_restart(SIGALRM,
+			MR_trace_internal_alarm_handler, FALSE,
+			"error setting up alarm handler");
+		alarm(10);	/* 10 second timeout */
+		while (1) {
+			char c;
+			int status;
+			status = read(slave_fd, &c, 1);
+			if (status == -1) {
+				if (errno != EINTR || MR_got_alarm) {
+					MR_mdb_perror(
+					"error reading from mdb window");
+					goto parent_error;
+				}
+			} else if (status == 0 || c == '\n') {
+				break;
+			}
+		}
+
+		/* Reset the alarm handler. */
+		alarm(0);
+		MR_set_signal_action(SIGALRM, &old_alarm_action,
+			"error resetting alarm handler");
+
+#if defined(HAVE_TCGETATTR) && defined(HAVE_TCSETATTR) && \
+			defined(ECHO) && defined(TCSADRAIN)
+		/* Restore echoing. */
+		termio.c_lflag |= ECHO;
+		tcsetattr(slave_fd, TCSADRAIN, &termio);
+#endif
+
+		if ((out_fd = dup(slave_fd)) == -1) {
+			MR_mdb_perror(
+			    "opening slave pseudo-terminal for xterm failed");
+			goto parent_error;
+		}
+		if ((err_fd = dup(slave_fd)) == -1) {
+			MR_mdb_perror(
+			    "opening slave pseudo-terminal for xterm failed");
+			goto parent_error;
+		}
+
+		MR_mdb_in = fdopen(slave_fd, "r");
+		if (MR_mdb_in == NULL) {
+		    MR_mdb_perror(
+			"opening slave pseudo-terminal for xterm failed");
+		    goto parent_error;
+		}
+		MR_mdb_out = fdopen(out_fd, "w");
+		if (MR_mdb_out == NULL) {
+		    MR_mdb_perror(
+			"opening slave pseudo-terminal for xterm failed");
+		    goto parent_error;
+		}
+		MR_mdb_err = fdopen(err_fd, "w");
+		if (MR_mdb_err == NULL) {
+		    MR_mdb_perror(
+			"opening slave pseudo-terminal for xterm failed");
+		    goto parent_error;
+		}
+
+		MR_have_mdb_window = TRUE;
+		MR_mdb_window_pid = child_pid;
+		return TRUE;
+
+parent_error:
+#if defined(HAVE_KILL) && defined(SIGTERM) && defined(HAVE_WAIT)
+		if (kill(child_pid, SIGTERM) != -1) {
+			do {
+				wait_status = wait(NULL);
+				if (wait_status == -1 && errno != EINTR) {
+					break;	
+				}
+			} while (wait_status != child_pid);
+		}
+#endif
+		if (MR_mdb_in) fclose(MR_mdb_in);
+		if (MR_mdb_out) fclose(MR_mdb_out);
+		if (MR_mdb_err) fclose(MR_mdb_err);
+		close(slave_fd);
+		close(out_fd);
+		close(err_fd);
+		return FALSE;
+
+	}
+
+#else 	/* !HAVE_OPEN, etc. */
+	MR_mdb_warning(
+		"Sorry, `mdb --window' not supported on this platform.\n");
+	return FALSE;
+#endif /* !HAVE_OPEN, etc. */
 }
 
 static void
@@ -1215,18 +1503,18 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		bool			force = FALSE;
 		bool			verbose = FALSE;
 		bool			split = FALSE;
-		bool			close = FALSE;
+		bool			close_window = FALSE;
 		const char		*msg;
 
 		if (! MR_trace_options_view(&window_cmd, &server_cmd,
 				&server_name, &timeout, &force, &verbose,
-				&split, &close, &words, &word_count,
+				&split, &close_window, &words, &word_count,
 				"browsing", "view"))
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count != 1) {
 			MR_trace_usage("browsing", "view");
-		} else if (close) {
+		} else if (close_window) {
 			MR_trace_maybe_close_source_window(verbose);
 		} else {
 			msg = MR_trace_new_source_window(window_cmd,
@@ -3037,7 +3325,7 @@ static struct MR_option MR_trace_view_opts[] =
 static bool
 MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 		const char **server_name, int *timeout, bool *force,
-		bool *verbose, bool *split, bool *close, char ***words,
+		bool *verbose, bool *split, bool *close_window, char ***words,
 		int *word_count, const char *cat, const char *item)
 {
 	int	c;
@@ -3058,11 +3346,11 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 					MR_trace_usage(cat, item);
 					return FALSE;
 				}
-				*close = TRUE;
+				*close_window = TRUE;
 				break;
 
 			case 'w':
-				if (*close) {
+				if (*close_window) {
 					MR_trace_usage(cat, item);
 					return FALSE;
 				}
@@ -3089,7 +3377,7 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				break;
 
 			case 't':
-				if (*close ||
+				if (*close_window ||
 					sscanf(MR_optarg, "%d", timeout) != 1)
 				{
 					MR_trace_usage(cat, item);
@@ -3099,7 +3387,7 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				break;
 
 			case 'f':
-				if (*close) {
+				if (*close_window) {
 					MR_trace_usage(cat, item);
 					return FALSE;
 				}
@@ -3112,7 +3400,7 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				break;
 
 			case '2':
-				if (*close) {
+				if (*close_window) {
 					MR_trace_usage(cat, item);
 					return FALSE;
 				}

@@ -5905,6 +5905,9 @@ rather than to standard error.
 Redirect all three debugger I/O streams -- input, output, and error messages --
 to the file or device specified by @var{filename}.
 
+@c --mdb-in-window is for use only by the mdb script, so it's
+@c not documented here.
+
 @end table
 
 @end table

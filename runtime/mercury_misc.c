@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2000 The University of Melbourne.
+** Copyright (C) 1996-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,21 +13,68 @@
 
 #include	<stdio.h>
 #include	<stdarg.h>
+#include	<errno.h>
+
+static void MR_print_warning(const char *prog, const char *fmt, va_list args);
+static void MR_do_perror(const char *prog, const char *message);
 
 void
 MR_warning(const char *fmt, ...)
 {
 	va_list args;
+	va_start(args, fmt);
+	MR_print_warning("Mercury runtime", fmt, args);
+	va_end(args);
+	
+}
+
+void
+MR_mdb_warning(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	MR_print_warning("mdb", fmt, args);
+	va_end(args);
+}
+
+static void
+MR_print_warning(const char *prog, const char *fmt, va_list args)
+{
 
 	fflush(stdout);		/* in case stdout and stderr are the same */
 
-	fprintf(stderr, "Mercury runtime: ");
-	va_start(args, fmt);
+	fprintf(stderr, prog);
+	fprintf(stderr, ": ");
 	vfprintf(stderr, fmt, args);
-	va_end(args);
 	fprintf(stderr, "\n");
 
 	fflush(stderr);
+}
+
+void
+MR_perror(const char *message)
+{
+	MR_do_perror("Mercury runtime", message);
+}
+
+void
+MR_mdb_perror(const char *message)
+{
+	MR_do_perror("mdb", message);
+}
+
+static void
+MR_do_perror(const char *prog, const char *message)
+{
+	int saved_errno;
+
+	saved_errno = errno;
+	fflush(stdout);		/* in case stdout and stderr are the same */
+
+	fprintf(stderr, prog);
+	fprintf(stderr, ": ");
+	errno = saved_errno;
+	perror(message);
 }
 
 /*

@@ -443,10 +443,13 @@ case "$host" in
 	*-cygwin*)
 		ac_cv_func_mprotect=no ;;
 esac
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
-AC_HAVE_FUNCS(strerror memmove dup fileno fdopen fstat stat isatty)
-AC_HAVE_FUNCS(snprintf vsnprintf _vsnprintf)
-AC_HAVE_FUNCS(gethostname getpid)
+AC_HAVE_FUNCS(sysconf getpagesize gethostname)
+AC_HAVE_FUNCS(mprotect memalign memmove)
+AC_HAVE_FUNCS(sigaction setitimer)
+AC_HAVE_FUNCS(snprintf vsnprintf _vsnprintf strerror)
+AC_HAVE_FUNCS(open close dup dup2 fdopen fileno fstat stat isatty)
+AC_HAVE_FUNCS(getpid setpgid fork execlp wait kill)
+AC_HAVE_FUNCS(grantpt unlockpt ptsname tcgetattr tcsetattr ioctl)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
 if test "$HAVE_UNISTD_H" = 1; then
@@ -506,6 +509,31 @@ fi
 AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
 if test "$HAVE_SYS_STAT_H" = 1; then
 	AC_DEFINE(HAVE_SYS_STAT_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(fcntl.h, HAVE_FCNTL_H=1)
+if test "$HAVE_FCNTL_H" = 1; then
+	AC_DEFINE(HAVE_FCNTL_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(termios.h, HAVE_TERMIOS_H=1)
+if test "$HAVE_TERMIOS_H" = 1; then
+	AC_DEFINE(HAVE_TERMIOS_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/ioctl.h, HAVE_SYS_IOCTL_H=1)
+if test "$HAVE_SYS_IOCTL_H" = 1; then
+	AC_DEFINE(HAVE_SYS_IOCTL_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/stropts.h, HAVE_SYS_STROPTS_H=1)
+if test "$HAVE_SYS_STROPTS_H" = 1; then
+	AC_DEFINE(HAVE_SYS_STROPTS_H)
+fi
+#-----------------------------------------------------------------------------#
+AC_CHECK_FILE(/dev/ptmx, HAVE_DEV_PTMX=1)
+if test "$HAVE_DEV_PTMX" = 1; then
+	AC_DEFINE(HAVE_DEV_PTMX)
 fi
 #-----------------------------------------------------------------------------#
 #
@@ -1078,7 +1106,8 @@ else
 fi
 AC_SUBST(MR_INT_LEAST32_MAX)
 AC_SUBST(MR_UINT_LEAST32_MAX)
-
+#-----------------------------------------------------------------------------#
+AC_TYPE_PID_T
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for an integer type of at least 16 bits)
 AC_CACHE_VAL(mercury_cv_int_least16_type,

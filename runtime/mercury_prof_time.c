@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -106,7 +106,7 @@ MR_turn_on_time_profiling(MR_time_signal_handler handler)
 	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
 
 	MR_setup_signal(MR_itimer_sig, handler, FALSE,
-		"Mercury runtime: cannot install signal handler");
+		"cannot install signal handler");
 	MR_checked_setitimer(MR_itimer_type, &itime);
 }
 

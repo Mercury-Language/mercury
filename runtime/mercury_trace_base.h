@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,6 +19,9 @@
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
 #include "mercury_tabling.h"	/* for MR_TableNode */
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>           /* for the write system call and pid_t */
+#endif
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
@@ -93,6 +96,15 @@ extern	void	MR_trace_init(void);
 extern	void	MR_trace_start(bool enabled);
 extern	void	MR_trace_end(void);
 extern	void	MR_trace_final(void);
+
+/*
+** MR_have_mdb_window and MR_mdb_window_pid are set by
+** mercury_trace_internal.c after the xterm window for
+** mdb has been spawned. The window process is killed by 
+** MR_trace_final().
+*/
+extern	bool	MR_have_mdb_window;
+extern	pid_t	MR_mdb_window_pid;
 
 /*
 ** The globals that define the interface between the tracing subsystem

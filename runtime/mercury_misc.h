@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,15 @@
 #include <stdlib.h>		/* for `size_t' */
 
 extern	void	MR_warning(const char *msg, ...);
+
+	/* For warnings from the debugger */
+extern	void	MR_mdb_warning(const char *msg, ...);
+
+extern	void	MR_perror(const char *msg);
+
+	/* For errors from the debugger */
+extern	void	MR_mdb_perror(const char *msg);
+
 extern	void	MR_fatal_error(const char *msg, ...) NO_RETURN;
 
 #endif /* not MERCURY_MISC_H */

@@ -1,6 +1,6 @@
 #!/bin/sh
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998,2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -32,22 +32,32 @@ Options:
 		specified by <file-name>.  The I/O for the program
 		being debugged will not be redirected.
 
-	-w, --window
+	-w, --window, --mdb-in-window
+		Run mdb in a new window, with mdb's I/O going to that
+		window, but with the program's I/O going to the current
+		terminal.  Note that this will not work on all systems.
+
+	--program-in-window
 		Run the program in a new window, with the program's I/O
 		going to that window, but with mdb's I/O going to the
-		current terminal.
+		current terminal.  Note that input and output redirection
+		will not work with the \`--program-in-window' option.
+		\`--program-in-window' will work on most UNIX systems
+		running the X Window System, even those for which
+		\`--mdb-in-window' is not supported.
 
 	-c <window-command>, --window-command <window-command>
-		Specify the command used by the \`--window' option for
-		executing a command in a new window.  The default such
-		command is \`xterm -e'.
+		Specify the command used by the \`--program-in-window'
+		option for executing a command in a new window.
+		The default such command is \`xterm -e'.
 
 Environment variables:
 	MERCURY_OPTIONS, MERCURY_DEBUGGER_INIT.
 "
 
 tty=
-window=false
+# Possible values "none", "program", "mdb".
+window=none
 window_cmd="xterm -e"
 
 #-----------------------------------------------------------------------------#
@@ -71,14 +81,20 @@ while : ; do
 		-t*)
 			tty="` expr $1 : '-t\(.*\)' `"
 			shift ;;
-		-w|--window)
-			window=true
+		-w|--window|--mdb-in-window)
+			window=mdb
 			shift ;;
-		-w-|--no-window)
-			window=false
+		-w-|--no-window|--no-mdb-in-window)
+			window=none
+			shift ;;
+		--program-in-window)
+			window=program
+			shift ;;
+		--no-program-in-window)
+			window=none
 			shift ;;
 		-c|--window-command)
-			window_cmd="$2";
+			window_cmd="$2"
 			shift; shift ;;
 		--)
 			shift; break ;;
@@ -96,8 +112,12 @@ done
 #
 
 invoke_cmd=
-case "$window" in true)
+case "$window" in program)
 	invoke_cmd="$window_cmd"
+esac
+
+case "$window" in
+    program|mdb)
 	#
 	# If windowing is enabled, check that DISPLAY is set, and if not,
 	# issue a warning message.  This is needed because the default error
@@ -113,10 +133,15 @@ esac
 # Figure out if/how we should redirect the mdb I/O streams
 #
 
+mdb_in_window_opt=""
+
 case "$tty" in
     "")
 	case "$window" in
-	    true)
+	    mdb)
+	    	mdb_in_window_opt="--mdb-in-window"
+	    	;;
+	    program)
 		#
 		# On Linux, we can use special files in /proc
 		# that refer to the file descriptors for a
@@ -144,7 +169,7 @@ case "$tty" in
 			redirect_opts="--mdb-tty $tty"
 		fi
 		;;
-	    false)
+	    none)
 		redirect_opts=""
 		;;
 	esac ;;
@@ -161,7 +186,7 @@ esac
 #
 
 enable_mdb_opt="-Di"
-MERCURY_OPTIONS="$MERCURY_OPTIONS $redirect_opts $enable_mdb_opt"
+MERCURY_OPTIONS="$MERCURY_OPTIONS $redirect_opts $enable_mdb_opt $mdb_in_window_opt"
 export MERCURY_OPTIONS
 MERCURY_DEBUGGER_INIT=${MERCURY_DEBUGGER_INIT-@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdbrc}
 export MERCURY_DEBUGGER_INIT

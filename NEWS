@@ -186,6 +186,11 @@ Changes to the Mercury implementation:
   requires X11 and a version of `vim' with the `clientserver' feature
   enabled.
 
+* The `--window' mdb option now creates a window for mdb, not
+  the program.  The main advantage of the new behaviour is that
+  redirection of the program's input and output works.  The old
+  behaviour is still available with `mdb --program-in-window'.
+
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in
   its interface section, then any types, insts, modes and typeclasses defined

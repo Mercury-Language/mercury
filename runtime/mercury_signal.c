@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000 The University of Melbourne.
+** Copyright (C) 1998,2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,13 +87,32 @@
   #define	SA_SIGINFO 0
 #endif
 
+static void MR_do_setup_signal(int sig, MR_Code *handler, bool need_info,
+		bool restart, const char *error_message);
+
 void
 MR_setup_signal(int sig, MR_Code *handler, bool need_info, 
 		const char *error_message)
 {
+	MR_do_setup_signal(sig, handler, need_info, TRUE, error_message);
+}
+
+void
+MR_setup_signal_no_restart(int sig, MR_Code *handler, bool need_info,
+		const char *error_message)
+{
+	MR_do_setup_signal(sig, handler, need_info, FALSE, error_message);
+}
+
+void
+MR_do_setup_signal(int sig, MR_Code *handler, bool need_info, bool restart,
+		const char *error_message)
+{
+	MR_signal_action	act;
+
 #if	defined(HAVE_SIGACTION)
 
-	struct sigaction	act;
+	act.sa_flags = (restart ? SA_RESTART : 0);
 
 	if (need_info) {
 	/*
@@ -102,32 +121,59 @@ MR_setup_signal(int sig, MR_Code *handler, bool need_info,
 	** request signals, we should not ask for SA_SIGINFO, since our
 	** handler will not be of the right type.
 	*/
-#if	defined(HAVE_SIGCONTEXT_STRUCT)
-		act.sa_flags = SA_RESTART;
-#else	/* not HAVE_SIGCONTEXT_STRUCT */
-		act.sa_flags = SA_SIGINFO | SA_RESTART;
+#if	!defined(HAVE_SIGCONTEXT_STRUCT)
+		act.sa_flags |= SA_SIGINFO;
 #endif
-	} else {
-		act.sa_flags = SA_RESTART;
 	}
 	if (sigemptyset(&act.sa_mask) != 0) {
-		perror("Mercury runtime: cannot set clear signal mask");
+		MR_perror("cannot set clear signal mask");
 		exit(1);
 	}
 	errno = 0;
 
 	act.SIGACTION_FIELD = handler;
-	if (sigaction(sig, &act, NULL) != 0) {
-		perror(error_message);
+#else /* not HAVE_SIGACTION */
+
+	act = handler;
+
+#endif /* not HAVE_SIGACTION */
+
+	MR_set_signal_action(sig, &act, error_message);
+}
+
+void
+MR_get_signal_action(int sig, MR_signal_action *act,
+			const char *error_message)
+{
+#ifdef HAVE_SIGACTION
+	if (sigaction(sig, NULL, act) != 0) {
+		MR_perror(error_message);
 		exit(1);
 	}
 
 #else /* not HAVE_SIGACTION */
-
-	if (signal(sig, handler) == SIG_ERR) {
-		perror(error_message);
+	*act = signal(sig, NULL);
+	if (*act == SIG_ERR) {
+		MR_perror(error_message);
 		exit(1);
 	}
 #endif /* not HAVE_SIGACTION */
 }
 
+void
+MR_set_signal_action(int sig, MR_signal_action *act,
+			const char *error_message)
+{
+#ifdef HAVE_SIGACTION
+	if (sigaction(sig, act, NULL) != 0) {
+		MR_perror(error_message);
+		exit(1);
+	}
+
+#else /* not HAVE_SIGACTION */
+	if (signal(sig, *act) == SIG_ERR) {
+		MR_perror(error_message);
+		exit(1);
+	}
+#endif /* not HAVE_SIGACTION */
+}

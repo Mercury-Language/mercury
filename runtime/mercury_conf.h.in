@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -121,6 +121,10 @@
 **	HAVE_SYS_TYPES_H	we have <sys/types.h>
 **	HAVE_SYS_TIMES_H	we have <sys/times.h>
 **	HAVE_DLFCN_H		we have <dlfcn.h>
+**	HAVE_FCNTL_H		we have <fcnt.h>
+**	HAVE_TERMIOS_H		we have <termios.h>
+**	HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
+**	HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
 */
 #undef	HAVE_SYS_SIGINFO
 #undef	HAVE_SYS_SIGNAL
@@ -135,6 +139,16 @@
 #undef	HAVE_SYS_TIMES_H
 #undef	HAVE_SYS_TYPES_H
 #undef	HAVE_DLFCN_H
+#undef	HAVE_FCNTL_H
+#undef	HAVE_TERMIOS_H
+#undef	HAVE_SYS_IOCTL_H
+#undef	HAVE_SYS_STROPTS_H
+
+/*
+** HAVE_DEV_PTMX is defined if /dev/ptmx (used to allocate
+** pseudo-terminals) exists.
+*/
+#undef HAVE_DEV_PTMX
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -153,10 +167,20 @@
 #undef MR_HAVE_INT_LEASTN_T
 
 /*
+** pid_t is defined as `int' iff the system headers don't define it.
+*/
+#undef pid_t
+
+/*
 ** The following macros are defined iff the corresponding function or
 ** system call is available:
 **
 ** 	HAVE_GETPID		we have the getpid() function.
+** 	HAVE_SETPGID		we have the setpgid() function.
+**	HAVE_FORK		we have the fork() function.
+**	HAVE_EXECLP		we have the execlp() function.
+**	HAVE_WAIT		we have the wait() function.
+**	HAVE_KILL		we have the kill() function.
 ** 	HAVE_GETHOSTNAME	we have the gethostname() function.
 **	HAVE_SNPRINTF 		we have the snprintf() function.
 **	HAVE_VSNPRINTF 		we have the vsnprintf() function.
@@ -176,13 +200,28 @@
 **	HAVE_STAT 		we have the stat() function.
 **	HAVE_FSTAT 		we have the fstat() function.
 **	HAVE_FDOPEN 		we have the fdopen() function.
+**	HAVE_OPEN		we have the open() function.
+**	HAVE_CLOSE		we have the close() function.
+**	HAVE_DUP		we have the dup() function.
+**	HAVE_DUP2		we have the dup2() function.
 **	HAVE_FILENO 		we have the fileno() function.
 **				Note that fileno() may be a macro
 **				rather than a function, so you should use
 **				#if defined(fileno) || defined(HAVE_FILENO)
 **	HAVE_ISATTY 		we have the isatty() function.
+**	HAVE_GRANTPT		we have the grantpt() function.
+**	HAVE_UNLOCKPT		we have the unlockpt() function.
+**	HAVE_PTSNAME		we have the ptsname() function.
+**	HAVE_TCGETATTR		we have the tcgetattr() function.
+**	HAVE_TCSETATTR		we have the tcsetattr() function.
+**	HAVE_IOCTL		we have the ioctl() function.
 */
 #undef	HAVE_GETPID
+#undef	HAVE_SETPGID
+#undef	HAVE_FORK
+#undef	HAVE_EXECLP
+#undef	HAVE_WAIT
+#undef	HAVE_KILL
 #undef	HAVE_GETHOSTNAME
 #undef	HAVE_SNPRINTF
 #undef	HAVE_VSNPRINTF
@@ -202,8 +241,18 @@
 #undef	HAVE_STAT
 #undef	HAVE_FSTAT
 #undef	HAVE_FDOPEN
+#undef	HAVE_OPEN
+#undef	HAVE_CLOSE
+#undef	HAVE_DUP
+#undef	HAVE_DUP2
 #undef	HAVE_FILENO
 #undef	HAVE_ISATTY
+#undef	HAVE_GRANTPT
+#undef	HAVE_UNLOCKPT
+#undef	HAVE_PTSNAME
+#undef	HAVE_TCGETATTR
+#undef	HAVE_TCSETATTR
+#undef	HAVE_IOCTL
 
 /*
 ** RETSIGTYPE: the return type of signal handlers.

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998, 2000-2001 The University of Melbourne.
+** Copyright (C) 1995-1998, 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -414,7 +414,7 @@ MR_prof_init(void)
 	MR_checked_atexit(MR_prof_finish);
   #ifdef SIGINT
 	MR_setup_signal(SIGINT, prof_handle_sigint, FALSE,
-		"Mercury runtime: cannot install signal handler");
+		"cannot install signal handler");
   #endif
 #endif
 }

@@ -89,6 +89,7 @@ size_t		MR_pcache_size =	        8192;
 const char	*MR_mdb_in_filename = NULL;
 const char	*MR_mdb_out_filename = NULL;
 const char	*MR_mdb_err_filename = NULL;
+bool		MR_mdb_in_window = FALSE;
 
 /* other options */
 
@@ -735,7 +736,8 @@ enum MR_long_option {
 	MR_MDB_TTY,
 	MR_MDB_IN,
 	MR_MDB_OUT,
-	MR_MDB_ERR
+	MR_MDB_ERR,
+	MR_MDB_IN_WINDOW
 };
 
 struct MR_option MR_long_opts[] = {
@@ -752,7 +754,8 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
-	{ "mdb-err", 			1, 0, MR_MDB_ERR }
+	{ "mdb-err", 			1, 0, MR_MDB_ERR },
+	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW }
 };
 
 static void
@@ -858,6 +861,11 @@ process_options(int argc, char **argv)
 			MR_mdb_in_filename = MR_copy_string(MR_optarg);
 			MR_mdb_out_filename = MR_copy_string(MR_optarg);
 			MR_mdb_err_filename = MR_copy_string(MR_optarg);
+			break;
+
+		case 'w':
+		case MR_MDB_IN_WINDOW:
+			MR_mdb_in_window = TRUE;
 			break;
 
 		case 'a':

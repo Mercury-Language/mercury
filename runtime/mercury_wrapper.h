@@ -214,6 +214,9 @@ extern	const char	*MR_mdb_in_filename;
 extern	const char	*MR_mdb_out_filename;
 extern	const char	*MR_mdb_err_filename;
 
+/* should mdb be started in a window */
+extern	bool		MR_mdb_in_window;
+
 /* size of the primary cache */
 extern	size_t		MR_pcache_size;
 
