@@ -271,7 +271,7 @@ list__zip([A|As], Bs, [A|Cs]) :-
 
 list__zip2(As, [], As).
 list__zip2(As, [B|Bs], [B|Cs]) :-
-	list__zip2(As, Bs, Cs).
+	list__zip(As, Bs, Cs).
 
 list__split3(As, Bs, Cs, Ds) :-
 	list__length(As, AL),
