@@ -58,7 +58,11 @@ tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
 
 :- pragma foreign_proc("C",
 	tabled_read_unitize__unitize(Stream::in, N::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io_unitize],
+	[may_call_mercury, promise_pure, tabled_for_io_unitize,
+	% This needs to be declared as thread safe, otherwise it deadlocks
+	% in `.par' grades, since it acquires the global lock and then
+	% calls back Mercury code which tries to reacquire that lock.
+	thread_safe],
 "
 	MR_Integer	int1;
 	MR_Integer	int2;
