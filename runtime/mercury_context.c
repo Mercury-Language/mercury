@@ -22,14 +22,14 @@ ENDINIT
 #include "mercury_context.h"
 #include "mercury_engine.h"	/* for `memdebug' */
 
-Context		*MR_runqueue;
+MR_Context	*MR_runqueue;
 #ifdef	MR_THREAD_SAFE
   MercuryLock	*MR_runqueue_lock;
   MercuryCond	*MR_runqueue_cond;
 #endif
 
 
-static Context	*free_context_list = NULL;
+static MR_Context *free_context_list = NULL;
 #ifdef	MR_THREAD_SAFE
   static	MercuryLock *free_context_list_lock;
 #endif
@@ -64,7 +64,7 @@ finalize_runqueue(void)
 }
 
 void 
-init_context(Context *c)
+init_context(MR_Context *c)
 {
 	c->next = NULL;
 	c->resume = NULL;
@@ -111,15 +111,15 @@ init_context(Context *c)
 	c->context_hp = NULL;
 }
 
-Context *
+MR_Context *
 create_context(void)
 {
-	Context *c;
+	MR_Context *c;
 
 	MR_LOCK(free_context_list_lock, "create_context");
 	if (free_context_list == NULL) {
 		MR_UNLOCK(free_context_list_lock, "create_context i");
-		c = (Context *) make(Context);
+		c = (MR_Context *) make(MR_Context);
 		c->detstack_zone = NULL;
 		c->nondetstack_zone = NULL;
 #ifdef MR_USE_TRAIL
@@ -137,7 +137,7 @@ create_context(void)
 }
 
 void 
-destroy_context(Context *c)
+destroy_context(MR_Context *c)
 {
 	MR_LOCK(free_context_list_lock, "destroy_context");
 	c->next = free_context_list;

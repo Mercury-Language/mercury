@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,9 +7,12 @@
 /*
 ** mercury_context.h - defines Mercury multithreading stuff.
 **
-** A Context is like a thread. It contains a detstack, a nondetstack, a trail,
-** the various pointers that refer to them, a succip, and a thread-
-** resumption continuation. Contexts are initally stored in a free-list.
+** A "context" is a Mercury thread.  (We use a different term than "thread"
+** to avoid confusing Mercury threads and Posix threads.) 
+** Each context is represented by a value of type MR_Context,
+** which contains a detstack, a nondetstack, a trail, the various pointers
+** that refer to them, a succip, and a thread-resumption continuation. 
+** Contexts are initally stored in a free-list.
 ** When one is running, the Posix thread that is executing it has a pointer
 ** to its context structure `this_context'. When a context suspends, it
 ** calls `save_context(context_ptr)' which copies the context from the
@@ -39,7 +42,8 @@
 #ifndef MERCURY_CONTEXT_H
 #define MERCURY_CONTEXT_H
 
-#include "mercury_regs.h"		/* for hp. Must come before system headers. */
+#include "mercury_regs.h"		/* for hp. Must come before
+					   system headers. */
 
 #include <stdio.h>
 
@@ -61,9 +65,9 @@
 ** are prefixed with `context_' so that they don't get replaced
 ** during macro expansion.
 */
-typedef struct CONTEXT Context;
-struct CONTEXT {
-	struct CONTEXT	*next;	
+typedef struct MR_context_struct MR_Context;
+struct MR_context_struct {
+	struct MR_context_struct *next;	
 		/*
 		** if this context is in the free-list `next' will point
 		** to the next free context. If this context is suspended
@@ -122,6 +126,8 @@ struct CONTEXT {
 		*/
 };
 
+typedef MR_Context Context;	/* for backwards compatibility */
+
 /*
 ** free_context_list is a global linked list of unused context
 ** structures. If the MemoryZone pointers are not NULL,
@@ -129,15 +135,14 @@ struct CONTEXT {
 ** need to be reinitialized, but have space allocated to
 ** them. (see comments in mercury_memory.h about reset_zone())
 */
-extern	Context *free_context_list;
+extern	MR_Context *free_context_list;
 
 /*
 ** the runqueue is a linked list of contexts that are
 ** runnable.
 */
-
-extern		Context		*MR_runqueue;
-extern		Context		*MR_suspended_forks;
+extern		MR_Context	*MR_runqueue;
+extern		MR_Context	*MR_suspended_forks;
 #ifdef	MR_THREAD_SAFE
   extern	MercuryLock	*MR_runqueue_lock;
   extern	MercuryCond	*MR_runqueue_cond;
@@ -147,20 +152,20 @@ extern		Context		*MR_suspended_forks;
 /*
 ** Initializes a context structure.
 */
-void	init_context(Context *context);
+void	init_context(MR_Context *context);
 
 /*
 ** create_context() allocates and initializes a new context
 ** structure.
 */
-Context	*create_context(void);
+MR_Context *create_context(void);
 
 /*
 ** destroy_context(ptr) returns the context structure pointed
 ** to by ptr to the free list, and releases resources as
 ** necessary.
 */
-void	destroy_context(Context *context);
+void	destroy_context(MR_Context *context);
 
 /*
 ** init_thread_stuff() initializes the lock structures for the runqueue.
@@ -179,32 +184,34 @@ void	finalize_runqueue(void);
 */
 void	flounder(void);
 
-/*
-** schedule(Context *cptr):
-*/
-
 #ifdef	MR_THREAD_SAFE
-  #define schedule(cptr)	do {				\
+  /*
+  ** schedule(MR_Context *cptr):
+  **	Inserts a context onto the start of the run queue.
+  */
+  #define schedule(cptr)					\
+  	do {							\
 		MR_LOCK(MR_runqueue_lock, "schedule");		\
-		((Context *)cptr)->next = MR_runqueue;		\
-		MR_runqueue = (Context *) (cptr);		\
+		((MR_Context *)cptr)->next = MR_runqueue;	\
+		MR_runqueue = (MR_Context *) (cptr);		\
 		MR_SIGNAL(MR_runqueue_cond);			\
 		MR_UNLOCK(MR_runqueue_lock, "schedule");	\
 	} while(0)
 
-	/*
-	** runnext() tries to execute the first context on the
-	** runqueue. If the context was directly called from C
-	** it may only be executed in the thread that the C call
-	** originated in or should the context return to C the
-	** C stack will be wrong!
-	** If there are no contexts that the current thread can
-	** execute, then we suspend until another thread puts something
-	** into the runqueue. Currently, it is not possible for
-	** floundering to occur, so we haven't got a check for it.
-	*/
-  #define runnext()	do {					\
-		Context *rn_c, *rn_p;				\
+  /*
+  ** runnext() tries to execute the first context on the
+  ** runqueue. If the context was directly called from C
+  ** it may only be executed in the thread that the C call
+  ** originated in or should the context return to C the
+  ** C stack will be wrong!
+  ** If there are no contexts that the current thread can
+  ** execute, then we suspend until another thread puts something
+  ** into the runqueue. Currently, it is not possible for
+  ** floundering to occur, so we haven't got a check for it.
+  */
+  #define runnext()						\
+  	do {							\
+		MR_Context *rn_c, *rn_p;			\
 		unsigned x;					\
 		MercuryThread t;				\
 		x = MR_ENGINE(c_depth);				\
@@ -236,12 +243,16 @@ void	flounder(void);
 		GOTO(MR_ENGINE(this_context)->resume);		\
 	} while(0)
 #else
-  #define schedule(cptr)	do {				\
-		((Context *)cptr)->next = MR_runqueue;		\
-		MR_runqueue = (Context *) (cptr);		\
+  /* see above for documentation */
+  #define schedule(cptr)					\
+  	do {							\
+		((MR_Context *)cptr)->next = MR_runqueue;	\
+		MR_runqueue = (MR_Context *) (cptr);		\
 	} while(0)
 
-  #define runnext()	do {					\
+  /* see above for documentation */
+  #define runnext()						\
+  	do {							\
 		if (MR_runqueue == NULL) {			\
 			fatal_error("empty runqueue");		\
 		}						\
@@ -257,6 +268,7 @@ void	flounder(void);
 #else
   #define IF_MR_THREAD_SAFE(x)
 #endif
+
 /*
 ** fork_new_context(Code *child, Code *parent, int numslots):
 ** create a new context to execute the code at `child', and
@@ -265,7 +277,7 @@ void	flounder(void);
 ** context resumes at `parent'.
 */
 #define MR_fork_new_context(child, parent, numslots) do {		\
-		Context	*f_n_c_context;					\
+		MR_Context	*f_n_c_context;				\
 		int	fork_new_context_i;				\
 		f_n_c_context = create_context();			\
 		IF_MR_THREAD_SAFE(					\
@@ -285,40 +297,40 @@ void	flounder(void);
 
 #ifndef	CONSERVATIVE_GC
 
-/*
-** To figure out the maximum amount of heap we can reclaim on backtracking,
-** we compare hp with the context_hp.
-**
-** If context_hp == NULL then this is the first time this context has been
-** scheduled, so the furthest back down the heap we can reclaim is to the
-** current value of hp. 
-**
-** If hp > context_hp, another context has allocated data on the heap since
-** we were last scheduled, so the furthest back that we can reclaim is to
-** the current value of hp, so we set MR_min_hp_rec and the
-** field of the same name in our context structure.
-**
-** If hp < context_hp, then another context has truncated the heap on failure.
-** For this to happen, it must be the case that last time we were scheduled,
-** that other context was the last one to allocate data on the heap, and we
-** did not allocate any heap during that period of execution. That being the
-** case, the furthest back to which we can reset the heap is to the current
-** value of hp. This is a conservative approximation - it is possible that
-** the current value of hp is the same as some previous value that we held,
-** and we are now contiguous with our older data, so this algorithm will lead
-** to holes in the heap, though GC will reclaim these.
-**
-** If hp == context_hp then no other process has allocated any heap since we
-** were last scheduled, so we can proceed as if we had not stopped, and the
-** furthest back that we can backtrack is the same as it was last time we
-** were executing.
-*/
+  /*
+  ** To figure out the maximum amount of heap we can reclaim on backtracking,
+  ** we compare hp with the context_hp.
+  **
+  ** If context_hp == NULL then this is the first time this context has been
+  ** scheduled, so the furthest back down the heap we can reclaim is to the
+  ** current value of hp. 
+  **
+  ** If hp > context_hp, another context has allocated data on the heap since
+  ** we were last scheduled, so the furthest back that we can reclaim is to
+  ** the current value of hp, so we set MR_min_hp_rec and the
+  ** field of the same name in our context structure.
+  **
+  ** If hp < context_hp, then another context has truncated the heap on failure.
+  ** For this to happen, it must be the case that last time we were scheduled,
+  ** that other context was the last one to allocate data on the heap, and we
+  ** did not allocate any heap during that period of execution. That being the
+  ** case, the furthest back to which we can reset the heap is to the current
+  ** value of hp. This is a conservative approximation - it is possible that
+  ** the current value of hp is the same as some previous value that we held,
+  ** and we are now contiguous with our older data, so this algorithm will lead
+  ** to holes in the heap, though GC will reclaim these.
+  **
+  ** If hp == context_hp then no other process has allocated any heap since we
+  ** were last scheduled, so we can proceed as if we had not stopped, and the
+  ** furthest back that we can backtrack is the same as it was last time we
+  ** were executing.
+  */
   #define set_min_heap_reclamation_point(ctxt)	do {		\
 		if (hp != (ctxt)->context_hp 			\
 			|| (ctxt)->context_hp == NULL)		\
 		{						\
-			MR_min_hp_rec = hp;	\
-			(ctxt)->min_hp_rec = hp;\
+			MR_min_hp_rec = hp;			\
+			(ctxt)->min_hp_rec = hp;		\
 		}						\
 		else						\
 		{						\
@@ -326,9 +338,10 @@ void	flounder(void);
 		}						\
 	} while (0)
 
-  #define	save_hp_in_context(ctxt)	do {		\
-		(ctxt)->context_hp = hp;		\
-		(ctxt)->min_hp_rec = MR_min_hp_rec;	\
+  #define save_hp_in_context(ctxt)				\
+  	do {							\
+		(ctxt)->context_hp = hp;			\
+		(ctxt)->min_hp_rec = MR_min_hp_rec;		\
 	} while (0)
 
 #else
@@ -345,13 +358,14 @@ void	flounder(void);
   #define MR_IF_USE_TRAIL(x)
 #endif
 
-#define	load_context(cptr)	do {					\
-		Context	*load_context_c;				\
+#define load_context(cptr)						\
+	do {								\
+		MR_Context	*load_context_c;			\
 		load_context_c = (cptr);				\
-		MR_succip		= load_context_c->context_succip; \
-		MR_sp			= load_context_c->context_sp;	\
-		MR_maxfr		= load_context_c->context_maxfr; \
-		MR_curfr		= load_context_c->context_curfr; \
+		MR_succip	= load_context_c->context_succip;	\
+		MR_sp		= load_context_c->context_sp;		\
+		MR_maxfr	= load_context_c->context_maxfr; 	\
+		MR_curfr	= load_context_c->context_curfr;	\
 	        MR_IF_USE_TRAIL(					\
 		    MR_trail_zone = load_context_c->trail_zone;		\
 		    MR_trail_ptr = load_context_c->context_trail_ptr;	\
@@ -365,8 +379,9 @@ void	flounder(void);
 		set_min_heap_reclamation_point(load_context_c);		\
 	} while (0)
 
-#define	save_context(cptr)	do {					\
-		Context	*save_context_c;				\
+#define save_context(cptr)						\
+	do {								\
+		MR_Context	*save_context_c;			\
 		save_context_c = (cptr);				\
 		save_context_c->context_succip	= MR_succip;		\
 		save_context_c->context_sp	 = MR_sp;		\
@@ -381,20 +396,21 @@ void	flounder(void);
 		save_context_c->detstack_zone =				\
 				MR_ENGINE(context).detstack_zone;	\
 		save_context_c->nondetstack_zone =			\
-				MR_ENGINE(context).nondetstack_zone; \
+				MR_ENGINE(context).nondetstack_zone;	\
 		save_hp_in_context(save_context_c);			\
 	} while (0)
 
-typedef struct SYNCTERM SyncTerm;
-struct SYNCTERM {
+typedef struct sync_term_struct SyncTerm;
+struct sync_term_struct {
   #ifdef MR_THREAD_SAFE
 	MercuryLock	lock;
   #endif
 	int		count;
-	Context		*parent;
+	MR_Context	*parent;
 };
 
-#define MR_init_sync_term(sync_term, nbranches)	do {			\
+#define MR_init_sync_term(sync_term, nbranches)				\
+	do {								\
 		SyncTerm *st = (SyncTerm *) sync_term;			\
 		MR_IF_THREAD_SAFE(					\
 			pthread_mutex_init(&(st->lock), MR_MUTEX_ATTR);	\
@@ -403,7 +419,8 @@ struct SYNCTERM {
 		st->parent = NULL;					\
 	} while (0)
 
-#define MR_join_and_terminate(sync_term)	do {			\
+#define MR_join_and_terminate(sync_term)				\
+	do {								\
 		SyncTerm *st = (SyncTerm *) sync_term;			\
 		MR_LOCK(&(st->lock), "terminate");			\
 		(st->count)--;						\
@@ -419,7 +436,8 @@ struct SYNCTERM {
 		runnext();						\
 	} while (0)
 
-#define MR_join_and_continue(sync_term, where_to)	do {		\
+#define MR_join_and_continue(sync_term, where_to)			\
+	do {								\
 		SyncTerm *st = (SyncTerm *) sync_term;			\
 		MR_LOCK(&(st->lock), "continue");			\
 		(st->count)--;						\
@@ -436,4 +454,3 @@ struct SYNCTERM {
 	} while (0)
 
 #endif /* not MERCURY_CONTEXT_H */
-

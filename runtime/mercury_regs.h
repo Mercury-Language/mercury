@@ -136,13 +136,14 @@
 */
 
 #if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
-#define	restore_registers()	do {				\
+  #define restore_registers()					\
+  	do {							\
 		MR_engine_base = MR_thread_engine_base;		\
 		MR_fake_reg[0] = (Word) MR_engine_base;		\
 		restore_regs_from_mem(MR_fake_reg);		\
 	} while (0)
 #else
-#define restore_registers() 	restore_regs_from_mem(MR_fake_reg)
+  #define restore_registers() 	restore_regs_from_mem(MR_fake_reg)
 #endif
 
 /* 
@@ -155,13 +156,14 @@
 
 #define save_transient_registers()    save_transient_regs_to_mem(MR_fake_reg)
 #if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
-#define restore_transient_registers()	do {				\
+  #define restore_transient_registers()					\
+  	do {								\
 		MR_engine_base = MR_thread_engine_base;			\
 		MR_fake_reg[0] = (Word) MR_engine_base;			\
 		restore_transient_regs_from_mem(MR_fake_reg);		\
 	} while (0)
 #else
-#define restore_transient_registers()	\
+  #define restore_transient_registers()	\
 		restore_transient_regs_from_mem(MR_fake_reg)
 #endif
 
@@ -176,7 +178,7 @@
   #define count_usage(num,reg)		(reg)
 #endif
 
-#include	"mercury_regorder.h"
+#include "mercury_regorder.h"
 
 /* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
 
@@ -186,9 +188,9 @@
 ** saved_reg(save_area, n) accesses the underlying slot in save_area
 ** for register n
 */
-#define saved_reg(save_area, n)	\
-	LVALUE_COND((n) > MAX_REAL_REG, \
-		save_area[(n) + NUM_SPECIAL_REG - 1], \
+#define saved_reg(save_area, n)						\
+	LVALUE_COND((n) > MAX_REAL_REG,					\
+		save_area[(n) + NUM_SPECIAL_REG - 1],			\
 		save_area[virtual_reg_map[(n) - 1]])
 
 /* virtual_reg(n) accesses the underlying fake_reg for register n */

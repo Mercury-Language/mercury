@@ -545,11 +545,11 @@ MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 enum MR_DataRepresentation
 MR_categorize_data(Word functors_indicator, Word layout_entry)
 {
-	switch (functors_indicator) { 
+	switch ((int) functors_indicator) { 
 		case MR_TYPEFUNCTORS_ENUM: 
 			return MR_DATAREP_ENUM;
 		case MR_TYPEFUNCTORS_DU: 
-			switch (tag(layout_entry)) {
+			switch ((int) tag(layout_entry)) {
 				case TYPELAYOUT_SIMPLE_TAG:
 					return MR_DATAREP_SIMPLE;
 				case TYPELAYOUT_COMPLICATED_TAG:

@@ -3,7 +3,7 @@ INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,7 +18,7 @@ ENDINIT
 #include <errno.h>
 
 #ifdef	MR_THREAD_SAFE
-MercuryThreadKey MR_engine_base_key;
+  MercuryThreadKey MR_engine_base_key;
 #endif
 
 bool	MR_exit_now;
@@ -28,7 +28,8 @@ void *init_thread(void *unused);
 Declare_entry(do_runnext);
 
 #ifdef MR_THREAD_SAFE
-MercuryThread *create_thread(int x)
+MercuryThread *
+create_thread(int x)
 {
 	MercuryThread *thread;
 	pthread_attr_t attrs;
@@ -48,9 +49,10 @@ MercuryThread *create_thread(int x)
 
 	return thread;
 }
-#endif
+#endif /* MR_THREAD_SAFE */
 
-void *init_thread(void *unused)
+void *
+init_thread(void *unused)
 {
 	MercuryEngine *eng;
 
@@ -73,7 +75,7 @@ void *init_thread(void *unused)
 		sizeof(MercuryEngine));
 	restore_registers();
 
-	load_engine_regs(MR_engine_base);
+	load_engine_regs(&MR_engine_base);
 	load_context(MR_engine_base.this_context);
 
 	save_registers();
@@ -93,7 +95,8 @@ void *init_thread(void *unused)
 }
 
 #ifdef	MR_THREAD_SAFE
-void destroy_thread(void *eng0)
+void
+destroy_thread(void *eng0)
 {
 	MercuryEngine *eng = eng0;
 	destroy_engine(eng);
@@ -102,7 +105,8 @@ void destroy_thread(void *eng0)
 #endif
 
 #ifdef	MR_THREAD_SAFE
-void MR_mutex_lock(MercuryLock *lock, const char *from)
+void
+MR_mutex_lock(MercuryLock *lock, const char *from)
 {
 	int err;
 
@@ -113,33 +117,37 @@ void MR_mutex_lock(MercuryLock *lock, const char *from)
 	assert(err == 0);
 }
 
-void MR_mutex_unlock(MercuryLock *lock, const char *from)
+void
+MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
 	int err;
 
 #if 0
-	fprintf(stderr, "%d unlocking on %p (%s)\n", pthread_self(), lock, from);
+	fprintf(stderr, "%d unlocking on %p (%s)\n",
+		pthread_self(), lock, from);
 #endif
 	err = pthread_mutex_unlock(lock);
 	assert(err == 0);
 }
 
-void MR_cond_signal(MercuryCond *cond)
+void
+MR_cond_signal(MercuryCond *cond)
 {
 	int err;
 
-#ifdef 0
+#if 0
 	fprintf(stderr, "%d signaling %p\n", pthread_self(), cond);
 #endif
 	err = pthread_cond_broadcast(cond);
 	assert(err == 0);
 }
 
-void MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
+void
+MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
 	int err;
 
-#ifdef 0
+#if 0
 	fprintf(stderr, "%d waiting on %p (%p)\n", pthread_self(), cond, lock);
 #endif
 	err = pthread_cond_wait(cond, lock);

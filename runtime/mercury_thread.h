@@ -1,3 +1,8 @@
+/*
+** Copyright (C) 1997-1998 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
 #ifndef MERCURY_THREAD_H
 #define MERCURY_THREAD_H
 
@@ -17,10 +22,10 @@
     #define MR_THREAD_ATTR	NULL
   #endif
 
-typedef	pthread_t	MercuryThread;
-typedef pthread_key_t	MercuryThreadKey;
-typedef pthread_mutex_t	MercuryLock;
-typedef pthread_cond_t	MercuryCond;
+  typedef pthread_t		MercuryThread;
+  typedef pthread_key_t		MercuryThreadKey;
+  typedef pthread_mutex_t	MercuryLock;
+  typedef pthread_cond_t	MercuryCond;
 
   #if 0
 	/*
@@ -59,9 +64,9 @@ typedef pthread_cond_t	MercuryCond;
     #define	MR_KEY_CREATE		pthread_key_create
   #endif
 
-MercuryThread	*create_thread(int x);
-void		destroy_thread(void *eng);
-extern bool	MR_exit_now;
+  MercuryThread	*create_thread(int x);
+  void		destroy_thread(void *eng);
+  extern bool	MR_exit_now;
 
 #else /* not MR_THREAD_SAFE */
 

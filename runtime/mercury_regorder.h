@@ -70,15 +70,10 @@
 #define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
 
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr2))
-#define succip		MR_succip
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr6))
-#define hp		MR_hp
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr1))
-#define sp		MR_sp
 #define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr9))
-#define curfr		MR_curfr
 #define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr10))
-#define maxfr		MR_maxfr
 #define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(38)))
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(39)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
@@ -197,13 +192,6 @@
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 
-/* for backwards compatibility */
-#define succip		MR_succip
-#define hp		MR_hp
-#define sp		MR_sp
-#define curfr		MR_curfr
-#define maxfr		MR_maxfr
-
 /* the number of special, non rN registers */
 #define MR_NUM_SPECIAL_REG	10
 
@@ -261,5 +249,12 @@
 }
 
 #endif
+
+/* for backwards compatibility */
+#define succip		MR_succip
+#define hp		MR_hp
+#define sp		MR_sp
+#define curfr		MR_curfr
+#define maxfr		MR_maxfr
 
 #endif /* not MERCURY_REGORDER_H */

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,7 +7,7 @@
 /*
 ** mercury_engine.h - definitions for the Mercury runtime engine.
 **
-** For documentation, see the comments in engine.mod.
+** For documentation, see also the comments in mercury_engine.c.
 */
 
 #ifndef	MERCURY_ENGINE_H
@@ -26,7 +26,15 @@
 #include "mercury_types.h"		/* for `Code *' */
 #include "mercury_goto.h"		/* for `Define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
-#include "mercury_context.h"		/* for MR_IF_USE_TRAIL */
+#include "mercury_context.h"		/* for MR_Context, MR_IF_USE_TRAIL */
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Global flags that control the behaviour of the Mercury engine(s)
+*/
+
+extern	bool	debugflag[];
 
 #define	PROGFLAG	0
 #define	GOTOFLAG	1
@@ -83,6 +91,13 @@ typedef struct {
 
 	} MR_jmp_buf;
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** Replacements for setjmp() and longjmp() that work
+** across calls to Mercury code.
+*/
+
 	/*
 	** MR_setjmp(MR_jmp_buf *env, longjmp_label)
 	**
@@ -105,9 +120,9 @@ typedef struct {
 		(setjmp_env)->mercury_env = MR_ENGINE(e_jmp_buf);	\
 		save_regs_to_mem((setjmp_env)->regs);			\
 		(setjmp_env)->saved_succip = MR_succip;			\
-		(setjmp_env)->saved_sp = sp;				\
-		(setjmp_env)->saved_curfr = curfr;			\
-		(setjmp_env)->saved_maxfr = maxfr;			\
+		(setjmp_env)->saved_sp = MR_sp;				\
+		(setjmp_env)->saved_curfr = MR_curfr;			\
+		(setjmp_env)->saved_maxfr = MR_maxfr;			\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_trail_ptr = 	\
 				MR_trail_ptr);				\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_counter =	\
@@ -116,9 +131,9 @@ typedef struct {
 			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
 			restore_regs_from_mem((setjmp_env)->regs);	\
 			MR_succip = (setjmp_env)->saved_succip;		\
-			sp = (setjmp_env)->saved_sp;			\
-			curfr = (setjmp_env)->saved_curfr;		\
-			maxfr = (setjmp_env)->saved_maxfr;		\
+			MR_sp = (setjmp_env)->saved_sp;			\
+			MR_curfr = (setjmp_env)->saved_curfr;		\
+			MR_maxfr = (setjmp_env)->saved_maxfr;		\
 			MR_IF_USE_TRAIL(MR_trail_ptr = 			\
 					(setjmp_env)->saved_trail_ptr);	\
 			MR_IF_USE_TRAIL(MR_ticket_counter = 		\
@@ -134,9 +149,14 @@ typedef struct {
 	*/
 #define MR_longjmp(setjmp_env)	longjmp((setjmp_env)->env, 1)
 
-extern	bool	debugflag[];
+/*---------------------------------------------------------------------------*/
 
-typedef struct MR_MERCURY_ENGINE {
+/*
+** The Mercury engine structure.
+**	Normally there is one of these for each Posix thread.
+*/
+
+typedef struct MR_mercury_engine_struct {
 	Word		fake_reg[MAX_FAKE_REG];
 		/* The fake reg vector for this engine. */
 #ifndef CONSERVATIVE_GC
@@ -145,12 +165,12 @@ typedef struct MR_MERCURY_ENGINE {
 	Word		*e_sol_hp;
 		/* The solutions heap pointer for this engine */
 #endif
-	Context		*this_context;
+	MR_Context	*this_context;
 		/*
 		** this_context points to the context currently
 		** executing in this engine.
 		*/
-	Context		context;
+	MR_Context	context;
 		/*
 		** context stores all the context information
 		** for the context executing in this engine.
@@ -196,8 +216,8 @@ typedef struct MR_MERCURY_ENGINE {
 
   extern MercuryThreadKey	MR_engine_base_key;
 
-  #define MR_thread_engine_base ((MercuryEngine *) \
-  			MR_GETSPECIFIC(MR_engine_base_key))
+  #define MR_thread_engine_base \
+	((MercuryEngine *) MR_GETSPECIFIC(MR_engine_base_key))
 
   #if NUM_REAL_REGS > 0
     #define	MR_ENGINE_BASE_REGISTER
@@ -211,57 +231,59 @@ typedef struct MR_MERCURY_ENGINE {
   #define MR_ENGINE(x)		(((MercuryEngine *)MR_engine_base)->x)
   #define MR_get_engine()	MR_thread_engine_base
 
-  #ifndef	CONSERVATIVE_GC
-  #define IF_NOT_CONSERVATIVE_GC(x)	x
-  #else
-  #define IF_NOT_CONSERVATIVE_GC(x)
-  #endif
-
-  #define load_engine_regs(eng)	do {					\
-		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
-		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
-	} while (0)
-
-  #define save_engine_regs(eng)	do {					\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
-	} while (0)
-
 #else 	/* !MR_THREAD_SAFE */
 
   extern MercuryEngine	MR_engine_base;
   #define MR_ENGINE(x)		(MR_engine_base.x)
   #define MR_get_engine()	(&MR_engine_base)
 
-  #ifndef	CONSERVATIVE_GC
-  #define IF_NOT_CONSERVATIVE_GC(x)	x
-  #else
-  #define IF_NOT_CONSERVATIVE_GC(x)
-  #endif
 
-  #define load_engine_regs(eng)	do {					\
+#endif	/* !MR_THREAD_SAFE */
+
+#ifndef CONSERVATIVE_GC
+  #define IF_NOT_CONSERVATIVE_GC(x)	x
+#else
+  #define IF_NOT_CONSERVATIVE_GC(x)
+#endif
+
+#define load_engine_regs(eng)						\
+  	do {								\
 		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
 		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
 	} while (0)
 
-  #define save_engine_regs(eng)	do {					\
+#define save_engine_regs(eng)						\
+  	do {								\
 		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
 		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
 	} while (0)
 
-
-#endif	/* !MR_THREAD_SAFE */
-
-
+/*
+** Functions for creating/destroying a MercuryEngine.
+*/
 extern	MercuryEngine	*create_engine(void);
 extern	void		destroy_engine(MercuryEngine *engine);
 
+/*
+** Functions for initializing/finalizing a MercuryEngine.
+** These are like create/destroy except that they don't allocate/deallocate
+** the MercuryEngine structure.
+*/
 extern	void	init_engine(MercuryEngine *engine);
 extern	void	finalize_engine(MercuryEngine *engine);
 
+/*
+** Functions that act on the current Mercury engine.
+*/
 extern	void	call_engine(Code *entry_point);
 extern	void	terminate_engine(void);
 extern	void	dump_prev_locations(void);
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Builtin labels that point to commonly used code fragments
+*/
 
 Declare_entry(do_redo);
 Declare_entry(do_fail);

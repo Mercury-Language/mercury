@@ -47,16 +47,33 @@ bool	debugflag[MAXFLAG];
 /*
 ** init_engine() calls init_memory() which sets up all the necessary
 ** stuff for allocating memory-zones and other runtime areas (such as
-** the zone structures and context structures). If PARALLEL is defined,
-** this will cause the shared memory to be allocated.
-** Next, init_engine() calls init_processes() which fork()s the right
-** number of processes, and initializes the data structures for coordinating
-** the interaction between multiple processes.
+** the zone structures and context structures).
 */
 void 
 init_engine(MercuryEngine *eng)
 {
+	/*
+	** First, ensure that the truly global stuff has been initialized
+	** (if it was already initialized, this does nothing).
+	*/
+
 	init_memory();
+
+#ifndef USE_GCC_NONLOCAL_GOTOS
+	{
+		static bool made_engine_done_label = FALSE;
+		if (!made_engine_done_label) {
+			make_label("engine_done", LABEL(engine_done),
+				engine_done);
+			made_engine_done_label = TRUE;
+		}
+	}
+#endif
+
+	/*
+	** Second, initialize the per-engine (i.e. normally per Posix thread)
+	** stuff.
+	*/
 
 #ifndef	CONSERVATIVE_GC
 	eng->heap_zone = create_zone("heap", 1, heap_size, next_offset(),
@@ -67,8 +84,8 @@ init_engine(MercuryEngine *eng)
 			solutions_heap_size, next_offset(),
 			solutions_heap_zone_size, default_handler);
 	eng->e_sol_hp = eng->solutions_heap_zone->min;
-
 #endif
+
 #ifdef MR_LOWLEVEL_DEBUG
 	/*
 	** Create the dumpstack, used for debugging stack traces.
@@ -76,15 +93,8 @@ init_engine(MercuryEngine *eng)
 	** the detstack and we never have to worry about the dumpstack
 	** overflowing.
 	*/
-
 	dumpstack_zone = create_zone("dumpstack", 1, detstack_size,
 		next_offset(), detstack_zone_size, default_handler);
-#endif
-
-	eng->this_context = create_context();
-
-#ifndef USE_GCC_NONLOCAL_GOTOS
-	make_label("engine_done", LABEL(engine_done), engine_done);
 #endif
 
 #ifdef	MR_THREAD_SAFE
@@ -92,6 +102,11 @@ init_engine(MercuryEngine *eng)
 	eng->c_depth = 0;
 #endif
 
+	/*
+	** Finally, allocate an initialize context (Mercury thread)
+	** in the engine and initialize the per-context stuff.
+	*/
+	eng->this_context = create_context();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -103,8 +118,7 @@ void finalize_engine(MercuryEngine *eng)
 
 /*---------------------------------------------------------------------------*/
 
-MercuryEngine
-*create_engine(void)
+MercuryEngine *create_engine(void)
 {
 	MercuryEngine *eng;
 
@@ -113,8 +127,10 @@ MercuryEngine
 	return eng;
 }
 
-void destroy_engine(MercuryEngine *eng)
+void
+destroy_engine(MercuryEngine *eng)
 {
+	finalize_engine(eng);
 	free(eng);
 }
 
@@ -368,7 +384,7 @@ engine_done(void)
 {
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*(MR_ENGINE(e_jmp_buf), 1);
+	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }
 
 static Code *
@@ -507,8 +523,9 @@ Define_entry(do_not_reached);
 #endif
 END_MODULE
 
-/*---------------------------------------------------------------------------*/
 void mercury_sys_init_engine(void); /* suppress gcc warning */
 void mercury_sys_init_engine(void) {
 	special_labels_module();
 }
+
+/*---------------------------------------------------------------------------*/
