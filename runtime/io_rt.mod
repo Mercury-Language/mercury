@@ -16,6 +16,7 @@
 #include "io_rt.h"
 #include "imp.h"
 #include "wrapper.h"
+#include "type_info.h"
 
 /*
 ** Mercury files are not quite the same as C stdio FILEs,
@@ -36,6 +37,10 @@ MercuryFile *mercury_current_output = &mercury_stdout;
 #define initial_external_state()	0	/* some random number */
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
 #define final_io_state(r)		((void)0)
+
+#define COMPARE_EQUAL 0
+#define COMPARE_LESS 1
+#define COMPARE_GREATER 2
 
 void
 mercury_init_io(void)
@@ -94,14 +99,48 @@ mercury_close(MercuryFile* mf)
 	oldmem(mf);
 }
 
-#define COMPARE_EQUAL 0
-#define COMPARE_LESS 1
-#define COMPARE_GREATER 2
+
+/* Compare two type_info structures, using an arbitrary ordering
+   (based on the addresses of the unification predicates).
+*/
+
+static int
+compare_type_info(Word type_info_1, Word type_info_2)
+{
+	int i, num_arg_types, comp;
+	Word unify_pred_1, unify_pred_2;
+
+	/* First compare the addresses of the unify preds in the type_infos */
+	unify_pred_1 = field(mktag(0), type_info_1, OFFSET_FOR_UNIFY_PRED);
+	unify_pred_2 = field(mktag(0), type_info_2, OFFSET_FOR_UNIFY_PRED);
+	if (unify_pred_1 < unify_pred_2) {
+		return COMPARE_LESS;
+	}
+	if (unify_pred_1 > unify_pred_2) {
+		return COMPARE_GREATER;
+	}
+	/* If the addresses of the unify preds are equal, we don't need to
+	   compare the arity of the types - they must be the same.
+	   But we need to recursively compare the argument types, if any.
+	*/
+	num_arg_types = field(mktag(0), type_info_1, OFFSET_FOR_COUNT);
+	for (i = 0; i < num_arg_types; i++) {
+		Word arg_type_info_1 = field(mktag(0), type_info_1,
+					OFFSET_FOR_ARG_TYPE_INFOS + i);
+		Word arg_type_info_2 = field(mktag(0), type_info_2,
+					OFFSET_FOR_ARG_TYPE_INFOS + i);
+		comp = compare_type_info(arg_type_info_1, arg_type_info_2);
+		if (comp != COMPARE_EQUAL) return comp;
+	}
+	return COMPARE_EQUAL;
+}
 
 Declare_entry(mercury__io__init_state_2_0);
 Declare_entry(mercury__parser__read_term_3_0);
 Declare_entry(mercury__main_2_0);
 Declare_entry(mercury__unify_2_0);
+Declare_entry(mercury__compare_3_0);
+Declare_entry(mercury__index_3_0);
 
 BEGIN_MODULE(io_module)
 BEGIN_CODE
@@ -388,7 +427,7 @@ mercury____Write___io__external_state_0_0:
 
 /*---------------------------------------------------------------------------*/
 
-/* error/1, from require.nl */
+/* error/1, from require.m */
 
 mercury__error_1_0:
 	fflush(stdout);
@@ -400,7 +439,7 @@ mercury__error_1_0:
 
 /*---------------------------------------------------------------------------*/
 
-/* report_stats/0 and type_to_univ/2, from std_util.nl */
+/* report_stats/0 and type_to_univ/2, from std_util.m */
 
 mercury__report_stats_0_0:
 	fprintf(mercury_current_output->file, 
@@ -410,6 +449,15 @@ mercury__report_stats_0_0:
 		((char *)maxfr - (char *)nondstackmin) / 1000.0
 	);
 	proceed();
+
+
+/*
+	`univ' is represented as a two word structure.
+	The first word contains the address of a type_info for the type.
+	The second word contains the data.
+*/
+#define UNIV_OFFSET_FOR_TYPEINFO 0
+#define UNIV_OFFSET_FOR_DATA 1
 
 /*
 	:- pred type_to_univ(T, univ).
@@ -424,10 +472,10 @@ mercury__type_to_univ_2_0:
 	 *  On exit r3 contains the output argument of type univ.
 	 */
 	incr_hp(r3, 2); /* allocate heap space */
-	field(mktag(0), r3, 0) = r1;
+	field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO) = r1;
 		/* set the first field to contain the address of the
-		   unification predicate */
-	field(mktag(0), r3, 1) = r2;
+		   type_info for this type */
+	field(mktag(0), r3, UNIV_OFFSET_FOR_DATA) = r2;
 		/* store the input argument in the second field */
 	proceed();
 
@@ -439,61 +487,74 @@ mercury__type_to_univ_2_1:
 	 *  On successful exit r3 contains the output argument of type T;
 	 *  r1 is for the success/failure indication.
 	 *
-	 *  XXX We check that the type_info addresses match.
-	 *	This is incorrect - the type_info structures could
-	 *	have been created in different places.
-	 *  XXX As a tempory hack, we don't check.
+	 *  We check that type_infos compare equal.
 	 */
-/***
-	if (field(mktag(0), r4, 0) != r2) {
+	r1 = field(mktag(0), r4, UNIV_OFFSET_FOR_TYPEINFO);
+	if (compare_type_info(r1, r2) != COMPARE_EQUAL)
+	{
 		r1 = FALSE;
 		proceed();
 	}
-***/
-	r3 = field(mktag(0), r4, 1);
+	r3 = field(mktag(0), r4, UNIV_OFFSET_FOR_DATA);
 	r1 = TRUE;
 	proceed();
 
 mercury____Unify___univ_0_0:
-	/* Unification for univ:
-	** This is probably bogus, but who cares?
-	*/
+	/*
+	 * Unification for univ.
+	 * On entry, r2 & r3 contain the `univ' values to be unified.
+	 * On exit, r1 will contain the success/failure indication.
+	 */
 
-	/* first check the type_info addresses match */
-	r1 = field(mktag(0), r2, 0);
-	if (r1 != field(mktag(0), r3, 0)) {
+	/*
+	 * First check the type_infos compare equal
+	 */
+	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
+	if (compare_type_info(r1, r4) != COMPARE_EQUAL)
+	{
 		r1 = FALSE;
 		proceed();
 	}
 
-	/* then invoke the generic unification predicate on the
-	   unwrapped args */
-	r4 = field(mktag(0), r3, 1);
-	r3 = field(mktag(0), r2, 1);
+	/*
+	 * Then invoke the generic unification predicate on the
+	 * unwrapped args
+	 */
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), r2, UNIV_OFFSET_FOR_DATA);
 	r2 = r1;
 	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___univ_0_0));
 
 mercury____Compare___univ_0_0:
 	/* Comparison for univ:
-	** This is probably bogus, but who cares?
-	*/
+	 * On entry, r2 & r3 contain the `univ' values to be unified.
+	 * On exit, r1 will contain the result of the comparison.
+	 */
 
-	/* first compare the type_info, then if
-	   they are equal invoke the generic compare/3 predicate on
-	   the unwrapped args */
-	r1 = field(mktag(0), r2, 0);
-	r4 = field(mktag(0), r3, 0);
-	if (r1 < r4) {
-		r1 = COMPARE_LESS;
+	/*
+	** First compare the types
+	*/
+	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
+	r1 = compare_type_info(r1, r4);
+	if (r1 != COMPARE_EQUAL) {
 		proceed();
 	}
-	if (r1 > r4) {
-		r1 = COMPARE_GREATER;
-		proceed();
-	}
-	r4 = field(mktag(0), r3, 1);
-	r3 = field(mktag(0), r2, 1);
-	tailcall((Code *)r1, LABEL(mercury____Compare___univ_0_0));
+	/*
+	** If the types are the same, then invoke the generic compare/3
+	** predicate on the unwrapped args.
+	*/
+	r1 = r4; /* set up the type_info */
+	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), r2, UNIV_OFFSET_FOR_DATA);
+	call(ENTRY(mercury__compare_3_0),
+		LABEL(mercury____Compare___univ_0_0_i1),
+		LABEL(mercury____Compare___univ_0_0));
+mercury____Compare___univ_0_0_i1:
+	/* shuffle the return value into the right register */
+	r1 = r2;
+	proceed();
 
 mercury____Index___univ_0_0:
 	r2 = -1;
@@ -509,7 +570,7 @@ mercury____Write___univ_0_0:
 	fatal_error("cannot write univ");
 /********************************/
 
-/* semidet_succeed and semidet_fail, from std_util.nl */
+/* semidet_succeed and semidet_fail, from std_util.m */
 
 mercury__semidet_succeed_0_0:
 	r1 = TRUE;
@@ -520,7 +581,7 @@ mercury__semidet_fail_0_0:
 
 /*---------------------------------------------------------------------------*/
 
-/* from string.nl */
+/* from string.m */
 
 mercury__string__float_to_string_2_0:
 	{ char buf[100];

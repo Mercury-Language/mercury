@@ -28,6 +28,7 @@
  */
 
 #include "imp.h"
+#include "type_info.h"
 
 BEGIN_MODULE(call_module)
 
@@ -184,17 +185,6 @@ do_nondet_closure_return:
 	succeed();
 }
 
-/* See polymorphism.nl for explanation of these offsets and how the
-   type_info structure is layed out */
-
-#define OFFSET_FOR_COUNT 0
-#define OFFSET_FOR_UNIFY_PRED 1
-#define OFFSET_FOR_INDEX_PRED 2
-#define OFFSET_FOR_COMPARE_PRED 3
-#define	OFFSET_FOR_READ_PRED 4
-#define	OFFSET_FOR_WRITE_PRED 5
-#define OFFSET_FOR_ARG_TYPE_INFOS 6
-
 mercury__index_2_0:
 {
 	Word type_info;
@@ -226,10 +216,10 @@ mercury__index_2_0:
 
 	push(succip);
 	push(type_arity);
-	call(index_pred, LABEL(mercury__index_3_0_i1), 
+	call(index_pred, LABEL(mercury__index_2_0_i1), 
 		LABEL(mercury__index_2_0));
 }
-mercury__index_3_0_i1:
+mercury__index_2_0_i1:
 {
 	int type_arity;
 	type_arity = pop();
@@ -334,7 +324,7 @@ mercury__read_2_0:
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
 	read_pred = (Code *) field(0, type_info, OFFSET_FOR_READ_PRED);
-		/* address of the comparison pred for this type */
+		/* address of the read pred for this type */
 
 	save_registers();
 
@@ -350,10 +340,10 @@ mercury__read_2_0:
 
 	push(succip);
 	push(type_arity);
-	call(read_pred, LABEL(mercury__read_3_0_i1),
-		LABEL(mercury__index_2_0));
+	call(read_pred, LABEL(mercury__read_2_0_i1),
+		LABEL(mercury__read_2_0));
 }
-mercury__read_3_0_i1:
+mercury__read_2_0_i1:
 {
 	int type_arity;
 	
@@ -379,7 +369,7 @@ mercury__write_2_0:
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
 	write_pred = (Code *) field(0, type_info, OFFSET_FOR_WRITE_PRED);
-		/* address of the comparison pred for this type */
+		/* address of the write pred for this type */
 
 	save_registers();
 
@@ -395,10 +385,10 @@ mercury__write_2_0:
 
 	push(succip);
 	push(type_arity);
-	call(write_pred, LABEL(mercury__write_3_0_i1),
-		LABEL(mercury__index_2_0));
+	call(write_pred, LABEL(mercury__write_2_0_i1),
+		LABEL(mercury__write_2_0));
 }
-mercury__write_3_0_i1:
+mercury__write_2_0_i1:
 {
 	int type_arity;
 	
