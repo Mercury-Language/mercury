@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -347,6 +347,12 @@
 %		
 %		Does not modify the IO state.
 
+:- pred io__progname_base(string, string, io__state, io__state).
+:- mode io__progname_base(in, out, di, uo) is det.
+% 	io__progname_base(DefaultProgname, Progname)
+%		Like `io__progname', except that it strips off any path name
+%		preceding the program name.  Useful for error messages.
+
 :- pred io__command_line_arguments(list(string), io__state, io__state).
 :- mode io__command_line_arguments(out, di, uo) is det.
 % 	io__command_line_arguments(Args)
@@ -439,7 +445,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map.
+:- import_module map, dir.
 
 :- type io__state
 	---> 	io__state(
@@ -815,6 +821,10 @@ io__get_globals(Globals, IOState, IOState) :-
 
 io__set_globals(Globals, io__state(A, B, C, _, E),
 		io__state(A, B, C, Globals, E)).
+
+io__progname_base(DefaultName, PrognameBase) -->
+	io__progname(DefaultName, Progname),
+	{ dir__basename(Progname, PrognameBase) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
