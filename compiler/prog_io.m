@@ -870,7 +870,7 @@ parse_dcg_goal_2( term__functor(term__atom("else"),[
 		    ],_),
 		    C0
 		],_), VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_dcg_if_then(A0, B0, VarSet0, N0, Var,
+	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
 		SomeVars, A, B, VarSet1, N1, Var),
 	parse_dcg_goal(C0, VarSet1, N1, Var0, C, VarSet, N, VarC),
 	Goal = if_then_else(SomeVars, A, B,
@@ -902,7 +902,7 @@ parse_dcg_goal_2(term__functor(term__atom("some"),[Vars0,A0],_),
 
 :- pred parse_some_vars_dcg_goal(term, vars, varset, int, var,
 				goal, varset, int, var).
-:- mode parse_some_vars_dcg_goal(in, in, in, in, in,
+:- mode parse_some_vars_dcg_goal(in, out, in, in, in,
 				out, out, out, out).
 parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
 	(
@@ -1158,7 +1158,7 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	% a representation of the declaration.
 
 :- pred parse_type_decl_type(term, condition, maybe(type_defn)).
-:- mode parse_type_decl_type(in, in, out).
+:- mode parse_type_decl_type(in, out, out).
 
 parse_type_decl_type(term__functor(term__atom("--->"),[H,B],_), Condition, R) :-
 	get_condition(B, Body, Condition),
@@ -1580,6 +1580,7 @@ parse_inst_decl(VarSet, InstDefn, Result) :-
 				term__functor(term__atom("private"), [], _)
 			], _)
 	->
+		Condition = true,
 		convert_abstract_inst_defn(Head, R),
 		process_inst_defn(R, VarSet, Condition, Result)
 	;
@@ -1743,7 +1744,7 @@ parse_mode_decl(VarSet, ModeDefn, Result) :-
 	).
 
 :- pred mode_op(term, term, term).
-:- mode mode_op(in, in, out).
+:- mode mode_op(in, out, out).
 mode_op(term__functor(term__atom("::"),[H,B],_), H, B).
 mode_op(term__functor(term__atom("="),[H,B],_), H, B).
 
@@ -2031,7 +2032,7 @@ parse_sym_spec_list(Term, Result) :-
 :- pred parse_sym_spec_list_2(list(term), maybe(list(sym_specifier))).
 :- mode parse_sym_spec_list_2(in, out).
 parse_sym_spec_list_2([], ok([])).
-parse_sym_spec_list_2(X.Xs, Result) :-
+parse_sym_spec_list_2([X|Xs], Result) :-
 	parse_symbol_specifier(X, X_Result),
 	parse_sym_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2204,6 +2205,8 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 %			Matches all symbols in the specified module.
 
 :- pred parse_symbol_specifier(term, maybe(sym_specifier)).
+:- mode parse_symbol_specifier(in, out).
+
 parse_symbol_specifier(Term, Result) :-
 	(
 	    Term = term__functor(term__atom("cons"), [ConsSpecTerm], _Context1)
