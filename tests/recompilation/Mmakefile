@@ -88,7 +88,7 @@ $(TESTS_SHOULD_FAIL:%=%.runtest): %.runtest:
 clean_local:
 
 realclean_local:
-	for module in $$PROGS; do \
+	for module in $(PROGS); do \
 		rm -rf $$module.m $${module}_2.m ;\
 	done
 
