@@ -394,11 +394,11 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
 }").
 
 functor_dna(_Term::in, _Functor::out, _Arity::out) :-
-	sorry("deconstruct__functor_dna/3").
+	private_builtin__sorry("deconstruct__functor_dna/3").
 functor_can(Term::in, Functor::out, Arity::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, _Arguments).
 functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
-	sorry("deconstruct__functor_idcc/3").
+	private_builtin__sorry("deconstruct__functor_idcc/3").
 
 %-----------------------------------------------------------------------------%
 
@@ -535,19 +535,19 @@ functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
 }").
 
 univ_arg_dna(_Term::in, _Index::in, _Arg::out) :-
-	sorry("deconstruct__univ_arg_dna/3").
+	private_builtin__sorry("deconstruct__univ_arg_dna/3").
 univ_arg_can(Term::in, Index::in, Arg::out) :-
 	rtti_implementation__deconstruct(Term, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
 univ_arg_idcc(_Term::in, _Index::in, _Arg::out) :-
-	sorry("deconstruct__univ_arg_idcc/3").
+	private_builtin__sorry("deconstruct__univ_arg_idcc/3").
 
 univ_named_arg_dna(_Term::in, _Name::in, _Arg::out) :-
-	sorry("deconstruct__univ_named_arg_dna/3").
+	private_builtin__sorry("deconstruct__univ_named_arg_dna/3").
 univ_named_arg_can(_Term::in, _Name::in, _Arg::out) :-
-	sorry("deconstruct__univ_named_arg_can/3").
+	private_builtin__sorry("deconstruct__univ_named_arg_can/3").
 univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
-	sorry("deconstruct__univ_named_arg_idcc/3").
+	private_builtin__sorry("deconstruct__univ_named_arg_idcc/3").
 
 %-----------------------------------------------------------------------------%
 
@@ -711,22 +711,22 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 }").
 
 deconstruct_dna(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
-	sorry("deconstuct__deconstruct_dna/4").
+	private_builtin__sorry("deconstuct__deconstruct_dna/4").
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments).
 deconstruct_idcc(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
-	sorry("deconstuct__deconstruct_idcc/4").
+	private_builtin__sorry("deconstuct__deconstruct_idcc/4").
 
 limited_deconstruct_dna(_Term::in, _MaxArity::in,
 		_Functor::out, _Arity::out, _Arguments::out) :-
-	sorry("deconstuct__limited_deconstruct_dna/5").
+	private_builtin__sorry("deconstuct__limited_deconstruct_dna/5").
 limited_deconstruct_can(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments),
 	Arity =< MaxArity.
 limited_deconstruct_idcc(_Term::in, _MaxArity::in,
 		_Functor::out, _Arity::out, _Arguments::out) :-
-	sorry("deconstuct__limited_deconstruct_idcc/5").
+	private_builtin__sorry("deconstuct__limited_deconstruct_idcc/5").
 
 %-----------------------------------------------------------------------------%
 

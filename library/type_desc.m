@@ -302,7 +302,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(types, type_desc, 0,
 static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
 	MR_Word res;
 
-	mercury::types::mercury_code::ML_call_rtti_compare_type_infos(
+	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		&res, t1, t2);
 	return System::Convert::ToInt32(res[0]);
 }
@@ -311,7 +311,7 @@ static void
 __Compare____type_desc_0_0(
 	MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::types::mercury_code::ML_call_rtti_compare_type_infos(
+	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		result, x, y);
 }
 
@@ -325,7 +325,7 @@ static void
 special___Compare___type_desc_0_0(
 	MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::types::mercury_code::ML_call_rtti_compare_type_infos(
+	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		result, x, y);
 }
 
@@ -591,14 +591,9 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	}
 }").
 
-:- pragma foreign_proc("C#", 
-	make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury.runtime.Errors.SORRY(""make_type"");
-	// XXX this is required to keep the C# compiler quiet
-	SUCCESS_INDICATOR = false;
-}").
+:- pragma promise_pure(make_type/2).
+make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
+	private_builtin__sorry("make_type/2 forward mode.").
 
 	/*
 	** This is the reverse mode of make_type: given a type,
@@ -621,6 +616,9 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 
 	MR_restore_transient_registers();
 }").
+
+make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
+	private_builtin__sorry("make_type/2 reverse mode").
 
 :- pragma foreign_proc("C",
 	type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
@@ -655,6 +653,10 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
             TypeCtorArity = type_ctor_info->MR_type_ctor_arity;
         }
 }").
+
+type_ctor_name_and_arity(_TypeCtorDesc::in, _ModuleName::out,
+		_TypeCtorName::out, _TypeCtorArity::out) :-
+	private_builtin__sorry("type_ctor_name_and_arity/4").
 
 %-----------------------------------------------------------------------------%
 

@@ -915,16 +915,22 @@ static void init_runtime(void)
 % Default (Mercury) implementations.
 % These should be overridden by the appropriate foreign language implementation.
 store_ticket(_Ticket::out) :-
+	impure imp,
 	sorry("private_builtin__store_ticket/1").
 reset_ticket_undo(_Ticket::in) :-
+	impure imp,
 	sorry("private_builtin__reset_ticket_undo/1").
 reset_ticket_commit(_Ticket::in) :-
+	impure imp,
 	sorry("private_builtin__reset_ticket_commit/1").
 reset_ticket_solve(_Ticket::in) :-
+	impure imp,
 	sorry("private_builtin__reset_ticket_solve/1").
 mark_ticket_stack(_TicketCounter::out) :-
+	impure imp,
 	sorry("private_builtin__mark_ticket_stack/1").
 prune_tickets_to(_TicketCounter::in) :-
+	impure imp,
 	sorry("private_builtin__prune_tickets_to/1").
 /****
 % XXX we can't give default Mercury implementations for these,
@@ -1167,6 +1173,7 @@ trailed_nondet_pragma_foreign_code :-
 % default (Mercury) implementation for gc_trace/1
 % This should be overridden by the appropriate foreign language implementation.
 gc_trace(_::in) :-
+	impure imp,
 	sorry("private_builtin__gc_trace/1").
 
 :- pragma foreign_proc("C", gc_trace(Pointer::in),
@@ -1187,6 +1194,7 @@ gc_trace(_::in) :-
 % default (Mercury) implementation for free_heap/1
 % This should be overridden by the appropriate foreign language implementation.
 free_heap(_::di) :-
+	impure imp,
 	sorry("private_builtin__free_heap/1").
 
 :- pragma foreign_proc("C", free_heap(Val::di),
@@ -1196,8 +1204,10 @@ free_heap(_::di) :-
 % default (Mercury) implementations for mark_hp/1 and restore_hp/1.
 % This should be overridden by the appropriate foreign language implementation.
 mark_hp(_::out) :-
+	impure imp,
 	sorry("private_builtin__mark_hp/1").
 restore_hp(_::in) :-
+	impure imp,
 	sorry("private_builtin__restore_hp/1").
 
 :- pragma foreign_proc("C", mark_hp(SavedHeapPointer::out),
@@ -1395,7 +1405,7 @@ do_compare__heap_pointer_0_0(
 {
 	mercury::runtime::Errors::fatal_error(
 		""called compare/3 for type `private_builtin:heap_pointer'"");
-	return 0;
+	return;
 }
 
 ").
@@ -1458,6 +1468,9 @@ unused :-
 
 :- pred sorry(string::in) is erroneous.
 
+% imp/0 is used to make pure predicates impure.
+:- impure pred imp is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1473,6 +1486,10 @@ nonvar(_::unused) :- fail.
 sorry(PredName) :-
 	error("sorry, `" ++ PredName ++ "' not implemented\n" ++
 		"for this target language (or compiler back-end).").
+
+:- pragma foreign_proc(c, imp, [will_not_call_mercury, thread_safe], "").
+:- pragma foreign_proc(il, imp,
+		[will_not_call_mercury, thread_safe, max_stack_size(0)], "").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

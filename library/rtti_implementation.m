@@ -873,7 +873,8 @@ new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :-
 	det_unimplemented("new_type_info").
 
 :- pragma foreign_proc("C#",
-	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo), [], "
+	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
+		[promise_pure], "
 	NewTypeInfo = new object[Arity + 1];
 	System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
 ").
@@ -888,7 +889,7 @@ get_pti_from_arg_types(_::in, _::in) = (42::out) :-
 
 :- pragma foreign_proc("C#",
 	get_pti_from_arg_types(ArgTypes::in, Index::in) =
-		(ArgTypeInfo::out), [], "
+		(ArgTypeInfo::out), [promise_pure], "
 	ArgTypeInfo = ArgTypes[Index];
 ").
 
@@ -901,7 +902,8 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 	det_unimplemented("get_pti_from_type_info").
 
 :- pragma foreign_proc("C#",
-	get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out), [], "
+	get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
+		[promise_pure], "
 	PTI = TypeInfo[Index];
 ").
 
@@ -959,7 +961,7 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 
 :- pragma foreign_proc("C#",
 	get_subterm(TypeInfo::in, Term::in, Index::in,
-		TagOffset::in) = (Arg::out), [], "
+		TagOffset::in) = (Arg::out), [promise_pure], "
 	Arg = ((object[]) Term)[Index + TagOffset];
 	TypeInfo_for_T = TypeInfo;
 ").
@@ -973,7 +975,7 @@ typeinfo_is_variable(_::in, 42::out) :-
 	semidet_unimplemented("typeinfo_is_variable").
 
 :- pragma foreign_proc("MC++",
-	typeinfo_is_variable(TypeInfo::in, VarNum::out), [], "
+	typeinfo_is_variable(TypeInfo::in, VarNum::out), [promise_pure], "
 	SUCCESS_INDICATOR = (dynamic_cast<MR_Word>(TypeInfo) == NULL);
 	if (SUCCESS_INDICATOR) {
 		VarNum = System::Convert::ToInt32(TypeInfo);
@@ -1108,14 +1110,14 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 	det_unimplemented("get_remote_secondary_tag").
 
 :- pragma foreign_proc("C#",
-	get_primary_tag(X::in) = (Tag::out), [], "
+	get_primary_tag(X::in) = (Tag::out), [promise_pure], "
 	// We don't look at X to find the tag, for .NET low-level data
 	// there is no primary tag, so we always return zero.
 	Tag = 0;
 ").
 
 :- pragma foreign_proc("C#",
-	get_remote_secondary_tag(X::in) = (Tag::out), [], "
+	get_remote_secondary_tag(X::in) = (Tag::out), [promise_pure], "
 	object[] data = (object[]) X;
 	Tag = (int) data[0];
 ").
@@ -1145,7 +1147,7 @@ ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :-
 	det_unimplemented("ptag_index").
 
 :- pragma foreign_proc("C#",
-	ptag_index(X::in, TypeLayout::in) = (PtagEntry::out), [], "
+	ptag_index(X::in, TypeLayout::in) = (PtagEntry::out), [promise_pure], "
 	PtagEntry = (object[]) TypeLayout[X];
 ").
 
@@ -1155,7 +1157,7 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 	det_unimplemented("sectag_locn").
 
 :- pragma foreign_proc("C#",
-	sectag_locn(PTagEntry::in) = (SectagLocn::out), [], "
+	sectag_locn(PTagEntry::in) = (SectagLocn::out), [promise_pure], "
 	SectagLocn = mercury.runtime.LowLevelData.make_enum((int)
 		PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
 ").
@@ -1167,7 +1169,7 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 
 :- pragma foreign_proc("C#",
 	du_sectag_alternatives(X::in, PTagEntry::in) =
-		(FunctorDescriptor::out), [], "
+		(FunctorDescriptor::out), [promise_pure], "
 	object[] sectag_alternatives;
 	sectag_alternatives = (object []) 
 		PTagEntry[(int) ptag_layout_field_nums.sectag_alternatives];
@@ -1180,7 +1182,7 @@ functor_name(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :-
 	det_unimplemented("functor_name").
 
 :- pragma foreign_proc("C#",
-	functor_name(FunctorDescriptor::in) = (Name::out), [], "
+	functor_name(FunctorDescriptor::in) = (Name::out), [promise_pure], "
 	Name = (string)
 		FunctorDescriptor[(int) du_functor_field_nums.du_functor_name];
 ").
@@ -1191,7 +1193,7 @@ functor_arity(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :-
 	det_unimplemented("functor_arity").
 
 :- pragma foreign_proc("C#",
-	functor_arity(FunctorDescriptor::in) = (Name::out), [], "
+	functor_arity(FunctorDescriptor::in) = (Name::out), [promise_pure], "
 	Name = (int)
 		FunctorDescriptor[(int)
 			du_functor_field_nums.du_functor_orig_arity];
@@ -1204,7 +1206,8 @@ functor_arg_types(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("functor_arg_types").
 
 :- pragma foreign_proc("C#",
-	functor_arg_types(FunctorDescriptor::in) = (ArgTypes::out), [], "
+	functor_arg_types(FunctorDescriptor::in) = (ArgTypes::out),
+		[promise_pure], "
 	ArgTypes = (object[])
 		FunctorDescriptor[(int)
 			du_functor_field_nums.du_functor_arg_types];
@@ -1217,7 +1220,8 @@ functor_exist_info(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("functor_exist_info").
 
 :- pragma foreign_proc("C#",
-	functor_exist_info(FunctorDescriptor::in) = (ExistInfo::out), [], "
+	functor_exist_info(FunctorDescriptor::in) = (ExistInfo::out),
+		[promise_pure], "
 	ExistInfo = (object[])
 		FunctorDescriptor[(int)
 			du_functor_field_nums.du_functor_exist_info];
@@ -1231,7 +1235,8 @@ typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("typeinfo_locns_index").
 
 :- pragma foreign_proc("C#",
-	typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out), [], "
+	typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out),
+		[promise_pure], "
 
 	TypeInfoLocn = (object[]) ((object[]) ExistInfo[(int)
 			exist_info_field_nums.typeinfo_locns])[X];
@@ -1245,7 +1250,8 @@ exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("exist_info_typeinfos_plain").
 
 :- pragma foreign_proc("C#",
-	exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out), [], "
+	exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out),
+		[promise_pure], "
 	TypeInfosPlain = (int)
 		ExistInfo[(int)
 			exist_info_field_nums.typeinfos_plain];
@@ -1257,7 +1263,7 @@ exist_info_tcis(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("exist_info_tcis").
 
 :- pragma foreign_proc("C#",
-	exist_info_tcis(ExistInfo::in) = (TCIs::out), [], "
+	exist_info_tcis(ExistInfo::in) = (TCIs::out), [promise_pure], "
 	TCIs = (int) ExistInfo[(int)
 			exist_info_field_nums.tcis];
 ").
@@ -1272,7 +1278,7 @@ exist_arg_num(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("exist_arg_num").
 
 :- pragma foreign_proc("C#",
-	exist_arg_num(TypeInfoLocn::in) = (ArgNum::out), [], "
+	exist_arg_num(TypeInfoLocn::in) = (ArgNum::out), [promise_pure], "
 	ArgNum = (int) TypeInfoLocn[(int) exist_locn_field_nums.exist_arg_num];
 		
 ").
@@ -1283,7 +1289,7 @@ exist_offset_in_tci(X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("exist_arg_num").
 
 :- pragma foreign_proc("C#",
-	exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out), [], "
+	exist_offset_in_tci(TypeInfoLocn::in) = (ArgNum::out), [promise_pure], "
 	ArgNum = (int)
 		TypeInfoLocn[(int) exist_locn_field_nums.exist_offset_in_tci];
 		
@@ -1295,7 +1301,8 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 	det_unimplemented("get_typeinfo_from_term").
 
 :- pragma foreign_proc("C#",
-	get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out), [], "
+	get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out),
+		[promise_pure], "
 	TypeInfo = (object[]) ((object[]) Term)[Index];
 ").
 

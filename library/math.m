@@ -256,7 +256,7 @@
 ").
 
 :- pragma foreign_proc("MC++", domain_checks,
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = FALSE;
 #else
@@ -363,7 +363,7 @@ math__sqrt(X) = SquareRoot :-
 	SquareRoot = sqrt(X);
 ").
 :- pragma foreign_proc("C#", math__sqrt_2(X::in) = (SquareRoot::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	SquareRoot = System.Math.Sqrt(X);
 ").
 
@@ -440,7 +440,7 @@ math__pow(X, Y) = Res :-
 ").
 
 :- pragma foreign_proc("C#", math__pow_2(X::in, Y::in) = (Res::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	Res = System.Math.Pow(X, Y);
 ").
 
@@ -479,7 +479,7 @@ math__ln(X) = Log :-
 	Log = log(X);
 ").
 :- pragma foreign_proc("C#", math__ln_2(X::in) = (Log::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X);
 ").
 
@@ -504,7 +504,7 @@ math__log10(X) = Log :-
 	Log10 = log10(X);
 ").
 :- pragma foreign_proc("C#", math__log10_2(X::in) = (Log10::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	Log10 = System.Math.Log10(X);
 ").
 
@@ -529,7 +529,7 @@ math__log2(X) = Log :-
 	Log2 = log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("C#", math__log2_2(X::in) = (Log2::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
 
@@ -562,7 +562,7 @@ math__log(B, X) = Log :-
 	Log = log(X)/log(B);
 ").
 :- pragma foreign_proc("C#", math__log_2(B::in, X::in) = (Log::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X,B);
 ").
 
@@ -630,7 +630,7 @@ math__asin(X) = ASin :-
 	ASin = asin(X);
 ").
 :- pragma foreign_proc("C#", math__asin_2(X::in) = (ASin::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	ASin = System.Math.Asin(X);
 ").
 
@@ -660,7 +660,7 @@ math__acos(X) = ACos :-
 	ACos = acos(X);
 ").
 :- pragma foreign_proc("C#", math__acos_2(X::in) = (ACos::out),
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 	ACos = System.Math.Acos(X);
 ").
 

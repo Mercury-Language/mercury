@@ -238,7 +238,7 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("MC++", domain_checks,
-		[thread_safe], "
+		[thread_safe, promise_pure], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = FALSE;
 #else
