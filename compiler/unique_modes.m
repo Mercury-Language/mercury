@@ -17,11 +17,12 @@
 % If they are, we report an error message.
 
 % XXX what if it would have matched ok with a different mode of the
-% called predicate?
+% called predicate (e.g. if a predicate is overloaded with both
+% `ui' and `in' modes)?
 
-% XXXXXX NOT YET FINISHED!
-%	It is still missing the code to actually calculate the set
-%	of nondet live variables.
+% XXX NOT YET FINISHED!
+% The code to actually calculate the set
+% of nondet live variables is currently a rather crude approximation.
 
 %-----------------------------------------------------------------------------%
 
@@ -172,10 +173,12 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 				UniqModesInfo1, UniqModesInfo),
 		Goal = GoalExpr0 - GoalInfo0
 	;
-		GoalExpr0 = unify(_, _, _, _, _),
+		GoalExpr0 = unify(LHS, RHS, _, _, _),
+		unique_modes__propagate_nondet_liveness(RHS, LHS,
+				UniqModesInfo0, UniqModesInfo1),
 		Goal = GoalExpr0 - GoalInfo0,
 		unique_modes__update_instmap(GoalInfo0,
-				UniqModesInfo0, UniqModesInfo)
+				UniqModesInfo1, UniqModesInfo)
 	;
 		GoalExpr0 = pragma_c_code(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
@@ -213,20 +216,55 @@ unique_modes__check_goal_2(GoalExpr0 - GoalInfo0, UniqModesInfo0,
 		unique_modes__check_goal(SubGoal0, UniqModesInfo0,
 					   SubGoal, UniqModesInfo),
 		Goal = some(Vars, SubGoal) - GoalInfo0
-	).
+	),
+	!.
 
 :- pred unique_modes__update_instmap(hlds__goal_info, uniq_info, uniq_info).
 :- mode unique_modes__update_instmap(in, in, out) is det.
 
 unique_modes__update_instmap(_GoalInfo, UniqModesInfo, UniqModesInfo).
 
-/* XXX
+/* XXX we don't use the instmap (yet - do we need to?)
 unique_modes__update_instmap(GoalInfo, UniqModesInfo0, UniqModesInfo) :-
 	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
 	uniq_info_get_instmap(UniqModesInfo, InstMap0),
 	apply_instmap_delta(InstMap0, InstmapDelta, InstMap),
 	uniq_info_set_instmap(UniqModesInfo, InstMap, FinalUniqModesInfo).
 */
+
+:- pred unique_modes__propagate_nondet_liveness(unify_rhs, var, 
+			uniq_info, uniq_info).
+:- mode unique_modes__propagate_nondet_liveness(in, in, in, out) is det.
+
+unique_modes__propagate_nondet_liveness(var(RHS), LHS, UniqInfo0, UniqInfo) :-
+	uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars0),
+	( set__member(LHS, NondetLiveVars0) ->
+		set__insert(NondetLiveVars0, RHS, NondetLiveVars)
+	; set__member(RHS, NondetLiveVars0) ->
+		set__insert(NondetLiveVars0, LHS, NondetLiveVars)
+	;
+		NondetLiveVars = NondetLiveVars0
+	),
+	uniq_info_set_nondet_live_vars(UniqInfo0, NondetLiveVars, UniqInfo).
+unique_modes__propagate_nondet_liveness(functor(_, Args), Var,
+		UniqInfo0, UniqInfo) :-
+	uniq_info_get_nondet_live_vars(UniqInfo0, NondetLiveVars0),
+	( set__member(Var, NondetLiveVars0) ->
+		set__insert_list(NondetLiveVars0, Args, NondetLiveVars)
+	;
+		set__list_to_set(Args, ArgsSet),
+		set__intersect(ArgsSet, NondetLiveVars0, NondetLiveArgs),
+		\+ set__empty(NondetLiveArgs)
+	->
+		set__insert(NondetLiveVars0, Var, NondetLiveVars)
+	;
+		NondetLiveVars = NondetLiveVars0
+	),
+	uniq_info_set_nondet_live_vars(UniqInfo0, NondetLiveVars, UniqInfo).
+unique_modes__propagate_nondet_liveness(lambda_goal(_, _, _, _), _, _, _) :-
+	% lambda expressions should get preprocessed away by lambda.m
+	% before we get to here
+	error("unique_modes.m: unexpected lambda goal").
 
 :- pred unique_modes__check_call(pred_id, proc_id, list(var), term_context,
 			maybe(call_unify_context), uniq_info, uniq_info).
@@ -261,9 +299,10 @@ unique_modes__check_args(Vars, Insts,
 		uniq_info_get_module_info(UniqInfo0, ModuleInfo),
 		(
 			set__member(Var, NondetLiveVars),
-			inst_is_unique(ModuleInfo, Inst)
+			inst_is_unique(ModuleInfo, Inst),
+			\+ inst_is_free(ModuleInfo, Inst)
 		->
-			Error = uniq_error(PredId, ProcId, ArgNum,
+			Error = uniq_error(PredId, ProcId, ArgNum, Var,
 					Context, CallContext),
 			uniq_info_get_errors(UniqInfo0, Errors0),
 			list__append(Errors0, [Error], Errors),
@@ -382,7 +421,7 @@ uniq_info_set_errors(uniq_info(A, B, C, _), Errors, uniq_info(A, B, C, Errors)).
 %-----------------------------------------------------------------------------%
 
 :- type unique_modes__error
-	--->	uniq_error(pred_id, proc_id, int, term_context,
+	--->	uniq_error(pred_id, proc_id, int, var, term_context,
 			maybe(call_unify_context)).
 
 :- pred unique_modes__report_errors(list(unique_modes__error)::in,
@@ -396,14 +435,31 @@ unique_modes__report_errors([Error|Errors], ModuleInfo) -->
 :- pred unique_modes__report_error(unique_modes__error::in, module_info::in,
 					io__state::di, io__state::uo) is det.
 
-unique_modes__report_error(uniq_error(PredId, ProcId, ArgNum, Context,
+unique_modes__report_error(uniq_error(PredId, ProcId, ArgNum, Var, Context,
 			CallUnifyContext), ModuleInfo) -->
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+			_PredInfo, ProcInfo) },
+	{ proc_info_variables(ProcInfo, VarSet) },
 	unique_modes__report_call_context(PredId, ProcId, ArgNum,
 			Context, CallUnifyContext, ModuleInfo),
 	prog_out__write_context(Context),
-	io__write_string("  Unique mode error: variable is not `unique',\n"),
+	io__write_string("  Unique mode error: "),
+	unique_modes__write_argument_name(VarSet, Var),
+	io__write_string(" is not `unique',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  since it's value may be needed again on backtracking.\n").
+
+:- pred unique_modes__write_argument_name(varset, var, io__state, io__state).
+:- mode unique_modes__write_argument_name(in, in, di, uo) is det.
+
+unique_modes__write_argument_name(VarSet, VarId) -->
+	( { varset__lookup_name(VarSet, VarId, _) } ->
+		io__write_string("variable `"),
+		mercury_output_var(VarId, VarSet),
+		io__write_string("'")
+	;
+		io__write_string("argument")
+	).
 
 %-----------------------------------------------------------------------------%
 
