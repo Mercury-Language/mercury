@@ -178,7 +178,7 @@
 			;	cast_to_unsigned
 			;	hash_string
 			;	bitwise_complement
-			;	not.
+			;	(not).
 
 :- type binary_op	--->	(+)	% integer arithmetic
 			;	(-)
@@ -190,8 +190,8 @@
 			;	(&)	% bitwise and
 			;	('|')	% bitwise or
 			;	(^)	% bitwise xor
-			;	and	% logical and
-			;	or	% logical or
+			;	(and)	% logical and
+			;	(or)	% logical or
 			;	eq	% ==
 			;	ne	% !=
 			;	array_index
