@@ -1,9 +1,14 @@
+/*
+** Copyright (C) 1995,2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 /*****************************************************************
     File   : test.c
-    RCS    : $Id: test_iff.c,v 1.1 2000-03-10 05:17:22 dmo Exp $
     Author : Peter Schachte
     Origin : Tue Jun 20 15:51:07 1995
-    Purpose: Timing test for bryant graph iff_conj_array code
+    Purpose: Timing test for bryant graph MR_ROBDD_iff_conj_array code
 
 *****************************************************************/
 
@@ -67,7 +72,7 @@ int next_array(int n, int varmax, int v0, int array[])
 
 void doit(int v0, int top, int array[])
     {
-	type *f;
+	MR_ROBDD_type *f;
 #ifdef DEBUGALL
 	int i;
 
@@ -77,7 +82,7 @@ void doit(int v0, int top, int array[])
 	}
 #endif /* DEBUGALL */
 #ifndef OVERHEAD
-	f = iff_conj_array(v0, top, array);
+	f = MR_ROBDD_iff_conj_array(v0, top, array);
 #ifdef DEBUGALL
 	printf(" ==> ");
 	printOut(f);
@@ -129,8 +134,8 @@ int main(int argc, char **argv)
 	    }
 	}
 	clock1 = milli_time();
-	test_nodes = nodes_in_use();
-	initRep();
+	test_nodes = MR_ROBDD_nodes_in_use();
+	MR_ROBDD_initRep();
 	clock2 = milli_time();
 	for (reps=repetitions; reps>0; --reps) {
 	    for (v0=0; v0<varmax; ++v0) {
@@ -142,7 +147,7 @@ int main(int argc, char **argv)
 	    }
 	}
 	clock3 = milli_time();
-	overhead_nodes = nodes_in_use();
+	overhead_nodes = MR_ROBDD_nodes_in_use();
 	runtime = (float)(clock1-clock0)/1000;
 	overhead = (float)(clock3-clock2)/1000;
 	rate = ((float)opcount)/(runtime-overhead);

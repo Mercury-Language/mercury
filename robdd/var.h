@@ -1,13 +1,16 @@
+/*
+** Copyright (C) 1998,2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 /*****************************************************************
   File     : var.h
-  RCS      : $Id: var.h,v 1.1 2000-03-10 05:17:22 dmo Exp $
   Author   : Peter Schachte
   Origin   : Mon Oct 12 06:09:27 1998
   Purpose  : Definitions common to all representations of Boolean variables
-  Copyright: © 1998 .  All rights reserved.
 
 *****************************************************************/
 
-
 /* the most variables we can support */
-#define MAXVAR 64
+#define MR_ROBDD_MAXVAR 64

@@ -1,9 +1,14 @@
+/*
+** Copyright (C) 1995,2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 /*****************************************************************
     File   : test_glb.c
-    RCS    : $Id: test_glb.c,v 1.1 2000-03-10 05:17:22 dmo Exp $
     Author : Peter Schachte
     Origin : Thu Jul 13 14:25:12 1995
-    Purpose: Timing test for bryant graph glb code
+    Purpose: Timing test for bryant graph MR_ROBDD_glb code
 
 *****************************************************************/
 
@@ -20,7 +25,7 @@ void usage(char *progname)
     {
 	printf("usage:  %s size maxvar [repetitions]\n", progname);
 	printf("  creates all possible pairs of v <-> v1 & v2 & ... & vsize functions and\n");
-	printf("  computes their glb.  Each V and the vi are between 0 and maxvar inclusive.\n");
+	printf("  computes their MR_ROBDD_glb.  Each V and the vi are between 0 and maxvar inclusive.\n");
 	printf("  If repetitions is >0, this will be done that many times.\n");
     }
 
@@ -64,11 +69,11 @@ int next_array(int n, int varmax, int v0, int array[])
     }
 
 
-void doit(type *f, type *g)
+void doit(MR_ROBDD_type *f, MR_ROBDD_type *g)
     {
-	type *result;
+	MR_ROBDD_type *result;
 #ifdef DEBUGALL
-	printf("glb("),
+	printf("MR_ROBDD_glb("),
 	printOut(f),
 	printf(", ");
 	printOut(g),
@@ -76,7 +81,7 @@ void doit(type *f, type *g)
 	fflush(stdout);
 #endif /* DEBUGALL */
 #ifndef OVERHEAD
-	result = glb(f, g);
+	result = MR_ROBDD_glb(f, g);
 #endif /* !OVERHEAD */
 #ifdef DEBUGALL
 	printOut(result);
@@ -85,22 +90,22 @@ void doit(type *f, type *g)
 	++opcount;
     }
 
-void dont_doit(type *f, type *g)
+void dont_doit(MR_ROBDD_type *f, MR_ROBDD_type *g)
     {
     }
 
-void inner_loop(int varmax, int top, type *f)
+void inner_loop(int varmax, int top, MR_ROBDD_type *f)
     {
 	int arrayg[33];
 	int vg;
-	type *g;
+	MR_ROBDD_type *g;
 
 	for (vg=0; vg<varmax; ++vg) {
 	    init_array(top, vg, arrayg);
-	    g = testing_iff_conj_array(vg, top, arrayg);
+	    g = MR_ROBDD_testing_iff_conj_array(vg, top, arrayg);
 	    doit(f, g);
 	    while (next_array(top, varmax, vg, arrayg)) {
-		g = testing_iff_conj_array(vg, top, arrayg);
+		g = MR_ROBDD_testing_iff_conj_array(vg, top, arrayg);
 		doit(f, g);
 	    }
 	}
@@ -108,18 +113,18 @@ void inner_loop(int varmax, int top, type *f)
 
 
 
-void dont_inner_loop(int varmax, int top, type *f)
+void dont_inner_loop(int varmax, int top, MR_ROBDD_type *f)
     {
 	int arrayg[33];
 	int vg;
-	type *g;
+	MR_ROBDD_type *g;
 
 	for (vg=0; vg<varmax; ++vg) {
 	    init_array(top, vg, arrayg);
-	    g = testing_iff_conj_array(vg, top, arrayg);
+	    g = MR_ROBDD_testing_iff_conj_array(vg, top, arrayg);
 	    dont_doit(f, g);
 	    while (next_array(top, varmax, vg, arrayg)) {
-		g = testing_iff_conj_array(vg, top, arrayg);
+		g = MR_ROBDD_testing_iff_conj_array(vg, top, arrayg);
 		dont_doit(f, g);
 	    }
 	}
@@ -132,7 +137,7 @@ int main(int argc, char **argv)
 	int varmax, size, repetitions;
 	int arrayf[VARLIMIT];
 	int reps, vf;
-	type *f;
+	MR_ROBDD_type *f;
 	millisec clock0, clock1, clock2, clock3;
 	float runtime, overhead, rate;
 	int test_nodes, overhead_nodes;
@@ -159,31 +164,31 @@ int main(int argc, char **argv)
 	for (reps=repetitions; reps>0; --reps) {
 	    for (vf=0; vf<varmax; ++vf) {
 		init_array(size, vf, arrayf);
-		f = testing_iff_conj_array(vf, size, arrayf);
+		f = MR_ROBDD_testing_iff_conj_array(vf, size, arrayf);
 		inner_loop(varmax, size, f);
 		while (next_array(size, varmax, vf, arrayf)) {
-		    f = testing_iff_conj_array(vf, size, arrayf);
+		    f = MR_ROBDD_testing_iff_conj_array(vf, size, arrayf);
 		    inner_loop(varmax, size, f);
 		}
 	    }
 	}
 	clock1 = milli_time();
-	test_nodes = nodes_in_use();
-	initRep();
+	test_nodes = MR_ROBDD_nodes_in_use();
+	MR_ROBDD_initRep();
 	clock2 = milli_time();
 	for (reps=repetitions; reps>0; --reps) {
 	    for (vf=0; vf<varmax; ++vf) {
 		init_array(size, vf, arrayf);
-		f = testing_iff_conj_array(vf, size, arrayf);
+		f = MR_ROBDD_testing_iff_conj_array(vf, size, arrayf);
 		dont_inner_loop(varmax, size, f);
 		while (next_array(size, varmax, vf, arrayf)) {
-		    f = testing_iff_conj_array(vf, size, arrayf);
+		    f = MR_ROBDD_testing_iff_conj_array(vf, size, arrayf);
 		    dont_inner_loop(varmax, size, f);
 		}
 	    }
 	}
 	clock3 = milli_time();
-	overhead_nodes = nodes_in_use();
+	overhead_nodes = MR_ROBDD_nodes_in_use();
 	runtime = (float)(clock1-clock0)/1000;
 	overhead = (float)(clock3-clock2)/1000;
 	rate = ((float)opcount)/(runtime-overhead);

@@ -87,6 +87,7 @@
 :- import_module rbtree.
 :- import_module relation.
 :- import_module require.
+:- import_module robdd.
 :- import_module set.
 :- import_module set_bbbtree.
 :- import_module set_ordlist.
@@ -117,6 +118,12 @@
 :- import_module rtti_implementation.
 :- import_module table_builtin.
 :- import_module term_size_prof_builtin.
+
+% If you need access to unsafe predicates, then in your own workspace,
+% temporarily uncomment this import and the line for unsafe in the definition
+% of mercury_std_library_module.
+
+% :- import_module unsafe.
 
 % library__version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
@@ -204,6 +211,7 @@ mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
 mercury_std_library_module("relation").
 mercury_std_library_module("require").
+mercury_std_library_module("robdd").
 mercury_std_library_module("rtti_implementation").
 mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
@@ -223,6 +231,7 @@ mercury_std_library_module("term_to_xml").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
+% mercury_std_library_module("unsafe").
 mercury_std_library_module("varset").
 mercury_std_library_module("version_array").
 mercury_std_library_module("version_array2d").

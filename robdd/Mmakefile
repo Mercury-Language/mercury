@@ -1,0 +1,28 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2003-2004 University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile for Peter Schachte's ROBDD package.
+
+MAIN_TARGET=robdd
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+
+MGNUC		= $(SCRIPTS_DIR)/mgnuc
+
+EXTRA_CFLAGS	= -I$(BROWSER_DIR) -I$(LIBRARY_DIR) -I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
+
+CFILES	= bryant.c
+
+OBJS		= $(CFILES:.c=.$O)
+PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
+
+.PHONY: robdd
+robdd: $(OBJS) $(PIC_OBJS)
+
+include Makefile

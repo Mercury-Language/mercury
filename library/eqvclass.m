@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999, 2003 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -105,6 +105,21 @@
 :- mode eqvclass__partition_list_to_eqvclass(in, out) is det.
 
 :- func eqvclass__partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
+
+	% Return the set of elements equivalent to the given element.
+	% This set will of course include the given element.
+
+:- func eqvclass__get_equivalent_elements(eqvclass(T), T) = set(T).
+
+	% Return the smallest element equivalent to the given element.
+	% This may or may not be the given element.
+
+:- func eqvclass__get_minimum_element(eqvclass(T), T) = T.
+
+	% Remove the given element and all other elements equivalent to it
+	% from the given equivalence class.
+
+:- func eqvclass__remove_equivalent_elements(eqvclass(T), T) = eqvclass(T).
 
 %---------------------------------------------------------------------------%
 
@@ -334,3 +349,24 @@ eqvclass__partition_set_to_eqvclass(S) = EC :-
 
 eqvclass__partition_list_to_eqvclass(Xs) = EC :-
 	eqvclass__partition_list_to_eqvclass(Xs, EC).
+
+eqvclass__get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
+	( Eqv = map__search(PartitionMap, map__search(ElementMap, X)) ->
+		Eqv
+	;
+		set__make_singleton_set(X)
+	).
+
+eqvclass__get_minimum_element(EC, X) =
+	list__det_head(set__to_sorted_list(
+			eqvclass__get_equivalent_elements(EC, X))).
+
+eqvclass__remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
+		eqvclass(Id, P, E) :-
+	( map__search(E0, X, Partition) ->
+		map__det_remove(P0, Partition, Eq, P),
+		map__delete_list(E0, set__to_sorted_list(Eq), E)
+	;
+		P = P0,
+		E = E0
+	).

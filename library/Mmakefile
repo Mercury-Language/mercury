@@ -102,7 +102,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
+CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR) -I$(ROBDD_DIR)
 MLFLAGS	+=	-R$(FINAL_INSTALL_MERC_LIB_DIR) \
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR) \

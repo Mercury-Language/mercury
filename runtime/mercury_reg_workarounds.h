@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000, 2002 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -43,11 +43,13 @@
   ** c_code may call the builtin functions.
   */
   extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
+  extern	void	MR_memset(void *dest, char c, size_t nbytes);
 
 #else /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
 
   #define MR_assign_structure(dest, src)	((dest) = (src))
   #define MR_memcpy(dest, src, nbytes)		memcpy((dest), (src), (nbytes))
+  #define MR_memset(dest, c, nbytes)		memset((dest), (c), (nbytes))
 
 #endif /* !MR_CANNOT_USE_STRUCTURE_ASSIGNMENT || !MR_USE_GCC_GLOBAL_REGISTERS */
 

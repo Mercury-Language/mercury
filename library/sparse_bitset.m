@@ -186,6 +186,22 @@
 :- pred remove_list(sparse_bitset(T), list(T), sparse_bitset(T)) <= enum(T).
 :- mode remove_list(in, in, out) is semidet.
 
+	% `remove_leq(Set, X)' returns `Set' with all elements less than
+	% or equal to `X' removed. In other words, it returns the set
+	% containing all the elements of `Set' which are greater than `X'.
+:- func remove_leq(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
+
+:- pred remove_leq(sparse_bitset(T), T, sparse_bitset(T)) <= enum(T).
+:- mode remove_leq(in, in, out) is det.
+
+	% `remove_gt(Set, X)' returns `Set' with all elements greater
+	% than `X' removed. In other words, it returns the set containing
+	% all the elements of `Set' which are less than or equal to `X'.
+:- func remove_gt(sparse_bitset(T), T) = sparse_bitset(T) <= enum(T).
+
+:- pred remove_gt(sparse_bitset(T), T, sparse_bitset(T)) <= enum(T).
+:- mode remove_gt(in, in, out) is det.
+
 	% `remove_least(Set0, X, Set)' is true iff `X' is the
 	% least element in `Set0', and `Set' is the set which
 	% contains all the elements of `Set0' except `X'.
@@ -254,6 +270,12 @@
 :- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+
+	% `filter(Pred, Set)' removes those elements from `Set' for which
+	% `Pred' fails. In other words, it returns the set consisting of those
+	% elements of `Set' for which `Pred' succeeds.
+:- func filter(pred(T), sparse_bitset(T)) = sparse_bitset(T) <= enum(T).
+:- mode filter(pred(in) is semidet, in) = out is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -490,6 +512,12 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 
 %-----------------------------------------------------------------------------%
 
+% XXX could make this more efficient.
+
+filter(P, S) = S ^ to_sorted_list ^ list__filter(P) ^ sorted_list_to_set.
+
+%-----------------------------------------------------------------------------%
+
 count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 
 %-----------------------------------------------------------------------------%
@@ -536,6 +564,62 @@ remove_list(Set0, Elems) = Set :-
 	list_to_set(Elems, ElemsSet),
 	subset(ElemsSet, Set0),
 	Set = difference(Set0, ElemsSet).
+
+%-----------------------------------------------------------------------------%
+
+remove_leq(sparse_bitset(Set), Elem) =
+	sparse_bitset(remove_leq_2(Set, enum__to_int(Elem))).
+
+:- func remove_leq_2(bitset_impl, int) = bitset_impl.
+
+remove_leq_2([], _) = [].
+remove_leq_2([Data | Rest], Index) = Result :-
+	Offset = Data ^ offset,
+	Result =
+		( Offset + bits_per_int =< Index ->
+			remove_leq_2(Rest, Index)
+		; Offset =< Index ->
+			(
+				Bits = Data ^ bits /\
+					unchecked_left_shift(\ 0,
+						Index - Offset + 1),
+				Bits \= 0
+			->
+				[make_bitset_elem(Offset, Bits) | Rest]
+			;
+				Rest
+			)
+		;
+			[Data | Rest]
+		).
+
+%-----------------------------------------------------------------------------%
+
+remove_gt(sparse_bitset(Set), Elem) =
+	sparse_bitset(remove_gt_2(Set, enum__to_int(Elem))).
+
+:- func remove_gt_2(bitset_impl, int) = bitset_impl.
+
+remove_gt_2([], _) = [].
+remove_gt_2([Data | Rest], Index) = Result :-
+	Offset = Data ^ offset,
+	Result =
+		( Offset + bits_per_int - 1 =< Index ->
+			[Data | remove_gt_2(Rest, Index)]
+		; Offset =< Index ->
+			(
+				Bits = Data ^ bits /\
+					\ unchecked_left_shift(\ 0,
+						Index - Offset + 1),
+				Bits \= 0
+			->
+				[make_bitset_elem(Offset, Bits)]
+			;
+				[]
+			)
+		;
+			[]
+		).
 
 %-----------------------------------------------------------------------------%
 
@@ -928,6 +1012,10 @@ delete_list(A, B, delete_list(A, B)).
 remove(A, B, remove(A, B)).
 
 remove_list(A, B, remove_list(A, B)).
+
+remove_leq(A, B, remove_leq(A, B)).
+
+remove_gt(A, B, remove_gt(A, B)).
 
 list_to_set(A, list_to_set(A)).
 

@@ -369,7 +369,8 @@
 
 :- implementation.
 
-:- import_module array, map, sparse_bitset, enum, term, exception, ops.
+:- import_module array, map, sparse_bitset, enum, term, exception.
+:- import_module ops, robdd.
 
 :- type doc
     --->    'NIL'
@@ -685,6 +686,9 @@ to_doc(Depth, Priority, X) =
       else if dynamic_cast_to_map_pair(X, MapPair)
       then    map_pair_to_doc(Depth, MapPair)
 
+      else if dynamic_cast_to_robdd(X, Robdd)
+      then    robdd_to_doc(Depth, Robdd)
+
       else    generic_term_to_doc(Depth, Priority, X)
     ).
 
@@ -947,6 +951,26 @@ dynamic_cast_to_tuple(X, X) :-
 
 %-----------------------------------------------------------------------------%
 
+:- some [T2] pred dynamic_cast_to_robdd(T1, robdd(T2)).
+:-           mode dynamic_cast_to_robdd(in, out) is semidet.
+
+dynamic_cast_to_robdd(X, R) :-
+
+        % If X is a robdd then it has a type with one type argument.
+        %
+    [ArgTypeDesc] = type_args(type_of(X)),
+
+        % Convert ArgTypeDesc to a type variable ArgType.
+        %
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+
+        % Constrain the type of R to be robdd(ArgType) and do the
+        % cast.
+        %
+    dynamic_cast(X, R `with_type` robdd(ArgType)).
+
+%-----------------------------------------------------------------------------%
+
 :- func var_to_doc(int, var(T)) = doc.
 
 var_to_doc(Depth, V) =
@@ -1010,5 +1034,12 @@ mk_map_pair(K - V) = map_pair(K, V).
 map_pair_to_doc(Depth, map_pair(Key, Value)) =
     to_doc(Depth - 1, Key) ++ text(" -> ") ++
         group(nest(2, line ++ to_doc(Depth - 1, Value))).
+
+%-----------------------------------------------------------------------------%
+
+:- func robdd_to_doc(int, robdd(T)) = doc.
+
+robdd_to_doc(Depth, R) =
+    "robdd_dnf" ++ parentheses(list_to_doc(Depth - 1, dnf(R))).
 
 %-----------------------------------------------------------------------------%

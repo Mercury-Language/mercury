@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998, 2000, 2002 The University of Melbourne.
+** Copyright (C) 1998, 2001-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,6 +46,19 @@ MR_memcpy(void *dest, const void *src, size_t nbytes)
 
 	while (nbytes-- > 0)
 		*d++ = *s++;
+}
+
+/*
+** See the header file for documentation on why we need this function.
+*/
+
+void
+MR_memset(void *dest, char c, size_t nbytes)
+{
+	char		*d = (char *) dest;
+
+	while (nbytes-- > 0)
+		*d++ = c;
 }
 
 #endif /* MR_CANNOT_USE_STRUCTURE_ASSIGNMENT && MR_USE_GCC_GLOBAL_REGISTERS */

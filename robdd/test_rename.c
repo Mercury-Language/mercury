@@ -1,9 +1,14 @@
+/*
+** Copyright (C) 1995,2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 /*****************************************************************
   File     : test_rename.c
-  RCS      : $Id: test_rename.c,v 1.1 2000-03-10 05:17:22 dmo Exp $
   Author   : Peter Schachte
   Origin   : Sat Jul 29 20:53:11 1995
-  Purpose  : Timing test for bryant graph renameArray code
+  Purpose  : Timing test for bryant graph MR_ROBDD_renameArray code
 
 *****************************************************************/
 
@@ -24,56 +29,56 @@ void usage(char *progname)
     }
 
 
-void init_array(int top, int array[], bitset *usedvars)
+void init_array(int top, int array[], MR_ROBDD_bitset *usedvars)
     {
 	int i, word;
-	bitmask mask;
+	MR_ROBDD_bitmask mask;
 
-	BITSET_CLEAR(*usedvars);
-	FOREACH_POSSIBLE_ELEMENT(i, word, mask) {
+	MR_ROBDD_BITSET_CLEAR(*usedvars);
+	MR_ROBDD_FOREACH_POSSIBLE_ELEMENT(i, word, mask) {
 	    if (i >= top) break;
 	    array[i] = i;
-	    BITSET_ADD(*usedvars, word, mask);
+	    MR_ROBDD_BITSET_ADD(*usedvars, word, mask);
 	}
     }
 
 
 
-int next_array(int n, int varmax, int array[], bitset *usedvars)
+int next_array(int n, int varmax, int array[], MR_ROBDD_bitset *usedvars)
     {
 	int i, word;
-	bitmask mask;
+	MR_ROBDD_bitmask mask;
 	int elt;
 
 	/* Search backward for first cell with "room" to be incremented. */
 	for (i=n-1;; --i) {
-	    if (i<0) return FALSE;	/* no more combinations possible */
+	    if (i<0) return MR_FALSE;	/* no more combinations possible */
 	    elt=array[i];
-	    word = BITSET_WORD(elt);
-	    mask = BITSET_MASK(elt);
-	    BITSET_REMOVE(*usedvars, word, mask);
-	    (void) NEXT_POSSIBLE_ELEMENT(elt, word, mask);
-	    if (next_nonelement(usedvars, &elt, &word, &mask) && elt<varmax)
+	    word = MR_ROBDD_BITSET_WORD(elt);
+	    mask = MR_ROBDD_BITSET_MASK(elt);
+	    MR_ROBDD_BITSET_REMOVE(*usedvars, word, mask);
+	    (void) MR_ROBDD_NEXT_POSSIBLE_ELEMENT(elt, word, mask);
+	    if (MR_ROBDD_next_nonelement(usedvars, &elt, &word, &mask) && elt<varmax)
 	      break;
 	}
 	for (; i<n; ++i) {
 	    array[i] = elt;
-	    BITSET_ADD(*usedvars, word, mask);
+	    MR_ROBDD_BITSET_ADD(*usedvars, word, mask);
 	    elt = 0;
-	    word = BITSET_WORD(0);
-	    mask = BITSET_MASK(0);
-	    if (!next_nonelement(usedvars, &elt, &word, &mask)) return FALSE;
+	    word = MR_ROBDD_BITSET_WORD(0);
+	    mask = MR_ROBDD_BITSET_MASK(0);
+	    if (!MR_ROBDD_next_nonelement(usedvars, &elt, &word, &mask)) return MR_FALSE;
 	}
-	return TRUE;
+	return MR_TRUE;
     }
 
 
-void doit(int n, int array[], int varmax, type *f)
+void doit(int n, int array[], int varmax, MR_ROBDD_type *f)
     {
-	type *result;
+	MR_ROBDD_type *result;
 #ifdef DEBUGALL
 	int i;
-	printf("renameArray(");
+	printf("MR_ROBDD_renameArray(");
 	printOut(f),
 	printf(", %d, [%d", n, array[0]);
 	for (i=1; i<n; ++i) printf(",%d", array[i]);
@@ -81,7 +86,7 @@ void doit(int n, int array[], int varmax, type *f)
 	fflush(stdout);
 #endif /* DEBUGALL */
 #ifndef OVERHEAD
-	result = renameArray(f, n, array);
+	result = MR_ROBDD_renameArray(f, n, array);
 #ifdef DEBUGALL
 	printOut(result);
 	printf("\n");
@@ -91,7 +96,7 @@ void doit(int n, int array[], int varmax, type *f)
     }
 
 
-void dont_doit(int n, int array[], int varmax, type *f)
+void dont_doit(int n, int array[], int varmax, MR_ROBDD_type *f)
     {
     }
 
@@ -99,10 +104,10 @@ void dont_doit(int n, int array[], int varmax, type *f)
 int main(int argc, char **argv)
     {
 	int varmax, size, repetitions;
-	int array[MAXVAR];
-	bitset set;
+	int array[MR_ROBDD_MAXVAR];
+	MR_ROBDD_bitset set;
 	int reps, i;
-	type *f;
+	MR_ROBDD_type *f;
 	millisec clock0, clock1, clock2, clock3;
 	float runtime, overhead, rate;
 	int test_nodes, overhead_nodes;
@@ -111,9 +116,9 @@ int main(int argc, char **argv)
 	    usage(argv[0]);
 	    return 20;
 	}
-	if ((varmax=atoi(argv[2]))<2 || varmax>=MAXVAR) {
+	if ((varmax=atoi(argv[2]))<2 || varmax>=MR_ROBDD_MAXVAR) {
 	    usage(argv[0]);
-	    printf("\n  varmax must be between 2 <= varmax < %d\n", MAXVAR);
+	    printf("\n  varmax must be between 2 <= varmax < %d\n", MR_ROBDD_MAXVAR);
 	    return 20;
 	}
 	if ((size=atoi(argv[1]))<0 || size>varmax) {
@@ -125,9 +130,9 @@ int main(int argc, char **argv)
 	if (repetitions <= 0) repetitions = 1;
 
 	for (i=0; i<(size-1)/2; ++i) array[i] = i*2+1;
-	f = testing_iff_conj_array(0, (size-1)/2, array);
+	f = MR_ROBDD_testing_iff_conj_array(0, (size-1)/2, array);
 	for (i=0; i<(size-2)/2; ++i) array[i] = i*2+2;
-	f = glb(f, testing_iff_conj_array(size-1, (size-2)/2, array));
+	f = MR_ROBDD_glb(f, MR_ROBDD_testing_iff_conj_array(size-1, (size-2)/2, array));
 
 	opcount = 0;
 	clock0 = milli_time();
@@ -139,13 +144,13 @@ int main(int argc, char **argv)
 	    }
 	}
 	clock1 = milli_time();
-	test_nodes = nodes_in_use();
-	initRep();
+	test_nodes = MR_ROBDD_nodes_in_use();
+	MR_ROBDD_initRep();
 
 	for (i=0; i<(size-1)/2; ++i) array[i] = i*2+1;
-	f = testing_iff_conj_array(0, (size-1)/2, array);
+	f = MR_ROBDD_testing_iff_conj_array(0, (size-1)/2, array);
 	for (i=0; i<(size-2)/2; ++i) array[i] = i*2+2;
-	f = glb(f, testing_iff_conj_array(size-1, (size-2)/2, array));
+	f = MR_ROBDD_glb(f, MR_ROBDD_testing_iff_conj_array(size-1, (size-2)/2, array));
 
 	clock2 = milli_time();
 	for (reps=repetitions; reps>0; --reps) {
@@ -156,7 +161,7 @@ int main(int argc, char **argv)
 	    }
 	}
 	clock3 = milli_time();
-	overhead_nodes = nodes_in_use();
+	overhead_nodes = MR_ROBDD_nodes_in_use();
 	runtime = (float)(clock1-clock0)/1000;
 	overhead = (float)(clock3-clock2)/1000;
 	rate = ((float)opcount)/(runtime-overhead);

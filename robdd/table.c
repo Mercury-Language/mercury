@@ -1,3 +1,9 @@
+/*
+** Copyright (C) 2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "bryant.h"
@@ -5,27 +11,27 @@
 
 #define TABLESIZE 4096
 
-node *lookupUniqueTable(int val, node *tr, node *fa);
-void insertUniqueTable(node *newnode);
+MR_ROBDD_node *lookupUniqueTable(int val, MR_ROBDD_node *tr, MR_ROBDD_node *fa);
+void insertUniqueTable(MR_ROBDD_node *newnode);
 
-node *checkComputed(node *f,node *g, node *h);
-void insertComputed(node *f, node *g, node *h, node *result);
+MR_ROBDD_node *checkComputed(MR_ROBDD_node *f,MR_ROBDD_node *g, MR_ROBDD_node *h);
+void insertComputed(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h, MR_ROBDD_node *result);
 
 void printUnique();	/* prints no. of entries in Unique table */
 
-static node *unique[TABLESIZE];
+static MR_ROBDD_node *unique[TABLESIZE];
 static iteEntry	computed[TABLESIZE];
 
-static int findHashUnique(int var, node *tr, node *fa);
-static int findHashComputed(node *f, node *g, node *h);
+static int findHashUnique(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa);
+static int findHashComputed(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h);
 
-node *lookupUniqueTable(int val, node *tr, node *fa)
-/* checks to see if node (val,tr,fa) exists, and if so returns pointer to
-that node, otherwise returns null */
+MR_ROBDD_node *lookupUniqueTable(int val, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
+/* checks to see if MR_ROBDD_node (val,tr,fa) exists, and if so returns pointer to
+that MR_ROBDD_node, otherwise returns null */
 {
-        extern node *unique[];
-        node *entry;
-        node *result;
+        extern MR_ROBDD_node *unique[];
+        MR_ROBDD_node *entry;
+        MR_ROBDD_node *result;
 	int hash;
 
         result = NULL;
@@ -43,13 +49,13 @@ that node, otherwise returns null */
         }
         return result;
 }
-void insertUniqueTable(node *newnode)
+void insertUniqueTable(MR_ROBDD_node *newnode)
 {
-/* inserts the node newnode into the unique table */
+/* inserts the MR_ROBDD_node newnode into the unique table */
 /* insertion is at head of list */
-        extern node *unique[];
-        node *first;
-        node *newentry;
+        extern MR_ROBDD_node *unique[];
+        MR_ROBDD_node *first;
+        MR_ROBDD_node *newentry;
 	int hash;
 
 	/* find hash value - get 12 bits, ie. 4096, size of unique */
@@ -61,7 +67,7 @@ void insertUniqueTable(node *newnode)
 
 void printUnique()
 {
-        node *t;
+        MR_ROBDD_node *t;
         int i;
         int cnt;
 	int total;
@@ -90,7 +96,7 @@ void printUnique()
 	printf("total nodes is %d: longest string is %d\n",total,longest);
 }
 
-node *checkComputed(node *f,node *g, node *h)
+MR_ROBDD_node *checkComputed(MR_ROBDD_node *f,MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
 	extern iteEntry computed[];
 	int hash;
@@ -105,14 +111,14 @@ node *checkComputed(node *f,node *g, node *h)
 	}
 	return NULL;
 }
-void insertComputed(node *f, node *g, node *h, node *result)
+void insertComputed(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h, MR_ROBDD_node *result)
 {
 	extern iteEntry computed[];
 	int hash;
 	int i;
 
 	/* find hash value - get 12 bits, ie. 4096, size of computed */
-	/* check hashing function, g or h is always zero or one */
+	/* check hashing function, g or h is always MR_ROBDD_zero or MR_ROBDD_one */
 
 	hash = findHashComputed(f,g,h);
 
@@ -132,14 +138,14 @@ void insertComputed(node *f, node *g, node *h, node *result)
 */
 }
 
-static int findHashUnique(int var, node *tr, node *fa)
+static int findHashUnique(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
 {
 	/* find hash value - get 12 bits, ie. 4096, size of unique */
 	return (var + ((long)tr << 1) +
 			((long)fa >> 2)) & 0xfff;
 }
 
-static int findHashComputed(node *f, node *g, node *h)
+static int findHashComputed(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
 	/* find hash value - get 12 bits, ie. 4096, size of computed */
 	return  (((long)h) + ((long)g << 1) +

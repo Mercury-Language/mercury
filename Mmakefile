@@ -27,6 +27,7 @@ SUBDIRS = \
 		util \
 		boehm_gc \
 		runtime \
+		robdd \
 		library \
 		trace \
 		browser \
@@ -173,6 +174,10 @@ boehm_gc: scripts
 .PHONY: runtime
 runtime: scripts boehm_gc
 	+cd runtime && $(SUBDIR_MMAKE)
+
+.PHONY: robdd
+robdd: scripts boehm_gc
+	cd robdd && $(SUBDIR_MMAKE)
 
 .PHONY: library
 library: dep_library scripts util boehm_gc runtime

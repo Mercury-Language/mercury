@@ -72,6 +72,12 @@
 	% Aborts if there is no key with the given or higher value.
 :- pred map__upper_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
+	% Return the largest key in the map, if there is one.
+:- func map__max_key(map(K,V)) = K is semidet.
+
+	% Return the smallest key in the map, if there is one.
+:- func map__min_key(map(K,V)) = K is semidet.
+
 	% Search map for data.
 :- pred map__inverse_search(map(K, V)::in, V::in, K::out) is nondet.
 
@@ -281,6 +287,14 @@
 :- mode map__map_foldl(pred(in, in, out, in, out) is semidet, in, out, in, out)
 	is semidet.
 
+	% As map__map_foldl, but with two accumulators.
+:- pred map__map_foldl2(pred(K, V, W, A, A, B, B), map(K, V), map(K, W),
+	A, A, B, B).
+:- mode map__map_foldl2(pred(in, in, out, in, out, in, out) is det,
+	in, out, in, out, in, out) is det.
+:- mode map__map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
+	in, out, in, out, in, out) is semidet. 
+
 	% Given two maps M1 and M2, create a third map M3 that has only the
 	% keys that occur in both M1 and M2. For keys that occur in both M1
 	% and M2, compute the value in the final map by applying the supplied
@@ -390,6 +404,19 @@
 :- pragma type_spec(map__select/2, K = var(_)).
 :- pragma type_spec(map__select/3, K = var(_)).
 
+:- pragma type_spec(map__elem/2, K = int).
+:- pragma type_spec(map__elem/2, K = var(_)).
+
+:- pragma type_spec(map__det_elem/2, K = int).
+:- pragma type_spec(map__det_elem/2, K = var(_)).
+
+:- pragma type_spec('map__elem :='/3, K = int).
+:- pragma type_spec('map__elem :='/3, K = var(_)).
+
+:- pragma type_spec('map__det_elem :='/3, K = int).
+:- pragma type_spec('map__det_elem :='/3, K = var(_)).
+
+
 :- implementation.
 :- import_module std_util, require, string.
 
@@ -441,6 +468,10 @@ map__upper_bound_lookup(Map, SearchK, K, V) :-
 		report_lookup_error("map__upper_bound_lookup: key not found",
 			SearchK, V)
 	).
+
+map__max_key(M) = tree234__max_key(M).
+
+map__min_key(M) = tree234__min_key(M).
 
 map__insert(Map0, K, V, Map) :-
 	tree234__insert(Map0, K, V, Map).
@@ -643,8 +674,11 @@ map__foldl3(Pred, Map, !A, !B, !C) :-
 map__map_values(Pred, Map0, Map) :-
 	tree234__map_values(Pred, Map0, Map).
 
-map__map_foldl(Pred, Map0, Map, Acc0, Acc) :-
-	tree234__map_foldl(Pred, Map0, Map, Acc0, Acc).
+map__map_foldl(Pred, !Map, !Acc) :-
+	tree234__map_foldl(Pred, !Map, !Acc).
+
+map__map_foldl2(Pred, !Map, !Acc1, !Acc2) :-
+	tree234__map_foldl2(Pred, !Map, !Acc1, !Acc2).
 
 %-----------------------------------------------------------------------------%
 

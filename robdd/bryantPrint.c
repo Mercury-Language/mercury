@@ -1,3 +1,9 @@
+/*
+** Copyright (C) 2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef QUINTUS
@@ -7,42 +13,42 @@
 #include "bryantPrint.h"
 
 
-int print_bryant(node *f, bitset *trues, bitset *falses, int terms);
+int print_bryant(MR_ROBDD_node *f, MR_ROBDD_bitset *trues, MR_ROBDD_bitset *falses, int terms);
 
 
 /* Print out an ROBDD in some readable format.  We display it in disjunctive
  * form.
  */
 
-void printOut(node *f)
+void printOut(MR_ROBDD_node *f)
     {
-	bitset trues, falses;
+	MR_ROBDD_bitset trues, falses;
 
-	if (f == one) {
-	    printf("TRUE");
-	} else if (f == zero) {
-	    printf("FALSE");
+	if (f == MR_ROBDD_one) {
+	    printf("MR_TRUE");
+	} else if (f == MR_ROBDD_zero) {
+	    printf("MR_FALSE");
 	} else {
-	    BITSET_CLEAR(trues);
-	    BITSET_CLEAR(falses);
+	    MR_ROBDD_BITSET_CLEAR(trues);
+	    MR_ROBDD_BITSET_CLEAR(falses);
 	    (void)print_bryant(f, &trues, &falses, 0);
 	}
     }
 
 
-int print_bryant(node *f, bitset *trues, bitset *falses, int terms)
+int print_bryant(MR_ROBDD_node *f, MR_ROBDD_bitset *trues, MR_ROBDD_bitset *falses, int terms)
     {
-	if (f == one) {
-	    bitset all;
+	if (f == MR_ROBDD_one) {
+	    MR_ROBDD_bitset all;
 	    int var;
 	    int word;
-	    bitmask mask;
+	    MR_ROBDD_bitmask mask;
 	    char sep = '(';
 
 	    if (terms>0) printf(" ");
-	    BITSET_UNION(all, *trues, *falses);
-	    FOREACH_ELEMENT(all, var, word, mask) {
-		if (BITSET_MEMBER(*trues, word, mask)) {
+	    MR_ROBDD_BITSET_UNION(all, *trues, *falses);
+	    MR_ROBDD_FOREACH_ELEMENT(all, var, word, mask) {
+		if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
 		    printf("%c%d", sep, var);
 		} else {
 		    printf("%c~%d", sep, var);
@@ -51,14 +57,14 @@ int print_bryant(node *f, bitset *trues, bitset *falses, int terms)
 	    }
 	    printf(")");
 	    ++terms;
-	} else if (f != zero) {
-	    BITSET_ADD_ELEMENT(*trues, f->value);
+	} else if (f != MR_ROBDD_zero) {
+	    MR_ROBDD_BITSET_ADD_ELEMENT(*trues, f->value);
 	    terms += print_bryant(f->tr, trues, falses, terms);
-	    BITSET_TOGGLE_ELEMENT(*trues, f->value);
-	    BITSET_ADD_ELEMENT(*falses, f->value);
+	    MR_ROBDD_BITSET_TOGGLE_ELEMENT(*trues, f->value);
+	    MR_ROBDD_BITSET_ADD_ELEMENT(*falses, f->value);
 	    terms += print_bryant(f->fa, trues, falses, terms);
-	    BITSET_TOGGLE_ELEMENT(*falses, f->value);
+	    MR_ROBDD_BITSET_TOGGLE_ELEMENT(*falses, f->value);
 	}
-	/* don't do anything for zero terminal */
+	/* don't do anything for MR_ROBDD_zero terminal */
 	return terms;
     }

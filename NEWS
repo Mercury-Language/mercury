@@ -259,6 +259,18 @@ Changes to the Mercury standard library:
   These have been replaced by cc_multi versions in which success or failure
   is indicated by returning a maybe type.
 
+* We've added functions get_equivalent_elements, get_minimum_element and 
+  remove_equivalent_elements to eqvclass.m.
+
+* We've added semidet functions max_key and min_key to return the maximum and
+  minimum keys in maps and 2-3-4 trees.
+
+* We've added predicates member, remove_leq, remove_gt, foldl and filter
+  to sparse_bitset.m.
+
+* builtin.m now contains types and insts `unify' and `compare' for use
+  in defining user-defined equality and comparison predicates.
+
 * The following predicates, which were added in 0.11.0, have been deprecated:
 	io.current_input_stream/3
 	io.current_output_stream/3

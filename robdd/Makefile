@@ -1,5 +1,9 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2001-2004 University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
 #  File     : Makefile
-#  RCS      : $Id: Makefile,v 1.1 2000-03-10 05:17:20 dmo Exp $
 #  Author   : Peter Schachte
 #  Origin   : 1995
 #  Purpose  : Makefile for bryant graph (ROBDD) manipulation code
@@ -39,7 +43,8 @@ RM=rm -f
 MV=mv
 MKDIR=mkdir
 DEBUG=-g -DDEBUGALL
-OPTIMIZE=-O3 -DNDEBUG -funroll-loops
+#OPTIMIZE=-O3 -DNDEBUG -funroll-loops
+OPTIMIZE=-DNDEBUG
 CC=gcc -I../mylib -I/usr/ucbinclude -I. -ansi
 LIBDIRS=-L/home/staff/pets/quintus/bin3.2/sun4-5
 #LIBS= -L/usr/ucblib -lucb
@@ -55,7 +60,11 @@ CHOSENOPTIM=$(OPTIMIZE)
 #CHOSENOPTIM=$(DEBUG)
 
 #OPTS=$(DEF)COMPUTED_TABLE $(DEF)EQUAL_TEST
-OPTS=$(DEF)CLEAR_CACHES $(DEF)COMPUTED_TABLE $(DEF)EQUAL_TEST
+OPTS= \
+	$(DEF)CLEAR_CACHES \
+	$(DEF)COMPUTED_TABLE \
+	$(DEF)EQUAL_TEST \
+	$(DEF)USE_ITE_CONSTANT
 #OPTS=$(DEF)CLEAR_CACHES $(DEF)COMPUTED_TABLE $(DEF)EQUAL_TEST $(DEF)STATISTICS
 #WHICH=NAIVE
 #WHICH=OLD

@@ -93,6 +93,7 @@ extern	int	mercury_terminate(void);
     #include "mercury_mps.h"	/* for GC_INIT(), GC_stack_bottom */
   #endif
   #ifdef MR_BOEHM_GC
+    #define GC_I_HIDE_POINTERS
     #include "gc.h"		/* for GC_INIT(), GC_stack_bottom */
   #endif
 #endif

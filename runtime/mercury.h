@@ -46,6 +46,7 @@
   #endif
   #ifdef MR_BOEHM_GC
     #include "gc.h"
+    #define GC_I_HIDE_POINTERS
     #ifdef MR_INLINE_ALLOC
       #include "gc_inl.h"
     #endif

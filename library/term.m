@@ -378,6 +378,9 @@
 :- pred term__term_to_type_with_int_instead_of_char(term(U)::in, T::out)
 	is semidet.
 
+	% Returns the highest numbered variable returned from this var_supply.
+:- func term__var_supply_max_var(var_supply(T)) = var(T).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -998,6 +1001,8 @@ term__var_to_int(var(Var), Var).
 :- func unsafe_int_to_var(int) = var(T).
 
 term__unsafe_int_to_var(Var) = var(Var).
+
+term__var_supply_max_var(var_supply(V)) = var(V).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,6 +1,6 @@
 echo on
 register --quiet
-break ite
+break if_then_else.ite
 continue
 finish
 dd

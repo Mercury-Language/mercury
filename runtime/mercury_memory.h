@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000,2002 The University of Melbourne.
+** Copyright (C) 1994-2000,2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,6 +31,7 @@
     #include "mercury_mps.h"	/* for GC_FREE */
   #endif
   #if defined(MR_BOEHM_GC)
+    #define GC_I_HIDE_POINTERS
     #include "gc.h"		/* for GC_FREE */
   #endif
 #endif

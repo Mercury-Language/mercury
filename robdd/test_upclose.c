@@ -1,6 +1,11 @@
+/*
+** Copyright (C) 1998,2003-2004 Peter Schachte and The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
 /*****************************************************************
     File   : test_upclose
-    RCS    : $Id: test_upclose.c,v 1.1 2000-03-10 05:17:22 dmo Exp $
     Author : Peter Schachte
     Origin : 4 May 1998
     Purpose: Test of set sharing upward closure operation
@@ -25,21 +30,21 @@ void usage(char *progname)
 
 
 #if 0
-node *boolfn(unsigned long n)
+MR_ROBDD_node *boolfn(unsigned long n)
     {
 	int d;
 	unsigned long tr, fa;
-	node *trfn, *fafn;
+	MR_ROBDD_node *trfn, *fafn;
 
-	if (n == 0) return zero;
-	if (n == 1) return one;
+	if (n == 0) return MR_ROBDD_zero;
+	if (n == 1) return MR_ROBDD_one;
 
-	for (d = LOG_BITS_PER_WORD-1; (fa=(n>>(1<<d)))==0 && d >= 0; --d);
+	for (d = MR_ROBDD_LOG_BITS_PER_WORD-1; (fa=(n>>(1<<d)))==0 && d >= 0; --d);
 	tr = n & ((1<<(1<<d))-1);
 	trfn = boolfn(tr);
 	fa ^= tr;
 	fafn = boolfn(fa);
-	return make_node((LOG_BITS_PER_WORD-d), trfn, fafn);
+	return MR_ROBDD_make_node((MR_ROBDD_LOG_BITS_PER_WORD-d), trfn, fafn);
     }
 #endif
 
@@ -57,17 +62,17 @@ void init_random(void)
     }
 
 
-node *randboolfn(int depth, int level)
+MR_ROBDD_node *randboolfn(int depth, int level)
     {
-	node *result;
+	MR_ROBDD_node *result;
 
 	if (bits <= 0) rnd = rand(), bits = rand_bits;
 
 	if (level == 0) {
-	    result = (rnd&1) ? one : zero;
+	    result = (rnd&1) ? MR_ROBDD_one : MR_ROBDD_zero;
 	    bits--; rnd >>= 1;
 	} else {
-	    result = make_node(depth-level,
+	    result = MR_ROBDD_make_node(depth-level,
 			       randboolfn(depth, level-1),
 			       randboolfn(depth, level-1));
 	}
@@ -76,17 +81,17 @@ node *randboolfn(int depth, int level)
 
 void doit(int depth, int num)
     {
-	node *f = randboolfn(depth, depth);
-	node *uf;
+	MR_ROBDD_node *f = randboolfn(depth, depth);
+	MR_ROBDD_node *uf;
 
 #ifdef DEBUGALL
-	printf("%6d upclose(", num);
+	printf("%6d MR_ROBDD_upclose(", num);
 	printOut(f);
 	printf(") ==> ");
 	fflush(stdout);
 #endif /* DEBUGALL */
 #ifndef OVERHEAD
-	uf = upclose(f);
+	uf = MR_ROBDD_upclose(f);
 #ifdef DEBUGALL
 	if (f == uf) {
 	    printf("UNCHANGED");
@@ -118,32 +123,32 @@ int main(int argc, char **argv)
 	    usage(argv[0]);
 	    return 20;
 	}
-	if ((depth=atoi(argv[1]))<1 || depth>=MAXVAR) {
+	if ((depth=atoi(argv[1]))<1 || depth>=MR_ROBDD_MAXVAR) {
 	    usage(argv[0]);
-	    printf("\n  depth must be between 1 <= depth < %d\n", MAXVAR);
+	    printf("\n  depth must be between 1 <= depth < %d\n", MR_ROBDD_MAXVAR);
 	    return 20;
 	}
 	repetitions=(argc>2 ? atoi(argv[2]) : 1);
 	if (repetitions <= 0) repetitions = 1;
 
 	opcount = 0;
-	initRep();
+	MR_ROBDD_initRep();
 	init_random();
 	clock0 = milli_time();
 	for (reps=0; reps<repetitions; ++reps) {
 	    doit(depth, reps);
 	}
 	clock1 = milli_time();
-	test_nodes = nodes_in_use();
-	concludeRep();
-	initRep();
+	test_nodes = MR_ROBDD_nodes_in_use();
+	MR_ROBDD_concludeRep();
+	MR_ROBDD_initRep();
 	init_random();
 	clock2 = milli_time();
 	for (reps=0; reps<repetitions; ++reps) {
 	    dont_doit(depth, reps);
 	}
 	clock3 = milli_time();
-	overhead_nodes = nodes_in_use();
+	overhead_nodes = MR_ROBDD_nodes_in_use();
 	runtime = (float)(clock1-clock0)/1000;
 	overhead = (float)(clock3-clock2)/1000;
 	rate = ((float)opcount)/(runtime-overhead);

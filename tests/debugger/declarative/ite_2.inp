@@ -1,6 +1,6 @@
 echo on
 register --quiet
-break ite
+break ite_2.ite
 *
 continue
 finish
