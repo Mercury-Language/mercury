@@ -158,9 +158,9 @@ ML_report_stats(void)
 		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk,"",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
 		(time_at_last_stat - time_at_start) / 1000.0,
-		((char *) sp - (char *)
+		((char *) MR_sp - (char *)
 			eng->context.detstack_zone->min) / 1024.0,
-		((char *) maxfr - (char *)
+		((char *) MR_maxfr - (char *)
 			eng->context.nondetstack_zone->min) / 1024.0
 	);
 
@@ -187,7 +187,7 @@ ML_report_stats(void)
 #else
 	fprintf(stderr, 
 		""\\nHeap: %.3fk"",
-		((char *) hp - (char *) eng->heap_zone->min) / 1024.0
+		((char *) MR_hp - (char *) eng->heap_zone->min) / 1024.0
 	);
 #endif
 
@@ -588,37 +588,37 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	/*
 	** Create a nondet stack frame. The contents of the slots:
 	**
-	** framevar(0): the closure to be called.
-	** framevar(1): the input for the closure.
-	** framevar(2): the number of iterations left to be done.
-	** framevar(3): the number of solutions found so far.
-	** framevar(4): the time at entry to the first iteration.
-	** framevar(5): the saved heap pointer
-	** framevar(6): the saved trail pointer (if trailing enabled)
+	** MR_framevar(1): the closure to be called.
+	** MR_framevar(2): the input for the closure.
+	** MR_framevar(3): the number of iterations left to be done.
+	** MR_framevar(4): the number of solutions found so far.
+	** MR_framevar(5): the time at entry to the first iteration.
+	** MR_framevar(6): the saved heap pointer
+	** MR_framevar(7): the saved trail pointer (if trailing enabled)
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	mkframe(""benchmark_nondet"", BENCHMARK_NONDET_STACK_SLOTS,
+	MR_mkframe(""benchmark_nondet"", BENCHMARK_NONDET_STACK_SLOTS,
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i2));
 
-	framevar(0) = r3;
-	framevar(1) = r4;
+	MR_framevar(1) = r3;
+	MR_framevar(2) = r4;
 
 	/* r5 is the repetition count */
 	if ((Integer) r5 <= 0) {
-		framevar(2) = 1;
+		MR_framevar(3) = 1;
 	} else {
-		framevar(2) = r5;
+		MR_framevar(3) = r5;
 	}
 
-	framevar(3) = 0;
-	mark_hp(framevar(5));
+	MR_framevar(4) = 0;
+	mark_hp(MR_framevar(6));
 #ifdef MR_USE_TRAIL
-	framevar(6) = (Word) MR_trail_ptr;
+	MR_framevar(7) = (Word) MR_trail_ptr;
 #endif
-	framevar(4) = MR_get_user_cpu_miliseconds();
+	MR_framevar(5) = MR_get_user_cpu_miliseconds();
 
 	/* call the higher-order pred closure that we were passed in r3 */
 	r1 = r3;
@@ -634,41 +634,41 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 
 	/* we found a solution */
-	framevar(3) = framevar(3) + 1;
-	redo();
+	MR_framevar(4) = MR_framevar(4) + 1;
+	MR_redo();
 
 Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	update_prof_current_proc(
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 
 	/* no more solutions for this iteration, so mark it completed */
-	framevar(2) = framevar(2) - 1;
+	MR_framevar(3) = MR_framevar(3) - 1;
 
 	/* we can now reclaim memory by resetting the heap pointer */
-	restore_hp(framevar(5));
+	restore_hp(MR_framevar(6));
 #ifdef MR_USE_TRAIL
 	/* ... and the trail pointer */
-	MR_trail_ptr = (MR_TrailEntry *) framevar(6);
+	MR_trail_ptr = (MR_TrailEntry *) MR_framevar(7);
 #endif
 
 	/* are there any other iterations? */
-	if (framevar(2) > 0) {
+	if (MR_framevar(3) > 0) {
 		/* yes, so reset the solution counter */
 		/* and then set up the call just like last time */
-		framevar(3) = 0;
-		r1 = framevar(0);
+		MR_framevar(4) = 0;
+		r1 = MR_framevar(1);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
-		r4 = framevar(1);
+		r4 = MR_framevar(2);
 		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 	}
 
 	/* no more iterations */
-	r1 = framevar(3);
-	r2 = MR_get_user_cpu_miliseconds() - framevar(4);
-	succeed_discard();
+	r1 = MR_framevar(4);
+	r2 = MR_get_user_cpu_miliseconds() - MR_framevar(5);
+	MR_succeed_discard();
 
 END_MODULE
 
@@ -698,36 +698,36 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	/*
 	** Create a det stack frame. The contents of the slots:
 	**
-	** detstackvar(1): the closure to be called.
-	** detstackvar(2): the input for the closure.
-	** detstackvar(3): the number of iterations left to be done.
-	** detstackvar(4): the time at entry to the first iteration.
-	** detstackvar(5): the saved heap pointer
-	** detstackvar(6): the return address.
-	** detstackvar(7): the saved trail pointer (if trailing enabled)
+	** MR_stackvar(1): the closure to be called.
+	** MR_stackvar(2): the input for the closure.
+	** MR_stackvar(3): the number of iterations left to be done.
+	** MR_stackvar(4): the time at entry to the first iteration.
+	** MR_stackvar(5): the saved heap pointer
+	** MR_stackvar(6): the return address.
+	** MR_stackvar(7): the saved trail pointer (if trailing enabled)
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	incr_sp(BENCHMARK_DET_STACK_SLOTS);
+	MR_incr_sp(BENCHMARK_DET_STACK_SLOTS);
 #ifdef MR_USE_TRAIL
-	detstackvar(7) = (Word) MR_trail_ptr;
+	MR_stackvar(7) = (Word) MR_trail_ptr;
 #endif
-	detstackvar(6) = (Word) succip;
-	mark_hp(detstackvar(5));
+	MR_stackvar(6) = (Word) MR_succip;
+	mark_hp(MR_stackvar(5));
 
-	detstackvar(1) = r3;
-	detstackvar(2) = r4;
+	MR_stackvar(1) = r3;
+	MR_stackvar(2) = r4;
 
 	/* r5 is the repetition count */
 	if ((Integer) r5 <= 0) {
-		detstackvar(3) = 1;
+		MR_stackvar(3) = 1;
 	} else {
-		detstackvar(3) = r5;
+		MR_stackvar(3) = r5;
 	}
 
-	detstackvar(4) = MR_get_user_cpu_miliseconds();
+	MR_stackvar(4) = MR_get_user_cpu_miliseconds();
 
 	/* call the higher-order pred closure that we were passed in r3 */
 	r1 = r3;
@@ -743,22 +743,22 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 		LABEL(mercury__benchmarking__benchmark_det_5_0));
 
 	/* mark current iteration completed */
-	detstackvar(3) = detstackvar(3) - 1;
+	MR_stackvar(3) = MR_stackvar(3) - 1;
 
 	/* are there any other iterations? */
-	if (detstackvar(3) > 0) {
+	if (MR_stackvar(3) > 0) {
 		/* yes, so set up the call just like last time */
 #ifdef MR_USE_TRAIL
 		/* Restore the trail... */
-		MR_TrailEntry *old_trail_ptr = (MR_TrailEntry *) detstackvar(7);
+		MR_TrailEntry *old_trail_ptr = (MR_TrailEntry *) MR_stackvar(7);
 		MR_untrail_to(old_trail_ptr, MR_undo);
 		MR_trail_ptr = old_trail_ptr;
 #endif
-		restore_hp(detstackvar(5));
-		r1 = detstackvar(1);
+		restore_hp(MR_stackvar(5));
+		r1 = MR_stackvar(1);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
-		r4 = detstackvar(2);
+		r4 = MR_stackvar(2);
 		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_det_5_0));
@@ -766,9 +766,9 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 
 	/* no more iterations */
 	/* r1 already contains the right value */
-	r2 = MR_get_user_cpu_miliseconds() - detstackvar(4);
-	succip = (Word *) detstackvar(6);
-	decr_sp(BENCHMARK_DET_STACK_SLOTS);
+	r2 = MR_get_user_cpu_miliseconds() - MR_stackvar(4);
+	MR_succip = (Word *) MR_stackvar(6);
+	MR_decr_sp(BENCHMARK_DET_STACK_SLOTS);
 	proceed();
 
 END_MODULE
