@@ -226,6 +226,9 @@
 :- pred io__get_line_number(int, io__state, io__state).
 :- mode io__get_line_number(out, di, uo) is det.
 
+:- pred io__get_line_number(io__input_stream, int, io__state, io__state).
+:- mode io__get_line_number(in, out, di, uo) is det.
+
 %	Return the line number of the current input stream
 %	(as per NU-Prolog lineCount/1).
 
@@ -493,6 +496,7 @@
 :- external(io__close_input/3).
 :- external(io__close_output/3).
 :- external(io__get_line_number/3).
+:- external(io__get_line_number/4).
 :- external(io__command_line_arguments/3).
 :- external(io__call_system_code/4).
 :- external(io__gc_call/3).
