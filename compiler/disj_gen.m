@@ -240,7 +240,9 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			{ ResumeVarsCode = empty },
 
 			code_info__maybe_release_hp(MaybeHpSlot),
-			code_info__maybe_release_ticket(MaybeTicketSlot)
+			code_info__maybe_release_ticket(MaybeTicketSlot),
+
+			code_info__reset_resume_known(BranchStart)
 		),
 
 			% Put every variable whose value is needed after
