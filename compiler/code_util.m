@@ -210,14 +210,14 @@ code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
 	% the PredInfo is for a compiler generated predicate.
 
 code_util__compiler_generated(PredInfo) :-
-    pred_info_name(PredInfo, PredName),
-    pred_info_arity(PredInfo, PredArity),
-    ( PredName = "__Unify__", PredArity = 2
-    ; PredName = "__Compare__", PredArity = 3
-    ; PredName = "__Index__", PredArity = 2
-    ; PredName = "__Term_To_Type__", PredArity = 2
-    ; PredName = "__Type_To_Term__", PredArity = 2
-    ).
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	( PredName = "__Unify__", PredArity = 2
+	; PredName = "__Compare__", PredArity = 3
+	; PredName = "__Index__", PredArity = 2
+	; PredName = "__Term_To_Type__", PredArity = 2
+	; PredName = "__Type_To_Term__", PredArity = 2
+	).
 
 %-----------------------------------------------------------------------------%
 

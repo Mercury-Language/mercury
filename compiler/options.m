@@ -261,7 +261,7 @@ option_defaults_2(optimization_option, [
 	req_density		-	int(25),
 	dense_switch_size	-	int(4),
 	string_switch_size	-	int(8),
-	tag_switch_size		-	int(8),
+	tag_switch_size		-	int(4),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
 	common_struct		-	bool(yes),

@@ -196,6 +196,12 @@ switch_gen__priority(address_constant(_, _), 6).
 	% branch to the end of the switch.  After the last case, we put
 	% the end-of-switch label which other cases branch to after
 	% their case goals.
+	%
+	% In the important special case of a det switch with two cases,
+	% we put the code for the second case first, since it is much
+	% more likely to be the recursive and therefore frequently executed
+	% case, while using a negated form of the test for the first case,
+	% since this is cheaper.
 
 :- pred switch_gen__generate_all_cases(list(extended_case), var,
 	code_model, can_fail, label, code_tree, code_info, code_info).
