@@ -752,6 +752,7 @@ might write
 		io__write_int(calculate_answer(@dots{}), IO1, IO2),
 		io__nl(IO3, IO).
 @end example
+@noindent
 using state variable syntax one could write
 @example
 	main(!IO) :-
@@ -796,11 +797,13 @@ For instance, the following goal employing an if-then-else expression
 @example
 	p((if q(!@var{X}), r(!@var{X}) then @var{A} else @var{B}), !@var{X})
 @end example
+@noindent
 is illegal because it implicitly refers to @samp{!:@var{X}} in the condition
 of the if-then-else expression.  However
 @example
 	p((if some[!@var{X}] (q(!@var{X}), r(!@var{X})) then @var{A} else @var{B}), !@var{X})
 @end example
+@noindent
 is acceptable because the state variable @var{X} is locally scoped to the
 condition and then-goal of the if-then-else expression, hence @samp{!:@var{X}}
 may appear therein.
