@@ -16,7 +16,6 @@
 
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 verbose=false
-shared=false
 GRADE=asm_fast.gc
 
 while true; do
@@ -24,22 +23,17 @@ while true; do
 	-v|--verbose)
 		verbose=true
 		shift ;;
-	--shared)
-		shared=true
-		shift ;;
-	--static)
-		shared=false
-		shift ;;
 	-s)
 		shift
 		GRADE="$1"
 		shift ;;
+	-static)
+		break ;;
 	-s*)
 		GRADE="` expr $1 : '-s\(.*\)' `"
 		shift ;;
 	*)
-		break
-		;;
+		break ;;
     esac
 done
 
@@ -52,10 +46,20 @@ case "$GRADE" in
 		;;
 esac
 
-LIBDIR_OPTS="
--R @LIBDIR@/lib/@FULLARCH@ -L $LIBDIR/@FULLARCH@
--R @LIBDIR@/lib/$GRADE/@FULLARCH@ -L $LIBDIR/$GRADE/@FULLARCH@
-"
+case @FULLARCH@ in
+	*-solaris*)
+		LIBDIR_OPTS="
+		-R@LIBDIR@/lib/@FULLARCH@ -L$LIBDIR/@FULLARCH@
+		-R@LIBDIR@/lib/$GRADE/@FULLARCH@ -L$LIBDIR/$GRADE/@FULLARCH@
+		"
+		;;
+	*)
+		LIBDIR_OPTS="
+		-L$LIBDIR/@FULLARCH@
+		-L$LIBDIR/$GRADE/@FULLARCH@
+		"
+		;;
+esac
 
 case "`hostname`" in
 	cadillac.dd.citri.edu.au)
@@ -67,6 +71,6 @@ case "`hostname`" in
 esac
 
 if $verbose; then
-	exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
+	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
 fi
 exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury $LIBGC
