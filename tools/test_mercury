@@ -61,7 +61,7 @@ case $HOST in
 	taifun) 	OPTIMIZE=-O1 ;;
 	quicksilver) 	OPTIMIZE=-O0 ;;
 	hg) 		OPTIMIZE=-O4 ;;
-	roy) 		OPTIMIZE=-O4 ;;
+	roy) 		OPTIMIZE=-O4 ;;	# hlc
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
@@ -206,7 +206,7 @@ status=0
 
 case $HOST in
 	murlibobo)
-		CONFIG_OPTS="--enable-most-grades" ;;
+		CONFIG_OPTS="--enable-inefficient-grades" ;;
 	kryten)		
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
