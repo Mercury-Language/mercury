@@ -4995,9 +4995,9 @@ A value of -1 specifies no depth limit. The default is 4.
 @sp 1
 @item --deforestation-vars-threshold
 @findex --deforestation-vars-threshold
-Specify a rough limit on the number of variables",
-in a procedure created by deforestation.",
-A value of -1 specifies no limit. The default is 200."
+Specify a rough limit on the number of variables
+in a procedure created by deforestation.
+A value of -1 specifies no limit. The default is 200.
 
 @sp 1
 @item --deforestation-size-threshold
