@@ -1,0 +1,8 @@
+s/\<term__atom/term_atom/g
+s/\<term__string/term_string/g
+s/\<term__integer/term_integer/g
+s/\<term__float/term_float/g
+s/\<term__context/term_context/g
+s/\<term__functor/term_functor/g
+s/\<term__variable/term_variable/g
+s/\<bool__/std_util__bool_/g
