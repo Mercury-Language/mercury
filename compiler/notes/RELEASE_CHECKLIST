@@ -12,9 +12,9 @@ taken when releasing a new version of Mercury.
     should include the contents of the NEWS file.
 
 2.  Checkout a fresh copy, and do
-	autoconf;
-	./configure;
-	mmake 'MMAKEFLAGS="MCFLAGS=-O5 -j4"' tar
+	autoconf
+	mercury_cv_low_tag_bits=2 sh configure
+	mmake MMAKEFLAGS='MCFLAGS="-O5 --num-tag-bits 2" -j4' tar
 
 3.  Fix the tar file so that it unpacks into the directory `mercury-<version>'
     rather than `mercury'.
