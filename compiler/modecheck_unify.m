@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -875,7 +875,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 	%
 	( UnifyTypeInfoVars = [] ->
 		% optimize common case
-		ModeInfo2 = ModeInfo0
+		ModeInfo3 = ModeInfo0
 	;
 		list__length(UnifyTypeInfoVars, NumTypeInfoVars),
 		list__duplicate(NumTypeInfoVars, ground(shared, none),
@@ -886,18 +886,19 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		InitialArgNum = 0,
 		modecheck_var_has_inst_list(UnifyTypeInfoVars, ExpectedInsts,
 			NeedExactMatch, InitialArgNum, _InstVarSub,
-			ModeInfo1, ModeInfo2)
+			ModeInfo1, ModeInfo2),
 			% We can ignore _InstVarSub since type_info variables
 			% should not have variable insts.
+		mode_info_unset_call_context(ModeInfo2, ModeInfo3)
 	),
 
-	mode_info_get_module_info(ModeInfo2, ModuleInfo2),
+	mode_info_get_module_info(ModeInfo3, ModuleInfo3),
 
 	(
-		mode_info_get_errors(ModeInfo2, Errors),
+		mode_info_get_errors(ModeInfo3, Errors),
 		Errors \= []
 	->
-		ModeInfo = ModeInfo2
+		ModeInfo = ModeInfo3
 	;
 		%
 		% Check that we're not trying to do a polymorphic unification
@@ -907,20 +908,20 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		% also be able to handle (in(any), in(any)) unifications.]
 		%
 		Type = term__variable(_),
-		\+ inst_is_ground_or_any(ModuleInfo2, InitialInstX)
+		\+ inst_is_ground_or_any(ModuleInfo3, InitialInstX)
 	->
 		set__singleton_set(WaitingVars, X),
 		mode_info_error(WaitingVars,
 			mode_error_poly_unify(X, InitialInstX),
-			ModeInfo2, ModeInfo)
+			ModeInfo3, ModeInfo)
 	;
 		Type = term__variable(_),
-		\+ inst_is_ground_or_any(ModuleInfo2, InitialInstY)
+		\+ inst_is_ground_or_any(ModuleInfo3, InitialInstY)
 	->
 		set__singleton_set(WaitingVars, Y),
 		mode_info_error(WaitingVars,
 			mode_error_poly_unify(Y, InitialInstY),
-			ModeInfo2, ModeInfo)
+			ModeInfo3, ModeInfo)
 	;
 
 		%
@@ -936,22 +937,22 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		% not_reached is considered bound, so the 
 		% error message would be spurious if the 
 		% instmap is unreachable.
-		mode_info_get_predid(ModeInfo2, PredId),
-		module_info_pred_info(ModuleInfo2, PredId,
+		mode_info_get_predid(ModeInfo3, PredId),
+		module_info_pred_info(ModuleInfo3, PredId,
 				PredInfo),
-		mode_info_get_instmap(ModeInfo2, InstMap0),
+		mode_info_get_instmap(ModeInfo3, InstMap0),
 		( 
 			( code_util__compiler_generated(PredInfo) 
 			; instmap__is_unreachable(InstMap0)
 			)
 		->
-			ModeInfo = ModeInfo2
+			ModeInfo = ModeInfo3
 		;
 			set__init(WaitingVars),
 			mode_info_error(WaitingVars,
 				mode_error_unify_pred(X, error_at_var(Y),
 						Type, PredOrFunc),
-				ModeInfo2, ModeInfo)
+				ModeInfo3, ModeInfo)
 		)
 	;
 		%
@@ -961,14 +962,14 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		%
 		type_to_type_id(Type, TypeId, _)
 	->
-		mode_info_get_context(ModeInfo2, Context),
-		mode_info_get_instvarset(ModeInfo2, InstVarSet),
+		mode_info_get_context(ModeInfo3, Context),
+		mode_info_get_instvarset(ModeInfo3, InstVarSet),
 		unify_proc__request_unify(TypeId - UniMode, InstVarSet,
-			Det, Context, ModuleInfo2, ModuleInfo),
-		mode_info_set_module_info(ModeInfo2, ModuleInfo,
+			Det, Context, ModuleInfo3, ModuleInfo),
+		mode_info_set_module_info(ModeInfo3, ModuleInfo,
 			ModeInfo)
 	;
-		ModeInfo = ModeInfo2
+		ModeInfo = ModeInfo3
 	).
 		
 
@@ -1178,7 +1179,8 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
 		modecheck_var_has_inst_list([ArgVar], [ground(shared, none)],
 			NeedExactMatch, InitialArgNum, _InstVarSub),
 		check_type_info_args_are_ground(ArgVars, VarTypes,
-			UnifyContext)
+			UnifyContext),
+		mode_info_unset_call_context
 	;
 		[]
 	).
