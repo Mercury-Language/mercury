@@ -35,34 +35,39 @@ disj_gen__generate_semi_disj(Goals, GoalsCode) -->
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_cases(in, in, in, out, in, out) is det.
 
-disj_gen__generate_semi_cases([], FallThrough, EndLabel, Code) -->
+disj_gen__generate_semi_cases([], FallThrough, _EndLabel, Code) -->
 	{ Code = node([
-		goto(FallThrough) - "fail",
-		label(EndLabel) - "End of semideterministic disj"
+		goto(FallThrough) - "explicit `fail'"
 	]) }.
 disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 						EndLabel, GoalsCode) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__get_next_label(ElseLab),
-	code_info__set_failure_cont(ElseLab),
-		% generate the case as a semi-deterministc goal
-	code_gen__generate_forced_semi_goal(Goal, ThisCode),
-	{ ElseLabel = node([
-		goto(EndLabel) - "skip to the end of the disj",
-		label(ElseLab) - "next case"
-	]) },
-		% If there are more cases, the we need to restore
-		% the expression cache, etc.
 	(
-		{ Goals = [_|_] }
+		{ Goals = [] }
 	->
-		code_info__slap_code_info(CodeInfo)
+		code_info__set_failure_cont(FallThrough),
+			% generate the case as a semi-deterministic goal
+		code_gen__generate_forced_semi_goal(Goal, ThisCode),
+		{ GoalsCode = tree(ThisCode, node([
+			label(EndLabel) - "End of semideterministic disj"
+		])) }
 	;
-		{ true }
-	),
-		% generate the rest of the cases.
-	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode0),
-	{ GoalsCode = tree(ThisCode, tree(ElseLabel, GoalsCode0)) }.
+		code_info__grab_code_info(CodeInfo),
+		code_info__get_next_label(ElseLab),
+		code_info__set_failure_cont(ElseLab),
+			% generate the case as a semi-deterministic goal
+		code_gen__generate_forced_semi_goal(Goal, ThisCode),
+		{ ElseLabel = node([
+			goto(EndLabel) - "skip to the end of the disj",
+			label(ElseLab) - "next case"
+		]) },
+			% If there are more cases, the we need to restore
+			% the expression cache, etc.
+		code_info__slap_code_info(CodeInfo),
+			% generate the rest of the cases.
+		disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel,
+			GoalsCode0),
+		{ GoalsCode = tree(ThisCode, tree(ElseLabel, GoalsCode0)) }
+	).
 
 %---------------------------------------------------------------------------%
 

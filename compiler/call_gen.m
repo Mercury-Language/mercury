@@ -52,7 +52,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
-	call_gen__setup_call(Args, Arguments, CodeB),
+	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
@@ -91,7 +91,7 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
-	call_gen__setup_call(Args, Arguments, CodeB),
+	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
@@ -124,7 +124,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
-	call_gen__setup_call(Args, Arguments, CodeB),
+	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
@@ -144,45 +144,6 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args).
-
-%---------------------------------------------------------------------------%
-
-:- pred call_gen__setup_call(assoc_list(var, arg_info), list(var), code_tree,
-							code_info, code_info).
-:- mode call_gen__setup_call(in, in, out, in, out) is det.
-
-call_gen__setup_call([], _Args, empty) --> [].
-call_gen__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, Code) -->
-	(
-		{ Mode = top_in }
-	->
-		{ code_util__arg_loc_to_register(ArgLoc, Reg) },
-		(
-			code_info__variable_register(Var, Lval0),
-			{ Lval0 = reg(Reg0) },
-			{ Reg \= Reg0 }
-		->
-			code_info__shuffle_register(Var, Args, Reg, CodeA)
-		;
-			code_info__variable_register(Var, Lval1),
-			{ Lval1 = reg(_) }
-		->
-			{ CodeA = empty }
-		;
-			code_info__shuffle_register(Var, Args, Reg, CodeA)
-		)
-	;
-		{ CodeA = empty }
-	),
-	(
-		{ Args = [_|Args1] }
-	->
-		{ Args2 = Args1 }
-	;
-		{ error("Vanishing arguments!") }
-	),
-	call_gen__setup_call(Vars, Args2, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 

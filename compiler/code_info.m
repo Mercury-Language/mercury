@@ -113,6 +113,16 @@
 							code_info, code_info).
 :- mode code_info__cache_expression_with_target(in, in, in, in, out) is det.
 
+		% Generate code to either setup the input arguments for a call
+		% (i.e. in the caller), or to setup the output arguments in the
+		% predicate epilog (i.e. in the callee).
+
+:- type call_direction ---> caller ; callee.
+
+:- pred code_info__setup_call(assoc_list(var, arg_info), list(var),
+			call_direction, code_tree, code_info, code_info).
+:- mode code_info__setup_call(in, in, in, out, in, out) is det.
+
 		% Generate code to swap a live value out of the given
 		% register, and place the value for the given variable
 		% into that register.
@@ -945,6 +955,44 @@ code_info__cache_expression_with_target(Var, Exprn, TargetReg) -->
 	{ map__set(Variables0, Var, cached(Exprn, target(TargetReg)),
 								Variables) },
 	code_info__set_variables(Variables).
+
+%---------------------------------------------------------------------------%
+
+code_info__setup_call([], _Args, _CallDirection, empty) --> [].
+code_info__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, CallDirection,
+		Code) -->
+	(
+		( { Mode = top_in, CallDirection = caller }
+		; { Mode = top_out, CallDirection = callee }
+		)
+	->
+		{ code_util__arg_loc_to_register(ArgLoc, Reg) },
+		(
+			code_info__variable_register(Var, Lval0),
+			{ Lval0 = reg(Reg0) },
+			{ Reg \= Reg0 }
+		->
+			code_info__shuffle_register(Var, Args, Reg, CodeA)
+		;
+			code_info__variable_register(Var, Lval1),
+			{ Lval1 = reg(_) }
+		->
+			{ CodeA = empty }
+		;
+			code_info__shuffle_register(Var, Args, Reg, CodeA)
+		)
+	;
+		{ CodeA = empty }
+	),
+	(
+		{ Args = [_|Args1] }
+	->
+		{ Args2 = Args1 }
+	;
+		{ error("Vanishing arguments!") }
+	),
+	code_info__setup_call(Vars, Args2, CallDirection, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 
