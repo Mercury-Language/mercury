@@ -179,14 +179,14 @@
 			proclabel, (type))
 #define	MR_incr_hp_type(dest, typename)					\
 		do {							\
-			Word	tmp;					\
+			MR_Word	tmp;					\
 			MR_tag_incr_hp(tmp, MR_mktag(0),		\
 				(MR_bytes_to_words(sizeof(typename))));	\
 			(dest) = (typename *) tmp;			\
 		} while (0)
 #define	MR_incr_hp_type_msg(dest, typename, proclabel, type)		\
 		do {							\
-			Word	tmp;					\
+			MR_Word	tmp;					\
 			MR_tag_incr_hp_msg(tmp, MR_mktag(0),		\
 				(MR_bytes_to_words(sizeof(typename))),	\
 				proclabel, (type));			\
