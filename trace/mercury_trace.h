@@ -53,7 +53,7 @@ typedef struct MR_Event_Details_Struct {
 /* The initial size of arrays of argument values. */
 #define	MR_INIT_ARG_COUNT	20
 
-const char *	MR_trace_retry(MR_Event_Info *event_info,
+extern	const char *MR_trace_retry(MR_Event_Info *event_info,
 			MR_Event_Details *event_details, Code **jumpaddr);
 
 /*
@@ -116,7 +116,6 @@ typedef struct {
 				*/
 	bool			MR_trace_must_check;
 } MR_Trace_Cmd_Info;
-
 
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
 					 (port) == MR_PORT_FAIL || \
