@@ -330,8 +330,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%             So we should investigate re-enabling static ground terms.
 	%   - intermodule optimization
 	%	  This is only required for high-level data and is needed
-	%	  so that equivalence types can be expanded.  They need to be
-	%	  expanded because .NET requires that the structural
+	%	  so that abstract equivalence types can be expanded.  They
+	%	  need to be expanded because .NET requires that the structural
 	%	  representation of a type is known at all times.
 	( { Target = il } ->
 		globals__io_set_gc_method(none),

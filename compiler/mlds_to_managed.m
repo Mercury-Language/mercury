@@ -177,9 +177,11 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 	( { mercury_std_library_module_name(ModuleName) } ->
 		io__write_strings([
 			"#using ""mercury_mcpp.dll""\n",
-			"#using ""mercury_il.dll""\n",
-			"#using ""private_builtin.dll""\n",
-			"#using ""builtin.dll""\n"])
+			"#using ""mercury_il.dll""\n"
+			%,
+			%"#using ""private_builtin.dll""\n",
+			%"#using ""builtin.dll""\n"
+			])
 	;
 		[]
 	),

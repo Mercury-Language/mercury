@@ -379,7 +379,8 @@
 % MLDS package.
 :- func mlds_module_name_to_package_name(mlds_module_name) = sym_name.
 
-% Is the current module a member of the std library, is so which module is it?
+% Is the current module a member of the std library,
+% and if so which module is it?
 :- pred is_std_lib_module(mlds_module_name::in, string::out) is semidet.
 
 % Given an MLDS module name (e.g. `foo.bar'), append another class qualifier
