@@ -1449,7 +1449,15 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 	),
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
 	maybe_add_header_file_include(PragmaExports, Name, C_HeaderCode0,
-		C_HeaderCode),
+		C_HeaderCode1),
+	globals__io_lookup_bool_option(generate_trace, Trace),
+	( { Trace = yes } ->
+		{ term__context_init(Context) },
+		{ TraceInclude = "#include ""mercury_trace.h""\n" - Context },
+		{ list__append(C_HeaderCode1, [TraceInclude], C_HeaderCode) }
+	;
+		{ C_HeaderCode = C_HeaderCode1 }
+	),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
 		ProcModules, [c_export(PragmaExports)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.

@@ -1355,6 +1355,10 @@ fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
 This makes these files significantly larger.
 
+@item --generate-trace
+Include code to generate an execution trace in the
+C code output by the compiler.
+
 @item --generate-bytecode
 @c Output a bytecode version of the module
 @c into the @file{@var{module}.bytecode} file,

@@ -57,9 +57,9 @@
 
 :- implementation.
 
-:- import_module call_gen, unify_gen, ite_gen, switch_gen.
-:- import_module disj_gen, pragma_c_gen, globals, options, hlds_out.
-:- import_module code_aux, middle_rec, passes_aux.
+:- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
+:- import_module pragma_c_gen, trace, globals, options, hlds_out.
+:- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
 :- import_module prog_data, instmap.
 :- import_module bool, char, int, string, list, term.
@@ -203,8 +203,14 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
 		ModuleInfo, CellCount0, ContInfo0, CodeInfo0),
 		% generate code for the procedure
+	globals__lookup_bool_option(Globals, generate_trace, Trace),
+	( Trace = yes ->
+		trace__setup(CodeInfo0, CodeInfo1)
+	;
+		CodeInfo1 = CodeInfo0
+	),
 	generate_category_code(CodeModel, Goal, CodeTree, FrameInfo,
-		CodeInfo0, CodeInfo),
+		CodeInfo1, CodeInfo),
 		% extract the new continuation_info and cell count
 	code_info__get_continuation_info(ContInfo1, CodeInfo, _CodeInfo1),
 	code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2),
@@ -258,9 +264,9 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		{ Code = MiddleRecCode },
 		{ FrameInfo = frame(0, no) }
 	;
-		% Make a new failure cont (not model_non)
-		% This continuation is never actually used,
-		% but is a place holder.
+		% make a new failure cont (not model_non);
+		% this continuation is never actually used,
+		% but is a place holder
 		code_info__manufacture_failure_cont(no),
 
 		code_gen__generate_goal(model_det, Goal, BodyCode),
@@ -280,7 +286,7 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 	).
 
 generate_category_code(model_semi, Goal, Code, FrameInfo) -->
-		% Make a new failure cont (not model_non)
+		% make a new failure cont (not model_non)
 	code_info__manufacture_failure_cont(no),
 
 		% generate the code for the body of the clause
@@ -290,16 +296,40 @@ generate_category_code(model_semi, Goal, Code, FrameInfo) -->
 	{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }.
 
 generate_category_code(model_non, Goal, Code, FrameInfo) -->
-		% Make a failure continuation, we lie and
-		% say that it is nondet, and then unset it
-		% so that it points to do_fail
+		% make a new failure cont (yes, it is model_non)
 	code_info__manufacture_failure_cont(yes),
+		% we must arrange the tracing of failure out of this proc
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		{ set__init(ResumeVars) },
+		code_info__make_known_failure_cont(ResumeVars, stack_only, yes,
+			SetupCode),
 
-		% generate the code for the body of the clause
-	code_gen__generate_goal(model_non, Goal, BodyCode),
-	code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
-	code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
-	{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }.
+			% generate the code for the body of the clause
+		code_info__push_resume_point_vars(ResumeVars),
+		code_gen__generate_goal(model_non, Goal, BodyCode),
+		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
+		code_info__pop_resume_point_vars,
+		{ MainCode = tree(PrologCode, tree(BodyCode, EpilogCode)) },
+
+		code_info__restore_failure_cont(RestoreCode),
+		trace__generate_event_code(fail, TraceInfo, TraceEventCode),
+		code_info__generate_failure(FailCode),
+		{ Code =
+			tree(MainCode,
+			tree(SetupCode,
+			tree(RestoreCode,
+			tree(TraceEventCode,
+			     FailCode))))
+		}
+	;
+			% generate the code for the body of the clause
+		code_gen__generate_goal(model_non, Goal, BodyCode),
+		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
+		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -362,6 +392,14 @@ code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 		{ MaybeSuccipSlot = no }
 	),
 	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot) },
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) },
+		trace__generate_event_code(call, TraceInfo, TraceEventCode),
+		{ TraceCode = tree(TraceFillCode, TraceEventCode) }
+	;
+		{ TraceCode = empty }
+	),
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_arity(ModuleInfo, PredId, Arity) },
@@ -393,7 +431,8 @@ code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 		tree(LabelCode,
 		tree(AllocCode,
 		tree(SaveSuccipCode,
-		     EndComment))))
+		tree(TraceCode,
+		     EndComment)))))
 	}.
 
 %---------------------------------------------------------------------------%
@@ -470,13 +509,30 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 	),
 	{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
 	{ code_gen__output_args(Args, LiveArgs) },
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		trace__generate_event_code(exit, TraceInfo, SuccessTraceCode),
+		( { CodeModel = model_semi } ->
+			trace__generate_event_code(fail, TraceInfo,
+				FailureTraceCode)
+		;
+			{ FailureTraceCode = empty }
+		)
+	;
+		{ SuccessTraceCode = empty },
+		{ FailureTraceCode = empty }
+	),
 	(
 		{ CodeModel = model_det },
 		{ SuccessCode = node([
 			livevals(LiveArgs) - "",
 			goto(succip) - "Return from procedure call"
 		]) },
-		{ AllSuccessCode = tree(RestoreDeallocCode, SuccessCode) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			tree(RestoreDeallocCode,
+			     SuccessCode))
+		},
 		{ AllFailureCode = empty }
 	;
 		{ CodeModel = model_semi },
@@ -487,21 +543,33 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			livevals(SuccessLiveRegs) - "",
 			goto(succip) - "Return from procedure call"
 		]) },
-		{ AllSuccessCode = tree(RestoreDeallocCode, SuccessCode) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			tree(RestoreDeallocCode,
+			     SuccessCode))
+		},
 		{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
 		{ FailureCode = node([
 			assign(reg(r, 1), const(false)) - "Fail",
 			livevals(FailureLiveRegs) - "",
 			goto(succip) - "Return from procedure call"
 		]) },
-		{ AllFailureCode = tree(ResumeCode,
-			tree(RestoreDeallocCode, FailureCode)) }
+		{ AllFailureCode =
+			tree(ResumeCode,
+			tree(FailureTraceCode,
+			tree(RestoreDeallocCode,
+			     FailureCode)))
+		}
 	;
 		{ CodeModel = model_non },
-		{ AllSuccessCode = node([
+		{ SuccessCode = node([
 			livevals(LiveArgs) - "",
 			goto(do_succeed(no)) - "Return from procedure call"
 		]) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			     SuccessCode)
+		},
 		{ AllFailureCode = empty }
 	),
 	{ EndComment = node([
@@ -635,8 +703,8 @@ code_gen__generate_det_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_det_call(PredId, ProcId, Args, GoalInfo,
-			Instr)
+		call_gen__generate_call(model_det, PredId, ProcId, Args,
+			GoalInfo, Instr)
 	;
 		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	).
@@ -722,8 +790,8 @@ code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_semidet_call(PredId, ProcId, Args, GoalInfo,
-			Code)
+		call_gen__generate_call(model_semi, PredId, ProcId, Args,
+			GoalInfo, Code)
 	;
 		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	).
@@ -926,8 +994,8 @@ code_gen__generate_non_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_nondet_call(PredId, ProcId, Args, GoalInfo,
-			Code)
+		call_gen__generate_call(model_non, PredId, ProcId, Args,
+			GoalInfo, Code)
 	;
 		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	).
