@@ -20,7 +20,8 @@ depend: mercury_main.depend
 all: mercury_main
 
 # tell the Mercury linker to link in fortran_main.o and libf2c
-MLLIBS=fortran_main.o -lf2c
+MLOBJS=fortran_main.o
+MLLIBS=-lg2c
 
 # tell mmake that it needs to make fortran_main.o before it can make
 # mercury_main

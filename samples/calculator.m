@@ -31,7 +31,8 @@ main -->
 		io__write_string("Error reading from stdin\n")
 	; { Res = eof },
 		io__write_string("EOF\n")
-	; { Res = ok(Line) },
+	; { Res = ok(Line0) },
+		{ list__delete_all(Line0, ' ', Line) },
 		( { fullexpr(X,Line,[]) } ->
 			{ Num = evalexpr(X) },
 			io__write_int(Num),
@@ -104,3 +105,5 @@ const([Digit|Rest]) -->
 digit(Char) -->
 	[Char],
 	{ char__is_digit(Char) }.
+
+
