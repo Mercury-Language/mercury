@@ -29,7 +29,7 @@ Mercury 0.2.5, 1 June 1995
 Much better syntax error messages.
 Better documentation, now including a library reference manual.
 Added a GNU autoconf configuration script.
-Ported to Irix 5.
+Ported to IRIX 5.
 Added `multidet'.  
 Enabled the use of tag bits in combination with conservative garbage
 collection (this improved the speed of the compiler by about 20%).
