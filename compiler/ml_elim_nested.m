@@ -374,9 +374,10 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
 		EnvTypeKind),
 	EnvTypeEntityName = type(EnvClassName, 0),
-	EnvTypeFlags = env_decl_flags,
+	EnvTypeFlags = env_type_decl_flags,
+	Fields = list__map(convert_local_to_field, LocalVars),
 	EnvTypeDefnBody = mlds__class(mlds__class_defn(EnvTypeKind, [], 
-		[mlds__generic_env_ptr_type], [], LocalVars)),
+		[mlds__generic_env_ptr_type], [], Fields)),
 	EnvTypeDefn = mlds__defn(EnvTypeEntityName, Context, EnvTypeFlags,
 		EnvTypeDefnBody),
 
@@ -386,7 +387,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%	struct <EnvClassName> env;
 	%
 	EnvVarName = data(var("env")),
-	EnvVarFlags = env_decl_flags,
+	EnvVarFlags = ml_gen_local_var_decl_flags,
 	EnvVarDefnBody = mlds__data(EnvTypeName, no_initializer),
 	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags,
 		EnvVarDefnBody),
@@ -421,6 +422,21 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		EnvDecls = [EnvVarDecl, EnvPtrVarDecl]
 	).
 
+	% When converting local variables into fields of the
+	% environment struct, we need to change `local' access
+	% into something else, since `local' is only supposed to be
+	% used for entities that are local to a function or block,
+	% not for fields.  Currently we change it to `public'.
+	% (Perhaps changing it to `default' might be better?)
+	% 
+:- func convert_local_to_field(mlds__defn) = mlds__defn.
+convert_local_to_field(mlds__defn(Name, Context, Flags0, Body)) =
+		mlds__defn(Name, Context, Flags, Body) :-
+	( access(Flags0) = local ->
+		Flags = set_access(Flags0, public)
+	;
+		Flags = Flags0
+	).
 
 	% ml_insert_init_env:
 	%	If the definition is a nested function definition, and it's
@@ -482,7 +498,7 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	%	<EnvTypeName> *env_ptr;
 	%
 	EnvPtrVarName = data(var("env_ptr")),
-	EnvPtrVarFlags = env_decl_flags,
+	EnvPtrVarFlags = ml_gen_local_var_decl_flags,
 	globals__get_target(Globals, Target),
 		% IL uses classes instead of structs, so the type
 		% is a little different.
@@ -519,15 +535,16 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 :- mode ml_conv_arg_to_var(in, in, out) is det.
 
 ml_conv_arg_to_var(Context, Name - Type, LocalVar) :-
-	Flags = env_decl_flags,
+	Flags = ml_gen_local_var_decl_flags,
 	DefnBody = mlds__data(Type, no_initializer),
 	LocalVar = mlds__defn(Name, Context, Flags, DefnBody).
 
-	% Return the declaration flags appropriate for a local variable.
-:- func env_decl_flags = mlds__decl_flags.
-env_decl_flags = MLDS_DeclFlags :-
-	Access = public,
-	PerInstance = per_instance,
+	% Return the declaration flags appropriate for an environment struct
+	% type declaration.
+:- func env_type_decl_flags = mlds__decl_flags.
+env_type_decl_flags = MLDS_DeclFlags :-
+	Access = private,
+	PerInstance = one_copy,
 	Virtuality = non_virtual,
 	Finality = overridable,
 	Constness = modifiable,
@@ -759,13 +776,22 @@ flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns) -->
 :- mode flatten_nested_defn(in, in, in, out, in, out) is det.
 
 flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
-	{ Defn0 = mlds__defn(Name, Context, Flags, DefnBody0) },
+	{ Defn0 = mlds__defn(Name, Context, Flags0, DefnBody0) },
 	(
 		{ DefnBody0 = mlds__function(PredProcId, Params, FuncBody0) },
 		%
 		% recursively flatten the nested function
 		%
 		flatten_maybe_statement(FuncBody0, FuncBody),
+
+		%
+		% mark the function as private / one_copy,
+		% rather than as local / per_instance,
+		% since we're about to hoist it out to the top level
+		%
+		{ Flags1 = set_access(Flags0, private) },
+		{ Flags = set_per_instance(Flags1, one_copy) },
+
 		{ DefnBody = mlds__function(PredProcId, Params, FuncBody) },
 		{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 

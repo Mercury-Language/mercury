@@ -39,8 +39,8 @@
 :- import_module rtti.		% for rtti__addr_to_string.
 :- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module hlds_pred.	% for pred_proc_id.
-:- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
-				% the code that handles derived classes
+:- import_module ml_code_util.	% for ml_gen_public_field_decl_flags, which is
+				% used by the code that handles derived classes
 :- import_module ml_type_gen.	% for ml_gen_type_name
 :- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
@@ -1030,7 +1030,8 @@ is_static_member(Defn) :-
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	BaseName = string__format("base_%d", [i(BaseNum0)]),
 	Type = ClassId,
-	MLDS_Defn = ml_gen_mlds_var_decl(var(BaseName), Type, Context),
+	MLDS_Defn = mlds__defn(data(var(BaseName)), Context,
+		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
 	BaseNum = BaseNum0 + 1.
 
 	% Output the definitions of the enumeration constants
@@ -1770,11 +1771,11 @@ mlds_output_access_comment(Access) -->
 :- pred mlds_output_access_comment_2(access, io__state, io__state).
 :- mode mlds_output_access_comment_2(in, di, uo) is det.
 
-mlds_output_access_comment_2(public)    --> [].
+mlds_output_access_comment_2(public)    --> io__write_string("/* public: */ ").
 mlds_output_access_comment_2(private)   --> io__write_string("/* private: */ ").
 mlds_output_access_comment_2(protected) --> io__write_string("/* protected: */ ").
 mlds_output_access_comment_2(default)   --> io__write_string("/* default access */ ").
-mlds_output_access_comment_2(local)     --> [].
+mlds_output_access_comment_2(local)     --> io__write_string("/* local: */ ").
 
 :- pred mlds_output_per_instance_comment(per_instance, io__state, io__state).
 :- mode mlds_output_per_instance_comment(in, di, uo) is det.

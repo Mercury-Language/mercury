@@ -128,8 +128,8 @@
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
 :- import_module rtti.		% for rtti__addr_to_string.
-:- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
-				% the code that handles derived classes
+:- import_module ml_code_util.	% for ml_gen_public_field_decl_flags, which is
+				% used by the code that handles derived classes
 :- import_module hlds_pred.	% for proc_id_to_int and invalid_pred_id
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, modules.
@@ -1047,14 +1047,17 @@ add_var_decl_flags(Flags, GCC_Defn) -->
 add_var_access_flag(public, GCC_Defn) -->
 	gcc__set_var_decl_public(GCC_Defn).
 add_var_access_flag(private, _GCC_Defn) -->
-	% this is the default
+	% this should only be used for global variables,
+	% where it is the default
 	[].
 add_var_access_flag(protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
 add_var_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
 add_var_access_flag(local, _GCC_Defn) -->
-	{ sorry(this_file, "`local' access") }.
+	% this should only be used for local variables,
+	% where it is the default
+	[].
 
 :- pred add_var_virtuality_flag(mlds__virtuality, gcc__var_decl,
 	io__state, io__state).
@@ -1126,11 +1129,11 @@ add_field_access_flag(public, _GCC_Defn) -->
 add_field_access_flag(private, _GCC_Defn) -->
 	{ sorry(this_file, "`private' field") }.
 add_field_access_flag(protected, _GCC_Defn) -->
-	{ sorry(this_file, "`protected' access") }.
+	{ sorry(this_file, "`protected' field") }.
 add_field_access_flag(default, _GCC_Defn) -->
-	{ sorry(this_file, "`default' access") }.
+	{ sorry(this_file, "`default' field") }.
 add_field_access_flag(local, _GCC_Defn) -->
-	{ sorry(this_file, "`local' access") }.
+	{ sorry(this_file, "`local' field") }.
 
 :- pred add_field_per_instance_flag(mlds__per_instance, gcc__field_decl,
 	io__state, io__state).
@@ -1213,17 +1216,19 @@ add_func_access_flag(protected, _GCC_Defn) -->
 add_func_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
 add_func_access_flag(local, _GCC_Defn) -->
+	% nested functions are not supported
 	{ sorry(this_file, "`local' access") }.
 
 :- pred add_func_per_instance_flag(mlds__per_instance, gcc__func_decl,
 	io__state, io__state).
 :- mode add_func_per_instance_flag(in, in, di, uo) is det.
 
-add_func_per_instance_flag(per_instance, _GCC_Defn) -->
-	% this is the default
-	[].
-add_func_per_instance_flag(one_copy, _GCC_Defn) -->
-	{ sorry(this_file, "`one_copy' function") }.
+	% For functions, we ignore the `per_instance' flag here.
+	% For global functions, this flag is meaningless;
+	% and currently we don't support nested functions
+	% or class member functions.
+add_func_per_instance_flag(per_instance, _GCC_Defn) --> [].
+add_func_per_instance_flag(one_copy, _GCC_Defn) --> [].
 
 :- pred add_func_virtuality_flag(mlds__virtuality, gcc__func_decl,
 	io__state, io__state).
@@ -1515,7 +1520,8 @@ is_static_member(Defn) :-
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	BaseName = string__format("base_%d", [i(BaseNum0)]),
 	Type = ClassId,
-	MLDS_Defn = ml_gen_mlds_var_decl(var(BaseName), Type, Context),
+	MLDS_Defn = mlds__defn(data(var(BaseName)), Context,
+		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
 	BaseNum = BaseNum0 + 1.
 
 /***********
