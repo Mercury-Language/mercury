@@ -844,7 +844,9 @@ code_exprn__cache_exprn(Var, Rval) -->
 	(
 		{ map__search(Vars0, Var, _) }
 	->
-		{ error("code_exprn__cache_exprn: existing definition of var") }
+		code_exprn__get_var_name(Var, Name),
+		{ string__append("code_exprn__cache_exprn: existing definition of variable ", Name, Msg) },
+		{ error(Msg) }
 	;
 		[]
 	),
