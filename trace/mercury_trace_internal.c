@@ -619,7 +619,7 @@ static	MR_bool	MR_saved_tabledebug;
 
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
-		MR_Event_Info *event_info)
+	MR_Event_Info *event_info)
 {
 	MR_Code			*jumpaddr;
 	char			*line;
@@ -1332,7 +1332,7 @@ MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_stop_event = MR_trace_event_number + 1;
 		return STOP_INTERACTING;
 	} else if (word_count == 2
-			&& MR_trace_is_natural_number(words[1], &n))
+		&& MR_trace_is_natural_number(words[1], &n))
 	{
 		cmd->MR_trace_cmd = MR_CMD_GOTO;
 		cmd->MR_trace_stop_event = MR_trace_event_number + n;
@@ -1771,7 +1771,7 @@ MR_trace_cmd_level(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_natural_number(words[1], &n))
+		MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(n, detailed,
 			MR_print_optionals);
@@ -1796,7 +1796,7 @@ MR_trace_cmd_up(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_natural_number(words[1], &n))
+		MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(
 			MR_trace_current_level() + n, detailed,
@@ -1826,7 +1826,7 @@ MR_trace_cmd_down(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_natural_number(words[1], &n))
+		MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(
 			MR_trace_current_level() - n, detailed,
@@ -1911,7 +1911,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		}
 	} else if (word_count == 3 && MR_streq(words[1], "action")
-			&& MR_trace_is_natural_number(words[2], &n))
+		&& MR_trace_is_natural_number(words[2], &n))
 	{
 		const char	*problem;
 
@@ -1976,7 +1976,7 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		}
 	} else if (word_count == 3 && MR_streq(words[1], "action")
-			&& MR_trace_is_natural_number(words[2], &n))
+		&& MR_trace_is_natural_number(words[2], &n))
 	{
 		const char	*problem;
 
@@ -2072,18 +2072,16 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Word			pretty_format;
 
 	if (! MR_trace_options_param_set(&print_set, &browse_set,
-		&print_all_set, &flat_format, 
-		&raw_pretty_format, &verbose_format, 
-		&pretty_format, &words, &word_count, "browsing",
-		"set"))
+		&print_all_set, &flat_format, &raw_pretty_format,
+		&verbose_format, &pretty_format, &words, &word_count,
+		"browsing", "set"))
 	{
 		; /* the usage message has already been printed */
 	}
 	else if (word_count != 3 ||
-			! MR_trace_set_browser_param(print_set,
-				browse_set, print_all_set, flat_format,
-				raw_pretty_format, verbose_format, 
-				pretty_format, words[1], words[2]))
+		! MR_trace_set_browser_param(print_set, browse_set,
+			print_all_set, flat_format, raw_pretty_format,
+			verbose_format, pretty_format, words[1], words[2]))
 	{
 		MR_trace_usage("browsing", "set");
 	}
@@ -2106,10 +2104,9 @@ MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_bool			close_window = MR_FALSE;
 	const char		*msg;
 
-	if (! MR_trace_options_view(&window_cmd, &server_cmd,
-		&server_name, &timeout, &force, &verbose,
-		&split, &close_window, &words, &word_count,
-		"browsing", "view"))
+	if (! MR_trace_options_view(&window_cmd, &server_cmd, &server_name,
+		&timeout, &force, &verbose, &split, &close_window,
+		&words, &word_count, "browsing", "view"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count != 1) {
@@ -2211,8 +2208,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				layout->MR_sll_entry, layout,
 				&problem);
 		MR_maybe_print_spy_point(slot, problem);
-	} else if (word_count == 2 && MR_parse_proc_spec(words[1], &spec))
-	{
+	} else if (word_count == 2 && MR_parse_proc_spec(words[1], &spec)) {
 		MR_Matches_Info	matches;
 		int		slot;
 
@@ -2307,7 +2303,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			}
 		}
 	} else if (word_count == 2 &&
-			MR_parse_source_locn(words[1], &file, &line))
+		MR_parse_source_locn(words[1], &file, &line))
 	{
 		int	slot;
 
@@ -2315,7 +2311,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			ignore_count, file, line, &problem);
 		MR_maybe_print_spy_point(slot, problem);
 	} else if (word_count == 2 &&
-			MR_trace_is_natural_number(words[1], &breakline))
+		MR_trace_is_natural_number(words[1], &breakline))
 	{
 		int	slot;
 
@@ -2353,7 +2349,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 	{
 		if (0 <= n && n < MR_spy_point_next
-				&& MR_spy_points[n]->spy_exists)
+			&& MR_spy_points[n]->spy_exists)
 		{
 			problem = MR_ignore_spy_point(n, ignore_when,
 				ignore_count);
@@ -2410,9 +2406,10 @@ MR_trace_cmd_enable(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	int	n;
+
 	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
-				&& MR_spy_points[n]->spy_exists)
+			&& MR_spy_points[n]->spy_exists)
 		{
 			MR_spy_points[n]->spy_enabled = MR_TRUE;
 			MR_print_spy_point(MR_mdb_out, n);
@@ -2470,7 +2467,7 @@ MR_trace_cmd_disable(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
-				&& MR_spy_points[n]->spy_exists)
+			&& MR_spy_points[n]->spy_exists)
 		{
 			MR_spy_points[n]->spy_enabled = MR_FALSE;
 			MR_print_spy_point(MR_mdb_out, n);
@@ -2530,7 +2527,7 @@ MR_trace_cmd_delete(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
-				&& MR_spy_points[n]->spy_exists)
+			&& MR_spy_points[n]->spy_exists)
 		{
 			MR_spy_points[n]->spy_exists = MR_FALSE;
 			MR_print_spy_point(MR_mdb_out, n);
@@ -6147,60 +6144,61 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 }
 
 static const char *const	MR_trace_movement_cmd_args[] =
-		{"-N", "-S", "-a", "-n", "-s",
-		"--none", "--some", "--all", "--strict", "--no-strict", NULL};
+	{ "-N", "-S", "-a", "-i", "-n", "-s",
+	"--none", "--some", "--all", "--integrity",
+	"--strict", "--no-strict", NULL };
 
 /*
 ** "retry --assume-all-io-is-tabled" is deliberately not documented as
 ** it is for developers only.
 */
 static const char *const	MR_trace_retry_cmd_args[] =
-		{"--force", "--interactive", "--only-if-safe", NULL};
+	{ "--force", "--interactive", "--only-if-safe", NULL };
 
 static const char *const	MR_trace_print_cmd_args[] =
-		{"-f", "-p", "-v", "--flat", "--pretty", "--verbose",
-		"exception", "goal", "*", NULL};
+	{ "-f", "-p", "-v", "--flat", "--pretty", "--verbose",
+	"exception", "goal", "*", NULL };
 
-		/*
-		** It's better to have a single completion where possible,
-		** so don't include `-d' here.
-		*/
+/*
+** It's better to have a single completion where possible,
+** so don't include `-d' here.
+*/
 static const char *const	MR_trace_stack_cmd_args[] =
-		{"--detailed", NULL};
+	{ "--detailed", NULL };
 
 static const char *const	MR_trace_set_cmd_args[] =
-		{"-A", "-B", "-P", "-f", "-p", "-v",
-		"--print-all", "--print", "--browse",
-		"--flat", "--pretty", "--verbose",
-		"format", "depth", "size", "width", "lines",
-		"flat", "pretty", "verbose", NULL};
+	{ "-A", "-B", "-P", "-f", "-p", "-v",
+	"--print-all", "--print", "--browse",
+	"--flat", "--pretty", "--verbose",
+	"format", "depth", "size", "width", "lines",
+	"flat", "pretty", "verbose", NULL };
 
 static const char *const	MR_trace_view_cmd_args[] =
-		{"-c", "-f", "-n", "-s", "-t", "-v", "-w", "-2",
-		"--close", "--verbose", "--force", "--split-screen",
-		"--window-command", "--server-command", "--server-name",
-		"--timeout", NULL};
+	{ "-c", "-f", "-n", "-s", "-t", "-v", "-w", "-2",
+	"--close", "--verbose", "--force", "--split-screen",
+	"--window-command", "--server-command", "--server-name",
+	"--timeout", NULL };
 
 static const char *const	MR_trace_break_cmd_args[] =
-		{"-A", "-E", "-I", "-O", "-P", "-S", "-a", "-e", "-i",
-		"--all", "--entry", "--ignore-entry", "--ignore-interface",
-		"--interface", "--print", "--select-all", "--select-one",
-		"--stop", "here", "info", NULL};
+	{ "-A", "-E", "-I", "-O", "-P", "-S", "-a", "-e", "-i",
+	"--all", "--entry", "--ignore-entry", "--ignore-interface",
+	"--interface", "--print", "--select-all", "--select-one",
+	"--stop", "here", "info", NULL };
 
 static const char *const	MR_trace_ignore_cmd_args[] =
-		{"-E", "-I", "--ignore-entry", "--ignore-interface", NULL};
+	{ "-E", "-I", "--ignore-entry", "--ignore-interface", NULL };
 
 static const char *const	MR_trace_printlevel_cmd_args[] =
-		{"none", "some", "all", NULL};
+	{ "none", "some", "all", NULL };
 
 static const char *const	MR_trace_on_off_args[] =
-		{"on", "off", NULL};
+	{ "on", "off", NULL };
 
 static const char *const	MR_trace_context_cmd_args[] =
-		{"none", "before", "after", "prevline", "nextline", NULL};
+	{ "none", "before", "after", "prevline", "nextline", NULL };
 
 static const char *const	MR_trace_scope_cmd_args[] =
-		{"all", "interface", "entry", NULL};
+	{ "all", "interface", "entry", NULL };
 
 /*
 ** "table_io allow" is deliberately not documented as it is developer only
@@ -6208,17 +6206,17 @@ static const char *const	MR_trace_scope_cmd_args[] =
 ** effort to encourage consistent use of start/stop.
 */
 static const char *const	MR_trace_table_io_cmd_args[] =
-		{"stats", "start", "stop", NULL};
+	{ "stats", "start", "stop", NULL };
 
-		/*
-		** It's better to have a single completion where possible,
-		** so don't include `-i' here.
-		*/
+/*
+** It's better to have a single completion where possible,
+** so don't include `-i' here.
+*/
 static const char *const	MR_trace_source_cmd_args[] =
-		{"--ignore-errors", NULL};
+	{ "--ignore-errors", NULL };
 
 static const char *const	MR_trace_quit_cmd_args[] =
-		{"-y", NULL};
+	{ "-y", NULL };
 
 static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 {
@@ -6332,9 +6330,9 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "misc", "save", MR_trace_cmd_save,
 		NULL, MR_trace_filename_completer },
 	{ "misc", "dd", MR_trace_cmd_dd,
-		NULL, MR_trace_null_completer},
+		NULL, MR_trace_null_completer },
 	{ "misc", "quit", MR_trace_cmd_quit,
-		MR_trace_quit_cmd_args, NULL},
+		MR_trace_quit_cmd_args, NULL },
 
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },
@@ -6372,7 +6370,7 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "developer", "unhide_events", MR_trace_cmd_unhide_events,
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "developer", "dd_dd", MR_trace_cmd_dd_dd,
-		NULL, MR_trace_filename_completer},
+		NULL, MR_trace_filename_completer },
 	{ "developer", "table", MR_trace_cmd_table,
 		NULL, MR_trace_null_completer },
 
