@@ -932,7 +932,7 @@ mercury_output_inst_defn(VarSet, Name, Args, eqv_inst(Body), Context) -->
 	{ list__map(pred(V::in, variable(V)::out) is det, Args, ArgTerms) },
 	{ construct_qualified_term(Name, ArgTerms, Context, InstTerm) },
 	mercury_output_term(InstTerm, VarSet, no),
-	io__write_string(") = "),
+	io__write_string(") == "),
 	mercury_output_inst(Body, VarSet),
 	io__write_string(".\n").
 
@@ -1502,7 +1502,7 @@ mercury_format_mode_defn(VarSet, Name, Args, eqv_mode(Mode), Context) -->
 	{ list__map(pred(V::in, variable(V)::out) is det, Args, ArgTerms) },
 	{ construct_qualified_term(Name, ArgTerms, Context, ModeTerm) },
 	mercury_format_term(ModeTerm, VarSet, no),
-	add_string(") :: "),
+	add_string(") == "),
 	mercury_format_mode(Mode, simple_inst_info(VarSet)),
 	add_string(".\n").
 
@@ -1545,7 +1545,7 @@ mercury_format_mode((InstA -> InstB), InstInfo) -->
 	;
 		add_string("("),
 		mercury_format_inst(InstA, InstInfo),
-		add_string(" -> "),
+		add_string(" >> "),
 		mercury_format_inst(InstB, InstInfo),
 		add_string(")")
 	).
