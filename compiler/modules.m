@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1793,9 +1793,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		),
 
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-		( { HighLevelCode = yes } ->
+		globals__io_get_target(CompilationTarget),
+		( { HighLevelCode = yes, CompilationTarget = c } ->
 			%
-			% For --high-level-code, we need to make sure that we
+			% For --high-level-code with --target c,
+			% we need to make sure that we
 			% generate the header files for imported modules
 			% before compiling the C files, since the generated C
 			% files #include those header files.
