@@ -198,6 +198,8 @@ then
 	ln -s $root/profiler .
 	ln -s $root/conf* .
 	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
 	rm -f config*.log
 	cp $root/Mmake* .
 	if test -f $root/Mmake.stage.params
@@ -357,6 +359,8 @@ ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
 ln -s $root/VERSION .
+ln -s $root/.README.in .
+ln -s $root/.INSTALL.in .
 rm -f config*.log
 cp $root/Mmake* .
 if test -f $root/Mmake.stage.params
@@ -465,6 +469,8 @@ ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
 ln -s $root/VERSION .
+ln -s $root/.README.in .
+ln -s $root/.INSTALL.in .
 rm -f config*.log
 cp $root/Mmake* .
 if test -f $root/Mmake.stage.params
