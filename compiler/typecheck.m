@@ -733,12 +733,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	Body = du_type(Ctors, _, _, MaybeEqualityPred),
-	(	MaybeEqualityPred = yes(_)
-	;	list__member(Ctor, Ctors),
-		Ctor = ctor(ExistQTVars, _, _, _),
-		ExistQTVars \= []
-	).
+	special_pred_for_type_needs_typecheck(Body).
 
 %-----------------------------------------------------------------------------%
 

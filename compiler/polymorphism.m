@@ -190,6 +190,23 @@
 			io__state, io__state).
 :- mode polymorphism__process_module(in, out, di, uo) is det.
 
+% Run the polymorphism pass over a single pred.
+% This is used to transform clauses introduced by unify_proc.m
+% for complicated unification predicates for types
+% for which unification predicates are generated lazily. 
+%
+% This predicate should be used with caution. polymorphism.m
+% expects that the argument types of called predicates have not
+% been transformed yet. This predicate will not work correctly
+% after the original pass of polymorphism has been run if the
+% predicate to be processed calls any polymorphic predicates
+% which require type_infos or typeclass_infos to be added to
+% the argument list.
+
+:- pred polymorphism__process_generated_pred(pred_id,
+		module_info, module_info).
+:- mode polymorphism__process_generated_pred(in, in, out) is det.
+
 % Add the type_info variables for a complicated unification to
 % the appropriate fields in the unification and the goal_info.
 
@@ -371,8 +388,15 @@ polymorphism__maybe_process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 :- pred polymorphism__fixup_preds(list(pred_id), module_info, module_info).
 :- mode polymorphism__fixup_preds(in, in, out) is det.
 
-polymorphism__fixup_preds([], ModuleInfo, ModuleInfo).
-polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+polymorphism__fixup_preds(PredIds, ModuleInfo0, ModuleInfo) :-
+	list__foldl(polymorphism__fixup_pred,
+		PredIds, ModuleInfo0, ModuleInfo).
+
+:- pred polymorphism__fixup_pred(pred_id, module_info, module_info).
+:- mode polymorphism__fixup_pred(in, in, out) is det.
+
+polymorphism__fixup_pred(PredId, ModuleInfo0, ModuleInfo) :-
+
 	%
 	% Recompute the arg types by finding the headvars and
 	% the var->type mapping (from the clauses_info) and
@@ -448,9 +472,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	),
 
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-
-	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -459,38 +481,46 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 :- mode polymorphism__process_pred(in, in, out, di, uo) is det.
 
 polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) -->
-	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
-
 	write_pred_progress_message("% Transforming polymorphism for ",
 					PredId, ModuleInfo0),
+	{ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) }.
 
+polymorphism__process_generated_pred(PredId, ModuleInfo0, ModuleInfo) :-
+	polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo1),
+	polymorphism__fixup_pred(PredId, ModuleInfo1, ModuleInfo).
+
+:- pred polymorphism__process_pred(pred_id, module_info, module_info).
+:- mode polymorphism__process_pred(in, in, out) is det.
+
+polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
 	%
 	% run the polymorphism pass over the clauses_info,
 	% updating the headvars, goals, varsets, types, etc.,
 	% and computing some information in the poly_info.
 	%
-	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-	{ polymorphism__process_clause_info(
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	polymorphism__process_clause_info(
 			ClausesInfo0, PredInfo0, ModuleInfo0,
-			ClausesInfo, PolyInfo, ExtraArgModes) },
-	{ poly_info_get_module_info(PolyInfo, ModuleInfo1) },
-	{ poly_info_get_typevarset(PolyInfo, TypeVarSet) },
-	{ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1) },
-	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2) },
+			ClausesInfo, PolyInfo, ExtraArgModes),
+	poly_info_get_module_info(PolyInfo, ModuleInfo1),
+	poly_info_get_typevarset(PolyInfo, TypeVarSet),
+	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
 
 	%
 	% do a pass over the proc_infos, copying the relevant information
 	% from the clauses_info and the poly_info, and updating all
 	% the argmodes with modes for the extra arguments.
 	%
-	{ pred_info_procids(PredInfo2, ProcIds) },
-	{ pred_info_procedures(PredInfo2, Procs0) },
-	{ polymorphism__process_procs(ProcIds, Procs0, PredInfo2, ClausesInfo,
-		ExtraArgModes, Procs) },
-	{ pred_info_set_procedures(PredInfo2, Procs, PredInfo) },
+	pred_info_procids(PredInfo2, ProcIds),
+	pred_info_procedures(PredInfo2, Procs0),
+	polymorphism__process_procs(ProcIds, Procs0, PredInfo2, ClausesInfo,
+		ExtraArgModes, Procs),
+	pred_info_set_procedures(PredInfo2, Procs, PredInfo),
 
-	{ module_info_set_pred_info(ModuleInfo1, PredId, PredInfo,
-		ModuleInfo) }.
+	module_info_set_pred_info(ModuleInfo1, PredId, PredInfo,
+		ModuleInfo).
 
 :- pred polymorphism__process_clause_info(clauses_info, pred_info, module_info,
 			clauses_info, poly_info, list(mode)).

@@ -87,7 +87,7 @@
 	% so that a pred is ready for running polymorphism and then
 	% mode checking.
 	% Also check that all predicates with an `aditi' marker have
-	% an `aditi:state' argument.
+	% an `aditi__state' argument.
 	%
 :- pred post_typecheck__finish_pred(module_info, pred_id, pred_info, pred_info,
 		io__state, io__state).
@@ -96,6 +96,18 @@
 :- pred post_typecheck__finish_imported_pred(module_info, pred_id,
 		pred_info, pred_info, io__state, io__state).
 :- mode post_typecheck__finish_imported_pred(in, in, in, out, di, uo) is det.
+
+	% As above, but don't check for `aditi__state's and return
+	% the list of procedures containing unbound inst variables
+	% instead of reporting the errors directly.
+	%
+:- pred post_typecheck__finish_pred_no_io(module_info, list(proc_id),
+		pred_info, pred_info).
+:- mode post_typecheck__finish_pred_no_io(in, out, in, out) is det.
+
+:- pred post_typecheck__finish_imported_pred_no_io(module_info,
+		list(proc_id), pred_info, pred_info).
+:- mode post_typecheck__finish_imported_pred_no_io(in, out, in, out) is det.
 
 :- pred post_typecheck__finish_ill_typed_pred(module_info, pred_id,
 		pred_info, pred_info, io__state, io__state).
@@ -600,9 +612,15 @@ check_base_relation(Context, PredInfo, Builtin, CallId) -->
 	% declarations are module qualified.
 	% 
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
-	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-			PredInfo0, PredInfo).
+	{ post_typecheck__finish_pred_no_io(ModuleInfo,
+			ErrorProcs, PredInfo0, PredInfo1) },
+	report_unbound_inst_vars(ModuleInfo, PredId,
+			ErrorProcs, PredInfo1, PredInfo).
 
+post_typecheck__finish_pred_no_io(ModuleInfo, ErrorProcs,
+		PredInfo0, PredInfo) :-
+	post_typecheck__propagate_types_into_modes(ModuleInfo,
+			ErrorProcs, PredInfo0, PredInfo).
 
 	%
 	% For ill-typed preds, we just need to set the modes up correctly
@@ -611,8 +629,10 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 	%
 post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 			PredInfo0, PredInfo) -->
-	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-			PredInfo0, PredInfo).
+	{ post_typecheck__propagate_types_into_modes(ModuleInfo,
+			ErrorProcs, PredInfo0, PredInfo1) },
+	report_unbound_inst_vars(ModuleInfo, PredId,
+			ErrorProcs, PredInfo1, PredInfo).
 
 	% 
 	% For imported preds, we just need to ensure that all
@@ -631,12 +651,18 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 	;
 		[]
 	),
+	{ post_typecheck__finish_imported_pred_no_io(ModuleInfo, ErrorProcs,
+		PredInfo0, PredInfo1) },
+	report_unbound_inst_vars(ModuleInfo, PredId,
+		ErrorProcs, PredInfo1, PredInfo).
 
+post_typecheck__finish_imported_pred_no_io(ModuleInfo, Errors,
+		PredInfo0, PredInfo) :-
 	% Make sure the var-types field in the clauses_info is
 	% valid for imported predicates.
 	% Unification procedures have clauses generated, so
 	% they already have valid var-types.
-	{ pred_info_is_pseudo_imported(PredInfo0) ->
+	( pred_info_is_pseudo_imported(PredInfo0) ->
 		PredInfo1 = PredInfo0
 	;
 		pred_info_clauses_info(PredInfo0, ClausesInfo0),
@@ -645,9 +671,9 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
 		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1)
-	},
-	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-		PredInfo1, PredInfo).
+	),
+	post_typecheck__propagate_types_into_modes(ModuleInfo,
+		Errors, PredInfo1, PredInfo).
 
 	%
 	% Now that the assertion has finished being typechecked,
@@ -729,51 +755,69 @@ check_type_of_main(PredInfo) -->
 	% Ensure that all constructors occurring in predicate mode
 	% declarations are module qualified.
 	% 
-:- pred post_typecheck__propagate_types_into_modes(module_info, pred_id,
-		pred_info, pred_info, io__state, io__state).
-:- mode post_typecheck__propagate_types_into_modes(in, in, in, out, di, uo)
+:- pred post_typecheck__propagate_types_into_modes(module_info,
+		list(proc_id), pred_info, pred_info).
+:- mode post_typecheck__propagate_types_into_modes(in, out, in, out)
 		is det.
-post_typecheck__propagate_types_into_modes(ModuleInfo, PredId, PredInfo0,
-		PredInfo) -->
-	{ pred_info_arg_types(PredInfo0, ArgTypes) },
-	{ pred_info_procedures(PredInfo0, Procs0) },
-	{ pred_info_procids(PredInfo0, ProcIds) },
-
-	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds, ArgTypes,
-			Procs0, Procs),
-	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }.
+post_typecheck__propagate_types_into_modes(ModuleInfo, ErrorProcs,
+		PredInfo0, PredInfo) :-
+	pred_info_arg_types(PredInfo0, ArgTypes),
+	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_procids(PredInfo0, ProcIds),
+	propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
+			[], ErrorProcs, Procs0, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred propagate_types_into_proc_modes(module_info,
-		pred_id, list(proc_id), list(type), proc_table, proc_table,
-		io__state, io__state).
-:- mode propagate_types_into_proc_modes(in,
-		in, in, in, in, out, di, uo) is det.		
+:- pred propagate_types_into_proc_modes(module_info, list(proc_id),
+	list(type), list(proc_id), list(proc_id), proc_table, proc_table).
+:- mode propagate_types_into_proc_modes(in, in, in, in, out, in, out) is det.		
+propagate_types_into_proc_modes(_, [], _,
+		ErrorProcs, list__reverse(ErrorProcs), Procs, Procs).
+propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
+		ArgTypes, ErrorProcs0, ErrorProcs, Procs0, Procs) :-
+	map__lookup(Procs0, ProcId, ProcInfo0),
+	proc_info_argmodes(ProcInfo0, ArgModes0),
+	propagate_types_into_mode_list(ArgTypes, ModuleInfo,
+		ArgModes0, ArgModes),
 
-propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
-propagate_types_into_proc_modes(ModuleInfo, PredId,
-		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
-	{ map__lookup(Procs0, ProcId, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
-	{ propagate_types_into_mode_list(ArgTypes, ModuleInfo,
-		ArgModes0, ArgModes) },
 	%
 	% check for unbound inst vars
 	% (this needs to be done after propagate_types_into_mode_list,
 	% because we need the insts to be module-qualified; and it
 	% needs to be done before mode analysis, to avoid internal errors)
 	%
-	( { mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) } ->
-		unbound_inst_var_error(PredId, ProcInfo0, ModuleInfo),
-		% delete this mode, to avoid internal errors
-		{ map__det_remove(Procs0, ProcId, _, Procs1) }
+	( mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) ->
+		ErrorProcs1 = [ProcId | ErrorProcs0],
+		Procs1 = Procs0
 	;
-		{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) },
-		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
+		ErrorProcs1 = ErrorProcs0,
+		proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
+		map__det_update(Procs0, ProcId, ProcInfo, Procs1)
 	),
-	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,
-		ArgTypes, Procs1, Procs).
+	propagate_types_into_proc_modes(ModuleInfo, ProcIds,
+		ArgTypes, ErrorProcs1, ErrorProcs, Procs1, Procs).
+
+:- pred report_unbound_inst_vars(module_info, pred_id, list(proc_id),
+		pred_info, pred_info, io__state, io__state).
+:- mode report_unbound_inst_vars(in, in, in, in, out, di, uo) is det.
+
+report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs,
+		PredInfo0, PredInfo) -->
+	( { ErrorProcs = [] } ->
+	    { PredInfo = PredInfo0 }
+	;
+	    { pred_info_procedures(PredInfo0, ProcTable0) },
+	    list__foldl2(
+		(pred(ProcId::in, Procs0::in, Procs::out, di, uo) is det -->
+		    { map__lookup(Procs0, ProcId, ProcInfo) },
+		    unbound_inst_var_error(PredId, ProcInfo, ModuleInfo),
+		    % delete this mode, to avoid internal errors
+		    { map__det_remove(Procs0, ProcId, _, Procs) }
+		), ErrorProcs, ProcTable0, ProcTable),
+	    { pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) }
+	).
 
 :- pred unbound_inst_var_error(pred_id, proc_info, module_info,
 				io__state, io__state).

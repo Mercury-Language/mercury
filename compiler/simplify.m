@@ -1209,9 +1209,23 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		{ globals__lookup_bool_option(Globals, special_preds,
 			SpecialPreds) },
 		(
-			{ SpecialPreds = no },
-			{ proc_id_to_int(ProcId, ProcIdInt) },
-			{ ProcIdInt = 0 }
+			{ hlds_pred__in_in_unification_proc_id(ProcId) },
+			{
+				SpecialPreds = no
+			;
+				SpecialPreds = yes,
+
+				%
+				% For most imported types we only generate
+				% unification predicate declarations if they
+				% are needed for complicated unifications
+				% other than proc_id 0.
+				% higher_order.m will specialize these cases
+				% if possible.
+				%
+				special_pred_is_generated_lazily(ModuleInfo,
+					TypeId)
+			}
 		->
 			simplify__make_type_info_vars([Type], TypeInfoVars,
 				ExtraGoals),

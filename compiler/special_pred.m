@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 
 :- module special_pred.
 :- interface.
-:- import_module prog_data, hlds_data, hlds_pred.
+:- import_module prog_data, hlds_data, hlds_module, hlds_pred.
 :- import_module list, map, std_util.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
@@ -54,9 +54,39 @@
 :- pred special_pred_description(special_pred_id, string).
 :- mode special_pred_description(in, out) is det.
 
+	%
+	% Succeeds if the declarations and clauses for the special predicates
+	% for the given type generated only when required.
+	% This will succeed for imported types for which the special
+	% predicates do not need typechecking.
+	%
+:- pred special_pred_is_generated_lazily(module_info, type_id).
+:- mode special_pred_is_generated_lazily(in, in) is semidet.
+
+:- pred special_pred_is_generated_lazily(module_info, type_id,
+		hlds_type_body, import_status).
+:- mode special_pred_is_generated_lazily(in, in, in, in) is semidet.
+
+	%
+	% A compiler-generated predicate only needs type checking if
+	%	(a) it is a user-defined equality pred
+	% or	(b) it is the unification or comparison predicate for an
+	%           existially quantified type.
+	%
+:- pred special_pred_for_type_needs_typecheck(hlds_type_body).
+:- mode special_pred_for_type_needs_typecheck(in) is semidet.
+
+	% Succeed if the type can have clauses generated for
+	% its special predicates. This will fail for abstract
+	% types and types for which the RTTI information is
+	% defined by hand.
+:- pred can_generate_special_pred_clauses_for_type(type_id, hlds_type_body).
+:- mode can_generate_special_pred_clauses_for_type(in, in) is semidet.
+
 :- implementation.
 
-:- import_module type_util, mode_util, prog_util.
+:- import_module globals, options, type_util, mode_util, prog_util.
+:- import_module bool.
 
 special_pred_list([unify, index, compare]).
 
@@ -110,5 +140,53 @@ special_pred_get_type("compare", Types, T) :-
 special_pred_description(unify, "unification predicate").
 special_pred_description(compare, "comparison predicate").
 special_pred_description(index, "indexing predicate").
+
+special_pred_is_generated_lazily(ModuleInfo, TypeId) :-
+	classify_type_id(ModuleInfo, TypeId, Class),
+	( Class = user_type ; Class = enum_type ),
+	module_info_types(ModuleInfo, Types),
+	map__search(Types, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, Body),
+	hlds_data__get_type_defn_status(TypeDefn, Status),
+	special_pred_is_generated_lazily_2(ModuleInfo,
+		TypeId, Body, Status).
+
+special_pred_is_generated_lazily(ModuleInfo, TypeId, Body, Status) :-
+	classify_type_id(ModuleInfo, TypeId, Class),
+	( Class = user_type ; Class = enum_type ),
+	special_pred_is_generated_lazily_2(ModuleInfo,
+		TypeId, Body, Status).
+
+:- pred special_pred_is_generated_lazily_2(module_info,
+		type_id, hlds_type_body, import_status).
+:- mode special_pred_is_generated_lazily_2(in, in, in, in) is semidet.
+
+special_pred_is_generated_lazily_2(ModuleInfo, _TypeId, Body, Status) :-
+	(
+		status_defined_in_this_module(Status, no)
+	;
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, special_preds, no)
+	),
+
+	% The special predicates for types with user-defined
+	% equality or existentially typed constructors are always
+	% generated immediately by make_hlds.m.
+	\+ special_pred_for_type_needs_typecheck(Body).
+
+special_pred_for_type_needs_typecheck(Body) :-
+	Body = du_type(Ctors, _, _, MaybeEqualityPred),
+	(
+		MaybeEqualityPred = yes(_)
+	;
+		list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQTVars, _, _, _),
+		ExistQTVars \= []
+	).
+
+can_generate_special_pred_clauses_for_type(TypeId, Body) :-
+	Body \= abstract_type,
+	Body \= uu_type(_),
+	\+ type_id_has_hand_defined_rtti(TypeId).
 
 %-----------------------------------------------------------------------------%

@@ -30,6 +30,9 @@
 :- pred type_is_atomic(type, module_info).
 :- mode type_is_atomic(in, in) is semidet.
 
+:- pred type_id_is_atomic(type_id, module_info).
+:- mode type_id_is_atomic(in, in) is semidet.
+
 	% type_is_higher_order(Type, PredOrFunc, ArgTypes) succeeds iff
 	% Type is a higher-order predicate or function type with the specified
 	% argument types (for functions, the return type is appended to the
@@ -96,9 +99,12 @@
 :- mode remove_new_prefix(out, in) is det.
 
 	% Given a type, determine what sort of type it is.
-
 :- pred classify_type(type, module_info, builtin_type).
 :- mode classify_type(in, in, out) is det.
+
+	% Given a type_id, determine what sort of type it is.
+:- pred classify_type_id(module_info, type_id, builtin_type).
+:- mode classify_type_id(in, in, out) is det.
 
 :- type builtin_type	--->	int_type
 			;	char_type
@@ -411,7 +417,11 @@ type_util__type_id_name(_ModuleInfo, Name0 - _Arity, Name) :-
 type_util__type_id_arity(_ModuleInfo, _Name - Arity, Arity).
 
 type_is_atomic(Type, ModuleInfo) :-
-	classify_type(Type, ModuleInfo, BuiltinType),
+	type_to_type_id(Type, TypeId, _),
+	type_id_is_atomic(TypeId, ModuleInfo).
+
+type_id_is_atomic(TypeId, ModuleInfo) :-
+	classify_type_id(ModuleInfo, TypeId, BuiltinType),
 	BuiltinType \= polymorphic_type,
 	BuiltinType \= pred_type,
 	BuiltinType \= user_type.
@@ -448,23 +458,26 @@ remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
 
 classify_type(VarType, ModuleInfo, Type) :-
 	( type_to_type_id(VarType, TypeId, _) ->
-		( TypeId = unqualified("character") - 0 ->
-			Type = char_type
-		; TypeId = unqualified("int") - 0 ->
-			Type = int_type
-		; TypeId = unqualified("float") - 0 ->
-			Type = float_type
-		; TypeId = unqualified("string") - 0 ->
-			Type = str_type
-		; type_id_is_higher_order(TypeId, _, _) ->
-			Type = pred_type
-		; type_id_is_enumeration(TypeId, ModuleInfo) ->
-			Type = enum_type
-		;
-			Type = user_type
-		)
+		classify_type_id(ModuleInfo, TypeId, Type)
 	;
 		Type = polymorphic_type
+	).
+
+classify_type_id(ModuleInfo, TypeId, Type) :-
+	( TypeId = unqualified("character") - 0 ->
+		Type = char_type
+	; TypeId = unqualified("int") - 0 ->
+		Type = int_type
+	; TypeId = unqualified("float") - 0 ->
+		Type = float_type
+	; TypeId = unqualified("string") - 0 ->
+		Type = str_type
+	; type_id_is_higher_order(TypeId, _, _) ->
+		Type = pred_type
+	; type_id_is_enumeration(TypeId, ModuleInfo) ->
+		Type = enum_type
+	;
+		Type = user_type
 	).
 
 type_is_higher_order(Type, PredOrFunc, EvalMethod, PredArgTypes) :-

@@ -22,8 +22,8 @@
 :- module make_hlds.
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_pred.
-:- import_module equiv_type, module_qual.
+:- import_module prog_data, hlds_data, hlds_module, hlds_pred.
+:- import_module equiv_type, module_qual, special_pred.
 
 :- import_module io, std_util, list, bool.
 
@@ -47,6 +47,31 @@
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
+	% add_special_pred_for_real(SpecialPredId, ModuleInfo0, TVarSet,
+	% 	Type, TypeId, TypeBody, TypeContext, TypeStatus, ModuleInfo).
+	%
+	% Add declarations and clauses for a special predicate.
+	% This is used by unify_proc.m to add a unification predicate
+	% for an imported type for which special predicates are being
+	% generated only when a unification procedure is requested
+	% during mode analysis.
+:- pred add_special_pred_for_real(special_pred_id,
+		module_info, tvarset, type, type_id, hlds_type_body,
+		prog_context, import_status, module_info).
+:- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
+
+	% add_special_pred_decl_for_real(SpecialPredId, ModuleInfo0, TVarSet,
+	% 	Type, TypeId, TypeContext, TypeStatus, ModuleInfo).
+	%
+	% Add declarations for a special predicate.
+	% This is used by higher_order.m when specializing an in-in
+	% unification for an imported type for which unification procedures
+	% are generated lazily.	
+:- pred add_special_pred_decl_for_real(special_pred_id,
+		module_info, tvarset, type, type_id, prog_context,
+		import_status, module_info).
+:- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
+
 :- type qual_info.
 
 	% Given the definition for a predicate or function from a
@@ -67,11 +92,11 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_goal.
+:- import_module hlds_goal.
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
-:- import_module modules, module_qual, prog_util, options, hlds_out.
+:- import_module modules, module_qual, prog_util, options, hlds_out, typecheck.
 :- import_module make_tags, quantification, (inst), globals.
-:- import_module code_util, unify_proc, special_pred, type_util, mode_util.
+:- import_module code_util, unify_proc, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
 :- import_module error_util.
@@ -2884,29 +2909,48 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 add_special_preds(Module0, TVarSet, Type, TypeId,
 			Body, Context, Status, Module) :-
 	(
-		(
-			Body = abstract_type
-		;
-			Body = uu_type(_)
-		;
-			type_id_has_hand_defined_rtti(TypeId)
-		)
+		special_pred_is_generated_lazily(Module0,
+			TypeId, Body, Status)
 	->
+		Module = Module0
+	;
+		can_generate_special_pred_clauses_for_type(TypeId, Body)
+	->
+		add_special_pred(unify, Module0, TVarSet, Type, TypeId,
+			Body, Context, Status, Module1),
+		(
+			status_defined_in_this_module(Status, yes)
+		->
+			(
+				Body = du_type(Ctors, _, IsEnum,
+						UserDefinedEquality),
+				IsEnum = no,
+				UserDefinedEquality = no,
+				Ctors = [_, _|_]
+			->
+				SpecialPredIds = [index, compare]
+			;
+				SpecialPredIds = [compare]
+			),
+			add_special_pred_list(SpecialPredIds,
+				Module1, TVarSet, Type, TypeId,
+				Body, Context, Status, Module)
+		;
+			% Never add clauses for comparison predicates
+			% for imported types -- they will never be used.
+			module_info_get_special_pred_map(Module1,
+				SpecialPreds),
+			( map__contains(SpecialPreds, compare - TypeId) ->
+				Module = Module1
+			;
+				add_special_pred_decl(compare, Module1,
+					TVarSet, Type, TypeId, Body,
+					Context, Status, Module)
+			)
+		)
+	;
 		SpecialPredIds = [unify, compare],
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
-			Type, TypeId, Body, Context, Status, Module)
-	;
-		(
-			Body = du_type(Ctors, _, IsEnum, UserDefinedEquality),
-			IsEnum = no,
-			UserDefinedEquality = no,
-			Ctors = [_, _|_]
-		->
-			SpecialPredIds = [unify, index, compare]
-		;
-			SpecialPredIds = [unify, compare]
-		),
-		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
 	).
 
@@ -2969,11 +3013,6 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 			)
 		)
 	).
-
-:- pred add_special_pred_for_real(special_pred_id,
-			module_info, tvarset, type, type_id, hlds_type_body,
-			prog_context, import_status, module_info).
-:- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_for_real(SpecialPredId,
 		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status0,
@@ -3054,11 +3093,6 @@ add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 	;
 		Module = Module0
 	).
-
-:- pred add_special_pred_decl_for_real(special_pred_id,
-		module_info, tvarset, type, type_id, prog_context,
-		import_status, module_info).
-:- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_decl_for_real(SpecialPredId,
 			Module0, TVarSet, Type, TypeId, Context, Status0,
