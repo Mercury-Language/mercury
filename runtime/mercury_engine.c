@@ -396,6 +396,12 @@ Define_extern_entry(do_succeed);
 Define_extern_entry(do_last_succeed);
 Define_extern_entry(do_not_reached);
 
+MR_MAKE_STACK_LAYOUT_ENTRY(do_redo);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_fail);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_succeed);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_last_succeed);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_not_reached);
+
 BEGIN_MODULE(special_labels_module)
 	init_entry(do_redo);
 	init_entry(do_fail);

@@ -50,15 +50,30 @@ do_init_entries(void)
 }
 
 Label *
-insert_entry(const char *name, Code *addr)
+insert_entry(const char *name, Code *addr, Word *entry_layout_info)
 {
 	Label	*entry;
 
 	do_init_entries();
 
+
+#ifdef MR_USE_STACK_LAYOUTS
+	/* 
+	** The succip will be set to the address stored in the
+	** layout info. For some reason, this is different to
+	** the address passed to insert_entry.
+	** XXX This should be fixed.
+	*/
+	addr = entry_layout_info[0];
+#endif /* MR_USE_STACK_LAYOUTS */
+
+
+
+
 	entry = make(Label);
 	entry->e_name  = name;
 	entry->e_addr  = addr;
+	entry->e_layout = entry_layout_info;
 
 #ifdef	PROFILE_CALLS
 	prof_output_addr_decls(name, addr);

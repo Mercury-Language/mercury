@@ -40,6 +40,7 @@
 #include	"mercury_types.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
+#include	"mercury_accurate_gc.h"
 
 #include	"mercury_tags.h"
 #include	"mercury_goto.h"
@@ -62,6 +63,7 @@
 #include	"mercury_debug.h"
 #include	"mercury_prof.h"
 #include	"mercury_misc.h"
+
 
 #include	"mercury_grade.h"
 
