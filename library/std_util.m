@@ -243,9 +243,9 @@ BEGIN_CODE
 */
 
 #ifdef	COMPACT_ARGS
-#define	solutions_output	r1
+  #define solutions_output_reg	r1
 #else
-#define	solutions_output	r3
+  #define solutions_output_reg	r3
 #endif
 
 Define_entry(mercury__std_util__builtin_solutions_2_0);
@@ -319,6 +319,8 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 {
 	/* we found a solution (in r1) */
 
+	Word solution_copy;
+
 	/* save the current heap pointer */
 	Word *temp_hp = hp;
 
@@ -331,12 +333,12 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 	** is transient, before/after calling deep_copy().
 	*/
 	save_transient_registers();
-	r3 = deep_copy(r1, (Word *) type_info_fv, (Word *) saved_hp_fv, 
-		heap_zone->top);
+	solution_copy = deep_copy(r1, (Word *) type_info_fv,
+				(Word *) saved_hp_fv, heap_zone->top);
 	restore_transient_registers();
 
 	/* create a cons cell on the solutions heap */
-	list_fv = list_cons(r3, list_fv);
+	list_fv = list_cons(solution_copy, list_fv);
 
 	/* save solutions heap pointer */
 	solutions_heap_pointer = (Word *) hp;
@@ -359,6 +361,7 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	      of the solutions */
 
 	  Word* new_type_info[2];
+	  Word solutions_copy;
 	 
 	  new_type_info[0] = (Word *) (Word)
 	  	&mercury_data_mercury_builtin__base_type_info_list_1;
@@ -372,9 +375,11 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	  ** is transient, before/after calling deep_copy().
 	  */
 	  save_transient_registers();
-	  solutions_output = deep_copy(list_fv, (Word *) new_type_info,
+	  solutions_copy = deep_copy(list_fv, (Word *) new_type_info,
 		(Word *) saved_solhp_fv, solutions_heap_zone->top);
 	  restore_transient_registers();
+
+	  solutions_output_reg = solutions_copy;
 	}
 
 	/* reset solutions heap to where it was before call to solutions  */
@@ -422,7 +427,7 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	/* no more solutions */
 	/* return the solutions list and discard the frame we made */
-	solutions_output = framevar(0);
+	solutions_output_reg = framevar(0);
 	succeed_discard();
 
 #endif
