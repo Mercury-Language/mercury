@@ -1637,10 +1637,9 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	% them to any old garbage which we will later throw away.
 
 	% If the source code doesn't specify any determinism annotation,
-	% inferred determinism gets initialized to `deterministic'.
-	% This is what `det_analysis.m' wants. If it turns out
-	% that the procedure wasn't deterministic, then det_analysis.m
-	% provide the correct inferred determinism for it.
+	% inferred determinism gets initialized to `erroneous'.
+	% This is what `det_analysis.m' wants. det_analysis.m
+	% will later provide the correct inferred determinism for it.
 
 proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	map__init(BodyTypes),
@@ -1649,7 +1648,7 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
 	(
 		MaybeDet = no,
-		Det = det,
+		Det = erroneous,
 		CodeModel = model_det
 	;
 		MaybeDet = yes(DeclDet),
@@ -1918,7 +1917,7 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- implementation.
 
 goal_info_init(GoalInfo) :-
-	ExternalDetism = det,
+	ExternalDetism = erroneous,
 	set__init(Births),
 	set__init(Deaths),
 	DeltaLiveness = Births - Deaths,
