@@ -588,6 +588,14 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_is_atomic(hlds_goal_expr).
 :- mode goal_is_atomic(in) is semidet.
 
+	% Return the HLDS equivalent of `true'.
+:- pred true_goal(hlds_goal).
+:- mode true_goal(out) is det.
+
+	% Return the HLDS equivalent of `fail'.
+:- pred fail_goal(hlds_goal).
+:- mode fail_goal(out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -810,6 +818,21 @@ goal_is_atomic(higher_order_call(_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
+
+%-----------------------------------------------------------------------------%
+
+true_goal(conj([]) - GoalInfo) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_determinism(GoalInfo0, det, GoalInfo1), 
+	instmap_delta_init_reachable(InstMapDelta),
+	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
+
+fail_goal(disj([], SM) - GoalInfo) :-
+	map__init(SM),
+	goal_info_init(GoalInfo0),
+	goal_info_set_determinism(GoalInfo0, failure, GoalInfo1), 
+	instmap_delta_init_unreachable(InstMapDelta),
+	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

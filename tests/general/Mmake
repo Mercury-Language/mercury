@@ -34,6 +34,7 @@ DETPROGS=	arithmetic \
 		double_error2 \
 		duplicate_label \
 		environment \
+		fail_detism \
 		float_test \
 		frameopt_mkframe_bug \
 		higher_order \
@@ -50,7 +51,7 @@ DETPROGS=	arithmetic \
 		univ \
 		unreachable
 
-NOTWORKING=	fail_detism
+NOTWORKING=
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC

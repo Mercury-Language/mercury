@@ -158,7 +158,8 @@ simplify__proc_2(Proc0, Proc, ModuleInfo0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-simplify__goal(Goal0 - GoalInfo0, Goal - GoalInfo, Info0, Info) :-
+simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
+	Goal0 = _GoalExpr0 - GoalInfo0,
 	simplify_info_get_det_info(Info0, DetInfo),
 	goal_info_get_determinism(GoalInfo0, Detism),
 	simplify_info_get_module_info(Info0, ModuleInfo),
@@ -170,12 +171,10 @@ simplify__goal(Goal0 - GoalInfo0, Goal - GoalInfo, Info0, Info) :-
 		%
 		Detism = failure,
 		( det_info_get_fully_strict(DetInfo, no)
-		; code_aux__goal_cannot_loop(ModuleInfo, Goal0 - GoalInfo0)
+		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
-		map__init(Empty),
-		Goal1 = disj([], Empty),
-		GoalInfo1 = GoalInfo0		% need we massage this?
+		fail_goal(Goal1)
 	;
 		%
 		% if --no-fully-strict,
@@ -195,18 +194,17 @@ simplify__goal(Goal0 - GoalInfo0, Goal - GoalInfo, Info0, Info) :-
 		det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta,
 			DetInfo),
 		( det_info_get_fully_strict(DetInfo, no)
-		; code_aux__goal_cannot_loop(ModuleInfo, Goal0 - GoalInfo0)
+		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
-		Goal1 = conj([]),
-		GoalInfo1 = GoalInfo0		% need we massage this?
+		true_goal(Goal1)
 	;
-		Goal1 = Goal0,
-		GoalInfo1 = GoalInfo0
+		Goal1 = Goal0
 	),
-	simplify_info_maybe_clear_structs(before, Goal1 - GoalInfo1,
+	simplify_info_maybe_clear_structs(before, Goal1,
 		Info0, Info1),
-	simplify__goal_2(Goal1, GoalInfo1, Goal, GoalInfo, Info1, Info2),
+	Goal1 = GoalExpr1 - GoalInfo1,
+	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo, Info1, Info2),
 	simplify_info_maybe_clear_structs(after, Goal - GoalInfo, Info2, Info).
 
 %-----------------------------------------------------------------------------%
@@ -248,14 +246,32 @@ simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo0, Info0, Info) :-
 		)
 	).
 
-simplify__goal_2(disj(Disjuncts0, SM), GoalInfo,
+simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		Goal, GoalInfo, Info0, Info) :-
 	( Disjuncts0 = [] ->
 		Goal = disj([], SM),
+		GoalInfo = GoalInfo0,
 		Info = Info0
 	; Disjuncts0 = [SingleGoal0] ->
 		% a singleton disjunction is equivalent to the goal itself
-		simplify__goal(SingleGoal0, Goal - _, Info0, Info) 
+		simplify__goal(SingleGoal0, Goal1 - GoalInfo1, Info0, Info),
+		(
+			% If the determinisms are not the same, we really
+			% need to rerun determinism analysis on the
+			% procedure. I think this is a similar situation
+			% to inlining of erroneous goals. The safe thing
+			% to do is to disable the optimisation if the
+			% inner and outer determinisms are not the same.
+			% It probably won't happen that often.
+			goal_info_get_determinism(GoalInfo0, Det),
+			goal_info_get_determinism(GoalInfo1, Det)
+		->
+			Goal = Goal1,
+			GoalInfo = GoalInfo1
+		;
+			Goal = disj([Goal1 - GoalInfo1], SM),
+			GoalInfo = GoalInfo0
+		)
 	;
 		simplify__disj(Disjuncts0, Disjuncts, [], InstMaps,
 			Info0, Info0, Info1),
@@ -283,7 +299,8 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo,
 				MsgsA, Msgs)
 		;
 	****/
-			Goal = disj(Disjuncts, SM)
+			Goal = disj(Disjuncts, SM),
+			GoalInfo = GoalInfo0
 		)
 	).
 
@@ -303,12 +320,8 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 	),
 	( Cases1 = [] ->
 		% An empty switch always fails.
-		Goal = disj([], SM),
-		Info = Info0,
-		goal_info_init(GoalInfo1),
-		goal_info_set_determinism(GoalInfo1, failure, GoalInfo2),
-		instmap_delta_init_unreachable(Delta),
-		goal_info_set_instmap_delta(GoalInfo2, Delta, GoalInfo)
+		fail_goal(Goal - GoalInfo),
+		Info = Info0
 	; Cases1 = [case(ConsId, SingleGoal0)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
@@ -758,9 +771,7 @@ simplify__check_branches_for_extra_info(Var, InstMap,
 		(inst)::in, list(case)::in, hlds_goal::out) is semidet.
 
 simplify__inst_contains_more_information(not_reached, _, _, Goal) :-
-	goal_info_init(GoalInfo),
-	map__init(SM),
-	Goal = disj([], SM) - GoalInfo.
+	fail_goal(Goal).
 simplify__inst_contains_more_information(bound(_, BoundInsts),
 		_, Cases0, Goal) :-
 	functors_to_cons_ids(BoundInsts, ConsIds0),
@@ -768,9 +779,7 @@ simplify__inst_contains_more_information(bound(_, BoundInsts),
 	delete_unreachable_cases(Cases0, ConsIds, Cases),
 	(
 		Cases = [],
-		goal_info_init(GoalInfo),
-		map__init(SM),
-		Goal = disj([], SM) - GoalInfo
+		fail_goal(Goal)
 	;
 		Cases = [case(_, Goal)]
 	).
