@@ -51,6 +51,8 @@ else
     ifdef MERCURY_STDLIB_DIR
         export MERCURY_STDLIB_DIR
         MERC_INT_DIR = $(MERCURY_STDLIB_DIR)/ints
+    else
+        MERC_INT_DIR =
     endif
 endif
 

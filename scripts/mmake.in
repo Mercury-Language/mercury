@@ -181,6 +181,7 @@ done
 if [ "$MERCURY_STDLIB_DIR" != "" ]
 then
 	MMAKE_DIR=${MMAKE_DIR=$MERCURY_STDLIB_DIR/mmake}
+	export MERCURY_STDLIB_DIR
 fi
 
 case "$MMAKE_DIR" in
