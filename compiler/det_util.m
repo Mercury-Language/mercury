@@ -134,18 +134,21 @@ no_output_vars(Vars, InstMap0, reachable(InstMapDelta), DetInfo) :-
 
 no_output_vars_2([], _, _, _).
 no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
-	( map__search(InstMapDelta, Var, Inst) ->
-		% The instmap delta contains the variable, but the variable may
-		% still not be output, if the change is just an increase in
-		% information rather than an increase in instantiatedness.
-		% We use `inst_matches_binding' to check that the new inst
-		% has only added information or lost uniqueness,
-		% not bound anything.
-		instmap_lookup_var(InstMap0, Var, Inst0),
-		inst_matches_binding(Inst, Inst0, ModuleInfo)
+	% We use `inst_matches_binding' to check that the new inst
+	% has only added information or lost uniqueness,
+	% not bound anything.
+	% If the instmap delta contains the variable, the variable may
+	% still not be output, if the change is just an increase in
+	% information rather than an increase in instantiatedness.
+	% If the instmap delta doesn't contain the variable, it may still
+	% have been (partially) output, if its inst is (or contains) `any'.
+	instmap_lookup_var(InstMap0, Var, Inst0),
+	( map__search(InstMapDelta, Var, Inst1) ->
+		Inst = Inst1
 	;
-		true
+		Inst = Inst0
 	),
+	inst_matches_binding(Inst, Inst0, ModuleInfo),
 	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 %-----------------------------------------------------------------------------%

@@ -333,12 +333,13 @@ constraint__no_output_vars(GoalInfo, ModeInfo) :-
 constraint__no_output_vars_2([], _, _, _).
 constraint__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, 
 				ModuleInfo) :-
-	( map__search(InstMapDelta, Var, Inst) ->
-	    instmap_lookup_var(InstMap0, Var, Inst0),
-	    inst_matches_binding(Inst, Inst0, ModuleInfo)
+	instmap_lookup_var(InstMap0, Var, Inst0),
+	( map__search(InstMapDelta, Var, Inst1) ->
+		Inst = Inst1
 	;
-	    true
+		Inst = Inst0
 	),
+	inst_matches_binding(Inst, Inst0, ModuleInfo),
 	constraint__no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
 	% constraint__determinism(Det) is true iff Det is
