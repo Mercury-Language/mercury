@@ -78,27 +78,27 @@ binary_distribution: bindist.configure bindist.build_vars
 	cp $(UTILS) $(MERCURY_VERSION)/util
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)
 	cp $(README_ETC) $(MERCURY_VERSION)
-	-cd ../samples; mmake realclean
-	-cd ../samples/diff; mmake realclean
-	-cd ../samples/c_interface; mmake realclean
-	-cd ../samples/c_interface/c_calls_mercury; mmake realclean
-	-cd ../samples/c_interface/cplusplus_calls_mercury; mmake realclean
-	-cd ../samples/c_interface/mercury_calls_c; mmake realclean
-	-cd ../samples/c_interface/simpler_c_calls_mercury; mmake realclean
-	-cd ../samples/c_interface/simpler_cplusplus_calls_mercury; mmake realclean
-	-cd ../extras/cgi; mmake realclean
-	-cd ../extras/complex_numbers; mmake realclean
-	-cd ../extras/complex_numbers/tests; mmake realclean
-	-cd ../extras/complex_numbers/samples; mmake realclean
-	-cd ../extras/graphics; mmake realclean
-	-cd ../extras/graphics/samples/calc; mmake realclean
-	-cd ../extras/graphics/samples/maze; mmake realclean
-	-cd ../extras/trailed_update; mmake realclean
-	-cd ../extras/trailed_update/samples; mmake realclean
+	-cd ../samples && mmake realclean
+	-cd ../samples/diff && mmake realclean
+	-cd ../samples/c_interface && mmake realclean
+	-cd ../samples/c_interface/c_calls_mercury && mmake realclean
+	-cd ../samples/c_interface/cplusplus_calls_mercury && mmake realclean
+	-cd ../samples/c_interface/mercury_calls_c && mmake realclean
+	-cd ../samples/c_interface/simpler_c_calls_mercury && mmake realclean
+	-cd ../samples/c_interface/simpler_cplusplus_calls_mercury && mmake realclean
+	-cd ../extras/cgi && mmake realclean
+	-cd ../extras/complex_numbers && mmake realclean
+	-cd ../extras/complex_numbers/tests && mmake realclean
+	-cd ../extras/complex_numbers/samples && mmake realclean
+	-cd ../extras/graphics && mmake realclean
+	-cd ../extras/graphics/samples/calc && mmake realclean
+	-cd ../extras/graphics/samples/maze && mmake realclean
+	-cd ../extras/trailed_update && mmake realclean
+	-cd ../extras/trailed_update/samples && mmake realclean
 	-if [ -d ../tests ]; then					\
-		cd ../tests; mmake realclean;				\
+		cd ../tests && mmake realclean;				\
 	else								\
-		cd ../../tests; mmake realclean;			\
+		cd ../../tests && mmake realclean;			\
 	fi
 	(dir=`pwd` && cd .. && \
 		tar -cf $$dir/$(MERCURY_VERSION)/samples.tar samples && \
