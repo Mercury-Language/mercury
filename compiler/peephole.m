@@ -7,7 +7,9 @@
 %-----------------------------------------------------------------------------%
 
 :- module peephole.
+
 :- interface.
+
 :- import_module map, llds, options.
 
 :- pred peephole__optimize(option_table, c_file, c_file).
@@ -17,6 +19,7 @@
 
 :- type instmap == map(label, instruction).
 :- type tailmap == map(label, list(instruction)).
+:- type succmap == map(label, bool).
 :- type redoipmap == map(label, list(maybe(code_addr))).
 
 %-----------------------------------------------------------------------------%
@@ -63,6 +66,14 @@ peephole__opt_proc_list(Options, [P0|Ps0], [P|Ps]) :-
 
 peephole__opt_proc(Options, c_procedure(Name, Arity, Mode, Instructions0),
 		   c_procedure(Name, Arity, Mode, Instructions)) :-
+	% nl,
+	% write('peepholing procedure '),
+	% write(Name),
+	% write(' '),
+	% write(Arity),
+	% write(' '),
+	% write(Mode),
+	% nl,
 	peephole__repeat_opts(Options, 0, no, Instructions0, Instructions1),
 	peephole__nonrepeat_opts(Options, Instructions1, Instructions).
 
@@ -133,9 +144,24 @@ peephole__repeat_opts(Options, Iter, DoneValueNumber,
 peephole__nonrepeat_opts(Options, Instructions0, Instructions) :-
 	options__lookup_bool_option(Options, peephole_frame_opt, FrameOpt),
 	( FrameOpt = yes ->
-		peephole__frame_opt(Instructions0, Instructions, _Mod)
+		% write('frameopt'), nl,
+		peephole__frame_opt(Instructions0, Instructions1, Mod)
 	;
-		Instructions = Instructions0
+		Instructions1 = Instructions0,
+		Mod = no
+	),
+	( Mod = yes ->
+		% write('frameopt local'), nl,
+		peephole__local_opt(Instructions1, Instructions2, Mod2)
+	;
+		Instructions2 = Instructions1,
+		Mod2 = no
+	),
+	( Mod2 = yes ->
+		% write('frameopt label elim'), nl,
+		peephole__label_elim(Instructions2, Instructions, _Mod3)
+	;
+		Instructions = Instructions2
 	).
 
 %-----------------------------------------------------------------------------%
@@ -382,34 +408,65 @@ peephole__jumpopt_final_dest(Srclabel, Srcinstr, Instmap,
 
 peephole__local_opt(Instrs0, Instrs, Mod) :-
 	map__init(Procmap0),
-	peephole__local_build_maps(Instrs0, Procmap0, Procmap),
-	peephole__local_opt_2(Instrs0, Instrs, Procmap, Mod).
+	map__init(Succmap0),
+	peephole__local_build_procmaps(Instrs0, Procmap0, Procmap,
+		Succmap0, Succmap),
+	map__init(Forkmap0),
+	peephole__local_build_forkmap(Instrs0, Succmap, Forkmap0, Forkmap),
+	peephole__local_opt_2(Instrs0, Instrs, Procmap, Forkmap, Mod).
 
-:- pred peephole__local_build_maps(list(instruction), tailmap, tailmap).
-:- mode peephole__local_build_maps(in, di, uo) is det.
+:- pred peephole__local_build_procmaps(list(instruction), tailmap, tailmap,
+	succmap, succmap).
+:- mode peephole__local_build_procmaps(in, di, uo, di, uo) is det.
 
-peephole__local_build_maps([], Procmap, Procmap).
-peephole__local_build_maps([Instr - _Comment|Instrs], Procmap0, Procmap) :-
+peephole__local_build_procmaps([], Procmap, Procmap, Succmap, Succmap).
+peephole__local_build_procmaps([Instr - _Comment|Instrs], Procmap0, Procmap,
+		Succmap0, Succmap) :-
 	( Instr = label(Label) ->
 		( opt_util__is_proceed_next(Instrs, Between) ->
-			map__set(Procmap0, Label, Between, Procmap1)
-		;
+			map__set(Procmap0, Label, Between, Procmap1),
+			Succmap1 = Succmap0
+		; opt_util__is_sdproceed_next_sf(Instrs, _, Success) ->
+			map__set(Succmap0, Label, Success, Succmap1),
 			Procmap1 = Procmap0
+		;
+			Procmap1 = Procmap0,
+			Succmap1 = Succmap0
 		)
 	;
-		Procmap1 = Procmap0
+		Procmap1 = Procmap0,
+		Succmap1 = Succmap0
 	),
-	peephole__local_build_maps(Instrs, Procmap1, Procmap).
+	peephole__local_build_procmaps(Instrs, Procmap1, Procmap,
+		Succmap1, Succmap).
+
+:- pred peephole__local_build_forkmap(list(instruction), succmap,
+	tailmap, tailmap).
+:- mode peephole__local_build_forkmap(in, in, di, uo) is det.
+
+peephole__local_build_forkmap([], _Succmap, Forkmap, Forkmap).
+peephole__local_build_forkmap([Instr - _Comment|Instrs], Succmap,
+		Forkmap0, Forkmap) :-
+	(
+		Instr = label(Label),
+		opt_util__is_forkproceed_next(Instrs, Succmap, Between)
+	->
+		map__set(Forkmap0, Label, Between, Forkmap1)
+	;
+		Forkmap1 = Forkmap0
+	),
+	peephole__local_build_forkmap(Instrs, Succmap, Forkmap1, Forkmap).
 
 :- pred peephole__local_opt_2(list(instruction), list(instruction),
-	tailmap, bool).
-:- mode peephole__local_opt_2(in, out, in, out) is det.
+	tailmap, tailmap, bool).
+:- mode peephole__local_opt_2(in, out, in, in, out) is det.
 
-peephole__local_opt_2([], [], _, no).
+peephole__local_opt_2([], [], _, _, no).
 peephole__local_opt_2([Instr0 - Comment|Instructions0], Instructions,
-		Procmap, Mod) :-
-	peephole__local_opt_2(Instructions0, Instructions1, Procmap, Mod0),
-	peephole__opt_instr(Instr0, Comment, Procmap,
+		Procmap, Forkmap, Mod) :-
+	peephole__local_opt_2(Instructions0, Instructions1,
+		Procmap, Forkmap, Mod0),
+	peephole__opt_instr(Instr0, Comment, Procmap, Forkmap,
 		Instructions1, Instructions, Mod1),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
@@ -417,19 +474,19 @@ peephole__local_opt_2([Instr0 - Comment|Instructions0], Instructions,
 		Mod = yes
 	).
 
-:- pred peephole__opt_instr(instr, string, tailmap,
+:- pred peephole__opt_instr(instr, string, tailmap, tailmap,
 		list(instruction), list(instruction), bool).
-:- mode peephole__opt_instr(in, in, in, in, out, out) is det.
+:- mode peephole__opt_instr(in, in, in, in, in, out, out) is det.
 
-peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
-		Mod) :-
+peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
+		Instructions0, Instructions, Mod) :-
 	(
 		opt_util__skip_comments(Instructions0, Instructions1),
-		peephole__opt_instr_2(Instr0, Comment0, Procmap, Instructions1,
-			Instructions2)
+		peephole__opt_instr_2(Instr0, Comment0, Procmap, Forkmap,
+			Instructions1, Instructions2)
 	->
 		( Instructions2 = [Instr2 - Comment2 | Instructions3] ->
-			peephole__opt_instr(Instr2, Comment2, Procmap,
+			peephole__opt_instr(Instr2, Comment2, Procmap, Forkmap,
 				Instructions3, Instructions, _)
 		;
 			Instructions = Instructions2
@@ -440,9 +497,9 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 		Mod = no
 	).
 
-:- pred peephole__opt_instr_2(instr, string, tailmap,
+:- pred peephole__opt_instr_2(instr, string, tailmap, tailmap,
 		list(instruction), list(instruction)).
-:- mode peephole__opt_instr_2(in, in, in, in, out) is semidet.
+:- mode peephole__opt_instr_2(in, in, in, in, in, out) is semidet.
 
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
@@ -468,16 +525,58 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 	%
 	% I have some doubt about the validity of using L1 unchanged.
 
-peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap,
+	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
+	%
+	%					succip = ...
+	%					decr_sp(N)
+	%	livevals(T1, L1)		livevals(T1, L1)
+	%	call(Foo, &&ret);		tailcall(Foo)
+	%       <comments, labels>		<comments, labels>
+	%	...				...
+	%     ret:			=>    ret:
+	%       if_val(not(r1), &&fail)		if_val(not(r1), &&fail)
+	%       <comments, labels>		<comments, labels>
+	%	succip = ...			succip = ...
+	%       <comments, labels>		<comments, labels>
+	%	decr_sp(N)			decr_sp(N)
+	%       <comments, labels>		<comments, labels>
+	%	r1 = TRUE			r1 = TRUE
+	%       <comments, labels>		<comments, labels>
+	%	livevals(T2, L2)		livevals(T2, L2)
+	%       <comments, labels>		<comments, labels>
+	%	proceed				proceed
+	%       <comments, labels>		<comments, labels>
+	%     fail:			      fail:
+	%	succip = ...			succip = ...
+	%       <comments, labels>		<comments, labels>
+	%	decr_sp(N)			decr_sp(N)
+	%       <comments, labels>		<comments, labels>
+	%	r1 = FALSE			r1 = FALSE
+	%       <comments, labels>		<comments, labels>
+	%	livevals(T2, L2)		livevals(T2, L2)
+	%       <comments, labels>		<comments, labels>
+	%	proceed				proceed
+
+peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel)) - Comment2 | _],
-	map__search(Procmap, ContLabel, Instrs_to_proceed),
-	opt_util__filter_out_livevals(Instrs_to_proceed, Instrs_to_insert),
-	string__append(Comment, " (redirected return)", Redirect),
-	list__append(Instrs_to_insert,
-		[livevals(yes, Livevals) - Comment2,
-		goto(CodeAddress) - Redirect | Instrs0], Instrs).
+	( map__search(Procmap, ContLabel, Between0) ->
+		opt_util__filter_out_livevals(Between0, Between1),
+		string__append(Comment2, " (redirected return)", Redirect),
+		list__append(Between1,
+			[livevals(yes, Livevals) - Comment,
+			goto(CodeAddress) - Redirect | Instrs0], Instrs)
+	; map__search(Forkmap, ContLabel, Between0) ->
+		opt_util__filter_out_livevals(Between0, Between1),
+		opt_util__filter_out_r1(Between1, Between2),
+		string__append(Comment2, " (redirected return)", Redirect),
+		list__append(Between2,
+			[livevals(yes, Livevals) - Comment,
+			goto(CodeAddress) - Redirect | Instrs0], Instrs)
+	;
+		fail
+	).
 
 	% a `goto' can be deleted if the target of the jump is the very
 	% next instruction.
@@ -488,7 +587,7 @@ peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap,
 	%
 	% dead code after a `goto' is deleted in label-elim.
 
-peephole__opt_instr_2(goto(label(Label)), _Comment, _Procmap,
+peephole__opt_instr_2(goto(label(Label)), _Comment, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
@@ -508,7 +607,7 @@ peephole__opt_instr_2(goto(label(Label)), _Comment, _Procmap,
 	%	<comments, labels>	      next:
 	%     next:
 
-peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap,
+peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
@@ -543,8 +642,8 @@ peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap,
 	% these two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment, _Procmap,
-		Instrs0, Instrs) :-
+peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment,
+		_Procmap, _Forkmap, Instrs0, Instrs) :-
 	( opt_util__next_modframe(Instrs0, [], Newredoip, Skipped, Rest) ->
 		list__append(Skipped, Rest, Instrs1),
 		Instrs = [mkframe(Descr, Slots, Newredoip) - Comment | Instrs1]

@@ -60,12 +60,32 @@
 :- pred opt_util__is_sdproceed_next(list(instruction), list(instruction)).
 :- mode opt_util__is_sdproceed_next(in, out) is semidet.
 
+	% Same as the previous predicate, but also return whether it is
+	% a success or a fail.
+
+:- pred opt_util__is_sdproceed_next_sf(list(instruction), list(instruction),
+	bool).
+:- mode opt_util__is_sdproceed_next_sf(in, out, out) is semidet.
+
  	% Is a succeed instruction (i.e. a goto(do_succeed) instruction)
  	% next in the instruction list? If yes, return the instructions
 	% up to the succed.
 
 :- pred opt_util__is_succeed_next(list(instruction), list(instruction)).
 :- mode opt_util__is_succeed_next(in, out) is semidet.
+
+ 	% Is the following code a test of r1, followed in both continuations
+	% by a semidet proceed with the same value of r1?
+
+:- pred opt_util__is_forkproceed_next(list(instruction), map(label, bool),
+	list(instruction)).
+:- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
+
+	% Remove the assignment to r1 from the list returned by
+	% opt_util__is_sdproceed_next.
+
+:- pred opt_util__filter_out_r1(list(instruction), list(instruction)).
+:- mode opt_util__filter_out_r1(in, out) is det.
 
 	% Remove the livevals instruction from the list returned by
 	% opt_util__is_proceed_next.
@@ -142,9 +162,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-% :- import_module opt_util, map, bintree_set.
-% :- import_module string, require.
-:- import_module require.
+:- import_module map, require.
 
 opt_util__gather_comments(Instrs0, Comments, Instrs) :-
 	(
@@ -231,6 +249,11 @@ opt_util__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 
 opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	Instr = Uinstr - _Comment,
+	% write('looking for label '),
+	% write(Label),
+	% write(' in instr '),
+	% write(Uinstr),
+	% nl,
 	( Uinstr = comment(_) ->
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
 	; Uinstr = livevals(_, _) ->
@@ -278,6 +301,9 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	Instrs_between = [Instr1use, Instr3use, Instr5use].
 
 opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
+	opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, _).
+
+opt_util__is_sdproceed_next_sf(Instrs0, Instrs_between, Success) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	( Instr1 = assign(succip, lval(stackvar(_))) - _ ->
@@ -296,7 +322,14 @@ opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
 		Instrs5 = Instrs3
 	),
 	Instrs5 = [Instr5 | Instrs6],
-	Instr5 = assign(reg(r(1)), const(_)) - _,
+	Instr5 = assign(reg(r(1)), const(R1val)) - _,
+	(
+		R1val = true,
+		Success = yes
+	;
+		R1val = false,
+		Success = no
+	),
 	opt_util__skip_comments_labels(Instrs6, Instrs7),
 	Instrs7 = [Instr7 | Instrs8],
 	( Instr7 = livevals(_, _) - _ ->
@@ -323,6 +356,28 @@ opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 	Instrs3 = [Instr3 | _],
 	Instr3 = goto(do_succeed) - _,
 	Instrs_between = [Instr1use].
+
+	% When we return Between, we are implicitly assuming that
+	% the other continuation' instruction sequence is the same
+	% expect for the value assigned to r1. If this isn't true,
+	% then we are up shit creek anyway.
+
+opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
+	opt_util__skip_comments_labels(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	( Instr1 = if_val(lval(reg(r(1))), label(BranchLabel)) - _ ->
+		map__search(Succmap, BranchLabel, BranchSuccess),
+		BranchSuccess = yes,
+		opt_util__is_sdproceed_next_sf(Instrs2, Between, FallSuccess),
+		FallSuccess = no
+	; Instr1 = if_val(unop(not, lval(reg(r(1)))), label(BranchLabel)) - _ ->
+		map__search(Succmap, BranchLabel, BranchSuccess),
+		BranchSuccess = no,
+		opt_util__is_sdproceed_next_sf(Instrs2, Between, FallSuccess),
+		FallSuccess = yes
+	;
+		fail
+	).
 
 opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
 	opt_util__gather_comments_livevals(Instrs0, _Comments0, Instrs1),
@@ -488,6 +543,15 @@ opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
 		opt_util__rvals_refer_stackvars(Tail, Refers)
 	;
 		Refers = yes
+	).
+
+opt_util__filter_out_r1([], []).
+opt_util__filter_out_r1([Instr0 | Instrs0], Instrs) :-
+	opt_util__filter_out_r1(Instrs0, Instrs1),
+	( Instr0 = assign(reg(r(1)), const(_)) - _ ->
+		Instrs = Instrs1
+	;
+		Instrs = [Instr0 | Instrs1]
 	).
 
 opt_util__filter_out_livevals([], []).
