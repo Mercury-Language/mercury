@@ -483,60 +483,52 @@ export__exclude_argument_type_2("store", "store", 1).	% store:store/1.
 
 % Should this predicate go in llds_out.m?
 
+export__produce_header_file([], _) --> [].
 export__produce_header_file(C_ExportDecls, ModuleName) -->
+	{ C_ExportDecls = [_|_] },
+	module_name_to_file_name(ModuleName, ".h", yes, FileName),
+	io__tell(FileName, Result),
 	(
-		{ C_ExportDecls = [_|_] }
+		{ Result = ok }
 	->
-		module_name_to_file_name(ModuleName, ".h", yes, FileName),
-		io__tell(FileName, Result),
-		(
-			{ Result = ok }
-		->
-			module_name_to_file_name(ModuleName, ".m", no,
-				SourceFileName),
-			{ library__version(Version) },
-			io__write_strings(
-				["/*\n** Automatically generated from `", 
-				SourceFileName,
-				".m' by the\n** Mercury compiler, version ", 
-				Version,
-				".  Do not edit.\n*/\n"]),
-			{ llds_out__sym_name_mangle(ModuleName,
-					MangledModuleName) },
-			{ string__to_upper(MangledModuleName,
-					UppercaseModuleName) },
-			{ string__append(UppercaseModuleName, "_H",
-					GuardMacroName) },
-			io__write_strings([
-					"#ifndef ", GuardMacroName, "\n",
-					"#define ", GuardMacroName, "\n",
-					"\n",
-					"#ifdef __cplusplus\n",
-					"extern ""C"" {\n",
-					"#endif\n",
-					"\n",
-					"#include ""mercury_imp.h""\n",
-					"\n"]),
-			export__produce_header_file_2(C_ExportDecls),
-			io__write_strings([
-					"\n",
-					"#ifdef __cplusplus\n",
-					"}\n",
-					"#endif\n",
-					"\n",
-					"#endif /* ", GuardMacroName, " */\n"]),
-			io__told
-		;
-			io__progname_base("export.m", ProgName),
-			io__write_string("\n"),
-			io__write_string(ProgName),
-			io__write_string(": can't open `"),
-			io__write_string(FileName),
-			io__write_string("' for output\n"),
-			io__set_exit_status(1)
-		)
+		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
+		{ library__version(Version) },
+		io__write_strings(["/*\n** Automatically generated from `", 
+			SourceFileName,
+			".m' by the\n** Mercury compiler, version ", Version,
+			".  Do not edit.\n*/\n"]),
+		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
+		{ string__append(UppercaseModuleName, "_H", GuardMacroName) },
+		io__write_strings([
+			"#ifndef ", GuardMacroName, "\n",
+			"#define ", GuardMacroName, "\n",
+			"\n",
+			"#ifdef __cplusplus\n",
+			"extern ""C"" {\n",
+			"#endif\n",
+			"\n",
+			"#ifndef MERCURY_HDR_EXCLUDE_IMP_H\n",
+			"#include ""mercury_imp.h""\n",
+			"#endif\n",
+			"\n"]),
+		export__produce_header_file_2(C_ExportDecls),
+		io__write_strings([
+			"\n",
+			"#ifdef __cplusplus\n",
+			"}\n",
+			"#endif\n",
+			"\n",
+			"#endif /* ", GuardMacroName, " */\n"]),
+		io__told
 	;
-		[]
+		io__progname_base("export.m", ProgName),
+		io__write_string("\n"),
+		io__write_string(ProgName),
+		io__write_string(": can't open `"),
+		io__write_string(FileName),
+		io__write_string("' for output\n"),
+		io__set_exit_status(1)
 	).
 
 :- pred export__produce_header_file_2(c_export_decls, io__state, io__state).
