@@ -39,6 +39,9 @@ DVIPS=dvips
 	$(TEXI2HTML_SPLIT) $<
 
 %.1: ../scripts/% make_manpage
+	MERCURY_PROFILER=../profiler/mercury_profile \
+	MERCURY_COMPILER=../compiler/mercury_compile \
+	MERCURY_MKINIT=../util/mkinit \
 	./make_manpage $< > $@
 
 #-----------------------------------------------------------------------------#

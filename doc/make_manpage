@@ -43,8 +43,13 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
 	`"
 uppername="$name"
 
-first_half="`echo \"$manpage\" | sed '/^.SH OPTIONS/,$d'`"
-last_half="`echo \"$manpage\" | sed -n '/^.SH OPTIONS/,$p'`"
+if echo "$manpage" | grep '^.SH ARGUMENTS' > /dev/null; then
+	first_half="`echo \"$manpage\" | sed '/^.SH ARGUMENTS/,$d'`"
+	last_half="`echo \"$manpage\" | sed -n '/^.SH ARGUMENTS/,$p'`"
+else
+	first_half="`echo \"$manpage\" | sed '/^.SH OPTIONS/,$d'`"
+	last_half="`echo \"$manpage\" | sed -n '/^.SH OPTIONS/,$p'`"
+fi
 
 cat <<EOF
 .de Vb
