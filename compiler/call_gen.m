@@ -221,7 +221,7 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
+call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
@@ -240,12 +240,19 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm|OutArgs] }
+			{ Args = [PredTerm|OtherArgs] },
+			{ module_info_pred_proc_info(ModuleInfo,
+				PredId, ProcId, _PredInfo, ProcInfo) },
+			{ proc_info_arg_info(ProcInfo, ArgInfo0) },
+			{ ArgInfo0 = [arg_info(_, top_in)|ArgInfo1] }
 		->
+			{ assoc_list__from_corresponding_lists(ArgInfo1,
+						OtherArgs, Immediates) },
+			{ call_gen__partition_args(Immediates, In, Out) },
 			call_gen__generate_higher_call(deterministic,
-				PredTerm, OutArgs, Code)
+				PredTerm, In, Out, Code)
 		;
-			{ error("call_gen__generate_det_builtin: call/N, N > 1, unimplemented") }
+			{ error("call_gen__generate_non_builtin: invalid call") }
 		)
 	;
 		{ error("Unknown builtin predicate") }
@@ -253,7 +260,7 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
+call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
@@ -277,12 +284,19 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm|OutArgs] }
+			{ Args = [PredTerm|OtherArgs] },
+			{ module_info_pred_proc_info(ModuleInfo,
+				PredId, ProcId, _PredInfo, ProcInfo) },
+			{ proc_info_arg_info(ProcInfo, ArgInfo0) },
+			{ ArgInfo0 = [arg_info(_, top_in)|ArgInfo1] }
 		->
+			{ assoc_list__from_corresponding_lists(ArgInfo1,
+						OtherArgs, Immediates) },
+			{ call_gen__partition_args(Immediates, In, Out) },
 			call_gen__generate_higher_call(semideterministic,
-				PredTerm, OutArgs, Code)
+				PredTerm, In, Out, Code)
 		;
-			{ error("call_gen__generate_semi_builtin: call/N, N > 1, unimplemented") }
+			{ error("call_gen__generate_non_builtin: invalid call") }
 		)
 	;
 		{ error("Unknown builtin predicate") }
@@ -290,25 +304,69 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_nondet_builtin(PredId, _ProcId, Args, Code) -->
+call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm|OutArgs] }
+			{ Args = [PredTerm|OtherArgs] },
+			{ module_info_pred_proc_info(ModuleInfo,
+				PredId, ProcId, _PredInfo, ProcInfo) },
+			{ proc_info_arg_info(ProcInfo, ArgInfo0) },
+			{ ArgInfo0 = [arg_info(_, top_in)|ArgInfo1] }
 		->
+			{ assoc_list__from_corresponding_lists(ArgInfo1,
+						OtherArgs, Immediates) },
+			{ call_gen__partition_args(Immediates, In, Out) },
 			call_gen__generate_higher_call(nondeterministic,
-				PredTerm, OutArgs, Code)
+				PredTerm, In, Out, Code)
 		;
-			{ error("call_gen__generate_non_builtin: call/N, N > 1, unimplemented") }
+			{ error("call_gen__generate_non_builtin: invalid call") }
 		)
 	;
 		{ error("Unknown nondet builtin predicate") }
 	).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__partition_args(assoc_list(arg_info, var),
+						list(var), list(var)).
+:- mode call_gen__partition_args(in, out, out) is det.
+
+call_gen__partition_args([], [], []).
+call_gen__partition_args([arg_info(_Loc,Mode) - V|Rest], Ins, Outs) :-
+	(
+		Mode = top_in
+	->
+		call_gen__partition_args(Rest, Ins0, Outs),
+		Ins = [V|Ins0]
+	;
+		Mode = top_out
+	->
+		call_gen__partition_args_2(Rest, Outs0),
+		Ins = [],
+		Outs = [V|Outs0]
+	;
+		error("call_gen__partition_args: top_unused")
+	).
+		
+:- pred call_gen__partition_args_2(assoc_list(arg_info, var), list(var)).
+:- mode call_gen__partition_args_2(in, out) is det.
+
+call_gen__partition_args_2([], []).
+call_gen__partition_args_2([arg_info(_Loc,Mode) - V|Rest], Outs) :-
+	(
+		Mode = top_in
+	->
+		error("call_gen__partition_args_2: input argument occurs after an output argument")
+	;
+		call_gen__partition_args_2(Rest, Outs0),
+		Outs = [V|Outs0]
+	).
+
 %---------------------------------------------------------------------------%
 
 call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
@@ -481,13 +539,17 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_higher_call(category, var, list(var), code_tree,
+:- pred call_gen__generate_higher_call(category, var, list(var), list(var), code_tree,
 						code_info, code_info).
-:- mode call_gen__generate_higher_call(in, in, in, out, in, out) is det.
+:- mode call_gen__generate_higher_call(in, in, in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
+call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
+	code_info__set_succip_used(yes),
 	call_gen__save_variables(SaveCode),
 	code_info__clear_reserved_registers,
+		% place the immediate input arguments in registers
+		% starting at r4.
+	call_gen__generate_immediate_args(InVars, 4, ImmediateCode),
 	code_info__generate_stack_livevals(LiveVals0),
 	{ bintree_set__insert(LiveVals0, reg(r(1)), LiveVals) },
 	call_gen__generate_return_livevals([], OutLiveVals),
@@ -501,9 +563,10 @@ call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
 			assign(reg(r(1)), RVal) - "Copy pred-term"
 		])}
 	),
+	{ list__length(InVars, NInVars) },
 	{ list__length(OutVars, NOutVars) },
 	{ SetupCode = tree(CopyCode, node([
-			assign(reg(r(2)), const(int_const(0))) -
+			assign(reg(r(2)), const(int_const(NInVars))) -
 				"Assign number of immediate input arguments",
 			assign(reg(r(3)), const(int_const(NOutVars))) -
 				"Assign number of output arguments"
@@ -543,7 +606,7 @@ call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	),
-	{ Code = tree(tree(SaveCode, VarCode),
+	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
 		tree(SetupCode, CallCode)) },
 	(
 		{ PredDet = semideterministic }
@@ -554,6 +617,19 @@ call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
 	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArgs) },
 	call_gen__rebuild_registers(OutArgs).
+
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__generate_immediate_args(list(var), int, code_tree,
+							code_info, code_info).
+:- mode call_gen__generate_immediate_args(in, in, out, in, out) is det.
+
+call_gen__generate_immediate_args([], _N, empty) --> [].
+call_gen__generate_immediate_args([V|Vs], N0, Code) -->
+	code_info__generate_expression(V, var(V), reg(r(N0)), Code0),
+	{ N1 is N0 + 1 },
+	call_gen__generate_immediate_args(Vs, N1, Code1),
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
