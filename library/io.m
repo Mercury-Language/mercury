@@ -1607,7 +1607,7 @@ void sys_init_io_run_module(void) {
 ").
 
 :- pragma(c_code, io__write_float(Val::in, IO0::di, IO::uo), "
-	if (fprintf(mercury_current_text_output->file, ""%.15g"", Val) < 0) {
+	if (fprintf(mercury_current_text_output->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);

@@ -309,6 +309,16 @@
 :- pred list__sublist(list(T), list(T)).
 :- mode list__sublist(in, in) is semidet.
 
+	% list__all_same(List) is true
+	% 	if all elements of the list are the same
+:- pred list__all_same(list(T)).
+:- mode list__all_same(in) is semidet.
+
+	% list__last(List, Last) is true
+	%	if Last is the last element of List.
+:- pred list__last(list(T), T).
+:- mode list__last(in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % The following group of predicates use higher-order terms to simplify
@@ -801,6 +811,30 @@ list__sublist([SH | ST], [FH | FT]) :-
 		list__sublist(ST, FT)
 	;
 		list__sublist([SH | ST], FT)
+	).
+
+%-----------------------------------------------------------------------------%
+
+list__all_same([]).
+list__all_same([H|T]) :-
+	list__all_same_2(H, T).
+
+:- pred list__all_same_2(T, list(T)).
+:- mode list__all_same_2(in, in) is semidet.
+
+list__all_same_2(_, []).
+list__all_same_2(H, [H|T]) :-
+	list__all_same_2(H, T).
+
+%-----------------------------------------------------------------------------%
+
+list__last([H|T], Last) :-
+	(
+		T = [],
+		Last = H
+	;
+		T = [_|_],
+		list__last(T, Last)
 	).
 
 %-----------------------------------------------------------------------------%

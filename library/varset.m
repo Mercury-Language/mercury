@@ -124,6 +124,10 @@
 :- pred varset__set_bindings(varset, substitution, varset).
 :- mode varset__set_bindings(in, in, out) is det.
 
+	% Create a map from name to variable.
+:- pred varset__create_name_var_map(varset, map(string, var)).
+:- mode varset__create_name_var_map(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -339,6 +343,13 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		varset__merge_subst_2(N1, Max, Names, Vals, VarSet2, Subst1,
 				VarSet, Subst)
 	).
+
+%-----------------------------------------------------------------------------%
+
+varset__create_name_var_map(varset(_, VarNameIndex, _), NameVarIndex) :-
+	map__keys(VarNameIndex, Vars),
+	map__values(VarNameIndex, Names),
+	map__from_corresponding_lists(Names, Vars, NameVarIndex).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
