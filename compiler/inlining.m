@@ -135,10 +135,11 @@ inlining__inlining_in_goal_2(
 		Builtin = not_builtin,
         	module_info_preds(ModuleInfo, Preds),
         	map__lookup(Preds, PredId, PredInfo),
-		not pred_info_is_imported(PredInfo),
+		\+ pred_info_is_imported(PredInfo),
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),
         	proc_info_goal(ProcInfo, CalledGoal),
+			% this heuristic could be improved
 		code_aux__contains_only_builtins(CalledGoal),
 		code_aux__goal_is_flat(CalledGoal)
 	->
@@ -164,7 +165,13 @@ inlining__inlining_in_goal_2(
 			error("inlining__inlining_in_goal_2: lists not same length")
 		),
 		list__condense([Inputs, NewGoalList, Outputs], GoalList),
-		Goal = conj(GoalList)
+		(
+			GoalList = [SingleGoal - _]
+		->
+			Goal = SingleGoal
+		;
+			Goal = conj(GoalList)
+		)
 	;
 		Goal = call(PredId, ProcId, Args, Builtin, SymName, Follow),
 		Varset = Varset0,
