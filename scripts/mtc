@@ -1,0 +1,50 @@
+#!/bin/sh
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+Help="\
+Name:	mtc - gathering trace counts from Mercury programs
+Usage:	mtc <executable> [<args>]...
+Description:
+	\`mtc' invokes the specified command \`<executable> <args>...'.
+	If that command is a Mercury program that was compiled with debugging
+	enabled (e.g. using the \`--debug' option), or if that command invokes
+	such a program, then mtc will cause the program to count the
+	number of times each event is executed, and to write out that data
+	to a file with a .mercury_trace_counts prefix when the program exits.
+	Otherwise, mtc will execute the command line as if the mtc prefix
+	weren't there.
+
+Environment variables:
+	MERCURY_OPTIONS.
+"
+
+#-----------------------------------------------------------------------------#
+#
+# process the command line options
+#
+
+case $# in
+	0)	echo "Usage: mtc <executable> [<arg> ...]" 1>&2
+		exit 1 ;;
+esac
+
+#-----------------------------------------------------------------------------#
+#
+# Set the environment variables used by the Mercury runtime to the
+# the appropriate values to enable the gathering of trace counts,
+# and then finally use $invoke_cmd to invoke the command.
+#
+
+enable_trace_count_opt="--trace-count"
+MERCURY_OPTIONS="$MERCURY_OPTIONS $enable_trace_count_opt"
+export MERCURY_OPTIONS
+exec "$@"
+
+#-----------------------------------------------------------------------------#

@@ -1,6 +1,6 @@
 #!/bin/sh
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998,2002 The University of Melbourne.
+# Copyright (C) 1998,2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -181,7 +181,7 @@ esac
 #-----------------------------------------------------------------------------#
 #
 # Set the environment variables used by the Mercury runtime to the
-# the appropriate values to enabled debugging and to redirect mdb I/O,
+# the appropriate values to enable debugging and to redirect mdb I/O,
 # and then finally use $invoke_cmd to invoke the command.
 #
 

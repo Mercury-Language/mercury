@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
+SCRIPTS = mmake mmc mdb mtc c2init mgnuc ml mprof mprof_merge_runs \
 	  mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod mercury_cleanup_install canonical_grade \
 	  mercury_config mercury.bat prepare_tmp_dir_fixed_part
