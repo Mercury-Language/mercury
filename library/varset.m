@@ -64,9 +64,20 @@
 :- pred varset__name_var(varset, var, string, varset).
 :- mode varset__name_var(in, in, in, out) is det.
 
-	% lookup the name of a variable.
+	% lookup the name of a variable;
+	% create one if it doesn't have one using V_ as a prefix
 :- pred varset__lookup_name(varset, var, string).
-:- mode varset__lookup_name(in, in, out) is semidet.
+:- mode varset__lookup_name(in, in, out) is det.
+
+	% lookup the name of a variable;
+	% create one if it doesn't have one using the specified prefix
+:- pred varset__lookup_name(varset, var, string, string).
+:- mode varset__lookup_name(in, in, in, out) is det.
+
+	% lookup the name of a variable;
+	% fail if it doesn't have one
+:- pred varset__search_name(varset, var, string).
+:- mode varset__search_name(in, in, out) is semidet.
 
 	% bind a value to a variable
 	% (will overwrite any existing binding).
@@ -78,8 +89,8 @@
 :- mode varset__bind_vars(in, in, out) is det.
 
 	% lookup the value of a variable
-:- pred varset__lookup_var(varset, var, term).
-:- mode varset__lookup_var(in, in, out) is semidet.
+:- pred varset__search_var(varset, var, term).
+:- mode varset__search_var(in, in, out) is semidet.
 
 	% get the bindings for all the bound variables.
 :- pred varset__lookup_vars(varset, substitution).
@@ -190,7 +201,25 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_name(varset(_, Names, _), Id, Name) :-
+varset__lookup_name(Varset, Id, Name) :-
+	( varset__search_name(Varset, Id, Name0) ->
+		Name = Name0
+	;
+		term__var_to_int(Id, VarNum),
+		string__int_to_string(VarNum, NumStr),
+		string__append("V_", NumStr, Name)
+	).
+
+varset__lookup_name(Varset, Id, Prefix, Name) :-
+	( varset__search_name(Varset, Id, Name0) ->
+		Name = Name0
+	;
+		term__var_to_int(Id, VarNum),
+		string__int_to_string(VarNum, NumStr),
+		string__append(Prefix, NumStr, Name)
+	).
+
+varset__search_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name0),
 	Name = Name0.
 /* This part is useful during debugging when you need to
@@ -228,7 +257,7 @@ varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_var(varset(_, _, Vals), Id, Val) :-
+varset__search_var(varset(_, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
 
 %-----------------------------------------------------------------------------%

@@ -42,7 +42,7 @@
 % getopt__process_options(OptionOps, Args, NonOptionArgs, Result)
 %
 %	Scans through 'Args' looking for options, places all the
-%	non-option arguments in 'NonOptionArgs', and record the
+%	non-option arguments in 'NonOptionArgs', and records the
 %	options in the OptionTable.  OptionTable is a map from 
 %	a user-defined option type to option_data.
 %	If an invalid option is encountered, we return error(Message)

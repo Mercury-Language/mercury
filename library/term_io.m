@@ -108,11 +108,11 @@ term_io__write_variable(Variable, VarSet) -->
 
 term_io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	(
-		{ varset__lookup_var(VarSet0, Id, Val) }
+		{ varset__search_var(VarSet0, Id, Val) }
 	->
 		term_io__write_term_2(Val, VarSet0, N0, VarSet, N)
 	;
-		{ varset__lookup_name(VarSet0, Id, Name) }
+		{ varset__search_name(VarSet0, Id, Name) }
 	->
 		{ N = N0 },
 		{ VarSet = VarSet0 },
@@ -233,7 +233,7 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	( 
 		{ Term = term__variable(Id) },
-		{ varset__lookup_var(VarSet0, Id, Val) }
+		{ varset__search_var(VarSet0, Id, Val) }
 	->
 		term_io__write_list_tail(Val, VarSet0, N0, VarSet, N)
 	;
