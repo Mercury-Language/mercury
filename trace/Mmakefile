@@ -76,9 +76,9 @@ RUNTIME_HDRS	=	\
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
-HDR_CHECK_CS	= $(HDRS:.h=_check.c)
-HDR_CHECK_OBJS	= $(HDRS:.h=_check.$O)
-HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
+HDR_CHECK_CS	= $(HDRS:.h=.check.c)
+HDR_CHECK_OBJS	= $(HDRS:.h=.check.$O)
+HDR_CHECK_MACROS = $(HDRS:.h=.check.macros)
 OBJ_CHECKS	= $(OBJS:%=%.obj_check)
 
 LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
