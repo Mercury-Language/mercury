@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -282,6 +282,11 @@
 				proclabel, (type));			\
 			(dest) = (typename *) tmp;			\
 		} while (0)
+
+#define	MR_alloc_heap(dest, count)					\
+	MR_tag_offset_incr_hp((dest), MR_mktag(0), 0, (count))
+#define	MR_tag_alloc_heap(dest, tag, count)				\
+	MR_tag_offset_incr_hp((dest), MR_mktag(tag), 0, (count))
 
 #ifdef MR_HIGHLEVEL_CODE
 

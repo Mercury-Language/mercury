@@ -86,23 +86,7 @@
 
 #define	MR_based_stackvar(base_sp, n)	((base_sp)[1 - (n)])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, (n))
-
-#define	MR_incr_sp_push_msg(n, msg)				\
-			(					\
-				MR_debugincrsp(n, MR_sp),	\
-				MR_sp = MR_sp + (n),		\
-				MR_detstack_overflow_check(),	\
-				MR_collect_det_frame_stats(n),	\
-				(void) 0			\
-			)
-
-#define	MR_decr_sp_pop_msg(n)					\
-			(					\
-				MR_debugdecrsp(n, MR_sp),	\
-				MR_sp = MR_sp - (n),		\
-				MR_detstack_underflow_check(),	\
-				(void) 0			\
-			)
+#define	MR_sv(n)			MR_stackvar(n)
 
 #define	MR_incr_sp(n)	(					\
 				MR_debugincrsp(n, MR_sp),	\
@@ -118,6 +102,16 @@
 				MR_detstack_underflow_check(),	\
 				(void) 0			\
 			)
+
+/*
+** The msg argument of MR_incr_sp_push_msg is not used at runtime. It is
+** intended for use by tools/frame_sizes, which scans compiler-generated C
+** source files.
+*/
+
+#define	MR_incr_sp_push_msg(n, msg)	MR_incr_sp(n)
+
+#define	MR_decr_sp_pop_msg(n)		MR_decr_sp(n)
 
 /*---------------------------------------------------------------------------*/
 
@@ -177,6 +171,7 @@
 #define	MR_based_framevar(fr, n) (((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
+#define	MR_fv(n)		MR_framevar(n)
 
 /*---------------------------------------------------------------------------*/
 

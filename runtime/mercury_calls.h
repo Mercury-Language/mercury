@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,7 +26,7 @@
 ** if we're using gcc non-local gotos to jump between functions then
 ** we need to do ASM_FIXUP_REGS after each return from a procedure call.
 ** However, if we're using asm labels, then this is done in the
-** Define_label(), Define_static(), and Define_Entry() macros,
+** MR_define_label(), MR_define_static(), and MR_define_Entry() macros,
 ** so there's no need to do it here.
 ** Also if we're using native gc, then the fixup_gp label below
 ** would stuff up the succip values, so we can't do it.
@@ -100,6 +100,12 @@
 			MR_debugtailcall(MR_LABEL(label));	\
 			MR_PROFILE(MR_LABEL(label), (current_label)); \
 			MR_set_prof_current_proc(MR_LABEL(label)); \
+			MR_GOTO_LABEL(label);			\
+		} while (0)
+
+#define	MR_noprof_localtailcall(label)				\
+		do {						\
+			MR_debugtailcall(MR_LABEL(label));	\
 			MR_GOTO_LABEL(label);			\
 		} while (0)
 

@@ -422,7 +422,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 ** the others are the fields of MR_Label_Layouts.
 */
 
-#define	MR_DEF_LL(e, ln, port, h, path, vc, lt, vn, tv)			\
+#define	MR_DEF_LL_GEN(e, ln, port, h, path, vc, lt, vn, tv)		\
 	static const MR_Label_Layout 					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
@@ -434,7 +434,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		((const MR_Type_Param_Locns *) tv)			\
 	}
 
-#define	MR_DEF_LLNVI(e, ln, port, h, path)				\
+#define	MR_DEF_LLNVI_GEN(e, ln, port, h, path)				\
 	static const MR_Label_Layout_No_Var_Info			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
@@ -442,6 +442,40 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		MR_PASTE2(MR_PORT_, port),				\
 		(h), (path), -1						\
 	}
+
+#define	MR_DEF_LL(e, ln, port, path, vc, lt, vn, tv)			\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc, lt, vn, tv)
+
+#define	MR_DEF_LLT(e, ln, port, path, vc, lt, vn, tv)			\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc, lt, vn, tv)
+
+#define	MR_DEF_LLCCC(e, ln, port, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc,			\
+		&MR_PASTE2(mercury_common_, lt),			\
+		&MR_PASTE2(mercury_common_, vn),			\
+		&MR_PASTE2(mercury_common_, tv))
+
+#define	MR_DEF_LLCC0(e, ln, port, path, vc, lt, vn)			\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc,			\
+		&MR_PASTE2(mercury_common_, lt),			\
+		&MR_PASTE2(mercury_common_, vn), 0)			\
+
+#define	MR_DEF_LLTCCC(e, ln, port, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc,			\
+		&MR_PASTE2(mercury_common_, lt),			\
+		&MR_PASTE2(mercury_common_, vn),			\
+		&MR_PASTE2(mercury_common_, tv))
+
+#define	MR_DEF_LLTCC0(e, ln, port, path, vc, lt, vn)			\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc,			\
+		&MR_PASTE2(mercury_common_, lt),			\
+		&MR_PASTE2(mercury_common_, vn), 0)
+
+#define	MR_DEF_LLNVI(e, ln, port, path)					\
+	MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path)
+
+#define	MR_DEF_LLNVIT(e, ln, port, path)				\
+	MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, path)
 
 #define MR_DECL_LL(e, ln)						\
 	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
@@ -452,6 +486,81 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
 	static const MR_Label_Layout_No_Var_Info			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
+
+#define MR_DECL_LL1(e, ln1)						\
+	MR_DECL_LL(e, ln1)
+
+#define MR_DECL_LL2(e, ln1, ln2)					\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)
+
+#define MR_DECL_LL3(e, ln1, ln2, ln3)					\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)
+
+#define MR_DECL_LL4(e, ln1, ln2, ln3, ln4)				\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)
+
+#define MR_DECL_LL5(e, ln1, ln2, ln3, ln4, ln5)				\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)
+
+#define MR_DECL_LL6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)						\
+	MR_DECL_LL(e, ln6)
+
+#define MR_DECL_LL7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)						\
+	MR_DECL_LL(e, ln6)						\
+	MR_DECL_LL(e, ln7)
+
+#define MR_DECL_LL8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)		\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)						\
+	MR_DECL_LL(e, ln6)						\
+	MR_DECL_LL(e, ln7)						\
+	MR_DECL_LL(e, ln8)
+
+#define MR_DECL_LL9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9)	\
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)						\
+	MR_DECL_LL(e, ln6)						\
+	MR_DECL_LL(e, ln7)						\
+	MR_DECL_LL(e, ln8)						\
+	MR_DECL_LL(e, ln9)
+
+#define MR_DECL_LL10(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9, ln10) \
+	MR_DECL_LL(e, ln1)						\
+	MR_DECL_LL(e, ln2)						\
+	MR_DECL_LL(e, ln3)						\
+	MR_DECL_LL(e, ln4)						\
+	MR_DECL_LL(e, ln5)						\
+	MR_DECL_LL(e, ln6)						\
+	MR_DECL_LL(e, ln7)						\
+	MR_DECL_LL(e, ln8)						\
+	MR_DECL_LL(e, ln9)						\
+	MR_DECL_LL(e, ln10)
 
 /*-------------------------------------------------------------------------*/
 /*

@@ -60,7 +60,7 @@
 #endif /* ! MR_HIGHTAGS */
 
 /*
-** the result of MR_mkword() is cast to (MR_Word *), not to (MR_Word)
+** The result of MR_mkword() is cast to (MR_Word *), not to (MR_Word)
 ** because MR_mkword() may be used in initializers for static constants
 ** and casts from pointers to integral types are not valid
 ** constant-expressions in ANSI C.  It cannot be (const MR_Word *) because
@@ -69,9 +69,14 @@
 */
 
 #define	MR_mkword(t, p)			((MR_Word *)((char *)(p) + (t)))
+#define	MR_tmkword(t, p)		(MR_mkword(MR_mktag(t), p))
+#define	MR_tbmkword(t, p)		(MR_mkword(MR_mktag(t), MR_mkbody(p)))
 
 #define	MR_field(t, p, i)		((MR_Word *) MR_body((p), (t)))[i]
 #define	MR_const_field(t, p, i)		((const MR_Word *) MR_body((p), (t)))[i]
+
+#define	MR_tfield(t, p, i)		(MR_field(MR_mktag(t), p, i))
+#define	MR_const_tfield(t, p, i)	(MR_const_field(MR_mktag(t), p, i))
 
 #define	MR_mask_field(p, i)		((MR_Word *) MR_strip_tag(p))[i]
 #define	MR_const_mask_field(p, i)	((const MR_Word *) MR_strip_tag(p))[i]
@@ -86,8 +91,11 @@
 #define	MR_hl_mask_field(p, i)		((MR_Box *) MR_strip_tag(p))[i]
 #define	MR_hl_const_mask_field(p, i)	((const MR_Box *) MR_strip_tag(p))[i]
 
+#define	MR_hl_tfield(t, p, i)		(MR_hl_field(MR_mktag(t), p, i))
+#define	MR_hl_const_tfield(t, p, i)	(MR_hl_const_field(MR_mktag(t), p, i))
+
 /*
-** the following macros are used by handwritten C code that needs to access 
+** The following macros are used by handwritten C code that needs to access 
 ** Mercury data structures. The definitions of these macros depend on the data 
 ** representation scheme used by compiler/make_tags.m.
 */

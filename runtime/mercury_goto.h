@@ -90,6 +90,72 @@
 #define MR_LABEL_LAYOUT(label) 						\
 	((const MR_Label_Layout *) (MR_Word) &MR_LABEL_LAYOUT_NAME(label))
 
+#define MR_PROC_LAYOUT1(label)						\
+	MR_PROC_LAYOUT(MR_add_prefix(label)),
+
+#define MR_LABEL_LAYOUT1(e, ln1)					\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),
+
+#define MR_LABEL_LAYOUT2(e, ln1, ln2)					\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),
+
+#define MR_LABEL_LAYOUT3(e, ln1, ln2, ln3)				\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),
+
+#define MR_LABEL_LAYOUT4(e, ln1, ln2, ln3, ln4)				\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),
+
+#define MR_LABEL_LAYOUT5(e, ln1, ln2, ln3, ln4, ln5)			\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)),
+
+#define MR_LABEL_LAYOUT6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)),
+
+#define MR_LABEL_LAYOUT7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)),
+
+#define MR_LABEL_LAYOUT8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8)),
+
+#define MR_LABEL_LAYOUT9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9) \
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8)),		\
+	MR_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln9)),
+
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
 ** causes that name to be included in the executable as static readonly data.
@@ -946,6 +1012,256 @@
 	MR_init_uci_local_select(mod, name, type, arity, mode, num, 1, 1, 0)
 #define	MR_init_uci_local_sl(mod, name, type, arity, mode, num)		\
 	MR_init_uci_local_select(mod, name, type, arity, mode, num, 0, 0, 1)
+
+#define	MR_def_extern_entry(e)						\
+	MR_define_extern_entry(MR_add_prefix(e));
+
+#define	MR_def_entry(e)							\
+	MR_define_entry(MR_add_prefix(e));
+
+#define	MR_def_static(e)						\
+	MR_define_static(MR_add_prefix(e));
+
+#define	MR_def_local(e)							\
+	MR_define_local(MR_add_prefix(e));
+
+#define	MR_def_label(e, ln)						\
+	MR_define_label(MR_label_name(MR_add_prefix(e), ln));
+
+#define	MR_init_entry1(e)						\
+	MR_init_entry(MR_add_prefix(e));
+
+#define	MR_init_entry1_sl(e)						\
+	MR_init_entry_sl(MR_add_prefix(e));
+
+#define	MR_init_local1(e)						\
+	MR_init_local(MR_add_prefix(e));
+
+#define	MR_init_local1_sl(e)						\
+	MR_init_local_sl(MR_add_prefix(e));
+
+#define	MR_init_label1(e, ln1)						\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));
+
+#define	MR_init_label2(e, ln1, ln2)					\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));
+
+#define	MR_init_label3(e, ln1, ln2, ln3)				\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));
+
+#define	MR_init_label4(e, ln1, ln2, ln3, ln4)				\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));
+
+#define	MR_init_label5(e, ln1, ln2, ln3, ln4, ln5)			\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));
+
+#define	MR_init_label6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));
+
+#define	MR_init_label7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln7));
+
+#define	MR_init_label8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln7));		\
+	MR_init_label(MR_label_name(MR_add_prefix(e), ln8));
+
+#define	MR_init_label1_sl(e)						\
+	MR_init_label_sl(MR_add_prefix(e));
+
+#define	MR_init_label_sl1(e, ln1)					\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));
+
+#define	MR_init_label_sl2(e, ln1, ln2)					\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));
+
+#define	MR_init_label_sl3(e, ln1, ln2, ln3)				\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));
+
+#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)				\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));
+
+#define	MR_init_label_sl5(e, ln1, ln2, ln3, ln4, ln5)			\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));
+
+#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));
+
+#define	MR_init_label_sl7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));
+
+#define	MR_init_label_sl8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln8));
+
+#define	MR_init_label_sl1(e, ln1)					\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));
+
+#define	MR_init_label_sl2(e, ln1, ln2)					\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));
+
+#define	MR_init_label_sl3(e, ln1, ln2, ln3)				\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));
+
+#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)			\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));
+
+#define	MR_init_label_sl5(e, ln1, ln2, ln3, ln4, ln5)			\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));
+
+#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));
+
+#define	MR_init_label_sl7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));
+
+#define	MR_init_label_sl8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));		\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln8));
+
+#define	MR_decl_extern_entry(e)						\
+	MR_declare_extern_entry(MR_add_prefix(e));
+
+#define	MR_decl_entry(e)						\
+	MR_declare_entry(MR_add_prefix(e));
+
+#define	MR_decl_static(e)						\
+	MR_declare_static(MR_add_prefix(e));
+
+#define	MR_decl_local(e)						\
+	MR_declare_local(MR_add_prefix(e));
+
+#define	MR_decl_label1(e, ln1)						\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));
+
+#define	MR_decl_label2(e, ln1, ln2)					\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));
+
+#define	MR_decl_label3(e, ln1, ln2, ln3)				\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));
+
+#define	MR_decl_label4(e, ln1, ln2, ln3, ln4)				\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));
+
+#define	MR_decl_label5(e, ln1, ln2, ln3, ln4, ln5)			\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));
+
+#define	MR_decl_label6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));
+
+#define	MR_decl_label7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln7));
+
+#define	MR_decl_label8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln7));		\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln8));
 
 /* definitions for computed gotos */
 
