@@ -192,7 +192,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	    IOState2 = IOState0,
 	    Error2 = Error0
 	;
-	    pred_info_arg_types(PredInfo0, TypeVarSet, ArgTypes),
+	    pred_info_arg_types(PredInfo0, TypeVarSet0, ArgTypes),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
 					Clauses0),
@@ -205,14 +205,16 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState1, ModuleInfo0, PredId,
-				TypeVarSet, VarSet, VarTypes0, HeadTypeParams,
+				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
 				TypeInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes, Clauses,
 				TypeInfo1, TypeInfo2),
-		type_info_get_vartypes(TypeInfo2, VarTypes1),
+		type_info_get_final_info(TypeInfo2, TypeVarSet, VarTypes1),
 		map__optimize(VarTypes1, VarTypes),
 		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo),
+		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+		pred_info_set_arg_types(PredInfo1, TypeVarSet, ArgTypes,
+					PredInfo),
 		type_info_get_found_error(TypeInfo2, Error1),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
@@ -693,7 +695,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		L = [TypeStuff | L0]
 	).
 
-:- type headtypes == list(var).
+:- type headtypes == list(tvar).
 
 :- pred typecheck_var_has_type_2(type_assign_set, headtypes, var, type,
 				type_assign_set, type_assign_set).
@@ -1379,180 +1381,6 @@ type_assign_unify_type(TypeAssign0, HeadTypeParams, X, Y, TypeAssign) :-
 	type_assign_set_type_bindings(TypeAssign0, TypeBindings, TypeAssign).
 
 %-----------------------------------------------------------------------------%
-
-	% Unify (with occurs check) two types with respect to a type
-	% substitution and update the type bindings.
-	% Types are represented as terms, but we can't just use term__unify
-	% because we need to avoid binding any of the "head type params"
-	% (the type variables that occur in the head of the clause),
-	% and because one day we might want to handle equivalent types.
-
-:- type_unify(X, Y, _, _, _) when X and Y.		% NU-Prolog indexing
-
-:- pred type_unify(type, type, headtypes, substitution, substitution).
-:- mode type_unify(in, in, in, in, out) is semidet.
-
-type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
-		Bindings) :-
-	( list__member(Y, HeadTypeParams) ->
-		type_unify_head_type_param(X, Y, HeadTypeParams,
-			Bindings0, Bindings)
-	; list__member(X, HeadTypeParams) ->
-		type_unify_head_type_param(Y, X, HeadTypeParams,
-			Bindings0, Bindings)
-	; map__search(Bindings0, X, BindingOfX) ->
-		( map__search(Bindings0, Y, BindingOfY) ->
-			% both X and Y already have bindings - just
-			% unify the types they are bound to
-			type_unify(BindingOfX, BindingOfY, HeadTypeParams,
-					Bindings0, Bindings)
-		;
-			term__apply_rec_substitution(BindingOfX,
-				Bindings0, SubstBindingOfX),
-			% Y is a type variable which hasn't been bound yet
-			( SubstBindingOfX = term__variable(Y) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
-				map__set(Bindings0, Y, SubstBindingOfX,
-					Bindings)
-			)
-		)
-	;
-		( map__search(Bindings0, Y, BindingOfY) ->
-			term__apply_rec_substitution(BindingOfY,
-				Bindings0, SubstBindingOfY),
-			% X is a type variable which hasn't been bound yet
-			( SubstBindingOfY = term__variable(X) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfY, X, Bindings0),
-				map__set(Bindings0, X, SubstBindingOfY,
-					Bindings)
-			)
-		;
-			% both X and Y are unbound type variables -
-			% bind one to the other
-			( X = Y ->
-				Bindings = Bindings0
-			; 
-				map__set(Bindings0, X, term__variable(Y),
-					Bindings)
-			)
-		)
-	).
-
-type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
-		Bindings0, Bindings) :-
-	( 
-		map__search(Bindings0, X, BindingOfX)
-	->
-		type_unify(BindingOfX, term__functor(F, As, C), HeadTypeParams,
-			Bindings0, Bindings)
-	;
-		\+ term__occurs_list(As, X, Bindings0),
-		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
-	).
-
-type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
-		Bindings0, Bindings) :-
-	( 
-		map__search(Bindings0, X, BindingOfX)
-	->
-		type_unify(term__functor(F, As, C), BindingOfX, HeadTypeParams,
-			Bindings0, Bindings)
-	;
-		\+ term__occurs_list(As, X, Bindings0),
-		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
-	).
-
-type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
-		HeadTypeParams, Bindings0, Bindings) :-
-	list__length(AsX, ArityX),
-	list__length(AsY, ArityY),
-	(
-		FX = FY,
-		ArityX = ArityY
-	->
-		type_unify_list(AsX, AsY, HeadTypeParams, Bindings0, Bindings)
-	;
-		fail
-	).
-
-	% XXX Instead of just failing if the functors' name/arity is different,
-	% we should check here if these types have been defined
-	% to be equivalent using equivalence types.  But this
-	% is difficult because (1) it causes typevarset synchronization
-	% problems, and (2) the relevant variables TypeInfo, TVarSet0, TVarSet
-	% haven't been passed in to here.
-
-/*******
-	...
-	;
-		replace_eqv_type(FX, ArityX, AsX, EqvType)
-	->
-		type_unify(EqvType, term__functor(FY, AsY, CY), HeadTypeParams,
-				Bindings0, Bindings)
-	;
-		replace_eqv_type(FY, ArityY, AsY, EqvType)
-	->
-		type_unify(term__functor(FX, AsX, CX), EqvType, HeadTypeParams,
-				Bindings0, Bindings)
-	;
-		fail
-	).
-
-:- pred replace_eqv_type(const, int, list(term), type).
-:- mode replace_eqv_type(in, in, in, out) is semidet.
-
-replace_eqv_type(Functor, Arity, Args, EqvType) :-
-
-	% XXX magically_obtain(TypeTable, TVarSet0, TVarSet)
-
-	make_type_id(Functor, Arity, TypeId),
-	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(TypeVarSet, TypeParams0,
-			eqv_type(EqvType0), _Condition, Context),
-	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
-			TVarSet, [EqvType1, TypeParams1]),
-	type_param_to_var_list(TypeParams1, TypeParams),
-	term__substitute_corresponding(EqvType1, TypeParams, AsX,
-		EqvType).
-
-******/
-
-:- pred type_unify_list(list(type), list(type), headtypes, substitution,
-			substitution).
-:- mode type_unify_list(in, in, in, in, out) is semidet.
-
-type_unify_list([], [], _) --> [].
-type_unify_list([X | Xs], [Y | Ys], HeadTypeParams) -->
-	type_unify(X, Y, HeadTypeParams),
-	type_unify_list(Xs, Ys, HeadTypeParams).
-
-:- pred type_unify_head_type_param(var, var, headtypes, substitution,
-				substitution).
-:- mode type_unify_head_type_param(in, in, in, in, out) is semidet.
-
-type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
-		Bindings) :-
-	( map__search(Bindings0, Var, BindingOfVar) ->
-		BindingOfVar = term__variable(Var2),
-		type_unify_head_type_param(Var2, HeadVar, HeadTypeParams,
-			Bindings0, Bindings)
-	;
-		( Var = HeadVar ->
-			Bindings = Bindings0
-		;
-			\+ list__member(Var, HeadTypeParams),
-			map__set(Bindings0, Var, term__variable(HeadVar),
-				Bindings)
-		)
-	).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% XXX - At the moment we don't check for circular equivalence types.
@@ -1666,10 +1494,6 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 %-----------------------------------------------------------------------------%
 
 	% The type_info data structure and access predicates.
-
-:- type tvarset		==	varset.
-
-:- type tsubst		==	map(var, type).
 
 :- type type_info
 	---> type_info(
@@ -1900,12 +1724,13 @@ type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_),
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_vartypes(type_info, map(var, type)).
-:- mode type_info_get_vartypes(in, out) is det.
+:- pred type_info_get_final_info(type_info, tvarset, map(var, type)).
+:- mode type_info_get_final_info(in, out, out) is det.
 
-type_info_get_vartypes(TypeInfo, VarTypes) :-
+type_info_get_final_info(TypeInfo, TypeVarSet, VarTypes) :-
 	type_info_get_type_assign_set(TypeInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
+		type_assign_get_typevarset(TypeAssign, TypeVarSet),
 		type_assign_get_var_types(TypeAssign, VarTypes0),
 		type_assign_get_type_bindings(TypeAssign, TypeBindings),
 		map__keys(VarTypes0, Vars),
@@ -2129,16 +1954,11 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 :- mode report_error_no_clauses(in, in, in, di, uo) is det.
 
 report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
-	{ code_util__is_builtin(ModuleInfo, PredId, 0, Builtin) },
-	( { Builtin = is_builtin } ->
-		[]
-	;
-		{ pred_info_context(PredInfo, Context) },
-		prog_out__write_context(Context),
-		io__write_string("Error: no clauses for "),
-		hlds_out__write_pred_id(ModuleInfo, PredId),
-		io__write_string("\n")
-	).
+	{ pred_info_context(PredInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Error: no clauses for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -47,6 +47,44 @@ main(Args) :-
 		exit(0)
 	).
 
+:- pred r(string).
+:- mode r(in) is det.
+
+r(ArgString) :-
+	convert_args(ArgString, Args),
+	run(Args).
+
+:- pred convert_args(string, list(atom)).
+:- mode convert_args(in, out) is det.
+
+convert_args([], []).
+convert_args([C|Cs], Args) :-
+	( isspace(C) ->
+		convert_args(Cs, Args)
+	;
+		convert_args_2(Cs, [C], Args)
+	).
+
+:- pred isspace(int).
+:- mode isspace(in) is semidet.
+
+isspace(0' ).
+
+:- pred convert_args_2(string, string, list(atom)).
+:- mode convert_args_2(in, in, out) is det.
+
+convert_args_2([], Word, [Arg]) :-
+	name(Arg, Word).
+convert_args_2([C|Cs], Word, Args) :-
+	( isspace(C) ->
+		name(Arg, Word),
+		Args = [Arg | Args1],
+		convert_args(Cs, Args1)
+	;
+		append(Word, [C], Word1),
+		convert_args_2(Cs, Word1, Args)
+	).
+
 :- pred run(list(atom)).
 :- mode run(in) is det.
 

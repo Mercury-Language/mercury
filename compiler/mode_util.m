@@ -121,11 +121,6 @@
 :- pred propagate_type_info_inst(type, module_info, inst, inst).
 :- mode propagate_type_info_inst(in, in, in, out) is det.
 
-	% If the type is a du type, return the list of it's constructors.
-
-:- pred type_constructors(type, module_info, list(constructor)).
-:- mode type_constructors(in, in, out) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -411,48 +406,6 @@ ex_propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
 	;
 		Inst = Inst0
 	).
-
-%-----------------------------------------------------------------------------%
-
-	% If the type is a du type, return the list of it's constructors.
-
-type_constructors(Type, ModuleInfo, Constructors) :-
-	type_to_type_id(Type, TypeId, TypeArgs),
-	module_info_types(ModuleInfo, TypeTable),
-	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(_, TypeParams, TypeBody, _, _),
-	TypeBody = du_type(Constructors0, _, _),
-	substitute_type_args(TypeParams, TypeArgs, Constructors0,
-		Constructors).
-
-%-----------------------------------------------------------------------------%
-
-	% Substitute the actual values of the type parameters
-	% in list of constructors, for a particular instance of
-	% a polymorphic type.
-
-:- pred substitute_type_args(list(type_param), list(type),
-				list(constructor), list(constructor)).
-:- mode substitute_type_args(in, in, in, out) is det.
-
-substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
-	( TypeParams0 = [] ->
-		Constructors = Constructors0
-	;
-		term__term_list_to_var_list(TypeParams0, TypeParams),
-		substitute_type_args_2(Constructors0, TypeParams, TypeArgs,
-			Constructors)
-	).
-
-:- pred substitute_type_args_2(list(constructor), list(var), list(type),
-				list(constructor)).
-:- mode substitute_type_args_2(in, in, in, out) is det.
-
-substitute_type_args_2([], _TypeParams, _TypeArgs, []).
-substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
-		[Name - Args | Ctors]) :-
-	term__substitute_corresponding_list(TypeParams, TypeArgs, Args0, Args),
-	substitute_type_args_2(Ctors0, TypeParams, TypeArgs, Ctors).
 
 %-----------------------------------------------------------------------------%
 

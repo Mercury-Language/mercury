@@ -48,6 +48,9 @@
 :- pred code_util__negate_the_test(list(instruction), list(instruction)).
 :- mode code_util__negate_the_test(in, out) is det.
 
+:- pred code_util__predinfo_is_builtin(module_info, pred_info).
+:- mode code_util__predinfo_is_builtin(in, in) is semidet.
+
 :- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
 :- mode code_util__is_builtin(in, in, in, out) is det.
 
@@ -136,18 +139,29 @@ code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 
+code_util__predinfo_is_builtin(_ModuleInfo, PredInfo) :-
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	code_util__builtin(PredName, Arity).
+
 code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 	predicate_name(ModuleInfo, PredId0, PredName),
 	predicate_arity(ModuleInfo, PredId0, Arity),
-	(
-		( code_util__builtin_binop(PredName, Arity, _)
-		; code_util__builtin_unop(PredName, Arity, _)
-		; PredName = "call"
-		)
-	->
+	( code_util__builtin(PredName, Arity) ->
 		IsBuiltin = is_builtin
 	;
 		IsBuiltin = not_builtin
+	).
+
+	% XXX module qualifiers
+
+:- pred code_util__builtin(string, int).
+:- mode code_util__builtin(in, in) is semidet.
+
+code_util__builtin(PredName, Arity) :-
+	( code_util__builtin_binop(PredName, Arity, _)
+	; code_util__builtin_unop(PredName, Arity, _)
+	; PredName = "call"
 	).
 
 code_util__builtin_binop("builtin_plus", 3, (+)).

@@ -49,25 +49,31 @@
 %-----------------------------------------------------------------------------%
 
 	% This whole section just traverses the module structure.
+	% We do two passes, the first to fix up the procedure bodies,
+	% (and in fact everything except the pred_info argtypes),
+	% the second to fix up the pred_info argtypes.
+	% The reason we need two passes is that the first pass looks at
+	% the argtypes of the called predicates, and so we need to make
+	% sure we don't much them up before we've finished the first pass.
 
 polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, Preds),
 	map__keys(Preds, PredIds),
-	polymorphism__process_preds(PredIds, ModuleInfo0, ModuleInfo).
+	polymorphism__process_preds(PredIds, ModuleInfo0, ModuleInfo1),
+	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred polymorphism__process_preds(list(pred_id), module_info, module_info).
 :- mode polymorphism__process_preds(in, in, out) is det.
 
 polymorphism__process_preds([], ModuleInfo, ModuleInfo).
 polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
 	polymorphism__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
 	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
-				module_info, module_info).
+					module_info, module_info).
 :- mode polymorphism__process_procs(in, in, in, out) is det.
 
 polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
@@ -87,7 +93,35 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-	% This is the useful part of the code ;-).
+:- pred polymorphism__fixup_preds(list(pred_id), module_info, module_info).
+:- mode polymorphism__fixup_preds(in, in, out) is det.
+
+polymorphism__fixup_preds([], ModuleInfo, ModuleInfo).
+polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+	%
+	% recompute the arg types by finding the headvars and the var->type
+	% mapping (from the first procedure for the predicate) and
+	% applying the type mapping to the headvars to get the new arg types
+	%
+	module_info_preds(ModuleInfo0, PredTable0),
+	map__lookup(PredTable0, PredId, PredInfo0),
+	pred_info_procedures(PredInfo0, ProcTable0),
+	pred_info_proc_ids(PredInfo0, ProcIds),
+	( ProcIds = [ProcId|_] ->
+		map__lookup(ProcTable0, ProcId, ProcInfo)
+	;
+		error("polymorphism__fixup_preds: empty procid list")
+	),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_headvars(ProcInfo, HeadVars),
+	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
+	pred_info_arg_types(PredInfo0, TypeVarSet, _ArgTypes0),
+	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo),
+	map__set(PredTable0, PredId, PredInfo, PredTable),
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
+
+%---------------------------------------------------------------------------%
 
 :- type poly_info --->
 		poly_info(
@@ -105,38 +139,54 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 :- mode polymorphism__process_proc(in, in, in, out, out) is det.
 
 polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
-				ProcInfo, PredInfo) :-
+					ProcInfo, PredInfo) :-
 	% grab the appropriate fields from the pred_info and proc_info
 	pred_info_arg_types(PredInfo0, TypeVarSet0, ArgTypes0),
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
-
+	proc_info_argmodes(ProcInfo0, ArgModes0),
 	% insert extra head variables to hold the address of the
 	% equality predicate for each polymorphic type in the predicate's
 	% type declaration
-	term__vars_list(ArgTypes0, HeadTypeVars),
+	term__vars_list(ArgTypes0, HeadTypeVars0),
+	list__sort(HeadTypeVars0, HeadTypeVars), % remove duplicates
 	polymorphism__make_head_vars(HeadTypeVars, VarSet0, VarTypes0,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(HeadVars0, ExtraHeadVars, HeadVars),
-	map__apply_to_list(ExtraHeadVars, VarTypes1, ExtraArgTypes),
-	list__append(ArgTypes0, ExtraArgTypes, ArgTypes),
+	%
+	%	We don't update the argtypes here, it's done in the next pass
+	% map__apply_to_list(ExtraHeadVars, VarTypes1, ExtraArgTypes),
+	% list__append(ArgTypes0, ExtraArgTypes, ArgTypes),
+	%
+	list__length(ExtraHeadVars, NumExtraVars),
+	list__duplicate(NumExtraVars, ground -> ground, ExtraModes),
+	list__append(ArgModes0, ExtraModes, ArgModes),
 
-	% process any polymorphic calls inside the goal
-	map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
-				UnifyProcMap),
-	Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
-				UnifyProcMap, ModuleInfo),
-	polymorphism__process_goal(Goal0, Goal, Info0, Info),
-	Info = poly_info(VarSet, VarTypes, TypeVarSet, _, _),
+
+	( pred_info_is_imported(PredInfo0) ->
+		VarTypes = VarTypes1,
+		VarSet = VarSet1,
+		TypeVarSet = TypeVarSet0,
+		Goal = Goal0
+	;
+		% process any polymorphic calls inside the goal
+		map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
+					UnifyProcMap),
+		Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
+					UnifyProcMap, ModuleInfo),
+		polymorphism__process_goal(Goal0, Goal, Info0, Info),
+		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, _)
+	),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo),
-	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo).
+	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
+	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo),
+	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes0, PredInfo).
 	
 :- pred polymorphism__process_goal(hlds__goal, hlds__goal,
 					poly_info, poly_info).
@@ -198,34 +248,43 @@ polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 					poly_info, poly_info).
 :- mode polymorphism__process_call(in, in, in, out, out, in, out) is det.
 
-polymorphism__process_call(PredId, ProcId, ArgVars0, ArgVars, ExtraGoals,
+polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 				Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0,
 				UnifyProcMap, ModuleInfo),
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-				PredInfo, ProcInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
 	varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
 			TypeVarSet, PredArgTypes),
-	term__vars_list(PredArgTypes, PredTypeVars),
-	proc_info_vartypes(ProcInfo, PredVarTypes),
-	map__apply_to_list(ArgVars0, PredVarTypes, ActualArgTypes),
-	map__keys(UnifyProcMap, HeadTypeVars),
-	map__init(TypeSubst0),
-	( type_unify_list(ActualArgTypes, PredArgTypes, HeadTypeVars,
-			TypeSubst0, TypeSubst1) ->
-		TypeSubst = TypeSubst1
+	term__vars_list(PredArgTypes, PredTypeVars0),
+	( PredTypeVars0 = [] ->
+		% optimize for common case of non-polymorphic call
+		ArgVars = ArgVars0,
+		ExtraGoals = [],
+		Info = Info0
 	;
+		list__sort(PredTypeVars0, PredTypeVars), % eliminate duplicates
+		map__apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
+		map__keys(UnifyProcMap, HeadTypeVars),
+		map__init(TypeSubst0),
+		( type_unify_list(ActualArgTypes, PredArgTypes, HeadTypeVars,
+				TypeSubst0, TypeSubst1) ->
+			TypeSubst = TypeSubst1
+		;
 		error("polymorphism__process_goal_2: type unification failed")
-	),
-	term__var_list_to_term_list(PredTypeVars, PredTypes0),
-	term__apply_rec_substitution_to_list(PredTypes0, TypeSubst, PredTypes),
-	polymorphism__make_vars(PredTypes, UnifyProcMap, VarSet0, VarTypes0,
-			ExtraVars, ExtraGoals, VarSet, VarTypes),
-	list__append(ArgVars0, ExtraVars, ArgVars),
-	Info = poly_info(VarSet, VarTypes, TypeVarSet,
-			UnifyProcMap, ModuleInfo).
+		),
+		term__var_list_to_term_list(PredTypeVars, PredTypes0),
+		term__apply_rec_substitution_to_list(PredTypes0, TypeSubst,
+			PredTypes),
+		polymorphism__make_vars(PredTypes, UnifyProcMap, VarSet0,
+			VarTypes0, ExtraVars, ExtraGoals, VarSet, VarTypes),
+		list__append(ArgVars0, ExtraVars, ArgVars),
+		Info = poly_info(VarSet, VarTypes, TypeVarSet,
+				UnifyProcMap, ModuleInfo)
+	).
+
+%---------------------------------------------------------------------------%
 
 :- pred polymorphism__make_vars(list(type), map(tvar, var),
 				varset, map(var, type),

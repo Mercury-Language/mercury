@@ -103,6 +103,10 @@
 %		no more substitions can be applied, and then
 %		return the result in Term.
 
+:- pred term__apply_rec_substitution_to_list(list(term), substitution,
+						list(term)).
+:- mode term__apply_rec_substitution_to_list(in, in, out) is det.
+
 :- pred term__apply_substitution(term, substitution, term).
 :- mode term__apply_substitution(in, in, out) is det.
 %	term__apply_substitution(Term0, Substitution, Term) :
@@ -496,10 +500,6 @@ term__apply_rec_substitution(term__variable(Var), Substitution, Term) :-
 term__apply_rec_substitution(term__functor(Name, Args0, Context), Substitution,
 		 term__functor(Name, Args, Context)) :-
 	term__apply_rec_substitution_to_list(Args0, Substitution, Args).
-
-:- pred term__apply_rec_substitution_to_list(list(term), substitution,
-						list(term)).
-:- mode term__apply_rec_substitution_to_list(in, in, out) is det.
 
 term__apply_rec_substitution_to_list([], _Substitution, []).
 term__apply_rec_substitution_to_list([Term0 | Terms0], Substitution,

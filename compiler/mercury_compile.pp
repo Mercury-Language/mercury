@@ -20,6 +20,7 @@
 
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
+:- import_module polymorphism.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
@@ -866,6 +867,7 @@ mercury_compile(module(Module, ShortDeps, LongDeps, Items0,
 	mercury_compile__expand_equiv_types(Items2, Items3),
 
 	mercury_compile__make_hlds(Module, Items3, HLDS0, FoundSemanticError),
+	mercury_compile__maybe_dump_hlds(HLDS0, "0", "initial"),
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS0 - FoundSemanticError), fail }.
@@ -874,25 +876,32 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 #endif
 
 	( { FoundSyntaxError = yes } ->
-		{ module_info_incr_errors(HLDS0, HLDS1) }
+		{ module_info_incr_errors(HLDS0, HLDS0b) }
 	;	
-		{ HLDS1 = HLDS0 }
+		{ HLDS0b = HLDS0 }
 	),
 
-	mercury_compile__typecheck(HLDS1, HLDS2, FoundTypeError),
+	mercury_compile__typecheck(HLDS0b, HLDS1, FoundTypeError),
+	mercury_compile__maybe_dump_hlds(HLDS1, "1", "typecheck"),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS2 - FoundSemanticError - FoundTypeError), fail }.
+	{ putprop(mc, mc, HLDS1 - FoundSemanticError - FoundTypeError), fail }.
 mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS2 - FoundSemanticError - FoundTypeError, Ref),
+	{ getprop(mc, mc, HLDS1 - FoundSemanticError - FoundTypeError, Ref),
 	erase(Ref) },
 #endif
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
 	( { DoModeCheck = yes } ->
-		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
+		mercury_compile__modecheck(HLDS1, HLDS2, FoundModeError),
+		mercury_compile__maybe_dump_hlds(HLDS2, "2", "modecheck"),
+
+		% mercury_compile__polymorphism(HLDS2, HLDS3),
+		% mercury_compile__maybe_dump_hlds(HLDS3, "3", "polymorphism"),
+		{ HLDS3 = HLDS2 },
 
 		mercury_compile__detect_switches(HLDS3, HLDS4),
+		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),
 
 		(
 			{ FoundSyntaxError = no,
@@ -909,10 +918,11 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
 
 		mercury_compile__check_determinism(HLDS6, HLDS7,
-			FoundDeterminismError)
+			FoundDeterminismError),
+		mercury_compile__maybe_dump_hlds(HLDS7, "7", "determinism")
 
 	;
-		{ HLDS7 = HLDS2 },
+		{ HLDS7 = HLDS1 },
 		{ FoundModeError = no },
 		{ FoundDeterminismError = no }
 	),
@@ -947,10 +957,13 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 
 	( { DoCodeGen = yes } ->
 		mercury_compile__compute_liveness(HLDS7, HLDS8),
+		mercury_compile__maybe_dump_hlds(HLDS8, "8", "liveness"),
 
 		mercury_compile__map_args_to_regs(HLDS8, HLDS9),
+		mercury_compile__maybe_dump_hlds(HLDS9, "9", "args_to_regs"),
 
-		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10)
+		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "followvars")
 	;
 		{ HLDS10 = HLDS7 }
 	),
@@ -965,15 +978,16 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 
 	( { DoCodeGen = yes } ->
 		mercury_compile__compute_stack_vars(HLDS10, HLDS11),
+		mercury_compile__maybe_dump_hlds(HLDS11, "11", "stackvars"),
 
-		mercury_compile__allocate_store_map(HLDS11, HLDS12)
+		mercury_compile__allocate_store_map(HLDS11, HLDS12),
+		mercury_compile__maybe_dump_hlds(HLDS12, "12", "store_map")
 	;
 		{ HLDS12 = HLDS10 }
 	),
 
 	mercury_compile__maybe_report_sizes(HLDS12),
-
-	mercury_compile__maybe_dump_hlds(HLDS12),
+	mercury_compile__maybe_dump_hlds(HLDS12, "99", "final"),
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile]),
@@ -1106,6 +1120,20 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
+:- pred mercury_compile__polymorphism(module_info, module_info,
+						io__state, io__state).
+:- mode mercury_compile__polymorphism(in, out, di, uo) is det.
+
+mercury_compile__polymorphism(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose,
+		"% Transforming polymorphic unifications..."),
+	maybe_flush_output(Verbose),
+	{ polymorphism__process_module(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n"),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics).
+
 :- pred mercury_compile__detect_switches(module_info, module_info,
 						io__state, io__state).
 :- mode mercury_compile__detect_switches(in, out, di, uo) is det.
@@ -1188,7 +1216,8 @@ mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 		{ inlining(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_report_stats(Statistics), 
+		mercury_compile__maybe_dump_hlds(HLDS, "5", "inlining")
 	;
 		{ HLDS = HLDS0 }
 	).
@@ -1221,7 +1250,8 @@ mercury_compile__maybe_compute_followvars(HLDS0, HLDS) -->
 		{ find_follow_vars(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS, "6", "followvars")
 	;
 		{ HLDS = HLDS0 }
 	).
@@ -1437,17 +1467,24 @@ mercury_compile__invoke_system_command(Command, Succeeded) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__maybe_dump_hlds(module_info, io__state, io__state).
-:- mode mercury_compile__maybe_dump_hlds(in, di, uo) is det.
+:- pred mercury_compile__maybe_dump_hlds(module_info, string, string,
+					io__state, io__state).
+:- mode mercury_compile__maybe_dump_hlds(in, in, in, di, uo) is det.
 
-mercury_compile__maybe_dump_hlds(HLDS) -->
-	globals__io_lookup_bool_option(dump_hlds, DumpHLDS),
-	( { DumpHLDS = yes } ->
+mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
+	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
+	(
+		{ list__member(StageNum, DumpStages)
+		; list__member(StageName, DumpStages)
+		}
+	->
 		{ module_info_name(HLDS, ModuleName) },
-		{ string__append(ModuleName, ".hlds_dump", HLDS_DumpFile) },
+		{ string__append_list(
+			[ModuleName, ".hlds_dump.", StageNum, "-", StageName],
+			HLDS_DumpFile) },
 		mercury_compile__dump_hlds(HLDS_DumpFile, HLDS)
 	;
-		{ true }
+		[]
 	).
 
 :- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).

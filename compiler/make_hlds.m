@@ -35,7 +35,7 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
-:- import_module unify_proc, type_util, implication.
+:- import_module code_util, unify_proc, type_util, implication.
 
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
@@ -411,12 +411,17 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 	{ list__length(Types, Arity) },
 	{ clauses_info_init(Arity, ClausesInfo) },
 	{ pred_info_init(ModuleName, PredName, Arity, VarSet, Types, Cond,
-		Context, ClausesInfo, Status, PredInfo) },
+		Context, ClausesInfo, Status, PredInfo0) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
 		{ \+ predicate_table_search_m_n_a(PredicateTable0,
 			ModuleName, PName, Arity, _) }
 	->
+		( { code_util__predinfo_is_builtin(Module0, PredInfo0) } ->
+			{ pred_info_mark_as_external(PredInfo0, PredInfo) }
+		;
+			{ PredInfo = PredInfo0 }
+		),
 		{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
 			PredicateTable) },
 		{ module_info_set_predicate_table(Module0, PredicateTable,
@@ -638,9 +643,10 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 			ModuleName, PName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
-		{ PredicateTable1 = PredicateTable0 }
+		{ PredicateTable1 = PredicateTable0 },
+		{ ModuleInfo1 = ModuleInfo0 }
 	;
-		% XXX we should record each error using module_info_incr_errors
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
 		undefined_pred_error(PredName, Arity, Context, "clause"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
@@ -651,9 +657,12 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		% add the clause to the clauses_info in the pred_info,
 		% and save the pred_info.
 		%
-	{
-		predicate_table_get_preds(PredicateTable1, Preds0),
-		map__lookup(Preds0, PredId, PredInfo0),
+	{ predicate_table_get_preds(PredicateTable1, Preds0) },
+	{ map__lookup(Preds0, PredId, PredInfo0) },
+	( { pred_info_is_imported(PredInfo0) } ->
+		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
+		clause_for_imported_pred_error(PredName, Arity, Context)
+	; {
 		pred_info_clauses_info(PredInfo0, Clauses0), 
 		pred_info_procedures(PredInfo0, Procs),
 		map__keys(Procs, ModeIds),
@@ -663,9 +672,9 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
-		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
-	},
+	} ),
 		%
 		% Warn about singleton variables in the clauses.
 		%
@@ -1379,5 +1388,17 @@ unspecified_det_error(Name, Arity, Context) -->
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("'\n").
+
+:- pred clause_for_imported_pred_error(sym_name, int, term__context, 
+				io__state, io__state).
+:- mode clause_for_imported_pred_error(in, in, in, di, uo) is det.
+
+clause_for_imported_pred_error(Name, Arity, Context) -->
+	prog_out__write_context(Context),
+	io__write_string("Error: clause for imported pred `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%

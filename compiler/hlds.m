@@ -298,7 +298,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 				% An explicit quantification.
 				% Quantification is stored in the goal_info,
-				% so these get ignored.
+				% so these get ignored (except to recompute
+				% the goal_info quantification).
 				% `all Vs' gets converted to `not some Vs not'.
 			;	some(list(var), hlds__goal)
 
@@ -377,7 +378,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 		set(var),	% the non-local vars in the goal
 		delta_liveness,	% the changes in liveness before goal
 		maybe(map(var, lval))
-				% the [maybe] new advisory register mapping
+				% the new store_map, if any - this records
+				% where to store variables at the end of
+				% branched structures.
 	).
 
 :- type unify_mode	==	pair(mode, mode).
@@ -394,7 +397,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__type_defn	--->	hlds__type_defn(
 						% names of type vars (empty 
 						% except for polymorphic types)
-					varset,	
+					tvarset,	
 						% formal type parameters
 					list(type_param),
 						% the definition of the type
@@ -497,6 +500,13 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- pred module_info_preds(module_info, pred_table).
 :- mode module_info_preds(in, out) is det.
+
+:- pred module_info_pred_info(module_info, pred_id, pred_info).
+:- mode module_info_pred_info(in, in, out) is det.
+
+:- pred module_info_pred_proc_info(module_info, pred_id, proc_id,
+					pred_info, proc_info).
+:- mode module_info_pred_proc_info(in, in, in, out, out) is det.
 
 :- pred module_info_predids(module_info, list(pred_id)).
 :- mode module_info_predids(in, out) is det.
@@ -605,6 +615,15 @@ module_info_get_predicate_table(ModuleInfo, PredicateTable) :-
 module_info_preds(ModuleInfo, Preds) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds).
+
+module_info_pred_info(ModuleInfo, PredId, PredInfo) :-
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo).
+
+module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_procedures(PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo).
 
 module_info_predids(ModuleInfo, PredIds) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -1042,7 +1061,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred predicate_arity(module_info, pred_id, arity).
 :- mode predicate_arity(in, in, out) is det.
 
-:- pred pred_info_init(module_name, sym_name, arity, varset, list(type),
+:- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 			condition, term__context, clauses_info, import_status,
 			pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, out) is det.
@@ -1059,8 +1078,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_proc_ids(pred_info, list(proc_id)).
 :- mode pred_info_proc_ids(in, out) is det.
 
-:- pred pred_info_arg_types(pred_info, varset, list(type)).
+:- pred pred_info_arg_types(pred_info, tvarset, list(type)).
 :- mode pred_info_arg_types(in, out, out) is det.
+
+:- pred pred_info_set_arg_types(pred_info, tvarset, list(type), pred_info).
+:- mode pred_info_set_arg_types(in, in, in, out) is det.
 
 :- pred pred_info_clauses_info(pred_info, clauses_info).
 :- mode pred_info_clauses_info(in, out) is det.
@@ -1109,8 +1131,9 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 
 :- type pred_info	
 	--->	predicate(
-			varset,		% names of _type_ vars
+			tvarset,	% names of type vars
 					% in the pred type decl
+					% or in the variable type assignments
 			list(type),	% argument types
 			condition,	% formal specification
 					% (not used)
@@ -1149,6 +1172,10 @@ pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _).
+
+pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
+	PredInfo0 = predicate(_, _, C,  D, E, F, G, H, I, J),
+	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J).
 
 pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _).
@@ -1208,6 +1235,9 @@ pred_info_mark_as_external(PredInfo0, PredInfo) :-
 :- pred proc_info_variables(proc_info, varset).
 :- mode proc_info_variables(in, out) is det.
 
+:- pred proc_info_set_varset(proc_info, varset, proc_info).
+:- mode proc_info_set_varset(in, in, out) is det.
+
 :- pred proc_info_set_variables(proc_info, varset, proc_info).
 :- mode proc_info_set_variables(in, in, out) is det.
 
@@ -1220,8 +1250,14 @@ pred_info_mark_as_external(PredInfo0, PredInfo) :-
 :- pred proc_info_headvars(proc_info, list(var)).
 :- mode proc_info_headvars(in, out) is det.
 
+:- pred proc_info_set_headvars(proc_info, list(var), proc_info).
+:- mode proc_info_set_headvars(in, in, out) is det.
+
 :- pred proc_info_argmodes(proc_info, list(mode)).
 :- mode proc_info_argmodes(in, out) is det.
+
+:- pred proc_info_set_argmodes(proc_info, list(mode), proc_info).
+:- mode proc_info_set_argmodes(in, in, out) is det.
 
 :- pred proc_info_goal(proc_info, hlds__goal).
 :- mode proc_info_goal(in, out) is det.
@@ -1343,6 +1379,18 @@ proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 		Goal, Context, CallInfo, InferredDet, ArgInfo, Liveness,
 		Follow).
 
+proc_info_set_varset(ProcInfo0, VarSet, ProcInfo) :-
+	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L),
+	ProcInfo = procedure(A, VarSet, C, D, E, F, G, H, I, J, K, L).
+
+proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L),
+	ProcInfo = procedure(A, B, C, HeadVars, E, F, G, H, I, J, K, L).
+
+proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L),
+	ProcInfo = procedure(A, B, C, D, ArgModes, F, G, H, I, J, K, L).
+
 proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J, K, L).
@@ -1373,7 +1421,7 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
 /***********
 		% propagate type information into the modes
-	proc_info_var_types(ProcInfo, VarTypes),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	propagate_type_info_inst_list(VarTypes, ModuleInfo, InitialInsts0,
 					InitialInsts),
 ***********/

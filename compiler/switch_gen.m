@@ -64,6 +64,9 @@
 	;	string_switch
 	;	tag_switch
 	;	pred_switch.
+			% Switches on higher-order preds would require
+			% higher-order unification, so they always cause
+			% runtime errors.
 
 %---------------------------------------------------------------------------%
 

@@ -83,6 +83,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred gc_call(pred).
+:- mode gc_call(in) is nondet.
 
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(complicated_mode, out) is det.

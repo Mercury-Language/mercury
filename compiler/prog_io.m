@@ -15,7 +15,8 @@
 % as Mercury-to-Goedel converters, pretty-printers, etc.
 % Currently the only information that is lost is that comments and
 % whitespace are stripped, any redundant parenthesization
-% are lost, and DCG clauses get expanded.
+% are lost, distinctions between different spellings of the same
+% operator (eg "\+" vs "not") are lost, and DCG clauses get expanded.
 % It would be a good idea to preserve all those too (well, maybe not
 % the redundant parentheses), but right now it's not worth the effort.
 %
@@ -158,6 +159,10 @@
 :- type type_param	==	term.
 
 :- type (type)		==	term.
+
+:- type tvar		==	var.	% used for type variables
+:- type tvarset		==	varset. % used for sets of type variables
+:- type tsubst		==	map(tvar, type). % used for type substitutions
 
 	% Types may have arbitrary assertions associated with them
 	% (eg. you can define a type which represents sorted lists).

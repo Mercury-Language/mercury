@@ -149,6 +149,12 @@
 :- pred list__split3(list(T), list(T), list(T), list(T)).
 :- mode list__split3(in, out, in, in) is semidet.
 
+	% list__duplicate(Count, Elem, List) is true iff List is a list
+	% containing Count duplicate copies of Elem.
+
+:- pred list__duplicate(int, T, list(T)).
+:- mode list__duplicate(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -415,6 +421,15 @@ list__drop(N, As, Bs) :-
 		list__drop(N1, Cs, Bs)
 	;
 		As = Bs
+	).
+
+list__duplicate(N, X, L) :-
+	( N > 0 ->
+		N1 is N - 1,
+		L = [X | L1],
+		list__duplicate(N1, X, L1)
+	;
+		L = []
 	).
 
 %-----------------------------------------------------------------------------%
