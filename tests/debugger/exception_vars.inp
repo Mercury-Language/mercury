@@ -1,3 +1,4 @@
+echo on
 goto 2
 finish
 print *
