@@ -12,19 +12,19 @@ Valid? b 1
 browser> mark
 monotest4(t(101), t(101))
 Valid? n
-Call IntroducedFrom__pred__monotest4__86__1(t(101), t(3))
+Call lambda_find_origin_86(t(101), t(3))
 No solutions.
 Complete? y
-IntroducedFrom__pred__monotest4__86__1(t(101), t(101))
+lambda_find_origin_86(t(101), t(101))
 Valid? y
-Call IntroducedFrom__pred__monotest4__86__1(t(101), t(2))
+Call lambda_find_origin_86(t(101), t(2))
 No solutions.
 Complete? y
-Call IntroducedFrom__pred__monotest4__86__1(t(101), t(1))
+Call lambda_find_origin_86(t(101), t(1))
 No solutions.
 Complete? y
 Found incorrect contour:
-filter(IntroducedFrom__pred__monotest4__86__1(t(101)), [t(1), t(2), t(101), t(3)], [t(101)])
+filter(lambda_find_origin_86(t(101)), [t(1), t(2), t(101), t(3)], [t(101)])
 monotest4(t(101), t(101))
 Is this a bug? y
       E4:     C3 EXIT pred find_origin.monotest4/2-0 (det)
@@ -46,13 +46,13 @@ find_origin.polytest4(u("hello"), u("hello"))
 browser> quit
 polytest4(u("hello"), u("hello"))
 Valid? no
-IntroducedFrom__pred__polytest4__148__2(u(string), u(u("hello")), u(u("hello")))
+lambda_find_origin_148(u(string), u(u("hello")), u(u("hello")))
 Valid? y
-Call IntroducedFrom__pred__polytest4__148__2(u(string), u(u("hello")), v(u("hello")))
+Call lambda_find_origin_148(u(string), u(u("hello")), v(u("hello")))
 No solutions.
 Complete? y
 Found incorrect contour:
-filter(IntroducedFrom__pred__polytest4__148__2(u(string), u(u/1)), [v(u/1), v(u/1), v(u/1), u(u/1)], [u/1])
+filter(lambda_find_origin_148(u(string), u(u/1)), [v(u/1), v(u/1), v(u/1), u(u/1)], [u/1])
 polytest4(u("hello"), u("hello"))
 Is this a bug? y
       E7:     C5 EXIT pred find_origin.polytest4/2-0 (det)
