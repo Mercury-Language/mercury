@@ -983,6 +983,10 @@ module.
 Non-stratification occurs when a predicate/function can call itself
 negatively through some path along its call graph.
 
+@sp 1
+@item --no-warn-simple-code
+Disable warnings about constructs which are so
+simple that they are likely to be programming errors.
 
 @end table
 
@@ -1571,13 +1575,19 @@ that the compiler considers to be deterministic.
 Don't migrate builtin goals into branched goals.
 
 @sp 1
-@item --no-optimize-unused-args
-Don't remove unused predicate arguments. The compiler will
-generate less efficient code for polymorphic predicates.
+@item --optimize-unused-args
+Remove unused predicate arguments. The compiler will
+generate more efficient code for polymorphic predicates.
 
 @sp 1
-@item --no-optimize-higher-order
-Don't specialize calls to higher-order predicates where
+@item --intermod-unused-args
+Perform unused argument removal across module boundaries.
+This option implies `--optimize-unused-args' and
+`--intermodule-optimization'.
+
+@sp 1
+@item --optimize-higher-order
+Specialize calls to higher-order predicates where
 the higher-order arguments are known.
 
 @sp 1
@@ -1592,6 +1602,10 @@ Enable dead predicate elimination.
 @sp 1
 @item --excess-assign
 Remove excess assignment unifications.
+
+@sp 1
+@item --optimize-duplicate-calls
+Optimize away multiple calls to a predicate with the same input arguments.
 
 @sp 1
 @item --optimize-saved-vars
@@ -1765,6 +1779,14 @@ Don't enable the C compiler's optimizations.
 @itemx --search-directory @var{dir}
 Append @var{dir} to the list of directories to be searched for 
 imported modules.
+
+@item --intermod-directory @var{dir}
+Append @var{dir} to the list of directories to be searched for
+@samp{.opt} files.
+
+@item --use-search-directories-for-intermod
+Append the arguments of all -I options to the list of directories
+to be searched for @samp{.opt} files.
 
 @sp 1
 @item -?
