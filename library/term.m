@@ -144,7 +144,7 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 		then
 			% both X and Y already have bindings - just
 			% unify the terms they are bound to
-			term__unify(Bindings0, BindingOfX, BindingOfY, Bindings)
+			term__unify(BindingOfX, BindingOfY, Bindings0, Bindings)
 		else
 			% Y is a variable which hasn't been bound yet
 			not term__occurs(BindingOfX, Y, Bindings0),
