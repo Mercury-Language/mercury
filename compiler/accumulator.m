@@ -1551,7 +1551,9 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 
 	proc_info_set_goal(OrigProcInfo0, OrigGoal, OrigProcInfo1),
 	proc_info_set_varset(OrigProcInfo1, VarSet, OrigProcInfo2),
-	proc_info_set_vartypes(OrigProcInfo2, VarTypes, OrigProcInfo),
+	proc_info_set_vartypes(OrigProcInfo2, VarTypes, OrigProcInfo3),
+
+	OrigProcInfo = requantify_procedure(OrigProcInfo3),
 
 	update_accumulator_pred(AccPredId, AccProcId, AccGoal,
 			ModuleInfo1, ModuleInfo).
@@ -1951,24 +1953,33 @@ top_level(ite_rec_base, Goal, OrigBaseGoal,
 :- pred update_accumulator_pred(pred_id::in, proc_id::in,
 		hlds_goal::in, module_info::in, module_info::out) is det.
 
-update_accumulator_pred(NewPredId, NewProcId, AccGoal0,
+update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 			PredInfo, ProcInfo0),
 
+	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo),
+
+	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
+			PredInfo, requantify_procedure(ProcInfo), ModuleInfo).
+
+	%
+	% Recalculate the non-locals of a procedure.
+	%
+:- func requantify_procedure(proc_info) = proc_info.
+
+requantify_procedure(ProcInfo0) = ProcInfo :-
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_varset(ProcInfo0, Varset0),
+	proc_info_goal(ProcInfo0, Goal0),
 
-	implicitly_quantify_clause_body(HeadVars, AccGoal0, Varset0,
-		VarTypes0, AccGoal, Varset, VarTypes, _Warnings),
+	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0,
+		VarTypes0, Goal, Varset, VarTypes, _Warnings),
 
-	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo1),
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
-
-	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
-			PredInfo, ProcInfo, ModuleInfo).
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
