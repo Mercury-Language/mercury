@@ -1065,7 +1065,7 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 :- mode simplify__process_compl_unify(in, in, in, in, in, in, in, out,
 		in, out) is det.
 
-simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
+simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		Context, GoalInfo0, Goal) -->
 	=(Info0),
 	{ simplify_info_get_module_info(Info0, ModuleInfo) },
@@ -1083,11 +1083,6 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
 		%
 		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
 		{ ArgVars = [TypeInfoVar, XVar, YVar] },
-
-		% sanity check: the TypeInfoVars we computed here should
-		% match with what was stored in the complicated_unify struct
-		{ require(unify(OldTypeInfoVars, [TypeInfoVar]),
-		  "simplify__process_compl_unify: mismatched type_info vars") },
 
 		{ module_info_get_predicate_table(ModuleInfo,
 			PredicateTable) },
