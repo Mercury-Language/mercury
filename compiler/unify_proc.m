@@ -560,7 +560,7 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 :- mode unify_proc__generate_solve_equal_clauses(in, in, in, in, in, in, out,
 		in, out) is det.
 
-unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2, Context,
+unify_proc__generate_solve_equal_clauses(_TypeBody, H1, H2, Context,
 		ModuleInfo, Type, Clauses) -->
 	% Check to see whether a predicate for this has been provided
 	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
@@ -597,13 +597,13 @@ unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2, Context,
 		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
 				Clauses)
 	;
-%/*
-%		XXX any/any modes break this
-%		XXX When fixing, make sure TypeBody is restored in head
+/*
+		XXX any/any modes break this
+		XXX When fixing, make sure TypeBody is restored in head
 		( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred),
 				IsEnum = no } ->
 			( { MaybeEqPred = yes(_EqPredName) } ->
-%*/
+*/
 				%
 				% XXX Don't know what to do here:
 				% just generate code that will call error/1
@@ -613,7 +613,7 @@ unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2, Context,
 					ArgVars, Context, Goal),
 				unify_proc__quantify_clause_body(ArgVars,
 					Goal, Context, Clauses)
-%/*
+/*
 			;
 				unify_proc__generate_du_solve_equal_clauses(
 					Ctors, H1, H2, Context, Clauses)
@@ -624,7 +624,7 @@ unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2, Context,
 			unify_proc__quantify_clause_body(ArgVars, Goal,
 					Context, Clauses)
 		)
-%*/
+*/
 	).
 
 
