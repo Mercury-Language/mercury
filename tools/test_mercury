@@ -492,8 +492,16 @@ cd $DIR || { false; exit 1; }
 # and the main branch (where it is generated automatically).
 rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
-case $HOST in
-	hg)
+case "$C_COMPILER" in
+	asm)	with_asm=true ;;
+	*)	case $HOST in
+			hg)	with_asm=true ;;
+			*)	with_asm=false ;;
+		esac
+		;;
+esac
+case "$with_asm" in
+	true)
 		# Check out the Mercury gcc back-end interface sources
 		cvs checkout $CHECKOUT_OPTS mercury-gcc || { false; exit 1; }
 		# Check out the main gcc sources.
