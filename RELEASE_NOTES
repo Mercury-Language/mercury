@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.7 of the Mercury system.
+We are pleased to announce the release of version 0.8 of the Mercury system.
 
 Mercury is a new general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -146,7 +146,7 @@ The current Mercury system has been tested extensively on Solaris 2.x,
 IRIX 5.x, OSF/1.1, and Linux, and is also known to run on Ultrix 4.3,
 BSDI 1.1, AIX, and HPUX; it should run without too many changes on
 other Unix variants as well.  It also runs on Windows 95 and Windows
-NT, using the gnu-win32 library.  If you do encounter any problems,
+NT, using the Cygwin library.  If you do encounter any problems,
 please report them to <mercury-bugs@cs.mu.oz.au> (see the BUGS file).
 
 The current source distribution uses gcc as the compiler.  We require gcc
@@ -161,6 +161,7 @@ The Mercury distribution contains:
         and the standard library
      o  the runtime system (written in C)
      o  Hans Boehm's conservative garbage collector for C
+     o  a debugger
      o  a profiler
      o  some utility programs, including a make front-end for Mercury
 	with automatic dependency recomputation
@@ -174,6 +175,10 @@ The Mercury distribution contains:
 	- processing HTML forms using the CGI interface
 	- arithmetic on complex and imaginary numbers
 	- graphics using Tk and OpenGL
+	- exception handling
+	- backtrackable (trailed) destructive update
+	- an ODBC database interface
+	- a CLP(R) interface, i.e. constraint solving over real numbers
      o  a test suite
 
 The Mercury distribution is available via anonymous ftp or WWW
@@ -181,8 +186,17 @@ from the following locations:
 
 	Australia:
 		ftp://turiel.cs.mu.oz.au/pub/mercury
+
+We hope to be able to make it available at the following sites
+too, eventually:
+
+	Sunsite and mirrors: (source distribution only)
+		ftp://sunsite.unc.edu/pub/Linux/Incoming
+		ftp://sunsite.unc.edu/pub/linux/devel/lang/mercury
+
 	USA:
 		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+
 	Europe:
 		ftp://ftp.csd.uu.se/pub/Mercury
 

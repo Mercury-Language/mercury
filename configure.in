@@ -81,11 +81,13 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		main --> io__write_string("Hello, world\n").
+		main --> 
+			io__write_string(promise_only_solution(hello)).
 
-		:- impure pred foo(int).
-		:- mode foo(in) is semidet.
-		:- pragma c_code(foo(_X::in), "").
+		:- pred hello(string).
+		:- mode hello(out) is cc_multi.
+		hello("Hello, world\n").
+		hello("Hello, world\n").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
