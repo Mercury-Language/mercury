@@ -23,12 +23,12 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 
 	-c|--cflags)
-		cfflag="-c $2"
+		cflag="-c '$2'"
 		cflagsopt="EXTRA_CFLAGS=$2"
 		shift ;;
 
 	-f|--flags)
-		fflag="-f $2"
+		fflag="-f '$2'"
 		flagsopt="EXTRA_MCFLAGS=$2"
 		shift ;;
 
