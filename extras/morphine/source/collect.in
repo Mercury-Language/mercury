@@ -53,6 +53,7 @@
 	;	exit
 	;	redo
 	;	fail
+	;	exception
 	;	ite_cond
 	;	ite_then
 	;	ite_else
@@ -63,7 +64,6 @@
 	;	switch
 	;	nondet_pragma_first
 	;	nondet_pragma_later
-	;	exception
 	.
 
 % This enumeration must be EXACTLY the same as the MR_PredFunc enum in
