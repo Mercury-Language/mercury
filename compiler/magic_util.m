@@ -1268,7 +1268,7 @@ magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 
 	% Polymorphic types are not allowed.
 	% Errors for type_infos and typeclass_infos are only reported
-	% if there are no other polmorphic arguments.
+	% if there are no other polymorphic arguments.
 	( { polymorphism__type_info_type(ArgType, _) } ->
 		{ set__init(Errors) },
 		{ MaybeRtti = yes(type_info) }
