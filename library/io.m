@@ -4909,7 +4909,7 @@ io__close_binary_output(Stream) -->
 		** that the system call was killed by signal number 1. 
 		*/
 		Status = 127;
-		ML_maybe_make_err_msg(TRUE,
+		ML_maybe_make_err_msg(MR_TRUE,
 			""error invoking system command: "",
 			MR_PROC_LABEL, Msg);
 	} else {
