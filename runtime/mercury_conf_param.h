@@ -236,7 +236,7 @@
 #endif
 
 /*
-** MR_INSERT_ENTRY_LABEL_NAMES -- the internal label table should contain
+** MR_INSERT_ENTRY_LABEL_NAMES -- the entry label table should contain
 **				  the names of labels as well as their
 **				  addresses and layouts (label names are
 **				  quite big, so prefer not to include them
