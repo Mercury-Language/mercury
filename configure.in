@@ -428,9 +428,8 @@ if test $mercury_cv_sigcontext_struct_2arg = no; then
 	AC_CACHE_VAL(mercury_cv_sigcontext_struct_3arg,
 	mercury_cv_sigcontext_struct_3arg=no
 
-	/* see runtime/mercury_memory.c for documentation of this code */
-
 	AC_TRY_RUN([
+	/* see runtime/mercury_memory.c for documentation of this code */
 
 	#define sigcontext_struct sigcontext
 
