@@ -166,7 +166,8 @@ extern void ML_report_full_memory_stats(void);
   				const ML_memprof_report_entry *,
 				int num_entries, MR_bool complete);
 
-  static	int	mpare_final(const void *, const void *);
+  static	int	ML_memory_profile_compare_final(const void *i1,
+  				const void *i2);
 
 #endif /* MR_MPROF_PROFILE_MEMORY */
 
