@@ -49,6 +49,13 @@
 :- pred queue__put(queue(T), T, queue(T)).
 :- mode queue__put(in, in, out) is det.
 
+	% `queue__put_list(Queue0, Elems, Queue)' is true iff `Queue'
+	% is the queue which results from inserting the items in the
+	% list `Elems' into `Queue0'.
+
+:- pred queue__put_list(queue(T), list(T), queue(T)).
+:- mode queue__put_list(in, in, out) is det.
+
 	% `queue__first(Queue, Elem)' is true iff `Queue' is a non-empty
 	% queue whose first element is `Elem'.
 
@@ -99,6 +106,11 @@ queue__is_full(_) :-
 	semidet_fail.
 
 queue__put(On - Off, Elem, [Elem | On] - Off).
+
+queue__put_list(Q0, [], Q0).
+queue__put_list(Q0, [X | Xs], Q1) :-
+	queue__put(Q0, X, Q2),
+	queue__put_list(Q2, Xs, Q1).
 
 queue__first(_On - [Elem | _Off], Elem).
 
