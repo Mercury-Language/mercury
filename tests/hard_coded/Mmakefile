@@ -61,6 +61,7 @@ PROGS=	\
 	name_mangling \
 	no_fully_strict \
 	no_inline \
+	nondet_c \
 	nondet_ctrl_vn \
 	nullary_ho_func \
 	pragma_c_code \

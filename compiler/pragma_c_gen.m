@@ -537,8 +537,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
 		StructName) },
 	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
-	{ string__format("\tLOCALS = (struct %s *) (
-		(char *) (curfr - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
+	{ string__format("\tLOCALS = (struct %s *) ((char *)
+		(MR_curfr + 1 - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
 		- sizeof(struct %s));\n",
 		[s(StructName), s(StructName)],
 		InitSaveStruct) },
