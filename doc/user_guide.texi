@@ -1709,7 +1709,12 @@ must have at least this many entries (default: 8).
 @sp 1
 @item --tag-switch-size @var{size}
 The number of alternatives in a tag switch
-must be at least this number (default: 8).
+must be at least this number (default: 3).
+
+@sp 1
+@item --try-switch-size @var{size}
+The number of alternatives in a try-chain switch
+must be at least this number (default: 3).
 
 @sp 1
 @item --no-middle-rec
