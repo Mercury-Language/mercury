@@ -460,6 +460,12 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
 	det_infer_goal(Else0, MiscInfo, Else, DElse),
 	( DCond = deterministic ->
 		% optimize away the `else' part
+		% (We should actually convert this to a _sequential_
+		% conjunction, because if-then-else has an ordering
+		% constraint, whereas conjunction doesn't; however,
+		% currently reordering is only done in mode analysis,
+		% not in the code generator, so we don't have a
+		% sequential conjunction construct.)
 		goal_to_conj_list(Cond, CondList),
 		goal_to_conj_list(Then, ThenList),
 		list__append(CondList, ThenList, List),
