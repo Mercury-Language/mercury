@@ -44,8 +44,8 @@ without reference to the module's implementation section.
 
 <p>
 
-Each predicate other than trivial access predicates should have
-a short comment describing what the predicate is supposed to do,
+Each predicate other than trivial access predicates
+should have a short comment describing what the predicate is supposed to do,
 and what the meaning of the arguments is.
 Ideally this description should also note any conditions
 under which the predicate can fail or throw an exception.
@@ -210,6 +210,18 @@ since diff adds an extra character at the start of each line.
 
 <p>
 
+Since "empty" lines that have spaces or tabs on them
+prevent the proper functioning of paragraph-oriented commands in vi,
+lines shouldn't have trailing white space.
+They can be removed with a vi macro such as the following.
+(Each pair of square brackets contains a space and a tab.)
+
+<pre>
+	map ;x :g/[     ][      ]*$/s///^M
+<\pre>
+
+<p>
+
 String literals that don't fit on a single line should be split
 by writing them as two or more strings concatenated using the "++" operator;
 the compiler will evaluate this at compile time,
@@ -268,6 +280,25 @@ or, if the test is complicated, it can be on a line of its own:
 Disjunctions should always be parenthesized.
 The semicolon of a disjunction should never be at the
 end of a line -- put it at the start of the next line instead.
+
+<p>
+
+Predicates and functions implemented via foreign code should be formatted
+like this:
+
+<pre>
+:- pragma foreign_proc("C",
+        int__to_float(IntVal::in, FloatVal::out),
+        [will_not_call_mercury, promise_pure],
+"
+        FloatVal = IntVal;
+").
+</pre>
+
+The predicate name and arguments should be on a line on their own,
+as should the list of annotations.
+The foreign code should also be on lines of its own;
+it shouldn't share lines with the double quote marks surrounding it.
 
 <p>
 
@@ -500,6 +531,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2005-03-30 06:19:25 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-03-31 00:51:55 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
