@@ -103,8 +103,8 @@ dense_switch__calc_density(NumCases, Range, Density) :-
 
 	% XXX the size of `character' is hard-coded here.
 
-dense_switch__type_range(chartype, _, 128) --> [].
-dense_switch__type_range(enumtype, Type, TypeRange) -->
+dense_switch__type_range(char_type, _, 128) --> [].
+dense_switch__type_range(enum_type, Type, TypeRange) -->
 	{ type_to_type_id(Type, TypeId0, _) ->
 		TypeId = TypeId0
 	;

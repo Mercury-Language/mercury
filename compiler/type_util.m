@@ -18,8 +18,7 @@
 %-----------------------------------------------------------------------------%
 
 	% Succeed iff type is an "atomic" type - one which can be
-	% unified using a simple_unify (register comparison) rather
-	% than a complicated_unify.
+	% unified using a simple_test rather than a complicated_unify.
 
 :- pred type_is_atomic(type, module_info).
 :- mode type_is_atomic(in, in) is semidet.
@@ -29,12 +28,14 @@
 :- pred classify_type(type, module_info, builtin_type).
 :- mode classify_type(in, in, out) is det.
 
-:- type builtin_type	--->	inttype
-			;	chartype
-			;	strtype
-			;	enumtype
-			;	predtype
-			;	usertype(type).
+:- type builtin_type	--->	int_type
+			;	char_type
+			;	str_type
+			/*	float_type */
+			;	pred_type
+			;	enum_type
+			;	polymorphic_type
+			;	user_type(type).
 
 	% Given a non-variable type, return it's type-id and argument types.
 
@@ -89,8 +90,8 @@ type_util__type_id_arity(_ModuleInfo, _Name - Arity, Arity).
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
-	BuiltinType \= predtype,
-	BuiltinType \= usertype(_).
+	BuiltinType \= pred_type,
+	BuiltinType \= user_type(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -98,27 +99,37 @@ type_is_atomic(Type, ModuleInfo) :-
 
 classify_type(VarType, ModuleInfo, Type) :-
 	(
+		VarType = term__variable(_)
+	->
+		Type = polymorphic_type
+	;
 		VarType = term__functor(term__atom("character"), [], _)
 	->
-		Type = chartype
+		Type = char_type
 	;
 		VarType = term__functor(term__atom("int"), [], _)
 	->
-		Type = inttype
+		Type = int_type
 	;
+/********
+		VarType = term__functor(term__atom("float"), [], _)
+	->
+		Type = float_type
+	;
+********/
 		VarType = term__functor(term__atom("string"), [], _)
 	->
-		Type = strtype
+		Type = str_type
 	;
 		VarType = term__functor(term__atom("pred"), _ArgTypes, _)
 	->
-		Type = predtype
+		Type = pred_type
 	;
 		type_is_enumeration(VarType, ModuleInfo)
 	->
-		Type = enumtype
+		Type = enum_type
 	;
-		Type = usertype(VarType)
+		Type = user_type(VarType)
 	).
 
 :- pred type_is_enumeration(type, module_info).

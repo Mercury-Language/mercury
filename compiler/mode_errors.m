@@ -37,6 +37,9 @@
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
+	;	mode_error_unify_pred
+			% an attempt was made to unify two higher-order
+			% pred variables.
 	;	mode_error_implied_mode(var, inst, inst)
 			% a call to a predicate with an overly
 			% instantiated variable would use an implied
@@ -109,6 +112,8 @@ report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_unify_pred, ModeInfo) -->
+	report_mode_error_unify_pred(ModeInfo).
 report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_bind_var(Var, InstA, InstB), ModeInfo) -->
@@ -376,6 +381,18 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 	;
 		[]
 	).
+
+:- pred report_mode_error_unify_pred(mode_info, io__state, io__state).
+:- mode report_mode_error_unify_pred(mode_info_ui, di, uo) is det.
+
+report_mode_error_unify_pred(ModeInfo) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: attempt at higher-order unification.\n").
+	% { mode_info_get_varset(ModeInfo, VarSet) },
+	% mercury_output_var(VarA, VarSet),
+	% mercury_output_var(VarB, VarSet),
 
 %-----------------------------------------------------------------------------%
 

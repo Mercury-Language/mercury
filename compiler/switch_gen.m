@@ -63,10 +63,7 @@
 	--->	atomic_switch
 	;	string_switch
 	;	tag_switch
-	;	pred_switch.
-			% Switches on higher-order preds would require
-			% higher-order unification, so they always cause
-			% runtime errors.
+	;	other_switch.
 
 %---------------------------------------------------------------------------%
 
@@ -144,12 +141,13 @@ switch_gen__determine_category(CaseVar, SwitchCategory) -->
 :- pred switch_gen__type_cat_to_switch_cat(builtin_type, switch_category).
 :- mode switch_gen__type_cat_to_switch_cat(in, out) is det.
 
-switch_gen__type_cat_to_switch_cat(enumtype, atomic_switch).
-switch_gen__type_cat_to_switch_cat(inttype,  atomic_switch).
-switch_gen__type_cat_to_switch_cat(chartype, atomic_switch).
-switch_gen__type_cat_to_switch_cat(strtype,  string_switch).
-switch_gen__type_cat_to_switch_cat(predtype, pred_switch).
-switch_gen__type_cat_to_switch_cat(usertype(_), tag_switch).
+switch_gen__type_cat_to_switch_cat(enum_type, atomic_switch).
+switch_gen__type_cat_to_switch_cat(int_type,  atomic_switch).
+switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
+switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
+switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
+switch_gen__type_cat_to_switch_cat(user_type(_), tag_switch).
+switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 %---------------------------------------------------------------------------%
 

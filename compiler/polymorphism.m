@@ -268,10 +268,18 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 
 			% We handle (in, in) unifications specially - they
 			% are always mode zero
+			{ UniMode = (XInitial - YInitial -> _Final) },
 			(
-				{ UniMode = (XInitial - YInitial -> _Final) },
 				{ inst_is_ground(ModuleInfo, XInitial) },
 				{ inst_is_ground(ModuleInfo, YInitial) }
+			->
+				{ ProcId = 0 }
+			;
+				{ XInitial = not_reached }
+			->
+				{ ProcId = 0 }
+			;
+				{ YInitial = not_reached }
 			->
 				{ ProcId = 0 }
 			;
@@ -528,21 +536,23 @@ polymorphism__make_vars([Type|Types], ModuleInfo, UnifyProcMap,
 :- pred polymorphism__get_unify_proc(builtin_type, module_info, cons_id).
 :- mode polymorphism__get_unify_proc(in, in, out) is det.
 
-polymorphism__get_unify_proc(inttype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(int_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
-polymorphism__get_unify_proc(chartype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(char_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
-polymorphism__get_unify_proc(enumtype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(enum_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_int", ModuleInfo, ConsId).
-polymorphism__get_unify_proc(strtype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(str_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_string", ModuleInfo, ConsId).
 /*
-polymorphism__get_unify_proc(floattype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(float_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_float", ModuleInfo, ConsId).
 */
-polymorphism__get_unify_proc(predtype, ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(pred_type, ModuleInfo, ConsId) :-
 	polymorphism__get_proc("builtin_unify_pred", ModuleInfo, ConsId).
-polymorphism__get_unify_proc(usertype(Type), ModuleInfo, ConsId) :-
+polymorphism__get_unify_proc(polymorphic_type, _ModuleInfo, _ConsId) :-
+	error("polymorphism__get_unify_proc: polymorphic type").
+polymorphism__get_unify_proc(user_type(Type), ModuleInfo, ConsId) :-
 	module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap),
 	( type_to_type_id(Type, TypeId, _TypeArgs) ->
 		map__lookup(UnifyPredMap, TypeId, UnifyPredId),

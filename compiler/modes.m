@@ -731,7 +731,12 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	;
 		{ Goals = Goals2 }
 	),
-	modecheck_conj_list_2(Goals1, Goals2).
+	mode_info_dcg_get_instmap(InstMap),
+	( { InstMap = unreachable } ->
+		{ Goals2  = [] }
+	;
+		modecheck_conj_list_2(Goals1, Goals2)
+	).
 
 :- pred dcg_set_state(T, T, T).
 :- mode dcg_set_state(in, in, out) is det.
@@ -1197,13 +1202,13 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 
 handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		Var, Goals, ModeInfo0, ModeInfo) :-
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	(
 		% If the initial inst of the variable matches
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst0, InitialInst, ModuleInfo)
+		inst_matches_final(VarInst0, InitialInst, ModuleInfo0)
 	->
 		Var = Var0,
 		Goals = [] - [],
@@ -1213,7 +1218,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		% We do not yet handle implied modes for partially
 		% instantiated vars, since that would require
 		% doing a deep copy, and we don't know how to do that yet.
-		( inst_is_bound(ModuleInfo, InitialInst) ->
+		( inst_is_bound(ModuleInfo0, InitialInst) ->
 			% This is the case we can't handle
 			Var = Var0,
 			Goals = [] - [],
@@ -1234,14 +1239,15 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			map__lookup(VarTypes0, Var0, VarType),
 			map__set(VarTypes0, Var, VarType, VarTypes),
 			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
-			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo),
+			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
 			% Construct the code to do the unification
 			ModeVar0 = (VarInst0 -> VarInst),
 			ModeVar = (FinalInst -> VarInst),
 			categorize_unify_var_var(ModeVar0, ModeVar,
 				live, dead, Var0, Var, Det,
-				VarTypes, ModuleInfo, Unification),
+				VarTypes, ModeInfo2,
+				Unification, ModeInfo),
 			mode_info_get_mode_context(ModeInfo, ModeContext),
 			mode_context_to_unify_context(ModeContext,
 				UnifyContext),
@@ -1538,14 +1544,13 @@ modecheck_unification(term__variable(X), term__variable(Y),
 		Det = det
 	),
 	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-	modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo),
+	modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo3),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Modes = ModeX - ModeY,
-	mode_info_get_var_types(ModeInfo, VarTypes),
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_var_types(ModeInfo3, VarTypes),
 	categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y,
-			Det, VarTypes, ModuleInfo, Unification).
+			Det, VarTypes, ModeInfo3, Unification, ModeInfo).
 
 modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 			term__variable(X), term__functor(Name, Args, Context),
@@ -1600,16 +1605,15 @@ modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 	;
 		error("get_mode_of_args failed")
 	),
-	mode_info_get_module_info(ModeInfo1, ModuleInfo),
 	mode_info_get_var_types(ModeInfo1, VarTypes),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
-			VarTypes, ModuleInfo, Unification0),
+			VarTypes, ModeInfo1, Unification0, ModeInfo2),
 	split_complicated_subunifies(Unification0, Args0, ArgVars0,
 			Unification, Args, ArgVars,
-			ExtraGoals, ModeInfo1, ModeInfo2),
-	modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo3),
-	( bind_args(Inst, ArgVars, ModeInfo3, ModeInfo4) ->
-		ModeInfo = ModeInfo4
+			ExtraGoals, ModeInfo2, ModeInfo3),
+	modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
+	( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
+		ModeInfo = ModeInfo5
 	;
 		error("bind_args failed")
 	).
@@ -1685,7 +1689,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		map__lookup(VarTypes0, Var0, VarType),
 		map__set(VarTypes0, Var, VarType, VarTypes),
 		mode_info_set_varset(VarSet, ModeInfo1, ModeInfo2),
-		mode_info_set_var_types(VarTypes, ModeInfo2, ModeInfo),
+		mode_info_set_var_types(VarTypes, ModeInfo2, ModeInfo3),
 
 		% change the main unification to use `Var' instead of Var0
 		UniMode = (InitialInstX - free -> InitialInstX - InitialInstX),
@@ -1711,7 +1715,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 *********/
 		categorize_unify_var_var(ModeVar0, ModeVar,
 			live, dead, Var0, Var, Det,
-			VarTypes, ModuleInfo, Unification),
+			VarTypes, ModeInfo3, Unification, ModeInfo),
 		mode_info_get_mode_context(ModeInfo, ModeContext),
 		mode_context_to_unify_context(ModeContext,
 			UnifyContext),
@@ -2258,23 +2262,27 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo0,
 %-----------------------------------------------------------------------------%
 
 :- pred categorize_unify_var_var(mode, mode, is_live, is_live, var, var,
-			determinism, map(var, type), module_info, unification).
-:- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in, out)
-	is det.
+			determinism, map(var, type), mode_info,
+			unification, mode_info).
+:- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, mode_info_di,
+				out, mode_info_uo) is det.
 
 categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
-		ModuleInfo, Unification) :-
+		ModeInfo0, Unification, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	(
-		mode_is_output(ModuleInfo, ModeX)
+		mode_is_output(ModuleInfo0, ModeX)
 	->
-		Unification = assign(X, Y)
+		Unification = assign(X, Y),
+		ModeInfo = ModeInfo0
 	;
-		mode_is_output(ModuleInfo, ModeY)
+		mode_is_output(ModuleInfo0, ModeY)
 	->
-		Unification = assign(Y, X)
+		Unification = assign(Y, X),
+		ModeInfo = ModeInfo0
 	;
-		mode_is_unused(ModuleInfo, ModeX),
-		mode_is_unused(ModuleInfo, ModeY)
+		mode_is_unused(ModuleInfo0, ModeX),
+		mode_is_unused(ModuleInfo0, ModeY)
 	->
 		% For free-free unifications, we pretend that they
 		% are an assignment to the dead variable.
@@ -2286,19 +2294,45 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 			Unification = assign(Y, X)
 		;
 			error("categorize_unify_var_var: free-free unify!")
-		)
+		),
+		ModeInfo = ModeInfo0
 	;
 		map__lookup(VarTypes, X, Type),
-		type_is_atomic(Type, ModuleInfo)
-	->
-		Unification = simple_test(X, Y)
-	;
-		mode_get_insts(ModuleInfo, ModeX, IX, FX),
-		mode_get_insts(ModuleInfo, ModeY, IY, FY),
-		map__init(Follow),
-		determinism_to_category(Det, Determinism),
-		Unification = complicated_unify((IX - IY) -> (FX - FY),
-				Determinism, Follow)
+		(
+			type_is_atomic(Type, ModuleInfo0)
+		->
+			Unification = simple_test(X, Y),
+			ModeInfo = ModeInfo0
+		;
+			mode_get_insts(ModuleInfo0, ModeX, IX, FX),
+			mode_get_insts(ModuleInfo0, ModeY, IY, FY),
+			map__init(Follow),
+			determinism_to_category(Det, Determinism),
+			UniMode = ((IX - IY) -> (FX - FY)),
+			Unification = complicated_unify(UniMode, Determinism,
+				Follow),
+			(
+				Type = term__functor(term__atom("pred"), _, _)
+			->
+				set__init(WaitingVars),
+				mode_info_error(WaitingVars,
+					mode_error_unify_pred,
+					ModeInfo0, ModeInfo)
+			;
+				type_to_type_id(Type, TypeId, _)
+			->
+				module_info_get_unify_requests(ModuleInfo0,
+					UnifyRequests0),
+				unify_proc__request_unify(TypeId - UniMode, 
+					UnifyRequests0, UnifyRequests),
+				module_info_set_unify_requests(ModuleInfo0,
+					UnifyRequests, ModuleInfo),
+				mode_info_set_module_info(ModeInfo0, ModuleInfo,
+					ModeInfo)
+			;
+				ModeInfo = ModeInfo0
+			)
+		)
 	).
 
 % categorize_unify_var_functor works out which category a unification
@@ -2307,15 +2341,26 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
-			list(var), map(var, type), module_info, unification).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, out) is det.
+			list(var), map(var, type), mode_info,
+			unification, mode_info).
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, mode_info_di,
+			out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
-		ModuleInfo, Unification) :-
+		ModeInfo0, Unification, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	list__length(ArgVars, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
 						ModuleInfo, ArgModes),
+	map__lookup(VarTypes, X, TypeX),
+	( TypeX = term__functor(term__atom("pred"), _, _) ->
+		set__init(WaitingVars),
+		mode_info_error(WaitingVars, mode_error_unify_pred,
+			ModeInfo0, ModeInfo)
+	;
+		ModeInfo = ModeInfo0
+	),
 	(
 		mode_is_output(ModuleInfo, ModeX)
 	->
@@ -2341,7 +2386,6 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 		;
 			% If the type has only one constructor, then the
 			% unification must be deterministic
-			map__lookup(VarTypes, X, TypeX),
 			type_constructors(TypeX, ModuleInfo, Constructors),
 			Constructors = [_]
 		->

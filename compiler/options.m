@@ -162,7 +162,7 @@ option_defaults_2(output_option, [
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
-	polymorphism		-	bool(yes),
+	polymorphism		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
