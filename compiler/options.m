@@ -90,6 +90,7 @@
 		;	warn_smart_recompilation
 		;	warn_undefined_options_variables
 		;	warn_non_tail_recursion
+		;	warn_target_code
 		;	warn_up_to_date
 	% Verbosity options
 		;	verbose
@@ -129,6 +130,8 @@
 		;	compile_to_shared_lib
 		;	aditi_only
 		;	output_grade_string
+		;	output_link_command
+		;	output_shared_lib_link_command
 	% Auxiliary output options
 		;	smart_recompilation
 
@@ -511,16 +514,22 @@
 		;	quoted_cflag
 		;	c_include_directory
 		;	c_optimize
+		;	ansi_c
 		;	inline_alloc
 
 			% auto-configured C compilation options.
+		;	cflags_for_warnings
+		;	cflags_for_optimization
+		;	cflags_for_ansi
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	cflags_for_threads
+		;	cflags_for_debug
 		;	cflags_for_pic
 		;	c_flag_to_name_object_file
 		;	object_file_extension
 		;	pic_object_file_extension
+		;	link_with_pic_object_file_extension
 
 			% Java
 		;	java_compiler
@@ -555,6 +564,7 @@
 		;	ld_libflags
 		;	quoted_ld_libflag
 		;	link_library_directories
+		;	runtime_link_library_directories
 		;	link_libraries
 		;	link_objects
 		;	mercury_library_directories
@@ -565,15 +575,45 @@
 		;	init_file_directories
 		;	init_files
 		;	trace_init_files
+		;	linkage
+		;	mercury_linkage
+		;	strip
+		;	demangle
+		;	main
+		;	allow_undefined
+		;	use_readline
+		;	runtime_flags
+		;	extra_initialization_functions
 
 			% auto-configured options.
 		;	shared_library_extension
 		;	library_extension
 		;	executable_file_extension
+		;	link_executable_command
+		;	link_shared_lib_command
 		;	create_archive_command
 		;	create_archive_command_output_flag
 		;	create_archive_command_flags
 		;	ranlib_command
+		;	mkinit_command
+		;	demangle_command
+		;	trace_libs
+		;	thread_libs
+		;	shared_libs
+		;	math_lib
+		;	readline_libs
+		;	linker_thread_flags
+		;	shlib_linker_thread_flags
+		;	linker_static_flags
+		;	linker_strip_flag
+		;	linker_debug_flags
+		;	shlib_linker_debug_flags
+		;	linker_rpath_flag
+		;	linker_rpath_separator
+		;	shlib_linker_rpath_flag
+		;	shlib_linker_rpath_separator
+		;	linker_allow_undefined_flag
+		;	linker_error_undefined_flag
 
 	% Build system options
 		;	make
@@ -586,6 +626,7 @@
 		;	install_command
 		;	libgrades
 		;	options_files
+		;	config_file
 		;	options_search_directories
 		;	use_subdirs
 		;	use_grade_subdirs
@@ -667,6 +708,7 @@ option_defaults_2(warning_option, [
 	warn_smart_recompilation -	bool(yes),
 	warn_undefined_options_variables - bool(yes),
 	warn_non_tail_recursion -	bool(no),
+	warn_target_code	-	bool(yes),
 	warn_up_to_date -		bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
@@ -710,7 +752,10 @@ option_defaults_2(output_option, [
 	compile_only		-	bool(no),
 	compile_to_shared_lib	-	bool(no),
 	aditi_only		-	bool(no),
-	output_grade_string	-	bool(no)
+	output_grade_string	-	bool(no),
+	output_link_command	-	bool(no),
+	output_shared_lib_link_command - bool(no)
+
 ]).
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
@@ -1049,20 +1094,26 @@ option_defaults_2(target_code_compilation_option, [
 					% determined at configuration time
 	c_include_directory	-	accumulating([]),
 	c_optimize		-	bool(no),
+	ansi_c			-	bool(yes),
 	inline_alloc		-	bool(no),
 	cflags			-	accumulating([]),
 	quoted_cflag		-	string_special,
 
 					% the `mmc' script will override the
-					% following seven defaults with values
+					% following defaults with values
 					% determined at configuration time
+	cflags_for_warnings	-	string(""),
+	cflags_for_optimization	-	string("-O"),
+	cflags_for_ansi		-	string(""),
 	cflags_for_regs		-	string(""),
 	cflags_for_gotos	-	string(""),
 	cflags_for_threads	-	string(""),
+	cflags_for_debug	-	string("-g"),
 	cflags_for_pic		-	string(""),
 	c_flag_to_name_object_file -	string("-o "),
 	object_file_extension	-	string(".o"),
 	pic_object_file_extension -	string(".o"),
+	link_with_pic_object_file_extension -	string(".o"),
 
 % Java
 	java_compiler		-	string("javac"),
@@ -1103,6 +1154,7 @@ option_defaults_2(link_option, [
 	ld_libflags		-	accumulating([]),
 	quoted_ld_libflag	-	string_special,
 	link_library_directories -	accumulating([]),
+	runtime_link_library_directories - accumulating([]),
 	link_libraries		-	accumulating([]),
 	link_objects		-	accumulating([]),
 	mercury_library_directory_special -
@@ -1116,19 +1168,48 @@ option_defaults_2(link_option, [
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
 	trace_init_files -		accumulating([]),
+	linkage -			string("default"),
+	mercury_linkage -		string("default"),
+	demangle -			bool(yes),
+	strip -				bool(yes),
+	main -				bool(yes),
+	allow_undefined -		bool(no),
+	use_readline -			bool(yes),
+	runtime_flags -			accumulating([]),
+	extra_initialization_functions - bool(no),
 
 					% the `mmc' script will override the
-					% following seven defaults with a value
+					% following defaults with a value
 					% determined at configuration time
 	shared_library_extension -	string(".so"),
 	library_extension -		string(".a"),
 	executable_file_extension -	string(""),
+	link_executable_command -	string("gcc"),
+	link_shared_lib_command -	string("gcc -shared"),
 	create_archive_command -	string("ar"),
 	create_archive_command_output_flag -
 					string(""),
 	create_archive_command_flags -	accumulating([]), % "cr"
-	ranlib_command -		string("")
-
+	ranlib_command -		string(""),
+	mkinit_command -		string("mkinit"),
+	demangle_command -		string("mdemangle"),
+	trace_libs -			string(""),
+	thread_libs -			string(""),
+	shared_libs -			string(""),
+	math_lib -			string(""),
+	readline_libs -			string(""),
+	linker_debug_flags -		string("-g"),
+	shlib_linker_debug_flags -	string("-g"),
+	linker_thread_flags -		string(""),
+	shlib_linker_thread_flags -	string(""),
+	linker_static_flags -		string("-static"),
+	linker_strip_flag -		string("-s"),
+	linker_rpath_flag -		string("-Wl,-rpath"),
+	linker_rpath_separator -	string(" -Wl,-rpath"),
+	shlib_linker_rpath_flag -	string("-Wl,-rpath"),
+	shlib_linker_rpath_separator -	string(" -Wl,-rpath"),
+	linker_allow_undefined_flag -	string(""),
+	linker_error_undefined_flag -	string("-Wl,-no-undefined")
 ]).
 option_defaults_2(build_system_option, [
 		% Build System Options
@@ -1142,6 +1223,9 @@ option_defaults_2(build_system_option, [
 	install_command		-	string("cp"),
 	libgrades		-	accumulating([]),
 	options_files		-	accumulating(["Mercury.options"]),
+
+					% yes("") means unset.
+	config_file		-	maybe_string(yes("")),
 	options_search_directories -	accumulating(["."]),
 	use_subdirs		-	bool(no),
 	use_grade_subdirs	-	bool(no),
@@ -1185,6 +1269,7 @@ short_option('O', 			opt_level).
 short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
 short_option('r',			rebuild).
+short_option('R',			runtime_link_library_directories).
 short_option('s', 			grade).
 short_option('S', 			statistics).
 short_option('T', 			debug_types).
@@ -1218,6 +1303,7 @@ long_option("warn-smart-recompilation",	warn_smart_recompilation).
 long_option("warn-undefined-options-variables",
 					warn_undefined_options_variables).
 long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
+long_option("warn-target-code",		warn_target_code).
 long_option("warn-up-to-date",		warn_up_to_date).
 
 % verbosity options
@@ -1279,6 +1365,9 @@ long_option("compile-only",		compile_only).
 long_option("compile-to-shared-lib",	compile_to_shared_lib).
 long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
+long_option("output-link-command",	output_link_command).
+long_option("output-shared-lib-link-command",
+					output_shared_lib_link_command).
 
 % aux output options
 long_option("smart-recompilation",	smart_recompilation).
@@ -1659,15 +1748,22 @@ long_option("c-optimize",		c_optimize).
 	% just synonyms.
 long_option("c-debug",			target_debug).
 long_option("c-include-directory",	c_include_directory).
+long_option("ansi-c",			ansi_c).
 long_option("cflags",			cflags).
 long_option("cflag",			quoted_cflag).
+long_option("cflags-for-warnings",	cflags_for_warnings).
+long_option("cflags-for-optimization",	cflags_for_optimization).
+long_option("cflags-for-ansi",		cflags_for_ansi).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("cflags-for-threads",	cflags_for_threads).
+long_option("cflags-for-debug",		cflags_for_debug).
 long_option("cflags-for-pic",		cflags_for_pic).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",	object_file_extension).
 long_option("pic-object-file-extension", pic_object_file_extension).
+long_option("link-with-pic-object-file-extension",
+					link_with_pic_object_file_extension).
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
@@ -1706,6 +1802,7 @@ long_option("ld-flag",			quoted_ld_flag).
 long_option("ld-libflags",		ld_libflags).
 long_option("ld-libflag",		quoted_ld_libflag).
 long_option("library-directory",	link_library_directories).
+long_option("runtime-library-directory", runtime_link_library_directories).
 long_option("library",			link_libraries).
 long_option("link-object",		link_objects).
 long_option("mercury-library",		mercury_library_special).
@@ -1718,6 +1815,17 @@ long_option("mercury-stdlib-dir",	mercury_standard_library_directory).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
 long_option("trace-init-file",		trace_init_files).
+long_option("linkage",			linkage).
+long_option("mercury-linkage",		mercury_linkage).
+long_option("demangle",			demangle).
+long_option("strip",			strip).
+long_option("main",			main).
+long_option("allow-undefined",		allow_undefined).
+long_option("use-readline",		use_readline).
+long_option("runtime-flags",		runtime_flags).
+long_option("extra-initialization-functions",
+					extra_initialization_functions).
+long_option("extra-inits",		extra_initialization_functions).
 long_option("shared-library-extension",	shared_library_extension).
 long_option("library-extension",	library_extension).
 long_option("executable-file-extension", executable_file_extension).
@@ -1725,7 +1833,28 @@ long_option("create-archive-command",	create_archive_command).
 long_option("create-archive-command-output-flag",
 					create_archive_command_output_flag).
 long_option("create-archive-command-flags", create_archive_command_flags).
+long_option("link-executable-command",	link_executable_command).
+long_option("link-shared-lib-command",	link_shared_lib_command).
 long_option("ranlib-command",		ranlib_command).
+long_option("mkinit-command",		mkinit_command).
+long_option("demangle-command",		demangle_command).
+long_option("trace-libs",		trace_libs).
+long_option("thread-libs",		thread_libs).
+long_option("shared-libs",		shared_libs).
+long_option("math-lib",			math_lib).
+long_option("readline-libs",		readline_libs).
+long_option("linker-debug-flags",  	linker_debug_flags).
+long_option("shlib-linker-debug-flags",	shlib_linker_debug_flags).
+long_option("linker-thread-flags",	linker_thread_flags).
+long_option("shlib-linker-thread-flags", shlib_linker_thread_flags).
+long_option("linker-static-flags",	linker_static_flags).
+long_option("linker-strip-flag",	linker_strip_flag).
+long_option("linker-rpath-flag",	linker_rpath_flag).
+long_option("linker-rpath-separator",	linker_rpath_separator).
+long_option("shlib-linker-rpath-flag",	shlib_linker_rpath_flag).
+long_option("shlib-linker-rpath-separator", shlib_linker_rpath_separator).
+long_option("linker-allow-undefined-flag", linker_allow_undefined_flag).
+long_option("linker-error-undefined-flag", linker_error_undefined_flag).
 
 % build system options
 long_option("make",			make).
@@ -1739,6 +1868,7 @@ long_option("install-command",		install_command).
 long_option("library-grade",		libgrades).
 long_option("libgrade",			libgrades).
 long_option("options-file",		options_files).
+long_option("config-file",		config_file).
 long_option("options-search-directory", options_search_directories).
 long_option("use-subdirs",		use_subdirs).	
 long_option("use-grade-subdirs",	use_grade_subdirs).	
@@ -1849,6 +1979,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_wrong_module_name	-	bool(Enable),
 			warn_smart_recompilation -	bool(Enable),
 			warn_undefined_options_variables - bool(Enable),
+			warn_target_code	-	bool(Enable),
 			warn_up_to_date -		bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
@@ -2292,6 +2423,11 @@ options_help_warning -->
 		"--no-warn-up-to-date",
 		"\tDon't warn if targets specified on the command line",
 		"\twith `--make' are already up to date."
+		/* NYI
+		"--no-warn-target-code",
+		"\tDisable warnings from the compiler used to process the",
+		"\ttarget code (e.g. gcc)."
+		*/
 	]).
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
@@ -2418,6 +2554,14 @@ options_help_output -->
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
 		"\toutput."
+		/* NYI	
+		"--output-link-command",
+		"\tPrint the command used to link executables to the",
+		"\tstandard output.",
+		"--output-shared-lib-link-command",
+		"\tPrint the command used to link shared libraries to the",
+		"\tstandard output."
+		*/
 	]).
 
 :- pred options_help_aux_output(io__state::di, io__state::uo) is det.
@@ -3473,10 +3617,17 @@ options_help_target_code_compilation -->
 		"--no-c-optimize",
 		"\tDon't enable the C compiler's optimizations.",
 
+		/* NYI
+		"--no-ansi-c",
+		"\tDon't specify to the C compiler that the ANSI dialect",
+		"\tof C should be used.  Use the full contents of system",
+		"\theaders, rather than the ANSI subset.",
+		*/
+
 		"--c-debug",
 		"\tEnable debugging of the generated C code.",
-		"\t(This has the same effect as",
-		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
+		"\t(This has the same effect as `--cflags ""-g""'",
+		"\tand disables stripping of the executable.)",
 
 		"--c-include-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
@@ -3498,9 +3649,11 @@ options_help_target_code_compilation -->
 		"\tto be quoted when passed to the shell.",
 
 		% The --cflags-for-regs, --cflags-for-gotos,
-		% --cflags-for-threads, --cflags-for-pic options,
-		% --c-flag-to-name-object-file, --object-file-extension,
-		% and --pic-object-file-extension
+		% --cflags-for-threads, --cflags-for-pic,
+		% --cflags-for-warnings, --cflags-for-ansi,
+		% --cflags-for-optimization, --c-flag-to-name-object-file,
+		% --object-file-extension, --pic-object-file-extension
+		% and --link-with-pic-object-file-extension
 		% options are are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 
@@ -3573,6 +3726,13 @@ options_help_link -->
 		"-L <directory>, --library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for libraries.",
+
+		/* NYI
+		"-R <directory>, --runtime-library-directory <directory>",
+		"\tAppend <directory> to the list of directories in which",
+		"\tto search for shared libraries at runtime.",
+		*/
+
 		"-l <library>, --library <library>",
 		"\tLink with the specified library.",
 		"--link-object <object-file>",
@@ -3591,6 +3751,16 @@ options_help_link -->
 		"\tDon't use the Mercury standard library.",
 		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
+
+		/* NYI
+		"--linkage {shared|static}",
+		"\tSpecify whether to use shared or static linking for",
+		"\texecutables.",
+		"--mercury-linkage {shared|static}",
+		"\tSpecify whether to use shared or static linking when",
+		"\tlinking with Mercury libraries."
+		*/
+
 		"--init-file-directory <directory>",
 		"\tAppend <directory> to the list of directories to",
 		"\tbe searched for `.init' files by c2init.",
@@ -3600,13 +3770,42 @@ options_help_link -->
 		"--trace-init-file <init-file>",
 		"\tAppend <init-file> to the list of `.init' files to",
 		"\tbe passed to c2init when tracing is enabled."
-		
+
+		/* NYI 
+		"--no-strip",
+		"\tDon't strip executables.",
+		"--no-demangle",
+		"\tDon't pipe link errors through the Mercury demangler.",
+		"--no-main",
+		"\tDon't generate a C main() function.  The user's code must",
+		"\tprovide a main() function.",
+		"--allow-undefined",
+		"\tAllow undefined symbols in shared libraries.",
+		"--no-use-readline",
+		"\tDisable use of the readline library in the debugger.",
+		"--runtime-flags <flags>",
+		"\tSpecify flags to pass to the Mercury runtime.",
+		"--extra-initialization-functions, --extra-inits",
+		"\tSearch `.c' files for extra initialization functions.",
+		"\t(This may be necessary if the C files contain",
+		"\thand-coded C code with `INIT' comments, rather than",
+		"\tcontaining only C code that was automatically generated",
+		"\tby the Mercury compiler.)"
+		*/
+
 		% The --shared-library-extension,
 		% --library-extension, --executable-file-extension
 		% --create-archive-command, --create-archive-command-flags
-		% --create-archive-command-output-flag and --ranlib-command
-		% options are are reserved for use by the `mmc' script;
-		% they are deliberately not documented.
+		% --create-archive-command-output-flag, --ranlib-command
+		% --link-executable-command, --link-shared-lib-command,
+		% --mkinit-command, --demangle-command, --trace-libs,
+		% --thread-libs, --shared-libs, --math-lib, --readline-libs,
+		% linker-thread-flags, --shlib-linker-thread-flags,
+		% --linker-static-flags, --linker-strip-flag,
+		% --linker-rpath-flag, --linker-rpath-separator,
+		% --shlib-linker-rpath-flag, --shlib-linker-rpath-separator,
+		% --linker-allow-undefined-flag and
+		% --linker-error-undefined-flag,
 		% options are are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 	]).
@@ -3662,6 +3861,15 @@ options_help_build_system -->
 		"--options-search-directory <dir>",
 		"\tAdd <dir> to the list of directories to be searched for",
 		"\toptions files.",
+
+		/* NYI
+		"--config-file <file>",
+		"\tRead the Mercury compiler's configuration information",
+		"\tfrom <file>.  If the `--config-file' option is not set,",
+		"\ta default configuration will be used, unless",
+		"\t`--no-mercury-stdlib-dir' is passed to mmc.",
+		*/
+
 		"-I <dir>, --search-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
 		"\timported modules.",
