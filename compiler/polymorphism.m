@@ -1459,16 +1459,11 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, OrigArgTypes0,
 	% insert type_info/typeclass_info types for all the inserted 
 	% type_info/typeclass_info vars into the arg-types list
 	%
-	mercury_private_builtin_module(PrivateBuiltin),
-	MakeType = lambda([TypeVar::in, TypeInfoType::out] is det,
-		construct_type(qualified(PrivateBuiltin, "type_info") - 1,
-			[term__variable(TypeVar)], TypeInfoType)),
-	list__map(MakeType, PredTypeVars, TypeInfoTypes),
-	MakeTypeClass = lambda([_::in, TypeClassInfoType::out] is det,
-		construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0,
-			[], TypeClassInfoType)),
-	list__map(MakeTypeClass, UnivCs, UnivTypes),
-	list__map(MakeTypeClass, ExistCs, ExistTypes),
+	term__var_list_to_term_list(PredTypeVars, PredTypeVarTypes),
+	list__map(polymorphism__build_type_info_type, PredTypeVarTypes,
+		TypeInfoTypes),
+	list__map(polymorphism__build_typeclass_info_type, UnivCs, UnivTypes),
+	list__map(polymorphism__build_typeclass_info_type, ExistCs, ExistTypes),
 	list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes1),
 	list__append(ExistTypes, OrigArgTypes1, OrigArgTypes2),
 	list__append(UnivTypes, OrigArgTypes2, OrigArgTypes).
@@ -2465,9 +2460,7 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		% a type_info, we need to adjust its type.
 		% Since type_ctor_info_const cons_ids are handled
 		% specially, this should not cause problems.
-		mercury_private_builtin_module(MercuryBuiltin),
-		construct_type(qualified(MercuryBuiltin, "type_info") - 1,
-			[Type], NewBaseVarType),
+		polymorphism__build_type_info_type(Type, NewBaseVarType),
 		map__det_update(VarTypes0, BaseVar, NewBaseVarType, VarTypes),
 
 		VarSet = VarSet0,
@@ -2824,8 +2817,8 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	construct_type(unqualified("int") - 0, [], IntType),
 
 	varset__new_var(DummyTVarSet1, DummyTVar, DummyTVarSet),
-	construct_type(qualified(PrivateBuiltin, "type_info") - 1,
-		[term__variable(DummyTVar)], TypeInfoType),
+	polymorphism__build_type_info_type(term__variable(DummyTVar),
+		TypeInfoType),
 	get_pred_id_and_proc_id(ExtractTypeInfo, predicate, DummyTVarSet, 
 		[TypeClassInfoType, IntType, TypeInfoType],
 		ModuleInfo, PredId, ProcId),
