@@ -15,7 +15,7 @@
 % (`bt_array' is supposed to stand for either "binary tree array"
 % or "backtrackable array".)
 
-% Implementation obscurity: This implementation is biassed towards larger
+% Implementation obscurity: This implementation is biased towards larger
 % indices.  The access/update time for a bt_array of size N with index I
 % is actually O(log(N-I)).  The reason for this is so that the resize
 % operations can be optimised for a (possibly very) common case, and to
@@ -33,15 +33,15 @@
 
 %-----------------------------------------------------------------------------%
 
-	% bt_array__init(Low, Array) creates a bt_array of size zero
-	% starting at index Low.
+	% bt_array__make_empty_array(Low, Array) is true iff Array is a
+	% bt_array of size zero starting at index Low.
 :- pred bt_array__make_empty_array(int, bt_array(T)).
 :- mode bt_array__make_empty_array(in, out) is det.
 
 :- func bt_array__make_empty_array(int) = bt_array(T).
 
-	% bt_array__init creates a bt_array with bounds from Low to High,
-	% with each element initialized to Init.
+	% bt_array__init(Low, High, Init, Array) is true iff Array is a
+	% bt_array with bounds from Low to High whose elements each equal Init.
 :- pred bt_array__init(int, int, T, bt_array(T)).
 :- mode bt_array__init(in, in, in, out) is det. % want a bt_array_skeleton?
 
