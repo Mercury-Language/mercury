@@ -22,7 +22,7 @@ libgc$(PROF).so: submake
 #	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(MMAKEFLAGS) libgc$(PROF).a libgc$(PROF).$(SO)
+	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) libgc$(PROF).a libgc$(PROF).$(SO)
 
 .PHONY: force
 force:
