@@ -123,12 +123,12 @@
 :- pred io__write_anything(_T, io__state, io__state).
 :- mode io__write_anything(in, di, uo) is det.
 %		Writes it's argument to the current output stream.
-%		The argument may be of any type.
+%		The argument may be of any type.  This is a hack!
 
 :- pred io__write_anything(io__output_stream, _T, io__state, io__state).
 :- mode io__write_anything(in, in, di, uo) is det.
 %		Writes it's argument to the specified stream.
-%		The argument may be of any type.
+%		The argument may be of any type.  This is a hack!
 
 :- pred io__flush_output(io__state, io__state).
 :- mode io__flush_output(di, uo) is det.
@@ -219,7 +219,7 @@
 %		Attempts to open a file for output.
 %		Result is either 'ok(Stream)' or 'error'.
 
-:- pred io__close_output(io__input_stream, io__state, io__state).
+:- pred io__close_output(io__output_stream, io__state, io__state).
 :- mode io__close_output(in, di, uo) is det.
 %	io__close_output(File, IO0, IO1).
 %		Closes an open output stream.
@@ -383,6 +383,47 @@ io__write_anything(Term) -->
 io__flush_output -->
 	io__output_stream(Stream),
 	io__flush_output(Stream).
+
+%-----------------------------------------------------------------------------%
+
+	% This is backwards.  `see' and `seen' should be implemented
+	% in terms of `open' and `close', not vice versa.  Oh well.
+	% I guess it doesn't matter much.
+
+io__open_input(FileName, Result) -->
+	io__input_stream(OldStream),
+	io__see(FileName, Result0),
+	( { Result0 = ok } ->
+		io__input_stream(NewStream),
+		{ Result = ok(NewStream) }
+	;
+		{ Result = error }
+	),
+	io__set_input_stream(OldStream, _).
+
+io__close_input(Stream) -->
+	io__set_input_stream(Stream, OldStream),
+	io__seen,
+	io__set_input_stream(OldStream, _).
+
+io__open_output(FileName, Result) -->
+	io__output_stream(OldStream),
+	io__tell(FileName, Result0),
+	( { Result0 = ok } ->
+		io__output_stream(NewStream),
+		{ Result = ok(NewStream) }
+	;
+		{ Result = error }
+	),
+	io__set_output_stream(OldStream, _).
+
+io__close_output(Stream) -->
+	io__set_output_stream(Stream, OldStream),
+	io__told,
+	io__set_output_stream(OldStream, _).
+
+%-----------------------------------------------------------------------------%
+
 
 io__input_stream_name(Stream, Name) -->
 	io__stream_name(Stream, Name).
