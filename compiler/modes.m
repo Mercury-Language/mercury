@@ -18,6 +18,8 @@
 
 % XXX should handle reordering of conjunctions.
 
+% XXX we should check that the final insts are correct.
+
 /*************************************
 To mode-check a clause:
 	1.  Initialize the insts of the head variables.
@@ -834,6 +836,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
 		modeinfo_incr_errors(ModeInfo1, ModeInfo)
 	;
+		% XXX bind var
 		map__set(InstMap0, Var, Inst, InstMap),
 		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
 	).
@@ -1026,6 +1029,7 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 	instmap_lookup_var(InstMap0, Y, InstY),
 	( abstractly_unify_inst(InstX, InstY, ModuleInfo, Inst) ->
 		modeinfo_get_instmap(ModeInfo0, InstMap0),
+		% XXX bind var
 		map__set(InstMap0, X, Inst, InstMap1),
 		map__set(InstMap1, Y, Inst, InstMap),
 		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
@@ -1034,10 +1038,14 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 		report_mode_error_unify_var_var(ModeInfo0, X, Y, InstX, InstY,
 					IOState0, IOState),
 		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
-		modeinfo_incr_errors(ModeInfo1, ModeInfo),
+		modeinfo_incr_errors(ModeInfo1, ModeInfo2),
 			% If we get an error, set the inst to ground
 			% to suppress follow-on errors
-		Inst = ground
+		Inst = ground,
+		modeinfo_get_instmap(ModeInfo0, InstMap0),
+		map__set(InstMap0, X, Inst, InstMap1),
+		map__set(InstMap1, Y, Inst, InstMap),
+		modeinfo_set_instmap(InstMap, ModeInfo2, ModeInfo)
 	),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
@@ -1188,11 +1196,11 @@ abstractly_unify_inst(InstA, InstB, ModuleInfo, Inst) :-
 :- mode abstractly_unify_inst_2(in, in, in, out) is semidet.
 
 abstractly_unify_inst_2(free,		free,		_, _) :- fail.
-abstractly_unify_inst_2(free,		bound(List),	_, bound(List)).
+abstractly_unify_inst_2(free,		bound(List),	_, bound(List)). % XXX
 abstractly_unify_inst_2(free,		ground,		_, ground).
 abstractly_unify_inst_2(free,		abstract_inst(_,_), _, _) :- fail.
 	
-abstractly_unify_inst_2(bound(List),	free,		_, bound(List)).
+abstractly_unify_inst_2(bound(List),	free,		_, bound(List)). % XXX
 abstractly_unify_inst_2(bound(ListX),	bound(ListY),	M, bound(List)) :-
 	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
 abstractly_unify_inst_2(bound(_),	ground,		_, ground).
@@ -1640,8 +1648,47 @@ write_inst_id(F - N) -->
 					% i.e. variables which cannot be
 					% further instantiated inside a
 					% negated context
+			delay_info,	% info about delayed goals
 			int		% The number of mode errors found
 		).
+
+	% Reordering of conjunctions is done
+	% by simulating coroutining at compile time.
+	% This is handled by the following data structure.
+
+:- type delay_info
+	--->	delay_info(
+			depth_num,	% CurrentDepth:
+					% the current conjunction depth,
+					% i.e. the number of nested conjunctions
+					% which are currently active
+			list(map(seq_num, delayed_goal)),
+					% DelayedGoalStack:
+					% for each nested conjunction,
+					% we store a collection of delayed goals
+					% associated with that conjunction,
+					% indexed by sequence number
+			map(var, assoc_list(depth_num, list(seq_num))),
+					% WaitingGoals:
+					% for each variable, we keep track of
+					% all the goals which are waiting on
+					% that variable
+			map(depth_num, list(seq_num)),
+					% PendingGoals:
+					% when a variable gets bound, we
+					% mark all the goals which are waiting
+					% on that variable as ready to be
+					% reawakened at the next opportunity
+			map(depth_num, seq_num)
+					% NextSeqNums:
+					% For each nested conjunction, the
+					% next available sequence number.
+		).
+
+:- type depth_num == int.
+:- type seq_num == int.
+:- type delayed_goal == hlds__goal.	% XXX problem
+% :- type delayed_goal ---> delayed_goal(hlds__goal, ...).
 
 	% The normal inst of a modeinfo struct: ground, with
 	% the io_state and the struct itself unique, but with
@@ -1651,7 +1698,7 @@ write_inst_id(F - N) -->
 					modeinfo(
 						ground_unique, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground
+						ground, ground, ground, ground
 					)
 				).
 
@@ -1666,7 +1713,7 @@ write_inst_id(F - N) -->
 					modeinfo(
 						dead, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground
+						ground, ground, ground, ground
 					)
 				).
 
@@ -1686,9 +1733,10 @@ modeinfo_init(IOState, ModuleInfo, PredId, ProcId, Context, InstMapping0,
 		ModeInfo) :-
 	mode_context_init(ModeContext),
 	LockedVars = [],
+	delay_info_init(DelayInfo),
 	ModeInfo = modeinfo(
 		IOState, ModuleInfo, PredId, ProcId, Context, ModeContext,
-		InstMapping0, LockedVars, 0
+		InstMapping0, LockedVars, DelayInfo, 0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1705,29 +1753,29 @@ mode_context_init(uninitialized).
 :- pred modeinfo_get_io_state(modeinfo, io__state).
 :- mode modeinfo_get_io_state(modeinfo_get_io_state, uo) is det.
 
-modeinfo_get_io_state(modeinfo(IOState,_,_,_,_,_,_,_,_), IOState).
+modeinfo_get_io_state(modeinfo(IOState,_,_,_,_,_,_,_,_,_), IOState).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_set_io_state(modeinfo, io__state, modeinfo).
 :- mode modeinfo_set_io_state(modeinfo_set_io_state, ui, modeinfo_uo) is det.
 
-modeinfo_set_io_state( modeinfo(_,B,C,D,E,F,G,H,I), IOState,
-			modeinfo(IOState,B,C,D,E,F,G,H,I)).
+modeinfo_set_io_state( modeinfo(_,B,C,D,E,F,G,H,I,J), IOState,
+			modeinfo(IOState,B,C,D,E,F,G,H,I,J)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_moduleinfo(modeinfo, module_info).
 :- mode modeinfo_get_moduleinfo(in, out) is det.
 
-modeinfo_get_moduleinfo(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), ModuleInfo).
+modeinfo_get_moduleinfo(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_), ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_preds(modeinfo, pred_table).
 :- mode modeinfo_get_preds(in, out) is det.
 
-modeinfo_get_preds(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Preds) :-
+modeinfo_get_preds(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_), Preds) :-
 	moduleinfo_preds(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
@@ -1735,7 +1783,7 @@ modeinfo_get_preds(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Preds) :-
 :- pred modeinfo_get_modes(modeinfo, mode_table).
 :- mode modeinfo_get_modes(in, out) is det.
 
-modeinfo_get_modes(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Modes) :-
+modeinfo_get_modes(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_), Modes) :-
 	moduleinfo_modes(ModuleInfo, Modes).
 
 %-----------------------------------------------------------------------------%
@@ -1743,7 +1791,7 @@ modeinfo_get_modes(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Modes) :-
 :- pred modeinfo_get_insts(modeinfo, inst_table).
 :- mode modeinfo_get_insts(in, out) is det.
 
-modeinfo_get_insts(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Insts) :-
+modeinfo_get_insts(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_), Insts) :-
 	moduleinfo_insts(ModuleInfo, Insts).
 
 %-----------------------------------------------------------------------------%
@@ -1751,36 +1799,37 @@ modeinfo_get_insts(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Insts) :-
 :- pred modeinfo_get_predid(modeinfo, pred_id).
 :- mode modeinfo_get_predid(in, out) is det.
 
-modeinfo_get_predid(modeinfo(_,_,PredId,_,_,_,_,_,_), PredId).
+modeinfo_get_predid(modeinfo(_,_,PredId,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_procid(modeinfo, proc_id).
 :- mode modeinfo_get_procid(in, out) is det.
 
-modeinfo_get_procid(modeinfo(_,_,_,ProcId,_,_,_,_,_), ProcId).
+modeinfo_get_procid(modeinfo(_,_,_,ProcId,_,_,_,_,_,_), ProcId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_context(modeinfo, term__context).
 :- mode modeinfo_get_context(in, out).
 
-modeinfo_get_context(modeinfo(_,_,_,_,Context,_,_,_,_), Context).
+modeinfo_get_context(modeinfo(_,_,_,_,Context,_,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_mode_context(modeinfo, mode_context).
 :- mode modeinfo_get_mode_context(in, out) is det.
 
-modeinfo_get_mode_context(modeinfo(_,_,_,_,_,ModeContext,_,_,_), ModeContext).
+modeinfo_get_mode_context(modeinfo(_,_,_,_,_,ModeContext,_,_,_,_),
+				ModeContext).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_set_mode_context(mode_context, modeinfo, modeinfo).
 :- mode modeinfo_set_mode_context(in, modeinfo_di, modeinfo_uo) is det.
 
-modeinfo_set_mode_context(ModeContext, modeinfo(A,B,C,D,E,_,G,H,I),
-				modeinfo(A,B,C,D,E,ModeContext,G,H,I)).
+modeinfo_set_mode_context(ModeContext, modeinfo(A,B,C,D,E,_,G,H,I,J),
+				modeinfo(A,B,C,D,E,ModeContext,G,H,I,J)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1797,7 +1846,7 @@ modeinfo_set_call_context(call(PredId)) -->
 :- pred modeinfo_get_instmap(modeinfo, instmap).
 :- mode modeinfo_get_instmap(in, out) is det.
 
-modeinfo_get_instmap(modeinfo(_,_,_,_,_,_,InstMap,_,_), InstMap).
+modeinfo_get_instmap(modeinfo(_,_,_,_,_,_,InstMap,_,_,_), InstMap).
 
 	% modeinfo_dcg_get_instmap/3 is the same as modeinfo_get_instmap/2
 	% except that it's easier to use inside a DCG.
@@ -1825,38 +1874,38 @@ modeinfo_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 :- pred modeinfo_set_instmap(instmap, modeinfo, modeinfo).
 :- mode modeinfo_set_instmap(in, modeinfo_di, modeinfo_uo) is det.
 
-modeinfo_set_instmap( InstMap, modeinfo(A,B,C,D,E,F,_,H,I),
-			modeinfo(A,B,C,D,E,F,InstMap,H,I)).
+modeinfo_set_instmap( InstMap, modeinfo(A,B,C,D,E,F,_,H,I,J),
+			modeinfo(A,B,C,D,E,F,InstMap,H,I,J)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_locked_vars(modeinfo, list(set(var))).
 :- mode modeinfo_get_locked_vars(modeinfo_ui, out) is det.
 
-modeinfo_get_locked_vars(modeinfo(_,_,_,_,_,_,_,LockedVars,_), LockedVars).
+modeinfo_get_locked_vars(modeinfo(_,_,_,_,_,_,_,LockedVars,_,_), LockedVars).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_set_locked_vars(modeinfo, list(set(var)), modeinfo).
 :- mode modeinfo_set_locked_vars(modeinfo_di, in, modeinfo_uo) is det.
 
-modeinfo_set_locked_vars( modeinfo(A,B,C,D,E,F,G,_,I), LockedVars,
-			modeinfo(A,B,C,D,E,F,G,LockedVars,I)).
+modeinfo_set_locked_vars( modeinfo(A,B,C,D,E,F,G,_,I,J), LockedVars,
+			modeinfo(A,B,C,D,E,F,G,LockedVars,I,J)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_get_num_errors(modeinfo, int).
 :- mode modeinfo_get_num_errors(modeinfo_ui, out) is det.
 
-modeinfo_get_num_errors(modeinfo(_,_,_,_,_,_,_,_,NumErrors), NumErrors).
+modeinfo_get_num_errors(modeinfo(_,_,_,_,_,_,_,_,_,NumErrors), NumErrors).
 
 %-----------------------------------------------------------------------------%
 
 :- pred modeinfo_incr_errors(modeinfo, modeinfo).
 :- mode modeinfo_incr_errors(modeinfo_di, modeinfo_uo) is det.
 
-modeinfo_incr_errors( modeinfo(A,B,C,D,E,F,G,H,NumErrors0),
-			modeinfo(A,B,C,D,E,F,G,H,NumErrors)) :-
+modeinfo_incr_errors( modeinfo(A,B,C,D,E,F,G,H,I,NumErrors0),
+			modeinfo(A,B,C,D,E,F,G,H,I,NumErrors)) :-
 	NumErrors is NumErrors0 + 1.
 
 %-----------------------------------------------------------------------------%
@@ -1926,6 +1975,76 @@ modeinfo_var_is_locked_2([Set | Sets], Var) :-
 	;
 		modeinfo_var_is_locked_2(Sets, Var)
 	).
+
+:- pred modeinfo_get_delay_info(modeinfo, delay_info).
+:- mode modeinfo_get_delay_info(in, out) is det.
+
+modeinfo_get_delay_info(modeinfo(_,_,_,_,_,_,_,_,DelayInfo,_), DelayInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% modeinfo_wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff
+	% DelayInfo0 specifies that there is at least one goal which is
+	% pending, Goal is the pending goal which should be reawakened first,
+	% and DelayInfo is the new delay_info, updated to reflect the fact
+	% that Goal has been woken up and is hence no longer pending.
+
+:- pred delay_info_wakeup_goal(delay_info, hlds__goal, delay_info).
+:- mode delay_info_wakeup_goal(in, out, out) is semidet.
+
+delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
+				PendingGoalsTable0, NextSeqNums),
+	map__search(PendingGoalsTable0, CurrentDepth, PendingGoals0),
+	PendingGoals0 = [SeqNum | PendingGoals],
+	map__set(PendingGoalsTable0, CurrentDepth, PendingGoals,
+			PendingGoalsTable),
+	DelayedGoalStack0 = [DelayedGoals0|StackRest],
+	map__lookup(DelayedGoals0, SeqNum, Goal),
+	map__delete(DelayedGoals0, SeqNum, DelayedGoals),
+	DelayedGoalStack = [DelayedGoals | StackRest],
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
+				PendingGoalsTable, NextSeqNums).
+
+:- pred delay_info_bind_var(delay_info, var, delay_info).
+:- mode delay_info_bind_var(in, in, out) is det.
+
+delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
+	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable0, PendingGoals0, NextSeqNums),
+	map__search(WaitingGoalsTable0, Var, GoalsWaitingOnVar),
+	add_pending_goals(GoalsWaitingOnVar, PendingGoals0, PendingGoals),
+	map__delete(WaitingGoalsTable0, Var, WaitingGoalsTable),
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
+	
+:- pred add_pending_goals(assoc_list(depth_num, list(seq_num)),
+			map(depth_num, list(seq_num)),
+			map(depth_num, list(seq_num))).
+:- mode add_pending_goals(in, in, out) is det.
+
+add_pending_goals([], PendingGoals, PendingGoals).
+add_pending_goals([Depth - SeqNums | Rest], PendingGoals0, PendingGoals) :-
+	( map__search(PendingGoals0, Depth, PendingSeqNums0) ->
+		append(PendingSeqNums0, SeqNums, PendingSeqNums)
+	;
+		PendingSeqNums = SeqNums
+	),
+	map__set(PendingGoals0, Depth, PendingSeqNums, PendingGoals1),
+	add_pending_goals(Rest, PendingGoals1, PendingGoals).
+
+:- pred delay_info_init(delay_info).
+:- mode delay_info_init(out) is det.
+
+delay_info_init(DelayInfo) :-
+	CurrentDepth = 0,
+	DelayedGoalStack = [],
+	map__init(WaitingGoalsTable),
+	map__init(PendingGoals),
+	map__init(NextSeqNums),
+	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+				WaitingGoalsTable, PendingGoals, NextSeqNums).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
