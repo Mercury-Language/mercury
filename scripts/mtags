@@ -437,10 +437,17 @@ while ($#ARGV >= 0)
 		    # delete the leading `;'
 		    $body =~ s/[^;]*;[ \t]*//;
 
-		    if ($body =~ /^[ \t]*$/) {
+		    # skip blank lines and comments
+		    while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
 			$_ = <srcfile> || last;
 			chop;
 			$body = $_;
+
+		        # delete leading whitespace
+		        $body =~ s/^[ \t]*//;
+
+		        # delete the leading `;', if any
+		        $body =~ s/[^;%]*;[ \t]*//;
 		    }
 
 		    $name = $body;
@@ -474,7 +481,7 @@ while ($#ARGV >= 0)
 		   }
 		}
 
-		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+		last if $_ =~ /^[^%]*\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
 		$_ = <srcfile> || last;
 		chop;
 		$body = $_;
