@@ -1086,12 +1086,11 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 			NextSlot, VectorTail),
 		Vector = [yes(Rval) | VectorTail]
 	; TVarNum > CurSlot ->
-		stack_layout__construct_type_param_locn_vector(TVarLocns,
-			NextSlot, VectorTail),
+		stack_layout__construct_type_param_locn_vector(
+			[TVar - Locns | TVarLocns], NextSlot, VectorTail),
 			% This slot will never be referred to.
 		Vector = [yes(const(int_const(0))) | VectorTail]
 	;
-
 		error("unsorted tvars in construct_type_param_locn_vector")
 	).
 
