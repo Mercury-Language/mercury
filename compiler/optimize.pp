@@ -214,7 +214,7 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		{ Instructions2 = Instructions1 }
 	),
 	( { FrameOpt = yes ; ValueNumber = yes } ->
-		optimize__repeated(Instructions2, no, Instructions3, RedMod),
+		optimize__repeated(Instructions2, no, Instructions3, RepMod),
 		globals__io_lookup_bool_option(optimize_peep, Peephole),
 		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
 			{ peephole__main(Instructions3, Instructions, _) }

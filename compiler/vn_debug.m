@@ -45,6 +45,9 @@
 :- pred vn__order_order_msg(list(vn_node), io__state, io__state).
 :- mode vn__order_order_msg(in, di, uo) is det.
 
+:- pred vn__order_equals_msg(string, list(vn_node), io__state, io__state).
+:- mode vn__order_equals_msg(in, in, di, uo) is det.
+
 :- pred vn__cost_header_msg(string, io__state, io__state).
 :- mode vn__cost_header_msg(in, di, uo) is det.
 
@@ -87,7 +90,7 @@ vn__fragment_msg(Instr) -->
 	vn__flush_msg_flag(Flag),
 	(
 		{ Flag = yes },
-		io__write_string("in vn__optimize_fragment starting at\n"),
+		io__write_string("\nin vn__optimize_fragment starting at\n"),
 		output_instruction(Instr),
 		io__write_string("\n")
 	;
@@ -213,6 +216,18 @@ vn__order_order_msg(Order) -->
 		{ Flag = yes },
 		{ opt_debug__dump_longnodelist(Order, O_str) },
 		io__write_string("\nOrder:\n"),
+		io__write_string(O_str),
+		io__write_string("\n")
+	;
+		{ Flag = no }
+	).
+
+vn__order_equals_msg(Msg, Order) -->
+	vn__order_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		{ opt_debug__dump_nodelist(Order, O_str) },
+		io__write_string(Msg),
 		io__write_string(O_str),
 		io__write_string("\n")
 	;

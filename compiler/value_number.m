@@ -142,14 +142,21 @@ vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 	{ vn__separate_tag_test(Instrs0, Instrs1) },
 	{ vn__build_block_info(Instrs1, Livemap, ParEntries, LabelNo0,
 		VnTables0, Liveset, SeenIncr, Tuple0) },
-	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
+	{ Tuple0 = tuple(_Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
 
 	{ vn__build_uses(Liveset, Ctrlmap, VnTables0, VnTables1) },
 
-	vn__order(Liveset, VnTables1, SeenIncr, Ctrl, Ctrlmap, Flushmap,
-		Maybe),
+	vn__order(Liveset, VnTables1, SeenIncr, Ctrlmap, Flushmap, Maybe),
 	(
 		{ Maybe = yes(VnTables2 - Order) },
+		(
+			{ list__reverse(Order, RevOrder) },
+			{ RevOrder = [node_ctrl(_) | _] }
+		->
+			{ true }
+		;
+			vn__failure_msg(Uinstr0, "last node is not ctrl")
+		),
 
 		{ vn__max_real_regs(MaxRealRegs) },
 		{ vn__max_real_temps(MaxRealTemps) },

@@ -250,6 +250,16 @@
 :- pred opt_util__lval_access_rvals(lval, list(rval)).
 :- mode opt_util__lval_access_rvals(in, out) is det.
 
+	% See whether an rval is free of references to a given lval.
+
+:- pred opt_util__rvals_free_of_lval(list(rval), lval).
+:- mode opt_util__rvals_free_of_lval(in, in) is semidet.
+
+	% See whether a list of rvals is free of references to a given lval.
+
+:- pred opt_util__rval_free_of_lval(rval, lval).
+:- mode opt_util__rval_free_of_lval(in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1125,5 +1135,28 @@ opt_util__lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
 opt_util__lval_access_rvals(temp(_), []).
 opt_util__lval_access_rvals(lvar(_), _) :-
 	error("lvar detected in opt_util__lval_access_rvals").
+
+%-----------------------------------------------------------------------------%
+
+opt_util__rvals_free_of_lval([], _).
+opt_util__rvals_free_of_lval([Rval | Rvals], Forbidden) :-
+	opt_util__rval_free_of_lval(Rval, Forbidden),
+	opt_util__rvals_free_of_lval(Rvals, Forbidden).
+
+opt_util__rval_free_of_lval(lval(Lval), Forbidden) :-
+	Lval \= Forbidden,
+	opt_util__lval_access_rvals(Lval, Rvals),
+	opt_util__rvals_free_of_lval(Rvals, Forbidden).
+opt_util__rval_free_of_lval(var(_), _) :-
+	error("found var in opt_util__rval_free_of_lval").
+opt_util__rval_free_of_lval(create(_, _, _), _).
+opt_util__rval_free_of_lval(mkword(_, Rval), Forbidden) :-
+	opt_util__rval_free_of_lval(Rval, Forbidden).
+opt_util__rval_free_of_lval(const(_), _).
+opt_util__rval_free_of_lval(unop(_, Rval), Forbidden) :-
+	opt_util__rval_free_of_lval(Rval, Forbidden).
+opt_util__rval_free_of_lval(binop(_, Rval1, Rval2), Forbidden) :-
+	opt_util__rval_free_of_lval(Rval1, Forbidden),
+	opt_util__rval_free_of_lval(Rval2, Forbidden).
 
 %-----------------------------------------------------------------------------%

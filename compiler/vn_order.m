@@ -17,9 +17,9 @@
 :- import_module vn_type, vn_table.
 :- import_module llds, list.
 
-:- pred vn__order(vnlvalset, vn_tables, bool, int, ctrlmap, flushmap,
+:- pred vn__order(vnlvalset, vn_tables, bool, ctrlmap, flushmap,
 	maybe(pair(vn_tables, list(vn_node))), io__state, io__state).
-:- mode vn__order(in, in, in, in, in, in, out, di, uo) is det.
+:- mode vn__order(in, in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,7 +30,7 @@
 
 %-----------------------------------------------------------------------------%
 
-vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
+vn__order(Liveset, VnTables0, SeenIncr, Ctrlmap, Flushmap, Maybe) -->
 	vn__order_start_msg(Ctrlmap, Flushmap, VnTables0),
 	(
 		{ vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables0,
@@ -58,8 +58,7 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 		{ vn__pref_order(Succmap3, PrefOrder) },
 		{ atsort(Succmap3, Predmap3, MustSuccmap2, MustPredmap2,
 			PrefOrder, Blocks) },
-		{ LastCtrl is Ctrl - 1 },
-		{ vn__blocks_to_order(Blocks, LastCtrl, VnTables2, Order0) },
+		vn__blocks_to_order(Blocks, VnTables2, Order0),
 		{ vn__reorder_noops(Order0, VnTables2, Order) },
 
 		vn__order_order_msg(Order),
@@ -672,10 +671,9 @@ vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
 %-----------------------------------------------------------------------------%
 
 	% Submodule for converting the output of the approximate topological
-	% sort into the proposed order of evaluation. We must make sure that
-	% the condition, if any, comes last.
+	% sort into the proposed order of evaluation.
 
-	% We also try to put registers before stack variables, since this
+	% We try to put registers before stack variables, since this
 	% minimizes memory traffic. For example, the sequence
 	%	r1 = field(...); stackvar(1) = r1
 	% is cheaper than the sequence
@@ -683,40 +681,37 @@ vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
 	% and the C compiler may not be able to turn the latter into
 	% the former.
 
-:- pred vn__blocks_to_order(list(list(vn_node)), int, vn_tables,
-	list(vn_node)).
-:- mode vn__blocks_to_order(in, in, in, out) is det.
+:- pred vn__blocks_to_order(list(list(vn_node)), vn_tables, list(vn_node),
+	io__state, io__state).
+:- mode vn__blocks_to_order(di, in, uo, di, uo) is det.
 
-vn__blocks_to_order(BlockOrder, N, VnTables, Order) :-
+vn__blocks_to_order(BlockOrder, VnTables, Order) -->
 	vn__order_equal_lists(BlockOrder, VnTables, GoodBlockOrder),
-	list__condense(GoodBlockOrder, Order0),
-	vn__find_last_ctrl(Order0, N, Ctrl, Order1),
-	( Ctrl = [_] ->
-		true
-	; Ctrl = [] ->
-		error("last ctrl node does not exist")
-	;
-		error("last ctrl node exists in multiples")
-	),
-	list__append(Order1, Ctrl, Order).
+	{ list__condense(GoodBlockOrder, Order) }.
 
 :- pred vn__order_equal_lists(list(list(vn_node)), vn_tables,
-	list(list(vn_node))).
-:- mode vn__order_equal_lists(di, in, uo) is det.
+	list(list(vn_node)), io__state, io__state).
+:- mode vn__order_equal_lists(di, in, uo, di, uo) is det.
 
-vn__order_equal_lists([], _, []).
-vn__order_equal_lists([Block | Blocks], VnTables, [GoodBlock | GoodBlocks]) :-
+vn__order_equal_lists([], _, []) --> [].
+vn__order_equal_lists([Block | Blocks], VnTables, [GoodBlock | GoodBlocks]) -->
 	vn__order_equals(Block, VnTables, GoodBlock),
 	vn__order_equal_lists(Blocks, VnTables, GoodBlocks).
 
-:- pred vn__order_equals(list(vn_node), vn_tables, list(vn_node)).
-:- mode vn__order_equals(di, in, uo) is det.
+:- pred vn__order_equals(list(vn_node), vn_tables, list(vn_node),
+	io__state, io__state).
+:- mode vn__order_equals(di, in, uo, di, uo) is det.
 
-vn__order_equals(Order0, VnTables, Order) :-
-	vn__find_ctrls(Order0, Ctrls, Order1),
-	vn__find_noops(Order1, VnTables, Noops, Order2),
-	vn__find_regs(Order2, Regs, Order3),
-	list__condense([Ctrls, Noops, Regs, Order3], Order).
+vn__order_equals(Order0, VnTables, Order) -->
+	vn__order_equals_msg("\nold order: ", Order0),
+	{ vn__find_ctrls(Order0, Ctrls, Order1) },
+	{ vn__find_noops(Order1, VnTables, Noops, Order2) },
+	{ vn__find_regs(Order2, RegsSet, Order3) },
+	{ set__to_sorted_list(RegsSet, RegsList) },
+	{ vn__find_stackvars(Order3, StackSet, Order4) },
+	{ set__to_sorted_list(StackSet, StackList) },
+	{ list__condense([Ctrls, Noops, RegsList, StackList, Order4], Order) },
+	vn__order_equals_msg("new order: ", Order).
 
 :- pred vn__find_ctrls(list(vn_node), list(vn_node), list(vn_node)).
 :- mode vn__find_ctrls(di, out, uo) is det.
@@ -750,31 +745,36 @@ vn__find_noops([Node0 | Nodes0], VnTables, Noops, Nodes) :-
 		Nodes = [Node0 | Nodes1]
 	).
 
-:- pred vn__find_regs(list(vn_node), list(vn_node), list(vn_node)).
+:- pred vn__find_regs(list(vn_node), set(vn_node), list(vn_node)).
 :- mode vn__find_regs(di, out, uo) is det.
 
-vn__find_regs([], [], []).
+vn__find_regs([], Regs, []) :-
+	set__init(Regs).
 vn__find_regs([Node0 | Nodes0], Regs, Nodes) :-
 	vn__find_regs(Nodes0, Regs1, Nodes1),
 	( Node0 = node_lval(vn_reg(_)) ->
-		Regs = [Node0 | Regs1],
+		set__insert(Regs1, Node0, Regs),
 		Nodes = Nodes1
 	;
 		Regs = Regs1,
 		Nodes = [Node0 | Nodes1]
 	).
 
-:- pred vn__find_last_ctrl(list(vn_node), int, list(vn_node), list(vn_node)).
-:- mode vn__find_last_ctrl(di, in, out, uo) is det.
+:- pred vn__find_stackvars(list(vn_node), set(vn_node), list(vn_node)).
+:- mode vn__find_stackvars(di, out, uo) is det.
 
-vn__find_last_ctrl([], _, [], []).
-vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
-	vn__find_last_ctrl(Nodes0, N, Ctrl1, Nodes1),
-	( Node0 = node_ctrl(N) ->
-		Ctrl = [Node0 | Ctrl1],
+vn__find_stackvars([], Stackvars, []) :-
+	set__init(Stackvars).
+vn__find_stackvars([Node0 | Nodes0], Stackvars, Nodes) :-
+	vn__find_stackvars(Nodes0, Stackvars1, Nodes1),
+	(
+		Node0 = node_lval(Vnlval),
+		( Vnlval = vn_stackvar(_) ; Vnlval = vn_framevar(_) )
+	->
+		set__insert(Stackvars1, Node0, Stackvars),
 		Nodes = Nodes1
 	;
-		Ctrl = Ctrl1,
+		Stackvars = Stackvars1,
 		Nodes = [Node0 | Nodes1]
 	).
 
