@@ -370,6 +370,8 @@ fi
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
+# remove DEFAULT_GRADE from LIBGRADES
+LIBGRADES=` echo " $LIBGRADES " | sed "s/ $DEFAULT_GRADE / /" `
 echo "using LIBGRADES=$LIBGRADES as the set of library grades to install"
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
