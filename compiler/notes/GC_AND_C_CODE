@@ -29,7 +29,7 @@ becomes
 In this way, garbage collection always knows where the succip is stored 
 in handwritten code. 
 
-The gabage collection code must check that the current execution is not 
+The garbage collection code must check that the current execution is not 
 still in a handwritten predicate - if it is, it must re-schedule (essentially
 just the same as before).
 
