@@ -355,6 +355,14 @@ code_gen__generate_det_goal(Goal - GoalInfo, Instr) -->
 	(
 		{ InstMap \= unreachable }
 	->
+		{ goal_info_get_internal_code_model(GoalInfo, CodeModel) },
+		(
+			{ CodeModel \= model_det }
+		->
+			{error("code_gen__generate_det_goal: not a det goal.")}
+		;
+			{ true }
+		),
 			% generate goal
 		code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0),
 			% Make live any variables which subsequent goals
