@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -164,14 +164,14 @@
 
 :- func bt_array__fetch_items(bt_array(T), int, int) = list(T).
 
-	% bt_array__bsearch takes a bt_array, an element to be found
+	% bt_array__bsearch takes a bt_array, an element to be matched
 	% and a comparison predicate and returns the position of
-	% the element in the bt_array.  Assumes the bt_array is in sorted
-	% order.  Fails if the element is not present.  If the
-	% element to be found appears multiple times, the index of
-	% the first occurrence is returned.
-:- pred bt_array__bsearch(bt_array(T), T, pred(T, T, comparison_result), int).
-:- mode bt_array__bsearch(in, in, pred(in, in, out) is det, out) is semidet.
+	% the first occurrence in the bt_array of an element which is
+	% equivalent to the given one in the ordering provided.
+	% Assumes the bt_array is sorted according to this ordering.
+	% Fails if the element is not present.
+:- pred bt_array__bsearch(bt_array(T), T, comparison_pred(T), int).
+:- mode bt_array__bsearch(in, in, in(comparison_pred), out) is semidet.
 
 	% Field selection for arrays.
 	% Array ^ elem(Index) = bt_array__lookup(Array, Index).

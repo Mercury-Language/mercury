@@ -293,20 +293,19 @@
 :- mode array__fetch_items(array_ui, in, in) = out is det.
 :- mode array__fetch_items(in, in, in) = out is det.
 
-	% array__bsearch takes an array, an element to be found
+	% array__bsearch takes an array, an element to be matched
 	% and a comparison predicate and returns the position of
-	% the element in the array.  Assumes the array is in sorted
-	% order.  Fails if the element is not present.  If the
-	% element to be found appears multiple times, the index of
-	% the first occurrence is returned.
-:- pred array__bsearch(array(T), T, pred(T, T, comparison_result),
-			maybe(int)).
-:- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
-:- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
+	% the first occurrence in the array of an element which is
+	% equivalent to the given one in the ordering provided.
+	% Assumes the array is sorted according to this ordering.
+	% Fails if the element is not present.
+:- pred array__bsearch(array(T), T, comparison_pred(T), maybe(int)).
+:- mode array__bsearch(array_ui, in, in(comparison_pred), out) is det.
+:- mode array__bsearch(in, in, in(comparison_pred), out) is det.
 
-:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
-:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
-:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
+:- func array__bsearch(array(T), T, comparison_func(T)) = maybe(int).
+:- mode array__bsearch(array_ui, in, in(comparison_func)) = out is det.
+:- mode array__bsearch(in, in, in(comparison_func)) = out is det.
 
 	% array__map(Closure, OldArray, NewArray) applys `Closure' to
 	% each of the elements of `OldArray' to create `NewArray'.

@@ -130,7 +130,7 @@
 
 	% list__remove_dups(L0, L) :
 	%	L is the result of deleting the second and subsequent
-	%	occurrences of every element that occurs twice in L.
+	%	occurrences of every element that occurs twice in L0.
 :- pred list__remove_dups(list(T), list(T)).
 :- mode list__remove_dups(in, out) is det.
 
@@ -230,20 +230,20 @@
 :- func list__delete_all(list(T), T) = list(T).
 
 	% list__delete_first(List0, Elem, List) is true iff Elem occurs in List0
-	% and List is List0 with the first occurence of Elem removed
+	% and List is List0 with the first occurrence of Elem removed.
 	%
 :- pred list__delete_first(list(T), T, list(T)).
 :- mode list__delete_first(in, in, out) is semidet.
 
 	% list__delete_all(List0, Elem, List) is true iff List is List0 with
-	% all occurences of Elem removed
+	% all occurrences of Elem removed.
 	%
 :- pred list__delete_all(list(T), T, list(T)).
 :- mode list__delete_all(di, in, uo) is det.
 :- mode list__delete_all(in, in, out) is det.
 
 	% list__delete_elems(List0, Elems, List) is true iff List is List0 with
-	% all occurences of all elements of Elems removed
+	% all occurrences of all elements of Elems removed.
 	%
 :- pred list__delete_elems(list(T), list(T), list(T)).
 :- mode list__delete_elems(in, in, out) is det.
@@ -251,20 +251,20 @@
 :- func list__delete_elems(list(T), list(T)) = list(T).
 
 	% list__replace(List0, D, R, List) is true iff List is List0
-	% with an occurence of D replaced with R.
+	% with an occurrence of D replaced with R.
 	%
 :- pred list__replace(list(T), T, T, list(T)).
 :- mode list__replace(in, in, in, in) is semidet.
 :- mode list__replace(in, in, in, out) is nondet.
 
 	% list__replace_first(List0, D, R, List) is true iff List is List0
-	% with the first occurence of D replaced with R.
+	% with the first occurrence of D replaced with R.
 	%
 :- pred list__replace_first(list(T), T, T, list(T)).
 :- mode list__replace_first(in, in, in, out) is semidet.
 
 	% list__replace_all(List0, D, R, List) is true iff List is List0
-	% with all occurences of D replaced with R.
+	% with all occurrences of D replaced with R.
 	%
 :- pred list__replace_all(list(T), T, T, list(T)).
 :- mode list__replace_all(in, in, in, out) is det.
@@ -290,7 +290,8 @@
 :- func list__replace_nth_det(list(T), int, T) = list(T).
 
 	% list__sort_and_remove_dups(List0, List):
-	%	List is List0 sorted with duplicates removed.
+	%	List is List0 sorted with the second and subsequent
+	%	occurrence of any duplicates removed.
 	%
 :- pred list__sort_and_remove_dups(list(T), list(T)).
 :- mode list__sort_and_remove_dups(in, out) is det.
@@ -636,41 +637,56 @@
 
 	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
 	% list containing the same elements as Unsorted, where Sorted is
-	% a sorted list, with respect to the ordering defined by the predicate
-	% term Compare.
-:- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
-:- mode list__sort(pred(in, in, out) is det, in, out) is det.
+	% sorted with respect to the ordering defined by the predicate
+	% term Compare, and the elements that are equivalent in this ordering
+	% appear in the same sequence in Sorted as they do in Unsorted
+	% (that is, the sort is stable).
+:- pred list__sort(comparison_pred(X), list(X), list(X)).
+:- mode list__sort(in(comparison_pred), in, out) is det.
 
-:- func list__sort(func(X, X) = comparison_result, list(X)) = list(X).
+:- func list__sort(comparison_func(X), list(X)) = list(X).
 
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
-	% Sorted is a list containing the same elements as Unsorted, but with
-	% any duplicates removed. Where Sorted is a sorted list, with respect
-	% to the ordering defined by the predicate term Compare.
-:- pred list__sort_and_remove_dups(pred(X, X, comparison_result), list(X),
+	% Sorted is a list containing the same elements as Unsorted, where
+	% Sorted is sorted with respect to the ordering defined by the
+	% predicate term Compare, except that if two elements in Unsorted
+	% are equivalent with respect to this ordering only the one which
+	% occurs first will be in Sorted.
+:- pred list__sort_and_remove_dups(comparison_pred(X), list(X), list(X)).
+:- mode list__sort_and_remove_dups(in(comparison_pred), in, out) is det.
+
+	% list__remove_adjacent_dups(P, L0, L) is true iff L is the result
+	% of replacing every sequence of elements in L0 which are equivalent
+	% with respect to the ordering, with the first occurrence in L0 of
+	% such an element.
+:- pred list__remove_adjacent_dups(comparison_pred(X), list(X), list(X)).
+:- mode list__remove_adjacent_dups(in(comparison_pred), in, out) is det.
+
+	% list__merge(Compare, As, Bs, Sorted) is true iff, assuming As and
+	% Bs are sorted with respect to the ordering defined by Compare,
+	% Sorted is a list containing the elements of As and Bs which is
+	% also sorted.  For elements which are equivalent in the ordering,
+	% if they come from the same list then they appear in the same
+	% sequence in Sorted as they do in that list, otherwise the elements
+	% from As appear before the elements from Bs.
+:- pred list__merge(comparison_pred(X), list(X), list(X), list(X)).
+:- mode list__merge(in(comparison_pred), in, in, out) is det.
+
+:- func list__merge(comparison_func(X), list(X), list(X)) = list(X).
+
+	% list__merge_and_remove_dups(P, As, Bs, Sorted) is true iff, assuming
+	% As and Bs are sorted with respect to the ordering defined by
+	% Compare and neither contains any duplicates, Sorted is a list
+	% containing the elements of As and Bs which is also sorted and
+	% contains no duplicates.  If an element from As is duplicated in
+	% Bs (that is, they are equivalent in the ordering), then the element
+	% from As is the one that appears in Sorted.
+:- pred list__merge_and_remove_dups(comparison_pred(X), list(X), list(X),
 	list(X)).
-:- mode list__sort_and_remove_dups(pred(in, in, out) is det, in, out) is det.
+:- mode list__merge_and_remove_dups(in(comparison_pred), in, in, out) is det.
 
-	% list__merge(Compare, As, Bs, Sorted) is true iff Sorted is a
-	% list containing the elements of As and Bs in the order implied
-	% by their sorted merge. The ordering of elements is defined by
-	% the higher order comparison predicate Compare.
-:- pred list__merge(pred(X, X, comparison_result), list(X), list(X), list(X)).
-:- mode list__merge(pred(in, in, out) is det, in, in, out) is det.
-
-:- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
-
-	% list__merge_and_remove_dups(P, As, Bs, Sorted) is true if and only if
-	% Sorted is a list containing the elements of As and Bs in the order
-	% implied by their sorted merge. The ordering of elements is defined by
-	% the higher order comparison predicate P.
-	% As and Bs must be sorted.
-:- pred list__merge_and_remove_dups(pred(X, X, comparison_result),
-	list(X), list(X), list(X)).
-:- mode list__merge_and_remove_dups(pred(in, in, out) is det,
-	in, in, out) is det.
-
-:- func list__merge_and_remove_dups(func(X, X) = comparison_result, list(X), list(X)) = list(X).
+:- func list__merge_and_remove_dups(comparison_func(X), list(X), list(X))
+	= list(X).
 
 %-----------------------------------------------------------------------------%
 
@@ -902,12 +918,13 @@ list__merge(A, B, C) :-
 	( A = [X | Xs] ->
 		( B = [Y | Ys] ->
 			C = [Z | Zs],
-			( compare(<, X, Y) ->
-				Z = X,
-				list__merge(Xs, B, Zs)
-			;
+			( compare(>, X, Y) ->
 				Z = Y,
 				list__merge(A, Ys, Zs)
+			;
+				% If compare((=), X, Y), take X first.
+				Z = X,
+				list__merge(Xs, B, Zs)
 			)
 		;
 			C = A
@@ -920,14 +937,18 @@ list__merge_and_remove_dups(A, B, C) :-
 	( A = [X | Xs] ->
 		( B = [Y | Ys] ->
 			compare(Res, X, Y),
-			( Res = (<) ->
+			(
+				Res = (<),
 				C = [X | Zs],
 				list__merge_and_remove_dups(Xs, B, Zs)
-			; Res = (>) ->
+			;
+				Res = (>),
 				C = [Y | Zs],
 				list__merge_and_remove_dups(A, Ys, Zs)
 			;
-				list__merge_and_remove_dups(Xs, B, C)
+				Res = (=),
+				C = [X | Zs],
+				list__merge_and_remove_dups(Xs, Ys, Zs)
 			)
 		;
 			C = A
@@ -1058,7 +1079,7 @@ list__remove_adjacent_dups([X | Xs], L) :-
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1 | Xs], X0, L) :-
 	(X0 = X1 ->
-		list__remove_adjacent_dups_2(Xs, X1, L)
+		list__remove_adjacent_dups_2(Xs, X0, L)
 	;
 		L = [X0 | L0],
 		list__remove_adjacent_dups_2(Xs, X1, L0)
@@ -1391,7 +1412,23 @@ list__takewhile(P, [X | Xs], Ins, Outs) :-
 
 list__sort_and_remove_dups(P, L0, L) :-
 	list__sort(P, L0, L1),
-	list__remove_adjacent_dups(L1, L).
+	list__remove_adjacent_dups(P, L1, L).
+
+list__remove_adjacent_dups(_, [], []).
+list__remove_adjacent_dups(P, [X | Xs], L) :-
+	list__remove_adjacent_dups_2(P, Xs, X, L).
+
+:- pred list__remove_adjacent_dups_2(comparison_pred(T), list(T), T, list(T)).
+:- mode list__remove_adjacent_dups_2(in(comparison_pred), in, in, out) is det.
+
+list__remove_adjacent_dups_2(_, [], X, [X]).
+list__remove_adjacent_dups_2(P, [X1 | Xs], X0, L) :-
+	( P(X0, X1, (=)) ->
+		list__remove_adjacent_dups_2(P, Xs, X0, L)
+	;
+		L = [X0 | L0],
+		list__remove_adjacent_dups_2(P, Xs, X1, L0)
+	).
 
 list__sort(P, L0, L) :-
 	list__length(L0, N),
@@ -1408,9 +1445,8 @@ list__sort(P, L0, L) :-
 	).
 
 % list__hosort is actually det but the compiler can't confirm it
-:- pred list__hosort(pred(X, X, comparison_result), int, list(X),
-	list(X), list(X)).
-:- mode list__hosort(pred(in, in, out) is det, in, in, out, out) is semidet.
+:- pred list__hosort(comparison_pred(X), int, list(X), list(X), list(X)).
+:- mode list__hosort(in(comparison_pred), in, in, out, out) is semidet.
 
 	% list__hosort is a Mercury implementation of the mergesort
 	% described in The Craft of Prolog.
@@ -1452,19 +1488,14 @@ list__merge(_P, [], [], []).
 list__merge(_P, [], [Y | Ys], [Y | Ys]).
 list__merge(_P, [X | Xs], [], [X | Xs]).
 list__merge(P, [H1 | T1], [H2 | T2], L) :-
-	call(P, H1, H2, C),
 	(
-		C = (<),
-		L = [H1 | T],
-		list__merge(P, T1, [H2 | T2], T)
-	;
-		C = (=),
-		L = [H1, H2 | T],
-		list__merge(P, T1, T2, T)
-	;
-		C = (>),
+		P(H1, H2, (>))
+	->
 		L = [H2 | T],
 		list__merge(P, [H1 | T1], T2, T)
+	;
+		L = [H1 | T],
+		list__merge(P, T1, [H2 | T2], T)
 	).
 
 list__merge_and_remove_dups(_P, [], [], []).

@@ -191,6 +191,31 @@
 :- mode compare(uo, ui, in) is det.
 :- mode compare(uo, in, ui) is det.
 
+	% Values of types comparison_pred/1 and comparison_func/1 are used
+	% by predicates and functions which depend on an ordering on a given
+	% type, where this ordering is not necessarily the standard ordering.
+	% In addition to the type, mode and determinism constraints, a
+	% comparison predicate C is expected to obey two other laws.  For
+	% all X, Y and Z of the appropriate type, and for all
+	% comparison_results R:
+	%	1) C(X, Y, (>)) if and only if C(Y, X, (<))
+	%	2) C(X, Y, R) and C(Y, Z, R) implies C(X, Z, R).
+	% Comparison functions are expected to obey analogous laws.
+	%
+	% Note that binary relations <, > and = can be defined from a
+	% comparison predicate or function in an obvious way.  The following
+	% facts about these relations are entailed by the above constraints:
+	% = is an equivalence relation (not necessarily the usual equality),
+	% and the equivalence classes of this relation are totally ordered
+	% with respect to < and >.
+:- type comparison_pred(T) == pred(T, T, comparison_result).
+:- inst comparison_pred(I) == (pred(in(I), in(I), out) is det).
+:- inst comparison_pred == comparison_pred(ground).
+
+:- type comparison_func(T) == (func(T, T) = comparison_result).
+:- inst comparison_func(I) == (func(in(I), in(I)) = out is det).
+:- inst comparison_func == comparison_func(ground).
+
 % In addition, the following predicate-like constructs are builtin:
 %
 %	:- pred (T = T).

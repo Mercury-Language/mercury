@@ -117,6 +117,10 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* The assumptions that we make about user supplied comparison predicates and
+  functions have been relaxed to allow more general orderings.  The new
+  assumptions are documented in builtin.m.
+
 * The builtin predicates !/0 and !/2 from Mercury's Prolog heritage have been
   removed (`!' is now a prefix operator used in the state variable syntax).
 
@@ -166,6 +170,7 @@ Changes to the Mercury standard library:
   return `[|]' rather than `.' for lists, and calls to std_util__construct
   which construct lists may need to be updated.
 * We've added the predicate list__is_empty/1 and list__is_not_empty/1.
+* We've added the predicate list__remove_adjacent_dups/3.
 
 * We've added a function version of error/1, called func_error/1, to require.m.
 
