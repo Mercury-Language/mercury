@@ -69,6 +69,7 @@ Label *insert_entry(const char *name, Code *addr)
 
 Label *lookup_label_addr(const Code *addr)
 {
+	do_init_entries();
 	do_init_modules();
 #ifndef	SPEED
 	if (progdebug)
@@ -80,6 +81,7 @@ Label *lookup_label_addr(const Code *addr)
 
 Label *lookup_label_name(const char *name)
 {
+	do_init_entries();
 	do_init_modules();
 #ifndef	SPEED
 	if (progdebug)
@@ -91,6 +93,7 @@ Label *lookup_label_name(const char *name)
 
 List *get_all_labels(void)
 {
+	do_init_entries();
 	do_init_modules();
 	return get_all_entries(entry_name_table);
 }

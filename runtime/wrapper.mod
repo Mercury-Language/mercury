@@ -49,7 +49,6 @@ bool		check_space = FALSE;
 static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
-static	Code	*which = NULL;
 
 static int	repcounter;
 
@@ -144,8 +143,6 @@ int main(int argc, char **argv)
 void do_init_modules(void)
 {
 	static	bool	done = FALSE;
-
-	do_init_entries();
 
 	if (! done) {
 		init_modules();
@@ -293,9 +290,6 @@ process_environment_options(void)
 {
 	char*	options;
 
-	if (default_entry != NULL)
-		which = default_entry;
-
 	options = getenv("MERCURY_OPTIONS");
 	if (options != NULL) {
 		char	*arg_str, **argv;
@@ -322,10 +316,6 @@ process_environment_options(void)
 		oldmem(argv);
 	}
 
-	if (which == NULL) {
-		fatal_error("no entry point supplied "
-				"on command line or by default\n");
-	}
 }
 
 static void
@@ -394,7 +384,7 @@ process_options(int argc, char **argv)
 		case 'h':	usage();
 				break;
 
-		case 'l':	{
+		case 'l': {
 				List	*ptr;
 				List	*label_list;
 
@@ -425,7 +415,7 @@ process_options(int argc, char **argv)
 
 				break;
 
-		case 's':	{
+		case 's': {
 				int val;
 				if (sscanf(optarg+1, "%d", &val) != 1)
 					usage();
@@ -467,7 +457,7 @@ process_options(int argc, char **argv)
 					exit(1);
 				}
 
-				which = which_label->e_addr;
+				entry_point = which_label->e_addr;
 
 				break;
 		}
@@ -596,14 +586,12 @@ void run_code(void)
 	}
 #endif
 
-	if (detaildebug)
-	{
+	if (detaildebug) {
 		debugregs("after final call");
 	}
 
 #ifndef	SPEED
-	if (memdebug)
-	{
+	if (memdebug) {
 		printf("\n");
 		printf("max heap used:      %6ld words\n",
 			(long) (heapmax - heapmin));
@@ -629,16 +617,11 @@ static void print_register_usage_counts(void)
 	int	i;
 
 	printf("register usage counts:\n");
-	for (i = 0; i < MAX_RN; i++)
-	{
-		if (1 <= i && i <= ORD_RN)
-		{
+	for (i = 0; i < MAX_RN; i++) {
+		if (1 <= i && i <= ORD_RN) {
 			printf("r%d", i);
-		}
-		else
-		{
-			switch (i)
-			{
+		} else {
+			switch (i) {
 
 			case SI_RN:
 				printf("succip");
@@ -676,12 +659,14 @@ do_interpreter:
 	push(maxfr);
 	mkframe("interpreter", 1, LABEL(global_fail));
 
-	call(which, LABEL(global_success), LABEL(do_interpreter));
+	if (entry_point == NULL) {
+		fatal_error("no entry point supplied\n");
+	}
+	call(entry_point, LABEL(global_success), LABEL(do_interpreter));
 
 global_success:
 #ifndef	SPEED
-	if (finaldebug)
-	{
+	if (finaldebug) {
 		save_transient_registers();
 		printregs("global succeeded");
 		if (detaildebug)
@@ -696,8 +681,7 @@ global_success:
 
 global_fail:
 #ifndef	SPEED
-	if (finaldebug)
-	{
+	if (finaldebug) {
 		save_transient_registers();
 		printregs("global failed");
 
@@ -712,8 +696,7 @@ all_done:
 	hp = (Word *) pop();
 
 #ifndef SPEED
-	if (finaldebug && detaildebug)
-	{
+	if (finaldebug && detaildebug) {
 		save_transient_registers();
 		printregs("after popping...");
 	}
@@ -724,4 +707,3 @@ all_done:
 #endif
 
 END_MODULE
-

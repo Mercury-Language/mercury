@@ -15,6 +15,6 @@ extern	void		init_gc(void);
 
 extern	void		do_init_modules(void);
 extern	void		init_modules(void);
-extern	Code		*default_entry;
+extern	Code		*entry_point;
 
 #endif
