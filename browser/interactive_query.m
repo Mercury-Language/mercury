@@ -411,8 +411,8 @@ compile_file(Options, Succeeded) -->
 		{ string__append_list([
 			"ml --grade ", grade_option,
 			" --trace",
-			" --make-shared-lib -o libquery.so ", Options,
-			" query.o"], Command2) },
+			" --make-shared-lib ", Options,
+			" -o libquery.so query.o"], Command2) },
 		invoke_system_command(Command2, Succeeded)
 	;
 		{ Succeeded = no }
