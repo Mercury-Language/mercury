@@ -47,7 +47,7 @@
 :- implementation.
 :- import_module mdb__browser_info, mdb__browse, mdb__util.
 :- import_module mdb__declarative_execution, mdb__program_representation.
-:- import_module std_util, char, string, bool, int.
+:- import_module std_util, char, string, bool, int, deconstruct.
 
 :- type user_state
 	--->	user(
@@ -351,7 +351,7 @@ write_decl_question(missing_answer(Call, Solns), User) -->
 write_decl_question(unexpected_exception(Call, Exception), User) -->
 	write_decl_atom(User, "Call ", Call),
 	io__write_string(User^outstr, "Throws "),
-	io__print(User^outstr, Exception),
+	io__write(User^outstr, include_details_cc, univ_value(Exception)),
 	io__nl(User^outstr).
 
 :- pred write_decl_bug(decl_bug::in, user_state::in,
@@ -371,7 +371,8 @@ write_decl_bug(e_bug(EBug), User) -->
 		{ EBug = unhandled_exception(Atom, Exception, _) },
 		io__write_string(User^outstr, "Found unhandled exception:\n"),
 		write_decl_atom(User, "", Atom),
-		io__write(User^outstr, univ_value(Exception)),
+		io__write(User^outstr, include_details_cc,
+				univ_value(Exception)),
 		io__nl(User^outstr)
 	).
 
@@ -456,7 +457,7 @@ print_decl_atom_arg(User, no) -->
 
 :- pred write_decl_atom_direct(io__output_stream, decl_atom,
 		io__state, io__state).
-:- mode write_decl_atom_direct(in, in, di, uo) is det.
+:- mode write_decl_atom_direct(in, in, di, uo) is cc_multi.
 
 write_decl_atom_direct(OutStr, atom(PredOrFunc, Functor, Args)) -->
 	io__write_string(OutStr, Functor),
@@ -484,10 +485,10 @@ write_decl_atom_direct(OutStr, atom(PredOrFunc, Functor, Args)) -->
 
 :- pred write_decl_atom_arg(io__output_stream, maybe(univ),
 		io__state, io__state).
-:- mode write_decl_atom_arg(in, in, di, uo) is det.
+:- mode write_decl_atom_arg(in, in, di, uo) is cc_multi.
 
 write_decl_atom_arg(OutStr, yes(Arg)) -->
-	io__print(OutStr, Arg).
+	io__write(OutStr, include_details_cc, univ_value(Arg)).
 write_decl_atom_arg(OutStr, no) -->
 	io__write_char(OutStr, '_').
 

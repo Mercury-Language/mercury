@@ -470,6 +470,8 @@
 :- pred io__write_list(io__output_stream, list(T), string, 
 	pred(T, io__state, io__state), io__state, io__state).
 :- mode io__write_list(in, in, in, pred(in, di, uo) is det, di, uo) is det.
+:- mode io__write_list(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
+	is cc_multi.
 	% io__write_list(Stream, List, Separator, OutputPred, IO0, IO)
 	% applies OutputPred to each element of List, printing Separator
 	% between each element. Outputs to Stream.

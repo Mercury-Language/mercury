@@ -80,6 +80,7 @@ Changes to the Mercury standard library:
   `io__current_binary_input_stream', and `io__current_binary_output_stream'.
 * We've added a predicate to io.m to return the last modification time
   of a file: `io__file_modification_time'.
+* We've added cc_multi modes to io__write_list/5 and io__write_list/6.
 
 * We've added four functions to list.m for mapping functions over
   corresponding members of lists: list__map_corresponding/3,
