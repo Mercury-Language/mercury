@@ -14,4 +14,4 @@
 
 MPROF=${MERCURY_PROFILER="@LIBDIR@/bin/@FULLARCH@/mercury_profile"}
 
-exec $MPROF -- "$@"
+exec $MPROF "$@"
