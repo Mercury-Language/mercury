@@ -2,7 +2,6 @@ Installation instructions:
 
 1.  If `make' is not GNU make, then type
 
-	make -f Makefile.common Makefile
 	make ints
 
 2.  Type
