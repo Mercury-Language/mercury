@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,7 +21,8 @@
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_PredFunc
+** Definitions for MR_PredFunc. This enum should EXACTLY match the definition
+** of the `pred_or_func' type in browser/debugger_interface.
 */
 
 typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;

@@ -63,6 +63,13 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 :- type goal_path_string == string.
 
+% This enumeration must be EXACTLY the same as the MR_PredFunc enum in
+% runtime/mercury_stack_layout.h, and in the same order, since the code
+% assumes the representation is the same.
+
+:- type pred_or_func
+	--->	predicate
+	;	function.
 
 
 % This is known as "debugger_query" in the Opium documentation.
@@ -80,6 +87,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			match(call_number),
 			match(depth_number),
 			match(trace_port_type),
+			match(pred_or_func),
 			match(string),		% module name
 			match(string),		% pred name
 			match(arity),
@@ -166,6 +174,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			call_number,
 			depth_number,
 			trace_port_type,
+			pred_or_func,
 			string,		% module name
 			string,		% pred name
 			arity,
@@ -194,23 +203,23 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 %	send to the debugger (e.g. Opium) the attributes of the current event
 %	except the list of arguments.
 
-:- pragma export(output_current_slots(in, in, in, in, in, in, in, in, in,
+:- pragma export(output_current_slots(in, in, in, in, in, in, in, in, in, in,
 		in, in, di, uo), "ML_DI_output_current_slots").
 			
 :- pred output_current_slots(event_number, call_number, depth_number, 
-	trace_port_type, /* module name */ string, /* pred name */ string, 
-	arity, /* mode num */ int, determinism, goal_path_string, 
-	io__output_stream, io__state, io__state).
-:- mode output_current_slots(in, in, in, in, in, in, in, in, in, in, in,
+	trace_port_type, pred_or_func, /* module name */ string,
+	/* pred name */ string, arity, /* mode num */ int, determinism, 
+	goal_path_string, io__output_stream, io__state, io__state).
+:- mode output_current_slots(in, in, in, in, in, in, in, in, in, in, in, in,
  	di, uo) is det.
 
 
-output_current_slots(EventNumber, CallNumber, DepthNumber, Port,
+output_current_slots(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
 	ModuleName, PredName, Arity, ModeNum, Determinism,
 	Path, OutputStream) -->
 	
 	{ CurrentTraceInfo = current_slots(EventNumber, CallNumber, 
-		DepthNumber, Port, ModuleName, PredName, Arity,
+		DepthNumber, Port, PredOrFunc, ModuleName, PredName, Arity,
 		ModeNum, Determinism, Path) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
@@ -289,31 +298,34 @@ get_var_number(DebuggerRequest) = VarNumber :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(found_match(in, in, in, in, in, in, in, in, in, in,
+:- pragma export(found_match(in, in, in, in, in, in, in, in, in, in, in,
 			in, in), "ML_DI_found_match").
 			
 :- pred found_match(event_number, call_number, depth_number, trace_port_type,
-	/* module name */ string, /* pred name */ string, arity,
-	/* mode num */ int, determinism, /* the arguments */ list(univ),
+	pred_or_func, /* module name */ string, 
+	/* pred name */ string, arity, /* mode num */ int, determinism, 
+	/* the arguments */ list(univ),
 				% XXX we could provide better ways of
 				% matching on arguments
 	goal_path_string, debugger_request).
-:- mode found_match(in, in, in, in, in, in, in, in, in, in, in, in)
+:- mode found_match(in, in, in, in, in, in, in, in, in, in, in, in, in)
 	is semidet.
 
-found_match(EventNumber, CallNumber, DepthNumber, Port, ModuleName, 
+found_match(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, ModuleName, 
 		PredName, Arity, ModeNum, Determinism, Args, Path, 
 		DebuggerRequest) :-
 	(
 		DebuggerRequest = forward_move(MatchEventNumber,
 			MatchCallNumber, MatchDepthNumber, MatchPort,
-			MatchModuleName, MatchPredName, MatchArity,
-			MatchModeNum, MatchDeterminism, MatchArgs, MatchPath)
+			MatchPredOrFunc, MatchModuleName, MatchPredName, 
+			MatchArity, MatchModeNum, MatchDeterminism, 
+			MatchArgs, MatchPath)
 	->
 		match(MatchEventNumber, EventNumber),
 		match(MatchCallNumber, CallNumber),
 		match(MatchDepthNumber, DepthNumber),
 		match(MatchPort, Port),
+		match(MatchPredOrFunc, PredOrFunc),
 		match(MatchModuleName, ModuleName),
 		match(MatchPredName, PredName),
 		match(MatchArity, Arity),
@@ -382,7 +394,7 @@ read_request_from_socket(SocketStream, Request, RequestType) -->
 % MR_debugger_request_type in runtime/mercury_trace_external.c.
 
 classify_request(hello_reply, 0).
-classify_request(forward_move(_, _, _, _, _, _, _, _, _, _, _), 1).
+classify_request(forward_move(_, _, _, _, _, _, _, _, _, _, _, _), 1).
 classify_request(current_vars, 2).
 classify_request(current_slots, 3).
 classify_request(no_trace, 4).
