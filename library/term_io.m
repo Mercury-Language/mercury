@@ -60,7 +60,7 @@
 :- mode io__write_constant(input, di, uo).
 %		Writes a constant (integer, float, or atom) to stdout.
 
-:- pred io__write_variable(variable, varset, io__state, io__state).
+:- pred io__write_variable(var, varset, io__state, io__state).
 :- mode io__write_variable(input, input, di, uo).
 %		Writes a variable to stdout.
 
@@ -87,7 +87,7 @@
 io__write_variable(Variable, VarSet) -->
 	io__write_variable_2(Variable, VarSet, 0, _, _).
 
-:- pred io__write_variable_2(variable, varset, int, varset, int,
+:- pred io__write_variable_2(var, varset, int, varset, int,
 				io__state, io__state).
 :- mode io__write_variable_2(input, input, input, output, output, di, uo).
 

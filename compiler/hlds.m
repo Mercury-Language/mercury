@@ -253,8 +253,6 @@
 %%% :- export_type is_live.
 :- type is_live		--->	live ; dead.
 
-:- type	var		==	variable.
-
 :- type unify_mode	==	pair(mode, mode).
 
 %-----------------------------------------------------------------------------%

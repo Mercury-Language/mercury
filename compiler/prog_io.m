@@ -121,7 +121,7 @@
 			;	unify(term, term).
 
 :- type goals		==	list(goal).
-:- type vars		==	list(variable).
+:- type vars		==	list(var).
 
 %-----------------------------------------------------------------------------%
 
@@ -170,7 +170,7 @@
 :- type (inst)		--->	free
 			;	bound(list(bound_inst))
 			;	ground
-			;	inst_var(variable)
+			;	inst_var(var)
 			;	user_defined_inst(sym_name, list(inst)).
 
 :- type bound_inst	--->	functor(const, list(inst)).

@@ -37,26 +37,26 @@
 :- mode varset__is_empty(input).
 
 	% create a new variable
-:- pred varset__new_var(varset, variable, varset).
+:- pred varset__new_var(varset, var, varset).
 :- mode varset__new_var(input, output, output).
 
 	% set the name of a variable
 	% (if there is already a variable with the same name "Foo",
 	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
 	% an unused name is found.)
-:- pred varset__name_var(varset, variable, string, varset).
+:- pred varset__name_var(varset, var, string, varset).
 :- mode varset__name_var(input, input, input, output).
 
 	% lookup the name of a variable
-:- pred varset__lookup_name(varset, variable, string).
+:- pred varset__lookup_name(varset, var, string).
 :- mode varset__lookup_name(input, input, output).
 
 	% bind a value to a variable
-:- pred varset__bind_var(varset, variable, term, varset).
+:- pred varset__bind_var(varset, var, term, varset).
 :- mode varset__bind_var(input, input, input, output).
 
 	% lookup the value of a variable
-:- pred varset__lookup_var(varset, variable, term).
+:- pred varset__lookup_var(varset, var, term).
 :- mode varset__lookup_var(input, input, output).
 
 	% Combine two different varsets, renaming apart:
@@ -76,8 +76,8 @@
 
 :- type varset		--->	varset(
 					var_supply,
-					map(variable, string),
-					map(variable, term)
+					map(var, string),
+					map(var, term)
 				).
 
 %-----------------------------------------------------------------------------%
@@ -150,8 +150,8 @@ varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
 	varset__merge_2(N, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-:- pred varset__merge_2(var_supply, var_supply, map(variable, string),
-	map(variable, term), varset, substitution, varset, substitution).
+:- pred varset__merge_2(var_supply, var_supply, map(var, string),
+	map(var, term), varset, substitution, varset, substitution).
 :- mode varset__merge_2(input, input, input, input, input, input,
 	output, output).
 

@@ -1219,6 +1219,7 @@ find_undef_type_du_body([Constructor | Constructors], ErrorContext,
 
 find_undef_type(term_variable(_), _ErrorContext, _TypeDefns) --> [].
 find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
+		% could efficiency be improved here?
 	{ length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
 	(

@@ -16,38 +16,38 @@
 %-----------------------------------------------------------------------------%
 
 :- type term		--->	term_functor(const, list(term), term__context)
-			;	term_variable(variable).
+			;	term_variable(var).
 :- type const 		--->	term_atom(string)
 			;	term_integer(int)
 			;	term_string(string)
 			;	term_float(float).
-:- type variable.
+:- type var.
 :- type var_supply.
 :- type term__context.
 
 %-----------------------------------------------------------------------------%
 
-:- pred term__vars(term, list(variable)).
+:- pred term__vars(term, list(var)).
 :- mode term__vars(input, output) is det.
 %	term__vars(Term, Vars)
 %		Vars is the list of variables contained in Term, in the order 
 %		obtained by traversing the term depth first, left-to-right.
 
-:- pred term__contains_var(term, variable).
+:- pred term__contains_var(term, var).
 :- mode term__contains_var(input, input) is semidet.
 :- mode term__contains_var(input, output) is nondet.
 %	term__contains_var(Term, Var)
 %		True if Term contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
-:- pred term__contains_var_list(list(term), variable).
+:- pred term__contains_var_list(list(term), var).
 :- mode term__contains_var_list(input, input) is semidet.
 :- mode term__contains_var_list(input, output) is nondet.
 %	term__contains_var_list(TermList, Var)
 %		True if TermList contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
-:- type substitution == map(variable, term).
+:- type substitution == map(var, term).
 
 :- pred term__unify(term, term, substitution, substitution).
 :- mode term__unify(input, input, input, output).
@@ -55,17 +55,17 @@
 %		unify (with occur check) two terms with respect to a set
 %	 	of bindings and possibly update the set of bindings
 
-:- pred term__substitute(term, variable, term, term).
+:- pred term__substitute(term, var, term, term).
 :- mode term__substitute(input, input, input, output).
 %	term__substitute(Term0, Var, Replacement, Term) :
 %		replace all occurrences of Var in Term0 with Replacement,
 %		and return the result in Term.
 
-:- pred term__substitute_list(list(term), variable, term, list(term)).
+:- pred term__substitute_list(list(term), var, term, list(term)).
 :- mode term__substitute_list(input, input, input, output).
 %		as above, except for a list of terms rather than a single term
 
-:- pred term__substitute_corresponding(list(variable), list(term), term, term).
+:- pred term__substitute_corresponding(list(var), list(term), term, term).
 :- mode term__substitute_corresponding(input, input, input, output).
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
 %		replace all occurrences of variables in Vars with
@@ -90,23 +90,23 @@
 %		as above, except for a list of terms rather than a single term
 
 
-:- pred term__occurs(term, variable, substitution).
+:- pred term__occurs(term, var, substitution).
 :- mode term__occurs(input, input, input).
 %	term__occurs(Term0, Var, Substitution) :
 %		true iff Var occurs in the term resulting after
 %		applying Substitution to Term0.
 
-:- pred term__occurs_list(list(term), variable, substitution).
+:- pred term__occurs_list(list(term), var, substitution).
 :- mode term__occurs_list(input, input, input).
 %		as above, except for a list of terms rather than a single term
 
-:- pred term__relabel_variable(term, variable, variable, term).
+:- pred term__relabel_variable(term, var, var, term).
 :- mode term__relabel_variable(input, input, input, output) is det.
 %	term__relabel_variable(Term0, OldVar, NewVar, Term) :
 %		replace all occurences of OldVar in Term0 with
 %		NewVar and put the result in Term.
 
-:- pred term__relabel_variables(list(term), variable, variable, list(term)).
+:- pred term__relabel_variables(list(term), var, var, list(term)).
 :- mode term__relabel_variables(input, input, input, output) is det.
 %	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
 %		same as term__relabel_variable but for a list of terms.
@@ -121,10 +121,10 @@
 %	term__init_var_supply(VarSupply) :
 %		returns a fresh var_supply for producing fresh variables.
 
-:- pred term__create_var(var_supply, variable, var_supply).
+:- pred term__create_var(var_supply, var, var_supply).
 :- mode term__create_var(input, output, output) is det.
 %	term__create_var(VarSupply0, Variable, VarSupply) :
-%		create a fresh variable (Variable) and return the
+%		create a fresh variable (var) and return the
 %		updated var_supply.
 	
 %-----------------------------------------------------------------------------%
@@ -166,14 +166,14 @@
 term__vars(Term, Vars) :-
 	term__vars_2(Term, [], Vars).
 
-:- pred term__vars_2(term, list(variable), list(variable)).
+:- pred term__vars_2(term, list(var), list(var)).
 :- mode term__vars_2(input, input, output) is det.
 
 term__vars_2(term_variable(V), Vs, V.Vs).
 term__vars_2(term_functor(_,Args,_), Vs0, Vs) :-
 	term__vars_2_list(Args, Vs0, Vs).
 
-:- pred term__vars_2_list(list(term), list(variable), list(variable)).
+:- pred term__vars_2_list(list(term), list(var), list(var)).
 :- mode term__vars_2_list(input, input, output) is det.
 
 term__vars_2_list([], Vs, Vs).
@@ -412,7 +412,7 @@ term__substitute_corresponding(Ss, Rs, Term0, Term) :-
 	term__substitute_corresponding_2(Ss, Rs, Subst0, Subst),
 	term__apply_substitution(Term0, Subst, Term).
 
-:- pred term__substitute_corresponding_2(list(variable), list(term),
+:- pred term__substitute_corresponding_2(list(var), list(term),
 					substitution, substitution).
 :- mode term__substitute_corresponding_2(input, input, input, output).
 
