@@ -302,7 +302,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 		{ string__append(TypeModule, ".exp", TypeModuleExport) },
 		{ string__append(TypeModule, ".loc", TypeModuleLocal) },
 		io__output_stream(OldStream),
-		io__tell(TypeModuleExport, _Res),	% XXX handle errors
+		io__tell(TypeModuleExport, _Res1),	% XXX handle errors
 		io__write_string("EXPORT       "),
 		io__write_string(TypeModule),
 		io__write_string(".\n"),
@@ -311,7 +311,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 		goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet,
 				Context),
 		io__told,
-		io__tell(TypeModuleLocal, _Res),	% XXX handle errors
+		io__tell(TypeModuleLocal, _Res2),	% XXX handle errors
 		io__write_string("LOCAL       "),
 		io__write_string(TypeModule),
 		io__write_string(".\n"),
@@ -711,20 +711,19 @@ goedel_output_tabs(Indent) -->
 :- mode goedel_output_list_args(input, input, di, uo).
 
 goedel_output_list_args(Term, VarSet) -->
-	(if %%% some [Args, Context, X, Xs]
-	    	{ Term = term_functor(term_atom("."), Args, Context),
+	(
+	    	{ Term = term_functor(term_atom("."), Args, _),
 		  Args = [X, Xs]
 	    	}
-	then
+	->
 		io__write_string(", "),
 		goedel_output_term(X, VarSet),
 		goedel_output_list_args(Xs, VarSet)
-	else
-	if %%% some [Context2]
-		{ Term = term_functor(term_atom("[]"), [], Context2) }
-	then
+	;
+		{ Term = term_functor(term_atom("[]"), [], _) }
+	->
 		[]
-	else
+	;
 		io__write_string(" | "),
 		goedel_output_term(Term, VarSet)
 	).

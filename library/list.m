@@ -35,7 +35,7 @@
 :- pred member(T, list(T), list(T)).
 :- mode member(output, input, output).
 
-:- pred length(list(T), int).
+:- pred length(list(_T), int).
 :- mode length(input_list_skel, output).
 :- mode length(output_list_skel, input).
 

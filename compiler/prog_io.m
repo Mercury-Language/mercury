@@ -299,7 +299,7 @@ prog_io__read_module(Module, Error, Messages, Items) -->
 		  reverse(RevMessages, Messages0),
 		  reverse(RevItems, Items0),
 		  check_begin_module(Messages0, Items0, Error0, EndModule,
-				     Messages, Items, Error)
+				FileName, Messages, Items, Error)
 		},
 		io__seen
 	;
@@ -345,10 +345,11 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and construct the final parsing result.
 
 :- pred check_begin_module(message_list, item_list, bool,
-			   module_end, message_list, item_list, bool).
-:- mode check_begin_module(input, input, input, input, output, output, output).
+			   module_end, string, message_list, item_list, bool).
+:- mode check_begin_module(input, input, input, input, input,
+				output, output, output).
 
-check_begin_module(Messages0, Items0, Error0, EndModule,
+check_begin_module(Messages0, Items0, Error0, EndModule, FileName,
 		Messages, Items, Error) :-
 
     % check that the first item is a `:- module ModuleName'
@@ -369,7 +370,8 @@ check_begin_module(Messages0, Items0, Error0, EndModule,
         ->
 	    dummy_term_with_context(Context2, Term),
             ThisError = 
-"`:- end_module' declaration doesn't match `:- module' declaration" - Term,
+"error: `:- end_module' declaration doesn't match `:- module' declaration"
+			- Term,
             append([ThisError], Messages0, Messages),
 	    Items = Items1,
             Error = yes
@@ -379,9 +381,10 @@ check_begin_module(Messages0, Items0, Error0, EndModule,
 	    Error = Error0
         )
     ;
-	dummy_term(Term2),
-        ThisError = "module should start with a `:- module' declaration" -
-				Term2,
+	term__context_init(FileName, 1, Context),
+	dummy_term_with_context(Context, Term2),
+        ThisError = "error: module should start with a `:- module' declaration"
+		- Term2,
         Messages = [ThisError | Messages0],
 	Items = Items0,
 	Error = yes

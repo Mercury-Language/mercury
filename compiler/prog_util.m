@@ -231,7 +231,7 @@ unqualify_name(qualified(_Module, Name), Name).
 %-----------------------------------------------------------------------------%
 
 split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
-	split_types_and_modes_2(TypesAndModes, no, Types, Modes, Result),
+	split_types_and_modes_2(TypesAndModes, yes, Types, Modes, Result),
 	(
 		Result = yes
 	->
@@ -252,14 +252,13 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 	split_types_and_modes_2(TMs, Result1, Ts, Ms, Result).
 
 	% if a pred declaration specifies modes for some but
-	% not all of the arguments, then the mode for the
-	% other arguments defaults to free->free.
+	% not all of the arguments, then the modes are ignored
 	% - should this be an error instead?
 
 :- pred split_type_and_mode(type_and_mode, maybe, type, mode, maybe).
 :- mode split_type_and_mode(input, input, output, output, output).
 
-split_type_and_mode(type_only(T), _, T, (free -> free), yes).
+split_type_and_mode(type_only(T), _, T, (free -> free), no).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
 
 %-----------------------------------------------------------------------------%

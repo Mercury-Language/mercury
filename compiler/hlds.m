@@ -34,7 +34,9 @@
 					type_table,
 					inst_table,
 					mode_table,
-					cons_table
+					cons_table,
+					int,		% number of errors
+					int		% number of warnings
 				).
 
 %-----------------------------------------------------------------------------%
@@ -368,6 +370,12 @@
 :- pred moduleinfo_ctors(module_info, cons_table).
 :- mode moduleinfo_ctors(input, output).
 
+:- pred moduleinfo_num_errors(module_info, int).
+:- mode moduleinfo_num_errors(input, output).
+
+:- pred moduleinfo_num_warnings(module_info, int).
+:- mode moduleinfo_num_warnings(input, output).
+
 :- pred moduleinfo_consids(module_info, list(cons_id)).
 :- mode moduleinfo_consids(input, output).
 
@@ -396,6 +404,12 @@
 :- pred moduleinfo_set_ctors(module_info, cons_table, module_info).
 :- mode moduleinfo_set_ctors(input, input, output).
 
+:- pred moduleinfo_incr_errors(module_info, module_info).
+:- mode moduleinfo_incr_errors(input, output).
+
+:- pred moduleinfo_incr_warnings(module_info, module_info).
+:- mode moduleinfo_incr_warnings(input, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -403,7 +417,7 @@
 	% A predicate which creates an empty module
 
 moduleinfo_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
-		Modes, Ctors)) :-
+		Modes, Ctors, 0, 0)) :-
 	map__init(Preds),
 	map__init(PredNameIndex),
 	map__init(Types),
@@ -415,94 +429,114 @@ moduleinfo_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
 	% of info from the module_info data structure.
 
 moduleinfo_name(ModuleInfo, Name) :-
-	ModuleInfo = module(Name, _, _, _, _, _, _, _).
+	ModuleInfo = module(Name, _, _, _, _, _, _, _, _, _).
 
 moduleinfo_preds(ModuleInfo, Preds) :-
-	ModuleInfo = module(_, Preds, _, _, _, _, _, _).
+	ModuleInfo = module(_, Preds, _, _, _, _, _, _, _, _).
 
 moduleinfo_predids(ModuleInfo, PredIDs) :-
-	ModuleInfo = module(_, _, PredIDs, _, _, _, _, _).
+	ModuleInfo = module(_, _, PredIDs, _, _, _, _, _, _, _).
 
 moduleinfo_pred_name_index(ModuleInfo, PredNameIndex) :-
-	ModuleInfo = module(_, _, _, PredNameIndex, _, _, _, _).
+	ModuleInfo = module(_, _, _, PredNameIndex, _, _, _, _, _, _).
 
 moduleinfo_types(ModuleInfo, Types) :-
-	ModuleInfo = module(_, _, _, _, Types, _, _, _).
+	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _).
 
 moduleinfo_typeids(ModuleInfo, TypeIDs) :-
-	ModuleInfo = module(_, _, _, _, Types, _, _, _),
+	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _),
 	map__keys(Types, TypeIDs).
 
 moduleinfo_insts(ModuleInfo, Insts) :-
-	ModuleInfo = module(_, _, _, _, _, Insts, _, _).
+	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _).
 
 moduleinfo_instids(ModuleInfo, InstIDs) :-
-	ModuleInfo = module(_, _, _, _, _, Insts, _, _),
+	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _),
 	map__keys(Insts, InstIDs).
 
 moduleinfo_modes(ModuleInfo, Modes) :-
-	ModuleInfo = module(_, _, _, _, _, _, Modes, _).
+	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _).
 
 moduleinfo_modeids(ModuleInfo, ModeIDs) :-
-	ModuleInfo = module(_, _, _, _, _, _, Modes, _),
+	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _),
 	map__keys(Modes, ModeIDs).
 
 moduleinfo_ctors(ModuleInfo, Ctors) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, Ctors).
+	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _).
 
 moduleinfo_consids(ModuleInfo, ConsIDs) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, Ctors),
+	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _),
 	map__keys(Ctors, ConsIDs).
+
+moduleinfo_num_errors(ModuleInfo, NumErrors) :-
+	ModuleInfo = module(_, _, _, _, _, _, _, _, NumErrors, _).
+
+moduleinfo_num_warnings(ModuleInfo, NumWarnings) :-
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, NumWarnings).
 
 	% Various predicates which modify the module_info data structure.
 
 moduleinfo_set_name(ModuleInfo0, Name, ModuleInfo) :-
 	ModuleInfo0 = module(_, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors),
+				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 	ModuleInfo0 = module(Name, _, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors),
+				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_predids(ModuleInfo0, PredIDs, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, _, PredNameIndex, Types,
-				Insts, Modes, Ctors),
+				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_pred_name_index(ModuleInfo0, PredNameIndex, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, _, Types,
-				Insts, Modes, Ctors),
+				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_types(ModuleInfo0, Types, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, _,
-				Insts, Modes, Ctors),
+				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				_, Modes, Ctors),
+				_, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, _, Ctors),
+				Insts, _, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
 
 moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, _),
+				Insts, Modes, _, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
-				Insts, Modes, Ctors).
+				Insts, Modes, Ctors, Errs, Warns).
+
+moduleinfo_incr_errors(ModuleInfo0, ModuleInfo) :-
+	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, Errs0, Warns),
+	Errs is Errs0 + 1,
+	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, Errs, Warns).
+
+moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
+	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, Errs, Warns0),
+	Warns0 is Warns + 1,
+	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, Errs, Warns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -563,8 +597,8 @@ predinfo_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
 
 predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(_TypeVars, _ArgTypes, _Cond, _, _Procs, C),
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, C).
+	PredInfo0 = predicate(TypeVars, ArgTypes, Cond, _, Procs, C),
+	PredInfo = predicate(TypeVars, ArgTypes, Cond, Clauses, Procs, C).
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).
@@ -886,7 +920,7 @@ inst_lookup(ModuleInfo, Name, Args, Inst) :-
 			inst).
 :- mode inst_lookup_2(input, input, input, input, output).
 
-inst_lookup_2(eqv_inst(Inst0), Params, Name, Args, Inst) :-
+inst_lookup_2(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
 	inst_substitute_arg_list(Inst0, Params, Args, Inst).
 inst_lookup_2(abstract_inst, _Params, Name, Args,
 		abstract_inst(Name, Args)).

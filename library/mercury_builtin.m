@@ -77,6 +77,13 @@
 :- pred T \= T.
 :- mode input \= input.
 
+% The call/N family.  Note that the compiler (make_hlds.nl) will transform
+% goals which are not atoms (e.g. goals which are free variables) into
+% calls to call/1.
+
+:- pred call(pred).
+:- mode call(pred_call).
+
 % Logical connectives.
 % We need to implement mode segments before we can give these predicates
 % useful modes.

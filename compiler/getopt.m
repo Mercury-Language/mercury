@@ -27,8 +27,8 @@
 :- type maybe_option_table	--->	ok(option_table)
 				;	error(string).
 
-:- pred process_options(list(string)::i, list(string)::o,
-			maybe_option_table::o) is det.
+:- pred process_options(list(string)::in, list(string)::out,
+			maybe_option_table::out) is det.
 
 :- implementation.
 
@@ -37,8 +37,8 @@ process_options(Args0, Args, Result) :-
 	map__from_assoc_list(OptionDefaultsList, OptionTable0),
 	process_options_2(Args0, OptionTable0, Args, Result).
 
-:- pred process_options_2(list(string)::i, option_table::i,
-			list(string)::o, maybe_option_table::o) is det.
+:- pred process_options_2(list(string)::in, option_table::in,
+			list(string)::out, maybe_option_table::out) is det.
 
 process_options_2([], OptionTable, [], ok(OptionTable)).
 process_options_2([Option | Args0], OptionTable0, Args, Result) :-

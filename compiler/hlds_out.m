@@ -337,13 +337,13 @@ hlds_out__write_goal(Indent, unify(LTerm, RTerm, Mode, Uni, _)) -->
 
 	% XXX this output is terrible:
 
-hlds_out__write_goal(Indent, if_then_else(Vars, A, B, C)) -->
+hlds_out__write_goal(_Indent, if_then_else(Vars, A, B, C)) -->
 	io__write_anything(if_then_else(Vars, A, B, C)).
-hlds_out__write_goal(Indent, not(Vars, G)) -->
+hlds_out__write_goal(_Indent, not(Vars, G)) -->
 	io__write_anything(not(Vars, G)).
-hlds_out__write_goal(Indent, some(Vars, G)) -->
+hlds_out__write_goal(_Indent, some(Vars, G)) -->
 	io__write_anything(some(Vars, G)).
-hlds_out__write_goal(Indent, all(Vars, G)) -->
+hlds_out__write_goal(_Indent, all(Vars, G)) -->
 	io__write_anything(all(Vars, G)).
 
 :- pred hlds_out__write_argtypes(int, list(term), io__state, io__state).
@@ -363,7 +363,7 @@ hlds_out__write_builtin(Indent, not_builtin) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("not_builtin").
 	
-:- pred hlds_out__write_cases(int, Cases, io__state, io__state).
+:- pred hlds_out__write_cases(int, list(case), io__state, io__state).
 :- mode hlds_out__write_cases(input, input, input, output).
 
 hlds_out__write_cases(Indent, X) -->

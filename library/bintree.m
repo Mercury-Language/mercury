@@ -26,7 +26,7 @@
 
 :- type bintree(_K, _V).
 
-:- pred bintree__init(bintree(K,V)).
+:- pred bintree__init(bintree(_K,_V)).
 :- mode bintree__init(output).
 
 :- pred bintree__insert(bintree(K,V), K, V, bintree(K,V)).
@@ -47,7 +47,7 @@
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(input, input, output).
 
-:- pred bintree__keys(bintree(K,V), list(K)).
+:- pred bintree__keys(bintree(K,_V), list(K)).
 :- mode bintree__keys(input, output).
 
 :- pred bintree__from_list(list(pair(K,V)), bintree(K,V)).
@@ -222,7 +222,7 @@ bintree__fixup(Left, Right, Tree) :-
 		Tree = tree(K, V, Left1, Right1)
 	).
 
-:- pred bintree__right_depth(bintree(K,V), int).
+:- pred bintree__right_depth(bintree(_K,_V), int).
 :- mode bintree__right_depth(input, output).
 
 bintree__right_depth(empty, 0).
@@ -230,7 +230,7 @@ bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
 	bintree__right_depth(Right, M),
 	N is M + 1.
 
-:- pred bintree__left_depth(bintree(K,V), int).
+:- pred bintree__left_depth(bintree(_K,_V), int).
 :- mode bintree__left_depth(input, output).
 
 bintree__left_depth(empty, 0).

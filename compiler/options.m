@@ -21,8 +21,8 @@
 			;	generate_code
 			;	builtin_module.
 
-:- pred short_option(character::i, option::output) is semidet.
-:- pred long_option(string::i, option::output) is semidet.
+:- pred short_option(character::in, option::out) is semidet.
+:- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::output) is det.
 
 % A couple of misc utilities
