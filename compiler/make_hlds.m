@@ -1835,7 +1835,9 @@ module_add_inst_defn(Module0, VarSet, Name, Args, InstDefn, Cond,
 	%
 	{ Arity = list__length(Args) },
 	{ InstId = Name - Arity },
-	check_for_cyclic_inst(Insts, InstId, InstId, [], Context, InvalidMode).
+	{ TestArgs = list__duplicate(Arity, not_reached) },
+	check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
+		InvalidMode).
 
 :- pred insts_add(user_inst_table, inst_varset, sym_name, list(inst_var),
 		inst_defn, condition, prog_context, import_status,
@@ -1872,11 +1874,11 @@ insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
 	%
 	% check if the inst is infinitely recursive (at the top level)
 	%
-:- pred check_for_cyclic_inst(user_inst_table, inst_id, inst_id, list(inst_id),
-		prog_context, bool, io__state, io__state).
-:- mode check_for_cyclic_inst(in, in, in, in, in, out, di, uo) is det.
+:- pred check_for_cyclic_inst(user_inst_table, inst_id, inst_id, list(inst),
+		list(inst_id), prog_context, bool, io__state, io__state).
+:- mode check_for_cyclic_inst(in, in, in, in, in, in, out, di, uo) is det.
 
-check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Expansions0,
+check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 		Context, InvalidMode) -->
 	( { list__member(InstId0, Expansions0) } ->
 		report_circular_equiv_error("inst", OrigInstId, InstId0,
@@ -1886,15 +1888,17 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Expansions0,
 		{ user_inst_table_get_inst_defns(UserInstTable, InstDefns) },
 		(
 			{ map__search(InstDefns, InstId0, InstDefn) },
-			{ InstDefn = hlds_inst_defn(_, _, Body, _, _, _) },
-			{ Body = eqv_inst(EqvInst) },
+			{ InstDefn = hlds_inst_defn(_, Params, Body, _, _, _) },
+			{ Body = eqv_inst(EqvInst0) },
+			{ inst_substitute_arg_list(EqvInst0, Params, Args0,
+				EqvInst) },
 			{ EqvInst = defined_inst(user_inst(Name, Args)) }
 		->
 			{ Arity = list__length(Args) },
 			{ InstId = Name - Arity },
 			{ Expansions = [InstId0 | Expansions0] },
 			check_for_cyclic_inst(UserInstTable, OrigInstId,
-				InstId, Expansions, Context, InvalidMode)
+				InstId, Args, Expansions, Context, InvalidMode)
 		;
 			{ InvalidMode = no }
 		)
