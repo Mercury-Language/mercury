@@ -120,7 +120,7 @@ lexer__get_token_1(Token) -->
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = '/' } ->
 			lexer__get_slash(Token)
-		; { lexer__graphic_char(Char) } ->
+		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char], Token)
 		;
 			{ Token = junk(Char) }
@@ -161,7 +161,7 @@ lexer__get_token_2(Token) -->
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = '/' } ->
 			lexer__get_slash(Token)
-		; { lexer__graphic_char(Char) } ->
+		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char], Token)
 		;
 			{ Token = junk(Char) }
@@ -184,25 +184,26 @@ lexer__special_token(',', comma).
 lexer__special_token(';', name(";")).
 lexer__special_token('!', name("!")).
 
-:- pred lexer__graphic_char(character).
-:- mode lexer__graphic_char(in) is semidet.
+:- pred lexer__graphic_token_char(character).
+:- mode lexer__graphic_token_char(in) is semidet.
 
-lexer__graphic_char('#').
-lexer__graphic_char('$').
-lexer__graphic_char('&').
-lexer__graphic_char('*').
-lexer__graphic_char('+').
-lexer__graphic_char('-').
-lexer__graphic_char('.').
-lexer__graphic_char('/').
-lexer__graphic_char(':').
-lexer__graphic_char('<').
-lexer__graphic_char('=').
-lexer__graphic_char('>').
-lexer__graphic_char('?').
-lexer__graphic_char('@').
-lexer__graphic_char('^').
-lexer__graphic_char('~').
+lexer__graphic_token_char('#').
+lexer__graphic_token_char('$').
+lexer__graphic_token_char('&').
+lexer__graphic_token_char('*').
+lexer__graphic_token_char('+').
+lexer__graphic_token_char('-').
+lexer__graphic_token_char('.').
+lexer__graphic_token_char('/').
+lexer__graphic_token_char(':').
+lexer__graphic_token_char('<').
+lexer__graphic_token_char('=').
+lexer__graphic_token_char('>').
+lexer__graphic_token_char('?').
+lexer__graphic_token_char('@').
+lexer__graphic_token_char('^').
+lexer__graphic_token_char('~').
+lexer__graphic_token_char('\\').
 
 %-----------------------------------------------------------------------------%
 
@@ -219,7 +220,7 @@ lexer__get_dot(Token) -->
 		( { Char = ' ' ; Char = '\t' ; Char =  '\n' ; Char = '%' } ->
 			io__putback_char(Char),
 			{ Token = end }
-		; { lexer__graphic_char(Char) } ->
+		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char, '.'], Token)
 		;
 			{ Token = name(".") }
@@ -261,8 +262,10 @@ lexer__get_slash(Token) -->
 	; { Result = ok(Char) },
 		( { Char = '*' } ->
 			lexer__get_comment(Token)
+		; { lexer__graphic_token_char(Char) } ->
+			lexer__get_graphic([Char, '/'], Token)
 		;
-			lexer__get_graphic(['*','/'], Token)
+			{ Token = name("/") }
 		)
 	).
 
@@ -515,7 +518,7 @@ lexer__get_graphic(Chars, Token) -->
 		{ lexer__rev_char_list_to_string(Chars, Name) },
 		{ Token = name(Name) }
 	; { Result = ok(Char) },
-		( { lexer__graphic_char(Char) } ->
+		( { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char | Chars], Token)
 		;
 			io__putback_char(Char),
@@ -835,7 +838,7 @@ lexer__rev_char_list_to_float(RevChars, Token) :-
 	( string__to_float(String, Float) ->
 		Token = float(Float)
 	;
-		Token = error("invalid integer token")
+		Token = error("invalid float token")
 	).
 
 :- pred lexer__rev_char_list_to_string(list(character), string).
