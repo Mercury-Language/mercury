@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred.
-:- import_module bool, list, map, varset, term, std_util.
+:- import_module list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
