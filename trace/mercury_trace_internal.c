@@ -1284,6 +1284,8 @@ static void
 MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
 {
     if (MR_xml_tmp_filename != NULL && (!MR_streq(MR_xml_tmp_filename, ""))) {
+        fprintf(MR_mdb_out, "Saving term to XML file...\n");
+        fflush(MR_mdb_out);
         MR_trace_save_term_xml(MR_xml_tmp_filename, browser_term);
     } else {
         fflush(MR_mdb_out);
@@ -1294,6 +1296,9 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
     if (MR_xml_browser_command != NULL &&
         (!MR_streq(MR_xml_browser_command, "")))
     {
+        fprintf(MR_mdb_out, "Launching XML browser (this may take some time) "
+            "...\n");
+        fflush(MR_mdb_out);
         if (system(MR_xml_browser_command) == -1) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "\nmdb: Error invoking XML browser using "

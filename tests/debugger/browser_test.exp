@@ -109,6 +109,8 @@ browser> quit
 mdb> set xml_tmp_filename './browser_test.xml.out'
 mdb> set xml_browser_cmd 'cat ./browser_test.xml.out'
 mdb> browse --xml 1
+Saving term to XML file...
+Launching XML browser (this may take some time) ...
 <?xml version="1.0"?>
 <big functor="big" type="browser_test.big" arity="3">
 	<big functor="big" type="browser_test.big" arity="3">
@@ -136,6 +138,8 @@ mdb> browse --xml 1
 	</big>
 </big>
 mdb> browse -x Data
+Saving term to XML file...
+Launching XML browser (this may take some time) ...
 <?xml version="1.0"?>
 <big functor="big" type="browser_test.big" arity="3">
 	<big functor="big" type="browser_test.big" arity="3">
