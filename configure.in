@@ -3,7 +3,39 @@
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
+#
+# configure.in: autoconf source code for `configure' script.
+#
+# This file is automatically processed by `autoconf' to produce the
+# `configure' script.
+#
+#-----------------------------------------------------------------------------#
+#
+# Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
+#
+dnl MERCURY_MSG(MESSAGE)
+define(MERCURY_MSG,
+[echo $1 1>&AC_FD_MSG])
+#-----------------------------------------------------------------------------#
 AC_INIT(runtime/wrapper.mod)
+#-----------------------------------------------------------------------------#
+#
+# Ensure that all messages are saved to a file `configure.log' by
+# invoking ourself recursively without output piped into `tee configure.log'.
+# The variable `suppress_log_file_recursion' is used to prevent infinite
+# recursion.
+#
+if test "$suppress_log_file_recursion" != "yes"; then
+	suppress_log_file_recursion=yes
+	export suppress_log_file_recursion
+	trap 0 1 2 3 13 15
+	case $# in
+		0) exec ${CONFIG_SHELL-/bin/sh} "$0"      ;;
+		*) exec ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
+	esac | exec tee configure.log
+	exit
+fi
+#-----------------------------------------------------------------------------#
 AC_CONFIG_HEADER(runtime/conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-0.5)
 AC_CANONICAL_HOST
@@ -29,7 +61,7 @@ case "$host" in
 		;;
 esac
 #-----------------------------------------------------------------------------#
-echo looking for an already installed Mercury compiler to bootstrap with...
+MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mc)
 if test "$BOOTSTRAP_MC" != ""; then
 	AC_MSG_CHECKING(that $BOOTSTRAP_MC works)
@@ -56,7 +88,7 @@ EOF
 	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
-echo looking for GNU Make...
+MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
 if test "$GNU_MAKE" != ""; then
 	case "`$GNU_MAKE -v bogus 2>&1`" in
@@ -69,13 +101,13 @@ fi
 if test "$GNU_MAKE" = ""; then
 	AC_MSG_ERROR(cannot find GNU Make)
 else
-	echo "found GNU Make: $GNU_MAKE"
+	MERCURY_MSG("found GNU Make: $GNU_MAKE")
 fi
 AC_SUBST(GNU_MAKE)
 #-----------------------------------------------------------------------------#
 INSTALL_SICSTUS=
 SICSTUS=
-echo "looking for SICStus Prolog..."
+MERCURY_MSG("looking for SICStus Prolog...")
 AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
 if test "$SP" != ""; then
 	case "`echo 'prolog_flag(version, V, V), write(V), nl, halt.' |
@@ -89,14 +121,14 @@ fi
 if test "$INSTALL_SICSTUS" = ""; then
 	AC_MSG_WARN(SICStus Prolog not found)
 else
-	echo "found SICStus Prolog: $SP"
+	MERCURY_MSG("found SICStus Prolog: $SP")
 fi
 AC_SUBST(INSTALL_SICSTUS)
 AC_SUBST(SICSTUS)
 #-----------------------------------------------------------------------------#
 INSTALL_NUPROLOG=
 NUPROLOG=
-echo "looking for NU-Prolog..."
+MERCURY_MSG("looking for NU-Prolog...")
 AC_PROGRAMS_CHECK(NP,np)
 if test "$NP" != ""; then
 	case "`$NP < /dev/null 2>&1`" in
@@ -109,12 +141,12 @@ fi
 if test "$INSTALL_NUPROLOG" = ""; then
 	AC_MSG_WARN(NU-Prolog not found)
 else
-	echo "found NU-Prolog: $NP"
+	MERCURY_MSG("found NU-Prolog: $NP")
 fi
 AC_SUBST(INSTALL_NUPROLOG)
 AC_SUBST(NUPROLOG)
 #-----------------------------------------------------------------------------#
-echo "looking for a way to create named pipes..."
+MERCURY_MSG("looking for a way to create named pipes...")
 
 save_PATH="$PATH"
 PATH="$PATH:/etc:/usr/etc:/sbin"
@@ -461,7 +493,7 @@ LIBRARY_PATH="$$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 	# ought to write a big enough example program to trigger
 	# the problem, but that would be too much work.
 	alpha-dec-*)
-		echo "gcc labels don't work on the Alpha"
+		MERCURY_MSG("gcc labels do not work on the Alpha")
 		mercury_cv_gcc_labels=no
 		mercury_cv_asm_labels=no
 		;;
@@ -636,13 +668,13 @@ if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 		AC_MSG_WARN(*** so you can use the more efficient" \
 				"grade \`$DESIRED_GRADE')
 	else
-		echo "using \`GRADE=$GRADE' to compile the compiler"
-		echo "compiler and library will be rebuilt with new grade"
-		echo "installation may take a long time"
+		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
+		MERCURY_MSG("compiler and library will be rebuilt with new grade")
+		MERCURY_MSG("installation may take a long time")
 		rm -f library/*.c compiler/*.c profiler/*.c
 	fi
 else
-	echo "using \`GRADE=$GRADE' to compile the compiler"
+	MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
 fi
 
 AC_SUBST(GRADE)
@@ -658,7 +690,7 @@ if test "$DEFAULT_GRADE" = ""; then
 			;;
 	esac
 fi
-echo "using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications"
+MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
 AC_SUBST(DEFAULT_GRADE)
 
 ALL_LIBGRADES="none"
@@ -700,7 +732,7 @@ if test $GRADE != $DEFAULT_GRADE; then
 fi
 # remove DEFAULT_GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $DEFAULT_GRADE / /" `
-echo "using \`LIBGRADES=$LIBGRADES' as the set of library grades to install"
+MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 
@@ -734,6 +766,7 @@ case "$host" in
 		# NUM_REAL_REGS=8
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=5
+		;;
 	*)
 		NUM_REAL_R_REGS=0
 		;;
