@@ -138,6 +138,7 @@ ORDINARY_PROGS=	\
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
+	string_strip \
 	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \

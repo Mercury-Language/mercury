@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -263,6 +263,10 @@
 %	Calls error/1 if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
+:- func string ^ elem(int) = char.
+%	A synonym for index_dex/2:
+%	String ^ elem(Index) = string__index_det(String, Index).
+
 :- func string__unsafe_index(string, int) = char.
 :- pred string__unsafe_index(string, int, char).
 :- mode string__unsafe_index(in, in, out) is det.
@@ -273,6 +277,50 @@
 %	This version is constant time, whereas string__index_det
 %	may be linear in the length of the string.
 %	Use with care!
+
+:- func string ^ unsafe_elem(int) = char.
+%	A synonym for index_dex/2:
+%	String ^ unsafe_elem(Index) = string__unsafe_index(String, Index).
+
+:- func string__chomp(string) = string.
+%	string__chomp(String):
+%	`String' minus any single trailing newline character.
+
+:- func string__lstrip(string) = string.
+%	string__lstrip(String):
+%	`String' minus any initial whitespace characters.
+
+:- func string__rstrip(string) = string.
+%	string__rstrip(String):
+%	`String' minus any trailing whitespace characters.
+
+:- func string__strip(string) = string.
+%	string__strip(String):
+%	`String' minus any initial and trailing whitespace characters.
+
+:- func string__lstrip(pred(char),          string) = string.
+:- mode string__lstrip(pred(in) is semidet, in    ) = out is det.
+%	string__lstrip(Pred, String):
+%	`String' minus the maximal prefix consisting entirely of
+%	chars satisfying `Pred'.
+
+:- func string__rstrip(pred(char),          string) = string.
+:- mode string__rstrip(pred(in) is semidet, in    ) = out is det.
+%	string__rstrip(Pred, String):
+%	`String' minus the maximal suffix consisting entirely of
+%	chars satisfying `Pred'.
+
+:- func string__prefix_length(pred(char),            string) = int.
+:- mode string__prefix_length(pred(in  ) is semidet, in)     = out is det.
+% string__prefix_length(Pred, String):
+% The length of the maximal prefix of `String' consisting entirely of
+% chars satisfying Pred.
+
+:- func suffix_length(pred(char),            string) = int.
+:- mode suffix_length(pred(in  ) is semidet, in)     = out is det.
+% string__suffix_length(Pred, String):
+% The length of the maximal suffix of `String' consisting entirely of
+% chars satisfying Pred.
 
 :- pred string__set_char(char, int, string, string).
 :- mode string__set_char(in, in, in, out) is semidet.
@@ -652,6 +700,8 @@ string__index_det(String, Int, Char) :-
 	;
 		error("string__index_det: index out of range")
 	).
+
+String ^ elem(Index) = index_det(String, Index).
 
 string__set_char_det(Char, Int, String0, String) :-
 	( string__set_char(Char, Int, String0, String1) ->
@@ -3009,6 +3059,8 @@ string__unsafe_index(Str, Index, Char) :-
 		error("string__unsafe_index: out of bounds")
 	).
 
+String ^ unsafe_elem(Index) = unsafe_index(String, Index).
+
 /*-----------------------------------------------------------------------*/
 
 :- pragma c_header_code("
@@ -3799,6 +3851,70 @@ string__det_base_string_to_int(Base, S) = N :-
 	  else
 	  	error("string__det_base_string_to_int/2: conversion failed")
 	).
+
+%-----------------------------------------------------------------------------%
+
+chomp(S) =
+	( if   index(S, length(S) - 1, '\n')
+	  then left(S, length(S) - 1)
+	  else S
+	).
+
+%-----------------------------------------------------------------------------%
+
+rstrip(S) = rstrip(is_whitespace, S).
+
+%-----------------------------------------------------------------------------%
+
+lstrip(S) = lstrip(is_whitespace, S).
+
+%-----------------------------------------------------------------------------%
+
+strip(S0) = S :-
+	L = prefix_length(is_whitespace, S0),
+	R = suffix_length(is_whitespace, S0),
+	S = substring(S0, L, length(S0) - L - R).
+
+%-----------------------------------------------------------------------------%
+
+rstrip(P, S) = left(S, length(S) - suffix_length(P, S)).
+
+%-----------------------------------------------------------------------------%
+
+lstrip(P, S)  = right(S, length(S) - prefix_length(P, S)).
+
+%-----------------------------------------------------------------------------%
+
+prefix_length(P, S) = prefix_length_2(0, length(S), P, S).
+
+
+:- func prefix_length_2(int, int, pred(char),            string) = int.
+:- mode prefix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
+
+prefix_length_2(I, N, P, S) =
+	( if   I < N			% XXX We need ordered conjunction.
+	  then ( if P(S ^ unsafe_elem(I)) then prefix_length_2(I + 1, N, P, S)
+					  else I
+	       )
+	  else I
+	).
+
+%-----------------------------------------------------------------------------%
+
+suffix_length(P, S) = suffix_length_2(length(S) - 1, length(S), P, S).
+
+
+:- func suffix_length_2(int, int, pred(char),            string) = int.
+:- mode suffix_length_2(in,  in,  pred(in  ) is semidet, in)     = out is det.
+
+suffix_length_2(I, N, P, S) =
+	( if   0 =< I			% XXX We need ordered conjunction.
+	  then ( if P(S ^ unsafe_elem(I)) then suffix_length_2(I - 1, N, P, S)
+					  else N - (I + 1)
+	       )
+	  else N - (I + 1)
+	).
+
 
 %------------------------------------------------------------------------------%
 

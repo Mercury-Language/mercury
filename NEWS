@@ -18,7 +18,9 @@ Changes to the Mercury compiler:
   with `mmc --make'.
 
 Changes to the Mercury standard library:
-* Nothing yet.
+* Several new functions have been added to the string module, namely
+  elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
+  strip/1, prefix_length/2, and suffix_length/2.
 
 Portability improvements:
 * Nothing yet.
@@ -68,6 +70,10 @@ Changes to the Mercury language:
   chapter of the Mercury Language Reference Manual.
 
 Changes to the Mercury standard library:
+
+* Several new functions have been added to the string module, namely
+  elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
+  strip/1, prefix_length/2, and suffix_length/2.
 
 * We've added a new library module, `array2d'.
 
