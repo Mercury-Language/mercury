@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2001 The University of Melbourne.
+** Copyright (C) 1994-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -177,7 +177,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 	lo = 0;
 	hi = entry_array_next-1;
 
-	if (addr < entry_array[lo].e_addr) {
+	if (lo > hi || addr < entry_array[lo].e_addr) {
 		return NULL;
 	}
 
@@ -192,7 +192,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 		}
 	}
 
-	if (entry_array[lo].e_addr < addr) {
+	if (lo < entry_array_next && entry_array[lo].e_addr < addr) {
 		return &entry_array[lo];
 	} else {
 		return &entry_array[lo - 1];

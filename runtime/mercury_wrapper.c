@@ -55,12 +55,29 @@ ENDINIT
 
 /* command-line options */
 
-/* size of data areas (including redzones), in kilobytes */
-/* (but we later multiply by 1024 to convert to bytes) */
+/*
+** size of data areas (including redzones), in kilobytes
+** (but we later multiply by 1024 to convert to bytes)
+**
+** Note that it is OK to allocate a large heap, since
+** we will only touch the part of it that we use;
+** we're really only allocating address space,
+** not physical memory.
+** But the other areas should be kept small, at least
+** in the case when conservative GC is enabled, since
+** the conservative GC will scan them.
+**
+** Note that for the accurate collector, the total heap size
+** that we use will be twice the heap size specified here,
+** since it is a two-space collector.
+**
+** Changes to MR_heap_size may also require changing MR_heap_zone_size
+** and/or the MR_heap_margin_size, which are defined below.
+*/
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
   size_t	MR_heap_size =			  52;
 #else
-  size_t	MR_heap_size =			4096;
+  size_t	MR_heap_size =		       32768; /* 16 Mb */
 #endif
 size_t		MR_detstack_size =		4096;
 size_t		MR_nondstack_size =	 	 256;
@@ -72,9 +89,29 @@ size_t		MR_genstack_size =		  32;
 size_t		MR_cutstack_size =		  32;
 size_t		MR_pnegstack_size =		  32;
 
-/* size of the redzones at the end of data areas, in kilobytes */
-/* (but we later multiply by 1024 to convert to bytes) */
-size_t		MR_heap_zone_size =		  16;
+/*
+** size of the redzones at the end of data areas, in kilobytes
+**
+** For accurate GC, although we start out with a big heap (32 Mb -- see above),
+** we don't want to touch all of it unless we really need to.
+** So with accurate GC in LLDS grades, we start out with a 28 Mb redzone,
+** leaving an active heap size of 4Mb.
+** The collector should (XXX it currently doesn't) resize this redzone
+** automatically at the end of each collection.
+**
+** For MLDS grades, we don't use redzones to schedule GC;
+** instead GCs are scheduled, based on MR_heap_margin_size (see below),
+** by explicit calls to MR_GC_check()
+*/
+#if defined(MR_ACCURATE_GC) && !defined(MR_HIGHLEVEL_CODE)
+  #ifdef MR_DEBUG_AGC_SMALL_HEAP
+    size_t		MR_heap_zone_size =	  32;
+  #else
+    size_t		MR_heap_zone_size =	  16 + 28 * 1024;
+  #endif
+#else
+  size_t		MR_heap_zone_size =	  16;
+#endif
 size_t		MR_detstack_zone_size =		  16;
 size_t		MR_nondstack_zone_size =	  16;
 size_t		MR_solutions_heap_zone_size =	  16;
@@ -93,10 +130,19 @@ size_t		MR_pnegstack_zone_size =	  16;
 ** amount of heap space still available, and if not, we call
 ** MR_garbage_collect().
 **
+** The collector should (XXX it currently doesn't) recompute this
+** and/or heap_zone->gc_threshold automatically at the end of each collection.
+**
 ** Like the sizes above, it is measured in kilobytes
 ** (but we later multiply by 1024 to convert to bytes).
 */
-size_t		MR_heap_margin_size =		  16;
+#ifdef MR_DEBUG_AGC_SMALL_HEAP
+  size_t	MR_heap_margin_size =		  16;
+#else
+  size_t	MR_heap_margin_size =		  28 * 1024;
+#endif
+
+double MR_heap_expansion_factor = 2.0;
 
 /* primary cache size to optimize for, in bytes */
 size_t		MR_pcache_size =	        8192;
@@ -859,6 +905,7 @@ enum MR_long_option {
 	MR_SOLUTIONS_HEAP_REDZONE_SIZE,
 	MR_TRAIL_REDZONE_SIZE,
 	MR_HEAP_MARGIN_SIZE,
+	MR_HEAP_EXPANSION_FACTOR,
 	MR_MDB_TTY,
 	MR_MDB_IN,
 	MR_MDB_OUT,
@@ -881,6 +928,7 @@ struct MR_option MR_long_opts[] = {
 	{ "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
 	{ "heap-margin-size", 		1, 0, MR_HEAP_MARGIN_SIZE },
+	{ "heap-expansion-factor", 	1, 0, MR_HEAP_EXPANSION_FACTOR },
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
@@ -979,6 +1027,14 @@ process_options(int argc, char **argv)
 				usage();
 
 			MR_heap_margin_size = size;
+			break;
+
+		case MR_HEAP_EXPANSION_FACTOR:
+			if (sscanf(MR_optarg, "%f", &MR_heap_expansion_factor)
+					!= 1)
+			{
+				usage();
+			}
 			break;
 
 		case 'i':

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000, 2002 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -159,6 +159,8 @@ memalign(size_t unit, size_t size)
 */
 #ifdef MR_PROTECTPAGE
 
+  #define NORMAL_PROT (PROT_READ|PROT_WRITE)
+
   #ifdef MR_CONSERVATIVE_GC
     /*
     ** The conservative garbage collectors scans through
@@ -167,9 +169,9 @@ memalign(size_t unit, size_t size)
     ** too much memory for the GC to scan, and it probably
     ** all gets paged in.
     */
-    #define MY_PROT PROT_READ
+    #define REDZONE_PROT PROT_READ
   #else
-    #define MY_PROT PROT_NONE
+    #define REDZONE_PROT PROT_NONE
   #endif
 
   /* The BSDI BSD/386 1.1 headers don't define PROT_NONE */
@@ -398,7 +400,7 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
 			MR_round_up((MR_Unsigned)base + size - redsize,
 				MR_unit);
 	if (MR_protect_pages((char *)zone->redzone,
-			redsize + MR_unit, MY_PROT) < 0)
+			redsize + MR_unit, REDZONE_PROT) < 0)
 	{
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d redzone\n"
@@ -414,7 +416,7 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
 #if	defined(MR_PROTECTPAGE)
 	zone->hardmax = (MR_Word *) MR_round_up(
 			(MR_Unsigned)zone->top - MR_unit, MR_unit);
-	if (MR_protect_pages((char *)zone->hardmax, MR_unit, MY_PROT) < 0) {
+	if (MR_protect_pages((char *)zone->hardmax, MR_unit, REDZONE_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"
 			"base=%p, hardmax=%p top=%p",
@@ -437,8 +439,22 @@ MR_reset_redzone(MR_MemoryZone *zone)
 #ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone = zone->redzone_base;
 
+	/* unprotect the non-redzone area */
+	if (MR_protect_pages((char *)zone->bottom,
+		((char *)zone->redzone) - ((char *) zone->bottom),
+		NORMAL_PROT) < 0)
+	{
+		char buf[2560];
+		sprintf(buf, "unable to reset %s#%d normal area\n"
+			"base=%p, redzone=%p",
+			zone->name, zone->id, zone->bottom, zone->redzone);
+		MR_fatal_error(buf);
+	}
+	/* protect the redzone area */
 	if (MR_protect_pages((char *)zone->redzone,
-		((char *)zone->top) - ((char *) zone->redzone), MY_PROT) < 0) {
+		((char *)zone->top) - ((char *) zone->redzone),
+		REDZONE_PROT) < 0)
+	{
 		char buf[2560];
 		sprintf(buf, "unable to reset %s#%d redzone\n"
 			"base=%p, redzone=%p",

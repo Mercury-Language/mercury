@@ -6,6 +6,24 @@
 
 /*
 ** This module contains the accurate garbage collector.
+**
+** Currently we are just using a simple copying collector.
+**
+** For the LLDS back-end, we detect heap overflow
+** using the virtual memory system; the page fault
+** handler will set the return address to call the
+** garbage collector.
+**
+** XXX this may cause problems for tight loops that
+**     allocate memory and don't have any procedure
+**     returns in them... either because they
+**     loop via tail calls and/or retries
+**     (failure in nondet code).
+**
+** For the MLDS back-end, we can't use this technique
+** of overwriting the return address, so instead we
+** just explicitly call MR_GC_check() to check for
+** heap overflow before each heap allocation.
 */
 
 #include "mercury_imp.h"
@@ -65,14 +83,14 @@ static MR_RootList last_root = NULL;
 ** with all bits unset (zero).
 */
 static void
-init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap)
+init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
 {
     size_t			    heap_size_in_words;
     size_t			    num_words_for_bitmap;
     size_t			    num_bytes_for_bitmap;
     static size_t		    prev_num_bytes_for_bitmap;
 
-    heap_size_in_words = old_heap->hardmax - old_heap->min;
+    heap_size_in_words = old_hp - old_heap->min;
     num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
     num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
     if (MR_has_forwarding_pointer == NULL
@@ -129,7 +147,7 @@ MR_garbage_collect(void)
     /*
     ** Initialize the forwarding pointer bitmap.
     */
-    init_forwarding_pointer_bitmap(old_heap);
+    init_forwarding_pointer_bitmap(old_heap, old_hp);
 
     /*
     ** Swap the two heaps.
@@ -225,6 +243,12 @@ traverse_stack(struct MR_StackChain *stack_chain)
 ** 	that the code will return to).
 */
 
+/*
+** XXX we should use write() rather than fprintf() here,
+**     since this code is called from a signal handler,
+**     and stdio is not guaranteed to be reentrant.
+**/
+
 void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal, 
 	MR_Word *curfr_at_signal)
@@ -269,23 +293,30 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 	/* Search for the entry label */
 
 	entry_label = MR_prev_entry_by_addr(pc_at_signal);
-	proc_layout = entry_label->e_layout;
+	proc_layout = (entry_label != NULL ? entry_label->e_layout : NULL);
 
-	determinism = proc_layout->MR_sle_detism;
+	determinism = (proc_layout != NULL ? proc_layout->MR_sle_detism : -1);
 
 	if (determinism < 0) {
 		/*
 		** This means we have reached some handwritten code that has
 		** no further information about the stack frame.
 		*/
-		fprintf(stderr, "Mercury runtime: the label ");
-		if (entry_label->e_name != NULL) {
-			fprintf(stderr, "%s has no stack layout info\n",
-				entry_label->e_name);
+		fprintf(stderr, "Mercury runtime: "
+			"attempt to schedule garbage collection failed\n");
+		if (entry_label != NULL) {
+			fprintf(stderr, "Mercury runtime: the label ");
+			if (entry_label->e_name != NULL) {
+				fprintf(stderr, "%s has no stack layout info\n",
+					entry_label->e_name);
+			} else {
+				fprintf(stderr, "at address %p "
+					"has no stack layout info\n",
+					entry_label->e_addr);
+			}
 		} else {
-			fprintf(stderr, "at address %p "
-				"has no stack layout info\n",
-				entry_label->e_addr);
+			fprintf(stderr, "Mercury runtime: no entry label ");
+			fprintf(stderr, "for PC address %p\n", pc_at_signal);
 		}
 
 		fprintf(stderr, "Mercury runtime: Trying to continue...\n");
@@ -335,10 +366,10 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 		saved_success = (MR_Code *) *saved_success_location;
 	} else {
 		/*
-		** XXX we don't support nondet stack frames yet.
-		MR_fatal_error("cannot schedule in nondet stack frame");
+		** XXX we ought to also overwrite the redoip,
+		**     otherwise we might miss failure-driven loops
+		**     which don't contain any returns.
 		*/
-
 		saved_success_location = &MR_based_framevar(curfr_at_signal,
 			number);
 		saved_success = (MR_Code *) *saved_success_location;
@@ -442,7 +473,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     /*
     ** Initialize the forwarding pointer bitmap.
     */
-    init_forwarding_pointer_bitmap(old_heap);
+    init_forwarding_pointer_bitmap(old_heap, old_hp);
 
     /*
     ** Swap the two heaps.
@@ -719,8 +750,28 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             ((char *) MR_virtual_hp - (char *) new_heap->min));
     }
 
-    /* Reset the redzone on the old heap */
-    MR_reset_redzone(old_heap);
+    /* Reset the redzone on the new heap */
+    {
+      /* These counts include some wasted space between ->min and ->bottom. */
+      size_t old_heap_space =
+	      	(char *) old_heap->redzone_base - (char *) old_heap->bottom;
+      size_t new_heap_usage =
+	      	(char *) MR_virtual_hp - (char *) new_heap->bottom;
+      size_t gc_heap_size;
+
+      /*
+      ** Set the size at which to GC to be MR_heap_expansion_factor
+      ** (which defaults to two) times the current usage,
+      ** or the size at which we GC'd last time, whichever is larger.
+      */
+      gc_heap_size = (size_t) (MR_heap_expansion_factor * new_heap_usage);
+      if (gc_heap_size < old_heap_space) {
+	      gc_heap_size = old_heap_space;
+      }
+      old_heap->redzone_base = (MR_Word *)
+	      	((char *) old_heap->bottom + gc_heap_size);
+      MR_reset_redzone(old_heap);
+    }
 
     if (MR_agc_debug) {
         fprintf(stderr, "garbage_collect() done.\n\n");
