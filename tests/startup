@@ -4,5 +4,5 @@ then
 	rm -f CLEAN > /dev/null 2>&1
 else
 	rm -f CLEAN > /dev/null 2>&1
-	mmake $gradeopt -j realclean_local > /dev/null 2>&1
+	mmake $gradeopt $rm_jfactor realclean_local > /dev/null 2>&1
 fi
