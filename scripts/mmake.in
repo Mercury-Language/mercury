@@ -12,37 +12,26 @@
 #
 #-----------------------------------------------------------------------------#
 
-MMAKE_MAKE=${MMAKE_MAKE=@GNU_MAKE@}
-MMAKE_DIR=${MMAKE_DIR=@LIBDIR@/mmake}
-MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
-MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
-MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
-MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
-
-MMAKE=$0
-verbose=false
-save_makefile=false
-
-while [ $# -gt 0 ]; do
-	case $1 in
-		-h|--help)
-#-----------------------------------------------------------------------------#
-			cat << 'EOF'
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+Help="\
+Name: mmake -- Mercury Make
 Usage: mmake [<mmake options>] [-- <make options>] <target>...
 Options:
 	-s, --save-makefile:
-		Save the generated makefile to `Mmake.makefile'.
+		Save the generated makefile to \`Mmake.makefile'.
 	-v, --verbose:
 		Print verbose progress messages.
 	-h, --help:
 		Print this usage message.
 Targets:
 	<module>.depend:
-		Make the file `<module>.dep'.  This step is required
+		Make the file \`<module>.dep'.  This step is required
 		in preparation for the targets below.
 	<module>:
 		Compile and link a Mercury program with main module
-		`<module>.m' to produce an executable.
+		\`<module>.m' to produce an executable.
 	<module>.nu:
 		Compile and link a Mercury program with NU-Prolog
 		rather than with the Mercury compiler.
@@ -57,9 +46,24 @@ Targets:
 	realclean:
 		Remove all automatically-generated files: intermediate files,
 		dependency files, and executables.
-EOF
-#-----------------------------------------------------------------------------#
-			exit
+"
+
+MMAKE_MAKE=${MMAKE_MAKE=@GNU_MAKE@}
+MMAKE_DIR=${MMAKE_DIR=@LIBDIR@/mmake}
+MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
+MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
+MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
+MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+
+MMAKE=$0
+verbose=false
+save_makefile=false
+
+while [ $# -gt 0 ]; do
+	case $1 in
+		-h|--help)
+			echo "$Help"
+			exit 0
 			;;
 		-s|--save-makefile)
 			save_makefile=true

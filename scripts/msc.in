@@ -48,8 +48,11 @@ while true; do
 done
 			
 if [ $# -lt 1 ] || $help; then
+	# IMPORTANT: the manpage is produced automatically from this help
+	# message, so if you change the help message, don't forget to check
+	# that the manpage still looks OK.
 	cat << 'EOF'
-MSC - Mercury SICStus Compiler.
+Name: msc - Mercury SICStus Compiler.
 Compiles Mercury programs to SICStus Prolog object code (*.ql).
 Usage: msc [<options>] file(s)
 Options:

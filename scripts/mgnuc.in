@@ -6,36 +6,32 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# MGNUC - Mercury GNU C
-#
-# Usage: mgnuc [<options>] [-- <gcc options>] files...
-# Options:
-# -v, --verbose
-#	Echo gcc command before executing it.
-# --no-ansi
-#	Don't pass -ansi.
-# --no-check
-#	Don't pass any of the -W options.
-# -s <grade>, --grade <grade>
-#	Select optimization/debug/gc options according to <grade>, which
-#	must be one of debug, none, jump, asm_jump, reg, fast, or asm_fast,
-#	or one of those with .gc appended.
-#
-# This runs gcc with all warnings enabled, except for the following
-# exceptions:
-#
-# -Wredundant-decls	causes too many complaints in system header files
-# -Wconversion		really only intended to help people using `unprotoize'
-# -Waggregate-return	not useful, IMHO
-#
-# -Wcast-align 		causes redundant warnings in memory.c
-# -pedantic		causes unsuppressable warnings about LVALUE_CAST()
-# -Wnested-externs	causes unsuppressable warnings about callentry()
-# -Wid-clash-31 	causes warnings about entry_mercury__xxx ...
-# -Wenum-clash 		is for C++ only
-# -Wunused		causes various spurious warnings
-#
-# Environment variables: MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+Help="\
+Name:	mgnuc - Mercury front-end to GNU C
+Usage:	mgnuc [<options>] [-- <gcc options>] files...
+Options:
+	-s <grade>, --grade <grade>
+		Select optimization/debug/gc options according to <grade>,
+		which must be one of debug, none, jump, asm_jump, reg, fast,
+		or asm_fast, or one of those with .gc and/or .prof appended.
+	-v, --verbose
+		Echo gcc command before executing it.
+	--no-ansi
+		Don't pass \`-ansi' to gcc.
+	--no-check
+		Don't enable any of gcc's warnings.
+Description:
+	This runs gcc with the appropriate options for compiling Mercury
+	programs in the specified grade.
+	Normally it invokes gcc in ANSI mode with almost all warnings enabled,
+	but this can be changed using the \`--no-ansi' or \`--no-check'
+	options.
+Environment variables:
+	MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
+"
 
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
@@ -59,6 +55,19 @@ case "$CC" in
 	CHECK_OPTS="
 	      -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
+
+# Note: we do not enable the following gcc warnings:
+# -Wredundant-decls	causes too many complaints in system header files
+# -Wconversion		really only intended to help people using \`unprotoize'
+# -Waggregate-return	not useful, IMHO
+
+# -Wcast-align 		causes redundant warnings in memory.c
+# -pedantic		causes unsuppressable warnings about LVALUE_CAST()
+# -Wnested-externs	causes unsuppressable warnings about callentry()
+# -Wid-clash-31 		causes warnings about entry_mercury__xxx ...
+# -Wenum-clash 		is for C++ only
+# -Wunused		causes various spurious warnings
+
 	OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
 	COMPILER=gcc
 	;;
@@ -86,6 +95,10 @@ assemble=false
 
 while : ; do
     case "$1" in
+	-h|--help|"-?")
+		echo "$Help"
+		exit 0
+		;;
 	--assemble)
 		assemble=true
 		shift
