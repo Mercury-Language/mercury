@@ -665,7 +665,7 @@
 :- import_module export, llds_out. % XXX needed for pragma C code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
-:- import_module passes_aux.
+:- import_module passes_aux, modules.
 
 :- import_module bool, string, list, map, set, require, std_util.
 
@@ -701,10 +701,13 @@ ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
 :- mode ml_gen_imports(in, out) is det.
 
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
+	module_info_name(ModuleInfo, ModuleName),
+	get_ancestors(ModuleName, Parents),
 	module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
 	module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
 		IndirectImports),
-	AllImports = DirectImports `set__union` IndirectImports,
+	AllImports = (IndirectImports `set__union` DirectImports)
+			`set__union` set__list_to_set(Parents),
 	MLDS_ImportList = list__map(mercury_module_name_to_mlds,
 		set__to_sorted_list(AllImports)).
 
