@@ -181,6 +181,8 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage3/library
 export MERCURY_INT_DIR
 
+ulimit -t 600
+
 if test "$single_command" != ""
 then
 	echo "executing $single_command"
@@ -200,12 +202,20 @@ then
 	# Rebuild the stage3 library and compiler from scratch
 
 	/bin/rm -f stage3/library/*.c
+	/bin/rm -f stage3/library/*.d
+	/bin/rm -f stage3/library/*.int3
+	/bin/rm -f stage3/library/*.int2
+	/bin/rm -f stage3/library/*.int
 	/bin/rm -f stage3/compiler/*.c
+	/bin/rm -f stage3/compiler/*.d
+	/bin/rm -f stage3/compiler/*.int3
+	/bin/rm -f stage3/compiler/*.int2
+	/bin/rm -f stage3/compiler/*.int
 
 	if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
-		if test "$dependency_only" == "true"
+		if test "$dependency_only" = "true"
 		then
 			exit 0
 		fi

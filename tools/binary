@@ -166,13 +166,15 @@ echo linking stage 2... 1>&2
 cd stage2
 mkdir compiler
 cd compiler
-ln -s $root/compiler/*.m .
+ln -s $root/compiler/[a-h]*.m .
+ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[t-z]*.m .
 cp $root/compiler/Mmake* .
 cd $root/stage2
 mkdir library
 cd library
-ln -s $root/library/*.m .
-# ln -s $root/library/*.nl .
+ln -s $root/library/[a-l]*.m .
+ln -s $root/library/[m-z]*.m .
 ln -s $root/library/library.init .
 cp $root/library/Mmake* .
 cd $root/stage2
@@ -215,6 +217,38 @@ cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
 cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
+
+cd $root
+[ -d stage3 ] || mkdir stage3
+/bin/rm -fr stage3/*
+echo linking stage 3... 1>&2
+cd stage3
+mkdir compiler
+cd compiler
+# Break up the links into several chunks.
+# This is needed to cope with small limits on the size of argument vectors.
+ln -s $root/compiler/[a-h]*.m .
+ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[t-z]*.m .
+cp $root/compiler/Mmake* .
+cd $root/stage3
+mkdir library
+cd library
+ln -s $root/library/[a-l]*.m .
+ln -s $root/library/[m-z]*.m .
+ln -s $root/library/library.init .
+cp $root/library/Mmake* .
+cd $root/stage3
+ln -s $root/boehm_gc .
+ln -s $root/doc .
+ln -s $root/scripts .
+ln -s $root/util .
+ln -s $root/profiler .
+ln -s $root/conf* .
+rm -f config*.log
+cp $root/stage2.ok/Mmake* .
+cp $root/stage2.ok/so_locations .
+cd $root
 
 set -x
 
