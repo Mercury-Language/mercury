@@ -2537,6 +2537,8 @@ There are several uses for @code{pragma} declarations:
                                 @samp{#@var{line}} directives provide support
                                 for preprocessors and other tools that
                                 generate Mercury code.
+* Implementation-dependent pragmas::
+                                Implementations may support additional pragmas.
 @end menu
 @c * Tabling::                     Mercury predicates can be evaluated
 @c                                 using a three different forms of tabled
@@ -2562,7 +2564,7 @@ There are several uses for @code{pragma} declarations:
 * Using C pointers::                    Maintaining a reference to C data
                                         structures in Mercury code.
 * Memory management::                   Caveats about passing dynamically
-					allocated memory to or from C.
+                                        allocated memory to or from C.
 @end menu
 
 The Mercury distribution includes a number of examples of the
@@ -2577,7 +2579,7 @@ A declaration of the form
 
 @example
 :- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
-	may_call_mercury, @var{C_Code}).
+        may_call_mercury, @var{C_Code}).
 @end example
 
 @noindent
@@ -2598,7 +2600,7 @@ predicate @samp{io__write_string/3}:
 :- mode c_write_string(in, di, uo) is det.
 
 :- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
-	may_call_mercury,
+        may_call_mercury,
         "puts(S); IO = IO0;").
 @end example
 
@@ -2607,7 +2609,7 @@ as in the above example, then you can use a declaration of the form
 
 @example
 :- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
-	will_not_call_mercury, @var{C_Code}).
+        will_not_call_mercury, @var{C_Code}).
 @end example
 
 This allows the compiler to use a more efficient calling convention.
@@ -3009,6 +3011,56 @@ idea to use @samp{pragma source_file} and @samp{#@var{line}} directives
 to reset the source file name and line number to point back to the
 generated file for the automatically generated text, as in the above
 example.
+
+@node Implementation-dependent pragmas
+@section Implementation-dependent pragmas
+
+The @samp{pragma} declarations described above are a standard part of
+the Mercury language.  However, as an extension, implementations may
+also choose to support additional pragmas with implementation-dependent
+semantics.
+
+The University of Melbourne Mercury implemenation supports the following
+additional pragmas:
+
+@menu
+* Fact tables::         Support for very large tables of facts
+@end menu
+
+@node Fact tables
+@subsection Fact tables
+
+Large tables of facts can be compiled using a different algorithm that
+is more efficient and produces more efficient code.
+
+A declaration of the form
+
+@example
+:- pragma fact_table(@var{Name}/@var{Arity}, @var{FileName}).
+@end example
+
+@noindent
+tells the compiler that the predicate or function with name @var{Name}
+and arity @var{Arity} is defined by a set of facts in an external file
+@var{FileName}.  Defining large tables of facts in this way allows the
+compiler to use a more efficient algorithm for compiling them.
+This algorithm uses less memory than would normally be required
+to compile the facts so much larger tables are possible.
+
+Each mode is indexed on all its input arguments so the compiler can
+produce very efficient code using this technique.
+
+In the current implementation, the table of facts is compiled into a
+separate C file named @samp{@var{FileName}.c}.  The compiler will
+automatically generate the correct depencencies for this file when the
+command @samp{mmake @var{main_module}.depend} is invoked.  This ensures
+that the C file will be compiled to @samp{@var{FileName}.o} and then
+linked with the other object files when @samp{mmake @var{main_module}}
+is invoked.
+
+The main limitation of the @samp{fact_table} pragma is that
+predicates or functions defined as fact tables can only have
+arguments of types @samp{string}, @samp{int} or @samp{float}.
 
 @contents
 @bye
