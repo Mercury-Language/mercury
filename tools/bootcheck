@@ -71,6 +71,7 @@ ln -s $root/doc stage2/doc
 ln -s $root/runtime stage2/runtime
 ln -s $root/scripts stage2/scripts
 ln -s $root/util stage2/util
+ln -s $root/profiler stage2/profiler
 ln -s $root/Mmake* stage2
 ln -s $root/conf* stage2
 
@@ -152,13 +153,14 @@ ln -s $root/stage2/library/*.m.in stage3/library
 ln -s $root/stage2/library/*.nl stage3/library
 ln -s $root/stage2/library/Mmake* stage3/library
 ln -s $root/stage2/library/library.init stage3/library
-ln -s $root/boehm_gc stage3/boehm_gc
-ln -s $root/doc stage3/doc
-ln -s $root/runtime stage3/runtime
-ln -s $root/scripts stage3/scripts
-ln -s $root/util stage3/util
-ln -s $root/Mmake* stage3
-ln -s $root/conf* stage3
+ln -s $root/stage2/boehm_gc stage3/boehm_gc
+ln -s $root/stage2/doc stage3/doc
+ln -s $root/stage2/runtime stage3/runtime
+ln -s $root/stage2/scripts stage3/scripts
+ln -s $root/stage2/util stage3/util
+ln -s $root/stage2/profiler stage3/util
+ln -s $root/stage2/Mmake* stage3
+ln -s $root/stage2/conf* stage3
 
 if (cd stage3 ; mmake $mmake_opts depend)
 then
