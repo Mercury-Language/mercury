@@ -1572,7 +1572,7 @@ do_compare__type_desc_0_0(
 ** being a structure containing a pointer to the type_ctor_info for pred/0
 ** or func/0 and an arity, we have a single small encoded integer. This
 ** integer is four times the arity, plus zero, one or two; plus zero encodes a
-** tuple, plus one encodes a predicate, plus two encodes a function.
+** predicate, plus one encodes a function, plus two encodes a tuple.
 ** The maximum arity that can be encoded is given by MR_MAX_VARIABLE_ARITY
 ** (see below).
 ** The C type corresponding to std_util:type_ctor_desc is `MR_TypeCtorDesc'.
