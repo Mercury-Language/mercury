@@ -107,8 +107,8 @@
 :- func math__pow(float, float) = float.
 :- mode math__pow(in, in) = out is det.
 
-	% math__exp(X) = Exp is true if Exp is X raised to the
-	% power of e.
+	% math__exp(X) = Exp is true if Exp is e raised to the
+	% power of X.
 :- func math__exp(float) = float.
 :- mode math__exp(in) = out is det.
 
