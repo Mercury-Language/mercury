@@ -71,76 +71,7 @@ static	bool	try_munprotect(void *);
 
 static	void	setup_signal(void);
 
-Word	unreal_reg_0;
-Word	unreal_reg_1;
-Word	unreal_reg_2;
-Word	unreal_reg_3;
-Word	unreal_reg_4;
-Word	unreal_reg_5;
-Word	unreal_reg_6;
-Word	unreal_reg_7;
-Word	unreal_reg_8;
-Word	unreal_reg_9;
-Word	unreal_reg_10;
-Word	unreal_reg_11;
-Word	unreal_reg_12;
-Word	unreal_reg_13;
-Word	unreal_reg_14;
-Word	unreal_reg_15;
-Word	unreal_reg_16;
-Word	unreal_reg_17;
-Word	unreal_reg_18;
-Word	unreal_reg_19;
-Word	unreal_reg_20;
-Word	unreal_reg_21;
-Word	unreal_reg_22;
-Word	unreal_reg_23;
-Word	unreal_reg_24;
-Word	unreal_reg_25;
-Word	unreal_reg_26;
-Word	unreal_reg_27;
-Word	unreal_reg_28;
-Word	unreal_reg_29;
-Word	unreal_reg_30;
-Word	unreal_reg_31;
-Word	unreal_reg_32;
-Word	unreal_reg_33;
-Word	unreal_reg_34;
-Word	unreal_reg_35;
-Word	unreal_reg_36;
-Word	unreal_reg_37;
-Word	unreal_reg_38;
-Word	unreal_reg_39;
-Word	unreal_reg_40;
-Word	unreal_reg_41;
-Word	unreal_reg_42;
-Word	unreal_reg_43;
-Word	unreal_reg_44;
-Word	unreal_reg_45;
-Word	unreal_reg_46;
-Word	unreal_reg_47;
-Word	unreal_reg_48;
-Word	unreal_reg_49;
-Word	unreal_reg_50;
-Word	unreal_reg_51;
-Word	unreal_reg_52;
-Word	unreal_reg_53;
-Word	unreal_reg_54;
-Word	unreal_reg_55;
-Word	unreal_reg_56;
-Word	unreal_reg_57;
-Word	unreal_reg_58;
-Word	unreal_reg_59;
-Word	unreal_reg_60;
-Word	unreal_reg_61;
-Word	unreal_reg_62;
-Word	unreal_reg_63;
-Word	unreal_reg_64;
-Word	unreal_reg_65;
-Word	unreal_reg_66;
-Word	unreal_reg_67;
-Word	unreal_reg_68;
-Word	unreal_reg_69;
+Word	fake_reg[MAX_FAKE_REG];
 
 Word	*saved_regs;
 Word	*num_uses;
@@ -232,27 +163,27 @@ void init_memory(void)
 		}
 	}
 
-	saved_regs  = (Word *) (arena + 0 * MAX_RN * sizeof(Word));
-	num_uses    = (Word *) (arena + 1 * MAX_RN * sizeof(Word));
+	saved_regs  = (Word *) (arena + 0 * MAX_FAKE_REG * sizeof(Word));
+	num_uses    = (Word *) (arena + 1 * MAX_FAKE_REG * sizeof(Word));
 
-	for (i = 0; i < MAX_RN; i++)
+	for (i = 0; i < MAX_FAKE_REG; i++)
 		num_uses[i] = 0;
 
-	if (2 * MAX_RN * sizeof(Word) < pcache_size/4)
+	if (2 * MAX_FAKE_REG * sizeof(Word) < pcache_size/4)
 	{
-		heap    = (Word *) (arena + 0 * MAX_RN * sizeof(Word));
-		heapmin = (Word *) (arena + 2 * MAX_RN * sizeof(Word));
+		heap    = (Word *) (arena + 0 * MAX_FAKE_REG * sizeof(Word));
+		heapmin = (Word *) (arena + 2 * MAX_FAKE_REG * sizeof(Word));
 	}
 	else
 	{
-		if (2 * MAX_RN * sizeof(Word) >= unit)
+		if (2 * MAX_FAKE_REG * sizeof(Word) >= unit)
 		{
 			printf("cache division strategy isn't working\n");
 			exit(1);
 		}
 
-		heap    = (Word *) (arena + unit + 0 * MAX_RN * sizeof(Word));
-		heapmin = (Word *) (arena + unit + 2 * MAX_RN * sizeof(Word));
+		heap    = (Word *) (arena + unit + 0 * MAX_FAKE_REG * sizeof(Word));
+		heapmin = (Word *) (arena + unit + 2 * MAX_FAKE_REG * sizeof(Word));
 	}
 
 	heapend = (Word *) ((char *) heap + heap_size + unit);

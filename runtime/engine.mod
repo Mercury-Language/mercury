@@ -44,7 +44,7 @@ static void init_registers(void)
 	mkframe("buffer_zone", 0, ENTRY(do_not_reached));		
 	nondstackmin = maxfr;				
 
-	save_registers();
+	save_transient_registers();
 }
 
 /*
@@ -102,7 +102,7 @@ void call_engine(Code *entry_point)
 	** call mechanism
 	*/
 
-	restore_registers();
+	restore_transient_registers();
 
 	/*
 	** We save the address of the locals in a global pointer to make
@@ -127,7 +127,7 @@ engine_done:
 	** C function call / return mechanism
 	*/
 
-	save_registers();
+	save_transient_registers();
 
 	/*
 	** We need to ensure that there is at least one
@@ -190,7 +190,7 @@ static jmp_buf *engine_jmp_buf;
 
 static Code *engine_done(void)
 {
-	save_registers();
+	save_transient_registers();
 
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
@@ -198,7 +198,7 @@ static Code *engine_done(void)
 
 static Code *engine_init_registers(void)
 {
-	restore_registers();
+	restore_transient_registers();
 	succip = engine_done;
 	return NULL;
 }

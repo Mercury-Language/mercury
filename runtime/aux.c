@@ -8,7 +8,7 @@
 
 void mkframe_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nnew choice point for procedure %s\n", curprednm);
 	printf("new  fr: "); printnondstack(curfr);
@@ -23,7 +23,7 @@ void mkframe_msg(void)
 
 void modframe_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nmodifying choice point for procedure %s\n", curprednm);
 	printf("redo ip: "); printlabel(curredoip);
@@ -34,7 +34,7 @@ void modframe_msg(void)
 
 void succeed_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nsucceeding from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
@@ -47,7 +47,7 @@ void succeed_msg(void)
 
 void succeeddiscard_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nsucceeding from procedure %s, discarding frame\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
@@ -60,7 +60,7 @@ void succeeddiscard_msg(void)
 
 void fail_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nfailing from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
@@ -70,7 +70,7 @@ void fail_msg(void)
 
 void redo_msg(void)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\nredo from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
@@ -87,7 +87,7 @@ void call_msg(const Code *proc, const Code *succcont)
 
 void tailcall_msg(const Code *proc)
 {
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\ntail calling "); printlabel(proc);
 	printf("continuation "); printlabel(succip);
@@ -286,7 +286,7 @@ void printframe(const char *msg)
 	printf("\n%s\n", msg);
 	dumpframe(curfr);
 
-	restore_registers();
+	restore_transient_registers();
 
 	for (i = 0; i < 5; i++)
 	{
@@ -305,7 +305,7 @@ void printregs(const char *msg)
 	reg	int	i;
 	reg	int	value;
 
-	restore_registers();
+	restore_transient_registers();
 
 	printf("\n%s\n", msg);
 
@@ -332,13 +332,13 @@ Word do_mklist(int start, int len)
 	Word	curr;
 	int	i;
 
-	restore_registers();
+	restore_transient_registers();
 	curr = mkword(TAG_NIL, 0);
 	for (i = 1; i <= len; i++)
 	{
 		curr = mkword(TAG_CONS, create2(start + len - i, curr));
 	}
-	save_registers();
+	save_transient_registers();
 	return curr;
 }
 

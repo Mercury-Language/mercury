@@ -1,80 +1,74 @@
+#ifndef NO_REGS_H
+#define NO_REGS_H
+
 /*
 ** Portable version.
 ** All "machine registers" are just slots in a global array.
 */
 
+/* The number of real physical machine registers that we can use */
 #define NUM_REAL_REGS 0
 
-#define save_registers()	((void)0)
-#define restore_registers()	((void)0)
+/* A pair of macros to save/restore all of the physical machine
+   registers.  They should copy/restore the windowed
+   registers to/from the corresponding fake_reg[n].
+   This is used so that the register n can be simply addressed
+   as fake_reg[n] without requiring a switch.
+*/
+#define save_registers()		((void)0)
+#define restore_registers()		((void)0)
 
-#define	mr0	unreal_reg_0
-#define	mr1	unreal_reg_1
-#define	mr2	unreal_reg_2
-#define	mr3	unreal_reg_3
-#define	mr4	unreal_reg_4
-#define	mr5	unreal_reg_5
-#define	mr6	unreal_reg_6
-#define	mr7	unreal_reg_7
-#define	mr8	unreal_reg_8
-#define	mr9	unreal_reg_9
-#define	mr10	unreal_reg_10
-#define	mr11	unreal_reg_11
-#define	mr12	unreal_reg_12
-#define	mr13	unreal_reg_13
-#define	mr14	unreal_reg_14
-#define	mr15	unreal_reg_15
-#define	mr16	unreal_reg_16
-#define	mr17	unreal_reg_17
-#define	mr18	unreal_reg_18
-#define	mr19	unreal_reg_19
-#define	mr20	unreal_reg_20
-#define	mr21	unreal_reg_21
-#define	mr22	unreal_reg_22
-#define	mr23	unreal_reg_23
-#define	mr24	unreal_reg_24
-#define	mr25	unreal_reg_25
-#define	mr26	unreal_reg_26
-#define	mr27	unreal_reg_27
-#define	mr28	unreal_reg_28
-#define	mr29	unreal_reg_29
-#define	mr30	unreal_reg_30
-#define	mr31	unreal_reg_31
-#define	mr32	unreal_reg_32
-#define	mr33	unreal_reg_33
-#define	mr34	unreal_reg_34
-#define	mr35	unreal_reg_35
-#define	mr36	unreal_reg_36
-#define	mr37	unreal_reg_37
-#define	mr38	unreal_reg_38
-#define	mr39	unreal_reg_39
-#define	mr40	unreal_reg_40
-#define	mr41	unreal_reg_41
-#define	mr42	unreal_reg_42
-#define	mr43	unreal_reg_43
-#define	mr44	unreal_reg_44
-#define	mr45	unreal_reg_45
-#define	mr46	unreal_reg_46
-#define	mr47	unreal_reg_37
-#define	mr48	unreal_reg_48
-#define	mr49	unreal_reg_49
-#define	mr50	unreal_reg_50
-#define	mr51	unreal_reg_51
-#define	mr52	unreal_reg_52
-#define	mr53	unreal_reg_53
-#define	mr54	unreal_reg_54
-#define	mr55	unreal_reg_55
-#define	mr56	unreal_reg_56
-#define	mr57	unreal_reg_57
-#define	mr58	unreal_reg_58
-#define	mr59	unreal_reg_59
-#define	mr60	unreal_reg_60
-#define	mr61	unreal_reg_61
-#define	mr62	unreal_reg_62
-#define	mr63	unreal_reg_63
-#define	mr64	unreal_reg_64
-#define	mr65	unreal_reg_65
-#define	mr66	unreal_reg_66
-#define	mr67	unreal_reg_67
-#define	mr68	unreal_reg_68
-#define	mr69	unreal_reg_69
+/* A pair of macros to save/restore any of the physical machine
+   registers that get clobbered by calling a C function.  This is used
+   for machines with register windows.  They should copy/restore the windowed
+   registers to/from the corresponding fake_reg[n].
+*/
+
+#define save_transient_registers()	((void)0)
+#define restore_transient_registers()	((void)0)
+
+/* mr0, ..., mr36 are macros that map to either the underlying physical
+   machine register, if there is one, or otherwise to fake_reg[n].
+   For register numbers greater than 36, use mr(n).
+*/
+
+#define	mr0	fake_reg[0]
+#define	mr1	fake_reg[1]
+#define	mr2	fake_reg[2]
+#define	mr3	fake_reg[3]
+#define	mr4	fake_reg[4]
+#define	mr5	fake_reg[5]
+#define	mr6	fake_reg[6]
+#define	mr7	fake_reg[7]
+#define	mr8	fake_reg[8]
+#define	mr9	fake_reg[9]
+#define	mr10	fake_reg[10]
+#define	mr11	fake_reg[11]
+#define	mr12	fake_reg[12]
+#define	mr13	fake_reg[13]
+#define	mr14	fake_reg[14]
+#define	mr15	fake_reg[15]
+#define	mr16	fake_reg[16]
+#define	mr17	fake_reg[17]
+#define	mr18	fake_reg[18]
+#define	mr19	fake_reg[19]
+#define	mr20	fake_reg[20]
+#define	mr21	fake_reg[21]
+#define	mr22	fake_reg[22]
+#define	mr23	fake_reg[23]
+#define	mr24	fake_reg[24]
+#define	mr25	fake_reg[25]
+#define	mr26	fake_reg[26]
+#define	mr27	fake_reg[27]
+#define	mr28	fake_reg[28]
+#define	mr29	fake_reg[29]
+#define	mr30	fake_reg[30]
+#define	mr31	fake_reg[31]
+#define	mr32	fake_reg[32]
+#define	mr33	fake_reg[33]
+#define	mr34	fake_reg[34]
+#define	mr35	fake_reg[35]
+#define	mr36	fake_reg[36]
+#define mr(n)	(assert(n>36),fake_reg[n])
+
+#endif /* NO_REGS_H */

@@ -384,7 +384,7 @@ static void print_register_usage_counts(void)
 			}
 		}
 
-		printf("\t%ld\n", num_uses[i]);
+		printf("\t%lu\n", (unsigned long)num_uses[i]);
 	}
 }
 #endif
@@ -410,7 +410,7 @@ global_success:
 #ifndef	SPEED
 	if (finaldebug)
 	{
-		save_registers();
+		save_transient_registers();
 		printregs("global succeeded");
 		if (detaildebug)
 			dumpnondstack();
@@ -423,7 +423,7 @@ global_fail:
 #ifndef	SPEED
 	if (finaldebug)
 	{
-		save_registers();
+		save_transient_registers();
 		printregs("global failed");
 
 		if (detaildebug)
@@ -435,7 +435,7 @@ global_fail:
 
 		if (detaildebug)
 		{
-			save_registers();
+			save_transient_registers();
 			printregs("after popping...");
 		}
 	}

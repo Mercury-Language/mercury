@@ -111,89 +111,20 @@ extern	int	hash_string(const char *);
 
 #define	call_closure(succcont)					\
 			do {					\
-				Word tmp;			\
-				tmp = r1;			\
-				switch(field(0, tmp, 0)) {	\
-					default: fatal_error("call_closure: too many arguments (> 32)"); \
-					case 32: r32 = field(0, tmp, 33); \
-					case 31: r31 = field(0, tmp, 32); \
-					case 30: r30 = field(0, tmp, 31); \
-					case 29: r29 = field(0, tmp, 30); \
-					case 28: r28 = field(0, tmp, 29); \
-					case 27: r27 = field(0, tmp, 28); \
-					case 26: r26 = field(0, tmp, 27); \
-					case 25: r25 = field(0, tmp, 26); \
-					case 24: r24 = field(0, tmp, 25); \
-					case 23: r23 = field(0, tmp, 24); \
-					case 22: r22 = field(0, tmp, 23); \
-					case 21: r21 = field(0, tmp, 22); \
-					case 20: r20 = field(0, tmp, 21); \
-					case 19: r19 = field(0, tmp, 20); \
-					case 18: r18 = field(0, tmp, 19); \
-					case 17: r17 = field(0, tmp, 18); \
-					case 16: r16 = field(0, tmp, 17); \
-					case 15: r15 = field(0, tmp, 16); \
-					case 14: r14 = field(0, tmp, 15); \
-					case 13: r13 = field(0, tmp, 14); \
-					case 12: r12 = field(0, tmp, 13); \
-					case 11: r11 = field(0, tmp, 12); \
-					case 10: r10 = field(0, tmp, 11); \
-					case 9: r9 = field(0, tmp, 10);	\
-					case 8: r8 = field(0, tmp, 9);	\
-					case 7: r7 = field(0, tmp, 8);	\
-					case 6: r6 = field(0, tmp, 7);	\
-					case 5: r5 = field(0, tmp, 6);	\
-					case 4: r4 = field(0, tmp, 5);	\
-					case 3: r3 = field(0, tmp, 4);	\
-					case 2: r2 = field(0, tmp, 3);	\
-					case 1: r1 = field(0, tmp, 2);	\
-					case 0: ;			\
-				}				\
-				succip = (succcont);		\
-				GOTO(field(0, tmp, 1));		\
+	{ extern EntryPoint ENTRY(do_call_closure);		\
+			call(ENTRY(do_call_closure), succont); } \
 			} while (0)
 
 #define	call_semidet_closure(succcont)				\
 			do {					\
-				Word tmp;			\
-				tmp = r1;			\
-				switch(field(0, tmp, 0)) {	\
-					default: fatal_error("call_closure: too many arguments (>= 32)"); \
-					case 31: r32 = field(0, tmp, 32); \
-					case 30: r31 = field(0, tmp, 31); \
-					case 29: r30 = field(0, tmp, 30); \
-					case 28: r29 = field(0, tmp, 29); \
-					case 27: r28 = field(0, tmp, 28); \
-					case 26: r27 = field(0, tmp, 27); \
-					case 25: r26 = field(0, tmp, 26); \
-					case 24: r25 = field(0, tmp, 25); \
-					case 23: r24 = field(0, tmp, 24); \
-					case 22: r23 = field(0, tmp, 23); \
-					case 21: r22 = field(0, tmp, 22); \
-					case 20: r21 = field(0, tmp, 21); \
-					case 19: r20 = field(0, tmp, 20); \
-					case 18: r19 = field(0, tmp, 19); \
-					case 17: r18 = field(0, tmp, 18); \
-					case 16: r17 = field(0, tmp, 17); \
-					case 15: r16 = field(0, tmp, 16); \
-					case 14: r15 = field(0, tmp, 15); \
-					case 13: r14 = field(0, tmp, 14); \
-					case 12: r13 = field(0, tmp, 13); \
-					case 11: r12 = field(0, tmp, 12); \
-					case 10: r11 = field(0, tmp, 11); \
-					case 9: r10 = field(0, tmp, 10); \
-					case 8: r9 = field(0, tmp, 9);	\
-					case 7: r8 = field(0, tmp, 8);	\
-					case 6: r7 = field(0, tmp, 7);	\
-					case 5: r6 = field(0, tmp, 6);	\
-					case 4: r5 = field(0, tmp, 5);	\
-					case 3: r4 = field(0, tmp, 4);	\
-					case 2: r3 = field(0, tmp, 3);	\
-					case 1: r2 = field(0, tmp, 2);	\
-					case 0: ;			\
-				}				\
-				succip = (succcont);		\
-				GOTO(field(0, tmp, 1));		\
+	{ extern EntryPoint ENTRY(do_call_semidet_closure);	\
+		call(ENTRY(do_call_semidet_closure), succont); } \
+			} while (0)
+
+#define	solutions(succcont)					\
+			do {					\
+	{ extern EntryPoint ENTRY(do_solutions);		\
+			call(ENTRY(do_solutions), succont); } \
 			} while (0)
 
 /* used only by the hand-written example programs */
@@ -563,62 +494,62 @@ extern	int	hash_string(const char *);
 #else
 
 #define	debugcr1(val0, hp) \
-	IF (heapdebug, (save_registers(), cr1_msg(val0, hp)))
+	IF (heapdebug, (save_transient_registers(), cr1_msg(val0, hp)))
 
 #define	debugcr2(val0, val1, hp) \
-	IF (heapdebug, (save_registers(), cr2_msg(val0, val1, hp)))
+	IF (heapdebug, (save_transient_registers(), cr2_msg(val0, val1, hp)))
 
 #define	debugincrhp(val, hp) \
-	IF (heapdebug, (save_registers(), incr_hp_msg((val), (hp))))
+	IF (heapdebug, (save_transient_registers(), incr_hp_msg((val), (hp))))
 
 #define	debugincrsp(val, sp) \
-	IF (detstackdebug, (save_registers(), incr_sp_msg((val), (sp))))
+	IF (detstackdebug, (save_transient_registers(), incr_sp_msg((val), (sp))))
 
 #define	debugdecrsp(val, sp) \
-	IF (detstackdebug, (save_registers(), decr_sp_msg((val), (sp))))
+	IF (detstackdebug, (save_transient_registers(), decr_sp_msg((val), (sp))))
 
 #define	debugpush(val, sp) \
-	IF (detstackdebug, (save_registers(), push_msg((val), (sp))))
+	IF (detstackdebug, (save_transient_registers(), push_msg((val), (sp))))
 
 #define	debugpop(val, sp) \
-	IF (detstackdebug, (save_registers(), pop_msg(val, sp)))
+	IF (detstackdebug, (save_transient_registers(), pop_msg(val, sp)))
 
 #define	debugregs(msg) \
-	IF (progdebug, (save_registers(), printregs(msg)))
+	IF (progdebug, (save_transient_registers(), printregs(msg)))
 
 #define	debugmkframe() \
-	IF (nondstackdebug, (save_registers(), mkframe_msg()))
+	IF (nondstackdebug, (save_transient_registers(), mkframe_msg()))
 
 #define	debugframe(msg)	 \
-	IF (progdebug, (save_registers(), printframe(msg)))
+	IF (progdebug, (save_transient_registers(), printframe(msg)))
 
 #define	debugmodframe() \
-	IF (nondstackdebug, (save_registers(), modframe_msg()))
+	IF (nondstackdebug, (save_transient_registers(), modframe_msg()))
 
 #define	debugsucceed() \
-	IF (nondstackdebug, (save_registers(), succeed_msg()))
+	IF (nondstackdebug, (save_transient_registers(), succeed_msg()))
 
 #define	debugsucceeddiscard() \
-	IF (nondstackdebug, (save_registers(), succeeddiscard_msg()))
+	IF (nondstackdebug, (save_transient_registers(), succeeddiscard_msg()))
 
 #define	debugfail() \
-	IF (nondstackdebug, (save_registers(), fail_msg()))
+	IF (nondstackdebug, (save_transient_registers(), fail_msg()))
 
 #define	debugredo() \
-	IF (nondstackdebug, (save_registers(), redo_msg()))
+	IF (nondstackdebug, (save_transient_registers(), redo_msg()))
 
 #define	debugcall(proc, succcont) \
-	IF (calldebug, (save_registers(), call_msg(proc, succcont)))
+	IF (calldebug, (save_transient_registers(), call_msg(proc, succcont)))
 
 #define	debugtailcall(proc) \
-	IF (calldebug, (save_registers(), tailcall_msg(proc)))
+	IF (calldebug, (save_transient_registers(), tailcall_msg(proc)))
 
 #define	debugproceed() \
-	IF (calldebug, (save_registers(), proceed_msg()))
+	IF (calldebug, (save_transient_registers(), proceed_msg()))
 
 #define	debuggoto(label) \
 	(assert(label), \
-	IF (gotodebug, (save_registers(), goto_msg(label))))
+	IF (gotodebug, (save_transient_registers(), goto_msg(label))))
 
 #define	debugmsg0(msg) \
 	IF (progdebug, (printf(msg)))
@@ -645,9 +576,9 @@ extern	int	hash_string(const char *);
 #define mklist(start,len) \
 	({						\
 		Word tmp;				\
-		save_registers();			\
+		save_transient_registers();			\
 		tmp = do_mklist(start,len);		\
-		restore_registers();			\
+		restore_transient_registers();			\
 		/* return */ tmp;			\
 	})
 #else

@@ -74,7 +74,7 @@ when Call:	cmdtarget = whichlabel(act_predname);
 		}
 
 		/* make get_reg/set_reg operate on saved registers */
-		restore_registers();
+		restore_transient_registers();
 		maxfr = cmdfr;
 		mkframe("iface_1", 0, LABEL(iface_fail));
 		call(entries[cmdtarget].e_addr, LABEL(iface_succ));
@@ -85,7 +85,7 @@ when Redo:	if (maxfr <= cmdfr)
 			GOTO_LABEL(get_cmd);
 		}
 		
-		restore_registers();
+		restore_transient_registers();
 		redo();
 
 otherwise:	printf("internal iface error\n");
@@ -96,12 +96,12 @@ otherwise:	printf("internal iface error\n");
 	GOTO_LABEL(get_cmd);
 
 iface_succ:
-	save_registers();
+	save_transient_registers();
 	printf("success\n");
 	GOTO_LABEL(get_cmd);
 
 iface_fail:
-	save_registers();
+	save_transient_registers();
 	printf("failure\n");
 	GOTO_LABEL(get_cmd);
 

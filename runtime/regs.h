@@ -3,18 +3,23 @@
 
 /*
 ** The registers of the Mercury virtual machine are built up using
-** two levels of abstraction.
+** three levels of abstraction.
 **
-** The first level defines mr0 through mr69. The lower the number,
+** The first level defines the first NUM_REAL_REGS register variables
+** mr0, mr1, etc. as the physical machine registers, and defines an
+** array fake_regs[n] of pseudo registers.
+**
+** The next level defines macroes mr0 through mr36 and also mr(n) for
+** n>36.  The lower the number,
 ** the greater the probability that the storage referred to will be
 ** a real machine register, and not a simulated one. The number of
 ** real machine registers is given by the macro NUM_REAL_REGS.
 **
 ** The second level maps the Mercury virtual machine registers
 **
-**	succip, hp, sp, curfr, maxfr and r1 - r65
+**	succip, hp, sp, curfr, maxfr and r1 - r64
 **
-** to the set mr0..mr69.
+** to the set mr0..mr36, mr(37)..mr(69)
 **
 ** Since the set of most frequently used Mercury virtual machine
 ** registers can be different for each program, we want to make
@@ -28,12 +33,12 @@
 */
 
 #define	SI_RN	 0
-#define	ORD_RN	65
-#define	HP_RN	66
-#define	SP_RN	67
-#define	CF_RN	68
-#define	MF_RN	69
-#define	MAX_RN	70
+#define	ORD_RN	32
+#define	HP_RN	(ORD_RN + 1)
+#define	SP_RN	(ORD_RN + 2)
+#define	CF_RN	(ORD_RN + 3)
+#define	MF_RN	(ORD_RN + 4)
+#define MAX_RN	(ORD_RN + 5)
 
 #if defined(USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__
@@ -51,12 +56,12 @@
     #include "machdeps/no_regs.h"
 #endif
 
-#ifndef save_registers
-    #error "Software error: machdeps does not define save_registers."
+#ifndef save_transient_registers
+    #error "Software error: machdeps does not define save_transient_registers."
 #endif
 
-#ifndef restore_registers
-    #error "Software error: machdeps does not define restore_registers."
+#ifndef restore_transient_registers
+    #error "Software error: machdeps does not define restore_transient_registers."
 #endif
 
 /*
