@@ -50,7 +50,7 @@ manpage="`$program --help 2>&1 \
 		-e '/^.SH [A-Za-z ]*:/y/\
 abcdefghijklmnopqrstuvwxyz:/\
 ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
-		-e 's/^.SH USAGE/.SH SYNOPSYS/' \
+		-e 's/^.SH USAGE/.SH SYNOPSIS/' \
 	`"
 uppername="$name"
 
