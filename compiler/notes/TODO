@@ -48,6 +48,14 @@ modes.nl
 general
 -------
 
+- tail recursion optimization (vanilla) and also pass-by-reference
+  tail recursion.
+
+- (modes.nl, make_hlds.nl, hlds.nl, codegen.nl): 
+  split construct/deconstruct unifications into their atomic
+  "micro-unification" pieces: functor construct/deconstruct and
+  argument get/put.
+
 - warn about predicates with no clauses.
 
 - warn about predicates with no modes.
