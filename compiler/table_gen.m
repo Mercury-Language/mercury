@@ -1230,15 +1230,12 @@ gen_string_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		VarGoalInfo),
 	Goal = VarUnify - VarGoalInfo.
 	
-
 :- pred get_table_var_type(type).
 :- mode get_table_var_type(out) is det.
 
 get_table_var_type(Type) :-
-	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, 
-		"c_pointer") - 0, [], Type).	
-
+	mercury_public_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).	
 
 :- pred get_input_output_vars(list(var), list(mode), module_info, list(var),
 		list(var)).
