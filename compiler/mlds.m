@@ -220,7 +220,7 @@
 % It would be nice to avoid this dependency...
 :- import_module llds.
 
-:- import_module bool, list, std_util.
+:- import_module bool, list, assoc_list, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -228,6 +228,7 @@
 
 %
 % The type `mlds' is the actual MLDS.
+% XXX we ought to make this type abstract
 %
 :- type mlds
 	---> mlds(
@@ -240,6 +241,8 @@
 		mlds__imports,		% Packages/classes to import
 		mlds__defns		% Definitions of code and data
 	).
+
+:- func mlds__get_module_name(mlds) = mercury_module_name.
 
 :- type mlds__imports == list(mlds__import).
 
@@ -259,6 +262,11 @@
 % Given the name of a Mercury module, return the name of the corresponding
 % MLDS package.
 :- func mercury_module_name_to_mlds(mercury_module_name) = mlds__package_name.
+
+% Given the name of a Mercury module, return the name of the corresponding
+% MLDS package.
+:- func mlds_module_name_to_sym_name(mlds__package_name) = sym_name.
+
 
 :- type mlds__defns == list(mlds__defn).
 :- type mlds__defn
@@ -331,7 +339,7 @@
 	;	mlds__function(
 			maybe(pred_proc_id),	% identifies the original
 						% Mercury procedure, if any
-			mlds__func_signature,	% the argument & return types
+			mlds__func_params,	% the arguments & return types
 			maybe(mlds__statement)	% the function body, or `no'
 						% if the function is abstract
 		)
@@ -342,11 +350,22 @@
 
 :- type mlds__initializer == list(mlds__rval).
 
+:- type mlds__func_params
+	---> mlds__func_params(
+		assoc_list(entity_name, mlds__type), % arguments (inputs)
+		list(mlds__type)		% return values (outputs)
+	).
+
+	% An mlds__func_signature is like an mlds__func_params
+	% except that it only includes the function's type, not
+	% the parameter names.
 :- type mlds__func_signature
 	---> mlds__func_signature(
-		mlds__type,		% return type
-		list(mlds__type)	% argument types
+		list(mlds__type),	% argument types
+		list(mlds__type)	% return types
 	).
+
+:- func mlds__get_func_signature(mlds__func_params) = mlds__func_signature.
 
 :- type mlds__class_kind
 	--->	mlds__class		% A generic class:
@@ -378,7 +397,7 @@
 		mlds__defns			% contains these members
 	).
 
-:- type mlds__type.
+:- type mlds__type ---> mlds__type(prog_data__type).
 :- type mercury_type == prog_data__type.
 
 :- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
@@ -462,6 +481,8 @@
 :- type mlds__context.
 
 :- func mlds__make_context(prog_context) = mlds__context.
+
+:- func mlds__get_prog_context(mlds__context) = prog_context.
 
 %-----------------------------------------------------------------------------%
 
@@ -922,20 +943,30 @@
 
 %-----------------------------------------------------------------------------%
 
+mlds__get_module_name(mlds(ModuleName, _, _, _)) = ModuleName.
+
+%-----------------------------------------------------------------------------%
+
 % Currently mlds__contexts just contain a prog_context.
 
 :- type mlds__context ---> mlds__context(prog_context).
 
 mlds__make_context(Context) = mlds__context(Context).
 
+mlds__get_prog_context(mlds__context(Context)) = Context.
+
 %-----------------------------------------------------------------------------%
 
 % Currently mlds__types are just the same as Mercury types.
 % XXX something more complicated may be needed here...
 
-:- type mlds__type == prog_data__type.
+mercury_type_to_mlds_type(Type) = mlds__type(Type).
 
-mercury_type_to_mlds_type(Type) = Type.
+%-----------------------------------------------------------------------------%
+
+mlds__get_func_signature(func_params(Parameters, RetTypes)) =
+		func_signature(ParamTypes, RetTypes) :-
+	assoc_list__values(Parameters, ParamTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1008,6 +1039,8 @@ mercury_std_library_module("term_io").
 mercury_std_library_module("tree234").
 mercury_std_library_module("varset").
 
+mlds_module_name_to_sym_name(MLDS_Package) = MLDS_Package.
+
 %-----------------------------------------------------------------------------%
 
 %
@@ -1066,9 +1099,6 @@ virtuality_bits(virtual)	= 0x10.
 :- func virtuality_mask = int.
 virtuality_mask = virtuality_bits(virtual).
 
-% For functions we use finality, and for variables we use constness.
-% These two properties use the same bitfield.
-
 :- func finality_bits(finality) = int.
 :- mode finality_bits(in) = out is det.
 :- mode finality_bits(out) = in is semidet.
@@ -1078,14 +1108,11 @@ finality_bits(final)		= 0x20.
 :- func finality_mask = int.
 finality_mask = finality_bits(final).
 
-% For functions we use finality, and for variables we use constness.
-% These two properties use the same bitfield.
-
 :- func constness_bits(constness) = int.
 :- mode constness_bits(in) = out is det.
 :- mode constness_bits(out) = in is semidet.
 constness_bits(modifiable) 	= 0x00.
-constness_bits(const)		= 0x20.
+constness_bits(const)		= 0x40.
 
 :- func constness_mask = int.
 constness_mask = constness_bits(const).
@@ -1094,7 +1121,7 @@ constness_mask = constness_bits(const).
 :- mode abstractness_bits(in) = out is det.
 :- mode abstractness_bits(out) = in is semidet.
 abstractness_bits(abstract) 	= 0x00.
-abstractness_bits(concrete)	= 0x40.
+abstractness_bits(concrete)	= 0x80.
 
 :- func abstractness_mask = int.
 abstractness_mask = abstractness_bits(abstract).
@@ -1155,7 +1182,8 @@ init_decl_flags(Access, PerInstance, Virtuality, Finality, Constness,
 	access_bits(Access) \/
 	per_instance_bits(PerInstance) \/
 	virtuality_bits(Virtuality) \/
-	finality_bits(Finality) \/ constness_bits(Constness) \/
+	finality_bits(Finality) \/
+	constness_bits(Constness) \/
 	abstractness_bits(Abstractness).
 
 %-----------------------------------------------------------------------------%
