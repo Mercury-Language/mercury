@@ -2212,8 +2212,7 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 		[will_not_call_mercury, thread_safe], "{
 	MR_Integer len = Str->get_Length();
 	if (len > 0) {
-		SUCCESS_INDICATOR = (First == Str->get_Chars(0) &&
-			System::String::Compare(Str, 1, Rest, 0, len) == 0);
+		SUCCESS_INDICATOR = (First == Str->get_Chars(0));
 		Rest = (Str)->Substring(1);
 	} else {
 		SUCCESS_INDICATOR = FALSE;
