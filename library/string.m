@@ -1002,8 +1002,8 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 	;
 	Conv_c = 'E' ,
 		Poly_t = f(F),
-		string__to_upper(Otemp, Ostring),
 		string__format_calc_exp(F, Otemp, Precision, 0),
+		string__to_upper(Otemp, Ostring),
 		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conv_c = 'p' ,
@@ -1108,7 +1108,18 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 	->
 		Spa is Prec + Index
 	;
-		error("stringf:  An error with conversion  float==>string")
+		string__length(Istring, Spa_0),
+		Spa is Spa_0 + 1
+		%  This branch should never be called if mercury is implemented
+		%  in ansi-C, according to Kernighan and Ritchie p244, as a 
+		%  float converted to a string using sprintf should always have
+		%  a decimal point.  (where specified precision != 0.  
+		%  string__float_to_string doesn't specify a precision to be
+		%  used.)  If a future implementation changes the 
+		%  way string__float_to_string is implemented, and a float can
+		%  be converted to a string without a decimal point, then this
+		%  rule would be useful.  It is not expected that
+		%  string__float_to_string will ever produce %e style output.
 	),
 	(
 		string__length(Istring, L1),
