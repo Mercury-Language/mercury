@@ -37,7 +37,7 @@ install: $(PROGS)
 
 .PHONY: uninstall
 uninstall:
-	cd $(INSTALL_BINDIR) && rm -f $(PROGS)
+	-cd $(INSTALL_BINDIR) && rm $(PROGS)
 
 #-----------------------------------------------------------------------------#
 

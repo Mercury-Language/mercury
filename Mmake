@@ -253,7 +253,7 @@ uninstall:
 	cd scripts; $(SUBDIR_MMAKE) uninstall
 	cd util; $(SUBDIR_MMAKE) uninstall
 	cd doc; $(SUBDIR_MMAKE) uninstall
-	rm -rf $(INSTALL_LIBDIR)
+	-rm -r $(INSTALL_LIBDIR)
 
 #-----------------------------------------------------------------------------#
 

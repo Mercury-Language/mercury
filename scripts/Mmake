@@ -70,9 +70,9 @@ install_sicstus: $(SICSTUS_SCRIPTS)
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(INSTALL_LIBDIR)/mmake
-	cd $(INSTALL_BINDIR) && \
-	rm -f $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
+	-rm -r $(INSTALL_LIBDIR)/mmake
+	-cd $(INSTALL_BINDIR) && \
+	rm $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 

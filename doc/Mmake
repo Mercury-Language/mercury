@@ -122,7 +122,7 @@ install_dvi: dvi
 # are removed by the top-level uninstall rule.
 .PHONY: uninstall
 uninstall:
-	cd $(INSTALL_INFO_DIR); rm -f mercury*.info*
+	-cd $(INSTALL_INFO_DIR); rm mercury*.info*
 
 #-----------------------------------------------------------------------------#
 
