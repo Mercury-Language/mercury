@@ -188,7 +188,7 @@ option_defaults_2(optimization_option, [
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
-	optimize_value_number	-	bool(yes),
+	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
