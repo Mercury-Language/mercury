@@ -27,6 +27,7 @@ SOURCES= \
 	qual_basic_test2.m \
 	type_loop.m \
 	undef_lambda_mode.m \
+	undef_mode.m \
 	undef_type.m
 
 # we do not yet pass the following tests:
