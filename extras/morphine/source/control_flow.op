@@ -168,6 +168,9 @@ display_graph(Graph, DotFile, PsFile) :-
 	extract_proc_list_from_graph(Graph, ProcList),
 	open(DotFile, write, dotfile),
 	print(dotfile, "digraph G {\n\n"),
+	print(dotfile, "ordering=out;\n\n"), 
+		% so that the proof tree nodes are displayed in their
+		% order of creation
 	dump_proc(ProcList),
 	dump_graph(Graph),
 	print(dotfile, "}\n"),
@@ -290,15 +293,15 @@ generate_proof_tree_graph(G) :-
 		CollectFile),
 	collect(CollectFile, Result),
 	( Result = ct(ProofTree), ! ; Result = pb(Msg), print(Msg), abort), 
-	tree_to_graph(0:toplevel, ProofTree, G).
+	tree_to_graph(toplevel, ProofTree, G).
 
-tree_to_graph(Father, leaf(CN, PredUniv), [arc(Father, CN:Pred)]) :-
+tree_to_graph(Father, leaf(_, PredUniv), [arc(Father, Pred)]) :-
 	remove_type_pred(PredUniv, Pred).
-tree_to_graph(Father, tree(CN, PredUniv, TreeList), Graph) :-
+tree_to_graph(Father, tree(_, PredUniv, TreeList), Graph) :-
 	remove_type_pred(PredUniv, Pred),
-	maplist(tree_to_graph(CN:Pred), TreeList, GraphList),
+	maplist(tree_to_graph(Pred), TreeList, GraphList),
 	list_of_list_to_list(GraphList, Graph0),
-	Graph = [arc(Father, CN:Pred) | Graph0].
+	Graph = [arc(Father, Pred) | Graph0].
 
 remove_type_pred(p(NameStr, _Arity, ArgUnivList), Pred) :-
 	maplist(remove_type_arg, ArgUnivList, ArgList),
@@ -316,5 +319,7 @@ list_of_list_to_list([List1, List2 | Tail], LList) :-
 	append(List1, List2, List),
 	LList0 = [List | Tail],
 	list_of_list_to_list(LList0, LList).
+
+
 
 
