@@ -225,7 +225,7 @@
 	% type and constructor. Aborts if the cons_id is not user-defined.
 	% Note that this will NOT bind type variables in the
 	% functor's argument types; they will be left unbound,
-	% so the caller find out the original types from the constructor
+	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
 :- pred type_util__get_type_and_cons_defn(module_info, (type), cons_id,
 		hlds_type_defn, hlds_cons_defn).
@@ -242,7 +242,7 @@
 	% otherwise fail.
 	% Note that this will NOT bind type variables in the
 	% functor's argument types; they will be left unbound,
-	% so the caller find out the original types from the constructor
+	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
 :- pred type_util__get_existq_cons_defn(module_info::in,
 		(type)::in, cons_id::in, ctor_defn::out) is semidet.
