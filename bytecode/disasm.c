@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.1 1997-01-28 02:04:33 aet Exp $
+ *	$Id: disasm.c,v 1.2 1997-01-30 01:17:21 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -21,7 +21,7 @@ void
 disassemble(FILE* fp)
 {
 	int	byte_count = 0;
-	int	bytecode_version_number = 0;
+	ushort	bytecode_version_number = 0;
 
 	/* Read two-byte version number */
 	if (read_bytecode_version_number(fp, &bytecode_version_number))
