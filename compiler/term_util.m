@@ -110,7 +110,7 @@
 
 :- pred find_weights(module_info::in, weight_table::out) is det.
 
-% This predicate is computes the weight of a functor and the set of arguments
+% This predicate computes the weight of a functor and the set of arguments
 % of that functor whose sizes should be counted towards the size of the whole
 % term.
 
