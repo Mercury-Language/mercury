@@ -506,18 +506,18 @@ add_item_clause(module_defn(_, Defn), Status0, Status, _,
 add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
-		{ Pragma = c_code(MayCallMercury, Pred, PredOrFunc, Vars, 
+		{ Pragma = c_code(Attributes, Pred, PredOrFunc, Vars, 
 			VarSet, PragmaImpl) }
 	->
-		module_add_pragma_c_code(MayCallMercury, Pred, PredOrFunc,
+		module_add_pragma_c_code(Attributes, Pred, PredOrFunc,
 			Vars, VarSet, PragmaImpl, Status, Context,
 			Module0, Module, Info0, Info)
 	;
-		{ Pragma = import(Name, PredOrFunc, Modes, MayCallMercury,
+		{ Pragma = import(Name, PredOrFunc, Modes, Attributes,
 			C_Function) }
 	->
 		module_add_pragma_import(Name, PredOrFunc, Modes,
-			MayCallMercury, C_Function, Status, Context,
+			Attributes, C_Function, Status, Context,
 			Module0, Module, Info0, Info)
 	;
 		{ Pragma = fact_table(Pred, Arity, File) }
@@ -2107,13 +2107,13 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 %	handling of `pragma export' declarations, in export.m.
 
 :- pred module_add_pragma_import(sym_name, pred_or_func, list(mode),
-		may_call_mercury, string, import_status, term__context,
+		pragma_c_code_attributes, string, import_status, term__context,
 		module_info, module_info, qual_info, qual_info,
 		io__state, io__state).
 :- mode module_add_pragma_import(in, in, in, in, in, in, in, in, out,
 		in, out, di, uo) is det.
 
-module_add_pragma_import(PredName, PredOrFunc, Modes, MayCallMercury,
+module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		C_Function, Status, Context, ModuleInfo0, ModuleInfo,
 		Info0, Info) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
@@ -2200,7 +2200,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, MayCallMercury,
 						ModuleInfo0, ProcId) }
 		->
 			pred_add_pragma_import(PredInfo2, PredId, ProcId,
-				MayCallMercury, C_Function, Context,
+				Attributes, C_Function, Context,
 				ModuleInfo0, PredInfo, Info0, Info),
 			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable1, Preds,
@@ -2226,12 +2226,12 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, MayCallMercury,
 %	This is a subroutine of module_add_pragma_import which adds
 %	the c_code for a `pragma import' declaration to a pred_info.
 
-:- pred pred_add_pragma_import(pred_info, pred_id, proc_id, may_call_mercury,
-		string, term__context, module_info, pred_info,
-		qual_info, qual_info, io__state, io__state).
+:- pred pred_add_pragma_import(pred_info, pred_id, proc_id,
+		pragma_c_code_attributes, string, term__context, module_info,
+		pred_info, qual_info, qual_info, io__state, io__state).
 :- mode pred_add_pragma_import(in, in, in, in, in, in, in, out, in, out,
 		di, uo) is det.
-pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
+pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 		Context, ModuleInfo, PredInfo, Info0, Info) -->
 	%
 	% lookup some information we need from the pred_info and proc_info
@@ -2276,7 +2276,7 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, MayCallMercury, C_Function,
 	% Add the C_Code for this `pragma import' to the clauses_info
 	%
 	{ PragmaImpl = ordinary(C_Code, no) },
-	clauses_info_add_pragma_c_code(Clauses0, Purity, MayCallMercury,
+	clauses_info_add_pragma_c_code(Clauses0, Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
 		Context, Clauses, Info0, Info),
 
@@ -2415,14 +2415,14 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(may_call_mercury, sym_name, pred_or_func, 
-	list(pragma_var), varset, pragma_c_code_impl, import_status,
-	term__context, module_info, module_info, qual_info, qual_info,
-	io__state, io__state).
+:- pred module_add_pragma_c_code(pragma_c_code_attributes, sym_name,
+	pred_or_func, list(pragma_var), varset, pragma_c_code_impl,
+	import_status, term__context, module_info, module_info,
+	qual_info, qual_info, io__state, io__state).
 :- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
 	in, out, di, uo) is det.  
 
-module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet, 
+module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet, 
 		PragmaImpl, Status, Context, ModuleInfo0, ModuleInfo,
 		Info0, Info) --> 
 	{ module_info_name(ModuleInfo0, ModuleName) },
@@ -2504,7 +2504,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 			{ pred_info_arg_types(PredInfo1, ArgTypes) },
 			{ pred_info_get_purity(PredInfo1, Purity) },
 			clauses_info_add_pragma_c_code(Clauses0, Purity,
-				MayCallMercury, PredId, ProcId, VarSet,
+				Attributes, PredId, ProcId, VarSet,
 				PVars, ArgTypes, PragmaImpl, Context,
 				Clauses, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
@@ -3428,14 +3428,14 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % pragma c_code declaration and the head vars of the pred. Also return the
 % hlds_goal.
 
-:- pred clauses_info_add_pragma_c_code(clauses_info, purity, may_call_mercury,
-	pred_id, proc_id, varset, list(pragma_var), list(type),
-	pragma_c_code_impl, term__context, clauses_info,
+:- pred clauses_info_add_pragma_c_code(clauses_info, purity,
+	pragma_c_code_attributes, pred_id, proc_id, varset, list(pragma_var),
+	list(type), pragma_c_code_impl, term__context, clauses_info,
 	qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
 	out, in, out, di, uo) is det.
 
-clauses_info_add_pragma_c_code(ClausesInfo0, Purity, MayCallMercury, PredId,
+clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl, Context,
 		ClausesInfo, Info0, Info) -->
 	{
@@ -3454,7 +3454,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, MayCallMercury, PredId,
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 	% Put the purity in the goal_info in case this c code is inlined
 	add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-	HldsGoal0 = pragma_c_code(MayCallMercury, PredId, ModeId, Args,
+	HldsGoal0 = pragma_c_code(Attributes, PredId, ModeId, Args,
 		ArgInfo, OrigArgTypes, PragmaImpl) - GoalInfo
 	}, 
 		% Apply unifications with the head args.
@@ -4719,7 +4719,9 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),
 
 	% XXX this should be modified to use nondet pragma c_code.
-	module_add_pragma_c_code(will_not_call_mercury, SymName, PredOrFunc, 
+	{ default_attributes(Attrs0) },
+	{ set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs) },
+	module_add_pragma_c_code(Attrs, SymName, PredOrFunc, 
 		PragmaVars, VarSet, ordinary(C_ProcCode, no),
 		Status, Context, Module0, Module1, Info0, Info),
 	{

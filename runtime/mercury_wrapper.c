@@ -166,6 +166,7 @@ static	void	print_register_usage_counts(void);
 #endif
 
 Declare_entry(do_interpreter);
+Declare_entry(do_runnext);
 
 /*---------------------------------------------------------------------------*/
 
@@ -258,15 +259,15 @@ mercury_runtime_init(int argc, char **argv)
 
 	/* start up the Mercury engine */
 #ifndef MR_THREAD_SAFE
-	init_thread((void *) 1);
+	init_thread(MR_use_now);
 #else
 	{
 		int i;
 		init_thread_stuff();
-		init_thread((void *)1);
+		init_thread(MR_use_now);
 		MR_exit_now = FALSE;
 		for (i = 1 ; i < MR_num_threads ; i++)
-			create_thread(0);
+			create_thread(NULL);
 	}
 #endif
 

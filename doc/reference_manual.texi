@@ -3197,7 +3197,7 @@ A declaration of the form
 
 @example
 :- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
-        may_call_mercury, @var{C_Code}).
+        @var{Attributes}, @var{C_Code}).
 @end example
 
 @noindent
@@ -3245,6 +3245,25 @@ in place of @samp{may_call_mercury} in the declarations above.
 This allows the compiler to use a slightly more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
+
+All Mercury implementations must support the attributes described below.
+They may also support additional attributes.
+
+The attributes which must be supported by all implementations
+are as follows:
+
+@table @asis
+
+@item @samp{may_call_mercury}/@samp{will_not_call_mercury} declares
+whether or not execution inside this C code may call back into Mercury
+or not.
+
+@item @samp{thread_safe}/@samp{not_thread_safe} declares whether or not
+it is safe for multiple threads to execute this C code concurrently.
+C code that is not thread_safe has code inserted around it to obtain
+and release a mutex.  All non-thread-safe C code shares a single mutex.
+
+@end table
 
 The C code in a @code{pragma c_code} declaration
 for any procedure whose determinism indicates that it could fail
