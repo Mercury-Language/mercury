@@ -16,23 +16,24 @@
 #include "conf.h"
 
 #ifdef HAVE_SYS_PARAM
-#include <sys/param.h>
+#include <sys/param.h>		/* for HZ */
 #endif
 
-#ifdef HAVE_SYS_TIME
-#include <sys/time.h>
-#endif
+#include <unistd.h>		/* for sysconf() and _SC_CLK_TCK */
+#include <limits.h>		/* CLK_TCK defined here, on some systems */
 
 /* 
 ** `HZ' is the number of clock ticks per second.
 ** It is used when converting a clock_t value to a time in seconds.
 ** It may be defined by <sys/time.h>, but if it is not defined there,
-** we may be able to use `sysconf(_SC_CLK_TCK)' instead
+** we may be able to use `sysconf(_SC_CLK_TCK)' or CLK_TCK instead.
 */
 #ifdef HZ
   #define MR_CLOCK_TICKS_PER_SECOND	HZ
 #elif defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
   #define MR_CLOCK_TICKS_PER_SECOND	((int) sysconf(_SC_CLK_TCK))
+#elif defined(CLK_TCK)
+  #define MR_CLOCK_TICKS_PER_SECOND	CLK_TCK
 #else
   /* just leave it undefined */
 #endif

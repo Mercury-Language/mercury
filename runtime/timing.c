@@ -13,9 +13,7 @@
 
 #include "imp.h"
 
-#ifdef HAVE_SYS_TIME
-#include <sys/time.h>
-#endif
+#include <sys/times.h>		/* for times() and `struct tms' */
 
 #include "timing.h"
 
