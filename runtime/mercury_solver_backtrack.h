@@ -23,8 +23,8 @@
 #include "aux.h"
 
 	/* CLP(R) headers */
-#include "clpr/emul.h"
-#include "clpr/config.h"
+#include "clpr/clpr/emul.h"
+#include "clpr/clpr/config.h"
 
 #define SOLVER_STACK_SIZE 10	/* default to 10 kb for the ticket stack */
 
