@@ -14,6 +14,7 @@
 
 #include "goto.h"		/* for Declare_entry */
 #include "mercury_types.h"	/* for `Code *' */
+#include "wrapper.h"		/* for do_init_modules() */
 
 /*
 ** mercury_main() is defined in the <module>_init.c file.
