@@ -171,10 +171,12 @@
 	% depending on wheither X is =, <, or > Y in the
 	% standard ordering.
 :- pred compare(comparison_result, T, T).
+	% Note to implementors: this mode must be first --
+	% compiler/higher_order.m depends on it.
+:- mode compare(uo, in, in) is det.
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
 :- mode compare(uo, in, ui) is det.
-:- mode compare(uo, in, in) is det.
 
 % In addition, the following predicate-like constructs are builtin:
 %

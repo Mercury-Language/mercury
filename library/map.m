@@ -265,16 +265,36 @@
 
 %-----------------------------------------------------------------------------%
 
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
 :- import_module tree234.
+:- import_module term. % for var/1.
 
 :- type map(K,V)	==	tree234(K,V).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+
+:- pragma type_spec(map__search/3, K = var(_)).
+:- pragma type_spec(map__search/3, K = int).
+
+:- pragma type_spec(map__lookup/3, K = var(_)).
+:- pragma type_spec(map__lookup/3, K = int).
+
+:- pragma type_spec(map__set(in, in, in, out), K = var(_)).
+
+:- pragma type_spec(map__overlay/3, K = var(_)).
+
+:- pragma type_spec(map__select/3, K = var(_)).
 
 :- implementation.
 :- import_module std_util, require, string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 map__init(M) :-
@@ -460,6 +480,7 @@ map__overlay(Map0, Map1, Map) :-
 
 :- pred map__overlay_2(assoc_list(K,V), map(K,V), map(K,V)).
 :- mode map__overlay_2(in, in, out) is det.
+:- pragma type_spec(map__overlay_2/3, K = var(_)).
 
 map__overlay_2([], Map, Map).
 map__overlay_2([K - V | AssocList], Map0, Map) :-
@@ -475,6 +496,7 @@ map__select(Original, KeySet, NewMap) :-
 
 :- pred map__select_2(list(K), map(K,V), map(K,V), map(K,V)).
 :- mode map__select_2(in, in, in, out) is det.
+:- pragma type_spec(map__select_2/4, K = var(_)).
 
 map__select_2([], _Original, New, New).
 map__select_2([K|Ks], Original, New0, New) :-
@@ -705,6 +727,18 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 
 :- func map__det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode map__det_union(func(in, in) = out is semidet, in, in) = out is det.
+
+:- pragma type_spec(map__search/2, K = var(_)).
+:- pragma type_spec(map__search/2, K = int).
+
+:- pragma type_spec(map__lookup/2, K = var(_)).
+:- pragma type_spec(map__lookup/2, K = int).
+
+:- pragma type_spec(map__set/3, K = var(_)).
+
+:- pragma type_spec(map__overlay/2, K = var(_)).
+
+:- pragma type_spec(map__select/2, K = var(_)).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %

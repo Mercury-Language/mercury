@@ -186,6 +186,31 @@
 
 :- implementation.
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.	% for var/1.
+
+:- pragma type_spec(set_ordlist__list_to_set/2, T = var(_)).
+
+:- pragma type_spec(set_ordlist__member(in, in), T = var(_)).
+
+:- pragma type_spec(set_ordlist__insert/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__insert_list/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__union/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__intersect/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__difference/3, T = var(_)).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module list, std_util.
 
 :- type set_ordlist(T)		  ==	  list(T).

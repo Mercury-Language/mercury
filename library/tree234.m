@@ -17,6 +17,7 @@
 :- interface.
 
 :- import_module list, assoc_list.
+:- import_module term.	% for var/1.
 
 :- type tree234(K, V).
 
@@ -129,6 +130,22 @@
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- pragma type_spec(tree234__search/3, K = var(_)).
+:- pragma type_spec(tree234__search/3, K = int).
+
+:- pragma type_spec(tree234__lookup/3, K = var(_)).
+
+:- pragma type_spec(tree234__set(in, in, in, out), K = var(_)).
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1170,6 +1187,7 @@ tree234__set(Tin, K, V, Tout) :-
 :- mode tree234__set2(di_two, di, di, uo) is det.
 % :- mode tree234__set2(sdi_two, in, in, uo_tree234) is det.
 :- mode tree234__set2(in_two, in, in, out) is det.
+:- pragma type_spec(tree234__set2(in_two, in, in, out), K = var(_)).
 
 tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
@@ -1267,6 +1285,7 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 :- mode tree234__set3(di_three, di, di, uo) is det.
 % :- mode tree234__set3(sdi_three, in, in, uo_tree234) is det.
 :- mode tree234__set3(in_three, in, in, out) is det.
+:- pragma type_spec(tree234__set3(in_three, in, in, out), K = var(_)).
 
 tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(

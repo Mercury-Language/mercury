@@ -529,6 +529,29 @@
 
 :- implementation.
 
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.	% for var/1.
+
+:- pragma type_spec(list__merge(in, in, out), T = var(_)).
+
+:- pragma type_spec(list__merge_and_remove_dups(in, in, out), T = var(_)).
+
+:- pragma type_spec(list__remove_adjacent_dups/2, T = var(_)).
+
+:- pragma type_spec(list__member(in, in), T = var(_)).
+
+:- pragma type_spec(list__sort_and_remove_dups/2, T = var(_)).
+
+:- pragma type_spec(list__sort(in, out), T = var(_)).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module bintree_set, require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -798,6 +821,7 @@ list__partition([Head|Tail], Partition, Low, High) :-
 
 :- pred list__merge_sort(list(T), list(T)).
 :- mode list__merge_sort(in, out) is det.
+:- pragma type_spec(list__merge_sort(in, out), T = var(_)).
 
 list__merge_sort([], []).
 list__merge_sort([X], [X]).
@@ -842,6 +866,7 @@ list__remove_adjacent_dups([X|Xs], L) :-
 
 :- pred list__remove_adjacent_dups_2(list(T), T, list(T)).
 :- mode list__remove_adjacent_dups_2(in, in, out) is det.
+:- pragma type_spec(list__remove_adjacent_dups_2/3, T = var(_)).
 
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
@@ -1242,6 +1267,16 @@ list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
 :- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
 
 :- func list__merge_and_remove_dups(func(X, X) = comparison_result, list(X), list(X)) = list(X).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma type_spec(list__merge_and_remove_dups/2, T = var(_)).
+
+:- pragma type_spec(list__remove_adjacent_dups/1, T = var(_)).
+
+:- pragma type_spec(list__sort_and_remove_dups/1, T = var(_)).
+
+:- pragma type_spec(list__sort/1, T = var(_)).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
