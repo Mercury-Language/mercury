@@ -2087,7 +2087,7 @@ report_warning_too_much_overloading(TypeInfo) -->
 	{ type_info_get_context(TypeInfo, Context) },
 	write_context_and_pred_id(TypeInfo),
 	prog_out__write_context(Context),
-	io__write_string("  warning: highly ambiguous overloading.\n"),
+	report_warning("  warning: highly ambiguous overloading.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),

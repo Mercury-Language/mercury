@@ -59,6 +59,7 @@
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
 		;	inhibit_warnings
+		;	halt_at_warn
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -167,6 +168,7 @@ option_defaults(OptionDefaults) :-
 option_defaults_2(warning_option, [
 		% Warning Options
 	inhibit_warnings	-	bool(no),
+	halt_at_warn		-	bool(no),
 	warn_singleton_vars	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
@@ -330,6 +332,7 @@ long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("inhibit-warnings",		inhibit_warnings).
+long_option("halt-at-warn",		halt_at_warn).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
 long_option("debug-types",		debug_types).
@@ -404,6 +407,12 @@ options_help -->
 	io__write_string("\nWarning Options:\n"),
 	io__write_string("\t-w, --inhibit-warnings\n"),
 	io__write_string("\t\tDisable all warning messages.\n"),
+	io__write_string("\t--halt_at_warn\n"),
+	io__write_string("\t\tThis option causes the compiler to treat all \n"),
+	io__write_string("\t\twarnings as if they were errors.  This means that"),
+	io__write_string("\t\tif any warning is issued, the compiler will not"),
+	io__write_string("\t\tgenerate code --- instead, it will return a"),
+	io__write_string("\t\tnon-zero exit status.\n"),
 	io__write_string("\t--no-warn-singleton-variables\n"),
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t--no-warn-missing-det-decls\n"),

@@ -134,10 +134,10 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 	( { NumTagBits1 < 0 } ->
 		io__progname_base("mercury_compile", ProgName),
 		io__stderr_stream(StdErr),
-		io__write_strings(StdErr, [ProgName,
-			": warning: --num-tag-bits invalid or unspecified\n",
-			ProgName, ": using --num-tag-bits 0 (tags disabled)\n"
-		]),
+		report_warning(ProgName),
+		report_warning(": warning: --num-tag-bits invalid or unspecified\n"),
+		io__write_string(StdErr, ProgName),
+		report_warning(": using --num-tag-bits 0 (tags disabled)\n"),
 		{ NumTagBits = 0 }
 	;
 		{ NumTagBits = NumTagBits1 }
@@ -417,15 +417,12 @@ process_module_2(ModuleName) -->
 		( { ExportWarning = yes, 
 			InterfaceItems = ShortInterfaceItems }
 		->
-			{ string__append_list( [ ModuleName, ".m:1: Warning: Interface does not export anything."], WarnMssg) },
-			io__stderr_stream(StdErr),
-			io__write_string(StdErr, WarnMssg),
+			report_warning( ModuleName, 1, "Interface does not export anyting."),
 			(
-				globals__io_lookup_bool_option(verbose_errors, V_Err),
-				{ V_Err = yes }
+				globals__io_lookup_bool_option(verbose_errors, yes)
 			->
-				io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot `:- import_module' in it's interface section(s)\n"),
-				io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
+				io__stderr_stream(StdErr),
+				io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 			;
 				[]
 			)
@@ -1120,19 +1117,16 @@ get_dependencies(ModuleName, Items, Deps) -->
 	( 	
 		{ Found_useful_interface = no, ExportWarning = yes }
 	->
-		{ string__append( ModuleName, ".m:1: Warning: interface does not export anything useful.\n", Message) },
+		report_warning( ModuleName, 1, "interface does not export anything useful."),
 		% line 1 is used as there should both be one, and since it 
 		% is hard to give a line number for something that doesn't
 		% exist.  It would be acceptable to give the line-number of the
 		% last ":- implementation" declaration.
-		io__stderr_stream(StdErr),
-		io__write_string(StdErr, Message),
 		(
-			globals__io_lookup_bool_option(verbose_errors, V_Err),
-			{ V_Err = yes }
+			globals__io_lookup_bool_option(verbose_errors, yes)
 		->
-			io__write_string(StdErr, "\t\tA file should contain at least one declaration that is \n\t\tnot `:- import_module' in it's interface section(s)\n"),
-			io__write_string(StdErr, "\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
+			io__stderr_stream(StdErr),
+			io__write_string(StdErr, "\t\tA file should contain at least one declaration other than\n\t\t`:- import_module' in it's interface section(s).\n\t\tIMHO, to be useful, a module should output something.\n\t\tThis would normally be a `:- pred', `:- type' or \n\t\t`:- mode' declaration.\n")
 		;
 			[]
 		)

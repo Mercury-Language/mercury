@@ -816,6 +816,12 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 
+	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+		 io__set_exit_status(1)
+	;
+		[]
+	),
+
 	prog_out__write_context(Context),
 	io__write_string("In `"),
 	det_report_pred_name_mode(PredName, ArgModes),

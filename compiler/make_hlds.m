@@ -168,7 +168,7 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		io__write_string("warning: declaration not yet implemented.\n"),
+		report_warning("warning: declaration not yet implemented.\n"),
 		io__set_output_stream(OldStream, _)
 	).
 
@@ -176,6 +176,7 @@ add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
+%-----------------------------------------------------------------------------%
 	% dispatch on the different types of items
 
 :- pred add_item_type_defn(item, term__context, import_status, module_info,
@@ -409,7 +410,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			io__write_string(
+			report_warning(StdErr, 
 	"warning: undiscriminated union types (`+') not implemented.\n"),
 			io__set_output_stream(OldStream, _)
 		;
@@ -923,13 +924,14 @@ warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
 				{ Found = yes }
 			->
 				prog_out__write_context(Context),
-				io__write_string("In clause for predicate `"),
+				io__stderr_stream(StdErr),
+				io__write_string(StdErr, "In clause for predicate `"),
 				hlds_out__write_pred_call_id(PredCallId),
-				io__write_string("':\n"),
+				io__write_string(StdErr, "':\n"),
 				prog_out__write_context(Context),
-				io__write_string("  Warning: variable `"),
+				io__write_string(StdErr, "  Warning: variable `"),
 				term_io__write_variable(Var, VarSet),
-				io__write_string("' occurs more than once.\n")
+				report_warning(StdErr, "' occurs more than once.")
 			;
 				[]
 			)
@@ -938,13 +940,14 @@ warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
 				{ Found = no }
 			->
 				prog_out__write_context(Context),
-				io__write_string("In clause for predicate `"),
+				io__stderr_stream(StdErr),
+				io__write_string(StdErr, "In clause for predicate `"),
 				hlds_out__write_pred_call_id(PredCallId),
-				io__write_string("':\n"),
+				io__write_string(StdErr, "':\n"),
 				prog_out__write_context(Context),
-				io__write_string("  Warning: variable `"),
+				io__write_string(StdErr, "  Warning: variable `"),
 				term_io__write_variable(Var, VarSet),
-				io__write_string("' occurs only once.\n")
+				report_warning(StdErr, "' occurs only once.\n")
 			;
 				[]
 			)
@@ -1540,7 +1543,7 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 
 unspecified_det_warning(Name, Arity, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("Warning: no determinism declaration for local pred\n"),
+	report_warning("Warning: no determinism declaration for local pred.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
@@ -1563,6 +1566,7 @@ unspecified_det_warning(Name, Arity, Context) -->
 unspecified_det_error(Name, Arity, Context) -->
 	prog_out__write_context(Context),
 	io__write_string("Error: no determinism declaration for exported pred\n"),
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
@@ -1577,6 +1581,7 @@ unspecified_det_error(Name, Arity, Context) -->
 clause_for_imported_pred_error(Name, Arity, Context) -->
 	prog_out__write_context(Context),
 	io__write_string("Error: clause for imported pred `"),
+	io__set_exit_status(1),
 	prog_out__write_sym_name(Name),
 	io__write_string("/"),
 	io__write_int(Arity),

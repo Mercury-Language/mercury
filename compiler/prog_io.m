@@ -346,6 +346,24 @@
 :- mode parse_lambda_expression(in, out, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
+
+% The following /3, /4 and /5 predicates are to be used for reporting
+% warnings to stderr.  This is preferable to using io__write_string, as
+% this checks the halt-at-warn option
+%
+% This predicate is best used by predicates that do not have access to
+% module_info for a particular module.  It sets the exit status to error
+% when a warning is encountered in a module, and the --halt-at-warn
+% option is set.
+
+:- pred report_warning(string::in, io__state::di, io__state::uo) is det.
+
+:- pred report_warning(io__output_stream::in, string::in, io__state::di,
+                      io__state::uo) is det.
+
+:- pred report_warning(string::in, int::in, string::in, io__state::di,
+                      io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -3007,3 +3025,36 @@ convert_type_list([H0|T0], [H|T]) :-
 convert_type(T, T).
 
 %-----------------------------------------------------------------------------%
+
+report_warning(Message) -->
+	io__stderr_stream(StdErr),
+	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+		io__set_exit_status(1)
+	;
+		[]
+	),
+	io__write_string(StdErr, Message).
+
+report_warning(Stream, Message) -->
+	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+		io__set_exit_status(1)
+	;
+		[]
+	),
+	io__write_string(Stream, Message).
+
+report_warning(Module_name, Line_num, Message) -->
+	{ string__int_to_string(Line_num, Line_str) },
+	{ string__append_list( [Module_name, ".m: ", Line_str, ": Warning: ",
+			Message, "\n"], Message_0) },
+	io__stderr_stream(StdErr),
+	io__write_string(StdErr, Message_0),
+	(
+		globals__io_lookup_bool_option( halt_at_warn, yes)
+	->
+		io__set_exit_status(1)
+	;
+		[]
+	).
+
+
