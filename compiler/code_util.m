@@ -39,17 +39,6 @@
 :- pred code_util__goal_list_may_allocate_heap(list(hlds__goal)).
 :- mode code_util__goal_list_may_allocate_heap(in) is semidet.
 
-	% Check whether an instruction can possibly branch away.
-
-:- pred code_util__can_instr_branch_away(instr, bool).
-:- mode code_util__can_instr_branch_away(in, out) is det.
-
-	% Check whether an instruction can possibly fall through
-	% to the next instruction without using its label.
-
-:- pred code_util__can_instr_fall_through(instr, bool).
-:- mode code_util__can_instr_fall_through(in, out) is det.
-
 	% Negate a condition.
 	% This is used mostly just to make the generated code more readable.
 
@@ -170,34 +159,6 @@ code_util__goal_list_may_allocate_heap([_ | Goals]) :-
 	code_util__goal_list_may_allocate_heap(Goals).
 
 %-----------------------------------------------------------------------------%
-
-code_util__can_instr_branch_away(comment(_), no).
-code_util__can_instr_branch_away(assign(_, _), no).
-code_util__can_instr_branch_away(call(_, _), yes).
-code_util__can_instr_branch_away(mkframe(_, _, _), no).
-code_util__can_instr_branch_away(modframe(_), no).
-code_util__can_instr_branch_away(label(_), no).
-code_util__can_instr_branch_away(goto(_), yes).
-code_util__can_instr_branch_away(computed_goto(_, _), yes).
-code_util__can_instr_branch_away(c_code(_), no).
-code_util__can_instr_branch_away(if_val(_, _), yes).
-code_util__can_instr_branch_away(incr_sp(_), no).
-code_util__can_instr_branch_away(decr_sp(_), no).
-code_util__can_instr_branch_away(incr_hp(_), no).
-
-code_util__can_instr_fall_through(comment(_), yes).
-code_util__can_instr_fall_through(assign(_, _), yes).
-code_util__can_instr_fall_through(call(_, _), no).
-code_util__can_instr_fall_through(mkframe(_, _, _), yes).
-code_util__can_instr_fall_through(modframe(_), yes).
-code_util__can_instr_fall_through(label(_), yes).
-code_util__can_instr_fall_through(goto(_), no).
-code_util__can_instr_fall_through(computed_goto(_, _), no).
-code_util__can_instr_fall_through(c_code(_), yes).
-code_util__can_instr_fall_through(if_val(_, _), yes).
-code_util__can_instr_fall_through(incr_sp(_), yes).
-code_util__can_instr_fall_through(decr_sp(_), yes).
-code_util__can_instr_fall_through(incr_hp(_), yes).
 
 	% Negate a condition.
 	% This is used mostly just to make the generated code more readable.
