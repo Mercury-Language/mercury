@@ -584,15 +584,13 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			Requantify = yes
 		),
 
-		pred_info_get_markers(PredInfo, CalleeMarkers),
 		(
-			( check_marker(CalleeMarkers, promised_pure)
-			; check_marker(CalleeMarkers, promised_semipure)
-			)
+			infer_goal_info_purity(GoalInfo0, Purity),
+			infer_goal_info_purity(GoalInfo, Purity)
 		->
-			PurityChanged = yes
-		;
 			PurityChanged = PurityChanged0
+		;
+			PurityChanged = yes
 		),
 			
 			% If the inferred determinism of the called

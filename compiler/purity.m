@@ -431,44 +431,30 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
 	{ pred_info_get_promised_purity(PredInfo0, PromisedPurity) },
-		% XXX we should remove this test when we have bootstrapped
-		% the changes requires to make foreign_proc impure by default
-	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
-		{ WorstPurity = (impure) },
-			% This is where we assume pragma foreign_proc is
-			% pure.
-		{ Purity = (pure) },
-		{ PredInfo = PredInfo0 },
-		{ NumErrors0 = 0 }
-	;   
-		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-		{ pred_info_procids(PredInfo0, ProcIds) },
-		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
-		{ clauses_info_vartypes(ClausesInfo0, VarTypes0) },
-		{ clauses_info_varset(ClausesInfo0, VarSet0) },
-		{ RunPostTypecheck = yes },
-		{ PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
-			PredInfo0, VarTypes0, VarSet0, []) },
-		{ compute_purity(Clauses0, Clauses, ProcIds, pure, Purity,
-			PurityInfo0, PurityInfo) },
-		{ PurityInfo = purity_info(_, _, PredInfo1,
-			VarTypes, VarSet, RevMessages) },
-		{ clauses_info_set_vartypes(ClausesInfo0,
-			VarTypes, ClausesInfo1) },
-		{ clauses_info_set_varset(ClausesInfo1,
-			VarSet, ClausesInfo2) },
-		{ Messages = list__reverse(RevMessages) },
-		list__foldl(report_post_typecheck_message(ModuleInfo),
-			Messages),
-		{ NumErrors0 = list__length(
-				list__filter((pred(error(_)::in) is semidet),
-				Messages)) },
-		{ clauses_info_set_clauses(ClausesInfo2, Clauses,
-				ClausesInfo) },
-		{ pred_info_set_clauses_info(PredInfo1, ClausesInfo,
-				PredInfo) },
-		{ WorstPurity = Purity }
-	),
+  
+	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
+	{ pred_info_procids(PredInfo0, ProcIds) },
+	{ clauses_info_clauses(ClausesInfo0, Clauses0) },
+	{ clauses_info_vartypes(ClausesInfo0, VarTypes0) },
+	{ clauses_info_varset(ClausesInfo0, VarSet0) },
+	{ RunPostTypecheck = yes },
+	{ PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
+		PredInfo0, VarTypes0, VarSet0, []) },
+	{ pred_info_get_goal_type(PredInfo0, GoalType) },
+	{ compute_purity(GoalType, Clauses0, Clauses, ProcIds, pure, Purity,
+		PurityInfo0, PurityInfo) },
+	{ PurityInfo = purity_info(_, _, PredInfo1,
+		VarTypes, VarSet, RevMessages) },
+	{ clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo1) },
+	{ clauses_info_set_varset(ClausesInfo1, VarSet, ClausesInfo2) },
+	{ Messages = list__reverse(RevMessages) },
+	list__foldl(report_post_typecheck_message(ModuleInfo), Messages),
+	{ NumErrors0 = list__length(
+			list__filter((pred(error(_)::in) is semidet),
+			Messages)) },
+	{ clauses_info_set_clauses(ClausesInfo2, Clauses, ClausesInfo) },
+	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo) },
+	{ WorstPurity = Purity },
 	{ perform_pred_purity_checks(PredInfo, Purity, DeclPurity,
 		PromisedPurity, PurityCheckResult) },
 	( { PurityCheckResult = inconsistent_promise },
@@ -565,20 +551,24 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 
 % Infer the purity of a single (non-pragma c_code) predicate
 
-:- pred compute_purity(list(clause), list(clause), list(proc_id),
+:- pred compute_purity(goal_type, list(clause), list(clause), list(proc_id),
 	purity, purity, purity_info, purity_info).
-:- mode compute_purity(in, out, in, in, out, in, out) is det.
+:- mode compute_purity(in, in, out, in, in, out, in, out) is det.
 
-compute_purity([], [], _, Purity, Purity) --> [].
-compute_purity([Clause0|Clauses0], [Clause|Clauses], ProcIds,
+compute_purity(_, [], [], _, Purity, Purity) --> [].
+compute_purity(GoalType, [Clause0|Clauses0], [Clause|Clauses], ProcIds,
 		Purity0, Purity) -->
 	{ Clause0 = clause(Ids, Body0 - Info0, Lang, Context) },
 	compute_expr_purity(Body0, Body, Info0, no, Bodypurity0),
 	% If this clause doesn't apply to all modes of this procedure,
 	% i.e. the procedure has different clauses for different modes,
 	% then we must treat it as impure.
+	% XXX Currently `:- pragma foreign_proc' procedures are
+	% assumed to be pure. This will change.
 	{
-		applies_to_all_modes(Clause0, ProcIds)
+		( applies_to_all_modes(Clause0, ProcIds)
+		; GoalType = pragmas
+		)
 	->
 		Clausepurity = (pure)
 	;
@@ -588,7 +578,7 @@ compute_purity([Clause0|Clauses0], [Clause|Clauses], ProcIds,
 	{ add_goal_info_purity_feature(Info0, Bodypurity, Info) },
 	{ worst_purity(Purity0, Bodypurity, Purity1) },
 	{ Clause = clause(Ids, Body - Info, Lang, Context) },
-	compute_purity(Clauses0, Clauses, ProcIds, Purity1, Purity).
+	compute_purity(GoalType, Clauses0, Clauses, ProcIds, Purity1, Purity).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
@@ -785,8 +775,24 @@ compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
 compute_expr_purity(Ccode, Ccode, _, _, Purity) -->
-	{ Ccode = foreign_proc(Attributes,_,_,_,_,_,_) },
-	{ purity(Attributes, Purity) }.
+	{ Ccode = foreign_proc(Attributes, PredId, _,_,_,_,_) },
+	{ purity(Attributes, AttributesPurity) },
+
+	%
+	% If there were no purity attributes, the purity of the goal
+	% is the purity of the predicate.
+	% XXX Currently the default purity is `pure'. Eventually it
+	% should default to `impure', and require promises for any
+	% other purity levels, i.e. Purity = AttributesPurity.
+	%
+	ModuleInfo =^ module_info,
+	{ AttributesPurity = (pure) ->
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_get_purity(PredInfo, Purity)
+	;
+		Purity = AttributesPurity
+	}.
+
 compute_expr_purity(shorthand(_), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("compute_expr_purity: unexpected shorthand") }.
