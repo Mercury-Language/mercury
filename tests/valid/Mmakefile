@@ -161,6 +161,9 @@ depend: $(DEPS)
 printtests:
 	@echo $(PROGS)
 
+printobjs:
+	@echo $(OBJS)
+
 clean:
 	rm -f *.c *.o *.err *.d *.h
 

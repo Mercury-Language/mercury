@@ -9,13 +9,13 @@ mmake $gradeopt $jfactor depend || exit 1
 eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
 checkstatus=$?
 
-files=`mmake $gradeopt printtests`
+objs=`mmake $gradeopt printobjs`
 failed=""
-for file in $files
+for obj in $objs
 do
-	if test ! -f "$file.o"
+	if test ! -f "$obj"
 	then
-		failed="$failed $file"
+		failed="$failed $obj"
 	fi
 done
 
