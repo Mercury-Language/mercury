@@ -142,6 +142,11 @@ make install
 #	   The option --enable-hlc-prof-grades causes the installation
 #	   of profiling versions of the high level code grades.
 #
+#	   The option --disable-dotnet-grades prevents the installation
+#	   of the .NET grades (see README.DotNet) even if the Microsoft
+#	   .NET SDK is installed. These grades are never installed if
+#	   the .NET SDK is not found.
+#
 #	   The option --enable-deep-profiler=/some/dir/name enables the deep
 #	   profiler, and specifies the directory in which to install the
 #	   deep profiler's CGI script. The option --disable-deep-profiler

@@ -365,7 +365,10 @@ case $HOST in
 		esac
 		;;
 	mars)
-		CONFIG_OPTS=""
+		# Portable .NET is installed on mars, and the
+		# test in configure.in doesn't test whether the
+		# ilasm it finds is suitable for use with Mercury.
+		CONFIG_OPTS="--disable-dotnet-grades"
 		MMAKE_USE_SUBDIRS=yes
 		export MMAKE_USE_SUBDIRS
 		;;
