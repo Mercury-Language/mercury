@@ -510,15 +510,6 @@ then
 		exit 1
 	fi
 
-	# We can remove the object files now, since the archive is there.
-	if $keep_objs
-	then
-		true
-	else
-		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
-		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
-	fi
-
 	if (cd stage2/compiler && mmake $mmake_opts $jfactor RM_C=: mercury_compile)
 	then
 		echo "building of stage 2 compiler successful"
@@ -536,6 +527,16 @@ then
 	else
 		echo "building of stage 2 not successful"
 		exit 1
+	fi
+
+	# We can remove the library object files now,
+	# but we will keep the compiler objects for a while longer
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
