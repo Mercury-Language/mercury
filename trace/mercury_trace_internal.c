@@ -5454,7 +5454,7 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 	char		**raw_words;
 	int		raw_word_max;
 	char		raw_word_count;
-	static char	count_buf[MR_NUMBER_LEN];
+	static char	count_buf[MR_NUMBER_LEN + 1];
 	char		*s;
 	int		i;
 
