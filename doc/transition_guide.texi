@@ -112,9 +112,11 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 *               yfx             400
 **              xfy             300
 +               yfx             500
+++              xfy             500
 +               fx              500
 ,               xfy             1000
 -               yfx             500
+--              yfx             500
 -               fx              500
 --->            xfy             1179
 -->             xfx             1200
