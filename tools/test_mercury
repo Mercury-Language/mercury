@@ -33,6 +33,9 @@ export CVSROOT
 TMPDIR=/tmp
 export TMPDIR
 
+# Make the files writable by group mercury.
+umask 002
+
 #-----------------------------------------------------------------------------#
 
 DATE=`date '+%Y-%m-%d'`
