@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1012,8 +1012,8 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 	(
 		% Look for calls to unify/2 and compare/3 which can
 		% be specialized.
-		specialize_special_pred(CalledPred, CalledProc,
-			Args0, MaybeContext, HaveSpecialPreds, Goal1,
+		specialize_special_pred(CalledPred, CalledProc, Args0,
+			MaybeContext, GoalInfo, HaveSpecialPreds, Goal1,
 			Info0, Info1)
 	->
 		Goal = Goal1,
@@ -1854,11 +1854,12 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 	% Succeed if the called pred is "unify" or "compare" and
 	% is specializable, returning a specialized goal.
 :- pred specialize_special_pred(pred_id::in, proc_id::in, list(prog_var)::in,
-	maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,
-	higher_order_info::in, higher_order_info::out) is semidet.
+	maybe(call_unify_context)::in, hlds_goal_info::in, bool::in,
+	hlds_goal_expr::out, higher_order_info::in, higher_order_info::out)
+	is semidet.
 
-specialize_special_pred(CalledPred, CalledProc, Args,
-		MaybeContext, HaveSpecialPreds, Goal, Info0, Info) :-
+specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
+		OrigGoalInfo, HaveSpecialPreds, Goal, Info0, Info) :-
 	ModuleInfo = Info0 ^ global_info ^ module_info,
 	ProcInfo0 = Info0 ^ proc_info,
 	PredVars = Info0 ^ pred_vars,
@@ -1939,10 +1940,11 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 				Info = Info0
 			;
 				NeedIntCast = yes,
-				generate_unsafe_type_cast(ModuleInfo,
+				goal_info_get_context(OrigGoalInfo, Context),
+				generate_unsafe_type_cast(ModuleInfo, Context,
 					CompareType, Arg1, CastArg1, CastGoal1,
 					ProcInfo0, ProcInfo1),
-				generate_unsafe_type_cast(ModuleInfo,
+				generate_unsafe_type_cast(ModuleInfo, Context,
 					CompareType, Arg2, CastArg2, CastGoal2,
 					ProcInfo1, ProcInfo),
 				NewCallArgs = [ComparisonResult,
@@ -1958,7 +1960,7 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 					InstMapDelta),
 				Detism = det,
 				goal_info_init(NonLocals, InstMapDelta,
-					Detism, GoalInfo),
+					Detism, Context, GoalInfo),
 				Goal = conj([CastGoal1, CastGoal2,
 						Call - GoalInfo]),
 				Info = Info0 ^ proc_info := ProcInfo
@@ -1996,9 +1998,10 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 			SpecialId = compare,
 			SpecialPredArgs = [_, Arg1, Arg2]
 		),
-		unwrap_no_tag_arg(WrappedType, Constructor, Arg1,
+		goal_info_get_context(OrigGoalInfo, Context),
+		unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg1,
 			UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
-		unwrap_no_tag_arg(WrappedType, Constructor, Arg2,
+		unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg2,
 			UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
 		set__list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
 		(
@@ -2012,7 +2015,7 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 				simple_test(UnwrappedArg1, UnwrappedArg2),
 				unify_context(explicit, [])),
 			goal_info_init(NonLocals, InstMapDelta, Detism,
-				GoalInfo),
+				Context, GoalInfo),
 			Goal = conj([ExtractGoal1, ExtractGoal2,
 					SpecialGoal - GoalInfo]),
 			Info = Info0 ^ proc_info := ProcInfo2
@@ -2039,16 +2042,16 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 					SpecialProcId, NewCallArgs,
 					not_builtin, MaybeContext, SymName),
 				goal_info_init(NonLocals, InstMapDelta, Detism,
-					GoalInfo),
+					Context, GoalInfo),
 				Goal = conj([ExtractGoal1, ExtractGoal2,
 						SpecialGoal - GoalInfo]),
 				Info = Info0 ^ proc_info := ProcInfo2
 			;
 				NeedIntCast = yes,
-				generate_unsafe_type_cast(ModuleInfo,
+				generate_unsafe_type_cast(ModuleInfo, Context,
 					CompareType, UnwrappedArg1, CastArg1,
 					CastGoal1, ProcInfo2, ProcInfo3),
-				generate_unsafe_type_cast(ModuleInfo,
+				generate_unsafe_type_cast(ModuleInfo, Context,
 					CompareType, UnwrappedArg2, CastArg2,
 					CastGoal2, ProcInfo3, ProcInfo4),
 				NewCallArgs = [ComparisonResult,
@@ -2057,7 +2060,7 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 					SpecialProcId, NewCallArgs,
 					not_builtin, MaybeContext, SymName),
 				goal_info_init(NonLocals, InstMapDelta, Detism,
-					GoalInfo),
+					Context, GoalInfo),
 				Goal = conj([ExtractGoal1, CastGoal1,
 						ExtractGoal2, CastGoal2,
 						SpecialGoal - GoalInfo]),
@@ -2186,11 +2189,11 @@ specializeable_special_call(SpecialId, CalledProc) :-
 		SpecialId = compare
 	).
 
-:- pred generate_unsafe_type_cast(module_info::in, (type)::in,
-	prog_var::in, prog_var::out, hlds_goal::out,
+:- pred generate_unsafe_type_cast(module_info::in, prog_context::in,
+	(type)::in, prog_var::in, prog_var::out, hlds_goal::out,
 	proc_info::in, proc_info::out) is det.
 
-generate_unsafe_type_cast(ModuleInfo, ToType, Arg, CastArg, Goal,
+generate_unsafe_type_cast(ModuleInfo, Context, ToType, Arg, CastArg, Goal,
 		ProcInfo0, ProcInfo) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	mercury_private_builtin_module(MercuryBuiltin),
@@ -2207,14 +2210,15 @@ generate_unsafe_type_cast(ModuleInfo, ToType, Arg, CastArg, Goal,
 	set__list_to_set([Arg, CastArg], NonLocals),
 	instmap_delta_from_assoc_list([CastArg - ground(shared, none)],
 		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, Context, GoalInfo),
 	Goal = call(PredId, ProcId, [Arg, CastArg], inline_builtin,
 		no, qualified(MercuryBuiltin, "unsafe_type_cast")) - GoalInfo.
 
-:- pred unwrap_no_tag_arg((type)::in, sym_name::in, prog_var::in,
-	prog_var::out, hlds_goal::out, proc_info::in, proc_info::out) is det.
+:- pred unwrap_no_tag_arg((type)::in, prog_context::in, sym_name::in,
+	prog_var::in, prog_var::out, hlds_goal::out,
+	proc_info::in, proc_info::out) is det.
 
-unwrap_no_tag_arg(WrappedType, Constructor, Arg, UnwrappedArg,
+unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg,
 		Goal, ProcInfo0, ProcInfo) :-
 	proc_info_create_var_from_type(ProcInfo0, WrappedType, UnwrappedArg,
 		ProcInfo),
@@ -2227,7 +2231,7 @@ unwrap_no_tag_arg(WrappedType, Constructor, Arg, UnwrappedArg,
 	% This will be recomputed later.
 	instmap_delta_from_assoc_list([UnwrappedArg - ground(shared, none)],
 		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, Context, GoalInfo),
 	Goal = unify(Arg, functor(ConsId, [UnwrappedArg]), In - Out,
 		deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
 			cannot_fail, no),

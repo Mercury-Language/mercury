@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -614,6 +614,9 @@
 :- pred goal_info_init(set(prog_var), instmap_delta, determinism,
 		hlds_goal_info).
 :- mode goal_info_init(in, in, in, out) is det.
+
+:- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
+	prog_context::in, hlds_goal_info::out) is det.
 
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
@@ -1293,6 +1296,13 @@ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) :-
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
 	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
+
+goal_info_init(NonLocals, InstMapDelta, Detism, Context, GoalInfo) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
+	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo3),
+	goal_info_set_context(GoalInfo3, Context, GoalInfo).
 
 goal_info_get_pre_births(GoalInfo, GoalInfo ^ pre_births).
 
