@@ -485,10 +485,17 @@ process_negated_bool_option(Option, Flag, OptionOps, OptionTable0, Result) :-
 getopt__process_special(Option, Flag, OptionData, OptionOps,
 		OptionTable0, Result) :-
 	(
-		getopt__get_special_handler(OptionOps, Handler),
-		call(Handler, Flag, OptionData, OptionTable0, Result0)
+		getopt__get_special_handler(OptionOps, Handler)
 	->
-		Result = Result0
+		(
+			call(Handler, Flag, OptionData, OptionTable0, Result0)
+		->
+			Result = Result0
+		;
+			string__append_list(["the handler of option `",
+				Option, "' failed"], ErrorMsg),
+			Result = error(ErrorMsg)
+		)
 	;
 		string__append_list(["option `", Option, "' has no handler"],
 			ErrorMsg),
