@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -241,7 +241,6 @@ static	void	process_args(int argc, char **argv);
 static	void	process_environment_options(void);
 static	void	process_options(int argc, char **argv);
 static	void	usage(void);
-static	void	make_argv(const char *, char **, char ***, int *);
 
 #ifdef MEASURE_REGISTER_USAGE
 static	void	print_register_usage_counts(void);
@@ -472,12 +471,15 @@ MR_do_init_modules_debugger(void)
 
 /*
 ** Given a string, parse it into arguments and create an argv vector for it.
-** Returns args, argv, and argc.  It is the caller's responsibility to
+** The return value is NULL if the string parses OK, or an error message
+** if it didn't (e.g. if it contained an unterminated quoted string).
+** Also returns args, argv, and argc.  It is the caller's responsibility to
 ** MR_GC_free() args and argv when they are no longer needed.
 */
 
-static void
-make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
+const char *
+MR_make_argv(const char *string,
+	char **args_ptr, char ***argv_ptr, int *argc_ptr)
 {
 	char *args;
 	char **argv;
@@ -511,10 +513,10 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			/* "double quoted" arg - scan until next double quote */
 			while (*s != '"') {
 				if (s == '\0') {
-					MR_fatal_error(
-				"Mercury runtime: unterminated quoted string\n"
-				"in MERCURY_OPTIONS environment variable\n"
-					);
+					*args_ptr = NULL;
+					*argv_ptr = NULL;
+					*argc_ptr = argc;
+					return "unterminated quoted string";
 				}
 				if (*s == '\\')
 					s++;
@@ -582,7 +584,8 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	*args_ptr = args;
 	*argv_ptr = argv;
 	*argc_ptr = argc;
-} /* end make_argv() */
+	return NULL; /* success */
+} /* end MR_make_argv() */
 
 /*  
 **  process_args() is a function that sets some global variables from the
@@ -613,13 +616,14 @@ process_environment_options(void)
 		const char	*cmd;
 		char		*arg_str, **argv;
 		char		*dummy_command_line;
+		const char	*error_msg;
 		int		argc;
 
 		/*
 		** getopt() expects the options to start in argv[1],
 		** not argv[0], so we need to insert a dummy program
 		** name (we use "mercury_runtime") at the start of the
-		** options before passing them to make_argv() and then
+		** options before passing them to MR_make_argv() and then
 		** to getopt().
 		*/
 		cmd = "mercury_runtime ";
@@ -628,7 +632,12 @@ process_environment_options(void)
 		strcpy(dummy_command_line, cmd);
 		strcat(dummy_command_line, options);
 		
-		make_argv(dummy_command_line, &arg_str, &argv, &argc);
+		error_msg = MR_make_argv(dummy_command_line,
+			&arg_str, &argv, &argc);
+		if (error_msg != NULL) {
+			MR_fatal_error("error parsing the MERCURY_OPTIONS "
+				"environment variable:\n%s\n", error_msg);
+		}
 		MR_GC_free(dummy_command_line);
 
 		process_options(argc, argv);

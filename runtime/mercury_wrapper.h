@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -225,5 +225,8 @@ extern	void		MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 				MR_TypeCtorInfo type_ctor_info);
 
 #endif
+
+/* This is used by compiler/mlds_to_gcc.m. */
+const char *MR_make_argv(const char *, char **, char ***, int *);
 
 #endif /* not MERCURY_WRAPPER_H */

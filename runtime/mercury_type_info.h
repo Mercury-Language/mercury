@@ -22,6 +22,7 @@
 **      compiler/type_ctor_info.m
 **      compiler/rtti.m
 **      compiler/rtti_out.m
+**      compiler/mlds_to_gcc.m
 **          (for updating the compiler-generated RTTI
 **          structures)
 **

@@ -120,6 +120,70 @@ EOF
 	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
+#
+# Find the GCC source code
+# and determine whether or not to enable the GCC back-end interface.
+#
+AC_ARG_ENABLE(gcc-back-end,
+[  --enable-gcc-back-end   enable the Mercury compiler's GCC back-end interface],
+enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
+AC_MSG_CHECKING(for GCC source directory)
+gcc_src_dir=not_found
+case $enable_gcc_back_end in
+	yes|no|default)
+		# Search for the gcc source code;
+		# first try in a subdirectory of this directory,
+		# then one parallel to this directory,
+		# and finally try one level up.
+		for dir in gcc ../gcc ..; do
+			if test -f $dir/gcc/tree.c; then
+				gcc_src_dir="$dir"
+				break
+			fi
+		done
+		;;
+	*)
+		# The user has specifies the gcc source directory via
+		# `--enable-gcc-back-end=<directory>'.  Check that
+		# they specified it correctly.
+		gcc_src_dir="$enable_gcc_back_end"
+		if test -f "$gcc_src_dir"/gcc/tree.c; then
+			enable_gcc_back_end=yes
+		else
+			AC_MSG_ERROR(--enable-gcc-back-end=$gcc_src_dir specified,)
+			AC_MSG_ERROR(but GCC source code not found in $gcc_src_dir)
+			exit 1
+		fi		
+		;;
+esac
+AC_MSG_RESULT($gcc_src_dir)
+AC_MSG_CHECKING(whether to enable the GCC back-end interface)
+case $enable_gcc_back_end in
+	yes|default)
+		if test "$gcc_src_dir" = not_found; then
+			case $enable_gcc_back_end in
+				yes)
+					AC_MSG_ERROR(--enable-gcc-back-end specified,)
+					AC_MSG_ERROR(but gcc source code not found)
+					exit 1
+					;;
+				default)
+					enable_gcc_back_end=no
+					;;
+			esac
+		else
+			enable_gcc_back_end=yes
+		fi
+		;;
+	no)
+		;;
+esac
+AC_MSG_RESULT($enable_gcc_back_end)
+ENABLE_GCC_BACK_END=$enable_gcc_back_end
+GCC_SRC_DIR=$gcc_src_dir
+AC_SUBST(ENABLE_GCC_BACK_END)
+AC_SUBST(GCC_SRC_DIR)
+#-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
 if test "$GNU_MAKE" != ""; then

@@ -47,7 +47,17 @@ DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS))
 
-ALL_GRADEFLAGS  = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
+# This may be overridden on the command line
+TARGET_ASM	= no
+
+ifeq ($(TARGET_ASM),yes)
+ASM_OPT  = --target asm
+else
+ASM_OPT  =
+endif
+
+ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS) $(ASM_OPT)
+USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
 EXTRA_GRADEFLAGS =
 
@@ -404,6 +414,7 @@ date3s_subdir=$(SUBDIR)date3s/
 optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 cs_subdir=$(SUBDIR)cs/
+ss_subdir=$(SUBDIR)cs/
 os_subdir=$(SUBDIR)os/
 rlos_subdir=$(SUBDIR)rlos/
 ils_subdir=$(SUBDIR)ils/
@@ -429,6 +440,7 @@ date3s_subdir=
 optdates_subdir=
 trans_opt_dates_subdir=
 cs_subdir=
+ss_subdir=
 os_subdir=
 rlos_subdir=
 ils_subdir=

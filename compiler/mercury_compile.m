@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,6 +63,7 @@
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 :- import_module mlds_to_ilasm.			% MLDS -> IL assembler
+:- import_module maybe_mlds_to_gcc.		% MLDS -> GCC back-end
 
 
 	% miscellaneous compiler modules
@@ -483,6 +484,42 @@ mercury_compile(Module) -->
 				mercury_compile__mlds_to_il_assembler(MLDS),
 				mercury_compile__il_assemble(ModuleName,
 					HasMain)
+			)
+		    ; { Target = asm } ->
+		    	% compile directly assembler using the gcc back-end
+			mercury_compile__mlds_backend(HLDS50, MLDS),
+			mercury_compile__maybe_mlds_to_gcc(MLDS,
+				ContainsCCode),
+			( { TargetCodeOnly = yes } ->
+				[]
+			;
+				% Invoke the assembler to produce an
+				% object file
+				module_name_to_file_name(ModuleName, ".s", no,
+					AsmFile),
+				object_extension(Obj),
+				module_name_to_file_name(ModuleName, Obj, yes,
+					O_File),
+				mercury_compile__asm_to_obj(
+					AsmFile, O_File, _AssembleOK),
+				%
+				% If the module contained `pragma c_code',
+				% then we will have compiled that to a
+				% separate C file.  We need to invoke the
+				% C compiler on that.
+				%
+				( { ContainsCCode = yes } ->
+					module_name_to_file_name(ModuleName,
+						".c", no, CCode_C_File),
+					module_name_to_file_name(ModuleName,
+						"__c_code" ++ Obj,
+						yes, CCode_O_File),
+					mercury_compile__single_c_to_obj(
+						CCode_C_File, CCode_O_File,
+						_CompileOK)
+				;
+					[]
+				)
 			)
 		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50, MLDS),
@@ -2544,6 +2581,19 @@ mercury_compile__mlds_to_high_level_c(MLDS) -->
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
 	maybe_report_stats(Stats).
 
+:- pred mercury_compile__maybe_mlds_to_gcc(mlds, bool, io__state, io__state).
+:- mode mercury_compile__maybe_mlds_to_gcc(in, out, di, uo) is det.
+
+mercury_compile__maybe_mlds_to_gcc(MLDS, ContainsCCode) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	maybe_write_string(Verbose,
+		"% Passing MLDS to GCC and compiling to assembler...\n"),
+	maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode),
+	maybe_write_string(Verbose, "% Finished compiling to assembler.\n"),
+	maybe_report_stats(Stats).
+
 :- pred mercury_compile__mlds_to_il_assembler(mlds, io__state, io__state).
 :- mode mercury_compile__mlds_to_il_assembler(in, di, uo) is det.
 
@@ -2866,6 +2916,33 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
+	;
+		[]
+	).
+
+:- pred mercury_compile__asm_to_obj(string, string, bool,
+					io__state, io__state).
+:- mode mercury_compile__asm_to_obj(in, in, out, di, uo) is det.
+
+mercury_compile__asm_to_obj(AsmFile, ObjFile, Succeeded) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Assembling `"),
+	maybe_write_string(Verbose, AsmFile),
+	maybe_write_string(Verbose, "':\n"),
+	% XXX should we use new asm_* options rather than
+	% reusing cc, cflags, c_flag_to_name_object_file?
+	globals__io_lookup_string_option(cc, CC),
+	globals__io_lookup_string_option(c_flag_to_name_object_file,
+			NameObjectFile),
+	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
+	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
+	% Be careful with the order here.
+	% Also be careful that each option is separated by spaces.
+	{ string__append_list([CC, " ", CFLAGS,
+		" -c ", AsmFile, " ", NameObjectFile, ObjFile], Command) },
+	invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem assembling the assembler file.")
 	;
 		[]
 	).

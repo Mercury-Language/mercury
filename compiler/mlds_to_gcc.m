@@ -9,9 +9,25 @@
 
 % Note that this does *not* compile to GNU C -- instead it
 % actually generates GCC's internal "Tree" representation,
+% and then invokes the GCC back-end to compile it to assembler,
 % without going via an external file.
-
-% Currently this supports grade hlc.gc only.
+%
+% Code using the C interface, however, does get compiled to C; this module
+% invokes mlds_to_c.m to do that.  We split off all the parts of the MLDS
+% for `c_code'/`foreign_code' declarations, `c_header_code'/`foreign_decl'
+% declarations, `export' declarations, and procedures defined with
+% `c_code'/`foreign_proc', and pass them to mlds_to_c.m.  That will generate
+% a `<module>.c' file for this module; mercury_compile.m will invoke the C
+% compiler to compile that to `<module>__c_code.o'.  The remainding parts
+% of the MLDS, which don't contain any foreign code, we handle normally,
+% converting them to GCC trees and passing them to the GCC back-end
+% to generate an assembler file.  Calls to procedures defined using
+% `c_code'/`foreign_proc' will end up calling the functions defined in
+% `<module>__c_code.o'.  This works because the calling convention that
+% is used for the MLDS->C back-end is the same as (i.e. binary compatible
+% with) the calling convention that we use here in the MLDS->GCC back-end.
+%
+% Currently this back-end supports grade hlc.gc only.
 %
 % Trailing will probably work too, but since trailing
 % is currently implemented using the C interface,
@@ -23,7 +39,7 @@
 %	  with C; need to promote boolean return type to int
 %
 %	Fix configuration issues:
-%	- mmake support
+%	- mmake support for foreign code
 %	- document installation procedure
 %	- test more
 %	- support in tools/bootcheck and check that it bootchecks
@@ -67,11 +83,23 @@
 :- module mlds_to_gcc.
 :- interface.
 
-:- import_module mlds.
+:- import_module mlds, bool.
 :- use_module io.
 
-:- pred mlds_to_gcc__compile_to_asm(mlds__mlds, io__state, io__state).
-:- mode mlds_to_gcc__compile_to_asm(in, di, uo) is det.
+	% The bool returned is `yes' iff the module contained C code.
+	% In that case, we will have output a separate C file which needs
+	% to be compiled with the C compiler.
+	%
+	% XXX Currently the only foreign language we handle is C.
+	%     To make it work properly we'd need to change the
+	%     `ContainsCCode' boolean that we return to instead be a list
+	%     of the foreign languages used, so that mercury_compile.m
+	%     will know which foreign language files have been generated
+	%     which foreign language compilers it needs to invoke,
+	%     and which object files to link into the executable.
+
+:- pred mlds_to_gcc__compile_to_asm(mlds__mlds, bool, io__state, io__state).
+:- mode mlds_to_gcc__compile_to_asm(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -101,13 +129,204 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type output_type == pred(mlds__type, io__state, io__state).
-:- inst output_type = (pred(in, di, uo) is det).
+mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
+	%
+	% There's two possible cases, depending on who defined main().
+	%
+	%	1. GCC main():
+	%		gcc/toplev.c gets control first.
+	%
+	%		In this case, by the time we get to here
+	%		(mlds_to_gcc.m), the GCC back-end has already
+	%		been initialized.  We can go ahead and generate
+	%		the GCC tree and RTL.  When we return back to
+	%		main/2 in mercury_compile, and that returns,
+	% 		the gcc back-end will continue on and will
+	%		generate the asm file. 
+	%
+	%		Note that mercury_compile.m can't invoke the
+	% 		assembler to produce an object file, since
+	% 		the assembler won't get produced until
+	%		after main/2 has exited!  Instead, the gcc
+	%		driver program (`gcc') will invoke the assembler.
+	%		
+	%	2. Mercury main():
+	%		mercury_compile.m gets control first.
+	%
+	%		When we get here (mlds_to_gcc.m), the gcc back-end
+	%		has not been initialized.
+	%		We need to save the MLDS in a global variable,
+	%		and then invoke the GCC toplev_main() here.
+	%		This will start the GCC back-end, which will
+	%		eventually call MC_continue_frontend().
+	%		Eventually MC_continue_frontend() will
+	%		return and the gcc back-end will continue.
+	%
+	%		It's OK for mercury_compile.m to invoke the assembler.
+	%
+	%		XXX For programs with nested modules,
+	%		we'll end up calling the gcc back-end
+	%		more than once; this will probably crash.
+	%		
+	in_gcc(InGCC),
+	( { InGCC = yes } ->
+		mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode)
+	;
+		set_global_mlds(MLDS),
+		{ MLDS = mlds(ModuleName, _, _, _) },
+		do_call_gcc_backend(ModuleName, Result),
+		( { Result \= 0 } ->
+			io__set_exit_status(1)
+		;
+			[]
+		),
+		get_global_contains_c_code(ContainsCCode)
+	).
 
-%-----------------------------------------------------------------------------%
+:- pred do_call_gcc_backend(mlds__mercury_module_name::in, int::out,
+		io__state::di, io__state::uo) is det.
 
+do_call_gcc_backend(ModuleName, Result) -->
+	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
+	module_name_to_file_name(ModuleName, ".s", yes, AsmFileName),
+	% XXX should use new gcc_* options rather than
+	% reusing cflags, c_optimize
+	globals__io_lookup_bool_option(statistics, Statistics),
+	{ Statistics = yes ->
+		QuietOption = ""
+	;
+		QuietOption = "-quiet "
+	},
+	globals__io_lookup_bool_option(c_optimize, C_optimize),
+	{ C_optimize = yes ->
+		OptimizeOpt = "-O2 -fomit-frame-pointer "
+	;
+		OptimizeOpt = ""
+	},
+	globals__io_lookup_bool_option(target_debug, Target_Debug),
+	{ Target_Debug = yes ->
+		Target_DebugOpt = "-g "
+	;
+		Target_DebugOpt = ""
+	},
+	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
+	{ CFLAGS = string__append_list(list__map(func(Flag) = Flag ++ " ",
+		C_Flags_List)) },
+	% Be careful with the order here.
+	% Also be careful that each option is separated by spaces.
+	{ string__append_list(["""<GCC back-end>"" ",
+		QuietOption, OptimizeOpt, Target_DebugOpt, CFLAGS,
+		SourceFileName, " -o ", AsmFileName], CommandLine) },
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Invoking GCC back-end as `"),
+	maybe_write_string(Verbose, CommandLine),
+	maybe_write_string(Verbose, "':\n"),
+	call_gcc_backend(CommandLine, Result),
+	( { Result \= 0 } ->
+		report_error("GCC back-end failed!\n")
+	;
+		maybe_write_string(Verbose, "% GCC back-end done.\n")
+	).
 
-mlds_to_gcc__compile_to_asm(MLDS) -->
+	% Returns `yes' iff we've already entered the gcc back-end.
+:- pred in_gcc(bool::out, io__state::di, io__state::uo) is det.
+:- pragma import(in_gcc(out, di, uo), "MC_in_gcc").
+
+:- pred call_gcc_backend(string::in, int::out,
+		io__state::di, io__state::uo) is det.
+:- pragma import(call_gcc_backend(in, out, di, uo), "MC_call_gcc_backend").
+
+:- pragma c_header_code("
+/* We use an `MC_' prefix for C code in the mercury/compiler directory. */
+
+extern MR_Word MC_mlds;
+extern MR_Word MC_contains_c_code;
+
+void MC_in_gcc(MR_Word *result);
+void MC_call_gcc_backend(MR_String all_args, MR_Integer *result);
+void MC_continue_frontend(void);
+
+#include ""mercury_wrapper.h""		/* for MR_make_argv() */
+").
+
+:- pragma c_code("
+#include ""config.h""
+#include ""system.h""
+#include ""gansidecl.h""
+#include ""toplev.h""
+#include ""tree.h""
+#include ""mercury-gcc.h""
+
+/* We use an `MC_' prefix for C code in the mercury/compiler directory. */
+MR_Word MC_mlds;
+MR_Word MC_contains_c_code;
+
+extern int toplev_main(int argc, char **argv);
+
+void
+MC_in_gcc(MR_Word *result)
+{
+	/* If we've already entered gcc, then gcc will have set progname. */
+	*result = (progname != NULL);
+}
+
+void
+MC_call_gcc_backend(MR_String all_args, MR_Integer *result)
+{
+	char *args;
+	char **argv;
+	int argc;
+	const char *error_msg;
+
+	error_msg = MR_make_argv(all_args, &args, &argv, &argc);
+	if (error_msg) {
+		MR_fatal_error(""error parsing GCC back-end arguments:\n%s\n"",
+			error_msg);
+	}
+	merc_continue_frontend = &MC_continue_frontend;
+	*result = toplev_main(argc, argv);
+	MR_GC_free(args);
+	MR_GC_free(argv);
+}
+
+void
+MC_continue_frontend(void)
+{
+	MC_compile_to_gcc(MC_mlds, &MC_contains_c_code);
+}
+").
+
+:- pred get_global_mlds(mlds__mlds::out, io__state::di, io__state::uo) is det.
+:- pred set_global_mlds(mlds__mlds::in, io__state::di, io__state::uo) is det.
+:- pred get_global_contains_c_code(bool::out,
+		io__state::di, io__state::uo) is det.
+:- pred set_global_contains_c_code(bool::in,
+		io__state::di, io__state::uo) is det.
+
+:- pragma c_code(get_global_mlds(MLDS::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+	"MLDS = MC_mlds;").
+:- pragma c_code(set_global_mlds(MLDS::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+	"MC_mlds = MLDS;").
+:- pragma c_code(get_global_contains_c_code(ContainsCCode::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+	"ContainsCCode = MC_contains_c_code;").
+:- pragma c_code(set_global_contains_c_code(ContainsCCode::in,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+	"MC_contains_c_code = ContainsCCode;").
+
+	%
+	% This is called from yyparse() in mercury/mercury-gcc
+	% in the gcc back-end.
+	%
+:- pragma export(mlds_to_gcc__compile_to_gcc(in, out, di, uo),
+	"MC_compile_to_gcc").
+
+:- pred mlds_to_gcc__compile_to_gcc(mlds__mlds, bool, io__state, io__state).
+:- mode mlds_to_gcc__compile_to_gcc(in, out, di, uo) is det.
+
+mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode) -->
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0) },
 
 	%
@@ -120,6 +339,7 @@ mlds_to_gcc__compile_to_asm(MLDS) -->
 		{ ForeignCode = mlds__foreign_code([], [], []) },
 		{ ForeignDefns = [] }
 	->
+		{ ContainsCCode = no },
 		% there's no foreign code, so we don't need to
 		% do anything special
 		{ NeedInitFn = yes }
@@ -129,6 +349,10 @@ mlds_to_gcc__compile_to_asm(MLDS) -->
 		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
 			ForeignDefns) },
 		mlds_to_c__output_mlds(ForeignMLDS),
+		% XXX currently the only foreign code we handle is C;
+		%     see comments above (at the declaration for
+		%     mlds_to_c__compile_to_asm)
+		{ ContainsCCode = yes },
 		{ NeedInitFn = no }
 	),
 
@@ -1712,13 +1936,12 @@ build_rtti_type(notag_functor_desc, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_notag_functor_name;
 	%     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
-	% XXX need to add the following field when I do a cvs update:
-	% /***MR_ConstString      MR_notag_functor_arg_name;***/
+	%     MR_ConstString      MR_notag_functor_arg_name;
 	% } MR_NotagFunctorDesc;
 	build_struct_type("MR_NotagFunctorDesc",
 		['MR_ConstString'	- "MR_notag_functor_name",
-		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type"],
-		 %%% 'MR_ConstString'	- "MR_notag_functor_arg_name"],
+		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type",
+		 'MR_ConstString'	- "MR_notag_functor_arg_name"],
 		GCC_Type).
 build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
@@ -1738,9 +1961,7 @@ build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 	gcc__build_pointer_type(MR_DuExistInfo, MR_DuExistInfoPtr),
 	gcc__build_pointer_type('MR_ConstString', MR_ConstStringPtr),
 	build_struct_type("MR_DuFunctorDesc",
-		['MR_ConstString'	- "MR_notag_functor_name",
-		 'MR_PseudoTypeInfo'	- "MR_notag_functor_arg_type",
-		 'MR_ConstString'	- "MR_du_functor_name",
+		['MR_ConstString'	- "MR_du_functor_name",
 		 'MR_int_least16_t'	- "MR_du_functor_orig_arity",
 		 'MR_int_least16_t'	- "MR_du_functor_arg_type_contains_var",
 		 'MR_Sectag_Locn'	- "MR_du_functor_sectag_locn",
