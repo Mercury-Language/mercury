@@ -1,0 +1,5 @@
+make_opt_error.m:101: Error: clause for automatically generated field access
+make_opt_error.m:101:   function `make_opt_error.x/1'.
+make_opt_error.m:102: Error: clause for automatically generated field access
+make_opt_error.m:102:   function `make_opt_error.y/1'.
+For more information, try recompiling with `-E'.
