@@ -59,6 +59,17 @@ Reportedly running configure sometimes results in permission errors,
 but apparently the errors go away if you run configure a second time.
 This is probably due to a bug in gnu-win32.
 
+If you are using gnu-win32 version b18, and you want to use the
+`--prefix' option to configure to install Mercury onto a different
+drive, then you should probably first use the `mount' command to
+mount that drive (e.g.  `mount d:/ /d'), and use the mount name
+ (e.g.`configure --prefix /d/foo'), rather than using the `//d' notation
+(e.g. --prefix //d/foo').  We got a report that using the `//d' notation
+(a gnu-win32 feature: this is supposed to name the root directory of
+drive `d') does not work with the version of gcc included with gnu-win32
+version b18.  It should however work fine with the version of gcc
+included with gnu-win32 version b19.
+
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
