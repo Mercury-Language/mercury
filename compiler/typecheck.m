@@ -2490,10 +2490,19 @@ typecheck_unify_var_functor(Var, Functor, Args, !Info, !IO) :-
 
 :- type args_type_assign
 	--->	args(
-			type_assign, 		% Type assignment,
-			list(type), 		% types of callee args,
-			class_constraints	% constraints from callee
+			caller_arg_assign	:: type_assign,
+						% Type assignment,
+			callee_arg_types	:: list(type),
+						% types of callee args,
+			callee_constraints	:: class_constraints
+						% constraints from callee
 		).
+
+:- func get_caller_arg_assign(args_type_assign) = type_assign.
+:- func get_callee_arg_types(args_type_assign) = list(type).
+
+get_caller_arg_assign(ArgsTypeAssign) = ArgsTypeAssign ^ caller_arg_assign.
+get_callee_arg_types(ArgsTypeAssign) = ArgsTypeAssign ^ callee_arg_types.
 
 :- pred typecheck_unify_var_functor_get_ctors(type_assign_set::in,
 	typecheck_info::in, list(cons_type_info)::in,
@@ -4816,30 +4825,40 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
-	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
-	hlds_out__write_functor_cons_id(Functor1, Args, VarSet, ModuleInfo, no),
+	{ strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor) },
+	hlds_out__write_functor_cons_id(StrippedFunctor, Args, VarSet,
+		ModuleInfo, no),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),
-	write_functor_name(Functor1, Arity),
+	write_functor_name(StrippedFunctor, Arity),
 	io__write_string(".\n"),
+
+	{ ConsArgTypesSet = list__map(get_callee_arg_types,
+		ArgsTypeAssignSet) },
 
 	% If we know the type of the function symbol, and each argument
 	% also has at most one possible type, then we prefer to print an
 	% error message that mentions the actual and expected types of the
 	% arguments only for the arguments in which the two types differ.
 	(
-		{ ArgsTypeAssignSet = [SingleArgsTypeAssign] },
-		{ SingleArgsTypeAssign = args(TypeAssign, ConsArgTypes, _) },
+		{ list__all_same(ConsArgTypesSet) },
+		{ ConsArgTypesSet = [ConsArgTypes | _] },
 		{ assoc_list__from_corresponding_lists(Args, ConsArgTypes,
 			ArgExpTypes) },
-		{ find_mismatched_args(ArgExpTypes, [TypeAssign], 1,
-			Mismatches) },
-		{ Mismatches = [_ | _] }
+		{ TypeAssigns = list__map(get_caller_arg_assign,
+			ArgsTypeAssignSet) },
+		{ find_mismatched_args(ArgExpTypes, TypeAssigns, 1,
+			SimpleMismatches, ComplexMismatches, AllMismatches) },
+		{ require(list__is_not_empty(AllMismatches),
+			"report_error_functor_arg_types: no mismatches") },
+		{ ComplexMismatches = [] }
 	->
-		report_mismatched_args(Mismatches, yes, VarSet, Functor,
+		report_mismatched_args(SimpleMismatches, yes, VarSet, Functor,
 			Context)
 	;
+		% XXX If we can compute AllMismatches, then we should use it
+		% to report which arguments are OK, and which are suspect.
 
 		{ convert_args_type_assign_set(ArgsTypeAssignSet,
 			TypeAssignSet) },
@@ -4877,9 +4896,15 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 	).
 
 :- type mismatch_info
-	--->	mismatch(
+	--->	mismatch_info(
 			int,		% argument number, starting from 1
 			prog_var,	% variable in that position
+			list(type_mismatch)
+					% list of possible type mismatches
+		).
+
+:- type type_mismatch
+	--->	type_mismatch(
 			type,		% actual type of that variable
 			type,		% expected type of that variable
 			tvarset,	% the type vars in the expected
@@ -4888,15 +4913,43 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 		).
 
 :- pred find_mismatched_args(assoc_list(prog_var, type)::in,
-	type_assign_set::in, int::in, list(mismatch_info)::out) is semidet.
+	type_assign_set::in, int::in, list(mismatch_info)::out,
+	list(mismatch_info)::out, list(mismatch_info)::out) is det.
 
-find_mismatched_args([], _, _, []).
+find_mismatched_args([], _, _, [], [], []).
 find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
-		Mismatched) :-
+		SimpleMismatches, ComplexMismatches, AllMismatches) :-
 	ArgNum1 = ArgNum0 + 1,
-	find_mismatched_args(ArgExpTypes, TypeAssignSet, ArgNum1, Mismatched1),
+	find_mismatched_args(ArgExpTypes, TypeAssignSet, ArgNum1,
+		SimpleMismatchesTail, ComplexMismatchesTail,
+		AllMismatchesTail),
 	get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
-	TypeStuffList = [TypeStuff],
+	list__filter_map(substitute_types_check_match(ExpType), TypeStuffList,
+		TypeMismatches0),
+	list__sort_and_remove_dups(TypeMismatches0, TypeMismatches),
+	(
+		TypeMismatches = [],
+		SimpleMismatches = SimpleMismatchesTail,
+		ComplexMismatches = ComplexMismatchesTail,
+		AllMismatches = AllMismatchesTail
+	;
+		TypeMismatches = [_],
+		Mismatch = mismatch_info(ArgNum0, Arg, TypeMismatches),
+		SimpleMismatches = [Mismatch | SimpleMismatchesTail],
+		ComplexMismatches = ComplexMismatchesTail,
+		AllMismatches = [Mismatch | AllMismatchesTail]
+	;
+		TypeMismatches = [_, _ | _],
+		Mismatch = mismatch_info(ArgNum0, Arg, TypeMismatches),
+		SimpleMismatches = SimpleMismatchesTail,
+		ComplexMismatches = [Mismatch | ComplexMismatchesTail],
+		AllMismatches = [Mismatch | AllMismatchesTail]
+	).
+
+:- pred substitute_types_check_match((type)::in, type_stuff::in,
+	type_mismatch::out) is semidet.
+
+substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
 	TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, HeadTypeParams),
 	term__apply_rec_substitution(ArgType, TypeBindings, FullArgType),
 	term__apply_rec_substitution(ExpType, TypeBindings, FullExpType),
@@ -4911,10 +4964,10 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 			FullArgType = term__functor(term__atom("<any>"), [], _)
 		)
 	->
-		Mismatched = Mismatched1
+		fail
 	;
-		Mismatched = [mismatch(ArgNum0, Arg, FullArgType, FullExpType,
-			TVarSet, HeadTypeParams) | Mismatched1]
+		TypeMismatch = type_mismatch(FullArgType, FullExpType,
+			TVarSet, HeadTypeParams)
 	).
 
 :- pred report_mismatched_args(list(mismatch_info)::in, bool::in,
@@ -4923,8 +4976,13 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 report_mismatched_args([], _, _, _, _) --> [].
 report_mismatched_args([Mismatch | Mismatches], First, VarSet, Functor,
 		Context) -->
-	{ Mismatch = mismatch(ArgNum, Var, ActType, ExpType, TVarSet,
-		HeadTypeParams) },
+	{ Mismatch = mismatch_info(ArgNum, Var, TypeMismatches) },
+	{ TypeMismatches = [TypeMismatch] ->
+		TypeMismatch = type_mismatch(ActType, ExpType, TVarSet,
+			HeadTypeParams)
+	;
+		error("report_mismatched_args: more than one type mismatch")
+	},
 	prog_out__write_context(Context),
 	(
 		% Handle higher-order syntax such as ''(F, A) specially:
@@ -5000,13 +5058,13 @@ write_argument_name(VarSet, Var) -->
 :- pred write_functor_name(cons_id::in, int::in, io::di, io::uo) is det.
 
 write_functor_name(Functor, Arity) -->
-	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
+	{ strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor) },
 	( { Arity = 0 } ->
 		io__write_string("constant `"),
 		( { Functor = cons(Name, _) } ->
 			prog_out__write_sym_name(Name)
 		;
-			hlds_out__write_cons_id(Functor1)
+			hlds_out__write_cons_id(StrippedFunctor)
 		),
 		io__write_string("'")
 	; { Functor = cons(unqualified(""), _) } ->
@@ -5015,7 +5073,7 @@ write_functor_name(Functor, Arity) -->
 		io__write_string(")")
 	;
 		io__write_string("functor `"),
-		hlds_out__write_cons_id(Functor1),
+		hlds_out__write_cons_id(StrippedFunctor),
 		io__write_string("'")
 	).
 
@@ -5863,8 +5921,8 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity) -->
 		;
 			io__write_string("  error: undefined symbol `"),
 			{ strip_builtin_qualifier_from_cons_id(Functor,
-				Functor1) },
-			hlds_out__write_cons_id(Functor1),
+				StrippedFunctor) },
+			hlds_out__write_cons_id(StrippedFunctor),
 			io__write_string("'"),
 			(
 				{ Functor = cons(Constructor, _) },
