@@ -167,7 +167,8 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 			Destinstr = Udestinstr - _Destcomment,
 			string__append("shortcircuited jump: ",
 				Comment0, Shorted),
-			( peephole__cannot_fallthrough(Udestinstr) ->
+			code_util__can_instr_fall_through(Udestinstr, Canfallthrough),
+			( Canfallthrough = no ->
 				Instr = Udestinstr - Shorted
 			;
 				( Targetlabel = Destlabel ->
@@ -424,7 +425,8 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 			peephole__eliminate(Instr0, no, Instr)
 		),
 		Instr0 = Uinstr0 - Comment,
-		( peephole__instr_can_fallthrough(Uinstr0) ->
+		code_util__can_instr_fall_through(Uinstr0, Canfallthrough),
+		( Canfallthrough = yes ->
 			Fallthrough1 = Fallthrough
 		;
 			Fallthrough1 = no
@@ -488,11 +490,16 @@ peephole__next_modframe([Instr | Instrs], RevSkip, Redoip, Skip, Rest) :-
 		Redoip = Redoip0,
 		list__reverse(RevSkip, Skip),
 		Rest = Instrs
-	; peephole__cannot_branch(Uinstr) ->
-		peephole__next_modframe(Instrs, [Instr | RevSkip],
-			Redoip, Skip, Rest)
-	;
+	; Uinstr = mkframe(_, _, _) ->
 		fail
+	;
+		code_util__can_instr_branch_away(Uinstr, Canbranchaway),
+		( Canbranchaway = no ->
+			peephole__next_modframe(Instrs, [Instr | RevSkip],
+				Redoip, Skip, Rest)
+		;
+			fail
+		)
 	).
 
 	% Check whether the named label follows without any intervening code
@@ -513,52 +520,6 @@ peephole__is_this_label_next(Label, [Instr | Moreinstr]) :-
 	;
 		fail
 	).
-
-	% Check whether an instruction can possibly branch away.
-
-:- pred peephole__cannot_branch(instr).
-:- mode peephole__cannot_branch(in) is semidet.
-
-peephole__cannot_branch(comment(_)).
-peephole__cannot_branch(assign(_, _)).
-peephole__cannot_branch(label(_)).
-peephole__cannot_branch(incr_sp(_)).
-peephole__cannot_branch(decr_sp(_)).
-peephole__cannot_branch(incr_hp(_)).
-
-	% Check whether an instruction can possibly fall through
-	% to next instruction without using its label.
-
-:- pred peephole__instr_can_fallthrough(instr).
-:- mode peephole__instr_can_fallthrough(in) is semidet.
-
-peephole__instr_can_fallthrough(comment(_)).
-peephole__instr_can_fallthrough(assign(_, _)).
-peephole__instr_can_fallthrough(mkframe(_, _, _)).
-peephole__instr_can_fallthrough(modframe(_)).
-peephole__instr_can_fallthrough(label(_)).
-peephole__instr_can_fallthrough(c_code(_)).
-peephole__instr_can_fallthrough(if_val(_, _)).
-peephole__instr_can_fallthrough(incr_sp(_)).
-peephole__instr_can_fallthrough(decr_sp(_)).
-peephole__instr_can_fallthrough(incr_hp(_)).
-
-	% Is this instruction guaranteed not to fall through
-	% to the next instruction?
-
-:- pred peephole__cannot_fallthrough(instr).
-:- mode peephole__cannot_fallthrough(in) is semidet.
-
-peephole__cannot_fallthrough(call(_, _)).
-peephole__cannot_fallthrough(entrycall(_, _)).
-peephole__cannot_fallthrough(unicall(_, _)).
-peephole__cannot_fallthrough(tailcall(local(_))).
-peephole__cannot_fallthrough(fail).
-peephole__cannot_fallthrough(redo).
-peephole__cannot_fallthrough(succeed).
-peephole__cannot_fallthrough(proceed).
-
-%-----------------------------------------------------------------------------%
 
 :- end_module peephole.
 
