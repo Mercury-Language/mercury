@@ -9,8 +9,8 @@
 # own path!
 #
 
-CURRENT_RELEASE=0.10.1
-BETA_RELEASE=0.10.2
+CURRENT_RELEASE=0.11.0
+BETA_RELEASE=0.11.1
 
 # We need bash's extended globbing for the case patterns
 # matching the release numbers.
