@@ -43,12 +43,13 @@ all:
 install: install_lib install_info install_scripts install_mmake \
 		install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 	echo
-	echo "Don't forget to add $(INSTALL_BINDIR) to your path."
+	echo "Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	echo "and $(INSTALL_INFODIR) to your INFOPATH."
 
 .PHONY: install_lib
 install_lib:
-	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
 	echo "Installing lib in $(INSTALL_LIBDIR)..."
+	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
 	LIB_TAR_FILE=`pwd`/lib.tar.gz; cd $(INSTALL_LIBDIR); \
 		zcat $$LIB_TAR_FILE | tar -xf - $(LIB_PARTS)
 	echo "Done."

@@ -4,7 +4,7 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-AC_INIT(./bindist)
+AC_INIT(./bindist.build_vars.in)
 AC_PREFIX_DEFAULT(/usr/local/mercury-0.5-beta)
 AC_CANONICAL_HOST
 AC_SUBST(FULLARCH)
@@ -20,14 +20,15 @@ AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
 #-----------------------------------------------------------------------------#
 #
-# Source the bindist script to get the variables whoes bindings were determined
-# at the time when the binary distribution was built.
+# Source the build_vars script to get the variables whoes bindings
+# were determined at the time when the binary distribution was built.
 
-. ./bindist
+. ./build_vars
 
 #-----------------------------------------------------------------------------#
-# Pass on the inherited variables
 #
+# Pass on the inherited variables
+
 AC_SUBST(LIBGRADES)
 AC_SUBST(DEFAULT_GRADE)
 AC_SUBST(NUM_REAL_R_REGS)
