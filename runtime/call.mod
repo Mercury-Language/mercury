@@ -212,7 +212,7 @@ nondet_closure_return:
 ** mercury__unify_2_0 is called as `unify(TypeInfo, X, Y)'
 ** in the mode `unify(in, in, in) is semidet'.
 **
-** With the normal parameter passing convention, the inputs are in the
+** With the simple parameter passing convention, the inputs are in the
 ** registers r2, r3 and r4. With the compact parameter passing convention,
 ** the inputs are in the registers r1, r2 and r3.
 **
@@ -220,33 +220,59 @@ nondet_closure_return:
 ** which goes in r1 with both calling conventions.
 **
 ** We call the type-specific unification routine as
-** `UnifyPred(...TypeInfos..., X, Y)' is semidet, with all arguments input.
+** `UnifyPred(...ArgTypeInfos..., X, Y)' is semidet, with all arguments input.
 ** Again r1 will hold the success/failure continuation; the input arguments
 ** start either in r1 or r2 depending on the argument passing convention.
 */
 
 mercury__unify_2_0:
 {
-	Word	type_info;
-	Code	*unify_pred;
+	Code	*unify_pred;	/* address of the unify pred for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before the first */
+				/* type_info argument */
 	Word	x, y;
-	int	i, type_arity;
+	int	i;
 
-	type_info = mercury__unify__typeinfo;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info;
+
 	x = mercury__unify__x;
 	y = mercury__unify__y;
-	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
-		/* number of type_info args */
-	unify_pred = (Code *) field(0, type_info, OFFSET_FOR_UNIFY_PRED);
-		/* address of the comparison pred for this type */
+
+	base_type_info = field(0, mercury__unify__typeinfo, 0);
+	if (base_type_info == 0)
+	{
+		type_arity = 0;
+		unify_pred = (Code *) field(0, mercury__unify__typeinfo,
+				OFFSET_FOR_UNIFY_PRED);
+		/* args_base will not be needed */
+	}
+	else
+	{
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		unify_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_UNIFY_PRED);
+		args_base = mercury__unify__typeinfo;
+	}
+#else
+	x = mercury__unify__x;
+	y = mercury__unify__y;
+
+	type_arity = field(0, mercury__unify__typeinfo, OFFSET_FOR_COUNT);
+	unify_pred = (Code *) field(0, mercury__unify__typeinfo,
+			OFFSET_FOR_UNIFY_PRED);
+	args_base = (Word) ((Word *) mercury__unify__typeinfo
+			- 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+#endif
 
 	save_registers();
 
-	/* we call `UnifyPred(...TypeInfos..., X, Y)' */
+	/* we call `UnifyPred(...ArgTypeInfos..., X, Y)' */
 	/* virtual_reg(1) will hold the success/failure indication */
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i + mercury__unify__offset) =
-			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+			field(0, args_base, i);
 	}
 	virtual_reg(type_arity + mercury__unify__offset + 1) = x;
 	virtual_reg(type_arity + mercury__unify__offset + 2) = y;
@@ -261,41 +287,58 @@ mercury__unify_2_0:
 ** in the mode `index(in, in, out) is det'.
 **
 ** With both parameter passing conventions, the inputs are in r1 and r2.
-** With the normal parameter passing convention, the output is in r3;
+** With the simple parameter passing convention, the output is in r3;
 ** with the compact parameter passing convention, the output is in r1.
 **
 ** We call the type-specific index routine as
-** `IndexPred(...TypeInfos..., X, Index)' is det.
-** The TypeInfo and X arguments are input, and are passed in r1, r2, ... rN
+** `IndexPred(...ArgTypeInfos..., X, Index)' is det.
+** The ArgTypeInfo and X arguments are input, and are passed in r1, r2, ... rN
 ** with both conventions. The Index argument is output; it is returned in
-** r1 with the compact convention and rN+1 with the normal convention.
+** r1 with the compact convention and rN+1 with the simple convention.
 **
 ** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the normal convention, we can't.
+** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
 mercury__index_2_0:
 {
-	Word	type_info;
-	Code	*index_pred;
+	Code	*index_pred;	/* address of the index pred for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before the first */
+				/* type_info argument */
 	Word	x;
-	int	i, type_arity;
+	int	i;
 
-	/* we get called as `index(TypeInfo, X, Index)' */
-	/* in the mode `index(in, in, out) is det'. */
-	type_info = r1;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info;
+
 	x = r2;
-	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
-		/* number of type_info args */
-	index_pred = (Code *) field(0, type_info, OFFSET_FOR_INDEX_PRED);
-		/* address of the comparison pred for this type */
+	base_type_info = field(0, r1, 0);
+	if (base_type_info == 0)
+	{
+		type_arity = 0;
+		index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
+		/* args_base will not be needed */
+	}
+	else
+	{
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		index_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_INDEX_PRED);
+		args_base = r1;
+	}
+#else
+	x = r2;
+	type_arity = field(0, r1, OFFSET_FOR_COUNT);
+	index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
+	args_base = (Word) ((Word *) r1 - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+#endif
 
 	save_registers();
 
-	/* we call `IndexPred(...TypeInfos..., X, Index)' */
+	/* we call `IndexPred(...ArgTypeInfos..., X, Index)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) =
-			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+		virtual_reg(i) = field(0, args_base, i);
 	}
 	virtual_reg(type_arity + 1) = x;
 
@@ -335,23 +378,23 @@ mercury__index_2_0_i1:
 **
 ** (The additional entry points replace either or both "in"s with "ui"s.)
 **
-** With the normal parameter passing convention, the inputs are in r1,
+** With the simple parameter passing convention, the inputs are in r1,
 ** r3 and r4, while the output is in r2.
 **
 ** With the compact parameter passing convention, the inputs are in r1,
 ** r2 and r3, while the output is in r1.
 **
 ** We call the type-specific compare routine as
-** `ComparePred(...TypeInfos..., Result, X, Y)' is det.
-** The TypeInfo arguments are input, and are passed in r1, r2, ... rN
+** `ComparePred(...ArgTypeInfos..., Result, X, Y)' is det.
+** The ArgTypeInfo arguments are input, and are passed in r1, r2, ... rN
 ** with both conventions. The X and Y arguments are also input, but are passed
-** in different registers (rN+2 and rN+3 with the normal convention and rN+1
+** in different registers (rN+2 and rN+3 with the simple convention and rN+1
 ** and rN+2 with the compact convention). The Index argument is output; it is
-** returned in ** r1 with the compact convention and rN+1 with the normal
+** returned in ** r1 with the compact convention and rN+1 with the simple
 ** convention.
 **
 ** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the normal convention, we can't.
+** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
 mercury__compare_3_0:
@@ -374,27 +417,50 @@ mercury__compare_3_2:
 #endif
 mercury__compare_3_3:
 {
-	Word	type_info;
-	Code	*compare_pred;
+	Code	*compare_pred;	/* address of the compare pred for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before the first */
+				/* type_info argument */
 	Word	x, y;
-	int	i, type_arity;
+	int	i;
 
-	/* we get called as `compare(TypeInfo, Result, X, Y)' */
-	/* in the mode `compare(in, out, in, in) is det'. */
-	type_info = mercury__compare__typeinfo;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info;
+
 	x = mercury__compare__x;
 	y = mercury__compare__y;
-	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
-		/* number of type_info args */
-	compare_pred = (Code *) field(0, type_info, OFFSET_FOR_COMPARE_PRED);
-		/* address of the comparison pred for this type */
+
+	base_type_info = field(0, mercury__compare__typeinfo, 0);
+	if (base_type_info == 0)
+	{
+		type_arity = 0;
+		compare_pred = (Code *) field(0, mercury__compare__typeinfo,
+				OFFSET_FOR_COMPARE_PRED);
+		/* args_base will not be needed */
+	}
+	else
+	{
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		compare_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_COMPARE_PRED);
+		args_base = mercury__compare__typeinfo;
+	}
+#else
+	x = mercury__compare__x;
+	y = mercury__compare__y;
+
+	type_arity = field(0, mercury__compare__typeinfo, OFFSET_FOR_COUNT);
+	compare_pred = (Code *) field(0, mercury__compare__typeinfo,
+			OFFSET_FOR_COMPARE_PRED);
+	args_base = (Word) ((Word *) mercury__compare__typeinfo
+			- 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+#endif
 
 	save_registers();
 
-	/* we call `ComparePred(...TypeInfos..., Result, X, Y)' */
+	/* we call `ComparePred(...ArgTypeInfos..., Result, X, Y)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) =
-			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+		virtual_reg(i) = field(0, args_base, i);
 	}
 	virtual_reg(type_arity + mercury__compare__offset + 1) = x;
 	virtual_reg(type_arity + mercury__compare__offset + 2) = y;
@@ -433,23 +499,23 @@ mercury__compare_3_0_i1:
 ** mercury__term_to_type_2_0 is called as `term_to_type(TypeInfo, Term, X)'
 ** in the mode `term_to_type(in, in, out) is semidet'.
 **
-** With the normal parameter convention, the inputs are in r2 and r3,
+** With the simple parameter convention, the inputs are in r2 and r3,
 ** the success/failure indication in r1, and the output in r4.
 **
 ** With the compact parameter convention, the inputs are in r1 and r2,
 ** the success/failure indication in r1, and the output in r2.
 **
-** We call the type-specific compare routine as
-** `TermToTypePred(...TypeInfos..., Term, X)' is semidet.
+** We call the type-specific term_to_type routine as
+** `TermToTypePred(...ArgTypeInfos..., Term, X)' is semidet.
 **
-** With the normal parameter convention, the inputs are in r2, ... rN+2,
+** With the simple parameter convention, the inputs are in r2, ... rN+2,
 ** the success/failure indication in r1, and the output in rN+3.
 **
 ** With the compact parameter convention, the inputs are in r1, ... rN+1,
 ** the success/failure indication in r1, and the output in r2.
 **
 ** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the normal convention, we can't.
+** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
 mercury__term_to_type_2_0:
@@ -458,25 +524,53 @@ mercury__term_to_type_2_0:
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
 
-	Word	type_info;
-	Code	*term_to_type_pred;
+	Code	*term_to_type_pred;	/* address of the term_to_type pred */
+					/* for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before the first */
+				/* type_info argument */
 	Word	term;
-	int	i, type_arity;
+	int	i;
 
-	type_info = mercury__term_to_type__typeinfo;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info;
+
 	term = mercury__term_to_type__term;
-	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
-		/* number of type_info args */
-	term_to_type_pred =
-		(Code *) field(0, type_info, OFFSET_FOR_TERM_TO_TYPE_PRED);
-		/* address of the term_to_type pred for this type */
+
+	base_type_info = field(0, mercury__term_to_type__typeinfo, 0);
+	if (base_type_info == 0)
+	{
+		type_arity = 0;
+		term_to_type_pred = (Code *) field(0,
+				mercury__term_to_type__typeinfo,
+				OFFSET_FOR_TERM_TO_TYPE_PRED);
+		/* args_base will not be needed */
+	}
+	else
+	{
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		term_to_type_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_TERM_TO_TYPE_PRED);
+		args_base = mercury__term_to_type__typeinfo;
+	}
+#else
+	term = mercury__term_to_type__term;
+
+	type_arity = field(0, mercury__term_to_type__typeinfo,
+			OFFSET_FOR_COUNT);
+	term_to_type_pred = (Code *) field(0,
+			mercury__term_to_type__typeinfo,
+			OFFSET_FOR_TERM_TO_TYPE_PRED);
+	args_base = (Word) ((Word *) mercury__term_to_type__typeinfo
+			- 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+#endif
 
 	save_registers();
 
-	/* we call 'TermToTypePred(...TypeInfos..., Term, X)' */
+	/* we call 'TermToTypePred(...ArgTypeInfos..., Term, X)' */
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i + mercury__term_to_type__offset) =
-			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+			field(0, args_base, i);
 	}
 	virtual_reg(type_arity + mercury__term_to_type__offset + 1) = term;
 
@@ -523,18 +617,18 @@ mercury__term_to_type_2_0_i1:
 ** in the mode `type_to_term(in, in, out) is det'.
 **
 ** With both conventions, the inputs are in r1 and r2.
-** With the normal parameter convention, the output is in r3;
+** With the simple parameter convention, the output is in r3;
 ** with the compact parameter convention, the output is in r1.
 **
-** We call the type-specific compare routine as
-** `TypeToTermPred(...TypeInfos..., X, Term)' is det.
+** We call the type-specific type_to_term routine as
+** `TypeToTermPred(...ArgTypeInfos..., X, Term)' is det.
 **
 ** With both conventions, the inputs are in r1, ... rN.
-** With the normal parameter convention, the output is in rN+1;
+** With the simple parameter convention, the output is in rN+1;
 ** with the compact parameter convention, the output is in r1.
 **
 ** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the normal convention, we can't.
+** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
 mercury__type_to_term_2_0:
@@ -543,27 +637,47 @@ mercury__type_to_term_2_0:
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
 
-	Word	type_info;
-	Code	*type_to_term_pred;
+	Code	*type_to_term_pred;	/* address of the type_to_term pred */
+					/* for this type */
+	int	type_arity;	/* number of type_info args */
+	Word	args_base;	/* the address of the word before the first */
+				/* type_info argument */
 	Word	x;
-	int	i, type_arity;
+	int	i;
 
-	/* we get called as 'type_to_term(TypeInfo, X, Term)' */
-	/* in the mode 'type_to_term(in, in, out) is det'. */
-	type_info = r1;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info;
+
 	x = r2;
-	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
-		/* number of type_info args */
-	type_to_term_pred =
-		(Code *) field(0, type_info, OFFSET_FOR_TYPE_TO_TERM_PRED);
-		/* address of the type_to_term pred for this type */
+
+	base_type_info = field(0, r1, 0);
+	if (base_type_info == 0)
+	{
+		type_arity = 0;
+		type_to_term_pred = (Code *) field(0, r1,
+				OFFSET_FOR_TYPE_TO_TERM_PRED);
+		/* args_base will not be needed */
+	}
+	else
+	{
+		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
+		type_to_term_pred = (Code *) field(0, base_type_info,
+				OFFSET_FOR_TYPE_TO_TERM_PRED);
+		args_base = r1;
+	}
+#else
+	x = r2;
+
+	type_arity = field(0, r1, OFFSET_FOR_COUNT);
+	type_to_term_pred = (Code *) field(0, r1, OFFSET_FOR_TYPE_TO_TERM_PRED);
+	args_base = (Word) ((Word *) r1 - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+#endif
 
 	save_registers();
 
-	/* we call 'TypeToTermPred(...TypeInfos..., X, Term)' */
+	/* we call 'TypeToTermPred(...ArgTypeInfos..., X, Term)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) =
-			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+		virtual_reg(i) = field(0, args_base, i);
 	}
 	virtual_reg(type_arity + 1) = x;
 
