@@ -253,6 +253,20 @@
 %		(Any type except a higher-order predicate type,
 %		or some of the builtin types such as io__state itself.)
 
+:- pred io__write_list(list(T), string, pred(T, io__state, io__state),
+	io__state, io__state).
+:- mode io__write_list(in, in, pred(in, di, uo) is det, di, uo) is det.
+	% io__write_list(List, Separator, OutputPred, IO0, IO)
+	% applies OutputPred to each element of List, printing Separator
+	% between each element. Outputs to the current output stream.
+
+:- pred io__write_list(io__output_stream, list(T), string, 
+	pred(T, io__state, io__state), io__state, io__state).
+:- mode io__write_list(in, in, in, pred(in, di, uo) is det, di, uo) is det.
+	% io__write_list(Stream, List, Separator, OutputPred, IO0, IO)
+	% applies OutputPred to each element of List, printing Separator
+	% between each element. Outputs to Stream.
+
 :- pred io__flush_output(io__state, io__state).
 :- mode io__flush_output(di, uo) is det.
 %	Flush the output buffer of the current output stream.
@@ -1093,6 +1107,24 @@ io__write_args([Arg | Args]) -->
 	io__write_string(", "),
 	io__write(Arg),
 	io__write_args(Args).
+
+%-----------------------------------------------------------------------------%
+
+io__write_list([], _Separator, _OutputPred) --> [].
+io__write_list([E|Es], Separator, OutputPred) -->
+	call(OutputPred, E),
+	(
+		{ Es = [] }
+	;
+		{ Es = [_|_] },
+		io__write_string(Separator)
+	),
+	io__write_list(Es, Separator, OutputPred).
+
+io__write_list(Stream, List, Separator, OutputPred) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__write_list(List, Separator, OutputPred),
+	io__set_output_stream(OrigStream, _Stream).
 
 %-----------------------------------------------------------------------------%
 
