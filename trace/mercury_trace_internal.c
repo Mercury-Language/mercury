@@ -1920,18 +1920,18 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
 
 	if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count))
 	{
-		MR_ensure_big_enough(alias_word_count, *word, const char *,
-			MR_INIT_WORD_COUNT);
+		MR_ensure_big_enough(*word_count + alias_word_count,
+			*word, const char *, MR_INIT_WORD_COUNT);
 
 		/* Move the original words (except the alias key) up. */
 		for (i = *word_count - 1; i >= alias_copy_start; i--) {
-			*words[i + alias_word_count - alias_copy_start]
-				= *words[i];
+			(*words)[i + alias_word_count - alias_copy_start]
+				= (*words)[i];
 		}
 
 		/* Move the alias body to the words array. */
 		for (i = 0; i < alias_word_count; i++) {
-			*words[i] = alias_words[i];
+			(*words)[i] = alias_words[i];
 		}
 
 		*word_count += alias_word_count - alias_copy_start;
