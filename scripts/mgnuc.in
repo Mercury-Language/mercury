@@ -12,6 +12,8 @@
 # Options:
 # -v, --verbose
 #	Echo gcc command before executing it.
+# --no-check
+#	Don't pass -ansi or any of the -W options.
 # -s <grade>, --grade <grade>
 #	Select optimization/debug/gc options according to <grade>, which
 #	must be one of debug, none, jump, asm_jump, reg, fast, or asm_fast,
@@ -48,6 +50,10 @@ verbose=false
 
 while true; do
     case "$1" in
+	--no-check)
+		CHECK_OPTS=
+		shift
+		;;
 	-v|--verbose)
 		verbose=true
 		shift
