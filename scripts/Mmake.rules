@@ -494,8 +494,8 @@ lib%.install_grades:
 	done && \
 	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
 		*.a *.so tmp_dir || true; } && \
-	for grade in x $(ALL_LIBGRADES); do \
-		if [ "$$grade" != "x" ]; then \
+	for grade in $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "$(GRADE)" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
@@ -523,8 +523,8 @@ lib%.install_split_grades:
 	mkdir tmp_dir && \
 	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv $($*.mihs) \
 		$($*.dirs) *.a *.so tmp_dir || true; } && \
-	for grade in x $(ALL_LIBGRADES); do \
-		if [ "$$grade" != "x" ]; then \
+	for grade in $(ALL_LIBGRADES); do \
+		if [ "$$grade" != "$(GRADE)" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \

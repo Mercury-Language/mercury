@@ -493,8 +493,9 @@ install_library(MainModuleName, Succeeded, Info0, Info) -->
 		{ GradeSucceeded = yes }
 	->
 		% XXX With Mmake, LIBGRADES is target-specific.
-        	globals__io_lookup_accumulating_option(libgrades, LibGrades),
+        	globals__io_lookup_accumulating_option(libgrades, LibGrades0),
 		globals__io_lookup_bool_option(keep_going, KeepGoing),
+		{ LibGrades = list__delete_all(LibGrades0, Grade) },
         	foldl2_maybe_stop_at_error(KeepGoing,
 			install_library_grade(LinkSucceeded,
 				MainModuleName, AllModules),

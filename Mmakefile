@@ -425,8 +425,8 @@ install_grades: scripts
 	# runs the newly installed compiler, rather than using the
 	# bootstrap compiler.
 	#
-	+for grade in x $(LIBGRADES); do \
-	    if [ "$$grade" != "x" ]; then \
+	+for grade in $(LIBGRADES); do \
+	    if [ "$$grade" != "$(GRADE)" ]; then \
 	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
 	        ( cd boehm_gc && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
@@ -485,7 +485,7 @@ install_split_library: scripts dep_library
 	done || true && \
 	{ mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O Mercury/os/*.$O \
 		*.$A *.so tmp_dir || true; } && \
-	for grade in $(GRADE) $(LIBGRADES); do \
+	for grade in $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \

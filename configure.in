@@ -2299,17 +2299,6 @@ fi
 
 MERCURY_MSG("using \`$LIBGRADES' as the set of library grades to install")
 
-# Remove GRADE from LIBGRADES.  This is done because `mmake install_main'
-# will have already installed the libraries for grade GRADE.
-# We can only do this if GRADE is the same as DEFAULT_GRADE,
-# because LIBGRADES is used both for installing the compiler, which
-# gets build in grade GRADE, and also for installing user libraries,
-# which (presumably) get built in in DEFAULT_GRADE.
-if test $GRADE = $DEFAULT_GRADE; then
-	LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
-fi
-
-
 LIBGRADE_OPTS=
 for libgrade in $LIBGRADES
 do

@@ -343,7 +343,6 @@ EXTRA_RANLIBFLAGS =
 
 # List of grades to install for a library
 ALL_LIBGRADES	= $(TARGET_LIBGRADES) $(EXTRA_TARGET_LIBGRADES)
-LIBGRADES	=
 EXTRA_LIBGRADES	=
 
 # $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
@@ -706,7 +705,8 @@ FINAL_INSTALL_MERC_LIB_DIR = \
 
 #-----------------------------------------------------------------------------#
 
-# Specify the additional compilation models to install by default
+# Specify the compilation models to install by default.
+# This list will include the default grade.
 LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#
