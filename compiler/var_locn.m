@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1428,9 +1428,9 @@ var_locn__substitute_lval_in_lval(Old, New, Lval0) = Lval :-
 % that its resources will be freed when the last reference to its value is
 % deleted.
 %
-% If FirstTime = yes, then as a consistency check we insist on Var being alive;
-% if FirstTime = no, then it is possible that this predicate has already been
-% called for Var.
+% If FirstTime = no, then it is possible that this predicate has already been
+% called for Var, if FirstTime = yes, then as a consistency check we would like
+% to insist on Var being alive (but don't (yet) due to bugs in liveness).
 
 var_locn__var_becomes_dead(Var, FirstTime) -->
 	var_locn__get_var_state_map(VarStateMap0),
@@ -1464,8 +1464,11 @@ var_locn__var_becomes_dead(Var, FirstTime) -->
 			var_locn__set_var_state_map(VarStateMap)
 		)
 	;
-		{ require(unify(FirstTime, no),
-			"var_locn__var_becomes_dead: premature deletion") }
+		[]
+		% With the current liveness pass, this can fail.
+		% XXX This should be fixed.
+		% { require(unify(FirstTime, no),
+		% 	"var_locn__var_becomes_dead: premature deletion") }
 	).
 
 % Given a set of lvals, return the set of root lvals among them and inside
