@@ -2242,7 +2242,6 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     MR_Word             new_data;
     ML_Construct_Info   construct_info;
     bool                success;
-    MR_DuTypeLayout	du_type_layout;
 
     type_info = (MR_TypeInfo) TypeDesc;
 
@@ -3821,7 +3820,7 @@ get_functor_info(Univ, FunctorInfo) :-
 {
     MR_TypeInfo             type_info;
     MR_TypeCtorInfo         type_ctor_info;
-    MR_DuPtagLayout         *ptag_layout;
+    const MR_DuPtagLayout   *ptag_layout;
     const MR_DuFunctorDesc  *functor_desc;
     MR_Word                 value;
     MR_Word                 *arg_vector;
