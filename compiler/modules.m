@@ -505,6 +505,7 @@ mercury_std_library_module("bool").
 mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").
 mercury_std_library_module("char").
+mercury_std_library_module("counter").
 mercury_std_library_module("dir").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("exception").
@@ -525,6 +526,7 @@ mercury_std_library_module("mercury_builtin").
 mercury_std_library_module("multi_map").
 mercury_std_library_module("ops").
 mercury_std_library_module("parser").
+mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
 mercury_std_library_module("private_builtin").
 mercury_std_library_module("prolog").

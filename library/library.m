@@ -7,8 +7,7 @@
 % This module imports all the modules in the Mercury library.
 %
 % It is used as a way for the Makefiles to know which library interface
-% files, objects, etc., need to be installed, and it is also linked to
-% create the executable invoked by the `mnp' script.
+% files, objects, etc., need to be installed.
 % 
 % ---------------------------------------------------------------------------%
 % ---------------------------------------------------------------------------%
@@ -22,6 +21,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+% Note: if you add a new module to this list, you must also a new clause
+% to mercury_std_library_module/1 in compiler/modules.m.
 
 :- import_module array, assoc_list, bag, benchmarking.
 :- import_module bimap, bintree, bintree_set, bool.
