@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -77,7 +77,7 @@
 :- mode math__truncate(in) = out is det.
 
 %---------------------------------------------------------------------------%
-% Power/logarithm operations
+% Polynomial roots
 
 	% math__sqrt(X) = Sqrt is true if Sqrt is the positive square
 	% root of X.
@@ -85,6 +85,21 @@
 	% Domain restriction: X >= 0
 :- func math__sqrt(float) = float.
 :- mode math__sqrt(in) = out is det.
+
+:- type math__quadratic_roots
+	--->	no_roots
+	;	one_root(float)
+	;	two_roots(float, float).
+
+	% math__solve_quadratic(A, B, C) = Roots is true if Roots are
+	% the solutions to the equation Ax^2 + Bx + C.
+	%
+	% Domain restriction: A \= 0
+:- func math__solve_quadratic(float, float, float) = quadratic_roots.
+:- mode math__solve_quadratic(in, in, in) = out is det.
+
+%---------------------------------------------------------------------------%
+% Power/logarithm operations
 
 	% math__pow(X, Y) = Res is true if Res is X raised to the
 	% power of Y.
@@ -187,8 +202,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module float.
 
-% These operations are all implemented using the C interface.
+% These operations are mostly implemented using the C interface.
 
 :- pragma c_header_code("
 
@@ -305,6 +321,49 @@
 #endif
 	SquareRoot = sqrt(X);
 ").
+
+%
+% math__solve_quadratic(A, B, C) = Roots is true if Roots are
+% the solutions to the equation Ax^2 + Bx + C.
+%
+% Domain restrictions:
+% 		A \= 0
+%
+math__solve_quadratic(A, B, C) = Roots :-
+	%
+	% This implementation is designed to minimise numerical errors;
+	% it is adapted from "Numerical recipes in C".
+	%
+	DSquared = B * B - 4.0 * A * C,
+	compare(CmpD, DSquared, 0.0),
+	(
+		CmpD = (<),
+		Roots = no_roots
+	;
+		CmpD = (=),
+		Root = -0.5 * B / A,
+		Roots = one_root(Root)
+	;
+		CmpD = (>),
+		D = sqrt(DSquared),
+		compare(CmpB, B, 0.0),
+		(
+			CmpB = (<),
+			Q = -0.5 * (B - D),
+			Root1 = Q / A,
+			Root2 = C / Q
+		;
+			CmpB = (=),
+			Root1 = -0.5 * D / A,
+			Root2 = -Root1
+		;
+			CmpB = (>),
+			Q = -0.5 * (B + D),
+			Root1 = Q / A,
+			Root2 = C / Q
+		),
+		Roots = two_roots(Root1, Root2)
+	).
 
 %
 % math__pow(X, Y) = Res is true if Res is X raised to the

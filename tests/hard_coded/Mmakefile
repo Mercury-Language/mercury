@@ -100,6 +100,7 @@ ORDINARY_PROGS=	\
 	rtc_bug \
 	rtti_strings \
 	shift_test \
+	solve_quadratic \
 	space \
 	string_alignment \
 	string_alignment_bug \

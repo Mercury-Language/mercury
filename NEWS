@@ -124,6 +124,8 @@ Changes to the standard library:
 	  truncated to the specified precision, but for ISO C's
 	  printf(), they are rounded rather than being truncated.
 
+* We've added a new function, math__solve_quadratic/3.
+
 Changes to the Mercury implementation:
 
 * We've implemented a new back-end for the Mercury compiler.
