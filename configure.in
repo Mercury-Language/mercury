@@ -1774,9 +1774,6 @@ AC_ARG_ENABLE(all-hlc-grades,
 enable_all_hlc_grades=yes,enable_all_hlc_grades=no)
 
 if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
-	# add `hlc' grade
-	LIBGRADES="$LIBGRADES hlc"
-
 	# add `.prof' (--profiling) grades, if time profiling is supported,
 	# and a `.memprof' (--memory-profiling) grade.
 	if test $mercury_cv_profiling = yes; then
