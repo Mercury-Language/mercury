@@ -901,18 +901,18 @@ do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 	MR_restore_transient_registers();
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	copy(X::ui, Y::uo),
 	[may_call_mercury, thread_safe, promise_pure],
 "
-        Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
+        Y = deep_copy(X);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	copy(X::in, Y::uo),
 	[may_call_mercury, thread_safe, promise_pure],
 "
-        Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
+        Y = deep_copy(X);
 ").
 
 %-----------------------------------------------------------------------------%
