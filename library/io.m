@@ -3314,7 +3314,18 @@ io__make_temp(Name) -->
 	),
 	io__make_temp(Dir, "mtmp", Name).
 
+io__make_temp(Dir, Prefix, Name) -->
+	io__do_make_temp(Dir, Prefix, Name, Err, Message),
+	{ Err \= 0 ->
+		throw_io_error(Message)
+	;
+		true
+	}.
+
 /*---------------------------------------------------------------------------*/
+
+:- pred io__do_make_temp(string, string, string, int, string, io__state, io__state).
+:- mode io__do_make_temp(in, in, out, out, out, di, uo) is det.
 
 /*
 ** XXX	The code for io__make_temp assumes POSIX.
@@ -3341,9 +3352,9 @@ io__make_temp(Name) -->
 	long	ML_io_tempnam_counter = 0;
 ").
 
-:- pragma c_code(io__make_temp(Dir::in, Prefix::in, FileName::out,
-		IO0::di, IO::uo),
-		[may_call_mercury, thread_safe],
+:- pragma c_code(io__do_make_temp(Dir::in, Prefix::in, FileName::out,
+		Error::out, ErrorMessage::out, IO0::di, IO::uo),
+		[will_not_call_mercury, thread_safe],
 "{
 	/*
 	** Constructs a temporary name by concatenating Dir, `/',
@@ -3379,15 +3390,14 @@ io__make_temp(Name) -->
 	} while (fd == -1 && errno == EEXIST &&
 		num_tries < MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
-		mercury_io_error(NULL,
-			""error opening temporary file `%s': %s"",
-			FileName, strerror(errno));
-	} 
-	err = close(fd);
-	if (err != 0) {
-		mercury_io_error(NULL,
-			""error closing temporary file `%s': %s"",
-			FileName, strerror(errno));
+		ML_maybe_make_err_msg(TRUE, ""error opening temporary file"",
+			MR_PROC_LABEL, ErrorMessage);
+		Error = -1;
+	}  else {
+		err = close(fd);
+		ML_maybe_make_err_msg(err, ""error closing temporary file"",
+			MR_PROC_LABEL, ErrorMessage);
+		Error = err;
 	}
 	update_io(IO0, IO);
 }").
@@ -3400,27 +3410,31 @@ io__make_temp(Name) -->
 #include <errno.h>
 
 /*
-** ML_maybe_make_err_msg(was_error, msg, error_msg):
+** ML_maybe_make_err_msg(was_error, msg, procname, error_msg):
 **	if `was_error' is true, then append `msg' and `strerror(errno)'
 **	to give `error_msg'; otherwise, set `error_msg' to NULL.
+**
+** WARNING: this must only be called when the `hp' register is valid.
+** That means it must only be called from procedures declared
+** `will_not_call_mercury'.
 **
 ** This is defined as a macro rather than a C function
 ** to avoid worrying about the `hp' register being
 ** invalidated by the function call.
 ** It also needs to be a macro because incr_hp_atomic_msg()
-** stringizes its third argument.
+** stringizes the procname argument.
 */
 #define ML_maybe_make_err_msg(was_error, msg, procname, error_msg)	\\
 	do {								\\
 		char *errno_msg;					\\
-		size_t len;						\\
+		size_t total_len;					\\
 		Word tmp;						\\
 									\\
 		if (was_error) {					\\
 			errno_msg = strerror(errno);			\\
-			len = strlen(msg) + strlen(errno_msg);		\\
+			total_len = strlen(msg) + strlen(errno_msg);	\\
 			incr_hp_atomic_msg(tmp,				\\
-				(len + sizeof(Word)) / sizeof(Word),	\\
+				(total_len + sizeof(Word)) / sizeof(Word), \\
 				procname,				\\
 				""string:string/0"");			\\
 			(error_msg) = (char *)tmp;			\\
