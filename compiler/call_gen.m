@@ -50,6 +50,7 @@
 
 :- import_module tree, list, map, std_util, require, bintree_set.
 :- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
+:- import_module shapes.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -69,7 +70,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
-	{ call_gen__output_args(ArgInfo, OutputArguments) },
+	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
@@ -127,7 +128,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
-	{ call_gen__output_args(ArgInfo, OutputArguments) },
+	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
@@ -157,7 +158,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
-	{ call_gen__output_args(ArgInfo, OutputArguments) },
+	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
@@ -337,8 +338,9 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		),
 		{ call_gen__input_args(ArgInfo, InputArguments) },
 		call_gen__generate_call_livevals(InputArguments, CodeC0),
-		{ call_gen__output_args(ArgInfo, OutputArguments) },
-		call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
+		{ call_gen__output_args(Args, OutputArguments) },
+		call_gen__generate_return_livevals(OutputArguments, 
+						OutLiveVals),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
 		{ ModeNum = 0 ->
@@ -385,11 +387,11 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 :- mode call_gen__input_args(in, out) is det.
 
 call_gen__input_args([], []).
-call_gen__input_args([arg_info(Loc, Mode)|Args], Vs) :-
+call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 	(
 		Mode = top_in
 	->
-		Vs = [Loc|Vs0]
+		Vs = [Loc |Vs0]
 	;
 		Vs = Vs0
 	),
@@ -397,15 +399,16 @@ call_gen__input_args([arg_info(Loc, Mode)|Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__output_args(list(arg_info), list(pair(arg_loc, arg_mode))).
+:- pred call_gen__output_args(list(pair(var, arg_info)), 
+				list(pair(var, arg_loc))).
 :- mode call_gen__output_args(in, out) is det.
 
 call_gen__output_args([], []).
-call_gen__output_args([arg_info(Loc, Mode)|Args], Vs) :-
+call_gen__output_args([Var - arg_info(Loc, Mode)|Args], Vs) :-
 	(
 		Mode = top_out
 	->
-		Vs = [Loc - Mode|Vs0]
+		Vs = [Var - Loc|Vs0]
 	;
 		Vs = Vs0
 	),
@@ -438,25 +441,51 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_return_livevals(list(pair(arg_loc, arg_mode)),
+:- pred call_gen__generate_return_livevals(list(pair(var, arg_loc)),
 					list(liveinfo), code_info, code_info).
 :- mode call_gen__generate_return_livevals(in, out, in, out) is det.
 
-call_gen__generate_return_livevals(OutputArgs, LiveVals) -->
-	code_info__generate_stack_livelvals(LiveVals0),
-	{ call_gen__insert_arg_livelvals(OutputArgs, LiveVals0, LiveVals) }.
+call_gen__generate_return_livevals(OutputArgs, LiveVals, Code0, Code) :- 
+	code_info__generate_stack_livelvals(LiveVals0, Code0, Code1),
+	code_info__get_module_info(Module, Code1, Code2),
+	module_info_shapes(Module, S_Tab0),
+	call_gen__insert_arg_livelvals(OutputArgs, Module,
+					LiveVals0, LiveVals, Code2, Code3,
+					S_Tab0, S_Tab),
+	module_info_set_shapes(Module, S_Tab, Module1),
+	code_info__set_module_info(Module1, Code3, Code).
+
+% Maybe a varlist to type_id list would be a better way to do this...
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__insert_arg_livelvals(list(pair(arg_loc, arg_mode)),
-					list(liveinfo), list(liveinfo)).
-:- mode call_gen__insert_arg_livelvals(in, in, out) is det.
+:- pred call_gen__insert_arg_livelvals(list(pair(var, arg_loc)),
+					module_info, list(liveinfo),
+					list(liveinfo), code_info, code_info,
+					shape_table, shape_table).
+:- mode call_gen__insert_arg_livelvals(in, in, in, out, in, out,
+					in, out) is det.
 
-call_gen__insert_arg_livelvals([], LiveVals, LiveVals).
-call_gen__insert_arg_livelvals([L - _M|As], LiveVals0, LiveVals) :-
+call_gen__insert_arg_livelvals([], _, LiveVals, LiveVals, C, C, S, S).
+call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
+				 	Code0, Code, S_Tab0, S_Tab) :-
 	code_util__arg_loc_to_register(L, R),
-	LiveVal = live_lvalue(reg(R), -1), % XXX get shape number
-	call_gen__insert_arg_livelvals(As, [LiveVal|LiveVals0], LiveVals).
+	code_info__variable_type(Var, Type, Code0, Code1),
+	(
+		type_to_type_id(Type, Type_Id, _)
+	->	
+		shapes__request_shape_number(Type_Id, ground, Module_Info,
+						S_Tab0, S_Tab1, S_Number) 
+	;
+		shapes__request_shape_number(
+			unqualified("__type_variable__") - -1, ground,
+				Module_Info, S_Tab0, S_Tab1, S_Number)
+		% was:error("call_gen__insert_arg_livelvals: type not valid")
+	),
+	LiveVal = live_lvalue(reg(R), S_Number),
+	call_gen__insert_arg_livelvals(As, Module_Info, 
+			[LiveVal|LiveVals0], LiveVals, Code1,
+			 Code, S_Tab1, S_Tab).
 
 %---------------------------------------------------------------------------%
 

@@ -360,8 +360,8 @@
 :- implementation.
 
 :- import_module string, require, char, list, map, bimap, tree, int.
-:- import_module bintree_set, varset, term, stack.
-:- import_module type_util, mode_util, options.
+:- import_module bintree_set, varset, term, stack, prog_io.
+:- import_module type_util, mode_util, options, shapes.
 
 :- pred code_info__get_label_count(int, code_info, code_info).
 :- mode code_info__get_label_count(out, in, out) is det.
@@ -2694,10 +2694,10 @@ code_info__generate_stack_livevals(LiveVals) -->
 	{ bintree_set__init(LiveVals0) },
 	code_info__generate_stack_livevals_2(LiveVars, LiveVals0, LiveVals1),
 	code_info__get_pushed_values(Pushed),
-	{ code_info__generate_livevals_3(Pushed, LiveVals1, LiveVals) }.
+	{ code_info__generate_stack_livevals_3(Pushed, LiveVals1, LiveVals) }.
 
 :- pred code_info__generate_stack_livevals_2(list(var), bintree_set(lval),
-					bintree_set(lval),
+						bintree_set(lval),
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals_2(in, in, out, in, out) is det.
 
@@ -2710,30 +2710,60 @@ code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
 			% When 'set' becomes 'bintree_set' (RSN)
 			% this code should be modified to make better
 			% use of the accumulator.
-
 		{ set__to_sorted_list(ValsSet, ValsList) },
-		{ code_info__filter_out_registers(ValsList, Vals1) },
+		{ code_info__filter_out_registersB(ValsList, Vals1) },
 		{ bintree_set__union(Vals0, Vals1, Vals2) }
 	;
 		{ Vals2 = Vals0 }
 	),
 	code_info__generate_stack_livevals_2(Vs, Vals2, Vals).
 
+:- pred code_info__generate_stack_livevals_3(stack(lval), bintree_set(lval),
+							bintree_set(lval)).
+:- mode code_info__generate_stack_livevals_3(in, in, out) is det.
+
+code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
+	(
+		stack__pop(Stack0, Top, Stack1)
+	->
+		bintree_set__insert(Vals0, Top, Vals1),
+		code_info__generate_stack_livevals_3(Stack1, Vals1, Vals)
+	;
+		Vals = Vals0
+	).
+
 %---------------------------------------------------------------------------%
 
-:- pred code_info__filter_out_registers(list(lval), bintree_set(lval)).
+:- pred code_info__filter_out_registers(list(pair(lval, var)), 
+						bintree_set(pair(lval, var))).
 :- mode code_info__filter_out_registers(in, out) is det.
 
 code_info__filter_out_registers([], Vals) :-
 	bintree_set__init(Vals).
-code_info__filter_out_registers([V|Vs], Vals) :-
+code_info__filter_out_registers([Val - Var|Vs], Vals) :-
 	code_info__filter_out_registers(Vs, Vals0),
 	(
-		V = reg(_) % should include transitives....
+		Val = reg(_) % should include transitives....
 	->
 		Vals = Vals0
 	;
-		bintree_set__insert(Vals0, V, Vals)
+		bintree_set__insert(Vals0, Val - Var, Vals)
+	).
+
+:- pred code_info__filter_out_registersB(list(lval), 
+						bintree_set(lval)).
+:- mode code_info__filter_out_registersB(in, out) is det.
+
+code_info__filter_out_registersB([], Vals) :-
+	bintree_set__init(Vals).
+code_info__filter_out_registersB([Val|Vs], Vals) :-
+	code_info__filter_out_registersB(Vs, Vals0),
+	(
+		Val = reg(_) % should include transitives....
+	->
+		Vals = Vals0
+	;
+		bintree_set__insert(Vals0, Val, Vals)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2751,8 +2781,11 @@ code_info__apply_instmap_delta(Delta) -->
 
 %---------------------------------------------------------------------------%
 
+% XXX Is this code dead?
+
 :- pred code_info__generate_livevals(code_tree, code_info, code_info).
 :- mode code_info__generate_livevals(out, in, out) is det.
+
 
 code_info__generate_livevals(Code) -->
 	code_info__get_live_variables(LiveVars),
@@ -2798,15 +2831,81 @@ code_info__generate_livevals_3(Stack0, Vals0, Vals) :-
 
 	% XXX this pred will need to be rewritten to lookup variable shapes
 code_info__generate_stack_livelvals(LiveVals) -->
-	code_info__generate_stack_livevals(LiveVals0),
-	{ bintree_set__to_sorted_list(LiveVals0, LiveVals1) },
-	{ code_info__livevals_to_livelvals(LiveVals1, LiveVals) }.
+	code_info__get_live_variables(LiveVars),
+        { bintree_set__init(LiveVals0) },
+        code_info__generate_stack_livelvals_2(LiveVars, LiveVals0, LiveVals1),
+	{ bintree_set__to_sorted_list(LiveVals1, LiveVals2) },
+	code_info__livevals_to_livelvals(LiveVals2, LiveVals3),
+        code_info__get_pushed_values(Pushed),
+        { code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
 
-:- pred code_info__livevals_to_livelvals(list(lval), list(liveinfo)).
-:- mode code_info__livevals_to_livelvals(in, out) is det.
+:- pred code_info__generate_stack_livelvals_2(list(var), 
+					bintree_set(pair(lval, var)),
+					bintree_set(pair(lval, var)),
+						code_info, code_info).
+:- mode code_info__generate_stack_livelvals_2(in, in, out, in, out) is det.
 
-code_info__livevals_to_livelvals([], []).
-code_info__livevals_to_livelvals([L|Ls], [live_lvalue(L, -1)|Lives]) :-
+code_info__generate_stack_livelvals_2([], Vals, Vals) --> [].
+code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
+	(
+		code_info__get_variables(Variables),
+		{ map__search(Variables, V, evaluated(ValsSet)) }
+	->
+			% When 'set' becomes 'bintree_set' (RSN)
+			% this code should be modified to make better
+			% use of the accumulator.
+		{ set__to_sorted_list(ValsSet, ValsList) },
+		{ list__length(ValsList, ValsLength) },
+		{ list__duplicate(ValsLength, V, VarList) },
+		{ assoc_list__from_corresponding_lists(ValsList, VarList,
+							 VList) },
+		{ code_info__filter_out_registers(VList, Vals1) },
+		{ bintree_set__union(Vals0, Vals1, Vals2) }
+	;
+		{ Vals2 = Vals0 }
+	),
+	code_info__generate_stack_livelvals_2(Vs, Vals2, Vals).
+
+:- pred code_info__generate_stack_livelvals_3(stack(lval), list(liveinfo),
+						list(liveinfo)).
+:- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
+
+code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
+	(
+		stack__pop(Stack0, Top, Stack1)
+	->
+		LiveInfo = [live_lvalue(Top, -1) | Lives],
+		code_info__generate_stack_livelvals_3(Stack1, LiveInfo0, Lives)
+	;
+		LiveInfo = LiveInfo0
+	).
+
+
+
+
+
+:- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
+					 code_info, code_info).
+:- mode code_info__livevals_to_livelvals(in, out, in, out) is det.
+
+code_info__livevals_to_livelvals([], [], C, C).
+code_info__livevals_to_livelvals([L - V|Ls], [live_lvalue(L, S_Num )|Lives]) --> 
+	code_info__get_module_info(Module),
+	{ module_info_shapes(Module, S_Tab0) } ,
+	code_info__variable_type(V, Type),
+	(
+		{ type_to_type_id(Type, Type_Id, _) }
+	->
+		{ shapes__request_shape_number(Type_Id, ground, Module, 
+					S_Tab0, S_Tab1, S_Num) } 
+	;
+		{ shapes__request_shape_number(
+			unqualified("__type_variable__") - -1, ground, Module,
+			S_Tab0, S_Tab1, S_Num) }
+	%	{ error("code_info__livevals_to_livelvals: type not found") }
+	),
+	{ module_info_set_shapes(Module, S_Tab1, Module1) },
+	code_info__set_module_info(Module1),
 	code_info__livevals_to_livelvals(Ls, Lives).
 
 %---------------------------------------------------------------------------%

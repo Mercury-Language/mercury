@@ -26,7 +26,7 @@
 :- import_module prog_io, llds.
 
 :- implementation.
-:- import_module prog_util, mode_util, unify_proc.
+:- import_module prog_util, mode_util, unify_proc, shapes.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -58,6 +58,7 @@
 					predicate_table,
 					unify_requests,
 					unify_pred_map,
+					shape_table,
 					type_table,
 					inst_table,
 					mode_table,
@@ -120,6 +121,21 @@
 
 :- type liveness        --->    live
                         ;       dead.
+
+%-----------------------------------------------------------------------------%
+
+:- type shape_id	==	pair(type_id, inst).
+
+:- type shape_table	==	pair(map(shape_id, pair(shape_num, shape)),int).
+
+:- type shape           --->    quad(shape_tag, shape_tag, shape_tag,
+					 shape_tag).
+
+:- type shape_num	==	int.
+
+:- type shape_tag	--->	constant
+			;	simple(list(shape_id))
+			;       complicated(list(list(shape_id))).
 
 %-----------------------------------------------------------------------------%
 
@@ -521,6 +537,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_get_unify_pred_map(module_info, unify_pred_map).
 :- mode module_info_get_unify_pred_map(in, out) is det.
 
+:- pred module_info_shapes(module_info, shape_table).
+:- mode module_info_shapes(in, out) is det.
+
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
 
@@ -569,6 +588,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 					module_info).
 :- mode module_info_set_unify_pred_map(in, in, out) is det.
 
+:- pred module_info_set_shapes(module_info, shape_table, module_info).
+:- mode module_info_set_shapes(in, in, out) is det.
+
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
 
@@ -603,23 +625,24 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% A predicate which creates an empty module
 
 module_info_init(Name, module(Name, PredicateTable, Requests, UnifyPredMap,
-				Types, Insts, Modes, Ctors, 0, 0)) :-
+				Shapes, Types, Insts, Modes, Ctors, 0, 0)) :-
 	predicate_table_init(PredicateTable),
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
 	map__init(Types),
 	inst_table_init(Insts),
 	map__init(Modes),
+	shapes__init_shape_table(Shapes),
 	map__init(Ctors).
 
 	% Various access predicates which extract different pieces
 	% of info from the module_info data structure.
 
 module_info_name(ModuleInfo, Name) :-
-	ModuleInfo = module(Name, _, _, _, _, _, _, _, _, _).
+	ModuleInfo = module(Name, _, _, _, _, _, _, _, _, _, _).
 
 module_info_get_predicate_table(ModuleInfo, PredicateTable) :-
-	ModuleInfo = module(_, PredicateTable, _, _, _, _, _, _, _, _).
+	ModuleInfo = module(_, PredicateTable, _, _, _, _, _, _, _, _, _).
 
 module_info_preds(ModuleInfo, Preds) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -645,20 +668,24 @@ module_info_reverse_predids(ModuleInfo0, ModuleInfo) :-
 		ModuleInfo).
 
 module_info_get_unify_requests(ModuleInfo, Requests) :-
-	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _).
+	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _, _).
+
 
 module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap) :-
-	ModuleInfo = module(_, _, _, UnifyPredMap, _, _, _, _, _, _).
+	ModuleInfo = module(_, _, _, UnifyPredMap, _, _, _, _, _, _, _).
+
+module_info_shapes(ModuleInfo, Shapes) :-
+	ModuleInfo = module(_, _, _, _, Shapes, _, _, _, _, _, _).
 
 module_info_types(ModuleInfo, Types) :-
-	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _).
+	ModuleInfo = module(_, _, _, _, _, Types, _, _, _, _, _).
 
 module_info_typeids(ModuleInfo, TypeIDs) :-
-	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _),
+	ModuleInfo = module(_, _, _, _, _, Types, _, _, _, _, _),
 	map__keys(Types, TypeIDs).
 
 module_info_insts(ModuleInfo, Insts) :-
-	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _).
+	ModuleInfo = module(_, _, _, _, _, _, Insts, _, _, _, _).
 
 module_info_instids(ModuleInfo, InstIDs) :-
 	module_info_insts(ModuleInfo, InstTable),
@@ -666,34 +693,34 @@ module_info_instids(ModuleInfo, InstIDs) :-
 	map__keys(UserInstTable, InstIDs).
 
 module_info_modes(ModuleInfo, Modes) :-
-	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _).
+	ModuleInfo = module(_, _, _, _, _, _, _, Modes, _, _, _).
 
 module_info_modeids(ModuleInfo, ModeIDs) :-
-	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _),
+	ModuleInfo = module(_, _, _, _, _, _, _, Modes, _, _, _),
 	map__keys(Modes, ModeIDs).
 
 module_info_ctors(ModuleInfo, Ctors) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _).
+	ModuleInfo = module(_, _, _, _, _, _, _, _, Ctors, _, _).
 
 module_info_consids(ModuleInfo, ConsIDs) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _),
+	ModuleInfo = module(_, _, _, _, _, _, _, _, Ctors, _, _),
 	map__keys(Ctors, ConsIDs).
 
 module_info_num_errors(ModuleInfo, NumErrors) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, _, NumErrors, _).
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, NumErrors, _).
 
 module_info_num_warnings(ModuleInfo, NumWarnings) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, _, _, NumWarnings).
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, NumWarnings).
 
 	% Various predicates which modify the module_info data structure.
 
 module_info_set_name(ModuleInfo0, Name, ModuleInfo) :-
-	ModuleInfo0 = module(_, B, C, D, E, F, G, H, I, J),
-	ModuleInfo = module(Name, B, C, D, E, F, G, H, I, J).
+	ModuleInfo0 = module(_, B, C, D, E, F, G, H, I, J, K),
+	ModuleInfo = module(Name, B, C, D, E, F, G, H, I, J, K).
 
 module_info_set_predicate_table(ModuleInfo0, PredicateTable, ModuleInfo) :-
-	ModuleInfo0 = module(A, _, C, D, E, F, G, H, I, J),
-	ModuleInfo = module(A, PredicateTable, C, D, E, F, G, H, I, J).
+	ModuleInfo0 = module(A, _, C, D, E, F, G, H, I, J, K),
+	ModuleInfo = module(A, PredicateTable, C, D, E, F, G, H, I, J, K).
 
 module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
@@ -702,42 +729,46 @@ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 		ModuleInfo).
 
 module_info_set_unify_requests(ModuleInfo0, Requests, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, _, D, E, F, G, H, I, J),
-	ModuleInfo = module(A, B, Requests, D, E, F, G, H, I, J).
+	ModuleInfo0 = module(A, B, _, D, E, F, G, H, I, J, K),
+	ModuleInfo = module(A, B, Requests, D, E, F, G, H, I, J, K).
 
 module_info_set_unify_pred_map(ModuleInfo0, UnifyPredMap, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, _, E, F, G, H, I, J),
-	ModuleInfo = module(A, B, C, UnifyPredMap, E, F, G, H, I, J).
+	ModuleInfo0 = module(A, B, C, _, E, F, G, H, I, J, K),
+	ModuleInfo = module(A, B, C, UnifyPredMap, E, F, G, H, I, J, K).
+
+module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J, K),
+	ModuleInfo = module(A, B, C, D, Shapes, F, G, H, I, J, K).
 
 module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J),
-	ModuleInfo = module(A, B, C, D, Types, F, G, H, I, J).
+	ModuleInfo0 = module(A, B, C, D, E, _, G, H, I, J, K),
+	ModuleInfo = module(A, B, C, D, E, Types, G, H, I, J, K).
 
 module_info_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, _, G, H, I, J),
-	ModuleInfo = module(A, B, C, D, E, Insts, G, H, I, J).
+	ModuleInfo0 = module(A, B, C, D, E, F, _, H, I, J, K),
+	ModuleInfo = module(A, B, C, D, E, F, Insts, H, I, J, K).
 
 module_info_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, _, H, I, J),
-	ModuleInfo = module(A, B, C, D, E, F, Modes, H, I, J).
+	ModuleInfo0 = module(A, B, C, D, E, F, G, _, I, J, K),
+	ModuleInfo = module(A, B, C, D, E, F, G, Modes, I, J, K).
 
 module_info_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, G, _, I, J),
-	ModuleInfo = module(A, B, C, D, E, F, G, Ctors, I, J).
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, _, J, K),
+	ModuleInfo = module(A, B, C, D, E, F, G, H, Ctors, J, K).
 
 module_info_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, G, H, _, J),
-	ModuleInfo = module(A, B, C, D, E, F, G, H, Errs, J).
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, _, K),
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, Errs, K).
 
 module_info_incr_errors(ModuleInfo0, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, G, H, Errs0, J),
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, Errs0, K),
 	Errs is Errs0 + 1,
-	ModuleInfo = module(A, B, C, D, E, F, G, H, Errs, J).
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, Errs, K).
 
 module_info_incr_warnings(ModuleInfo0, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, Types, F, G, H, I, Warns0),
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, Warns0),
 	Warns is Warns0 + 1,
-	ModuleInfo = module(A, B, C, D, Types, F, G, H, I, Warns).
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, Warns).
 
 module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
@@ -755,24 +786,28 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, Preds0),
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo2),
+	
+	module_info_shapes(ModuleInfo2, (Shapes0 - N)),
+	map__optimize(Shapes0, Shapes),
+	module_info_set_shapes(ModuleInfo2, (Shapes - N), ModuleInfo3),
 
-	module_info_types(ModuleInfo2, Types0),
+	module_info_types(ModuleInfo3, Types0),
 	map__optimize(Types0, Types),
-	module_info_set_types(ModuleInfo2, Types, ModuleInfo3),
+	module_info_set_types(ModuleInfo3, Types, ModuleInfo4),
 
-	module_info_insts(ModuleInfo3, InstTable0),
+	module_info_insts(ModuleInfo4, InstTable0),
 	inst_table_get_user_insts(InstTable0, Insts0),
 	map__optimize(Insts0, Insts),
 	inst_table_set_user_insts(InstTable0, Insts, InstTable),
-	module_info_set_insts(ModuleInfo3, InstTable, ModuleInfo4),
+	module_info_set_insts(ModuleInfo4, InstTable, ModuleInfo5),
 
-	module_info_modes(ModuleInfo4, Modes0),
+	module_info_modes(ModuleInfo5, Modes0),
 	map__optimize(Modes0, Modes),
-	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo5),
+	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo6),
 
-	module_info_ctors(ModuleInfo5, Ctors0),
+	module_info_ctors(ModuleInfo6, Ctors0),
 	map__optimize(Ctors0, Ctors),
-	module_info_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
+	module_info_set_ctors(ModuleInfo6, Ctors, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1021,7 +1021,7 @@ mercury_compile(module(Module, _, _, _, _)) -->
 #endif
 
 	( { DoCodeGen = yes } ->
-		mercury_compile__generate_code(HLDS12, LLDS1),
+		mercury_compile__generate_code(HLDS12, HLDS13, LLDS1),
 #if NU_PROLOG
 		[]
 	;
@@ -1314,15 +1314,15 @@ mercury_compile__allocate_store_map(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred mercury_compile__generate_code(module_info, c_file,
+:- pred mercury_compile__generate_code(module_info, module_info, c_file,
 						io__state, io__state).
-:- mode mercury_compile__generate_code(in, out, di, uo) is det.
+:- mode mercury_compile__generate_code(in, out, out, di, uo) is det.
 
-mercury_compile__generate_code(HLDS0, LLDS) -->
+mercury_compile__generate_code(HLDS0, HLDS, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Generating code...\n"),
 	maybe_flush_output(Verbose),
-	generate_code(HLDS0, LLDS),
+	generate_code(HLDS0, HLDS, LLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
