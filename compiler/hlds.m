@@ -157,20 +157,16 @@
 
 :- type module_info	--->	module(
 					string,		% module name
-					list(pred_id),
 					pred_table,
-					list(type_id),
 					type_table,
-					list(inst_id),
 					inst_table,
-					list(mode_id),
 					mode_table
 				).
 
 :- type pred_info	--->	predicate(
-					list(mode_id),	% usually [1,2,...]
-					map(mode_id, proc_info)
+					proc_table
 				).
+:- type proc_table	=	map(mode_id, proc_info).
 
 :- type proc_info	--->	procedure(
 					category,
@@ -183,17 +179,19 @@
 :- type pred_id 	=	pred(string, string, int).
 			%	module, predname, arity
 
+:- type pred_table	=	map(pred_id, pred_info).
+
 :- type proc_id		=	proc(pred_id, mode_id).
 
-:- type type_id		= 	int.
+:- type type_id		= 	.
 
 :- type type_table	=	map(type_id, type_body).
 
-:- type mode_id		=	int.
+:- type mode_id		=	XXX.
 
 :- type mode_table	=	map(mode_id, mode_body).
 
-:- type inst_id		=	int.
+:- type inst_id		=	XXX.
 
 :- type inst_table	=	map(inst_id, inst_body).
 
