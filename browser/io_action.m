@@ -28,6 +28,10 @@
 			io_action_args		:: list(univ)
 		).
 
+:- type maybe_tabled_io_action
+	--->	tabled(io_action)
+	;	untabled(io_seq_num).
+
 :- type io_seq_num	== int.
 :- type io_action_map	== map(io_seq_num, io_action).
 
@@ -38,7 +42,10 @@
 
 :- implementation.
 
-:- import_module bool, int, require.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module svmap.
 
 io_action_to_browser_term(IoAction) = Term :-
 	IoAction = io_action(ProcName, PredFunc, Args),
@@ -58,54 +65,64 @@ make_io_action_map(Start, End, IoActionMap) -->
 	io_action_map::in, io_action_map::out, io__state::di, io__state::uo)
 	is det.
 
-make_io_action_map_2(Cur, End, IoActionMap0, IoActionMap) -->
-	( { Cur = End } ->
-		{ IoActionMap = IoActionMap0 }
+make_io_action_map_2(Cur, End, !IoActionMap, !IO) :-
+	( Cur = End ->
+		true
 	;
-		pickup_io_action(Cur, ProcName, IsFunc, Args),
-		{ update_io_action_map(Cur, ProcName, IsFunc, Args,
-			IoActionMap0, IoActionMap1) },
-		make_io_action_map_2(Cur + 1, End, IoActionMap1, IoActionMap)
+		pickup_io_action(Cur, MaybeIoAction, !IO),
+		(
+			MaybeIoAction = yes(IoAction),
+			svmap.det_insert(Cur, IoAction, !IoActionMap)
+		;
+			MaybeIoAction = no
+		),
+		make_io_action_map_2(Cur + 1, End, !IoActionMap, !IO)
 	).
 
-:- pred update_io_action_map(int::in, string::in, bool::in, list(univ)::in,
-	io_action_map::in, io_action_map::out) is det.
-
-update_io_action_map(IoActionNum, ProcName, IsFunc, Args,
-		IoActionMap0, IoActionMap) :-
-	(
-		IsFunc = no,
-		PredFunc = predicate
-	;
-		IsFunc = yes,
-		PredFunc = function
-	),
-	IoAction = io_action(ProcName, PredFunc, Args),
-	map__det_insert(IoActionMap0, IoActionNum, IoAction, IoActionMap).
-
-:- pred pickup_io_action(int::in, string::out, bool::out, list(univ)::out,
+:- pred pickup_io_action(int::in, maybe(io_action)::out,
 	io__state::di, io__state::uo) is det.
 
 :- pragma foreign_proc("C",
-	pickup_io_action(SeqNum::in, ProcName::out, IsFunc::out, Args::out,
-		S0::di, S::uo),
+	pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
 	[thread_safe, promise_pure, tabled_for_io],
 "{
 	const char	*problem;
 	const char	*proc_name;
+	MR_bool		is_func;
+	MR_Word		args;
+	MR_bool		io_action_tabled;
+	MR_String	ProcName;
 
 	MR_save_transient_hp();
-	problem = MR_trace_get_action(SeqNum, &proc_name, &IsFunc, &Args);
+	io_action_tabled = MR_trace_get_action(SeqNum, &proc_name, 
+		&is_func, &args);
 	MR_restore_transient_hp();
-	if (problem != NULL) {
-		MR_fatal_error(""pickup_io_action: MR_trace_get_action"");
-	}
 
 	/* cast away const */
 	ProcName = (MR_String) (MR_Integer) proc_name;
+	if (io_action_tabled) {
+		MaybeIOAction = MR_IO_ACTION_make_yes_io_action(
+			ProcName, is_func, args);
+	} else {
+		MaybeIOAction = MR_IO_ACTION_make_no_io_action();
+	}
 
 	S = S0;
 }").
 
-pickup_io_action(_, _, _, _) -->
-	{ private_builtin__sorry("pickup_io_action") }.
+:- func make_no_io_action = maybe(io_action).
+:- pragma export(make_no_io_action = out, "MR_IO_ACTION_make_no_io_action").
+
+make_no_io_action = no.
+
+:- func make_yes_io_action(string, bool, list(univ)) = maybe(io_action).
+:- pragma export(make_yes_io_action(in, in, in) = out, 
+	"MR_IO_ACTION_make_yes_io_action").
+	
+make_yes_io_action(ProcName, yes, Args) = 
+	yes(io_action(ProcName, function, Args)).
+make_yes_io_action(ProcName, no, Args) = 
+	yes(io_action(ProcName, predicate, Args)).
+
+pickup_io_action(_, _, _, _) :-
+	private_builtin__sorry("pickup_io_action").

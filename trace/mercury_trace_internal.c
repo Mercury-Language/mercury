@@ -102,6 +102,15 @@
 
 #define MR_DEFAULT_DICE_LINES   50
 
+/*
+** The message to print for retries through un-io-tabled areas, when
+** the MR_RETRY_IO_INTERACTIVE option is given.
+*/
+
+#define MR_UNTABLED_IO_RETRY_MESSAGE \
+    "Retry across I/O operations is not always safe.\n" \
+    "Are you sure you want to do it? "
+
 #define MDBRC_FILENAME      ".mdbrc"
 #define DEFAULT_MDBRC_FILENAME  "mdbrc"
 
@@ -1951,6 +1960,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     const char          *problem;
     MR_Retry_Result     result;
     MR_bool             assume_all_io_is_tabled;
+    MR_bool             unsafe_retry;
 
     across_io = MR_RETRY_IO_INTERACTIVE;
     assume_all_io_is_tabled = MR_FALSE;
@@ -1973,7 +1983,8 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     }
 
     result = MR_trace_retry(event_info, event_details, ancestor_level,
-        across_io, assume_all_io_is_tabled, &problem, MR_mdb_in, MR_mdb_out,
+        across_io, assume_all_io_is_tabled, MR_UNTABLED_IO_RETRY_MESSAGE,
+        &unsafe_retry, &problem, MR_mdb_in, MR_mdb_out,
         jumpaddr);
     switch (result) {
 

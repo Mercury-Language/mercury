@@ -78,7 +78,15 @@
 :- import_module mdb.parse.
 :- import_module mdb.term_rep.
 
-:- import_module std_util, char, string, bool, int, deconstruct, getopt, list.
+:- import_module bool.
+:- import_module char.
+:- import_module deconstruct.
+:- import_module exception.
+:- import_module getopt.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
 :- type user_state
 	--->	user(
@@ -211,7 +219,8 @@ handle_command(info, _, show_info(!.User ^ outstr), !User, !IO).
 handle_command(browse_io(ActionNum), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_io_actions(Question, IoActions),
+	edt_node_io_actions(Question, MaybeTabledIoActions),
+	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
 	% We don't have code yet to trace a marked I/O action.
 	browse_chosen_io_action(IoActions, ActionNum, _MaybeMark, !User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
@@ -219,7 +228,8 @@ handle_command(browse_io(ActionNum), UserQuestion, Response,
 handle_command(print_io(From, To), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_io_actions(Question, IoActions),
+	edt_node_io_actions(Question, MaybeTabledIoActions),
+	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
 	print_chosen_io_actions(IoActions, From, To, !.User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
@@ -316,7 +326,8 @@ edt_node_trace_atoms(missing_answer(_, InitDeclAtom, _),
 edt_node_trace_atoms(unexpected_exception(_, InitDeclAtom, _),
 	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
-:- pred edt_node_io_actions(decl_question(T)::in, list(io_action)::out) is det.
+:- pred edt_node_io_actions(decl_question(T)::in, 
+	list(maybe_tabled_io_action)::out) is det.
 
 edt_node_io_actions(wrong_answer(_, _, FinalDeclAtom),
 	FinalDeclAtom ^ final_io_actions).
@@ -335,7 +346,8 @@ decl_bug_trace_atom(e_bug(unhandled_exception(InitDeclAtom, _, _)),
 decl_bug_trace_atom(i_bug(inadmissible_call(_, _, InitDeclAtom, _)),
 	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
-:- pred decl_bug_io_actions(decl_bug::in, list(io_action)::out) is det.
+:- pred decl_bug_io_actions(decl_bug::in, list(maybe_tabled_io_action)::out) 
+	is det.
 
 decl_bug_io_actions(e_bug(incorrect_contour(_, FinalDeclAtom, _, _)),
 	FinalDeclAtom ^ final_io_actions).
@@ -868,7 +880,8 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
 	;
 		Command = browse_io(ActionNum)
 	->
-		decl_bug_io_actions(Bug, IoActions),
+		decl_bug_io_actions(Bug, MaybeTabledIoActions),
+		filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
 		browse_chosen_io_action(IoActions, ActionNum, _MaybeMark,
 			!User, !IO),
 		user_confirm_bug(Bug, Response, !User, !IO)
@@ -965,7 +978,7 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom, !IO) :-
 
 write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 	io.write_string(User ^ outstr, Indent, !IO),
-	unravel_decl_atom(DeclAtom, TraceAtom, IoActions),
+	unravel_decl_atom(DeclAtom, TraceAtom, MaybeTabledIoActions),
 	TraceAtom = atom(ProcLayout, Args0),
 	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	get_pred_attributes(ProcLabel, _, Functor, _, PredOrFunc),
@@ -980,7 +993,46 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 		is_function(PredOrFunc)),
 	browse.print_browser_term(BrowserTerm, User ^ outstr, CallerType,
 		User ^ browser, !IO),
-	write_io_actions(User, IoActions, !IO).
+	write_maybe_tabled_io_actions(User, MaybeTabledIoActions, !IO).
+
+:- pred write_maybe_tabled_io_actions(user_state::in, 
+	list(maybe_tabled_io_action)::in, io::di, io::uo) is cc_multi.
+
+write_maybe_tabled_io_actions(User, MaybeTabledIoActions, !IO) :-
+	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, AreUntabled),
+	write_io_actions(User, IoActions, !IO),
+	(
+		AreUntabled = yes,
+		io.write_string(User ^ outstr, "Warning: some IO actions " ++
+			"for this atom are not tabled.\n", !IO)
+	;
+		AreUntabled = no
+	).
+
+:- pred filter_tabled_io_actions(list(maybe_tabled_io_action)::in, 
+	list(io_action)::out, bool::out) is det.
+
+filter_tabled_io_actions(MaybeTabledIoActions, IoActions, AreUntabled) :-
+	list.filter(io_action_is_tabled, MaybeTabledIoActions, TabledIoActions,
+		UnTabledIoActions),
+	IoActions = list.map(get_tabled_io_action, TabledIoActions),
+	(
+		UnTabledIoActions = [],
+		AreUntabled = no
+	;
+		UnTabledIoActions = [_ | _],
+		AreUntabled = yes
+	).
+
+:- pred io_action_is_tabled(maybe_tabled_io_action::in) is semidet.
+
+io_action_is_tabled(tabled(_)).
+
+:- func get_tabled_io_action(maybe_tabled_io_action) = io_action.
+
+get_tabled_io_action(tabled(IoAction)) = IoAction.
+get_tabled_io_action(untabled(_)) = _ :-
+	throw(internal_error("get_tabled_io_action", "io action not tabled")).
 
 :- pred trace_atom_arg_to_univ(trace_atom_arg::in, univ::out) is det.
 
@@ -1003,10 +1055,12 @@ write_io_actions(User, IoActions, !IO) :-
 		true
 	;
 		( NumIoActions = 1 ->
-			io.write_string(User ^ outstr, "1 io action:", !IO)
+			io.write_string(User ^ outstr, "1 tabled IO action:", 
+				!IO)
 		;
 			io.write_int(User ^ outstr, NumIoActions, !IO),
-			io.write_string(User ^ outstr, " io actions:", !IO)
+			io.write_string(User ^ outstr, " tabled IO actions:", 
+				!IO)
 		),
  		NumPrinted = get_num_printed_io_actions(User ^ browser),
  		( NumIoActions =< NumPrinted ->

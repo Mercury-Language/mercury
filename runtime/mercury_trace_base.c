@@ -672,7 +672,7 @@ MR_trace_report_raw(int fd)
     }
 }
 
-const char *
+MR_bool
 MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
 {
@@ -693,7 +693,7 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     if (! (MR_io_tabling_start <= action_number
         && action_number < MR_io_tabling_counter_hwm))
     {
-        return "I/O action number not in range";
+        return MR_FALSE;
     }
 
     MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
@@ -702,7 +702,7 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     answer_block = answer_block_trie->MR_answerblock;
 
     if (answer_block == NULL) {
-        return "I/O action number not in range";
+        return MR_FALSE;
     }
 
     table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
@@ -733,7 +733,7 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     *proc_name_ptr = proc_name;
     *is_func_ptr = is_func;
     *arg_list_ptr = arg_list;
-    return NULL;
+    return MR_TRUE;
 }
 
 void

@@ -404,10 +404,12 @@ extern	void	MR_tracing_not_enabled(void);
 ** This function is called from the Mercury code in the debugger, in the
 ** browser directory. It is here, not in the trace directory, because code
 ** in the browser directory cannot call functions in the trace directory.
+**
+** If the io action, action_number, has not been tabled, then this
+** function will return MR_FALSE, otherwise it will return MR_TRUE.
 */
 
-extern	const char
-		*MR_trace_get_action(int action_number,
+extern	MR_bool	MR_trace_get_action(int action_number,
 			MR_ConstString *proc_name_ptr, MR_Word *is_func_ptr,
 			MR_Word *arg_list_ptr);
 

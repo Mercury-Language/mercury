@@ -917,13 +917,13 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
     MR_ConstString  proc_name;
     MR_Word         is_func;
     MR_Word         arg_list;
-    const char      *problem;
+    MR_bool         io_action_tabled;
     MR_bool         saved_io_tabling_enabled;
 
-    problem = MR_trace_get_action(action_number, &proc_name, &is_func,
+    io_action_tabled = MR_trace_get_action(action_number, &proc_name, &is_func,
         &arg_list);
-    if (problem != NULL) {
-        return problem;
+    if (!io_action_tabled) {
+        return "I/O action number not in range";
     }
 
     saved_io_tabling_enabled = MR_io_tabling_enabled;

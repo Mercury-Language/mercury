@@ -18,7 +18,8 @@ main -->
 	tabled_read_decl__open_input("tabled_read_decl.data", Res, Stream),
 	( { Res = 0 } ->
 		tabled_read_decl__part_1(Stream),
-		tabled_read_decl__part_2(Stream)
+		tabled_read_decl__part_2(Stream),
+		tabled_read_decl__part_3
 	;
 		io__write_string("could not open tabled_read.data\n")
 	).
@@ -38,6 +39,12 @@ tabled_read_decl__part_1(Stream) -->
 tabled_read_decl__part_2(Stream) -->
 	tabled_read_decl__test(Stream, A),
 	tabled_read_decl__write_int(A).
+
+:- pred tabled_read_decl__part_3(io__state::di, io__state::uo) is det.
+
+tabled_read_decl__part_3(!IO) :-
+	tabled_read_decl__fake_io(X, !IO),
+	tabled_read_decl__write_int(X, !IO).
 
 :- pred tabled_read_decl__test(c_pointer::in, int::out,
 	io__state::di, io__state::uo) is det.
@@ -132,5 +139,15 @@ tabled_read_decl__poly_test_2(Stream, Unused, SoFar, N) -->
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	printf(""%d\\n"", (int) N);
+	IO = IO0;
+}").
+
+:- pred tabled_read_decl__fake_io(int::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C", 
+	tabled_read_decl__fake_io(X::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+	X = 1;
 	IO = IO0;
 }").

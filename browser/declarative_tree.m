@@ -91,14 +91,19 @@ call_node_decl_atom(Store, CallId) = DeclAtom :-
 	CallAtom = get_trace_call_atom(CallNode),
 	DeclAtom = init_decl_atom(CallAtom).
 
-:- func make_io_actions(io_action_map, int, int) = list(io_action).
+:- func make_io_actions(io_action_map, io_seq_num, io_seq_num) 
+	= list(maybe_tabled_io_action).
 
-make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) =
+make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) = IoActions :-
 	( InitIoSeq = ExitIoSeq ->
-		[]
-	;
-		[map.lookup(IoActionMap, InitIoSeq) |
-			make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq)]
+		IoActions = []
+	;	
+		Rest = make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq),
+		( map.search(IoActionMap, InitIoSeq, IoAction) ->
+			IoActions = [tabled(IoAction) | Rest]
+		;
+			IoActions = [untabled(InitIoSeq) | Rest]
+		)
 	).
 
 :- pred get_edt_node_initial_atom(S::in, R::in, init_decl_atom::out)

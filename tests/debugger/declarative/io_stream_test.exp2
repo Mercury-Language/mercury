@@ -22,7 +22,7 @@ mdb> print
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
 mdb> dd -a
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
@@ -31,7 +31,7 @@ Valid? print 1-2
 stream(0, input, text, file("tabled_read_decl.data"))
 1123
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
@@ -40,14 +40,14 @@ Valid? p io 1-2
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? no
 test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
@@ -55,13 +55,13 @@ read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 Valid? yes
 Found incorrect contour:
 test_2(stream(0, input, text, file("tabled_read_decl.data")), 1, 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 10)
 test(stream(0, input, text, file("tabled_read_decl.data")), 1123, _, _)
-4 io actions:
+4 tabled IO actions:
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 49)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 50)
 read_char_code(stream(0, input, text, file("tabled_read_decl.data")), 51)

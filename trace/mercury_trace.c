@@ -515,7 +515,8 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 MR_Retry_Result
 MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     int ancestor_level, MR_Retry_Across_Io across_io,
-    MR_bool assume_all_io_is_tabled, const char **problem,
+    MR_bool assume_all_io_is_tabled, const char *retry_interactive_message,
+    MR_bool *unsafe_retry, const char **problem,
     FILE *in_fp, FILE *out_fp, MR_Code **jumpaddr)
 {
     MR_Word                 *base_sp;
@@ -676,6 +677,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
             MR_bool allow_retry;
             char    *answer;
 
+            *unsafe_retry = MR_TRUE;
+
             switch (across_io) {
 
                 case MR_RETRY_IO_FORCE:
@@ -687,10 +690,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
                         MR_fatal_error("MR_RETRY_IO_INTERACTIVE but null fp");
                     }
 
-                    fprintf(out_fp,
-                        "Retry across I/O operations is not always safe.\n");
-                    answer = MR_trace_getline(
-                        "Are you sure you want to do it? ", in_fp, out_fp);
+                    answer = MR_trace_getline(retry_interactive_message, in_fp,
+                        out_fp);
 
                     if (answer == NULL) {
                         /* the user has pressed EOF */
@@ -720,7 +721,11 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
                 default:
                     MR_fatal_error("MR_trace_retry: unknown across_io");
             }
+        } else {
+            *unsafe_retry = MR_FALSE;
         }
+    } else {
+        *unsafe_retry = MR_FALSE;
     }
 
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY

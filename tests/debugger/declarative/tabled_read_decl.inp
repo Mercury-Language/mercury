@@ -21,4 +21,30 @@ quit
 no
 yes
 yes
-c -n -S
+break tabled_read_decl.part_2
+c
+break tabled_read_decl.test
+c
+delete *
+f
+dd -ad1
+y
+n
+y
+y
+break tabled_read_decl.part_3
+c
+break tabled_read_decl.fake_io
+c
+table_io stop
+delete *
+f
+dd -ad1
+y
+y
+y
+n
+y
+y
+y
+c

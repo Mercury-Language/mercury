@@ -99,6 +99,17 @@
 #endif
 
 /*
+** The message to display when attempting to retry of an untabled area.
+*/
+
+#define MR_DECL_UNTABLED_IO_RETRY_MESSAGE \
+	"The declarative debugger needs to perform a retry across\n" \
+	"an area in which IO is not tabled.  This is not always safe.\n" \
+	"To avoid this warning restart mdb and issue a `table_io start'\n" \
+	"command at an event before the suspect area.\n" \
+	"Do you wish to proceed with the retry? "
+
+/*
 ** The declarative debugger back end is controlled by the
 ** settings of the following variables.  They are set in
 ** MR_trace_start_decl_debug when the back end is started.  They
@@ -194,6 +205,15 @@ static	MR_Unsigned	MR_edt_max_depth;
 static	MR_bool		MR_edt_compiler_flag_warning;
 
 /*
+** When building a supertree there will be 2 retries.  The first will
+** retry to an event before the topmost node of the currently materialized
+** tree and the second will be a retry from the topmost node to the root
+** of the new supertree.  This global records whether the user said it 
+** was safe to do the first retry across untabled IO.  If they said this was
+** okay then there's no point asking them again for the second retry.
+*/
+static	MR_bool		MR_edt_unsafe_retry_already_asked;
+/*
 ** This is used as the abstract map from node identifiers to nodes
 ** in the data structure passed to the front end.  It should be
 ** incremented each time the data structure is destructively
@@ -287,7 +307,8 @@ static	MR_Code		*MR_trace_restart_decl_debug(
 static	MR_Code		*MR_decl_diagnosis(MR_Trace_Node root,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
-				MR_Event_Details *event_details);
+				MR_Event_Details *event_details,
+				MR_bool new_tree);
 static	MR_Code		*MR_decl_go_to_selected_event(MR_Unsigned event,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
@@ -296,7 +317,8 @@ static	MR_Code		*MR_decl_go_to_selected_event(MR_Unsigned event,
 	** Retry max_distance if there are that many ancestors, otherwise
 	** retry as far as possible.
 	*/
-static	MR_Code		*MR_trace_decl_retry_max(MR_Unsigned max_distance, 
+static	MR_Code		*MR_trace_decl_retry_supertree(
+				MR_Unsigned max_distance, 
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details);
 static	MR_String	MR_trace_node_path(MR_Trace_Node node);
@@ -391,6 +413,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				MR_edt_start_seqno && MR_port_is_entry(
 					event_info->MR_trace_port))
 			{
+				MR_Code	*jumpaddr;
 				/*
 				** We are entering the top of the currently
 				** materialized portion of the annotated trace.
@@ -400,9 +423,24 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				** trace from there.
 				*/
 				MR_edt_inside = MR_TRUE;
-				return MR_trace_decl_retry_max(
-					MR_edt_max_depth - 1, 
+				jumpaddr = MR_trace_decl_retry_supertree(
+					MR_edt_max_depth, 
 					event_info, &event_details);
+				/*
+				** We will need all the io actions from
+				** the point after the retry above onwards.
+				*/
+				MR_edt_start_io_counter = 
+					MR_io_tabling_counter;
+				/*
+				** Reset the depth since we will now
+				** be at the top of the supertree to be 
+				** materialized.  We set it to -1 since
+				** the next call to MR_trace_decl_debug will
+				** set it to 0.
+				*/
+				MR_edt_depth = -1;
+				return jumpaddr;
 			} else {
 				/*
 				** We are in an existing explicit subtree.
@@ -439,6 +477,16 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				** we are (re)entering the topmost call.
 				*/
 				MR_edt_inside = MR_TRUE;
+				/*
+				** If the port is a call and not a redo, then
+				** we need the io actions from here on.
+				*/
+				if (event_info->MR_trace_port == MR_PORT_CALL) 
+				{
+					MR_edt_start_io_counter = 
+						MR_io_tabling_counter;
+				}
+				MR_edt_depth = -1;
 			} else {
 				/*
 				** Ignore this event---it is outside the
@@ -577,12 +625,14 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 
 	if ((!MR_edt_building_supertree && 
 			MR_trace_event_number == MR_edt_last_event)
-			|| (MR_edt_building_supertree && MR_edt_depth == 0)) {
+			|| (MR_edt_building_supertree && 
+			MR_edt_depth + depth_check_adjustment == 0 
+			&& MR_port_is_final(event_info->MR_trace_port))) {
 		/*
 		** Call the front end.
 		*/
 		return MR_decl_diagnosis(MR_edt_return_node, cmd,
-				event_info, &event_details);
+				event_info, &event_details, MR_TRUE);
 	}
 
 	MR_debug_enabled = MR_TRUE;
@@ -591,13 +641,15 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 }
 
 static	MR_Code *
-MR_trace_decl_retry_max(MR_Unsigned max_distance, MR_Event_Info *event_info,
-	MR_Event_Details *event_details)
+MR_trace_decl_retry_supertree(MR_Unsigned max_distance, 
+	MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
-	MR_Code		*jumpaddr;
-	int		retry_distance;
-	const char	*problem;
-	MR_Retry_Result retry_result;
+	MR_Code			*jumpaddr;
+	int			retry_distance;
+	const char		*problem;
+	MR_Retry_Result		retry_result;
+	MR_bool			unsafe_retry;
+	MR_Retry_Across_Io	retry_mode;
 
 	if (max_distance >= event_info->MR_call_depth) {
 		retry_distance = event_info->MR_call_depth - 1;
@@ -605,27 +657,39 @@ MR_trace_decl_retry_max(MR_Unsigned max_distance, MR_Event_Info *event_info,
 		retry_distance = max_distance;
 	}
 	
+	/*
+	** If the user was already asked if they want to do an unsafe retry
+	** while building this supertree, then don't ask them again.
+	*/
+	if (MR_edt_unsafe_retry_already_asked) {
+		retry_mode = MR_RETRY_IO_FORCE;
+	} else {
+		retry_mode = MR_RETRY_IO_INTERACTIVE;
+	}
+
 	retry_result = MR_trace_retry(event_info, event_details,
-		retry_distance, MR_RETRY_IO_INTERACTIVE,
-		MR_trace_decl_assume_all_io_is_tabled, &problem, MR_mdb_in,
-		MR_mdb_out, &jumpaddr);
+		retry_distance, retry_mode,
+		MR_trace_decl_assume_all_io_is_tabled, 
+		MR_DECL_UNTABLED_IO_RETRY_MESSAGE, &unsafe_retry, 
+		&problem, MR_mdb_in, MR_mdb_out, &jumpaddr);
 
 	if (retry_result != MR_RETRY_OK_DIRECT) {
 		if (retry_result == MR_RETRY_ERROR) {
 			MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: retry aborted in "
-				"MR_trace_decl_retry_max: %s\n",
+				"MR_trace_decl_retry_supertree: %s\n",
 				problem);
 			return NULL;
 		} else {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: internal error in "
-				"MR_trace_decl_retry_max: direct retry "
+				"MR_trace_decl_retry_supertree: direct retry "
 				"impossible\n");
 			return NULL;
 		}
 	}
+	
 	return jumpaddr;
 }
 
@@ -1376,14 +1440,12 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	/*
 	** If it was requested that the previous session be resumed and
 	** there was a previous dd session, then there is no need to 
-	** build a new annotated trace.  Just call the front end, passing
-	** NULL as the root node to let it know it must resume the 
-	** previous session.
+	** build a new annotated trace.
 	*/
 	if (!new_session && !first_time) {
 		MR_trace_decl_mode = trace_mode;
 		*jumpaddr = MR_decl_diagnosis((MR_Trace_Node) NULL, cmd, 
-			event_info, event_details);
+			event_info, event_details, MR_FALSE);
 		return MR_TRUE;
 	}
 
@@ -1453,7 +1515,6 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 
 	MR_trace_decl_ensure_init();
 	edt_depth_limit = MR_edt_depth_step_size;
-	MR_edt_depth = 0;
 	
 	MR_trace_current_node = (MR_Trace_Node) NULL;
 	
@@ -1493,8 +1554,6 @@ MR_trace_restart_decl_debug(
 	MR_trace_current_node = call_preceding;
 
 	edt_depth_limit = MR_edt_depth_step_size;
-	
-	MR_edt_depth = 0;
 
 	message = MR_trace_start_collecting(event, seqno, edt_depth_limit,
 			create_supertree, cmd, event_info, event_details,
@@ -1521,6 +1580,9 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	const char		*problem;
 	MR_Retry_Result		retry_result;
 	int			retry_distance;
+	MR_bool			unsafe_retry;
+
+	MR_edt_unsafe_retry_already_asked = MR_FALSE;
 
 	/* 
 	** We need to do a retry if the current event is greater than the
@@ -1554,8 +1616,9 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 
 		retry_result = MR_trace_retry(event_info, event_details, 
 			retry_distance, MR_RETRY_IO_INTERACTIVE,
-			MR_trace_decl_assume_all_io_is_tabled, &problem, 
-			MR_mdb_in, MR_mdb_out, jumpaddr);
+			MR_trace_decl_assume_all_io_is_tabled, 
+			MR_DECL_UNTABLED_IO_RETRY_MESSAGE, &unsafe_retry,
+			&problem, MR_mdb_in, MR_mdb_out, jumpaddr);
 		if (retry_result != MR_RETRY_OK_DIRECT) {
 			if (retry_result == MR_RETRY_ERROR) {
 				return problem;
@@ -1563,6 +1626,9 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 				return "internal error: direct retry "
 					"impossible";
 			}
+		}
+		if (unsafe_retry) {
+			MR_edt_unsafe_retry_already_asked = MR_TRUE;
 		}
 	} else {
 		*jumpaddr = NULL;
@@ -1579,7 +1645,6 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	*/
 	MR_edt_last_event = event;
 	MR_edt_start_seqno = seqno;
-	MR_edt_start_io_counter = MR_io_tabling_counter;
 	MR_edt_max_depth = maxdepth;
 	MR_edt_inside = MR_FALSE;
 	MR_edt_building_supertree = create_supertree;
@@ -1611,7 +1676,8 @@ static MR_Unsigned	MR_io_action_map_cache_end;
 
 static	MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
-	MR_Event_Info *event_info, MR_Event_Details *event_details)
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_bool new_tree)
 {
 	MR_Word			response;
 	MR_bool			bug_found;
@@ -1637,8 +1703,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				" the debugging tree.\n");
 	}
 
-	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DUMP 
-			&& root != (MR_Trace_Node) NULL) {
+	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DUMP && new_tree) {
 		MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
 
 		MR_TRACE_CALL_MERCURY(
@@ -1682,9 +1747,9 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	}
 
 	MR_TRACE_CALL_MERCURY(
-		if (root == (MR_Trace_Node) NULL) {
-			MR_DD_decl_diagnosis_resume_previous(
-				MR_trace_node_store, MR_FALSE,
+		if (new_tree == MR_TRUE) {
+			MR_DD_decl_diagnosis_new_tree(MR_trace_node_store, 
+				root, use_old_io_map,
 				MR_io_action_map_cache_start,
 				MR_io_action_map_cache_end,
 				&response, MR_trace_front_end_state,
@@ -1693,8 +1758,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				&MR_trace_browser_persistent_state
 			);
 		} else {
-			MR_DD_decl_diagnosis_new_tree(MR_trace_node_store, 
-				root, use_old_io_map,
+			MR_DD_decl_diagnosis_resume_previous(
+				MR_trace_node_store, MR_FALSE,
 				MR_io_action_map_cache_start,
 				MR_io_action_map_cache_end,
 				&response, MR_trace_front_end_state,
@@ -1781,6 +1846,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 	MR_Retry_Result		retry_result;
 	MR_Code			*jumpaddr;
 	int			ancestor_level;
+	MR_bool			unsafe_retry;
 
 	/*
 	** We only need to do a retry if the event number we want to be at is
@@ -1810,7 +1876,9 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 				event_details, ancestor_level,
 				MR_RETRY_IO_INTERACTIVE,
 				MR_trace_decl_assume_all_io_is_tabled,
-				&problem, MR_mdb_in, MR_mdb_out, &jumpaddr);
+				MR_DECL_UNTABLED_IO_RETRY_MESSAGE, 
+				&unsafe_retry, &problem, MR_mdb_in, 
+				MR_mdb_out, &jumpaddr);
 #ifdef	MR_DEBUG_RETRY
 			MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 			MR_print_succip_reg(stdout, event_info->MR_saved_regs);

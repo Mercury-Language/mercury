@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -117,6 +117,13 @@ typedef struct MR_Event_Details_Struct {
 ** - If across_io is MR_RETRY_IO_INTERACTIVE (in which case in_fp and out_fp
 **   must both be non-NULL), and the user, when asked whether he/she wants
 **   to perform the retry anyway, says yes.
+**
+** If across_io is set to MR_RETRY_IO_INTERACTIVE then the string pointed to by
+** the retry_interactive_message argument will be used to ask the user 
+** whether they want to perform an unsafe retry or not.
+**
+** If an unsafe retry across IO is performed then the unsafe_retry argument
+** will be set to MR_TRUE, otherwise it will be set to MR_FALSE.  
 */
 
 typedef	enum {
@@ -137,6 +144,8 @@ extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 				int ancestor_level,
 				MR_Retry_Across_Io across_io,
 				MR_bool assume_all_io_is_tabled,
+				const char *retry_interactive_message,
+				MR_bool *unsafe_retry,
 				const char **problem,
 				FILE *in_fp, FILE *out_fp,
 				MR_Code **jumpaddr);

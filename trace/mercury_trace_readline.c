@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -65,6 +65,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
  && !defined(MR_NO_USE_READLINE)
 	char	*line;
  	MR_bool	in_isatty;
+	char	*last_nl;
 
 	in_isatty = isatty(fileno(in));
 	if (in_isatty || MR_force_readline) {
@@ -95,8 +96,27 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 			rl_deprep_term_function =
 				(void *) MR_dummy_deprep_term_function;
 		}	
-
-		line = readline((char *) prompt);
+		
+		/*
+		** If the prompt contains newlines then readline doesn't
+		** display it properly.
+		*/
+		last_nl = strrchr(prompt, '\n');
+		if (last_nl != NULL) {
+			char	*real_prompt;
+			char	*pre_prompt;
+			real_prompt = (char *) MR_malloc(strlen(last_nl));
+			strcpy(real_prompt, last_nl + 1);
+			pre_prompt = (char *) MR_malloc(last_nl - prompt + 2);
+			strncpy(pre_prompt, prompt, last_nl - prompt + 1);
+			pre_prompt[last_nl - prompt + 1] = '\0';
+			fprintf(out, pre_prompt);
+			line = readline((char *) real_prompt);
+			MR_free(real_prompt);
+			MR_free(pre_prompt);
+		} else {
+			line = readline((char *) prompt);
+		}
 
 		/*
 		** readline() allocates with malloc(), and we want

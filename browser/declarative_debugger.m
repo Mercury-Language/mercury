@@ -219,7 +219,7 @@
 :- type final_decl_atom
 	--->	final_decl_atom(
 			final_atom		:: trace_atom,
-			final_io_actions	:: list(io_action)
+			final_io_actions	:: list(maybe_tabled_io_action)
 		).
 
 :- type decl_exception == term_rep.
@@ -281,7 +281,7 @@
 	io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 :- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
-	list(io_action)::out) is det.
+	list(maybe_tabled_io_action)::out) is det.
 
 %-----------------------------------------------------------------------------%
 

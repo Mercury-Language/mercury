@@ -503,6 +503,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Retry_Result		retry_result;
 	static MR_String	MR_object_file_name;
 	int			lineno = 0;
+	MR_bool			unsafe_retry;
 
 	MR_debug_enabled = MR_FALSE;
 	MR_update_trace_func_enabled();
@@ -620,7 +621,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				}
 				retry_result = MR_trace_retry(event_info, 
 					&event_details, 0,
-					MR_RETRY_IO_ONLY_IF_SAFE, MR_FALSE,
+					MR_RETRY_IO_ONLY_IF_SAFE, 
+					MR_FALSE, "", &unsafe_retry, 
 					&message, NULL, NULL, &jumpaddr);
 				if (retry_result == MR_RETRY_OK_DIRECT) {
 					MR_send_message_to_socket("ok");
