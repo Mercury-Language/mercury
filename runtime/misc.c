@@ -380,6 +380,9 @@ void* resizemem(void *p, size_t size)
 	return p;
 }
 
+/* XXX will need to modify this to kill other processes if PARALLEL
+ * (and cleanup resources, etc....)
+ */
 void fatal_error(const char *message) {
 	fprintf(stderr, "Mercury runtime: %s\n", message);
 	exit(1);

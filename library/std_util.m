@@ -210,6 +210,27 @@ maybe_pred(Pred, X, Y) :-
 #include ""imp.h""
 #include ""deep_copy.h""
 
+/*
+** To allow reclaimation of the solutions heap in concurrent
+** computations, we keep a counter of the number of contexts
+** that are inside a call to solutions. When leaving solutions,
+** we check to see if there are any other calls to solutions
+** in progress - if not, then we can truncate the solutions heap
+** back to the start (solutions_heap_zone->min). This approach
+** can fairly easily be extended to handle the PARALLEL case: all
+** we need to do is put a lock on the counter (which must be in
+** shared memory), and have a global array with pointers to all
+** the appropriate data structures so that this Unix process can
+** reset the solutions heaps of all the other processes as well.
+**
+** What we lose is that nested calls to solutions will use more of
+** the solutions heap, because the solutions heap won't get truncated
+** until the outer-most call to solutions returns.
+*/
+
+int		*solutions_counter;
+SpinLock	*solutions_counter_lock;
+
 Declare_entry(do_call_nondet_closure);
 
 Define_extern_entry(mercury__std_util__builtin_solutions_2_0);
@@ -286,19 +307,24 @@ Define_entry(mercury__std_util__builtin_solutions_2_1);
 */
 
 #define saved_hp_fv	(framevar(0))
-#define saved_solhp_fv	(framevar(1))
-#define type_info_fv	(framevar(2))
-#define list_fv		(framevar(3))
+#define type_info_fv	(framevar(1))
+#define list_fv		(framevar(2))
 
-	/* create a nondet stack frame with four slots,
-	   and set the failure continuation */
-	
-	mkframe(""builtin_solutions"", 4,
+	/* increment the numer of calls to solutions that are in progress */
+
+	get_lock(solutions_counter_lock);
+	(*solutions_counter)++;
+	release_lock(solutions_counter_lock);
+
+ 	/* create a nondet stack frame with four slots,
+ 	   and set the failure continuation */
+ 	
+	mkframe(""builtin_solutions"", 3,
 		LABEL(mercury__std_util__builtin_solutions_2_0_i2));
 
 	/* setup the framevars */
-	saved_solhp_fv = (Word) solutions_heap_pointer; 
-	saved_hp_fv = (Word) hp;
+
+	mark_hp(save_hp_fv);
 	type_info_fv = r1;		
 	list_fv = list_empty();
 
@@ -325,8 +351,8 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 	save_transient_registers();
 
 	/* deep copy it to the solutions heap, up to the saved_hp */
-	r3 = deep_copy(r1, (Word *) type_info_fv, (Word *) saved_hp_fv, 
-		heap_zone->top);
+	r3 = deep_copy(r1, (Word *) type_info_fv, (Word *) saved_hp_fv,
+			heap_zone->top);
 
 	/* restore the registers */
 	restore_transient_registers();
@@ -347,7 +373,7 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	/* no more solutions */
 
 	/* reset heap */
-	hp = saved_hp_fv;
+	restore_hp(saved_hp_fv);
 
 	/* copy all solutions to mercury heap */ 
 
@@ -372,14 +398,24 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 		(Word *) saved_solhp_fv, solutions_heap_zone->top);
 	}
 
-	/* reset solutions heap to where it was before call to solutions  */
-	solutions_heap_pointer = (Word *) saved_solhp_fv;
-	
-	/* discard the frame we made */
-	succeed_discard();
+	/*
+	** decrement the number of calls to solutions that are in progress.
+	** If (now that this call has finished) there are no calls still in
+	** progress, then we can reset the solutions heap pointer back to
+	** the start of the solutions heap. Once we support real parallelism
+	** we will need to reset the solutions heap pointers of all the other
+	** solutions heaps too. XXX we still need to work out a good way to
+	** do this.
+	*/
+	get_lock(solutions_counter_lock);
+	if (--(*solutions_counter) == 0)
+		solutions_heap_pointer = (Word *) solutions_heap_zone->min;
+	release_lock(solutions_counter_lock);
+ 	
+ 	/* discard the frame we made */
+ 	succeed_discard();
 
 #undef saved_hp_fv
-#undef saved_solhp_fv
 #undef type_info_fv
 #undef list_fv
 

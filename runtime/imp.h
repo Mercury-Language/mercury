@@ -33,6 +33,7 @@ typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
 typedef void			Code;	/* code addresses are `void *' */
+typedef	Word			SpinLock;
 
 #include	"regs.h"	/* must come before system headers */
 
@@ -311,6 +312,7 @@ static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 #include	"label.h"
 #include	"memory.h"
 #include	"wrapper.h"
+#include	"context.h"
 #include	"type_info.h"
 #ifdef CONSTRAINTS
 #include	"mercury_solver_backtrack.h"

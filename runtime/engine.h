@@ -36,6 +36,7 @@
 extern	bool	debugflag[];
 
 extern	void	init_engine(void);
+extern	void	start_mercury_engine(Code *entry_point);
 extern	void	call_engine(Code *entry_point);
 extern	void	dump_prev_locations(void);
 

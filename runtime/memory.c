@@ -137,7 +137,7 @@ Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
 Word	num_uses[MAX_RN];
 
-MemoryZone zone_table[MAX_ZONES];
+MemoryZone *zone_table;
 
 MemoryZone *used_memory_zones;
 MemoryZone *free_memory_zones;
@@ -157,108 +157,29 @@ Word       *solutions_heap_pointer;
 static	unsigned	unit;
 static	unsigned	page_size;
 
-/* create_zone(Name, Id, Size, Offset, RedZoneSize, FaultHandler)
- * allocates a new memory zone with name Name, and number Id, size
- * Size (in bytes - which gets rounded up to the nearest multiple of
- * the page size), an offset Offset from the page boundary at which
- * to start using the memory region (used to help avoid beating the cache),
- * the amount Redzone of memory (in bytes) to be protected as a redzone
- * (must be less than Size), and the address of a function to handle
- * memory references in the redzone.
- * If it fails to allocate or protect the zone, then it exits.
- * If mprotect or SIGINFO are unavailable, then the last two arguments
- * are not present.
- */
-
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-MemoryZone	*create_zone(const char *name, int id, unsigned size,
-			unsigned offset, unsigned redsize,
-			ZoneHandler *handler);
-#else
-MemoryZone	*create_zone(const char *name, int id, unsigned size,
-			unsigned offset);
-#endif
-
-/* construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
- * has the same behaviour as create_zone, except instread of allocating
- * the memory, it takes a pointer to a region of memory that must be at
- * least Size bytes, or if HAVE_MPROTECT is defined, then it must be at
- * least Size + unit[*] bytes.
- * If it fails to protect the redzone then it exits
- * If mprotect or SIGINFO are unavailable, then the last two arguments
- * are not present.
- *
- * [*] unit is a global variable containing the page size in bytes
- */
-
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-MemoryZone	*construct_zone(const char *name, int Id, Word *base,
-			unsigned size, unsigned offset, unsigned redsize,
-			ZoneHandler *handler);
-#else
-MemoryZone	*construct_zone(const char *name, int Id, Word *base,
-			unsigned size, unsigned offset);
-#endif
-
 static MemoryZone	*get_zone(void);
 static void		unget_zone(MemoryZone *zone);
 
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-/* default_handler is a function that can be passed to create_zone to
- * unprotect enough of the redzone to allow the access to succeed, or
- * fail if there is no space left in the zone.
- */
-static ZoneHandler default_handler;
+	/*
+	** We manage the handing out of offets through the cache by
+	** computing the offsets once and storing them in an array
+	** (in shared memory if necessary). We then maintain a global
+	** counter used to index the array which we increment (modulo
+	** the size of the array) after handing out each offset.
+	*/
 
-/* null_handler is a function that can be passed to create_zone which always
- * fails.
- */
-static ZoneHandler null_handler;
-#endif
+#define	CACHE_SLICES	8
+
+static	Word	*offset_vector;
+static	Word	*offset_counter;
+static	Word	*offset_lock;
+Word	next_offset(void);
+
+static void init_memory_arena(void);
+static void init_zones(void);
 
 void init_memory(void)
 {
-	char		*arena;
-	unsigned	total_size;
-	unsigned	fake_reg_offset;
-	unsigned	heap_offset;
-	unsigned	detstack_offset;
-	unsigned	nondstack_offset;
-	int		i;
-	Word		*detstack_base;
-	Word		*nondetstack_base;
-#ifndef	CONSERVATIVE_GC
-	Word		*heap_base;
-	Word		*solutions_heap_base;
-#endif
-
-	/*
-	** Initialize the MemoryZone table.
-	*/
-	used_memory_zones = NULL;
-	free_memory_zones = zone_table;
-	for(i=0; i < MAX_ZONES; i++)
-	{
-		zone_table[i].name = "unused";
-		zone_table[i].id = i;
-		zone_table[i].bottom = NULL;
-		zone_table[i].top = NULL;
-		zone_table[i].min = NULL;
-#ifndef SPEED
-		zone_table[i].max = NULL;
-#endif
-#ifdef	HAVE_MPROTECT
-#ifdef	HAVE_SIGINFO
-		zone_table[i].redzone = NULL;
-#endif
-		zone_table[i].hardmax = NULL;
-#endif
-		if (i+1 < MAX_ZONES)
-			zone_table[i].next = &(zone_table[i+1]);
-		else
-			zone_table[i].next = NULL;
-	}
-
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
 	** make sure they are multiples of the page and cache sizes.
@@ -303,141 +224,100 @@ void init_memory(void)
 	if (nondstack_zone_size >= nondstack_size)
 		nondstack_zone_size = unit;
 
-	/*
-	** Calculate how much memory to allocate, then allocate it
-	** and divide it up among the areas.
-	** We allocate 4 extra units, since we waste one unit each
-	** for the heap, detstack, and nondstack to ensure they
-	** are aligned at non-conflicting cache offsets, and we may
-	** waste one unit aligning the whole arena on a unit boundary.
-	*/
 
-	total_size = heap_size + detstack_size + nondstack_size + 4 * unit;
+	init_memory_arena();
+	init_zones();
+}
 
-	/*  get total_size bytes aligned on a page boundary */
-	arena = memalign(unit, total_size);
-	if (arena == NULL)
-	{
-		perror("Mercury runtime");
-		fprintf(stderr, "cannot allocate arena: memalign() failed\n");
-		exit(1);
+/*
+** init_memory_arena() allocates (if necessary) the top-level memory pool
+** from which all allocations should come. If PARALLEL is defined, then
+** this pool should be shared memory. In the absence of PARALLEL, it
+** doesn't need to do anything, since with CONSERVATIVE_GC, the collector
+** manages the heap, and without GC, we can allocate memory using memalign
+** or malloc.
+*/
+static void init_memory_arena()
+{
+#ifdef	PARALLEL
+#ifndef	CONSERVATIVE_GC
+	if (numprocs > 1) {
+		fatal_error("shared memory not implemented");
 	}
-	arena = (char *) round_up((Unsigned) arena, unit);
-	
-	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
-	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
-	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
-	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
-
-#ifndef CONSERVATIVE_GC
-	heap_base	 = (Word *) arena;
-	detstack_base	 = (Word *) round_up((Unsigned)heap_base+heap_size+unit,
-				unit);
 #else
-	detstack_base	 = (Word *) arena;
+	if (numprocs > 1) {
+		fatal_error("shared memory not implemented with conservative gc");
+	}
 #endif
-	nondetstack_base = (Word *)
-		round_up((Unsigned)detstack_base+detstack_size+unit, unit);
+#endif
+}
 
-
-	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
-	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
-	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
-	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
+static void init_zones()
+{
+	int i;
+	Word fake_reg_offset;
 
 	/*
-	** Create memory zones for the heap, det stack and nondet stack.
+	** Allocate the MemoryZone table.
 	*/
+	zone_table = allocate_bytes(MAX_ZONES * sizeof(MemoryZone));
 
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-	detstack_zone = construct_zone("det stack", 1, detstack_base,
-			detstack_size, detstack_offset, detstack_zone_size,
-			default_handler);
-	nondetstack_zone = construct_zone("nondet stack", 1, nondetstack_base,
-			nondstack_size, nondstack_offset, nondstack_zone_size,
-			default_handler);
-#ifndef CONSERVATIVE_GC
-	heap_zone = construct_zone("heap", 1, heap_base, heap_size, heap_offset,
-			heap_zone_size, default_handler);
-
-		/* We won't worry about offsets for the solutions
-		 * heap, and it's not part of the arena.
-		 */
-	solutions_heap_zone = create_zone("solutions_heap", 1,
-		solutions_heap_size, 0, solutions_heap_zone_size, 
-		default_handler);
-	solutions_heap_pointer = solutions_heap_zone->bottom;
-#endif
-#else	/* !defined(HAVE_MPROTECT) || !defined(HAVE_SIGINFO) */
-	detstack_zone = construct_zone("det stack", 1, detstack_base,
-			detstack_size, detstack_offset);
-	nondetstack_zone = construct_zone("nondet stack", 1, nondetstack_base,
-			nondstack_size, nondstack_offset);
-#ifndef CONSERVATIVE_GC
-	heap_zone = construct_zone("heap", 1, heap_base, heap_size,
-			heap_offset);
-		/* We won't worry about offsets for the solutions
-		 * heap, and it's not part of the arena.
-		 */
-	solutions_heap_zone = create_zone("solutions_heap", 1,
-		solutions_heap_size, 0);
-	solutions_heap_pointer = solutions_heap_zone->bottom;
-#endif
-#endif
-
-#ifndef	SPEED
-	nondetstack_zone->min[PREDNM] = (Word) "bottom";
-#endif
-
-#ifndef	SPEED
-	/* We allocate as many `char *'s as there are words in the detstack. */
-	/* In the worst-case, all detstack frames have only one word. */
-	dumpstack_zone = create_zone("dumpstack", 1,
-		detstack_size * (sizeof(char *) / (sizeof(Word))), 0, 0,
-		null_handler);
-#endif
-
-	setup_signal();
-
-	if (memdebug)
+	/*
+	** Initialize the MemoryZone table.
+	*/
+	used_memory_zones = NULL;
+	free_memory_zones = zone_table;
+	for(i = 0; i < MAX_ZONES; i++)
 	{
-		MemoryZone	*zone;
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "pcache_size  = %d (0x%x)\n",
-			pcache_size, pcache_size);
-		fprintf(stderr, "page_size    = %d (0x%x)\n",
-			page_size, page_size);
-		fprintf(stderr, "unit         = %d (0x%x)\n",
-			unit, unit);
-
-		fprintf(stderr, "\n");
-		fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
-			(void *) fake_reg, (long) fake_reg & (unit-1));
-		fprintf(stderr, "\n");
-
-		for (zone = used_memory_zones; zone; zone = zone->next)
-		{
-			fprintf(stderr, "%-16s#%d-base	= %p\n",
-				zone->name, zone->id, (void *) zone->bottom);
-			fprintf(stderr, "%-16s#%d-min		= %p\n",
-				zone->name, zone->id, (void *) zone->min);
-			fprintf(stderr, "%-16s#%d-top		= %p\n",
-				zone->name, zone->id, (void *) zone->top);
+		zone_table[i].name = "unused";
+		zone_table[i].id = i;
+		zone_table[i].bottom = NULL;
+		zone_table[i].top = NULL;
+		zone_table[i].min = NULL;
+#ifndef SPEED
+		zone_table[i].max = NULL;
+#endif
 #ifdef	HAVE_MPROTECT
 #ifdef	HAVE_SIGINFO
-			fprintf(stderr, "%-16s#%d-redzone	= %p\n",
-				zone->name, zone->id, (void *) zone->redzone);
-#endif	/* HAVE_SIGINFO */
-			fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
-				zone->name, zone->id, (void *) zone->hardmax);
-#endif	/* HAVE_MPROTECT */
-			fprintf(stderr, "%-16s#%d-size		= %lu\n",
-				zone->name, zone->id, (unsigned long)
-				((char *)zone->hardmax - (char *)zone->min));
-			fprintf(stderr, "\n");
-		}
+		zone_table[i].redzone = NULL;
+#endif
+		zone_table[i].hardmax = NULL;
+#endif
+		if (i+1 < MAX_ZONES)
+			zone_table[i].next = &(zone_table[i+1]);
+		else
+			zone_table[i].next = NULL;
 	}
+
+	offset_counter = allocate_words(1);
+	*offset_counter = 0;
+
+	offset_vector = allocate_words(CACHE_SLICES - 1);
+
+	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
+
+	for (i = 0; i < CACHE_SLICES - 1; i++)
+		offset_vector[i] =
+			(fake_reg_offset + pcache_size / CACHE_SLICES)
+			% pcache_size;
+}
+
+
+void init_heap(void)
+{
+#ifndef CONSERVATIVE_GC
+	heap_zone = construct_zone("heap", 1, heap_size, next_offset(),
+			heap_zone_size, default_handler);
+
+	restore_transient_registers();
+	hp = heap_zone->min;
+	save_transient_registers();
+
+	solutions_heap_zone = construct_zone("solutions_heap", 1,
+			solutions_heap_size, next_offset(),
+			solutions_heap_zone_size, default_handler);
+
+#endif
 }
 
 MemoryZone *get_zone(void)
@@ -486,14 +366,34 @@ void unget_zone(MemoryZone *zone)
 	free_memory_zones = zone;
 }
 
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+/*
+** successive calls to next_offset return offsets modulo the primary
+** cache size (carefully avoiding ever giving an offset that clashes
+** with fake_reg_array). This is used to give different memory zones
+** different starting points across the caches so that it is better
+** utilized.
+** An alternative implementation would be to increment the offset by
+** a fixed amount (eg 2Kb) so that as primary caches get bigger, we
+** allocate more offsets across them.
+*/
+Word	next_offset(void)
+{
+	Word offset;
+
+	get_lock(offset_lock);
+
+	offset = offset_vector[*offset_counter];
+
+	*offset_counter = (*offset_counter + 1) % (CACHE_SLICES - 1);
+
+	release_lock(offset_lock);
+
+	return offset;
+}
+
 MemoryZone *create_zone(const char *name, int id, unsigned size,
 		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
-#else	/* !HAVE_SIGINFO */
-MemoryZone *create_zone(const char *name, int id, unsigned size,
-		unsigned offset)
-#endif
 {
 	Word		*base;
 	unsigned	total_size;
@@ -511,6 +411,7 @@ MemoryZone *create_zone(const char *name, int id, unsigned size,
 	total_size = size + unit;
 #endif
 
+#ifndef	PARALLEL
 	base = memalign(unit, total_size);
 	if (base == NULL)
 	{
@@ -518,22 +419,16 @@ MemoryZone *create_zone(const char *name, int id, unsigned size,
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
 		fatal_error(buf);
 	}
-
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-	return construct_zone(name, id, base, size, offset, redsize, handler);
 #else
-	return construct_zone(name, id, base, size, offset);
+#error	"allocation in shared memory not supported yet"
 #endif
+
+	return construct_zone(name, id, base, size, offset, redsize, handler);
 }
 
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
-#else
-MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
-		unsigned offset)
-#endif
 {
 	MemoryZone	*zone;
 	unsigned	total_size;
@@ -569,7 +464,7 @@ MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 	*/
 #ifdef	HAVE_MPROTECT
 #ifdef	HAVE_SIGINFO
-	zone->redzone = (Word *)
+	zone->redzone_base = zone->redzone = (Word *)
 			round_up((Unsigned)base+size-redsize, unit);
 	if (mprotect((char *)zone->redzone, redsize+unit, MY_PROT) < 0)
 	{
@@ -595,6 +490,23 @@ MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 	return zone;
 }
 
+void reset_zone(MemoryZone *zone)
+{
+#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+	zone->redzone = zone->redzone_base;
+
+	if (mprotect((char *)zone->redzone,
+		((char *)zone->top) - ((char *) zone->redzone), MY_PROT) < 0)
+	{
+		char buf[2560];
+		sprintf(buf, "unable to reset %s#%d redzone\n"
+			"base=%p, redzone=%p",
+			zone->name, zone->id, zone->bottom, zone->redzone);
+		fatal_error(buf);
+	}
+#endif
+}
+
 #ifdef	HAVE_MPROTECT
 
 #ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
@@ -609,7 +521,7 @@ static void print_dump_stack(void)
 	write(STDERR, msg, strlen(msg));
 }
 
-#else
+#else /* !SPEED */
 
 static void print_dump_stack(void)
 {
@@ -651,7 +563,7 @@ static void print_dump_stack(void)
 
 }
 
-#endif
+#endif /* SPEED */
 
 /*
 ** fatal_abort() prints an error message, possibly a stack dump, and then exits.
@@ -714,7 +626,7 @@ static bool try_munprotect(void *addr, void *context)
 	return FALSE;
 }
 
-static bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
 	Word *new_zone;
 	Unsigned zone_size;
@@ -773,7 +685,7 @@ static bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     return FALSE;
 }
 
-static bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
@@ -790,6 +702,16 @@ static bool try_munprotect(void *addr, void *context)
 }
 
 #endif /* HAVE_SIGINFO */
+
+bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
+{
+	return FALSE;
+}
+
+bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+{
+	return FALSE;
+}
 
 #endif /* not HAVE_MPROTECT */
 
@@ -1005,3 +927,58 @@ default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 }
 
 #endif
+
+#ifdef	CONSERVATIVE_GC
+
+void *allocate_bytes(int numbytes)
+{
+	void	*tmp;
+
+	tmp = GC_MALLOC(numbytes);
+	
+	if (tmp == NULL)
+		fatal_error("could not allocate memory");
+
+	return tmp;
+}
+
+#else
+
+#ifdef	PARALLEL
+#error "shared memory not implemented"
+#endif
+
+void *allocate_bytes(int numbytes)
+{
+	void	*tmp;
+
+	tmp = malloc(numbytes);
+	
+	if (tmp == NULL)
+		fatal_error("could not allocate memory");
+
+	return tmp;
+}
+
+#endif
+
+Word *allocate_words(int numwords)
+{
+	return (Word *)allocate_bytes(numwords*sizeof(Word));
+}
+
+SpinLock *allocate_lock(void)
+{
+	return (SpinLock *)allocate_bytes(sizeof(SpinLock));
+}
+
+void deallocate_memory(void *ptr)
+{
+#ifdef CONSERVATIVE_GC
+	GC_FREE(ptr);
+#elif	PARALLEL
+#error	Shared memory not implemented
+#else
+	free(ptr);
+#endif
+}

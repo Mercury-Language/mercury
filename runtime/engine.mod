@@ -30,10 +30,23 @@ bool	debugflag[MAXFLAG];
 
 static jmp_buf *engine_jmp_buf;
 
+/*
+** init_engine() calls init_memory() which sets up all the necessary
+** stuff for allocating memory-zones and other runtime areas (such as
+** the zone structures and context structures). If PARALLEL is defined,
+** this will cause the shared memory to be allocated.
+** Next, init_engine() calls init_processes() which fork()s the right
+** number of processes, and initializes the data structures for coordinating
+** the interaction between multiple processes.
+** Finally, init_engine() calls init_process_context() which initializes the
+** local context for this process including the heap and solutions heap.
+** If it is the original process, it allocates the initial context for main.
+*/
 void init_engine(void)
 {
 	init_memory();
-	init_registers();
+	init_processes();
+	init_process_context();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	make_label("engine_done", LABEL(engine_done));
@@ -58,6 +71,26 @@ static void init_registers(void)
 	nondetstack_zone->min = maxfr;				
 
 	save_transient_registers();
+}
+
+/*
+** start_mercury_engine(Code *entry_point)
+**
+** This routine is the top-level entry point into the Mercury runtime
+** engine. It should only be called once.
+**
+** It invokes call_engine(entry_point) for the first process, and if there are
+** other processes, they call call_engine(do_runnext) which makes them sleep
+** until work becomes available.
+*/
+
+void start_mercury_engine(Code *entry_point)
+{
+	if (my_procnum == 0) {
+		call_engine(entry_point);
+	} else {
+		call_engine(ENTRY(do_runnext));
+	}
 }
 
 /*
