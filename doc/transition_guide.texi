@@ -269,7 +269,7 @@ and produces a new one,
 it is not possible for IO to be performed in a context that may fail,
 since when failure occurs the old state of the world will have been destroyed,
 and since bindings cannot be exported from a failing computation,
-the new state of the world is not accessable.
+the new state of the world is not accessible.
 
 In some circumstances, Prolog programs that suffer from this problem
 can be fixed by moving the IO out of the failing context.
@@ -359,7 +359,8 @@ dynamically depending on the size and characteristics of the data.
 Failure driven loops in Prolog programs
 should be transformed into ordinary tail recursion in Mercury.
 This does have the disadvantage
-that the heap space used by the failing clause is not reclaimed,
+that the heap space used by the failing clause
+is not reclaimed immediately but only through garbage collection,
 but we are working on ways to fix this problem.
 In any case, the transformed code is more declarative
 and hence easier to maintain and understand for humans
