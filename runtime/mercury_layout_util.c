@@ -63,6 +63,30 @@ MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs)
 	save_transient_registers();
 }
 
+	/* 
+	** Dummy type_ctor_info for stack layouts.
+	** This is used by MR_materialize_type_infos_base().
+	** The only important thing about the contents
+	** of this dummy type_ctor_info is that the
+	** arity should be the maximum arity,
+	** so that any type variables are treated as
+	** universally quantified when the type_info is
+	** passed to MR_get_arg_type_info().
+	*/
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_stack_layout_0 = {
+	TYPE_CTOR_LAYOUT_MAX_VARINT, /* arity = maximum */
+	0,
+	0,
+	0,
+	MR_TYPECTOR_REP_UNKNOWN,
+	0,
+	0,
+	string_const("private_builtin", 7),
+	string_const("stack_layout", 4),
+	MR_RTTI_VERSION
+};
+
 Word *
 MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
 	Word *saved_regs)
@@ -85,11 +109,11 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 		type_params = MR_NEW_ARRAY(Word, count + 1);
 
 		/*
-		** type_params should look like a typeinfo; but
-		** type_params[0], which normally holds the type_ctor_info,
-		** will be a null pointer.
+		** type_params should look like a typeinfo, so
+		** we need to fill in type_params[0] with a dummy type_ctor_info.
 		*/
-		type_params[0] = (Word) NULL;
+		type_params[0] = (Word)
+			&mercury_data___type_ctor_info_stack_layout_0;
 		for (i = 0; i < count; i++) {
 			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
 				type_params[i + 1] = MR_lookup_long_lval_base(

@@ -131,8 +131,8 @@ END_MODULE
 	** MR_create_type_info():
 	**
 	** Given a type_info `term_type_info' which contains a
-	** type_ctor_info pointer (which may be NULL) and possibly other
-	** type_infos giving the values of the type parameters of this type,
+	** type_ctor_info pointer and possibly other type_infos
+	** giving the values of the type parameters of this type,
 	** and given a pseudo-type_info `arg_pseudo_type_info', which contains
 	** a type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
@@ -276,18 +276,6 @@ MR_get_arg_type_info(const Word *term_type_info,
 	arg_num = (Unsigned) arg_pseudo_type_info;
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info);
-	if (type_ctor_info == NULL) {
-		/*
-		** The term_type_info is not a real type_info, it is just
-		** a vector of type_infos for the arguments with a null
-		** type_ctor_info.  Such fake type_infos are created
-		** by MR_materialize_type_infos().  For them, we treat
-		** all the type variables as being universally quantified,
-		** i.e. coming from the arg_pseudo_type_info.
-		*/
-		arg_type_info = (Word *) term_type_info[arg_num];
-		return arg_type_info;
-	}
 
 	num_univ_type_infos = type_ctor_info->arity;
 	if (arg_num <= num_univ_type_infos) {
@@ -511,8 +499,8 @@ MR_deallocate(MR_MemoryList allocated)
 
 	/* 
 	** Given a type_info `term_type_info' which contains a
-	** type_ctor_info pointer (which may be NULL) and possibly other
-	** type_infos giving the values of the type parameters of this type,
+	** type_ctor_info pointer and possibly other type_infos
+	** giving the values of the type parameters of this type,
 	** and given a pseudo-type_info `arg_pseudo_type_info', which contains
 	** a type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
