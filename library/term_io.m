@@ -39,8 +39,8 @@
 
 :- type read_term	== read_term(generic).
 
-:- pred term_io__read_term(S, read_term(T), io__state, io__state) <= stream(S).
-:- mode term_io__read_term(in, out, di, uo) is det.
+:- pred term_io__read_term(read_term(T), io__state, io__state).
+:- mode term_io__read_term(out, di, uo) is det.
 
 %	term_io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
@@ -169,21 +169,21 @@ term_io__read_term(Result) -->
 term_io__write_variable(Variable, VarSet) -->
 	term_io__write_variable_2(Variable, VarSet, 0, _, _).
 
-:- pred term_io__write_variable_2(S, var(T), varset(T), int, varset(T), int,
-				io__state, io__state) <= stream(S).
-:- mode term_io__write_variable_2(in, in, in, in, out, out, di, uo) is det.
+:- pred term_io__write_variable_2(var(T), varset(T), int, varset(T), int,
+				io__state, io__state).
+:- mode term_io__write_variable_2(in, in, in, out, out, di, uo) is det.
 
-term_io__write_variable_2(Stream, Id, VarSet0, N0, VarSet, N) -->
+term_io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	(
 		{ varset__search_var(VarSet0, Id, Val) }
 	->
-		term_io__write_term_2(Stream, Val, VarSet0, N0, VarSet, N)
+		term_io__write_term_2(Val, VarSet0, N0, VarSet, N)
 	;
 		{ varset__search_name(VarSet0, Id, Name) }
 	->
 		{ N = N0 },
 		{ VarSet = VarSet0 },
-		stream__write_string(Stream, Name)
+		io__write_string(Name)
 	;
 		% XXX problems with name clashes
 
@@ -192,7 +192,7 @@ term_io__write_variable_2(Stream, Id, VarSet0, N0, VarSet, N) -->
 		{ string__append("_", Num, VarName) },
 		{ varset__name_var(VarSet0, Id, VarName, VarSet) },
 		{ N is N0 + 1 },
-		stream__write_string(Stream, VarName)
+		io__write_string(VarName)
 	).
 
 %-----------------------------------------------------------------------------%
