@@ -6,7 +6,7 @@ eval "exec perl -S $0 $*"
     if $running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-2001 The University of Melbourne.
+# Copyright (C) 1994-2001, 2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -241,6 +241,7 @@ sub output_name {
 	$match_line = $_;
 	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
 	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
+	$match_line =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
 	# $src_name holds the name as it was in the original source
 	$src_name = $name;
@@ -261,6 +262,19 @@ sub output_name {
 }
 
 sub output_single_name() {
+	# Output tag using `__' as module qualifier.
+	do output_single_tag();
+
+	# Output tag using `.' as module qualifier.
+	if ($name =~ /__/) {
+		$save_name = $name;
+		$name =~ s/__/./g;
+		do output_single_tag();
+		$name = $save_name;
+	}
+}
+
+sub output_single_tag() {
 	if (!$emacs && !$keep_dups && $seen{$name}) {
 	    if ($warnings &&
 		$file ne $prev_file{$name} &&
