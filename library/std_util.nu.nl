@@ -6,6 +6,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred report_stats.
+
 report_stats :-
 	statistics(L),
 	member(global=[Heap,_], L),
@@ -22,6 +23,8 @@ report_stats :-
 %-----------------------------------------------------------------------------%
 
 :- pred gc_call(pred).
+:- mode gc_call(pred_call).
+
 gc_call(Goal) :-
 	findall(Goal, Goal, List),
 	my_member(Goal, List).
@@ -45,5 +48,12 @@ my_member_2([], X, X).
 my_member_2(_._, X, X).
 my_member_2(H.T, _, X) :-
 	my_member_2(T, H, X).
+
+%-----------------------------------------------------------------------------%
+
+	% We call findall/3 rather than solutions/3 for efficiency.
+
+solutions(P, L) :-
+	findall(X, call(P, X), L).
 
 %-----------------------------------------------------------------------------%

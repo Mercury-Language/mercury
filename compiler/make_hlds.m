@@ -644,6 +644,10 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
 	).
 
+	% When we rewrite this to transform to superhomeneous form,
+	% this pred should operator on hlds__goals instead of goals
+	% so that it can insert additional context info.
+
 :- pred insert_head_unifications(list(term), list(var), goal, goal).
 :- mode insert_head_unifications(input, input, input, output).
 
@@ -729,8 +733,9 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 
 	goalinfo_init(GoalInfo).
 
-transform_goal(unify(A, B), unify(A, B, Mode, UnifyInfo) - GoalInfo) :-
+transform_goal(unify(A, B), unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo) :-
 	goalinfo_init(GoalInfo),
+	UnifyC = unify_context(explicit, []),
 		% fill in unused slots with garbage values
 	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(Mode, A, B).

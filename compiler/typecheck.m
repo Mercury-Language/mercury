@@ -1747,20 +1747,25 @@ write_type_assign(TypeAssign, VarSet) -->
 	  type_assign_get_var_types(TypeAssign, VarTypes),
 	  type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	  type_assign_get_typevarset(TypeAssign, TypeVarSet),
-	  map__keys(VarTypes, Vars),
-	  Vars = [Var | Vars1]
+	  map__keys(VarTypes, Vars)
 	},
-	( 
-		{ map__search(VarTypes, Var, Type) },
-		{ varset__lookup_name(VarSet, Var, _) }
-	->
-		io__write_variable(Var, VarSet),
-		io__write_string(" :: "),
-		write_type_b(Type, TypeVarSet, TypeBindings)
+	 
+	( { Vars = [Var | Vars1] } ->
+		( 
+			{ map__search(VarTypes, Var, Type) },
+			{ varset__lookup_name(VarSet, Var, _) }
+		->
+			io__write_variable(Var, VarSet),
+			io__write_string(" :: "),
+			write_type_b(Type, TypeVarSet, TypeBindings)
+		;
+			[]
+		),
+		write_type_assign_2(Vars1, VarSet, VarTypes, TypeBindings,
+			TypeVarSet)
 	;
-		[]
+		io__write_string("(No variables were assigned a type)")
 	),
-	write_type_assign_2(Vars1, VarSet, VarTypes, TypeBindings, TypeVarSet),
 	io__write_string("\n").
 
 :- pred write_type_assign_2(list(var), varset, map(var, type),
