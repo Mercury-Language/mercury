@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2004 University of Melbourne.
+# Copyright (C) 2002-2005 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -8,6 +8,11 @@
 
 MCFLAGS-mer_browser = --no-warn-nothing-exported
 MCFLAGS-mer_mdbcomp = --no-warn-nothing-exported
+
+# XXX Disable higher order specialization for declarative_edt since this
+# optimization has a suspected bug that mdb.declarative_edt.revise_root/3
+# exposes.
+MCFLAGS-mdb.declarative_edt = --no-optimize-higher-order
 
 EXTRA_LIBRARIES-libmer_browser.so = mer_mdbcomp
 EXTRA_LIBRARIES-libmer_browser.dylib = mer_mdbcomp

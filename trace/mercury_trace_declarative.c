@@ -290,6 +290,8 @@ MR_bool MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 
 MR_Integer	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
 
+MR_bool		MR_trace_decl_in_dd_dd_mode = MR_FALSE;
+
 /*
 ** This function is called for every traced event when building the
 ** annotated trace.  It must decide which events are included in the 
@@ -1553,7 +1555,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
-	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DEBUG) {
+	if (MR_trace_decl_in_dd_dd_mode) {
 		/*
 		** This is a quick and dirty way to debug the front end.
 		*/
@@ -1601,6 +1603,15 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				(MR_Integer *) &topmost_seqno);
 	);
 
+	/*
+	** Turn off interactive debugging after the diagnosis in case a new
+	** explicit subtree or supertree needs to be constructed.
+	*/
+	if (MR_trace_decl_in_dd_dd_mode) {
+		MR_debug_enabled = MR_FALSE;
+		MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
+	}
+	
 	MR_trace_call_seqno = event_details->MR_call_seqno;
 	MR_trace_call_depth = event_details->MR_call_depth;
 	MR_trace_event_number = event_details->MR_event_number;

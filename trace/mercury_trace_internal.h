@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,13 +22,9 @@
 typedef enum {
 	MR_TRACE_INTERACTIVE,	 	/* Use internal debugger. */
 	MR_TRACE_DECL_DEBUG,		/* Normal declarative debugging. */
-	MR_TRACE_DECL_DEBUG_DUMP,	/*
+	MR_TRACE_DECL_DEBUG_DUMP	/*
 					** Output debugging info to a file
 					** for separate analysis.
-					*/
-	MR_TRACE_DECL_DEBUG_DEBUG	/*
-					** Generate trace events for the
-					** debugging front end.
 					*/
 } MR_Trace_Mode;
 

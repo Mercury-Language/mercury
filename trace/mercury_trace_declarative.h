@@ -127,4 +127,13 @@ typedef MR_Word MR_Trace_Node;
 
 extern	MR_Integer	MR_edt_depth_step_size;
 
+/*
+** The following variable indicates whether the declarative debugger was 
+** invoked using the dd_dd command.  It is needed so that the declarative
+** debugger can continue to be debugged after a new portion of the 
+** annotated trace has been generated.
+*/
+
+extern	MR_bool		MR_trace_decl_in_dd_dd_mode;
+
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

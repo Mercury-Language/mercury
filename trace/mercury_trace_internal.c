@@ -5577,6 +5577,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
 	search_mode = MR_trace_get_default_search_mode();
+	MR_trace_decl_in_dd_dd_mode = MR_FALSE;
 		
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
 		&MR_edt_depth_step_size, &search_mode,
@@ -5618,6 +5619,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
 	search_mode = MR_trace_get_default_search_mode();
+	MR_trace_decl_in_dd_dd_mode = MR_TRUE;
 	
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
 		&MR_edt_depth_step_size, &search_mode,
@@ -5629,7 +5631,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			trace_mode = MR_TRACE_DECL_DEBUG_DUMP;
 			filename = (const char *) words[1];
 		} else {
-			trace_mode = MR_TRACE_DECL_DEBUG_DEBUG;
+			trace_mode = MR_TRACE_DECL_DEBUG;
 			filename = (const char *) NULL;
 		} 
 
