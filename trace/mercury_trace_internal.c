@@ -5052,10 +5052,12 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "misc", "quit", MR_trace_cmd_quit,
 		MR_trace_quit_cmd_args, NULL},
 
+#ifdef MR_USE_DECLARATIVE_DEBUGGER
 	{ "dd", "dd", MR_trace_cmd_dd,
 		NULL, MR_trace_null_completer},
 	{ "dd", "dd_dd", MR_trace_cmd_dd_dd,
 		NULL, MR_trace_filename_completer},
+#endif
 
 	/* End of doc/mdb_command_list. */
 	{ NULL, "NUMBER", NULL,
