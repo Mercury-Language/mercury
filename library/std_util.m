@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,8 +22,9 @@
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
-
+%
 % The universal type `univ'.
+%
 % An object of type `univ' can hold the type and value of an object of any
 % other type.
 
@@ -65,8 +66,7 @@
 	% 	the same as the forwards mode of univ_to_type, but
 	% 	abort if univ_to_type fails.
 	%
-:- pred det_univ_to_type(univ, T).
-:- mode det_univ_to_type(in, out) is det.
+:- pred det_univ_to_type(univ::in, T::out) is det.
 
 	% univ_type(Univ):
 	%	returns the type_desc for the type stored in `Univ'.
@@ -78,8 +78,9 @@
 :- some [T] func univ_value(univ) = T.
 
 %-----------------------------------------------------------------------------%
-
+%
 % The "maybe" type.
+%
 
 :- type maybe(T) ---> no ; yes(T).
 :- inst maybe(I) ---> no ; yes(I).
@@ -104,6 +105,7 @@
 
 	% fold_maybe(P, yes(Value), Acc0, Acc) :- P(Value, Acc0, Acc).
 	% fold_maybe(_, no, Acc, Acc).
+	%
 :- pred fold_maybe(pred(T, U, U), maybe(T), U, U).
 :- mode fold_maybe(pred(in, in, out) is det, in, in, out) is det.
 :- mode fold_maybe(pred(in, in, out) is semidet, in, in, out) is semidet.
@@ -111,6 +113,7 @@
 
 	% fold_maybe(F, yes(Value), Acc0) = F(Acc0).
 	% fold_maybe(_, no, Acc) = Acc.
+	%
 :- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
 
 	% map_fold_maybe(P, yes(Value0), yes(Value), Acc0, Acc) :-
@@ -122,6 +125,7 @@
 :- mode map_fold_maybe(pred(in, out, di, uo) is det, in, out, di, uo) is det.
 
 	% As above, but with two accumulators.
+	%
 :- pred map_fold2_maybe(pred(T, U, Acc1, Acc1, Acc2, Acc2),
 	maybe(T), maybe(U), Acc1, Acc1, Acc2, Acc2).
 :- mode map_fold2_maybe(pred(in, out, in, out, in, out) is det, in, out,
@@ -130,16 +134,18 @@
 	in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
-
+%
 % The "unit" type - stores no information at all.
+%
 
 :- type unit		--->	unit.
 
 :- type unit(T)		--->	unit1.
 
 %-----------------------------------------------------------------------------%
-
+%
 % The "pair" type.  Useful for many purposes.
+%
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 :- type pair(T)		==	pair(T,T).
@@ -147,10 +153,12 @@
 :- inst pair(I)		==	pair(I,I).
 
 	% Return the first element of the pair.
+	%
 :- pred fst(pair(X,Y)::in, X::out) is det.
 :- func fst(pair(X,Y)) = X.
 
 	% Return the second element of the pair.
+	%
 :- pred snd(pair(X,Y)::in, Y::out) is det.
 :- func snd(pair(X,Y)) = Y.
 
@@ -299,21 +307,25 @@
 	is cc_multi.
 
 %-----------------------------------------------------------------------------%
-
-	% General purpose higher-order programming constructs.
+%
+% General purpose higher-order programming constructs.
+%
 
 	% compose(F, G, X) = F(G(X))
 	%
 	% Function composition.
 	% XXX It would be nice to have infix `o' or somesuch for this.
+	%
 :- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
 
-	% converse(F, X, Y) = F(Y, X)
+	% converse(F, X, Y) = F(Y, X).
+	%
 :- func converse(func(T1, T2) = T3, T2, T1) = T3.
 
 	% pow(F, N, X) = F^N(X)
 	%
 	% Function exponentiation.
+	% 
 :- func pow(func(T) = T, int, T) = T.
 
 	% The identity function.
@@ -341,8 +353,7 @@
 	% 	Odds  = list__filter(odd, Xs)
 	% 	Evens = list__filter(isnt(odd), Xs)
 	%
-:- pred isnt(pred(T), T).
-:- mode isnt(pred(in) is semidet, in) is semidet.
+:- pred isnt(pred(T)::(pred(in) is semidet), T::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -369,13 +380,13 @@
 	% provide access to type information.
 	% A type_desc represents a type, e.g. `list(int)'.
 	% A type_ctor_desc represents a type constructor, e.g. `list/1'.
-
+	%
 :- type type_desc == type_desc__type_desc.
 :- type type_ctor_desc == type_desc__type_ctor_desc.
 
 	% Type_info and type_ctor_info are the old names for type_desc and
 	% type_ctor_desc. They should not be used by new software.
-
+	%
 :- type type_info == type_desc__type_desc.
 :- type type_ctor_info == type_desc__type_ctor_desc.
 
@@ -391,13 +402,13 @@
 	% The function type_of/1 returns a representation of the type
 	% of its argument.
 	%
-:- func type_of(T) = type_desc__type_desc.
-:- mode type_of(unused) = out is det.
+:- func type_of(T::unused) = (type_desc__type_desc::out) is det.
 
 	% The predicate has_type/2 is basically an existentially typed
 	% inverse to the function type_of/1.  It constrains the type
 	% of the first argument to be the type represented by the
 	% second argument.
+	%
 :- some [T] pred has_type(T::unused, type_desc__type_desc::in) is det.
 
 	% type_name(Type) returns the name of the specified type
@@ -427,9 +438,9 @@
 	% (If you don't want them expanded, you can use the reverse mode
 	% of make_type/2 instead.)
 	%
-:- pred type_ctor_and_args(type_desc__type_desc, type_desc__type_ctor_desc,
-	list(type_desc__type_desc)).
-:- mode type_ctor_and_args(in, out, out) is det.
+:- pred type_ctor_and_args(type_desc__type_desc::in,
+	type_desc__type_ctor_desc::out, list(type_desc__type_desc)::out)
+	is det.
 
 	% type_ctor(Type) = TypeCtor :-
 	%	type_ctor_and_args(Type, TypeCtor, _).
@@ -542,6 +553,7 @@
 	% for the specified type of the function symbol that is in position I
 	% in lexicographic order. Fails if the type is not a discriminated
 	% union type, or if I is out of range.
+	%
 :- pred get_functor_ordinal(type_desc__type_desc::in, int::in, int::out)
 	is semidet.
 
@@ -555,12 +567,12 @@
 	% functor, or if the types of the arguments do not match
 	% the expected argument types of that functor.
 	%
-:- func construct(type_desc__type_desc, int, list(univ)) = univ.
-:- mode construct(in, in, in) = out is semidet.
+:- func construct(type_desc__type_desc, int, list(univ)) = univ is semidet.
 
 	% construct_tuple(Args) = Term
 	%
 	% Returns a tuple whose arguments are given by Args.
+	%
 :- func construct_tuple(list(univ)) = univ.
 
 %-----------------------------------------------------------------------------%
@@ -717,6 +729,7 @@
 :- pred limited_deconstruct_cc(T::in, int::in,
 	maybe({string, int, list(univ)})::out) is cc_multi.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

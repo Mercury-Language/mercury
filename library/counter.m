@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,15 +23,21 @@
 
 	% counter_init(N, Counter) returns a counter whose first allocation
 	% will be the integer N.
+	%
 :- pred counter__init(int::in, counter::out) is det.
 
 	% A function version of counter__init/2.
+	%
 :- func counter__init(int) = counter.
 
 	% counter__allocate(N, Counter0, Counter) takes a counter, and
 	% returns (a) the next integer to be allocated from that counter,
 	% and (b) the updated state of the counter.
+	%
 :- pred counter__allocate(int::out, counter::in, counter::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------r
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -224,8 +224,8 @@
 	% will be be written out in full.  If an embedded DTD is requested, but
 	% it is not possible to generate a DTD for Term using ElementMapping,
 	% then a value other than `ok' is returned in DTDResult and nothing is
-	% written out.  See the dtd_generation_result type for a list of the other
-	% possible values of DTDResult and their meanings.
+	% written out.  See the dtd_generation_result type for a list of the
+	% other possible values of DTDResult and their meanings.
 	%
 :- pred write_xml_doc_cc(T::in, element_mapping::in(element_mapping), 
 	maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,

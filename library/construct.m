@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,6 +62,7 @@
     % for the specified type of the function symbol that is in position I
     % in lexicographic order. Fails if the type is not a discriminated
     % union type, or if I is out of range.
+    %
 :- pred get_functor_ordinal(type_desc__type_desc::in, int::in, int::out)
     is semidet.
 
@@ -81,8 +82,10 @@
     % construct_tuple(Args) = Term
     %
     % Returns a tuple whose arguments are given by Args.
+    %
 :- func construct_tuple(list(univ)) = univ.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2004 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -56,6 +56,7 @@
 
 	% random__init(Seed, RS): creates a supply of random numbers RS
 	% using the specified Seed.
+	%
 :- pred random__init(int::in, random__supply::uo) is det.
 
 	% random__random(Num, RS0, RS): extracts a number Num in the
@@ -70,6 +71,7 @@
 	% supply RS0, and binds RS to the new state of the random number
 	% supply.  For best results, the value of Range should be no greater
 	% than about 100.
+	%
 :- pred random__random(int, int, int, random__supply, random__supply).
 :- mode random__random(in, in, out, mdi, muo) is det.
 :- mode random__random(in, in, out, in, out) is det.
@@ -77,6 +79,7 @@
 	% random__randmax(RandMax, RS0, RS): binds RandMax to the maximum
 	% random number that can be returned from the random number
 	% supply RS0, and returns RS = RS0.
+	%
 :- pred random__randmax(int, random__supply, random__supply).
 :- mode random__randmax(out, mdi, muo) is det.
 :- mode random__randmax(out, in, out) is det.
@@ -85,6 +88,7 @@
 	% number of distinct random numbers that can be returned from the
 	% random number supply RS0, and returns RS = RS0.  This will be one
 	% more than the number returned by randmax/3.
+	%
 :- pred random__randcount(int, random__supply, random__supply).
 :- mode random__randcount(out, mdi, muo) is det.
 :- mode random__randcount(out, in, out) is det.
@@ -92,10 +96,12 @@
 	% random__permutation(List0, List, RS0, RS):
 	% binds List to a random permutation of List0,
 	% and binds RS to the new state of the random number supply.
+	%
 :- pred random__permutation(list(T), list(T), random__supply, random__supply).
 :- mode random__permutation(in, out, mdi, muo) is det.
 :- mode random__permutation(in, out, in, out) is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

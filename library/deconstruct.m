@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -130,8 +130,8 @@
 	% arg_cc/3 is similar to arg/4, except that it
 	% handles arguments with non-canonical types.
 	% See the documentation of std_util__arg_cc.
-:- pred arg_cc(T, int, std_util__maybe_arg).
-:- mode arg_cc(in, in, out) is cc_multi.
+	%
+:- pred arg_cc(T::in, int::in, std_util__maybe_arg::out) is cc_multi.
 
 	% named_arg(Data, NonCanon, Name, Argument)
 	%
@@ -146,8 +146,8 @@
 
 	% named_arg_cc/3 is similar to named_arg/4, except that it
 	% handles arguments with non-canonical types.
-:- pred named_arg_cc(T, string, std_util__maybe_arg) is cc_multi.
-:- mode named_arg_cc(in, in, out) is cc_multi.
+	%
+:- pred named_arg_cc(T::in, string::in, std_util__maybe_arg::out) is cc_multi.
 
 	% det_arg(Data, NonCanon, Index, Argument)
 	%
@@ -211,8 +211,12 @@
 	is semidet.
 
 	% See the documentation of std_util__limited_deconstruct_cc.
-:- pred limited_deconstruct_cc(T, int, maybe({string, int, list(univ)})).
-:- mode limited_deconstruct_cc(in, in, out) is cc_multi.
+	%
+:- pred limited_deconstruct_cc(T::in, int::in,
+	maybe({string, int, list(univ)})::out) is cc_multi.
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 :- interface.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 
 	% This function allows the caller to look into the structure
 	% of the given pseudo_type_desc.
+	%
 :- func pseudo_type_desc_to_rep(pseudo_type_desc) = pseudo_type_rep.
 
 	% Convert a type_desc, which by definition describes a ground
@@ -56,11 +57,13 @@
 
 	% Convert a pseudo_type_desc describing a ground type to a type_desc.
 	% If the pseudo_type_desc describes a non-ground type, fail.
+	%
 :- func ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc
 	is semidet.
 
 	% Convert a pseudo_type_desc describing a ground type to a type_desc.
 	% If the pseudo_type_desc describes a non-ground type, abort.
+	%
 :- func ground_pseudo_type_desc_to_type_desc_det(pseudo_type_desc) = type_desc
 	is det.
 
@@ -82,6 +85,7 @@
 	% inverse to the function type_of/1.  It constrains the type
 	% of the first argument to be the type represented by the
 	% second argument.
+	%
 :- some [T] pred has_type(T::unused, type_desc__type_desc::in) is det.
 
 	% type_name(Type) returns the name of the specified type
@@ -204,6 +208,7 @@
 :- func det_make_type(type_desc__type_ctor_desc, list(type_desc__type_desc)) =
 	type_desc__type_desc.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -21,7 +21,7 @@
 
 	% `set_unordlist__list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'.
-
+	%
 :- pred set_unordlist__list_to_set(list(T)::in, set_unordlist(T)::out) is det.
 :- func set_unordlist__list_to_set(list(T)) = set_unordlist(T).
 
@@ -31,7 +31,7 @@
 
 	% `set_unordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
-
+	%
 :- pred set_unordlist__sorted_list_to_set(list(T)::in, set_unordlist(T)::out)
 	is det.
 :- func set_unordlist__sorted_list_to_set(list(T)) = set_unordlist(T).
@@ -42,19 +42,19 @@
 
 	% `set_unordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
-
+	%
 :- pred set_unordlist__to_sorted_list(set_unordlist(T)::in, list(T)::out)
 	is det.
 :- func set_unordlist__to_sorted_list(set_unordlist(T)) = list(T).
 
 	% `set_unordlist__init(Set)' is true iff `Set' is an empty set.
-
+	%
 :- pred set_unordlist__init(set_unordlist(_T)::uo) is det.
 :- func set_unordlist__init = set_unordlist(T).
 
 	% `set_unordlist__singleton_set(Set, Elem)' is true iff `Set' is the set
 	% containing just the single element `Elem'.
-
+	%
 :- pred set_unordlist__singleton_set(set_unordlist(T), T).
 :- mode set_unordlist__singleton_set(in, out) is semidet.
 :- mode set_unordlist__singleton_set(out, in) is det.
@@ -63,46 +63,46 @@
 
 	% `set_unordlist__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
-
+	%
 :- pred set_unordlist__equal(set_unordlist(T)::in, set_unordlist(T)::in)
 	is semidet.
 
 	% `set_unordlist__empty(Set)' is true iff `Set' is an empty set.
-
+	%
 :- pred set_unordlist__empty(set_unordlist(_T)::in) is semidet.
 
 	% `set_unordlist__subset(SetA, SetB)' is true iff `SetA' is a subset of
 	% `SetB'.
-
+	%
 :- pred set_unordlist__subset(set_unordlist(T)::in, set_unordlist(T)::in)
 	is semidet.
 
 	% `set_unordlist__superset(SetA, SetB)' is true iff `SetA' is a
 	% superset of `SetB'.
-
+	%
 :- pred set_unordlist__superset(set_unordlist(T)::in, set_unordlist(T)::in)
 	is semidet.
 
 	% `set_unordlist__member(X, Set)' is true iff `X' is a member of `Set'.
-
+	%
 :- pred set_unordlist__member(T, set_unordlist(T)).
 :- mode set_unordlist__member(in, in) is semidet.
 :- mode set_unordlist__member(out, in) is nondet.
 
 	% `set_unordlist__is_member(X, Set, Result)' returns
 	% `Result = yes' iff `X' is a member of `Set'.
-
+	%
 :- pred set_unordlist__is_member(T::in, set_unordlist(T)::in, bool::out)
 	is det.
 
 	% `set_unordlist__contains(Set, X)' is true iff
 	% `X' is a member of `Set'.
-
+	%
 :- pred set_unordlist__contains(set_unordlist(T)::in, T::in) is semidet.
 
 	% `set_unordlist__insert(Set0, X, Set)' is true iff `Set' is the union
 	% of `Set0' and the set containing only `X'.
-
+	%
 :- pred set_unordlist__insert(set_unordlist(T), T, set_unordlist(T)).
 :- mode set_unordlist__insert(di, di, uo) is det.
 :- mode set_unordlist__insert(in, in, out) is det.
@@ -111,7 +111,7 @@
 
 	% `set_unordlist__insert_list(Set0, Xs, Set)' is true iff `Set' is the
 	% union of `Set0' and the set containing only the members of `Xs'.
-
+	%
 :- pred set_unordlist__insert_list(set_unordlist(T)::in, list(T)::in,
 	set_unordlist(T)::out) is det.
 
@@ -122,7 +122,7 @@
 	% relative complement of `Set0' and the set containing only `X', i.e.
 	% if `Set' is the set which contains all the elements of `Set0'
 	% except `X'.
-
+	%
 :- pred set_unordlist__delete(set_unordlist(T), T, set_unordlist(T)).
 :- mode set_unordlist__delete(di, in, uo) is det.
 :- mode set_unordlist__delete(in, in, out) is det.
@@ -132,7 +132,7 @@
 	% `set_unordlist__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
-
+	%
 :- pred set_unordlist__delete_list(set_unordlist(T)::in, list(T)::in,
 	set_unordlist(T)::out) is det.
 
@@ -143,7 +143,7 @@
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only `X', i.e.  if `Set' is the set which contains
 	% all the elements of `Set0' except `X'.
-
+	%
 :- pred set_unordlist__remove(set_unordlist(T)::in, T::in,
 	set_unordlist(T)::out) is semidet.
 
@@ -151,21 +151,21 @@
 	% contain any duplicates, `Set0' contains every member of `Xs',
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only the members of `Xs'.
-
+	%
 :- pred set_unordlist__remove_list(set_unordlist(T)::in, list(T)::in,
 	set_unordlist(T)::out) is semidet.
 
 	% `set_unordlist__remove_least(Set0, X, Set)' is true iff `X' is the
 	% least element in `Set0', and `Set' is the set which contains all the
 	% elements of `Set0' except `X'.
-
+	%
 :- pred set_unordlist__remove_least(set_unordlist(T)::in, T::out,
 	set_unordlist(T)::out) is semidet.
 
 	% `set_unordlist_union(SetA, SetB, Set)' is true iff `Set' is the union
 	% of `SetA' and `SetB'.  If the sets are known to be of different
 	% sizes, then for efficiency make `SetA' the larger of the two.
-
+	%
 :- pred set_unordlist__union(set_unordlist(T)::in, set_unordlist(T)::in,
 	set_unordlist(T)::out) is det.
 
@@ -174,12 +174,12 @@
 
 	% `set_unordlist__union_list(A) = B' is true iff `B' is the union of
 	% all the sets in `A'
-
+	%
 :- func set_unordlist__union_list(list(set_unordlist(T))) = set_unordlist(T).
 
 	% `set_unordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
-
+	%
 :- pred set_unordlist__power_union(set_unordlist(set_unordlist(T))::in,
 	set_unordlist(T)::out) is det.
 
@@ -188,7 +188,7 @@
 
 	% `set_unordlist__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
-
+	%
 :- pred set_unordlist__intersect(set_unordlist(T)::in, set_unordlist(T)::in,
 	set_unordlist(T)::out) is det.
 
@@ -197,7 +197,7 @@
 
 	% `set_unordlist__power_intersect(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'
-
+	%
 :- pred set_unordlist__power_intersect(set_unordlist(set_unordlist(T))::in,
 	set_unordlist(T)::out) is det.
 
@@ -206,14 +206,14 @@
 
 	% `set_unordlist__intersect_list(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'
-
+	%
 :- func set_unordlist__intersect_list(list(set_unordlist(T)))
 	= set_unordlist(T).
 
 	% `set_unordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
 	% occur in `SetB'
-
+	%
 :- pred set_unordlist__difference(set_unordlist(T)::in, set_unordlist(T)::in,
 	set_unordlist(T)::out) is det.
 
@@ -232,6 +232,7 @@
 	% set_unordlist__divide(Pred, Set, TruePart, FalsePart):
 	% TruePart consists of those elements of Set for which Pred succeeds;
 	% FalsePart consists of those elements of Set for which Pred fails.
+	%
 :- pred set_unordlist__divide(pred(T1), set_unordlist(T1), set_unordlist(T1),
 	set_unordlist(T1)).
 :- mode set_unordlist__divide(pred(in) is semidet, in, out, out) is det.

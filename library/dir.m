@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,21 +32,25 @@
 
 	% Returns the default separator between components of a pathname --
 	% '/' on Unix systems and '\\' on Microsoft Windows systems.
+	%
 :- func dir__directory_separator = character.
 :- pred dir__directory_separator(character::out) is det.
 
 	% Is the character a directory separator.
 	% On Microsoft Windows systems this will succeed for '/'
 	% as well as '\\'.
+	%
 :- pred dir__is_directory_separator(character).
 :- mode dir__is_directory_separator(in) is semidet.
 :- mode dir__is_directory_separator(out) is multi.
 
 	% Returns ".".
+	%
 :- func dir__this_directory = string.
 :- pred dir__this_directory(string::out) is det.
 
 	% Returns "..".
+	%
 :- func dir__parent_directory = string.
 :- pred dir__parent_directory(string::out) is det.
 
@@ -69,6 +73,7 @@
 	% Note that Cygwin doesn't support drive current directories,
 	% so `dir__split_name("C:foo, _, _)' will fail when running
 	% under Cygwin.
+	%
 :- pred dir__split_name(string::in, string::out, string::out) is semidet.
 
 	% dir__basename(PathName) = BaseName.
@@ -80,10 +85,12 @@
 	%
 	% Trailing slashes are removed from PathName before splitting,
 	% if that doesn't change the meaning of PathName.
+	%
 :- func dir__basename(string) = string is semidet.
 :- pred dir__basename(string::in, string::out) is semidet.
 
-	% As above, but throw an exception instead of failing.
+	% As above, but throws an exception instead of failing.
+	%
 :- func dir__basename_det(string) = string.
 
 	% dir__dirname(PathName) = DirName.
@@ -102,6 +109,7 @@
 	%
 	% Trailing slashes are removed from DirName after splitting,
 	% if that doesn't change the meaning of DirName.
+	%
 :- func dir__dirname(string) = string.
 :- pred dir__dirname(string::in, string::out) is det.
 
@@ -112,6 +120,7 @@
 	%
 	% An path is absolute iff it begins with a root directory
 	% (see dir__path_name_is_root_directory).
+	%
 :- pred dir__path_name_is_absolute(string::in) is semidet.
 
 	% dir__path_name_is_root_directory(PathName)
@@ -126,6 +135,7 @@
 	%
 	% Note that 'X:' is not a Windows root directory -- it specifies the
 	% current directory on drive X, where X is any letter.
+	%
 :- pred dir__path_name_is_root_directory(string::in) is semidet.
 
 	% PathName = DirName / FileName
@@ -141,6 +151,7 @@
 	% Throws an exception if FileName is an absolute path name.
 	% Throws an exception on Windows if FileName is a current
 	% drive relative path such as "C:".
+	%
 :- func string / string = string.
 :- func dir__make_path_name(string, string) = string.
 
@@ -149,11 +160,13 @@
 	% Make the given directory, and all parent directories.
 	% This will also succeed if the directory already exists
 	% and is readable and writable by the current user.
+	%
 :- pred dir__make_directory(string::in, io__res::out, io::di, io::uo) is det.
 
 	% Make only the given directory.
 	% Fails if the directory already exists, or the parent
 	% directory doesn't.
+	%
 :- pred dir__make_single_directory(string::in, io__res::out, io::di, io::uo)
 	is det.
 
@@ -164,6 +177,7 @@
 	% A predicate passed to dir__foldl2 to process each entry in
 	% a directory.
 	% Processing will stop if Continue is bound to `no'.
+	%
 :- type dir__foldl_pred(T) == pred(string, string, io__file_type, bool,
 					T, T, io, io).
 :- inst dir__foldl_pred == (pred(in, in, in, out, in, out, di, uo) is det).
@@ -175,6 +189,7 @@
 	% Processing will stop if the boolean (Continue) output of P is bound
 	% to `no'.
 	% The order in which the entries are processed is unspecified.
+	%
 :- pred dir__foldl2(dir__foldl_pred(T)::in(dir__foldl_pred), string::in,
 	T::in, io__maybe_partial_res(T)::out, io::di, io::uo) is det.
 
@@ -186,6 +201,7 @@
 	% the directory itself before its contents.
 	% If `FollowSymLinks' is `yes', recursively process the
 	% directories referenced by symbolic links.
+	%
 :- pred dir__recursive_foldl2(dir__foldl_pred(T)::in(dir__foldl_pred),
 	string::in, bool::in, T::in, io__maybe_partial_res(T)::out,
 	io::di, io::uo) is det.
@@ -212,8 +228,10 @@
 	%	Brace expansions may be nested. The results of each expanded
 	%	string are not sorted; left to right order is preserved.
 	%	For example, a{d,c,b}e expands into `ade ace abe'.
+	%
 :- func expand_braces(string) = list(string).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

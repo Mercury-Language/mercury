@@ -21,99 +21,77 @@
 
 :- type tree234(K, V).
 
-:- pred tree234__init(tree234(K, V)).
-:- mode tree234__init(uo) is det.
-
 :- func tree234__init = tree234(K, V).
+:- pred tree234__init(tree234(K, V)::uo) is det.
 
-:- pred tree234__is_empty(tree234(K, V)).
-:- mode tree234__is_empty(in) is semidet.
+:- pred tree234__is_empty(tree234(K, V)::in) is semidet.
 
-:- pred tree234__member(tree234(K, V), K, V).
-:- mode tree234__member(in, out, out) is nondet.
+:- pred tree234__member(tree234(K, V)::in, K::out, V::out) is nondet.
 
-:- pred tree234__search(tree234(K, V), K, V).
-:- mode tree234__search(in, in, out) is semidet.
-
-:- pred tree234__lookup(tree234(K, V), K, V).
-:- mode tree234__lookup(in, in, out) is det.
+:- pred tree234__search(tree234(K, V)::in, K::in, V::out) is semidet.
 
 :- func tree234__lookup(tree234(K, V), K) = V.
+:- pred tree234__lookup(tree234(K, V)::in, K::in, V::out) is det.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next lower key instead.
 	% Fails if there is no key with the given or lower value.
-:- pred tree234__lower_bound_search(tree234(K, V), K, K, V).
-:- mode tree234__lower_bound_search(in, in, out, out) is semidet.
+	%
+:- pred tree234__lower_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
+	is semidet.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next lower key instead.
 	% Aborts if there is no key with the given or lower value.
-:- pred tree234__lower_bound_lookup(tree234(K, V), K, K, V).
-:- mode tree234__lower_bound_lookup(in, in, out, out) is det.
+	%
+:- pred tree234__lower_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
+	is det.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next higher key instead.
 	% Fails if there is no key with the given or higher value.
-:- pred tree234__upper_bound_search(tree234(K, V), K, K, V).
-:- mode tree234__upper_bound_search(in, in, out, out) is semidet.
+	%
+:- pred tree234__upper_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
+	is semidet.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next higher key instead.
 	% Aborts if there is no key with the given or higher value.
-:- pred tree234__upper_bound_lookup(tree234(K, V), K, K, V).
-:- mode tree234__upper_bound_lookup(in, in, out, out) is det.
+	%
+:- pred tree234__upper_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
+	is det.
 
 :- func tree234__max_key(tree234(K, V)) = K is semidet.
 
 :- func tree234__min_key(tree234(K, V)) = K is semidet.
 
-:- pred tree234__insert(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__insert(in, in, in, out) is semidet.
-% :- mode tree234__insert(di_tree234, in, in, uo_tree234) is semidet.
-% :- mode tree234__insert(in, in, in, out) is semidet.
-
-:- pred tree234__set(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__set(di, di, di, uo) is det.
-% :- mode tree234__set(di_tree234, in, in, uo_tree234) is det.
-:- mode tree234__set(in, in, in, out) is det.
+:- pred tree234__insert(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+	is semidet.
 
 :- func tree234__set(tree234(K, V), K, V) = tree234(K, V).
-
-:- pred tree234__delete(tree234(K, V), K, tree234(K, V)).
-:- mode tree234__delete(di, in, uo) is det.
-% :- mode tree234__delete(di_tree234, in, uo_tree234) is det.
-:- mode tree234__delete(in, in, out) is det.
+:- pred tree234__set(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+	is det.
 
 :- func tree234__delete(tree234(K, V), K) = tree234(K, V).
+:- pred tree234__delete(tree234(K, V)::in, K::in, tree234(K, V)::out) is det.
 
 :- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__remove(di, in, uo, uo) is semidet.
-% :- mode tree234__remove(di_tree234, in, out, uo_tree234) is semidet.
 :- mode tree234__remove(in, in, out, out) is semidet.
 
 :- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__remove_smallest(di, uo, uo, uo) is semidet.
-% :- mode tree234__remove_smallest(di_tree234, out, out, uo_tree234)
-%	is semidet.
 :- mode tree234__remove_smallest(in, out, out, out) is semidet.
 
 	% Given a tree234, return a list of all the keys in the tree.
 	% The list that is returned is in sorted order.
-:- pred tree234__keys(tree234(K, V), list(K)).
-:- mode tree234__keys(in, out) is det.
-
+	%
 :- func tree234__keys(tree234(K, V)) = list(K).
-
-:- pred tree234__values(tree234(K, V), list(V)).
-:- mode tree234__values(in, out) is det.
+:- pred tree234__keys(tree234(K, V)::in, list(K)::out) is det.
 
 :- func tree234__values(tree234(K, V)) = list(V).
+:- pred tree234__values(tree234(K, V)::in, list(V)::out) is det.
 
-:- pred tree234__update(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__update(in, in, in, out) is semidet.
-% :- mode tree234__update(di_tree234, in, in, uo_tree234) is det.
-% :- mode tree234__update(di, di, di, uo) is semidet.
+:- pred tree234__update(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+	is semidet.
 
 	% Update the value at the given key by applying the supplied 
 	% transformation to it.  This is faster than first searching for 
@@ -122,32 +100,30 @@
 :- pred tree234__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
 	tree234(K, V)::in, tree234(K, V)::out) is semidet.
 
-	% count the number of elements in a tree
-:- pred tree234__count(tree234(K, V), int).
-:- mode tree234__count(in, out) is det.
-
+	% Count the number of elements in a tree.
+	%
 :- func tree234__count(tree234(K, V)) = int.
-
-:- pred tree234__assoc_list_to_tree234(assoc_list(K, V), tree234(K, V)).
-:- mode tree234__assoc_list_to_tree234(in, out) is det.
+:- pred tree234__count(tree234(K, V)::in, int::out) is det.
 
 :- func tree234__assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
+:- pred tree234__assoc_list_to_tree234(assoc_list(K, V)::in,
+	tree234(K, V)::out) is det.
 
 	% Given a tree234, return an association list of all the
 	% keys and values in the tree.  The association list that
 	% is returned is sorted on the keys.
-:- pred tree234__tree234_to_assoc_list(tree234(K, V), assoc_list(K, V)).
-:- mode tree234__tree234_to_assoc_list(in, out) is det.
-
+	%
 :- func tree234__tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
+:- pred tree234__tree234_to_assoc_list(tree234(K, V)::in,
+	assoc_list(K, V)::out) is det.
+
+:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
 
 :- pred tree234__foldl(pred(K, V, T, T), tree234(K, V), T, T).
 :- mode tree234__foldl(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode tree234__foldl(pred(in, in, in, out) is semidet, in, in, out)
 	is semidet.
 :- mode tree234__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-
-:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
 
 :- pred tree234__foldl2(pred(K, V, T, T, U, U), tree234(K, V), T, T, U, U).
 :- mode tree234__foldl2(pred(in, in, in, out, in, out) is det, 
@@ -172,11 +148,11 @@
 :- mode tree234__foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
 	in, di, uo, di, uo, di, uo) is det.
 
+:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
+
 :- pred tree234__map_values(pred(K, V, W), tree234(K, V), tree234(K, W)).
 :- mode tree234__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode tree234__map_values(pred(in, in, out) is semidet, in, out) is semidet.
-
-:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
 
 :- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
 	A, A).

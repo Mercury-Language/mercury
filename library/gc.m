@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999,2001-2004 The University of Melbourne.
+% Copyright (C) 1999,2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,14 +19,17 @@
 :- import_module io.
 
 	% Force a garbage collection.
+	%
 :- pred garbage_collect(io__state::di, io__state::uo) is det.
 
 	% Force a garbage collection.
 	% Note that this version is not really impure, but it needs to be
 	% declared impure to ensure that the compiler won't try to
 	% optimize it away.
+	%
 :- impure pred garbage_collect is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

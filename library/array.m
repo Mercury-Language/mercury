@@ -101,12 +101,14 @@
 
 	% array__make_empty_array(Array) creates an array of size zero
 	% starting at lower bound 0.
+	%
 :- pred array__make_empty_array(array(T)::array_uo) is det.
 
 :- func array__make_empty_array = (array(T)::array_uo) is det.
 
 	% array__init(Size, Init, Array) creates an array
 	% with bounds from 0 to Size-1, with each element initialized to Init.
+	%
 :- pred array__init(int, T, array(T)).
 :- mode array__init(in, in, array_uo) is det.
 
@@ -117,6 +119,7 @@
 	% (It does the same thing as the predicate array__from_list/2.)
 	% The syntax `array([...])' is used to represent arrays
 	% for io__read, io__write, term_to_type, and type_to_term.
+	%
 :- func array(list(T)) = array(T).
 :- mode array(in) = array_uo is det.
 
@@ -124,6 +127,7 @@
 
 	% array__min returns the lower bound of the array.
 	% Note: in this implementation, the lower bound is always zero.
+	%
 :- pred array__min(array(_T), int).
 :- mode array__min(array_ui, out) is det.
 :- mode array__min(in, out) is det.
@@ -133,6 +137,7 @@
 :- mode array__min(in) = out is det.
 
 	% array__max returns the upper bound of the array.
+	%
 :- pred array__max(array(_T), int).
 :- mode array__max(array_ui, out) is det.
 :- mode array__max(in, out) is det.
@@ -143,6 +148,7 @@
 
 	% array__size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
+	%
 :- pred array__size(array(_T), int).
 :- mode array__size(array_ui, out) is det.
 :- mode array__size(in, out) is det.
@@ -153,12 +159,14 @@
 
 	% array__bounds returns the upper and lower bounds of an array.
 	% Note: in this implementation, the lower bound is always zero.
+	%
 :- pred array__bounds(array(_T), int, int).
 :- mode array__bounds(array_ui, out, out) is det.
 :- mode array__bounds(in, out, out) is det.
 
 	% array__in_bounds checks whether an index is in the bounds
 	% of an array.
+	%
 :- pred array__in_bounds(array(_T), int).
 :- mode array__in_bounds(array_ui, in) is semidet.
 :- mode array__in_bounds(in, in) is semidet.
@@ -167,6 +175,7 @@
 
 	% array__lookup returns the Nth element of an array.
 	% Throws an exception if the index is out of bounds.
+	%
 :- pred array__lookup(array(T), int, T).
 :- mode array__lookup(array_ui, in, out) is det.
 :- mode array__lookup(in, in, out) is det.
@@ -177,6 +186,7 @@
 
 	% array__semidet_lookup returns the Nth element of an array.
 	% It fails if the index is out of bounds.
+	%
 :- pred array__semidet_lookup(array(T), int, T).
 :- mode array__semidet_lookup(array_ui, in, out) is semidet.
 :- mode array__semidet_lookup(in, in, out) is semidet.
@@ -184,6 +194,7 @@
 	% array__set sets the nth element of an array, and returns the
 	% resulting array (good opportunity for destructive update ;-).
 	% Throws an exception if the index is out of bounds.
+	%
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
 
@@ -193,6 +204,7 @@
 	% array__semidet_set sets the nth element of an array,
 	% and returns the resulting array.
 	% It fails if the index is out of bounds.
+	%
 :- pred array__semidet_set(array(T), int, T, array(T)).
 :- mode array__semidet_set(array_di, in, in, array_uo) is semidet.
 
@@ -201,6 +213,7 @@
 	% required to be unique, so the implementation may not be able to use
 	% destructive update.
 	% It is an error if the index is out of bounds.
+	%
 :- pred array__slow_set(array(T), int, T, array(T)).
 :- mode array__slow_set(array_ui, in, in, array_uo) is det.
 :- mode array__slow_set(in, in, in, array_uo) is det.
@@ -214,18 +227,21 @@
 	% required to be unique, so the implementation may not be able to use
 	% destructive update.
 	% It fails if the index is out of bounds.
+	%
 :- pred array__semidet_slow_set(array(T), int, T, array(T)).
 :- mode array__semidet_slow_set(array_ui, in, in, array_uo) is semidet.
 :- mode array__semidet_slow_set(in, in, in, array_uo) is semidet.
 
 	% Field selection for arrays.
 	% Array ^ elem(Index) = array__lookup(Array, Index).
+	%
 :- func array__elem(int, array(T)) = T.
 :- mode array__elem(in, array_ui) = out is det.
 :- mode array__elem(in, in) = out is det.
 
 	% Field update for arrays.
 	% (Array ^ elem(Index) := Value) = array__set(Array, Index, Value).
+	%
 :- func 'array__elem :='(int, array(T), T) = array(T).
 :- mode 'array__elem :='(in, array_di, in) = array_uo is det.
 
@@ -233,6 +249,7 @@
 
 	% array__copy(Array0, Array):
 	% Makes a new unique copy of an array.
+	%
 :- pred array__copy(array(T), array(T)).
 :- mode array__copy(array_ui, array_uo) is det.
 :- mode array__copy(in, array_uo) is det.
@@ -245,6 +262,7 @@
 	% The array is expanded or shrunk to make it fit
 	% the new size `Size'.  Any new entries are filled
 	% with `Init'.
+	%
 :- pred array__resize(array(T), int, T, array(T)).
 :- mode array__resize(array_di, in, in, array_uo) is det.
 
@@ -254,6 +272,7 @@
 	% array__shrink(Array0, Size, Array):
 	% The array is shrunk to make it fit the new size `Size'.
 	% Throws an exception if `Size' is larger than the size of `Array0'.
+	%
 :- pred array__shrink(array(T), int, array(T)).
 :- mode array__shrink(array_di, in, array_uo) is det.
 
@@ -263,6 +282,7 @@
 	% array__from_list takes a list,
 	% and returns an array containing those elements in
 	% the same order that they occurred in the list.
+	%
 :- pred array__from_list(list(T), array(T)).
 :- mode array__from_list(in, array_uo) is det.
 
@@ -272,6 +292,7 @@
 	% array__to_list takes an array and returns a list containing
 	% the elements of the array in the same order that they
 	% occurred in the array.
+	%
 :- pred array__to_list(array(T), list(T)).
 :- mode array__to_list(array_ui, out) is det.
 :- mode array__to_list(in, out) is det.
@@ -284,6 +305,7 @@
 	% index, and places those items in the array between these
 	% indices into a list.  It is an error if either index is
 	% out of bounds.
+	%
 :- pred array__fetch_items(array(T), int, int, list(T)).
 :- mode array__fetch_items(in, in, in, out) is det.
 
@@ -297,6 +319,7 @@
 	% equivalent to the given one in the ordering provided.
 	% Assumes the array is sorted according to this ordering.
 	% Fails if the element is not present.
+	%
 :- pred array__bsearch(array(T), T, comparison_pred(T), maybe(int)).
 :- mode array__bsearch(array_ui, in, in(comparison_pred), out) is det.
 :- mode array__bsearch(in, in, in(comparison_pred), out) is det.
@@ -307,6 +330,7 @@
 
 	% array__map(Closure, OldArray, NewArray) applys `Closure' to
 	% each of the elements of `OldArray' to create `NewArray'.
+	%
 :- pred array__map(pred(T1, T2), array(T1), array(T2)).
 :- mode array__map(pred(in, out) is det, array_di, array_uo) is det.
 
@@ -358,6 +382,7 @@
 	random__supply, random__supply).
 :- mode array__random_permutation(array_di, array_uo, mdi, muo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,6 +75,7 @@
 	% offending part of the term was read in from, if available.
 	% ArgContexts specifies the path from the root of the term
 	% to the offending subterm.
+	%
 :- func term__try_term_to_type(term(U)) = term_to_type_result(T, U).
 :- pred term__try_term_to_type(term(U)::in, term_to_type_result(T, U)::out)
 	is det.
@@ -101,18 +102,22 @@
 		).
 
 	% term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
+	%
 :- pred term__term_to_type(term(U)::in, T::out) is semidet.
 
-	% like term_to_type, but calls error/1 rather than failing.
+	% Like term_to_type, but calls error/1 rather than failing.
+	%
 :- func term__det_term_to_type(term(_)) = T.
 :- pred term__det_term_to_type(term(_)::in, T::out) is det.
 
-	% converts a value to a term representation of that value
+	% Converts a value to a term representation of that value.
+	%
 :- func term__type_to_term(T) = term(_).
 :- pred term__type_to_term(T::in, term(_)::out) is det.
 
 	% calls term__type_to_term on the value stored in the univ
 	% (as distinct from the univ itself).
+	% 
 :- func term__univ_to_term(univ) = term(_).
 :- pred term__univ_to_term(univ::in, term(_)::out) is det.
 
@@ -121,22 +126,26 @@
 	% term__vars(Term, Vars)
 	% Vars is the list of variables contained in Term, in the order
 	% obtained by traversing the term depth first, left-to-right.
+	%
 :- func term__vars(term(T)) = list(var(T)).
 :- pred term__vars(term(T)::in, list(var(T))::out) is det.
 
 	% As above, but with an accumulator.
+	%
 :- func term__vars_2(term(T), list(var(T))) = list(var(T)).
 :- pred term__vars_2(term(T)::in, list(var(T))::in, list(var(T))::out) is det.
 
 	% term__vars_list(TermList, Vars)
 	% Vars is the list of variables contained in TermList, in the order
 	% obtained by traversing the list of terms depth-first, left-to-right.
+	%
 :- func term__vars_list(list(term(T))) = list(var(T)).
 :- pred term__vars_list(list(term(T))::in, list(var(T))::out) is det.
 
 	% term__contains_var(Term, Var)
 	% True if Term contains Var. On backtracking returns all the
 	% variables contained in Term.
+	%
 :- pred term__contains_var(term(T), var(T)).
 :- mode term__contains_var(in, in) is semidet.
 :- mode term__contains_var(in, out) is nondet.
@@ -144,6 +153,7 @@
 	% term__contains_var_list(TermList, Var)
 	% True if TermList contains Var. On backtracking returns all the
 	% variables contained in Term.
+	%
 :- pred term__contains_var_list(list(term(T)), var(T)).
 :- mode term__contains_var_list(in, in) is semidet.
 :- mode term__contains_var_list(in, out) is nondet.
@@ -154,17 +164,20 @@
 	% term__unify(Term1, Term2, Bindings0, Bindings):
 	% Unify (with occur check) two terms with respect to a set of bindings
 	% and possibly update the set of bindings.
+	%
 :- pred term__unify(term(T)::in, term(T)::in, substitution(T)::in,
 	substitution(T)::out) is semidet.
 
 	% term__substitute(Term0, Var, Replacement, Term):
 	% Replace all occurrences of Var in Term0 with Replacement,
 	% and return the result in Term.
+	%
 :- func term__substitute(term(T), var(T), term(T)) = term(T).
 :- pred term__substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out)
 	is det.
 
 	% As above, except for a list of terms rather than a single term.
+	%
 :- func term__substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
 :- pred term__substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
 	list(term(T))::out) is det.
@@ -174,6 +187,7 @@
 	% term in Repls, and return the result in Term. If Vars contains
 	% duplicates, or if Vars is not the same length as Repls, the
 	% behaviour is undefined and probably harmful.
+	%
 :- func term__substitute_corresponding(list(var(T)), list(term(T)),
 	term(T)) = term(T).
 :- pred term__substitute_corresponding(list(var(T))::in, list(term(T))::in,
@@ -181,6 +195,7 @@
 
 	% As above, except applies to a list of terms rather than a
 	% single term.
+	%
 :- func term__substitute_corresponding_list(list(var(T)),
 	list(term(T)), list(term(T))) = list(term(T)).
 :- pred term__substitute_corresponding_list(list(var(T))::in,
@@ -189,12 +204,14 @@
 	% term__apply_rec_substitution(Term0, Substitution, Term):
 	% Recursively apply substitution to Term0 until no more substitions
 	% can be applied, and then return the result in Term.
+	%
 :- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
 :- pred term__apply_rec_substitution(term(T)::in, substitution(T)::in,
 	term(T)::out) is det.
 
 	% As above, except applies to a list of terms rather than a
 	% single term.
+	%
 :- func term__apply_rec_substitution_to_list(list(term(T)),
 	substitution(T)) = list(term(T)).
 :- pred term__apply_rec_substitution_to_list(list(term(T))::in,
@@ -202,12 +219,14 @@
 
 	% term__apply_substitution(Term0, Substitution, Term):
 	% Apply substitution to Term0 and return the result in Term.
+	%
 :- func term__apply_substitution(term(T), substitution(T)) = term(T).
 :- pred term__apply_substitution(term(T)::in, substitution(T)::in,
 	term(T)::out) is det.
 
 	% As above, except applies to a list of terms rather than a
 	% single term.
+	%
 :- func term__apply_substitution_to_list(list(term(T)),
 	substitution(T)) = list(term(T)).
 :- pred term__apply_substitution_to_list(list(term(T))::in,
@@ -216,15 +235,18 @@
 	% term__occurs(Term0, Var, Substitution):
 	% True iff Var occurs in the term resulting after applying
 	% Substitution to Term0.
+	%
 :- pred term__occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
 
 	% As above, except for a list of terms rather than a single term.
+	%
 :- pred term__occurs_list(list(term(T))::in, var(T)::in, substitution(T)::in)
 	is semidet.
 
 	% term__relabel_variable(Term0, OldVar, NewVar, Term):
 	% Replace all occurences of OldVar in Term0 with NewVar and
 	% put the result in Term.
+	%
 :- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
 :- pred term__relabel_variable(term(T)::in, var(T)::in, var(T)::in,
 	term(T)::out) is det.
@@ -232,29 +254,34 @@
 	% As above, except applies to a list of terms rather than a
 	% single term.
 	% XXX the name of the predicate is misleading.
+	%
 :- func term__relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
 :- pred term__relabel_variables(list(term(T))::in, var(T)::in, var(T)::in,
 	list(term(T))::out) is det.
 
 	% Same as term__relabel_variable, except relabels multiple variables.
 	% If a variable is not in the map, it is not replaced.
+	%
 :- func term__apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
 :- pred term__apply_variable_renaming(term(T)::in, map(var(T), var(T))::in,
 	term(T)::out) is det.
 
 	% Applies term__apply_variable_renaming to a list of terms.
+	%
 :- func term__apply_variable_renaming_to_list(list(term(T)),
 	map(var(T), var(T))) = list(term(T)).
 :- pred term__apply_variable_renaming_to_list(list(term(T))::in,
 	map(var(T), var(T))::in, list(term(T))::out) is det.
 
 	% Applies term__apply_variable_renaming to a var.
+	%
 :- func term__apply_variable_renaming_to_var(map(var(T), var(T)),
 	var(T)) = var(T).
 :- pred term__apply_variable_renaming_to_var(map(var(T), var(T))::in,
 	var(T)::in, var(T)::out) is det.
 
 	% Applies term__apply_variable_renaming to a list of vars.
+	%
 :- func term__apply_variable_renaming_to_vars(map(var(T), var(T)),
 	list(var(T))) = list(var(T)).
 :- pred term__apply_variable_renaming_to_vars(map(var(T), var(T))::in,
@@ -262,9 +289,11 @@
 
 	% term__is_ground(Term, Bindings) is true iff no variables contained
 	% in Term are non-ground in Bindings.
+	%
 :- pred term__is_ground(term(T)::in, substitution(T)::in) is semidet.
 
 	% term__is_ground(Term) is true iff Term contains no variables.
+	%
 :- pred term__is_ground(term(T)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -274,6 +303,7 @@
 
 	% term__init_var_supply(VarSupply):
 	% Returns a fresh var_supply for producing fresh variables.
+	%
 :- func term__init_var_supply = var_supply(T).
 :- pred term__init_var_supply(var_supply(T)).
 :- mode term__init_var_supply(out) is det.
@@ -281,12 +311,14 @@
 
 	% term__create_var(VarSupply0, Variable, VarSupply):
 	% Create a fresh variable (var) and return the updated var_supply.
+	%
 :- pred term__create_var(var_supply(T), var(T), var_supply(T)).
 :- mode term__create_var(in, out, out) is det.
 
 	% term__var_id(Variable):
 	% Returns a unique number associated with this variable w.r.t.
 	% its originating var_supply.
+	%
 :- func term__var_id(var(T)) = int.
 
 %-----------------------------------------------------------------------------%
@@ -300,42 +332,45 @@
 	% Convert a variable to an int.
 	% Different variables map to different ints.
 	% Other than that, the mapping is unspecified.
+	%
 :- func term__var_to_int(var(T)) = int.
 :- pred term__var_to_int(var(T)::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Given a term context, return the source line number.
-:- pred term__context_line(term__context::in, int::out) is det.
+	%
 :- func term__context_line(term__context) = int.
+:- pred term__context_line(term__context::in, int::out) is det.
 
 	% Given a term context, return the source file.
-:- pred term__context_file(term__context::in, string::out) is det.
+	%
 :- func term__context_file(term__context) = string.
+:- pred term__context_file(term__context::in, string::out) is det.
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
-:- pred term__context_init(term__context::out) is det.
+	%
 :- func term__context_init = term__context.
-:- pred term__context_init(string::in, int::in, term__context::out) is det.
+:- pred term__context_init(term__context::out) is det.
 :- func term__context_init(string, int) = term__context.
+:- pred term__context_init(string::in, int::in, term__context::out) is det.
 
 	% Convert a list of terms which are all vars into a list
 	% of vars.  Abort (call error/1) if the list contains
 	% any non-variables.
-
+	%
+:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
 :- pred term__term_list_to_var_list(list(term(T))::in, list(var(T))::out)
 	is det.
-:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
 
 	% Convert a list of terms which are all vars into a list
 	% of vars (or vice versa).
-
+	%
+:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
 :- pred term__var_list_to_term_list(list(var(T)), list(term(T))).
 :- mode term__var_list_to_term_list(in, out) is det.
 :- mode term__var_list_to_term_list(out, in) is semidet.
-
-:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
 
 %-----------------------------------------------------------------------------%
 
@@ -344,20 +379,25 @@
 	% It is useful because in some instances it doesn't matter what
 	% the type of a term is, and passing it to this predicate will
 	% ground the type avoiding unbound type variable warnings.
+	%
 :- pred term__generic_term(term::in) is det.
 
 	% Coerce a term of type `T' into a term of type `U'.
-:- pred term__coerce(term(T)::in, term(U)::out) is det.
+	%
 :- func term__coerce(term(T)) = term(U).
+:- pred term__coerce(term(T)::in, term(U)::out) is det.
 
 	% Coerce a var of type `T' into a var of type `U'.
-:- pred term__coerce_var(var(T)::in, var(U)::out) is det.
+	%
 :- func term__coerce_var(var(T)) = var(U).
+:- pred term__coerce_var(var(T)::in, var(U)::out) is det.
 
 	% Coerce a var_supply of type `T' into a var_supply of type `U'.
-:- pred term__coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.
+	%
 :- func term__coerce_var_supply(var_supply(T)) = var_supply(U).
+:- pred term__coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

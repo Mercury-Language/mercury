@@ -25,6 +25,7 @@
 
 	% Determine the length of a string.
 	% An empty string has length zero.
+	%
 :- func string__length(string) = int.
 :- mode string__length(in) = uo is det.
 :- pred string__length(string, int).
@@ -32,6 +33,7 @@
 :- mode string__length(ui, uo) is det.
 
 	% Append two strings together.
+	%
 :- func string__append(string, string) = string.
 :- mode string__append(in, in) = uo is det.
 
@@ -55,50 +57,55 @@
 	% string__remove_suffix(String, Suffix, Prefix):
 	% The same as string__append(Prefix, Suffix, String) except that
 	% this is semidet whereas string__append(out, in, in) is nondet.
-:- pred string__remove_suffix(string, string, string).
-:- mode string__remove_suffix(in, in, out) is semidet.
+	%
+:- pred string__remove_suffix(string::in, string::in, string::out) is semidet.
 
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String. Same as string__append(Prefix, _, String).
+	%
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
 :- mode string__prefix(in, out) is multi.
 
 	% string__suffix(String, Suffix) is true iff Suffix is a
 	% suffix of String. Same as string__append(_, Suffix, String).
+	%
 :- pred string__suffix(string, string).
 :- mode string__suffix(in, in) is semidet.
 :- mode string__suffix(in, out) is multi.
 
-:- func string__string(T) = string.
-	% string__string(X): Returns a canonicalized string representation of
-	% the value X using the standard Mercury operators.
-
-:- func string__string(ops__table, T) = string.
+	% string__string(X): Returns a canonicalized string
+	% representation of the value X using the standard Mercury operators.
 	%
-	% As above, but using the supplied table of operators.
+:- func string__string(T) = string.
 
+	% As above, but using the supplied table of operators.
+	%
+:- func string__string(ops__table, T) = string.
+
+	% string__string(NonCanon, OpsTable, X, String)
+	%
+	% As above, but the caller specifies what behaviour should
+	% occur for non-canonical terms (i.e. terms where multiple
+	% representations may compare as equal):
+	%	- `do_not_allow' will throw an exception if (any subterm of)
+	%	   the argument is not canonical;
+	%	- `canonicalize' will substitute a string indicating the
+	%	   presence of a non-canonical subterm;
+	%	- `include_details_cc' will show the structure of any
+	%	   non-canonical subterms, but can only be called from a
+	%	   committed choice context.
+	%
 :- pred string__string(deconstruct__noncanon_handling, ops__table, T, string).
 :- mode string__string(in(do_not_allow), in, in, out) is det.
 :- mode string__string(in(canonicalize), in, in, out) is det.
 :- mode string__string(in(include_details_cc), in, in, out) is cc_multi.
 :- mode string__string(in, in, in, out) is cc_multi.
-%	string__string(NonCanon, OpsTable, X, String)
-%
-%	As above, but the caller specifies what behaviour should
-%	occur for non-canonical terms (i.e. terms where multiple
-%	representations may compare as equal):
-%	- `do_not_allow' will throw an exception if (any subterm of)
-%	   the argument is not canonical;
-%	- `canonicalize' will substitute a string indicating the
-%	   presence of a non-canonical subterm;
-%	- `include_details_cc' will show the structure of any
-%	   non-canonical subterms, but can only be called from a
-%	   committed choice context.
-
+	
 	% string__char_to_string(Char, String).
 	% Converts a character (single-character atom) to a string
 	% or vice versa.
+	%
 :- func string__char_to_string(char) = string.
 :- mode string__char_to_string(in) = uo is det.
 :- pred string__char_to_string(char, string).
@@ -106,6 +113,7 @@
 :- mode string__char_to_string(out, in) is semidet.
 
 	% Convert an integer to a string.
+	%
 :- func string__int_to_string(int) = string.
 :- mode string__int_to_string(in) = uo is det.
 :- pred string__int_to_string(int, string).
@@ -113,6 +121,7 @@
 
 	% string__int_to_base_string(Int, Base, String):
 	% Convert an integer to a string in a given Base (between 2 and 36).
+	%
 :- func string__int_to_base_string(int, int) = string.
 :- mode string__int_to_base_string(in, in) = uo is det.
 :- pred string__int_to_base_string(int, int, string).
@@ -125,6 +134,7 @@
 	% where p = floor(mantissa_digits * log2(base_radix) / log2(10)).
 	% The precision chosen from this range will be such to allow a
 	% successful decimal -> binary conversion of the float.
+	%
 :- func string__float_to_string(float) = string.
 :- mode string__float_to_string(in) = uo is det.
 :- pred string__float_to_string(float, string).
@@ -139,6 +149,7 @@
 	% Repeated use of string__first_char to iterate
 	% over a string will result in very poor performance.
 	% Use string__foldl or string__to_char_list instead.
+	%
 :- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, uo, in) is semidet.	% implied
@@ -150,18 +161,21 @@
 	% string__replace replaces the first occurrence of Search in String0
 	% with Replace to give String. It fails if Search does not occur
 	% in String0.
-:- pred string__replace(string, string, string, string).
-:- mode string__replace(in, in, in, uo) is semidet.
+	% 
+:- pred string__replace(string::in, string::in, string::in, string::uo)
+	is semidet.
 
 	% string__replace_all(String0, Search, Replace, String):
 	% string__replace_all replaces any occurrences of Search in
 	% String0 with Replace to give String.
+	%
 :- func string__replace_all(string, string, string) = string.
 :- mode string__replace_all(in, in, in) = uo is det.
 :- pred string__replace_all(string, string, string, string).
 :- mode string__replace_all(in, in, in, uo) is det.
 
 	% Converts a string to lowercase.
+	% 
 :- func string__to_lower(string) = string.
 :- mode string__to_lower(in) = uo is det.
 :- pred string__to_lower(string, string).
@@ -169,6 +183,7 @@
 :- mode string__to_lower(in, in) is semidet.		% implied
 
 	% Converts a string to uppercase.
+	% 
 :- func string__to_upper(string) = string.
 :- mode string__to_upper(in) = uo is det.
 :- pred string__to_upper(string, string).
@@ -176,20 +191,24 @@
 :- mode string__to_upper(in, in) is semidet.		% implied
 
 	% Convert the first character (if any) of a string to uppercase.
+	%
 :- func string__capitalize_first(string) = string.
 :- pred string__capitalize_first(string::in, string::out) is det.
 
 	% Convert the first character (if any) of a string to lowercase.
+	%
 :- func string__uncapitalize_first(string) = string.
 :- pred string__uncapitalize_first(string::in, string::out) is det.
 
 	% Convert the string to a list of characters.
+	%
 :- func string__to_char_list(string) = list(char).
 :- pred string__to_char_list(string, list(char)).
 :- mode string__to_char_list(in, out) is det.
 :- mode string__to_char_list(uo, in) is det.
 
 	% Convert a list of characters to a string.
+	%
 :- func string__from_char_list(list(char)) = string.
 :- mode string__from_char_list(in) = uo is det.
 :- pred string__from_char_list(list(char), string).
@@ -198,6 +217,7 @@
 
 	% Same as string__from_char_list, except that it reverses the order
 	% of the characters.
+	%
 :- func string__from_rev_char_list(list(char)) = string.
 :- mode string__from_rev_char_list(in) = uo is det.
 :- pred string__from_rev_char_list(list(char), string).
@@ -205,6 +225,7 @@
 
 	% Converts a signed base 10 string to an int; throws an exception
 	% if the string argument does not match the regexp [+-]?[0-9]+
+	%
 :- func string__det_to_int(string) = int.
 
 	% Convert a string to an int. The string must contain only digits,
@@ -217,11 +238,13 @@
 	% optionally preceded by a plus or minus sign. For bases > 10,
 	% digits 10 to 35 are represented by the letters A-Z or a-z. If
 	% the string does not match this syntax, the predicate fails.
+	%
 :- pred string__base_string_to_int(int::in, string::in, int::out) is semidet.
 
 	% Converts a signed base N string to an int; throws an exception
 	% if the string argument is not precisely an optional sign followed
 	% by a non-empty string of base N digits.
+	%
 :- func string__det_base_string_to_int(int, string) = int.
 
 	% Convert a string to a float.  Throws an exception if the string
@@ -231,54 +254,65 @@
 
 	% Convert a string to a float. If the string is not a syntactically
 	% correct float literal, string__to_float fails.
+	%
 :- pred string__to_float(string::in, float::out) is semidet.
 
 	% True if string contains only alphabetic characters (letters).
+	%
 :- pred string__is_alpha(string::in) is semidet.
 
 	% True if string contains only alphabetic characters and underscores.
+	%
 :- pred string__is_alpha_or_underscore(string::in) is semidet.
 
 	% True if string contains only letters, digits, and underscores.
+	%
 :- pred string__is_alnum_or_underscore(string::in) is semidet.
 
 	% string__pad_left(String0, PadChar, Width, String):
 	% Insert `PadChar's at the left of `String0' until it is at least
 	% as long as `Width', giving `String'.
+	%
 :- func string__pad_left(string, char, int) = string.
 :- pred string__pad_left(string::in, char::in, int::in, string::out) is det.
 
 	% string__pad_right(String0, PadChar, Width, String):
 	% Insert `PadChar's at the right of `String0' until it is at least
 	% as long as `Width', giving `String'.
+	%
 :- func string__pad_right(string, char, int) = string.
 :- pred string__pad_right(string::in, char::in, int::in, string::out) is det.
 
 	% string__duplicate_char(Char, Count, String):
 	% Construct a string consisting of `Count' occurrences of `Char'
 	% in sequence.
+	%
 :- func string__duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred string__duplicate_char(char::in, int::in, string::uo) is det.
 
 	% string__contains_char(String, Char):
 	% Succeed if `Char' occurs in `String'.
+	%
 :- pred string__contains_char(string::in, char::in) is semidet.
 
 	% string__index(String, Index, Char):
 	% `Char' is the (`Index' + 1)-th character of `String'.
 	% Fails if `Index' is out of range (negative, or greater than or
 	% equal to the length of `String').
+	%
 :- pred string__index(string::in, int::in, char::uo) is semidet.
 
 	% string__index_det(String, Index, Char):
 	% `Char' is the (`Index' + 1)-th character of `String'.
 	% Calls error/1 if `Index' is out of range (negative, or greater than
 	% or equal to the length of `String').
+	%
 :- func string__index_det(string, int) = char.
 :- pred string__index_det(string::in, int::in, char::uo) is det.
 
 	% A synonym for index_det/2:
 	% String ^ elem(Index) = string__index_det(String, Index).
+	%
 :- func string ^ elem(int) = char.
 
 	% string__unsafe_index(String, Index, Char):
@@ -288,50 +322,60 @@
 	% This version is constant time, whereas string__index_det
 	% may be linear in the length of the string.
 	% Use with care!
+	%
 :- func string__unsafe_index(string, int) = char.
 :- pred string__unsafe_index(string::in, int::in, char::uo) is det.
 
 	% A synonym for unsafe_index/2:
 	% String ^ unsafe_elem(Index) = string__unsafe_index(String, Index).
+	%
 :- func string ^ unsafe_elem(int) = char.
 
 	% string__chomp(String):
 	% `String' minus any single trailing newline character.
+	%
 :- func string__chomp(string) = string.
 
 	% string__lstrip(String):
 	% `String' minus any initial whitespace characters.
+	%
 :- func string__lstrip(string) = string.
 
 	% string__rstrip(String):
 	% `String' minus any trailing whitespace characters.
+	%
 :- func string__rstrip(string) = string.
 
 	% string__strip(String):
 	% `String' minus any initial and trailing whitespace characters.
+	%
 :- func string__strip(string) = string.
 
 	% string__lstrip(Pred, String):
 	% `String' minus the maximal prefix consisting entirely of
 	% chars satisfying `Pred'.
+	%
 :- func string__lstrip(pred(char)::in(pred(in) is semidet), string::in)
 	= (string::out) is det.
 
 	% string__rstrip(Pred, String):
 	% `String' minus the maximal suffix consisting entirely of
 	% chars satisfying `Pred'.
+	%
 :- func string__rstrip(pred(char)::in(pred(in) is semidet), string::in)
 	= (string::out) is det.
 
 	% string__prefix_length(Pred, String):
 	% The length of the maximal prefix of `String' consisting entirely of
 	% chars satisfying Pred.
+	%
 :- func string__prefix_length(pred(char)::in(pred(in) is semidet), string::in)
 	= (int::out) is det.
 
 	% string__suffix_length(Pred, String):
 	% The length of the maximal suffix of `String' consisting entirely of
 	% chars satisfying Pred.
+	%
 :- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
 	= (int::out) is det.
 
@@ -340,6 +384,7 @@
 	% set to `Char'.
 	% Fails if `Index' is out of range (negative, or greater than or
 	% equal to the length of `String0').
+	%
 :- pred string__set_char(char, int, string, string).
 :- mode string__set_char(in, in, in, out) is semidet.
 % XXX This mode is disabled because the compiler puts constant
@@ -351,6 +396,7 @@
 	% set to `Char'.
 	% Calls error/1 if `Index' is out of range (negative, or greater than
 	% or equal to the length of `String0').
+	%
 :- func string__set_char_det(char, int, string) = string.
 :- pred string__set_char_det(char, int, string, string).
 :- mode string__set_char_det(in, in, in, out) is det.
@@ -366,6 +412,7 @@
 	% This version is constant time, whereas string__set_char_det
 	% may be linear in the length of the string.
 	% Use with care!
+	%
 :- func string__unsafe_set_char(char, int, string) = string.
 :- mode string__unsafe_set_char(in, in, in) = out is det.
 % XXX This mode is disabled because the compiler puts constant
@@ -385,6 +432,7 @@
 	% 	string__to_char_list(String, Chars),
 	% 	list__foldl(Closure, Chars, Acc0, Acc)
 	% but is implemented more efficiently.)
+	%
 :- func string__foldl(func(char, T) = T, string, T) = T.
 :- pred string__foldl(pred(char, T, T), string, T, T).
 :- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
@@ -396,6 +444,7 @@
 	% string__foldl_substring(Closure, String, Start, Count, !Acc)
 	% is equivalent to string__foldl(Closure, SubString, !Acc)
 	% where SubString = string__substring(String, Start, Count).
+	%
 :- func string__foldl_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string__foldl_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldl_substring(pred(in, in, out) is det, in, in, in,
@@ -411,6 +460,7 @@
 
 	% string__foldr(Closure, String, !Acc):
 	% As string__foldl/4, except that processing proceeds right-to-left.
+	%
 :- func string__foldr(func(char, T) = T, string, T) = T.
 :- pred string__foldr(pred(char, T, T), string, T, T).
 :- mode string__foldr(pred(in, in, out) is det, in, in, out) is det.
@@ -422,6 +472,7 @@
 	% string__foldr_substring(Closure, String, Start, Count, !Acc)
 	% is equivalent to string__foldr(Closure, SubString, !Acc)
 	% where SubString = string__substring(String, Start, Count).
+	%
 :- func string__foldr_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string__foldr_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string__foldr_substring(pred(in, in, out) is det, in, in, in,
@@ -441,6 +492,7 @@
 	%
 	% string__words(char__is_whitespace, " the cat  sat on the  mat") =
 	% 	["the", "cat", "sat", "on", "the", "mat"]
+	%
 :- func string__words(pred(char), string) = list(string).
 :- mode string__words(pred(in) is semidet, in) = out is det.
 
@@ -452,26 +504,24 @@
 	% and `RightSubstring' is the remainder of `String'.
 	% (If `Count' is out of the range [0, length of `String'], it is
 	% treated as if it were the nearest end-point of that range.)
-:- pred string__split(string, int, string, string).
-:- mode string__split(in, in, uo, uo) is det.
+	%
+:- pred string__split(string::in, int::in, string::uo, string::uo) is det.
 
 	% string__left(String, Count, LeftSubstring):
 	% `LeftSubstring' is the left-most `Count' characters of `String'.
 	% (If `Count' is out of the range [0, length of `String'], it is
 	% treated as if it were the nearest end-point of that range.)
-:- func string__left(string, int) = string.
-:- mode string__left(in, in) = uo is det.
-:- pred string__left(string, int, string).
-:- mode string__left(in, in, uo) is det.
+	%
+:- func string__left(string::in, int::in) = (string::uo) is det.
+:- pred string__left(string::in, int::in, string::uo) is det.
 
 	% string__right(String, Count, RightSubstring):
 	% `RightSubstring' is the right-most `Count' characters of `String'.
 	% (If `Count' is out of the range [0, length of `String'], it is
 	% treated as if it were the nearest end-point of that range.)
-:- func string__right(string, int) = string.
-:- mode string__right(in, in) = uo is det.
-:- pred string__right(string, int, string).
-:- mode string__right(in, in, uo) is det.
+	%
+:- func string__right(string::in, int::in) = (string::uo) is det.
+:- pred string__right(string::in, int::in, string::uo) is det.
 
 	% string__substring(String, Start, Count, Substring):
 	% `Substring' is first the `Count' characters in what would
@@ -481,6 +531,7 @@
 	% treated as if it were the nearest end-point of that range.
 	% If `Count' is out of the range [0, length of `String' - `Start'],
 	% it is treated as if it were the nearest end-point of that range.)
+	%
 :- func string__substring(string, int, int) = string.
 :- mode string__substring(in, in, in) = uo is det.
 :- pred string__substring(string, int, int, string).
@@ -497,40 +548,43 @@
 	% This version takes time proportional to the length of the
 	% substring, whereas string__substring may take time proportional
 	% to the length of the whole string.
+	% 
 :- func string__unsafe_substring(string, int, int) = string.
 :- mode string__unsafe_substring(in, in, in) = uo is det.
 :- pred string__unsafe_substring(string, int, int, string).
 :- mode string__unsafe_substring(in, in, in, uo) is det.
 
 	% Append a list of strings together.
+	% 
 :- func string__append_list(list(string)::in) = (string::uo) is det.
-:- pred string__append_list(list(string), string).
-:- mode string__append_list(in, uo) is det.
+:- pred string__append_list(list(string)::in, string::uo) is det.
 
 	% string__join_list(Separator, Strings) = JoinedString:
 	% Appends together the strings in Strings, putting Separator between
 	% adjacent strings. If Strings is the empty list, returns the empty
 	% string.
+	%
 :- func string__join_list(string::in, list(string)::in) = (string::uo) is det.
 
 	% Compute a hash value for a string.
+	%
 :- func string__hash(string) = int.
-:- pred string__hash(string, int).
-:- mode string__hash(in, out) is det.
+:- pred string__hash(string::in, int::out) is det.
 
 	% string__sub_string_search(String, SubString, Index).
 	% `Index' is the position in `String' where the first occurrence of
 	% `SubString' begins. Indices start at zero, so if `SubString'
 	% is a prefix of `String', this will return Index = 0.
-:- pred string__sub_string_search(string, string, int).
-:- mode string__sub_string_search(in, in, out) is semidet.
+	%
+:- pred string__sub_string_search(string::in, string::in, int::out) is semidet.
 
 	% string__sub_string_search(String, SubString, BeginAt, Index).
 	% `Index' is the position in `String' where the first occurrence of
 	% `SubString' occurs such that 'Index' is greater than or equal to
 	% `BeginAt'.  Indices start at zero,
-:- pred string__sub_string_search(string, string, int, int).
-:- mode string__sub_string_search(in, in, in, out) is semidet.
+	%
+:- pred string__sub_string_search(string::in, string::in, int::in, int::out)
+	is semidet.
 
 	% A function similar to sprintf() in C.
 	%
@@ -584,8 +638,8 @@
 	% 	actual output will depend on the C standard library.
 	%
 :- func string__format(string, list(string__poly_type)) = string.
-:- pred string__format(string, list(string__poly_type), string).
-:- mode string__format(in, in, out) is det.
+:- pred string__format(string::in, list(string__poly_type)::in, string::out)
+	is det.
 
 %------------------------------------------------------------------------------%
 
@@ -595,6 +649,7 @@
 	;	s(string)
 	;	c(char).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2004 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,8 +56,9 @@
 :- type io_mutvar(T) == generic_mutvar(T, io__state).
 :- type store_mutvar(T, S) == generic_mutvar(T, store(S)).
 
-	% create a new mutable variable,
-	% initialized with the specified value
+	% Create a new mutable variable,
+	% initialized with the specified value.
+	%
 :- pred store__new_mutvar(T::in, generic_mutvar(T, S)::out, S::di, S::uo)
 	is det <= store(S).
 
@@ -65,14 +66,17 @@
 	% is equivalent to the sequence
 	% 	get_mutvar(OldMutvar, Value, S0, S1),
 	% 	new_mutvar(NewMutvar, Value, S1, S )
+	% 	
 :- pred store__copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
 	S::di, S::uo) is det <= store(S).
 
-	% lookup the value stored in a given mutable variable
+	% Lookup the value stored in a given mutable variable.
+	% 
 :- pred store__get_mutvar(generic_mutvar(T, S)::in, T::out,
 	S::di, S::uo) is det <= store(S).
 
-	% replace the value stored in a given mutable variable
+	% Replace the value stored in a given mutable variable.
+	%
 :- pred store__set_mutvar(generic_mutvar(T, S)::in, T::in,
 	S::di, S::uo) is det <= store(S).
 
@@ -102,7 +106,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% references
+% References
 %
 
 	% generic_ref(T, S):
@@ -119,12 +123,14 @@
 	% of the representation of that value.
 	% It does however allocate one cell to hold the reference;
 	% you can use new_arg_ref to avoid that.)
+	%
 :- pred store__new_ref(T::di, generic_ref(T, S)::out,
 	S::di, S::uo) is det <= store(S).
 
 	% ref_functor(Ref, Functor, Arity):
 	% Given a reference to a term, return the functor and arity
 	% of that term.
+	%
 :- pred store__ref_functor(generic_ref(T, S)::in, string::out, int::out,
 	S::di, S::uo) is det <= store(S).
 
@@ -135,6 +141,7 @@
 	% (argument numbers start from zero).
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
+	%
 :- pred store__arg_ref(generic_ref(T, S)::in, int::in,
 	generic_ref(ArgT, S)::out, S::di, S::uo) is det <= store(S).
 
@@ -144,6 +151,7 @@
 	% except that it is more efficient.
 	% It is an error if the argument number is out of range,
 	% or if the argument reference has the wrong type.
+	%
 :- pred store__new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
 	S::di, S::uo) is det <= store(S).
 
@@ -153,6 +161,7 @@
 	% a reference to another term (ValueRef),
 	% update the store so that the term referred to by Ref
 	% is replaced with the term referenced by ValueRef.
+	%
 :- pred store__set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
 	S::di, S::uo) is det <= store(S).
 
@@ -161,6 +170,7 @@
 	% Given a reference to a term (Ref), and a value (Value),
 	% update the store so that the term referred to by Ref
 	% is replaced with Value.
+	%
 :- pred store__set_ref_value(generic_ref(T, S)::in, T::di,
 	S::di, S::uo) is det <= store(S).
 
@@ -169,11 +179,13 @@
 	% be inefficient if used to return large terms; it
 	% is most efficient with atomic terms.
 	% XXX current implementation buggy (does shallow copy)
+	%
 :- pred store__copy_ref_value(generic_ref(T, S)::in, T::uo,
 	S::di, S::uo) is det <= store(S).
 
 	% Same as above, but without making a copy.
 	% Destroys the store.
+	%
 :- pred store__extract_ref_value(S::di, generic_ref(T, S)::in, T::out)
 	is det <= store(S).
 

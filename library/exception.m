@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,14 +23,11 @@
 
 	% throw(Exception):
 	%	Throw the specified exception.
+	%
+:- func throw(T) = _ is erroneous.
+:- pred throw(T::in) is erroneous.
 
-:- pred throw(T).
-:- mode throw(in) is erroneous.
-
-:- func throw(T) = _.
-:- mode throw(in) = out is erroneous.
-
-% The following types are used by try/3 and try/5.
+% The following type and inst are used by try/3 and try/5.
 
 :- type exception_result(T)
 	--->	succeeded(T)
@@ -56,7 +53,7 @@
 	%               ; not Goal(_), Result = failed
 	%               ; Result = exception(_)
 	%		).
-
+	%
 :- pred try(pred(T),		    exception_result(T)).
 :- mode try(pred(out) is det,       out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is semidet,   out)              is cc_multi.
@@ -78,7 +75,7 @@
 	%		( Goal(R, IO_0, IO), Result = succeeded(R)
 	%		; Result = exception(_)
 	%		).
-
+	%
 :- pred try_io(pred(T, io, io),
 	exception_result(T), io, io).
 :- mode try_io(pred(out, di, uo) is det,
@@ -89,7 +86,7 @@
 	% try_store(Goal, Result, Store_0, Store):
 	%
 	% Just like try_io, but for stores rather than io__states.
-
+	%
 :- pred try_store(pred(T, store(S), store(S)),
 	exception_result(T), store(S), store(S)).
 :- mode try_store(pred(out, di, uo) is det,
@@ -114,7 +111,7 @@
 	%		MaybeException = no,
 	%		all [S] (Goal(S) => list__member(S, Solutions))
 	%	).
-
+	%
 :- pred try_all(pred(T), maybe(univ), list(T)).
 :- mode try_all(pred(out) is det,     out, out(nil_or_singleton_list))
 	is cc_multi.
@@ -153,9 +150,8 @@
 	%				list__member(succeeded(R),
 	%					ResultList)),
 	%		).
-
+	%
 :- pragma obsolete(exception.try_all/2).
-
 :- pred try_all(pred(T), list(exception_result(T))).
 :- mode try_all(pred(out) is det,     out(try_all_det))     is cc_multi.
 :- mode try_all(pred(out) is semidet, out(try_all_semidet)) is cc_multi.
@@ -186,7 +182,7 @@
 	% Operationally, however, incremental_try_all/5 will call
 	% AccumulatorPred for each solution as it is obtained, rather than
 	% first building a list of the solutions.
-
+	%
 :- pred incremental_try_all(pred(T), pred(exception_result(T), A, A), A, A).
 :- mode incremental_try_all(pred(out) is nondet,
 	pred(in, di, uo) is det, di, uo) is cc_multi.
@@ -196,7 +192,7 @@
 	% rethrow(ExceptionResult):
 	% Rethrows the specified exception result (which should be
 	% of the form `exception(_)', not `succeeded(_)' or `failed'.).
-
+	%
 :- pred rethrow(exception_result(T)).
 :- mode rethrow(in(bound(exception(ground)))) is erroneous.
 
@@ -212,7 +208,7 @@
 	% is called, unless Cleanup throws an exception.
 	% This predicate performs the same function as the `finally'
 	% clause (`try {...} finally {...}') in languages such as Java.
-
+	%
 :- pred finally(pred(T, io, io), T, pred(io__res, io, io), io__res, io, io).
 :- mode finally(pred(out, di, uo) is det, out,
 	pred(out, di, uo) is det, out, di, uo) is det.
@@ -229,7 +225,7 @@
 	% The predicate is impure instead of semipure because its effect
 	% depends not only on the execution of other impure predicates,
 	% but all calls.
-
+	%
 :- type near_stack_limits ---> near_stack_limits.
 
 :- impure pred throw_if_near_stack_limits is det.

@@ -21,53 +21,53 @@
 :- type set_bbbtree(T).
 
 	% `set_bbbtree__init(Set)' returns an initialized empty set.
-
+	%
 :- pred set_bbbtree__init(set_bbbtree(T)::uo) is det.
 :- func set_bbbtree__init = set_bbbtree(T).
 
         % `set_bbbtree__empty(Set) is true iff `Set' is contains no elements.
-
+	%
 :- pred set_bbbtree__empty(set_bbbtree(T)::in) is semidet.
 
 	% `set_bbbtree__size(Set, Size)' is true iff `Size' is the cardinality
 	% of `Set'.
-
+	%
 :- pred set_bbbtree__size(set_bbbtree(T)::in, int::out) is det.
 
 	% `set_bbbtree__member(X, Set)' is true iff `X' is a member of `Set'.
 	% O(lg n) for (in, in) and O(1) for (out, in).
-
+	%
 :- pred set_bbbtree__member(T, set_bbbtree(T)).
 :- mode set_bbbtree__member(in, in) is semidet.
 :- mode set_bbbtree__member(out, in) is nondet.
 
 	% `set_bbbtree__is_member(X, Set, Result)' is true iff `X' is a member
 	% of `Set'.
-
+	%
 :- pred set_bbbtree__is_member(T::in, set_bbbtree(T)::in, bool::out) is det.
 
 	% `set_bbbtree__contains(Set, X)' is true iff `X' is a member of `Set'.
 	% O(lg n).
-
+	%
 :- pred set_bbbtree__contains(set_bbbtree(T)::in, T::in) is semidet.
 
 	% `set_bbbtree__least(Set, X)' is true iff `X' is smaller than all
 	% the other members of `Set'.
-
+	%
 :- pred set_bbbtree__least(set_bbbtree(T), T).
 :- mode set_bbbtree__least(in, out) is semidet.
 :- mode set_bbbtree__least(in, in) is semidet.
 
 	% `set_bbbtree__largest(Set, X)' is true iff `X' is larger than all
 	% the other members of `Set'.
-
+	%
 :- pred set_bbbtree__largest(set_bbbtree(T), T).
 :- mode set_bbbtree__largest(in, out) is semidet.
 :- mode set_bbbtree__largest(in, in) is semidet.
 
 	% `set_bbbtree__singleton_set(Set, X)' is true iff `Set' is the set
 	% containing just the single element `X'.
-
+	%
 :- pred set_bbbtree__singleton_set(set_bbbtree(T), T).
 :- mode set_bbbtree__singleton_set(uo, di) is det.
 :- mode set_bbbtree__singleton_set(in, out) is semidet.
@@ -78,12 +78,12 @@
 
 	% `set_bbbtree__equal(SetA, SetB)' is true iff `SetA' and `SetB'
 	% contain the same elements.
-
+	%
 :- pred set_bbbtree__equal(set_bbbtree(T)::in, set_bbbtree(T)::in) is semidet.
 
 	% `set_bbbtree__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
-
+	%
 :- pred set_bbbtree__insert(set_bbbtree(T), T, set_bbbtree(T)).
 :- mode set_bbbtree__insert(di, di, uo) is det.
 :- mode set_bbbtree__insert(in, in, out) is det.
@@ -92,7 +92,7 @@
 
 	% `set_bbbtree__insert_list(Set0, Xs, Set)' is true iff `Set' is
 	% the union of `Set0' and the set containing only the members of `Xs'.
-
+	%
 :- pred set_bbbtree__insert_list(set_bbbtree(T)::in, list(T)::in,
 	set_bbbtree(T)::out) is det.
 
@@ -102,7 +102,7 @@
 	% complement of `Set0' and the set containing only `X', i.e.
 	% if `Set' is the set which contains all the elements of `Set0'
 	% except `X'.
-
+	%
 :- pred set_bbbtree__delete(set_bbbtree(T), T, set_bbbtree(T)).
 :- mode set_bbbtree__delete(di, in, uo) is det.
 :- mode set_bbbtree__delete(in, in, out) is det.
@@ -112,7 +112,7 @@
 	% `set_bbbtree__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
-
+	%
 :- pred set_bbbtree__delete_list(set_bbbtree(T)::in, list(T)::in,
 	set_bbbtree(T)::out) is det.
 
@@ -122,7 +122,7 @@
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only `X', i.e.  if `Set' is the set which contains
 	% all the elements of `Set0' except `X'.
-
+	%
 :- pred set_bbbtree__remove(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out)
 	is semidet.
 
@@ -130,27 +130,27 @@
 	% contain any duplicates, `Set0' contains every member of `Xs',
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only the members of `Xs'.
-
+	%
 :- pred set_bbbtree__remove_list(set_bbbtree(T)::in, list(T)::in,
 	set_bbbtree(T)::out) is semidet.
 
 	% `set_bbbtree__remove_least(Set0, X, Set)' is true iff the union if
 	% `X' and `Set' is `Set0' and `X' is smaller than all the elements of
 	% `Set'.
-
+	%
 :- pred set_bbbtree__remove_least(set_bbbtree(T)::in, T::out,
 	set_bbbtree(T)::out) is semidet.
 
 	% `set_bbbtree__remove_largest(Set0, X, Set)' is true iff the union if
 	% `X' and `Set' is `Set0' and `X' is larger than all the elements of
 	% `Set'.
-
+	%
 :- pred set_bbbtree__remove_largest(set_bbbtree(T)::in, T::out,
 	set_bbbtree(T)::out) is semidet.
 
 	% `set_bbbtree__list_to_set(List, Set)' is true iff `Set' is the set
 	% containing only the members of `List'. O(n lg n)
-
+	%
 :- pred set_bbbtree__list_to_set(list(T)::in, set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
@@ -162,7 +162,7 @@
 	% `set_bbbtree__sorted_list_to_set(List, Set)' is true iff `Set' is the
 	% set containing only the members of `List'.
 	% `List' must be sorted. O(n).
-
+	%
 :- pred set_bbbtree__sorted_list_to_set(list(T)::in, set_bbbtree(T)::out)
 	is det.
 
@@ -179,13 +179,13 @@
 	% `set_bbbtree__sorted_list_to_set' as a significant cost involved
 	% with `set_bbbtree__sorted_list_to_set' is the call to list__length.
 	% `List' must be sorted. O(n).
-
+	%
 :- pred set_bbbtree__sorted_list_to_set_len(list(T)::in, set_bbbtree(T)::out,
 	int::in) is det.
 
 	% `set_bbbtree__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order. O(n).
-
+	%
 :- pred set_bbbtree__to_sorted_list(set_bbbtree(T), list(T)).
 :- mode set_bbbtree__to_sorted_list(di, uo) is det.
 :- mode set_bbbtree__to_sorted_list(in, out) is det.
@@ -194,7 +194,7 @@
 
 	% `set_bbbtree__union(SetA, SetB, Set)' is true iff `Set' is the union
 	% of `SetA' and `SetB'.
-
+	%
 :- pred set_bbbtree__union(set_bbbtree(T)::in, set_bbbtree(T)::in,
 	set_bbbtree(T)::out) is det.
 
@@ -202,12 +202,12 @@
 
 	% `set_bbbtree__union_list(Sets) = Set' is true iff `Set' is the union
 	% of all the sets in `Sets'
-
+	%
 :- func set_bbbtree__union_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
 	% `set_bbbtree__power_union(Sets, Set)' is true iff `Set' is the union
 	% of all the sets in `Sets'
-
+	%
 :- pred set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))::in,
 	set_bbbtree(T)::out) is det.
 
@@ -215,7 +215,7 @@
 
 	% `set_bbbtree__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
-
+	%
 :- pred set_bbbtree__intersect(set_bbbtree(T)::in, set_bbbtree(T)::in,
 	set_bbbtree(T)::out) is det.
 
@@ -223,7 +223,7 @@
 
 	% `set_bbbtree__power_intersect(Sets, Set) is true iff `Set' is the
 	% intersection of the sets in `Sets'.
-
+	%
 :- pred set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T))::in,
 	set_bbbtree(T)::out) is det.
 
@@ -232,13 +232,13 @@
 
 	% `set_bbbtree__intersect_list(Sets) = Set is true iff `Set' is the
 	% intersection of the sets in `Sets'.
-
+	%
 :- func set_bbbtree__intersect_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
 	% `set_bbtree__difference(SetA, SetB, Set)' is true iff `Set' is the
 	%  set containing all the elements of `SetA' except those that
 	% occur in `SetB'.
-
+	%
 :- pred set_bbbtree__difference(set_bbbtree(T)::in, set_bbbtree(T)::in,
 	set_bbbtree(T)::out) is det.
 
@@ -247,12 +247,12 @@
 
 	% `set_bbbtree__subset(SetA, SetB)' is true iff all the elements of
 	% `SetA' are also elements of `SetB'.
-
+	%
 :- pred set_bbbtree__subset(set_bbbtree(T)::in, set_bbbtree(T)::in) is semidet.
 
 	% `set_bbbtree__superset(SetA, SetB)' is true iff all the elements of
 	% `SetB' are also elements of `SetA'.
-
+	%
 :- pred set_bbbtree__superset(set_bbbtree(T)::in, set_bbbtree(T)::in)
 	is semidet.
 

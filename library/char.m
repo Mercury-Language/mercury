@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,6 +43,7 @@
 	% to the standard output or standard error streams.
 	% For example, an implementation might represent characters
 	% using Unicode, but store files in an 8-bit national character set.
+	%
 :- func char__to_int(char) = int.
 :- pred char__to_int(char, int).
 :- mode char__to_int(in, out) is det.
@@ -51,78 +52,98 @@
 
 	% Converts an integer to its corresponding character, if any.
 	% A more expressive name for the reverse mode of char__to_int.
+	%
 :- pred char__from_int(int::in, char::out) is semidet.
 
 	% Converts an integer to its corresponding character. Aborts
 	% if there isn't one.
+	%
 :- pred char__det_from_int(int::in, char::out) is det.
 :- func char__det_from_int(int) = char.
 
 	% Returns the maximum numerical character code.
+	%
 :- func char__max_char_value = int.
 :- pred char__max_char_value(int::out) is det.
 
 	% Returns the minimum numerical character code.
+	%
 :- func char__min_char_value = int.
 :- pred char__min_char_value(int::out) is det.
 
 	% Convert a character to uppercase.
+	%
 :- func char__to_upper(char) = char.
 :- pred char__to_upper(char::in, char::out) is det.
 
 	% Convert a character to lowercase.
+	%
 :- func char__to_lower(char) = char.
 :- pred char__to_lower(char::in, char::out) is det.
 
 	% char__lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
+	%
 :- pred char__lower_upper(char, char).
 :- mode char__lower_upper(in, out) is semidet.
 :- mode char__lower_upper(out, in) is semidet.
 
 	% True iff the character is whitespace, i.e. a space, tab,
 	% newline, carriage return, form-feed, or vertical tab.
+	%
 :- pred char__is_whitespace(char::in) is semidet.
 
 	% True iff the character is an uppercase letter.
+	%
 :- pred char__is_upper(char::in) is semidet.
 
 	% True iff the character is a lowercase letter.
+	%
 :- pred char__is_lower(char::in) is semidet.
 
 	% True iff the character is a letter.
+	%
 :- pred char__is_alpha(char::in) is semidet.
 
 	% True iff the character is a letter or digit.
+	%
 :- pred char__is_alnum(char::in) is semidet.
 
 	% True iff the character is a letter or an underscore.
+	%
 :- pred char__is_alpha_or_underscore(char::in) is semidet.
 
 	% True iff the character is a letter, a digit or an underscore.
+	%
 :- pred char__is_alnum_or_underscore(char::in) is semidet.
 
 	% True iff the character is a decimal digit (0-9).
+	%
 :- pred char__is_digit(char::in) is semidet.
 
 	% True iff the character is a binary digit (0 or 1).
+	%
 :- pred char__is_binary_digit(char::in) is semidet.
 
 	% True iff the character is a octal digit (0-7).
+	%
 :- pred char__is_octal_digit(char::in) is semidet.
 
 	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
+	%
 :- pred char__is_hex_digit(char::in) is semidet.
 
 	% Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
 	% Returns the character's value as a digit (0-9 or 10-35).
+	%
 :- pred char__digit_to_int(char::in, int::out) is semidet.
 
 	% char__int_to_uppercase_digit(Int, DigitChar):
 	% True iff `Int' is an integer in the range 0-35 and
 	% `DigitChar' is a decimal digit or uppercase letter
 	% whose value as a digit is `Int'.
+	%
 :- pred char__int_to_digit(int, char).
 :- mode char__int_to_digit(in, out) is semidet.
 :- mode char__int_to_digit(out, in) is semidet.
@@ -130,6 +151,7 @@
 	% Returns a decimal digit or uppercase letter corresponding to the
 	% value.
 	% Calls error/1 if the integer is not in the range 0-35.
+	%
 :- func char__det_int_to_digit(int) = char.
 :- pred char__det_int_to_digit(int::in, char::out) is det.
 

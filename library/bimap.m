@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2004 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,10 +29,12 @@
 %-----------------------------------------------------------------------------%
 
 	% Initialize an empty bimap.
+	%
 :- pred bimap__init(bimap(_, _)::out) is det.
 :- func bimap__init = bimap(_, _).
 
 	% Check whether a bimap is empty.
+	%	
 :- pred bimap__is_empty(bimap(_, _)::in) is semidet.
 
 :- pred bimap__search(bimap(K, V), K, V).
@@ -52,10 +54,12 @@
 :- func bimap__reverse_lookup(bimap(K, V), V) = K.
 
 	% Given a bimap, return a list of all the keys in the bimap.
+	%
 :- pred bimap__ordinates(bimap(K, _V)::in, list(K)::out) is det.
 :- func bimap__ordinates(bimap(K, _V)) = list(K).
 
 	% Given a bimap, return a list of all the data values in the bimap.
+	%
 :- pred bimap__coordinates(bimap(_K, V)::in, list(V)::out) is det.
 :- func bimap__coordinates(bimap(_K, V)) = list(V).
 
@@ -96,20 +100,24 @@
 
 	% Delete a key-value pair from a bimap. If the key is not present,
 	% leave the bimap unchanged.
+	%
 :- pred bimap__delete_key(K::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 :- func bimap__delete_key(bimap(K, V), K) = bimap(K, V).
 
 	% Delete a key-value pair from a bimap. If the value is not present,
 	% leave the bimap unchanged.
+	%
 :- pred bimap__delete_value(V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 :- func bimap__delete_value(bimap(K, V), V) = bimap(K, V).
 
 	% Apply bimap__delete_key to a list of keys.
+	%
 :- pred bimap__delete_keys(list(K)::in, bimap(K, V)::in, bimap(K, V)::out)
 	is det.
 :- func bimap__delete_keys(bimap(K, V), list(K)) = bimap(K, V).
 
 	% Apply bimap__delete_value to a list of values.
+	%
 :- pred bimap__delete_values(list(V)::in, bimap(K, V)::in, bimap(K, V)::out)
 	is det.
 :- func bimap__delete_values(bimap(K, V), list(V)) = bimap(K, V).
@@ -117,15 +125,18 @@
 	% bimap__overlay(BIMapA, BIMapB, BIMap):
 	% Apply map__overlay to the forward maps of BIMapA and BIMapB,
 	% and compute the reverse map from the resulting map.
+	%
 :- pred bimap__overlay(bimap(K, V)::in, bimap(K, V)::in, bimap(K, V)::out)
 	is det.
 :- func bimap__overlay(bimap(K, V), bimap(K, V)) = bimap(K, V).
 
-	% convert a bimap to an association list
+	% Convert a bimap to an association list.
+	%
 :- pred bimap__to_assoc_list(bimap(K, V)::in, assoc_list(K, V)::out) is det.
 :- func bimap__to_assoc_list(bimap(K, V)) = assoc_list(K, V).
 
-	% convert an association list to a bimap
+	% Convert an association list to a bimap.
+	% 
 :- pred bimap__from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out) is det.
 :- func bimap__from_assoc_list(assoc_list(K, V)) = bimap(K, V).
 
@@ -142,16 +153,19 @@
 :- func bimap__apply_reverse_map_to_list(bimap(K, V), list(V)) = list(K).
 
 	% Apply a transformation predicate to all the keys.
+	%
 :- pred bimap__map_keys(pred(V, K, L)::in(pred(in, in, out) is det),
 	bimap(K, V)::in, bimap(L, V)::out) is det.
 :- func bimap__map_keys(func(V, K) = L, bimap(K, V)) = bimap(L, V).
 
 	% Apply a transformation predicate to all the values.
+	%
 :- pred bimap__map_values(pred(K, V, W)::in(pred(in, in, out) is det),
 	bimap(K, V)::in, bimap(K, W)::out) is det.
 :- func bimap__map_values(func(K, V) = W, bimap(K, V)) = bimap(K, W).
 
 	% Apply a transformation predicate to all the values.
+	%
 :- pred bimap__foldl(pred(K, V, T, T), bimap(K, V), T, T).
 :- mode bimap__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode bimap__foldl(pred(in, in, in, out) is det, in, in, out) is det.
@@ -162,6 +176,7 @@
 
 :- func bimap__reverse_map(bimap(K, V)) = map(V, K).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

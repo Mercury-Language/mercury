@@ -29,27 +29,32 @@
 :- type pqueue(_K, _V).
 
 	% Create an empty priority queue
+	%
 :- pred pqueue__init(pqueue(_K, _V)::out) is det.
 :- func pqueue__init = pqueue(_K, _V).
 
 	% Insert a value V with key K into a priority queue
 	% and return the new priority queue.
+	%
 :- pred pqueue__insert(pqueue(K, V)::in, K::in, V::in, pqueue(K, V)::out)
 	is det.
 :- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
 
 	% Remove the smallest item from the priority queue.
+	%
 :- pred pqueue__remove(pqueue(K, V)::in, K::out, V::out, pqueue(K, V)::out)
 	is semidet.
 
 	% Extract all the items from a priority queue by
 	% repeated removal, and place them in an association
 	% list.
+	%
 :- pred pqueue__to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out) is det.
 :- func pqueue__to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
 
 	% Insert all the key-value pairs in an association list
 	% into a priority queue.
+	% 
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
 	is det.
 :- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
@@ -58,6 +63,7 @@
 	%
 :- func pqueue__from_assoc_list(assoc_list(K, V)) = pqueue(K, V).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

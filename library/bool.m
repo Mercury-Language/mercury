@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,29 +31,25 @@
 :- instance enum(bool).
 
 :- func bool__or(bool, bool) = bool.
-:- pred bool__or(bool, bool, bool).
-:- mode bool__or(in, in, out) is det.
+:- pred bool__or(bool::in, bool::in, bool::out) is det.
 
 :- func bool__or_list(list(bool)) = bool.
-:- pred bool__or_list(list(bool), bool).
-:- mode bool__or_list(in, out) is det.
+:- pred bool__or_list(list(bool)::in, bool::out) is det.
 
 :- func bool__and(bool, bool) = bool.
-:- pred bool__and(bool, bool, bool).
-:- mode bool__and(in, in, out) is det.
+:- pred bool__and(bool::in, bool::in, bool::out) is det.
 
 :- func bool__and_list(list(bool)) = bool.
-:- pred bool__and_list(list(bool), bool).
-:- mode bool__and_list(in, out) is det.
+:- pred bool__and_list(list(bool)::in, bool::out) is det.
 
 :- func bool__not(bool) = bool.
-:- pred bool__not(bool, bool).
-:- mode bool__not(in, out) is det.
+:- pred bool__not(bool::in, bool::out) is det.
 
 	% pred_to_bool(P) = (if P then yes else no).
-:- func pred_to_bool((pred)) = bool.
-:- mode pred_to_bool((pred) is semidet) = out is det.
+	%
+:- func pred_to_bool((pred)::((pred) is semidet)) = (bool::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

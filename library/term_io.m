@@ -44,79 +44,100 @@
 	% except that resulting term is in the ground representation.
 	% Binds Result to either `eof', `term(VarSet, Term)', or
 	% `error(Message, LineNumber)'.
+	%
 :- pred term_io__read_term(read_term(T)::out, io::di, io::uo) is det.
 
 	% As above, except uses the given operator table instead of
 	% the standard Mercury operators.
+	%
 :- pred term_io__read_term_with_op_table(Ops::in, read_term(T)::out,
 	io::di, io::uo) is det <= op_table(Ops).
 
 	% Writes a term to standard output.
+	%
 :- pred term_io__write_term(varset(T)::in, term(T)::in, io::di, io::uo) is det.
 
 	% As above, except uses the given operator table instead of the
 	% standard Mercury operators.
+	%
 :- pred term_io__write_term_with_op_table(Ops::in, varset(T)::in, term(T)::in,
 	io::di, io::uo) is det <= op_table(Ops).
 
 	% As above, except it appends a period and new-line.
+	%
 :- pred term_io__write_term_nl(varset(T)::in, term(T)::in, io::di, io::uo)
 	is det.
 
 	% As above, except it appends a period and new-line.
+	%
 :- pred term_io__write_term_nl_with_op_table(Ops::in, varset(T)::in,
 	term(T)::in, io::di, io::uo) is det <= op_table(Ops).
 
 	% Writes a constant (integer, float, string, or atom) to stdout.
+	%
 :- pred term_io__write_constant(const::in, io::di, io::uo) is det.
 
 	% Like term_io__write_constant, but return the result in a string.
+	%
 :- func term_io__format_constant(const) = string.
 
 	% Writes a variable to stdout.
+	%
 :- pred term_io__write_variable(var(T)::in, varset(T)::in, io::di, io::uo)
 	is det.
 
 	% As above, except uses the given operator table instead of the
 	% standard Mercury operators.
+	%
 :- pred term_io__write_variable_with_op_table(Ops::in, var(T)::in,
 	varset(T)::in, io::di, io::uo) is det <= op_table(Ops).
 
 	% Given a string S, write S in double-quotes, with characters
 	% escaped if necessary, to stdout.
+	%
 :- pred term_io__quote_string(string::in, io::di, io::uo) is det.
 
 	% Like term_io__quote_string, but return the result in a string.
+	%
 :- func term_io__quoted_string(string) = string.
 
 	% Given an atom-name A, write A, enclosed in single-quotes if necessary,
 	% with characters escaped if necessary, to stdout.
+	%
 :- pred term_io__quote_atom(string::in, io::di, io::uo) is det.
 
 	% Like term_io__quote_atom, but return the result in a string.
+	%
 :- func term_io__quoted_atom(string) = string.
 
 	% Given a character C, write C in single-quotes,
 	% escaped if necessary, to stdout.
+	%
 :- pred term_io__quote_char(char::in, io::di, io::uo) is det.
 
-:- func term_io__quoted_char(char) = string.
 	% Like term_io__quote_char, but return the result in a string.
+	%
+:- func term_io__quoted_char(char) = string.
 
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
+	%
 :- pred term_io__write_escaped_char(char::in, io::di, io::uo) is det.
 
 	% Like term_io__write_escaped_char, but return the result in a string.
+	%
 :- func term_io__escaped_char(char) = string.
 
 	% Given a string S, write S, with characters escaped if necessary,
 	% to stdout. The string is not enclosed in quotes.
+	%
 :- pred term_io__write_escaped_string(string::in, io::di, io::uo) is det.
 
 	% Like term_io__write_escaped_char, but return the result in a string.
+	%
 :- func term_io__escaped_string(string) = string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

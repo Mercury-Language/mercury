@@ -76,9 +76,7 @@
 	% Sets a value regardless of whether key exists or not.
 	%
 :- func rbtree__set(rbtree(K, V), K, V) = rbtree(K, V).
-:- pred rbtree__set(rbtree(K, V), K, V, rbtree(K, V)).
-:- mode rbtree__set(di, di, di, uo) is det.
-:- mode rbtree__set(in, in, in, out) is det.
+:- pred rbtree__set(rbtree(K, V)::in, K::in, V::in, rbtree(K, V)::out) is det.
 
 	% Insert a duplicate key into the tree.
 	%
@@ -131,16 +129,13 @@
 	% Does nothing if the key does not exist.
 	%
 :- func rbtree__delete(rbtree(K, V), K) = rbtree(K, V).
-:- pred rbtree__delete(rbtree(K, V), K, rbtree(K, V)).
-:- mode rbtree__delete(di, in, uo) is det.
-:- mode rbtree__delete(in, in, out) is det.
+:- pred rbtree__delete(rbtree(K, V)::in, K::in, rbtree(K, V)::out) is det.
 
 	% Remove the key-value pair associated with a key.
 	% Fails if the key does not exist.
 	%
-:- pred rbtree__remove(rbtree(K, V), K, V, rbtree(K, V)).
-:- mode rbtree__remove(di, in, uo, uo) is semidet.
-:- mode rbtree__remove(in, in, out, out) is semidet.
+:- pred rbtree__remove(rbtree(K, V)::in, K::in, V::out,
+	rbtree(K, V)::out) is semidet.
 
 	% Same as above, except this version does not return the value
 	% corresponding to the key.  Its use is deprecated, but it is
@@ -152,16 +147,14 @@
 	% Deletes the node with the minimum key from the tree,
 	% and returns the key and value fields.
 	%
-:- pred rbtree__remove_smallest(rbtree(K, V), K, V, rbtree(K, V)).
-:- mode rbtree__remove_smallest(di, uo, uo, uo) is semidet.
-:- mode rbtree__remove_smallest(in, out, out, out) is semidet.
+:- pred rbtree__remove_smallest(rbtree(K, V)::in, K::out, V::out,
+	rbtree(K, V)::out) is semidet.
 
 	% Deletes the node with the maximum key from the tree,
 	% and returns the key and value fields.
 	%
-:- pred rbtree__remove_largest(rbtree(K, V), K, V, rbtree(K, V)).
-:- mode rbtree__remove_largest(di, uo, uo, uo) is semidet.
-:- mode rbtree__remove_largest(in, out, out, out) is semidet.
+:- pred rbtree__remove_largest(rbtree(K, V)::in, K::out, V::out,
+	rbtree(K, V)::out) is semidet.
 
 	% Returns an in-order list of all the keys in the rbtree.
 	%
@@ -865,8 +858,6 @@ rbtree__delete(Tree0, K, Tree) :-
 %	Algorithm O(log N).
 
 :- pred rbtree__delete_2(rbtree(K, V), K, bool, maybe(V), rbtree(K, V)).
-:- mode rbtree__delete_2(di, in, in, uo, uo) is semidet.
-:- mode rbtree__delete_2(di, in, in(bound(no)), uo, uo) is det.
 :- mode rbtree__delete_2(in, in, in, out, out) is semidet.
 :- mode rbtree__delete_2(in, in, in(bound(no)), out, out) is det.
 

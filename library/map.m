@@ -31,34 +31,41 @@
 %-----------------------------------------------------------------------------%
 
 	% Initialize an empty map.
+	%
 :- pred map__init(map(_, _)::uo) is det.
 :- func map__init = (map(K, V)::uo) is det.
 
 	% Check whether a map is empty.
+	%
 :- pred map__is_empty(map(_, _)::in) is semidet.
 
 	% Check whether map contains key
+	%
 :- pred map__contains(map(K, _V)::in, K::in) is semidet.
 
 :- pred map__member(map(K, V)::in, K::out, V::out) is nondet.
 
 	% Search map for key.
+	%
 :- pred map__search(map(K, V)::in, K::in, V::out) is semidet.
 :- func map__search(map(K, V), K) = V is semidet.
 
 	% Search map for key, but abort if search fails.
+	%	
 :- pred map__lookup(map(K, V)::in, K::in, V::out) is det.
 :- func map__lookup(map(K, V), K) = V.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next lower key instead.
 	% Fails if there is no key with the given or lower value.
+	%
 :- pred map__lower_bound_search(map(K, V)::in, K::in, K::out, V::out)
 	is semidet.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next lower key instead.
 	% Aborts if there is no key with the given or lower value.
+	%
 :- pred map__lower_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
 	% Search for a key-value pair using the key.  If there is no entry
@@ -116,11 +123,13 @@
 
 	% Update the value corresponding to a given key
 	% Fail if the key doesn't already exist.
+	%
 :- pred map__update(map(K, V)::in, K::in, V::in, map(K, V)::out) is semidet.
 :- func map__update(map(K, V), K, V) = map(K, V) is semidet.
 
 	% Update the value corresponding to a given key
 	% Abort if the key doesn't already exist.
+	%
 :- pred map__det_update(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 :- func map__det_update(map(K, V), K, V) = map(K, V).
 
@@ -140,133 +149,146 @@
 
 	% Update value if the key is already present, otherwise
 	% insert new key and value.
-:- pred map__set(map(K, V), K, V, map(K, V)).
-:- mode map__set(di, di, di, uo) is det.
-:- mode map__set(in, in, in, out) is det.
-
+	%
 :- func map__set(map(K, V), K, V) = map(K, V).
+:- pred map__set(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 
 	% Given a map, return a list of all the keys in the map.
-:- pred map__keys(map(K, _V)::in, list(K)::out) is det.
+	%
 :- func map__keys(map(K, _V)) = list(K).
+:- pred map__keys(map(K, _V)::in, list(K)::out) is det.
 
 	% Given a map, return a list of all the keys in the map,
 	% in sorted order.
-:- pred map__sorted_keys(map(K, _V)::in, list(K)::out) is det.
+	%
 :- func map__sorted_keys(map(K, _V)) = list(K).
+:- pred map__sorted_keys(map(K, _V)::in, list(K)::out) is det.
 
 	% Given a map, return a list of all the data values in the map.
-:- pred map__values(map(_K, V)::in, list(V)::out) is det.
+	%
 :- func map__values(map(_K, V)) = list(V).
+:- pred map__values(map(_K, V)::in, list(V)::out) is det.
 
 	% Convert a map to an association list.
-:- pred map__to_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
+	%
 :- func map__to_assoc_list(map(K, V)) = assoc_list(K, V).
+:- pred map__to_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
 
 	% Convert a map to an association list which is sorted on the keys.
-:- pred map__to_sorted_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
+	%
 :- func map__to_sorted_assoc_list(map(K, V)) = assoc_list(K, V).
+:- pred map__to_sorted_assoc_list(map(K, V)::in, assoc_list(K, V)::out) is det.
 
 	% Convert an association list to a map.
-:- pred map__from_assoc_list(assoc_list(K, V)::in, map(K, V)::out) is det.
+	%
 :- func map__from_assoc_list(assoc_list(K, V)) = map(K, V).
+:- pred map__from_assoc_list(assoc_list(K, V)::in, map(K, V)::out) is det.
 
 	% Convert a sorted association list to a map.
+	%
+:- func map__from_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
 :- pred map__from_sorted_assoc_list(assoc_list(K, V)::in, map(K, V)::out)
 	is det.
-:- func map__from_sorted_assoc_list(assoc_list(K, V)) = map(K, V).
 
 	% Delete a key-value pair from a map.
 	% If the key is not present, leave the map unchanged.
-:- pred map__delete(map(K, V), K, map(K, V)).
-:- mode map__delete(di, in, uo) is det.
-:- mode map__delete(in, in, out) is det.
-
+	%
 :- func map__delete(map(K, V), K) = map(K, V).
+:- pred map__delete(map(K, V)::in, K::in, map(K, V)::out) is det.
 
 	% Apply map__delete/3 to a list of keys.
-:- pred map__delete_list(map(K, V), list(K), map(K, V)).
-:- mode map__delete_list(di, in, uo) is det.
-:- mode map__delete_list(in, in, out) is det.
-
+	%
 :- func map__delete_list(map(K, V), list(K)) = map(K, V).
+:- pred map__delete_list(map(K, V)::in, list(K)::in, map(K, V)::out) is det.
 
 	% Delete a key-value pair from a map and return the value.
 	% Fail if the key is not present.
+	%
 :- pred map__remove(map(K, V)::in, K::in, V::out, map(K, V)::out) is semidet.
 
 	% Delete a key-value pair from a map and return the value.
 	% Abort if the key is not present.
+	%
 :- pred map__det_remove(map(K, V)::in, K::in, V::out, map(K, V)::out) is det.
 
 	% Count the number of elements in the map.
-:- pred map__count(map(K, V)::in, int::out) is det.
+	%
 :- func map__count(map(K, V)) = int.
+:- pred map__count(map(K, V)::in, int::out) is det.
 
 	% Convert a pair of lists (which must be of the same length)
 	% to a map.
+	%
+:- func map__from_corresponding_lists(list(K), list(V)) = map(K, V).
 :- pred map__from_corresponding_lists(list(K)::in, list(V)::in, map(K, V)::out)
 	is det.
-:- func map__from_corresponding_lists(list(K), list(V)) = map(K, V).
 
 	% For map__merge(MapA, MapB, Map), MapA and MapB must
 	% not both contain the same key.
-:- pred map__merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+	%
 :- func map__merge(map(K, V), map(K, V)) = map(K, V).
+:- pred map__merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 
 	% For map__overlay(MapA, MapB, Map), if MapA and MapB both
 	% contain the same key, then Map will map that key to
 	% the value from MapB.  In otherwords, MapB takes precedence
 	% over MapA.
-:- pred map__overlay(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
+	%
 :- func map__overlay(map(K, V), map(K, V)) = map(K, V).
+:- pred map__overlay(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 
 	% map__overlay_large_map(MapA, MapB, Map) performs the same task as
 	% map__overlay(MapA, MapB, Map). However, while map__overlay takes time
 	% proportional to the size of MapB, map__overlay_large_map takes time
 	% proportional to the size of MapA. In other words, it preferable when
 	% MapB is a large map.
+	%
+:- func map__overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 :- pred map__overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
 	is det.
-:- func map__overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 
 	% map__select takes a map and a set of keys and returns
 	% a map containing the keys in the set and their corresponding
 	% values.
-:- pred map__select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
+	%
 :- func map__select(map(K, V), set(K)) = map(K, V).
+:- pred map__select(map(K, V)::in, set(K)::in, map(K, V)::out) is det.
 
 	% Given a list of keys, produce a list of their corresponding
 	% values in a specified map.
-:- pred map__apply_to_list(list(K)::in, map(K, V)::in, list(V)::out) is det.
+	%
 :- func map__apply_to_list(list(K), map(K, V)) = list(V).
+:- pred map__apply_to_list(list(K)::in, map(K, V)::in, list(V)::out) is det.
 
 	% Declaratively, a NOP.
 	% Operationally, a suggestion that the implementation
 	% optimize the representation of the map in the expectation
 	% of a number of lookups but few or no modifications.
-:- pred map__optimize(map(K, V)::in, map(K, V)::out) is det.
+	%
 :- func map__optimize(map(K, V)) = map(K, V).
+:- pred map__optimize(map(K, V)::in, map(K, V)::out) is det.
 
 	% Remove the smallest item from the map, fail if
 	% the map is empty.
+	%
 :- pred map__remove_smallest(map(K, V)::in, K::out, V::out, map(K, V)::out)
 	is semidet.
 
 	% Perform an inorder traversal of the map, applying
 	% an accumulator predicate for each key-value pair.
+	%
+:- func map__foldl(func(K, V, T) = T, map(K, V), T) = T.
 :- pred map__foldl(pred(K, V, T, T), map(K, V), T, T).
 :- mode map__foldl(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode map__foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
-
-:- func map__foldl(func(K, V, T) = T, map(K, V), T) = T.
 
 	% Perform an inorder traversal of the map, applying
 	% an accumulator predicate with two accumulators for
 	% each key-value pair.
 	% (Although no more expressive than map__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	%
 :- pred map__foldl2(pred(K, V, T, T, U, U), map(K, V), T, T, U, U).
 :- mode map__foldl2(pred(in, in, in, out, in, out) is det,
 	in, in, out, in, out) is det.
@@ -282,6 +304,7 @@
 	% each key-value pair.
 	% (Although no more expressive than map__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	%
 :- pred map__foldl3(pred(K, V, T, T, U, U, W, W), map(K, V), T, T, U, U, W, W).
 :- mode map__foldl3(pred(in, in, in, out, in, out, in, out) is det,
 	in, in, out, in, out, in, out) is det.
@@ -296,14 +319,15 @@
 
 	% Apply a transformation predicate to all the values
 	% in a map.
+	%
+:- func map__map_values(func(K, V) = W, map(K, V)) = map(K, W).
 :- pred map__map_values(pred(K, V, W), map(K, V), map(K, W)).
 :- mode map__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode map__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
-:- func map__map_values(func(K, V) = W, map(K, V)) = map(K, W).
-
 	% Apply a transformation predicate to all the values
 	% in a map, while continuously updating an accumulator.
+	%
 :- pred map__map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
 :- mode map__map_foldl(pred(in, in, out, di, uo) is det, in, out, di, uo)
 	is det.
@@ -313,6 +337,7 @@
 	is semidet.
 
 	% As map__map_foldl, but with two accumulators.
+	%
 :- pred map__map_foldl2(pred(K, V, W, A, A, B, B), map(K, V), map(K, W),
 	A, A, B, B).
 :- mode map__map_foldl2(pred(in, in, out, in, out, in, out) is det,
@@ -326,6 +351,7 @@
 	% predicate to the values associated with the key in M1 and M2.
 	% Fail if and only if this predicate fails on the values associated
 	% with some common key.
+	%
 :- pred map__intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode map__intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__intersect(pred(in, in, out) is det, in, in, out) is det.
@@ -333,6 +359,7 @@
 :- func map__intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 
 	% Calls map__intersect. Aborts if map__intersect fails.
+	%
 :- pred map__det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode map__det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
 
@@ -352,6 +379,7 @@
 	% map__common_subset is very similar to map__intersect, but can succeed
 	% even with an output map that does not contain an entry for a key
 	% value that occurs in both input maps.
+	%
 :- func map__common_subset(map(K, V), map(K, V)) = map(K, V).
 
 	% Given two maps M1 and M2, create a third map M3 that all the keys
@@ -360,13 +388,14 @@
 	% predicate to the values associated with the key in M1 and M2.
 	% Fail if and only if this predicate fails on the values associated
 	% with some common key.
+	%
+:- func map__union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- pred map__union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode map__union(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__union(pred(in, in, out) is det, in, in, out) is det.
 
-:- func map__union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
-
 	% Calls map__union. Aborts if map__union fails.
+	%
 :- pred map__det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
 :- mode map__det_union(pred(in, in, out) is semidet, in, in, out) is det.
 
@@ -376,24 +405,30 @@
 	% Consider the original map a set of key-value pairs. This predicate
 	% returns a map that maps each value to the set of keys it is paired
 	% with in the original map.
+	%
 :- func map__reverse_map(map(K, V)) = map(V, set(K)).
 
 	% Field selection for maps.
 
 	% Map ^ elem(Key) = map__search(Map, Key).
+	%
 :- func map__elem(K, map(K, V)) = V is semidet.
 
 	% Map ^ det_elem(Key) = map__lookup(Map, Key).
+	%
 :- func map__det_elem(K, map(K, V)) = V.
 
 	% Field update for maps.
 
 	% (Map ^ elem(Key) := Value) = map__set(Map, Key, Value).
+	%
 :- func 'map__elem :='(K, map(K, V), V) = map(K, V).
 
 	% (Map ^ det_elem(Key) := Value) = map__det_update(Map, Key, Value).
+	%
 :- func 'map__det_elem :='(K, map(K, V), V) = map(K, V).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
