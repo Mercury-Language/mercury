@@ -164,7 +164,10 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 	(
 		TypeCategory = tuple_type
 	;
-		( TypeCategory = user_ctor_type ; TypeCategory = enum_type ),
+		( TypeCategory = user_ctor_type
+		; TypeCategory = enum_type 
+		; is_introduced_type_info_type_category(TypeCategory) = yes
+		),
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
@@ -178,7 +181,10 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
 	(
 		TypeCategory = tuple_type
 	;
-		( TypeCategory = user_ctor_type ; TypeCategory = enum_type ),
+		( TypeCategory = user_ctor_type
+		; TypeCategory = enum_type
+		; is_introduced_type_info_type_category(TypeCategory) = yes
+		),
 		special_pred_is_generated_lazily_2(ModuleInfo,
 			TypeCtor, Body, Status)
 	).
