@@ -129,7 +129,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
-	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
+	ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->

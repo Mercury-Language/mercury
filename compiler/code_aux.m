@@ -108,17 +108,10 @@ code_aux__contains_only_builtins_2(if_then_else(_Vars, Cond, Then, Else, _)) :-
 	code_aux__contains_only_builtins(Else).
 code_aux__contains_only_builtins_2(call(_, _, _, Builtin, _, _, _)) :-
 	hlds__is_builtin_is_inline(Builtin).
-code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
-	(
-		Uni = assign(_, _)
-	;
-		Uni = simple_test(_, _)
-	;
-		Uni = construct(_, _, _, _)
-	;
-		Uni = deconstruct(_, _, _, _, _)
-	).
-		% Complicated unifies are _non_builtin_
+	% Complicated unifies are non-builtin, but everywhere this predicate
+	% is called, they either shouldn't have been created or have been
+	% converted into calls.
+code_aux__contains_only_builtins_2(unify(_, _, _, _, _)).
 
 :- pred code_aux__contains_only_builtins_cases(list(case)).
 :- mode code_aux__contains_only_builtins_cases(in) is semidet.

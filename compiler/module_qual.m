@@ -20,7 +20,8 @@
 %
 :- interface.
 
-:- import_module prog_data, bool, io.
+:- import_module prog_data.
+:- import_module bool, io.
 
 	% module_qualify_items(Items0, Items, ReportUndefErrors,
 	%				NumErrors, UndefTypes, UndefModes).
@@ -30,20 +31,32 @@
 	% report undefined types, insts and modes. 
 	% ReportUndefErrors should be no when module qualifying the
 	% short interface.
-:- pred module_qual__module_qualify_items(item_list::in, item_list::out,
-		string::in, bool::in, int::out, bool::out, bool::out,
-		io__state::di, io__state::uo) is det.
+:- pred module_qual__module_qualify_items(item_list, item_list,
+		string, bool, int, bool, bool, io__state, io__state).
+:- mode module_qual__module_qualify_items(in, out, in, in,
+		out, out, out, di, uo) is det.
 
-	% This is called from modes.m to qualify the mode of a lambda
+	% This is called from make_hlds.m to qualify the mode of a lambda
 	% expression.
-:- pred module_qual__qualify_mode_list(list(mode)::in, list(mode)::out,
-		list(mode_id)::in, list(inst_id)::in, term__context::in,
-		int::out, io__state::di, io__state::uo) is det.
+:- pred module_qual__qualify_mode_list(list(mode), list(mode),
+		term__context, mq_info, mq_info,
+		io__state, io__state) is det.
+:- mode module_qual__qualify_mode_list(in, out, in, in, out, di, uo) is det.
 
+:- pred module_qual__qualify_type(type, type, term__context,
+		mq_info, mq_info, io__state, io__state).
+:- mode module_qual__qualify_type(in, out, in, in, out, di, uo) is det.
+
+:- type mq_info.
+
+:- pred init_mq_info_module(module_info, mq_info).
+:- mode init_mq_info_module(in, out) is det.
+
+%-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_data, hlds_pred, type_util, prog_out, prog_util.
-:- import_module mercury_to_mercury, globals, options.
+:- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
+:- import_module prog_util, mercury_to_mercury, globals, options.
 :- import_module int, list, map, require, set, std_util, string, term, varset.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
@@ -53,9 +66,7 @@ module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 	do_module_qualify_items(Items0, Items, Info1, Info),
 	{ mq_info_get_type_error_flag(Info, UndefTypes) },
 	{ mq_info_get_mode_error_flag(Info, UndefModes) },
-	(
-		{ ReportErrors = yes }
-	->
+	( { ReportErrors = yes } ->
 		{ mq_info_get_interface_modules(Info, UnusedImports0) },
 		{ set__to_sorted_list(UnusedImports0, UnusedImports) },
 		maybe_warn_unused_interface_imports(ModuleName, UnusedImports)
@@ -65,19 +76,20 @@ module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 	{ mq_info_get_num_errors(Info, NumErrors) }.
 
 
-module_qual__qualify_mode_list(Modes0, Modes, ModeIds, 
-				InstIds, Context, NumErrs) -->
-	{ init_mq_info(ModeIds, InstIds, Info0) },
+module_qual__qualify_mode_list(Modes0, Modes, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, lambda_expr - Context, Info1) },
-	qualify_mode_list(Modes0, Modes, Info1, Info),
-	{ mq_info_get_num_errors(Info, NumErrs) }.
+	qualify_mode_list(Modes0, Modes, Info1, Info).
+
+module_qual__qualify_type(Type0, Type, Context, Info0, Info) -->
+	{ mq_info_set_error_context(Info0, type_qual - Context, Info1) },
+	qualify_type(Type0, Type, Info1, Info).
 
 
 :- type mq_info
 	--->	mq_info(
-			set(type_id),	% Sets of all types, modes and
-			set(inst_id),	% insts visible in this module.
-			set(mode_id),
+			type_id_set,	% Sets of all types, modes and
+			inst_id_set,	% insts visible in this module.
+			mode_id_set,
 			set(module_name), % modules imported in the
 				% interface that are not definitely
 				% needed in the interface.
@@ -85,8 +97,9 @@ module_qual__qualify_mode_list(Modes0, Modes, ModeIds,
 			int,	% number of errors found.
 			bool,	% are there any undefined types.
 			bool,	% are there any undefined insts or modes.
-			bool, 	% do we want to report errors
-			error_context
+			bool, 	% do we want to report errors.
+			error_context,	% context of the current item.
+			unit	% junk slot
 	).
 		
 
@@ -125,40 +138,27 @@ collect_mq_info_2(nothing, Info, Info).
 
 :- pred add_type_defn(type_defn::in, mq_info::in, mq_info::out) is det.
 
-add_type_defn(du_type(SymName, Params, _), Info0, Info) :-
+add_type_defn(TypeDefn, Info0, Info) :-
+	(	TypeDefn = du_type(SymName, Params, _)
+	;	TypeDefn = uu_type(SymName, Params, _)
+	;	TypeDefn = eqv_type(SymName, Params, _)
+	;	TypeDefn = abstract_type(SymName, Params)
+	),
 	list__length(Params, Arity),
 	mq_info_get_types(Info0, Types0),
-	set__insert(Types0, SymName - Arity, Types),
-	mq_info_set_types(Info0, Types, Info).
-add_type_defn(uu_type(SymName, Params, _), Info0, Info) :-
-	list__length(Params, Arity),
-	mq_info_get_types(Info0, Types0),
-	set__insert(Types0, SymName - Arity, Types),
-	mq_info_set_types(Info0, Types, Info).
-add_type_defn(eqv_type(SymName, Params, _), Info0, Info) :-
-	list__length(Params, Arity),
-	mq_info_get_types(Info0, Types0),
-	set__insert(Types0, SymName - Arity, Types),
-	mq_info_set_types(Info0, Types, Info).
-add_type_defn(abstract_type(SymName, Params), Info0, Info) :-
-	list__length(Params, Arity),
-	mq_info_get_types(Info0, Types0),
-	set__insert(Types0, SymName - Arity, Types),
+	id_set_insert(SymName - Arity, Types0, Types),
 	mq_info_set_types(Info0, Types, Info).
 
 
 :- pred add_inst_defn(inst_defn::in, mq_info::in, mq_info::out) is det.
 
-add_inst_defn(eqv_inst(SymName, Params, _), Info0, Info) :-
+add_inst_defn(InstDefn, Info0, Info) :-
+	(	InstDefn = eqv_inst(SymName, Params, _)
+	;	InstDefn = abstract_inst(SymName, Params)
+	),
 	list__length(Params, Arity),
 	mq_info_get_insts(Info0, Insts0),
-	set__insert(Insts0, SymName - Arity, Insts),
-	mq_info_set_insts(Info0, Insts, Info).
-
-add_inst_defn(abstract_inst(SymName, Params), Info0, Info) :-
-	list__length(Params, Arity),
-	mq_info_get_insts(Info0, Insts0),
-	set__insert(Insts0, SymName - Arity, Insts),
+	id_set_insert(SymName - Arity, Insts0, Insts),
 	mq_info_set_insts(Info0, Insts, Info).
 
 
@@ -167,7 +167,7 @@ add_inst_defn(abstract_inst(SymName, Params), Info0, Info) :-
 add_mode_defn(eqv_mode(SymName, Params, _), Info0, Info) :-
 	list__length(Params, Arity),
 	mq_info_get_modes(Info0, Modes0),
-	set__insert(Modes0, SymName - Arity, Modes),
+	id_set_insert(SymName - Arity, Modes0, Modes),
 	mq_info_set_modes(Info0, Modes, Info).
 
 	% Update import status.
@@ -181,16 +181,14 @@ process_module_defn(implementation, Info0, Info) :-
 	mq_info_set_import_status(Info0, local, Info).
 process_module_defn(imported, Info0, Info) :-
 	mq_info_set_import_status(Info0, imported, Info).
+process_module_defn(opt_imported, Info0, Info) :-
+	mq_info_set_import_status(Info0, opt_imported, Info).
 process_module_defn(external(_), Info, Info).
 process_module_defn(end_module(_), Info, Info).
 process_module_defn(export(_), Info, Info).
 process_module_defn(import(Imports), Info0, Info) :-
-	(
-		Imports = module(ImportedModules) 
-	->
-		(
-			mq_info_get_import_status(Info0, exported)
-		->
+	( Imports = module(ImportedModules) ->
+		( mq_info_get_import_status(Info0, exported) ->
 			mq_info_add_interface_modules(Info0,
 						ImportedModules, Info)
 		;
@@ -204,17 +202,16 @@ process_module_defn(use(_), Info, Info).	% not implemented
 %------------------------------------------------------------------------------
 
 	% Iterate over the item list module qualifying all declarations.
-	% Stop when the :- imported pseudo-declaration is reached,
-	% since imported declarations should already be module qualified.
+	% Stop when the :- imported or :- opt_imported pseudo-declaration
+	% is reached, since imported declarations should already be
+	% module qualified.
 :- pred do_module_qualify_items(item_list::in, item_list::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 do_module_qualify_items([], [], Info, Info) --> [].
 do_module_qualify_items([Item0 | Items0], [Item | Items], Info0, Info) -->
 	module_qualify_item(Item0, Item, Info0, Info1, Continue),
-	(
-		{ Continue = yes }
-	->
+	( { Continue = yes } ->
 		do_module_qualify_items(Items0, Items, Info1, Info)
 	;
 		{ Items = Items0 },
@@ -292,6 +289,8 @@ module_qualify_item(nothing - Context, nothing - Context,
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
 							bool::out) is det.
 
+update_import_status(opt_imported, Info0, Info, no) :-
+	mq_info_set_import_status(Info0, opt_imported, Info).
 update_import_status(module(_), Info, Info, yes).
 update_import_status(interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, exported, Info).
@@ -514,26 +513,18 @@ qualify_type_list([Type0 | Types0], [Type | Types], Info0, Info) -->
 qualify_type(term__variable(Var), term__variable(Var), Info, Info) --> [].
 qualify_type(Type0, Type, Info0, Info) -->
 	{ Type0 = term__functor(F, As, _) },
-	(
-		{ is_builtin_func_type(F, As, ArgTypes0, RetType0) }
-	->
+	( { is_builtin_func_type(F, As, ArgTypes0, RetType0) } ->
 		qualify_type_list(ArgTypes0, ArgTypes, Info0, Info1),
 		qualify_type(RetType0, RetType, Info1, Info),
 		{ term__context_init(Context) },
 		{ Type = term__functor(term__atom("="),
 				[term__functor(term__atom("func"),
 				ArgTypes, Context), RetType], Context) }
-	;
-		{ type_to_type_id(Type0, TypeId0, Args0) }
-	->
-		(
-			{ is_builtin_atomic_type(TypeId0) }
-		->
+	; { type_to_type_id(Type0, TypeId0, Args0) } ->
+		( { is_builtin_atomic_type(TypeId0) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
-		;
-			{ is_builtin_pred_type(TypeId0) }
-		->
+		; { is_builtin_pred_type(TypeId0) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
 		;
@@ -586,30 +577,24 @@ qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
 	% found or mulitiple matches were found, report an error.
 	% This predicate assumes that type_ids, inst_ids and mode_ids
 	% have the same representation.
-:- pred find_unique_match(id::in, id::out, set(id)::in, id_type::in,
+:- pred find_unique_match(id::in, id::out, id_set::in, id_type::in,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	(
-		{ Id0 = qualified(Module, _) - _ },
+		{ Id0 = qualified(Module, Name) - Arity },
 		{ Id = Id0 },
-		(
-			{ set__member(Id0, Ids) }
-		->
-			(
-				{ mq_info_get_import_status(Info0, exported) }
-			->
+		( { id_set_search_m_n_a(Ids, Module, Name, Arity) } ->
+			( { mq_info_get_import_status(Info0, exported) } ->
 				{ mq_info_set_module_used(Info0, Module, Info) }
 			;
 				{ Info = Info0 }
 			)
 		;
-			(
-				{ mq_info_get_report_error_flag(Info0, yes) }
-			->
+			( { mq_info_get_report_error_flag(Info0, yes) } ->
 				{ mq_info_get_error_context(Info0,
 							ErrorContext) },
-				report_undefined(ErrorContext, Id0, TypeOfId),
+				report_undefined(ErrorContext, Id, TypeOfId),
 				{ mq_info_set_error_flag(Info0,
 							TypeOfId, Info1) },
 				{ mq_info_incr_errors(Info1, Info) }
@@ -624,18 +609,11 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		% arity and which come from modules imported by the
 		% module where the current ID is used.
 
-		{ set__to_sorted_list(Ids, IdList) }, % NOP
-		{ list__filter(lambda([X::in] is semidet, (
-				X = qualified(_ModuleName, IdName) - Arity
-				)), IdList, Matches) },
-		(
-			{ Matches = [] }
-		->
+		{ id_set_search_name_arity(Ids, IdName, Arity, Modules) },
+		( { Modules = [] } ->
 			% No matches for this id.
 			{ Id = Id0 },
-			(
-				{ mq_info_get_report_error_flag(Info0, yes) }
-			->
+			( { mq_info_get_report_error_flag(Info0, yes) } ->
 				{ mq_info_get_error_context(Info0,
 							ErrorContext) },
 				report_undefined(ErrorContext, Id0, TypeOfId),
@@ -645,35 +623,23 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 			;
 				{ Info = Info0 }
 			)
-		;
-			{ Matches = [MatchId] }
-		->
+		; { Modules = [Module] } ->
 			% A unique match for this ID.
-			{ Id = MatchId },
-			(
-				{ mq_info_get_import_status(Info0, exported) }
-			->
-				(
-					{ MatchId  = qualified(Module, _) - _ }
-				->
-					{ mq_info_set_module_used(Info0,
-								Module, Info) }
-				;
-					{ error("id not qualified") }
-				)
+			{ Id = qualified(Module, IdName) - Arity },
+			( { mq_info_get_import_status(Info0, exported) } ->
+				{ mq_info_set_module_used(Info0, Module,
+								Info) }
 			;
 				{ Info = Info0 }
 			)
 		;
 			% There are multiple matches.
 			{ Id = Id0 },
-			(
-				{ mq_info_get_report_error_flag(Info0, yes) }
-			->
+			( { mq_info_get_report_error_flag(Info0, yes) } ->
 				{ mq_info_get_error_context(Info0,
 							ErrorContext) },
 				report_multiply_defined(ErrorContext, Id0,
-						TypeOfId, Matches),
+							TypeOfId, Modules),
 				{ mq_info_set_error_flag(Info0,
 							TypeOfId, Info1) },
 				{ mq_info_incr_errors(Info1, Info) }
@@ -702,7 +668,8 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	;	func(id)
 	; 	pred_mode(id)
 	;	func_mode(id)
-	;	lambda_expr.
+	;	lambda_expr
+	;	type_qual.
 
 	% Report an undefined type, inst or mode.
 :- pred report_undefined(error_context, pair(sym_name, int),
@@ -726,9 +693,9 @@ report_undefined(ErrorContext - Context, Id, IdType) -->
 	% Report an error where a type, inst or mode had multiple possible
 	% matches.
 :- pred report_multiply_defined(error_context::in, id::in, id_type::in,
-		list(id)::in, io__state::di, io__state::uo) is det.
+		list(module_name)::in, io__state::di, io__state::uo) is det.
 
-report_multiply_defined(ErrorContext - Context, Id, IdType, MatchIds) -->
+report_multiply_defined(ErrorContext - Context, Id, IdType, Modules) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
@@ -742,9 +709,18 @@ report_multiply_defined(ErrorContext - Context, Id, IdType, MatchIds) -->
 	write_id(Id),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  The possible matches are:"),
-	write_match_list(Context, MatchIds),
-	io__write_string(".\n").
+	io__write_string("  The possible matches are in modules:\n"),
+	prog_out__write_context(Context),
+	io__write_string("  "),
+	write_module_list(Modules),
+	io__write_string(".\n"),
+	globals__io_lookup_bool_option(verbose_errors, Verbose),
+	( { Verbose = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("  An explicit module qualifier may be necessary.\n")
+	;
+		[]
+	).
 
 	% Give a context for the current error message.
 :- pred write_error_context2(error_context2::in, io__state::di,
@@ -773,24 +749,14 @@ write_error_context2(func_mode(Id)) -->
 	write_id(Id).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").
+write_error_context2(type_qual) -->
+	io__write_string("explicit type qualification").
 
 :- pred id_type_to_string(id_type::in, string::out) is det.
 
 id_type_to_string(type_id, "type").
 id_type_to_string(mode_id, "mode").
 id_type_to_string(inst_id, "inst").
-
-	% Write a list of module names holding possible matches,
-:- pred write_match_list(term__context::in, list(id)::in, io__state::di,
-						io__state::uo) is det.
-
-write_match_list(_, []) --> [].
-write_match_list(Context, [Match | Matches]) -->
-	io__write_string("\n"),
-	prog_out__write_context(Context),
-	io__write_string("    "),
-	write_id(Match),
-	write_match_list(Context, Matches).
 
 	% Write sym_name/arity.
 :- pred write_id(id::in, io__state::di, io__state::uo) is det.
@@ -820,9 +786,7 @@ maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 		{ term__context_init(FileName, 1, Context) },
 		prog_out__write_context(Context),
 		io__write_string("Warning: "),
-		(
-			{ UnusedImports = [_] }
-		->
+		( { UnusedImports = [_] } ->
 			io__write_string("module ")
 		;
 			io__write_string("modules ")
@@ -920,28 +884,31 @@ init_mq_info(ReportErrors, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
-	set__init(Types0),
-	set__init(Insts0),
-	set__init(Modes0),
+	id_set_init(Types0),
+	id_set_init(Insts0),
+	id_set_init(Modes0),
 	Info0 = mq_info(Types0, Insts0, Modes0, InterfaceModules0,
-			local, 0, no, no, ReportErrors, ErrorContext).
+			local, 0, no, no, ReportErrors, ErrorContext, unit).
 
-:- pred init_mq_info(list(mode_id)::in, list(inst_id)::in, mq_info::out) is det.
-
-init_mq_info(Modes0, Insts0, Info0) :-
+init_mq_info_module(ModuleInfo, Info0) :-
+	module_info_typeids(ModuleInfo, TypeIds),
+	id_set_init(Types0),
+	list__foldl(id_set_insert, TypeIds, Types0, Types),
+	module_info_instids(ModuleInfo, InstIds),
+	id_set_init(Insts0),
+	list__foldl(id_set_insert, InstIds, Insts0, Insts),
+	module_info_modeids(ModuleInfo, ModeIds),
+	id_set_init(Modes0),
+	list__foldl(id_set_insert, ModeIds, Modes0, Modes),
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
-	set__init(Types),
-	set__sorted_list_to_set(Modes0, Modes),
-	set__sorted_list_to_set(Insts0, Insts),
 	Info0 = mq_info(Types, Insts, Modes, InterfaceModules0,
-		local, 0, no, no, yes, ErrorContext).
+		local, 0, no, no, yes, ErrorContext, unit).
 
-
-:- pred mq_info_get_types(mq_info::in, set(type_id)::out) is det.
-:- pred mq_info_get_insts(mq_info::in, set(inst_id)::out) is det.
-:- pred mq_info_get_modes(mq_info::in, set(mode_id)::out) is det.
+:- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
+:- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
+:- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
 :- pred mq_info_get_interface_modules(mq_info::in,
 					set(module_name)::out) is det.
 :- pred mq_info_get_import_status(mq_info::in, import_status::out) is det.
@@ -950,47 +917,53 @@ init_mq_info(Modes0, Insts0, Info0) :-
 :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_error_context(mq_info::in, error_context::out) is det.
+:- pred mq_info_get_junk(mq_info::in, unit::out) is det.
 
-mq_info_get_types(mq_info(Types, _,_,_,_,_,_,_,_,_), Types).
-mq_info_get_insts(mq_info(_, Insts, _,_,_,_,_,_,_,_), Insts).
-mq_info_get_modes(mq_info(_,_, Modes, _,_,_,_,_,_,_), Modes).
-mq_info_get_interface_modules(mq_info(_,_,_, Modules, _,_,_,_,_,_), Modules).
-mq_info_get_import_status(mq_info(_,_,_,_, Status, _,_,_,_,_), Status).
-mq_info_get_num_errors(mq_info(_,_,_,_,_, NumErrors, _,_,_,_), NumErrors).
-mq_info_get_type_error_flag(mq_info(_,_,_,_,_,_, TypeErrs, _,_,_), TypeErrs).
-mq_info_get_mode_error_flag(mq_info(_,_,_,_,_,_,_, ModeError, _,_), ModeError).
-mq_info_get_report_error_flag(mq_info(_,_,_,_,_,_,_,_, Report,_), Report).
-mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_, Context), Context).
+mq_info_get_types(mq_info(Types, _,_,_,_,_,_,_,_,_,_), Types).
+mq_info_get_insts(mq_info(_, Insts, _,_,_,_,_,_,_,_,_), Insts).
+mq_info_get_modes(mq_info(_,_, Modes, _,_,_,_,_,_,_,_), Modes).
+mq_info_get_interface_modules(mq_info(_,_,_, Modules, _,_,_,_,_,_,_), Modules).
+mq_info_get_import_status(mq_info(_,_,_,_, Status, _,_,_,_,_,_), Status).
+mq_info_get_num_errors(mq_info(_,_,_,_,_, NumErrors, _,_,_,_,_), NumErrors).
+mq_info_get_type_error_flag(mq_info(_,_,_,_,_,_, TypeErrs, _,_,_,_), TypeErrs).
+mq_info_get_mode_error_flag(mq_info(_,_,_,_,_,_,_, ModeError, _,_,_),
+						ModeError).
+mq_info_get_report_error_flag(mq_info(_,_,_,_,_,_,_,_, Report,_,_), Report).
+mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_, Context,_), Context).
+mq_info_get_junk(mq_info(_,_,_,_,_,_,_,_,_,_,Junk), Junk).
 
-:- pred mq_info_set_types(mq_info::in, set(type_id)::in, mq_info::out) is det.
-:- pred mq_info_set_insts(mq_info::in, set(inst_id)::in, mq_info::out) is det.
-:- pred mq_info_set_modes(mq_info::in, set(mode_id)::in, mq_info::out) is det.
-:- pred mq_info_set_error_context(mq_info::in, error_context::in,
-						mq_info::out) is det.
+:- pred mq_info_set_types(mq_info::in, type_id_set::in, mq_info::out) is det.
+:- pred mq_info_set_insts(mq_info::in, inst_id_set::in, mq_info::out) is det.
+:- pred mq_info_set_modes(mq_info::in, mode_id_set::in, mq_info::out) is det.
 :- pred mq_info_set_import_status(mq_info::in, import_status::in,
 						mq_info::out) is det.
 :- pred mq_info_set_type_error_flag(mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_mode_error_flag(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_error_context(mq_info::in, error_context::in,
+						mq_info::out) is det.
+:- pred mq_info_set_junk(mq_info::in, unit::in, mq_info::out) is det.
 
-mq_info_set_types(mq_info(_, B,C,D,E,F,G,H,I,J), Types,
-		mq_info(Types, B,C,D,E,F,G,H,I,J)).
-mq_info_set_insts(mq_info(A,_,C,D,E,F,G,H,I,J), Insts,
-		mq_info(A, Insts, C,D,E,F,G,H,I,J)).
-mq_info_set_modes(mq_info(A,B,_,D,E,F,G,H,I,J), Modes,
-		mq_info(A,B, Modes, D,E,F,G,H,I,J)).
-mq_info_set_import_status(mq_info(A,B,C,D,_,F,G,H,I,J), Status,
-		mq_info(A,B,C,D, Status, F,G,H,I,J)).
-mq_info_set_type_error_flag(mq_info(A,B,C,D,E,F, _, H,I,J),
-		mq_info(A,B,C,D,E,F, yes, H,I,J)).
-mq_info_set_mode_error_flag(mq_info(A,B,C,D,E,F,G,_,I,J),
-		mq_info(A,B,C,D,E,F,G, yes, I,J)).
-mq_info_set_error_context(mq_info(A,B,C,D,E,F,G,H,I,_), Context,
-		mq_info(A,B,C,D,E,F,G,H,I, Context)).
+mq_info_set_types(mq_info(_, B,C,D,E,F,G,H,I,J,K), Types,
+		mq_info(Types, B,C,D,E,F,G,H,I,J,K)).
+mq_info_set_insts(mq_info(A,_,C,D,E,F,G,H,I,J,K), Insts,
+		mq_info(A, Insts, C,D,E,F,G,H,I,J,K)).
+mq_info_set_modes(mq_info(A,B,_,D,E,F,G,H,I,J,K), Modes,
+		mq_info(A,B, Modes, D,E,F,G,H,I,J,K)).
+mq_info_set_import_status(mq_info(A,B,C,D,_,F,G,H,I,J,K), Status,
+		mq_info(A,B,C,D, Status, F,G,H,I,J,K)).
+mq_info_set_type_error_flag(mq_info(A,B,C,D,E,F, _, H,I,J,K),
+		mq_info(A,B,C,D,E,F, yes, H,I,J,K)).
+mq_info_set_mode_error_flag(mq_info(A,B,C,D,E,F,G,_,I,J,K),
+		mq_info(A,B,C,D,E,F,G, yes, I,J,K)).
+mq_info_set_error_context(mq_info(A,B,C,D,E,F,G,H,I,_,K), Context,
+		mq_info(A,B,C,D,E,F,G,H,I, Context,K)).
+mq_info_set_junk(mq_info(A,B,C,D,E,F,G,H,I,J,_), Junk,
+		mq_info(A,B,C,D,E,F,G,H,I,J, Junk)).
 
 :- pred mq_info_incr_errors(mq_info::in, mq_info::out) is det.
 
-mq_info_incr_errors(mq_info(A,B,C,D,E, NumErrors0, G,H,I,J), 
-		mq_info(A,B,C,D,E, NumErrors, G,H,I,J)) :-
+mq_info_incr_errors(mq_info(A,B,C,D,E, NumErrors0, G,H,I,J,K), 
+		mq_info(A,B,C,D,E, NumErrors, G,H,I,J,K)) :-
 	NumErrors is NumErrors0 + 1.
 
 
@@ -1009,12 +982,58 @@ mq_info_set_error_flag(Info0, inst_id, Info) :-
 :- pred mq_info_add_interface_modules(mq_info::in, list(module_name)::in,
 						mq_info::out) is det.
 
-mq_info_set_module_used(mq_info(A,B,C,Modules0,E,F,G,H,I,J), Module,
-		mq_info(A,B,C, Modules, E,F,G,H,I,J)) :-
+mq_info_set_module_used(mq_info(A,B,C,Modules0,E,F,G,H,I,J,K), Module,
+		mq_info(A,B,C, Modules, E,F,G,H,I,J,K)) :-
 	set__delete(Modules0, Module, Modules).
-mq_info_add_interface_modules(mq_info(A,B,C,Modules0, E,F,G,H,I,J),
-		NewModules, mq_info(A,B,C, Modules, E,F,G,H,I,J)) :-
+mq_info_add_interface_modules(mq_info(A,B,C,Modules0, E,F,G,H,I,J,K),
+		NewModules, mq_info(A,B,C, Modules, E,F,G,H,I,J,K)) :-
 	set__insert_list(Modules0, NewModules, Modules).
 
 %----------------------------------------------------------------------------%
+% Define a type for representing sets of ids during module qualification
+% to allow efficient retrieval of all the modules which define an id
+% with a certain name and arity.
+
+:- type id_set == map(pair(string, arity), set(module_name)).
+:- type type_id_set == id_set.
+:- type mode_id_set == id_set.
+:- type inst_id_set == id_set.
+
+:- pred id_set_init(id_set::out) is det.
+
+id_set_init(IdSet) :-
+	map__init(IdSet).
+
+	% Insert an id into an id_set, aborting with an error if the
+	% id is not module qualified.
+:- pred id_set_insert(id::in, id_set::in, id_set::out) is det.
+
+id_set_insert(unqualified(_) - _, _, _) :-
+	error("module_qual:id_set_insert - unqualified id").
+id_set_insert(qualified(Module, Name) - Arity, IdSet0, IdSet) :-
+	( map__search(IdSet0, Name - Arity, Modules0) ->
+		Modules1 = Modules0 
+	;
+		set__init(Modules1)
+	),
+	set__insert(Modules1, Module, Modules),
+	map__set(IdSet0, Name - Arity, Modules, IdSet).
+
+:- pred id_set_search_name_arity(id_set::in, string::in, int::in,
+				list(module_name)::out) is det.
+
+id_set_search_name_arity(IdSet0, Name, Arity, Modules) :-
+	( map__search(IdSet0, Name - Arity, ModuleSet) ->
+		set__to_sorted_list(ModuleSet, Modules)
+	;
+		Modules = []
+	).
+
+:- pred id_set_search_m_n_a(id_set::in, module_name::in,
+			 	string::in, int::in) is semidet.
+
+id_set_search_m_n_a(IdSet0, Module, Name, Arity) :-
+	map__search(IdSet0, Name - Arity, ModuleSet),
+	set__member(Module, ModuleSet).
+
 %----------------------------------------------------------------------------%

@@ -64,6 +64,9 @@
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
 
+:- pred inlining__simple_goal(hlds__goal, int).
+:- mode inlining__simple_goal(in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -179,8 +182,6 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ InlinedProcs = InlinedProcs0 }
 	).
 
-:- pred inlining__simple_goal(hlds__goal, int).
-:- mode inlining__simple_goal(in, in) is semidet.
 
 inlining__simple_goal(Goal, GoalThreshold) :-
 	(
@@ -477,7 +478,6 @@ inlining__should_inline_proc(PredId, ProcId, Builtin, InlinedProcs,
 
 	% don't try to inline imported predicates, since we don't
 	% have the code for them.
-	% (We don't yet support cross-module inlining.)
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	\+ pred_info_is_imported(PredInfo),

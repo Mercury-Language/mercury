@@ -174,13 +174,14 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			ArgTypes, no, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-		{ ClausesInfo = clauses_info(VarSet, _VarTypes, HeadVars,
+		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,
 			Clauses) },
 
 		globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 		globals__io_set_option(verbose_dump_hlds, bool(no)),
+		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
-			HeadVars, Clauses),
+			HeadVars, PredOrFunc, Clauses, no),
 		globals__io_set_option(verbose_dump_hlds, bool(Verbose)),
 
 		io__write_string("****/\n"),

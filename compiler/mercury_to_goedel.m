@@ -65,7 +65,8 @@ convert_to_goedel(ProgName, Items0) -->
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
 	{ goedel_replace_int_integer(IntEquivTypeDefn) },
-	{ equiv_type__expand_eqv_types([IntEquivTypeDefn | Items0], Items) },
+	{ equiv_type__expand_eqv_types([IntEquivTypeDefn | Items0],
+					Items, _) },
 	io__write_string(StdErr, " done\n"),
 	{ convert_functor_name(ProgName, GoedelName) },
 	{ string__append(GoedelName, ".loc", OutputFileName) },
@@ -589,6 +590,7 @@ goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).
+
 
 :- pred goedel_output_call(term, varset, int, io__state, io__state).
 :- mode goedel_output_call(in, in, in, di, uo) is det.

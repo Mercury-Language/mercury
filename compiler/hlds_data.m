@@ -137,6 +137,10 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred hlds_data__get_type_defn_context(hlds__type_defn, term__context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
 
+:- pred hlds_data__set_type_defn_status(hlds__type_defn, import_status,
+			hlds__type_defn).
+:- mode hlds_data__set_type_defn_status(in, in, out) is det.
+
 	% An `hlds__type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
 	% eqv_type = equivalence type (a type defined to be equivalen
@@ -265,6 +269,9 @@ hlds_data__get_type_defn_body(hlds__type_defn(_, _, Body, _, _), Body).
 hlds_data__get_type_defn_status(hlds__type_defn(_, _, _, Status, _), Status).
 hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, _, Context), Context).
 
+hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status, 
+				hlds__type_defn(A, B, C, Status, E)).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -313,8 +320,11 @@ hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, _, Context), Context).
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
-			term__context		% The location in the source
+			term__context,		% The location in the source
 						% code of this inst definition.
+
+			import_status		% So intermod.m can tell 
+						% whether to output this inst.
 		).
 
 :- type hlds__inst_body
@@ -493,9 +503,12 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
-			term__context		% The location of this mode
+			term__context,		% The location of this mode
 						% definition in the original
 						% source code.
+			import_status		% So intermod.m can tell 
+						% whether to output this mode.
+					
 		).
 
 	% The only sort of mode definitions allowed are equivalence modes.

@@ -266,7 +266,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module mode_info, delay_info, mode_errors, inst_match.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
-:- import_module passes_aux, module_qual.
+:- import_module passes_aux, typecheck.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module assoc_list.
 
@@ -294,22 +294,21 @@ modecheck(Module0, Module) -->
 check_pred_modes(ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	{ MaxIterations = 30 }, % XXX FIXME should be command-line option
-	modecheck_to_fixpoint(PredIds, yes, MaxIterations, ModuleInfo0,
+	modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
 							ModuleInfo1),
 	write_mode_inference_messages(PredIds, ModuleInfo1),
 	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred modecheck_to_fixpoint(list(pred_id), bool, int, module_info, 
+:- pred modecheck_to_fixpoint(list(pred_id), int, module_info, 
 			module_info, io__state, io__state).
-:- mode modecheck_to_fixpoint(in, in, in, in, out, di, uo) is det.
+:- mode modecheck_to_fixpoint(in, in, in, out, di, uo) is det.
 
-modecheck_to_fixpoint(PredIds, DoModuleQual, MaxIterations,
-					ModuleInfo0, ModuleInfo) -->
+modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0, ModuleInfo) -->
 	{ copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo1) },
 	modecheck_pred_modes_2(PredIds, ModuleInfo1, ModuleInfo2, no, Changed,
-				DoModuleQual, 0, NumErrors),
+				0, NumErrors),
 	% stop if we have reached a fixpoint or found any errors
 	( { Changed = no ; NumErrors > 0 } ->
 		{ ModuleInfo = ModuleInfo2 }
@@ -327,8 +326,8 @@ modecheck_to_fixpoint(PredIds, DoModuleQual, MaxIterations,
 				[]
 			),
 			{ MaxIterations1 is MaxIterations - 1 },
-			modecheck_to_fixpoint(PredIds, DoModuleQual,
-				MaxIterations1, ModuleInfo2, ModuleInfo)
+			modecheck_to_fixpoint(PredIds, MaxIterations1,
+					ModuleInfo2, ModuleInfo)
 		)
 	).
 
@@ -341,14 +340,14 @@ report_max_iterations_exceeded -->
 	% XXX FIXME add verbose_errors message
 
 :- pred modecheck_pred_modes_2(list(pred_id), module_info, module_info,
-			bool, bool, bool, int, int, io__state, io__state).
+			bool, bool, int, int, io__state, io__state).
 :- mode modecheck_pred_modes_2(in, in, out,
-			in, out, in, in, out, di, uo) is det.
+			in, out, in, out, di, uo) is det.
 
 modecheck_pred_modes_2([], ModuleInfo, ModuleInfo, Changed, Changed,
-		_, NumErrors, NumErrors) --> [].
+		NumErrors, NumErrors) --> [].
 modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
-		Changed0, Changed, DoModuleQual, NumErrors0, NumErrors) -->
+		Changed0, Changed, NumErrors0, NumErrors) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
@@ -369,8 +368,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 				PredId, ModuleInfo0)
 		),
 		modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0,
-			ModuleInfo1, DoModuleQual, Changed0, Changed1,
-			ErrsInThisPred),
+			ModuleInfo1, Changed0, Changed1, ErrsInThisPred),
 		{ ErrsInThisPred = 0 ->
 			ModuleInfo3 = ModuleInfo1
 		;
@@ -384,24 +382,22 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ NumErrors1 is NumErrors0 + ErrsInThisPred }
 	),
 	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo,
-		Changed1, Changed, DoModuleQual, NumErrors1, NumErrors).
+		Changed1, Changed, NumErrors1, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for single predicate.
 
 modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, NumErrors) -->
-	{ DoModuleQual = no }, % Don't want to redo module qualification
-			   % if called from outside.
 	modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
-		DoModuleQual, DoModuleQual, _Changed, NumErrors).
+		no, _Changed, NumErrors).
 
 :- pred modecheck_pred_mode_2(pred_id, pred_info, module_info, module_info,
-			bool, bool, bool, int, io__state, io__state).
-:- mode modecheck_pred_mode_2(in, in, in, out, in, in, out, out, di, uo) is det.
+			bool, bool, int, io__state, io__state).
+:- mode modecheck_pred_mode_2(in, in, in, out, in, out, out, di, uo) is det.
 
 modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
-		DoModuleQual, Changed0, Changed, NumErrors) -->
+		Changed0, Changed, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
 	( { ProcIds = [] } ->
@@ -410,26 +406,26 @@ modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 		{ NumErrors = 0 },
 		{ Changed = Changed0 }
 	;
-		modecheck_procs(ProcIds, PredId, ModuleInfo0, DoModuleQual,
-				Changed0, 0, ModuleInfo, Changed, NumErrors)
+		modecheck_procs(ProcIds, PredId, ModuleInfo0, Changed0, 0,
+					ModuleInfo, Changed, NumErrors)
 	).
 
 	% Iterate over the list of modes for a predicate.
 
-:- pred modecheck_procs(list(proc_id), pred_id, module_info, bool, bool, int,
+:- pred modecheck_procs(list(proc_id), pred_id, module_info, bool, int,
 				module_info, bool, int, io__state, io__state).
-:- mode modecheck_procs(in, in, in, in, in, in, out, out, out, di, uo) is det.
+:- mode modecheck_procs(in, in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_procs([], _PredId,  ModuleInfo, _, Changed, Errs,
+modecheck_procs([], _PredId,  ModuleInfo, Changed, Errs,
 				ModuleInfo, Changed, Errs) --> [].
-modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, DoModuleQual,
-			Changed0, Errs0, ModuleInfo, Changed, Errs) -->
+modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, Changed0, Errs0,
+				ModuleInfo, Changed, Errs) -->
 	% mode-check that mode of the predicate
-	modecheck_proc_2(ProcId, PredId, ModuleInfo0, DoModuleQual,
-			Changed0, ModuleInfo1, Changed1, NumErrors),
+	modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
+				ModuleInfo1, Changed1, NumErrors),
 	{ Errs1 is Errs0 + NumErrors },
 		% recursively process the remaining modes
-	modecheck_procs(ProcIds, PredId, ModuleInfo1, DoModuleQual, Changed1,
+	modecheck_procs(ProcIds, PredId, ModuleInfo1, Changed1,
 			Errs1, ModuleInfo, Changed, Errs).
 
 %-----------------------------------------------------------------------------%
@@ -437,17 +433,15 @@ modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, DoModuleQual,
 	% Mode-check the code for predicate in a given mode.
 
 modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors) -->
-	{ DoModuleQual = no }, % Don't want to redo module
-			% qualification if called from outside.
-	modecheck_proc_2(ProcId, PredId, ModuleInfo0, DoModuleQual, no,
+	modecheck_proc_2(ProcId, PredId, ModuleInfo0, no,
 			ModuleInfo, _Changed, NumErrors).
 
-:- pred modecheck_proc_2(proc_id, pred_id, module_info, bool, bool, 
+:- pred modecheck_proc_2(proc_id, pred_id, module_info, bool, 
 			module_info, bool, int,
 			io__state, io__state).
-:- mode modecheck_proc_2(in, in, in, in, in, out, out, out, di, uo) is det.
+:- mode modecheck_proc_2(in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_proc_2(ProcId, PredId, ModuleInfo0, DoModuleQual, Changed0,
+modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
 				ModuleInfo, Changed, NumErrors) -->
 		% get the proc_info from the module_info
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
@@ -459,7 +453,7 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, DoModuleQual, Changed0,
 	;
 			% modecheck it
 		modecheck_proc_3(ProcId, PredId,
-				ModuleInfo0, DoModuleQual, ProcInfo0, Changed0,
+				ModuleInfo0, ProcInfo0, Changed0,
 				ModuleInfo1, ProcInfo, Changed, NumErrors),
 			% save the proc_info back in the module_info
 		{ module_info_preds(ModuleInfo1, Preds1) },
@@ -471,13 +465,13 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, DoModuleQual, Changed0,
 		{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }
 	).
 
-:- pred modecheck_proc_3(proc_id, pred_id, module_info, bool, proc_info, bool,
+:- pred modecheck_proc_3(proc_id, pred_id, module_info, proc_info, bool,
 			module_info, proc_info, bool, int,
 			io__state, io__state).
-:- mode modecheck_proc_3(in, in, in, in, in, in, out, out, out, out, di, uo)
+:- mode modecheck_proc_3(in, in, in, in, in, out, out, out, out, di, uo)
 	is det.
 
-modecheck_proc_3(ProcId, PredId, ModuleInfo0, DoModuleQual, ProcInfo0, Changed0,
+modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 				ModuleInfo, ProcInfo, Changed, NumErrors,
 				IOState0, IOState) :-
 		% extract the useful fields in the proc_info
@@ -491,7 +485,7 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, DoModuleQual, ProcInfo0, Changed0,
 		% we use the context of the mode declaration.
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
-	ClausesInfo = clauses_info(_, _, _, ClauseList),
+	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
 	( ClauseList = [FirstClause | _] ->
 		FirstClause = clause(_, _, Context)
 	;
@@ -516,7 +510,7 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, DoModuleQual, ProcInfo0, Changed0,
 	mode_list_get_final_insts(ArgModes1, ModuleInfo0, ArgFinalInsts0),
 	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
-	mode_info_init(IOState0, ModuleInfo0, DoModuleQual, PredId, ProcId,
+	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId,
 			Context, LiveVars, InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo1, Changed0,
@@ -775,12 +769,12 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName, Follow),
+modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName0, Follow),
 		GoalInfo0, Goal) -->
 	% do the last step of type-checking
 	=(ModeInfo0),
-	{ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0,
-		PredId) },
+	{ resolve_pred_overloading(PredId0, Args0, PredName0, PredName,
+		ModeInfo0, PredId) },
 
 	mode_checkpoint(enter, "call"),
 	mode_info_set_call_context(call(PredId)),
@@ -2185,8 +2179,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		pred_info_typevarset(PredInfo, TVarSet),
 		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 		list__append(ArgTypes0, [TypeOfX], ArgTypes),
-		find_matching_pred_id(PredIds, ModuleInfo0, TVarSet,
-			ArgTypes, PredId)
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
+			TVarSet, ArgTypes, PredId, _PredName)
 	->
 		%
 		% Convert function calls into predicate calls:
@@ -2254,8 +2248,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% Build up the hlds__goal_expr for the call that will form
 		% the lambda goal
 		%
-		get_pred_id_and_proc_id(PName, Arity, PredOrFunc, PredArgTypes,
-				 ModuleInfo0, PredId, ProcId),
+		get_pred_id_and_proc_id(PName, Arity,
+			PredOrFunc, PredArgTypes, ModuleInfo0, PredId, ProcId),
 		PredName = unqualified(PName),
 		hlds__is_builtin_make_builtin(no, no, Builtin),
 		map__init(Follow),
@@ -2351,7 +2345,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		)
 	).
 
-modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
+modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
 			Unification0, UnifyContext, _GoalInfo, HowToCheckGoal,
 			unify(X, RHS, Mode, Unification, UnifyContext),
 			ModeInfo0, ModeInfo) :-
@@ -2380,103 +2374,57 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 
-	% If this is the first time through, module qualify the mode
-	% of the lambda expression.
-
-	mode_info_get_module_qual_flag(ModeInfo0, DoModuleQual),
-	Goal0 = _ - GoalInfo0,
-	goal_info_context(GoalInfo0, GoalContext),
-	( DoModuleQual = yes ->
-		mode_info_get_io_state(ModeInfo0, IOState0),
-		module_info_modeids(ModuleInfo0, ModeIds),
-		module_info_instids(ModuleInfo0, InstIds),
-		module_qual__qualify_mode_list(Modes0, Modes, ModeIds, InstIds,
-				GoalContext, NumErrs, IOState0, IOState),
-		mode_info_set_io_state(ModeInfo0, IOState, ModeInfo0a)
+	% initialize the initial insts of the lambda variables
+	mode_list_get_initial_insts(Modes, ModuleInfo0, VarInitialInsts),
+	map__from_corresponding_lists(Vars, VarInitialInsts, VarInstMapping),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	( InstMap0 = reachable(InstMapping0) ->
+		map__overlay(InstMapping0, VarInstMapping, InstMapping1),
+		InstMap1 = reachable(InstMapping1)
 	;
-		Modes = Modes0,
-		ModeInfo0a = ModeInfo0,
-		NumErrs = 0
+		InstMap1 = unreachable
 	),
+	mode_info_set_instmap(InstMap1, ModeInfo0, ModeInfo1),
 
-	( NumErrs = 0 ->
-		
-		% initialize the initial insts of the lambda variables
-		mode_list_get_initial_insts(Modes, ModuleInfo0,
-						VarInitialInsts),
-		map__from_corresponding_lists(Vars, VarInitialInsts,
-						VarInstMapping),
-		mode_info_get_instmap(ModeInfo0a, InstMap0),
-		( InstMap0 = reachable(InstMapping0) ->
-			map__overlay(InstMapping0, VarInstMapping,
-					InstMapping1),
-			InstMap1 = reachable(InstMapping1)
-		;
-			InstMap1 = unreachable
-		),
-		mode_info_set_instmap(InstMap1, ModeInfo0a, ModeInfo1),
+	% mark the non-clobbered lambda variables as live
+	get_arg_lives(Modes, ModuleInfo0, ArgLives),
+	get_live_vars(Vars, ArgLives, LiveVarsList),
+	set__list_to_set(LiveVarsList, LiveVars),
+	mode_info_add_live_vars(LiveVars, ModeInfo1, ModeInfo2),
 
-		% mark the non-clobbered lambda variables as live
-		get_arg_lives(Modes, ModuleInfo0, ArgLives),
-		get_live_vars(Vars, ArgLives, LiveVarsList),
-		set__list_to_set(LiveVarsList, LiveVars),
-		mode_info_add_live_vars(LiveVars, ModeInfo1, ModeInfo2),
+	% lock the non-locals
+	% (a lambda goal is not allowed to bind any of the non-local
+	% variables, since it could get called more than once)
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__delete_list(NonLocals0, Vars, NonLocals),
+	mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
 
-		% lock the non-locals
-		% (a lambda goal is not allowed to bind any of the non-local
-		% variables, since it could get called more than once)
-		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-		set__delete_list(NonLocals0, Vars, NonLocals),
-		mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
-
-		mode_checkpoint(enter, "lambda goal", ModeInfo3, ModeInfo4),
-		% if we're being called from unique_modes.m, then we need to 
-		% call unique_modes__check_goal rather than modecheck_goal.
-		( HowToCheckGoal = check_unique_modes ->
-			unique_modes__check_goal(Goal0, Goal,
-						ModeInfo4, ModeInfo5)
-		;
-			modecheck_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
-		),
-		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
-		modecheck_final_insts(Vars, FinalInsts, ModeInfo5, ModeInfo6),
-		mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
-
-		mode_info_remove_live_vars(LiveVars, ModeInfo7, ModeInfo8),
-		mode_info_unlock_vars(NonLocals, ModeInfo8, ModeInfo9),
-		mode_info_set_instmap(InstMap0, ModeInfo9, ModeInfo10),
-
-		%
-		% Now modecheck the unification of X with the lambda-expression.
-		%
-
-		set__to_sorted_list(NonLocals, ArgVars),
-		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
-				Det, Unification0, Mode, Unification,
-				ModeInfo10, ModeInfo),
-		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)
+	mode_checkpoint(enter, "lambda goal", ModeInfo3, ModeInfo4),
+	% if we're being called from unique_modes.m, then we need to 
+	% call unique_modes__check_goal rather than modecheck_goal.
+	( HowToCheckGoal = check_unique_modes ->
+		unique_modes__check_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
 	;
-		RHS = lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
+		modecheck_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
+	),
+	mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+	modecheck_final_insts(Vars, FinalInsts, ModeInfo5, ModeInfo6),
+	mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
 
-		%
-		% Set up a dummy mode_error_info. The error was reported
-		% by module_qual.m.
-		% Give arbitrary values to all the output variables.
-		%
-		set__init(ErrorVars),
-		mode_context_init(ModeContext),
-		ModeErrorInfo = mode_error_info(
-					ErrorVars,
-					mode_error_undefined_mode_in_lambda, 
-					GoalContext, ModeContext
-				),
-		list__duplicate(NumErrs, ModeErrorInfo, NewErrors),
-		mode_info_get_errors(ModeInfo0a, Errors0),
-		list__append(Errors0, NewErrors, Errors),
-		mode_info_set_errors(Errors, ModeInfo0a, ModeInfo),
-		Mode = (free -> free) - (free -> free), 
-		Unification = Unification0
-	).
+	mode_info_remove_live_vars(LiveVars, ModeInfo7, ModeInfo8),
+	mode_info_unlock_vars(NonLocals, ModeInfo8, ModeInfo9),
+	mode_info_set_instmap(InstMap0, ModeInfo9, ModeInfo10),
+
+	%
+	% Now modecheck the unification of X with the lambda-expression.
+	%
+
+	set__to_sorted_list(NonLocals, ArgVars),
+	modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
+			Det, Unification0, Mode, Unification,
+			ModeInfo10, ModeInfo),
+	RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal).
 
 :- pred modecheck_unify_lambda(var, pred_or_func, list(var),
 			list(mode), determinism, unification,
@@ -2529,100 +2477,30 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		Unification = Unification0
 	).
 
-:- pred resolve_pred_overloading(pred_id, list(var), sym_name, mode_info,
-				pred_id).
-:- mode resolve_pred_overloading(in, in, in, mode_info_ui, out) is det.
+:- pred resolve_pred_overloading(pred_id, list(var), sym_name, sym_name,
+				mode_info, pred_id).
+:- mode resolve_pred_overloading(in, in, in, out, mode_info_ui, out) is det.
 	%
 	% In the case of a call to an overloaded predicate, typecheck.m
 	% does not figure out the correct pred_id.  We must do that here.
 	%
-resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0, PredId) :-
+resolve_pred_overloading(PredId0, Args0, PredName0, PredName,
+			ModeInfo0, PredId) :-
 	( invalid_pred_id(PredId0) ->
 		%
 		% Find the set of candidate pred_ids for predicates which
 		% have the specified name and arity
 		%
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-		module_info_get_predicate_table(ModuleInfo0, PredTable),
-		(
-			predicate_table_search_pred_sym(PredTable, PredName,
-				PredIds0)
-		->
-			PredIds = PredIds0
-		;
-			PredIds = []
-		),
-
-		%
-		% Check if there any of the candidate pred_ids 
-		% have argument/return types which subsume the actual
-		% argument/return types of this function call
-		%
 		mode_info_get_predid(ModeInfo0, ThisPredId),
 		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
 		pred_info_typevarset(PredInfo, TVarSet),
 		mode_info_get_var_types(ModeInfo0, VarTypes0),
-		map__apply_to_list(Args0, VarTypes0, ArgTypes),
-		(
-			find_matching_pred_id(PredIds, ModuleInfo0,
-				TVarSet, ArgTypes, PredId1)
-		->
-			PredId = PredId1
-		;
-			% if there is no matching predicate for this call,
-			% then this predicate must have a type error which
-			% should have been caught by typecheck.m
-			error("modes.m: type error in pred call: no matching pred")
-		)
+		typecheck__resolve_pred_overloading(ModuleInfo0, Args0,
+			VarTypes0, TVarSet, PredName0, PredName, PredId)
 	;
-		PredId = PredId0
-	).
-
-:- pred find_matching_pred_id(list(pred_id), module_info, tvarset, list(type),
-				pred_id).
-:- mode find_matching_pred_id(in, in, in, in, out) is semidet.
-
-find_matching_pred_id([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
-		ThePredId) :-
-	(
-		%
-		% lookup the argument types of the candidate predicate
-		% (or the argument types + return type of the candidate
-		% function)
-		%
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_arg_types(PredInfo, PredTVarSet, PredArgTypes0),
-
-		%
-		% rename them apart from the actual argument types
-		%
-		varset__merge_subst(TVarSet, PredTVarSet, _TVarSet1, Subst),
-		term__apply_substitution_to_list(PredArgTypes0, Subst,
-					PredArgTypes),
-
-		%
-		% check that the types of the candidate predicate/function
-		% subsume the actual argument types
-		%
-		type_list_subsumes(PredArgTypes, ArgTypes, _TypeSubst)
-	->
-		%
-		% we've found a matching predicate
-		% was there was more than one matching predicate/function?
-		%
-		(
-			find_matching_pred_id(PredIds,
-				ModuleInfo, TVarSet, ArgTypes, _OtherPredId)
-		->
-			% XXX this should report an error properly, not
-			% via error/1
-			error("Type error in predicate call: unresolvable predicate overloading.  You need to use an explicit module qualifier.  Compile with -V to find out where.")
-		;
-			ThePredId = PredId
-		)
-	;
-		find_matching_pred_id(PredIds, ModuleInfo,
-				TVarSet, ArgTypes, ThePredId)
+		PredId = PredId0,
+		PredName = PredName0
 	).
 
 :- pred modecheck_unify_functor(var, const, list(var), unification,
@@ -3204,79 +3082,6 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			)
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
-	).
-
-:- pred get_pred_id_and_proc_id(string, arity, pred_or_func, list(type),
-				module_info, pred_id, proc_id).
-:- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
-
-get_pred_id_and_proc_id(Name, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
-			PredId, ProcId) :-
-	list__length(PredArgTypes, PredArity),
-	TotalArity is Arity + PredArity,
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	(
-	    predicate_table_search_pf_name_arity(PredicateTable,
-		PredOrFunc, Name, TotalArity, PredIds)
-	->
-	    (
-		PredIds = [PredId0]
-	    ->
-		PredId = PredId0,
-		predicate_table_get_preds(PredicateTable, Preds),
-		map__lookup(Preds, PredId, PredInfo),
-		pred_info_procedures(PredInfo, Procs),
-		map__keys(Procs, ProcIds),
-		( ProcIds = [ProcId0] ->
-		    ProcId = ProcId0
-		; ProcIds = [] ->
-		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		    string__int_to_string(TotalArity, TotalArityString),
-		    string__append_list([
-			    "cannot take address of ", PredOrFuncStr,
-			    "\n`", Name, "/", TotalArityString,
-			    "' with no modes.\n",
-			    "(Sorry, confused by earlier errors ",
-			    	"-- bailing out.)"],
-			    Message),
-		    error(Message)
-		;
-		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		    string__int_to_string(TotalArity, TotalArityString),
-		    string__append_list([
-			    "sorry, not implemented: ",
-			    "taking address of ", PredOrFuncStr,
-			    "\n`", Name, "/", TotalArityString,
-			    "' with multiple modes.\n",
-			    "(use an explicit lambda expression instead)"],
-			    Message),
-		    error(Message)
-		)
-	    ;
-	        % Ambiguous pred or func.
-		% cons_id ought to include the module prefix, so
-		% that we could use predicate_table__search_m_n_a to 
-		% prevent this from happening
-	        hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-	        string__int_to_string(TotalArity, TotalArityString),
-		string__append_list(
-			["get_pred_id_and_proc_id: ",
-			"ambiguous ", PredOrFuncStr,
-		        "\n`", Name, "/", TotalArityString, "'"],
-			Msg),
-		error(Msg)
-	    )
-	;
-	    % Undefined/invalid pred or func.
-	    % the type-checker should ensure that this never happens
-	    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-	    string__int_to_string(TotalArity, TotalArityString),
-	    string__append_list(
-		["get_pred_id_and_proc_id: ",
-		"undefined/invalid ", PredOrFuncStr,
-		"\n`", Name, "/", TotalArityString, "'"],
-		Msg),
-	    error(Msg)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -62,9 +62,12 @@
 
 % This module (prog_io) exports the following predicates:
 
-	% read_module(ModuleName, Error, Messages, Program)
-	% reads and parses the module 'ModuleName'.  Error is `fatal'
-	% if the file coudn't be opened, `yes'
+	% prog_io__read_module(FileName, ModuleName, Search, Error,
+	%					Messages, Program)
+	% Reads and parses the module 'ModuleName'.
+	% If Search is yes, search directories given by the option
+	% search_directories.
+	% Error is `fatal' if the file coudn't be opened, `yes'
 	% if a syntax error was detected, and `no' otherwise.
 	% Messages is a list of warning/error messages.
 	% Program is the parse tree.
@@ -552,8 +555,7 @@ process_func_clause(error(ErrMessage, Term), _, _, _, error(ErrMessage, Term)).
 	% We just check if it matches the appropriate pattern
 	% for one of the builtins.  If it doesn't match any of the
 	% builtins, then it's just a predicate call.
-	% XXX we should do more parsing here - type qualification
-	% should be parsed here.
+	% XXX we should do more parsing here
 	%
 	% We could do some error-checking here, but all errors are picked up
 	% in either the type-checker or parser anyway.
@@ -3109,10 +3111,13 @@ parse_type(T, ok(T)).
 
 :- pred convert_type_list(list(term), list(type)).
 :- mode convert_type_list(in, out) is det.
+/*
 convert_type_list([], []).
 convert_type_list([H0|T0], [H|T]) :-
 	convert_type(H0, H),
 	convert_type_list(T0, T).
+*/
+convert_type_list(Types, Types).
 
 :- pred convert_type(term, type).
 :- mode convert_type(in, out) is det.

@@ -758,7 +758,8 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	map__lookup(Preds0, CalledPred, PredInfo0),
 	pred_info_name(PredInfo0, Name0),
 	pred_info_arity(PredInfo0, Arity),
-       	pred_info_module(PredInfo0, Module),
+	module_info_name(ModuleInfo0, ModuleName),
+	pred_info_module(PredInfo0, PredModule),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose,
 							IOState0, IOState1),
         pred_info_arg_types(PredInfo0, Tvars, Types0),
@@ -766,7 +767,7 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	(
  		VeryVerbose = yes
 	->
-		io__write_strings(["% Specializing calls to `", Module, ":",
+		io__write_strings(["% Specializing calls to `", PredModule, ":",
 			Name0, "'/", ArStr, " with higher-order arguments:\n"],
 			IOState1, IOState2),
 		list__length(Types0, ActualArity),
@@ -778,30 +779,34 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
        	),
 	string__int_to_string(NextHOid0, IdStr),
 	NextHOid is NextHOid0 + 1,
-        string__append_list([Name0, "__ho", IdStr], PredName),
-        pred_info_typevarset(PredInfo0, TypeVars),
+	( ModuleName = PredModule ->
+		NamePrefix = ""
+	;
+		string__append(PredModule, "__", NamePrefix)
+	),
+	string__append_list([NamePrefix, Name0, "__ho", IdStr], PredName),
+	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_higher_order_args(Types0, 1, HOArgs, Types),
-        pred_info_context(PredInfo0, Context),
-        pred_info_clauses_info(PredInfo0, ClausesInfo),
-        pred_info_import_status(PredInfo0, Status),
-        (
-                pred_info_is_inlined(PredInfo0)
-        ->
-                Inline = yes
-        ;
-                Inline = no
-        ),
-        pred_info_get_goal_type(PredInfo0, GoalType),
-                % *** This will need to be fixed when the condition
-                %       field of the pred_info becomes used
-	Name = qualified(Module, PredName),
-        pred_info_init(Module, qualified(Module, PredName), Arity, Tvars,
-		Types, true, Context, ClausesInfo, Status, Inline, GoalType,
+	pred_info_context(PredInfo0, Context),
+	pred_info_clauses_info(PredInfo0, ClausesInfo),
+	(
+		pred_info_is_inlined(PredInfo0)
+	->
+		Inline = yes
+	;
+		Inline = no
+	),
+	pred_info_get_goal_type(PredInfo0, GoalType),
+		% *** This will need to be fixed when the condition
+		%       field of the pred_info becomes used
+	Name = qualified(ModuleName, PredName),
+	pred_info_init(ModuleName, Name, Arity, Tvars,
+		Types, true, Context, ClausesInfo, local, Inline, GoalType,
 		predicate, PredInfo1),
-        pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
+	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),
 	next_mode_id(Procs0, no, NewProcId),
-      	predicate_table_insert(PredTable0, PredInfo2, NewPredId, PredTable),
+	predicate_table_insert(PredTable0, PredInfo2, NewPredId, PredTable),
 	module_info_set_predicate_table(ModuleInfo0, PredTable, ModuleInfo).
 	
 

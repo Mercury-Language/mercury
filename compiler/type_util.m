@@ -426,7 +426,7 @@ replace_eqv_type(Functor, Arity, Args, EqvType) :-
 	make_type_id(Functor, Arity, TypeId),
 	map__search(TypeTable, TypeId, TypeDefn),
 	TypeDefn = hlds__type_defn(TypeVarSet, TypeParams0,
-			eqv_type(EqvType0), _Condition, Context),
+			eqv_type(EqvType0), _Condition, Context, _Status),
 	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
 			TVarSet, [EqvType1, TypeParams1]),
 	type_param_to_var_list(TypeParams1, TypeParams),

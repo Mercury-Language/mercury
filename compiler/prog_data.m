@@ -299,6 +299,10 @@
 				% to identify declarations which originally
 				% came from some other module
 			;	external(sym_name_specifier)
+				% this is used internally by the compiler,
+				% to identify items which originally
+				% came from a .opt file
+			;	opt_imported
 			;	end_module(module_name)
 			;	export(sym_list)
 			;	import(sym_list)

@@ -390,16 +390,16 @@ bytecode_gen__map_uni_modes([], _, []).
 bytecode_gen__map_uni_modes([UniMode | UniModes], ByteInfo, [Dir | Dirs]) :-
 	UniMode = ((VarInitial - ArgInitial) -> (VarFinal - ArgFinal)),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
-	( mode_is_input(ModuleInfo, VarInitial -> VarFinal) ->
+	( mode_is_input(ModuleInfo, (VarInitial -> VarFinal)) ->
 		VarMode = top_in
-	; mode_is_output(ModuleInfo, VarInitial -> VarFinal) ->
+	; mode_is_output(ModuleInfo, (VarInitial -> VarFinal)) ->
 		VarMode = top_out
 	;
 		VarMode = top_unused
 	),
-	( mode_is_input(ModuleInfo, ArgInitial -> ArgFinal) ->
+	( mode_is_input(ModuleInfo, (ArgInitial -> ArgFinal)) ->
 		ArgMode = top_in
-	; mode_is_output(ModuleInfo, ArgInitial -> ArgFinal) ->
+	; mode_is_output(ModuleInfo, (ArgInitial -> ArgFinal)) ->
 		ArgMode = top_out
 	;
 		ArgMode = top_unused

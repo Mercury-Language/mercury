@@ -327,6 +327,36 @@ dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
+			% Don't generate code in the current module for
+			% unoptimized opt_imported preds
+		Status = opt_imported
+	->
+		pred_info_procids(PredInfo0, ProcIds),
+		pred_info_procedures(PredInfo0, ProcTable0),
+			% Reduce memory usage by replacing the goals with 
+			% conj([]).
+		DestroyGoal =
+			lambda([Id::in, PTable0::in, PTable::out] is det, (
+				map__lookup(ProcTable0, Id, ProcInfo0),
+				goal_info_init(GoalInfo),
+				Goal = conj([]) - GoalInfo,
+				proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+				map__det_update(PTable0, Id, ProcInfo, PTable)
+			)),
+		list__foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
+		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo1),
+		pred_info_set_import_status(PredInfo1, imported, PredInfo),
+		map__det_update(PredTable0, PredId, PredInfo, PredTable),
+		globals__io_lookup_bool_option(very_verbose,
+						VeryVerbose, State0, State1),
+		( VeryVerbose = yes ->
+			write_pred_progress_message(
+				"% Eliminated opt_imported predicate ",
+				PredId, ModuleInfo, State1, State)
+		;
+			State = State1
+		)
+	;
 		State = State0,
 		PredTable = PredTable0
 	).

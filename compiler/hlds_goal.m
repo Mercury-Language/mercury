@@ -46,7 +46,7 @@
 					% was this predicate call originally
 					% a unification?  If so, we store the
 					% context of the unification.
-			sym_name,	% the name/arity of the predicate
+			sym_name,	% the name of the predicate
 			follow_vars	% advisory storage locations for
 					% placing variables when generating
 					% the code that follows this call
@@ -265,6 +265,8 @@
 					% unification predicate (e.g. as
 					% determined by whichever call follows
 					% this one).
+					% These are converted into predicate
+					% calls by polymorphism.m.
 		).
 
 	% A unify_context describes the location in the original source

@@ -742,7 +742,7 @@ code_gen__generate_det_goal_2(
 	code_info__push_store_map(FV),
 	ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, FV, Instr),
 	code_info__pop_store_map.
-code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
 	(
 		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Instr)
@@ -755,13 +755,10 @@ code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
 								Modes, Instr)
 	;
-		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
-		( { R = var(RVar) } ->
-			call_gen__generate_complicated_unify(L, RVar, UniMode,
-				CanFail, Instr)
-		;
-			{ error("generate_det_goal_2: invalid complicated unify") }
-		)
+		% These should have been transformed into calls by
+		% polymorphism.m.
+		{ Uni = complicated_unify(_UniMode, _CanFail, _Follow) },
+		{ error("code_gen__generate_det_goal_2 - complicated unify") }
 	;
 		{ Uni = simple_test(_, _) },
 		{ error("generate_det_goal_2: cannot have det simple_test") }
@@ -1123,7 +1120,7 @@ code_gen__generate_semi_goal_2(
 	code_info__push_store_map(FV),
 	ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, FV, Instr),
 	code_info__pop_store_map.
-code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
+code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
 							_GoalInfo, Code) -->
 	(
 		{ Uni = assign(Left, Right) },
@@ -1140,15 +1137,8 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 		{ Uni = simple_test(Var1, Var2) },
 		unify_gen__generate_test(Var1, Var2, Code)
 	;
-		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
-		(
-			{ R = var(RVar) }
-		->
-			call_gen__generate_complicated_unify(L, RVar, UniMode,
-				CanFail, Code)
-		;
-			{ error("code_gen__generate_semi_goal_2: invalid complicated unify") }
-		)
+		{ Uni = complicated_unify(_UniMode, _CanFail, _Follow) },
+		{ error("code_gen__generate_semi_goal_2 - complicated_unify") }
 	).
 
 code_gen__generate_semi_goal_2(pragma_c_code(C_Code, IsRecursive,

@@ -159,7 +159,14 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 			ProcId = 0
 		)
 	->
-		Label = exported(ProcLabel)
+		(
+			Immed = no,
+			Label = exported(ProcLabel)
+		;
+			Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
+			choose_local_label_type(ProcsPerFunc, CurPredId,
+				CurProcId, PredId, ProcId, ProcLabel, Label)
+		)
 	;
 		(
 			% If we want to define the label or use it to put it
@@ -169,23 +176,33 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 			Label = local(ProcLabel)
 		;
 			Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
-			(
-				% If we want to branch to the label now,
-				% we prefer a form that are usable only within
-				% the current C module, since it is likely
-				% to be faster.
-				(
-					ProcsPerFunc = 0
-				;
-					PredId = CurPredId,
-					ProcId = CurProcId
-				)
-			->
-				Label = c_local(ProcLabel)
-			;
-				Label = local(ProcLabel)
-			)
+			choose_local_label_type(ProcsPerFunc, CurPredId,
+				CurProcId, PredId, ProcId, ProcLabel, Label)
 		)
+	).
+
+
+:- pred choose_local_label_type(int, pred_id, proc_id,
+		pred_id, proc_id, proc_label, label).
+:- mode choose_local_label_type(in, in, in, in, in, in, out) is det.
+
+choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
+		PredId, ProcId, ProcLabel, Label) :-
+	(
+		% If we want to branch to the label now,
+		% we prefer a form that are usable only within
+		% the current C module, since it is likely
+		% to be faster.
+		(
+			ProcsPerFunc = 0
+		;
+			PredId = CurPredId,
+			ProcId = CurProcId
+		)
+	->
+		Label = c_local(ProcLabel)
+	;
+		Label = local(ProcLabel)
 	).
 
 %-----------------------------------------------------------------------------%

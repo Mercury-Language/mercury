@@ -58,9 +58,9 @@
 
 :- type mode_info.
 
-:- pred mode_info_init(io__state, module_info, bool, pred_id, proc_id,
+:- pred mode_info_init(io__state, module_info, pred_id, proc_id,
 			term__context, set(var), instmap, mode_info).
-:- mode mode_info_init(di, in, in, in, in, in, in, in, mode_info_uo) is det.
+:- mode mode_info_init(di, in, in, in, in, in, in, mode_info_uo) is det.
 
 :- pred mode_info_get_io_state(mode_info, io__state).
 :- mode mode_info_get_io_state(mode_info_get_io_state, uo) is det.
@@ -197,12 +197,6 @@
 :- pred mode_info_set_nondet_live_vars(list(set(var)), mode_info, mode_info).
 :- mode mode_info_set_nondet_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_module_qual_flag(mode_info, bool).
-:- mode mode_info_get_module_qual_flag(mode_info_no_io, out) is det.
-
-:- pred mode_info_set_module_qual_flag(bool, mode_info, mode_info).
-:- mode mode_info_set_module_qual_flag(in, mode_info_di, mode_info_uo) is det.
-
 /*
 :- inst uniq_mode_info	=	bound_unique(
 					mode_info(
@@ -245,7 +239,7 @@
 :- implementation.
 
 :- import_module delay_info, mode_errors, prog_data.
-:- import_module require.
+:- import_module require, std_util.
 
 :- type mode_info 
 	--->	mode_info(
@@ -286,9 +280,7 @@
 	% execution point, since those variables will *already* have
 	% been marked as mostly_unique rather than unique.)
 
-			bool 	% Should the modes of lambda expressions
-	% be qualified. This should be yes for the first iteration of
-	% mode analysis, and no thereafter.
+			unit
 		).
 
 	% The normal inst of a mode_info struct: ground, with
@@ -299,7 +291,7 @@
 
 	% Initialize the mode_info
 
-mode_info_init(IOState, ModuleInfo, DoModuleQual, PredId, ProcId, Context,
+mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 		LiveVars, InstMapping0, ModeInfo) :-
 	mode_context_init(ModeContext),
 	LockedVars = [],
@@ -318,9 +310,8 @@ mode_info_init(IOState, ModuleInfo, DoModuleQual, PredId, ProcId, Context,
 
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, VarSet, VarTypes,
-		Context, ModeContext,
-		InstMapping0, LockedVars, DelayInfo, ErrorList,
-		LiveVarsList, NondetLiveVarsList, DoModuleQual 
+		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
+		ErrorList, LiveVarsList, NondetLiveVarsList, unit 
 	).
 
 %-----------------------------------------------------------------------------%
@@ -627,13 +618,6 @@ mode_info_get_nondet_live_vars(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,
 mode_info_set_nondet_live_vars(NondetLiveVars,
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O),
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,NondetLiveVars,O)).
-
-mode_info_get_module_qual_flag(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-			DoModuleQual), DoModuleQual).
-
-mode_info_set_module_qual_flag(DoModuleQual,
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_),
-			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,DoModuleQual)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

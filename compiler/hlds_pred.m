@@ -44,7 +44,10 @@
 
 :- type clauses_info	--->	clauses_info(
 					varset,		% variable names
+					map(var, type), % variable types from
+						% explicit qualifications
 					map(var, type), % variable types
+						% inferred by typecheck.m.
 					list(var),	% head vars
 					list(clause)
 				).
@@ -89,6 +92,13 @@
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
+	;	opt_decl	% predicate declared in an optimization
+				% interface
+	;	opt_imported	% defined in the optimization 
+				% interface of another module
+	;	abstract_imported % describes a type with only an abstract
+				% declaration imported, maybe with the body
+				% of the type imported from a .opt file
 	;	pseudo_imported % this is used for entities that are defined
 				% in the interface of some other module but
 				% for which we may generate some code in
@@ -96,6 +106,8 @@
 				% for unification predicates (see comments in
 				% unify_proc.m)
 	;	exported	% defined in the interface of this module
+	;	abstract_exported % describes a type with only an abstract
+				% declaration exported
 	;	pseudo_exported % the converse of pseudo_imported
 				% this means that only the (in, in) mode
 				% of a unification is exported
@@ -238,7 +250,7 @@
 
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 
-:- pred pred_info_set_status(pred_info::in, import_status::in,
+:- pred pred_info_set_import_status(pred_info::in, import_status::in,
 				pred_info::out) is det.
 
 :- pred pred_info_typevarset(pred_info, tvarset).
@@ -337,7 +349,7 @@ pred_info_create(ModuleName, SymName, TypeVarSet, Types, Cond, Context,
 	proc_info_headvars(ProcInfo, HeadVars),
 	unqualify_name(SymName, PredName),
 	% The empty list of clauses is a little white lie.
-	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, []),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, []),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
 		clauses, Markers, PredOrFunc).
@@ -355,7 +367,7 @@ pred_info_procids(PredInfo, ProcIds) :-
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ImportStatus = imported ->
+	( ( ImportStatus = imported ; ImportStatus = opt_decl ) ->
 		ProcIds = []
 	; ImportStatus = pseudo_imported ->
 		pred_info_procids(PredInfo, ProcIds0),
@@ -416,7 +428,13 @@ pred_info_import_status(PredInfo, ImportStatus) :-
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	ImportStatus = imported.
+	(
+		ImportStatus = imported
+	;
+		% opt_decl is equivalent to imported, except only 
+		% opt_imported preds can call an opt_decl pred.
+		ImportStatus = opt_decl
+	).
 
 pred_info_is_pseudo_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -434,7 +452,7 @@ pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, N).
 
-pred_info_set_status(PredInfo0, Status, PredInfo) :-
+pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L, M, N).
 

@@ -13,6 +13,11 @@
 % This module optimizes away such unifications by replacing all
 % occurrences of the local name with the other name.
 %
+% Note that the output of this pass is not in super-homogeneous form,
+% since if two equivalent variables are passed in two argument positions,
+% they will not be distinct after this pass. This is not a problem, since
+% this pass occurs after the passes that rely on super-homogeneous form.
+%
 % This HLDS-to-HLDS optimization is applied after the front end has
 % completed all of its semantic checks (i.e. after determinism analysis),
 % but before code generation.

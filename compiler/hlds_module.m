@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, prog_data, shapes.
+:- import_module hlds_data, hlds_out, prog_data, shapes.
 :- import_module require, int, string, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -859,6 +859,13 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 :- pred predicate_arity(module_info, pred_id, arity).
 :- mode predicate_arity(in, in, out) is det.
 
+	% Get the pred_id and proc_id matching a lambda expression with
+	% the given argument types, aborting with an error if none is
+	% found.
+:- pred get_pred_id_and_proc_id(string, arity, pred_or_func, list(type),
+				module_info, pred_id, proc_id).
+:- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1262,6 +1269,76 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
 				Func_N_Index, Func_NA_Index, Func_MNA_Index).
+
+
+get_pred_id_and_proc_id(Name, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
+			PredId, ProcId) :-
+	list__length(PredArgTypes, PredArity),
+	TotalArity is Arity + PredArity,
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	(
+	    predicate_table_search_pf_name_arity(PredicateTable,
+		PredOrFunc, Name, TotalArity, PredIds)
+	->
+	    (
+		PredIds = [PredId0]
+	    ->
+		PredId = PredId0,
+		predicate_table_get_preds(PredicateTable, Preds),
+		map__lookup(Preds, PredId, PredInfo),
+		pred_info_procedures(PredInfo, Procs),
+		map__keys(Procs, ProcIds),
+		( ProcIds = [ProcId0] ->
+		    ProcId = ProcId0
+		; ProcIds = [] ->
+		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+		    string__int_to_string(TotalArity, TotalArityString),
+		    string__append_list([
+			    "cannot take address of ", PredOrFuncStr,
+			    "\n`", Name, "/", TotalArityString,
+			    "' with no modes.\n",
+			    "(Sorry, confused by earlier errors ",
+			    	"-- bailing out.)"],
+			    Message),
+		    error(Message)
+		;
+		    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+		    string__int_to_string(TotalArity, TotalArityString),
+		    string__append_list([
+			    "sorry, not implemented: ",
+			    "taking address of ", PredOrFuncStr,
+			    "\n`", Name, "/", TotalArityString,
+			    "' with multiple modes.\n",
+			    "(use an explicit lambda expression instead)"],
+			    Message),
+		    error(Message)
+		)
+	    ;
+	        % Ambiguous pred or func.
+		% cons_id ought to include the module prefix, so
+		% that we could use predicate_table__search_m_n_a to 
+		% prevent this from happening
+	        hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+	        string__int_to_string(TotalArity, TotalArityString),
+		string__append_list(
+			["get_pred_id_and_proc_id: ",
+			"ambiguous ", PredOrFuncStr,
+		        "\n`", Name, "/", TotalArityString, "'"],
+			Msg),
+		error(Msg)
+	    )
+	;
+	    % Undefined/invalid pred or func.
+	    % the type-checker should ensure that this never happens
+	    hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
+	    string__int_to_string(TotalArity, TotalArityString),
+	    string__append_list(
+		["get_pred_id_and_proc_id: ",
+		"undefined/invalid ", PredOrFuncStr,
+		"\n`", Name, "/", TotalArityString, "'"],
+		Msg),
+	    error(Msg)
+	).
 
 %-----------------------------------------------------------------------------%
 

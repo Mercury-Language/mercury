@@ -50,10 +50,12 @@
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is det.
 
+/* DEAD CODE
 :- pred call_gen__generate_complicated_unify(var, var, uni_mode, can_fail,
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_complicated_unify(in, in, in, in, out, in, out)
 	is det.
+*/
 
 :- pred call_gen__input_arg_locs(list(pair(var, arg_info)), 
 				list(pair(var, arg_loc))).
@@ -350,6 +352,7 @@ call_gen__partition_args([arg_info(_Loc,Mode) - V | Rest], Ins, Outs) :-
 
 %---------------------------------------------------------------------------%
 
+/* DEAD CODE
 call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	{ determinism_components(Det, CanFail, at_most_one) },
 	{ determinism_to_code_model(Det, CodeModel) },
@@ -376,7 +379,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
 		{ Address = imported(UniLabel) },
-	/************
+	/\************
 		% Currently we just conservatively assume the address
 		% of a unification predicate is imported.  For
 		% non-standard modes, we could do better, if
@@ -389,7 +392,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 		;
 			Address = label(local(UniLabel))
 		},
-	**************/
+	**************\/
 		(
 			{ CanFail = can_fail }
 		->
@@ -427,6 +430,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	),
 
 	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) }.
+*/
 
 %---------------------------------------------------------------------------%
 

@@ -25,8 +25,14 @@
 	% in the output.
 
 :- pred equiv_type__expand_eqv_types(list(item_and_context),
-					list(item_and_context)).
-:- mode equiv_type__expand_eqv_types(in, out) is det.
+					list(item_and_context), eqv_map).
+:- mode equiv_type__expand_eqv_types(in, out, out) is det.
+
+	% Replace equivalence types in a given type.
+:- pred equiv_type__replace_in_type(type, tvarset, eqv_map, type, tvarset).
+:- mode equiv_type__replace_in_type(in, in, in, out, out) is det.
+
+:- type eqv_map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -42,14 +48,13 @@
 	% definitions.  Then we go through the item list and replace
 	% them.
 
-equiv_type__expand_eqv_types(Items0, Items) :-
+equiv_type__expand_eqv_types(Items0, Items, EqvMap) :-
 	map__init(EqvMap0),
 	equiv_type__build_eqv_map(Items0, EqvMap0, EqvMap),
 	equiv_type__replace_in_item_list(Items0, EqvMap, Items).
 
-:- type eqv_type_id == pair(sym_name, arity).
 :- type eqv_type_body ---> eqv_type_body(tvarset, list(type_param), type).
-:- type eqv_map == map(eqv_type_id, eqv_type_body).
+:- type eqv_map == map(type_id, eqv_type_body).
 
 :- pred equiv_type__build_eqv_map(list(item_and_context), eqv_map, eqv_map).
 :- mode equiv_type__build_eqv_map(in, in, out) is det.
@@ -173,15 +178,12 @@ equiv_type__replace_in_type_list_2([T0|Ts0], VarSet0, EqvMap, Seen,
 	equiv_type__replace_in_type_list_2(Ts0, VarSet1, EqvMap, Seen,
 					Ts, VarSet).
 
-:- pred equiv_type__replace_in_type(type, tvarset, eqv_map, type, tvarset).
-:- mode equiv_type__replace_in_type(in, in, in, out, out) is det.
-
 equiv_type__replace_in_type(Type0, VarSet0, EqvMap, Type, VarSet) :-
 	equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 			[], Type, VarSet).
 
 :- pred equiv_type__replace_in_type_2(type, tvarset, eqv_map,
-					list(eqv_type_id),
+					list(type_id),
 					type, tvarset).
 :- mode equiv_type__replace_in_type_2(in, in, in, in, out, out) is det.
 

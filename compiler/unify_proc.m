@@ -25,10 +25,6 @@
 % unify_requests table.  We store the entries in a queue and continue the
 % process until the queue is empty.
 %
-% Each time we come to generate code for a complicated unification, the
-% compiler just generates a call to the out-of-line unification procedure
-% (this is done in call_gen.m).
-%
 % Currently if the same complicated unification procedure is called by
 % different modules, each module will end up with a copy of the code for
 % that procedure.  In the long run it would be desireable to either delay
@@ -395,7 +391,7 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, ModuleInfo,
 		error("unknown special pred")
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
-	ClauseInfo = clauses_info(VarSet, Types, Args, Clauses).
+	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses).
 
 :- pred unify_proc__generate_unify_clauses(hlds__type_body, var, var,
 				list(clause), unify_proc_info, unify_proc_info).

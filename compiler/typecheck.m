@@ -122,6 +122,18 @@
 	needs typechecking should work with the clause_info structure.
 */
 
+
+	% Find a predicate which matches the given name and argument types.
+
+:- pred typecheck__resolve_pred_overloading(module_info, list(var),
+			map(var, type), tvarset, sym_name, sym_name, pred_id).
+:- mode typecheck__resolve_pred_overloading(in, in, in, in,
+			in, out, out) is det.
+
+:- pred typecheck__find_matching_pred_id(list(pred_id), module_info,
+			tvarset, list(type), pred_id, sym_name).
+:- mode typecheck__find_matching_pred_id(in, in, in, in, out, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -254,7 +266,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    code_util__compiler_generated(PredInfo0)
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(_, _, _, Clauses0),
+	    ClausesInfo0 = clauses_info(_, _, _, _, Clauses0),
 	    ( Clauses0 = [] ->
 		pred_info_mark_as_external(PredInfo0, PredInfo)
 	    ;
@@ -264,10 +276,12 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    Changed = no,
 	    IOState = IOState0
 	;
-	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes0),
+	    pred_info_arg_types(PredInfo0, ArgTypeVarSet, ArgTypes0),
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
+	    pred_info_import_status(PredInfo0, Status),
+	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, _,
+	    				HeadVars, Clauses0),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -290,7 +304,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				PredId, ModuleInfo, IOState0, IOState1)
 		;
 			Inferring = no,
-			term__vars_list(ArgTypes0, HeadTypeParams),
+			varset__vars(ArgTypeVarSet, HeadTypeParams),
 			write_pred_progress_message("% Type-checking ",
 				PredId, ModuleInfo, IOState0, IOState1)
 		),
@@ -298,12 +312,13 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		
 		type_info_init(IOState1, ModuleInfo, PredId,
 				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
-				TypeInfo1),
+				Status, TypeInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeInfo1, TypeInfo2),
 		type_info_get_final_info(TypeInfo2, TypeVarSet, VarTypes1),
 		map__optimize(VarTypes1, VarTypes),
-		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
+		ClausesInfo = clauses_info(VarSet, VarTypes0, VarTypes,
+				HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
 		( Inferring = no ->
@@ -678,65 +693,96 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		% (so that we can optimize the case of a non-overloaded,
 		% non-polymorphic predicate)
 		( PredIdList = [PredId0] ->
-			PredId = PredId0,
-
+			
 			predicate_table_get_preds(PredicateTable, Preds),
-			map__lookup(Preds, PredId, PredInfo),
-			pred_info_arg_types(PredInfo, PredTypeVarSet,
-						PredArgTypes),
+			map__lookup(Preds, PredId0, PredInfo),
+			pred_info_import_status(PredInfo, CalledStatus),
+			type_info_get_pred_import_status(TypeInfo1,
+						CallingStatus),
+			( 
+				% Only opt_imported preds can look at
+				% declarations from .opt files.
+				(
+				  CalledStatus \= opt_decl
+				; CallingStatus = opt_imported
+				) 
+			->
+				PredId = PredId0,
+				pred_info_arg_types(PredInfo, PredTypeVarSet,
+							PredArgTypes),
 
-				% rename apart the type variables in called
-				% predicate's arg types and then
-				% unify the types of the call arguments with
-				% the called predicates' arg types
-				% (optimize for the common case of
-				% a non-polymorphic predicate)
-			( varset__is_empty(PredTypeVarSet) ->
-				typecheck_var_has_type_list(Args, PredArgTypes,
-						0, TypeInfo1, TypeInfo)
-			;
-				typecheck_var_has_polymorphic_type_list(
+					% rename apart the type variables in 
+					% called predicate's arg types and then
+					% unify the types of the call arguments
+					% with the called predicates' arg types
+					% (optimize for the common case of
+					% a non-polymorphic predicate)
+				( varset__is_empty(PredTypeVarSet) ->
+				    typecheck_var_has_type_list(Args,
+					PredArgTypes, 0, TypeInfo1, TypeInfo)
+				;
+				    typecheck_var_has_polymorphic_type_list(
 					Args, PredTypeVarSet, PredArgTypes,
 					TypeInfo1, TypeInfo)
+				)
+			;
+				invalid_pred_id(PredId),
+				report_pred_call_error(TypeInfo1, ModuleInfo,
+					PredicateTable, PredCallId, TypeInfo)
+				
 			)
 		;
+			type_info_get_pred_import_status(TypeInfo1,
+						CallingStatus),
 			typecheck_call_overloaded_pred(PredIdList, Args,
-				TypeInfo1, TypeInfo),
+				CallingStatus, TypeInfo1, TypeInfo),
 			%
-			% In general, we can't figure out which predicate it
-			% is until after we have resolved any overloading,
-			% which may require type-checking the entire clause.
-			% Hence, for the moment, we just record an invalid
-			% pred_id in the HLDS.  This will be rectified by
-			% modes.m during mode-checking; at that point,
-			% enough information is available to determine
-			% which predicate it is.
+			% In general, we can't figure out which
+			% predicate it is until after we have
+			% resolved any overloading, which may
+			% require type-checking the entire clause.
+			% Hence, for the moment, we just record an
+			% invalid pred_id in the HLDS.  This will be
+			% rectified by modes.m during mode-checking;
+			% at that point, enough information is
+			% available to determine which predicate it is.
 			%
 			invalid_pred_id(PredId)
 		)
 	;
 		invalid_pred_id(PredId),
-		type_info_get_io_state(TypeInfo1, IOState0),
-		(
-			predicate_table_search_pred_sym(PredicateTable,
-				PredName, OtherIds)
-		->
-			typecheck_find_arities(ModuleInfo, OtherIds, Arities),
-			report_error_pred_num_args(TypeInfo1, PredCallId,
-				Arities, IOState0, IOState)
-		;
-			predicate_table_search_func_sym(PredicateTable,
-				PredName, _OtherIds)
-		->
-			report_error_func_instead_of_pred(TypeInfo1, PredCallId,
-				IOState0, IOState)
-		;
-			report_error_undef_pred(TypeInfo1, PredCallId,
-				IOState0, IOState)
-		),
-		type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
-		type_info_set_found_error(TypeInfo2, yes, TypeInfo)
+		report_pred_call_error(TypeInfo1, ModuleInfo,
+				PredicateTable, PredCallId, TypeInfo)
 	).
+
+:- pred report_pred_call_error(type_info, module_info, predicate_table, 
+			pred_call_id, type_info).
+:- mode report_pred_call_error(type_info_di, in, in,
+			in, type_info_uo) is det.
+
+report_pred_call_error(TypeInfo1, ModuleInfo, PredicateTable,
+			PredCallId, TypeInfo) :-
+	PredCallId = PredName/_Arity,
+	type_info_get_io_state(TypeInfo1, IOState0),
+	(
+		predicate_table_search_pred_sym(PredicateTable,
+			PredName, OtherIds)
+	->
+		typecheck_find_arities(ModuleInfo, OtherIds, Arities),
+		report_error_pred_num_args(TypeInfo1, PredCallId,
+			Arities, IOState0, IOState)
+	;
+		predicate_table_search_func_sym(PredicateTable,
+			PredName, _OtherIds)
+	->
+		report_error_func_instead_of_pred(TypeInfo1, PredCallId,
+			IOState0, IOState)
+	;
+		report_error_undef_pred(TypeInfo1, PredCallId,
+			IOState0, IOState)
+	),
+	type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
+	type_info_set_found_error(TypeInfo2, yes, TypeInfo).
 
 :- pred typecheck_find_arities(module_info, list(pred_id), list(int)).
 :- mode typecheck_find_arities(in, in, out) is det.
@@ -748,11 +794,12 @@ typecheck_find_arities(ModuleInfo, [PredId | PredIds], [Arity | Arities]) :-
 
 
 :- pred typecheck_call_overloaded_pred(list(pred_id), list(var),
-				type_info, type_info).
-:- mode typecheck_call_overloaded_pred(in, in,
+				import_status, type_info, type_info).
+:- mode typecheck_call_overloaded_pred(in, in, in,
 				type_info_di, type_info_uo) is det.
 
-typecheck_call_overloaded_pred(PredIdList, Args, TypeInfo0, TypeInfo) :-
+typecheck_call_overloaded_pred(PredIdList, Args, CallingPredStatus,
+				TypeInfo0, TypeInfo) :-
 	%
 	% let the new arg_type_assign_set be the cross-product
 	% of the current type_assign_set and the set of possible
@@ -763,7 +810,7 @@ typecheck_call_overloaded_pred(PredIdList, Args, TypeInfo0, TypeInfo) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-	get_overloaded_pred_arg_types(PredIdList, Preds,
+	get_overloaded_pred_arg_types(PredIdList, Preds, CallingPredStatus,
 			TypeAssignSet0, [], ArgsTypeAssignSet),
 	%
 	% then unify the types of the call arguments with the
@@ -772,20 +819,110 @@ typecheck_call_overloaded_pred(PredIdList, Args, TypeInfo0, TypeInfo) :-
 	typecheck_var_has_arg_type_list(Args, 0,
 				ArgsTypeAssignSet, TypeInfo0, TypeInfo).
 
-:- pred get_overloaded_pred_arg_types(list(pred_id), pred_table,
+:- pred get_overloaded_pred_arg_types(list(pred_id), pred_table, import_status,
 		type_assign_set, args_type_assign_set, args_type_assign_set).
-:- mode get_overloaded_pred_arg_types(in, in, in, in, out) is det.
+:- mode get_overloaded_pred_arg_types(in, in, in, in, in, out) is det.
 
-get_overloaded_pred_arg_types([], _Preds,
+get_overloaded_pred_arg_types([], _Preds, _CallingPredStatus,
 		_TypeAssignSet0, ArgsTypeAssignSet, ArgsTypeAssignSet).
-get_overloaded_pred_arg_types([PredId | PredIds], Preds,
+get_overloaded_pred_arg_types([PredId | PredIds], Preds, CallingPredStatus,
 		TypeAssignSet0, ArgsTypeAssignSet0, ArgsTypeAssignSet) :-
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
-	rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
-				ArgsTypeAssignSet0, ArgsTypeAssignSet1),
-	get_overloaded_pred_arg_types(PredIds, Preds,
+	pred_info_import_status(PredInfo, Status),
+	(
+		% Only opt_imported preds can look at
+		% declarations from .opt files.
+		( CallingPredStatus = opt_imported
+		; Status \= opt_decl
+		)
+	->
+		pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+		rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
+				ArgsTypeAssignSet0, ArgsTypeAssignSet1)
+	;
+		ArgsTypeAssignSet1 = ArgsTypeAssignSet0
+	),
+	get_overloaded_pred_arg_types(PredIds, Preds, CallingPredStatus,
 		TypeAssignSet0, ArgsTypeAssignSet1, ArgsTypeAssignSet).
+
+%-----------------------------------------------------------------------------%
+
+typecheck__resolve_pred_overloading(ModuleInfo, Args, VarTypes, TVarSet,
+		 PredName0, PredName, PredId) :-
+	module_info_get_predicate_table(ModuleInfo, PredTable),
+	(
+		predicate_table_search_pred_sym(PredTable, PredName0,
+			PredIds0)
+	->
+		PredIds = PredIds0
+	;
+		PredIds = []
+	),
+
+	%
+	% Check if there any of the candidate pred_ids
+	% have argument/return types which subsume the actual
+	% argument/return types of this function call
+	%
+	map__apply_to_list(Args, VarTypes, ArgTypes),
+	(
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+			TVarSet, ArgTypes, PredId1, PredName1)
+	->
+		PredId = PredId1,
+		PredName = PredName1
+	;
+		% if there is no matching predicate for this call,
+		% then this predicate must have a type error which
+		% should have been caught by in typechecking.
+		error("type error in pred call: no matching pred")
+	).
+
+typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
+		TVarSet, ArgTypes, ThePredId, PredName) :-
+	(
+		%
+		% lookup the argument types of the candidate predicate
+		% (or the argument types + return type of the candidate
+		% function)
+		%
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_arg_types(PredInfo, PredTVarSet, PredArgTypes0),
+
+		%
+		% rename them apart from the actual argument types
+		%
+		varset__merge_subst(TVarSet, PredTVarSet, _TVarSet1, Subst),
+		term__apply_substitution_to_list(PredArgTypes0, Subst,
+					PredArgTypes),
+
+		%
+		% check that the types of the candidate predicate/function
+		% subsume the actual argument types
+		%
+		type_list_subsumes(PredArgTypes, ArgTypes, _TypeSubst)
+	->
+		%
+		% we've found a matching predicate
+		% was there was more than one matching predicate/function?
+		%
+		pred_info_name(PredInfo, PName),
+		pred_info_module(PredInfo, Module),
+		PredName = qualified(Module, PName),
+		(
+			typecheck__find_matching_pred_id(PredIds,
+				ModuleInfo, TVarSet, ArgTypes, _OtherPredId, _)
+		->
+			% XXX this should report an error properly, not
+			% via error/1
+			error("Type error in predicate call: unresolvable predicate overloading.  You need to use an explicit module qualifier.  Compile with -V to find out where.")
+		;
+			ThePredId = PredId
+		)
+	;
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+				TVarSet, ArgTypes, ThePredId, PredName)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1716,84 +1853,104 @@ builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	( predicate_table_search_name(PredicateTable, Name, PredIdList) ->
 		predicate_table_get_preds(PredicateTable, Preds),
-		make_pred_cons_info_list(PredIdList, Preds, Arity,
+		make_pred_cons_info_list(TypeInfo, PredIdList, Preds, Arity,
 			ModuleInfo, [], PredConsInfoList)
 	;
 		PredConsInfoList = []
 	).
 
-:- pred make_pred_cons_info_list(list(pred_id), pred_table, int, module_info,
-				list(cons_type_info), list(cons_type_info)).
-:- mode make_pred_cons_info_list(in, in, in, in, in, out) is det.
+:- pred make_pred_cons_info_list(type_info, list(pred_id), pred_table, int,
+		module_info, list(cons_type_info), list(cons_type_info)).
+:- mode make_pred_cons_info_list(type_info_ui, in, in, in, in, in, out) is det.
 
-make_pred_cons_info_list([], _PredTable, _Arity, _ModuleInfo, L, L).
-make_pred_cons_info_list([PredId|PredIds], PredTable, Arity, ModuleInfo,
-		L0, L) :-
-	make_pred_cons_info(PredId, PredTable, Arity, ModuleInfo, L0, L1),
-	make_pred_cons_info_list(PredIds, PredTable, Arity, ModuleInfo, L1, L).
+make_pred_cons_info_list(_, [], _PredTable, _Arity, _ModuleInfo, L, L).
+make_pred_cons_info_list(TypeInfo, [PredId|PredIds], PredTable, Arity,
+		ModuleInfo, L0, L) :-
+	make_pred_cons_info(TypeInfo, PredId, PredTable, Arity,
+				ModuleInfo, L0, L1),
+	make_pred_cons_info_list(TypeInfo, PredIds, PredTable, Arity,
+				ModuleInfo, L1, L).
 
 :- type cons_type_info ---> cons_type_info(tvarset, type, list(type)).
 
-:- pred make_pred_cons_info(pred_id, pred_table, int, module_info,
+:- pred make_pred_cons_info(type_info, pred_id, pred_table, int, module_info,
 				list(cons_type_info), list(cons_type_info)).
-:- mode make_pred_cons_info(in, in, in, in, in, out) is det.
+:- mode make_pred_cons_info(type_info_ui, in, in, in, in, in, out) is det.
 
-make_pred_cons_info(PredId, PredTable, FuncArity, _ModuleInfo, L0, L) :-
+make_pred_cons_info(TypeInfo, PredId, PredTable, FuncArity,
+		_ModuleInfo, L0, L) :-
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
+	pred_info_import_status(PredInfo, CalledStatus),
+	type_info_get_pred_import_status(TypeInfo, CallingStatus),
 	(
-		IsPredOrFunc = predicate,
-		PredArity >= FuncArity
-	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
-		(
-			list__split_list(FuncArity, CompleteArgTypes,
-				ArgTypes, PredTypeParams)
-		->
-			term__context_init("<builtin>", 0, Context),
-			PredType = term__functor(term__atom("pred"),
-					PredTypeParams, Context),
-			ConsInfo = cons_type_info(PredTypeVarSet, PredType,
-					ArgTypes),
-			L = [ConsInfo | L0]
-		;
-			error("make_pred_cons_info: split_list failed")
+		% Only opt_imported preds can look at the declarations of
+		% predicates from .opt files.
+		( CalledStatus \= opt_decl
+		; CallingStatus = opt_imported
 		)
-	;
-		IsPredOrFunc = function,
-		PredAsFuncArity is PredArity - 1,
-		PredAsFuncArity >= FuncArity
 	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
 		(
-			list__split_list(FuncArity, CompleteArgTypes,
-				FuncArgTypes, FuncTypeParams),
-			list__length(FuncTypeParams, NumParams0),
-			NumParams1 is NumParams0 - 1,
-			list__split_list(NumParams1, FuncTypeParams,
-				FuncArgTypeParams, [FuncReturnTypeParam])
+			IsPredOrFunc = predicate,
+			PredArity >= FuncArity
 		->
-			( FuncArgTypeParams = [] ->
-				FuncType = FuncReturnTypeParam
-			;
+			pred_info_arg_types(PredInfo, PredTypeVarSet,
+						CompleteArgTypes),
+			(
+				list__split_list(FuncArity, CompleteArgTypes,
+					ArgTypes, PredTypeParams)
+			->
 				term__context_init("<builtin>", 0, Context),
-				FuncType = term__functor(term__atom("="), [
-					term__functor(term__atom("func"),
-						FuncArgTypeParams, Context),
-						FuncReturnTypeParam
-					], Context)
-			),
-			ConsInfo = cons_type_info(PredTypeVarSet, FuncType,
-					FuncArgTypes),
-			L = [ConsInfo | L0]
+				PredType = term__functor(term__atom("pred"),
+						PredTypeParams, Context),
+				ConsInfo = cons_type_info(PredTypeVarSet,
+						PredType, ArgTypes),
+				L = [ConsInfo | L0]
+			;
+				error("make_pred_cons_info: split_list failed")
+			)
 		;
-			error("make_pred_cons_info: split_list or remove_suffix failed")
+			IsPredOrFunc = function,
+			PredAsFuncArity is PredArity - 1,
+			PredAsFuncArity >= FuncArity
+		->
+			pred_info_arg_types(PredInfo, PredTypeVarSet,
+						CompleteArgTypes),
+			(
+				list__split_list(FuncArity, CompleteArgTypes,
+					FuncArgTypes, FuncTypeParams),
+				list__length(FuncTypeParams, NumParams0),
+				NumParams1 is NumParams0 - 1,
+				list__split_list(NumParams1, FuncTypeParams,
+				    FuncArgTypeParams, [FuncReturnTypeParam])
+			->
+				( FuncArgTypeParams = [] ->
+					FuncType = FuncReturnTypeParam
+				;
+					term__context_init("<builtin>", 0,
+							Context),
+					FuncType = term__functor(
+							term__atom("="), [
+							term__functor(
+							term__atom("func"),
+							FuncArgTypeParams,
+							Context),
+							FuncReturnTypeParam
+						], Context)
+				),
+				ConsInfo = cons_type_info(PredTypeVarSet,
+						FuncType, FuncArgTypes),
+				L = [ConsInfo | L0]
+			;
+				error("make_pred_cons_info: split_list or remove_suffix failed")
+			)
+		;
+			L = L0
 		)
 	;
 		L = L0
 	).
-
 
 	% builtin_apply_type(TypeInfo, Functor, Arity, ConsTypeInfos):
 	% Succeed if Functor is the builtin apply/N (N>=2), which is used
@@ -1849,8 +2006,11 @@ builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
 
 			headtypes,	% Head type params
 
-			bool		% Have we already warned about
+			bool,		% Have we already warned about
 					% highly ambiguous overloading?
+			import_status
+					% Import status of the pred
+					% being checked
 		).
 
 	% The normal inst of a type_info struct: ground, with
@@ -1863,7 +2023,7 @@ builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
 						unique, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
-						ground, ground
+						ground, ground, ground
 					)
 				).
 */
@@ -1882,7 +2042,7 @@ builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
 						dead, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
-						ground, ground
+						ground, ground, ground
 					)
 				).
 */
@@ -1895,11 +2055,11 @@ builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_init(io__state, module_info, pred_id, varset,
-			varset, map(var, type), headtypes, type_info).
-:- mode type_info_init(di, in, in, in, in, in, in, type_info_uo) is det.
+	varset, map(var, type), headtypes, import_status, type_info).
+:- mode type_info_init(di, in, in, in, in, in, in, in, type_info_uo) is det.
 
 type_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
-		VarTypes, HeadTypeParams, TypeInfo) :-
+		VarTypes, HeadTypeParams, Status, TypeInfo) :-
 	CallPredId = unqualified("") / 0,
 	term__context_init(Context),
 	map__init(TypeBindings),
@@ -1910,7 +2070,8 @@ type_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
-		FoundTypeError, HeadTypeParams, WarnedAboutOverloading
+		FoundTypeError, HeadTypeParams, WarnedAboutOverloading,
+		Status
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1918,7 +2079,7 @@ type_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 :- pred type_info_get_io_state(type_info, io__state).
 :- mode type_info_get_io_state(type_info_get_io_state, uo) is det.
 
-type_info_get_io_state(type_info(IOState0,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
+type_info_get_io_state(type_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
 	copy(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
@@ -1926,8 +2087,8 @@ type_info_get_io_state(type_info(IOState0,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
 :- pred type_info_set_io_state(type_info, io__state, type_info).
 :- mode type_info_set_io_state(type_info_set_io_state, di, type_info_uo) is det.
 
-type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState0,
-			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L)) :-
+type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L,M), IOState0,
+			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M)) :-
 	copy(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
@@ -1935,7 +2096,8 @@ type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState0,
 :- pred type_info_get_module_name(type_info, string).
 :- mode type_info_get_module_name(in, out) is det.
 
-type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Name) :-
+type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_),
+			Name) :-
 	module_info_name(ModuleInfo, Name).
 
 %-----------------------------------------------------------------------------%
@@ -1943,7 +2105,7 @@ type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Name) :-
 :- pred type_info_get_module_info(type_info, module_info).
 :- mode type_info_get_module_info(in, out) is det.
 
-type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_),
+type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_),
 			ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1951,7 +2113,7 @@ type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_),
 :- pred type_info_get_preds(type_info, predicate_table).
 :- mode type_info_get_preds(in, out) is det.
 
-type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Preds) :-
+type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_), Preds) :-
 	module_info_get_predicate_table(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
@@ -1959,7 +2121,7 @@ type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Preds) :-
 :- pred type_info_get_types(type_info, type_table).
 :- mode type_info_get_types(in, out) is det.
 
-type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Types) :-
+type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_), Types) :-
 	module_info_types(ModuleInfo, Types).
 
 %-----------------------------------------------------------------------------%
@@ -1967,7 +2129,7 @@ type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Types) :-
 :- pred type_info_get_ctors(type_info, cons_table).
 :- mode type_info_get_ctors(in, out) is det.
 
-type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Ctors) :-
+type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_), Ctors) :-
 	module_info_ctors(ModuleInfo, Ctors).
 
 %-----------------------------------------------------------------------------%
@@ -1975,59 +2137,59 @@ type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Ctors) :-
 :- pred type_info_get_called_predid(type_info, pred_call_id).
 :- mode type_info_get_called_predid(in, out) is det.
 
-type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_,_), PredId).
+type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_called_predid(pred_call_id, type_info, type_info).
 :- mode type_info_set_called_predid(in, type_info_di, type_info_uo) is det.
 
-type_info_set_called_predid(PredCallId, type_info(A,B,_,D,E,F,G,H,I,J,K,L),
-			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K,L)).
+type_info_set_called_predid(PredCallId, type_info(A,B,_,D,E,F,G,H,I,J,K,L,M),
+			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_arg_num(type_info, int).
 :- mode type_info_get_arg_num(in, out) is det.
 
-type_info_get_arg_num(type_info(_,_,_,ArgNum,_,_,_,_,_,_,_,_), ArgNum).
+type_info_get_arg_num(type_info(_,_,_,ArgNum,_,_,_,_,_,_,_,_,_), ArgNum).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_arg_num(int, type_info, type_info).
 :- mode type_info_set_arg_num(in, type_info_di, type_info_uo) is det.
 
-type_info_set_arg_num(ArgNum, type_info(A,B,C,_,     E,F,G,H,I,J,K,L),
-			     type_info(A,B,C,ArgNum,E,F,G,H,I,J,K,L)).
+type_info_set_arg_num(ArgNum, type_info(A,B,C,_,     E,F,G,H,I,J,K,L,M),
+			     type_info(A,B,C,ArgNum,E,F,G,H,I,J,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_predid(type_info, pred_id).
 :- mode type_info_get_predid(in, out) is det.
 
-type_info_get_predid(type_info(_,_,_,_,PredId,_,_,_,_,_,_,_), PredId).
+type_info_get_predid(type_info(_,_,_,_,PredId,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_context(type_info, term__context).
 :- mode type_info_get_context(in, out) is det.
 
-type_info_get_context(type_info(_,_,_,_,_,Context,_,_,_,_,_,_), Context).
+type_info_get_context(type_info(_,_,_,_,_,Context,_,_,_,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_context(term__context, type_info, type_info).
 :- mode type_info_set_context(in, type_info_di, type_info_uo) is det.
 
-type_info_set_context(Context, type_info(A,B,C,D,E,_,G,H,I,J,K,L),
-			type_info(A,B,C,D,E,Context,G,H,I,J,K,L)).
+type_info_set_context(Context, type_info(A,B,C,D,E,_,G,H,I,J,K,L,M),
+			type_info(A,B,C,D,E,Context,G,H,I,J,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_unify_context(type_info, unify_context).
 :- mode type_info_get_unify_context(in, out) is det.
 
-type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_,_),
+type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_,_,_),
 				UnifyContext).
 
 %-----------------------------------------------------------------------------%
@@ -2035,22 +2197,22 @@ type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_,_),
 :- pred type_info_set_unify_context(unify_context, type_info, type_info).
 :- mode type_info_set_unify_context(in, type_info_di, type_info_uo) is det.
 
-type_info_set_unify_context(UnifyContext, type_info(A,B,C,D,E,F,_,H,I,J,K,L),
-			type_info(A,B,C,D,E,F,UnifyContext,H,I,J,K,L)).
+type_info_set_unify_context(UnifyContext, type_info(A,B,C,D,E,F,_,H,I,J,K,L,M),
+			type_info(A,B,C,D,E,F,UnifyContext,H,I,J,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_varset(type_info, varset).
 :- mode type_info_get_varset(in, out) is det.
 
-type_info_get_varset(type_info(_,_,_,_,_,_,_,VarSet,_,_,_,_), VarSet).
+type_info_get_varset(type_info(_,_,_,_,_,_,_,VarSet,_,_,_,_,_), VarSet).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_type_assign_set(type_info, type_assign_set).
 :- mode type_info_get_type_assign_set(in, out) is det.
 
-type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_),
+type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_,_),
 			TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
@@ -2088,15 +2250,15 @@ expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 :- pred type_info_set_type_assign_set(type_info, type_assign_set, type_info).
 :- mode type_info_set_type_assign_set(type_info_di, in, type_info_uo) is det.
 
-type_info_set_type_assign_set( type_info(A,B,C,D,E,F,G,H,_,J,K,L),
-		TypeAssignSet, type_info(A,B,C,D,E,F,G,H,TypeAssignSet,J,K,L)).
+type_info_set_type_assign_set( type_info(A,B,C,D,E,F,G,H,_,J,K,L,M),
+	TypeAssignSet, type_info(A,B,C,D,E,F,G,H,TypeAssignSet,J,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_found_error(type_info, bool).
 :- mode type_info_get_found_error(type_info_ui, out) is det.
 
-type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_,_),
+type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_,_,_),
 			FoundError).
 
 %-----------------------------------------------------------------------------%
@@ -2104,33 +2266,34 @@ type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_,_),
 :- pred type_info_set_found_error(type_info, bool, type_info).
 :- mode type_info_set_found_error(type_info_di, in, type_info_uo) is det.
 
-type_info_set_found_error( type_info(A,B,C,D,E,F,G,H,I,_,K,L), FoundError,
-			type_info(A,B,C,D,E,F,G,H,I,FoundError,K,L)).
+type_info_set_found_error( type_info(A,B,C,D,E,F,G,H,I,_,K,L,M), FoundError,
+			type_info(A,B,C,D,E,F,G,H,I,FoundError,K,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_head_type_params(type_info, headtypes).
 :- mode type_info_get_head_type_params(type_info_ui, out) is det.
 
-type_info_get_head_type_params( type_info(_,_,_,_,_,_,_,_,_,_,HeadTypeParams,_),
-				HeadTypeParams).
+type_info_get_head_type_params(
+		type_info(_,_,_,_,_,_,_,_,_,_,HeadTypeParams,_,_),
+		HeadTypeParams).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_head_type_params(type_info, headtypes, type_info).
 :- mode type_info_set_head_type_params(type_info_di, in, type_info_uo) is det.
 
-type_info_set_head_type_params( type_info(A,B,C,D,E,F,G,H,I,J,_,L),
+type_info_set_head_type_params( type_info(A,B,C,D,E,F,G,H,I,J,_,L,M),
 			HeadTypeParams,
-			type_info(A,B,C,D,E,F,G,H,I,J,HeadTypeParams,L)).
+			type_info(A,B,C,D,E,F,G,H,I,J,HeadTypeParams,L,M)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_warned_about_overloading(type_info, bool).
 :- mode type_info_get_warned_about_overloading(type_info_ui, out) is det.
 
-type_info_get_warned_about_overloading(type_info(_,_,_,_,_,_,_,_,_,_,_,Warned),
-				Warned).
+type_info_get_warned_about_overloading(
+			type_info(_,_,_,_,_,_,_,_,_,_,_,Warned,_), Warned).
 
 %-----------------------------------------------------------------------------%
 
@@ -2138,9 +2301,25 @@ type_info_get_warned_about_overloading(type_info(_,_,_,_,_,_,_,_,_,_,_,Warned),
 :- mode type_info_set_warned_about_overloading(type_info_di, in, type_info_uo)
 	is det.
 
-type_info_set_warned_about_overloading( type_info(A,B,C,D,E,F,G,H,I,J,K,_),
+type_info_set_warned_about_overloading( type_info(A,B,C,D,E,F,G,H,I,J,K,_,M),
 			Warned,
-			type_info(A,B,C,D,E,F,G,H,I,J,K,Warned)).
+			type_info(A,B,C,D,E,F,G,H,I,J,K,Warned,M)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred type_info_get_pred_import_status(type_info, import_status).
+:- mode type_info_get_pred_import_status(type_info_ui, out) is det.
+
+type_info_get_pred_import_status(type_info(_,_,_,_,_,_,_,_,_,_,_,_,Status),
+				Status).
+
+:- pred type_info_set_pred_import_status(type_info, import_status, type_info).
+:- mode type_info_set_pred_import_status(type_info_di, in,
+					type_info_uo) is det.
+
+type_info_set_pred_import_status( type_info(A,B,C,D,E,F,G,H,I,J,K,L,_),
+			Status,
+			type_info(A,B,C,D,E,F,G,H,I,J,K,L,Status)).
 
 %-----------------------------------------------------------------------------%
 
@@ -2208,17 +2387,28 @@ type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
 :- convert_cons_defn_list(_, L, _) when L.	% NU-Prolog indexing.
 
 convert_cons_defn_list(_TypeInfo, [], []).
-convert_cons_defn_list(TypeInfo, [X|Xs], [Y|Ys]) :-
-	convert_cons_defn(TypeInfo, X, Y),
-	convert_cons_defn_list(TypeInfo, Xs, Ys).
+convert_cons_defn_list(TypeInfo, [X|Xs], Ys) :-
+	( convert_cons_defn(TypeInfo, X, Y0) ->
+		Y = Y0,
+		convert_cons_defn_list(TypeInfo, Xs, Ys1),
+		Ys = [Y | Ys1]
+	;
+		convert_cons_defn_list(TypeInfo, Xs, Ys)
+	).
 
 :- pred convert_cons_defn(type_info, hlds__cons_defn, cons_type_info).
-:- mode convert_cons_defn(type_info_ui, in, out) is det.
+:- mode convert_cons_defn(type_info_ui, in, out) is semidet.
 
 convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	HLDS_ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
 	type_info_get_types(TypeInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
+	type_info_get_pred_import_status(TypeInfo, PredStatus),
+	hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
+	% Don't match constructors in local preds that shouldn't be visible.
+	( PredStatus = opt_imported
+	; TypeStatus \= opt_imported, TypeStatus \= abstract_imported
+	),
 	hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
 	construct_type(TypeId, ConsTypeParams, Context, ConsType),

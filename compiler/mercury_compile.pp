@@ -32,8 +32,8 @@
 :- import_module handle_options, prog_io, modules, module_qual, equiv_type.
 :- import_module make_hlds, typecheck, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module simplify, bytecode_gen, bytecode, (lambda), polymorphism.
-:- import_module higher_order, inlining, common, dnf.
+:- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
+:- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export.
@@ -220,6 +220,8 @@ mercury_compile(Module) -->
 		Verbose, Stats, HLDS21),
 	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
 	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
+	    globals__io_lookup_bool_option(make_optimization_interface,
+							MakeOptInt),
 	    ( { TypeCheckOnly = yes } ->
 		[]
 	    ; { ErrorCheckOnly = yes } ->
@@ -227,6 +229,12 @@ mercury_compile(Module) -->
 		% the appropriate warnings
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _)
+	    ; { MakeOptInt = yes } ->
+		% we may still want to run `unused_args' so that we get
+		% the appropriate warnings
+		globals__io_set_option(optimize_unused_args, bool(no)),
+		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _),
+		intermod__write_optfile(HLDS21)
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
@@ -260,18 +268,29 @@ mercury_compile(Module) -->
 	bool, bool, io__state, io__state).
 :- mode mercury_compile__pre_hlds_pass(in, out, out, out, out, di, uo) is det.
 
-mercury_compile__pre_hlds_pass(module_imports(Module, ShortDeps, LongDeps,
-		Items0, _), HLDS1, UndefTypes, UndefModes, FoundError) -->
+mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
+		FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
-	write_dependency_file(Module, ShortDeps, LongDeps),
+	{ ModuleImports0 = module_imports(Module, LongDeps,
+					ShortDeps, Items0, _) },
+	write_dependency_file(Module, LongDeps, ShortDeps),
 	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
-				Stats, _, UndefTypes, UndefModes),
-
-	mercury_compile__expand_equiv_types(Items1, Verbose, Stats, Items),
-	mercury_compile__make_hlds(Module, Items, Verbose, Stats, HLDS0,
-		FoundError),
+					Stats, _, UndefTypes, UndefModes),
+		% Items from optimization interfaces are needed before
+		% equivalence types are expanded, but after module
+		% qualification.
+	{ ModuleImports1 = module_imports(Module, LongDeps, ShortDeps,
+							Items1, no) },
+		% Errors in .opt files result in software errors.
+	mercury_compile__maybe_grab_optfiles(ModuleImports1, Verbose,
+						 ModuleImports2),
+	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
+	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
+					Items, EqvMap),
+	mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
+					HLDS0, FoundError),
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
 
 	( { FoundError = yes } ->
@@ -301,27 +320,45 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, Stats,
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
-	
-:- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
-	io__state, io__state).
-:- mode mercury_compile__expand_equiv_types(in, in, in, out, di, uo) is det.
+:- pred mercury_compile__maybe_grab_optfiles(module_imports, bool,
+	 module_imports, io__state, io__state).
+:- mode mercury_compile__maybe_grab_optfiles(in, in, out, di, uo) is det.
 
-mercury_compile__expand_equiv_types(Items0, Verbose, Stats, Items) -->
+mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports) -->
+	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
+	globals__io_lookup_bool_option(make_optimization_interface,
+						MakeOptInt),
+	( { UseOptInt = yes, MakeOptInt = no } ->
+		maybe_write_string(Verbose, "% Reading .opt files...\n"),
+		maybe_flush_output(Verbose),
+		intermod__grab_optfiles(Imports0, Imports),
+		maybe_write_string(Verbose, "% Done.\n")
+	;
+		{ Imports = Imports0 }
+	).
+
+:- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
+	eqv_map, io__state, io__state).
+:- mode mercury_compile__expand_equiv_types(in, in, in, out,
+	out, di, uo) is det.
+
+mercury_compile__expand_equiv_types(Items0, Verbose, Stats, Items, EqvMap) -->
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	{ equiv_type__expand_eqv_types(Items0, Items) },
+	{ equiv_type__expand_eqv_types(Items0, Items, EqvMap) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
-:- pred mercury_compile__make_hlds(module_name, item_list, bool, bool,
+:- pred mercury_compile__make_hlds(module_name, item_list, eqv_map, bool, bool,
 	module_info, bool, io__state, io__state).
-:- mode mercury_compile__make_hlds(in, in, in, in, out, out, di, uo) is det.
+:- mode mercury_compile__make_hlds(in, in, in, in, in,
+	out, out, di, uo) is det.
 
-mercury_compile__make_hlds(Module, Items, Verbose, Stats,
+mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
 		HLDS, FoundSemanticError) -->
 	maybe_write_string(Verbose, "% Converting parse tree to hlds...\n"),
 	{ Prog = module(Module, Items) },
-	parse_tree_to_hlds(Prog, HLDS),
+	parse_tree_to_hlds(Prog, EqvMap, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
 		{ FoundSemanticError = yes },
@@ -378,25 +415,33 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		{ HLDS = HLDS3 },
 		{ FoundError = FoundTypeError }
 	    ;
-		%
-		% We can't continue after an undefined insts/mode error, since
-		% mode analysis would get internal errors
-		%
-		( { FoundUndefModeError = yes } ->
-		    { FoundError = yes },
-		    { HLDS = HLDS3 },
-		    maybe_write_string(Verbose,
-	"% Program contains undefined inst or undefined mode error(s).\n"),
-		    io__set_exit_status(1)
+		globals__io_lookup_bool_option(make_optimization_interface,
+							MakeOptInt),
+		( { MakeOptInt = yes }, { FoundTypeError = no } ->
+			intermod__write_optfile(HLDS3),
+			{ FoundError = no },
+			{ HLDS = HLDS3 }
 		;
-		    %
-		    % Now go ahead and do the rest of mode checking and
-		    % determinism analysis
-		    %
-		    mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS,
-			    FoundModeOrDetError),
-		    { bool__or(FoundTypeError, FoundModeOrDetError,
-			    FoundError) }
+			%
+			% We can't continue after an undefined insts/mode
+			% error, since mode analysis would get internal errors
+			%
+			( { FoundUndefModeError = yes } ->
+			    { FoundError = yes },
+			    { HLDS = HLDS3 },
+			    maybe_write_string(Verbose,
+		"% Program contains undefined inst or undefined mode error(s).\n"),
+			    io__set_exit_status(1)
+			;
+			    %
+			    % Now go ahead and do the rest of mode checking and
+			    % determinism analysis
+			    %
+			    mercury_compile__frontend_pass_2_by_phases(HLDS3,
+			    		HLDS, FoundModeOrDetError),
+			    { bool__or(FoundTypeError, FoundModeOrDetError,
+					FoundError) }
+			)
 		)
 	    )
 	),
@@ -457,9 +502,6 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	mercury_compile__simplify(HLDS9, Verbose, Stats, HLDS10),
 	mercury_compile__maybe_dump_hlds(HLDS10, "10", "simplify"),
 
-	{ HLDS20 = HLDS10 },
-	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end"),
-
 	%
 	% work out whether we encountered any errors
 	%
@@ -468,10 +510,21 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		{ FoundDetError = no },
 		{ FoundUniqError = no }
 	->
-		{ FoundError = no }
+		{ FoundError = no },
+		globals__io_lookup_bool_option(intermodule_optimization,
+							Intermod),
+		{ Intermod = yes ->
+			intermod__adjust_pred_import_status(HLDS10, HLDS11)
+		;
+			HLDS11 = HLDS10
+		}
 	;
-		{ FoundError = yes }
-	).
+		{ FoundError = yes },
+		{ HLDS11 = HLDS10 }
+	),
+
+	{ HLDS20 = HLDS11 },
+	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,
 	bool, io__state, io__state).
@@ -822,7 +875,8 @@ mercury_compile__check_unique_modes(HLDS0, Verbose, Stats, HLDS, FoundError) -->
 mercury_compile__simplify(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Simplifying goals...\n"),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc_error(simplify__proc),
+	process_all_nonimported_procs(
+		update_proc_error(simplify__proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done\n"),
 	maybe_report_stats(Stats).

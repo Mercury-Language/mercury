@@ -55,6 +55,7 @@
 	% Output options
 		;	make_short_interface
 		;	make_interface
+		;	make_optimization_interface
 		;	generate_dependencies
 		;	convert_to_mercury
 		;	convert_to_goedel
@@ -145,6 +146,7 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
+		;	intermodule_optimization
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -245,6 +247,7 @@ option_defaults_2(output_option, [
 	generate_dependencies	-	bool(no),
 	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
+	make_optimization_interface -	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	typecheck_only		-	bool(no),
@@ -373,6 +376,7 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
 	optimize_dead_procs	-	bool(no),
+	intermodule_optimization -	bool(no),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -485,6 +489,10 @@ long_option("debug-vn",			debug_vn).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("make-short-interface",	make_short_interface).
 long_option("make-interface",		make_interface).
+long_option("make-optimization-interface",
+					make_optimization_interface).
+long_option("make-optimisation-interface",
+					make_optimization_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
@@ -591,6 +599,8 @@ long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
+long_option("intermodule-optimization", intermodule_optimization).
+long_option("intermodule-optimisation", intermodule_optimization).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -961,6 +971,9 @@ options_help_output -->
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
 	io__write_string("\t--make-short-interface\n"),
 	io__write_string("\t\tWrite the short interface to `<module>.int3'.\n"),
+	io__write_string("\t--make-optimization-interface\n"),
+	io__write_string("\t\tWrite inter-module optimization information to\n"),
+	io__write_string("\t\t<module>.opt\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
@@ -1233,8 +1246,12 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tThis will cause the compiler to generate less\n"),
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
-	io__write_string("\t\tDisable specialization of higher-order predicates.\n").
-
+	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+	io__write_string("\t--intermodule-optimization\n"),
+	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
+	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
+	io__write_string("\t\tThis option must be set throughout the compilation process.\n").
+	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 
 options_help_hlds_llds_optimization -->

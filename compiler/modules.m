@@ -10,7 +10,24 @@
 % This module contains all the code for handling module imports and exports,
 % for computing module dependencies, and for generate makefile fragments to
 % record those dependencies.
-
+%
+%
+% The interface system works as follows:
+%
+% 1. a .int3 file is written, which contains all the types, insts
+% and modes defined in the interface. Equivalence types, insts and
+% modes are written in full, others are written in abstract form.
+% These are module qualified as far as possible given the information
+% present in the current module. The datestamp on the .date3 file
+% gives the last time the .int3 file was checked for consistency.
+%
+% 2. The .int and .int2 files are created, using the .int3 files
+% of imported modules to fully module qualify all items. Therefore
+% the .int2 file is just a fully qualified version of the .int3 file.
+% The .int3 file must be kept for datestamping purposes. The datestamp
+% on the .date file gives the last time the .int and .int2 files
+% were checked.
+%
 %-----------------------------------------------------------------------------%
 
 :- module modules.
@@ -20,13 +37,21 @@
 :- import_module prog_data, prog_io.
 :- import_module list, io.
 
-	% read_mod(ModuleName, Extension, Descr, Items, Error):
+	% read_mod(ModuleName, Extension, Descr, Search, Items, Error):
 	%	Given a module name and a file extension (e.g. `.m',
 	%	`.int', or `int2'), read in the list of items in that file.
+	%	If Search is yes, search all directories given by the option
+	%	search_directories for the module.
 	%
 :- pred read_mod(string, string, string, bool, item_list, module_error,
 		io__state, io__state).
 :- mode read_mod(in, in, in, in, out, out, di, uo) is det.
+
+	% Same as above, but doesn't return error messages.
+:- pred read_mod_ignore_errors(string, string, string, bool, item_list, 
+		module_error, io__state, io__state).
+:- mode read_mod_ignore_errors(in, in, in, in, out, out, di, uo) is det.
+
 
 	% make_interface(ModuleName, Items):
 	%	Given a module name and the list of items in that module,
@@ -36,6 +61,8 @@
 :- pred make_interface(string, item_list, io__state, io__state).
 :- mode make_interface(in, in, di, uo) is det.
 
+	% 	Output the unqualified short interface file to <module>.int3.
+	%
 :- pred make_short_interface(string, item_list, io__state, io__state).
 :- mode make_short_interface(in, in, di, uo) is det.
 
@@ -78,30 +105,44 @@
 :- pred generate_dependencies(string, io__state, io__state).
 :- mode generate_dependencies(in, di, uo) is det.
 
+	% Given a module (well, a list of items),
+	% determine all the modules that it depends upon
+	% (both interface dependencies and also implementation dependencies).
+
+:- pred get_dependencies(item_list, list(string)).
+:- mode get_dependencies(in, out) is det.
+
+	% Do the importing of the interface files of imported modules.
+
+:- pred process_module_interfaces(list(string), list(string),
+				module_imports, module_imports,
+				io__state, io__state).
+:- mode process_module_interfaces(in, in, in, out, di, uo) is det.
+
+	% touch_interface_datestamp(ModuleName, Ext).
+	%
+	% Touch the datestamp file `ModuleName.Ext'. Datestamp files
+	% are used to record when each of the interface files was last
+	% updated.
+
+:- pred touch_interface_datestamp(string, string, io__state, io__state).
+:- mode touch_interface_datestamp(in, in, di, uo) is det.
+
+	% update_interface(FileName)
+	%
+	% Call the shell script mercury_update_interface to update the
+	% interface file FileName if it has changed.
+
+:- pred update_interface(string, io__state, io__state).
+:- mode update_interface(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module passes_aux, prog_out, mercury_to_mercury.
-:- import_module globals, options, module_qual.
+:- import_module globals, options, intermod, module_qual.
 :- import_module bool, string, set, map, term, varset, dir, std_util, library.
-
-
-	% The interface system works as follows:
-	%
-	% 1) a .int3 file is written, which contains all the types, insts
-	% and modes defined in the interface. Equivalence types, insts and
-	% modes are written in full, others are written in abstract form.
-	% These are module qualified as far as possible given the information
-	% present in the current module. The datestamp on the .date3 file
-	% gives the last time the .int3 file was checked for consistency.
-	%
-	% 2) The .int and .int2 files are created, using the .int3 files
-	% of imported modules to fully module qualify all items. Therefore
-	% the .int2 file is just a fully qualified version of the .int3 file.
-	% The .int3 file must be kept for datestamping purposes. The datestamp
-	% on the .date file gives the last time the .int and .int2 files
-	% were checked.
 
 
 	% Read in the .int3 files that the current module depends on,
@@ -262,11 +303,13 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 	{ InterfaceItems1 = [InterfaceDeclaration | InterfaceItems] },
 
 	convert_to_mercury(BaseModuleName, TmpOutputFileName, InterfaceItems1),
+	update_interface(OutputFileName).
 
 		% invoke the shell script `mercury_update_interface'
 		% to update <Module>.int from <Module>.int.tmp if
 		% necessary
 
+update_interface(OutputFileName) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Updating interface:\n"),
 	( { Verbose = yes } ->
@@ -283,13 +326,6 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 	).
 
 %-----------------------------------------------------------------------------%
-
-	% Touch the datestamp file `<Module>.date' or `<Module>.date3'.
-	% This datestamp is used to record when each of the interface files
-	% was last updated.
-
-:- pred touch_interface_datestamp(string, string, io__state, io__state).
-:- mode touch_interface_datestamp(in, in, di, uo) is det.
 
 touch_interface_datestamp(ModuleName, Ext) -->
 	{ string__append(ModuleName, Ext, OutputFileName) },
@@ -345,15 +381,46 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps1) },
 		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
 		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
+		globals__io_lookup_bool_option(intermodule_optimization,
+							Intermod),
 
+		( { Intermod = yes } ->
+			io__write_strings(DepStream, [
+				ModuleName, ".optdate "
+			])
+		;
+			io__write_strings(DepStream, [
+				ModuleName, ".c "
+			])
+		),
 		io__write_strings(DepStream, [
-			ModuleName, ".c ",
 			ModuleName, ".err ",
 			ModuleName, ".o : ",
 			ModuleName, ".m"
 		] ),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
+
+		% The .c file doesn't actually use the information in the
+		% .opt file for the same module. The reason that it
+		% depends on that file is that all error checking must
+		% be done without the use of items from the optimization
+		% interfaces of other modules.
+		% It is not possible to just error check the module, then
+		% read in the optimization interfaces and process the new
+		% predicates because this would require the adjustment of
+		% all equivalence types in the module, since new information
+		% may be present in the .opt files that may allow further
+		% expansion.
+		( { Intermod = yes } ->
+			io__write_strings(DepStream, [
+				"\n\n", ModuleName, ".c : "
+			]),
+			write_dependencies_list([ModuleName | LongDeps],
+							".opt", DepStream)
+		;
+			[]
+		),
 
 		io__write_strings(DepStream, [
 				"\n\n", ModuleName, ".date : ",
@@ -552,6 +619,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".optdates = "),
+	write_dependencies_list(Modules, ".optdate", DepStream),
+	io__write_string(DepStream, "\n\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ds = "),
 	write_dependencies_list(Modules, ".d", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -565,6 +637,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".int3s = "),
 	write_dependencies_list(Modules, ".int3", DepStream),
+	io__write_string(DepStream, "\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".opts = "),
+	write_dependencies_list(Modules, ".opt", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	globals__io_lookup_string_option(gc, GC_Opt),
@@ -709,6 +786,16 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	),
 
 	io__write_strings(DepStream, [
+		ModuleName, ".change_clean :\n",
+		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
+		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
+		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
+		"\t-rm -f $(", ModuleName, ".ds)\n",
+		"\t-rm -f ", ModuleName, ".dep ", ModuleName, "\n",
+		"\t-rm -f ", ModuleName, ".split ", ModuleName,".split.a\n\n"
+	]),
+
+	io__write_strings(DepStream, [
 		"realclean: ", ModuleName, ".realclean\n"
 	]),
 
@@ -716,8 +803,10 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		ModuleName, ".realclean : ", ModuleName, ".clean\n",
 		"\t-rm -f $(", ModuleName, ".dates)\n",
 		"\t-rm -f $(", ModuleName, ".date3s)\n",
+		"\t-rm -f $(", ModuleName, ".optdates)\n",
 		"\t-rm -f $(", ModuleName, ".ints)\n",
 		"\t-rm -f $(", ModuleName, ".int3s)\n",
+		"\t-rm -f $(", ModuleName, ".opts)\n",
 		"\t-rm -f $(", ModuleName, ".ds)\n"
 	]),
 	io__write_strings(DepStream, [
@@ -932,10 +1021,6 @@ combine_module_errors(yes, no, yes).
 combine_module_errors(no, Error, Error).
 */
 
-:- pred read_mod_ignore_errors(string, string, string, bool, item_list, 
-		module_error, io__state, io__state).
-:- mode read_mod_ignore_errors(in, in, in, in, out, out, di, uo) is det.
-
 read_mod_ignore_errors(ModuleName, Extension, Descr, Search, Items, Error) -->
 	{ dir__basename(ModuleName, Module) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -964,27 +1049,29 @@ read_mod_interface(Module, Descr, Search, Items, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_module_interfaces(list(string), list(string),
-				module_imports, module_imports,
-				io__state, io__state).
-:- mode process_module_interfaces(in, in, in, out, di, uo) is det.
-
 process_module_interfaces([], IndirectImports, Module0, Module) -->
 	process_module_short_interfaces(IndirectImports, Module0, Module).
 
 process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		-->
-	{ Module0 = module_imports(ModuleName, DirectImports0, _, Items0,
-					Error0) },
+	{ Module0 = module_imports(ModuleName, DirectImports0,
+				OldIndirectImports, Items0, Error0) },
 	(
 		{ Import = ModuleName }
 	->
 		( { ModuleName = "mercury_builtin" } ->
 			[]
 		;
-			{ term__context_init(ModuleName, 1, Context) },
-			prog_out__write_context(Context),
-			io__write_string("Warning: module imports itself!\n")
+			globals__io_lookup_bool_option(inhibit_warnings,
+							NoWarn),
+			( { NoWarn = no } ->
+				{ term__context_init(ModuleName, 1, Context) },
+				prog_out__write_context(Context),
+				io__write_string(
+					"Warning: module imports itself!\n")
+			;
+				[]
+			)
 		),
 		process_module_interfaces(Imports, IndirectImports0,
 					Module0, Module)
@@ -1026,8 +1113,8 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		{ list__append(IndirectImports0, IndirectImports1,
 			IndirectImports2) },
 		{ list__append(Items0, Items1, Items2) },
-		{ Module1 = module_imports(ModuleName, DirectImports1, [],
-					Items2, Error2) },
+		{ Module1 = module_imports(ModuleName, DirectImports1, 
+					OldIndirectImports, Items2, Error2) },
 		process_module_interfaces(Imports, IndirectImports2,
 				Module1, Module)
 	).
@@ -1092,13 +1179,6 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 	).
 
 %-----------------------------------------------------------------------------%
-
-	% Given a module (well, a list of items),
-	% determine all the modules that it depends upon
-	% (both interface dependencies and also implementation dependencies).
-
-:- pred get_dependencies(item_list, list(string)).
-:- mode get_dependencies(in, out) is det.
 
 get_dependencies(Items, Deps) :-
 	get_dependencies_2(Items, [], Deps).

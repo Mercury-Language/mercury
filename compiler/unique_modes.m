@@ -148,7 +148,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	module_info_preds(ModuleInfo0, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
-	ClausesInfo = clauses_info(_, _, _, ClauseList),
+	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
 	( ClauseList = [FirstClause | _] ->
 		FirstClause = clause(_, _, Context)
 	;
@@ -172,7 +172,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% At last we're ready to construct the initial mode_info
 	%
-	mode_info_init(IOState0, ModuleInfo0, no, PredId, ProcId, Context,
+	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context,
 			LiveVars, InstMap0, ModeInfo0),
 	%
 	% Modecheck the goal

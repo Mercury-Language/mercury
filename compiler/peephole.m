@@ -132,6 +132,14 @@ peephole__match(goto(label(Label)), _, _, _, Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
+	% A `computed_goto' with all branches pointing to the same 
+	% label can be replaced with an unconditional goto. 
+
+peephole__match(computed_goto(_, Labels), Comment, _, _, Instrs0, Instrs) :-
+	list__all_same(Labels),
+	Labels = [Target|_],
+	Instrs = [goto(label(Target)) - Comment | Instrs0].
+
 	% A conditional branch whose condition is constant
 	% can be either elimininated or replaced by an unconditional goto.
 	%

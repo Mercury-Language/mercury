@@ -46,6 +46,26 @@
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
 
+:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name,
+		list(pragma_var), varset, string, io__state, io__state).
+:- mode mercury_output_pragma_c_code(in, in, in, in, in, di, uo) is det.
+
+	% Output the given c_header_code declaration
+:- pred mercury_output_pragma_c_header(string, io__state, io__state).
+:- mode mercury_output_pragma_c_header(in, di, uo) is det.
+
+:- pred mercury_output_type_defn(varset, type_defn, term__context,
+			io__state, io__state).
+:- mode mercury_output_type_defn(in, in, in, di, uo) is det.
+
+:- pred mercury_output_inst_defn(varset, inst_defn, term__context,
+			io__state, io__state).
+:- mode mercury_output_inst_defn(in, in, in, di, uo) is det.
+
+:- pred mercury_output_mode_defn(varset, mode_defn, term__context,
+			io__state, io__state).
+:- mode mercury_output_mode_defn(in, in, in, di, uo) is det.
+
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo) is det.
 
@@ -82,6 +102,11 @@
 :- pred mercury_output_newline(int, io__state, io__state).
 :- mode mercury_output_newline(in, di, uo) is det.
 
+:- pred mercury_output_bracketed_constant(const, io__state, io__state).
+:- mode mercury_output_bracketed_constant(in, di, uo) is det.
+
+:- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
+:- mode mercury_output_bracketed_sym_name(in, di, uo) is det.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -256,10 +281,6 @@ mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
 		io__write_string(", "),
 		mercury_write_module_spec_list(ModuleNames)
 	).
-
-:- pred mercury_output_inst_defn(varset, inst_defn, term__context,
-			io__state, io__state).
-:- mode mercury_output_inst_defn(in, in, in, di, uo) is det.
 
 :- mercury_output_inst_defn(_, X, _, _, _) when X.	% NU-Prolog indexing
 
@@ -466,10 +487,6 @@ mercury_output_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
 		mercury_output_bound_insts(BoundInsts, VarSet)
 	).
 
-:- pred mercury_output_mode_defn(varset, mode_defn, term__context,
-			io__state, io__state).
-:- mode mercury_output_mode_defn(in, in, in, di, uo) is det.
-
 :- mercury_output_mode_defn(_, X, _, _, _) when X. 	% NU-Prolog indexing.
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
@@ -534,10 +551,6 @@ mercury_output_mode(user_defined_mode(Name, Args), VarSet) -->
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_output_type_defn(varset, type_defn, term__context,
-			io__state, io__state).
-:- mode mercury_output_type_defn(in, in, in, di, uo) is det.
 
 mercury_output_type_defn(VarSet, TypeDefn, Context) -->
 	mercury_output_type_defn_2(TypeDefn, VarSet, Context).
@@ -810,9 +823,6 @@ mercury_output_det(erroneous) -->
 	% no arguments, otherwise use mercury_output_sym_name/3.
 	%
 
-:- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
-:- mode mercury_output_bracketed_sym_name(in, di, uo) is det.
-
 mercury_output_bracketed_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, Name2) },
 		mercury_output_bracketed_constant(term__atom(ModuleName)),
@@ -1054,14 +1064,9 @@ mercury_output_some(Vars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Output the given c_header_code declaration
-:- pred mercury_output_pragma_c_header(string, io__state, io__state).
-:- mode mercury_output_pragma_c_header(in, di, uo) is det.
-
 mercury_output_pragma_c_header(C_HeaderString) -->
 	io__write_string(":- pragma c_header_code("""),
-	% XXX need to quote special characters
-	io__write_string(C_HeaderString),
+	term_io__quote_string(C_HeaderString),
 	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
@@ -1072,8 +1077,7 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 
 mercury_output_pragma_source_file(SourceFileString) -->
 	io__write_string(":- pragma source_file("""),
-	% XXX need to quote special characters
-	io__write_string(SourceFileString),
+	term_io__quote_string(SourceFileString),
 	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
@@ -1084,16 +1088,12 @@ mercury_output_pragma_source_file(SourceFileString) -->
 
 mercury_output_pragma_c_body_code(C_CodeString) -->
 	io__write_string(":- pragma c_code("""),
-	% XXX need to quote special characters
-	io__write_string(C_CodeString),
+	term_io__quote_string(C_CodeString),
 	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
 
 	% Output the given pragma c_code declaration
-:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name,
-		list(pragma_var), varset, string, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in, in, in, in, in, di, uo) is det.
 mercury_output_pragma_c_code(IsRecursive, PredName, Vars, VarSet,
 		C_CodeString) -->
 	io__write_string(":- pragma c_code("),
@@ -1103,14 +1103,17 @@ mercury_output_pragma_c_code(IsRecursive, PredName, Vars, VarSet,
 		io__write_string("non_recursive, ")
 	),
 	mercury_output_sym_name(PredName),
-	io__write_string("("),
-	mercury_output_pragma_c_code_vars(Vars, VarSet),
-	io__write_string(")"),
+	( { Vars = [] } ->
+		[]
+	;
+		io__write_string("("),
+		mercury_output_pragma_c_code_vars(Vars, VarSet),
+		io__write_string(")")
+	),
 	io__write_string(", """),
-	io__write_string(C_CodeString),
-	io__write_string(""""),
-	io__write_string(").\n").
-	
+	term_io__quote_string(C_CodeString),
+	io__write_string(""").\n").
+
 %-----------------------------------------------------------------------------%
 
 	% Output the varnames of the pragma vars
@@ -1128,9 +1131,10 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 	->
 		[]
 	;
-		io__write_string(",")
+		io__write_string(", ")
 	),
 	mercury_output_pragma_c_code_vars(Vars, VarSet).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -1308,9 +1312,6 @@ mercury_output_var(Var, VarSet) -->
 		},
 		io__write_string(VarName)
 	).
-
-:- pred mercury_output_bracketed_constant(const, io__state, io__state).
-:- mode mercury_output_bracketed_constant(in, di, uo) is det.
 
 mercury_output_bracketed_constant(Const) -->
 	( { Const = term__atom(Op), mercury_op(Op) } ->

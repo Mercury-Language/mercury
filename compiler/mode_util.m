@@ -868,7 +868,7 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		list__length(Args, Arity),
 		( map__search(InstDefns, Name - Arity, InstDefn) ->
 			InstDefn = hlds__inst_defn(_VarSet, Params, Inst0,
-					_Cond, _C),
+					_Cond, _C, _),
 			inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
 		;
 			Inst = abstract_inst(Name, Args)
@@ -1080,7 +1080,8 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	module_info_modes(ModuleInfo, Modes),
 	mode_table_get_mode_defns(Modes, ModeDefns),
 	map__lookup(ModeDefns, Name - Arity, HLDS_Mode),
-	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond, _Context),
+	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond,
+						_Context, _Status),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
 	mode_get_insts(ModuleInfo, Mode, Initial, Final).

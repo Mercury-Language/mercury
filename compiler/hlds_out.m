@@ -111,9 +111,8 @@
 :- mode hlds_out__write_hlds(in, in, di, uo) is det.
 
 :- pred hlds_out__write_clauses(int, module_info, pred_id, varset, list(var),
-				list(clause),
-				io__state, io__state).
-:- mode hlds_out__write_clauses(in, in, in, in, in, in, di, uo) is det.
+		pred_or_func, list(clause), vartypes, io__state, io__state).
+:- mode hlds_out__write_clauses(in, in, in, in, in, in, in, in, di, uo) is det.
 
 	% print out an hlds goal.
 
@@ -129,7 +128,7 @@
 	% print out the right-hand-side of a unification
 
 :- pred hlds_out__write_unify_rhs(unify_rhs, module_info, varset, int,
-					io__state, io__state).
+			io__state, io__state).
 :- mode hlds_out__write_unify_rhs(in, in, in, in, di, uo) is det.
 
 	% print out a list of variables their corresponding modes
@@ -138,6 +137,15 @@
 :- pred hlds_out__write_var_modes(list(var), list(mode), varset,
 					io__state, io__state).
 :- mode hlds_out__write_var_modes(in, in, in, di, uo) is det.
+
+	% print out the name of a marker
+
+:- pred hlds_out__write_marker(marker, io__state, io__state).
+:- mode hlds_out__write_marker(in, di, uo) is det.
+
+:- type vartypes --->
+		yes(tvarset, map(var, type))
+	;	no.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -399,7 +407,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
 		no, Context),
-	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
+	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
 	io__write_int(PredId),
@@ -421,8 +429,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		% Temporarily disable the verbose_dump_hlds option
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	globals__io_set_option(verbose_dump_hlds, bool(no)),
-	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars,
-			Clauses),
+	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
+			HeadVars, PredOrFunc, Clauses, no),
 		% Re-enable it
 	globals__io_set_option(verbose_dump_hlds, bool(Verbose)),
 
@@ -450,9 +458,6 @@ hlds_out__write_marker_status(done(Marker)) -->
 	hlds_out__write_marker(Marker),
 	io__write_string(")").
 
-:- pred hlds_out__write_marker(marker, io__state, io__state).
-:- mode hlds_out__write_marker(in, di, uo) is det.
-
 hlds_out__write_marker(infer_type) -->
 	io__write_string("infer_type").
 hlds_out__write_marker(infer_modes) -->
@@ -468,24 +473,25 @@ hlds_out__write_marker(obsolete) -->
 hlds_out__write_marker(memo) -->
 	io__write_string("memo").
 
-hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clauses0)
-		-->
+hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars,
+		PredOrFunc, Clauses0, TypeQual) -->
 	(
 		{ Clauses0 = [Clause|Clauses] }
 	->
 		hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
-			HeadVars, Clause),
+			HeadVars, PredOrFunc, Clause, TypeQual),
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
-			HeadVars, Clauses)
+			HeadVars, PredOrFunc, Clauses, TypeQual)
 	;
 		[]
 	).
 
 :- pred hlds_out__write_clause(int, module_info, pred_id, varset, list(var),
-				clause, io__state, io__state).
-:- mode hlds_out__write_clause(in, in, in, in, in, in, di, uo) is det.
+			pred_or_func, clause, vartypes, io__state, io__state).
+:- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
+hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
+		HeadVars, PredOrFunc, Clause, TypeQual) -->
 	{
 		Clause = clause(
 			Modes,
@@ -503,13 +509,15 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
 	;
 		[]
 	),
-	hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars),
+	hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
+					HeadVars, PredOrFunc),
 	( { Goal = conj([]) - _GoalInfo } ->
 		[]
 	;
 		io__write_string(" :-\n"),
 		hlds_out__write_indent(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1)
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+					Indent1, TypeQual)
 	),
 	io__write_string(".\n").
 
@@ -546,16 +554,38 @@ hlds_out__write_intlist_2(Ns0) -->
 	).
 
 :- pred hlds_out__write_clause_head(module_info, pred_id, varset, list(var),
-					io__state, io__state).
-:- mode hlds_out__write_clause_head(in, in, in, in, di, uo) is det.
+					pred_or_func, io__state, io__state).
+:- mode hlds_out__write_clause_head(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
+hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
+			HeadVars, PredOrFunc) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	hlds_out__write_qualified_functor(ModuleName, term__atom(PredName),
-				HeadVars, VarSet).
+	(
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(HeadVars, FuncArgs, RetVal) },
+		hlds_out__write_qualified_functor(ModuleName,
+			term__atom(PredName), FuncArgs, VarSet),
+		io__write_string(" = "),
+		mercury_output_term(term__variable(RetVal), VarSet)
+	;
+		{ PredOrFunc = predicate },
+		hlds_out__write_qualified_functor(ModuleName,
+			term__atom(PredName), HeadVars, VarSet)
+	).
 
-hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent) -->
+		% don't type qualify everything
+	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, Indent, no).
+
+	% TypeQual is yes(TVarset, VarTypes) if all constructors should
+	% be module qualified.
+:- pred hlds_out__write_goal_a(hlds__goal, module_info, varset, int,
+				vartypes, io__state, io__state).
+:- mode hlds_out__write_goal_a(in, in, in, in, in, di, uo) is det.
+
+hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
+			VarSet, Indent, TypeQual) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		{ goal_info_context(GoalInfo, Context) },
@@ -624,7 +654,7 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	;
 		[]
 	),
-	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent),
+	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent, TypeQual),
 	( { Verbose = yes } ->
 		mercury_output_newline(Indent),
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
@@ -672,11 +702,11 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	).
 
 :- pred hlds_out__write_goal_2(hlds__goal_expr, module_info, varset, int,
-					io__state, io__state).
-:- mode hlds_out__write_goal_2(in, in, in, in, di, uo) is det.
+					vartypes, io__state, io__state).
+:- mode hlds_out__write_goal_2(in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_goal_2(switch(Var, CanFail, CasesList, _), ModuleInfo, VarSet,
-		Indent) -->
+		Indent, TypeQual) -->
 	io__write_string("( % "),
 	hlds_out__write_can_fail(CanFail), 
 	io__write_string(" switch on `"),
@@ -685,35 +715,38 @@ hlds_out__write_goal_2(switch(Var, CanFail, CasesList, _), ModuleInfo, VarSet,
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
 	( { CasesList = [Case | Cases] } ->
-		hlds_out__write_case(Case, Var, ModuleInfo, VarSet, Indent1),
-		hlds_out__write_cases(Cases, Var, ModuleInfo, VarSet, Indent)
+		hlds_out__write_case(Case, Var, ModuleInfo,
+					VarSet, Indent1, TypeQual),
+		hlds_out__write_cases(Cases, Var, ModuleInfo,
+					VarSet, Indent, TypeQual)
 	;
 		io__write_string("fail")
 	),
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-hlds_out__write_goal_2(some(Vars, Goal), ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal_2(some(Vars, Goal), ModuleInfo,
+		VarSet, Indent, TypeQual) -->
 	io__write_string("some ["),
 	mercury_output_vars(Vars, VarSet),
 	io__write_string("] ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
-	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, Indent1, TypeQual),
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
 hlds_out__write_goal_2(if_then_else(Vars, A, B, C, _), ModuleInfo, VarSet,
-		Indent) -->
+		Indent, TypeQual) -->
 	io__write_string("(if"),
 	hlds_out__write_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
-	hlds_out__write_goal(A, ModuleInfo, VarSet, Indent1),
+	hlds_out__write_goal_a(A, ModuleInfo, VarSet, Indent1, TypeQual),
 	mercury_output_newline(Indent),
 	io__write_string("then"),
 	mercury_output_newline(Indent1),
-	hlds_out__write_goal(B, ModuleInfo, VarSet, Indent1),
+	hlds_out__write_goal_a(B, ModuleInfo, VarSet, Indent1, TypeQual),
 	mercury_output_newline(Indent),
 	io__write_string("else"),
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
@@ -722,49 +755,55 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C, _), ModuleInfo, VarSet,
 		{ C = if_then_else(_, _, _, _, _) - _ }
 	->
 		io__write_string(" "),
-		hlds_out__write_goal(C, ModuleInfo, VarSet, Indent)
+		hlds_out__write_goal_a(C, ModuleInfo, VarSet, Indent, TypeQual)
 	;
 		mercury_output_newline(Indent1),
-		hlds_out__write_goal(C, ModuleInfo, VarSet, Indent1),
+		hlds_out__write_goal_a(C, ModuleInfo, VarSet,
+					Indent1, TypeQual),
 		mercury_output_newline(Indent)
 	),
 	io__write_string(")").
 
-hlds_out__write_goal_2(not(Goal), ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal_2(not(Goal), ModuleInfo, VarSet, Indent, TypeQual) -->
 	io__write_string("\\+ ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
-	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, Indent1, TypeQual),
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent, TypeQual) -->
 	( { List = [Goal | Goals] } ->
 		globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 		( { Verbose = yes } ->
 			{ Indent1 is Indent + 1 },
 			io__write_string("( % conjunction"),
 			mercury_output_newline(Indent1),
-			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+			hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, 
+				Indent1, TypeQual),
 			hlds_out__write_conj(Goals, ModuleInfo, VarSet,
-				Indent1),
+				Indent1, TypeQual),
 			mercury_output_newline(Indent),
 			io__write_string(")")
 		;
-			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent),
-			hlds_out__write_conj(Goals, ModuleInfo, VarSet, Indent)
+			hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+				Indent, TypeQual),
+			hlds_out__write_conj(Goals, ModuleInfo, VarSet,
+				Indent, TypeQual)
 		)
 	;
 		io__write_string("true")
 	).
 
-hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent) -->
+hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent, TypeQual) -->
 	( { List = [Goal | Goals] } ->
 		io__write_string("( % disjunction"),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
-		hlds_out__write_disj(Goals, ModuleInfo, VarSet, Indent),
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+			Indent1, TypeQual),
+		hlds_out__write_disj(Goals, ModuleInfo, VarSet,
+			Indent, TypeQual),
 		mercury_output_newline(Indent),
 		io__write_string(")")
 	;
@@ -772,25 +811,34 @@ hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent) -->
 	).
 
 hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, _Follow),
-					_ModuleInfo, VarSet, _Indent) -->
+				_ModuleInfo, VarSet, _Indent, _TypeQual) -->
 		% XXX we should print more info here
 	hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars], VarSet).
 
 hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
-					_ModuleInfo, VarSet, _Indent) -->
+				_ModuleInfo, VarSet, _Indent, _TypeQual) -->
 		% XXX we should print more info here
-	(	{ PredName = qualified(ModuleName, Name) }, 
-		hlds_out__write_qualified_functor(ModuleName, term__atom(Name), ArgVars, VarSet)
+	(
+		{ PredName = qualified(ModuleName, Name) },
+		hlds_out__write_qualified_functor(ModuleName, term__atom(Name),
+						ArgVars, VarSet)
 	;
 		{ PredName = unqualified(Name) },
 		hlds_out__write_functor(term__atom(Name), ArgVars, VarSet)
 	).
 
 hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
-		Indent) -->
+		Indent, TypeQual) -->
 	mercury_output_var(A, VarSet),
 	io__write_string(" = "),
-	hlds_out__write_unify_rhs(B, ModuleInfo, VarSet, Indent),
+	{ TypeQual = yes(_, VarTypes) ->
+		map__lookup(VarTypes, A, UniType),
+		VarType = yes(UniType)
+	;
+		VarType = no
+	},
+	hlds_out__write_unify_rhs_2(B, ModuleInfo, VarSet,
+				Indent, VarType, TypeQual),
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	(
 		{ Verbose = no }
@@ -812,7 +860,7 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 			Indent)
 	).
 
-hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), _, _, _)
+hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), _, _, _, _)
 		-->
 	{ get_pragma_c_var_names(ArgNames, Names) },
 	io__write_string("$pragma(c_code, ["),
@@ -890,13 +938,28 @@ mercury_output_functor(ConsId, ArgVars, ArgModes, _ModuleInfo, VarSet,
 		mercury_output_uni_mode_list(ArgModes, VarSet)
 	).
 
-hlds_out__write_unify_rhs(var(Var), _, VarSet, _) -->
+hlds_out__write_unify_rhs(Rhs, ModuleInfo, VarSet, Indent) -->
+	hlds_out__write_unify_rhs_2(Rhs, ModuleInfo, VarSet, Indent, no, no).
+
+:- pred hlds_out__write_unify_rhs_2(unify_rhs, module_info, varset, int,
+			maybe(type), vartypes, io__state, io__state).
+:- mode hlds_out__write_unify_rhs_2(in, in, in, in, in, in, di, uo) is det.
+
+hlds_out__write_unify_rhs_2(var(Var), _, VarSet, _, _, _) -->
 	mercury_output_var(Var, VarSet).
-hlds_out__write_unify_rhs(functor(Functor, ArgVars), _, VarSet, _) -->
-	hlds_out__write_functor(Functor, ArgVars, VarSet).
-hlds_out__write_unify_rhs(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
-			ModuleInfo, VarSet, Indent) -->
-	(	{ PredOrFunc = predicate },
+hlds_out__write_unify_rhs_2(functor(Functor, ArgVars), _,
+			VarSet, _, MaybeType, TypeQual) -->
+	hlds_out__write_functor(Functor, ArgVars, VarSet),
+	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
+		io__write_string(" TYPE_QUAL_OP "),
+		mercury_output_term(Type, TVarSet)
+	;
+		[]
+	).
+hlds_out__write_unify_rhs_2(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
+		ModuleInfo, VarSet, Indent, MaybeType, TypeQual) -->
+	(
+		{ PredOrFunc = predicate },
 		io__write_string("(pred("),
 		hlds_out__write_var_modes(Vars, Modes, VarSet),
 		io__write_string(") is "),
@@ -904,10 +967,12 @@ hlds_out__write_unify_rhs(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 		io__write_string(" :-\n"),
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_indent(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+					Indent1, TypeQual),
 		mercury_output_newline(Indent),
 		io__write_string(")")
-	;	{ PredOrFunc = function },
+	;
+		{ PredOrFunc = function },
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		{ pred_args_to_func_args(Vars, ArgVars, RetVar) },
 		io__write_string("(func("),
@@ -919,9 +984,16 @@ hlds_out__write_unify_rhs(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 		io__write_string(" :-\n"),
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_indent(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+					Indent1, TypeQual),
 		mercury_output_newline(Indent),
 		io__write_string(")")
+	),
+	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
+		io__write_string(" TYPE_QUAL_OP "),
+		mercury_output_term(Type, TVarSet)
+	;
+		[]
 	).
 
 hlds_out__write_functor(Functor, ArgVars, VarSet) -->
@@ -962,26 +1034,28 @@ hlds_out__write_var_mode(Var, Mode, VarSet) -->
 	mercury_output_mode(Mode, VarSet).
 
 :- pred hlds_out__write_conj(list(hlds__goal), module_info, varset, int,
-				io__state, io__state).
-:- mode hlds_out__write_conj(in, in, in, in, di, uo) is det.
+				vartypes, io__state, io__state).
+:- mode hlds_out__write_conj(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_conj(GoalList, ModuleInfo, VarSet, Indent) -->
+hlds_out__write_conj(GoalList, ModuleInfo, VarSet, Indent, TypeQual) -->
 	(
 		{ GoalList = [Goal | Goals] }
 	->
 		io__write_string(","),
 		mercury_output_newline(Indent),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent),
-		hlds_out__write_conj(Goals, ModuleInfo, VarSet, Indent)
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+					Indent, TypeQual),
+		hlds_out__write_conj(Goals, ModuleInfo, VarSet,
+					Indent, TypeQual)
 	;
 		[]
 	).
 
 :- pred hlds_out__write_disj(list(hlds__goal), module_info, varset, int,
-				io__state, io__state).
-:- mode hlds_out__write_disj(in, in, in, in, di, uo) is det.
+				vartypes, io__state, io__state).
+:- mode hlds_out__write_disj(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_disj(GoalList, ModuleInfo, VarSet, Indent) -->
+hlds_out__write_disj(GoalList, ModuleInfo, VarSet, Indent, TypeQual) -->
 	(
 		{ GoalList = [Goal | Goals] }
 	->
@@ -989,30 +1063,33 @@ hlds_out__write_disj(GoalList, ModuleInfo, VarSet, Indent) -->
 		io__write_string(";"),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
-		hlds_out__write_disj(Goals, ModuleInfo, VarSet, Indent)
+		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
+					Indent1, TypeQual),
+		hlds_out__write_disj(Goals, ModuleInfo, VarSet,
+					Indent, TypeQual)
 	;
 		[]
 	).
 
 :- pred hlds_out__write_case(case, var, module_info, varset, int,
-				io__state, io__state).
-:- mode hlds_out__write_case(in, in, in, in, in, di, uo) is det.
+				vartypes, io__state, io__state).
+:- mode hlds_out__write_case(in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet, Indent) -->
+hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo,
+			VarSet, Indent, VarTypes) -->
 	io__write_string("% "),
 	mercury_output_var(Var, VarSet),
 	io__write_string(" has functor "),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string(","),
 	mercury_output_newline(Indent),
-	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent).
+	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, Indent, VarTypes).
 
 :- pred hlds_out__write_cases(list(case), var, module_info, varset, int,
-				io__state, io__state).
-:- mode hlds_out__write_cases(in, in, in, in, in, di, uo) is det.
+				vartypes, io__state, io__state).
+:- mode hlds_out__write_cases(in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, Indent) -->
+hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, Indent, VarTypes) -->
 	(
 		{ CasesList = [Case | Cases] }
 	->
@@ -1020,8 +1097,10 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, Indent) -->
 		io__write_string(";"),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
-		hlds_out__write_case(Case, Var, ModuleInfo, VarSet, Indent1),
-		hlds_out__write_cases(Cases, Var, ModuleInfo, VarSet, Indent)
+		hlds_out__write_case(Case, Var, ModuleInfo,
+				VarSet, Indent1, VarTypes),
+		hlds_out__write_cases(Cases, Var, ModuleInfo,
+				VarSet, Indent, VarTypes)
 	;
 		[]
 	).
@@ -1076,10 +1155,18 @@ hlds_out__write_import_status(local) -->
 	io__write_string("local").
 hlds_out__write_import_status(exported) -->
 	io__write_string("exported").
+hlds_out__write_import_status(abstract_exported) -->
+	io__write_string("abstract_exported").
 hlds_out__write_import_status(pseudo_exported) -->
 	io__write_string("pseudo_exported").
 hlds_out__write_import_status(imported) -->
 	io__write_string("imported").
+hlds_out__write_import_status(abstract_imported) -->
+	io__write_string("abstract_imported").
+hlds_out__write_import_status(opt_imported) -->
+	io__write_string("opt_imported").
+hlds_out__write_import_status(opt_decl) -->
+	io__write_string("opt_decl").
 hlds_out__write_import_status(pseudo_imported) -->
 	io__write_string("pseudo_imported").
 
@@ -1399,8 +1486,9 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 		% hlds_out__write_indent(Indent),
 		% hlds_out__write_call_info(Indent, CallInfo, VarSet),
 		hlds_out__write_indent(Indent),
+		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
-						HeadVars),
+						HeadVars, PredOrFunc),
 		io__write_string(" :-\n"),
 
 		hlds_out__write_indent(Indent1),
