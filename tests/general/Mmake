@@ -6,7 +6,8 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	arithmetic string_test string_test_2 interpreter
+PROGS=	arithmetic string_test string_test_2 interpreter disj_disj \
+	nondet_disj partition petdr1
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
