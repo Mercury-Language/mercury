@@ -1,0 +1,4 @@
+Software error: oops
+Stack dump follows:
+        0       pred require:error/1-0 (erroneous)
+        1       pred no_fully_strict:main/2-0 (det)

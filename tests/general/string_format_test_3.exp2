@@ -1,0 +1,8 @@
+Software error: string__format: argument list has fewer elements than format string
+Stack dump follows:
+        0       pred require:error/1-0 (erroneous)
+        1       pred string:format_2/3-0 (det)
+        2       pred string:format/3-0 (det)
+        3       pred io:format/5-0 (det)
+        4       pred io:format/4-0 (det)
+        5       pred string_format_test_3:main/2-0 (det)

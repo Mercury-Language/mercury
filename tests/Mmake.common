@@ -11,6 +11,8 @@
 # if you want to rebuild the `.exp' files.
 HAVE_NUPROLOG=no
 
+DIFF_OPTS=-c
+
 #-----------------------------------------------------------------------------#
 
 # .PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
@@ -20,9 +22,16 @@ HAVE_NUPROLOG=no
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
+#
+# For some test cases, there is more than one valid output.
+# We try matching the output with the `.exp' file, and if that
+# doesn't succeed, and there is a `.exp2' file, then we try matching
+# against that too.
+#
 %.res: %.exp %.out
 	-rm -f $@
-	diff -c $*.exp $*.out > $@
+	diff $(DIFF_OPTS) $*.exp $*.out > $@ || \
+		{ [ -f $*.exp2 ] && diff $(DIFF_OPTS) $*.exp2 $*.out > $@; }
 
 #-----------------------------------------------------------------------------#
 
