@@ -6,7 +6,7 @@
 %
 % File: liveness.m
 %
-% Main authors: conway, zs.
+% Main authors: conway, zs, trd.
 %
 % This module traverses the goal for each procedure, and adds
 % liveness annotations to the goal_info for each sub-goal.
@@ -40,15 +40,53 @@
 % occurrence of a variable include that variable in their post-death
 % set. In branched structures, branches in which a variable is not
 % used at all include a pre-death set listing the variables that
-% have died in parallel branches. Note that when using accurate gc,
-% a variable holding a typeinfo is live while any variable described
-% (in whole or in part) by that typeinfo is live.
+% have died in parallel branches. 
 %
 % The third pass, detect_resume_points_in_goal, finds goals that
 % establish resume points and attaches to them a resume_point
 % annotation listing the variables that may be referenced by the
 % code at that resume point as well as the nature of the required
 % entry labels.
+%
+% Accurate Garbage Collection Notes:
+%
+% Note that when using accurate gc, liveness is computed slightly
+% differently. The garbage collector needs access to the typeinfo
+% variables of any variable that could be garbage collected. 
+% 
+% Hence, the invariant needed for accurate GC is:
+% 	a variable holding a typeinfo must be live at any continuation
+% 	where any variable whose type is described (in whole or in part)
+% 	by that typeinfo is live.
+%
+% Typeinfos are introduced as either one of the head variables, or a new
+% variable created by a goal in the procedure. If introduced as a head
+% variable, initial_liveness will add it to the initial live set of
+% variables -- no variable could be introduced earlier than the start of
+% the goal. If introduced by a goal in the procedure, that goal must
+% occur before any call that requires the typeinfo, so the variable will
+% be born before the continuation after the call. So the typeinfo
+% variables will always be born before any continuation where they are
+% needed.
+% 
+% A typeinfo variable becomes dead after both the following conditions
+% are true: 
+% 	(1) The typeinfo variable is not used again (when it is no
+% 	    longer part of the nonlocals)
+%	(2) No other nonlocal variable's type is described by that typeinfo
+%	    variable.
+% 
+% (1) happens without any changes to the liveness computation (it is
+%     the normal condition for variables becoming dead). This more
+%     conservative than what is required for accurate GC, but is
+%     required for code generation, so we should keep it ;-)
+% (2) is implemented by adding the typeinfo variables for the types of the
+%     nonlocals to the nonlocals for the purposes of computing liveness.
+%
+% So typeinfo variables will always be born before they are needed, and
+% die only when no other variable needing them will be live, so the
+% invariant holds.
+%
 
 %-----------------------------------------------------------------------------%
 
@@ -112,7 +150,7 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 		Liveness, Goal - GoalInfo) :-
 
 		% work out which variables get born in this goal
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0, NonLocals),
 	set__difference(NonLocals, Liveness0, NewVarsSet),
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
@@ -298,24 +336,11 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, LiveInfo, Deadness,
 	set__union(Deadness0, PostDeaths0, Deadness1),
 	set__difference(Deadness1, PostBirths0, Deadness2),
 
-	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-	live_info_get_module_info(LiveInfo, ModuleInfo),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GCmethod),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0, NonLocals),
 	set__init(Empty),
 	(
 		goal_is_atomic(Goal0)
 	->
-		(
-			GCmethod = accurate
-		->
-			live_info_get_proc_info(LiveInfo, ProcInfo),
-			proc_info_get_typeinfo_vars_setwise(ProcInfo,
-				NonLocals0, TypeInfoVars),
-			set__union(NonLocals0, TypeInfoVars, NonLocals)
-		;
-			NonLocals = NonLocals0
-		),
 		NewPreDeaths = Empty,
 		set__difference(NonLocals, Deadness2, NewPostDeaths),
 		set__union(Deadness2, NewPostDeaths, Deadness3),
@@ -348,14 +373,14 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 detect_deadness_in_goal_2(disj(Goals0, SM), GoalInfo, Deadness0,
 		LiveInfo, Deadness, disj(Goals, SM)) :-
 	set__init(Union0),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
 	detect_deadness_in_disj(Goals0, Deadness0, NonLocals,
 		LiveInfo, Union0, Deadness, Goals).
 
 detect_deadness_in_goal_2(switch(Var, Det, Cases0, SM), GoalInfo, Deadness0,
 		LiveInfo, Deadness, switch(Var, Det, Cases, SM)) :-
 	set__init(Union0),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
 	detect_deadness_in_cases(Var, Cases0, Deadness0, NonLocals,
 		LiveInfo, Union0, Deadness, Cases).
 
@@ -373,20 +398,7 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	detect_deadness_in_goal(Cond0, DeadnessThen, LiveInfo,
 		DeadnessCond, Cond1),
 
-	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	live_info_get_module_info(LiveInfo, ModuleInfo),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_gc_method(Globals, GCmethod),
-	(
-		GCmethod = accurate
-	->
-		live_info_get_proc_info(LiveInfo, ProcInfo),
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0, 
-			TypeInfoVars),
-		set__union(NonLocals0, TypeInfoVars, NonLocals)
-	;
-		NonLocals = NonLocals0
-	),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
 	set__union(DeadnessCond, DeadnessElse, Deadness),
 	set__intersect(Deadness, NonLocals, NonLocalDeadness),
 
@@ -799,27 +811,28 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	;
 		error("initial_liveness: list length mismatch")
 	),
-		% If doing accurate garbage collection, the corresponding
-		% typeinfos need to be added to these.
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_gc_method(Globals, GCmethod),
-	(
-		GCmethod = accurate
-	->
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, Liveness2,
-			TypeInfoVars),
-		set__union(Liveness2, TypeInfoVars, Liveness3)
-	;
-		Liveness3 = Liveness2
-	),
+
 		% If a variable is unused in the goal, it shouldn't be
 		% in the initial liveness. (If we allowed it to start
 		% live, it wouldn't ever become dead, because it would
 		% have to be used to be killed).
-		% So we intersect the headvars with the non-locals.
+		% So we intersect the headvars with the non-locals and
+		% their typeinfo vars.
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	set__intersect(Liveness3, NonLocals, Liveness).
+	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	(
+		GCmethod = accurate
+	->
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
+			TypeInfoNonLocals),
+		set__union(NonLocals0, TypeInfoNonLocals, NonLocals)
+	;
+		NonLocals = NonLocals0
+	),
+	set__intersect(Liveness2, NonLocals, Liveness).
+
 
 :- pred initial_liveness_2(list(var), list(mode), list(type), module_info,
 	set(var), set(var)).
@@ -1005,5 +1018,30 @@ live_info_get_var_types(live_info(_, _, VarTypes, _), VarTypes).
 :- mode live_info_get_varset(in, out) is det.
 
 live_info_get_varset(live_info(_, _, _, Varset), Varset).
+
+%-----------------------------------------------------------------------------%
+
+	% Get the nonlocals, and, if doing accurate GC, add the
+	% typeinfo vars for the nonlocals.
+
+:- pred liveness__get_nonlocals_and_typeinfos(live_info, hlds_goal_info,
+		set(var)).
+:- mode liveness__get_nonlocals_and_typeinfos(in, in, out) is det.
+liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, 
+		NonLocals) :-
+	live_info_get_module_info(LiveInfo, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_gc_method(Globals, GCmethod),
+	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	(
+		GCmethod = accurate
+	->
+		live_info_get_proc_info(LiveInfo, ProcInfo),
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
+			TypeInfoVarsNonLocals),
+		set__union(NonLocals0, TypeInfoVarsNonLocals, NonLocals)
+	;
+		NonLocals = NonLocals0
+	).
 
 %-----------------------------------------------------------------------------%

@@ -8,6 +8,8 @@ include ../Mmake.common
 
 # please keep this list sorted
 SOURCES= \
+	agc_graph.m \
+	agc_ho_pred.m \
 	agc_ite.m \
 	agc_unbound_typevars.m \
 	agc_unbound_typevars2.m \
@@ -82,6 +84,8 @@ all:	objs
 
 # some regression tests only failed with particular options enabled
 # (please keep this list sorted)
+GRADE-agc_graph			= asm_fast.agc
+GRADE-agc_ho_pred		= asm_fast.agc
 GRADE-agc_ite			= asm_fast.agc
 GRADE-agc_unbound_typevars	= asm_fast.agc
 GRADE-agc_unbound_typevars2	= asm_fast.agc
