@@ -62,11 +62,13 @@
 
 	% Poly-type
 
-:- type io__poly_type	--->
-		c(char)
-	;	s(string)
-	;	i(int)
-	;	f(float).
+:- type io__poly_type == string__poly_type.
+%			--->
+%		c(char)
+%	;	s(string)
+%	;	i(int)
+%	;	f(float).
+%
 
 %-----------------------------------------------------------------------------%
 
