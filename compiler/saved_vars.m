@@ -171,11 +171,15 @@ saved_vars_in_conj([], _, SlotInfo, [], SlotInfo).
 saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 		Goals, SlotInfo) :-
 	(
-		Goal0 = unify(_, _, _, Unif, _) - _,
+		Goal0 = unify(_, _, _, Unif, _) - GoalInfo,
 		Unif = construct(Var, _, [], _, _, _, _),
 		skip_constant_constructs(Goals0, Constants, Others),
 		Others = [First | _Rest],
-		can_push(Var, First)
+		can_push(Var, First),
+		goal_info_get_features(GoalInfo, Features),
+		% If the goal has a feature such as call_table_gen or impure,
+		% we don't want to duplicate it.
+		set__empty(Features)
 	->
 		set__is_member(Var, NonLocals, IsNonLocal),
 		saved_vars_delay_goal(Others, Goal0, Var, IsNonLocal,
