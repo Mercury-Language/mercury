@@ -609,6 +609,7 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 :- interface.
 
 :- func map__init = map(K, V).
+:- mode map__init = uo is det.
 
 :- func map__lookup(map(K,V), K) = V.
 
