@@ -4264,7 +4264,7 @@ using the ``minimal model'' semantics.
 
 The current Mercury implementation thus supports three different
 pragmas for tabling, to cover these three cases: @samp{pragma memo}
-does no loop checking, @samp{pragma loopcheck} checks for loops
+does no loop checking, @samp{pragma loop_check} checks for loops
 and reports runtime errors, while @samp{pragma minimal_model}
 computes the ``minimal model'' semantics.
 
@@ -4272,7 +4272,7 @@ The syntax for each of these declarations is
 
 @example
 :- pragma memo(@var{Name}/@var{Arity}).
-:- pragma loopcheck(@var{Name}/@var{Arity}).
+:- pragma loop_check(@var{Name}/@var{Arity}).
 :- pragma minimal_model(@var{Name}/@var{Arity}).
 @end example
 
