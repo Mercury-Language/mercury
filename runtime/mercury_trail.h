@@ -21,13 +21,16 @@
 ** The following macros that are used to interface with the code generator.
 **
 ** MR_store_ticket()
-**	called when creating a choice point
-** MR_restore_and_discard_ticket()
-**	called when resuming forward execution after failing
+**	called when creating a choice point, or before a commit
+** MR_reset_ticket()
+**	called when resuming forward execution after failing (MR_undo),
+**	or after a commit (MR_commit)
 ** MR_discard_ticket()
-**	called when cutting away a choice point
-**
-** XXX what about commits (deep cuts)?
+**	called when cutting away or failing over the topmost choice point
+** MR_mark_ticket_stack()
+**	called before a commit
+** MR_discard_tickets_to()
+**	called after a commit
 */
 /*---------------------------------------------------------------------------*/
 
@@ -36,13 +39,23 @@
 ** the  information that we need to be able to backtrack. 
 */
 
+#define MR_mark_ticket_stack(save_ticket_counter)		\
+	do {							\
+		save_ticket_counter = MR_ticket_counter;	\
+	} while(0)
+
+#define MR_discard_tickets_to(save_ticket_counter)		\
+	do {							\
+		MR_ticket_counter = save_ticket_counter;	\
+	} while(0)
+
 	/* 
 	** Called when we create a choice point
 	** (including semidet choice points).
 	*/
 #define MR_store_ticket(save_trail_ptr)				\
 	do {							\
-		(save_trail_ptr) = (Integer) MR_trail_ptr; 	\
+		(save_trail_ptr) = (Word) MR_trail_ptr; 	\
 		++MR_ticket_counter;				\
 	} while(0)
 
@@ -254,43 +267,3 @@ typedef Unsigned MR_ChoicepointId;
 #define MR_current_choicepoint_id() ((const MR_ChoicepointId)MR_ticket_counter)
 
 #endif /* not MERCURY_TRAIL_H */
-
-/*---------------------------------------------------------------------------*/
-/*
-** This macro performs the necessary initialisations for the CLPR solver.
-** XXX should be a function.
-** XXX should be defined elsewhere, e.g. in svar.m.
-*/
-#define init_CLPR()					\
-	do {						\
-		init_solver();				\
-		init_solver_goal();			\
-			/* get some memory for */	\
-			/* the CLP(R) trail    */	\
-		trail = checked_malloc(DEF_TRAIL_SZ * sizeof(int)); \
-		trtop = 0;				\
-			/* initialise the      */	\
-			/* CLP(R) streams      */	\
-		error_stream = stderr;			\
-		outfile = stderr;			\
-	} while (0)
-
-/*
-
-Here's an example of how to do value trailing:
-
-:- pragma(c_code,
-bdu_array__set(Array0::array_mdi, Index::in, Item::in, Array::array_muo),
-"{
-	MR_ArrayType *array = (MR_ArrayType *) Array0;
-	if ((Unsigned) Index >= array->size) {
-	    fatal_error(""bdu_array__set: array index out of bounds"");
-	}
-	MR_trail_value_at_address(&array->elements[Index]);
-	array->elements[Index] = Item;  % destructive update!
-	Array = Array0;
-}").
-
-*/
-
-/*---------------------------------------------------------------------------*/
