@@ -76,7 +76,7 @@ stored in the io__state, using the type globals defined in globals.m.
 	This also checks whether imports are really needed in the
 	interface.
 
-* expansion of equivalence types (prog_util.m)
+* expansion of equivalence types (equiv_type.m)
 
 	This is really part of type-checking, but is done
 	on the item_list rather than on the HLDS because it
