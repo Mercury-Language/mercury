@@ -1782,6 +1782,9 @@ if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
 	LIBGRADES="$LIBGRADES hlc.gc.memprof"
 fi
 
+# Add the .par grade
+LIBGRADES="$LIBGRADES hlc.par.gc"
+
 # If we are using the Microsoft compiler then use hlc.gc as the default
 # grade.
 if test $ac_microsoft = yes; then
