@@ -47,8 +47,7 @@ main3(Out) -->
 :- mode pop(out, out) is nondet.
 
 :- pred area(string, int).
-:- mode area(out, out) is nondet.
-
+:- mode area(in, out) is semidet.
 
 
 query(quad(C1, D1, C2, D2)) :- 

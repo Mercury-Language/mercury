@@ -2,7 +2,7 @@
 
 # Makefile.mercury - rules for building Mercury programs
 
-VPATH=/usr/contrib/lib/mercury/nuprolog/mips-sgi-irix4.0.5C:/usr/contrib/lib/mercury/nuprolog/ints
+VPATH=/usr/contrib/lib/mercury/nuprolog/$(shell fullarch):/usr/contrib/lib/mercury/nuprolog/ints
 
 #-----------------------------------------------------------------------------#
 
@@ -16,13 +16,8 @@ PREFIX	= /usr/local/contrib
 LIBDIR  = $(PREFIX)/lib/mercury
 BINDIR  = $(PREFIX)/bin
 
-	# Do not change this!  Change the one in Makefile.common.
+# Do not change this!  Change the one in Makefile.common.
 MERCC	= mc
-
-NU_LIBRARY_SRCS = \
-	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl
-NU_LIBRARY_OBJS = \
-	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no
 
 #-----------------------------------------------------------------------------#
 
@@ -76,7 +71,8 @@ NU_LIBRARY_OBJS = \
 	mgnuc -s$(GRADE) -I $(MLIB)/inc -c $*.c -o $@
 
 %_init.c:%.mod
-	mod2init -w "`extract $* '' Entry`" $^ > $@
+	mod2init -w "`extract $* '' Entry`" $^ printlist.mod \
+	engine.mod io.mod wrapper.mod > $@
 
 .c.o:
 	mgnuc -s$(GRADE) -I $(MLIB)/inc -c $< -o $@

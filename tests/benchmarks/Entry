@@ -1,6 +1,7 @@
 cqueens	mercury__main3_3_20000
 crypt	mercury__main3_3_20000
 deriv	mercury__main6_6_10000
+deriv2	mercury__main6_6_10000
 nrev	mercury__main3_3_0
 poly	mercury__main3_3_0
 primes	mercury__main3_3_0
@@ -9,3 +10,4 @@ queens	mercury__main3_3_20000
 query	mercury__main3_3_20000
 serial	mercury__main3_3_0
 tak	mercury__main3_3_0
+q	mercury__main3_3_20000
