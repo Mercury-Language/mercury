@@ -24,6 +24,9 @@ committed_choice.m	An example illustrating committed-choice
 interpreter.m		An simple interpreter for definite logic programs.
 			A demonstration of meta-programming in Mercury.
 
+expand_terms.m		Another example meta-program, showing how to
+			emulate Prolog's `expand_term' mechanism.
+
 Mmake			The file used by `mmake', the Mercury Make program,
 			to build the programs in this directory.
 
