@@ -117,8 +117,8 @@
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 
-:- import_module int, list, char, string, set, std_util, term, varset.
-:- import_module assoc_list, require.
+:- import_module int, list, char, string, std_util, term, varset.
+:- import_module set, bintree_set, assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@
 % set of symbols we've already declared.  That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
 
-:- type decl_set ==	set(decl_id).
+:- type decl_set ==	bintree_set(decl_id).
 
 :- type decl_id --->	create_label(int)
 		;	float_label(string)
@@ -247,7 +247,7 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
-		{ set__init(DeclSet0) },
+		{ bintree_set__init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
 		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
 		( { SplitFiles = yes(_) } ->
@@ -476,7 +476,7 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 	),
 	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, "", "",
 		0, _),
-	{ set__insert(DeclSet1, DataAddr, DeclSet) }.
+	{ bintree_set__insert(DeclSet1, DataAddr, DeclSet) }.
 
 output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
@@ -572,7 +572,7 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
-	{ set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
+	{ bintree_set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
 
@@ -676,9 +676,9 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	io__write_int(ModeNum),
 	io__write_string(" */\n"),
 	{ llds_out__find_caller_label(Instrs, CallerLabel) },
-	{ set__init(ContLabelSet0) },
+	{ bintree_set__init(ContLabelSet0) },
 	{ llds_out__find_cont_labels(Instrs, ContLabelSet0, ContLabelSet) },
-	{ set__init(WhileSet0) },
+	{ bintree_set__init(WhileSet0) },
 	( { EmitCLoops = yes } ->
 		{ llds_out__find_while_labels(Instrs, WhileSet0, WhileSet) }
 	;
@@ -710,7 +710,8 @@ llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 	% Locate all the labels which are the continutation labels for calls
 	% or nondet disjunctions, and store them in ContLabelSet.
 
-:- pred llds_out__find_cont_labels(list(instruction), set(label), set(label)).
+:- pred llds_out__find_cont_labels(list(instruction),
+	bintree_set(label), bintree_set(label)).
 :- mode llds_out__find_cont_labels(in, in, out) is det.
 
 llds_out__find_cont_labels([], ContLabelSet, ContLabelSet).
@@ -728,7 +729,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
-		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
+		bintree_set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
 	;
 		Instr = block(_, _, Block)
 	->
@@ -756,7 +757,8 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 	%
 	% The second of these is better if we don't have fast jumps.
 
-:- pred llds_out__find_while_labels(list(instruction), set(label), set(label)).
+:- pred llds_out__find_while_labels(list(instruction),
+	bintree_set(label), bintree_set(label)).
 :- mode llds_out__find_while_labels(in, in, out) is det.
 
 llds_out__find_while_labels([], WhileSet, WhileSet).
@@ -766,7 +768,7 @@ llds_out__find_while_labels([Instr0 - _ | Instrs0], WhileSet0, WhileSet) :-
 		llds_out__is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
 		UseCount > 0
 	->
-		set__insert(WhileSet0, Label, WhileSet1),
+		bintree_set__insert(WhileSet0, Label, WhileSet1),
 		llds_out__find_while_labels(Instrs1, WhileSet1, WhileSet)
 	;
 		llds_out__find_while_labels(Instrs0, WhileSet0, WhileSet)
@@ -826,7 +828,7 @@ output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 		{ MaybeStruct = yes(pragma_c_struct(StructName,
 			StructFields, MaybeStructFieldsContext)) }
 	->
-		{ set__member(pragma_c_struct(StructName), DeclSet0) ->
+		{ bintree_set__is_member(pragma_c_struct(StructName), DeclSet0) ->
 			string__append_list(["struct ", StructName, " has been declared already"], Msg),
 			error(Msg)
 		;
@@ -843,7 +845,7 @@ output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 			io__write_string(StructFields)
 		),
 		io__write_string("\n};\n"),
-		{ set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
+		{ bintree_set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
@@ -906,7 +908,8 @@ output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
 %-----------------------------------------------------------------------------%
 
 :- pred output_instruction_list(list(instruction), bool,
-	pair(label, set(label)), set(label), io__state, io__state).
+	pair(label, bintree_set(label)), bintree_set(label),
+	io__state, io__state).
 :- mode output_instruction_list(in, in, in, in, di, uo) is det.
 
 output_instruction_list([], _, _, _) --> [].
@@ -914,7 +917,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 		WhileSet) -->
 	output_instruction_and_comment(Instr0, Comment0,
 		PrintComments, ProfInfo),
-	( { Instr0 = label(Label), set__member(Label, WhileSet) } ->
+	( { Instr0 = label(Label), bintree_set__is_member(Label, WhileSet) } ->
 		io__write_string("\twhile (1) {\n"),
 		output_instruction_list_while(Instrs, Label,
 			PrintComments, ProfInfo, WhileSet)
@@ -924,7 +927,8 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 	).
 
 :- pred output_instruction_list_while(list(instruction), label,
-	bool, pair(label, set(label)), set(label), io__state, io__state).
+	bool, pair(label, bintree_set(label)), bintree_set(label),
+	io__state, io__state).
 :- mode output_instruction_list_while(in, in, in, in, in, di, uo) is det.
 
 output_instruction_list_while([], _, _, _, _) -->
@@ -960,7 +964,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 	).
 
 :- pred output_instruction_and_comment(instr, string, bool,
-	pair(label, set(label)), io__state, io__state).
+	pair(label, bintree_set(label)), io__state, io__state).
 :- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
 
 output_instruction_and_comment(Instr, Comment, PrintComments,
@@ -988,7 +992,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments,
 	% Normally we use output_instruction_and_comment/6.
 
 output_instruction_and_comment(Instr, Comment, PrintComments) -->
-	{ set__init(ContLabelSet) },
+	{ bintree_set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
 	{ DummyModule = unqualified("DEBUG") },
 	{ DummyPredName = "DEBUG" },
@@ -1000,7 +1004,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments) -->
 	% Normally we use output_instruction/4.
 
 output_instruction(Instr) -->
-	{ set__init(ContLabelSet) },
+	{ bintree_set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
 	{ DummyModule = unqualified("DEBUG") },
 	{ DummyPredName = "DEBUG" },
@@ -1008,8 +1012,8 @@ output_instruction(Instr) -->
 			DummyPredName, 0, ProcId)) - ContLabelSet },
 	output_instruction(Instr, ProfInfo).
 
-:- pred output_instruction(instr, pair(label, set(label)),
-				io__state, io__state).
+:- pred output_instruction(instr, pair(label, bintree_set(label)),
+	io__state, io__state).
 :- mode output_instruction(in, in, di, uo) is det.
 
 output_instruction(comment(Comment), _) -->
@@ -1038,7 +1042,7 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 		[]
 	),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
-	{ set__init(WhileSet0) },
+	{ bintree_set__init(WhileSet0) },
 	output_instruction_list(Instrs, PrintComments, ProfInfo,
 		WhileSet0),
 	io__write_string("\t}\n").
@@ -1502,11 +1506,11 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
 	; { Const = data_addr_const(DataAddr) } ->
-		( { set__member(data_addr(DataAddr), DeclSet0) } ->
+		( { bintree_set__is_member(data_addr(DataAddr), DeclSet0) } ->
 			{ N = N0 },
 			{ DeclSet = DeclSet0 }
 		;
-			{ set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
+			{ bintree_set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
 			output_data_addr_decls(DataAddr,
 				FirstIndent, LaterIndent, N0, N)
 		)
@@ -1523,11 +1527,11 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		( { UnboxedFloat = no, StaticGroundTerms = yes } ->
 			{ llds_out__float_literal_name(FloatVal, FloatName) },
 			{ FloatLabel = float_label(FloatName) },
-			( { set__member(FloatLabel, DeclSet0) } ->
+			( { bintree_set__is_member(FloatLabel, DeclSet0) } ->
 				{ N = N0 },
 				{ DeclSet = DeclSet0 }
 			;
-				{ set__insert(DeclSet0, FloatLabel, DeclSet) },
+				{ bintree_set__insert(DeclSet0, FloatLabel, DeclSet) },
 				{ string__float_to_string(FloatVal,
 					FloatString) },
 				output_indent(FirstIndent, LaterIndent, N0),
@@ -1572,11 +1576,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 			FloatName) }
 	    ->
 		{ FloatLabel = float_label(FloatName) },
-		( { set__member(FloatLabel, DeclSet2) } ->
+		( { bintree_set__is_member(FloatLabel, DeclSet2) } ->
 			{ N = N2 },
 			{ DeclSet = DeclSet2 }
 		;
-			{ set__insert(DeclSet2, FloatLabel, DeclSet) },
+			{ bintree_set__insert(DeclSet2, FloatLabel, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
 			{ N is N2 + 1 },
 			io__write_string(
@@ -1607,11 +1611,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
-	( { set__member(CreateLabel, DeclSet0) } ->
+	( { bintree_set__is_member(CreateLabel, DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ set__insert(DeclSet0, CreateLabel, DeclSet1) },
+		{ bintree_set__insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
 			DeclSet1, DeclSet),
 		output_const_term_decl(ArgVals, CreateLabel, no, FirstIndent,
@@ -1911,11 +1915,11 @@ output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
 
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
-	( { set__member(code_addr(CodeAddress), DeclSet0) } ->
+	( { bintree_set__is_member(code_addr(CodeAddress), DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
+		{ bintree_set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
@@ -2080,13 +2084,13 @@ output_indent(FirstIndent, LaterIndent, N0) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
-	io__state, io__state).
+:- pred maybe_output_update_prof_counter(label,
+	pair(label, bintree_set(label)), io__state, io__state).
 :- mode maybe_output_update_prof_counter(in, in, di, uo) is det.
 
 maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 	(
-		{ set__member(Label, ContLabelSet) }
+		{ bintree_set__is_member(Label, ContLabelSet) }
 	->
 		io__write_string("\tupdate_prof_current_proc(LABEL("),
 		output_label(CallerLabel),
@@ -2413,7 +2417,9 @@ llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
 llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
-	string__format("%s_i%i", [s(ProcLabelStr), i(Num)], LabelStr).
+	string__int_to_string(Num, NumStr),
+	string__append("_i", NumStr, NumSuffix),
+	string__append(ProcLabelStr, NumSuffix, LabelStr).
 
 llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 		PredName, Arity, ModeNum0), AddPrefix, ProcLabelString) :-
