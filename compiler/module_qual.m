@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1305,6 +1305,7 @@ write_id(SymName - Arity) -->
 
 maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 	globals__io_lookup_bool_option(warn_interface_imports, Warn),
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	(
 		{ UnusedImports = []
 		; Warn = no
@@ -1335,7 +1336,14 @@ maybe_warn_unused_interface_imports(ModuleName, UnusedImports) -->
 			IsOrAre, " not\n"
 		]),
 		prog_out__write_context(Context),
-		io__write_string("  used in the interface.\n")
+		io__write_string("  used in the interface.\n"),
+		(
+			{ HaltAtWarn = yes }
+		->
+			io__set_exit_status(1)
+		;
+			[]
+		)
 	).
 
 :- pred is_or_are(list(T)::in, string::out) is det.
