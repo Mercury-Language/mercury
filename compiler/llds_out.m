@@ -1061,13 +1061,13 @@ output_pragma_inputs([I|Inputs]) -->
         	{ Type = term__functor(term__atom("string"), [], _) }
 	->
 		io__write_string("(String) "),
-		output_rval(Rval)
+		output_rval_as_type(Rval, word)
 	;
         	{ Type = term__functor(term__atom("float"), [], _) }
 	->
 		output_rval_as_type(Rval, float)
 	;
-		output_rval(Rval)
+		output_rval_as_type(Rval, word)
 	),
 	io__write_string(";\n"),
 	output_pragma_inputs(Inputs).
