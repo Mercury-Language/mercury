@@ -149,8 +149,6 @@
 %		}, {
 %			succeeded = TRUE;
 %		})
-%
-%	done:
 
 %	model_non in semi context: (using catch/throw)
 %		<succeeded = Goal>
@@ -271,6 +269,13 @@
 %
 % Code for non-empty conjunctions
 %
+
+% We need to handle the case where the first goal cannot succeed
+% specially:
+%	at_most_zero Goal:
+%		<Goal, Goals>
+%	===>
+%		<Goal>
 
 %	model_det Goal:
 %		<Goal, Goals>
@@ -545,7 +550,7 @@
 %-----------------------------------------------------------------------------%
 
 
-% XXX This is still very incomplete!!!
+% XXX This is still not yet complete.
 %
 % Done:
 %	- function prototypes
@@ -563,9 +568,11 @@
 %			- deconstructions
 %		- switches
 %		- commits
+%		- most cases of `pragma c_code'
+%	- RTTI
 % TODO:
 %	- `pragma export'
-%	- RTTI (base_type_functors, base_type_layout)
+%	- complicated `pragma c_code'
 %	- typeclass_infos and class method calls
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
@@ -2151,11 +2158,17 @@ ml_gen_conj([First | Rest], CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	{ Rest = [_ | _] },
 	{ First = _ - FirstGoalInfo },
-	{ goal_info_get_code_model(FirstGoalInfo, FirstCodeModel) },
-	{ DoGenFirst = ml_gen_goal(FirstCodeModel, First) },
-	{ DoGenRest = ml_gen_conj(Rest, CodeModel, Context) },
-	ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
-		MLDS_Decls, MLDS_Statements).
+	{ goal_info_get_determinism(FirstGoalInfo, FirstDeterminism) },
+	( { determinism_components(FirstDeterminism, _, at_most_zero) } ->
+		% the `Rest' code is unreachable
+		ml_gen_goal(CodeModel, First, MLDS_Decls, MLDS_Statements)
+	;
+		{ determinism_to_code_model(FirstDeterminism, FirstCodeModel) },
+		{ DoGenFirst = ml_gen_goal(FirstCodeModel, First) },
+		{ DoGenRest = ml_gen_conj(Rest, CodeModel, Context) },
+		ml_combine_conj(FirstCodeModel, Context,
+			DoGenFirst, DoGenRest, MLDS_Decls, MLDS_Statements)
+	).
 
 %-----------------------------------------------------------------------------%
 %
