@@ -3,62 +3,57 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-:- module require.
-
+%
 % Main author: fjh.
 % Stability: medium to high.
-
+%
 % This module provides features similar to <assert.h> in C.
-
+%
 %-----------------------------------------------------------------------------%
+
+:- module require.
 :- interface.
 
 :- type software_error ---> software_error(string).
 
-:- pred error(string).
-:- mode error(in) is erroneous.
+	% error(Message).
+	% Throw a `software_error(Message)' exception.
+	% This will normally cause execution to abort with an error message.
+	%
+:- pred error(string::in) is erroneous.
 
-%	error(Message).
-%		Throw a `software_error(Message)' exception.
-%		This will normally cause execution to abort with an error
-%		message.
+	% func_error(Message).
+	% An expression that results in a `software_error(Message)'
+	% exception being thrown.
+	%
+:- func func_error(string) = _ is erroneous.
 
-:- func func_error(string) = _.
-:- mode func_error(in) = out is erroneous.
+	% require(Goal, Message).
+	% Call goal, and call error(Message) if Goal fails.
+	% This is not as useful as you might imagine, since it requires
+	% that the goal not produce any output variables.  In
+	% most circumstances you should use an explicit if-then-else
+	% with a call to error/1 in the "else".
+	%
+:- pred require((pred)::((pred) is semidet), string::in) is det.
 
-%	func_error(Message)
-%		An expression that results in a `software_error(Message)'
-%		exception being thrown.
+	% report_lookup_error(Message, Key, Value).
+	% Call error/1 with an error message that is appropriate for
+	% the failure of a lookup operation involving the specified
+	% Key and Value.  The error message will include Message
+	% and information about Key and Value.
+	%
+:- pred report_lookup_error(string::in, K::in, V::unused) is erroneous.
 
-:- pred	require(pred, string).
-:- mode	require((pred) is semidet, in) is det.
+	% report_lookup_error(Message, Key).
+	% Call error/1 with an error message that is appropriate for
+	% the failure of a lookup operation involving the specified
+	% Key.  The error message will include Message
+	% and information about Key.
+	%
+:- pred report_lookup_error(string::in, K::in) is erroneous.
 
-%	require(Goal, Message).
-%		Call goal, and call error(Message) if Goal fails.
-%		This is not as useful as you might imagine, since it requires
-%		that the goal not produce any output variables.  In
-%		most circumstances you should use an explicit if-then-else
-%		with a call to error/1 in the "else".
-
-:- pred report_lookup_error(string, K, V).
-:- mode report_lookup_error(in, in, unused) is erroneous.
-
-%	report_lookup_error(Message, Key, Value)
-%		Call error/1 with an error message that is appropriate for
-%		the failure of a lookup operation involving the specified
-%		Key and Value.  The error message will include Message
-%		and information about Key and Value.
-
-:- pred report_lookup_error(string, K).
-:- mode report_lookup_error(in, in) is erroneous.
-
-%	report_lookup_error(Message, Key)
-%		Call error/1 with an error message that is appropriate for
-%		the failure of a lookup operation involving the specified
-%		Key.  The error message will include Message
-%		and information about Key.
-
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -134,6 +129,6 @@ error(Message) :-
 func_error(Message) = _ :-
 	error(Message).
 
+%-----------------------------------------------------------------------------%
 :- end_module require.
-
 %-----------------------------------------------------------------------------%
