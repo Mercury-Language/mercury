@@ -163,7 +163,7 @@ MR_destroy_engine(MercuryEngine *eng)
 **	The called routine should be det/semidet/cc_multi/cc_nondet.
 **
 **	If the called routine returns normally (this includes the case of a
-**	semidet/cc_nondet routine failing, i.e. returning with r1 = FALSE),
+**	semidet/cc_nondet routine failing, i.e. returning with MR_r1 = FALSE),
 **	then MR_call_engine() will return NULL.
 **
 **	If the called routine exits by throwing an exception, then the

@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,31 +31,32 @@ static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 ** provided by the higher-order call may be input or output, and may appear
 ** in any order.
 **
-** The input arguments to do_call_*_closure are the closure in r1,
-** the number of additional input arguments in r2, the number of output
-** arguments to expect in r3, and the additional input arguments themselves
-** in r4, r5, etc. The output arguments are returned in registers r1, r2, etc
-** for det and nondet calls or registers r2, r3, etc for semidet calls.
+** The input arguments to do_call_*_closure are the closure in MR_r1,
+** the number of additional input arguments in MR_r2, the number of output
+** arguments to expect in MR_r3, and the additional input arguments themselves
+** in MR_r4, MR_r5, etc. The output arguments are returned in registers MR_r1,
+** MR_r2, etc for det and nondet calls or registers MR_r2, MR_r3, etc for
+** semidet calls.
 **
-** The placement of the extra input arguments into r4, r5 etc is done by
+** The placement of the extra input arguments into MR_r4, MR_r5 etc is done by
 ** the code generator, as is the movement of the output arguments to their
 ** eventual destinations.
 */
 
 	/*
 	** Number of input arguments to do_call_*_closure,
-	** r1 -> closure
-	** r2 -> number of immediate input arguments.
-	** r3 -> number of output arguments (unused).
+	** MR_r1 -> closure
+	** MR_r2 -> number of immediate input arguments.
+	** MR_r3 -> number of output arguments (unused).
 	*/
 #define MR_HO_CALL_INPUTS		3
 
 	/*
 	** Number of input arguments to do_call_*_class_method,
-	** r1 -> typeclass info
-	** r2 -> index of method in typeclass info
-	** r3 -> number of immediate input arguments.
-	** r4 -> number of output arguments (unused).
+	** MR_r1 -> typeclass info
+	** MR_r2 -> index of method in typeclass info
+	** MR_r3 -> number of immediate input arguments.
+	** MR_r4 -> number of output arguments (unused).
 	*/
 #define MR_CLASS_METHOD_CALL_INPUTS	4
 
@@ -100,8 +101,8 @@ MR_define_entry(mercury__do_call_closure);
 	int		num_hidden_args;/* # of args hidden in the closure  */
 	int		i;
 
-	closure = (MR_Closure *) r1;
-	num_extra_args = r2;
+	closure = (MR_Closure *) MR_r1;
+	num_extra_args = MR_r2;
 	num_hidden_args = closure->MR_closure_num_hidden_args;
 
 	MR_save_registers();
@@ -128,18 +129,18 @@ MR_define_entry(mercury__do_call_closure);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(MR_do_call_closure), so that the call gets recorded
+	** MR_LABEL(mercury__do_call_closure), so that the call gets recorded
 	** as having come from our caller.
 	*/
 	MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
 
 	/*
-	** r1: the typeclass_info
-	** r2: index of class method
-	** r3: number of immediate input arguments
-	** r4: number of output arguments
-	** r5+:input args
+	** MR_r1: the typeclass_info
+	** MR_r2: index of class method
+	** MR_r3: number of immediate input arguments
+	** MR_r4: number of output arguments
+	** MR_r5+:input args
 	*/
 
 /*
@@ -155,11 +156,11 @@ MR_define_entry(mercury__do_call_class_method);
 	int	num_extra_instance_args;
 	int	i;
 
-	destination = MR_typeclass_info_class_method(r1, r2);
+	destination = MR_typeclass_info_class_method(MR_r1, MR_r2);
 	num_extra_instance_args = 
-		(int) MR_typeclass_info_num_extra_instance_args(r1);
+		(int) MR_typeclass_info_num_extra_instance_args(MR_r1);
 
-	num_in_args = r3; /* number of input args */
+	num_in_args = MR_r3; /* number of input args */
 
 	MR_save_registers();
 
@@ -189,8 +190,8 @@ MR_define_entry(mercury__do_call_class_method);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(MR_do_call_class_method), so that the call gets recorded
-	** as having come from our caller.
+	** MR_LABEL(mercury__do_call_class_method), so that the call gets
+	** recorded as having come from our caller.
 	*/
 	MR_tailcall(destination, MR_prof_ho_caller_proc);
 }
@@ -211,15 +212,15 @@ MR_define_entry(mercury__unify_2_0);
 
 #define initialize()							\
 	do {								\
-		type_info = (MR_TypeInfo) r1;				\
-		x = r2;							\
-		y = r3;							\
+		type_info = (MR_TypeInfo) MR_r1;			\
+		x = MR_r2;						\
+		y = MR_r3;						\
 		saved_succip = MR_succip;				\
 	} while(0)
 
 #define return_answer(answer)						\
 	do {								\
-		r1 = (answer);						\
+		MR_r1 = (answer);					\
 		MR_succip = saved_succip;				\
 		MR_proceed();						\
 	} while(0)
@@ -281,15 +282,15 @@ MR_define_entry(mercury__compare_3_3);
 
 #define initialize()							\
 	do {								\
-		type_info = (MR_TypeInfo) r1;				\
-		x = r2;							\
-		y = r3;							\
+		type_info = (MR_TypeInfo) MR_r1;			\
+		x = MR_r2;						\
+		y = MR_r3;						\
 		saved_succip = MR_succip;				\
 	} while(0)
 
 #define return_answer(answer)						\
 	do {								\
-		r1 = (answer);						\
+		MR_r1 = (answer);					\
 		MR_succip = saved_succip;				\
 		MR_proceed();						\
 	} while(0)
@@ -339,7 +340,7 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->unify_pred, FALSE);\
 		MR_restore_transient_registers();			\
-		return (r1);						\
+		return (MR_r1);						\
 	} while (0)
 
 #define	start_label		unify_func_start
@@ -379,7 +380,7 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->compare_pred, FALSE);\
 		MR_restore_transient_registers();			\
-		return (r1);						\
+		return (MR_r1);						\
 	} while (0)
 
 #define	start_label		compare_func_start

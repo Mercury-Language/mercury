@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3280,15 +3280,15 @@ output_code_addr(succip) -->
 output_code_addr(do_succeed(Last)) -->
 	(
 		{ Last = no },
-		io__write_string("MR_ENTRY(do_succeed)")
+		io__write_string("MR_ENTRY(MR_do_succeed)")
 	;
 		{ Last = yes },
-		io__write_string("MR_ENTRY(do_last_succeed)")
+		io__write_string("MR_ENTRY(MR_do_last_succeed)")
 	).
 output_code_addr(do_redo) -->
-	io__write_string("MR_ENTRY(do_redo)").
+	io__write_string("MR_ENTRY(MR_do_redo)").
 output_code_addr(do_fail) -->
-	io__write_string("MR_ENTRY(do_fail)").
+	io__write_string("MR_ENTRY(MR_do_fail)").
 output_code_addr(do_trace_redo_fail_shallow) -->
 	io__write_string("MR_ENTRY(MR_do_trace_redo_fail_shallow)").
 output_code_addr(do_trace_redo_fail_deep) -->
@@ -3314,7 +3314,7 @@ output_code_addr(do_aditi_bulk_delete) -->
 output_code_addr(do_aditi_bulk_modify) -->
 	io__write_string("MR_ENTRY(do_aditi_bulk_modify)").
 output_code_addr(do_not_reached) -->
-	io__write_string("MR_ENTRY(do_not_reached)").
+	io__write_string("MR_ENTRY(MR_do_not_reached)").
 
 	% The code should be kept in sync with output_data_addr/2 below.
 llds_out__make_stack_layout_name(Label, Name) :-

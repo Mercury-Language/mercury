@@ -1485,7 +1485,7 @@ MR_define_entry(mercury__table_builtin__table_nondet_suspend_2_0);
 	MR_mkframe("mercury__table_builtin__table_nondet_suspend", 1,
 		MR_ENTRY(MR_do_fail));
 
-	table = (MR_TrieNode) r1;
+	table = (MR_TrieNode) MR_r1;
 	subgoal = table->MR_subgoal;
 	consumer = MR_table_allocate_bytes(sizeof(MR_Consumer));
 	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
@@ -1661,7 +1661,7 @@ MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_builtin__table_nondet_resume_1_0_RestartPoint,
 	mercury__table_builtin__table_nondet_resume_1_0);
 
-BEGIN_MODULE(table_nondet_resume_module)
+MR_BEGIN_MODULE(table_nondet_resume_module)
 	MR_init_entry_sl(mercury__table_builtin__table_nondet_resume_1_0);
 	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_resume_1_0);
 	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
@@ -1671,7 +1671,7 @@ BEGIN_MODULE(table_nondet_resume_module)
 	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
 	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
-BEGIN_CODE
+MR_BEGIN_CODE
 
 MR_define_entry(mercury__table_builtin__table_nondet_resume_1_0);
 	MR_cur_leader = MR_top_generator_table();
@@ -1859,8 +1859,8 @@ MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 	** since will not have changed in the meantime.
 	*/
 
-	r1 = (MR_Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
-		answer_data;
+	MR_r1 = (MR_Word) &MR_cur_leader->resume_info->
+		cur_consumer_answer_list->answer_data;
 
 	MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
 		&(MR_cur_leader->resume_info->cur_consumer_answer_list->
@@ -1951,16 +1951,16 @@ MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint)
 	(void) MR_pop_generator();
 
 	MR_proceed();
-END_MODULE
+MR_END_MODULE
 
 MR_define_extern_entry(MR_table_nondet_commit);
-BEGIN_MODULE(table_nondet_commit_module)
+MR_BEGIN_MODULE(table_nondet_commit_module)
 	MR_init_entry_ai(MR_table_nondet_commit);
-BEGIN_CODE
+MR_BEGIN_CODE
 MR_define_entry(MR_table_nondet_commit);
 	MR_commit_cut();
 	MR_fail();
-END_MODULE
+MR_END_MODULE
 
 #endif /* ! MR_HIGHLEVEL_CODE */
 

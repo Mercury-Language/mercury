@@ -386,9 +386,9 @@ MR_define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	int	comp;
 
 	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
+	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
 	MR_restore_transient_registers();
-	r1 = (comp == MR_COMPARE_EQUAL);
+	MR_r1 = (comp == MR_COMPARE_EQUAL);
 	MR_proceed();
 }
 
@@ -403,9 +403,9 @@ MR_define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	int	comp;
 
 	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) r1, (MR_TypeInfo) r2);
+	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
 	MR_restore_transient_registers();
-	r1 = comp;
+	MR_r1 = comp;
 	MR_proceed();
 }
 

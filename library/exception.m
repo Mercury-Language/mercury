@@ -1202,9 +1202,9 @@ MR_BEGIN_CODE
 **	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_det version.
-** On entry, we have a type_info (which we don't use) in r1,
-** the Goal to execute in r2 and the Handler in r3.
-** On exit, we should put Result in r1.
+** On entry, we have a type_info (which we don't use) in MR_r1,
+** the Goal to execute in MR_r2 and the Handler in MR_r3.
+** On exit, we should put Result in MR_r1.
 */
 MR_define_entry(mercury__exception__builtin_catch_3_0); /* det */
 #ifdef PROFILE_CALLS
@@ -1216,17 +1216,17 @@ MR_define_entry(mercury__exception__builtin_catch_3_0); /* det */
 MR_define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	/*
 	** Create an exception handler entry on the nondet stack.
-	** (Register r3 holds the Handler closure.)
+	** (Register MR_r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_det]"",
-		MR_MODEL_DET_HANDLER, r3, MR_ENTRY(MR_do_fail));
+		MR_MODEL_DET_HANDLER, MR_r3, MR_ENTRY(MR_do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
 	*/
-	r1 = r2;	/* The Goal to call */
-	r2 = 0;		/* Zero additional input arguments */
-	r3 = 1;		/* One output argument */
+	MR_r1 = MR_r2;	/* The Goal to call */
+	MR_r2 = 0;		/* Zero additional input arguments */
+	MR_r3 = 1;		/* One output argument */
 	MR_call(MR_ENTRY(mercury__do_call_closure), 
 		MR_LABEL(mercury__exception__builtin_catch_3_2_i2),
 		MR_ENTRY(mercury__exception__builtin_catch_3_2));
@@ -1235,7 +1235,7 @@ MR_define_label(mercury__exception__builtin_catch_3_2_i2);
 	MR_update_prof_current_proc(
 		MR_LABEL(mercury__exception__builtin_catch_3_2));
 	/*
-	** On exit from mercury__do_call_closure, Result is in r1
+	** On exit from mercury__do_call_closure, Result is in MR_r1
 	**
 	** We must now deallocate the ticket and nondet stack frame that
 	** were allocated by MR_create_exception_handler().
@@ -1253,9 +1253,9 @@ MR_define_label(mercury__exception__builtin_catch_3_2_i2);
 **	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_semi version.
-** On entry, we have a type_info (which we don't use) in r1,
-** the Goal to execute in r2 and the Handler in r3,
-** and on exit, we should put Result in r2.
+** On entry, we have a type_info (which we don't use) in MR_r1,
+** the Goal to execute in MR_r2 and the Handler in MR_r3,
+** and on exit, we should put Result in MR_r2.
 */
 MR_define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
 #ifdef PROFILE_CALLS
@@ -1267,17 +1267,17 @@ MR_define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
 MR_define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	/*
 	** Create an exception handler entry on the nondet stack.
-	** (Register r3 holds the Handler closure.)
+	** (Register MR_r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_semi]"",
-		MR_MODEL_SEMI_HANDLER, r3, MR_ENTRY(MR_do_fail));
+		MR_MODEL_SEMI_HANDLER, MR_r3, MR_ENTRY(MR_do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
 	*/
-	r1 = r2;	/* The Goal to call */
-	r2 = 0;		/* Zero additional input arguments */
-	r3 = 1;		/* One output argument */
+	MR_r1 = MR_r2;	/* The Goal to call */
+	MR_r2 = 0;	/* Zero additional input arguments */
+	MR_r3 = 1;	/* One output argument */
 	MR_call(MR_ENTRY(mercury__do_call_closure), 
 		MR_LABEL(mercury__exception__builtin_catch_3_3_i2),
 		MR_ENTRY(mercury__exception__builtin_catch_3_3));
@@ -1287,13 +1287,13 @@ MR_define_label(mercury__exception__builtin_catch_3_3_i2);
 		MR_LABEL(mercury__exception__builtin_catch_3_3));
 	/*
 	** On exit from do_call_semidet_closure, the success/failure
-	** indicator is in r1, and Result is in r2.
+	** indicator is in MR_r1, and Result is in MR_r2.
 	** Note that we call succeed_discard() to exit regardless
-	** of whether r1 is true or false.  We just return the r1 value
+	** of whether MR_r1 is true or false.  We just return the MR_r1 value
 	** back to our caller.
 	*/
 #ifdef MR_USE_TRAIL
-	if (r1) {
+	if (MR_r1) {
 		MR_prune_ticket();
 	} else {
 		MR_discard_ticket();
@@ -1309,9 +1309,9 @@ MR_define_label(mercury__exception__builtin_catch_3_3_i2);
 **	if throws an exception, call Handler(Exception, Result).
 **
 ** This is the model_non version.
-** On entry, we have a type_info (which we don't use) in r1,
-** the Goal to execute in r2 and the Handler in r3.
-** On exit, we should put Result in r1.
+** On entry, we have a type_info (which we don't use) in MR_r1,
+** the Goal to execute in MR_r2 and the Handler in MR_r3.
+** On exit, we should put Result in MR_r1.
 */
 MR_define_entry(mercury__exception__builtin_catch_3_4); /* multi */
 #ifdef PROFILE_CALLS
@@ -1323,24 +1323,24 @@ MR_define_entry(mercury__exception__builtin_catch_3_4); /* multi */
 MR_define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	/*
 	** Create an exception handler entry on the nondet stack.
-	** (Register r3 holds the Handler closure.)
+	** (Register MR_r3 holds the Handler closure.)
 	*/
 #ifdef MR_USE_TRAIL
 	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
-		MR_MODEL_NON_HANDLER, r3,
+		MR_MODEL_NON_HANDLER, MR_r3,
 		MR_LABEL(mercury__exception__builtin_catch_3_5_i3));
 #else
 	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
-		MR_MODEL_NON_HANDLER, r3, MR_ENTRY(MR_do_fail));
+		MR_MODEL_NON_HANDLER, MR_r3, MR_ENTRY(MR_do_fail));
 #endif
 	
 
 	/*
 	** Now call `Goal(Result)'.
 	*/
-	r1 = r2;	/* the Goal to call */
-	r2 = 0;		/* Zero additional input arguments */
-	r3 = 1;		/* One output argument */
+	MR_r1 = MR_r2;	/* the Goal to call */
+	MR_r2 = 0;	/* Zero additional input arguments */
+	MR_r3 = 1;	/* One output argument */
 	MR_call(MR_ENTRY(mercury__do_call_closure), 
 		MR_LABEL(mercury__exception__builtin_catch_3_5_i2),
 		MR_ENTRY(mercury__exception__builtin_catch_3_5));
@@ -1349,7 +1349,7 @@ MR_define_label(mercury__exception__builtin_catch_3_5_i2);
 	MR_update_prof_current_proc(
 		MR_LABEL(mercury__exception__builtin_catch_3_5));
 	/*
-	** On exit from do_call_nondet_closure, Result is in r1
+	** On exit from do_call_nondet_closure, Result is in MR_r1
 	**
 	** Note that we need to keep the trail ticket still,
 	** in case it is needed again on backtracking.
@@ -1373,11 +1373,11 @@ MR_define_label(mercury__exception__builtin_catch_3_5_i3);
 **	The longjmp() will branch to builtin_catch which will then
 **	call Handler(Exception, Result).
 **
-** On entry, we have Exception in r1.
+** On entry, we have Exception in MR_r1.
 */
 MR_define_entry(mercury__exception__builtin_throw_1_0);
 {
-	MR_Word exception = r1;
+	MR_Word exception = MR_r1;
 	MR_Word handler;
 	enum MR_HandlerCodeModel catch_code_model;
 	MR_Word *orig_curfr;
@@ -1427,8 +1427,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 			** We also need to save & restore the MR_succip
 			** across that call, since any call to Mercury code
 			** may clobber MR_succip (and also the Mercury
-			** registers r1, r2, r3, etc., but for those we don't
-			** care, since we don't use them).
+			** registers MR_r1, MR_r2, MR_r3, etc., but for those
+			** we don't care, since we don't use them).
 			** Note that the MR_save_registers() alone is not
 			** sufficient since the Mercury code may clobber the
 			** copy of MR_succip in the fake_reg.
@@ -1600,16 +1600,16 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	** Otherwise, the handler is a Mercury closure.
 	** Invoke the handler as `Handler(Exception, Result)'.
 	*/
-	r1 = handler;		/* get the Handler closure */
-	r2 = 1;			/* One additional input argument */
-	r3 = 1;			/* One output argument */
-	r4 = exception;		/* This is our one input argument */
+	MR_r1 = handler;	/* get the Handler closure */
+	MR_r2 = 1;		/* One additional input argument */
+	MR_r3 = 1;		/* One output argument */
+	MR_r4 = exception;	/* This is our one input argument */
 
 	/*
 	** If the catch was semidet, we need to set the success indicator
-	** r1 to TRUE and return the result in r2; otherwise, we return
-	** the result in r1, which is where mercury__do_call_closure puts it,
-	** so we can do a tailcall.
+	** MR_r1 to TRUE and return the result in MR_r2; otherwise, we return
+	** the result in MR_r1, which is where mercury__do_call_closure puts
+	** it, so we can do a tailcall.
 	*/
 	if (catch_code_model != MR_MODEL_SEMI_HANDLER) {
 		MR_tailcall(MR_ENTRY(mercury__do_call_closure), 
@@ -1625,8 +1625,8 @@ MR_define_label(mercury__exception__builtin_throw_1_0_i1);
 	MR_update_prof_current_proc(
 		MR_LABEL(mercury__exception__builtin_throw_1_0));
 	/* we've just returned from mercury__do_call_closure */
-	r2 = r1;
-	r1 = TRUE;
+	MR_r2 = MR_r1;
+	MR_r1 = TRUE;
 	MR_succip = (MR_Code *) MR_stackvar(1);
 	MR_decr_sp_pop_msg(1);
 	MR_proceed(); /* return to the caller of `builtin_catch' */
