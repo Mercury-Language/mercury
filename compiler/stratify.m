@@ -71,15 +71,15 @@ stratify__check_stratification(Module0, Module) -->
 	{ module_info_stratified_preds(Module1, StratifiedPreds) },
 	first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, Module1, Module).
 
-%%%%%%%%%%%
-%%% The following code was used for the second pass of this module but
-%%% as that pass is disabled so is this code. The higher order code
-%%% is disabled because it is currently unable to detect cases where a 
-%%% higher order proc is hidden in some complex data structure
-%%%	{ gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo) },
-%%%	{ relation__atsort(DepGraph, HOSCCs1) },	
-%%%	{ dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs) },
-%%%	higher_order_check_sccs(HOSCCs, HOInfo, Module2, Module).
+	% The following code was used for the second pass of this module but
+	% as that pass is disabled so is this code. The higher order code
+	% is disabled because it is currently unable to detect cases where a 
+	% higher order proc is hidden in some complex data structure
+	%	
+	%{ gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo) },
+	%{ relation__atsort(DepGraph, HOSCCs1) },	
+	%{ dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs) },
+	%higher_order_check_sccs(HOSCCs, HOInfo, Module2, Module).
 
 
 
@@ -271,12 +271,8 @@ local_proc(Module, proc(PredId, ProcId)) :-
 
 %-----------------------------------------------------------------------------%
 
-/*******************************
- ******************************* 
- ******************************* 
- ******************************* 
- * XXX : Currently we don't allow the higher order case so this code
- *  is commented out.
+ % XXX : Currently we don't allow the higher order case so this code
+ % is disabled.
 
 	% check the higher order SCCs for stratification		
 :- pred higher_order_check_sccs(list(pair(list(pred_proc_id), 
@@ -301,7 +297,7 @@ higher_order_check_scc([PredProcId|Remaining], WholeScc, HOInfo, Module0,
 	globals__io_lookup_bool_option(warn_non_stratification, Warn),
 	{ pred_info_get_marker_list(PredInfo, Markers) },
 	( 	
-		{ list__member(request(bottom_up), Markers) }
+		{ list__member(request(memo), Markers) }
 	->
 		{ Error = yes }
 	;
@@ -367,7 +363,7 @@ higher_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated, WholeScc,
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(pragma_c_code(_, _IsRec, _, _, _, _), _GoalInfo, 
+higher_order_check_goal(pragma_c_code(_, _IsRec, _, _, _, _, _), _GoalInfo, 
 	_Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, 
 	_, Module, Module) --> [].
 higher_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
@@ -852,7 +848,7 @@ check_goal1(not(Goal - _GoalInfo), Calls0, Calls, HasAT0, HasAT, CallsHO0,
 		CallsHO) :- 
 	check_goal1(Goal, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 
-check_goal1(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _), Calls, Calls, 
+check_goal1(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _, _), Calls, Calls, 
 		HasAT, HasAT, CallsHO, CallsHO).
 
 	
@@ -942,7 +938,8 @@ get_called_procs(some(_Vars, Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
 get_called_procs(not(Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
-get_called_procs(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _), Calls, Calls).
+get_called_procs(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _, _),
+	Calls, Calls).
 
 
 :- pred check_goal_list(list(hlds_goal), list(pred_proc_id), 
@@ -962,9 +959,6 @@ check_case_list([Case|Goals], Calls0, Calls) :-
 	Case = case(_ConsId, Goal - _GoalInfo),
 	get_called_procs(Goal, Calls0, Calls1), 
 	check_case_list(Goals, Calls1, Calls).
-
-***********************
-***********************/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
