@@ -108,7 +108,7 @@ lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
 cs: $(CFILES)
 
 tags: $(CFILES) $(HDRS)
-	ctags $(CFILES) $(HDRS)
+	ctags $(CFILES) $(HDRS) ../runtime/*.c ../runtime/*.h
 
 .PHONY: check_headers
 check_headers:
