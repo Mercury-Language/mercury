@@ -21,7 +21,7 @@
 			;	semideterministic	% just functional
 			;	nondeterministic.	% neither
 
-:- type goal		--->	goal_expr - liveness_info.
+:- type goal		--->	goal_expr - goal_info.
 
 :- type goal_expr    	--->	conj(goals)
 
@@ -165,16 +165,16 @@
 				).
 
 :- type pred_info	--->	predicate(
-					list(proc_id),	% usually [1,2,...]
-					map(proc_id, proc_info),
-					% not needed: list(type) for args
+					list(mode_id),	% usually [1,2,...]
+					map(mode_id, proc_info),
 				).
 
 :- type proc_info	--->	procedure(
 					category,
-					list(var_id),	% usually [1,2,...]
 					map(var_id, var_info), % all vars
-					list(clause)  % singleton for det...
+					list(var_id),	% head vars
+					mode_info,
+					goal  % Body
 				).
 
 :- type pred_id 	=	pred(string, string, int).
@@ -184,26 +184,19 @@
 
 :- type mode_id		=	int.
 
-:- type clause		--->	clause(
-					list(var_id),
-					mode_info,
-					goal
-				).
-
-			%	head variables, body
-
 :- type var_info	--->	var_info(
 					string, % name
 					type
 				).
 
-:- type goalinfo	=	goalinfo (
+:- type goal_info	=	goalinfo (
 					map(var_id, is_live)
+		% maybe			map(var_id, inst)
 				).
 
 :- type is_live		--->	live ; dead.
 
-:- type mode_info	=	map(var_id, instantiatedness).
+:- type mode_info	=	map(var_id, inst - inst). % initial - final
 
 %-----------------------------------------------------------------------------%
 
