@@ -27,7 +27,6 @@ ENDINIT
 **	various cleanups that are needed to terminate cleanly.
 */
 
-#define		MR_STACK_TRACE_THIS_MODULE
 #include	"mercury_imp.h"
 
 #include	<stdio.h>
@@ -924,16 +923,11 @@ Declare_label(global_success);
 Declare_label(global_fail);
 Declare_label(all_done);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(do_interpreter)
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_success, do_interpreter)
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_fail, do_interpreter)
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(all_done, do_interpreter)
-
 BEGIN_MODULE(interpreter_module)
-	init_entry(do_interpreter);
-	init_label_sl(global_success);
-	init_label_sl(global_fail);
-	init_label_sl(all_done);
+	init_entry_ai(do_interpreter);
+	init_label_ai(global_success);
+	init_label_ai(global_fail);
+	init_label_ai(all_done);
 BEGIN_CODE
 
 Define_entry(do_interpreter);

@@ -1754,105 +1754,42 @@ string__special_precision_and_width(-1).
 	strcpy(S3 + len_1, S2);
 }").
 
-:- pragma c_code("
-
-#ifdef	COMPACT_ARGS
-#define	string__append_ooi_input_reg	r1
-#else
-#define	string__append_ooi_input_reg	r3
-#endif
-
-Define_extern_entry(mercury__string__append_3_3_xx);
-Declare_label(mercury__string__append_3_3_xx_i1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__string__append_3_3_xx);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__string__append_3_3_xx, 1);
-
-BEGIN_MODULE(string_append_module)
-	init_entry(mercury__string__append_3_3_xx);
-	init_label(mercury__string__append_3_3_xx_i1);
-BEGIN_CODE
-Define_entry(mercury__string__append_3_3_xx);
-	mkframe(""string__append/3"", 4,
-		LABEL(mercury__string__append_3_3_xx_i1));
-	mark_hp(framevar(0));
-	framevar(1) = string__append_ooi_input_reg;
-	framevar(2) = strlen((char *) string__append_ooi_input_reg);
-	framevar(3) = 0;
-Define_label(mercury__string__append_3_3_xx_i1);
-	update_prof_current_proc(LABEL(mercury__string__append_3_3_xx));
-{
-	String	s3;
-	size_t	s3_len;
-	size_t	count;
-
-	restore_hp(framevar(0));
-	s3 = (String) framevar(1);
-	s3_len = framevar(2);
-	count = framevar(3);
-	if (count > s3_len) {
-		/* modframe(ENTRY(do_fail)); */
-		fail();
-	}
-	incr_hp_atomic(r1, (count + sizeof(Word)) / sizeof(Word));
-	memcpy((char *) r1, s3, count);
-	((char *) r1)[count] = '\\0';
-	/*
-	** We need to make a copy to ensure that the pointer is
-	** word-aligned.
-	*/
-	incr_hp_atomic(r2, (s3_len - count + sizeof(Word)) / sizeof(Word));
-	strcpy((char *) r2, s3 + count);
-	framevar(3) = count + 1;
-	succeed();
-}
-END_MODULE
-
-#undef	string__append_ooi_input_reg
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_string_append_module
-*/
-/* suppress gcc -Wmissing-decl warning */
-void sys_init_string_append_module(void);
-
-void sys_init_string_append_module(void) {
-	extern ModuleFunc string_append_module;
-	string_append_module();
-}
-
-").
-
-% :- mode string__append(out, out, in) is multidet.
 :- pragma c_code(string__append(S1::out, S2::out, S3::in),
-		[will_not_call_mercury, thread_safe], "
-	/*
-	** The pragma_c_code will generate a mkframe();
-	** we need to pop off that frame before jumping to the hand-coded
-	** fragment above.
-	**
-	** We mention S1, S2 and S3 here to shut up a warning.
-	*/
+		[will_not_call_mercury, thread_safe],
+	local_vars("
+		String s;
+		size_t len;
+		size_t count;
+	"),
+	first_code("
+		LOCALS->s = S3;
+		LOCALS->len = strlen(S3);
+		LOCALS->count = 0;
+	"),
+	retry_code("
+		LOCALS->count++;
+	"),
+	common_code("
+		Word	temp;
 
-	maxfr = curprevfr;
-	curfr = cursuccfr;
-	{
-		/*
-		** We need to use `tailcall' to get the profiling
-		** information right.  The caller is guaranteed
-		** to be string__append_3_3 only because we
-		** have a `pragma no_inline' declaration for
-		** string__append.
-		*/
-		Declare_entry(mercury__string__append_3_3_xx);
-		tailcall(ENTRY(mercury__string__append_3_3_xx),
-			LABEL(mercury__string__append_3_3));
+		incr_hp_atomic(temp,
+			(LOCALS->count + sizeof(Word)) / sizeof(Word));
+		S1 = (String) temp;
+		memcpy(S1, LOCALS->s, LOCALS->count);
+		S1[LOCALS->count] = '\\0';
+		incr_hp_atomic(temp,
+			(LOCALS->len - LOCALS->count + sizeof(Word))
+			/ sizeof(Word));
+		S2 = (String) temp;
+		strcpy(S2, LOCALS->s + LOCALS->count);
+
+	if (LOCALS->count < LOCALS->len) {
+		SUCCEED;
+	} else {
+		SUCCEED_LAST;
 	}
-").
-
-% The following is required to ensure that the caller label
-% in the above hand-coded C is correct.
-:- pragma no_inline(string__append/3).
+	")
+).
 
 /*-----------------------------------------------------------------------*/
 

@@ -853,7 +853,9 @@ table_return_all_ans(T, A) :-
 ** fail; the code to return the answers is in table_resume.
 */ 
 Define_extern_entry(mercury__table_suspend_2_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_suspend_2_0);
+MR_MAKE_PROC_LAYOUT(mercury__table_suspend_2_0,
+	MR_DETISM_NON, 0, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""private_builtin"", ""table_suspend"", 2, 0);
 BEGIN_MODULE(table_suspend_module)
 	init_entry_sl(mercury__table_suspend_2_0);
 BEGIN_CODE
@@ -1023,20 +1025,22 @@ Declare_label(mercury__table_resume_1_0_AnsListLoopDone1);
 Declare_label(mercury__table_resume_1_0_AnsListLoopDone2);
 Declare_label(mercury__table_resume_1_0_RedoPoint);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_PROC_LAYOUT(mercury__table_resume_1_0,
+	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""private_builtin"", ""table_resume"", 1, 0);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_ChangeLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_ChangeLoopDone, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_SolutionsListLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoop, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoopDone1, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoopDone2, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 	mercury__table_resume_1_0_RedoPoint, mercury__table_resume_1_0);
 
 BEGIN_MODULE(table_resume_module)
@@ -1393,14 +1397,10 @@ const struct mercury_data_private_builtin__base_type_functors_type_info_1_struct
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
-
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___private_builtin__type_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___private_builtin__type_info_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___private_builtin__type_info_1_0)
 BEGIN_MODULE(type_info_module)
-	init_entry_sl(mercury____Unify___private_builtin__type_info_1_0);
-	init_entry_sl(mercury____Index___private_builtin__type_info_1_0);
-	init_entry_sl(mercury____Compare___private_builtin__type_info_1_0);
+	init_entry(mercury____Unify___private_builtin__type_info_1_0);
+	init_entry(mercury____Index___private_builtin__type_info_1_0);
+	init_entry(mercury____Compare___private_builtin__type_info_1_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 {

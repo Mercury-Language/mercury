@@ -20,14 +20,13 @@
 :- import_module llds, prog_data, hlds_data.
 :- import_module set_bbbtree, bool, io.
 
-	% Given a 'c_file' structure, open the appropriate .c file
-	% and output the code into that file. The bool says whether
-	% this Mercury module was compiled with any flavor of execution
-	% tracing; the third argument gives the set of labels that have
-	% layout structures.
+	% Given a 'c_file' structure, output the LLDS code inside it
+	% into one or more .c files, depending on the setting of the
+	% --split-c-files option. The second argument gives the set of
+	% labels that have layout structures.
 
-:- pred output_c_file(c_file, set_bbbtree(label), io__state, io__state).
-:- mode output_c_file(in, in, di, uo) is det.
+:- pred output_llds(c_file, set_bbbtree(label), io__state, io__state).
+:- mode output_llds(in, in, di, uo) is det.
 
 	% Convert an lval to a string description of that lval.
 
@@ -163,14 +162,17 @@ decl_set_insert(DeclSet0, DeclId, DeclSet) :-
 decl_set_is_member(DeclId, DeclSet) :-
 	map__search(DeclSet, DeclId, _).
 
-output_c_file(C_File, StackLayoutLabels) -->
+%-----------------------------------------------------------------------------%
+
+output_llds(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
-		output_c_file_init(ModuleName, C_Modules),
-		output_c_file_list(C_Modules, 1, ModuleName,
+		output_split_c_file_init(ModuleName, C_Modules,
+			StackLayoutLabels),
+		output_split_c_file_list(C_Modules, 1, ModuleName,
 			C_HeaderInfo, StackLayoutLabels)
 	;
 		output_single_c_file(C_File, no, StackLayoutLabels)
@@ -184,23 +186,24 @@ make_directory(DirName) -->
 		Command) },
 	io__call_system(Command, _Result).
 
-:- pred output_c_file_list(list(c_module), int, module_name,
+:- pred output_split_c_file_list(list(c_module), int, module_name,
 	list(c_header_code), set_bbbtree(label), io__state, io__state).
-:- mode output_c_file_list(in, in, in, in, in, di, uo) is det.
+:- mode output_split_c_file_list(in, in, in, in, in, di, uo) is det.
 
-output_c_file_list([], _, _, _, _) --> [].
-output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines,
+output_split_c_file_list([], _, _, _, _) --> [].
+output_split_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines,
 		StackLayoutLabels) -->
 	output_single_c_file(c_file(ModuleName, C_HeaderLines, [Module]),
 		yes(Num), StackLayoutLabels),
 	{ Num1 is Num + 1 },
-	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines,
+	output_split_c_file_list(Modules, Num1, ModuleName, C_HeaderLines,
 		StackLayoutLabels).
 
-:- pred output_c_file_init(module_name, list(c_module), io__state, io__state).
-:- mode output_c_file_init(in, in, di, uo) is det.
+:- pred output_split_c_file_init(module_name, list(c_module),
+	set_bbbtree(label), io__state, io__state).
+:- mode output_split_c_file_init(in, in, in, di, uo) is det.
 
-output_c_file_init(ModuleName, C_Modules) -->
+output_split_c_file_init(ModuleName, C_Modules, StackLayoutLabels) -->
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
@@ -224,7 +227,8 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__write_string("*/\n\n"),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
-		output_c_module_init_list(ModuleName, C_Modules),
+		output_c_module_init_list(ModuleName, C_Modules,
+			StackLayoutLabels),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -247,7 +251,6 @@ output_c_file_mercury_headers -->
 	io__write_string("#define MR_USE_REDOFR\n"),
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel \= none } ->
-		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
 		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("#include ""mercury_trace_base.h""\n")
 	;
@@ -301,7 +304,8 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 			[]
 		;
 			io__write_string("\n"),
-			output_c_module_init_list(ModuleName, Modules)
+			output_c_module_init_list(ModuleName, Modules,
+				StackLayoutLabels)
 		),
 		io__told
 	;
@@ -315,23 +319,28 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 	).
 
 :- pred output_c_module_init_list(module_name, list(c_module),
-					io__state, io__state).
-:- mode output_c_module_init_list(in, in, di, uo) is det.
+	set_bbbtree(label), io__state, io__state).
+:- mode output_c_module_init_list(in, in, in, di, uo) is det.
 
-output_c_module_init_list(ModuleName, Modules) -->
+output_c_module_init_list(ModuleName, Modules, StackLayoutLabels) -->
+	{ divide_modules_on_init_status(Modules, StackLayoutLabels,
+		AlwaysInitModules, MaybeInitModules) },
+	{ list__chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches) },
+	{ list__chunk(MaybeInitModules, 40, MaybeInitModuleBunches) },
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 
-		% Output initialization functions, bunched into groups
-		% of 40.
-	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
-	io__write_string("static void "),
-	output_bunch_name(ModuleName, 0),
-	io__write_string("(void)\n"),
-	io__write_string("{\n"),
-	output_c_module_init_list_2(Modules, ModuleName, 0, 40, 0, InitFuncs),
-	io__write_string("}\n\n#endif\n\n"),
+	output_init_bunch_defs(AlwaysInitModuleBunches, ModuleName,
+		"always", 0, SplitFiles),
 
-		% Output code to call each of the init functions created
-		% above.
+	( { MaybeInitModuleBunches = [] } ->
+		[]
+	;
+		io__write_string("#ifdef MR_MAY_NEED_INITIALIZATION\n\n"),
+		output_init_bunch_defs(MaybeInitModuleBunches, ModuleName,
+			"maybe", 0, SplitFiles),
+		io__write_string("#endif\n\n")
+	),
+
 	io__write_string("void "),
 	output_init_name(ModuleName),
 	io__write_string("(void);"),
@@ -340,79 +349,134 @@ output_c_module_init_list(ModuleName, Modules) -->
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (!done) {\n"),
 	io__write_string("\t\tdone = TRUE;\n"),
-	output_c_module_init_list_3(0, ModuleName, InitFuncs),
-	io__write_string("\t}\n"),
-	io__write_string("#endif\n"),
+
+	output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
+		"always", 0),
+
+	( { MaybeInitModuleBunches = [] } ->
+		[]
+	;
+		io__write_string("\n#ifdef MR_MAY_NEED_INITIALIZATION\n"),
+		output_init_bunch_calls(MaybeInitModuleBunches, ModuleName,
+			"maybe", 0),
+		io__write_string("#endif\n\n")
+	),
+
 	output_c_data_init_list(Modules),
-	io__write_string("}\n"),
-	io__write_string("\n"),
+	io__write_string("\t}\n"),
+	io__write_string("}\n\n"),
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n"),
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
-:- pred output_c_module_init_list_2(list(c_module), module_name, int, int, int,
-		int, io__state, io__state).
-:- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
+	% Divide_modules_on_init_status checks every module in its input list.
+	% If the module does not have compiler-generated code in it, it
+	% ignores the module. If it does, it will include the module in
+	% one of its output lists. If the module defines a label that has
+	% a stack layout structure, it will go into the always-init list,
+	% otherwise it will go into the maybe-init list.
 
-output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
-output_c_module_init_list_2([c_data(_, _, _, _, _) | Ms], A, B, C, D, E) -->
-	output_c_module_init_list_2(Ms, A, B, C, D, E).
-output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
-	output_c_module_init_list_2(Ms, A, B, C, D, E).
-output_c_module_init_list_2([c_code(_, _) | Ms], A, B, C, D, E) -->
-	output_c_module_init_list_2(Ms, A, B, C, D, E).
-output_c_module_init_list_2([c_module(C_ModuleName, _) | Ms], ModuleName,
-		Calls0, MaxCalls, InitFunc0, InitFunc) -->
-	( { Calls0 > MaxCalls } ->
-		io__write_string("}\n\n"),
-		{ InitFunc1 is InitFunc0 + 1 },
-		io__write_string("static void "),
-		output_bunch_name(ModuleName, InitFunc1),
-		io__write_string("(void)\n"),
-		io__write_string("{\n"),
-		{ Calls1 = 1 }
+:- pred divide_modules_on_init_status(list(c_module), set_bbbtree(label),
+	list(c_module), list(c_module)).
+:- mode divide_modules_on_init_status(in, in, out, out) is det.
+
+divide_modules_on_init_status([], _, [], []).
+divide_modules_on_init_status([Module | Modules], StackLayoutLabels,
+		AlwaysInit, MaybeInit) :-
+	(
+		Module = c_data(_, _, _, _, _),
+		divide_modules_on_init_status(Modules, StackLayoutLabels,
+			AlwaysInit, MaybeInit)
 	;
-		{ InitFunc1 = InitFunc0 },
-		{ Calls1 is Calls0 + 1 }
-	),
-	globals__io_lookup_bool_option(split_c_files, SplitFiles),
-	( { SplitFiles = yes } ->
-		io__write_string("\t{ extern ModuleFunc "),
-		io__write_string(C_ModuleName),
-		io__write_string(";\n"),
-		io__write_string("\t  "),
-		io__write_string(C_ModuleName),
-		io__write_string("(); }\n")
+		Module = c_export(_),
+		divide_modules_on_init_status(Modules, StackLayoutLabels,
+			AlwaysInit, MaybeInit)
 	;
-		io__write_string("\t"),
-		io__write_string(C_ModuleName),
-		io__write_string("();\n")
-	),
-	output_c_module_init_list_2(Ms, ModuleName,
-		Calls1, MaxCalls, InitFunc1, InitFunc).
-
-	% Output calls to all the bunched initialization functions.
-
-:- pred output_c_module_init_list_3(int, module_name, int,
-				io__state, io__state).
-:- mode output_c_module_init_list_3(in, in, in, di, uo) is det.
-
-output_c_module_init_list_3(InitFunc0, ModuleName, MaxInitFunc) -->
-	( { InitFunc0 > MaxInitFunc } ->
-		[]
+		Module = c_code(_, _),
+		divide_modules_on_init_status(Modules, StackLayoutLabels,
+			AlwaysInit, MaybeInit)
 	;
-		io__write_string("\t\t"),
-		output_bunch_name(ModuleName, InitFunc0),
-		io__write_string("();\n"),
-		{ InitFunc1 is InitFunc0 + 1},
-		output_c_module_init_list_3(InitFunc1, ModuleName, MaxInitFunc)
+		Module = c_module(_, Procedures),
+		divide_modules_on_init_status(Modules, StackLayoutLabels,
+			AlwaysInit1, MaybeInit1),
+		( set_bbbtree__empty(StackLayoutLabels) ->
+			% Checking whether the set is empty or not
+			% allows us to avoid calling gather_c_module_labels.
+			AlwaysInit = AlwaysInit1,
+			MaybeInit = [Module | MaybeInit1]
+		;
+			gather_c_module_labels(Procedures, Labels),
+			(
+				list__member(Label, Labels),
+				set_bbbtree__member(Label, StackLayoutLabels)
+			->
+				AlwaysInit = [Module | AlwaysInit1],
+				MaybeInit = MaybeInit1
+			;
+				AlwaysInit = AlwaysInit1,
+				MaybeInit = [Module | MaybeInit1]
+			)
+		)
 	).
 
+:- pred output_init_bunch_defs(list(list(c_module)), module_name, string, int,
+	bool, io__state, io__state).
+:- mode output_init_bunch_defs(in, in, in, in, in, di, uo) is det.
+
+output_init_bunch_defs([], _, _, _, _) --> [].
+output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
+		SplitFiles) -->
+	io__write_string("static void "),
+	output_bunch_name(ModuleName, InitStatus, Seq),
+	io__write_string("(void)\n"),
+	io__write_string("{\n"),
+	output_init_bunch_def(Bunch, ModuleName, SplitFiles),
+	io__write_string("}\n\n"),
+	{ NextSeq is Seq + 1 },
+	output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq,
+		SplitFiles).
+
+:- pred output_init_bunch_def(list(c_module), module_name, bool,
+	io__state, io__state).
+:- mode output_init_bunch_def(in, in, in, di, uo) is det.
+
+output_init_bunch_def([], _, _) --> [].
+output_init_bunch_def([Module | Modules], ModuleName, SplitFiles) -->
+	( { Module = c_module(C_ModuleName, _) } ->
+		( { SplitFiles = yes } ->
+			io__write_string("\t{ extern ModuleFunc "),
+			io__write_string(C_ModuleName),
+			io__write_string(";\n"),
+			io__write_string("\t  "),
+			io__write_string(C_ModuleName),
+			io__write_string("(); }\n")
+		;
+			io__write_string("\t"),
+			io__write_string(C_ModuleName),
+			io__write_string("();\n")
+		),
+		output_init_bunch_def(Modules, ModuleName, SplitFiles)
+	;
+		% divide_modules_on_init_status should have filtered out
+		% whatever kind of module we just got.
+		{ error("unexpected type of c_module in output_init_bunch") }
+	).
+
+:- pred output_init_bunch_calls(list(list(c_module)), module_name, string, int,
+	io__state, io__state).
+:- mode output_init_bunch_calls(in, in, in, in, di, uo) is det.
+
+output_init_bunch_calls([], _, _, _) --> [].
+output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
+	io__write_string("\t\t"),
+	output_bunch_name(ModuleName, InitStatus, Seq),
+	io__write_string("();\n"),
+	{ NextSeq is Seq + 1 },
+	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
 	% Output MR_INIT_BASE_TYPE_INFO(BaseTypeInfo, TypeId);
 	% for each base_type_info defined in this module.
@@ -431,9 +495,9 @@ output_c_data_init_list([c_data(ModuleName, DataName, _, _, _) | Ms])  -->
 	(
 		{ DataName = base_type(info, TypeName, Arity) }
 	->
-		io__write_string("\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
+		io__write_string("\t\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
 		output_data_addr(ModuleName, DataName),
-		io__write_string(",\n\t\t"),
+		io__write_string(",\n\t\t\t"),
 		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
 		{ string__append(ModuleNameString, "__", UnderscoresModule) },
 		( 
@@ -465,14 +529,15 @@ llds_out__make_init_name(ModuleName, InitName) :-
 	string__append_list(["mercury__", MangledModuleName, "__init"],
 		InitName).
 
+:- pred output_bunch_name(module_name, string, int, io__state, io__state).
+:- mode output_bunch_name(in, in, in, di, uo) is det.
 
-:- pred output_bunch_name(module_name, int, io__state, io__state).
-:- mode output_bunch_name(in, in, di, uo) is det.
-
-output_bunch_name(ModuleName, Number) -->
+output_bunch_name(ModuleName, InitStatus, Number) -->
 	io__write_string("mercury__"),
 	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 	io__write_string(MangledModuleName),
+	io__write_string("_"),
+	io__write_string(InitStatus),
 	io__write_string("_bunch_"),
 	io__write_int(Number).
 

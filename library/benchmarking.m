@@ -565,13 +565,21 @@ ENDINIT
   #define	time_output	r7
 #endif
 
+#ifdef MR_USE_TRAIL
+  #define BENCHMARK_NONDET_STACK_SLOTS 7
+#else
+  #define BENCHMARK_NONDET_STACK_SLOTS 6
+#endif
+
 Define_extern_entry(mercury__benchmarking__benchmark_nondet_5_0);
 Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
 Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__benchmarking__benchmark_nondet_5_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_nondet_5_0, 1);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_nondet_5_0, 2);
+MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0,
+	MR_DETISM_NON, BENCHMARK_NONDET_STACK_SLOTS, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 1);
+MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 2);
 
 Declare_entry(do_call_nondet_closure);
 Declare_entry(do_call_det_closure);
@@ -599,13 +607,7 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	** otherwise the count we return isn't valid.
 	*/
 
-#ifdef MR_USE_TRAIL
-  #define NONDET_STACK_SLOTS 7
-#else
-  #define NONDET_STACK_SLOTS 6
-#endif
-
-	mkframe(""benchmark_nondet"", NONDET_STACK_SLOTS,
+	mkframe(""benchmark_nondet"", BENCHMARK_NONDET_STACK_SLOTS,
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i2));
 
 	framevar(0) = r3;
@@ -674,14 +676,22 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	time_output = MR_get_user_cpu_miliseconds() - framevar(4);
 	succeed_discard();
 
-#undef NONDET_STACK_SLOTS
-
 END_MODULE
+
+#undef BENCHMARK_NONDET_STACK_SLOTS
+
+#ifdef MR_USE_TRAIL
+  #define BENCHMARK_DET_STACK_SLOTS	7
+#else
+  #define BENCHMARK_DET_STACK_SLOTS	6
+#endif
 
 Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
 Declare_label(mercury__benchmarking__benchmark_det_5_0_i1);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__benchmarking__benchmark_det_5_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_det_5_0, 1);
+MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_det_5_0,
+	MR_DETISM_NON, BENCHMARK_DET_STACK_SLOTS, MR_LIVE_LVAL_STACKVAR(6),
+	MR_PREDICATE, ""benchmarking"", ""benchmark_nondet"", 5, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_det_5_0, 1);
 
 BEGIN_MODULE(benchmark_det_module)
 	init_entry_sl(mercury__benchmarking__benchmark_det_5_0);
@@ -705,13 +715,7 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	** otherwise the count we return isn't valid.
 	*/
 
-#ifdef MR_USE_TRAIL
-  #define DET_STACK_SLOTS 7
-#else
-  #define DET_STACK_SLOTS 6
-#endif
-
-	incr_sp(DET_STACK_SLOTS);
+	incr_sp(BENCHMARK_DET_STACK_SLOTS);
 #ifdef MR_USE_TRAIL
 	detstackvar(7) = MR_trail_ptr;
 #endif
@@ -767,12 +771,12 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	soln_output = r1; /* the closure *always* returns its output in r1 */
 	time_output = MR_get_user_cpu_miliseconds() - detstackvar(4);
 	succip = (Word *) detstackvar(6);
-	decr_sp(DET_STACK_SLOTS);
+	decr_sp(BENCHMARK_DET_STACK_SLOTS);
 	proceed();
 
-#undef DET_STACK_SLOTS
-
 END_MODULE
+
+#undef BENCHMARK_DET_STACK_SLOTS
 
 void mercury_benchmarking_init_benchmark(void); /* suppress gcc warning */
 void mercury_benchmarking_init_benchmark(void) {

@@ -232,9 +232,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules,
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
 		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
-		InternalMap) },
+		ForceProcIdLayout, InternalMap) },
 	stack_layout__construct_proc_layout(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot),
+		StackSlots, SuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		ForceProcIdLayout),
 	{ map__to_assoc_list(InternalMap, Internals) },
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
 		Internals).
@@ -243,12 +244,13 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 
 	% Construct a procedure-specific layout.
 
-:- pred stack_layout__construct_proc_layout(label::in,
-	determinism::in, int::in, maybe(int)::in, maybe(label)::in,
-	maybe(int)::in, stack_layout_info::in, stack_layout_info::out) is det.
+:- pred stack_layout__construct_proc_layout(label::in, determinism::in,
+	int::in, maybe(int)::in, maybe(label)::in, maybe(int)::in, bool::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel, MaybeFromFullSlot) -->
+		MaybeSuccipLoc, MaybeCallLabel, MaybeFromFullSlot,
+		ForceProcIdLayout) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
 	->
@@ -295,22 +297,26 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	{ MaybeRvals0 = [yes(CodeAddrRval), yes(DetismRval),
 		yes(StackSlotsRval), yes(SuccipRval)] },
 
-	stack_layout__get_procid_stack_layout(ProcIdLayout),
-	(
-		{ ProcIdLayout = yes }
+	stack_layout__get_procid_stack_layout(ProcIdLayout0),
+	{ bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout) },
+	{
+		ProcIdLayout = yes
 	->
-		{ stack_layout__construct_procid_rvals(EntryLabel, IdRvals) },
-		{ list__append(MaybeRvals0, IdRvals, MaybeRvals1) }
+		stack_layout__construct_procid_rvals(EntryLabel, IdRvals),
+		list__append(MaybeRvals0, IdRvals, MaybeRvals1)
 	;
-		{ NoIdRvals = yes(const(int_const(-1))) },
-		{ list__append(MaybeRvals0, [NoIdRvals], MaybeRvals1) }
-	),
+		% Indicate the absence of the procedure id fields.
+		NoIdRvals = yes(const(int_const(-1))),
+		list__append(MaybeRvals0, [NoIdRvals], MaybeRvals1)
+	},
 
 	stack_layout__get_module_name(ModuleName),
 	stack_layout__get_trace_stack_layout(TraceLayout),
 	{
 		TraceLayout = yes
 	->
+		require(unify(ProcIdLayout, yes),
+			"trace_layout is set but proc_id_layout is not"),
 		( MaybeCallLabel = yes(CallLabel) ->
 			CallRval = yes(const(data_addr_const(
 					data_addr(ModuleName,
@@ -326,8 +332,15 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		list__append(MaybeRvals1, [CallRval, FromFullRval],
 			MaybeRvals)
 	;
+		ProcIdLayout = yes
+	->
+		% Indicate the absence of the trace layout fields.
 		NoCallRval = yes(const(int_const(0))),
 		list__append(MaybeRvals1, [NoCallRval], MaybeRvals)
+	;
+		% The absence of the procedure id fields implies
+		% the absence of the trace layout fields as well.
+		MaybeRvals = MaybeRvals1
 	},
 
 	{ Exported = no },	% XXX With the new profiler, we will need to

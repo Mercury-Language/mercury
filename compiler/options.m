@@ -94,6 +94,7 @@
 		;	trace_return
 		;	trace_redo
 		;	trace_optimized
+		;	stack_trace_higher_order
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -384,6 +385,7 @@ option_defaults_2(aux_output_option, [
 	trace_return		-	bool(yes),
 	trace_redo		-	bool(yes),
 	trace_optimized		-	bool(no),
+	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -721,6 +723,7 @@ long_option("trace-return",		trace_return).
 long_option("trace-redo",		trace_redo).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -1411,6 +1414,10 @@ options_help_aux_output -->
 		"\tDo not generate code to trace REDO events.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+		"--stack-trace-higher-order",
+		"\tEnable stack traces through predicates and functions with",
+		"\thigher-order arguments, even if stack tracing is not",
+		"\tsupported in general.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",

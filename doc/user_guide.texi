@@ -1786,6 +1786,11 @@ Do not generate code for REDO events.
 @item --trace-optimized
 Do not disable optimizations that can change the trace.
 
+@item --stack-trace-higher-order
+Enable stack traces through predicates and functions with
+higher-order arguments, even if stack tracing is not
+supported in general.
+
 @item --generate-bytecode
 @c Output a bytecode version of the module
 @c into the @file{@var{module}.bytecode} file,

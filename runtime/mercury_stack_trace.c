@@ -194,7 +194,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 
 	label = MR_lookup_internal_by_addr(success);
 	if (label == NULL) {
-		*problem_ptr = "reached label with no stack trace info";
+		*problem_ptr = "reached unknown label";
 		return STEP_ERROR_AFTER;
 	}
 

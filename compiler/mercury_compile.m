@@ -1099,19 +1099,20 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 		ModuleInfo0, ModuleInfo, [Proc | Procs]) -->
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	mercury_compile__backend_pass_by_preds_4(ProcInfo, ProcId, PredId,
-		ModuleInfo0, ModuleInfo1, Proc),
+	mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo,
+		ProcId, PredId, ModuleInfo0, ModuleInfo1, Proc),
 	mercury_compile__backend_pass_by_preds_3(ProcIds, PredId, PredInfo,
 		ModuleInfo1, ModuleInfo, Procs).
 
-:- pred mercury_compile__backend_pass_by_preds_4(proc_info, proc_id, pred_id,
-	module_info, module_info, c_procedure, io__state, io__state).
-% :- mode mercury_compile__backend_pass_by_preds_4(in, in, in, di, uo,
+:- pred mercury_compile__backend_pass_by_preds_4(pred_info, proc_info,
+	proc_id, pred_id, module_info, module_info, c_procedure,
+	io__state, io__state).
+% :- mode mercury_compile__backend_pass_by_preds_4(in, in, in, in, di, uo,
 % 	out, di, uo) is det.
-:- mode mercury_compile__backend_pass_by_preds_4(in, in, in, in, out,
+:- mode mercury_compile__backend_pass_by_preds_4(in, in, in, in, in, out,
 	out, di, uo) is det.
 
-mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
+mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, Proc) -->
 	globals__io_get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
@@ -1151,17 +1152,17 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
-		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo7) }
+		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo) }
 	;
-		{ ProcInfo7 = ProcInfo6 }
+		{ ProcInfo = ProcInfo6 }
 	),
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
 	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
-	{ generate_proc_code(ProcInfo7, ProcId, PredId, ModuleInfo3, Globals,
-		ContInfo0, ContInfo1, CellCount0, CellCount, Proc0) },
+	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
+		Globals, ContInfo0, ContInfo1, CellCount0, CellCount, Proc0) },
 	{ module_info_set_continuation_info(ModuleInfo3, ContInfo1, 
 		ModuleInfo4) },
 	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo5) },
@@ -1171,24 +1172,16 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ globals__lookup_bool_option(Globals, basic_stack_layout,
-		BasicStackLayout) },
-	( { BasicStackLayout = yes } ->
-		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
-		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
-		write_proc_progress_message(
-			"% Generating call continuation information for ",
-				PredId, ProcId, ModuleInfo5),
-		{ globals__want_return_layouts(Globals, WantReturnLayout) },
-		{ continuation_info__process_instructions(PredProcId,
-			Instructions, WantReturnLayout,
-			ContInfo2, ContInfo3) },
-		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
-			ModuleInfo) }
-	;
-		{ ModuleInfo = ModuleInfo5 }
-	).
-	
+	{ Proc = c_procedure(_, _, PredProcId, Instructions) },
+	{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
+	write_proc_progress_message(
+		"% Generating call continuation information for ",
+			PredId, ProcId, ModuleInfo5),
+	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
+		ModuleInfo5, ContInfo2, ContInfo3) },
+	{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
+		ModuleInfo) }.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1835,23 +1828,16 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 
 mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
 		Stats, ModuleInfo) -->
-	globals__io_lookup_bool_option(basic_stack_layout, BasicStackLayout),
-	( { BasicStackLayout = yes } ->
-		maybe_write_string(Verbose,
-			"% Generating call continuation information..."),
-		maybe_flush_output(Verbose),
-		globals__io_get_globals(Globals),
-		{ globals__want_return_layouts(Globals, WantReturnLayout) },
-		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0, WantReturnLayout,
-			ContInfo0, ContInfo) },
-		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
-			ModuleInfo) },
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ ModuleInfo = ModuleInfo0 }
-	).
+	maybe_write_string(Verbose,
+		"% Generating call continuation information..."),
+	maybe_flush_output(Verbose),
+	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
+	{ continuation_info__maybe_process_llds(LLDS0, ModuleInfo0,
+		ContInfo0, ContInfo) },
+	{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
+		ModuleInfo) },
+	maybe_write_string(Verbose, " done.\n"),
+	maybe_report_stats(Stats).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1889,28 +1875,19 @@ get_c_interface_info(HLDS, C_InterfaceInfo) :-
 mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-	globals__io_lookup_bool_option(basic_stack_layout, BasicStackLayout),
-
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
-	{ BasicStackLayout = yes ->
-		stack_layout__generate_llds(HLDS1, HLDS,
-			StackLayouts, StackLayoutLabelMap),
-		list__append(StackLayouts, BaseTypeLayouts, StaticData0)
-	;
-		HLDS = HLDS1,
-		set_bbbtree__init(StackLayoutLabelMap),
-		StaticData0 = BaseTypeLayouts
-	},
-	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
-
+	{ stack_layout__generate_llds(HLDS1, HLDS,
+		StackLayouts, StackLayoutLabels) },
+	{ list__append(StackLayouts, BaseTypeLayouts, StaticData0) },
 	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
-
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
+
+	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 	mercury_compile__chunk_llds(C_InterfaceInfo, LLDS1, AllData,
 		CommonData, LLDS2, NumChunks),
-	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabelMap,
+	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabels,
 		Verbose, Stats),
 
 	{ C_InterfaceInfo = c_interface_info(_ModuleName,
@@ -2031,7 +2008,7 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels,
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
 	transform_llds(LLDS0, LLDS),
-	output_c_file(LLDS, StackLayoutLabels),
+	output_llds(LLDS, StackLayoutLabels),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_flush_output(Verbose),
 	maybe_report_stats(Stats).

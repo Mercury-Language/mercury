@@ -74,6 +74,8 @@
 
 #include	"mercury_tabling.h"
 
+#include	"mercury_bootstrap.h"
+
 #include	"mercury_grade.h"
 
 #endif /* not MERCURY_IMP_H */

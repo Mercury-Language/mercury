@@ -113,12 +113,6 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 Define_extern_entry(mercury__builtin_unify_pred_2_0);
 Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
-Declare_label(mercury__builtin_compare_pred_3_0_i4);
-
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_unify_pred_2_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_index_pred_2_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__builtin_compare_pred_3_0)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_compare_pred_3_0, 4)
 
 BEGIN_MODULE(mercury__builtin_unify_pred_module)
 	init_entry(mercury__builtin_unify_pred_2_0);
