@@ -708,10 +708,10 @@ mercury_runtime_main(void)
 
 #ifdef MR_LOWLEVEL_DEBUG
   #ifndef CONSERVATIVE_GC
-	heap_zone->max      = heap_zone->min;
+	MR_ENGINE(heap_zone)->max      = MR_ENGINE(heap_zone)->min;
   #endif
-	detstack_zone->max  = detstack_zone->min;
-	nondetstack_zone->max = nondetstack_zone->min;
+	MR_CONTEXT(detstack_zone)->max  = MR_CONTEXT(detstack_zone)->min;
+	MR_CONTEXT(nondetstack_zone)->max = MR_CONTEXT(nondetstack_zone)->min;
 #endif
 
 	time_at_start = MR_get_user_cpu_miliseconds();
@@ -745,12 +745,15 @@ mercury_runtime_main(void)
 		printf("\n");
   #ifndef CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
-			(long) (heap_zone->max - heap_zone->min));
+			(long) (MR_ENGINE(heap_zone)->max
+				- MR_ENGINE(heap_zone)->min));
   #endif
 		printf("max detstack used:  %6ld words\n",
-			(long)(detstack_zone->max - detstack_zone->min));
+			(long)(MR_CONTEXT(detstack_zone)->max
+			       - MR_CONTEXT(detstack_zone)->min));
 		printf("max nondstack used: %6ld words\n",
-			(long) (nondetstack_zone->max - nondetstack_zone->min));
+			(long) (MR_CONTEXT(nondetstack_zone)->max
+				- MR_CONTEXT(nondetstack_zone)->min));
 	}
 #endif
 

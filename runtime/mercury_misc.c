@@ -233,9 +233,9 @@ reg_msg(void)
 	for(i=1; i<=8; i++) {
 		x = (Integer) get_reg(i);
 #ifndef CONSERVATIVE_GC
-		if ( (Integer) heap_zone->min <= x
-				&& x < (Integer) heap_zone->top) {
-			x -= (Integer) heap_zone->min;
+		if ((Integer) MR_ENGINE(heap_zone)->min <= x
+				&& x < (Integer) MR_ENGINE(heap_zone)->top) {
+			x -= (Integer) MR_ENGINE(heap_zone)->min;
 		}
 #endif
 		printf("%8lx ", (long) x);
@@ -274,7 +274,8 @@ printheap(const Word *h)
 {
 #ifndef CONSERVATIVE_GC
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) h, (long) (Integer) (h - heap_zone->min));
+		(const void *) h,
+		(long) (Integer) (h - MR_ENGINE(heap_zone)->min));
 #else
 	printf("ptr 0x%p\n",
 		(const void *) h);
@@ -286,7 +287,8 @@ void
 printdetstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s, (long) (Integer) (s - detstack_zone->min));
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
 	return;
 }
 
@@ -295,12 +297,14 @@ printnondstack(const Word *s)
 {
 #ifndef	MR_DEBUG_NONDET_STACK
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) s, (long) (Integer) (s - nondetstack_zone->min));
+		(const void *) s,
+		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
 #else
-	if (s > nondetstack_zone->min) {
+	if (s > MR_CONTEXT(nondetstack_zone)->min) {
 		printf("ptr 0x%p, offset %3ld words, procedure %s\n",
 			(const void *) s, 
-			(long) (Integer) (s - nondetstack_zone->min),
+			(long) (Integer)
+				(s - MR_CONTEXT(nondetstack_zone)->min),
 			(const char *) s[PREDNM]);
 	} else {
 		/*
@@ -309,7 +313,8 @@ printnondstack(const Word *s)
 		*/
 		printf("ptr 0x%p, offset %3ld words\n",
 			(const void *) s, 
-			(long) (Integer) (s - nondetstack_zone->min));
+			(long) (Integer)
+				(s - MR_CONTEXT(nondetstack_zone)->min));
 	}
 #endif
 	return;
@@ -322,7 +327,7 @@ dumpframe(/* const */ Word *fr)
 
 	printf("frame at ptr 0x%p, offset %3ld words\n",
 		(const void *) fr, 
-		(long) (Integer) (fr - nondetstack_zone->min));
+		(long) (Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
 #ifdef	MR_DEBUG_NONDET_STACK
 	printf("\t predname  %s\n", bt_prednm(fr));
 #endif
@@ -345,7 +350,8 @@ dumpnondstack(void)
 	reg	Word	*fr;
 
 	printf("\nnondstack dump\n");
-	for (fr = maxfr; fr > nondetstack_zone->min; fr = bt_prevfr(fr)) {
+	for (fr = maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
+			fr = bt_prevfr(fr)) {
 		dumpframe(fr);
 	}
 	return;
@@ -390,8 +396,8 @@ print_ordinary_regs(void)
 		value = (Integer) get_reg(i+1);
 
 #ifndef	CONSERVATIVE_GC
-		if ((Integer) heap_zone->min <= value
-				&& value < (Integer) heap_zone->top) {
+		if ((Integer) MR_ENGINE(heap_zone)->min <= value &&
+				value < (Integer) MR_ENGINE(heap_zone)->top) {
 			printf("(heap) ");
 		}
 #endif
@@ -467,9 +473,11 @@ resizemem(void *p, size_t size)
 	return p;
 }
 
-/* XXX will need to modify this to kill other threads if MR_THREAD_SAFE
- * (and cleanup resources, etc....)
- */
+/*
+** XXX will need to modify this to kill other threads if MR_THREAD_SAFE
+** (and cleanup resources, etc....)
+*/
+
 void 
 fatal_error(const char *message) {
 	fprintf(stderr, "Mercury runtime: %s\n", message);
@@ -499,4 +507,3 @@ hash_string(Word s)
 {
 	HASH_STRING_FUNC_BODY
 }
-
