@@ -114,8 +114,10 @@ libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
 		-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -lmer -lgc $(SHARED_LIBS)
 
-library.init: $(library.cs)
-	cat `vpath_find $(library.cs)` | grep '^INIT ' > library.init
+library.init:
+	for file in $(library.ms); do \
+		echo "INIT mercury__`basename $$file .m`__init"; \
+	done > library.init
 
 #-----------------------------------------------------------------------------#
 
