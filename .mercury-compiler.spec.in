@@ -11,8 +11,7 @@ Summary:      The logic/functional programming language Mercury
 Name:         mercury-compiler
 Version:      @VERSION@
 Release:      1
-Packager:     Red Hat Contrib|Net <rhcn-bugs@redhat.com>
-Distribution: Red Hat Contrib|Net
+Packager:     The Mercury Group <mercury@cs.mu.oz.au>
 Vendor:	      The Mercury Group <mercury@cs.mu.oz.au>
 Copyright:    GPL and LGPL
 Group: 	      Development/Languages
@@ -36,6 +35,10 @@ It does NOT include the "extras" distribution; that is available
 from <http://www.cs.mu.oz.au/mercury/download/release.html>.
 
 %changelog
+* Wed Apr 04 2001 Fergus Henderson <fjh@cs.mu.oz.au>
+- Delete the "Red Hat Contrib Net" stuff, since RHCN seems to have disappeared
+  from the face of the earth.
+
 * Fri Feb 19 1999 Fergus Henderson <fjh@cs.mu.oz.au>
 - Initial version.
 
