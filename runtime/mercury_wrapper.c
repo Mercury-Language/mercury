@@ -63,7 +63,7 @@ ENDINIT
   size_t	MR_heap_size =			4096;
 #endif
 size_t		MR_detstack_size =		4096;
-size_t		MR_nondstack_size =	 	 128;
+size_t		MR_nondstack_size =	 	 256;
 size_t		MR_solutions_heap_size =	1024;
 size_t		MR_global_heap_size =		1024;
 size_t		MR_trail_size =			 128;
