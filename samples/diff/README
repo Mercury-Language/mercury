@@ -7,7 +7,7 @@ The major changes in this version are:
 
 	- We now accept command-line options.  In particular, we
 	  recognise all options that are accepted by GNU diff,
-	  though a lot of them result in error reports and a few
+	  though some of them result in error reports and a few
 	  which have do nothing to do with the output format or
 	  semantics, but are merely for efficiency, are accepted
 	  and ignored.
@@ -15,16 +15,19 @@ The major changes in this version are:
 	- We support different output formats, in particular all
 	  of the output formats supported by GNU diff. There are
 	  a number of modifiers to the output formats (for example,
-	  --expand-tabs) which we don't yet support.
+	  --show-function-line) which we don't yet support.
 
-	- Just about everything (except the actual diff algorithm)
-	  has been modified to support the above changes.
+	- We have a new diff algorithm, based on the one by Eugene
+	  Myers.  See myers.m for details.
+
+	- Just about everything has been modified to support the
+	  above changes.
 
 	- Lots of cleanups, lots more documentation.
 
 Examine the file TODO to see what's still missing.
 
-Andrew Bromage  8 Jan 1998
+Andrew Bromage  13 September 1998
 
 ===========================================================================
 

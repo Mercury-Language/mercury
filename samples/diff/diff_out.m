@@ -20,8 +20,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type diff_out__output_style --->
-		normal
+:- type diff_out__output_style
+	--->	normal
 	;	help_only
 	;	version_only
 	;	context(int)
@@ -31,9 +31,28 @@
 	;	rcs
 	;	ifdef(string)
 	;	brief
-	;	side_by_side.
+	;	side_by_side
+	;	cvs_merge_conflict.
 
-:- pred diff_out__default_output_style(diff_out__output_style :: out) is det.
+	% The default output style.
+:- pred diff_out__default_output_style(diff_out__output_style).
+:- mode diff_out__default_output_style(out) is det.
+
+	% Succeeds if, for this output style, an absence of differences
+	% means that no output should be generated.
+:- pred diff_out__no_diff_implies_no_output(diff_out__output_style).
+:- mode diff_out__no_diff_implies_no_output(in) is semidet.
+
+	% Succeeds if the user only wants to know about the presence
+	% of any differences, not what they actually are.
+:- pred diff_out__full_diff_not_required(diff_out__output_style).
+:- mode diff_out__full_diff_not_required(in) is semidet.
+
+	% Succeeds if the output style is "robust", that is, the
+	% absence of a newline at the end of the file actually
+	% matters.
+:- pred diff_out__robust(diff_out__output_style).
+:- mode diff_out__robust(in) is semidet.
 
 	% display_diff takes a diff and displays it
 	% in the user's specified output format.
@@ -51,6 +70,30 @@ diff_out__default_output_style(normal).
 
 %-----------------------------------------------------------------------------%
 
+diff_out__no_diff_implies_no_output(normal).
+diff_out__no_diff_implies_no_output(context(_)).
+diff_out__no_diff_implies_no_output(unified(_)).
+diff_out__no_diff_implies_no_output(ed).
+diff_out__no_diff_implies_no_output(forward_ed).
+diff_out__no_diff_implies_no_output(rcs).
+diff_out__no_diff_implies_no_output(brief).
+
+%-----------------------------------------------------------------------------%
+
+diff_out__full_diff_not_required(brief).
+
+%-----------------------------------------------------------------------------%
+
+diff_out__robust(normal).
+diff_out__robust(context(_)).
+diff_out__robust(unified(_)).
+diff_out__robust(rcs).
+diff_out__robust(ifdef(_)).
+diff_out__robust(side_by_side).
+diff_out__robust(cvs_merge_conflict).
+
+%-----------------------------------------------------------------------------%
+
 	% diff_out__show_file shows the segment of the file
 	% from Low to High, with each line preceeded by
 	% the Prefix characher and a space.  The diff(1)
@@ -59,17 +102,31 @@ diff_out__default_output_style(normal).
 	% lines effected in the second file should be
 	% flagged by '>'.
 	%
+:- pred diff_out__show_file(file, string, pos, pos, io__state, io__state).
+:- mode diff_out__show_file(in, in, in, in, di, uo) is det.
+
+diff_out__show_file(File, Prefix, Low, High) -->
+	globals__io_lookup_bool_option(expand_tabs, ExpandTabs),
+	diff_out__show_file_2(ExpandTabs, File, Prefix, Low, High).
+
 	% NOTE: GCC 2.7.2 under Digital Unix 3.2 doesn't compile
 	%       this predicate correctly with optimisation turned on.
-:- pred diff_out__show_file(file, string, segment, io__state, io__state).
-:- mode diff_out__show_file(in, in, in, di, uo) is det.
+:- pred diff_out__show_file_2(bool, file, string, pos, pos,
+		io__state, io__state).
+:- mode diff_out__show_file_2(in, in, in, in, in, di, uo) is det.
 
-diff_out__show_file(File, Prefix, Low - High) -->
+diff_out__show_file_2(ExpandTabs, File, Prefix, Low, High) -->
 	( { Low < High } ->
 		( { file__get_line(File, Low, Line) } ->
-			{ Low1 is Low + 1 },
-			io__write_strings([Prefix, Line]),
-			diff_out__show_file(File, Prefix, Low1 - High)
+			io__write_string(Prefix),
+			( { ExpandTabs = yes },
+				{ string__to_char_list(Line, LineList) },
+				diff_out__expand_tabs(LineList, 0)
+			; { ExpandTabs = no },
+				io__write_string(Line)
+			),
+			diff_out__show_file_2(ExpandTabs, File, Prefix,
+					Low + 1, High)
 		;
 			{ error("diff_out_show_file: file ended prematurely") }
 		)
@@ -77,8 +134,23 @@ diff_out__show_file(File, Prefix, Low - High) -->
 		[]
 	).
 
+:- pred diff_out__expand_tabs(list(char), int, io__state, io__state).
+:- mode diff_out__expand_tabs(in, in, di, uo) is det.
+
+diff_out__expand_tabs([], _) --> [].
+diff_out__expand_tabs([C | Cs], Pos) -->
+	( { C = '\t' } ->
+		{ Spaces = tab_width - (Pos rem tab_width) },
+		put_spaces(Spaces, Pos, NewPos),
+		diff_out__expand_tabs(Cs, NewPos)
+	;
+		io__write_char(C),
+		diff_out__expand_tabs(Cs, Pos + 1)
+	).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 
 	% display_diff: Determine which output style to use, then call
 	% the predicate to display that output.
@@ -88,39 +160,62 @@ diff_out__show_file(File, Prefix, Low - High) -->
 	% reach here.  In those cases, we just call error/1.
 display_diff(File1, File2, Diff) -->
 	globals__io_get_output_style(OutputStyle),
-	( { OutputStyle = normal },
-		display_diff_normal(File1, File2, Diff)
-	; { OutputStyle = help_only },
-		{ error("display_diff: help_only") }
-	; { OutputStyle = version_only },
-		{ error("display_diff: version_only") }
-	; { OutputStyle = context(Context) },
-		display_context_diff(Context, File1, File2, Diff)
-	; { OutputStyle = unified(Context) },
-		display_unified_diff(Context, File1, File2, Diff)
-	; { OutputStyle = ed },
-		display_diff_ed(File1, File2, Diff)
-	; { OutputStyle = forward_ed },
-		display_diff_forward_ed(File1, File2, Diff)
-	; { OutputStyle = rcs },
-		display_diff_rcs(File1, File2, Diff)
-	; { OutputStyle = ifdef(Sym) },
-		display_diff_ifdef(Sym, File1, File2, Diff)
-	; { OutputStyle = brief },
-		% XXX For this output style, we really don't need to
-		%     perform a complete diff.  This should be handled
-		%     higher up for efficiency.
-		( { Diff \= [] } ->
-			{ file__get_file_name(File1, FileName1) },
-			{ file__get_file_name(File2, FileName2) },
-			io__write_strings(["Files ", FileName1, " and ",
-				FileName2, " differ\n"])
-		;
-			[]
-		)
-	; { OutputStyle = side_by_side },
-		display_diff_side_by_side(File1, File2, Diff)
+	(
+		{ Diff = [],
+		  diff_out__no_diff_implies_no_output(OutputStyle)
+		}
+	->
+		[]
+	;
+		display_diff_2(OutputStyle, File1, File2, Diff)
 	).
+
+
+:- pred display_diff_2(diff_out__output_style, file, file, diff,
+			io__state, io__state).
+:- mode display_diff_2(in, in, in, in, di, uo) is det.
+
+display_diff_2(normal, File1, File2, Diff) -->
+	display_diff_normal(File1, File2, Diff).
+
+display_diff_2(help_only, _File1, _File2, _Diff) -->
+	{ error("display_diff: help_only") }.
+
+display_diff_2(version_only, _File1, _File2, _Diff) -->
+	{ error("display_diff: version_only") }.
+
+display_diff_2(context(Context), File1, File2, Diff) -->
+	display_context_diff(Context, File1, File2, Diff).
+
+display_diff_2(unified(Context), File1, File2, Diff) -->
+	display_unified_diff(Context, File1, File2, Diff).
+
+display_diff_2(ed, File1, File2, Diff) -->
+	display_diff_ed(File1, File2, Diff).
+
+display_diff_2(forward_ed, File1, File2, Diff) -->
+	display_diff_forward_ed(File1, File2, Diff).
+
+display_diff_2(rcs, File1, File2, Diff) -->
+	display_diff_rcs(File1, File2, Diff).
+
+display_diff_2(ifdef(Sym), File1, File2, Diff) -->
+	display_diff_ifdef(Sym, File1, File2, Diff).
+
+display_diff_2(brief, File1, File2, _Diff) -->
+	% XXX For this output style, we really don't need to
+	%     perform a complete diff.  This should be handled
+	%     higher up for efficiency.
+	{ file__get_file_name(File1, FileName1) },
+	{ file__get_file_name(File2, FileName2) },
+	io__write_strings(["Files ", FileName1, " and ",
+		FileName2, " differ\n"]).
+
+display_diff_2(side_by_side, File1, File2, Diff) -->
+	display_diff_side_by_side(File1, File2, Diff).
+
+display_diff_2(cvs_merge_conflict, File1, File2, Diff) -->
+	display_diff_cvs_merge_conflict(File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
 
@@ -129,21 +224,38 @@ display_diff(File1, File2, Diff) -->
 :- pred display_diff_normal(file, file, diff, io__state, io__state).
 :- mode display_diff_normal(in, in, in, di, uo) is det.
 
-display_diff_normal(_, _, []) --> [].
-display_diff_normal(File1, File2, [SingDiff | Diff]) -->
+display_diff_normal(File1, File2, Diff) -->
+	globals__io_lookup_bool_option(initial_tab, InitialTab),
+	{ InitialTab = no,
+		FromStr = "< ",
+		ToStr = "> "
+	; InitialTab = yes,
+		FromStr = "<\t",
+		ToStr = ">\t"
+	},
+	display_diff_normal_2(File1, File2, Diff, FromStr, ToStr).
+
+	% display_diff_normal takes a diff and displays it
+	% in the standard diff(1) output format.
+:- pred display_diff_normal_2(file, file, diff, string, string,
+			io__state, io__state).
+:- mode display_diff_normal_2(in, in, in, in, in, di, uo) is det.
+
+display_diff_normal_2(_, _, [], _, _) --> [].
+display_diff_normal_2(File1, File2, [SingDiff | Diff], FromStr, ToStr) -->
 	( { SingDiff = add(X, Y1 - Y2) },
 		diff_out__write_command(X - X, 'a', Y1 - Y2),
-		diff_out__show_file(File2, "> ", Y1 - Y2)
+		diff_out__show_file(File2, ToStr, Y1, Y2)
 	; { SingDiff = delete(X1 - X2, Y) },
 		diff_out__write_command(X1 - X2, 'd', Y - Y),
-		diff_out__show_file(File1, "< ", X1 - X2)
+		diff_out__show_file(File1, FromStr, X1, X2)
 	; { SingDiff = change(X1 - X2, Y1 - Y2) },
 		diff_out__write_command(X1 - X2, 'c', Y1 - Y2),
-		diff_out__show_file(File1, "< ", X1 - X2),
+		diff_out__show_file(File1, FromStr, X1, X2),
 		io__write_string("---\n"),
-		diff_out__show_file(File2, "> ", Y1 - Y2)
+		diff_out__show_file(File2, ToStr, Y1, Y2)
 	),
-	display_diff_normal(File1, File2, Diff).
+	display_diff_normal_2(File1, File2, Diff, FromStr, ToStr).
 
 
 	% diff_out__write_command displays a diff(1) command.
@@ -187,18 +299,14 @@ diff_out__write_command(X - X2, C, Y - Y2) -->
 display_diff_rcs(_File1, _File2, []) --> [].
 display_diff_rcs(File1, File2, [Cmd | Diff]) -->
 	( { Cmd = add(X, Y1 - Y2) },
-		{ Y is Y2 - Y1 },
-		diff_out__write_command_rcs('a', X, Y),
-		diff_out__show_file(File2, "", Y1 - Y2)
+		diff_out__write_command_rcs('a', X, Y2-Y1),
+		diff_out__show_file(File2, "", Y1, Y2)
 	; { Cmd = delete(X1 - X2, _Y) },
-		{ X is X2 - X1 },
-		diff_out__write_command_rcs('d', X1, X)
+		diff_out__write_command_rcs('d', X1, X2-X1)
 	; { Cmd = change(X1 - X2, Y1 - Y2) },
-		{ X is X2 - X1 },
-		{ Y is Y2 - Y1 },
-		diff_out__write_command_rcs('d', X1, X),
-		diff_out__write_command_rcs('a', X1, Y),
-		diff_out__show_file(File2, "", Y1 - Y2)
+		diff_out__write_command_rcs('d', X1, X2-X1),
+		diff_out__write_command_rcs('a', X1, Y2-Y1),
+		diff_out__show_file(File2, "", Y1, Y2)
 	),
 	display_diff_rcs(File1, File2, Diff).
 
@@ -209,9 +317,8 @@ display_diff_rcs(File1, File2, [Cmd | Diff]) -->
 :- mode diff_out__write_command_rcs(in, in, in, di, uo) is det.
 
 diff_out__write_command_rcs(C, X, Y) -->
-	{ X1 is X + 1 },		% Convert from pos to line number
 	io__write_char(C),
-	io__write_int(X1),
+	io__write_int(X + 1),	% Convert from pos to line number
 	io__write_char(' '),
 	io__write_int(Y),
 	io__write_char('\n').
@@ -228,13 +335,13 @@ display_diff_ed(File1, File2, [Cmd | Diff]) -->
 	display_diff_ed(File1, File2, Diff),
 	( { Cmd = add(X, Y1 - Y2) },
 		diff_out__write_command_ed(X - X, 'a'),
-		diff_out__show_file(File2, "", Y1 - Y2),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_string(".\n")
 	; { Cmd = delete(X, _Y) },
 		diff_out__write_command_ed(X, 'd')
-	; { Cmd = change(X, Y) },
+	; { Cmd = change(X, Y1 - Y2) },
 		diff_out__write_command_ed(X, 'c'),
-		diff_out__show_file(File2, "", Y),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_string(".\n")
 	).
 
@@ -269,18 +376,21 @@ display_diff_forward_ed(_File1, _File2, []) --> { true }.
 display_diff_forward_ed(File1, File2, [Cmd | Diff]) -->
 	( { Cmd = add(X, Y1 - Y2) },
 		diff_out__write_command_forward_ed(X - X, 'a'),
-		diff_out__show_file(File2, "", Y1 - Y2),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_string(".\n")
 	; { Cmd = delete(X, _Y) },
 		diff_out__write_command_forward_ed(X, 'd')
-	; { Cmd = change(X, Y) },
+	; { Cmd = change(X, Y1 - Y2) },
 		diff_out__write_command_forward_ed(X, 'c'),
-		diff_out__show_file(File2, "", Y),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_string(".\n")
 	),
 	display_diff_forward_ed(File1, File2, Diff).
 
-	% diff_out__write_command_ed displays a forward ed(1) command.
+	% diff_out__write_command_forward_ed displays a forward ed(1)
+	% command.  The difference between this and write_command_ed is
+	% that the command char comes first here.  Who comes up with
+	% these dumb formats anyway?
 :- pred diff_out__write_command_forward_ed(segment, char, io__state, io__state).
 :- mode diff_out__write_command_forward_ed(in, in, di, uo) is det.
 diff_out__write_command_forward_ed(X - X2, C) -->
@@ -320,29 +430,79 @@ display_diff_ifdef(Sym, File1, File2, Diff) -->
 
 display_diff_ifdef_2(Prev, _Sym, File1, _File2, []) -->
 	{ file__get_numlines(File1, SegEnd) },
-	diff_out__show_file(File1, "", Prev - SegEnd).
+	diff_out__show_file(File1, "", Prev, SegEnd).
 display_diff_ifdef_2(Prev, Sym, File1, File2, [Edit | Diff]) -->
 	{ first_mentioned_positions(Edit, StartOfEdit, _) },
-	diff_out__show_file(File1, "", Prev - StartOfEdit),
-	( { Edit = add(X, Seg2) },
+	diff_out__show_file(File1, "", Prev, StartOfEdit),
+	( { Edit = add(X, Y1 - Y2) },
 		io__write_strings(["#ifdef ", Sym, "\n"]),
-		diff_out__show_file(File2, "", Seg2),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_strings(["#endif /* ", Sym, " */\n"]),
 		{ Next = X }
 	; { Edit = delete(X1 - X2, _) },
 		io__write_strings(["#ifndef ", Sym, "\n"]),
-		diff_out__show_file(File1, "", X1 - X2),
+		diff_out__show_file(File1, "", X1, X2),
 		io__write_strings(["#endif /* not ", Sym, " */\n"]),
 		{ Next = X2 }
 	; { Edit = change(X1 - X2, Y1 - Y2) },
 		io__write_strings(["#ifndef ", Sym, "\n"]),
-		diff_out__show_file(File1, "", X1 - X2),
+		diff_out__show_file(File1, "", X1, X2),
 		io__write_strings(["#else /* ", Sym, " */\n"]),
-		diff_out__show_file(File2, "", Y1 - Y2),
+		diff_out__show_file(File2, "", Y1, Y2),
 		io__write_strings(["#endif /* ", Sym, " */\n"]),
 		{ Next = X2 }
 	),
 	display_diff_ifdef_2(Next, Sym, File1, File2, Diff).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% display_diff_cvs_merge_conflict writes out the files in a
+	% unified diff, using CVS merge conflict marks around each edit.
+	%
+:- pred display_diff_cvs_merge_conflict(file, file, diff, io__state, io__state).
+:- mode display_diff_cvs_merge_conflict(in, in, in, di, uo) is det.
+
+display_diff_cvs_merge_conflict(File1, File2, Diff) -->
+	display_diff_cvs_merge_conflict_2(0, File1, File2, Diff).
+
+	% Argument 1 (prev) is the last pos displayed before
+	% the current edit (or end of edits, in the base case).
+	% This is important for when we have to display the
+	% "non-diffed" text between edits.
+:- pred display_diff_cvs_merge_conflict_2(int, file, file, diff,
+		io__state, io__state).
+:- mode display_diff_cvs_merge_conflict_2(in, in, in, in, di, uo) is det.
+
+display_diff_cvs_merge_conflict_2(Prev, File1, _File2, []) -->
+	{ file__get_numlines(File1, SegEnd) },
+	diff_out__show_file(File1, "", Prev, SegEnd).
+display_diff_cvs_merge_conflict_2(Prev, File1, File2, [Edit | Diff]) -->
+	{ first_mentioned_positions(Edit, StartOfEdit, _) },
+	diff_out__show_file(File1, "", Prev, StartOfEdit),
+	{ file__get_file_name(File1, FileName1) },
+	{ file__get_file_name(File2, FileName2) },
+	( { Edit = add(X, Y1 - Y2) },
+		io__write_strings(["<<<<<<< ", FileName1, "\n"]),
+		diff_out__show_file(File2, "", Y1, Y2),
+		io__write_string("=======\n"),
+		io__write_strings([">>>>>>> ", FileName2, "\n"]),
+		{ Next = X }
+	; { Edit = delete(X1 - X2, _) },
+		io__write_strings(["<<<<<<< ", FileName1, "\n"]),
+		io__write_string("=======\n"),
+		diff_out__show_file(File1, "", X1, X2),
+		io__write_strings([">>>>>>> ", FileName2, "\n"]),
+		{ Next = X2 }
+	; { Edit = change(X1 - X2, Y1 - Y2) },
+		io__write_strings(["<<<<<<< ", FileName1, "\n"]),
+		diff_out__show_file(File1, "", X1, X2),
+		io__write_string("=======\n"),
+		diff_out__show_file(File2, "", Y1, Y2),
+		io__write_strings([">>>>>>> ", FileName2, "\n"]),
+		{ Next = X2 }
+	),
+	display_diff_cvs_merge_conflict_2(Next, File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -371,10 +531,15 @@ display_diff_ifdef_2(Prev, Sym, File1, File2, [Edit | Diff]) -->
 diff_to_context_diff(_Xsize, _Ysize, _Context, [], []).
 diff_to_context_diff(Xsize, Ysize, Context, [Edit | Diff], CDiff) :-
 	diff_to_context_diff(Xsize, Ysize, Context, Diff, CDiff0),
+
+		% Work out how far the context of this edit reaches.
 	first_mentioned_positions(Edit, Xfirst0, Yfirst0),
+	int__max(Xfirst0 - Context, 0, Xfirst),
+	int__max(Yfirst0 - Context, 0, Yfirst),
 	last_mentioned_positions(Edit, Xlast0, Ylast0),
-	adjust_context(Context, Xsize, Xfirst0, Xlast0, Xfirst, Xlast),
-	adjust_context(Context, Ysize, Yfirst0, Ylast0, Yfirst, Ylast),
+	int__min(Xlast0 + Context, Xsize, Xlast),
+	int__min(Ylast0 + Context, Ysize, Ylast),
+
 	( CDiff0 = [],
 		CDiff = [context_edit(Xfirst - Xlast, Yfirst - Ylast, [Edit])]
 	; CDiff0 = [context_edit(XsegLo - XsegHi, YsegLo - YsegHi, DDiff) |
@@ -393,37 +558,6 @@ diff_to_context_diff(Xsize, Ysize, Context, [Edit | Diff], CDiff) :-
 		)
 	).
 
-:- pred first_mentioned_positions(edit :: in, pos :: out, pos :: out) is det.
-
-first_mentioned_positions(add(X, Y - _), X, Y).
-first_mentioned_positions(delete(X - _, Y), X, Y).
-first_mentioned_positions(change(X - _, Y - _), X, Y).
-
-:- pred last_mentioned_positions(edit :: in, pos :: out, pos :: out) is det.
-
-last_mentioned_positions(add(X, _ - Y), X, Y).
-last_mentioned_positions(delete(_ - X, Y), X, Y).
-last_mentioned_positions(change(_ - X, _ - Y), X, Y).
-
-	% Adjust a range to incorporate a given number of lines
-	% of context.  Ensure that the new range stays within the
-	% size of the file being considered.
-:- pred adjust_context(int :: in, int :: in, int :: in, int :: in,
-		int :: out, int :: out) is det.
-adjust_context(Context, Size, First0, Last0, First, Last) :-
-	First1 is First0 - Context,
-	Last1 is Last0 + Context,
-	( First1 < 0 ->
-		First = 0
-	;
-		First = First1
-	),
-	( Last1 > Size ->
-		Last = Size
-	;
-		Last = Last1
-	).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -437,47 +571,58 @@ display_unified_diff(Context, File1, File2, Diff) -->
 	{ diff_to_context_diff(Size1, Size2, Context, Diff, CDiff) },
 	{ file__get_file_name(File1, Name1) },
 	{ file__get_file_name(File2, Name2) },
-		% XXX Should also print out file dates.  But how??
+		% XXX Should also print out file dates.  But how?
 	io__write_strings(["--- ", Name1, "\n"]),
 	io__write_strings(["+++ ", Name2, "\n"]),
-	display_unified_diff_2(File1, File2, CDiff).
+	globals__io_lookup_bool_option(initial_tab, InitialTab),
+	{ InitialTab = no,
+		NoneStr = " ",
+		AddStr = "+",
+		DelStr = "-"
+	; InitialTab = yes,
+		NoneStr = "\t",
+		AddStr = "+\t",
+		DelStr = "-\t"
+	},
+	display_unified_diff_2(File1, File2, CDiff, NoneStr, AddStr, DelStr).
 
-:- pred display_unified_diff_2(file, file, context_diff, io__state, io__state).
-:- mode display_unified_diff_2(in, in, in, di, uo) is det.
+:- pred display_unified_diff_2(file, file, context_diff, string, string, string,
+				io__state, io__state).
+:- mode display_unified_diff_2(in, in, in, in, in, in, di, uo) is det.
 
-display_unified_diff_2(_File1, _File2, []) --> [].
-display_unified_diff_2(File1, File2, [Edit | CDiff]) -->
+display_unified_diff_2(_File1, _File2, [], _, _, _) --> [].
+display_unified_diff_2(File1, File2, [Edit | CDiff],
+			NoneStr, AddStr, DelStr) -->
 	{ Edit = context_edit(Xlow - Xhigh, Ylow - Yhigh, Diff) },
-	{ Xlow1 is Xlow + 1 },
-	{ Ylow1 is Ylow + 1 },
-	{ Xsize is Xhigh - Xlow },
-	{ Ysize is Yhigh - Ylow },
 	io__format("@@ -%d,%d +%d,%d @@\n",
-		[i(Xlow1), i(Xsize), i(Ylow1), i(Ysize)]),
-	display_unified_diff_3(Xlow, Xhigh, File1, File2, Diff),
-	display_unified_diff_2(File1, File2, CDiff).
+		[i(Xlow + 1), i(Xhigh - Xlow), i(Ylow + 1), i(Yhigh - Ylow)]),
+	display_unified_diff_3(Xlow, Xhigh, File1, File2, Diff,
+			NoneStr, AddStr, DelStr),
+	display_unified_diff_2(File1, File2, CDiff, NoneStr, AddStr, DelStr).
 
 :- pred display_unified_diff_3(int, int, file, file, diff,
-		io__state, io__state).
-:- mode display_unified_diff_3(in, in, in, in, in, di, uo) is det.
+				string, string, string, io__state, io__state).
+:- mode display_unified_diff_3(in, in, in, in, in, in, in, in, di, uo) is det.
 
-display_unified_diff_3(Prev, Size1, File1, _File2, []) -->
-	diff_out__show_file(File1, " ", Prev - Size1).
-display_unified_diff_3(Prev, Size1, File1, File2, [Edit | Diff]) -->
+display_unified_diff_3(Prev, Size1, File1, _File2, [], NoneStr, _, _) -->
+	diff_out__show_file(File1, NoneStr, Prev, Size1).
+display_unified_diff_3(Prev, Size1, File1, File2, [Edit | Diff],
+			NoneStr, AddStr, DelStr) -->
 	{ first_mentioned_positions(Edit, StartOfEdit, _) },
-	diff_out__show_file(File1, " ", Prev - StartOfEdit),
-	( { Edit = add(X, Seg2) },
-		diff_out__show_file(File2, "+", Seg2),
+	diff_out__show_file(File1, NoneStr, Prev, StartOfEdit),
+	( { Edit = add(X, Y1 - Y2) },
+		diff_out__show_file(File2, AddStr, Y1, Y2),
 		{ Next = X }
 	; { Edit = delete(X1 - X2, _) },
-		diff_out__show_file(File1, "-", X1 - X2),
+		diff_out__show_file(File1, DelStr, X1, X2),
 		{ Next = X1 }
 	; { Edit = change(X1 - X2, Y1 - Y2) },
-		diff_out__show_file(File1, "-", X1 - X2),
-		diff_out__show_file(File2, "+", Y1 - Y2),
+		diff_out__show_file(File1, DelStr, X1, X2),
+		diff_out__show_file(File2, AddStr, Y1, Y2),
 		{ Next = X1 }
 	),
-	display_unified_diff_3(Next, Size1, File1, File2, Diff).
+	display_unified_diff_3(Next, Size1, File1, File2, Diff,
+				NoneStr, AddStr, DelStr).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -495,74 +640,97 @@ display_context_diff(Context, File1, File2, Diff) -->
 		% XXX Should also print out file dates.  But how??
 	io__write_strings(["*** ", Name1, "\n"]),
 	io__write_strings(["--- ", Name2, "\n"]),
-	display_context_diff_2(File1, File2, CDiff).
 
-:- pred display_context_diff_2(file, file, context_diff, io__state, io__state).
-:- mode display_context_diff_2(in, in, in, di, uo) is det.
+	globals__io_lookup_bool_option(initial_tab, InitialTab),
+	{ InitialTab = no,
+		NoneStr = "  ",
+		AddStr = "+ ",
+		DelStr = "- ",
+		ChgStr = "! "
+	; InitialTab = yes,
+		NoneStr = "\t",
+		AddStr = "+\t",
+		DelStr = "-\t",
+		ChgStr = "!\t"
+	},
+	display_context_diff_2(File1, File2, CDiff,
+			NoneStr, AddStr, DelStr, ChgStr).
 
-display_context_diff_2(_File1, _File2, []) --> [].
-display_context_diff_2(File1, File2, [Edit | CDiff]) -->
+:- pred display_context_diff_2(file, file, context_diff,
+		string, string, string, string, io__state, io__state).
+:- mode display_context_diff_2(in, in, in, in, in, in, in, di, uo) is det.
+
+display_context_diff_2(_File1, _File2, [], _, _, _, _) --> [].
+display_context_diff_2(File1, File2, [Edit | CDiff],
+		NoneStr, AddStr, DelStr, ChgStr) -->
 	{ Edit = context_edit(Xlow - Xhigh, Ylow - Yhigh, Diff) },
-	{ Xlow1 is Xlow + 1 },
-	{ Ylow1 is Ylow + 1 },
 	io__write_string("***************\n"),
-	io__format("*** %d,%d ****\n", [i(Xlow1), i(Xhigh)]),
+	io__format("*** %d,%d ****\n", [i(Xlow + 1), i(Xhigh)]),
 
 		% Don't display the "context from" lines if there's
 		% nothing deleted or changed.
-	( { list__member(AddEdit, Diff) => AddEdit = add(_, _) } ->
+	( { all [AEdit] list__member(AEdit, Diff) => AEdit = add(_, _) } ->
 		[]
 	;
-		display_context_diff_left(Xlow, Xhigh, File1, Diff)
+		display_context_diff_left(Xlow, Xhigh, File1, Diff,
+				NoneStr, DelStr, ChgStr)
 	),
-	io__format("--- %d,%d ----\n", [i(Ylow1), i(Yhigh)]),
+	io__format("--- %d,%d ----\n", [i(Ylow + 1), i(Yhigh)]),
 
 		% Don't display the "context to" lines if there's
 		% nothing added or changed.
-	( { list__member(DelEdit, Diff) => DelEdit = delete(_, _) } ->
+	( { all [DEdit] list__member(DEdit, Diff) => DEdit = delete(_, _) } ->
 		[]
 	;
-		display_context_diff_right(Ylow, Yhigh, File2, Diff)
+		display_context_diff_right(Ylow, Yhigh, File2, Diff,
+				NoneStr, AddStr, ChgStr)
 	),
-	display_context_diff_2(File1, File2, CDiff).
+	display_context_diff_2(File1, File2, CDiff,
+			NoneStr, AddStr, DelStr, ChgStr).
 
-:- pred display_context_diff_left(int, int, file, diff, io__state, io__state).
-:- mode display_context_diff_left(in, in, in, in, di, uo) is det.
+:- pred display_context_diff_left(int, int, file, diff, string, string, string,
+			io__state, io__state).
+:- mode display_context_diff_left(in, in, in, in, in, in, in, di, uo) is det.
 
-display_context_diff_left(Prev, Size1, File1, []) -->
-	diff_out__show_file(File1, "  ", Prev - Size1).
-display_context_diff_left(Prev, Size1, File1, [Edit | Diff]) -->
+display_context_diff_left(Prev, Size1, File1, [], NoneStr, _, _) -->
+	diff_out__show_file(File1, NoneStr, Prev, Size1).
+display_context_diff_left(Prev, Size1, File1, [Edit | Diff],
+			NoneStr, DelStr, ChgStr) -->
 	{ first_mentioned_positions(Edit, StartOfEdit, _) },
-	diff_out__show_file(File1, "  ", Prev - StartOfEdit),
+	diff_out__show_file(File1, NoneStr, Prev, StartOfEdit),
 	( { Edit = add(X, _) },
 		{ Next = X }
 	; { Edit = delete(X1 - X2, _) },
-		diff_out__show_file(File1, "- ", X1 - X2),
+		diff_out__show_file(File1, DelStr, X1, X2),
 		{ Next = X2 }
 	; { Edit = change(X1 - X2, _) },
-		diff_out__show_file(File1, "! ", X1 - X2),
+		diff_out__show_file(File1, ChgStr, X1, X2),
 		{ Next = X2 }
 	),
-	display_context_diff_left(Next, Size1, File1, Diff).
+	display_context_diff_left(Next, Size1, File1, Diff,
+			NoneStr, DelStr, ChgStr).
 
-:- pred display_context_diff_right(int, int, file, diff, io__state, io__state).
-:- mode display_context_diff_right(in, in, in, in, di, uo) is det.
+:- pred display_context_diff_right(int, int, file, diff,
+			string, string, string, io__state, io__state).
+:- mode display_context_diff_right(in, in, in, in, in, in, in, di, uo) is det.
 
-display_context_diff_right(Prev, Size2, File2, []) -->
-	diff_out__show_file(File2, "  ", Prev - Size2).
-display_context_diff_right(Prev, Size2, File2, [Edit | Diff]) -->
+display_context_diff_right(Prev, Size2, File2, [], NoneStr, _, _) -->
+	diff_out__show_file(File2, NoneStr, Prev, Size2).
+display_context_diff_right(Prev, Size2, File2, [Edit | Diff],
+			NoneStr, AddStr, ChgStr) -->
 	{ first_mentioned_positions(Edit, StartOfEdit, _) },
-	diff_out__show_file(File2, "  ", Prev - StartOfEdit),
+	diff_out__show_file(File2, NoneStr, Prev, StartOfEdit),
 	( { Edit = add(_, Y1 - Y2) },
-		diff_out__show_file(File2, "+ ", Y1 - Y2),
+		diff_out__show_file(File2, AddStr, Y1, Y2),
 		{ Next = Y2 }
 	; { Edit = delete(_, Y) },
 		{ Next = Y }
 	; { Edit = change(_, Y1 - Y2) },
-		diff_out__show_file(File2, "! ", Y1 - Y2),
+		diff_out__show_file(File2, ChgStr, Y1, Y2),
 		{ Next = Y2 }
 	),
-	display_context_diff_right(Next, Size2, File2, Diff).
+	display_context_diff_right(Next, Size2, File2, Diff,
+				NoneStr, AddStr, ChgStr).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -631,8 +799,8 @@ display_diff_side_by_side_2(Prev, SBS, File1, _File2, []) -->
 		[]
 	).
 display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff]) -->
-	{ first_mentioned_positions(Edit, StartOfEdit, _) },
 	{ SBS = side_by_side_info(_, _, _, Suppress, _) },
+	{ first_mentioned_positions(Edit, StartOfEdit, _) },
 	( { Suppress = no } ->
 		show_sbs_same_lines(File1, SBS, Prev - StartOfEdit)
 	;
@@ -650,19 +818,10 @@ display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff]) -->
 		% and display "changed" lines for the minimum of these
 		% sizes.  Then we display "added" or "deleted" lines for
 		% whatever is left over.
-		{
-			SizeX is X2 - X1,
-			SizeY is Y2 - Y1,
-			int__min(SizeX, SizeY, Size)
-
-		},
+		{ int__min(X2 - X1, Y2 - Y1, Size) },
 		show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size),
-		{
-			NewX1 is X1 + Size,
-			NewY1 is Y1 + Size
-		},
-		show_sbs_deleted_lines(File1, SBS, NewX1 - X2),
-		show_sbs_added_lines(File2, SBS, NewY1 - Y2),
+		show_sbs_deleted_lines(File1, SBS, (X1 + Size) - X2),
+		show_sbs_added_lines(File2, SBS, (Y1 + Size) - Y2),
 		{ Next = X2 }
 	),
 	display_diff_side_by_side_2(Next, SBS, File1, File2, Diff).
@@ -683,14 +842,12 @@ show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size) -->
 			print_half_line(Chars1, SBS, 0, 0, Width, OutPos),
 			tab_to_column(OutPos, Width),
 			io__write_string("|"),
-			{ Width1 is Width + 1 },
-			{ Width2 is Width + 2 },
-			tab_to_column(Width1, Width2),
+			tab_to_column(Width + 1, Width + 2),
 			{ string__to_char_list(Line2, Chars2) },
 			print_half_line(Chars2, SBS, 0, 0, Width, _),
 			io__write_string("\n"),
-			{ X2 is X1 + 1, Y2 is Y1 + 1, Size1 is Size - 1 },
-			show_sbs_changed_lines(File1, File2, SBS, X2, Y2, Size1)
+			show_sbs_changed_lines(File1, File2, SBS,
+					X1 + 1, Y1 + 1, Size - 1)
 		;
 			{ error("show_sbs_changed_lines: file ended prematurely") }
 		)
@@ -706,7 +863,6 @@ show_sbs_same_lines(File, SBS, Low - High) -->
 	( { Low < High } ->
 		( { file__get_line(File, Low, Line) } ->
 			{ SBS = side_by_side_info(Width, _, LeftCol, _, _) },
-			{ Low1 is Low + 1 },
 			{ string__to_char_list(Line, Chars) },
 			print_half_line(Chars, SBS, 0, 0, Width, OutPos),
 
@@ -716,12 +872,11 @@ show_sbs_same_lines(File, SBS, Low - High) -->
 				tab_to_column(OutPos, Width),
 				io__write_string("(")
 			;
-				{ Width2 is Width + 2 },
-				tab_to_column(OutPos, Width2),
+				tab_to_column(OutPos, Width + 2),
 				print_half_line(Chars, SBS, 0, 0, Width, _)
 			),
 			io__write_string("\n"),
-			show_sbs_same_lines(File, SBS, Low1 - High)
+			show_sbs_same_lines(File, SBS, (Low + 1) - High)
 		;
 			{ error("show_sbs_same_lines: file ended prematurely") }
 		)
@@ -737,13 +892,12 @@ show_sbs_added_lines(File, SBS, Low - High) -->
 	( { Low < High } ->
 		( { file__get_line(File, Low, Line) } ->
 			{ SBS = side_by_side_info(Width, _, _, _, _) },
-			{ Low1 is Low + 1 },
 			{ string__to_char_list(Line, Chars) },
 			tab_to_column(0, Width),
 			io__write_string("> "),
 			print_half_line(Chars, SBS, 0, 0, Width, _),
 			io__write_string("\n"),
-			show_sbs_added_lines(File, SBS, Low1 - High)
+			show_sbs_added_lines(File, SBS, (Low + 1) - High)
 		;
 			{ error("show_sbs_added_lines: file ended prematurely") }
 		)
@@ -759,12 +913,11 @@ show_sbs_deleted_lines(File, SBS, Low - High) -->
 	( { Low < High } ->
 		( { file__get_line(File, Low, Line) } ->
 			{ SBS = side_by_side_info(Width, _, _, _, _) },
-			{ Low1 is Low + 1 },
 			{ string__to_char_list(Line, Chars) },
 			print_half_line(Chars, SBS, 0, 0, Width, OutPos),
 			tab_to_column(OutPos, Width),
 			io__write_string("<\n"),
-			show_sbs_deleted_lines(File, SBS, Low1 - High)
+			show_sbs_deleted_lines(File, SBS, (Low + 1) - High)
 		;
 			{ error("show_sbs_deleted_lines: file ended prematurely") }
 		)
@@ -772,8 +925,8 @@ show_sbs_deleted_lines(File, SBS, Low - High) -->
 		[]
 	).
 
-:- pred tab_width(int :: out) is det.
-tab_width(8).
+:- func tab_width = int.
+tab_width = 8.
 
 	% Put a number of spaces on the output stream.  Update
 	% the output column as we go.
@@ -785,9 +938,7 @@ put_spaces(Spaces, OutPos0, OutPos) -->
 		{ OutPos = OutPos0 }
 	;
 		io__write_char(' '),
-		{ Spaces1 is Spaces - 1 },
-		{ OutPos1 is OutPos0 + 1 },
-		put_spaces(Spaces1, OutPos1, OutPos)
+		put_spaces(Spaces - 1, OutPos0 + 1, OutPos)
 	).
 
 	% Given a "from" column and a "to" column, put sufficient
@@ -797,13 +948,11 @@ put_spaces(Spaces, OutPos0, OutPos) -->
 :- mode tab_to_column(in, in, di, uo) is det.
 
 tab_to_column(From, To) -->
-	{ tab_width(Tab) },
-	{ AfterTab is From + Tab - (From mod Tab) },
+	{ AfterTab is From + tab_width - (From rem tab_width) },
 	( { AfterTab > To } ->
 		( { From < To } ->
 			io__write_char(' '),
-			{ From1 is From + 1 },
-			tab_to_column(From1, To)
+			tab_to_column(From + 1, To)
 		;
 			[]
 		)
@@ -831,10 +980,8 @@ tab_to_column(From, To) -->
 print_half_line([], _SBS, _InPos, OutPos, _OutBound, OutPos) --> [].
 print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos) -->
 	( { C = '\t' } ->
-		{ tab_width(Tab) },
-
 			% Calculate how many spaces this tab is worth.
-		{ Spaces is Tab - InPos0 mod Tab },
+		{ Spaces is tab_width - InPos0 rem tab_width },
 		( { InPos0 = OutPos0 } ->
 			globals__io_lookup_bool_option(expand_tabs, ExpandTabs),
 			( { ExpandTabs = yes } ->
@@ -846,8 +993,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos) -->
 				;
 					TabStop = TabStop0
 				},
-				{ WriteSpaces is TabStop - OutPos0 },
-				put_spaces(WriteSpaces, OutPos0, OutPos1)
+				put_spaces(TabStop - OutPos0, OutPos0, OutPos1)
 			;
 				% If we're not exanding tabs, just print it and
 				% hope everything lines up okay.
@@ -873,7 +1019,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos) -->
 	***********/
 	;
 		% The default case.  Print and be done with it.
-		{ InPos is InPos0+1 },
+		{ InPos is InPos0 + 1 },
 		( { InPos < OutBound } ->
 			{ OutPos1 = InPos },
 			io__write_char(C)

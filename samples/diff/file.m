@@ -104,14 +104,12 @@ file__read_stream(Stream, File) -->
 		io__state, io__state).
 :- mode file__read_stream2(in, in, array_uo, di, uo) is det.
 file__read_stream2(Stream, LineNo, File) -->
-	io__read_line(Stream, Res),
+	io__read_line_as_string(Stream, Res),
 	( { Res = eof },
 		{ array__init(LineNo, "", File) }
 	; { Res = ok(Line) },
-		{ string__from_char_list(Line, Line1) },
-		{ LineNo1 is LineNo + 1 },
-		file__read_stream2(Stream, LineNo1, File1),
-		{ array__set(File1, LineNo, Line1, File) }
+		file__read_stream2(Stream, LineNo + 1, File1),
+		{ array__set(File1, LineNo, Line, File) }
 	; { Res = error(Error) },
 		{ io__error_message(Error, Msg) },
 		{ error(Msg) }
@@ -122,9 +120,8 @@ file__read_stream2(Stream, LineNo, File) -->
 file__get_line(file(_, Contents), LineNo, Line) :-
 	array__semidet_lookup(Contents, LineNo, Line).
 
-file__get_numlines(file(_, Contents), NumLines) :-
-	array__bounds(Contents, _, NumLines1),
-	NumLines is NumLines1 + 1.
+file__get_numlines(file(_, Contents), NumLines1 + 1) :-
+	array__bounds(Contents, _, NumLines1).
 
 %-----------------------------------------------------------------------------%
 
