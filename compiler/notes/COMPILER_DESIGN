@@ -251,6 +251,12 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 * removal of excess assignment unifications (excess.m)
 
+* reducing the number of variables that have to be saved across procedure calls
+  (saved_vars.m). We do this by putting the code that generates the value of
+  a variable just before the use of that variable, duplicating the variable
+  and the code that produces it if necessary, provided the cost of doing so
+  is smaller than the cost of saving and restoring the variable would be.
+
 The module transform.m contains stuff that is supposed to be useful
 for high-level optimizations (but which is not yet used).
 
@@ -312,6 +318,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			lookup_switch.m
 			string_switch.m
 			tag_switch.m
+		pragma_c_gen.m (embedded C code)
 
 	It also calls middle_rec.m to do middle recursion optimization.
 
