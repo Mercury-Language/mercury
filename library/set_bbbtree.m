@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -253,7 +253,7 @@
 
 
 	% `set_bbbtree__power_intersect(Sets, Set) is true iff `Set' is the
-	% interscetion of the sets in `Sets'.
+	% intersection of the sets in `Sets'.
 
 :- pred set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)),
 					set_bbbtree(T)).
@@ -262,6 +262,10 @@
 :- func set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)))
 		= set_bbbtree(T).
 
+	% `set_bbbtree__intersect_list(Sets) = Set is true iff `Set' is the
+	% intersection of the sets in `Sets'.
+
+:- func set_bbbtree__intersect_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
 	% `set_bbtree__difference(SetA, SetB, Set)' is true iff `Set' is the
 	%  set containing all the elements of `SetA' except those that
@@ -314,10 +318,10 @@
 % integer as an additional last argument. This integer is a ratio that is
 % used to measure how much larger one tree is allowed to be compared to the
 % other before some rotations are performed to rebalance them. These predicates
-% are currently not exported but it maybe useful to do so so that users are
-% able to influence the rebalancing process by specifying ratios.
+% are currently not exported but it maybe useful to do so to allow users to
+% influence the rebalancing process.
 %
-% NOTE :
+% NOTE:
 % The size of trees are measured in terms of number of elements and not height.
 % Also the fact that ratio is an integer seems counter intuitive but it should
 % be realized that this property is true at all levels of the tree. Hence the
@@ -887,6 +891,19 @@ set_bbbtree__power_intersect_r2(tree(V, _N, L, R), tree(AccV, AccN, AccL, AccR),
 							Intersection0, Ratio),
 	set_bbbtree__power_intersect_r2(L, Intersection0, Intersection1, Ratio),
 	set_bbbtree__power_intersect_r2(R, Intersection1, Set, Ratio).
+
+set_bbbtree__intersect_list([]) = set_bbbtree__init.
+set_bbbtree__intersect_list([Set | Sets]) =
+		set_bbbtree__intersect_list_r(Set, Sets, Ratio) :-
+	set_bbbtree__def_ratio(Ratio).
+
+:- func set_bbbtree__intersect_list_r(set_bbbtree(T), list(set_bbbtree(T)),
+	int) = set_bbbtree(T).
+
+set_bbbtree__intersect_list_r(Intersect, [], _Ratio) = Intersect.
+set_bbbtree__intersect_list_r(Intersect0, [Set | Sets], Ratio) = 
+		set_bbbtree__intersect_list_r(Intersect1, Sets, Ratio) :-
+	set_bbbtree__intersect_r(Intersect0, Set, Intersect1, Ratio).
 
 %------------------------------------------------------------------------------%
 

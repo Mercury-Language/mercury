@@ -144,6 +144,9 @@ Changes to the Mercury standard library:
   existing versions in that they do not abort when called upon to deconstruct
   non-canonical terms, such as values of types with user-defined equality.
 
+* We've added a new predicate `intersect_list' in each of the modules
+  implementing sets in the Mercury standard library.
+
 * We've added a predicate version of `set__fold'.
 
 * We've added function versions of `builtin__unsafe_promise_unique',

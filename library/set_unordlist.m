@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
+% Copyright (C) 1995-1997,1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -211,6 +211,12 @@
 :- func set_unordlist__power_intersect(set_unordlist(set_unordlist(T)))
 		= set_unordlist(T).
 
+	% `set_unordlist__intersect_list(A, B)' is true iff `B' is the
+	% intersection of all the sets in `A'
+
+:- func set_unordlist__intersect_list(list(set_unordlist(T)))
+		= set_unordlist(T).
+
 	% `set_unordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
 	% occur in `SetB'
@@ -359,6 +365,9 @@ set_unordlist__power_intersect([S0|Ss], S) :-
 		set_unordlist__power_intersect(Ss, S1),
 		set_unordlist__intersect(S1, S0, S)
 	).
+
+set_unordlist__intersect_list(Sets) = 
+	set_unordlist__power_intersect(Sets).
 
 %--------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 1999-2001 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -205,6 +205,11 @@
 
 :- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T)))
 		= set_ordlist(T).
+
+	% `set_ordlist__intersect_list(A, B)' is true iff `B' is the
+	% intersection of all the sets in `A'.
+
+:- func set_ordlist__intersect_list(list(set_ordlist(T))) = set_ordlist(T).
 
 	% `set_ordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
@@ -418,6 +423,9 @@ set_ordlist__power_intersect([S0|Ss], S) :-
 		set_ordlist__power_intersect(Ss, S1),
 		set_ordlist__intersect(S1, S0, S)
 	).
+
+set_ordlist__intersect_list(Sets) =
+	set_ordlist__power_intersect(Sets).
 
 %--------------------------------------------------------------------------%
 
