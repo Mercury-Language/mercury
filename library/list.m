@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -419,6 +419,27 @@
 :- mode list__map(pred(in, in) is semidet, in, in) is semidet.
 
 :- func list__map(func(X) = Y, list(X)) = list(Y).
+
+	% list__map2(T, L, M1, M2) uses the closure T
+	% to transform the elements of L into the elements of M1 and M2.
+:- pred list__map2(pred(A, B, C), list(A), list(B), list(C)).
+:- mode list__map2(pred(in, out, out) is det, in, out, out) is det.
+:- mode list__map2(pred(in, out, out) is semidet, in, out, out) is semidet.
+:- mode list__map2(pred(in, out, out) is multi, in, out, out) is multi.
+:- mode list__map2(pred(in, out, out) is nondet, in, out, out) is nondet.
+:- mode list__map2(pred(in, in, in) is semidet, in, in, in) is semidet.
+
+	% list__map3(T, L, M1, M2, M3) uses the closure T
+	% to transform the elements of L into the elements of M1, M2 and M3.
+:- pred list__map3(pred(A, B, C, D), list(A), list(B), list(C), list(D)).
+:- mode list__map3(pred(in, out, out, out) is det, in, out, out, out) is det.
+:- mode list__map3(pred(in, out, out, out) is semidet, in, out, out, out)
+	is semidet.
+:- mode list__map3(pred(in, out, out, out) is multi, in, out, out, out)
+	is multi.
+:- mode list__map3(pred(in, out, out, out) is nondet, in, out, out, out)
+	is nondet.
+:- mode list__map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
 
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
@@ -1104,9 +1125,19 @@ list__last([H|T], Last) :-
 %-----------------------------------------------------------------------------%
 
 list__map(_, [],  []).
-list__map(P, [H0|T0], [H|T]) :-
+list__map(P, [H0 | T0], [H | T]) :-
 	call(P, H0, H),
 	list__map(P, T0, T).
+
+list__map2(_, [],  [],  []).
+list__map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
+	call(P, H0, H1, H2),
+	list__map2(P, T0, T1, T2).
+
+list__map3(_, [],  [],  [],  []).
+list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
+	call(P, H0, H1, H2, H3),
+	list__map3(P, T0, T1, T2, T3).
 
 list__foldl(_, [], Acc, Acc).
 list__foldl(P, [H|T], Acc0, Acc) :-
