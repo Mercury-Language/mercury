@@ -70,7 +70,9 @@
 					cons_table,
 					maybe(dependency_info),
 					int,		% number of errors
-					int		% number of warnings
+					%%% num_warnings not used:
+					%%% int,	% number of warnings
+					int	% lambda predicate counter
 				).
 
 :- interface.
@@ -771,8 +773,9 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- pred module_info_num_errors(module_info, int).
 :- mode module_info_num_errors(in, out) is det.
 
-:- pred module_info_num_warnings(module_info, int).
-:- mode module_info_num_warnings(in, out) is det.
+% not used
+% :- pred module_info_num_warnings(module_info, int).
+% :- mode module_info_num_warnings(in, out) is det.
 
 :- pred module_info_consids(module_info, list(cons_id)).
 :- mode module_info_consids(in, out) is det.
@@ -828,8 +831,13 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- pred module_info_incr_errors(module_info, module_info).
 :- mode module_info_incr_errors(in, out) is det.
 
+/* not used
 :- pred module_info_incr_warnings(module_info, module_info).
 :- mode module_info_incr_warnings(in, out) is det.
+*/
+
+:- pred module_info_next_lambda_count(module_info, int, module_info).
+:- mode module_info_next_lambda_count(in, out, out) is det.
 
 :- pred module_info_remove_predid(module_info, pred_id, module_info).
 :- mode module_info_remove_predid(in, in, out) is det.
@@ -954,8 +962,12 @@ module_info_dependency_info_built(ModuleInfo) :-
 module_info_num_errors(ModuleInfo, NumErrors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, NumErrors, _).
 
-module_info_num_warnings(ModuleInfo, NumWarnings) :-
-	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, NumWarnings).
+% not used:
+% module_info_num_warnings(ModuleInfo, NumWarnings) :-
+% 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, NumWarnings).
+
+% module_info_lambda_count(ModuleInfo, LambdaCount) :-
+%  	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, LambdaCount).
 
 	% Various predicates which modify the module_info data structure.
 
@@ -1020,10 +1032,16 @@ module_info_incr_errors(ModuleInfo0, ModuleInfo) :-
 	Errs is Errs0 + 1,
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, Errs, M).
 
+/* not used
 module_info_incr_warnings(ModuleInfo0, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, Warns0),
 	Warns is Warns0 + 1,
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, L, Warns).
+*/
+module_info_next_lambda_count(ModuleInfo0, Count, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, Count0),
+	Count is Count0 + 1,
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, L, Count).
 
 module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
@@ -2130,7 +2148,7 @@ is_builtin__is_internal(yes - _).
 
 is_builtin__is_inline(_ - yes).
 
-is_builtin__make_builtin(Int, Inl, Int - Inl).
+is_builtin__make_builtin(IsInternal, IsInline, IsInternal - IsInline).
 
 %-----------------------------------------------------------------------------%
 

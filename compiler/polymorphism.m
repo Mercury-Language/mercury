@@ -62,12 +62,12 @@
 % into
 %
 %	p(X) :-
-%		V__1 = '$lambda_goal'(X)
+%		V__1 = '__LambdaGoal__1'(X)
 %		solutions(V__1, List),
 %		...
 %
-%	:- pred '$lambda_goal'(int::in, int::out).
-%	'$lambda_goal'(X, Y) :- q(Y, X).
+%	:- pred '__LambdaGoal__1'(int::in, int::out).
+%	'__LambdaGoal__1'(X, Y) :- q(Y, X).
 %
 
 %-----------------------------------------------------------------------------%
@@ -519,7 +519,10 @@ polymorphism__transform_lambda(Vars, Modes, LambdaGoal, Unification0,
 		list__append(ArgVars, Vars, AllArgVars),
 
 		module_info_name(ModuleInfo0, ModuleName),
-		PName = "$lambda_goal",
+		module_info_next_lambda_count(ModuleInfo0, LambdaCount,
+					ModuleInfo1),
+		string__int_to_string(LambdaCount, LambdaCountStr),
+		string__append("__LambdaGoal__", LambdaCountStr, PName),
 		PredName = unqualified(PName),
 		list__length(AllArgVars, Arity),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
@@ -569,10 +572,10 @@ polymorphism__transform_lambda(Vars, Modes, LambdaGoal, Unification0,
 		%
 		% save the new predicate in the predicate table
 		%
-		module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
+		module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
 		predicate_table_insert(PredicateTable0, PredInfo,
 			PredId, PredicateTable),
-		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo),
 		polymorphism__set_module_info(ModuleInfo, PolyInfo0, PolyInfo)
 	),
