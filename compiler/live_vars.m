@@ -189,10 +189,10 @@ detect_live_vars_in_goal_2(
 		ExtraLives0, Liveness, LiveSets0,
 		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
-		Builtin = is_builtin
+		Builtin = is_builtin,
+		predicate_name(ModuleInfo, PredId, PredName),
+		PredName \= "call"
 	->
-		% XXX is this correct???
-		% What about nondet builtin goals (e.g. call/1)?
 		LiveSets = LiveSets0,
 		ExtraLives = ExtraLives0
 	;
