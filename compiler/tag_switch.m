@@ -76,10 +76,10 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	% we generate FailCode and EndCode here because the last case within
 	% a primary tag may not be the last case overall
 	(
-		{ CanFail = can_fail },
+		{ CanFail = cannot_fail },
 		{ FailCode = empty }
 	;
-		{ CanFail = cannot_fail },
+		{ CanFail = can_fail },
 		code_info__generate_failure(FailCode1),
 		{ FailCode = tree(
 			node([label(FailLabel) - "switch has failed"]),
