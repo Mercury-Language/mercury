@@ -66,7 +66,8 @@
 
 :- implementation.
 
-:- import_module require, string, int.
+:- import_module deconstruct.
+:- import_module bool, require, string, int.
 
 	% std_util has a lot of types and functions with the same names,
 	% so we prefer to keep the namespace separate.
@@ -625,33 +626,42 @@ iterate_foldl(Start, Max, Pred) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+deconstruct(Term, Functor, Arity, Arguments) :-
+	TypeInfo = get_type_info(Term),
+	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+	TypeCtorRep = type_ctor_rep(TypeCtorInfo),
+	deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+			canonicalize, Functor, Arity, Arguments).
+
+:- pred deconstruct(T, type_info, type_ctor_info, type_ctor_rep,
+		noncanon_handling, string, int, list(std_util__univ)).
+:- mode deconstruct(in, in, in, in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct(in, in, in, in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct(in, in, in, in,
+		in(include_details_cc), out, out, out) is cc_multi.
+:- mode deconstruct(in, in, in, in, in, out, out, out) is cc_multi.
+
 	% Code to perform deconstructions (XXX not yet complete).
 	%
 	% There are many cases to implement here, only the ones that were
 	% immediately useful (e.g. called by io__write) have been implemented
 	% so far.
 
-deconstruct(Term, Functor, Arity, Arguments) :-
-	TypeInfo = get_type_info(Term),
-	TypeCtorInfo = get_type_ctor_info(TypeInfo),
-	TypeCtorRep = type_ctor_rep(TypeCtorInfo),
+deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+		NonCanon, Functor, Arity, Arguments) :-
 	( 
-		% XXX noncanonical term
 		TypeCtorRep = enum_usereq,
-		Functor = "some_enum_usereq", 
-		Arity = 0,
-		Arguments = []
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, enum,
+				NonCanon, Functor, Arity, Arguments)
 	; 	
 		TypeCtorRep = enum,
 		Functor = "some_enum", 
 		Arity = 0,
 		Arguments = []
 	;
-		% XXX noncanonical term
 		TypeCtorRep = du_usereq,
-		Functor = "some_du_usereq", 
-		Arity = 0,
-		Arguments = []
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, du,
+				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = du,
 
@@ -694,9 +704,8 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		)
 	;
 		TypeCtorRep = notag_usereq,
-		Functor = "some_notag_usereq", 
-		Arity = 0,
-		Arguments = []
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, notag,
+				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = notag,
 		Functor = "some_notag", 
@@ -704,9 +713,8 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arguments = []
 	;
 		TypeCtorRep = notag_ground_usereq,
-		Functor = "some_notag_ground_usereq", 
-		Arity = 0,
-		Arguments = []
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, notag_ground,
+				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = notag_ground,
 		Functor = "some_notag_ground", 
@@ -852,11 +860,9 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
-		% XXX noncanonical term
 		TypeCtorRep = reserved_addr_usereq,
-		Functor = "some_reserved_addr_usereq", 
-		Arity = 0,
-		Arguments = []
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, reserved_addr,
+				NonCanon, Functor, Arity, Arguments)
 	;
 		% XXX noncanonical term
 		TypeCtorRep = type_ctor_info,
@@ -890,12 +896,51 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		TypeCtorRep = unknown,
 		error("rtti_implementation: unknown type_ctor rep in deconstruct")
 	).
-	
+
 :- pred det_dynamic_cast(T::in, U::out) is det.
 
 det_dynamic_cast(Term, Actual) :-
 	std_util__type_to_univ(Term, Univ),
 	std_util__det_univ_to_type(Univ, Actual).
+
+
+:- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
+		noncanon_handling, string, int, list(std_util__univ)).
+
+:- mode handle_usereq_type(in, in, in, in,
+		in(do_not_allow), out, out, out) is det.
+:- mode handle_usereq_type(in, in, in, in,
+		in(canonicalize), out, out, out) is det.
+:- mode handle_usereq_type(in, in, in, in,
+		in(include_details_cc), out, out, out) is cc_multi.
+:- mode handle_usereq_type(in, in, in, in, in, out, out, out) is cc_multi.
+
+
+handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
+		TypeCtorRep, NonCanon, Functor, Arity, Arguments) :-
+	( NonCanon = do_not_allow,
+		error("attempt to deconstruct noncanonical term")
+	; NonCanon = canonicalize,
+		Functor = expand_type_name(TypeCtorInfo, yes),
+		Arity = 0,
+		Arguments = []
+	; NonCanon = include_details_cc,
+		deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+				NonCanon, Functor, Arity, Arguments)
+	).
+
+	% MR_expand_type_name from mercury_deconstruct.c
+:- func expand_type_name(type_ctor_info, bool) = string.
+
+expand_type_name(TypeCtorInfo, Wrap) = Name :-
+	( Wrap = yes ->
+		FmtStr = "<<%s:%s/%d>>"
+	;
+		FmtStr = "%s:%s/%d"
+	),
+	Name = string__format(FmtStr, [s(TypeCtorInfo ^ type_ctor_module_name),
+			s(TypeCtorInfo ^ type_ctor_name),
+			i(TypeCtorInfo ^ type_ctor_arity)]).
 
 	% Retrieve an argument number from a term, given the functor
 	% descriptor.
