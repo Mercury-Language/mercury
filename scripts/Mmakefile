@@ -78,6 +78,12 @@ install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
+	# Reportedly old versions of Mercury
+	# used to install mdbrc as read-only.
+	# If that is the case, then we need to make sure
+	# that it gets made writable before we install the
+	# new version.
+	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
 #-----------------------------------------------------------------------------#
