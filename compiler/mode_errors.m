@@ -68,6 +68,9 @@
 	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context
+	;	mode_error_non_local_lambda_var(var, inst)
+			% attempt to pass a live non-ground var as a
+			% non-local variable to a lambda goal
 	;	mode_error_unify_var_var(var, var, inst, inst)
 			% attempt to unify two free variables
 	;	mode_error_unify_var_functor(var, cons_id, list(var),
@@ -190,6 +193,8 @@ report_mode_error(mode_error_no_mode_decl, ModeInfo) -->
 	report_mode_error_no_mode_decl(ModeInfo).
 report_mode_error(mode_error_bind_var(Reason, Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_bind_var(ModeInfo, Reason, Var, InstA, InstB).
+report_mode_error(mode_error_non_local_lambda_var(Var, Inst), ModeInfo) -->
+	report_mode_error_non_local_lambda_var(ModeInfo, Var, Inst).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
 		ModeInfo) -->
 	report_mode_error_unify_var_var(ModeInfo, VarA, VarB, InstA, InstB).
@@ -280,12 +285,17 @@ report_mode_error_conj(ModeInfo, Errors, Culprit) -->
 
 find_important_errors([], [], []).
 find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
-	Error = delayed_goal(_, mode_error_info(_, _, _, ModeContext), _),
+	Error = delayed_goal(_, mode_error_info(_, ModeError, _, ModeContext),
+				_),
 	(
 		% an error is important unless it is a non-explicit unification,
 		% i.e. a head unification or a call argument unification
 		ModeContext = unify(unify_context(UnifyContext, _), _),
-		UnifyContext \= explicit
+		UnifyContext \= explicit,
+		% except that errors in lambda goals are important even
+		% if the unification that creates the lambda goal is
+		% an implicit one
+		ModeError \= mode_error_non_local_lambda_var(_, _)
 	->
 		ImportantErrors1 = ImportantErrors,
 		OtherErrors = [Error | OtherErrors1]
@@ -381,9 +391,9 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 	( { Reason = negation },
 		io__write_string("attempt to bind a variable inside a negation.\n")
 	; { Reason = if_then_else },
-		io__write_string("attempt to bind a non-local variable inside the\n"),
+		io__write_string("attempt to bind a non-local variable\n"),
 		prog_out__write_context(Context),
-		io__write_string("  condition of an if-then-else.\n")
+		io__write_string("  inside the condition of an if-then-else.\n")
 	; { Reason = lambda(PredOrFunc) },
 		{ hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS) },
 		io__write_string("attempt to bind a non-local variable inside\n"),
@@ -417,6 +427,29 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 	;
 		[]
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_non_local_lambda_var(mode_info, var, inst,
+					io__state, io__state).
+:- mode report_mode_error_non_local_lambda_var(mode_info_ui, in, in,
+					di, uo) is det.
+
+report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: variable `"),
+	mercury_output_var(Var, VarSet, no),
+	io__write_string("' has instantiatedness `"),
+	output_inst(VarInst, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  expected instantiatedness for non-local variables\n"),
+	prog_out__write_context(Context),
+	io__write_string("  of lambda goals is `ground'.\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -9,7 +9,9 @@
 
 :- pred bind_var_in_lambda is semidet.
 
-% :- pred share_var_in_lambda(T :: di) is det.
+:- pred share_var_in_lambda(T :: di) is det.
+
+:- pred share_dead_var_in_lambda(T :: di) is det.
 
 :- pred clobber_var_in_lambda(T :: di) is det.
 
@@ -46,11 +48,13 @@ bind_var_in_lambda :-
 	call((pred) is det :- Y = 42),
 	consume(Y).
 
-	% The compiler currently does not pass this test.  It should
-	% report an error but doesn't.
-% share_var_in_lambda(X) :-
-% 	call((pred) is det :- share(X)),
-% 	destroy(X).
+share_var_in_lambda(X) :-
+	call((pred) is det :- share(X)),
+	destroy(X).
+
+	% This one is OK since X is dead after the lambda.
+share_dead_var_in_lambda(X) :-
+	call((pred) is det :- share(X)).
 
 clobber_var_in_lambda(X) :-
 	call((pred) is det :- destroy(X)),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,6 +132,11 @@
 	%
 :- pred instmap__set(instmap, var, inst, instmap).
 :- mode instmap__set(in, in, in, out) is det.
+
+	% Set multiple entries in an instmap.
+	%
+:- pred instmap__set_vars(instmap, list(var), list(inst), instmap).
+:- mode instmap__set_vars(in, in, in, out) is det.
 
 :- pred instmap_delta_set(instmap_delta, var, inst, instmap_delta).
 :- mode instmap_delta_set(in, in, in, out) is det.
@@ -376,6 +381,15 @@ instmap__set(unreachable, _Var, _Inst, unreachable).
 instmap__set(reachable(InstMapping0), Var, Inst,
 		reachable(InstMapping)) :-
 	map__set(InstMapping0, Var, Inst, InstMapping).
+
+instmap__set_vars(InstMap, [], [], InstMap).
+instmap__set_vars(InstMap0, [V | Vs], [I | Is], InstMap) :-
+	instmap__set(InstMap0, V, I, InstMap1),
+	instmap__set_vars(InstMap1, Vs, Is, InstMap).
+instmap__set_vars(_, [_ | _], [], _) :-
+	error("instmap__set_vars").
+instmap__set_vars(_, [], [_ | _], _) :-
+	error("instmap__set_vars").
 
 instmap_delta_set(unreachable, _Var, _Inst, unreachable).
 instmap_delta_set(reachable(InstMapping0), Var, Inst, Instmap) :-

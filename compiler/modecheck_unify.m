@@ -347,6 +347,8 @@ modecheck_unification(X,
 	% First modecheck the lambda goal itself:
 	%
 	% initialize the initial insts of the lambda variables,
+	% check that the non-local vars are ground,
+	% mark the non-local vars as shared,
 	% lock the non-local vars,
 	% mark the non-clobbered lambda variables as live,
 	% modecheck the goal,
@@ -364,6 +366,15 @@ modecheck_unification(X,
 	% because that may have too much information.  If we use the
 	% initial instmap, variables will be considered as unique
 	% even if they become shared or clobbered in the lambda goal!
+	%
+	% However even this may not be enough.  If a unique non-local
+	% variable is used in its unique inst (e.g. it's used in a ui
+	% mode) and then shared within the lambda body, this is unsound.
+	% This variable should be marked as shared at the _top_ of the
+	% lambda goal.  As for implementing this, it probably means that
+	% the lambda goal should be re-modechecked, or even modechecked
+	% to a fixpoint.  For the moment, we get around this by sharing
+	% all non-local variables at the top of the lambda goal.
 	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -397,34 +408,96 @@ modecheck_unification(X,
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
-	mode_info_lock_vars(lambda(PredOrFunc), NonLocals,
-		ModeInfo2, ModeInfo3),
- 
-	mode_checkpoint(enter, "lambda goal", ModeInfo3, ModeInfo4),
-	% if we're being called from unique_modes.m, then we need to 
-	% call unique_modes__check_goal rather than modecheck_goal.
-	( HowToCheckGoal = check_unique_modes ->
-		unique_modes__check_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	instmap__lookup_vars(NonLocalsList, InstMap1, NonLocalInsts),
+	mode_info_get_module_info(ModeInfo2, ModuleInfo2),
+	(
+		% XXX This test is too conservative.
+		%
+		%     We should allow non-local variables to be non-ground
+		%     sometimes, possibly dependent on whether or not they
+		%     are dead after this unification.  In addition, we
+		%     should not "share" a unique non-local variable if
+		%     these two conditions hold:
+		%
+		%	- It is dead after this unification.
+		%	- It is not shared within the lambda body.
+		%
+		%     Unfortunately, we can't test the latter condition
+		%     until after we've mode-checked the lambda body.
+		%     (See the above comment on merging the initial and
+		%     final instmaps.)
+
+		inst_list_is_ground(NonLocalInsts, ModuleInfo2)
+	->
+		make_shared_inst_list(NonLocalInsts, ModuleInfo2,
+			SharedNonLocalInsts, ModuleInfo3),
+		instmap__set_vars(InstMap1, NonLocalsList, SharedNonLocalInsts,
+			InstMap2),
+		mode_info_set_module_info(ModeInfo2, ModuleInfo3, ModeInfo3),
+		mode_info_set_instmap(InstMap2, ModeInfo3, ModeInfo4),
+
+		mode_info_lock_vars(lambda(PredOrFunc), NonLocals,
+				ModeInfo4, ModeInfo5),
+
+		mode_checkpoint(enter, "lambda goal", ModeInfo5, ModeInfo6),
+		% if we're being called from unique_modes.m, then we need to 
+		% call unique_modes__check_goal rather than modecheck_goal.
+		(
+			HowToCheckGoal = check_unique_modes
+		->
+			unique_modes__check_goal(Goal0, Goal, ModeInfo6,
+				ModeInfo7)
+		;
+			modecheck_goal(Goal0, Goal, ModeInfo6, ModeInfo7)
+		),
+		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+		modecheck_final_insts(Vars, FinalInsts, ModeInfo7, ModeInfo8),
+		mode_checkpoint(exit, "lambda goal", ModeInfo8, ModeInfo9),
+
+		mode_info_remove_live_vars(LiveVars, ModeInfo9, ModeInfo10),
+		mode_info_unlock_vars(lambda(PredOrFunc), NonLocals,
+			ModeInfo10, ModeInfo11),
+
+		%
+		% Ensure that the non-local vars are shared OUTSIDE the
+		% lambda unification as well as inside.
+		%
+
+		instmap__set_vars(InstMap0, NonLocalsList, SharedNonLocalInsts,
+			InstMap11),
+		mode_info_set_instmap(InstMap11, ModeInfo11, ModeInfo12),
+
+		%
+		% Now modecheck the unification of X with the lambda-expression.
+		%
+
+		set__to_sorted_list(NonLocals, ArgVars),
+		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
+				Det, Unification0, Mode, Unification,
+				ModeInfo12, ModeInfo),
+		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)
 	;
-		modecheck_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
-	),
-	mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
-	modecheck_final_insts(Vars, FinalInsts, ModeInfo5, ModeInfo6),
-	mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
- 
-	mode_info_remove_live_vars(LiveVars, ModeInfo7, ModeInfo8),
-	mode_info_unlock_vars(lambda(PredOrFunc), NonLocals,
-		ModeInfo8, ModeInfo9),
-	mode_info_set_instmap(InstMap0, ModeInfo9, ModeInfo10),
- 
-	%
-	% Now modecheck the unification of X with the lambda-expression.
-	%
- 
-	RHS0 = lambda_goal(PredOrFunc, ArgVars, Vars, Modes, Det, Goal),
-	modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
-			Det, RHS0, Unification0, Mode, RHS, Unification,
-			ModeInfo10, ModeInfo).
+		list__filter(lambda([Var :: in] is semidet,
+			( instmap__lookup_var(InstMap1, Var, Inst),
+			  \+ inst_is_ground(ModuleInfo2, Inst)
+			)),
+			NonLocalsList, NonGroundNonLocals),
+		( NonGroundNonLocals = [BadVar | _] ->
+			instmap__lookup_var(InstMap1, BadVar, BadInst),
+			set__singleton_set(WaitingVars, BadVar),
+			mode_info_error(WaitingVars,
+				mode_error_non_local_lambda_var(BadVar,
+						BadInst),
+				ModeInfo2, ModeInfo)
+		;
+			error("modecheck_unification(lambda): very strange var")
+		),
+			% return any old garbage
+		RHS = lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
+		Mode = (free -> free) - (free -> free),
+		Unification = Unification0
+	).
 
 :- pred modecheck_unify_lambda(var, pred_or_func, list(var),
 		list(mode), determinism, unify_rhs, unification,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,6 +74,14 @@ in the general case.
 	% Given an inst, return a new inst which is the same as the
 	% original inst but with all occurrences of `unique' replaced
 	% with `mostly_unique'.
+
+:- pred make_shared_inst_list(list(inst), module_info, list(inst), module_info).
+:- mode make_shared_inst_list(in, in, out, out) is det.
+
+	% Given a list of insts, return a new list of insts which is the
+	% same as the original list of insts, but with all occurrences
+	% of `unique' replaced with `shared'.  It is an error if any part
+	% of the inst list is free.
 
 %-----------------------------------------------------------------------------%
 
@@ -970,9 +978,6 @@ maybe_make_shared_inst_list([], [_|_], _, _, _) :-
 maybe_make_shared_inst_list([_|_], [], _, _, _) :-
 	error("maybe_make_shared_inst_list: length mismatch").
 
-:- pred make_shared_inst_list(list(inst), module_info,
-				list(inst), module_info).
-:- mode make_shared_inst_list(in, in, out, out) is det.
 
 make_shared_inst_list([], ModuleInfo, [], ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
