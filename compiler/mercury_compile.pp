@@ -1853,7 +1853,8 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		ModuleInfo, Code) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	( { pred_info_is_imported(PredInfo) } ->
+	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	( { ProcIds = [] } ->
 		{ ModuleInfo1 = ModuleInfo0 },
 		{ Code1 = [] }
 	;
@@ -1867,7 +1868,6 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 			[]
 		),
 
-		{ pred_info_non_imported_procids(PredInfo, ProcIds) },
 		{ module_info_shapes(ModuleInfo0, Shapes0) },
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
 			PredInfo, ModuleInfo0, Shapes0, Shapes, Code1),
