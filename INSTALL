@@ -74,14 +74,14 @@ make install
 #	   on that system.
 #
 #	   If Mercury does not support shared libraries on your system,
-#	   you may want to use the command `mmake install_opt_library' to
+#	   you may want to use the command `mmake install_split_library' to
 #	   build and install a version of the Mercury libraries using the
 #	   `--split-c-files' option to avoid linking in unused procedures.
 #	   This can reduce the size of a hello world executable from ~400k
 #	   to ~120k.  (The only reason this is not the default is that
-#	   installing the optimized libraries takes quite a long time.  As a
+#	   installing the split libraries takes quite a long time.  As a
 #	   compromise, the command `mmake install_opt_library LIBGRADES='
-#	   will install an optimized version of the library just for the
+#	   will install a split version of the library just for the
 #	   default grade.)
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
