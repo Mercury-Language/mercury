@@ -129,6 +129,12 @@
 :- func unsafe_promise_unique(T) = T.
 :- mode unsafe_promise_unique(in) = uo is det.
 
+% A synonym for fail/0; the name is more in keeping with Mercury's
+% declarative style rather than its Prolog heritage.
+
+:- pred false.
+:- mode false is failure.
+
 %-----------------------------------------------------------------------------%
 
 % A call to the function `promise_only_solution(Pred)' constitutes a
@@ -243,6 +249,10 @@
 
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
+
+%-----------------------------------------------------------------------------%
+
+false :- fail.
 
 %-----------------------------------------------------------------------------%
 

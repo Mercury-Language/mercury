@@ -239,6 +239,10 @@ Changes to the Mercury standard library:
   `float__builtin_float_*' predicates, which were synonyms
   for the arithmetic functions dating from when Mercury didn't
   have functions. 
+
+* We've added int:'/'/2 as a synonym for int:'//'/2 and false/0 as a
+  built-in synonym for fail/0 (both left-overs from Mercury's Prolog
+  heritage.)
   
 * We've removed the long obsolete predicates `io__read_anything',
   `io__write_anything', and `io__print_anything', which were long ago
