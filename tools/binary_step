@@ -3,19 +3,28 @@
 usage="\
 Usage: $0 [options]
 Options:
+	-c, --compile-only
+		Compile only. Do not compare stage2.ok and stage3.
 	-h, --help
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
 "
 
+compile_only="false"
 jfactor=""
 mmake_opts=""
+outfile=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
+
+	-c|--compile-only)
+		compile_only="true"; shift ;;
 
 	-h|--help)
 		echo "$usage"
@@ -30,6 +39,11 @@ while [ $# -gt 0 ]; do
 
 	-m|--mmake)
 		mmake_opts="$mmake_opts $2"; shift ;;
+
+	-o|--output-file)
+		outfile="$2"; shift ;;
+	-o*)
+		outfile="` expr $1 : '-o\(.*\)' `"; ;;
 
 	--)	
 		shift; break ;;
@@ -130,4 +144,31 @@ else
 	exit 1
 fi
 
-exit 0
+if test "$compile_only" = "true"
+then
+	exit 0
+fi
+
+exit_status=0
+
+exec 3>&1		# save stdout in fd 3
+if [ -n "$outfile" ]
+then
+	exec > "$outfile"	# redirect stdout to $outfile
+fi
+
+for dir in library compiler; do
+	for file in stage2.ok/$dir/*.c; do
+		diff -u $file stage3/$dir/`basename $file` ||
+			exit_status=1
+	done
+done
+
+exec >&3		# restore stdout from fd 3
+if [ $exit_status -ne 0 ]; then
+	echo "error - stage 2 and stage 3 differ!"
+else
+	echo "stage 2 and stage 3 compare ok"
+fi
+
+exit $exit_status

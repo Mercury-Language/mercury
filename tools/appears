@@ -1,0 +1,12 @@
+#!/bin/sh
+
+name=$1
+shift
+for arg in "$@"
+do
+	if test "$name" = "$arg"
+	then
+		exit 0
+	fi
+done
+exit 1

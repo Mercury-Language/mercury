@@ -1,0 +1,9 @@
+#!/bin/sh
+
+take=`expr $# / 2`
+while test $take -gt 0
+do
+	echo -n "$1 "
+	shift
+	take=`expr $take - 1`
+done

@@ -7,10 +7,10 @@ Options:
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
-	-o <filename>, --output-file <filename>
-		Output results to <filename>.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
 	-r, --copy-runtime
 		Copy the runtime directory instead of linking it.
 	-2, --keep-stage-2
@@ -143,7 +143,7 @@ ln -s ../Mmake* .
 if test -f ../Mmake.stage.params
 then
 	/bin/rm -f Mmake.params
-	ln -s ../Mmake.stage.params Mmake.params
+	cp ../Mmake.stage.params Mmake.params
 fi
 cd ..
 
