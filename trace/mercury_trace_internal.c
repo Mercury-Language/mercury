@@ -479,10 +479,7 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 		return "missing exception value";
 	}
 
-	type_info = MR_field(MR_mktag(0), exception,
-			MR_UNIV_OFFSET_FOR_TYPEINFO);
-	value = MR_field(MR_mktag(0), exception,
-			MR_UNIV_OFFSET_FOR_DATA);
+	MR_unravel_univ(exception, type_info, value);
 
 	(*browser)(type_info, value, caller, format);
 

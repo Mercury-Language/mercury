@@ -1104,12 +1104,8 @@ MR_trace_make_var_list(void)
 		}
 
 		MR_TRACE_USE_HP(
-			MR_incr_hp(univ, 2);
+			MR_new_univ_on_hp(univ, type_info, value);
 		);
-
-		MR_field(MR_mktag(0), univ, MR_UNIV_OFFSET_FOR_TYPEINFO)
-			= (MR_Word) type_info;
-		MR_field(MR_mktag(0), univ, MR_UNIV_OFFSET_FOR_DATA) = value;
 
 		MR_TRACE_USE_HP(
 			var_list = MR_list_cons(univ, var_list);
@@ -1217,16 +1213,13 @@ MR_trace_make_nth_var(MR_Word debugger_request)
 	var_number = MR_get_var_number(debugger_request);
 		/* debugger_request should be of the form: 
 		   current_nth_var(var_number) */
-	MR_TRACE_USE_HP(
-		MR_incr_hp(univ, 2);
-	);
 
 	problem = MR_trace_return_var_info(var_number, NULL,
 			&type_info, &value);
 	if (problem == NULL) {
-		MR_field(MR_mktag(0), univ, MR_UNIV_OFFSET_FOR_TYPEINFO)
-			= (MR_Word) type_info;
-		MR_field(MR_mktag(0), univ, MR_UNIV_OFFSET_FOR_DATA) = value;
+		MR_TRACE_USE_HP(
+			MR_new_univ_on_hp(univ, type_info, value);
+		);
 	} else {
 		/*
 		** Should never occur since we check in the external debugger

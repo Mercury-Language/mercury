@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,7 @@
 :- import_module hlds_data, hlds_pred, hlds_out.
 :- import_module make_tags, prog_data, prog_util, prog_out.
 :- import_module code_util, special_pred, type_util, globals, options.
-:- import_module builtin_ops.
+:- import_module builtin_ops, error_util.
 
 :- import_module bool, string, int, map, std_util, assoc_list, require.
 :- import_module term.
@@ -288,22 +288,20 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			EqualityAxioms = standard
 		),
 		list__length(Ctors, NumFunctors),
+		globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
 		RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
 		(
 			Enum = yes,
 			TypeCtorRep = enum(EqualityAxioms),
 			type_ctor_info__make_enum_tables(Ctors, ConsTagMap,
-				RttiTypeId, TypeTables,
+				RttiTypeId, ReserveTag, TypeTables,
 				FunctorsInfo, LayoutInfo),
 			NumPtags = -1
 		;
 			Enum = no,
-			globals__lookup_bool_option(Globals,
-				unboxed_no_tag_types, NoTagOption),
 			(
-				NoTagOption = yes,
-				type_constructors_are_no_tag_type(Ctors,
-					Name, ArgType, MaybeArgName)
+				type_constructors_should_be_no_tag(Ctors, 
+					Globals, Name, ArgType, MaybeArgName)
 			->
 				( term__is_ground(ArgType) ->
 					Inst = equiv_type_is_ground
@@ -399,12 +397,24 @@ type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeId,
 % Make the functor and notag tables for an enum type.
 
 :- pred type_ctor_info__make_enum_tables(list(constructor)::in,
-	cons_tag_values::in, rtti_type_id::in, list(rtti_data)::out,
+	cons_tag_values::in, rtti_type_id::in, bool::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
-type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeId,
+type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeId, ReserveTag,
 		TypeTables, FunctorInfo, LayoutInfo) :-
-	type_ctor_info__make_enum_functor_tables(Ctors, 0, ConsTagMap,
+	(
+		% If there are any existentially quantified type variables,
+		% then the type will contain hidden fields holding the
+		% type_infos and/or typeclass infos for those type variables,
+		% so it won't be a single-argument type.
+
+		ReserveTag = yes
+	->
+		unexpected("type_ctor_info", "enum in .rt grade")
+	;
+		InitTag = 0
+	),
+	type_ctor_info__make_enum_functor_tables(Ctors, InitTag, ConsTagMap,
 		RttiTypeId, FunctorDescs, OrdinalOrderRttiNames, SortInfo0),
 	list__sort(SortInfo0, SortInfo),
 	assoc_list__values(SortInfo, NameOrderedRttiNames),
@@ -475,8 +485,16 @@ type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
 
 type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 		ModuleInfo, TypeTables, NumPtags, FunctorInfo, LayoutInfo) :-
+	module_info_globals(ModuleInfo, Globals),
+	(
+		globals__lookup_bool_option(Globals, reserve_tag, yes)
+	->
+		InitTag = 1
+	;
+		InitTag = 0
+	),
 	map__init(TagMap0),
-	type_ctor_info__make_du_functor_tables(Ctors, 0, ConsTagMap,
+	type_ctor_info__make_du_functor_tables(Ctors, InitTag, ConsTagMap,
 		RttiTypeId, ModuleInfo,
 		FunctorDescs, SortInfo0, TagMap0, TagMap),
 	list__sort(SortInfo0, SortInfo),
@@ -487,7 +505,7 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 	NameOrderedTableRttiName = du_name_ordered_table,
 	FunctorInfo = du_functors(NameOrderedTableRttiName),
 
-	type_ctor_info__make_du_ptag_ordered_table(TagMap, MaxPtag,
+	type_ctor_info__make_du_ptag_ordered_table(TagMap, InitTag, MaxPtag,
 		RttiTypeId, ValueOrderedTableRttiName, ValueOrderedTables,
 		NumPtags),
 	LayoutInfo = du_layout(ValueOrderedTableRttiName),
@@ -755,15 +773,16 @@ type_ctor_info__update_tag_info(Ptag, Stag, Locn, RttiName, TagMap0, TagMap)
 		map__det_insert(TagMap0, Ptag, Locn - NewSharerMap, TagMap)
 	).
 
-:- pred type_ctor_info__make_du_ptag_ordered_table(tag_map::in, int::in,
-	rtti_type_id::in, rtti_name::out, list(rtti_data)::out, int::out)
-	is det.
+:- pred type_ctor_info__make_du_ptag_ordered_table(tag_map::in, 
+	int::in, int::in, rtti_type_id::in, 
+	rtti_name::out, list(rtti_data)::out, int::out) is det.
 
-type_ctor_info__make_du_ptag_ordered_table(TagMap, MaxPtagValue,
+type_ctor_info__make_du_ptag_ordered_table(TagMap, MinPtagValue, MaxPtagValue,
 		RttiTypeId, PtagOrderedRttiName, Tables, NumPtags) :-
 	map__to_assoc_list(TagMap, TagList),
-	type_ctor_info__make_du_ptag_layouts(TagList, 0, MaxPtagValue,
-		RttiTypeId, PtagLayouts, SubTables, NumPtags),
+	type_ctor_info__make_du_ptag_layouts(TagList, 
+		MinPtagValue, MaxPtagValue, RttiTypeId, 
+		PtagLayouts, SubTables, NumPtags),
 	PtagOrderedTable = du_ptag_ordered_table(RttiTypeId, PtagLayouts),
 	PtagOrderedRttiName = du_ptag_ordered_table,
 	Tables = [PtagOrderedTable | SubTables].

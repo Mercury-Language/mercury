@@ -36,6 +36,7 @@ Grade options:
 	--profile-time
 	--profile-memory
 	--use-trail
+	--reserve-tag
 	--use-minimal-model
 	--pic-reg
 	--no-stack-trace
@@ -63,6 +64,7 @@ profile_calls=false
 profile_memory=false
 profile_deep=false
 use_trail=false
+reserve_tag=false
 use_minimal_model=false
 pic_reg=false
 stack_trace=false

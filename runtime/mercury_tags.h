@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -73,16 +73,31 @@
 #define	MR_const_mask_field(p, i)	((const MR_Word *) MR_strip_tag(p))[i]
 
 /*
-** the following MR_list_* macros are used by handwritten C code
-** that needs to access Mercury lists. The definitions of these macros
-** depend on the data representation scheme used by compiler/make_tags.m.
+** the following macros are used by handwritten C code that needs to access 
+** Mercury data structures. The definitions of these macros depend on the data 
+** representation scheme used by compiler/make_tags.m.
 */
 
-#define	MR_RAW_TAG_NIL		0
-#define	MR_RAW_TAG_CONS		1
+#ifdef MR_RESERVE_TAG
+  #define MR_RAW_TAG_VAR               0     /* for Prolog-style variables */
+  #define MR_FIRST_UNRESERVED_RAW_TAG  1
+#else
+  #define MR_FIRST_UNRESERVED_RAW_TAG  0
+#endif
+
+#define MR_RAW_TAG_NIL          MR_FIRST_UNRESERVED_RAW_TAG
+#define MR_RAW_TAG_CONS         (MR_FIRST_UNRESERVED_RAW_TAG + 1)
+
+#define MR_RAW_UNIV_TAG         MR_FIRST_UNRESERVED_RAW_TAG
 
 #define	MR_TAG_NIL		MR_mktag(MR_RAW_TAG_NIL)
 #define	MR_TAG_CONS		MR_mktag(MR_RAW_TAG_CONS)
+
+#ifdef MR_RESERVE_TAG
+    #define MR_TAG_VAR          MR_mktag(MR_RAW_TAG_VAR)
+#endif
+
+#define	MR_UNIV_TAG		MR_mktag(MR_RAW_UNIV_TAG)
 
 #if TAGBITS > 0
 

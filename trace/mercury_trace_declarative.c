@@ -1106,12 +1106,8 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 		}
 
 		MR_TRACE_USE_HP(
-			MR_tag_incr_hp(arg, MR_mktag(0), 2);
+			MR_new_univ_on_hp(arg, arg_type, arg_value);
 		);
-		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_TYPEINFO) =
-				(MR_Word) arg_type;
-		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_DATA) =
-				arg_value;
 
 		MR_TRACE_CALL_MERCURY(
 			atom = MR_DD_add_trace_atom_arg(atom,

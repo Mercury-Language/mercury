@@ -565,6 +565,7 @@ static int MR_TYPECTOR_REP_EQUIV_GROUND		=29;
 static int MR_SECTAG_NONE				= 0;
 static int MR_SECTAG_LOCAL				= 1;
 static int MR_SECTAG_REMOTE				= 2;
+static int MR_SECTAG_VARIABLE				= 3;
 
 
 static int

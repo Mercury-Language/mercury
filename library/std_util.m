@@ -2054,7 +2054,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 MR_fatal_error(""notag arg list is too long"");
             }
 
-            new_data = MR_field(MR_mktag(0), MR_list_head(ArgList),
+            new_data = MR_field(MR_UNIV_TAG, MR_list_head(ArgList),
                 MR_UNIV_OFFSET_FOR_DATA);
             break;
 
@@ -2092,7 +2092,8 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                         functor_desc->MR_du_functor_secondary;
                     for (i = 0; i < arity; i++) {
                         MR_field(ptag, new_data, i + 1) =
-                            MR_field(MR_mktag(0), MR_list_head(arg_list),
+                            MR_field(MR_UNIV_TAG, 
+			    	MR_list_head(arg_list),
                                 MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
@@ -2107,12 +2108,15 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
                     for (i = 0; i < arity; i++) {
                         MR_field(ptag, new_data, i) =
-                            MR_field(MR_mktag(0), MR_list_head(arg_list),
+                            MR_field(MR_UNIV_TAG, 
+			    	MR_list_head(arg_list),
                                 MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
 
                     break;
+                case MR_SECTAG_VARIABLE:
+		    MR_fatal_error(""construct(): cannot construct variable"");
                 }
 
                 if (! MR_list_is_empty(arg_list)) {
@@ -2137,7 +2141,8 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                     arg_list = ArgList;
                     for (i = 0; i < arity; i++) {
                         MR_field(MR_mktag(0), new_data, i) =
-                                MR_field(MR_mktag(0), MR_list_head(arg_list),
+                                MR_field(MR_UNIV_TAG, 
+				    MR_list_head(arg_list),
                                     MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
@@ -2158,8 +2163,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         ** Create a univ.
         */
 
-        MR_incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-        MR_define_univ_fields(Term, type_info, new_data);
+        MR_new_univ_on_hp(Term, type_info, new_data);
     }
 
     SUCCESS_INDICATOR = success;
@@ -2247,7 +2251,8 @@ construct_tuple(Args) =
 		MR_incr_hp_msg(new_data, Arity, MR_PROC_LABEL,
 			""<created by std_util:construct_tuple/1>"");
 		for (i = 0; i < Arity; i++) {
-			arg_value = MR_field(MR_mktag(0), MR_list_head(Args),
+			arg_value = MR_field(MR_UNIV_TAG, 
+					MR_list_head(Args),
 					MR_UNIV_OFFSET_FOR_DATA);
 			MR_field(MR_mktag(0), new_data, i) = arg_value;
 			Args = MR_list_tail(Args);
@@ -2257,8 +2262,7 @@ construct_tuple(Args) =
 	/*
 	** Create a univ.
 	*/
-	MR_incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_define_univ_fields(Term, type_info, new_data);
+	MR_new_univ_on_hp(Term, type_info, new_data);
 }
 ").
 
@@ -2449,7 +2453,7 @@ ML_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
             return FALSE;
         }
 
-        list_arg_type_info = (MR_TypeInfo) MR_field(MR_mktag(0),
+        list_arg_type_info = (MR_TypeInfo) MR_field(MR_UNIV_TAG,
             MR_list_head(arg_list), MR_UNIV_OFFSET_FOR_TYPEINFO);
 
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
@@ -2490,7 +2494,7 @@ ML_copy_arguments_from_list_to_vector(int arity, MR_Word arg_list,
 
     for (i = 0; i < arity; i++) {
         MR_field(MR_mktag(0), term_vector, i) =
-            MR_field(MR_mktag(0), MR_list_head(arg_list),
+            MR_field(MR_UNIV_TAG, MR_list_head(arg_list),
                 MR_UNIV_OFFSET_FOR_DATA);
         arg_list = MR_list_tail(arg_list);
     }
@@ -2913,6 +2917,8 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                             ptag_layout->MR_sectag_alternatives[sectag];
                         arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                         break;
+                    case MR_SECTAG_VARIABLE:
+		        MR_fatal_error(""ML_expand(): cannot expand variable"");
                 }
 
                 expand_info->arity = functor_desc->MR_du_functor_orig_arity;
@@ -3143,14 +3149,16 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_UNIV: {
             MR_Word data_word;
+
+	    MR_TypeInfo univ_type_info;
+	    MR_Word univ_data;
                 /*
                  * Univ is a two word structure, containing
                  * type_info and data.
                  */
             data_word = *data_word_ptr;
-            ML_expand((MR_TypeInfo)
-                ((MR_Word *) data_word)[MR_UNIV_OFFSET_FOR_TYPEINFO],
-                &((MR_Word *) data_word)[MR_UNIV_OFFSET_FOR_DATA], expand_info);
+	    MR_unravel_univ(data_word, univ_type_info, univ_data);
+            ML_expand(univ_type_info, &univ_data, expand_info);
             break;
         }
 
@@ -3399,6 +3407,8 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     functor_desc =
                         ptag_layout->MR_sectag_alternatives[sectag];
                     break;
+                case MR_SECTAG_VARIABLE:
+		    MR_fatal_error(""ML_named_arg_num(): unexpected variable"");
             }
 
             if (functor_desc->MR_du_functor_arg_names == NULL) {
@@ -3553,8 +3563,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     if (success) {
         /* Allocate enough room for a univ */
-        MR_incr_hp_msg(ArgumentUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-        MR_define_univ_fields(ArgumentUniv, arg_type_info, *argument_ptr);
+        MR_new_univ_on_hp(ArgumentUniv, arg_type_info, *argument_ptr);
     }
 
     SUCCESS_INDICATOR = success;
@@ -3652,8 +3661,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
     while (--i >= 0) {
 
             /* Create an argument on the heap */
-        MR_incr_hp_msg(Argument, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-        MR_define_univ_fields(Argument,
+        MR_new_univ_on_hp(Argument,
             expand_info.arg_type_infos[i],
             expand_info.arg_values[i + expand_info.num_extra_args]);
 
@@ -3727,8 +3735,7 @@ get_functor_info(Univ, FunctorInfo) :-
             functor_desc = type_ctor_info->type_functors.functors_notag;
             exp_type_info = MR_pseudo_type_info_is_ground(
                 functor_desc->MR_notag_functor_arg_type);
-            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
 
@@ -3738,8 +3745,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
-            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
 
@@ -3777,8 +3783,7 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_EQUIV:
             exp_type_info = MR_pseudo_type_info_is_ground(
                 type_ctor_info->type_layout.layout_equiv);
-            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
 
@@ -3786,8 +3791,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 type_ctor_info->type_layout.layout_equiv);
-            MR_incr_hp_msg(ExpUniv, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-            MR_define_univ_fields(ExpUniv, exp_type_info, value);
+            MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
 
@@ -3913,13 +3917,15 @@ get_functor_info(Univ, FunctorInfo) :-
                                 functor_desc->MR_du_functor_arg_types[i]);
                         }
 
-                        MR_incr_hp_msg(arg, 2, MR_PROC_LABEL,
-                            ""std_util:univ/0"");
-                        MR_define_univ_fields(arg,
+                        MR_new_univ_on_hp(arg,
                             arg_type_info, arg_vector[i]);
                         Args = MR_list_cons_msg(arg, Args, MR_PROC_LABEL);
                     }
                     break;
+
+                case MR_SECTAG_VARIABLE:
+		    MR_fatal_error(
+		        ""get_du_functor_info: unexpected variable"");
 
                 default:
                     MR_fatal_error(

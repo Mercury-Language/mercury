@@ -793,6 +793,7 @@ long_usage -->
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
+	;       tag             % whether or not to reserve a tag
 	;	minimal_model	% whether we set up for minimal model tabling
 	;	pic		% Do we need to reserve a register for
 				% PIC (position independent code)?
@@ -1018,6 +1019,9 @@ grade_component_table("profall", prof, [profile_time - bool(yes),
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).
 
+	% Tag reservation components
+grade_component_table("rt", tag, [reserve_tag - bool(yes)]).
+
 	% Mimimal model tabling components
 grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)]).
 
@@ -1058,6 +1062,7 @@ grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
+grade_start_values(reserve_tag - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(stack_trace - bool(no)).

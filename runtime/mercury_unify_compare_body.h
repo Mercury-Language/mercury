@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -126,6 +126,8 @@ start_label:
                         case MR_SECTAG_NONE:                                  \
                             sectag = 0;                                       \
                             break;                                            \
+                        case MR_SECTAG_VARIABLE:                              \
+                            MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");                                                   \
                     }                                                         \
                                                                               \
                     functor_desc = ptaglayout->MR_sectag_alternatives[sectag];\
@@ -185,6 +187,9 @@ start_label:
                     case MR_SECTAG_NONE:
                         x_sectag = 0;
                         break;
+
+                    case MR_SECTAG_VARIABLE:
+                        MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");                                                   \
                 }
 
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];

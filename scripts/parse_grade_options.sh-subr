@@ -131,6 +131,11 @@
 	--no-use-trail)
 		use_trail=false ;;
 
+	--reserve-tag)
+		reserve_tag=true ;;
+	--no-reserve-tag)
+		reserve_tag=false ;;
+
 	--use-minimal-model)
 		use_minimal_model=true ;;
 	--no-use-minimal-model)
@@ -183,6 +188,7 @@
 		profile_memory=false
 		profile_deep=false
 		use_trail=false
+		reserve_tag=false
 		use_minimal_model=false
 		pic_reg=false
 		stack_trace=false
@@ -359,6 +365,10 @@
 
 				tr)
 					use_trail=true
+					;;
+
+				rt)
+					reserve_tag=true
 					;;
 
 				mm)

@@ -3476,6 +3476,9 @@ and @samp{memprof}
 @item Whether to enable the trail:
 @samp{tr} (the default is no trailing).
 
+@item Whether or not to reserve a tag in the data representation of the generated code:
+@samp{rt} (the default is no reserved tag)
+
 @item What debugging features to enable:
 @samp{debug} (the default is no debugging features).
 
@@ -3557,6 +3560,9 @@ and grade modifier; they are followed by descriptions of those options.
 @c 
 @item @samp{.tr}
 @code{--use-trail}.
+
+@item @samp{.rt}
+@code{--reserve-tag}.
 
 @item @samp{.debug}
 @code{--debug}.
@@ -3680,6 +3686,13 @@ Enable use of a trail.
 This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
 This option is not yet supported for the IL or Java back-ends.
+@sp 1
+@item @code{--reserve-tag} (grades: any grade containing @samp{.rt})
+Reserve a tag in the data representation of the generated 
+code. This tag is intended to be used to give an explicit
+representation to free variables.
+This is necessary for a seamless Herbrand constraint solver --- 
+for use with HAL.
 @sp 1
 @item @code{--pic-reg} (grades: any grade containing `.pic_reg')
 [For Unix with intel x86 architecture only.]

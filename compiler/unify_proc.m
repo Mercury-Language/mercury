@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -719,8 +719,8 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			unify_proc__quantify_clauses_body([H1, H2], Goal,
 				Context, Clauses)
 		;
-			unify_proc__generate_du_unify_clauses(Ctors,
-				H1, H2, Context, Clauses)
+			unify_proc__generate_du_unify_clauses(Ctors, H1, H2, 
+				Context, Clauses)
 		)
 	;
 		{ TypeBody = eqv_type(_Type) },

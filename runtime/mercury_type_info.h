@@ -347,9 +347,24 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** Definitions for handwritten code, mostly for mercury_compare_typeinfo.
 */
 
-#define MR_COMPARE_EQUAL    0
-#define MR_COMPARE_LESS     1
-#define MR_COMPARE_GREATER  2
+#ifdef MR_RESERVE_TAG
+	/*
+        ** In reserve-tag grades, enumerations are disabled, so the
+	** representation of the 'comparison_result' type is quite different.
+	** The enumeration constants (for (<), (=) and (>)) wind up sharing 
+	** the same primary tag (1), and are all allocated secondary tags
+	** starting from 0.
+	*/
+    #define MR_COMPARE_TAG      MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
+ 
+    #define MR_COMPARE_EQUAL    MR_mkword(MR_COMPARE_TAG, MR_mkbody(0))
+    #define MR_COMPARE_LESS     MR_mkword(MR_COMPARE_TAG, MR_mkbody(1))
+    #define MR_COMPARE_GREATER  MR_mkword(MR_COMPARE_TAG, MR_mkbody(2))         
+#else
+    #define MR_COMPARE_EQUAL    0
+    #define MR_COMPARE_LESS     1
+    #define MR_COMPARE_GREATER  2
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -406,18 +421,26 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define	MR_unravel_univ(univ, typeinfo, value)                      \
     do {                                                            \
-        typeinfo = (MR_TypeInfo) MR_field(MR_mktag(0), (univ),      \
+        typeinfo = (MR_TypeInfo) MR_field(MR_UNIV_TAG, (univ),\
                         MR_UNIV_OFFSET_FOR_TYPEINFO);               \
-        value = MR_field(MR_mktag(0), (univ),                       \
+        value = MR_field(MR_UNIV_TAG, (univ),             \
                         MR_UNIV_OFFSET_FOR_DATA);                   \
     } while (0)
 
 #define MR_define_univ_fields(univ, typeinfo, value)                \
     do {                                                            \
-        MR_field(MR_mktag(0), (univ), MR_UNIV_OFFSET_FOR_TYPEINFO)  \
+        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_TYPEINFO) \
             = (MR_Word) (typeinfo);                                 \
-        MR_field(MR_mktag(0), (univ), MR_UNIV_OFFSET_FOR_DATA)      \
+        MR_field(MR_UNIV_TAG, (univ), MR_UNIV_OFFSET_FOR_DATA)     \
             = (MR_Word) (value);                                    \
+    } while (0)
+
+/* Allocate a univ on the heap */
+#define MR_new_univ_on_hp(univ, typeinfo, value)                   \
+    do {                                                            \
+        MR_tag_incr_hp_msg((univ), MR_UNIV_TAG,           \
+                        2, MR_PROC_LABEL, ""std_util:univ/0"");     \
+        MR_define_univ_fields((univ), (typeinfo), (value));         \
     } while (0)
 
 /*---------------------------------------------------------------------------*/
@@ -688,7 +711,8 @@ typedef struct {
 typedef enum {
     MR_DEFINE_ENUM_CONST(MR_SECTAG_NONE),
     MR_DEFINE_ENUM_CONST(MR_SECTAG_LOCAL),
-    MR_DEFINE_ENUM_CONST(MR_SECTAG_REMOTE)
+    MR_DEFINE_ENUM_CONST(MR_SECTAG_REMOTE),
+    MR_DEFINE_ENUM_CONST(MR_SECTAG_VARIABLE)
 } MR_Sectag_Locn;
 
 typedef struct {

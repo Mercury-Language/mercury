@@ -65,22 +65,27 @@ endif
 # Debugging does not work in MLDS (hl*) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
+# Currently, declarative debugging does not work in `rt' grades.
 # Also, declarative debugging only works in `.gc' grades.
 
 ifneq "$(findstring hl,$(GRADE))" ""
     PROGS=
 else
     ifneq "$(findstring .gc,$(GRADE))" ""
-        ifneq "$(findstring asm_,$(GRADE))" ""
-            PROGS=$(PROGS_2)
+        ifneq "$(findstring rt,$(GRADE))" ""
+	    PROGS=
         else
-            ifneq "$(findstring jump,$(GRADE))" ""
-                PROGS=
+            ifneq "$(findstring asm_,$(GRADE))" ""
+                PROGS=$(PROGS_2)
             else
-                ifneq "$(findstring fast,$(GRADE))" ""
+                ifneq "$(findstring jump,$(GRADE))" ""
                     PROGS=
                 else
-                    PROGS=$(PROGS_2)
+                    ifneq "$(findstring fast,$(GRADE))" ""
+                        PROGS=
+                    else
+                        PROGS=$(PROGS_2)
+                    endif
                 endif
             endif
         endif

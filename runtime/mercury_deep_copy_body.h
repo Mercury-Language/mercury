@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -294,6 +294,9 @@ try_again:
                     found_forwarding_pointer(data);
                 }
                 break;
+
+            case MR_SECTAG_VARIABLE:
+                MR_fatal_error("copy(): attempt to copy variable");
 
             default:
                 MR_fatal_error("copy(): unknown sectag_locn");

@@ -771,15 +771,22 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 :- pragma foreign_proc("C", make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	MR_incr_hp_atomic_msg(Pair, 2, MR_PROC_LABEL,
-			""sparse_bitset:bitset_elem/0"");
-	MR_field(MR_mktag(0), Pair, 0) = A;
-	MR_field(MR_mktag(0), Pair, 1) = B;
+
+#define ML_BITSET_TAG MR_FIRST_UNRESERVED_RAW_TAG
+
+	MR_tag_incr_hp_atomic_msg(Pair, MR_mktag(ML_BITSET_TAG), 
+			2, MR_PROC_LABEL, ""sparse_bitset:bitset_elem/0"");
+	MR_field(MR_mktag(ML_BITSET_TAG), Pair, 0) = A;
+	MR_field(MR_mktag(ML_BITSET_TAG), Pair, 1) = B;
 }").
 
+% XXX this needs to take reserve-tag into account too
 :- pragma foreign_proc("MC++", make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
+#ifdef MR_RESERVE_TAG
+    #error ""sparse_bitset not implemented for MC++ in .rt grades""
+#endif
 	MR_newobj((Pair), 0, 2);
 	MR_objset((Pair), 1, (mercury::runtime::Convert::ToObject(A)));	
 	MR_objset((Pair), 2, (mercury::runtime::Convert::ToObject(B)));

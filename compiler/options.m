@@ -155,6 +155,7 @@
 		;	stack_trace
 		;	require_tracing
 		;	use_trail
+		;	reserve_tag
 		;	use_minimal_model
 		;	pic_reg
 		;	tags
@@ -577,6 +578,7 @@ option_defaults_2(compilation_model_option, [
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
+	reserve_tag		-	bool(no),
 	use_minimal_model	-	bool(no),
 	pic_reg			-	bool(no),
 	tags			-	string("low"),
@@ -997,6 +999,7 @@ long_option("debug",			debug).
 % long_option("stack-trace",           stack_trace).
 % long_option("require-tracing",       require_tracing).
 long_option("use-trail",		use_trail).
+long_option("reserve-tag",		reserve_tag).
 long_option("use-minimal-model",	use_minimal_model).
 long_option("pic",			pic).
 long_option("pic-reg",			pic_reg).
@@ -1942,8 +1945,8 @@ options_help_compilation_model -->
 % and the --gcc-nested-functions option is not yet documented.
 %		"\t`hl', `hl_nest', `hlc_nest'",
 		"\tor one of those with one or more of the grade modifiers",
-		"\t`.gc', `.prof', `.memprof', `.tr', `.debug', `.par', and/or",
-		"\t`.pic_reg' appended.",
+		"\t`.gc', `.prof', `.memprof', `.tr', `.rt', `.debug', `.par'",
+		"\tand/or `.pic_reg' appended.",
 		"\tDepending on your particular installation, only a subset",
 		"\tof these possible grades will have been installed.",
 		"\tAttempting to use a grade which has not been installed",
@@ -2061,6 +2064,12 @@ options_help_compilation_model -->
 		"\tThis is necessary for interfacing with constraint solvers,",
 		"\tor for backtrackable destructive update.",
 		"\tThis option is not yet supported for the IL or Java back-ends.",
+		"--reserve-tag\t\t\t(grade modifier: `.rt')",
+		"\tReserve a tag in the data representation of the generated ",
+		"\tcode. This tag is intended to be used to give an explicit",
+		"\trepresentation to free variables.",
+		"\tThis is necessary for a seamless Herbrand constraint solver -",
+		"\tfor use with HAL.",
 		"-p, --profiling, --time-profiling",
 		"\t\t\t\t(grade modifier: `.prof')",
 		"\tEnable time and call profiling.  Insert profiling hooks in the",

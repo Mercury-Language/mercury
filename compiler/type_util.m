@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data, globals.
 :- import_module term.
 :- import_module std_util, list, map.
 
@@ -69,6 +69,9 @@
 	% include arguments with these types.
 :- pred type_util__is_dummy_argument_type(type).
 :- mode type_util__is_dummy_argument_type(in) is semidet.
+
+:- pred type_util__constructors_are_dummy_argument_type(list(constructor)).
+:- mode type_util__constructors_are_dummy_argument_type(in) is semidet.
 
 :- pred type_is_io_state(type).
 :- mode type_is_io_state(in) is semidet.
@@ -264,6 +267,17 @@
 :- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type,
 	maybe(string)).
 :- mode type_constructors_are_no_tag_type(in, out, out, out) is semidet.
+
+	% Given a list of constructors for a type, check whether that
+	% type is a private_builtin:type_info/n or similar type.
+:- pred type_constructors_are_type_info(list(constructor)).
+:- mode type_constructors_are_type_info(in) is semidet.
+
+	% Check whether some constructors are a no_tag type, and that this
+	% is compatible with the grade options set in the globals.
+:- pred type_constructors_should_be_no_tag(list(constructor), globals,
+	sym_name, type, maybe(string)).
+:- mode type_constructors_should_be_no_tag(in, in, out, out, out) is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -603,6 +617,11 @@ type_util__is_dummy_argument_type(Type) :-
 % XXX should we include aditi:state/0 in this list?
 type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
 type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
+
+type_util__constructors_are_dummy_argument_type([Ctor]) :-
+	Ctor = ctor([], [], qualified(unqualified("io"), "state"), [_]).
+type_util__constructors_are_dummy_argument_type([Ctor]) :-
+	Ctor = ctor([], [], qualified(unqualified("store"), "store"), [_]).
 
 type_is_io_state(Type) :-
         type_to_type_id(Type,
@@ -972,15 +991,9 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 	% type_constructors_are_no_tag_type/3 is called.
 
 type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
-	Ctors = [SingleCtor],
-	SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
-		[MaybeSymName - ArgType]),
-	ExistQVars = [],
+	type_is_single_ctor_single_arg(Ctors, Ctor, MaybeSymName, ArgType),
 	unqualify_name(Ctor, Name),
-	Name \= "type_info",
-	Name \= "type_ctor_info",
-	Name \= "typeclass_info",
-	Name \= "base_typeclass_info",
+	\+ name_is_type_info(Name),
 
 	% We don't handle unary tuples as no_tag types --
 	% they are rare enough that it's not worth
@@ -994,6 +1007,52 @@ type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
 	;
 		MaybeSymName = no,
 		MaybeArgName = no
+	).
+
+type_constructors_are_type_info(Ctors) :-
+	type_is_single_ctor_single_arg(Ctors, Ctor, _, _),
+	unqualify_name(Ctor, Name),
+	name_is_type_info(Name).
+
+:- pred name_is_type_info(string).
+:- mode name_is_type_info(in) is semidet.
+
+name_is_type_info("type_info").
+name_is_type_info("type_ctor_info").
+name_is_type_info("typeclass_info").
+name_is_type_info("base_typeclass_info").
+
+:- pred type_is_single_ctor_single_arg(list(constructor), sym_name, 
+	maybe(sym_name), type).
+:- mode type_is_single_ctor_single_arg(in, out, out, out) is semidet.
+
+type_is_single_ctor_single_arg(Ctors, Ctor, MaybeSymName, ArgType) :-
+	Ctors = [SingleCtor],
+	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, 
+		[MaybeSymName - ArgType]),
+	ExistQVars = [].
+
+%-----------------------------------------------------------------------------%
+
+	% assign single functor of arity one a `no_tag' tag
+	% (unless it is type_info/1 or we are reserving a tag,
+	% or if it is one of the dummy types)
+type_constructors_should_be_no_tag(Ctors, Globals, 
+			SingleFunc, SingleArg, MaybeArgName) :-
+	type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg, 
+		MaybeArgName),
+	(
+		globals__lookup_bool_option(Globals, reserve_tag, no),
+		globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes)
+	;
+			% Dummy types always need to be treated as no-tag types
+			% as the low-level C back end just passes around 
+			% rubbish for them. When eg. using the debugger, it is
+			% crucial that these values are treated as unboxed
+			% c_pointers, not as tagged pointers to c_pointers
+			% (otherwise the system winds up following a bogus
+			% pointer).
+		constructors_are_dummy_argument_type(Ctors)
 	).
 
 %-----------------------------------------------------------------------------%

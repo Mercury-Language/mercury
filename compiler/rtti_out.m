@@ -296,6 +296,16 @@ output_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
 	output_generic_rtti_data_defn_start(RttiTypeId,
 		du_ptag_ordered_table, DeclSet1, DeclSet),
 	io__write_string(" = {\n"),
+	globals__io_lookup_bool_option(reserve_tag, ReserveTag),
+	(
+		{ ReserveTag = yes }
+	->
+			% Output a dummy ptag definition for the 
+			% reserved tag first
+		output_dummy_ptag_layout_defn
+	;
+		[]
+	),
 	output_ptag_layout_defns(PtagLayouts, RttiTypeId),
 	io__write_string("\n};\n").
 output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
@@ -542,6 +552,19 @@ output_ptag_layout_defns([DuPtagLayout | DuPtagLayouts], RttiTypeId) -->
 		io__write_string(" },\n")
 	),
 	output_ptag_layout_defns(DuPtagLayouts, RttiTypeId).
+
+	% Output a `dummy' ptag layout, for use by tags that aren't *real*
+	% tags, such as the tag reserved when --reserve-tag is on.
+	%
+	% XXX Note that if one of these dummy ptag definitions is actually
+	% accessed by the Mercury runtime, or the construct/deconstruct
+	% code in library/std_util.m, the result will be undefined.
+	% This should be fixed by adding a MR_SECTAG_DUMMY and handling it
+	% gracefully.
+:- pred output_dummy_ptag_layout_defn(io__state::di, io__state::uo) is det.
+
+output_dummy_ptag_layout_defn -->
+	io__write_string("\t{ 0, MR_SECTAG_VARIABLE, NULL },\n").
 
 %-----------------------------------------------------------------------------%
 

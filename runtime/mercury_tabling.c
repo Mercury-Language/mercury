@@ -669,6 +669,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                     break;
+                case MR_SECTAG_VARIABLE:
+                    MR_fatal_error("MR_table_type(): unexpected variable");
                 default:
                     MR_fatal_error("MR_table_type(): unknown sectag_locn");
                 }

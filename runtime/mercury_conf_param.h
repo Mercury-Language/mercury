@@ -50,6 +50,7 @@
 ** NO_TYPE_LAYOUT
 ** BOXED_FLOAT
 ** MR_USE_TRAIL
+** MR_RESERVE_TAG
 ** MR_USE_MINIMAL_MODEL
 **	See the documentation for
 **		--high-level-code
@@ -63,6 +64,7 @@
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail
+**		--reserve-tag
 **		--use-minimal-model
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
