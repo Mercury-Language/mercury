@@ -90,6 +90,8 @@
     #include "machdeps/pa_regs.h"
   #elif defined(_POWER) || defined(__powerpc__) || defined(__ppc__)
     #include "machdeps/rs6000_regs.h"
+  #elif defined(__ia64__)
+    #include "machdeps/ia64_regs.h"
   #else
     #error "MR_USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
   #endif
