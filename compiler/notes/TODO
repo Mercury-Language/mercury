@@ -3,30 +3,9 @@
 TODO LIST:
 ----------
 
-Required to bootstrap:
-----------------------
+write a language reference manual!
 
-- compare/3
-- term_io__read_term etc.
-
-code generation:
----------------
-
-- generate code for complicated unifies in partially instantiated modes
-
-- generate code for higher-order predicates
-	-  "predicate pointers" (needed to bootstrap)
-	-  closures.
-
-- generate code for polymorphic predicates
-
-- The followcode transformation is buggy, in that it can make valid
-  code become invalid due to determinism errors.  We need to fix
-  this by running determinism analysis once before followcode
-  to check for errors, and then running it again after followcode
-  this time ignoring any errors.  Or alternately we could put more
-  intelligence into the followcode transformation pass so that it doesn't
-  apply the transformation if it would introduce a determinism error.
+write a users guide!
 
 typechecking
 ------------
@@ -38,13 +17,12 @@ typechecking
 mode analysis
 -------------
 
-- handle implied modes
+- handle "phantom aliasing", i.e. aliasing within a single procedure.
+  This is needed to make partially instantiated modes work.
 
 - handle higher-order pred modes
 
 - handle unique modes (some research issues re backtracking)
-
-- handle polymorphic modes (some research issues?)
 
 - detect incorrect usage of `bound(...)' insts.
 
@@ -52,6 +30,14 @@ mode analysis
 
 - split construct/deconstruct unifications into their atomic
   "micro-unification" pieces when necessary.
+  (When is it necessary?)
+
+code generation:
+---------------
+
+- generate code for complicated unifies in partially instantiated modes
+
+- generate code for higher-order predicates closures.
 
 - see also comments at the start of modes.nl
 
@@ -85,8 +71,6 @@ general
 
 - garbage collection
 
-- issue a warning if the only use of an argument is in a recursive call
-
 mercury_to_goedel.nl
 --------------------
 
@@ -110,8 +94,13 @@ module system
 WISH LIST
 ---------
 
+mode analysis:
+--------------
+
+- handle polymorphic modes (some research issues?)
+
 code generation:
----------------
+----------------
 
 - The generated code should include some profiling hooks.
   In particular, we should add a version of the heap allocation
@@ -167,6 +156,8 @@ general
   should result in
 
 	Warning: redundant call to `q(InA, InB, _, _)'
+
+- issue a warning if the only use of an argument is in a recursive call
 
 - better error handling
 
