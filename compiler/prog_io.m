@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,7 +142,7 @@
 
 	% sym_name_and_args takes a term and returns a sym_name and a list of
 	% argument terms.
-	% It fals if the input is not valid syntax for a QualifiedTerm.
+	% It fails if the input is not valid syntax for a QualifiedTerm.
 :- pred sym_name_and_args(term(T), sym_name, list(term(T))).
 :- mode sym_name_and_args(in, out, out) is semidet.
 
