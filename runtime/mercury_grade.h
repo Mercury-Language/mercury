@@ -276,9 +276,9 @@ extern const char MR_GRADE_VAR;
 #endif
 
 /*
-** Parts 7-10 above (i.e. tag bits, compact args, (un)boxed float, and
-** debugging of the nondet stack) are documented as "not for general use",
-** and can't be set via the `--grade' option; we don't bother to pass them on.
+** Parts 7-10 above (i.e. tag bits, compact args, and (un)boxed float)
+** are documented as "not for general use", and can't be set via the
+** `--grade' option; we don't bother to pass them on.
 */
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
