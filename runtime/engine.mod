@@ -302,6 +302,9 @@ do_reset_framevar0_fail:
 do_succeed:
 	succeed();
 
+do_last_succeed:
+	succeed_discard();
+
 do_not_reached:
 	printf("reached not_reached\n");
 	exit(1);
