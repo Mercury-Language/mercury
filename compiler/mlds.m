@@ -209,6 +209,54 @@
 % should always be qualified (even if not overloaded).
 
 %-----------------------------------------------------------------------------%
+%
+% Notes on garbage collection and liveness.
+% 
+
+% "Liveness-accurate GC" is GC in which the collector does not trace local
+% variables which are definitely not live according to a straight-forward
+% static analysis of definite-deadness/possible-liveness.  Liveness-accurate
+% GC is desirable, in general, since tracing through variables which are
+% no longer live may lead to excessive memory retention for some programs.
+% However these programs are relatively rare, so liveness-accurate GC
+% is not always worth the extra complication.
+%
+% The MLDS is therefore designed to optionally support liveness-accurate
+% GC, if the target language supports it.  If liveness-accurate GC is
+% supported and enabled, then it is the responsibility of the target
+% language implementation to do whatever is needed to avoid having the GC
+% trace variables which have gone out of scope.
+%
+% That means that to support liveness-accurate the HLDS->MLDS code
+% generator just needs to cover the cases where a straight-forward liveness
+% calculation on the generated MLDS does not match up with the desired
+% result of a straight-forward liveness calculation on the HLDS.  That is,
+% the HLDS->MLDS code generator must generate code to clobber variables
+% which are no longer live according to a straight-forward liveness
+% calculation on the HLDS but which have not gone out of scope in
+% the generated MLDS.  For example, with our current HLDS->MLDS code
+% generation scheme, this is the case for variables in the `else' of a
+% nondet if-then-else once the `then' has been entered.
+% (XXX Currently ml_code_gen.m does _not_ clobber those variables, though.)
+
+% The rationale for leaving most of the responsibility for liveness-accurate
+% GC up to the MLDS back-end is as follows: at very least we need the
+% target language implementation's _cooperation_, since if the MLDS code
+% generator inserts statements to clobber variables that are no longer live,
+% then an uncooperative target language implementation could just optimize
+% them away, since they are assignments to dead variables.  Given this need
+% for the MLDS target back-end's cooperation, it makes sense to assign as
+% much of the responsibily for this task as is possible to the MLDS target
+% back-end, to keep the front-end simple and to keep the responsibility
+% for this task in one place.
+%
+% But in the cases such as nondet if-then-else, where HLDS-liveness does not
+% match MLDS-liveness, we can't just leave it to the MLDS target back-end,
+% because that would require assuming an unreasonably smart liveness
+% calculation in the MLDS target back-end, so in such cases we do need
+% to handle it in the HLDS->MLDS code generator.
+
+%-----------------------------------------------------------------------------%
 
 :- module mlds.
 
