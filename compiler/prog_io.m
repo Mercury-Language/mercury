@@ -1262,7 +1262,12 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
 	
 	varset__coerce(VarSet, ProgVarSet0),
 	parse_goal(Term, ProgVarSet0, PromiseGoal, ProgVarSet),
-	Result = ok(promise(PromiseType, PromiseGoal, ProgVarSet, UnivVars)).
+	% XXX Re-enable this once the handling of quantification has
+	% been fixed (spurious unresolved polymorphism warnings
+	% are generated when compiling list.m).
+	_Result `with_type` maybe1(item) =
+		ok(promise(PromiseType, PromiseGoal, ProgVarSet, UnivVars)),
+	Result = ok(nothing(no)).
 
 %-----------------------------------------------------------------------------%
 
