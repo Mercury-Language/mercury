@@ -33,17 +33,17 @@
 :- type stag_loc	--->	none ; local ; remote.
 
 % map secondary tag values (-1 stands for none) to their goal
-:- type tag_goal_map	==	map(int, hlds_goal).
-:- type tag_goal_list	==	assoc_list(int, hlds_goal).
+:- type stag_goal_map	==	map(int, hlds_goal).
+:- type stag_goal_list	==	assoc_list(int, hlds_goal).
 
 % map primary tag values to the set of their goals
-:- type tag_case_map	==	map(tag_bits, pair(stag_loc, tag_goal_map)).
-:- type tag_case_list	==	assoc_list(tag_bits,
-					pair(stag_loc, tag_goal_map)).
+:- type ptag_case_map	==	map(tag_bits, pair(stag_loc, stag_goal_map)).
+:- type ptag_case_list	==	assoc_list(tag_bits,
+					pair(stag_loc, stag_goal_map)).
 
 % map primary tag values to the number of constructors sharing them
-:- type tag_count_map	==	map(tag_bits, pair(stag_loc, int)).
-:- type tag_count_list	==	assoc_list(tag_bits, pair(stag_loc, int)).
+:- type ptag_count_map	==	map(tag_bits, pair(stag_loc, int)).
+:- type ptag_count_list ==	assoc_list(tag_bits, pair(stag_loc, int)).
 
 %-----------------------------------------------------------------------------%
 
@@ -74,7 +74,7 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
-	{ tag_switch__get_tag_counts(Type, ModuleInfo,
+	{ tag_switch__get_ptag_count_s(Type, ModuleInfo,
 		MaxPrimary, TagCountMap) },
 	{ map__to_assoc_list(TagCountMap, TagCountList) },
 	{ map__init(TagCaseMap0) },
@@ -174,9 +174,9 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	% Generate a series of if-then-elses, one for each primary tag value.
 	% Jump tables are used only on secondary tags.
 
-:- pred tag_switch__generate_primary_tag_chain(tag_case_list,
+:- pred tag_switch__generate_primary_tag_chain(ptag_case_list,
 	rval, rval, code_model, can_fail, store_map, label, label,
-	tag_count_map, code_tree, code_info, code_info).
+	ptag_count_map, code_tree, code_info, code_info).
 :- mode tag_switch__generate_primary_tag_chain(in, in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
@@ -236,8 +236,8 @@ tag_switch__generate_primary_tag_chain([TagGroup | TagGroups],
 	% Generate the cases for a primary tag using a dense jump table
 	% that has an entry for all possible primary tag values.
 
-:- pred tag_switch__generate_primary_tag_table(tag_case_list, int, int,
-	rval, code_model, store_map, label, label, tag_count_map,
+:- pred tag_switch__generate_primary_tag_table(ptag_case_list, int, int,
+	rval, code_model, store_map, label, label, ptag_count_map,
 	list(label), code_tree, code_info, code_info).
 :- mode tag_switch__generate_primary_tag_table(in, in, in, in,
 	in, in, in, in, in, out, out, in, out) is det.
@@ -309,7 +309,7 @@ tag_switch__generate_primary_tag_table(TagGroups, CurPrimary, MaxPrimary,
 	% If this primary tag has secondary tags, decide whether we should
 	% use a jump table to implement the secondary switch.
 
-:- pred tag_switch__generate_primary_tag_code(tag_goal_map, tag_bits, int,
+:- pred tag_switch__generate_primary_tag_code(stag_goal_map, tag_bits, int,
 	stag_loc, rval, code_model, store_map,
 	label, label, code_tree, code_info, code_info).
 :- mode tag_switch__generate_primary_tag_code(in, in, in, in, in, in, in,
@@ -387,7 +387,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 	% Generate the cases for a primary tag by emitting a chain of
 	% if-then-elses, the conditions of which check only the secondary tag.
 
-:- pred tag_switch__generate_secondary_tag_chain(tag_goal_list, rval,
+:- pred tag_switch__generate_secondary_tag_chain(stag_goal_list, rval,
 	code_model, can_fail, store_map, label, label,
 	code_tree, code_info, code_info).
 :- mode tag_switch__generate_secondary_tag_chain(in, in, in, in, in, in, in,
@@ -453,7 +453,7 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 	% Generate the cases for a primary tag using a dense jump table
 	% that has an entry for all possible secondary tag values.
 
-:- pred tag_switch__generate_secondary_tag_table(tag_goal_list, int, int,
+:- pred tag_switch__generate_secondary_tag_table(stag_goal_list, int, int,
 	code_model, store_map, label, label, list(label),
 	code_tree, code_info, code_info).
 :- mode tag_switch__generate_secondary_tag_table(in, in, in, in,
@@ -520,14 +520,14 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 	% Find out how many secondary tags share each primary tag
 	% of the given variable.
 
-:- pred tag_switch__get_tag_counts(type, module_info, int, tag_count_map).
-:- mode tag_switch__get_tag_counts(in, in, out, out) is det.
+:- pred tag_switch__get_ptag_count_s(type, module_info, int, ptag_count_map).
+:- mode tag_switch__get_ptag_count_s(in, in, out, out) is det.
 
-tag_switch__get_tag_counts(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
+tag_switch__get_ptag_count_s(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
 	( type_to_type_id(Type, TypeIdPrime, _) ->
 		TypeId = TypeIdPrime
 	;
-		error("unknown type in tag_switch__get_tag_counts")
+		error("unknown type in tag_switch__get_ptag_count_s")
 	),
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
@@ -536,18 +536,18 @@ tag_switch__get_tag_counts(Type, ModuleInfo, MaxPrimary, TagCountMap) :-
 		map__to_assoc_list(ConsTable, ConsList),
 		tag_switch__cons_list_to_tag_list(ConsList, TagList)
 	;
-		error("non-du type in tag_switch__get_tag_counts")
+		error("non-du type in tag_switch__get_ptag_count_s")
 	),
 	map__init(TagCountMap0),
-	tag_switch__get_tag_counts_2(TagList, -1, MaxPrimary,
+	tag_switch__get_ptag_count_s_2(TagList, -1, MaxPrimary,
 		TagCountMap0, TagCountMap).
 
-:- pred tag_switch__get_tag_counts_2(list(cons_tag), int, int,
-	tag_count_map, tag_count_map).
-:- mode tag_switch__get_tag_counts_2(in, in, out, in, out) is det.
+:- pred tag_switch__get_ptag_count_s_2(list(cons_tag), int, int,
+	ptag_count_map, ptag_count_map).
+:- mode tag_switch__get_ptag_count_s_2(in, in, out, in, out) is det.
 
-tag_switch__get_tag_counts_2([], Max, Max, TagCountMap, TagCountMap).
-tag_switch__get_tag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
+tag_switch__get_ptag_count_s_2([], Max, Max, TagCountMap, TagCountMap).
+tag_switch__get_ptag_count_s_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 		TagCountMap0, TagCountMap) :-
 	( ConsTag = simple_tag(Primary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
@@ -590,9 +590,9 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				TagCountMap1)
 		)
 	;
-		error("non-du tag in tag_switch__get_tag_counts_2")
+		error("non-du tag in tag_switch__get_ptag_count_s_2")
 	),
-	tag_switch__get_tag_counts_2(TagList, MaxPrimary1, MaxPrimary,
+	tag_switch__get_ptag_count_s_2(TagList, MaxPrimary1, MaxPrimary,
 		TagCountMap1, TagCountMap).
 
 %-----------------------------------------------------------------------------%
@@ -600,7 +600,7 @@ tag_switch__get_tag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 	% Group together all the cases that depend on the given variable
 	% having the same primary tag value.
 
-:- pred tag_switch__group_tags(cases_list, tag_case_map, tag_case_map).
+:- pred tag_switch__group_tags(cases_list, ptag_case_map, ptag_case_map).
 :- mode tag_switch__group_tags(in, in, out) is det.
 
 tag_switch__group_tags([], TagCaseMap, TagCaseMap).
@@ -654,8 +654,8 @@ tag_switch__group_tags([Case0 | Cases0], TagCaseMap0, TagCaseMap) :-
 	% Note that it is not an error for a primary tag to have no case list,
 	% since this can happen in semideterministic switches.
 
-:- pred tag_switch__order_tags_by_count(tag_count_list, tag_case_map,
-	tag_case_list).
+:- pred tag_switch__order_tags_by_count(ptag_count_list, ptag_case_map,
+	ptag_case_list).
 :- mode tag_switch__order_tags_by_count(in, in, out) is det.
 
 tag_switch__order_tags_by_count(TagCountList0, TagCaseMap0, TagCaseList) :-
@@ -683,8 +683,8 @@ tag_switch__order_tags_by_count(TagCountList0, TagCaseMap0, TagCaseList) :-
 	% Select the most frequently used primary tag based on the number of
 	% secondary tags associated with it.
 
-:- pred tag_switch__select_frequent_tag(tag_count_list, tag_bits, int,
-	tag_count_list).
+:- pred tag_switch__select_frequent_tag(ptag_count_list, tag_bits, int,
+	ptag_count_list).
 :- mode tag_switch__select_frequent_tag(in, out, out, out) is semidet.
 
 tag_switch__select_frequent_tag([TagCount0 | TagCountList1], Primary, Count,
@@ -711,7 +711,8 @@ tag_switch__select_frequent_tag([TagCount0 | TagCountList1], Primary, Count,
 	% Note that it is not an error for a primary tag to have no case list,
 	% since this can happen in semideterministic switches.
 
-:- pred tag_switch__order_tags_by_value(int, int, tag_case_map, tag_case_list).
+:- pred tag_switch__order_tags_by_value(int, int,
+	ptag_case_map, ptag_case_list).
 :- mode tag_switch__order_tags_by_value(in, in, in, out) is det.
 
 tag_switch__order_tags_by_value(Ptag, MaxPtag, TagCaseMap0, TagCaseList) :-
