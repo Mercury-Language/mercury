@@ -1612,7 +1612,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 				atomic(new_object(CommitRefLval, no,
 					mlds__commit_type, no, no, [], [])),
 					MLDS_Context),
-			DoCommitBody = ml_gen_block([CommitRefDecl], 
+			DoCommitBody = ml_gen_block([], 
 				[NewCommitObject,
 				DoCommitStatement],
 				Context)
@@ -1644,13 +1644,8 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 				[SetSuccessTrue]), Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-		{ Target = il ->
-			CommitFuncLocalDecls = [SuccessFunc |
-				GoalStaticDecls]
-		;
-			CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
-				GoalStaticDecls]
-		},
+		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+			GoalStaticDecls] },
 		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
 			[TryCommitStatement], Context,
 			CommitFuncDecls, MLDS_Statements),
