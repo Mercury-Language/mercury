@@ -22,6 +22,10 @@
 #ifndef MERCURY_REGORDER_H
 #define MERCURY_REGORDER_H
 
+/*
+** If you modify the r<N> to mr<N> mapping, make sure that you update
+** the definition of MR_VIRTUAL_REG_MAP_BODY below.
+*/
 #define r1		count_usage(R_RN(1), mr2)
 #define r2		count_usage(R_RN(2), mr3)
 #define r3		count_usage(R_RN(3), mr4)
@@ -57,33 +61,49 @@
 
 /*
 ** If you modify the following block, make sure that you update
-** the definitions of MR_NUM_SPECIAL_REG and MR_MAX_SPECIAL_REG_MR.
+** the definitions of MR_NUM_SPECIAL_REG, MR_MAX_SPECIAL_REG_MR,
+** and MR_saved_*.
 */
-
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
-#define succip		MR_succip
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
-#define hp		MR_hp
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
-#define sp		MR_sp
 #define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr8))
-#define curfr		MR_curfr
 #define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr9))
-#define maxfr		MR_maxfr
 #define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(37)))
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(38)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
 			count_usage(MR_MIN_HP_REC, mr39))
-
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+
+/* for backwards compatibility */
+#define succip		MR_succip
+#define hp		MR_hp
+#define sp		MR_sp
+#define curfr		MR_curfr
+#define maxfr		MR_maxfr
 
 /* the number of special, non rN registers */
 #define MR_NUM_SPECIAL_REG	10
 
 /* the maximum mrN number of special, non rN registers */
 #define	MR_MAX_SPECIAL_REG_MR	39
+
+/*
+** The MR_saved_foo macros are like MR_foo except that
+** they access the underlying fake_reg slot rather than
+** the real machine register.
+*/
+
+#define MR_saved_succip(save_area)	LVALUE_CAST(Code *, save_area[1])
+#define MR_saved_hp(save_area)		LVALUE_CAST(Word *, save_area[5])
+#define MR_saved_sp(save_area)		LVALUE_CAST(Word *, save_area[0])
+#define MR_saved_curfr(save_area)	LVALUE_CAST(Word *, save_area[8])
+#define MR_saved_maxfr(save_area)	LVALUE_CAST(Word *, save_area[9])
+#define MR_saved_sol_hp(save_area)	LVALUE_CAST(Word *, save_area[37])
+#define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[38])
+#define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[39])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \

@@ -10,6 +10,7 @@
 #include "mercury_conf.h"
 #include "mercury_types.h"
 
+/*---------------------------------------------------------------------------*/
 /*
 ** GNU C allows lvalue casts, so if we have gcc, use them.
 ** If we don't have gcc, then we can use *(type *)&lval,
@@ -28,33 +29,60 @@
   #define LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
 #endif
 
+/*---------------------------------------------------------------------------*/
 /*
 ** The registers of the Mercury virtual machine are built up using
 ** three levels of abstraction.
 **
-** The first level defines the first NUM_REAL_REGS register variables
-** mr0, mr1, etc. as the physical machine registers, and defines an
-** array fake_regs[n] of pseudo registers.
+** The bottom level is the hardware description layer. 
+** This layer is defined separately for each architecture,
+** in the header files in the machdeps subdirectory.
+** The hardware description layer defines the first NUM_REAL_REGS register
+** variables mr0, mr1, etc. as the physical machine registers, and defines an
+** array fake_regs[n] of pseudo registers, with the remaining "registers"
+** mr<NUM_REAL_REGS>, ..., mr36 defined as corresponding slots in
+** this fake_reg array. 
+** This level also provides the macros save_regs_to_mem(),
+** save_transient_regs_to_mem(), restore_regs_from_mem(),
+** and restore_transient_regs_from_mem().
 **
-** The next level defines macros mr0 through mr36 and also mr(n) for
-** n>36.  The lower the number,
+** The next level is the hardware abstraction layer.
+** The hardware abstraction layer is at a similar level to the
+** hardware description layer, and includes that as a subset,
+** but in addition it provides a few more conveniences.
+** This layer defines macros mr(n) for n>36, and the macros
+** save_registers(), restore_registers(), save_transient_registers(),
+** and restore_transient_registers().
+** This layer is defined here in mercury_regs.h.
+**
+** The hardware abstraction layer thus provides a very large number
+** of registers, which may be either real or fake.  The lower the number,
 ** the greater the probability that the storage referred to will be
 ** a real machine register, and not a simulated one. The number of
 ** real machine registers is given by the macro NUM_REAL_REGS.
 **
-** The final level maps the Mercury virtual machine registers
+** The final level is the Mercury abstract machine registers layer.
+** This layer maps the Mercury virtual machine registers
 **
-**	succip, hp, sp, curfr, maxfr and
+**	MR_succip, MR_hp, MR_sp, MR_curfr, MR_maxfr and
 **	r1, ..., r32, r(33), ..., r(MAX_VIRTUAL_REG)
 **
 ** to the set mr0..mr36, mr(37), mr(38), ..., mr(MAX_FAKE_REG-1)
+** which were provided by the hardware abstraction layer.
+** It also provides MR_virtual_r(), MR_virtual_succip, MR_virtual_hp, etc.,
+** which are similar to mr<N>, MR_succip, MR_hp, etc. except that they
+** always map to the underlying fake_reg rather than to the physical register.
 **
 ** Since the set of most frequently used Mercury virtual machine
-** registers can be different for each program, we want to make
+** registers can be different for each program or grade, we want to make
 ** this mapping as easy to change as possible. This is why the
 ** map is in a minimal header file, mercury_regorder.h.
 */
 
+/*---------------------------------------------------------------------------*/
+/*
+** The hardware description layer
+*/
 #if defined(USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__
     #error "You must use gcc if you define USE_GCC_GLOBAL_REGISTERS."
@@ -79,23 +107,16 @@
     #include "machdeps/no_regs.h"
 #endif
 
+/*---------------------------------------------------------------------------*/
+/*
+** Extra stuff for the hardware abstraction layer
+*/
+
 /* The machdeps header defines mr0 .. mr36; now define mr(n) for n > 36 */
 
 #define mr(n) LVALUE_SEQ(MR_assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
-				(n) < MAX_FAKE_REG),\
+				(n) < MAX_FAKE_REG), \
 		fake_reg[n])
-
-#ifdef MEASURE_REGISTER_USAGE
-  #define count_usage(num,reg)		LVALUE_SEQ(num_uses[num]++, reg)
-#else
-  #define count_usage(num,reg)		(reg)
-#endif
-
-#include	"mercury_regorder.h"
-
-/* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
-
-#define r(n) mr((n) + NUM_SPECIAL_REG - 1)
 
 /* 
 ** the save_registers() macro copies the physical machine registers
@@ -122,20 +143,44 @@
 #define save_transient_registers()    save_transient_regs_to_mem(fake_reg)
 #define restore_transient_registers() restore_transient_regs_from_mem(fake_reg)
 
-/* virtual_reg(n) accesses the underlying fake_reg for register n */
+/*---------------------------------------------------------------------------*/
+/*
+** The Mercury abstract machine registers layer
+*/
 
-#define virtual_reg(n)	\
-	LVALUE_COND((n) > MAX_REAL_REG, \
-		r(n), \
-		fake_reg[virtual_reg_map[(n) - 1]])
+#ifdef MEASURE_REGISTER_USAGE
+  #define count_usage(num,reg)		LVALUE_SEQ(num_uses[num]++, reg)
+#else
+  #define count_usage(num,reg)		(reg)
+#endif
 
-/* saved_reg(save_area, n) is like virtual_reg, except in that */
-/* it accesses the given save area instead of the machine regs and fake_reg */
+#include	"mercury_regorder.h"
 
+/* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
+
+#define r(n) mr((n) + NUM_SPECIAL_REG - 1)
+
+/*
+** saved_reg(save_area, n) accesses the underlying slot in save_area
+** for register n
+*/
 #define saved_reg(save_area, n)	\
 	LVALUE_COND((n) > MAX_REAL_REG, \
 		save_area[(n) + NUM_SPECIAL_REG - 1], \
 		save_area[virtual_reg_map[(n) - 1]])
+
+/* virtual_reg(n) accesses the underlying fake_reg for register n */
+/* similarly MR_virtual_foo access the underlying fake_reg slot for foo */
+
+#define virtual_reg(n) 			saved_reg(fake_reg, n)
+#define MR_virtual_succip 		MR_saved_succip(fake_reg)
+#define MR_virtual_hp 			MR_saved_hp(fake_reg)
+#define MR_virtual_sp 			MR_saved_sp(fake_reg)
+#define MR_virtual_curfr 		MR_saved_curfr(fake_reg)
+#define MR_virtual_maxfr 		MR_saved_maxfr(fake_reg)
+#define MR_virtual_sol_hp 		MR_saved_sol_hp(fake_reg)
+#define MR_virtual_min_hp_rec 		MR_saved_min_hp_rec(fake_reg)
+#define MR_virtual_min_sol_hp_rec 	MR_saved_min_sol_hp_rec(fake_reg)
 
 /*
 ** get_reg() and set_reg() provide a different way of addressing
