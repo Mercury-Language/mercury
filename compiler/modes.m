@@ -144,17 +144,33 @@ a variable live if its value will be used later on in the computation.
 :- pred modecheck(module_info, module_info, bool, io__state, io__state).
 :- mode modecheck(in, out, out, di, uo) is det.
 
-	% Mode-check the code for single predicate.
+	% Mode-check or unique-mode-check the code for all the predicates
+	% in a module.
+:- pred check_pred_modes(how_to_check_goal, module_info, module_info, bool,
+				io__state, io__state).
+:- mode check_pred_modes(in, in, out, out, di, uo) is det.
 
-:- pred modecheck_pred_mode(pred_id, pred_info, module_info, module_info,
-			int, io__state, io__state).
-:- mode modecheck_pred_mode(in, in, in, out, out, di, uo) is det.
+	% Mode-check or unique-mode-check the code for single predicate.
+
+:- pred modecheck_pred_mode(pred_id, pred_info, how_to_check_goal,
+			module_info, module_info, int, io__state, io__state).
+:- mode modecheck_pred_mode(in, in, in, in, out, out, di, uo) is det.
 
 	% Mode-check the code for predicate in a given mode.
 
 :- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int,
 			io__state, io__state).
 :- mode modecheck_proc(in, in, in, out, out, di, uo) is det.
+
+	% Mode-check or unique-mode-check the code for predicate in a
+	% given mode.
+
+:- pred modecheck_proc(proc_id, pred_id, how_to_check_goal,
+			module_info, module_info, int,
+			io__state, io__state).
+:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
+
+	% Mode-check the code for predicate in a given mode.
 
 :- pred modecheck_proc_info(proc_id, pred_id, module_info, proc_info,
 		module_info, proc_info, int, io__state, io__state).
@@ -289,7 +305,7 @@ modecheck(Module0, Module, UnsafeToContinue) -->
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
-	check_pred_modes(Module0, Module, UnsafeToContinue),
+	check_pred_modes(check_modes, Module0, Module, UnsafeToContinue),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -298,29 +314,39 @@ modecheck(Module0, Module, UnsafeToContinue) -->
 	
 	% Mode-check the code for all the predicates in a module.
 
-:- pred check_pred_modes(module_info, module_info, bool, io__state, io__state).
-:- mode check_pred_modes(in, out, out, di, uo) is det.
-
-check_pred_modes(ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
+check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
 		MaxIterations),
-	modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
+	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 					ModuleInfo1, UnsafeToContinue),
-	write_mode_inference_messages(PredIds, ModuleInfo1),
+	( { WhatToCheck = check_unique_modes },
+		write_mode_inference_messages(PredIds, yes, ModuleInfo1)
+	; { WhatToCheck = check_modes },
+		( { UnsafeToContinue = yes } ->
+			write_mode_inference_messages(PredIds, no, ModuleInfo1)
+		;
+			[]
+		)
+	),
 	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred modecheck_to_fixpoint(list(pred_id), int, module_info, 
-			module_info, bool, io__state, io__state).
-:- mode modecheck_to_fixpoint(in, in, in, out, out, di, uo) is det.
+:- pred modecheck_to_fixpoint(list(pred_id), int, how_to_check_goal,
+			module_info, module_info, bool, io__state, io__state).
+:- mode modecheck_to_fixpoint(in, in, in, in, out, out, di, uo) is det.
 
-modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
+modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 		ModuleInfo, UnsafeToContinue) -->
-	{ copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo1) },
-	modecheck_pred_modes_2(PredIds, ModuleInfo1, ModuleInfo2, no, Changed,
-				0, NumErrors),
+	( { WhatToCheck = check_modes } ->
+		{ copy_module_clauses_to_procs(PredIds, ModuleInfo0,
+			ModuleInfo1) }
+	;
+		{ ModuleInfo1 = ModuleInfo0 }
+	),
+	modecheck_pred_modes_2(PredIds, WhatToCheck, ModuleInfo1, ModuleInfo2,
+				no, Changed, 0, NumErrors),
 	% stop if we have reached a fixpoint or found any errors
 	( { Changed = no ; NumErrors > 0 } ->
 		{ ModuleInfo = ModuleInfo2 },
@@ -334,14 +360,15 @@ modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
 		;
 			globals__io_lookup_bool_option(debug_modes, DebugModes),
 			( { DebugModes = yes } ->
-				write_mode_inference_messages(PredIds,
+				write_mode_inference_messages(PredIds, no,
 						ModuleInfo2)
 			;
 				[]
 			),
 			{ MaxIterations1 is MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
-				ModuleInfo2, ModuleInfo, UnsafeToContinue)
+				WhatToCheck, ModuleInfo2,
+				ModuleInfo, UnsafeToContinue)
 		)
 	).
 
@@ -360,14 +387,15 @@ report_max_iterations_exceeded -->
 	io__format("(The current limit is %d iterations.)\n",
 		[i(MaxIterations)]).
 
-:- pred modecheck_pred_modes_2(list(pred_id), module_info, module_info,
-			bool, bool, int, int, io__state, io__state).
-:- mode modecheck_pred_modes_2(in, in, out,
-			in, out, in, out, di, uo) is det.
+:- pred modecheck_pred_modes_2(list(pred_id), how_to_check_goal,
+			module_info, module_info, bool, bool, int, int,
+			io__state, io__state).
+:- mode modecheck_pred_modes_2(in, in, in, out, in, out, in, out, di, uo)
+			is det.
 
-modecheck_pred_modes_2([], ModuleInfo, ModuleInfo, Changed, Changed,
+modecheck_pred_modes_2([], _, ModuleInfo, ModuleInfo, Changed, Changed,
 		NumErrors, NumErrors) --> [].
-modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
+modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, ModuleInfo0, ModuleInfo,
 		Changed0, Changed, NumErrors0, NumErrors) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
@@ -380,16 +408,11 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ Changed1 = Changed0 },
 		{ NumErrors1 = NumErrors0 }
 	;
-		{ pred_info_get_markers(PredInfo0, Markers) },
-		( { check_marker(Markers, infer_modes) } ->
-			write_pred_progress_message("% Mode-analysing ",
-				PredId, ModuleInfo0)
-		;
-			write_pred_progress_message("% Mode-checking ",
-				PredId, ModuleInfo0)
-		),
-		modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0,
-			ModuleInfo1, Changed0, Changed1, ErrsInThisPred),
+		write_modes_progress_message(PredId, PredInfo0, ModuleInfo0,
+			WhatToCheck),
+		modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
+			ModuleInfo0, ModuleInfo1, Changed0, Changed1,
+			ErrsInThisPred),
 		{ ErrsInThisPred = 0 ->
 			ModuleInfo3 = ModuleInfo1
 		;
@@ -402,55 +425,88 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		},
 		{ NumErrors1 is NumErrors0 + ErrsInThisPred }
 	),
-	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo,
+	modecheck_pred_modes_2(PredIds, WhatToCheck, ModuleInfo3, ModuleInfo,
 		Changed1, Changed, NumErrors1, NumErrors).
+
+:- pred write_modes_progress_message(pred_id, pred_info, module_info,
+			how_to_check_goal, io__state, io__state).
+:- mode write_modes_progress_message(in, in, in, in, di, uo) is det.
+	
+write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, infer_modes) } ->
+		(	{ WhatToCheck = check_modes },
+			write_pred_progress_message("% Mode-analysing ",
+				PredId, ModuleInfo)
+		;	{ WhatToCheck = check_unique_modes },
+			write_pred_progress_message("% Unique-mode-analysing ",
+				PredId, ModuleInfo)
+		)
+	;
+		(	{ WhatToCheck = check_modes },
+			write_pred_progress_message("% Mode-checking ",
+				PredId, ModuleInfo)
+		;	{ WhatToCheck = check_unique_modes },
+			write_pred_progress_message("% Unique-mode-checking ",
+				PredId, ModuleInfo)
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for single predicate.
 
-modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, NumErrors) -->
-	modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
-		no, _Changed, NumErrors).
+modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, ModuleInfo0,
+		ModuleInfo, NumErrors) -->
+	modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
+		ModuleInfo0, ModuleInfo, no, _Changed, NumErrors).
 
-:- pred modecheck_pred_mode_2(pred_id, pred_info, module_info, module_info,
-			bool, bool, int, io__state, io__state).
-:- mode modecheck_pred_mode_2(in, in, in, out, in, out, out, di, uo) is det.
+:- pred modecheck_pred_mode_2(pred_id, pred_info, how_to_check_goal,
+			module_info, module_info, bool, bool, int,
+			io__state, io__state).
+:- mode modecheck_pred_mode_2(in, in, in, in, out, in, out, out, di, uo) is det.
 
-modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
+modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, ModuleInfo0, ModuleInfo,
 		Changed0, Changed, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
-	( { ProcIds = [] } ->
-		maybe_report_error_no_modes(PredId, PredInfo0, ModuleInfo0),
-		{ ModuleInfo = ModuleInfo0 },
-		{ NumErrors = 0 },
-		{ Changed = Changed0 }
+	( { WhatToCheck = check_modes } ->
+		( { ProcIds = [] } ->
+			maybe_report_error_no_modes(PredId, PredInfo0,
+					ModuleInfo0),
+			{ NumErrors0 = 0 }
+		;
+			check_for_indistinguishable_modes(ProcIds, PredId,
+				PredInfo0, ModuleInfo0, 0, NumErrors0)
+		)
 	;
-		check_for_indistinguishable_modes(ProcIds, PredId, PredInfo0,
-					ModuleInfo0, 0, NumErrors0),
-		modecheck_procs(ProcIds, PredId, ModuleInfo0, Changed0, 0,
-					ModuleInfo, Changed, NumErrors1),
-		{ NumErrors is NumErrors0 + NumErrors1 }
-	).
+		{ NumErrors0 = 0 }
+	),
+	modecheck_procs(ProcIds, PredId, WhatToCheck,
+				ModuleInfo0, Changed0, NumErrors0,
+				ModuleInfo, Changed, NumErrors).
 
 	% Iterate over the list of modes for a predicate.
 
-:- pred modecheck_procs(list(proc_id), pred_id, module_info, bool, int,
+:- pred modecheck_procs(list(proc_id), pred_id, how_to_check_goal,
+				module_info, bool, int,
 				module_info, bool, int, io__state, io__state).
-:- mode modecheck_procs(in, in, in, in, in, out, out, out, di, uo) is det.
+:- mode modecheck_procs(in, in, in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_procs([], _PredId,  ModuleInfo, Changed, Errs,
+modecheck_procs([], _PredId,  _, ModuleInfo, Changed, Errs,
 				ModuleInfo, Changed, Errs) --> [].
-modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, Changed0, Errs0,
+modecheck_procs([ProcId|ProcIds], PredId, WhatToCheck,
+				ModuleInfo0, Changed0, Errs0,
 				ModuleInfo, Changed, Errs) -->
 	% mode-check that mode of the predicate
-	modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
+	modecheck_proc_2(ProcId, PredId, WhatToCheck,
+				ModuleInfo0, Changed0,
 				ModuleInfo1, Changed1, NumErrors),
 	{ Errs1 is Errs0 + NumErrors },
 		% recursively process the remaining modes
-	modecheck_procs(ProcIds, PredId, ModuleInfo1, Changed1,
-			Errs1, ModuleInfo, Changed, Errs).
+	modecheck_procs(ProcIds, PredId, WhatToCheck,
+				ModuleInfo1, Changed1, Errs1,
+				ModuleInfo, Changed, Errs).
 
 %-----------------------------------------------------------------------------%
 
@@ -503,16 +559,22 @@ check_for_indistinguishable_mode([ProcId | ProcIds], NewProcId,
 	% Mode-check the code for predicate in a given mode.
 
 modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors) -->
-	modecheck_proc_2(ProcId, PredId, ModuleInfo0, no,
+	modecheck_proc(ProcId, PredId, check_modes,
+		ModuleInfo0, ModuleInfo, NumErrors).
+
+modecheck_proc(ProcId, PredId, WhatToCheck, ModuleInfo0,
+			ModuleInfo, NumErrors) -->
+	modecheck_proc_2(ProcId, PredId, WhatToCheck, ModuleInfo0, no,
 			ModuleInfo, _Changed, NumErrors).
 
-:- pred modecheck_proc_2(proc_id, pred_id, module_info, bool, 
-			module_info, bool, int,
+:- pred modecheck_proc_2(proc_id, pred_id, how_to_check_goal,
+			module_info, bool, module_info, bool, int,
 			io__state, io__state).
-:- mode modecheck_proc_2(in, in, in, in, out, out, out, di, uo) is det.
+:- mode modecheck_proc_2(in, in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
-				ModuleInfo, Changed, NumErrors) -->
+modecheck_proc_2(ProcId, PredId, WhatToCheck,
+			ModuleInfo0, Changed0,
+			ModuleInfo, Changed, NumErrors) -->
 		% get the proc_info from the module_info
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 					_PredInfo0, ProcInfo0) },
@@ -522,7 +584,7 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
 		{ NumErrors = 0 }
 	;
 			% modecheck it
-		modecheck_proc_3(ProcId, PredId,
+		modecheck_proc_3(ProcId, PredId, WhatToCheck,
 				ModuleInfo0, ProcInfo0, Changed0,
 				ModuleInfo1, ProcInfo, Changed, NumErrors),
 			% save the proc_info back in the module_info
@@ -537,18 +599,22 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, Changed0,
 
 modecheck_proc_info(ProcId, PredId, ModuleInfo0, ProcInfo0,
 		ModuleInfo, ProcInfo, NumErrors) -->
-	modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, no,
-		ModuleInfo, ProcInfo, _Changed, NumErrors).
+	{ WhatToCheck = check_modes },
+	modecheck_proc_3(ProcId, PredId, WhatToCheck,
+			ModuleInfo0, ProcInfo0, no,
+			ModuleInfo, ProcInfo, _Changed, NumErrors).
 
-:- pred modecheck_proc_3(proc_id, pred_id, module_info, proc_info, bool,
+:- pred modecheck_proc_3(proc_id, pred_id, how_to_check_goal,
+			module_info, proc_info, bool,
 			module_info, proc_info, bool, int,
 			io__state, io__state).
-:- mode modecheck_proc_3(in, in, in, in, in, out, out, out, out, di, uo)
+:- mode modecheck_proc_3(in, in, in, in, in, in, out, out, out, out, di, uo)
 	is det.
 
-modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
-				ModuleInfo, ProcInfo, Changed, NumErrors,
-				IOState0, IOState) :-
+modecheck_proc_3(ProcId, PredId, WhatToCheck,
+			ModuleInfo0, ProcInfo0, Changed0,
+			ModuleInfo, ProcInfo, Changed, NumErrors,
+			IOState0, IOState) :-
 		% extract the useful fields in the proc_info
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
@@ -567,21 +633,38 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 		proc_info_context(ProcInfo0, Context)
 	),
 
-		% modecheck the clause - first set the initial instantiation
-		% of the head arguments, mode-check the body, and
-		% then check that the final instantiation matches that in
-		% the mode declaration
+	%
+	% modecheck the clause - first set the initial instantiation
+	% of the head arguments, mode-check the body, and
+	% then check that the final instantiation matches that in
+	% the mode declaration
+	%
+
+		% construct the initial instmap
 	mode_list_get_initial_insts(ArgModes0, ModuleInfo0, ArgInitialInsts),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts, InstAL),
 	instmap__from_assoc_list(InstAL, InstMap0),
+
+		% construct the initial set of live vars:
 		% initially, only the non-clobbered head variables are live
-	mode_list_get_final_insts(ArgModes0, ModuleInfo0, ArgFinalInsts0),
 	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
+
+		% initialize the mode info
 	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId,
 			Context, LiveVars, InstMap0, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
-	modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2),
+
+		% modecheck the procedure body
+	( WhatToCheck = check_unique_modes ->
+		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2)
+	;
+		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2)
+	),
+
+		% check that final insts match those specified in the
+		% mode declaration
+	mode_list_get_final_insts(ArgModes0, ModuleInfo0, ArgFinalInsts0),
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, infer_modes) ->
 		InferModes = yes
@@ -590,8 +673,10 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	),
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo2,
 			InferModes, ArgFinalInsts, ModeInfo3),
-	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
+
+		% report any errors we found, and save away the results
 	report_mode_errors(ModeInfo3, ModeInfo),
+	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
 	mode_info_get_changed_flag(ModeInfo, Changed),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),

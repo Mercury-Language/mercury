@@ -62,146 +62,18 @@
 
 %-----------------------------------------------------------------------------%
 
-	% This section just traverses the module structure.
-
 unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
-	{ module_info_predids(ModuleInfo0, PredIds) },
-	unique_modes__check_preds(PredIds, ModuleInfo0, ModuleInfo1),
-	modecheck_unify_procs(check_unique_modes, ModuleInfo1, ModuleInfo).
-
-:- pred unique_modes__check_preds(list(pred_id), module_info, module_info,
-					io__state, io__state).
-:- mode unique_modes__check_preds(in, in, out, di, uo) is det.
-
-unique_modes__check_preds([], ModuleInfo, ModuleInfo) --> [].
-unique_modes__check_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
-	{ module_info_preds(ModuleInfo0, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	( { ProcIds \= [] } ->
-		write_pred_progress_message("% Unique-mode-checking ",
-			PredId, ModuleInfo0)
-	;
-		[]
-	),
-	unique_modes__check_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
-	unique_modes__check_preds(PredIds, ModuleInfo1, ModuleInfo).
-
-:- pred unique_modes__check_procs(list(proc_id), pred_id,
-					module_info, module_info,
-					io__state, io__state).
-:- mode unique_modes__check_procs(in, in, in, out, di, uo) is det.
-
-unique_modes__check_procs([], _PredId, ModuleInfo, ModuleInfo) --> [].
-unique_modes__check_procs([ProcId | ProcIds], PredId, ModuleInfo0,
-		ModuleInfo) -->
-	unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
-	unique_modes__check_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+	check_pred_modes(check_unique_modes, ModuleInfo0, ModuleInfo,
+			_UnsafeToContinue).
 
 unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
-	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-		_PredInfo0, ProcInfo0) },
-	( { proc_info_can_process(ProcInfo0, no) } ->
-		{ ModuleInfo = ModuleInfo0 }
+	modecheck_proc(ProcId, PredId, check_unique_modes,
+		ModuleInfo0, ModuleInfo, NumErrors),
+	( { NumErrors \= 0 } ->
+		io__set_exit_status(1)
 	;
-		unique_modes__check_proc_2(ProcInfo0, PredId, ProcId,
-			ModuleInfo0, ProcInfo, ModuleInfo1),
-
-		{ module_info_preds(ModuleInfo1, PredTable1) },
-		{ map__lookup(PredTable1, PredId, PredInfo1) },
-		{ pred_info_procedures(PredInfo1, ProcTable1) },
-		{ map__set(ProcTable1, ProcId, ProcInfo, ProcTable) },
-		{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
-		{ map__set(PredTable1, PredId, PredInfo, PredTable) },
-		{ module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo) }
+		[]
 	).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% just check a single procedure
-:- pred unique_modes__check_proc_2(proc_info, pred_id, proc_id, module_info,
-				proc_info, module_info, io__state, io__state).
-:- mode unique_modes__check_proc_2(in, in, in, in, out, out, di, uo) is det.
-
-unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
-			ProcInfo, ModuleInfo,
-			IOState0, IOState) :-
-	%
-	% Extract the useful fields in the proc_info.
-	%
-	proc_info_headvars(ProcInfo0, Args),
-	proc_info_argmodes(ProcInfo0, ArgModes),
-	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
-	proc_info_goal(ProcInfo0, Goal0),
-
-	%
-	% Figure out the right context to use.
-	% We use the context of the first clause, unless
-	% there weren't any clauses at all, in which case
-	% we use the context of the mode declaration.
-	%
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_clauses_info(PredInfo, ClausesInfo),
-	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
-	( ClauseList = [FirstClause | _] ->
-		FirstClause = clause(_, _, Context)
-	;
-		proc_info_context(ProcInfo0, Context)
-	),
-
-	%
-	% Construct the initial instmap
-	%
-	mode_list_get_initial_insts(ArgModes, ModuleInfo0, ArgInitialInsts),
-	assoc_list__from_corresponding_lists(Args, ArgInitialInsts, InstAL),
-	instmap__from_assoc_list(InstAL, InstMap0),
-
-	%
-	% Construct the initial set of live variables:
-	% initially, only the non-clobbered head variables are live
-	%
-	get_live_vars(Args, ArgLives, LiveVarsList),
-	set__list_to_set(LiveVarsList, LiveVars),
-
-	%
-	% At last we're ready to construct the initial mode_info
-	%
-	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context,
-			LiveVars, InstMap0, ModeInfo0),
-	%
-	% Modecheck the goal
-	%
-	unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1),
-
-	%
-	% Check that the final insts of the head vars is OK
-	%
-	mode_list_get_final_insts(ArgModes, ModuleInfo0, ArgFinalInsts),
-	modecheck_final_insts(Args, ArgFinalInsts, ModeInfo1, ModeInfo2),
-
-	%
-	% If we encountered any errors then report them
-	%
-	report_mode_errors(ModeInfo2, ModeInfo),
-
-	%
-	% Get the info we need from the mode_info and stuff it back
-	% in the proc_info
-	%
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_io_state(ModeInfo, IOState1),
-	mode_info_get_errors(ModeInfo, Errors),
-	( Errors = [] ->
-		IOState = IOState1
-	;
-		io__set_exit_status(1, IOState1, IOState)
-	),
-	mode_info_get_varset(ModeInfo, VarSet),
-	mode_info_get_var_types(ModeInfo, VarTypes),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
 
 	% XXX we currently make the conservative assumption that
 	% any non-local variable in a disjunction or nondet call

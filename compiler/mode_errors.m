@@ -135,11 +135,14 @@
 :- pred mode_context_init(mode_context).
 :- mode mode_context_init(out) is det.
 
-	% write out the inferred `mode' declarations for a list of pred_ids.
+	% Write out the inferred `mode' declarations for a list of pred_ids.
+	% The bool indicates whether or not to write out determinism
+	% annotations on the modes (it should only be set to `yes' _after_
+	% determinism analysis).
 
-:- pred write_mode_inference_messages(list(pred_id), module_info,
+:- pred write_mode_inference_messages(list(pred_id), bool, module_info,
 				io__state, io__state).
-:- mode write_mode_inference_messages(in, in, di, uo) is det.
+:- mode write_mode_inference_messages(in, in, in, di, uo) is det.
 
 	% report an error for the case when two mode declarations
 	% declare indistinguishable modes
@@ -822,47 +825,54 @@ maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo) -->
 
 	% write out the inferred `mode' declarations for a list of pred_ids.
 
-write_mode_inference_messages([], _) --> [].
-write_mode_inference_messages([PredId | PredIds], ModuleInfo) -->
+write_mode_inference_messages([], _, _) --> [].
+write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	( { check_marker(Markers, infer_modes) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__keys(Procs, ProcIds) },
-		write_mode_inference_messages_2(ProcIds, Procs, PredInfo)
+		write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
+			OutputDetism)
 	;
 		[]
 	),
-	write_mode_inference_messages(PredIds, ModuleInfo).
+	write_mode_inference_messages(PredIds, OutputDetism, ModuleInfo).
 
 	% write out the inferred `mode' declarations for a list of
 	% proc_ids
 
 :- pred write_mode_inference_messages_2(list(proc_id), proc_table, pred_info,
-				io__state, io__state).
-:- mode write_mode_inference_messages_2(in, in, in, di, uo) is det.
+				bool, io__state, io__state).
+:- mode write_mode_inference_messages_2(in, in, in, in, di, uo) is det.
 
-write_mode_inference_messages_2([], _, _) --> [].
-write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo) -->
+write_mode_inference_messages_2([], _, _, _) --> [].
+write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
+		OutputDetism) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	write_mode_inference_message(PredInfo, ProcInfo),
-	write_mode_inference_messages_2(ProcIds, Procs, PredInfo).
+	write_mode_inference_message(PredInfo, ProcInfo, OutputDetism),
+	write_mode_inference_messages_2(ProcIds, Procs, PredInfo, OutputDetism).
 
 	% write out the inferred `mode' declaration
 	% for a single function or predicate.
 
-:- pred write_mode_inference_message(pred_info, proc_info,
+:- pred write_mode_inference_message(pred_info, proc_info, bool,
 				io__state, io__state).
-:- mode write_mode_inference_message(in, in, di, uo) is det.
+:- mode write_mode_inference_message(in, in, in, di, uo) is det.
 
-write_mode_inference_message(PredInfo, ProcInfo) -->
+write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, Modes0) },
 	{ varset__init(VarSet) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ MaybeDet = no },
+	( { OutputDetism = yes } ->
+		{ proc_info_inferred_determinism(ProcInfo, Detism) },
+		{ MaybeDet = yes(Detism) }
+	;
+		{ MaybeDet = no }
+	),
 	prog_out__write_context(Context),
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	io__write_string("Inferred "),

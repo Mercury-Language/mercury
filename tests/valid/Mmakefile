@@ -55,6 +55,7 @@ SOURCES= \
 	loop_in_disj.m \
 	middle_rec_labels.m \
 	modes_bug.m \
+	mostly_uniq_mode_inf.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	nasty_func_test.m \
@@ -105,6 +106,7 @@ MCFLAGS-double_vn		= -O4
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
+MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
