@@ -21,10 +21,10 @@ MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 #-----------------------------------------------------------------------------#
 
 all:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all 2>&1 | tee make_all.log
 
 install:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install 2>&1 | tee make_install.log
 
 # `mmake clean' has a different meaning to the usual GNU standard `make clean':
 # it removes the .c files, which makes bootstrapping impossible unless you
