@@ -179,7 +179,7 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	** the arities before we can check the argument types.
 	*/
 
-	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
+	if (MR_type_ctor_has_variable_arity(tci1)) {
 		num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
 		num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
@@ -264,7 +264,7 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	** the arities before we can check the argument types.
 	*/
 
-	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
+	if (MR_type_ctor_has_variable_arity(tci1)) {
 		num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
 		num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 

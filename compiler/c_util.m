@@ -462,8 +462,6 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"**\n",
 		"** END_OF_C_GRADE_INFO\n",
 		"*/\n",
-		"\n",
-		"#define MR_TYPE_CTOR_INFO_HAS_FLAG 1\n",
 		"\n"
 	]).
 

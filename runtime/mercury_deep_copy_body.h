@@ -709,9 +709,7 @@ copy_type_info(MR_TypeInfo type_info,
             return (MR_TypeInfo) type_ctor_info;
         }
 
-        if (MR_type_ctor_rep_is_variable_arity(
-            MR_type_ctor_rep(type_ctor_info)))
-        {
+        if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
@@ -727,10 +725,12 @@ copy_type_info(MR_TypeInfo type_info,
             MR_fill_in_fixed_arity_type_info(new_type_info_arena,
                 type_ctor_info, new_type_info_args);
         }
+
         for (i = 1; i <= arity; i++) {
             new_type_info_args[i] = copy_type_info(type_info_args[i],
                 lower_limit, upper_limit);
         }
+
         leave_forwarding_pointer((MR_Word) type_info,
             TYPEINFO_FORWARDING_PTR_OFFSET, (MR_Word) new_type_info_arena);
         return (MR_TypeInfo) new_type_info_arena;

@@ -94,8 +94,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP \
-        || typector->MR_type_ctor_version == MR_RTTI_VERSION__FLAG)
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__FLAG)
 
 /*---------------------------------------------------------------------------*/
 
@@ -646,29 +645,6 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "BASETYPECLASSINFO",                        \
     "FOREIGN",                                  \
     "UNKNOWN"
-
-#define MR_type_ctor_rep_is_basically_du(rep)               \
-    (  ((rep) == MR_TYPECTOR_REP_ENUM)                      \
-    || ((rep) == MR_TYPECTOR_REP_ENUM_USEREQ)               \
-    || ((rep) == MR_TYPECTOR_REP_DU)                        \
-    || ((rep) == MR_TYPECTOR_REP_DU_USEREQ)                 \
-    || ((rep) == MR_TYPECTOR_REP_NOTAG)                     \
-    || ((rep) == MR_TYPECTOR_REP_NOTAG_USEREQ)              \
-    || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND)              \
-    || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ)       \
-    || ((rep) == MR_TYPECTOR_REP_RESERVED_ADDR)             \
-    || ((rep) == MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ))
-
-/*
-** Returns MR_TRUE if the type_ctor_info is used to represent
-** multiple types of different arities. The arity is stored
-** as the first element of the argument type-info vector.
-** This is true for higher-order types and tuple types.
-*/
-#define MR_type_ctor_rep_is_variable_arity(rep)             \
-    (  ((rep) == MR_TYPECTOR_REP_PRED)                      \
-    || ((rep) == MR_TYPECTOR_REP_FUNC)                      \
-    || ((rep) == MR_TYPECTOR_REP_TUPLE))
 
 /*---------------------------------------------------------------------------*/
 

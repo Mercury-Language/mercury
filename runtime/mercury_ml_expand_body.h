@@ -933,9 +933,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_TYPEINFO_GET_TYPE_CTOR_INFO(data_type_info);
                 handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
 
-                if (MR_type_ctor_rep_is_variable_arity(
-                    MR_type_ctor_rep(data_type_ctor_info)))
-                {
+                if (MR_type_ctor_has_variable_arity(data_type_ctor_info)) {
                     num_args =
                         MR_TYPEINFO_GET_VAR_ARITY_ARITY(data_type_info);
                     arg_type_infos = (MR_Word *)
@@ -945,6 +943,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     arg_type_infos = (MR_Word *)
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(data_type_info);
                 }
+
                 expand_info->arity = num_args;
                 /* switch from 1-based to 0-based array indexing */
                 arg_type_infos++;

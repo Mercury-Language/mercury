@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -68,9 +68,7 @@ MR_type_ctor_and_args(MR_TypeInfo type_info, MR_bool collapse_equivalences,
 	type_ctor_desc = MR_make_type_ctor_desc(type_info, type_ctor_info);
 	*type_ctor_desc_ptr = type_ctor_desc;
 
-	if (MR_type_ctor_rep_is_variable_arity(
-		MR_type_ctor_rep(type_ctor_info)))
-	{
+	if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
 		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 		*arg_type_info_list_ptr = MR_type_params_vector_to_list(arity,
 			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));

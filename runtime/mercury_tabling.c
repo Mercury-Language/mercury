@@ -802,7 +802,7 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
     ** sense. This is OK, because in that case it will never be used.
     */
 
-    if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(type_ctor_info))) {
+    if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
         arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
         arg_vector = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
         node = MR_int_hash_lookup_or_add(node, arity);

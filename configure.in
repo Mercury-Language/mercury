@@ -171,7 +171,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 		main(!IO) :-
 			return_rtti_version(Version),
 			(
-				Version >= 6,
+				Version >= 8,
 				ac(2) ^ elem(3, 5) = 17
 			->
 				io.print("Hello, world\n", !IO)
