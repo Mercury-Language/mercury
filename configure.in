@@ -1667,8 +1667,8 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 
 	AC_CACHE_VAL(mercury_cv_gcc_model_fast,
 	AC_TRY_RUN([
-	#define USE_GCC_NONLOCAL_GOTOS
-	#define USE_GCC_GLOBAL_REGISTERS
+	#define MR_USE_GCC_NONLOCAL_GOTOS
+	#define MR_USE_GCC_GLOBAL_REGISTERS
 	#include "mercury_engine.h"
 	changequote(<<,>>) 
 	MercuryEngine MR_engine_base;
@@ -1700,7 +1700,7 @@ CC="$CC $CFLAGS_FOR_REGS"
 
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
-#define USE_GCC_GLOBAL_REGISTERS
+#define MR_USE_GCC_GLOBAL_REGISTERS
 #include "mercury_engine.h"
 changequote(<<,>>) 
 MercuryEngine MR_engine_base;
@@ -2329,11 +2329,11 @@ AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
 AC_TRY_RUN([
 changequote(<<,>>) 
 
-/* USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
-/* We define USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
-/* cannot have USE_GCC_GLOBAL_REGISTERS without it. */
-#define	USE_GCC_GLOBAL_REGISTERS
-#define USE_GCC_NONLOCAL_GOTOS
+/* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
+/* We define MR_USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
+/* cannot have MR_USE_GCC_GLOBAL_REGISTERS without it. */
+#define	MR_USE_GCC_GLOBAL_REGISTERS
+#define MR_USE_GCC_NONLOCAL_GOTOS
 #include "mercury_imp.h"
 #include "trace/mercury_trace_spy.h"
 

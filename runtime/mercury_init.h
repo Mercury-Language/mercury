@@ -20,8 +20,8 @@
 ** The following must come before any definitions of global variables.
 ** This is necessary to support DLLs on Windows.
 */
-#include "mercury_conf.h" /* for USE_DLLS */
-#if USE_DLLS
+#include "mercury_conf.h" /* for MR_USE_DLLS */
+#if MR_USE_DLLS
   #include "libmer_rt_dll.h"
 #endif
 
@@ -87,7 +87,7 @@ extern	int	mercury_terminate(void);
 #include "mercury_trace_base.h"	/* for MR_trace_port */
 #include "mercury_type_info.h"	/* for MR_TypeCtorInfo_Struct */
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #include "gc.h"
 #endif
 

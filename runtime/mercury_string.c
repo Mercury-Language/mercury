@@ -9,11 +9,11 @@
 #include "mercury_imp.h"
 #include "mercury_string.h"
 
-#if defined(HAVE__VSNPRINTF) && ! defined(HAVE_VSNPRINTF)
+#if defined(MR_HAVE__VSNPRINTF) && ! defined(MR_HAVE_VSNPRINTF)
   #define vsnprintf	_vsnprintf
 #endif
 
-#if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
+#if defined(MR_HAVE_VSNPRINTF) || defined(MR_HAVE__VSNPRINTF)
   #define MR_HAVE_A_VSNPRINTF
 #endif
 

@@ -21,16 +21,16 @@
 #include "mercury_trace_readline.h"
 
 #ifndef MR_NO_USE_READLINE
-  #ifdef HAVE_READLINE_READLINE
+  #ifdef MR_HAVE_READLINE_READLINE_H
     #include "readline/readline.h"
   #else
     FILE *rl_instream;
     FILE *rl_outstream;
   #endif
-  #ifdef HAVE_READLINE_HISTORY
+  #ifdef MR_HAVE_READLINE_HISTORY_H
     #include "readline/history.h"
   #endif
-  #ifdef HAVE_UNISTD_H
+  #ifdef MR_HAVE_UNISTD_H
      #include <unistd.h>	/* for isatty() */
   #endif
 #endif
@@ -51,8 +51,8 @@
 char *
 MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 {
-#if (defined(isatty) || defined(HAVE_ISATTY)) \
- && (defined(fileno) || defined(HAVE_FILENO)) \
+#if (defined(isatty) || defined(MR_HAVE_ISATTY)) \
+ && (defined(fileno) || defined(MR_HAVE_FILENO)) \
  && !defined(MR_NO_USE_READLINE)
 	/* use readline, if the input file is a terminal */
 	if (isatty(fileno(in))) {

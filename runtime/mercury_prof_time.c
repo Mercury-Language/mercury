@@ -20,17 +20,17 @@ const char		*MR_time_method;
 #include	<signal.h>
 #include	<errno.h>
 
-#ifdef	HAVE_UNISTD_H
+#ifdef	MR_HAVE_UNISTD_H
   #include	<unistd.h>
 #endif
 
-#ifdef	HAVE_SYS_TIME
+#ifdef	MR_HAVE_SYS_TIME_H
   #include	<sys/time.h>
 #endif
 
 #if	defined(MR_MPROF_PROFILE_TIME) || defined(MR_DEEP_PROFILING)
 
-#if	!defined(MR_CLOCK_TICKS_PER_SECOND) || !defined(HAVE_SETITIMER)
+#if	!defined(MR_CLOCK_TICKS_PER_SECOND) || !defined(MR_HAVE_SETITIMER)
   #error "Time profiling not supported on this system"
 #endif
 

@@ -13,7 +13,7 @@
 #include "mercury_deep_copy.h"
 #include "mercury_agc_debug.h"
 
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 
 /*
 ** Function prototypes.
@@ -34,7 +34,7 @@ static  void	dump_live_variables(const MR_Label_Layout *layout,
 void
 MR_agc_dump_roots(MR_RootList roots)
 {
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 	MR_Word	saved_regs[MR_MAX_FAKE_REG];
 
 	fflush(NULL);
@@ -66,7 +66,7 @@ MR_agc_dump_roots(MR_RootList roots)
 		roots = roots->next;
 	}
   #endif /* MR_DEBUG_AGC_PRINT_VARS */
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 }
 
 void
@@ -163,7 +163,7 @@ void
 MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 	MR_Word			saved_regs[MR_MAX_FAKE_REG];
 	int			i, short_var_count, long_var_count;
 	MR_Word			*type_params;
@@ -224,7 +224,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 			entry_layout = layout->MR_sll_entry;
 		}
 	}
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 }
 
 static void
@@ -330,7 +330,7 @@ static void
 dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, bool do_regs)
 {
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 	int	locn_num;
 	MR_Word	value = 0;
 	int	difference;
@@ -409,14 +409,14 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			fprintf(stderr, "\t       \t(%lx)", (long) value);
 		}
 	}
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 }
 
 static void
 dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, bool do_regs)
 {
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 	int	locn_num;
 	MR_Word	value = 0;
 	int	difference;
@@ -483,7 +483,7 @@ dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 			fprintf(stderr, "\t       \t(%lx)", (long) value);
 		}
 	}
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 }
 
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */

@@ -39,7 +39,7 @@ garbage_collect -->
 :- pragma no_inline(garbage_collect/0).
 
 :- pragma foreign_proc("C", garbage_collect, [may_call_mercury], "
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */
 	MR_clear_zone_for_GC(MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp + 1);

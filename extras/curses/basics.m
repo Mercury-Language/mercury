@@ -302,7 +302,7 @@
 
 :- pragma c_code("
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 
 /*
 ** The addresses of the closures that we pass to curses

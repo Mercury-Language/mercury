@@ -162,7 +162,7 @@ MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
 void 
 MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 {
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	printf("allocated %ld words at %p\n", (long) val, addr);
 #else
 	printf("increment hp by %ld from ", (long) (MR_Integer) val);
@@ -203,7 +203,7 @@ MR_reg_msg(void)
 
 	for(i=1; i<=8; i++) {
 		x = (MR_Integer) MR_get_reg(i);
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 		if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= x
 				&& x < (MR_Integer)
 					MR_ENGINE(MR_eng_heap_zone)->top)
@@ -243,7 +243,7 @@ MR_printstring(const char *s)
 void 
 MR_printheap(const MR_Word *h)
 {
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	if (MR_print_raw_addrs) {
 		printf("ptr %p, ", (const void *) h);
 	}
@@ -342,7 +342,7 @@ MR_print_ordinary_regs(void)
 		printf("r%d:      ", i + 1);
 		value = (MR_Integer) MR_get_reg(i+1);
 
-#ifndef	CONSERVATIVE_GC
+#ifndef	MR_CONSERVATIVE_GC
 		if ((MR_Integer) MR_ENGINE(MR_eng_heap_zone)->min <= value
 				&& value < (MR_Integer)
 					MR_ENGINE(MR_eng_heap_zone)->top)
@@ -434,7 +434,7 @@ MR_printnondstack(const MR_Word *s)
 void 
 MR_print_heapptr(FILE *fp, const MR_Word *s)
 {
-#ifdef	CONSERVATIVE_GC
+#ifdef	MR_CONSERVATIVE_GC
 	fprintf(fp, "heap %ld", (long) s);
 #else
 	fprintf(fp, "heap %3ld",

@@ -310,10 +310,10 @@
 	** Conservative garbage collection also makes restoring the state
 	** after an exception a bit simpler.
 	*/	
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 #error ""The OBDC interface requires conservative garbage collection. \\
 		Use a compilation grade containing .gc.""
-#endif /* ! CONSERVATIVE_GC */
+#endif /* ! MR_CONSERVATIVE_GC */
 
 #ifdef MODBC_IODBC
 

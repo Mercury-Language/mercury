@@ -9,23 +9,23 @@
 #ifndef MERCURY_FLOAT_H
 #define MERCURY_FLOAT_H
 
-#include "mercury_conf.h"	/* for BOXED_FLOAT */
+#include "mercury_conf.h"	/* for MR_BOXED_FLOAT */
 #include "mercury_types.h"	/* for `MR_Word' */
 
-#ifdef USE_SINGLE_PREC_FLOAT
+#ifdef MR_USE_SINGLE_PREC_FLOAT
   typedef float MR_Float;
 #else
   typedef double MR_Float;
 #endif
 
-#ifdef BOXED_FLOAT 
+#ifdef MR_BOXED_FLOAT 
 
 #define MR_word_to_float(w) 	(* (MR_Float *) (w))
 
 #define MR_FLOAT_WORDS 		((sizeof(MR_Float) + sizeof(MR_Word) - 1) \
 					/ sizeof(MR_Word))
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #define MR_float_to_word(f) ( \
 		MR_hp_alloc_atomic(MR_FLOAT_WORDS), \
 		* (MR_Float *) (void *) (MR_hp - MR_FLOAT_WORDS) = (f), \
@@ -58,7 +58,7 @@
   #define MR_float_const(f) MR_float_to_word(f)	/* inefficient */
 #endif
 
-#else /* not BOXED_FLOAT */
+#else /* not MR_BOXED_FLOAT */
 
   /* unboxed float means we can assume sizeof(MR_Float) == sizeof(MR_Word) */
 
@@ -86,7 +86,7 @@
 
   #endif /* not __GNUC__ */
 
-#endif /* not BOXED_FLOAT */
+#endif /* not MR_BOXED_FLOAT */
 
 MR_Integer MR_hash_float(MR_Float);
 

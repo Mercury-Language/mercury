@@ -409,7 +409,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_FLOAT:
-        #ifdef BOXED_FLOAT
+        #ifdef MR_BOXED_FLOAT
             {
                 MR_Word    *data_value;
 

@@ -13,7 +13,7 @@
 #define	MERCURY_TAGS_H
 
 #include <limits.h>		/* for `CHAR_BIT' */
-#include "mercury_conf.h"	/* for `LOW_TAG_BITS' */
+#include "mercury_conf.h"	/* for `MR_LOW_TAG_BITS' */
 #include "mercury_types.h"	/* for `MR_Word' */
 
 /* DEFINITIONS FOR WORD LAYOUT */
@@ -25,11 +25,11 @@
   #ifdef HIGHTAGS
     #error "HIGHTAGS defined but TAGBITS undefined"
   #else
-    #define TAGBITS	LOW_TAG_BITS
+    #define TAGBITS	MR_LOW_TAG_BITS
   #endif
 #endif
 
-#if TAGBITS > 0 && defined(HIGHTAGS) && defined(CONSERVATIVE_GC)
+#if TAGBITS > 0 && defined(HIGHTAGS) && defined(MR_CONSERVATIVE_GC)
   #error "Conservative GC does not work with high tag bits"
 #endif
 

@@ -85,7 +85,7 @@
 	#include <stdio.h>
 	#include ""mercury_conf.h""
 	#include ""mercury_string.h""	/* for MR_make_aligned_string_copy() */
-#ifdef HAVE_DLFCN_H
+#ifdef MR_HAVE_DLFCN_H
 	#include <dlfcn.h>
 #endif
 ").
@@ -117,7 +117,7 @@ open(FileName, Mode, Scope, Result) -->
 :- pragma c_code(dlopen(FileName::in, Mode::in, Scope::in, Result::out,
 		_IO0::di, _IO::uo), [], "
 {
-#if defined(HAVE_DLFCN_H) && defined(HAVE_DLOPEN) \
+#if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLOPEN) \
  && defined(RTLD_NOW) && defined(RTLD_LAZY)
 	int mode = (Mode ? RTLD_NOW : RTLD_LAZY);
 	/* not all systems have RTLD_GLOBAL */
@@ -429,7 +429,7 @@ sym(handle(Handle), Name, Result) -->
 :- pragma c_code(dlsym(Handle::in, Name::in, Pointer::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury], "
 {
-#if defined(HAVE_DLFCN_H) && defined(HAVE_DLSYM)
+#if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLSYM)
 	Pointer = (MR_Word) dlsym((void *) Handle, Name);
 #else
 	Pointer = (MR_Word) NULL;
@@ -442,7 +442,7 @@ sym(handle(Handle), Name, Result) -->
 {
 	const char *msg;
 
-#if defined(HAVE_DLFCN_H) && defined(HAVE_DLERROR)
+#if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLERROR)
 	msg = dlerror();
 	if (msg == NULL) msg = """";
 #else
@@ -465,7 +465,7 @@ close(handle(Handle), Result) -->
 */
 :- pred dlclose(c_pointer::in, io__state::di, io__state::uo) is det.
 :- pragma c_code(dlclose(Handle::in, _IO0::di, _IO::uo), [], "
-#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
+#if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLCLOSE)
 	dlclose((void *)Handle)
 #endif
 ").

@@ -61,12 +61,12 @@
 :- pragma inline(new_nb_reference/2).
 :- pragma c_code(new_nb_reference(X::in, Ref::out), will_not_call_mercury, "
 	MR_incr_hp(Ref, 1);
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
 #endif
 	*(MR_Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(MR_Word *) Ref);
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	MR_restore_transient_registers();
 #endif
 ").
@@ -78,12 +78,12 @@
 
 :- pragma inline(update/2).
 :- pragma c_code(update(Ref::in, X::in), will_not_call_mercury, "
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
 #endif
 	*(MR_Word *) Ref = MR_make_long_lived(X, (MR_TypeInfo) TypeInfo_for_T,
 			(MR_Word *) Ref);
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	MR_restore_transient_registers();
 #endif
 ").

@@ -160,10 +160,10 @@
 
 :- pragma c_header_code("
 	#include <time.h>
-	#ifdef HAVE_SYS_TYPES_H
+	#ifdef MR_HAVE_SYS_TYPES_H
 		#include <sys/types.h>
 	#endif
-	#ifdef HAVE_SYS_TIMES_H
+	#ifdef MR_HAVE_SYS_TIMES_H
 		#include <sys/times.h>
 	#endif
 

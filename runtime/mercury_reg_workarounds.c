@@ -19,7 +19,7 @@
 #include <sys/types.h>	/* for fd_set and FD_ZERO() */
 #include <sys/time.h>	/* for FD_ZERO() */
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>	/* for FD_ZERO() */
 #endif
 

@@ -21,7 +21,7 @@
 #include "mercury_reg_workarounds.h"
 #include "mercury_dlist.h"
 
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
 #endif
 
@@ -338,7 +338,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
 
 /*---------------------------------------------------------------------------*/
 
-#ifndef NATIVE_GC
+#ifndef MR_NATIVE_GC
 
   #define MR_TABLE_NEW(type)						\
 	MR_GC_NEW(type)
@@ -367,7 +367,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_table_list_cons(h, t)					\
 	MR_list_cons((h), (t))
 
-#else /* NATIVE_GC */
+#else /* MR_NATIVE_GC */
 
   #define MR_TABLE_NEW(type)						\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
@@ -396,7 +396,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(MR_Word) 0)
 
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 
 #define MR_table_copy_bytes(dest, source, size)				\
 	MR_memcpy((dest), (source), (size))

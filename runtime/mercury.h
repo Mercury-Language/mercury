@@ -34,9 +34,9 @@
 #include "mercury_memory.h"	/* for memory allocation routines */
 #include "mercury_type_tables.h"	/* for MR_register_type_ctor_info */
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #include "gc.h"
-  #ifdef INLINE_ALLOC
+  #ifdef MR_INLINE_ALLOC
     #include "gc_inl.h"
   #endif
 #else
@@ -294,7 +294,7 @@ struct MR_StackChain {
 ** Declarations of contants and variables
 */
 
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
   /*
   ** This points to the start of the MR_StackChain frame list.
   ** XXX Using a global variable for this is not thread-safe.
@@ -395,10 +395,10 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 **	Allocates memory on the garbage-collected heap.
 */
 
-#ifdef CONSERVATIVE_GC
-  #ifdef INLINE_ALLOC
+#ifdef MR_CONSERVATIVE_GC
+  #ifdef MR_INLINE_ALLOC
     #ifndef __GNUC__
-      #error "INLINE_ALLOC requires GNU C"
+      #error "MR_INLINE_ALLOC requires GNU C"
     #endif
     /*
     ** This must be a macro, not an inline function, because
@@ -423,12 +423,12 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
         )
     #define MR_new_object(type, size, name) \
   		((type *) MR_GC_MALLOC_INLINE(size))
-  #else /* !INLINE_ALLOC */
+  #else /* !MR_INLINE_ALLOC */
     #define MR_new_object(type, size, name) \
   		((type *) GC_MALLOC(size)) 
-  #endif /* !INLINE_ALLOC */
+  #endif /* !MR_INLINE_ALLOC */
 
-#else /* !CONSERVATIVE_GC */
+#else /* !MR_CONSERVATIVE_GC */
 
   #ifndef __GNUC__
     /*

@@ -22,11 +22,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
 #endif
 
-#ifdef HAVE_SYS_TYPES_H
+#ifdef MR_HAVE_SYS_TYPES_H
   #include <sys/types.h>	/* for getpid() */
 #endif
 
@@ -227,7 +227,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 	*/
 	base_len = strlen(MR_SOURCE_SERVER_BASENAME);
 
-#if defined(HAVE_GETPID) && defined(HAVE_GETHOSTNAME)
+#if defined(MR_HAVE_GETPID) && defined(MR_HAVE_GETHOSTNAME)
 	/*
 	** Need to leave enough room for the pid, two '.'s and the
 	** terminating zero.

@@ -48,11 +48,11 @@
 /*
 ** Should we keep the GOT register (ebx) free for PIC code?
 */
-#if PIC && !defined(PIC_REG)
-  #define PIC_REG 1
+#if PIC && !defined(MR_PIC_REG)
+  #define MR_PIC_REG 1
 #endif
 
-#if PIC_REG
+#if MR_PIC_REG
   #define MR_NUM_REAL_REGS 2
 #else
   #define MR_NUM_REAL_REGS 3
@@ -64,7 +64,7 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 #define MR_real_reg_number_mr0	esi
 #define MR_real_reg_number_mr1	edi
 
-#if PIC_REG
+#if MR_PIC_REG
   #define 	MR_mr2	MR_fake_reg[2]
 #else
   register	MR_Word	MR_mr2 __asm__("ebx");	/* r1 */
@@ -73,7 +73,7 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 
 #endif
 
-#if PIC_REG
+#if MR_PIC_REG
 
 #define MR_save_regs_to_mem(save_area) (	\
 	save_area[0] = MR_mr0,			\
@@ -87,7 +87,7 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 	(void)0					\
 )
 
-#else /* ! PIC_REG */
+#else /* ! MR_PIC_REG */
 
 #define MR_save_regs_to_mem(save_area) (	\
 	save_area[0] = MR_mr0,			\
@@ -103,7 +103,7 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 	(void)0					\
 )
 
-#endif	/* ! PIC_REG */
+#endif	/* ! MR_PIC_REG */
 
 #define MR_save_transient_regs_to_mem(save_area)	((void)0)
 #define MR_restore_transient_regs_from_mem(save_area)	((void)0)

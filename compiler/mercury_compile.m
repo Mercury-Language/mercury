@@ -95,7 +95,7 @@ main -->
 :- pred gc_init(io__state::di, io__state::uo) is det.
 
 :- pragma c_code(gc_init(_IO0::di, _IO::uo), [will_not_call_mercury], "
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	/*
 	** Explicitly force the initial heap size to be at least 4 Mb.
 	**

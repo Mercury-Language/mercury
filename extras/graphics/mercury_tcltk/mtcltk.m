@@ -305,7 +305,7 @@ tcl_status_ok(tcl_ok).
 
 :- pragma c_code("
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 
 /*
 ** The addresses of the closures that we pass to Tk

@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <stdlib.h>
-#ifdef HAVE_DLFCN_H
+#ifdef MR_HAVE_DLFCN_H
   #include <dlfcn.h>
 #endif
 
@@ -1568,7 +1568,7 @@ MR_send_collect_result(void)
 		(*send_collect_result_ptr)(
 			MR_collected_variable, 
 			(MR_Word) &MR_debugger_socket_out));
-#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
+#if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLCLOSE)
 	MR_TRACE_CALL_MERCURY(
        		ML_CL_unlink_collect(collect_lib_maybe_handle));
 #endif

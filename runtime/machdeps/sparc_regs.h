@@ -23,7 +23,7 @@
 ** This won't work at all unless we are using gcc's non-local gotos.
 */
 
-#ifndef USE_GCC_NONLOCAL_GOTOS
+#ifndef MR_USE_GCC_NONLOCAL_GOTOS
   #error "On SPARCs, you must use non-local gotos if you want global registers"
 #else
 

@@ -70,20 +70,20 @@
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-  #ifdef USE_ASM_LABELS
+  #ifdef MR_USE_ASM_LABELS
     #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
   #else
     #define MR_GRADE_PART_1	MR_GRADE_PART_0
   #endif
 
-  #ifdef USE_GCC_NONLOCAL_GOTOS
-    #ifdef USE_GCC_GLOBAL_REGISTERS
+  #ifdef MR_USE_GCC_NONLOCAL_GOTOS
+    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
       #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
     #else
       #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
     #endif
   #else
-    #ifdef USE_GCC_GLOBAL_REGISTERS
+    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
       #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
     #else
       #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
@@ -98,9 +98,9 @@
   #define MR_GRADE_PART_3	MR_GRADE_PART_2
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
-#elif defined(NATIVE_GC)
+#elif defined(MR_NATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _agc)
 #else
   #define MR_GRADE_PART_4	MR_GRADE_PART_3
@@ -184,7 +184,7 @@
   					MR_PASTE2(_tags, TAGBITS))
 #endif
 
-#ifdef BOXED_FLOAT
+#ifdef MR_BOXED_FLOAT
   #define MR_GRADE_PART_9	MR_GRADE_PART_8
 #else				/* "ubf" stands for "unboxed float" */
   #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _ubf)
@@ -198,7 +198,8 @@
 
 #if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _regparm)
-#elif defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
+#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
+					defined(__i386__)
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _picreg)
 #else
   #define MR_GRADE_PART_11	MR_GRADE_PART_10
@@ -252,20 +253,20 @@ extern const char MR_GRADE_VAR;
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-  #ifdef USE_ASM_LABELS
+  #ifdef MR_USE_ASM_LABELS
     #define MR_GRADE_OPT_PART_1		"asm_"
   #else
     #define MR_GRADE_OPT_PART_1		""
   #endif
 
-  #ifdef USE_GCC_NONLOCAL_GOTOS
-    #ifdef USE_GCC_GLOBAL_REGISTERS
+  #ifdef MR_USE_GCC_NONLOCAL_GOTOS
+    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
       #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "fast"
     #else
       #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "jump"
     #endif
   #else
-    #ifdef USE_GCC_GLOBAL_REGISTERS
+    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
       #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "reg"
     #else
       #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "none"
@@ -279,9 +280,9 @@ extern const char MR_GRADE_VAR;
 #else
   #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2
 #endif
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gc"
-#elif defined(NATIVE_GC)
+#elif defined(MR_NATIVE_GC)
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".agc"
 #else
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3
@@ -352,7 +353,8 @@ extern const char MR_GRADE_VAR;
 
 #if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
   #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".regparm"
-#elif defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
+#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
+					defined(__i386__)
   #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".picreg"
 #else
   #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7

@@ -128,7 +128,7 @@ MR_Word MR_agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info,
 **	"heap," but don't see how to.
 */
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
   extern	MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info,

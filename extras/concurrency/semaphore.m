@@ -74,7 +74,7 @@
 ").
 
 :- pragma c_header_code("
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   void ME_finalize_semaphore(GC_PTR obj, GC_PTR cd);
 #endif
 ").
@@ -103,7 +103,7 @@
 	** The condvar and the mutex will need to be destroyed
 	** when the semaphore is garbage collected.
 	*/
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	GC_REGISTER_FINALIZER(sem, ME_finalize_semaphore, NULL, NULL, NULL);
 #endif
 
@@ -112,7 +112,7 @@
 }").
 
 :- pragma c_code("
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   void
   ME_finalize_semaphore(GC_PTR obj, GC_PTR cd)
   {

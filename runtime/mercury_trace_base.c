@@ -28,11 +28,11 @@ ENDINIT
 #include <stdio.h>
 #include <errno.h>
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>		/* for the write system call */
 #endif
 
-#ifdef HAVE_SYS_WAIT
+#ifdef MR_HAVE_SYS_WAIT_H
   #include <sys/wait.h>		/* for the wait system call */
 #endif
 
@@ -221,7 +221,7 @@ MR_trace_final(void)
 	}
 #endif
 
-#if defined(HAVE_KILL) && defined(HAVE_WAIT) && defined(SIGTERM)
+#if defined(MR_HAVE_KILL) && defined(MR_HAVE_WAIT) && defined(SIGTERM)
 	/*
 	** If mdb started a window, make sure it dies now.
 	*/

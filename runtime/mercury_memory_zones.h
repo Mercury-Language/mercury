@@ -126,7 +126,7 @@ struct MR_MemoryZone_Struct {
 	#define MR_zone_end	top
 #endif
 
-#if defined(NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
+#if defined(MR_NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
 	/*
 	** This field, which is only used for heap zones,
 	** points to MR_heap_margin_size bytes before MR_zone_end.
@@ -172,7 +172,7 @@ int MR_protect_pages(void *addr, size_t size, int prot_flags);
 ** MR_init_memory_arena() allocates (if necessary) the top-level memory pool
 ** from which all allocations should come. If PARALLEL is defined, then
 ** this pool should be shared memory. In the absence of PARALLEL, it
-** doesn't need to do anything, since with CONSERVATIVE_GC, the collector
+** doesn't need to do anything, since with MR_CONSERVATIVE_GC, the collector
 ** manages the heap, and without GC, we can allocate memory using memalign
 ** or malloc.
 */

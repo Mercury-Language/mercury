@@ -262,9 +262,6 @@
 #ifdef MR_SYNC_TERM_SIZE
   #define SYNC_TERM_SIZE MR_SYNC_TERM_SIZE
 #endif
-#ifdef MR_BOXED_FLOAT
-  #define BOXED_FLOAT 1
-#endif
 #ifdef MR_HAVE_GCC_LABELS
   #define HAVE_GCC_LABELS 1
 #endif

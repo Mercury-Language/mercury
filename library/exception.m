@@ -1830,7 +1830,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 		MR_exception);
 	MR_discard_tickets_to(MR_EXCEPTION_STRUCT->MR_excp_ticket_counter);
 #endif
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 	/*
 	** Reset the heap.  But we need to be careful to preserve the
 	** thrown exception object.
@@ -1912,7 +1912,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 		MR_sol_hp = MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr;
 	}
 }
-#endif /* !defined(CONSERVATIVE_GC) */
+#endif /* !defined(MR_CONSERVATIVE_GC) */
 
 	/*
 	** Pop the final exception handler frame off the nondet stack,

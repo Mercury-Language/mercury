@@ -56,7 +56,7 @@ extern	int	MR_load_aditi_rl_code(void);
 ** (--high-level-code) back-end, it may be called directly
 ** from main().
 */
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   extern void	MR_init_conservative_GC(void);
 #endif
 
@@ -94,7 +94,7 @@ extern	void		(*MR_address_of_init_modules_debugger)(void);
 extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 extern	void		(*MR_address_of_init_gc)(void);
 #endif
 

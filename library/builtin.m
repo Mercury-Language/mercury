@@ -336,7 +336,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, tuple, 0,
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(void, 0, MR_TYPECTOR_REP_VOID);
 
-#ifdef	NATIVE_GC
+#ifdef	MR_NATIVE_GC
 
 /*
 ** The following type_ctor_infos are used only by accurate gc.
@@ -349,7 +349,7 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(maxfr, 0, MR_TYPECTOR_REP_MAXFR);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(redofr, 0, MR_TYPECTOR_REP_REDOFR);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(redoip, 0, MR_TYPECTOR_REP_REDOIP);
 
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */
 
 /*
 ** The following type_ctor_infos are used both accurate gc and by the debugger.

@@ -40,31 +40,31 @@
 #include <errno.h>
 #include <signal.h>
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
 #endif
 
-#ifdef HAVE_SYS_TYPES_H
+#ifdef MR_HAVE_SYS_TYPES_H
   #include <sys/types.h>
 #endif
 
-#ifdef HAVE_SYS_WAIT
+#ifdef MR_HAVE_SYS_WAIT_H
   #include <sys/wait.h>
 #endif
 
-#ifdef HAVE_TERMIOS_H
+#ifdef MR_HAVE_TERMIOS_H
   #include <termios.h>
 #endif
 
-#ifdef HAVE_FCNTL_H
+#ifdef MR_HAVE_FCNTL_H
   #include <fcntl.h>
 #endif
 
-#ifdef HAVE_SYS_IOCTL_H
+#ifdef MR_HAVE_SYS_IOCTL_H
   #include <sys/ioctl.h>
 #endif
 
-#ifdef HAVE_SYS_STROPTS_H
+#ifdef MR_HAVE_SYS_STROPTS_H
   #include <sys/stropts.h>
 #endif
 
@@ -463,18 +463,19 @@ MR_trace_internal_create_mdb_window(void)
 	**
 	** XXX Add support for MS Windows.
 	*/
-#if defined(HAVE_OPEN) && defined(O_RDWR) && defined(HAVE_FDOPEN) && \
-	defined(HAVE_CLOSE) && defined(HAVE_DUP) && defined(HAVE_DUP2) && \
-	defined(HAVE_FORK) && defined(HAVE_EXECLP) && \
-	defined(HAVE_DEV_PTMX) && defined(HAVE_GRANTPT) && \
-	defined(HAVE_UNLOCKPT) && defined(HAVE_PTSNAME)
+#if defined(MR_HAVE_OPEN) && defined(O_RDWR) && defined(MR_HAVE_FDOPEN) && \
+	defined(MR_HAVE_CLOSE) && defined(MR_HAVE_DUP) && \
+	defined(MR_HAVE_DUP2) && defined(MR_HAVE_FORK) && \
+	defined(MR_HAVE_EXECLP) && defined(MR_HAVE_DEV_PTMX) && \
+	defined(MR_HAVE_GRANTPT) && defined(MR_HAVE_UNLOCKPT) && \
+	defined(MR_HAVE_PTSNAME)
 
 	int master_fd = -1;
 	int slave_fd = -1;
 	char *slave_name;
 	pid_t child_pid;
-#if defined(HAVE_TERMIOS_H) && defined(HAVE_TCGETATTR) && \
-		defined(HAVE_TCSETATTR) && defined(ECHO) && defined(TCSADRAIN)
+#if defined(MR_HAVE_TERMIOS_H) && defined(MR_HAVE_TCGETATTR) && \
+		defined(MR_HAVE_TCSETATTR) && defined(ECHO) && defined(TCSADRAIN)
 	struct termios termio;
 #endif
 	master_fd = open("/dev/ptmx", O_RDWR);
@@ -500,14 +501,14 @@ MR_trace_internal_create_mdb_window(void)
 		return FALSE;
 	}
 
-#if defined(HAVE_IOCTL) && defined(I_PUSH)
+#if defined(MR_HAVE_IOCTL) && defined(I_PUSH)
 	/* Magic STREAMS incantations to make this work on Solaris. */
 	ioctl(slave_fd, I_PUSH, "ptem");
 	ioctl(slave_fd, I_PUSH, "ldterm");
 	ioctl(slave_fd, I_PUSH, "ttcompat");
 #endif
 
-#if defined(HAVE_TCGETATTR) && defined(HAVE_TCSETATTR) && \
+#if defined(MR_HAVE_TCGETATTR) && defined(MR_HAVE_TCSETATTR) && \
 		defined(ECHO) && defined(TCSADRAIN)
 	/*
 	** Turn off echoing before starting the xterm so that
@@ -534,7 +535,7 @@ MR_trace_internal_create_mdb_window(void)
 
 		close(slave_fd);
 
-#if defined(HAVE_SETPGID)
+#if defined(MR_HAVE_SETPGID)
 		/*
 		** Put the xterm in a new process group so it won't be
 		** killed by SIGINT signals sent to the program.
@@ -610,7 +611,7 @@ MR_trace_internal_create_mdb_window(void)
 		MR_set_signal_action(SIGALRM, &old_alarm_action,
 			"error resetting alarm handler");
 
-#if defined(HAVE_TCGETATTR) && defined(HAVE_TCSETATTR) && \
+#if defined(MR_HAVE_TCGETATTR) && defined(MR_HAVE_TCSETATTR) && \
 			defined(ECHO) && defined(TCSADRAIN)
 		/* Restore echoing. */
 		termio.c_lflag |= ECHO;
@@ -652,7 +653,7 @@ MR_trace_internal_create_mdb_window(void)
 		return TRUE;
 
 parent_error:
-#if defined(HAVE_KILL) && defined(SIGTERM) && defined(HAVE_WAIT)
+#if defined(MR_HAVE_KILL) && defined(SIGTERM) && defined(MR_HAVE_WAIT)
 		if (kill(child_pid, SIGTERM) != -1) {
 			do {
 				wait_status = wait(NULL);
@@ -672,11 +673,11 @@ parent_error:
 
 	}
 
-#else 	/* !HAVE_OPEN, etc. */
+#else 	/* !MR_HAVE_OPEN, etc. */
 	MR_mdb_warning(
 		"Sorry, `mdb --window' not supported on this platform.\n");
 	return FALSE;
-#endif /* !HAVE_OPEN, etc. */
+#endif /* !MR_HAVE_OPEN, etc. */
 }
 
 static void

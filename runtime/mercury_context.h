@@ -265,7 +265,7 @@ extern	void		MR_schedule(MR_Context *ctxt);
 	} while (0)
 #endif /* MR_HIGHLEVEL_CODE */
 
-#ifndef	CONSERVATIVE_GC
+#ifndef	MR_CONSERVATIVE_GC
 
   /*
   ** To figure out the maximum amount of heap we can reclaim on backtracking,

@@ -216,7 +216,7 @@ void	(*MR_address_of_trace_init_external)(void);
 void	(*MR_address_of_trace_final_external)(void);
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 void	(*MR_address_of_init_gc)(void);
 #endif
 
@@ -266,7 +266,7 @@ void	(*MR_address_of_trace_interrupt_handler)(void);
 
 void	(*MR_register_module_layout)(const MR_Module_Layout *);
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
+#ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
 #define	SAFETY_BUFFER_SIZE	1024	/* size of stack safety buffer */
 #define	MAGIC_MARKER_2		142	/* a random character */
@@ -337,7 +337,7 @@ mercury_runtime_init(int argc, char **argv)
 	}
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	MR_init_conservative_GC();
 #endif
 
@@ -370,7 +370,7 @@ mercury_runtime_init(int argc, char **argv)
 
 	(*MR_address_of_mercury_init_io)();
 
-#if defined(MR_HIGHLEVEL_CODE) && defined(CONSERVATIVE_GC)
+#if defined(MR_HIGHLEVEL_CODE) && defined(MR_CONSERVATIVE_GC)
 	MR_init_memory();
   #ifdef MR_USE_TRAIL
 	/* initialize the trail */
@@ -456,7 +456,7 @@ mercury_runtime_init(int argc, char **argv)
 
 } /* end runtime_mercury_init() */
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 void
 MR_init_conservative_GC(void)
 {
@@ -502,7 +502,7 @@ MR_init_conservative_GC(void)
 		}
 	}
 }
-#endif /* CONSERVATIVE_GC */
+#endif /* MR_CONSERVATIVE_GC */
 
 void 
 MR_do_init_modules(void)
@@ -927,7 +927,7 @@ process_options(int argc, char **argv)
 				MR_sregdebug      = TRUE;
 				MR_finaldebug     = TRUE;
 				MR_tracedebug     = TRUE;
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 				GC_quiet = FALSE;
 #endif
 			} else if (streq(MR_optarg, "b")) {
@@ -941,7 +941,7 @@ process_options(int argc, char **argv)
 			} else if (streq(MR_optarg, "g")) {
 				MR_gotodebug    = TRUE;
 			} else if (streq(MR_optarg, "G")) {
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 				GC_quiet = FALSE;
 #else
 				; /* ignore inapplicable option */
@@ -1075,7 +1075,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'x':
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 			GC_dont_gc = TRUE;
 #endif
 
@@ -1119,7 +1119,7 @@ mercury_runtime_main(void)
 	MR_Word c_regs[MR_NUM_REAL_REGS];
 #endif
 
-#if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_LOWLEVEL_DEBUG) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
 	unsigned char	safety_buffer[SAFETY_BUFFER_SIZE];
 #endif
 
@@ -1161,7 +1161,7 @@ mercury_runtime_main(void)
 	MR_save_regs_to_mem(c_regs);
 	MR_restore_registers();
 
-#if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_LOWLEVEL_DEBUG) && defined(MR_USE_GCC_NONLOCAL_GOTOS)
 	/*
 	** double-check to make sure that we're not corrupting
 	** the C stack with these non-local gotos, by filling
@@ -1174,7 +1174,7 @@ mercury_runtime_main(void)
 #endif
 
 #ifdef MR_LOWLEVEL_DEBUG
-  #ifndef CONSERVATIVE_GC
+  #ifndef MR_CONSERVATIVE_GC
 	MR_ENGINE(MR_eng_heap_zone)->max =
 		MR_ENGINE(MR_eng_heap_zone)->min;
   #endif
@@ -1212,7 +1212,7 @@ mercury_runtime_main(void)
 		MR_time_at_finish = MR_get_user_cpu_miliseconds();
 	}
 
-#if defined(USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
+#if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
 	{
 		int i;
 
@@ -1228,7 +1228,7 @@ mercury_runtime_main(void)
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_memdebug) {
 		printf("\n");
-  #ifndef CONSERVATIVE_GC
+  #ifndef MR_CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
 			(long) (MR_ENGINE(MR_eng_heap_zone)->max
 				- MR_ENGINE(MR_eng_heap_zone)->min));
@@ -1589,7 +1589,7 @@ MR_define_label(all_done);
 #endif
 
 	MR_proceed();
-#ifndef	USE_GCC_NONLOCAL_GOTOS
+#ifndef	MR_USE_GCC_NONLOCAL_GOTOS
 	return 0;
 #endif
 

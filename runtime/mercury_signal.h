@@ -20,7 +20,7 @@
 #include "mercury_std.h"
 #include "mercury_conf.h"
 
-#ifdef HAVE_SIGCONTEXT_STRUCT
+#ifdef MR_HAVE_SIGCONTEXT_STRUCT
   /*
   ** Some versions of Linux call it struct sigcontext_struct, some call it
   ** struct sigcontext.  The following #define eliminates the differences.
@@ -42,14 +42,14 @@
   ** Some versions of Linux define it in <signal.h>, others define it in
   ** <asm/sigcontext.h>.  We try both.
   */
-  #ifdef HAVE_ASM_SIGCONTEXT
+  #ifdef MR_HAVE_ASM_SIGCONTEXT_H
     #include <asm/sigcontext.h>
   #endif 
 #else
   #include <signal.h>
 #endif
 
-#ifdef HAVE_SIGACTION
+#ifdef MR_HAVE_SIGACTION
 typedef struct sigaction	MR_signal_action;
 #else
 typedef MR_Code *		MR_signal_action;

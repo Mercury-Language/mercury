@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2001 The University of Melbourne. 
+# Copyright (C) 1995-2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -272,7 +272,7 @@ BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 AWK = awk
 %.check.macros: %.h %.check.c
 	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
-		-DMERCURY_BOOTSTRAP_H \
+		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
 		-E $*.check.c \
 		-nostdinc -dN \
 		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \

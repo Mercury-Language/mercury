@@ -13,7 +13,7 @@
 
 #include "mercury_imp.h"
 
-#ifdef HAVE_SYS_TIMES_H
+#ifdef MR_HAVE_SYS_TIMES_H
   #include <sys/times.h>		/* for times() and `struct tms' */
 #endif
 
@@ -48,7 +48,7 @@ MR_get_user_cpu_miliseconds(void)
 	FILETIME_TO_MILLISEC(user_time, user_msec);
 	FILETIME_TO_MILLISEC(kernel_time, kernel_msec);
 	return user_msec + kernel_msec;
-#elif defined(HAVE_SYS_TIMES_H)
+#elif defined(MR_HAVE_SYS_TIMES_H)
   #ifdef MR_CLOCK_TICKS_PER_SECOND
 	const double ticks_per_milisecond = MR_CLOCK_TICKS_PER_SECOND / 1000.0;
 	struct tms t;

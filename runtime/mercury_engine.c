@@ -20,7 +20,7 @@ ENDINIT
 
 #include	"mercury_dummy.h"
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
+#ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
 #define LOCALS_SIZE	10024	/* amount of space to reserve for local vars */
 #define MAGIC_MARKER	187	/* a random character */
@@ -30,7 +30,7 @@ ENDINIT
 
 static	void	call_engine_inner(MR_Code *entry_point) NO_RETURN;
 
-#ifndef USE_GCC_NONLOCAL_GOTOS
+#ifndef MR_USE_GCC_NONLOCAL_GOTOS
   static MR_Code	*engine_done(void);
   static MR_Code	*engine_init_registers(void);
 #endif
@@ -58,7 +58,7 @@ MR_init_engine(MercuryEngine *eng)
 
 	MR_init_memory();
 
-#if !defined(USE_GCC_NONLOCAL_GOTOS) && !defined(MR_HIGHLEVEL_CODE)
+#if !defined(MR_USE_GCC_NONLOCAL_GOTOS) && !defined(MR_HIGHLEVEL_CODE)
 	{
 		static bool made_engine_done_label = FALSE;
 		if (!made_engine_done_label) {
@@ -74,13 +74,13 @@ MR_init_engine(MercuryEngine *eng)
 	** stuff.
 	*/
 
-#ifndef	CONSERVATIVE_GC
+#ifndef	MR_CONSERVATIVE_GC
 	eng->MR_eng_heap_zone = MR_create_zone("heap", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
 	eng->MR_eng_hp = eng->MR_eng_heap_zone->min;
 
-#ifdef	NATIVE_GC
+#ifdef	MR_NATIVE_GC
 	eng->MR_eng_heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
@@ -341,7 +341,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	call_engine_inner(entry_point);
 }
 
-#ifdef USE_GCC_NONLOCAL_GOTOS
+#ifdef MR_USE_GCC_NONLOCAL_GOTOS
 
 /* The gcc-specific version */
 
@@ -533,7 +533,7 @@ MR_define_label(engine_done);
 void 
 MR_dump_prev_locations(void) {}
 
-#else /* not USE_GCC_NONLOCAL_GOTOS */
+#else /* not MR_USE_GCC_NONLOCAL_GOTOS */
 
 /*
 ** The portable version
@@ -639,7 +639,7 @@ if (!MR_tracedebug) {
 		fp = (Func *) (*fp)();
 	}
 } /* end call_engine_inner() */
-#endif /* not USE_GCC_NONLOCAL_GOTOS */
+#endif /* not MR_USE_GCC_NONLOCAL_GOTOS */
 
 /*---------------------------------------------------------------------------*/
 

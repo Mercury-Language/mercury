@@ -1785,10 +1785,10 @@ io__check_err(Stream, Res) -->
 %	otherwise Size is -1.
 
 :- pragma foreign_decl("C", "
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
 	#include <unistd.h>
 #endif
-#ifdef HAVE_SYS_STAT_H
+#ifdef MR_HAVE_SYS_STAT_H
 	#include <sys/stat.h>
 #endif
 ").
@@ -1799,8 +1799,8 @@ io__check_err(Stream, Res) -->
 			thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
-#if defined(HAVE_FSTAT) && \
-    (defined(HAVE_FILENO) || defined(fileno)) && \
+#if defined(MR_HAVE_FSTAT) && \
+    (defined(MR_HAVE_FILENO) || defined(fileno)) && \
     defined(S_ISREG)
 	struct stat s;
 	if (MR_IS_FILE_STREAM(*f)) {
@@ -1849,7 +1849,7 @@ io__file_modification_time(File, Result) -->
 		Status::out, Msg::out, Time::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, thread_safe],
 "{
-#ifdef HAVE_STAT
+#ifdef MR_HAVE_STAT
 	struct stat s;
 	if (stat(FileName, &s) == 0) {
 		/* XXX This assumes that a time_t will fit into an MR_Word. */
@@ -1905,7 +1905,7 @@ io__file_modification_time(File, Result) -->
 	MR_Char *buffer0 = (MR_Char *) Buffer0;
 	MR_Char *buffer;
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	buffer = GC_REALLOC(buffer0, NewSize * sizeof(MR_Char));
 #else
 	if (buffer0 + OldSize == (MR_Char *) MR_hp) {
@@ -2985,7 +2985,7 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 	io__get_stream_id(Stream::in, Id::out), 
 		[will_not_call_mercury, promise_pure], "
 
-#ifndef NATIVE_GC
+#ifndef MR_NATIVE_GC
 	/* 
 	** Most of the time, we can just use the pointer to the stream
 	** as a unique identifier.
@@ -3112,7 +3112,7 @@ io__finalize_state -->
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	GC_INIT();
 #endif
 	MR_add_root(&ML_io_stream_names, (MR_TypeInfo) StreamNamesType);
@@ -3235,7 +3235,7 @@ io__get_io_output_stream_type(Type) -->
 #include <string.h>
 #include <errno.h>
 
-#ifdef HAVE_SYS_WAIT
+#ifdef MR_HAVE_SYS_WAIT_H
   #include <sys/wait.h>		/* for WIFEXITED, WEXITSTATUS, etc. */
 #endif
 
@@ -3320,8 +3320,8 @@ mercury_init_io(void)
 	MR_mercuryfile_init(NULL, 1, &mercury_stdin_binary);
 	MR_mercuryfile_init(NULL, 1, &mercury_stdout_binary);
 
-#if defined(HAVE_FDOPEN) && (defined(HAVE_FILENO) || defined(fileno)) && \
-    defined(HAVE_DUP)
+#if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) && \
+    defined(MR_HAVE_DUP)
 	MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
 	if (MR_file(mercury_stdin_binary) == NULL) {
 		MR_fatal_error(""error opening standard input stream in ""
@@ -4950,7 +4950,7 @@ io__make_temp(Dir, Prefix, Name) -->
 %#include <stdio.h>
 
 :- pragma foreign_decl("C", "
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
 	#include <unistd.h>
 #endif
 	#include <sys/types.h>

@@ -249,7 +249,7 @@ convert_to_valid_c_identifier_2(String, Name) :-
 
 :- pred use_asm_labels is semidet.
 :- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
-#ifdef USE_ASM_LABELS
+#ifdef MR_USE_ASM_LABELS
 	SUCCESS_INDICATOR = TRUE;
 #else
 	SUCCESS_INDICATOR = FALSE;

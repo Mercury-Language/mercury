@@ -60,7 +60,7 @@
 %	MR_save_registers(); /* see notes (1) and (2) below */
 %	{ <the c code itself> }
 %	<for semidet code, check of r1>
-%	#ifndef CONSERVATIVE_GC
+%	#ifndef MR_CONSERVATIVE_GC
 %	  MR_restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
@@ -505,7 +505,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	),
 
 	%
-	% #ifndef CONSERVATIVE_GC
+	% #ifndef MR_CONSERVATIVE_GC
 	%   MR_restore_registers(); /* see notes (1) and (3) above */
 	% #endif
 	%
@@ -513,7 +513,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		RestoreRegsComp = pragma_c_noop
 	;
 		RestoreRegsComp = pragma_c_raw_code(
-		"#ifndef CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n",
+		"#ifndef MR_CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n",
 		live_lvals_info(set__init)
 		)
 	},

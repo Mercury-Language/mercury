@@ -9,7 +9,7 @@
 
 #include	<stdio.h>
 
-#ifndef HAVE_STRERROR
+#ifndef MR_HAVE_STRERROR
 extern	char	*strerror(int errnum);
 #endif
 

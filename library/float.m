@@ -374,7 +374,7 @@ float__pow(X, Exp) = Ans :-
 
 	#define	ML_FLOAT_RADIX	FLT_RADIX	/* There is no DBL_RADIX. */
 
-	#if defined USE_SINGLE_PREC_FLOAT
+	#if defined MR_USE_SINGLE_PREC_FLOAT
 		#define	ML_FLOAT_MAX		FLT_MAX
 		#define	ML_FLOAT_MIN		FLT_MIN
 		#define	ML_FLOAT_EPSILON	FLT_EPSILON

@@ -164,7 +164,7 @@ void
 ML_report_stats(void)
 {
 	int			time_at_prev_stat;
-#if !defined(MR_HIGHLEVEL_CODE) || !defined(CONSERVATIVE_GC)
+#if !defined(MR_HIGHLEVEL_CODE) || !defined(MR_CONSERVATIVE_GC)
 	MercuryEngine		*eng;
 #endif
 #ifdef MR_MPROF_PROFILE_MEMORY
@@ -179,7 +179,7 @@ ML_report_stats(void)
 	time_at_prev_stat = MR_time_at_last_stat;
 	MR_time_at_last_stat = MR_get_user_cpu_miliseconds();
 
-#if !defined(MR_HIGHLEVEL_CODE) || !defined(CONSERVATIVE_GC)
+#if !defined(MR_HIGHLEVEL_CODE) || !defined(MR_CONSERVATIVE_GC)
 	eng = MR_get_engine();
 #endif
 
@@ -200,7 +200,7 @@ ML_report_stats(void)
 	);
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	{ char local_var;
 	  fprintf(stderr, "" C Stack: %.3fk,"",
 		labs(&local_var - (char *) GC_stackbottom) / 1024.0);
@@ -219,7 +219,7 @@ ML_report_stats(void)
 	** Print heap usage information.
 	*/
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 	fprintf(stderr, 
 		""\\n#GCs: %lu, ""
 		""Heap used since last GC: %.3fk, Total used: %.3fk"",

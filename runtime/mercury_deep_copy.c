@@ -58,7 +58,7 @@
 /*
 ** agc_deep_copy(): see mercury_deep_copy.h for documentation.
 */
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 
 #undef  in_range
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
@@ -116,7 +116,7 @@
 		(val2) = swap_tmp;	\
 	} while (0)
 
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 
 /*
 ** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
@@ -155,4 +155,4 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 	return result;
 }
 
-#endif	/* not CONSERVATIVE_GC */
+#endif	/* not MR_CONSERVATIVE_GC */

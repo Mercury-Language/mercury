@@ -1179,7 +1179,7 @@ gc_trace(_::in) :-
 :- pragma foreign_proc("C", gc_trace(Pointer::in),
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 	*(MR_Word *)Pointer =
 		MR_agc_deep_copy((MR_Word *) Pointer,
 			(MR_TypeInfo) TypeInfo_for_T,

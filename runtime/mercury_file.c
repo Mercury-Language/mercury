@@ -12,7 +12,7 @@
 #include "mercury_file.h"
 #include "mercury_std.h"	/* for MR_assert */
 
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
   static int next_id = 0;
 #endif
 
@@ -22,7 +22,7 @@
   {
 	MR_file(*mf)	    = file;
 	MR_line_number(*mf) = line_number;
-  #ifdef NATIVE_GC
+  #ifdef MR_NATIVE_GC
 	mf->id = ++next_id;
   #endif
   }
@@ -45,7 +45,7 @@
 	mf->getc		= MR_getch;
 	mf->vprintf		= MR_vfprintf;
 	mf->putc		= MR_putch;
-  #ifdef NATIVE_GC
+  #ifdef MR_NATIVE_GC
 	mf->id = ++next_id;
   #endif
   }

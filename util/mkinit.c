@@ -26,11 +26,11 @@
 
 #include	"mercury_conf.h"
 
-#ifdef HAVE_SYS_STAT_H
+#ifdef MR_HAVE_SYS_STAT_H
   #include	<sys/stat.h>
 #endif
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include	<unistd.h>
 #endif
 
@@ -209,7 +209,7 @@ static const char header2[] =
 	"** on these machines, init_gc must be statically linked.\n"
 	"*/\n"
 	"\n"
-	"#ifdef CONSERVATIVE_GC\n"
+	"#ifdef MR_CONSERVATIVE_GC\n"
 	"static void init_gc(void)\n"
 	"{\n"
 	"	GC_INIT();\n"
@@ -236,7 +236,7 @@ static const char mercury_funcs1[] =
 	"  MR_declare_entry(%s);\n"
 	"#endif\n"
 	"\n"
-	"#if defined(USE_DLLS)\n"
+	"#if defined(MR_USE_DLLS)\n"
 	"  #if !defined(libmer_DEFINE_DLL)\n"
 	"       #define libmer_impure_ptr \\\n"
 	"		(*__imp_libmer_impure_ptr)\n"
@@ -269,7 +269,7 @@ static const char mercury_funcs1[] =
 	"mercury_init(int argc, char **argv, char *stackbottom)\n"
 	"{\n"
 	"\n"
-	"#ifdef CONSERVATIVE_GC\n"
+	"#ifdef MR_CONSERVATIVE_GC\n"
 	"	/*\n"
 	"	** Explicitly register the bottom of the stack, so that the\n"
 	"	** GC knows where it starts.  This is necessary for AIX 4.1\n"
@@ -284,7 +284,7 @@ static const char mercury_funcs1[] =
 	"** to take special steps to initialize _impure_ptr\n"
 	"** for the DLLs.\n"
 	"*/\n"
-	"#if defined(USE_DLLS)\n"
+	"#if defined(MR_USE_DLLS)\n"
 	"  #if !defined(libmer_DEFINE_DLL)\n"
 	"	libmer_impure_ptr = _impure_ptr;\n"
 	"  #endif\n"
@@ -319,7 +319,7 @@ static const char mercury_funcs2[] =
 	"	MR_address_of_type_ctor_info_for_tuple ="
 	"		&mercury_data___type_ctor_info_tuple_0;\n"
 	"#endif\n"
-	"#ifdef CONSERVATIVE_GC\n"
+	"#ifdef MR_CONSERVATIVE_GC\n"
 	"	MR_address_of_init_gc = init_gc;\n"
 	"#endif\n"
 	"	MR_library_initializer = ML_io_init_state;\n"
@@ -354,7 +354,7 @@ static const char mercury_funcs2[] =
 	"	MR_address_of_trace_final_external = NULL;\n"
 	"  #endif\n"
 	"#endif\n"
-	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
+	"#if defined(MR_USE_GCC_NONLOCAL_GOTOS) && !defined(MR_USE_ASM_LABELS)\n"
 	"	MR_do_init_modules();\n"
 	"#endif\n"
 	"#ifdef MR_HIGHLEVEL_CODE\n"
@@ -433,7 +433,7 @@ static	void	*checked_malloc(size_t size);
 
 /*---------------------------------------------------------------------------*/
 
-#ifndef HAVE_STRERROR
+#ifndef MR_HAVE_STRERROR
 
 /*
 ** Apparently SunOS 4.1.3 doesn't have strerror()
@@ -713,7 +713,7 @@ find_init_file(const char *base_name)
 static bool
 file_exists(const char *filename)
 {
-#ifdef HAVE_SYS_STAT_H
+#ifdef MR_HAVE_SYS_STAT_H
 	struct stat buf;
 
 	return (stat(filename, &buf) == 0);

@@ -17,7 +17,7 @@
 #include	<unistd.h>
 #include	<errno.h>
 
-#ifndef HAVE_STRERROR
+#ifndef MR_HAVE_STRERROR
 
 /*
 ** Apparently SunOS 4.1.3 doesn't have strerror()
@@ -39,7 +39,7 @@ strerror(int errnum)
 	}
 }
 
-#endif	/* HAVE_STRERROR */
+#endif	/* MR_HAVE_STRERROR */
 
 FILE *
 MR_checked_fopen(const char *filename, const char *message, const char *mode)

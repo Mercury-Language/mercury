@@ -102,7 +102,7 @@
   #define MR_make_entry(n, a, l)		/* nothing */
 #endif
 
-#ifdef SPLIT_C_FILES
+#ifdef MR_SPLIT_C_FILES
   #define MR_MODULE_STATIC_OR_EXTERN extern
 #else
   #define MR_MODULE_STATIC_OR_EXTERN static
@@ -459,10 +459,10 @@
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(USE_GCC_NONLOCAL_GOTOS)
+#if defined(MR_USE_GCC_NONLOCAL_GOTOS)
 
   #ifndef __GNUC__
-  #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
+  #error "You must use gcc if you define MR_USE_GCC_NONLOCAL_GOTOS"
   #endif
 
   /* Define the type of a module initialization function */
@@ -541,7 +541,7 @@
   #define MR_END_MODULE } }
 
 
-  #if defined(USE_ASM_LABELS)
+  #if defined(MR_USE_ASM_LABELS)
     #define MR_declare_entry(label)		\
 	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
     #define MR_declare_static(label)		\
@@ -585,7 +585,7 @@
     #endif
 
   #else
-    /* !defined(USE_ASM_LABELS) */
+    /* !defined(MR_USE_ASM_LABELS) */
 
     #define MR_declare_entry(label)	extern MR_Code * MR_entry(label)
     #define MR_declare_static(label)	static MR_Code * MR_entry(label)
@@ -619,7 +619,7 @@
     #define MR_JUMP(label)		goto *(label)
     #endif
 
-  #endif /* !defined(USE_ASM_LABELS) */
+  #endif /* !defined(MR_USE_ASM_LABELS) */
 
   #define MR_declare_local(label)	/* no declaration required */
   #define MR_define_local(label)	\
@@ -666,7 +666,7 @@
   */
 
 #else
-  /* !defined(USE_GCC_NONLOCAL_GOTOS) */
+  /* !defined(MR_USE_GCC_NONLOCAL_GOTOS) */
 
   /* Define the type of a module initialization function */
   typedef MR_Code * MR_ModuleFunc(void);
@@ -739,7 +739,7 @@
   #define MR_GOTO_LOCAL(label) 	MR_GOTO(MR_LOCAL(label))
   #define MR_GOTO_LABEL(label) 	MR_GOTO(MR_LABEL(label))
 
-#endif /* !defined(USE_GCC_NONLOCAL_GOTOS) */
+#endif /* !defined(MR_USE_GCC_NONLOCAL_GOTOS) */
 
 /* definitions for computed gotos */
 

@@ -10,7 +10,7 @@
 
 #include "mercury_imp.h"
 
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
 
 #include "mercury_deep_copy.h"
 #include "mercury_layout_util.h"
@@ -845,4 +845,4 @@ MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
 	}
 }
 
-#endif /* NATIVE_GC */
+#endif /* MR_NATIVE_GC */

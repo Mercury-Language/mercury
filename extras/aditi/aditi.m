@@ -437,7 +437,7 @@ aditi__call_transaction(Trans, Results, GotException, Exception,
 	/*
 	** We might allocate memory from may_call_mercury C code.
 	*/
-#ifndef CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 #error ""The Aditi interface requires conservative garbage collection. \\
                 Use a compilation grade containing .gc.""
 #endif

@@ -24,31 +24,31 @@
 
 #include "mercury_imp.h"
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
 #endif
 
 #include <stdio.h>
 #include <string.h>
 
-#ifdef HAVE_SYS_SIGINFO
+#ifdef MR_HAVE_SYS_SIGINFO_H
   #include <sys/siginfo.h>
 #endif 
 
-#ifdef HAVE_SYS_SIGNAL
+#ifdef MR_HAVE_SYS_SIGNAL_H
   /* on FREEBSD we need to include <sys/signal.h> before <ucontext.h> */
   #include <sys/signal.h>
 #endif
 
-#ifdef	HAVE_MPROTECT
+#ifdef	MR_HAVE_MPROTECT
   #include <sys/mman.h>
 #endif
 
-#ifdef	HAVE_UCONTEXT
+#ifdef	MR_HAVE_UCONTEXT_H
   #include <ucontext.h>
 #endif
 
-#ifdef	HAVE_SYS_UCONTEXT
+#ifdef	MR_HAVE_SYS_UCONTEXT_H
   #include <sys/ucontext.h>
 #endif
 
@@ -64,9 +64,9 @@
 
 /*
 ** MR_PROTECTPAGE is now defined if we have some sort of mprotect like
-** functionality, all checks for HAVE_MPROTECT should now use MR_PROTECTPAGE.
+** functionality, all checks for MR_HAVE_MPROTECT should now use MR_PROTECTPAGE.
 */
-#if defined(HAVE_MPROTECT)
+#if defined(MR_HAVE_MPROTECT)
 int
 MR_protect_pages(void *addr, size_t size, int prot_flags)
 {
@@ -129,15 +129,15 @@ memalign(size_t unit, size_t size)
 				(unsigned long) GetLastError());
 	}
 
-  #ifdef CONSERVATIVE_GC
+  #ifdef MR_CONSERVATIVE_GC
 	if (ptr != NULL)
 		GC_add_roots((char *)ptr, (char *)ptr + size);
   #endif
 	return ptr;
 }
-#elif defined(CONSERVATIVE_GC)
+#elif defined(MR_CONSERVATIVE_GC)
   #define	memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
-#elif defined(HAVE_MEMALIGN)
+#elif defined(MR_HAVE_MEMALIGN)
   extern void	*memalign(size_t, size_t);
 #else
   #define	memalign(a,s)	malloc(s)
@@ -158,7 +158,7 @@ memalign(size_t unit, size_t size)
 */
 #ifdef MR_PROTECTPAGE
 
-  #ifdef CONSERVATIVE_GC
+  #ifdef MR_CONSERVATIVE_GC
     /*
     ** The conservative garbage collectors scans through
     ** all these areas, so we need to allow reads.
@@ -424,7 +424,7 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
 	}
 #endif	/* MR_PROTECTPAGE */
 
-#if defined(NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
+#if defined(MR_NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
 	zone->gc_threshold = (char *) zone->MR_zone_end - MR_heap_margin_size;
 #endif
 

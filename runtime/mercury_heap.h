@@ -18,7 +18,7 @@
   #include "mercury.h"			/* for MR_new_object() */
 #endif
 
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
 
   #include "gc.h"
 
@@ -29,7 +29,7 @@
 	((dest) = (MR_Word) MR_mkword((tag),				\
 			(MR_Word) GC_MALLOC_ATOMIC((count) * sizeof(MR_Word))))
 
-  #ifdef INLINE_ALLOC
+  #ifdef MR_INLINE_ALLOC
 
     /*
     ** The following stuff uses the macros in the `gc_inl.h' header file in the
@@ -54,9 +54,9 @@
     #ifndef __GNUC__
       /*
       ** Without the gcc extensions __builtin_constant_p() and ({...}),
-      ** INLINE_ALLOC would probably be a performance _loss_.
+      ** MR_INLINE_ALLOC would probably be a performance _loss_.
       */
-      #error "INLINE_ALLOC requires the use of GCC"
+      #error "MR_INLINE_ALLOC requires the use of GCC"
     #endif
 
     #include "gc_inl.h"
@@ -72,12 +72,12 @@
 	: MR_tag_incr_hp_n((dest), (tag), (count))			\
 	)
 
-  #else /* not INLINE_ALLOC */
+  #else /* not MR_INLINE_ALLOC */
 
     #define MR_tag_incr_hp(dest, tag, count) \
 	MR_tag_incr_hp_n((dest), (tag), (count))
 
-  #endif /* not INLINE_ALLOC */
+  #endif /* not MR_INLINE_ALLOC */
 
   #define MR_mark_hp(dest)		((void)0)
   #define MR_restore_hp(src)		((void)0)
@@ -96,7 +96,7 @@
 
   #define MR_free_heap(ptr)	GC_FREE((ptr))
 
-#else /* not CONSERVATIVE_GC */
+#else /* not MR_CONSERVATIVE_GC */
 
   #define MR_tag_incr_hp(dest, tag, count) 				\
 		(							\
@@ -140,7 +140,7 @@
 
   #define MR_free_heap(ptr)		((void) 0)
   
-#endif /* not CONSERVATIVE_GC */
+#endif /* not MR_CONSERVATIVE_GC */
   
 #if	defined (MR_DEEP_PROFILING) && defined(MR_DEEP_PROFILING_MEMORY)
   #define MR_maybe_record_allocation(count, proclabel, type)		\

@@ -87,9 +87,9 @@
 /*
 ** The hardware description layer
 */
-#if defined(USE_GCC_GLOBAL_REGISTERS)
+#if defined(MR_USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__
-    #error "You must use gcc if you define USE_GCC_GLOBAL_REGISTERS."
+    #error "You must use gcc if you define MR_USE_GCC_GLOBAL_REGISTERS."
   #endif
 
   #if defined(__mips__)
@@ -105,7 +105,7 @@
   #elif defined(_POWER) || defined(__powerpc__)
     #include "machdeps/rs6000_regs.h"
   #else
-    #error "USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
+    #error "MR_USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
   #endif
 #else
     #include "machdeps/no_regs.h"
@@ -179,7 +179,7 @@
 ** except that they only guarantee to save/restore the heap pointer,
 ** if any.  (They might save/restore other regs too, though.)
 */
-#ifdef CONSERVATIVE_GC
+#ifdef MR_CONSERVATIVE_GC
   #define MR_save_transient_hp()	/* nothing */
   #define MR_restore_transient_hp()	/* nothing */
 #else

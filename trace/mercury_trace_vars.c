@@ -159,7 +159,7 @@ static	MR_Point			MR_point;
   extern struct MR_TypeCtorInfo_Struct
   	mercury_data___type_ctor_info_void_0;
 
-  #ifdef NATIVE_GC
+  #ifdef MR_NATIVE_GC
     extern struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_succip_0;
     extern struct MR_TypeCtorInfo_Struct
@@ -196,7 +196,7 @@ MR_trace_ignored_type_ctors[] =
 	/* we ignore these because they should never be needed */
 	&mercury_data___type_ctor_info_void_0,
 
-  #ifdef NATIVE_GC
+  #ifdef MR_NATIVE_GC
 	/* we ignore these because they are not interesting */
 	&mercury_data___type_ctor_info_succip_0,
 	&mercury_data___type_ctor_info_hp_0,

@@ -409,7 +409,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
 
 	if (new_size == old_size) {
 		/* there were no matching labels */
-#ifdef	HAVE_SNPRINTF
+#ifdef	MR_HAVE_SNPRINTF
 		snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
 			"there is no event at %s:%d",
 			filename, linenumber);

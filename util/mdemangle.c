@@ -49,7 +49,7 @@ static bool strip_leading_integer(char **start_ptr, int *num);
 ** Using memcpy() may not work, but it doesn't really matter
 ** if the demangler doesn't work 100% correctly on SunOS 4.x.
 */
-#ifndef HAVE_MEMMOVE
+#ifndef MR_HAVE_MEMMOVE
 #define memmove memcpy
 #endif
 

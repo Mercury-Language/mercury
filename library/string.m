@@ -1870,7 +1870,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 /*-----------------------------------------------------------------------*/
 
 :- pragma c_header_code("
-#ifdef USE_GCC_GLOBAL_REGISTERS
+#ifdef MR_USE_GCC_GLOBAL_REGISTERS
 	/*
 	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden
 	** register spilled' in grade asm_fast.gc.tr.debug

@@ -15,11 +15,11 @@
 
 #include "mercury_conf.h"
 
-#ifdef HAVE_SYS_PARAM
+#ifdef MR_HAVE_SYS_PARAM_H
 #include <sys/param.h>		/* for HZ */
 #endif
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>		/* for sysconf() and _SC_CLK_TCK */
 #endif
 
@@ -33,7 +33,7 @@
 */
 #ifdef HZ
   #define MR_CLOCK_TICKS_PER_SECOND	HZ
-#elif defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#elif defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
   #define MR_CLOCK_TICKS_PER_SECOND	((int) sysconf(_SC_CLK_TCK))
 #elif defined(CLK_TCK)
   #define MR_CLOCK_TICKS_PER_SECOND	CLK_TCK

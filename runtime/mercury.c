@@ -26,7 +26,7 @@
 ** Variable definitions
 */
 
-#ifdef NATIVE_GC
+#ifdef MR_NATIVE_GC
   void *mercury__private_builtin__stack_chain;
 #endif
 

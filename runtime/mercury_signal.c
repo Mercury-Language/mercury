@@ -12,7 +12,7 @@
 
 #include "mercury_imp.h"
 
-#ifdef HAVE_UNISTD_H
+#ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
 #endif
 
@@ -22,19 +22,19 @@
 
 #include "mercury_signal.h"
 
-#ifdef HAVE_SYS_SIGINFO
+#ifdef MR_HAVE_SYS_SIGINFO_H
   #include <sys/siginfo.h>
 #endif 
 
-#ifdef	HAVE_MPROTECT
+#ifdef	MR_HAVE_MPROTECT
   #include <sys/mman.h>
 #endif
 
-#ifdef	HAVE_UCONTEXT
+#ifdef	MR_HAVE_UCONTEXT_H
   #include <ucontext.h>
 #endif
 
-#ifdef	HAVE_SYS_UCONTEXT
+#ifdef	MR_HAVE_SYS_UCONTEXT_H
   #include <sys/ucontext.h>
 #endif
 
@@ -76,7 +76,7 @@ MR_do_setup_signal(int sig, MR_Code *handler, bool need_info, bool restart,
 {
 	MR_signal_action	act;
 
-#if	defined(HAVE_SIGACTION)
+#if	defined(MR_HAVE_SIGACTION)
 
 	act.sa_flags = (restart ? SA_RESTART : 0);
 
@@ -87,7 +87,7 @@ MR_do_setup_signal(int sig, MR_Code *handler, bool need_info, bool restart,
 	** request signals, we should not ask for SA_SIGINFO, since our
 	** handler will not be of the right type.
 	*/
-#if	!defined(HAVE_SIGCONTEXT_STRUCT)
+#if	!defined(MR_HAVE_SIGCONTEXT_STRUCT)
 		act.sa_flags |= SA_SIGINFO;
 #endif
 	}
@@ -97,12 +97,12 @@ MR_do_setup_signal(int sig, MR_Code *handler, bool need_info, bool restart,
 	}
 	errno = 0;
 
-	act.SIGACTION_FIELD = handler;
-#else /* not HAVE_SIGACTION */
+	act.MR_SIGACTION_FIELD = handler;
+#else /* not MR_HAVE_SIGACTION */
 
 	act = handler;
 
-#endif /* not HAVE_SIGACTION */
+#endif /* not MR_HAVE_SIGACTION */
 
 	MR_set_signal_action(sig, &act, error_message);
 }
@@ -111,35 +111,35 @@ void
 MR_get_signal_action(int sig, MR_signal_action *act,
 			const char *error_message)
 {
-#ifdef HAVE_SIGACTION
+#ifdef MR_HAVE_SIGACTION
 	if (sigaction(sig, NULL, act) != 0) {
 		MR_perror(error_message);
 		exit(1);
 	}
 
-#else /* not HAVE_SIGACTION */
+#else /* not MR_HAVE_SIGACTION */
 	*act = signal(sig, NULL);
 	if (*act == SIG_ERR) {
 		MR_perror(error_message);
 		exit(1);
 	}
-#endif /* not HAVE_SIGACTION */
+#endif /* not MR_HAVE_SIGACTION */
 }
 
 void
 MR_set_signal_action(int sig, MR_signal_action *act,
 			const char *error_message)
 {
-#ifdef HAVE_SIGACTION
+#ifdef MR_HAVE_SIGACTION
 	if (sigaction(sig, act, NULL) != 0) {
 		MR_perror(error_message);
 		exit(1);
 	}
 
-#else /* not HAVE_SIGACTION */
+#else /* not MR_HAVE_SIGACTION */
 	if (signal(sig, *act) == SIG_ERR) {
 		MR_perror(error_message);
 		exit(1);
 	}
-#endif /* not HAVE_SIGACTION */
+#endif /* not MR_HAVE_SIGACTION */
 }
