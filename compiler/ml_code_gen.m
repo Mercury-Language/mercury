@@ -143,7 +143,6 @@
 % 	===>
 %		MR_COMMIT_TYPE ref;
 %		void success() {
-%			succeeded = TRUE;
 %			MR_DO_COMMIT(ref);
 %		}
 %		MR_TRY_COMMIT(ref, {
@@ -540,16 +539,16 @@
 %		<(Cond -> Then ; Else)>
 %	===>
 %	{
-%		bool succeeded;
+%		bool cond_<N>;
 %
 %		void then_func() {
-%			succeeded = TRUE;
+%			cond_<N> = TRUE;
 %			<Then>
 %		}
 %
-%		succeeded = FALSE;
+%		cond_<N> = FALSE;
 %		<Cond && then_func()>
-%		if (!succeeded) {
+%		if (!cond_<N>) {
 %			<Else>
 %		}
 %	}
@@ -2072,59 +2071,63 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	**     achieve.
 		%	*/
 		%
-		% /* XXX Bug: Cond or Then might clobber the value of succeeded! */
-		%
 		%	model_non cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
 		%	{
-		%		bool succeeded;
+		%		bool cond_<N>;
 		%
 		%		void then_func() {
-		%			succeeded = TRUE;
+		%			cond_<N> = TRUE;
 		%			<Then>
 		%		}
 		%
-		%		succeeded = FALSE;
+		%		cond_<N> = FALSE;
 		%		<Cond && then_func()>
-		%		if (!succeeded) {
+		%		if (!cond_<N>) {
 		%			<Else>
 		%		}
 		%	}
 
 		{ CondCodeModel = model_non },
 
+		% generate the `cond_<N>' var
+		ml_gen_info_new_cond_var(CondVar),
+		{ MLDS_Context = mlds__make_context(Context) },
+		{ CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context) },
+
 		% generate the `then_func'
 		ml_gen_new_func_label(ThenFuncLabel, ThenFuncLabelRval),
 		/* push nesting level */
 		{ Then = _ - ThenGoalInfo },
 		{ goal_info_get_context(ThenGoalInfo, ThenContext) },
-		ml_gen_set_success(const(true), ThenContext, SetSuccessTrue),
+		ml_gen_set_cond_var(CondVar, const(true), ThenContext,
+			SetCondTrue),
 		ml_gen_goal(CodeModel, Then, ThenStatement),
 		{ ThenFuncBody = ml_gen_block([],
-			[SetSuccessTrue, ThenStatement], ThenContext) },
+			[SetCondTrue, ThenStatement], ThenContext) },
 		/* pop nesting level */
 		ml_gen_nondet_label_func(ThenFuncLabel, ThenContext,
 			ThenFuncBody, ThenFunc),
 
 		% generate the main body
-		ml_gen_set_success(const(false), Context, SetSuccessFalse),
+		ml_gen_set_cond_var(CondVar, const(false), Context,
+			SetCondFalse),
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval) },
 		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
 		ml_gen_info_pop_success_cont,
-		ml_gen_test_success(Succeeded),
+		ml_gen_test_cond_var(CondVar, CondSucceeded),
 		ml_gen_goal(CodeModel, Else, ElseStatement),
-		{ IfStmt = if_then_else(unop(std_unop(not), Succeeded),
+		{ IfStmt = if_then_else(unop(std_unop(not), CondSucceeded),
 			ElseStatement, no) },
-		{ IfStatement = mlds__statement(IfStmt,
-			mlds__make_context(Context)) },
+		{ IfStatement = mlds__statement(IfStmt, MLDS_Context) },
 
 		% package it all up in the right order
-		{ MLDS_Decls = [ThenFunc | CondDecls] },
+		{ MLDS_Decls = [CondVarDecl, ThenFunc | CondDecls] },
 		{ MLDS_Statements = list__append(
-			[SetSuccessFalse | CondStatements], [IfStatement]) }
+			[SetCondFalse | CondStatements], [IfStatement]) }
 	).
 
 %-----------------------------------------------------------------------------%

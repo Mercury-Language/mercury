@@ -241,6 +241,38 @@
 				ml_gen_info, ml_gen_info).
 :- mode ml_gen_set_success(in, in, out, in, out) is det.
 
+	% Generate the declaration for the specified `cond'
+	% variable.
+	% (`cond' variables are boolean variables used to record
+	% the success or failure of model_non conditions of
+	% if-then-elses.)
+	%
+:- func ml_gen_cond_var_decl(cond_seq, mlds__context) = mlds__defn.
+
+	% Return the lval for the specified `cond' flag.
+	% (`cond' variables are boolean variables used to record
+	% the success or failure of model_non conditions of
+	% if-then-elses.)
+	%
+:- pred ml_cond_var_lval(cond_seq, mlds__lval, ml_gen_info, ml_gen_info).
+:- mode ml_cond_var_lval(in, out, in, out) is det.
+
+	% Return an rval which will test the value of the specified
+	% `cond' variable.
+	% (`cond' variables are boolean variables used to record
+	% the success or failure of model_non conditions of
+	% if-then-elses.)
+	%
+:- pred ml_gen_test_cond_var(cond_seq, mlds__rval, ml_gen_info, ml_gen_info).
+:- mode ml_gen_test_cond_var(in, out, in, out) is det.
+	
+	% Generate code to set the specified `cond' variable to the
+	% specified truth value.
+	%
+:- pred ml_gen_set_cond_var(cond_seq, mlds__rval, prog_context,
+		mlds__statement, ml_gen_info, ml_gen_info).
+:- mode ml_gen_set_cond_var(in, in, in, out, in, out) is det.
+
 	% Return rvals for the success continuation that was
 	% passed as the current function's argument(s).
 	% The success continuation consists of two parts, the
@@ -343,10 +375,19 @@
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_new_commit_label(out, in, out) is det.
 
+	% Generate a new `cond' variable number.
+	% This is used to give unique names to the local
+	% variables used to hold the results of 
+	% nondet conditions of if-then-elses.
+:- type cond_seq == int.
+:- pred ml_gen_info_new_cond_var(cond_seq,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_new_cond_var(out, in, out) is det.
+
 	%
 	% A success continuation specifies the (rval for the variable
 	% holding the address of the) function that a nondet procedure
-	% should call if it succeeds, and possible also the
+	% should call if it succeeds, and possibly also the
 	% (rval for the variable holding) the environment pointer
 	% for that function.
 	%
@@ -1003,6 +1044,8 @@ ml_gen_failure(model_non, _, MLDS_Statements) -->
 	%
 	{ MLDS_Statements = [] }.
 
+%-----------------------------------------------------------------------------%
+
 	% Generate the declaration for the built-in `succeeded' variable.
 	%
 ml_gen_succeeded_var_decl(Context) =
@@ -1035,6 +1078,37 @@ ml_gen_set_success(Value, Context, MLDS_Statement) -->
 	{ MLDS_Stmt = atomic(Assign) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 		mlds__make_context(Context)) }.
+
+%-----------------------------------------------------------------------------%
+
+	% Generate the name for the specified `cond_<N>' variable.
+	%
+:- func ml_gen_cond_var_name(cond_seq) = string.
+ml_gen_cond_var_name(CondVar) =
+	string__append("cond_", string__int_to_string(CondVar)).
+
+ml_gen_cond_var_decl(CondVar, Context) =
+	ml_gen_mlds_var_decl(var(ml_gen_cond_var_name(CondVar)),
+		mlds__native_bool_type, Context).
+
+ml_cond_var_lval(CondVar, CondVarLval) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
+	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+	{ CondVarLval = var(qual(MLDS_Module, ml_gen_cond_var_name(CondVar))) }.
+
+ml_gen_test_cond_var(CondVar, CondVarRval) -->
+	ml_cond_var_lval(CondVar, CondVarLval),
+	{ CondVarRval = lval(CondVarLval) }.
+	
+ml_gen_set_cond_var(CondVar, Value, Context, MLDS_Statement) -->
+	ml_cond_var_lval(CondVar, CondVarLval),
+	{ Assign = assign(CondVarLval, Value) },
+	{ MLDS_Stmt = atomic(Assign) },
+	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
+		mlds__make_context(Context)) }.
+
+%-----------------------------------------------------------------------------%
 
 	% Return rvals for the success continuation that was
 	% passed as the current function's argument(s).
@@ -1113,9 +1187,9 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 % The `ml_gen_info' type holds information used during MLDS code generation
 % for a given procedure.
 %
-% Only the `func_sequence_num', `commit_sequence_num', and
-% `stack(success_cont)' fields are mutable; the others are set
-% when the `ml_gen_info' is created and then never modified.
+% Only the `func_label', `commit_label', `cond_var', `success_cont_stack',
+% and `extra_defns' fields are mutable; the others are set when the 
+% `ml_gen_info' is created and then never modified.
 % 
 
 :- type ml_gen_info
@@ -1138,6 +1212,7 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 
 			func_label :: mlds__func_sequence_num,
 			commit_label :: commit_sequence_num,
+			cond_var :: cond_seq,
 			success_cont_stack :: stack(success_cont),
 				% definitions of functions or global
 				% constants which should be inserted
@@ -1157,6 +1232,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 		VarTypes),
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
+	SucceededVarCounter = 0,
 	stack__init(SuccContStack),
 	ExtraDefns = [],
 	MLDSGenInfo = ml_gen_info(
@@ -1168,6 +1244,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			OutputVars,
 			FuncLabelCounter,
 			CommitLabelCounter,
+			SucceededVarCounter,
 			SuccContStack,
 			ExtraDefns
 		).
@@ -1197,6 +1274,9 @@ ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 ml_gen_info_new_commit_label(CommitLabel, Info,
 		Info^commit_label := CommitLabel) :-
 	CommitLabel = Info^commit_label + 1.
+
+ml_gen_info_new_cond_var(CondVar, Info, Info^cond_var := CondVar) :-
+	CondVar = Info^cond_var + 1.
 
 ml_gen_info_push_success_cont(SuccCont, Info,
 	Info^success_cont_stack :=
