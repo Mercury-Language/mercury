@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,6 +18,23 @@
 #include "mercury_types.h"	/* for MR_Word, MR_String       */
 #include "mercury_std.h"	/* for MR_bool                     */
 #include "mercury_tags.h"	/* for MR_DEFINE_MERCURY_ENUM_CONST     */
+
+/*
+** Convert a term (expressed either as a typeinfo/value pair or as a univ)
+** or a synthetic term to a browser term.
+*/
+
+extern	MR_Word	MR_type_value_to_browser_term(MR_TypeInfo type_info,
+			MR_Word value);
+extern	MR_Word	MR_univ_to_browser_term(MR_Word univ);
+extern	MR_Word	MR_synthetic_to_browser_term(const char *functor,
+			MR_Word arg_list, MR_bool is_func);
+
+/*
+** Save the given browser term to the named file.
+*/
+
+extern	void	MR_trace_save_term(const char *filename, MR_Word browser_term);
 
 /*
 ** The following types must correspond with browse_caller_type and

@@ -407,6 +407,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_stack;
 static	MR_TraceCmdFunc	MR_trace_cmd_current;
 static	MR_TraceCmdFunc	MR_trace_cmd_set;
 static	MR_TraceCmdFunc	MR_trace_cmd_view;
+static	MR_TraceCmdFunc	MR_trace_cmd_save_to_file;
 static	MR_TraceCmdFunc	MR_trace_cmd_break;
 static	MR_TraceCmdFunc	MR_trace_cmd_ignore;
 static	MR_TraceCmdFunc	MR_trace_cmd_enable;
@@ -1074,9 +1075,11 @@ MR_trace_internal_init_from_env(void)
 static void
 MR_trace_internal_init_from_local(void)
 {
-	FILE	*fp;
+	FILE		*fp;
+	const char	*init;
 
-	if ((fp = fopen(MDBRC_FILENAME, "r")) != NULL) {
+	init = MDBRC_FILENAME;
+	if ((fp = fopen(init, "r")) != NULL) {
 		MR_trace_source_from_open_file(fp);
 		fclose(fp);
 	}
@@ -2169,15 +2172,82 @@ MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (close_window) {
 		MR_trace_maybe_close_source_window(verbose);
 	} else {
-		msg = MR_trace_new_source_window(window_cmd,
-				server_cmd, server_name, timeout,
-				force, verbose, split);
+		msg = MR_trace_new_source_window(window_cmd, server_cmd,
+			server_name, timeout, force, verbose, split);
 		if (msg != NULL) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: %s.\n", msg);
 		}
 
 		MR_trace_maybe_sync_source_window(event_info, verbose);
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	MR_bool			verbose = MR_FALSE;
+	MR_Word			browser_term;
+	const char		*problem = NULL;
+
+	if (word_count != 3) {
+		MR_trace_usage("browsing", "save_to_file");
+	} else {
+		if (MR_streq(words[1], "goal")) {
+			const char	*name;
+			MR_Word		arg_list;
+			MR_bool		is_func;
+
+			problem = NULL;
+			MR_convert_goal_to_synthetic_term(&name, &arg_list,
+				&is_func);
+			browser_term = MR_synthetic_to_browser_term(name,
+				arg_list, is_func);
+		} else if (MR_streq(words[1], "exception")) {
+			MR_Word	exception;
+
+			exception = MR_trace_get_exception_value();
+			if (exception == (MR_Word) NULL) {
+				problem = "missing exception value";
+			} else {
+				browser_term = MR_univ_to_browser_term(
+					exception);
+			}
+		} else if (MR_streq(words[1], "proc_body")) {
+			const MR_Proc_Layout	*entry;
+
+			entry = event_info->MR_event_sll->MR_sll_entry;
+			if (entry->MR_sle_proc_rep == NULL) {
+				problem = "current procedure has no body info";
+			} else {
+				browser_term = MR_type_value_to_browser_term(
+					(MR_TypeInfo) ML_proc_rep_type(),
+					(MR_Word) entry->MR_sle_proc_rep);
+			}
+		} else {
+			MR_Var_Spec	var_spec;
+			MR_TypeInfo	type_info;
+			MR_Word		value;
+
+			MR_convert_arg_to_var_spec(words[1], &var_spec);
+			problem = MR_convert_var_spec_to_type_value(var_spec,
+				&type_info, &value);
+			if (problem == NULL) {
+				browser_term = MR_type_value_to_browser_term(
+					type_info, value);
+			}
+		}
+
+		if (problem != NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+		} else {
+			MR_trace_save_term(words[2], browser_term);
+		}
 	}
 
 	return KEEP_INTERACTING;
@@ -6917,6 +6987,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "browsing", "view", MR_trace_cmd_view,
 		MR_trace_view_cmd_args, MR_trace_null_completer },
+	{ "browsing", "save_to_file", MR_trace_cmd_save_to_file,
+		NULL, MR_trace_var_completer },
 
 	{ "breakpoint", "break", MR_trace_cmd_break,
 		MR_trace_break_cmd_args, MR_trace_breakpoint_completer },

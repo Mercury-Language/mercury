@@ -25,6 +25,8 @@
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 
+#include "mdb.browse.mh"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -790,9 +792,10 @@ MR_compare_slots_on_headvar_num(const void *p1, const void *p2)
     }
 }
 
-const char *
-MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+void
+MR_convert_goal_to_synthetic_term(const char **functor_ptr,
+    MR_Word *arg_list_ptr,
+    MR_bool *is_func_ptr)
 {
     const MR_Proc_Layout    *proc_layout;
     MR_ConstString          proc_name;
@@ -808,7 +811,6 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
     int                     next;
     int                     i;
     int                     *var_slot_array;
-    MR_bool                 saved_io_tabling_enabled;
 
     proc_layout = MR_point.MR_point_level_entry;
     MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
@@ -856,9 +858,25 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
         }
     );
 
+    *functor_ptr = proc_name;
+    *arg_list_ptr = arg_list;
+    *is_func_ptr = is_func;
+}
+
+const char *
+MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
+    MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+    const char  *functor;
+    MR_Word     arg_list;
+    MR_bool     is_func;
+    MR_bool     saved_io_tabling_enabled;
+
+    MR_convert_goal_to_synthetic_term(&functor, &arg_list, &is_func);
+
     saved_io_tabling_enabled = MR_io_tabling_enabled;
     MR_io_tabling_enabled = MR_FALSE;
-    (*browser)(proc_name, arg_list, is_func, caller, format);
+    (*browser)(functor, arg_list, is_func, caller, format);
     MR_io_tabling_enabled = saved_io_tabling_enabled;
     return NULL;
 }
@@ -1280,6 +1298,28 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, int *var_index_ptr,
     } else {
         MR_fatal_error("internal error: bad var_spec kind");
         return NULL;
+    }
+}
+
+const char *
+MR_convert_var_spec_to_type_value(MR_Var_Spec var_spec,
+    MR_TypeInfo *type_info_ptr, MR_Word *value_ptr)
+{
+    int         i;
+    MR_bool     is_ambiguous;
+    const char  *problem;
+
+    problem = MR_lookup_var_spec(var_spec, &i, &is_ambiguous);
+    if (problem != NULL) {
+        return problem;
+    }
+
+    if (! is_ambiguous) {
+        *type_info_ptr = MR_point.MR_point_vars[i].MR_var_type;
+        *value_ptr = MR_point.MR_point_vars[i].MR_var_value;
+        return NULL;
+    } else {
+        return "variable name is not unique";
     }
 }
 

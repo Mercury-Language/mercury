@@ -2525,7 +2525,7 @@ invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
 @sp 1
 @item browse [-fpv]
-@item browse [-fpv] goal
+@itemx browse [-fpv] goal
 Invokes the interactive term browser to browse
 the goal of the current call in its present state of instantiation.
 @sp 1
@@ -2757,6 +2757,27 @@ mdb will attempt to connect to the existing one.
 @sp 1
 The option @samp{-t} (or @samp{--timeout}) specifies
 the maximum number of seconds to wait for the server to start.
+@sp 1
+@item save_to_file goal @var{filename}
+@kindex save_to_file (mdb command)
+Writes the goal of the current call in its present state of instantiation
+to the specified file.
+@sp 1
+@item save_to_file exception @var{filename}
+Writes the value of the exception at an EXCP port
+to the specified file.
+Reports an error if the current event does not refer to such a port.
+@sp 1
+@item save_to_file @var{name} @var{filename}
+@itemx save_to_file @var{num} @var{filename}
+Writes the value of the variable in the current environment
+with the given ordinal number or with the given name
+to the specified file.
+@c @sp 1
+@c @item save_to_file proc_body @var{filename}
+@c Writes the representation of the body of the current procedure,
+@c if it is available,
+@c to the specified file.
 @end table
 
 @sp 1

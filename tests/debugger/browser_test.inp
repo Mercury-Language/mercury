@@ -1,5 +1,10 @@
 echo on
-goto 3
+register --quiet
+break big_data
+continue
+finish
+delete *
+save_to_file 1 browser_test.save.1
 set format pretty
 print *
 set -A format verbose
@@ -34,5 +39,8 @@ print 1
 print Data/1/2
 print 1^1^2^3
 retry
+break list_data
 continue
-
+finish
+save_to_file Data browser_test.save.2
+continue

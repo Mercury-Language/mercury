@@ -45,6 +45,61 @@ static	void		MR_trace_browse_ensure_init(void);
 static	MR_bool		MR_trace_is_portray_format(const char *str,
 				MR_Browse_Format *format);
 
+MR_Word
+MR_type_value_to_browser_term(MR_TypeInfo type_info, MR_Word value)
+{
+	MR_Word	browser_term;
+
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_plain_term_to_browser_term((MR_Word) type_info,
+			value, &browser_term);
+	);
+	return browser_term;
+}
+
+MR_Word
+MR_univ_to_browser_term(MR_Word univ)
+{
+	MR_Word browser_term;
+
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_univ_to_browser_term(univ, &browser_term);
+	);
+	return browser_term;
+}
+
+MR_Word
+MR_synthetic_to_browser_term(const char *functor, MR_Word arg_list,
+	MR_bool is_func)
+{
+	MR_Word	browser_term;
+
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_synthetic_term_to_browser_term(
+			(MR_String) (MR_Integer) functor, arg_list, is_func,
+			&browser_term);
+	);
+	return browser_term;
+}
+
+void
+MR_trace_save_term(const char *filename, MR_Word browser_term)
+{
+	MercuryFile	mdb_out;
+	MR_String	mercury_filename;
+	MR_String	mercury_format;
+
+	MR_trace_browse_ensure_init();
+
+	mercury_filename = (MR_String) (MR_Integer) filename;
+	mercury_format = (MR_String) (MR_Integer) "default";
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_save_term_to_file(mercury_filename, mercury_format,
+			browser_term, &mdb_out);
+	);
+}
+
 void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {

@@ -112,6 +112,40 @@
 
 %---------------------------------------------------------------------------%
 
+	% This predicate converts terms represented as univs to browser terms.
+
+:- pred univ_to_browser_term(univ::in, browser_term::out) is det.
+
+	% This predicate converts plain terms from the representation used
+	% in the trace directory to browser terms.
+
+:- pred plain_term_to_browser_term(T::in, browser_term::out) is det.
+
+	% This predicate converts synthetic terms from the representation used
+	% in the trace directory (as a list of arguments, the last of which
+	% represents the return value for function calls) to the representation
+	% used in the browser directory, in which a function call's return
+	% value is stored separately from the other arguments.
+	%
+	% The reason why the trace directory does not use the latter
+	% representation is that it would require C code to construct values
+	% of type maybe(T).
+
+:- pred synthetic_term_to_browser_term(string::in, list(univ)::in, bool::in,
+	browser_term::out) is det.
+
+	% save_term_to_file(FileName, Format, BrowserTerm, Out, !IO):
+	% Save BrowserTerm to the file FileName. If there is an error,
+	% print an error message to Out.
+	%
+	% The format of the saved term can be influenced by the Format
+	% argument, but how this works is not specified.
+
+:- pred save_term_to_file(string::in, string::in, browser_term::in,
+	io__output_stream::in, io::di, io::uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module mdb__parse.
@@ -147,7 +181,17 @@
 :- pragma export(browse__print_format_synthetic(in, in, in, in, in, in, in,
 	di, uo), "ML_BROWSE_print_format_synthetic").
 
+:- pragma export(plain_term_to_browser_term(in, out),
+	"ML_BROWSE_plain_term_to_browser_term").
+:- pragma export(univ_to_browser_term(in, out),
+	"ML_BROWSE_univ_to_browser_term").
+:- pragma export(synthetic_term_to_browser_term(in, in, in, out),
+	"ML_BROWSE_synthetic_term_to_browser_term").
+:- pragma export(save_term_to_file(in, in, in, in, di, uo),
+	"ML_BROWSE_save_term_to_file").
+
 %---------------------------------------------------------------------------%
+%
 % If the term browser is called from the internal debugger, input is
 % done via a call to the readline library (if available), using streams
 % MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
@@ -165,6 +209,118 @@
 :- type debugger
 	--->	internal
 	;	external.
+
+%---------------------------------------------------------------------------%
+%
+% Saving terms to files
+%
+
+save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
+	% io__write_string(FileName, !IO),
+	% io__nl(!IO),
+	% io__write(BrowserTerm, !IO),
+	% io__nl(!IO),
+	io__tell(FileName, FileStreamRes, !IO),
+	(
+		FileStreamRes = ok,
+		(
+			BrowserTerm = plain_term(Term),
+			save_univ(0, Term, !IO),
+			io__nl(!IO)
+		;
+			BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+			io__write_string(Functor, !IO),
+			io__write_string("(\n", !IO),
+			save_args(1, Args, !IO),
+			io__write_string("\n)\n", !IO),
+			(
+				MaybeRes = no
+			;
+				MaybeRes = yes(Result),
+				io__write_string("=\n", !IO),
+				save_univ(1, Result, !IO),
+				io__write_string("\n", !IO)
+			)
+		),
+		io__told(!IO)
+	;
+		FileStreamRes = error(Error),
+		io__error_message(Error, Msg),
+		io__write_string(OutStream, Msg, !IO)
+	).
+
+:- pred save_univ(int::in, univ::in, io::di, io::uo) is cc_multi.
+
+save_univ(Indent, Univ, !IO) :-
+	save_term(Indent, univ_value(Univ), !IO).
+
+:- pred save_term(int::in, T::in, io::di, io::uo) is cc_multi.
+
+save_term(Indent, Term, !IO) :-
+	( dynamic_cast_to_list(Term, List) ->
+		(
+			List = [],
+			write_indent(Indent, !IO),
+			io__write_string("[]", !IO)
+		;
+			List = [_ | _],
+			MakeUniv = (func(Element) = (ElementUniv) :-
+				ElementUniv = univ(Element)
+			),
+			Univs = list__map(MakeUniv, List),
+			write_indent(Indent, !IO),
+			io__write_string("[\n", !IO),
+			save_args(Indent + 1, Univs, !IO),
+			io__write_string("\n", !IO),
+			write_indent(Indent, !IO),
+			io__write_string("]", !IO)
+		)
+	;
+		deconstruct_cc(Term, Functor, _Arity, Args),
+		write_indent(Indent, !IO),
+		io__write_string(Functor, !IO),
+		(
+			Args = []
+		;
+			Args = [_ | _],
+			io__write_string("(\n", !IO),
+			save_args(Indent + 1, Args, !IO),
+			io__write_string("\n", !IO),
+			write_indent(Indent, !IO),
+			io__write_string(")", !IO)
+		)
+	).
+
+:- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
+
+dynamic_cast_to_list(X, L) :-
+	% The code of this predicate is copied from pprint.m.
+	[ArgTypeDesc] = type_args(type_of(X)),
+	(_ `with_type` ArgType) `has_type` ArgTypeDesc,
+	dynamic_cast(X, L `with_type` list(ArgType)).
+
+:- pred save_args(int::in, list(univ)::in, io::di, io::uo) is cc_multi.
+
+save_args(_Indent, [], !IO).
+save_args(Indent, [Univ | Univs], !IO) :-
+	save_univ(Indent, Univ, !IO),
+	(
+		Univs = []
+	;
+		Univs = [_ | _],
+		io__write_string(",\n", !IO),
+		save_args(Indent, Univs, !IO)
+	).
+
+:- pred write_indent(int::in, io::di, io::uo) is det.
+
+write_indent(Indent, !IO) :-
+	( Indent =< 0 ->
+		true
+	;
+		io__write_char(' ', !IO),
+		write_indent(Indent - 1, !IO)
+	).
 
 %---------------------------------------------------------------------------%
 %
@@ -267,17 +423,11 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 	MaybeMark = Info ^ maybe_mark,
 	!:State = Info ^ state.
 
-% This predicate converts synthetic terms from the representation used in the
-% trace directory (as a list of arguments, the last of which represents the
-% return value for function calls) to the representation used in the browser
-% directory, in which a function call's return value is stored separately from
-% the other arguments.
-%
-% The reason why the trace directory does not use the latter representation
-% is that it would require C code to construct values of type maybe(T).
+univ_to_browser_term(Univ, BrowserTerm) :-
+	BrowserTerm = plain_term(Univ).
 
-:- pred synthetic_term_to_browser_term(string::in, list(univ)::in, bool::in,
-	browser_term::out) is det.
+plain_term_to_browser_term(Term, BrowserTerm) :-
+	BrowserTerm = plain_term(univ(Term)).
 
 synthetic_term_to_browser_term(FunctorString, Args, IsFunc, BrowserTerm) :-
 	(

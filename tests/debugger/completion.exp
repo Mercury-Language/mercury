@@ -3,30 +3,32 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  delete             io_query           return
-P                  disable            label_stats        s
-alias              document           level              save
-all_class_decls    document_category  maxdepth           scope
-all_regs           down               mindepth           scroll
-all_type_ctors     e                  mm_stacks          set
-b                  echo               mmc_options        source
-break              enable             modules            stack
-browse             exception          next               stack_regs
-c                  excp               nondet_stack       step
-cc_query           f                  p                  subgoal
-class_decl         finish             pneg_stack         table
-clear_histogram    flag               print              table_io
-consumer           forward            print_optionals    term_size
-context            g                  printlevel         type_ctor
-continue           gen_stack          proc_stats         unalias
-current            goto               procedures         unhide_events
-cut_stack          h                  query              up
-d                  help               quit               v
-dd                 histogram_all      r                  vars
-dd_dd              histogram_exp      register           view
-debug_vars         ignore             retry              
+?                  disable            level              save_to_file
+P                  document           maxdepth           scope
+alias              document_category  mindepth           scroll
+all_class_decls    down               mm_stacks          set
+all_regs           e                  mmc_options        source
+all_type_ctors     echo               modules            stack
+b                  enable             next               stack_regs
+break              exception          nondet_stack       step
+browse             excp               p                  subgoal
+c                  f                  pneg_stack         table
+cc_query           finish             print              table_io
+class_decl         flag               print_optionals    term_size
+clear_histogram    forward            printlevel         type_ctor
+consumer           g                  proc_stats         unalias
+context            gen_stack          procedures         unhide_events
+continue           goto               query              up
+current            h                  quit               v
+cut_stack          help               r                  var_name_stats
+d                  histogram_all      register           vars
+dd                 histogram_exp      retry              view
+dd_dd              ignore             return             
+debug_vars         io_query           s                  
+delete             label_stats        save               
 h              help           histogram_all  histogram_exp  
-vars  view  
+var_name_stats  vars            view            
+var_name_stats  vars            
 help vars 
 vars
      Prints the names of all the known variables in the current

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2003 The University of Melbourne.
+** Copyright (C) 1999-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -123,7 +123,7 @@ extern	const char	*MR_trace_list_vars(FILE *out);
 ** string giving the problem.
 */
 
-extern const char *	MR_trace_return_hlds_var_info(int hlds_num,
+extern const char	*MR_trace_return_hlds_var_info(int hlds_num,
 				MR_TypeInfo *type_info_ptr,
 				MR_Word *value_ptr);
 
@@ -240,7 +240,7 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 ** Return a non-NULL error message if this is not possible.
 */
 
-extern	const char *	MR_trace_print_size_one(FILE *out,
+extern	const char	*MR_trace_print_size_one(FILE *out,
 				char *word_spec);
 
 /*
@@ -248,7 +248,26 @@ extern	const char *	MR_trace_print_size_one(FILE *out,
 ** specified file. Return a non-NULL error message if this is not possible.
 */
 
-extern	const char *	MR_trace_print_size_all(FILE *out);
+extern	const char	*MR_trace_print_size_all(FILE *out);
+
+/*
+** Return the current goal as the components of a synthetic term.
+*/
+
+extern	void		MR_convert_goal_to_synthetic_term(
+				const char **functor_ptr,
+				MR_Word *arg_list_ptr, MR_bool *is_func_ptr);
+
+
+/*
+** Given a variable specification, return the type_info and the value of the
+** chosen variable. Return a non-NULL error message if this is not possible.
+*/
+
+extern	const char	*MR_convert_var_spec_to_type_value(
+				MR_Var_Spec var_spec,
+				MR_TypeInfo *type_info_ptr,
+				MR_Word *value_ptr);
 
 /*
 ** Return the name (if any) of the variable with the given HLDS variable number
