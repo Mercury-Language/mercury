@@ -1478,10 +1478,11 @@ modecheck_call_pred_2([], PredId, _Procs, ArgVars, WaitingVars,
 	pred_info_get_marker_list(PredInfo, Markers),
 	( list__member(request(infer_modes), Markers) ->
 		insert_new_mode(PredId, ArgVars, TheProcId,
-			ModeInfo0, ModeInfo)
-		% would it improve performance to set the instmap
-		% to unreachable here?
-		%%% mode_info_set_instmap(unreachable, ModeInfo1, ModeInfo)
+			ModeInfo0, ModeInfo1),
+		% We need to either set the final insts of the arg variables
+		% to not_reached, or just set the whole instmap to unreachable.
+		% We do the latter.
+		mode_info_set_instmap(unreachable, ModeInfo1, ModeInfo)
 	;
 		TheProcId = 0, % dummy value
 		mode_info_get_instmap(ModeInfo0, InstMap),
