@@ -24,11 +24,12 @@
 :- import_module io, std_util, list.
 
 	% The interactive term browser.
-:- pred browse__browse(univ, io__state, io__state).
+:- pred browse__browse(T, io__state, io__state).
 :- mode browse__browse(in, di, uo) is det.
 
 :- pred browse__portray_root(browser_state, string).
 :- mode browse__portray_root(in, out) is det.
+
 
 :- type browser_state
 	--->	browser_state(
@@ -50,7 +51,8 @@
 :- pragma export(browse__browse(in, di, uo), "ML_browse").
 
 
-browse__browse(Univ) -->
+browse__browse(Object) -->
+	{ type_to_univ(Object, Univ) },
 	{ default_state(Univ, State) },
 	% startup_message,
 	browse_2(State).

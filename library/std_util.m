@@ -2427,18 +2427,43 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 ((Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO], 
                 &((Word *) data_word)[UNIV_OFFSET_FOR_DATA], info);
             break;
+
         case MR_DATAREP_VOID:
-		    fatal_error(""ML_expand: cannot expand void types"");
-            break;
+	    /*
+	    ** There's no way to create values of type `void',
+	    ** so this should never happen.
+	    */
+	    fatal_error(""ML_expand: cannot expand void types"");
+
         case MR_DATAREP_ARRAY:
-		    fatal_error(""ML_expand: cannot expand array types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<array>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_TYPEINFO:
-		    fatal_error(""ML_expand: cannot expand typeinfo types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<typeinfo>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_C_POINTER:
-		    fatal_error(""ML_expand: cannot expand c_pointer types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<c_pointer>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_UNKNOWN:    /* fallthru */
         default:
             fatal_error(""ML_expand: cannot expand -- unknown data type"");

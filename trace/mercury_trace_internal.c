@@ -21,6 +21,7 @@
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
+#include "browse.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,13 +160,13 @@ static	const char *MR_trace_browse_check_level(const MR_Stack_Layout_Label
 			*top_layout, Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 			Word *saved_regs, int ancestor_level,
-			MR_Var_Spec which_var);
+			MR_Var_Spec which_var, bool browse);
 static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 			Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Var *var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
-			Word *type_params);
+			Word *type_params, bool browse);
 static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
 			*layout, int *var_count_ptr);
 static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
@@ -698,15 +699,33 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				var_spec.MR_var_spec_kind = VAR_NUMBER;
 				var_spec.MR_var_spec_number = n;
 				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec);
+					*ancestor_level, var_spec, FALSE);
 			} else {
 				var_spec.MR_var_spec_kind = VAR_NAME;
 				var_spec.MR_var_spec_name = words[1];
 				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec);
+					*ancestor_level, var_spec, FALSE);
 			}
 		} else {
 			MR_trace_usage("browsing", "print");
+		}
+	} else if (streq(words[0], "browse")) {
+		if (word_count == 2) {
+			MR_Var_Spec	var_spec;
+
+			if (MR_trace_is_number(words[1], &n)) {
+				var_spec.MR_var_spec_kind = VAR_NUMBER;
+				var_spec.MR_var_spec_number = n;
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, var_spec, TRUE);
+			} else {
+				var_spec.MR_var_spec_kind = VAR_NAME;
+				var_spec.MR_var_spec_name = words[1];
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, var_spec, TRUE);
+			}
+		} else {
+			MR_trace_usage("browsing", "browse");
 		}
 	} else if (streq(words[0], "stack")) {
 		bool	include_trace_data;
@@ -1632,7 +1651,8 @@ MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
 
 static void
 MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec)
+	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec,
+	bool browse)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
@@ -1670,7 +1690,7 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 				valid_saved_regs, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
 		&vars->MR_slvs_pairs[which_var], valid_saved_regs,
-		base_sp, base_curfr, type_params);
+		base_sp, base_curfr, type_params, browse);
 	free(type_params);
 }
 
@@ -1717,7 +1737,7 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 	for (i = 0; i < var_count; i++) {
 		MR_trace_browse_var(MR_name_if_present(vars, i),
 			&vars->MR_slvs_pairs[i], valid_saved_regs,
-			base_sp, base_curfr, type_params);
+			base_sp, base_curfr, type_params, FALSE);
 	}
 
 	free(type_params);
@@ -1725,7 +1745,8 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 
 static void
 MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
-	Word *saved_regs, Word *base_sp, Word *base_curfr, Word *type_params)
+	Word *saved_regs, Word *base_sp, Word *base_curfr, Word *type_params,
+	bool browse)
 {
 	Word	value;
 	Word	type_info;
@@ -1749,13 +1770,16 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	/* The initial blanks are to visually separate */
 	/* the variable names from the prompt. */
 
-	if (name != NULL) {
-		printf("%7s%-21s\t", "", name);
-	} else {
-		printf("%7s%-21s\t", "", "anonymous variable");
+	if (!browse) {
+		if (name != NULL) {
+			printf("%7s%-21s\t", "", name);
+		} else {
+			printf("%7s%-21s\t", "", "anonymous variable");
+		}
+
+		fflush(stdout);
 	}
 
-	fflush(stdout);
 
 	/*
 	** "variables" representing the saved values of succip, hp etc,
@@ -1766,12 +1790,20 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	print_value = MR_get_type_and_value_base(var, saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value);
 	if (print_value) {
-		printf("\t");
-		MR_TRACE_CALL_MERCURY(
-			MR_write_variable(type_info, value);
-		);
+		if (browse) {
+			MR_TRACE_CALL_MERCURY(
+				ML_browse(type_info, value);
+			);
+		} else {
+			printf("\t");
+			fflush(stdout);
+			MR_TRACE_CALL_MERCURY(
+				MR_write_variable(type_info, value);
+			);
+		}
 	}
 
+	/* XXX if browse? */
 	printf("\n");
 }
 
