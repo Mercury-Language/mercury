@@ -248,8 +248,10 @@
   ** to get confused, and we end up jumping into the data section.
   ** Hence the `.type' directive below.
   */
-  #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+  #ifndef MR_BARFS_ON_ASM_TYPE_DIRECTIVE
+    #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
 	"	.type _entry_" stringify(label) ",#function\n"
+  #endif
 
 #endif
 

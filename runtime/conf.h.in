@@ -187,4 +187,10 @@
 */
 #undef USE_DLLS
 
+/*
+** For SPARC systems, does `as' barf if we use `.type' in inline asm?
+** (True for SunOS 4.x.)
+*/
+#undef MR_BARFS_ON_ASM_TYPE_DIRECTIVE
+
 #endif /* CONF_H */
