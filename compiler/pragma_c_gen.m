@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -389,11 +389,12 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	;
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
+		llds_out__quote_c_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
-			Name, """);\n"], ObtainLockStr),
+			MangledName, """);\n"], ObtainLockStr),
 		ObtainLock = pragma_c_raw_code(ObtainLockStr),
 		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
-			Name, """);\n"], ReleaseLockStr),
+			MangledName, """);\n"], ReleaseLockStr),
 		ReleaseLock = pragma_c_raw_code(ReleaseLockStr)
 	},
 

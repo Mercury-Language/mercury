@@ -52,6 +52,7 @@ OTHER_SOURCES= \
 	indexing.m \
 	inhibit_warn_test.m \
 	inlining_bug.m \
+	int64.m \
 	intermod_lambda.m \
 	intermod_quote.m \
 	intermod_test.m \

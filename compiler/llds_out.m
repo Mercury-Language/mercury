@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -98,6 +98,13 @@
 :- pred llds_out__qualify_name(string, string, string).
 :- mode llds_out__qualify_name(in, in, out) is det.
 
+	% Convert a string into a form suitable for outputting as a C string,
+	% by converting special characters into backslashes escapes.
+:- pred llds_out__quote_c_string(string, string).
+:- mode llds_out__quote_c_string(in, out) is det.
+
+	% Like quote_c_string except the resulting string is written to
+	% the current output stream.
 :- pred output_c_quoted_string(string, io__state, io__state).
 :- mode output_c_quoted_string(in, di, uo) is det.
 
@@ -1362,7 +1369,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 		{ FrameInfo = ordinary_frame(Msg, Num, MaybeStruct) },
 		( { MaybeStruct = yes(pragma_c_struct(StructName, _, _)) } ->
 			io__write_string("\tmkpragmaframe("""),
-			io__write_string(Msg),
+			output_c_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
 			io__write_string(", "),
@@ -1372,7 +1379,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 			io__write_string(");\n")
 		;
 			io__write_string("\tmkframe("""),
-			io__write_string(Msg),
+			output_c_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
 			io__write_string(", "),
@@ -1435,7 +1442,7 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	output_label(CallerLabel),
 	io__write_string(", """),
-	io__write_string(TypeMsg),
+	output_c_quoted_string(TypeMsg),
 	io__write_string(""");\n").
 
 output_instruction(mark_hp(Lval), _) -->
@@ -1477,7 +1484,7 @@ output_instruction(incr_sp(N, Msg), _) -->
 	io__write_string("\tincr_sp_push_msg("),
 	io__write_int(N),
 	io__write_string(", """),
-	io__write_string(Msg),
+	output_c_quoted_string(Msg),
 	io__write_string(""");\n").
 
 output_instruction(decr_sp(N), _) -->
@@ -1571,7 +1578,7 @@ output_set_line_num(Context) -->
 		io__write_string("#line "),
 		io__write_int(Line),
 		io__write_string(" """),
-		io__write_string(File),
+		output_c_quoted_string(File),
 		io__write_string("""\n")
 	;
 		[]
@@ -1593,7 +1600,7 @@ output_reset_line_num -->
 		{ NextLine is Line + 1 },
 		io__write_int(NextLine),
 		io__write_string(" """),
-		io__write_string(FileName),
+		output_c_quoted_string(FileName),
 		io__write_string("""\n")
 	;
 		[]
@@ -3573,6 +3580,16 @@ output_c_quoted_string(S0) -->
 	;
 		[]
 	).
+
+llds_out__quote_c_string(String, QuotedString) :-
+	QuoteOneChar = (pred(Char::in, RevChars0::in, RevChars::out) is det :-
+		( quote_c_char(Char, QuoteChar) ->
+			RevChars = [QuoteChar, '\\' | RevChars0]
+		;
+			RevChars = [Char | RevChars0]
+		)),
+	string__foldl(QuoteOneChar, String, [], RevQuotedChars),
+	string__from_rev_char_list(RevQuotedChars, QuotedString).
 
 :- pred quote_c_char(char, char).
 :- mode quote_c_char(in, out) is semidet.
