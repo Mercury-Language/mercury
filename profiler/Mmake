@@ -37,6 +37,7 @@ MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
 		` -lm
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
 MNLFLAGS =	-u 6000
+MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#
 
@@ -68,8 +69,8 @@ ints		: mercury_profile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(mercury_profile.ms)
-	mtags $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+tags		: $(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
 
 #-----------------------------------------------------------------------------#
 
@@ -82,6 +83,11 @@ dates		:
 .PHONY: os cs
 os: $(mercury_profile.os) mercury_profile_init.o
 cs: $(mercury_profile.cs) mercury_profile_init.c
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f tags
 
 #-----------------------------------------------------------------------------#
 

@@ -43,6 +43,7 @@ MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
 		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
 MNLFLAGS =	-u 6000
+MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#
 
@@ -98,8 +99,8 @@ ints		: mercury_compile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(mercury_compile.ms)
-	mtags *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+tags		: $(MTAGS) *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
 
 mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
 	awk -f `vpath_find source_stats.awk` \
@@ -119,8 +120,13 @@ cs: $(mercury_compile.cs) mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 
+clean:
+	for file in *.pp; do \
+		rm -f `basename $$file .pp`.m; \
+	done
+
 realclean:
-	rm -f tags mercury_compile.stats mercury_compile.split
+	rm -f tags mercury_compile.stats
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

@@ -128,6 +128,7 @@ clean_mod_c:
 	done
 
 realclean:
-	rm -f libmer.a libmer.so
+	rm -f libmer.a libmer.so runtime.init
+	rm -f conf.h conf.h.date
 
 #-----------------------------------------------------------------------------#

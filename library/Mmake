@@ -43,6 +43,8 @@ MCS	=	MERCURY_INT_DIR=. \
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
 #-----------------------------------------------------------------------------#
 
 NU_LIBRARY_NOS = \
@@ -86,8 +88,8 @@ library.mods	: $(library.mods)
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(library.ms)
-	mtags $(library.ms)
+tags		: $(MTAGS) $(library.ms)
+	$(MTAGS) $(library.ms)
 
 library.stats : $(COMPILER_DIR)/source_stats.awk $(library.ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk `vpath_find $(library.ms)` > $@
@@ -185,7 +187,7 @@ clean:
 
 realclean:
 	rm -f libmercury.a libmercury.so library.init
-	rm -f sicstus_saved_state sicstus_compile
+	rm -f sicstus_saved_state sicstus_compile sp_builtin.pl
 
 #-----------------------------------------------------------------------------#
 
