@@ -10,6 +10,7 @@ include ../../Mmake.common
 PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
+	exist_disjunction \
 	existential_type_classes \
 	existential_data_types \
 	existential_data_types_regr_test \

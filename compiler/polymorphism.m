@@ -1414,7 +1414,7 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 		polymorphism__make_typeclass_info_vars(	
 				ExistentialConstraints, [], Context,
 				ExtraTypeClassVars, ExtraTypeClassGoals,
-				PolyInfo1, PolyInfo2)
+				PolyInfo1, PolyInfo3)
 	;
 		IsConstruction = no,
 		% assume it's a deconstruction
@@ -1422,12 +1422,12 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 				ExistentialConstraints, 
 				ExtraTypeClassVars,
 				PolyInfo1, PolyInfo2),
-		ExtraTypeClassGoals = []
+		ExtraTypeClassGoals = [],
+		polymorphism__update_typeclass_infos(
+			ExistentialConstraints, ExtraTypeClassVars,
+			PolyInfo2, PolyInfo3)
 	),
 
-	polymorphism__update_typeclass_infos(
-			ExistentialConstraints, ExtraTypeClassVars,
-			PolyInfo2, PolyInfo3),
 
 	%
 	% Compute the set of _unconstrained_ existentially quantified type
