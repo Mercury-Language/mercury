@@ -538,6 +538,8 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 
 	set__union(Liveness1, PreBirths0, Liveness2),
 
+		% Pass both the old and new sets of variables
+		% that are nondet live (Extras{0,1})
 	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras0, Extras1,
 						Goal, Liveness3, Extras),
 
@@ -650,6 +652,10 @@ add_nondet_lives_to_conj([G0|Gs0], Liveness0, Extras0,
 :- mode add_nondet_lives_to_disj(in, in, in, in, out, out, out) is det.
 
 add_nondet_lives_to_disj([], Liveness, _, Extras, [], Liveness, Extras).
+	% For the last disjunct, we optimize what variables are nondet-
+	% live by observing that in the last disjunct we no longer need
+	% to save the inputs onto the stack for later disjuncts (since
+	% there aren't any.
 add_nondet_lives_to_disj([G0], Liveness0, OutsideExtras, Extras0,
 					[G], Liveness, Extras) :-
 	add_nondet_lives_to_goal(G0, Liveness0, OutsideExtras,
@@ -657,7 +663,7 @@ add_nondet_lives_to_disj([G0], Liveness0, OutsideExtras, Extras0,
 	set__union(Extras0, Extras1, Extras).
 add_nondet_lives_to_disj([G0|Gs0], Liveness0, OutsideExtras, Extras0,
 					[G|Gs], Liveness, Extras) :-
-	Gs0 = [_|_],
+	Gs0 = [_|_], % make this clause mutually exclusive with the previous one
 	add_nondet_lives_to_disj(Gs0, Liveness0, OutsideExtras, Extras0,
 						Gs, _Liveness1, Extras1),
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G, Liveness, Extras2),
