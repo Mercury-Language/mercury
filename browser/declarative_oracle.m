@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -573,10 +573,22 @@ assert_oracle_kb(_, skip(_), KB, KB).
 
 assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
-	% insert all modes of the predicate/function
-	foldl(add_atom_to_ground_map(Truth, Atom),
-		get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout),
-		Map0, Map),
+	ProcLayout = Atom ^ final_atom ^ proc_layout,
+	%
+	% Insert all modes for the atom if the atom is correct and just the
+	% one mode if it's not correct.  In general we cannot insert all modes
+	% for erroneous or inadmissible atoms since the atom might be
+	% erroneous with respect to one mode, but inadmissible with respect to
+	% another mode.
+	%
+	(
+		Truth = correct
+	->
+		foldl(add_atom_to_ground_map(Truth, Atom),
+			get_all_modes_for_layout(ProcLayout), Map0, Map)
+	;
+		add_atom_to_ground_map(Truth, Atom, ProcLayout, Map0, Map)
+	),
 	set_kb_ground_map(KB0, Map, KB).
 
 assert_oracle_kb(missing_answer(_, Call, _), truth_value(_, Truth), KB0, KB) :-
