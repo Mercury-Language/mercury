@@ -119,7 +119,7 @@ generate_csharp_code(MLDS) -->
 	)),
 
 	io__write_strings([
-		"\nclass mercury_code",
+		"\npublic class mercury_code",
 		"{\n"]),
 
 		% Output the contents of pragma foreign_code declarations.
