@@ -726,6 +726,7 @@ opt_debug__dump_code_addr(do_fail, "do_fail").
 opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
 opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
 opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
+opt_debug__dump_code_addr(do_not_reached, "do_not_reached").
 
 opt_debug__dump_code_addrs([], "").
 opt_debug__dump_code_addrs([Addr | Addrs], Str) :-

@@ -184,7 +184,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			set__init(Livevals2),
 			livemap__insert_label_livevals([Label],
 				Livemap0, Livevals2, Livevals3)
-		; ( CodeAddr = do_redo ; CodeAddr = do_fail ) ->
+		;
+			( CodeAddr = do_redo
+			; CodeAddr = do_fail
+			; CodeAddr = do_not_reached
+			)
+		->
 			Livevals3 = Livevals1
 		;
 			error("unknown label type in build_livemap")
@@ -340,6 +345,7 @@ livemap__special_code_addr(do_fail, no).
 livemap__special_code_addr(do_det_closure, no).
 livemap__special_code_addr(do_semidet_closure, no).
 livemap__special_code_addr(do_nondet_closure, no).
+livemap__special_code_addr(do_not_reached, no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

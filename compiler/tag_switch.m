@@ -197,18 +197,21 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	% a primary tag may not be the last case overall
 
 	code_info__get_next_label(FailLabel),
+	{ FailLabelCode = node([
+		label(FailLabel) -
+			"switch has failed"
+	]) },
 	(
 		{ CanFail = cannot_fail },
-		{ LabelledFailCode = empty }
+		{ FailCode = node([
+			goto(do_not_reached) - "oh-oh, det switch failed"
+		]) }
 	;
 		{ CanFail = can_fail },
-		code_info__generate_failure(FailCode),
-		{ FailLabelCode = node([
-			label(FailLabel) -
-				"switch has failed"
-		]) },
-		{ LabelledFailCode = tree(FailLabelCode, FailCode) }
+		code_info__generate_failure(FailCode)
 	),
+	{ LabelledFailCode = tree(FailLabelCode, FailCode) },
+
 	{ EndCode = node([label(EndLabel) - "end of tag switch"]) },
 
 	(
@@ -502,6 +505,8 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 				tree(SaveCode,
 				     GotoCode))
 			}
+		; { GoalList = [] } ->
+			{ error("no goal for non-shared tag") }
 		;
 			{ error("more than one goal for non-shared tag") }
 		)
@@ -945,8 +950,10 @@ tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 	% Order the primary tags based on the number of secondary tags
 	% associated with them, putting the ones with the most secondary tags
 	% first. We use selection sort.
-	% Note that it is not an error for a primary tag to have no case list,
-	% since this can happen in semideterministic switches.
+	% Note that it is not an error for a primary tag to have no case list;
+	% this can happen in semideterministic switches, or in det switches
+	% where the initial inst of the switch variable is a bound(...) inst
+	% representing a subtype.
 
 :- pred tag_switch__order_ptags_by_count(ptag_count_list, ptag_case_map,
 	ptag_case_list).

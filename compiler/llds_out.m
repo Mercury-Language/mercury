@@ -1743,6 +1743,7 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 need_code_addr_decls(do_det_closure, yes) --> [].
 need_code_addr_decls(do_semidet_closure, yes) --> [].
 need_code_addr_decls(do_nondet_closure, yes) --> [].
+need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
 :- mode output_code_addr_decls(in, di, uo) is det.
@@ -1781,6 +1782,8 @@ output_code_addr_decls(do_semidet_closure) -->
 	io__write_string("Declare_entry(do_call_semidet_closure);\n").
 output_code_addr_decls(do_nondet_closure) -->
 	io__write_string("Declare_entry(do_call_nondet_closure);\n").
+output_code_addr_decls(do_not_reached) -->
+	io__write_string("Declare_entry(do_not_reached);\n").
 
 :- pred output_label_as_code_addr_decls(label, io__state, io__state).
 :- mode output_label_as_code_addr_decls(in, di, uo) is det.
@@ -1942,6 +1945,11 @@ output_goto(do_nondet_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_nondet_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
+output_goto(do_not_reached, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_not_reached),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+
 
 	% Note that we also do some optimization here by
 	% outputting `localcall' rather than `call' for
@@ -2008,6 +2016,8 @@ output_code_addr(do_semidet_closure) -->
 	io__write_string("ENTRY(do_call_semidet_closure)").
 output_code_addr(do_nondet_closure) -->
 	io__write_string("ENTRY(do_call_nondet_closure)").
+output_code_addr(do_not_reached) -->
+	io__write_string("ENTRY(do_not_reached)").
 
 :- pred output_data_addr(string, data_name, io__state, io__state).
 :- mode output_data_addr(in, in, di, uo) is det.

@@ -277,6 +277,7 @@ dupelim__replace_labels_code_addr(do_fail, _, do_fail).
 dupelim__replace_labels_code_addr(do_det_closure, _, do_det_closure).
 dupelim__replace_labels_code_addr(do_semidet_closure, _, do_semidet_closure).
 dupelim__replace_labels_code_addr(do_nondet_closure, _, do_nondet_closure).
+dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred dupelim__replace_labels_label_list(list(label), map(label, label),
 	list(label)).

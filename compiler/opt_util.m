@@ -1173,6 +1173,7 @@ opt_util__livevals_addr(do_fail, no).
 opt_util__livevals_addr(do_det_closure, yes).
 opt_util__livevals_addr(do_semidet_closure, yes).
 opt_util__livevals_addr(do_nondet_closure, yes).
+opt_util__livevals_addr(do_not_reached, no).
 
 opt_util__count_temps_instr_list([], R, R, F, F).
 opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], R0, R, F0, F) :-

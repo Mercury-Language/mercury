@@ -470,7 +470,8 @@
 	;	do_fail
 	;	do_det_closure
 	;	do_semidet_closure
-	;	do_nondet_closure.
+	;	do_nondet_closure
+	;	do_not_reached.		% we should never jump to this address
 
 	% A proc_label is a label used for the entry point to a procedure.
 	% The defining module is the module that provides the code for the
