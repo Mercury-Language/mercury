@@ -225,14 +225,14 @@ CFLAGS="-O"
 
 # we also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
-CFLAGS="-Iruntime -Iruntime/machdeps $CFLAGS"
+CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
 
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
 # by default, but (inconsistently) it does _not_ search /usr/local/lib;
 # and in any case the user might be using a different C compiler that
 # doesn't search either of those by default.
-CFLAGS="-I/usr/local/include $CFLAGS"
+CPPFLAGS="-I/usr/local/include $CPPFLAGS"
 LIBS="-L/usr/local/lib $LIBS"
 
 AC_PROG_CPP
@@ -337,7 +337,6 @@ fi
 AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
 if test "$HAVE_UCONTEXT_H" = 1; then
 	AC_DEFINE(HAVE_UCONTEXT)
-	CFLAGS="$CFLAGS -DHAVE_UCONTEXT"
 else
 	AC_CHECK_HEADER(sys/ucontext.h, HAVE_SYS_UCONTEXT_H=1)
 	if test "$HAVE_SYS_UCONTEXT_H" = 1; then
@@ -1386,29 +1385,25 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #
 # NB. Any changes here may also require changes to scripts/mgnuc.in.
 #
-save_CC="$CC"
-save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
+CFLAGS_FOR_GOTOS=
+LIBRARY_PATH_FOR_GOTOS=
 case $ac_cv_prog_gcc in yes)
     case "`$CC --version < /dev/null`" in
 	2.8*) CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse" ;;
 	*)    CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse" ;;
-    esac ;;
-esac
-case "$host" in
+    esac
+    case "$host" in
 	mips-sgi-irix5.*)
-		CC="$CC -non_shared -mno-abicalls"
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
-LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
-		export LIBRARY_PATH
+		LIBRARY_PATH_FOR_GOTOS="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
 		;;
-esac
-case "$host" in
+    esac
+    case "$host" in
 	mips-*)
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
 	i?86-*)
-		CC="$CC -fno-builtin -fno-omit-frame-pointer"
 		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
 	# We need a special-case hack here, because the auto-config 
@@ -1431,21 +1426,30 @@ case "$host" in
 		mercury_cv_gcc_labels=no
 		;;
 	sparc*)
-		case $ac_cv_prog_gcc in yes)
-		    case "`$CC --version < /dev/null`" in 2.8*)
+		case "`$CC --version < /dev/null`" in 2.8*)
 			AC_MSG_WARN(*** Mercury might not work with " \
 				"gcc 2.8 on sparc!)
 			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
 			;;
-		    esac
-		    ;;
 		esac
 		;;
+    esac
+    ;;
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
+
+# Set env vars for compiling with gcc non-local gotos
+save_CC="$CC"
+save_LIBRARY_PATH="$LIBRARY_PATH"
+CC="$CC $CFLAGS_FOR_GOTOS"
+if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+	LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+	export LIBRARY_PATH
+fi
+
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
 	void *entry_foo_1;
@@ -1494,9 +1498,10 @@ AC_MSG_RESULT($mercury_cv_gcc_labels)
 if test "$mercury_cv_gcc_labels" = yes; then
 	AC_DEFINE(HAVE_GCC_LABELS)
 fi
-#-----------------------------------------------------------------------------#
+
 if test $mercury_cv_gcc_labels = yes; then
 	AC_MSG_CHECKING(whether we can use asm labels)
+
 	AC_CACHE_VAL(mercury_cv_asm_labels,
 	AC_TRY_RUN([
 	void *volatile volatile_global_pointer;
@@ -1525,6 +1530,11 @@ AC_SUBST(HAVE_ASM_LABELS)
 if test $HAVE_ASM_LABELS = 1; then
 	AC_DEFINE(HAVE_ASM_LABELS)
 fi
+
+# Restore env vars modified above
+CC="$save_CC"
+LIBRARY_PATH="$save_LIBRARY_PATH"
+
 #-----------------------------------------------------------------------------#
 # We need to ensure that runtime/mercury_conf.h exists, since some of the
 # programs we attempt to compile below indirectly include it.
@@ -1536,6 +1546,16 @@ EOF
 #-----------------------------------------------------------------------------#
 if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_MSG_CHECKING(whether we can use gcc labels and global registers)
+
+	# Set env vars for compiling with gcc non-local gotos and registers
+	save_CC="$CC"
+	save_LIBRARY_PATH="$LIBRARY_PATH"
+	CC="$CC $CFLAGS_FOR_GOTOS $CFLAGS_FOR_REGS"
+	if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+		LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+		export LIBRARY_PATH
+	fi
+
 	AC_CACHE_VAL(mercury_cv_gcc_model_fast,
 	AC_TRY_RUN([
 	#define USE_GCC_NONLOCAL_GOTOS
@@ -1554,18 +1574,21 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 		[mercury_cv_gcc_model_fast=no])
 	)
 	AC_MSG_RESULT($mercury_cv_gcc_model_fast)
+
+	# Restore env vars modified above
+	CC="$save_CC"
+	LIBRARY_PATH="$save_LIBRARY_PATH"
 else
 	mercury_cv_gcc_model_fast=no
 fi
 #-----------------------------------------------------------------------------#
-#
-# Restore env vars modified by Irix 5 hack above
-#
-CC="$save_CC"
-LIBRARY_PATH="$save_LIBRARY_PATH"
-#-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can use global registers without gcc labels)
+
+# Set env vars for compiling with gcc registers
+save_CC="$CC"
+CC="$CC $CFLAGS_FOR_REGS"
+
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
 #define USE_GCC_GLOBAL_REGISTERS
@@ -1583,6 +1606,9 @@ main() {
 	[mercury_cv_gcc_model_reg=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
+
+# Restore env vars modified above
+CC="$save_CC"
 
 #-----------------------------------------------------------------------------#
 
@@ -1751,10 +1777,12 @@ if test "$DEFAULT_GRADE" = ""; then
 	# For Irix 5.x, shared libraries are incompatible
 	# with gcc non-local gotos.
 	# We prefer to use shared libraries by default
-	case "$host" in
-		mips-sgi-irix5.*)
+	case "$host" in mips-sgi-irix5.*)
+		case $ac_cv_prog_gcc in yes)
 			DEFAULT_GRADE=reg.gc
 			;;
+		esac
+		;;
 	esac
 fi
 
@@ -2032,8 +2060,15 @@ ERROR_UNDEFINED=""
 
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
-		AC_MSG_RESULT(yes)
-		EXT_FOR_SHARED_LIB=so
+		case $ac_cv_prog_gcc in
+			yes)
+				AC_MSG_RESULT(yes)
+				EXT_FOR_SHARED_LIB=so
+				;;
+			*)
+				AC_MSG_RESULT(no)
+				;;
+		esac
 		;;
 	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
@@ -2311,7 +2346,7 @@ AC_TRY_LINK([
 	#include <arpa/inet.h>
 	#include <netinet/in.h>
 	#include <netdb.h>
-],[
+
 	static int MR_debug_socket = 1;
 
 	void
@@ -2320,9 +2355,8 @@ AC_TRY_LINK([
 		fprintf(stderr, "", s);
 		exit(1);
 	}
-
-	void
-	MR_trace_init_external(void)
+],[
+	/* this is the body of the test function */
 	{
 		int fd;
 		int len;

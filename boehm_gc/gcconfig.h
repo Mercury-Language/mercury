@@ -1314,7 +1314,8 @@
 # endif
 
 # if defined(HP_PA) || defined(M88K) || defined(POWERPC) \
-     || (defined(I386) && defined(OS2)) || defined(UTS4) || defined(LINT)
+     || (defined(I386) && defined(OS2)) || defined(UTS4) \
+     || defined(__LCC__) || defined(LINT)
 	/* Use setjmp based hack to mark from callee-save registers. */
 #	define USE_GENERIC_PUSH_REGS
 # endif

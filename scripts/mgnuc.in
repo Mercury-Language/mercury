@@ -95,6 +95,8 @@ Options:
 		Echo gcc command before executing it.
 	--no-ansi
 		Don't pass \`-ansi' to gcc.
+		Use the full contents of system headers,
+		rather than the ANSI subset.
 	--no-check
 		Don't enable any of gcc's warnings.
 	--low-level-debug
@@ -143,7 +145,7 @@ while : ; do
 
 	--no-ansi)
 		ANSI_OPTS=
-		DEFINE_OPTS="$DEFINE_OPTS -D__EXTENSIONS__"
+		DEFINE_OPTS="$DEFINE_OPTS -D__EXTENSIONS__ -D_GNU_SOURCE"
 		;;
 
 	--no-check)
