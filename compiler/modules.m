@@ -217,25 +217,43 @@
 
 :- type module_imports --->
 	module_imports(
-		file_name,	    % The source file
-		module_name,	    % The module (or sub-module) that we
-				    % are compiling.
-		list(module_name),  % The list of ancestor modules it inherits
-		list(module_name),  % The list of modules it directly imports
-				    % in the interface
-				    % (imports via ancestors count as direct)
-		list(module_name),  % The list of modules it directly imports
-				    % in the implementation.
-		list(module_name),  % The list of modules it indirectly imports
-		list(module_name),  % The list of its public children,
-				    % i.e. child modules that it includes
-				    % in the interface section.
-		list(string),  	    % The list of filenames for fact tables
-				    % in this module.
-		item_list,	% The contents of the module and its imports
-		module_error	% Whether an error has been encountered
+		source_file_name :: file_name,
+				% The source file
+		module_name :: module_name,	  
+				% The module (or sub-module)
+				% that we are compiling.
+		parent_deps :: list(module_name),
+				% The list of ancestor modules it inherits
+		int_deps :: list(module_name), 
+				% The list of modules it directly imports
+				% in the interface
+				% (imports via ancestors count as direct)
+		impl_deps :: list(module_name),
+				% The list of modules it directly imports
+				% in the implementation.
+		indirect_deps :: list(module_name),
+				% The list of modules it indirectly imports
+		public_children :: list(module_name),
+				% The list of its public children,
+				% i.e. child modules that it includes
+				% in the interface section.
+		fact_table_deps :: list(string),  
+				% The list of filenames for fact tables
+				% in this module.
+		foreign_code :: contains_foreign_code,
+				% Whether or not the module contains
+				% foreign code
+		items :: item_list,
+				% The contents of the module and its imports
+		error :: module_error
+				% Whether an error has been encountered
 				% when reading in this module.
 	).
+
+:- type contains_foreign_code
+	--->	contains_foreign_code
+	;	no_foreign_code
+	;	unknown.
 
 % Some access predicates for the module_imports structure
 
@@ -1349,52 +1367,26 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 init_module_imports(SourceFileName, ModuleName, Items, PublicChildren,
 			FactDeps, Module) :-
 	Module = module_imports(SourceFileName, ModuleName, [], [], [], [],
-			PublicChildren, FactDeps, Items, no).
+			PublicChildren, FactDeps, unknown, Items, no).
 
-module_imports_get_source_file_name(Module, SourceFileName) :-
-	Module = module_imports(SourceFileName, _, _, _, _, _, _, _, _, _).
-
-module_imports_get_module_name(Module, ModuleName) :-
-	Module = module_imports(_, ModuleName, _, _, _, _, _, _, _, _).
-
-module_imports_get_impl_deps(Module, ImplDeps) :-
-	Module = module_imports(_, _, _, _, ImplDeps, _, _, _, _, _).
-
-module_imports_get_items(Module, Items) :-
-	Module = module_imports(_, _, _, _, _, _, _, _, Items, _).
-
-module_imports_set_items(Module0, Items, Module) :-
-	Module0 = module_imports(A, B, C, D, E, F, G, H, _, J),
-	Module = module_imports(A, B, C, D, E, F, G, H, Items, J).
-
-module_imports_get_error(Module, Error) :-
-	Module = module_imports(_, _, _, _, _, _, _, _, _, Error).
-
-module_imports_set_error(Module0, Error, Module) :-
-	Module0 = module_imports(A, B, C, D, E, F, G, H, I, _),
-	Module = module_imports(A, B, C, D, E, F, G, H, I, Error).
-
-module_imports_set_int_deps(Module0, IntDeps, Module) :-
-	Module0 = module_imports(A, B, C, _, E, F, G, H, I, J),
-	Module = module_imports(A, B, C, IntDeps, E, F, G, H, I, J).
-
-module_imports_set_impl_deps(Module0, ImplDeps, Module) :-
-	Module0 = module_imports(A, B, C, D, _, F, G, H, I, J),
-	Module = module_imports(A, B, C, D, ImplDeps, F, G, H, I, J).
-
-module_imports_set_indirect_deps(Module0, IndirectDeps, Module) :-
-	Module0 = module_imports(A, B, C, D, E, _, G, H, I, J),
-	Module = module_imports(A, B, C, D, E, IndirectDeps, G, H, I, J).
+module_imports_get_source_file_name(Module, Module ^ source_file_name).
+module_imports_get_module_name(Module, Module ^ module_name).
+module_imports_get_impl_deps(Module, Module ^ impl_deps).
+module_imports_get_items(Module, Module ^ items).
+module_imports_set_items(Module, Items, Module ^ items := Items).
+module_imports_get_error(Module, Module ^ error).
+module_imports_set_error(Module, Error, Module ^ error := Error).
+module_imports_set_int_deps(Module, IntDeps, Module ^ int_deps := IntDeps).
+module_imports_set_impl_deps(Module, ImplDeps,
+	Module ^ impl_deps := ImplDeps).
+module_imports_set_indirect_deps(Module, IndirectDeps,
+	Module ^ indirect_deps := IndirectDeps).
 
 append_pseudo_decl(Module0, PseudoDecl, Module) :-
-	Module0 = module_imports(FileName, ModuleName, Ancestors, IntDeps,
-			ImplDeps, IndirectDeps, PublicChildren, FactDeps,
-			Items0, Error),
+	Items0 = Module0 ^ items,
 	make_pseudo_decl(PseudoDecl, Item),
 	list__append(Items0, [Item], Items),
-	Module = module_imports(FileName, ModuleName, Ancestors, IntDeps,
-			ImplDeps, IndirectDeps, PublicChildren, FactDeps,
-			Items, Error).
+	Module = Module0 ^ items := Items.
 
 make_pseudo_decl(PseudoDecl, Item) :-
 	term__context_init(Context),
@@ -1597,7 +1589,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
 			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
-			_Items, _Error) },
+			_ContainsForeignCode, _Items, _Error) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ module_name_to_make_var_name(ModuleName, MakeVarName) },
 	module_name_to_file_name(ModuleName, ".d", yes, DependencyFileName),
@@ -2447,10 +2439,12 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module, deps(yes, ModuleImports),
 			DepsMap2) },
-		{ ModuleImports = module_imports(_, _,
-			ParentDeps, IntDeps, ImplDeps, _, InclDeps, _, _, _) },
 		{ list__condense(
-			[ParentDeps, IntDeps, ImplDeps, InclDeps, Modules],
+			[ModuleImports ^ parent_deps,
+			ModuleImports ^ int_deps,
+			ModuleImports ^ impl_deps,
+			ModuleImports ^ public_children, % a.k.a. incl_deps
+			Modules],
 			Modules1) }
 	;
 		{ DepsMap2 = DepsMap1 },
@@ -2471,9 +2465,7 @@ deps_list_to_deps_rel([], _, IntRel, IntRel, ImplRel, ImplRel).
 deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 		IntRel0, IntRel, ImplRel0, ImplRel) :-
 	Deps = deps(_, ModuleImports),
-	ModuleImports = module_imports(_FileName, ModuleName,
-		ParentDeps, _IntDeps, _ImplDeps,
-		_IndirectDeps, _PublicChildren, _FactDeps, _Items, ModuleError),
+	ModuleError = ModuleImports ^ error,
 	( ModuleError \= fatal ->
 		%
 		% Add interface dependencies to the interface deps relation.
@@ -2492,6 +2484,8 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 		% conservative than they need to be in that case.
 		% However, that should not be a major problem.
 		% 
+		ModuleName = ModuleImports ^ module_name,
+		ParentDeps = ModuleImports ^ parent_deps,
 		relation__add_element(IntRel0, ModuleName, IntModuleKey,
 			IntRel1),
 		add_int_deps(IntModuleKey, ModuleImports, IntRel1, IntRel2),
@@ -2526,13 +2520,10 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap,
 :- mode add_int_deps(in, in, in, out) is det.
 
 add_int_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
-	ModuleImports = module_imports(_FileName, _ModuleName,
-		ParentDeps, IntDeps, _ImplDeps, _IndirectDeps, PublicChildren,
-		_FactDeps, _Items, _ModuleError),
 	AddDep = add_dep(ModuleKey),
-	list__foldl(AddDep, ParentDeps, Rel0, Rel1),
-	list__foldl(AddDep, IntDeps, Rel1, Rel2),
-	list__foldl(AddDep, PublicChildren, Rel2, Rel).
+	list__foldl(AddDep, ModuleImports ^ parent_deps, Rel0, Rel1),
+	list__foldl(AddDep, ModuleImports ^ int_deps, Rel1, Rel2),
+	list__foldl(AddDep, ModuleImports ^ public_children, Rel2, Rel).
 
 % add direct implementation dependencies for a module to the
 % impl. deps relation
@@ -2672,7 +2663,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		{ Basis = no }
 	),
 
-	{ get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
+	globals__io_get_target(Target),
+	{ get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".init_cs = "),
@@ -3213,33 +3205,71 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 	]).
 
 %-----------------------------------------------------------------------------%
-	% get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
+	% get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 	% Find any extra .$O files that should be linked into the executable.
-	% Currently only looks for fact table object files.
-:- pred get_extra_link_objects(list(module_name), deps_map,
+	% These include fact table object files and object files for foreign
+	% code that can't be generated inline for this target.
+:- pred get_extra_link_objects(list(module_name), deps_map, compilation_target,
 		assoc_list(file_name, module_name)).
-:- mode get_extra_link_objects(in, in, out) is det.
+:- mode get_extra_link_objects(in, in, in, out) is det.
 
-get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) :-
-	get_extra_link_objects_2(Modules, DepsMap, [], ExtraLinkObjs).
+get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) :-
+	get_extra_link_objects_2(Modules, DepsMap, Target, [], ExtraLinkObjs).
 
-:- pred get_extra_link_objects_2(list(module_name), deps_map, 
-		assoc_list(file_name, module_name),
+:- pred get_extra_link_objects_2(list(module_name), deps_map,
+		compilation_target, assoc_list(file_name, module_name),
 		assoc_list(file_name, module_name)).
-:- mode get_extra_link_objects_2(in, in, in, out) is det.
+:- mode get_extra_link_objects_2(in, in, in, in, out) is det.
 
-get_extra_link_objects_2([], _DepsMap, ExtraLinkObjs, ExtraLinkObjs).
-get_extra_link_objects_2([Module | Modules], DepsMap, 
+get_extra_link_objects_2([], _DepsMap, _Target, ExtraLinkObjs, ExtraLinkObjs).
+get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 		ExtraLinkObjs0, ExtraLinkObjs) :-
 	map__lookup(DepsMap, Module, deps(_, ModuleImports)),
-	ModuleImports = module_imports(_, _, _, _, _, _, _, FactDeps, _, _),
+	%
+	% Handle object files for fact tables
+	%
+	FactDeps = ModuleImports ^ fact_table_deps,
 	list__length(FactDeps, NumFactDeps),
 	list__duplicate(NumFactDeps, Module, ModuleList),
 	assoc_list__from_corresponding_lists(FactDeps, ModuleList,
-		NewLinkObjs),
+		NewLinkObjs0),
+	%
+	% Handle object files for foreign code
+	% XXX currently we only support `C' foreign code.
+	%
+	(
+		Target = asm,
+		ModuleImports ^ foreign_code = contains_foreign_code
+	->
+		prog_out__sym_name_to_string(Module, ".", FileName),
+		NewLinkObjs = [(FileName ++ "__c_code") - Module | NewLinkObjs0]
+	;
+		NewLinkObjs = NewLinkObjs0
+	),
 	list__append(NewLinkObjs, ExtraLinkObjs0, ExtraLinkObjs1),
-	get_extra_link_objects_2(Modules, DepsMap, ExtraLinkObjs1, 
+	get_extra_link_objects_2(Modules, DepsMap, Target, ExtraLinkObjs1, 
 		ExtraLinkObjs).
+
+:- pred item_list_contains_foreign_code(item_list::in) is semidet.
+
+item_list_contains_foreign_code([Item|Items]) :-
+	(
+		Item = pragma(Pragma) - _Context,
+		(	Pragma = foreign_decl(_Lang, _)
+		;	Pragma = foreign(_Lang, _)
+		;	Pragma = foreign(_, _, _, _, _, _)
+		;	% XXX `pragma export' should not be treated as
+			% foreign, but currently mlds_to_gcc.m doesn't
+			% handle that declaration, and instead just punts
+			% it on to mlds_to_c.m, thus generating C code for
+			% it, rather than assembler code.  So we need to
+			% treat `pragma export' like the other pragmas for
+			% foreign code.
+			Pragma = export(_, _, _, _)
+		)
+	;
+		item_list_contains_foreign_code(Items)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -3452,9 +3482,23 @@ init_dependencies(FileName, Error, Globals, ModuleName - Items,
 
 	get_fact_table_dependencies(Items, FactTableDeps),
 
+	% Figure out whether the items contain foreign code.
+	% As an optimization, we do this only if target = asm,
+	% since that is the only time we'll need that field.
+	ContainsForeignCode =
+		(if globals__get_target(Globals, asm) then
+			(if item_list_contains_foreign_code(Items) then
+				contains_foreign_code
+			else
+				no_foreign_code
+			)
+		else
+			unknown
+		),
+
 	ModuleImports = module_imports(FileName, ModuleName, ParentDeps,
 		InterfaceDeps, ImplementationDeps, IndirectDeps, IncludeDeps,
-		FactTableDeps, [], Error).
+		FactTableDeps, ContainsForeignCode, [], Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -3589,10 +3633,8 @@ process_module_private_interfaces([], DirectImports, DirectImports,
 process_module_private_interfaces([Ancestor | Ancestors],
 		DirectImports0, DirectImports, DirectUses0, DirectUses,
 		Module0, Module) -->
-	{ Module0 = module_imports(FileName, ModuleName, ModAncestors0,
-				ModInterfaceDeps, ModImplementationDeps,
-				ModIndirectDeps, ModPublicChildren,
-				ModFactDeps, ModItems0, ModError0) },
+	{ ModuleName = Module0 ^ module_name },
+	{ ModAncestors0 = Module0 ^ parent_deps },
 	(
 		{ Ancestor = ModuleName }
 	->
@@ -3606,6 +3648,8 @@ process_module_private_interfaces([Ancestor | Ancestors],
 				DirectUses0, DirectUses,
 				Module0, Module)
 	;
+		{ ModItems0 = Module0 ^ items },
+		{ ModError0 = Module0 ^ error },
 		read_mod(Ancestor, ".int0",
 			"Reading private interface for module", yes, 
 			PrivateIntItems, PrivateIntError, _AncestorFileName),
@@ -3625,10 +3669,9 @@ process_module_private_interfaces([Ancestor | Ancestors],
 				DirectImports1) },
 		{ list__append(DirectUses0, AncDirectUses, DirectUses1) },
 		{ list__append(ModItems0, Items, ModItems) },
-		{ Module1 = module_imports(FileName, ModuleName, ModAncestors,
-				ModInterfaceDeps, ModImplementationDeps,
-				ModIndirectDeps, ModPublicChildren,
-				ModFactDeps, ModItems, ModError) },
+		{ Module1 = ((Module0 ^ items := ModItems)
+				      ^ parent_deps := ModAncestors)
+				      ^ error := ModError },
 		process_module_private_interfaces(Ancestors, DirectImports1,
 				DirectImports, DirectUses1, DirectUses,
 				Module1, Module)
@@ -3640,15 +3683,13 @@ process_module_long_interfaces([], _Ext, IndirectImports, IndirectImports,
 		Module, Module) --> [].
 process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 		IndirectImports, Module0, Module) -->
-	{ Module0 = module_imports(FileName, ModuleName, ModAncestors,
-				ModInterfaceImports, ModImplementationImports0,
-				ModIndirectImports, ModPublicChildren,
-				ModFactDeps, ModItems0, ModError0) },
+	{ ModuleName = Module0 ^ module_name },
+	{ ModImplementationImports0 = Module0 ^ impl_deps },
 	(
 		% have we already read it?
 		( { Import = ModuleName }
-		; { list__member(Import, ModAncestors) }
-		; { list__member(Import, ModInterfaceImports) }
+		; { list__member(Import, Module0 ^ parent_deps) }
+		; { list__member(Import, Module0 ^ int_deps) }
 		; { list__member(Import, ModImplementationImports0) }
 		)
 	->
@@ -3656,6 +3697,8 @@ process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 				IndirectImports0, IndirectImports,
 				Module0, Module)
 	;
+		{ ModItems0 = Module0 ^ items },
+		{ ModError0 = Module0 ^ error },
 		read_mod(Import, Ext,
 			"Reading interface for module", yes, 
 			LongIntItems, LongIntError, _LongIntFileName),
@@ -3679,10 +3722,9 @@ process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 		{ list__append(IndirectImports2, IndirectUses1,
 			IndirectImports3) },
 		{ list__append(ModItems0, Items, ModItems) },
-		{ Module1 = module_imports(FileName, ModuleName, ModAncestors,
-				ModInterfaceImports, ModImplementationImports,
-				ModIndirectImports, ModPublicChildren,
-				ModFactDeps, ModItems, ModError) },
+		{ Module1 = ((Module0 ^ impl_deps := ModImplementationImports)
+				      ^ items := ModItems)
+				      ^ error := ModError },
 
 		process_module_long_interfaces(Imports, Ext,
 			IndirectImports3, IndirectImports, Module1, Module)
@@ -3820,22 +3862,21 @@ process_module_short_interfaces([], _,
 		IndirectImports, IndirectImports, Module, Module) --> [].
 process_module_short_interfaces([Import | Imports], Ext, 
 		IndirectImports0, IndirectImports, Module0, Module) -->
-	{ Module0 = module_imports(FileName, ModuleName, ModAncestors,
-			ModInterfaceDeps, ModImplementationDeps,
-			ModIndirectImports0, ModPublicChildren, ModFactDeps,
-			ModItems0, ModError0) },
+	{ ModIndirectImports0 = Module0 ^ indirect_deps },
 	(
 		% check if the imported module has already been imported
-		{ Import = ModuleName
-		; list__member(Import, ModAncestors)
-		; list__member(Import, ModInterfaceDeps)
-		; list__member(Import, ModImplementationDeps)
+		{ Import = Module0 ^ module_name
+		; list__member(Import, Module0 ^ parent_deps)
+		; list__member(Import, Module0 ^ int_deps)
+		; list__member(Import, Module0 ^ impl_deps)
 		; list__member(Import, ModIndirectImports0)
 		}
 	->
 		process_module_short_interfaces(Imports, Ext,
 			IndirectImports0, IndirectImports, Module0, Module)
 	;
+		{ ModItems0 = Module0 ^ items },
+		{ ModError0 = Module0 ^ error },
 		read_mod(Import, Ext,
 				"Reading short interface for module", yes,
 				ShortIntItems, ShortIntError, _ImportFileName),
@@ -3850,10 +3891,9 @@ process_module_short_interfaces([Import | Imports], Ext,
 		{ list__append(IndirectImports0, Imports1, IndirectImports1) },
 		{ list__append(IndirectImports1, Uses1, IndirectImports2) },
 		{ list__append(ModItems0, Items, ModItems) },
-		{ Module1 = module_imports(FileName, ModuleName, ModAncestors,
-			ModInterfaceDeps, ModImplementationDeps,
-			ModIndirectImports, ModPublicChildren, ModFactDeps,
-			ModItems, ModError) },
+		{ Module1 = ((Module0 ^ indirect_deps := ModIndirectImports)
+				      ^ items := ModItems)
+				      ^ error := ModError },
 		process_module_short_interfaces(Imports, Ext,
 			IndirectImports2, IndirectImports, Module1, Module)
 	).

@@ -186,6 +186,13 @@ $(os_subdir)%.$O : $(ss_subdir)%.s
 $(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
 	$(AS) $< $(OBJFILE_OPT)$@
 
+$(os_subdir)%__c_code.$O : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%__c_code.pic_o : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< $(OBJFILE_OPT)$@
+
 endif
 
 # C back-end

@@ -486,7 +486,7 @@ mercury_compile(Module) -->
 					HasMain)
 			)
 		    ; { Target = asm } ->
-		    	% compile directly assembler using the gcc back-end
+		    	% compile directly to assembler using the gcc back-end
 			mercury_compile__mlds_backend(HLDS50, MLDS),
 			mercury_compile__maybe_mlds_to_gcc(MLDS,
 				ContainsCCode),
@@ -707,7 +707,7 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
 				_IndirectImports, _PublicChildren, _FactDeps,
-				_Items, _Error) },
+				_ForeignCode, _Items, _Error) },
 			{ list__condense([Ancestors, InterfaceImports,
 				ImplementationImports], TransOptFiles) },
 			trans_opt__grab_optfiles(Imports1, TransOptFiles,

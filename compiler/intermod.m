@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2008,7 +2008,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .opt files for imported and ancestor modules.
 		%
 	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
-					ImplementationDeps0, _, _, _, _, _) },
+					ImplementationDeps0, _, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
