@@ -31,9 +31,9 @@ univ(["hi! I\'m a univ!"] : list:list(string))
 '<<predicate>>'
 
 TESTING OTHER TYPES
-1
-0
-1
+var(1)
+var_supply(0)
+var_supply(1)
 empty
 qwerty(4)
 

@@ -111,17 +111,17 @@ expand: functor <<predicate>> arity 0 arguments []
 
 
 TESTING OTHER TYPES
-1/0
-no arguments
-expand: functor 1 arity 0 arguments []
+var/1
+argument 1 of functor var was:1
+expand: functor var arity 1 arguments [1]
 
-0/0
-no arguments
-expand: functor 0 arity 0 arguments []
+var_supply/1
+argument 1 of functor var_supply was:0
+expand: functor var_supply arity 1 arguments [0]
 
-1/0
-no arguments
-expand: functor 1 arity 0 arguments []
+var_supply/1
+argument 1 of functor var_supply was:1
+expand: functor var_supply arity 1 arguments [1]
 
 empty/0
 no arguments

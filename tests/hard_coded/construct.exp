@@ -160,13 +160,16 @@ TESTING BUILTINS
 
 
 TESTING OTHER TYPES
--1 functors in this type
+1 functors in this type
+0 - var/1
 
 
--1 functors in this type
+1 functors in this type
+0 - var_supply/1
 
 
--1 functors in this type
+1 functors in this type
+0 - var_supply/1
 
 
 4 functors in this type
