@@ -29,6 +29,7 @@
 :- type module_info	--->	module(
 					string,		% module name
 					pred_table,
+					list(pred_id),
 					type_table,
 					inst_table,
 					mode_table,
@@ -67,7 +68,7 @@
 					term__context
 				).
 
-:- export_type proc_table.
+%%% :- export_type proc_table.
 :- type proc_table	==	map(pred_mode_id, proc_info).
 
 :- type proc_info	--->	procedure(
@@ -83,20 +84,20 @@
 					call_info	% stack allocations
 				).
 
-:- export_type category.
+%%% :- export_type category.
 :- type category	--->	deterministic(det_source) % functional & total
 			;	semideterministic(det_source) % just functional
 			;	nondeterministic(det_source) % neither
 			;	unspecified.
 
-:- export_type det_source.
+%%% :- export_type det_source.
 :- type det_source	--->	declared
 			;	infered.
 
 :- type pred_id 	--->	pred(module_name, string, int).
 			%	module, predname, arity
 
-:- export_type pred_table.
+%%% :- export_type pred_table.
 :- type pred_table	==	map(pred_id, pred_info).
 
 :- type proc_id		--->	proc(pred_id, pred_mode_id).
@@ -113,7 +114,7 @@
 :- type type_id		== 	pair(sym_name, int).
 				% name, arity
 
-:- export_type type_table.
+%%% :- export_type type_table.
 :- type type_table	==	map(type_id, hlds__type_defn).
 
 %-----------------------------------------------------------------------------%
@@ -123,7 +124,7 @@
 :- type mode_id		==	pair(sym_name, int).
 				% name, arity
 
-:- export_type mode_table.
+%%% :- export_type mode_table.
 :- type mode_table	==	map(mode_id, hlds__mode_defn).
 
 %-----------------------------------------------------------------------------%
@@ -133,7 +134,7 @@
 :- type inst_id		==	pair(sym_name, int).
 				% name, arity.
 
-:- export_type inst_table.
+%%% :- export_type inst_table.
 :- type inst_table	==	map(inst_id, hlds__inst_defn).
 
 %-----------------------------------------------------------------------------%
@@ -145,17 +146,17 @@
 :- type cons_id		--->	cons(string, int).
 				% name, arity
 
-:- export_type cons_table.
+%%% :- export_type cons_table.
 :- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
 
 %-----------------------------------------------------------------------------%
 
 	% Here's how goals are represented
 
-:- export_type hlds__goal.
+%%% :- export_type hlds__goal.
 :- type hlds__goal		--->	hlds__goal_expr - hlds__goal_info.
 
-:- export_type hlds__goal_expr.
+%%% :- export_type hlds__goal_expr.
 :- type hlds__goal_expr    	--->	conj(hlds__goals)
 
 				% Initially only the pred_id and arguments
@@ -190,14 +191,14 @@
 			;	error.
 
 	% Record whether a call is a builtin or not, and if so, which one.
-:- export_type is_builtin.
+%%% :- export_type is_builtin.
 :- type is_builtin	--->	not_builtin
 			;	is_builtin.
 
-:- export_type call_info.
+%%% :- export_type call_info.
 :- type call_info	==	map(var, int).
 
-:- export_type case.
+%%% :- export_type case.
 :- type case		--->	case(cons_id, list(var), hlds__goal).
 			%	functor to match with, arguments to extract,
 			%	goal to execute if match succeeds.
@@ -206,12 +207,12 @@
 	% unify(term, term, _, _), but mode analysis replaces
 	% these with various special cases.
 
-:- export_type follow_vars.
+%%% :- export_type follow_vars.
 :- type follow_vars	==	map(var, register_slot).
-:- export_type register_slot.
+%%% :- export_type register_slot.
 :- type register_slot		==	int.
 
-:- export_type unification.
+%%% :- export_type unification.
 :- type unification	--->	
 				% Y = f(X) where the top node of Y is output,
 				% written as Y := f(X).
@@ -238,7 +239,7 @@
 				% type & mode.
 			;	complicated_unify(unify_mode, term, term).
 
-:- export_type hlds__goals.
+%%% :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).
 
 :- type hlds__goal_info	--->	goalinfo(
@@ -247,7 +248,7 @@
 					map(var, inst)
 				).
 
-:- export_type is_live.
+%%% :- export_type is_live.
 :- type is_live		--->	live ; dead.
 
 :- type	var		==	variable.
@@ -346,6 +347,9 @@
 :- pred moduleinfo_set_preds(module_info, pred_table, module_info).
 :- mode moduleinfo_set_preds(input, input, output).
 
+:- pred moduleinfo_set_predids(module_info, list(pred_id), module_info).
+:- mode moduleinfo_set_predids(input, input, output).
+
 :- pred moduleinfo_set_types(module_info, type_table, module_info).
 :- mode moduleinfo_set_types(input, input, output).
 
@@ -364,7 +368,7 @@
 
 	% A predicate which creates an empty module
 
-moduleinfo_init(Name, module(Name, Preds, Types, Insts, Modes, Ctors)) :-
+moduleinfo_init(Name, module(Name, Preds, [], Types, Insts, Modes, Ctors)) :-
 	map__init(Preds),
 	map__init(Types),
 	map__init(Insts),
@@ -375,68 +379,71 @@ moduleinfo_init(Name, module(Name, Preds, Types, Insts, Modes, Ctors)) :-
 	% of info from the module_info data structure.
 
 moduleinfo_name(ModuleInfo, Name) :-
-	ModuleInfo = module(Name, _Preds, _Types, _Insts, _Modes, _Ctors).
+	ModuleInfo = module(Name, _, _, _, _, _, _).
 
 moduleinfo_preds(ModuleInfo, Preds) :-
-	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes, _Ctors).
+	ModuleInfo = module(_, Preds, _, _, _, _, _).
 
 moduleinfo_predids(ModuleInfo, PredIDs) :-
-	ModuleInfo = module(_Name, Preds, _Types, _Insts, _Modes, _Ctors),
-	map__keys(Preds, PredIDs).
+	ModuleInfo = module(_, _, PredIDs, _, _, _, _).
 
 moduleinfo_types(ModuleInfo, Types) :-
-	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes, _Ctors).
+	ModuleInfo = module(_, _, _, Types, _, _, _).
 
 moduleinfo_typeids(ModuleInfo, TypeIDs) :-
-	ModuleInfo = module(_Name, _Preds, Types, _Insts, _Modes, _Ctors),
+	ModuleInfo = module(_, _, _, Types, _, _, _),
 	map__keys(Types, TypeIDs).
 
 moduleinfo_insts(ModuleInfo, Insts) :-
-	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes, _Ctors).
+	ModuleInfo = module(_, _, _, _, Insts, _, _).
 
 moduleinfo_instids(ModuleInfo, InstIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, Insts, _Modes, _Ctors),
+	ModuleInfo = module(_, _, _, _, Insts, _, _),
 	map__keys(Insts, InstIDs).
 
 moduleinfo_modes(ModuleInfo, Modes) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, _Ctors).
+	ModuleInfo = module(_, _, _, _, _, Modes, _).
 
 moduleinfo_modeids(ModuleInfo, ModeIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, _Ctors),
+	ModuleInfo = module(_, _, _, _, _, Modes, _),
 	map__keys(Modes, ModeIDs).
 
 moduleinfo_ctors(ModuleInfo, Ctors) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, _Modes, Ctors).
+	ModuleInfo = module(_, _, _, _, _, _, Ctors).
 
 moduleinfo_consids(ModuleInfo, ConsIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, _Modes, Ctors),
+	ModuleInfo = module(_, _, _, _, _, _, Ctors),
 	map__keys(Ctors, ConsIDs).
 
 	% Various predicates which modify the module_info data structure.
 
 moduleinfo_set_name(ModuleInfo0, Name, ModuleInfo) :-
-	ModuleInfo0 = module(_, Preds, Types, Insts, Modes, Ctors),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(_, Preds, PredIDs, Types, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
-	ModuleInfo0 = module(Name, _, Types, Insts, Modes, Ctors),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(Name, _, PredIDs, Types, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
+
+moduleinfo_set_predids(ModuleInfo0, PredIDs, ModuleInfo) :-
+	ModuleInfo0 = module(Name, Preds, _, Types, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_types(ModuleInfo0, Types, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, _, Insts, Modes, Ctors),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(Name, Preds, PredIDs, _, Insts, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, Types, _, Modes, Ctors),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(Name, Preds, PredIDs, Types, _, Modes, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, Types, Insts, _, Ctors),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(Name, Preds, PredIDs, Types, Insts, _, Ctors),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
-	ModuleInfo0 = module(Name, Preds, Types, Insts, Modes, _),
-	ModuleInfo = module(Name, Preds, Types, Insts, Modes, Ctors).
+	ModuleInfo0 = module(Name, Preds, PredIDs, Types, Insts, Modes, _),
+	ModuleInfo = module(Name, Preds, PredIDs, Types, Insts, Modes, Ctors).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

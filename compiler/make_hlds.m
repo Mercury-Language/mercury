@@ -26,12 +26,11 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	%%% { statistics },
-	% We reverse the itemlist before inserting the clauses,
-	% so that we can build up the individual clause lists
-	% in the correct order 
-	{ reverse(Items, RevItems) },
-	add_item_list_clauses(RevItems, Module1, Module).
+	%%% { report_stats },
+	add_item_list_clauses(Items, Module1, Module2),
+	{ moduleinfo_predids(Module2, RevPredIds),
+	  reverse(RevPredIds, PredIds),
+	  moduleinfo_set_predids(Module2, PredIds, Module) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -352,12 +351,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 		Module) -->
-	{ moduleinfo_preds(Module0, Preds0) },
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	{ moduleinfo_name(Module0, ModuleName) },
-	preds_add(Preds0, ModuleName, VarSet, PredName, Types, Cond, Context,
-		Preds),
-	{ moduleinfo_set_preds(Module0, Preds, Module1) },
+	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module1),
 	(if %%% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	then
@@ -410,20 +405,22 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 split_type_and_mode(type_only(T), _, T, (free -> free), yes).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
 
-:- pred preds_add(pred_table, module_name, varset, sym_name, list(type),
-		condition, term__context, pred_table, io__state, io__state).
-:- mode preds_add(input, input, input, input, input, input, input, output,
+:- pred preds_add(module_info, varset, sym_name, list(type),
+		condition, term__context, module_info, io__state, io__state).
+:- mode preds_add(input, input, input, input, input, input, output,
 		di, uo).
 
-preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Context, Preds) -->
+preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
+	{ moduleinfo_name(Module0, ModuleName) },
+	{ moduleinfo_preds(Module0, Preds0) },
 	{ length(Types, Arity),
 	  map__init(Procs),
-	  make_predid(ModNm, Name, Arity, PredId),
+	  make_predid(ModuleName, Name, Arity, PredId),
 	  P = predicate(VarSet, Types, Cond, [], Procs, Context) },
 	(if %%% some [P2]
 		{ map__search(Preds0, PredId, P2) }
 	then
-		{ Preds = Preds0 },
+		{ Module = Module0 },
 		(if 
 			{ pred_is_compat(P, P2) }
 		then
@@ -432,7 +429,10 @@ preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Context, Preds) -->
 			multiple_def_error(Name, Arity, "pred", Context)
 		)
 	else
-		{ map__insert(Preds0, PredId, P, Preds) }
+		{ map__insert(Preds0, PredId, P, Preds) },
+		{ moduleinfo_set_preds(Module0, Preds, Module1) },
+		{ moduleinfo_predids(Module1, PredIds0) },
+		{ moduleinfo_set_predids(Module1, [PredId | PredIds0], Module) }
 	).
 
 :- pred pred_is_compat(pred_info, pred_info).
@@ -552,8 +552,9 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		  map__keys(Procs, ModeIds),
 		  transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
 		  map__init(VarTypes),
-		  Clauses = [clause(ModeIds, NewVarSet, VarTypes,
-				HeadVars, Goal, Context) | Clauses0],
+		  % XXX we should avoid append - this gives O(N*N)
+		  append(Clauses0, [clause(ModeIds, NewVarSet, VarTypes,
+				HeadVars, Goal, Context)], Clauses),
 		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs,
 				TContext),
 		  map__set(Preds0, PredId, PredInfo, Preds) }

@@ -577,7 +577,7 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_predid(TypeInfo0, PredId),
 		typeinfo_get_varset(TypeInfo0, VarSet),
-		report_error_cons(PredId, C, VarSet, F, Arity, Type,
+		report_error_cons(PredId, C, VarSet, F, As, Type,
 					TypeAssignSet, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo2),
@@ -1122,7 +1122,7 @@ check_undefined_types(Module, Module) -->
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
 	{ moduleinfo_preds(Module, Preds) },
-	{ map__keys(Preds, PredIds) },
+	{ moduleinfo_predids(Module, PredIds) },
 	find_undef_pred_types(PredIds, Preds, TypeDefns).
 
 	% Find any undefined types used in `:- pred' declarations.
@@ -1736,21 +1736,19 @@ report_error_undef_cons(PredId, Context, Functor, Arity) -->
 	write_pred_id(PredId),
 	io__write_string("'.\n").
 
-:- pred report_error_cons(pred_id, term__context, varset, const, int, type,
-			type_assign_set, io__state, io__state).
+:- pred report_error_cons(pred_id, term__context, varset, const, list(term),
+			type, type_assign_set, io__state, io__state).
 :- mode report_error_cons(input, input, input, input, input, input, input,
 			di, uo).
 
-report_error_cons(PredId, Context, VarSet, Functor, Arity, Type,
+report_error_cons(PredId, Context, VarSet, Functor, Args, Type,
 			TypeAssignSet) -->
 	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
 	io__write_string("':\n"),
-	io__write_string("constructor `"),
-	io__write_constant(Functor),
-	io__write_string("/"),
-	io__write_int(Arity),
+	io__write_string("term `"),
+	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX
 	io__write_string("'.\n"),
