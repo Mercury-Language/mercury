@@ -17,7 +17,7 @@
 
 % IL implementation
 :- pragma foreign_type(il, coord,
-	"class [foreign_type__csharp_code]coord").
+	"class [intermod_foreign_type2__csharp_code]coord").
 
 :- pragma foreign_decl("C#", "
 public class coord {
