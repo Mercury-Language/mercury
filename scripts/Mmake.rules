@@ -175,14 +175,14 @@ $(ss_subdir)%.s : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		$< > $*.err 2>&1
 
-$(ss_subdir)%.pic_s : %.m
+$(pic_ss_subdir)%.pic_s : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
 
 $(os_subdir)%.$O : $(ss_subdir)%.s
 	$(AS) $< $(OBJFILE_OPT)$@
 
-$(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
+$(os_subdir)%.pic_o : $(pic_ss_subdir)%.pic_s
 	$(AS) $< $(OBJFILE_OPT)$@
 
 $(os_subdir)%__c_code.$O : $(cs_subdir)%.c
