@@ -77,10 +77,10 @@ while true; do
 done
 
 case "$GRADE" in
-	*.gc.prof)
+	*.gc.prof*)
 		LIBGC="-lgc_prof"
 		;;
-	*.gc)
+	*.gc*)
 		LIBGC="-lgc"
 		;;
 	*)

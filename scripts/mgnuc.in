@@ -126,6 +126,15 @@ while : ; do
 done
 
 case "$grade" in
+	*.cnstr) CNSTR_OPTS="-DCONSTRAINTS"
+		grade="` expr $grade : '\(.*\).cnstr' `"
+		;;
+	*)
+		CNSTR_OPTS=""
+		;;
+esac
+
+case "$grade" in
 	*.prof)	PROF_OPTS="-DPROFILE_TIME -DPROFILE_CALLS"
 		grade="` expr $grade : '\(.*\).prof' `"
 		;;
@@ -244,11 +253,14 @@ esac
 
 case $verbose in true)
 	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS "$@" ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $CNSTR_OPTS $SPLIT_OPTS \
+		$ARCH_OPTS "$@" ;;
 esac
 case $# in
 	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $CNSTR_OPTS $SPLIT_OPTS \
+		$ARCH_OPTS ;;
 	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS "$@" ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $CNSTR_OPTS $SPLIT_OPTS \
+		$ARCH_OPTS "$@" ;;
 esac
