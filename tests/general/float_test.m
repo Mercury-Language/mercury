@@ -20,6 +20,7 @@ main -->
 	test(3.0, 4.0),
 	test(41.0, -3.0),
 	test_constants,
+	% test_math_constants,
 	% test_rounding(2.7),
 	% test_rounding(-3.6),
 	% test_power(2.2),
@@ -52,7 +53,7 @@ test(X, Y) -->
 :- mode write_message(in, in, di, uo) is det.
 
 write_message(String, Float) -->
-	{ string__format("%s%6.3f\n", [s(String), f(Float)], Message) },
+	{ string__format("%s%6.3g\n", [s(String), f(Float)], Message) },
 	io__write_string(Message).
 
 :- pred test_constants(io__state :: di, io__state :: uo) is det.
@@ -62,7 +63,10 @@ test_constants -->
 	{ float__min(FMin) },
 	write_message("Float min: ", FMin),
 	{ float__epsilon(FEps) },
-	write_message("Float epsilon: ", FEps),
+	write_message("Float epsilon: ", FEps).
+
+:- pred test_math_constants(io__state :: di, io__state :: uo) is det.
+test_math_constants -->
 	{ math__pi(Pi) },
 	write_message("Pi: ", Pi),
 	{ math__e(E) },
