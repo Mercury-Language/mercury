@@ -1363,10 +1363,10 @@
 			thread_safe		:: thread_safe,
 			tabled_for_io		:: tabled_for_io,
 			purity			:: purity,
+			terminates		:: terminates,
 				% there is some special case behaviour for
 				% pragma c_code and pragma import purity
 				% if legacy_purity_behaviour is `yes'
-			terminates		:: terminates,
 			legacy_purity_behaviour	:: bool,
 			extra_attributes	::
 				list(pragma_foreign_proc_extra_attribute)
