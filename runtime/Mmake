@@ -94,7 +94,7 @@ install_headers: $(HDRS) $(MACHHDRS)
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
 	cp `vpath_find $(HDRS)` $(INSTALL_INC_DIR)
-	chmod +w $(INSTALL_INC_DIR)/conf.h
+	chmod u+w $(INSTALL_INC_DIR)/conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
