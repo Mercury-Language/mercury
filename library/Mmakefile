@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -330,10 +330,20 @@ install_all: install_mercury install_nuprolog install_sicstus
 .PHONY: install_mercury
 install_mercury: install_ints install_init install_library
 
+.PHONY: install_dirs
+install_dirs:
+	#-[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
+	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		mkdir -p $(INSTALL_INT_DIR)/Mercury
+	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	-[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
+	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
+	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
+
 .PHONY: install_ints
 install_ints: $(library.ints) $(library.int3s) \
-		$(library.opts) $(library.trans_opts)
-	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
+		$(library.opts) $(library.trans_opts) install_dirs
 	for file in $(library.ints) $(library.int3s) \
 			$(library.opts) $(library.trans_opts); \
 	do \
@@ -346,16 +356,13 @@ install_ints: $(library.ints) $(library.int3s) \
 		fi; \
 	done
 	# The following is needed to support the `--use-subdirs' option
-	[ -d $(INSTALL_INT_DIR)/Mercury ] || \
-		mkdir -p $(INSTALL_INT_DIR)/Mercury
 	for dir in ints int2s int3s opts trans_opts; do \
 		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
 		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
 	done
 
 .PHONY: install_init
-install_init: $(STD_LIB_NAME).init
-	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+install_init: $(STD_LIB_NAME).init install_dirs
 	cp `vpath_find $(STD_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 	# "$(STD_LIB_NAME).init" used to be called "library.init" or
 	# "libmercury.init". If there is still a version with an old name
@@ -365,8 +372,8 @@ install_init: $(STD_LIB_NAME).init
 		$(INSTALL_MODULE_DIR)/libmercury.init
 
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+install_library: lib$(STD_LIB_NAME).a \
+		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find lib$(STD_LIB_NAME).a \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
@@ -374,8 +381,7 @@ install_library: lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 # library.split.a is a version of lib$(STD_LIB_NAME).a that has been compiled
 # with `--split-c-files'.
 .PHONY: install_split_library
-install_split_library: library.split.a
-	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+install_split_library: library.split.a install_dirs
 	cp `vpath_find library.split.a` \
 		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).a
 
@@ -386,18 +392,15 @@ install_nuprolog: install_library_nu install_interpreter_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
 			$(NU_OVERRIDING_LIBRARY_NOS) \
 			$(nos_subdir)error.no $(nos_subdir)debug.no \
-			$(nos_subdir)portray.no nc_builtin.nl
-	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
+			$(nos_subdir)portray.no nc_builtin.nl install_dirs
 	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
-	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
 		$(NU_OVERRIDING_LIBRARY_NOS) \
 		$(nos_subdir)error.no $(nos_subdir)debug.no \
 		$(nos_subdir)portray.no` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
-install_interpreter_nu: library.nu
-	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
+install_interpreter_nu: library.nu install_dirs
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/library.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
@@ -407,13 +410,11 @@ install_interpreter_nu: library.nu
 install_sicstus: install_interpreter_sicstus install_sicstus_compile
 
 .PHONY: install_interpreter_sicstus
-install_interpreter_sicstus: library.sicstus.debug
-	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
+install_interpreter_sicstus: library.sicstus.debug install_dirs
 	cp `vpath_find library.sicstus.debug` $(INSTALL_SP_ARCH_DIR)
 
 .PHONY: install_sicstus_compile
-install_sicstus_compile: sicstus_compile
-	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
+install_sicstus_compile: sicstus_compile install_dirs
 	cp `vpath_find sicstus_compile` $(INSTALL_SP_ARCH_DIR)
 
 else

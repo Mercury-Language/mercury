@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -160,22 +160,25 @@ install_nuprolog: install_compiler_nu
 .PHONY: install_sicstus
 install_sicstus: install_compiler_sicstus
 
-.PHONY: install_compiler
-install_compiler: mercury_compile
+.PHONY: install_dirs
+install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
+	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
+
+.PHONY: install_compiler
+install_compiler: mercury_compile install_dirs
 	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
 
 .PHONY: install_compiler_nu
-install_compiler_nu: mercury_compile.nu
-	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
+install_compiler_nu: mercury_compile.nu install_dirs
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
 	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_compiler_sicstus
-install_compiler_sicstus: mercury_compile.sicstus
-	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
+install_compiler_sicstus: mercury_compile.sicstus install_dirs
 	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#

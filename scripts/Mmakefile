@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -49,15 +49,20 @@ ml mgnuc: final_grade_options.sh-subr
 install: install_mmake install_scripts install_debugger_scripts
 install: $(INSTALL_NUPROLOG) $(INSTALL_SICSTUS)
 
-.PHONY: install_mmake
-install_mmake: Mmake.vars Mmake.rules
+.PHONY: install_dirs
+install_dirs:
+	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
+	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
+
+.PHONY: install_mmake
+install_mmake: Mmake.vars Mmake.rules install_dirs
 	rm -f $(INSTALL_LIBDIR)/mmake/Mmake.vars
 	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
 
 .PHONY: install_scripts
-install_scripts: $(SCRIPTS)
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+install_scripts: $(SCRIPTS) install_dirs
 	# we remove the installed `mmake' script before (re)installing it
 	# to avoid overwriting the script while it is running
 	-rm -f $(INSTALL_BINDIR)/mmake
@@ -67,26 +72,22 @@ install_scripts: $(SCRIPTS)
 	done
 
 .PHONY: install_emacs_scripts
-install_emacs_scripts: $(EMACS_SCRIPTS) install_libdir
-	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
+install_emacs_scripts: $(EMACS_SCRIPTS) install_libdir install_dirs
 	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
 .PHONY: install_debugger_scripts
-install_debugger_scripts: $(DEBUGGER_SCRIPTS)
-	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
 .PHONY: install_nuprolog
-install_nuprolog: $(NUPROLOG_SCRIPTS)
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+install_nuprolog: $(NUPROLOG_SCRIPTS) install_dirs
 	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(NUPROLOG_SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
 
 .PHONY: install_sicstus
-install_sicstus: $(SICSTUS_SCRIPTS)
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+install_sicstus: $(SICSTUS_SCRIPTS) install_dirs
 	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SICSTUS_SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 University of Melbourne. 
+# Copyright (C) 1995-1999 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -70,19 +70,21 @@ LIBGC_GLOBALS_H =
 endif
 #-----------------------------------------------------------------------------#
 
-
-.PHONY: install_headers
-install_headers:
-	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
+.PHONY: install_dirs
+install_dirs:
+	#-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
 	-[ -d $(INSTALL_INC_DIR)/private ] || \
 		mkdir -p $(INSTALL_INC_DIR)/private
+	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
+		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+
+.PHONY: install_headers
+install_headers: install_dirs
 	cp $(HEADERS) $(INSTALL_INC_DIR)
 	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
 
 .PHONY: install_lib
-install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)
-	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
-		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_GC_LIB_DIR) \
 

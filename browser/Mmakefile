@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -174,15 +174,18 @@ realclean:
 .PHONY: install
 install: install_init install_library
 
-.PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init
+.PHONY: install_dirs
+install_dirs:
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_init
+install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
 install_library: lib$(BROWSER_LIB_NAME).a \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find lib$(BROWSER_LIB_NAME).a \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

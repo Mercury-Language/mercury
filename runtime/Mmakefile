@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998 The University of Melbourne.
+# Copyright (C) 1998-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -264,17 +264,21 @@ check_headers: $(HDR_CHECK_OBJS) $(HDR_CHECK_MACROS)
 .PHONY: install
 install: install_headers install_init install_lib
 
-.PHONY: install_headers
-install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H)
+.PHONY: install_dirs
+install_dirs:
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
+	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_headers
+install_headers: $(HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
 	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
-install_init: $(RT_LIB_NAME).init
-	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+install_init: $(RT_LIB_NAME).init install_dirs
 	cp `vpath_find $(RT_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 	# "$(RT_LIB_NAME).init" used to be called "runtime.init".
 	# If there is still a version with an old name lying around,
@@ -282,8 +286,8 @@ install_init: $(RT_LIB_NAME).init
 	rm -f $(INSTALL_MODULE_DIR)/runtime.init
 
 .PHONY: install_lib
-install_lib: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
-	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+install_lib: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+		install_dirs
 	cp `vpath_find lib$(RT_LIB_NAME).a \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

@@ -172,9 +172,20 @@ doc.ps.tar.gz: ps
 install: install_info install_html install_dvi install_manpages install_mdb_doc
 	# install_text install_ps
 
-.PHONY: install_info
-install_info: info
+.PHONY: install_dirs
+install_dirs:
 	-[ -d $(INSTALL_INFO_DIR) ] || mkdir -p $(INSTALL_INFO_DIR)
+	-[ -d $(INSTALL_HTML_DIR) ] || mkdir -p $(INSTALL_HTML_DIR)
+	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
+	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
+	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
+	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
+		mkdir -p $(INSTALL_MAN_DIR)/man1
+	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
+	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+
+.PHONY: install_info
+install_info: info install_dirs
 	-cp *.info* $(INSTALL_INFO_DIR)
 	# Update the .../info/dir file.
 	-if [ -x "$(INSTALL_INFO)" ]; then				\
@@ -182,34 +193,27 @@ install_info: info
 	fi
 
 .PHONY: install_html
-install_html: html
-	-[ -d $(INSTALL_HTML_DIR) ] || mkdir -p $(INSTALL_HTML_DIR)
+install_html: html install_dirs
 	cp *.html $(INSTALL_HTML_DIR)
 
 .PHONY: install_dvi
-install_dvi: dvi
-	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
+install_dvi: dvi install_dirs
 	cp *.dvi $(INSTALL_DVI_DIR)
 
 .PHONY: install_text
-install_text: text
-	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
+install_text: text install_dirs
 	cp *.txt $(INSTALL_TEXT_DIR)
 
 .PHONY: install_ps
-install_ps: ps
-	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
+install_ps: ps install_dirs
 	cp *.ps $(INSTALL_PS_DIR)
 
 .PHONY: install_manpages
-install_manpages: manpages
-	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
-		mkdir -p $(INSTALL_MAN_DIR)/man1
+install_manpages: manpages install_dirs
 	cp *.1 $(INSTALL_MAN_DIR)/man1
 
 .PHONY: install_mdb_doc
-install_mdb_doc: mdb_doc
-	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
+install_mdb_doc: mdb_doc install_dirs
 	cp mdb_doc $(INSTALL_MDB_DOC_DIR)
 
 # The uninstall rule here only removes the info files; the others
@@ -225,8 +229,7 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: library-chapters.texi split_html ps 
-	[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+install_webpage: library-chapters.texi split_html ps  install_dirs
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
