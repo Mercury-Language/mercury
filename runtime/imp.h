@@ -55,6 +55,16 @@ typedef void	Code;
 
 #endif
 
+/* DEFINITIONS FOR COMPUTED GOTOS */
+
+#define COMPUTED_GOTO(val, labels) 			\
+	{ static Code *jump_table[] = {			\
+		labels					\
+	  };						\
+	  goto *jump_table[val];			\
+	}
+#define AND ,	/* used to separate the labels */
+
 #include	"engine.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
