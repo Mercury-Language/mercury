@@ -442,7 +442,7 @@ cd ..
 
 : update the unstable release
 
-BETA_FTPDIR = /home/tsa/ftp/pub/mercury/beta-releases
+BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
 
 rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
 cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
