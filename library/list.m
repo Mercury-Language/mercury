@@ -402,6 +402,17 @@
 :- mode list__foldl2(pred(in, di, uo, di, uo) is det,
 		in, di, uo, di, uo) is det.
 
+	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
+	% with an accumulator (with the initial value of Start) on
+	% each element of InList (working left-to-right) to transform
+	% InList into OutList.  The final value of the acumulator is
+	% returned in End.
+:- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
+:- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo) is det.
+:- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out) is det.
+:- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
+                                                                is semidet.
+
 %-----------------------------------------------------------------------------%
 
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
@@ -892,6 +903,12 @@ list__foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
 list__foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
 	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
 	list__foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
+
+list__map_foldl(_, [],  []) -->
+        [].
+list__map_foldl(P, [H0|T0], [H|T]) -->
+        P(H0, H),
+        list__map_foldl(P, T0, T).
 
 list__foldr(_, [], Acc, Acc).
 list__foldr(P, [H|T], Acc0, Acc) :-
