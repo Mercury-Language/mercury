@@ -160,7 +160,7 @@ This first Mercury distribution contains:
      o  some sample Mercury programs
 
 You can get the distribution by ftp from
-ftp.cs.mu.oz.au:/pub/mercury/mercury-0.3.tar.gz
+turiel.cs.mu.oz.au (128.250.1.10) as /pub/mercury/mercury-0.3.tar.gz
 or by WWW from <http://www.cs.mu.oz.au/~fjh/mercury/mercury-0.3.tar.gz>.
 The home page of the project on the Web is
 <http://www.cs.mu.oz.au/~zs/mercury.html>.
