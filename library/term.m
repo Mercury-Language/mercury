@@ -32,6 +32,7 @@
 :- type var.
 :- type var_supply.
 
+
 %-----------------------------------------------------------------------------%
 
 	% The following predicates can convert values of (almost)
@@ -242,6 +243,7 @@
 %		Convert a variable to an int.
 %		Different variables map to different ints.
 %		Other than that, the mapping is unspecified.
+
 	
 %-----------------------------------------------------------------------------%
 

@@ -233,6 +233,8 @@
 		;	deforestation_cost_factor
 		;	deforestation_vars_threshold
 		;	termination
+		;	vanessa_termination
+		;	benoy_widening
 		;	check_termination
 		;	verbose_check_termination
 		;	termination_single_args
@@ -335,7 +337,7 @@ option_defaults_2(warning_option, [
 	warn_interface_imports	-	bool(yes),
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
-	warn_missing_trans_opt_deps  -	bool(yes),
+	warn_missing_trans_opt_deps  -	bool(no),
 	warn_simple_code	-	bool(yes),
 	warn_duplicate_calls	-	bool(no),
 	warn_missing_module_name -	bool(yes),
@@ -500,6 +502,8 @@ option_defaults_2(special_optimization_option, [
 	check_termination	-	bool(no),
 	verbose_check_termination -	bool(no),
 	termination		-	bool(no),
+	vanessa_termination	-	bool(yes),
+	benoy_widening		-	int(0),
 	termination_single_args	-	int(0),
 	termination_norm	-	string("total"),
 	termination_error_limit	-	int(3),
@@ -855,6 +859,8 @@ long_option("deforestation-cost-factor",	deforestation_cost_factor).
 long_option("deforestation-vars-threshold",	deforestation_vars_threshold).
 long_option("enable-termination",	termination).
 long_option("enable-term",		termination).
+long_option("vanessa-termination",	vanessa_termination).
+long_option("benoy-widening",		benoy_widening).
 long_option("check-termination",	check_termination).
 long_option("check-term",		check_termination).
 long_option("chk-term",			check_termination).

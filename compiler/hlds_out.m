@@ -443,12 +443,13 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		(
-			{ \+ string__contains_char(Verbose, 'I') },
-			{ pred_info_is_imported(PredInfo) }
+		( 	
+			{ \+ string__contains_char(Verbose, 'A') },
+			{ pred_info_is_imported(PredInfo) } 
 		->
 			[]
 		;
+			{ \+ string__contains_char(Verbose, 'A') },
 			% for pseudo-imported predicates (i.e. unification
 			% preds), only print them if we are using a local
 			% mode for them
@@ -460,9 +461,10 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		->
 			[]
 		;
-			% We dump unification predicates if suboption
-			% 'U' is on. We don't really need that
-			% information to understand how the program has
+			{ \+ string__contains_char(Verbose, 'A') },
+			% We dump unification predicates if suboption 
+			% 'U' is on. We don't really need that 
+			% information to understand how the program has 
 			% been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
 			{ pred_info_arity(PredInfo, Arity) },

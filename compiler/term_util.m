@@ -22,7 +22,8 @@
 :- import_module term_errors, prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
-:- import_module std_util, bool, int, list, map, bag, term.
+:- import_module std_util, bimap, bool, int, list, lp_rational, map, bag, 
+							set, size_varset, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -42,11 +43,13 @@
 				% It stores whether the argument contributes
 				% to the size of the output arguments.
 
-	;	infinite(list(term_errors__error)).
+	;	infinite(list(term_errors__error))
 				% There is no finite integer for which the
 				% above equation is true. The argument says
 				% why the analysis failed to find a finite
 				% constant.
+
+	;	constraints(equations, set(var), bimap(var, size_var)).
 
 :- type termination_info
 	---> 	cannot_loop	% This procedure terminates for all
@@ -107,8 +110,70 @@
 			int,		% Max number of errors to gather.
 			int		% Max number of paths to analyze.
 		).
+%-----------------------------------------------------------------------------%
+
+:- type constraint_info 
+	---> 	constr_info(  
+
+		bimap(var, size_var),		
+				% The bimap
+				% stores the corespondence between
+				% vars (i.e. variables
+				% appearing in a particular procedure)
+				% and SizeVars from the single varset 
+				% used to get variables for passing to 
+				% lp.
+
+		size_varset,	% A varset is used to create a set of
+				% non-clashing variables to pass to
+				% project and convex_hull.  
+
+		set(var),	% A set of all the variables discovered
+				% to have zero-size-type.
+
+		equations	% All the constraints so far found.	
+		).			
+ 
+%-----------------------------------------------------------------------------%
+
+% These predicates are for dealing with equations.
+
+:- pred rename_vars(list(var), list(size_var), module_info, map(var, type), 
+					constraint_info, constraint_info).
+:- mode rename_vars(in, out, in, in, in, out) is det.
+
+:- pred rename_var(var, size_var, constraint_info, constraint_info).
+:- mode rename_var(in, out, in, out) is det.  
+
+% Inserts a new variable into the set of zero-size-variables (does
+% nothing if that variable is already there).
+:- pred new_zero_var(var, constraint_info, constraint_info).
+:- mode new_zero_var(in, in, out) is det.
+
+% Compares two equations, assumed to be in canonical form.  Two equations
+% are equal if they have the same coefficients, operation and constant.
+% Eqn1 < Eqn2 if they are parallel but the constant in Eqn1 is greater than
+% that in Eqn2 (i.e. Eqn1 is weaker than Eqn2, since canonical form includes
+% only (=<) as an op).
+% Non-parallel equations are sorted according to lexicographic order of
+% their variable names (there isn't a good reason for choosing this particular
+% order, except that it's easy to compute.  Anything that sorts on variables 
+% is acceptable).
+:- pred compare_eqns(equation, equation, comparison_result).
+:- mode compare_eqns(in, in, out) is det.
+
+%##Write what this does.
+:- pred compare_coeff_lists(list(coeff), list(coeff), comparison_result).
+:- mode compare_coeff_lists(in, in, out) is det.
+
+% Put equations into a canonical form:  Every equation contains =<, 
+% has its coefficients listed in increasing order of variable name,
+% and has first coefficient equal to plus or minus 1.
+:- pred canonical_form(equations, equations).
+:- mode canonical_form(in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
 
 % This predicate partitions the arguments of a call into a list of input
 % variables and a list of output variables,
@@ -181,10 +246,137 @@
 :- import_module globals, options.
 
 :- import_module assoc_list, require.
+:- import_module rat, lp_rational.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% Equation-handling predicates:
+
+rename_vars(Vars, Renamed_Vars0, Module, VarTypes, Constr_info0, 
+								Constr_info) :-
+	rename_vars_acc(Vars, [], Renamed_Vars0, Module, VarTypes, Constr_info0,
+								Constr_info).
+
+:- pred rename_vars_acc(list(var), list(size_var), list(size_var),
+		module_info, map(var, type), constraint_info, constraint_info).
+:- mode rename_vars_acc(in, in, out, in, in, in, out) is det.
+
+rename_vars_acc([], Renamed_Vars0, Renamed_Vars, _Module, _VarTypes, 
+						Constr_info, Constr_info):-
+	list__reverse(Renamed_Vars0, Renamed_Vars).
+
+
+rename_vars_acc([V|Vars], Renamed_Vars0, Renamed_Vars, Module, VarTypes, 
+						Constr_info0, Constr_info) :-
+	
+	map__lookup(VarTypes, V, Type),
+	( zero_size_type(Type, Module) ->
+		new_zero_var(V, Constr_info0, Constr_info1),
+		Renamed_Vars1 = Renamed_Vars0
+
+	;
+		rename_var(V, RV, Constr_info0, Constr_info1),
+		Renamed_Vars1 = [RV|Renamed_Vars0]
+	),
+	rename_vars_acc(Vars, Renamed_Vars1, Renamed_Vars, Module, VarTypes, 
+						Constr_info1, Constr_info).
+
+
+% This should only be called when the var is not one of zero-size-type.
+%##Should check here?
+rename_var(Var0, Var1, Constr_info0, Constr_info) :-
+% see code in lp_rat.  
+	Constr_info0 = constr_info(BMap0, Vars0, ZeroVars0, Eqns0),
+
+	(bimap__search(BMap0, Var0, OutVar) ->
+		Var1 = OutVar,
+		Vars = Vars0,
+		BMap = BMap0,
+		Eqns = Eqns0
+	;
+		size_varset__new_var(Vars0, NewVar, Vars),
+		(bimap__insert(BMap0, Var0, NewVar, BMap1) ->
+			Var1 = NewVar,
+			BMap = BMap1,
+			Eqns = [eqn([NewVar-one], (>=), zero) | Eqns0]
+		;
+			error("term_traversal2: bimap__insert failed\n")
+		)
+	),
+	Constr_info = constr_info(BMap, Vars, ZeroVars0, Eqns).
+
+
+new_zero_var(Var, constr_info(Vars, Map, Zeros0, Eqns), 
+			constr_info(Vars, Map, Zeros, Eqns) ) :-
+	set__insert(Zeros0, Var, Zeros).
+	
+
+
+
+compare_eqns(Eqn1, Eqn2, Result) :-
+        (
+                Eqn1 = eqn(Coeffs1, (=<), Const1),
+                Eqn2 = eqn(Coeffs2, (=<), Const2)
+        ->
+                compare_coeff_lists(Coeffs1, Coeffs2, Coeffs_result),
+		( Coeffs_result = (=) ->
+			( rat:'<'(Const1, Const2) ->
+				Result = (>)
+			;
+				( rat:'='(Const1, Const2) ->
+					Result = (=)
+				;
+					Result = (<)
+				)
+			)
+		;
+			Result = Coeffs_result
+		)
+	;
+		error("term_constr_pass1: Non-canonical equation passed to 
+								compare_eqns\n")
+	).
+
+compare_coeff_lists([], [], (=)).
+compare_coeff_lists([], [_|_], (<)).
+compare_coeff_lists([_|_], [], (>)).
+compare_coeff_lists([C1|Coeffs1], [C2|Coeffs2], Result) :-
+	compare_coeffs(C1, C2, Coeff_Result),
+	( Coeff_Result = (=) ->
+		compare_coeff_lists(Coeffs1, Coeffs2, Result)
+	;
+		Result = Coeff_Result
+	).
+
+canonical_form(Eqns0, Canonical_eqns) :-
+        fm_standardize_equations(Eqns0, Standardized_eqns),
+        eqns_to_vectors(Standardized_eqns, Vectors),
+
+        Normalize_on_first_var = lambda([Vec1::in, Norm_vec::out] is det,(
+                Vec1 = pair(Map0, _),
+		( map__remove_smallest(Map0, LeastVar, _, _) ->
+			normalize_vector(Vec1, LeastVar, Norm_vec)
+		;
+			error("term_constr_pass1:Can't normalise null vector\n")
+
+		)
+	)),
+	list__map(Normalize_on_first_var, Vectors, Canonical_vecs),
+
+	vectors_to_eqns(Canonical_vecs, Almost_canonical_eqns),
+											Sort_coeffs = lambda([eqn(Coeffs, Op, Num)::in, Sort_eqn::out] is det, (
+		list__sort(compare_coeffs, Coeffs, Sorted_coeffs),
+		Sort_eqn = eqn(Sorted_coeffs, Op, Num)
+	)),
+	list__map(Sort_coeffs, Almost_canonical_eqns, Canonical_eqns).
+
+:- pred compare_coeffs(coeff, coeff, comparison_result).
+:- mode compare_coeffs(in, in, uo) is det.
+compare_coeffs(Var1-_, Var2-_, Result) :-
+	compare(Result, Var1, Var2).
+
+%-----------------------------------------------------------------------------%
 % Calculate the weight to be assigned to each function symbol for the
 % use_map and use_map_and_args semilinear norms.
 %
