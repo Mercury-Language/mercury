@@ -80,7 +80,7 @@
 %
 % 4) builtin types
 %	character, int, float, string
-%	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... [not yet implemented]
+%	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... 
 %       These types have special syntax for constants.
 %	There may be other types (short integers, complex numbers, rationals,
 %	etc.) provided by the system, but they can just be part of the
@@ -193,11 +193,11 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	( Clauses0 = [] ->
 		ModuleInfo2 = ModuleInfo0,
 		Error1 = Error0,
-		IOState1 = IOState0
+		IOState2 = IOState0
 	;
 		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
-		type_info_init(IOState0, ModuleInfo0, PredId,
+		type_info_init(IOState1, ModuleInfo0, PredId,
 				TypeVarSet, VarSet, VarTypes0, HeadTypeParams,
 				TypeInfo0),
 		type_info_set_found_error(TypeInfo0, Error0, TypeInfo1),
@@ -215,10 +215,10 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		;
 			ModuleInfo2 = ModuleInfo1
 		),
-		type_info_get_io_state(TypeInfo2, IOState1)
+		type_info_get_io_state(TypeInfo2, IOState2)
 	),
 	typecheck_pred_types_2(PredIds, ModuleInfo2, Error1, ModuleInfo, Error,
-		IOState1, IOState).
+		IOState2, IOState).
 
 :- pred write_progress_message(pred_id, module_info, io__state, io__state).
 :- mode write_progress_message(in, in, di, uo) is det.
@@ -264,7 +264,7 @@ typecheck_clause_list([Clause0|Clauses0], HeadVars, ArgTypes,
 	%
 	% It would be more natural to use non-determinism to write
 	% this code, and perhaps even more efficient.
-	% But doing it notdeterministically would make bootstrapping more
+	% But doing it nondeterministically would make bootstrapping more
 	% difficult, and most importantly would make good error
 	% messages very difficult.
 
@@ -2584,21 +2584,23 @@ report_ambiguity_error_2([], _VarSet, _TypeAssign1, _TypeAssign2) --> [].
 report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
+	{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
+	{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
 	( {
-		map__search(VarTypes1, V, T1),
-		map__search(VarTypes2, V, T2),
-		not (T1 = T2)
+		map__search(VarTypes1, V, Type1),
+		map__search(VarTypes2, V, Type2),
+		term__apply_rec_substitution(Type1, TypeBindings1, T1),
+		term__apply_rec_substitution(Type2, TypeBindings2, T2),
+		T1 \= T2
 	} ->
 		io__write_string("\t"),
 		mercury_output_var(V, VarSet),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
-		{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
-		write_type_b(T1, TVarSet1, TypeBindings1),
+		mercury_output_term(T1, TVarSet1),
 		io__write_string(" or "),
 		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
-		{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
-		write_type_b(T2, TVarSet2, TypeBindings2),
+		mercury_output_term(T2, TVarSet2),
 		io__write_string("\n")
 	;
 		[]
