@@ -10,6 +10,7 @@ PROGS=	\
 	address_of_builtins \
 	agg \
 	bidirectional \
+	bigtest \
 	boyer \
 	c_write_string \
 	cc_nondet_disj \
@@ -105,6 +106,7 @@ MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
+MCFLAGS-bigtest		=	--intermodule-optimization -O3
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
