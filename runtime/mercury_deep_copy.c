@@ -15,6 +15,7 @@
 #include "mercury_imp.h"
 #include "mercury_deep_copy.h"
 #include "mercury_type_info.h"
+#include "mercury_ho_call.h"
 #include "mercury_memory.h"
 
 

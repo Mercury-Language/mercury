@@ -657,17 +657,10 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
 		{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
 		stack_layout__construct_liveval_arrays(SortedLiveLvals,
 			VarLengthRval, LiveValRval, NamesRval),
-
-		( { map__is_empty(TVarLocnMap) } ->
-			{ TypeParamRval = const(int_const(0)) }
-		;
-			{ stack_layout__construct_tvar_rvals(TVarLocnMap,
-				Vector, VectorTypes) },
-			stack_layout__get_next_cell_number(CNum1),
-			{ TypeParamRval = create(0, Vector, VectorTypes,
-				must_be_static, CNum1,
-				"stack_layout_type_param_locn_vector") }
-		),
+		stack_layout__get_cell_number(CNum0),
+		{ stack_layout__construct_tvar_vector(TVarLocnMap,
+			TypeParamRval, CNum0, CNum) },
+		stack_layout__set_cell_number(CNum),
 		{ RvalList = [yes(VarLengthRval), yes(LiveValRval),
 			yes(NamesRval), yes(TypeParamRval)] },
 		{ ArgTypes = initial([1 - yes(integer), 3 - yes(data_ptr)],
@@ -675,6 +668,21 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
 	;
 		{ RvalList = [yes(const(int_const(0)))] },
 		{ ArgTypes = initial([1 - yes(integer)], none) }
+	).
+
+:- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
+	rval::out, int::in, int::out) is det.
+stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, CNum0, CNum) :-
+	( map__is_empty(TVarLocnMap) ->
+		TypeParamRval = const(int_const(0)),
+		CNum = CNum0
+	;
+		stack_layout__construct_tvar_rvals(TVarLocnMap,
+			Vector, VectorTypes),
+		CNum is CNum0 + 1,
+		TypeParamRval = create(0, Vector, VectorTypes,
+			must_be_static, CNum,
+			"stack_layout_type_param_locn_vector")
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -952,13 +960,15 @@ stack_layout__construct_closure_layout(ProcLabel, ClosureLayoutInfo,
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs,
 		TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
-		ClosureArgRvals, ClosureArgTypes, CNum0, CNum),
-	stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals,
-		TVarRvalTypes),
-	list__append(ClosureArgRvals, TVarRvals, LayoutRvals),
+		ClosureArgRvals, ClosureArgTypes, CNum0, CNum1),
+	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
+		CNum1, CNum),
+	TVarVectorRvals = [yes(TVarVectorRval)],
+	TVarVectorTypes = [1 - yes(data_ptr)],
+	list__append(TVarVectorRvals, ClosureArgRvals, LayoutRvals),
 	list__append(ProcIdRvals, LayoutRvals, Rvals),
-	ArgTypes = initial(ProcIdTypes, initial(ClosureArgTypes,
-		TVarRvalTypes)).
+	ArgTypes = initial(ProcIdTypes, initial(TVarVectorTypes,
+		initial(ClosureArgTypes, none))).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
 	list(maybe(rval))::out, initial_arg_types::out, int::in, int::out)

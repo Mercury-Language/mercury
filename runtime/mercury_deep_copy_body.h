@@ -12,7 +12,6 @@
 ** copying application.
 */
 
-
 /*
 ** Prototypes.
 */
@@ -185,7 +184,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             }
             break;
 
-        case MR_TYPECTOR_REP_PRED: {
+        case MR_TYPECTOR_REP_PRED:
             /*
             ** predicate closures store the number of curried arguments
             ** as their first argument, the Code * as their second, and
@@ -195,46 +194,42 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             ** pred/0, arity, and then argument typeinfos.
             */
             if (in_range(data_value)) {
-                int args, i;
-                Word *new_closure;
+                Unsigned args, i;
+                MR_Closure *old_closure;
+                MR_Closure *new_closure;
+                MR_Closure_Layout *closure_layout;
 
-                /* get number of curried arguments */
-                args = data_value[0];
+                old_closure = (MR_Closure *) data_value;
+                closure_layout = old_closure->MR_closure_layout;
+                args = old_closure->MR_closure_num_hidden_args;
 
                 /* create new closure */
-                incr_saved_hp(LVALUE_CAST(Word, new_closure), args + 2);
+                incr_saved_hp(LVALUE_CAST(Word, new_closure), args + 3);
 
-                /* copy number of arguments */
-                new_closure[0] = args;
+                /* copy the fixed fields */
+                new_closure->MR_closure_layout = closure_layout;
+                new_closure->MR_closure_num_hidden_args = args;
+                new_closure->MR_closure_code = old_closure->MR_closure_code;
 
-                /* copy pointer to code for closure */
-                new_closure[1] = data_value[1];
-
-#if 0           
-                /*
-                ** XXX THIS IS WRONG.  We don't have any information
-                ** about the types of the things in closures.
-                ** The pred type only tells us about the arguments
-                ** which have not yet been applied, not the ones
-                ** in the closure.
-                */
-                /* copy arguments */
+                /* copy the arguments */
                 for (i = 0; i < args; i++) {
-                    new_closure[i + 2] = copy(&data_value[i + 2],
-                        (const Word *) 
-                        type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
-                        lower_limit, upper_limit);
+                    Word *arg_pseudo_type_info =
+                    	(Word *) closure_layout->arg_pseudo_type_info[i];
+                    new_closure->MR_closure_hidden_args_0[i] =
+                        copy_arg(
+                            &old_closure->MR_closure_hidden_args_0[i],
+                            type_info + TYPEINFO_OFFSET_FOR_PRED_ARGS - 1,
+                            arg_pseudo_type_info,
+                            lower_limit, upper_limit
+                        );
                 }
-#else
-                fatal_error("sorry, not implemented: cannot copy closure");
-#endif
+
                 new_data = (Word) new_closure;
                 leave_forwarding_pointer(data_ptr, new_data);
             } else {
                 new_data = data;
                 found_forwarding_pointer(data);
             }
-        }
             break;
 
         case MR_TYPECTOR_REP_UNIV: 

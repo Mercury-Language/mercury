@@ -20,6 +20,7 @@ PROGS=	\
 	closure_extension \
 	common_type_cast \
 	construct \
+	copy_pred \
 	curry \
 	curry2 \
 	cut_test \
