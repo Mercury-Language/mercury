@@ -156,6 +156,15 @@
 :- mode float__epsilon(out) is det.
 
 %---------------------------------------------------------------------------%
+% Compute a non-negative integer hash value for a float.
+% (Note: the hash values computed by the Mercury implementation of
+% this predicate are different to those computed by the Prolog
+% implementation.)
+
+:- pred float__hash(float, int).
+:- mode float__hash(in, out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module int, require.
@@ -286,6 +295,14 @@ float__pow( X, Exp, Ans) :-
 
 	% Smallest x such that x \= 1.0 + x
 :- pragma(c_code, float__epsilon(Eps::out), "Eps = MERCURY_FLOAT_EPSILON;").
+
+%---------------------------------------------------------------------------%
+
+:- pragma c_code(float__hash(F::in, H::out), will_not_call_mercury, "
+
+	H = hash_float(F);
+
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -72,4 +72,6 @@ static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 
 #endif /* not BOXED_FLOAT */
 
+Integer hash_float(Float);
+
 #endif /* not MERCURY_FLOAT_H */
