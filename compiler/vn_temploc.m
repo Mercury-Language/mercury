@@ -111,7 +111,7 @@ vn_temploc__next_tempf(Templocs0, Templocs, Vnlval) :-
 		FQueue = Tail,
 		NextF = NextF0
 	;
-		Vnlval = vn_temp(r(NextF0)),
+		Vnlval = vn_temp(f(NextF0)),
 		FQueue = FQueue0,
 		NextF is NextF0 + 1
 	),

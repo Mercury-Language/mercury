@@ -46,6 +46,12 @@
 			% these rvals do not have vnrval parallels
 			%	var(var)
 
+	% given a vnlval, figure out it's type
+:- pred vn_type__vnlval_type(vnlval::in, llds_type::out) is det.
+
+	% given a vnrval, figure out it's type
+:- pred vn_type__vnrval_type(vnrval::in, llds_type::out) is det.
+
 :- type vn_src		--->	src_ctrl(int)
 			;	src_liveval(vnlval)
 			;	src_access(vnlval)
@@ -160,3 +166,33 @@ vn_type__costof_stackref(vn_params(_, _, _, _, _, _, _, StackCost, _),
 	StackCost).
 vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
 	HeapCost).
+
+vn_type__vnrval_type(vn_origlval(Lval), Type) :-
+	vn_type__vnlval_type(Lval, Type).
+vn_type__vnrval_type(vn_create(_, _, _, _), word).
+	% the create() macro calls mkword().
+vn_type__vnrval_type(vn_mkword(_, _), word).
+vn_type__vnrval_type(vn_const(Const), Type) :-
+	llds__const_type(Const, Type).
+vn_type__vnrval_type(vn_unop(UnOp, _), Type) :-
+	llds__unop_return_type(UnOp, Type).
+vn_type__vnrval_type(vn_binop(BinOp, _, _), Type) :-
+	llds__binop_return_type(BinOp, Type).
+
+vn_type__vnlval_type(vn_reg(Reg), Type) :-
+	llds__register_type(Reg, Type).
+vn_type__vnlval_type(vn_succip, word).		% really `Code*'
+vn_type__vnlval_type(vn_maxfr, word).		% really `Word*'
+vn_type__vnlval_type(vn_curfr, word).		% really `Word*'
+vn_type__vnlval_type(vn_hp, word).		% really `Word*'
+vn_type__vnlval_type(vn_sp, word).		% really `Word*'
+vn_type__vnlval_type(vn_temp(TempReg), Type) :-
+	llds__register_type(TempReg, Type).
+vn_type__vnlval_type(vn_stackvar(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_framevar(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_succip(_), word).	% really `Code*'
+vn_type__vnlval_type(vn_redoip(_), word).	% really `Code*'
+vn_type__vnlval_type(vn_succfr(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_prevfr(_), word).	% really `Word*'
+vn_type__vnlval_type(vn_field(_, _, _), word).
+

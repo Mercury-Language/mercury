@@ -799,7 +799,12 @@ output_instruction(assign(Lval, Rval), DeclSet0, _) -->
 	io__write_string("\t"),
 	output_lval(Lval),
 	io__write_string(" = "),
-	output_rval(Rval),
+	{ llds__lval_type(Lval, Type) },
+	( { Type = float } ->
+		output_rval_as_float(Rval)
+	;
+		output_rval(Rval)
+	),
 	io__write_string(";\n"),
 	( { N > 0 } ->
 		io__write_string("\t}\n")
@@ -2208,6 +2213,9 @@ output_rval_as_float(Rval) -->
 		io__write_string(" "),
 		output_rval_as_float(Y),
 		io__write_string(")")
+	; { Rval = lval(temp(f(N))) } ->
+		io__write_string("tempf"),
+		io__write_int(N)
 	;
 		io__write_string("word_to_float("),
 		output_rval(Rval),

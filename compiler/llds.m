@@ -453,3 +453,125 @@
 	% A tag (used in mkword, create and field expressions
 	% and in incr_hp instructions) is a small integer.
 :- type tag	==	int.
+
+	% 
+:- type llds_type
+	--->	bool
+	;	integer
+	;	unsigned
+	;	float
+	;	word.	% anything whose size is a word
+			% may really be integer, unsigned, or pointer
+
+	% given a non-var rval, figure out it's type
+:- pred llds__rval_type(rval::in, llds_type::out) is det.
+
+	% given a non-var lval, figure out it's type
+:- pred llds__lval_type(lval::in, llds_type::out) is det.
+
+	% given a constant, figure out it's type
+:- pred llds__const_type(rval_const::in, llds_type::out) is det.
+
+	% given a unary operator, figure out it's return type
+:- pred llds__unop_return_type(unary_op::in, llds_type::out) is det.
+
+	% given a binary operator, figure out it's return type
+:- pred llds__binop_return_type(binary_op::in, llds_type::out) is det.
+
+	% given a register, figure out it's type
+:- pred llds__register_type(reg::in, llds_type::out) is det.
+
+:- implementation.
+:- import_module require.
+
+llds__lval_type(reg(Reg), Type) :-
+	llds__register_type(Reg, Type).
+llds__lval_type(succip, word).		% really `Code*'
+llds__lval_type(maxfr, word).		% really `Word*'
+llds__lval_type(curfr, word).		% really `Word*'
+llds__lval_type(hp, word).		% really `Word*'
+llds__lval_type(sp, word).		% really `Word*'
+llds__lval_type(temp(TempReg), Type) :-
+	llds__register_type(TempReg, Type).
+llds__lval_type(stackvar(_), word).	% really `Word*'
+llds__lval_type(framevar(_), word).	% really `Word*'
+llds__lval_type(succip(_), word).	% really `Code*'
+llds__lval_type(redoip(_), word).	% really `Code*'
+llds__lval_type(succfr(_), word).	% really `Word*'
+llds__lval_type(prevfr(_), word).	% really `Word*'
+llds__lval_type(field(_, _, _), word).
+llds__lval_type(lvar(_), _) :-
+	error("lvar unexpected in llds__lval_type").
+
+llds__rval_type(lval(Lval), Type) :-
+	llds__lval_type(Lval, Type).
+llds__rval_type(var(_), _) :-
+	error("var unexpected in llds__rval_type").
+llds__rval_type(create(_, _, _, _), word). % the create() macro calls mkword().
+llds__rval_type(mkword(_, _), word).
+llds__rval_type(const(Const), Type) :-
+	llds__const_type(Const, Type).
+llds__rval_type(unop(UnOp, _), Type) :-
+	llds__unop_return_type(UnOp, Type).
+llds__rval_type(binop(BinOp, _, _), Type) :-
+	llds__binop_return_type(BinOp, Type).
+
+llds__const_type(true, bool).
+llds__const_type(false, bool).
+llds__const_type(int_const(_), integer).
+llds__const_type(float_const(_), float).
+llds__const_type(string_const(_), word).
+	% the string_const() macro returns a value cast to type Word
+llds__const_type(code_addr_const(_), word).
+llds__const_type(data_addr_const(_), word).
+
+llds__unop_return_type(mktag, word).
+llds__unop_return_type(tag, word).
+llds__unop_return_type(unmktag, word).
+llds__unop_return_type(mkbody, word).
+llds__unop_return_type(unmkbody, word).
+llds__unop_return_type(body, word).
+llds__unop_return_type(cast_to_unsigned, unsigned).
+llds__unop_return_type(hash_string, integer).
+llds__unop_return_type(bitwise_complement, integer).
+llds__unop_return_type(not, bool).
+
+llds__binop_return_type((+), integer).
+llds__binop_return_type((-), integer).
+llds__binop_return_type((*), integer).
+llds__binop_return_type((/), integer).
+llds__binop_return_type((mod), integer).
+llds__binop_return_type((<<), integer).
+llds__binop_return_type((>>), integer).
+llds__binop_return_type((&), integer).
+llds__binop_return_type(('|'), integer).
+llds__binop_return_type((^), integer).
+llds__binop_return_type((and), bool).
+llds__binop_return_type((or), bool).
+llds__binop_return_type(eq, bool).
+llds__binop_return_type(ne, bool).
+llds__binop_return_type(array_index, word).
+llds__binop_return_type(str_eq, bool).
+llds__binop_return_type(str_ne, bool).
+llds__binop_return_type(str_lt, bool).
+llds__binop_return_type(str_gt, bool).
+llds__binop_return_type(str_le, bool).
+llds__binop_return_type(str_ge, bool).
+llds__binop_return_type((<), bool).
+llds__binop_return_type((>), bool).
+llds__binop_return_type((<=), bool).
+llds__binop_return_type((>=), bool).
+llds__binop_return_type(float_plus, float).
+llds__binop_return_type(float_minus, float).
+llds__binop_return_type(float_times, float).
+llds__binop_return_type(float_divide, float).
+llds__binop_return_type(float_eq, bool).
+llds__binop_return_type(float_ne, bool).
+llds__binop_return_type(float_lt, bool).
+llds__binop_return_type(float_gt, bool).
+llds__binop_return_type(float_le, bool).
+llds__binop_return_type(float_ge, bool).
+
+llds__register_type(r(_), word).
+llds__register_type(f(_), float).
+

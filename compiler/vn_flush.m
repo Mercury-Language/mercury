@@ -328,6 +328,19 @@ vn_flush__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 		Chosen = BestUser,
 		Templocs = Templocs0
 	;
+		vn_flush__choose_temp(Vn, VnTables, Templocs0, Templocs,
+			Chosen)
+	).
+
+:- pred vn_flush__choose_temp(vn, vn_tables, templocs, templocs, vnlval).
+:- mode vn_flush__choose_temp(in, in, in, out, out) is det.
+
+vn_flush__choose_temp(Vn, VnTables, Templocs0, Templocs, Chosen) :-
+	vn_table__lookup_defn(Vn, Vnrval, "vn_flush__choose_temp", VnTables),
+	vn_type__vnrval_type(Vnrval, Type),
+	( Type = float ->
+		vn_temploc__next_tempf(Templocs0, Templocs, Chosen)
+	;
 		vn_temploc__next_tempr(Templocs0, Templocs, Chosen)
 	).
 
@@ -546,8 +559,8 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 				Cost > 0,
 				\+ Src = src_liveval(_)
 			->
-				vn_temploc__next_tempr(Templocs0, Templocs1,
-					Vnlval),
+				vn_flush__choose_temp(Vn, VnTables0,
+					Templocs0, Templocs1, Vnlval),
 				vn_flush__generate_assignment(Vnlval, Vn,
 					Forbidden, VnTables0, VnTables3,
 					Templocs1, Templocs, Params,
@@ -1065,10 +1078,12 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 			(
 				MaybePresumed = yes(PresumedLval),
 				( list__member(PresumedLval, Forbidden) ->
-					vn_temploc__next_tempr(Templocs0,
+					vn_flush__choose_temp(OldVn,
+						VnTables0, Templocs0,
 						Templocs1, Chosen)
 				; RealUses = [_,_|_], \+ Presumed = vn_reg(_) ->
-					vn_temploc__next_tempr(Templocs0,
+					vn_flush__choose_temp(OldVn,
+						VnTables0, Templocs0,
 						Templocs1, Chosen)
 				;
 					Chosen = Presumed,
@@ -1078,11 +1093,12 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 				MaybePresumed = no,
 				% we cannot use Presumed even if it is not
 				% in Forbidden
-				vn_temploc__next_tempr(Templocs0, Templocs1,
-					Chosen)
+				vn_flush__choose_temp(OldVn, VnTables0,
+					Templocs0, Templocs1, Chosen)
 			)
 		;
-			vn_temploc__next_tempr(Templocs0, Templocs1, Chosen)
+			vn_flush__choose_temp(OldVn, VnTables0,
+				Templocs0, Templocs1, Chosen)
 		),
 		vn_flush__ensure_assignment(Chosen, OldVn, Forbidden,
 			VnTables0, VnTables, Templocs1, Templocs, Params,
