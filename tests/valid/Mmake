@@ -39,6 +39,7 @@ SOURCES= \
 	nondet_live.m \
 	semidet_disj.m \
 	shape_type.m \
+	simplify_bug.m \
 	stack_alloc.m \
 	switches.m \
 	same_length_2.m \
@@ -70,6 +71,11 @@ middle_rec_labels.c: middle_rec_labels.m
 two_way_unif.c: two_way_unif.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 two_way_unif.m \
 		> two_way_unif.err 2>&1
+
+# The bug simplify_bug.m tests for only occurred at -O-1
+simplify_bug.c:	simplify_bug.m
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 \
+		simplify_bug.m > simplify_bug.err 2>&1
 
 vn_float.c: vn_float.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O5 vn_float.m > vn_float.err 2>&1

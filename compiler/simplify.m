@@ -107,18 +107,11 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		ModuleInfo1 = ModuleInfo0,
 		State4 = State2
 	),
-	( simplify_do_excess_assigns(Info4) ->
 		% On the second pass do excess assignment elimination and
 		% some cleaning up after the common structure and branch 
 		% merging pass.
-		simplify__proc_2(Proc1, Proc, ModuleInfo1, ModuleInfo,
-			Info4, Info, State4, State5)
-	;
-		ModuleInfo = ModuleInfo1,
-		Proc = Proc0,
-		Info = Info4,
-		State5 = State4	
-	),
+	simplify__proc_2(Proc1, Proc, ModuleInfo1, ModuleInfo,
+			Info4, Info, State4, State5),
 	simplify_info_get_msgs(Info, Msgs2),
 	set__to_sorted_list(Msgs2, Msgs),
 	( simplify_do_warn(Info) ->
