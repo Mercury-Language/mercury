@@ -1038,19 +1038,18 @@ mercury_compile__maybe_termination(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__check_unique_modes(HLDS0, Verbose, Stats, HLDS, FoundError) -->
 	maybe_write_string(Verbose,
 		"% Checking for backtracking over unique modes...\n"),
-	io__get_exit_status(OldStatus),
-	io__set_exit_status(0),
+	{ module_info_num_errors(HLDS0, NumErrors0) },
 	unique_modes__check_module(HLDS0, HLDS),
-	io__get_exit_status(NewStatus),
-	( { NewStatus \= 0 } ->
+	{ module_info_num_errors(HLDS, NumErrors) },
+	( { NumErrors \= NumErrors0 } ->
 		{ FoundError = yes },
 		maybe_write_string(Verbose,
-			"% Program contains unique mode error(s).\n")
+			"% Program contains unique mode error(s).\n"),
+		io__set_exit_status(1)
 	;
 		{ FoundError = no },
 		maybe_write_string(Verbose,
-			"% Program is unique-mode-correct.\n"),
-		io__set_exit_status(OldStatus)
+			"% Program is unique-mode-correct.\n")
 	),
 	maybe_report_stats(Stats).
 
