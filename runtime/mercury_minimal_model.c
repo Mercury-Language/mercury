@@ -833,8 +833,9 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
             MR_save_transient_registers();
             extend_consumer_stacks(leader, suspend_list->MR_cl_item);
             MR_restore_transient_registers();
-            /* suspend_list->item->leader = leader;      XXX */
         }
+
+        sub_follower->MR_sl_item->MR_sg_leader = leader;
     }
 
     /* XXX extend saved state of this_follower */
@@ -1013,22 +1014,21 @@ MR_define_extern_entry(MR_table_nondet_commit);
 MR_declare_entry(MR_do_trace_redo_fail);
 MR_declare_entry(MR_table_nondet_commit);
 
-MR_declare_label(RESUME_LABEL(ChangeLoop));
-MR_declare_label(RESUME_LABEL(ReachedFixpoint));
+MR_declare_label(RESUME_LABEL(StartCompletionOp));
 MR_declare_label(RESUME_LABEL(LoopOverSubgoals));
 MR_declare_label(RESUME_LABEL(LoopOverSuspensions));
 MR_declare_label(RESUME_LABEL(ReturnAnswer));
 MR_declare_label(RESUME_LABEL(RedoPoint));
 MR_declare_label(RESUME_LABEL(RestartPoint));
+MR_declare_label(RESUME_LABEL(FixPointCheck));
+MR_declare_label(RESUME_LABEL(ReachedFixpoint));
 
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     SUSPEND_LABEL(Call), MR_SUSPEND_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(ChangeLoop), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(ReachedFixpoint), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(LoopOverSubgoals), MR_RESUME_ENTRY);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
+    RESUME_LABEL(StartCompletionOp), MR_RESUME_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(LoopOverSuspensions), MR_RESUME_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
@@ -1037,6 +1037,10 @@ MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(RedoPoint), MR_RESUME_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(RestartPoint), MR_RESUME_ENTRY);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
+    RESUME_LABEL(FixPointCheck), MR_RESUME_ENTRY);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
+    RESUME_LABEL(ReachedFixpoint), MR_RESUME_ENTRY);
 
 MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
     MR_init_entry_sl(MR_SUSPEND_ENTRY);
@@ -1045,13 +1049,14 @@ MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
 
     MR_init_entry_sl(MR_RESUME_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_RESUME_ENTRY);
-    MR_init_label_sl(RESUME_LABEL(ChangeLoop));
-    MR_init_label_sl(RESUME_LABEL(ReachedFixpoint));
+    MR_init_label_sl(RESUME_LABEL(StartCompletionOp));
     MR_init_label_sl(RESUME_LABEL(LoopOverSubgoals));
     MR_init_label_sl(RESUME_LABEL(LoopOverSuspensions));
     MR_init_label_sl(RESUME_LABEL(ReturnAnswer));
     MR_init_label_sl(RESUME_LABEL(RedoPoint));
     MR_init_label_sl(RESUME_LABEL(RestartPoint));
+    MR_init_label_sl(RESUME_LABEL(FixPointCheck));
+    MR_init_label_sl(RESUME_LABEL(ReachedFixpoint));
 
     MR_init_entry_an(MR_table_nondet_commit);
 MR_BEGIN_CODE
@@ -1120,6 +1125,21 @@ MR_define_label(SUSPEND_LABEL(Call));
     cur_cut = MR_cut_next - 1;
     cur_pneg = MR_pneg_next - 1;
     stop_addr = consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
+
+    if (stop_addr < subgoal->MR_sg_deepest_nca_fr) {
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+            printf("resetting deepest nca for subgoal %s from ",
+                MR_subgoal_addr_name(subgoal));
+            MR_print_nondstackptr(stdout, subgoal->MR_sg_deepest_nca_fr);
+            printf(" to ");
+            MR_print_nondstackptr(stdout, stop_addr);
+            printf("\n");
+        }
+#endif
+        subgoal->MR_sg_deepest_nca_fr = stop_addr;
+    }
+
     for (fr = MR_maxfr; fr > stop_addr; fr = MR_prevfr_slot(fr)) {
         offset = MR_redoip_addr(fr) -
             consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
@@ -1236,7 +1256,6 @@ MR_define_label(SUSPEND_LABEL(Call));
     MR_fail();
 
 MR_define_entry(MR_RESUME_ENTRY);
-
     /*
     ** The resume procedure restores answers to suspended consumers.
     ** It works by restoring the consumer state saved by the consumer's call
@@ -1256,6 +1275,11 @@ MR_define_entry(MR_RESUME_ENTRY);
     */
 
     MR_cur_leader = MR_top_generator_table();
+
+MR_define_label(RESUME_LABEL(StartCompletionOp));
+{
+    MR_ResumeInfo   *resume_info;
+
 
     if (MR_cur_leader->MR_sg_leader != NULL) {
         /*
@@ -1287,10 +1311,11 @@ MR_define_entry(MR_RESUME_ENTRY);
             printf("using existing resume info %p\n",
                 MR_cur_leader->MR_sg_resume_info);
         }
+        resume_info = MR_cur_leader->MR_sg_resume_info;
 #endif  /* MR_TABLE_DEBUG */
     } else {
-        MR_cur_leader->MR_sg_resume_info = MR_TABLE_NEW(MR_ResumeInfo);
-        MR_cur_leader->MR_sg_resume_info->MR_ri_saved_succip = MR_succip;/*NEW*/
+        resume_info = MR_TABLE_NEW(MR_ResumeInfo);
+        MR_cur_leader->MR_sg_resume_info = resume_info;
 
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
@@ -1311,77 +1336,33 @@ MR_define_entry(MR_RESUME_ENTRY);
         */
 
         MR_save_transient_registers();
-        save_state(&(MR_cur_leader->MR_sg_resume_info->MR_ri_leader_state),
+        save_state(&(resume_info->MR_ri_leader_state),
             MR_cur_leader->MR_sg_generator_fr, "resumption", "generator",
             NULL);
         MR_restore_transient_registers();
 
+        resume_info->MR_ri_subgoal_list = MR_cur_leader->MR_sg_followers;
+        resume_info->MR_ri_cur_subgoal = NULL;
+        resume_info->MR_ri_consumer_list = NULL;
+        resume_info->MR_ri_cur_consumer = NULL;
+        resume_info->MR_ri_cur_consumer_answer_list = NULL;
+        resume_info->MR_ri_saved_succip = MR_succip;         /*NEW*/
+
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
-            printf("creating new resume info %p\n",
-                MR_cur_leader->MR_sg_resume_info);
+            printf("creating new resume info %p\n", resume_info);
         }
 #endif  /* MR_TABLE_DEBUG */
     }
 
-    /* XXX try doing the test at the bottom */
-    MR_cur_leader->MR_sg_resume_info->MR_ri_changed = MR_TRUE;
-
-MR_define_label(RESUME_LABEL(ChangeLoop));
-{
-    MR_ResumeInfo   *resume_info;
-    
-    resume_info = MR_cur_leader->MR_sg_resume_info;
-
-    if (resume_info->MR_ri_changed) {
-#ifdef  MR_TABLE_DEBUG
-        if (MR_tabledebug) {
-            printf("changed flag set\n");
-        }
-#endif  /* MR_TABLE_DEBUG */
-    } else {
-        MR_SubgoalList  table_list;
-
-        /* XXX make sure subgoal_list is initialized early */
-        for (table_list = resume_info->MR_ri_subgoal_list;
-            table_list != NULL;
-            table_list = table_list->MR_sl_next)
-        {
-            if (table_list->MR_sl_item->MR_sg_num_committed_ans
-                != table_list->MR_sl_item->MR_sg_num_ans)
-            {
-                resume_info->MR_ri_changed = MR_TRUE;
-#ifdef  MR_TABLE_DEBUG
-                if (MR_tabledebug) {
-                    printf("table %s has new answers\n",
-                        MR_subgoal_addr_name(table_list->MR_sl_item));
-                }
-#endif  /* MR_TABLE_DEBUG */
-            }
-        }
-    }
-
-    if (! resume_info->MR_ri_changed) {
-#ifdef  MR_TABLE_DEBUG
-        if (MR_tabledebug) {
-            printf("no more changes\n");
-        }
-#endif  /* MR_TABLE_DEBUG */
-
-        MR_GOTO_LABEL(RESUME_LABEL(ReachedFixpoint));
-    }
-
-    resume_info->MR_ri_subgoal_list = MR_cur_leader->MR_sg_followers;
-    if (resume_info->MR_ri_subgoal_list == NULL) {
-        resume_info->MR_ri_changed = MR_FALSE; /* XXX NEW */
-    }
+    /* fall through to LoopOverSubgoals */
 }
 
     /* For each of the subgoals on our list of followers */
 MR_define_label(RESUME_LABEL(LoopOverSubgoals));
 {
     MR_ResumeInfo   *resume_info;
-    
+
     resume_info = MR_cur_leader->MR_sg_resume_info;
 
     if (resume_info->MR_ri_subgoal_list == NULL) {
@@ -1391,7 +1372,7 @@ MR_define_label(RESUME_LABEL(LoopOverSubgoals));
         }
 #endif  /* MR_TABLE_DEBUG */
 
-        MR_GOTO_LABEL(RESUME_LABEL(ChangeLoop));
+        MR_GOTO_LABEL(RESUME_LABEL(FixPointCheck));
     }
 
     resume_info->MR_ri_cur_subgoal =
@@ -1402,16 +1383,17 @@ MR_define_label(RESUME_LABEL(LoopOverSubgoals));
     resume_info->MR_ri_consumer_list =
         resume_info->MR_ri_cur_subgoal->MR_sg_consumer_list;
 
-    resume_info->MR_ri_changed = MR_FALSE;
     resume_info->MR_ri_cur_subgoal->MR_sg_num_committed_ans =
         resume_info->MR_ri_cur_subgoal->MR_sg_num_ans;
+
+    /* fall through to LoopOverSuspensions */
 }
 
     /* For each of the suspended nodes for cur_subgoal */
 MR_define_label(RESUME_LABEL(LoopOverSuspensions));
 {
     MR_ResumeInfo   *resume_info;
-    
+
     resume_info = MR_cur_leader->MR_sg_resume_info;
 
     if (resume_info->MR_ri_consumer_list == NULL) {
@@ -1457,16 +1439,23 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
     assert((MR_maxfr - MR_prevfr_slot(MR_maxfr)) ==
         (MR_NONDET_FIXED_SIZE + 1));
 
-    MR_gen_next = resume_info->MR_ri_leader_state.MR_ss_gen_next;
+    /*
+    ** We set up the stack frame of the suspend predicate so that a redo into
+    ** the call to suspend from the consumer will return the next answer
+    */
+
+    /* MR_gen_next = resume_info->MR_ri_leader_state.MR_ss_gen_next; BUG? */
     MR_redoip_slot(MR_maxfr) = MR_LABEL(RESUME_LABEL(RedoPoint));
     MR_redofr_slot(MR_maxfr) = MR_maxfr;
     MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
+
+    /* fall through to ReturnAnswer */
 }
 
 MR_define_label(RESUME_LABEL(ReturnAnswer));
 {
     MR_ResumeInfo   *resume_info;
-    
+
     resume_info = MR_cur_leader->MR_sg_resume_info;
 
     /*
@@ -1506,11 +1495,12 @@ MR_define_label(RESUME_LABEL(RedoPoint));
 
     MR_cur_leader = (MR_Subgoal *) MR_based_framevar(MR_maxfr, 1);
 
+    /* fall through to RestartPoint */
+
 MR_define_label(RESUME_LABEL(RestartPoint));
 {
     MR_ResumeInfo   *resume_info;
-    MR_Subgoal      *cur_subgoal;
-    
+
     resume_info = MR_cur_leader->MR_sg_resume_info;
 
 #ifdef  MR_TABLE_DEBUG
@@ -1533,31 +1523,75 @@ MR_define_label(RESUME_LABEL(RestartPoint));
     }
 #endif  /* MR_TABLE_DEBUG */
 
-    cur_subgoal = resume_info->MR_ri_cur_subgoal;
-    if (cur_subgoal->MR_sg_num_committed_ans != cur_subgoal->MR_sg_num_ans) {
-        resume_info->MR_ri_changed = MR_TRUE;
-    }
-
     MR_GOTO_LABEL(RESUME_LABEL(LoopOverSuspensions));
 }
+
+MR_define_label(RESUME_LABEL(FixPointCheck));
+{
+    MR_ResumeInfo   *resume_info;
+    MR_SubgoalList  subgoal_list;
+    MR_Subgoal      *subgoal;
+    MR_ConsumerList consumer_list;
+    MR_Consumer     *consumer;
+    MR_bool         found_changes;
+
+    resume_info = MR_cur_leader->MR_sg_resume_info;
+    found_changes = MR_FALSE;
+    for (subgoal_list = MR_cur_leader->MR_sg_followers;
+        subgoal_list != NULL;
+        subgoal_list = subgoal_list->MR_sl_next)
+    {
+        subgoal = subgoal_list->MR_sl_item;
+        for (consumer_list = subgoal->MR_sg_consumer_list;
+            consumer_list != NULL;
+            consumer_list = consumer_list->MR_cl_next)
+        {
+            consumer = consumer_list->MR_cl_item;
+            if (*(consumer->MR_cns_remaining_answer_list_ptr) != NULL) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                    printf("consumer %s of subgoal %s has unconsumed answers\n",
+                        MR_consumer_addr_name(consumer),
+                        MR_subgoal_addr_name(subgoal));
+                }
+#endif  /* MR_TABLE_DEBUG */
+                found_changes = MR_TRUE;
+            }
+        }
+    }
+
+    if (found_changes) {
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+            printf("no fixpoint; start completion op all over again\n");
+        }
+#endif  /* MR_TABLE_DEBUG */
+
+        resume_info->MR_ri_subgoal_list = MR_cur_leader->MR_sg_followers;
+        MR_GOTO_LABEL(RESUME_LABEL(StartCompletionOp));
+    }
+
+    /* fall through to ReachedFixpoint */
+}
+
 MR_define_label(RESUME_LABEL(ReachedFixpoint));
 {
-    MR_SubgoalList  table_list;
+    MR_SubgoalList  subgoal_list;
     MR_ResumeInfo   *resume_info;
 
-    for (table_list = MR_cur_leader->MR_sg_followers;
-        table_list != NULL;
-        table_list = table_list->MR_sl_next)
+    for (subgoal_list = MR_cur_leader->MR_sg_followers;
+        subgoal_list != NULL;
+        subgoal_list = subgoal_list->MR_sl_next)
     {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("marking table %s complete\n",
-                MR_subgoal_addr_name(table_list->MR_sl_item));
+                MR_subgoal_addr_name(subgoal_list->MR_sl_item));
         }
 #endif
 
-        table_list->MR_sl_item->MR_sg_status = MR_SUBGOAL_COMPLETE;
-        table_list->MR_sl_item->MR_sg_num_committed_ans = -1;
+        subgoal_list->MR_sl_item->MR_sg_status = MR_SUBGOAL_COMPLETE;
+        subgoal_list->MR_sl_item->MR_sg_num_committed_ans = -1;
     }
 
     resume_info = MR_cur_leader->MR_sg_resume_info;

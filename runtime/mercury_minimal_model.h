@@ -160,6 +160,9 @@ struct MR_SubgoalListNode_Struct {
 ** MR_sg_consumer_list_tail allowing fast appending to the end.
 **
 ** The MR_sg_generator_fr points to the generator's nondet stack frame.
+**
+** The MR_sg_deepest_nca_fr points to the deepest nondet stack frame that is
+** a nearest common ancestor (nca) of the generator and one of its consumers.
 */
 
 struct MR_Subgoal_Struct {
@@ -177,6 +180,7 @@ struct MR_Subgoal_Struct {
 	MR_ConsumerList		MR_sg_consumer_list;
 	MR_ConsumerList		*MR_sg_consumer_list_tail;
 	MR_Word			*MR_sg_generator_fr;
+	MR_Word			*MR_sg_deepest_nca_fr;
 #ifdef	MR_TABLE_DEBUG
 	const MR_Proc_Layout	*MR_sg_proc_layout;
 #endif	/* MR_TABLE_DEBUG */

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -752,6 +752,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 		}
 #endif
 		subgoal->MR_sg_generator_fr = MR_curfr;
+		subgoal->MR_sg_deepest_nca_fr = MR_curfr;
 		T->MR_subgoal = subgoal;
 	}
 	Subgoal = T->MR_subgoal;

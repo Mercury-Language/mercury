@@ -15,13 +15,13 @@
 main -->
 	{ solutions(sg1, Solns1) },
 	io__write(Solns1),
-	%% io__write_string("\n"),
-	%% { solutions(sg, Solns) },
-	%% io__write(Solns),
+	io__write_string("\n"),
+	{ solutions(sg, Solns) },
+	io__write_int(list__length(Solns)),
 	io__write_string("\n").
 
-% :- pred sg(pair(int,int)::out) is nondet.
-% sg(X-Y) :- tsg(X,Y).
+:- pred sg(pair(int,int)::out) is nondet.
+sg(X-Y) :- tsg(X,Y).
 
 % just to test a non-open call.
 :- pred sg1(int::out) is nondet.
@@ -29,15 +29,17 @@ sg1(X) :- tsg(1,X).
 
 :- pred tsg(int, int).
 :- mode tsg(in, out) is nondet.
-% :- mode tsg(out, out) is nondet.
+:- mode tsg(out, out) is nondet.
 :- pragma minimal_model(tsg/2).
+:- pragma promise_pure(tsg/2).
 
 tsg(X,Y) :- cyl(X,X1), tsg(X1,Y1), acyl(Y1,Y).
-tsg(X,X).
+tsg(X::in,X::out).
+tsg(X::out,X::out) :- ( X = 1 ; cyl(_, X) ).
 
 :- pred cyl(int, int).
 :- mode cyl(in, out) is nondet.
-% :- mode cyl(out, out) is multi.
+:- mode cyl(out, out) is multi.
 
 cyl(1,30).
 cyl(1,40).
