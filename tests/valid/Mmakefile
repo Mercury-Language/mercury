@@ -201,6 +201,7 @@ RESERVE_TAG_PROGS = \
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
+#	field_detism
 #	inst_perf_bug_2
 #	mode_merge_insts
 #	unify_inst_bug
