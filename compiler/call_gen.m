@@ -264,9 +264,9 @@ call_gen__extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
 	).
 
 call_gen__generic_call_info(_, higher_order(PredVar, _, _, _),
-		do_call_closure, [PredVar - arg_info(1, top_in)], 4).
+		do_call_closure, [PredVar - arg_info(1, top_in)], 3).
 call_gen__generic_call_info(_, class_method(TCVar, _, _, _),
-		do_call_class_method, [TCVar - arg_info(1, top_in)], 5).
+		do_call_class_method, [TCVar - arg_info(1, top_in)], 4).
 	% Casts are generated inline.
 call_gen__generic_call_info(_, unsafe_cast, do_not_reached, [], 1).
 call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
@@ -290,28 +290,22 @@ call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
 	code_info::in, code_info::out) is det.
 
 call_gen__generic_call_nonvar_setup(higher_order(_, _, _, _),
-		InVars, OutVars, Code, !CI) :-
-	code_info__clobber_regs([reg(r, 2), reg(r, 3)], !CI),
+		InVars, _OutVars, Code, !CI) :-
+	code_info__clobber_regs([reg(r, 2)], !CI),
 	list__length(InVars, NInVars),
-	list__length(OutVars, NOutVars),
 	Code = node([
 		assign(reg(r, 2), const(int_const(NInVars))) -
-			"Assign number of immediate input arguments",
-		assign(reg(r, 3), const(int_const(NOutVars))) -
-			"Assign number of output arguments"
+			"Assign number of immediate input arguments"
 	]).
 call_gen__generic_call_nonvar_setup(class_method(_, Method, _, _),
-		InVars, OutVars, Code, !CI) :-
-	code_info__clobber_regs([reg(r, 2), reg(r, 3), reg(r, 4)], !CI),
+		InVars, _OutVars, Code, !CI) :-
+	code_info__clobber_regs([reg(r, 2), reg(r, 3)], !CI),
 	list__length(InVars, NInVars),
-	list__length(OutVars, NOutVars),
 	Code = node([
 		assign(reg(r, 2), const(int_const(Method))) -
 			"Index of class method in typeclass info",
 		assign(reg(r, 3), const(int_const(NInVars))) -
-			"Assign number of immediate input arguments",
-		assign(reg(r, 4), const(int_const(NOutVars))) -
-			"Assign number of output arguments"
+			"Assign number of immediate input arguments"
 	]).
 call_gen__generic_call_nonvar_setup(unsafe_cast, _, _, _, !CI) :-
 	error("call_gen__generic_call_nonvar_setup: unsafe_cast").

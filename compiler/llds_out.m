@@ -2508,9 +2508,11 @@ output_code_addr_decls(do_trace_redo_fail_deep, !IO) :-
 	io__write_string("MR_declare_entry(MR_do_trace_redo_fail_deep);\n",
 		!IO).
 output_code_addr_decls(do_call_closure, !IO) :-
-	io__write_string("MR_declare_entry(mercury__do_call_closure);\n", !IO).
+	io__write_string(
+		"MR_declare_entry(mercury__do_call_closure_compact);\n", !IO).
 output_code_addr_decls(do_call_class_method, !IO) :-
-	io__write_string("MR_declare_entry(mercury__do_call_class_method);\n",
+	io__write_string(
+		"MR_declare_entry(mercury__do_call_class_method_compact);\n",
 		!IO).
 output_code_addr_decls(do_not_reached, !IO) :-
 	io__write_string("MR_declare_entry(MR_do_not_reached);\n", !IO).
@@ -2753,16 +2755,15 @@ output_goto(do_call_closure, CallerLabel, !IO) :-
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
 	io__write_string(");\n\t\t", !IO),
-	io__write_string(
-		"MR_noprof_tailcall(MR_ENTRY(mercury__do_call_closure));\n",
-		!IO).
+	io__write_string("MR_noprof_tailcall(" ++
+		"MR_ENTRY(mercury__do_call_closure_compact));\n", !IO).
 output_goto(do_call_class_method, CallerLabel, !IO) :-
 	% see comment in output_call for why we use `noprof_' etc. here
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
 	io__write_string(");\n\t\t", !IO),
 	io__write_string("MR_noprof_tailcall(" ++
-		"MR_ENTRY(mercury__do_call_class_method));\n", !IO).
+		"MR_ENTRY(mercury__do_call_class_method_compact));\n", !IO).
 output_goto(do_not_reached, CallerLabel, !IO) :-
 	io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t",
 		!IO),
@@ -2863,9 +2864,10 @@ output_code_addr(do_trace_redo_fail_shallow, !IO) :-
 output_code_addr(do_trace_redo_fail_deep, !IO) :-
 	io__write_string("MR_ENTRY(MR_do_trace_redo_fail_deep)", !IO).
 output_code_addr(do_call_closure, !IO) :-
-	io__write_string("MR_ENTRY(mercury__do_call_closure)", !IO).
+	io__write_string("MR_ENTRY(mercury__do_call_closure_compact)", !IO).
 output_code_addr(do_call_class_method, !IO) :-
-	io__write_string("MR_ENTRY(mercury__do_call_class_method)", !IO).
+	io__write_string("MR_ENTRY(mercury__do_call_class_method_compact)",
+		!IO).
 output_code_addr(do_not_reached, !IO) :-
 	io__write_string("MR_ENTRY(MR_do_not_reached)", !IO).
 
