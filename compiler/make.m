@@ -158,7 +158,7 @@
 	;	mih	% Declarations for hlc grades, for compiler use only.
 	.
 
-% :- type linked_target_type in mercury_compile.m.
+% :- type linked_target_type in compile_target_code.m.
 
 :- type misc_target_type
 	--->	clean

@@ -3,14 +3,28 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+% File: make.module_target.m
+% Main author: stayl
+%
+% Build targets which relate to a single module (e.g. C code, object code,
+% interface files).
+%-----------------------------------------------------------------------------%
 :- module make__module_target.
 
 :- interface.
 
+	% make_module_target(Target, Success, Info0, Info).
+	%
+	% Make a target corresponding to a single module.
 :- pred make_module_target(dependency_file::in, bool::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
-	% For make__module_dep_file__write_module_dep_file.
+	% record_made_target(Target, Task, MakeSucceeded)
+	%
+	% Record whether building a target succeeded or not.
+	% Makes sure any timestamps for files which may have changed
+	% in building the target are recomputed next time they are needed.
+	% Exported for use by make__module_dep_file__write_module_dep_file.
 :- pred record_made_target(target_file::in, compilation_task_type::in,
 	bool::in, make_info::in, make_info::out,
 	io__state::di, io__state::uo) is det.
@@ -18,7 +32,13 @@
 :- type foreign_code_file
 	--->	foreign_code_file(
 			foreign_language :: foreign_language,
+
+				% Name of the file produced by the Mercury
+				% compiler, e.g. module_c_code.c.
 			target_file :: file_name,
+
+				% Name of the file produced by the foreign
+				% language compiler, e.g. module_c_code.o.
 			object_file :: file_name
 		).
 

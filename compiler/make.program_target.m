@@ -3,14 +3,27 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+% File: make.program_target.m
+% Main author: stayl
+%
+% Build targets which relate to whole programs or libraries.
+%-----------------------------------------------------------------------------%
 :- module make__program_target.
 
 :- interface.
 
+	% make_linked_target(Target, Success, Info0, Info).
+	%
+	% Build a library or an executable.
 :- pred make_linked_target(linked_target_file::in, bool::out,
 		make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.
 
+	% make_misc_target(Target, Success, Info0, Info).
+	%
+	% Handle miscellaneous target types, including clean-up, library
+	% installation, and building all files of a given type for all
+	% modules in the program.
 :- pred make_misc_target(pair(module_name, misc_target_type)::in,
 		bool::out, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.
