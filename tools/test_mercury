@@ -101,7 +101,7 @@ esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
-BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
+BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
 
 STABLE=$DIR/mercury-latest-stable
 UNSTABLE=$DIR/mercury-latest-unstable
