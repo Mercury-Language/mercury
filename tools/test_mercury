@@ -378,7 +378,7 @@ case $HOST in
 		;;
 esac
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -636,10 +636,10 @@ case $HOST in
 			gcc)	GRADES="asm_fast.gc asm_fast
 				asm_fast.gc.prof asm_fast.prof
 				asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-				hlc.gc" ;;
+				hlc.gc hlc.par.gc" ;;
 			*)	GRADES="none.gc none none.gc.prof
 				none.prof none.gc.memprof none.gc.tr
-				none.gc.debug.tr.debug hlc.gc" ;;
+				none.gc.tr.debug hlc.gc hlc.par.gc" ;;
 		esac
 		;;
 	roy)
