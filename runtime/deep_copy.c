@@ -239,8 +239,14 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 		    (Word *) type_info[(Word) entry_value],
                     lower_limit, upper_limit);
             } else {
+		/*
+		** offset 0 is no-tag indicator
+		** offset 1 is the pseudo-typeinfo
+		** (as per comments in base_type_layout.m)
+		** XXX should avoid use of hard-coded offset `1' here
+		*/
                 new_type_info = make_type_info(type_info, 
-                    entry_value, &allocated);
+                    (Word *) entry_value[1], &allocated);
                 new_data = deep_copy(data, new_type_info, 
                     lower_limit, upper_limit);
                 if (allocated) {

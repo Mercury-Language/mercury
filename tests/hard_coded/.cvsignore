@@ -35,3 +35,4 @@ elim_special_pred
 name_mangling
 division_test
 cycles
+deep_copy_bug
