@@ -481,13 +481,19 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				TypeVarSet0, VarSet, ExplicitVarTypes,
 				HeadTypeParams, Constraints, Status,
 				TypeCheckInfo1),
+		typecheck_info_get_type_assign_set(TypeCheckInfo1,
+				OrigTypeAssignSet),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeCheckInfo1, TypeCheckInfo2),
-		typecheck_constraints(Inferring, TypeCheckInfo2,
+		% we need to perform a final pass of context reduction
+		% at the end, before checking the typeclass constraints
+		perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo2,
 				TypeCheckInfo3),
+		typecheck_constraints(Inferring, TypeCheckInfo3,
+				TypeCheckInfo4),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
-				TypeCheckInfo3, TypeCheckInfo4),
-		typecheck_info_get_final_info(TypeCheckInfo4, TypeVarSet, 
+				TypeCheckInfo4, TypeCheckInfo5),
+		typecheck_info_get_final_info(TypeCheckInfo5, TypeVarSet, 
 				InferredVarTypes0, InferredTypeConstraints,
 				ConstraintProofs),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
@@ -2925,25 +2931,15 @@ typecheck_info_add_type_assign_constraints(NewConstraints, TypecheckInfo0,
 
 typecheck_constraints(yes, TypeCheckInfo, TypeCheckInfo).
 typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
-		% get the declared constraints
-	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
-
+		% reject any type assignment whose constraints have
+		% not all been eliminated by context reduction
+		% (i.e. those chich have constraints which do not match the
+		% declared constraints and which are not redundant for any
+		% other reason)
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
-
-	ConstraintsMatch = lambda([TypeAssign::in] is semidet,
-		(
-			type_assign_get_typeclass_constraints(TypeAssign,
-				CalculatedConstraints0),
-			type_assign_get_type_bindings(TypeAssign, Bindings),
-			apply_rec_subst_to_constraints(Bindings,
-				CalculatedConstraints0, CalculatedConstraints),
-			constraints_match(CalculatedConstraints,
-				DeclaredConstraints)
-		)),
-
-		% reject any type assignment whose constraints don't match the
-		% declared ones
-	list__filter(ConstraintsMatch, TypeAssignSet0, TypeAssignSet),
+	NoConstraints = lambda([TypeAssign::in] is semidet,
+		type_assign_get_typeclass_constraints(TypeAssign, [])),
+	list__filter(NoConstraints, TypeAssignSet0, TypeAssignSet),
 	(
 			% Check that we haven't just eliminated
 			% all the type assignments. 
@@ -2958,14 +2954,6 @@ typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 	).
 
 			
-	% The calculated constraints must be a subset of the declared
-	% constraints.
-:- pred constraints_match(list(class_constraint)::in,
-		list(class_constraint)::in) is semidet.
-constraints_match(CalculatedConstraints, DeclaredConstraints) :-
-	all [C] list__member(C, CalculatedConstraints) =>
-		list__member(C, DeclaredConstraints).
-
 %-----------------------------------------------------------------------------%
 
 :- pred report_unsatisfied_constraints(type_assign_set, typecheck_info,
@@ -2975,8 +2963,6 @@ constraints_match(CalculatedConstraints, DeclaredConstraints) :-
 
 report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
-
-	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
 
 	typecheck_info_get_context(TypeCheckInfo0, Context),
 	write_context_and_pred_id(TypeCheckInfo0, IOState0, IOState1),
@@ -2994,11 +2980,9 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 				TheConstraints0, TheConstraints1),
 			list__sort_and_remove_dups(TheConstraints1,
 				TheConstraints),
-			list__delete_elems(TheConstraints, DeclaredConstraints,
-				Unsatisfied),
 			prog_out__write_context(Context, IO0, IO1),
 			io__write_string("  ", IO1, IO2),
-			io__write_list(Unsatisfied, ", ",
+			io__write_list(TheConstraints, ", ",
 				mercury_output_constraint(TheVarSet), IO2, IO3),
 			io__write_string(".\n", IO3, IO)
 		)),
@@ -3045,10 +3029,11 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 %	instance declaration for that type.
 %
 %	If all type_assigns from the typecheck_info are rejected, than an
-%	appropriate error message is given, and the type_assign_set is
-%	restored to the original one given by OrigTypeAssignSet.
+%	appropriate error message is given, the type_assign_set is
+%	restored to the original one given by OrigTypeAssignSet,
+%	but without any typeclass constraints.
 %	The reason for this is to avoid reporting the same error at
-%	every subsequent call to perform_context_reduction.
+%	subsequent calls to perform_context_reduction.
 
 :- pred perform_context_reduction(type_assign_set,
 			typecheck_info, typecheck_info).
@@ -3072,8 +3057,13 @@ perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	->
 		report_unsatisfied_constraints(TypeAssignSet0,
 			TypeCheckInfo0, TypeCheckInfo1),
+		DeleteConstraints = lambda([TA0::in, TA::out] is det,
+			type_assign_set_typeclass_constraints(TA0, [], TA)
+		),
+		list__map(DeleteConstraints, OrigTypeAssignSet,
+			NewTypeAssignSet),
 		typecheck_info_set_type_assign_set(TypeCheckInfo1,
-			OrigTypeAssignSet, TypeCheckInfo)
+			NewTypeAssignSet, TypeCheckInfo)
 	;
 		typecheck_info_set_type_assign_set(TypeCheckInfo0,
 			TypeAssignSet, TypeCheckInfo)
@@ -4055,27 +4045,30 @@ write_args_type_assign_set([args(TypeAssign, _ArgTypes, _Cnstrs)| TypeAssigns],
 write_type_assign(TypeAssign, VarSet) -->
 	{
 	  type_assign_get_var_types(TypeAssign, VarTypes),
+	  type_assign_get_typeclass_constraints(TypeAssign, Constraints),
 	  type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	  type_assign_get_typevarset(TypeAssign, TypeVarSet),
 	  map__keys(VarTypes, Vars)
 	},
-	write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet,
-			no),
+	write_type_assign_types(Vars, VarSet, VarTypes,
+			TypeBindings, TypeVarSet, no),
+	write_type_assign_constraints(Constraints,
+			TypeBindings, TypeVarSet, no),
 	io__write_string("\n").
 
-:- pred write_type_assign_2(list(var), varset, map(var, type),
+:- pred write_type_assign_types(list(var), varset, map(var, type),
 			tsubst, tvarset, bool, io__state, io__state).
-:- mode write_type_assign_2(in, in, in, in, in, in, di, uo) is det.
+:- mode write_type_assign_types(in, in, in, in, in, in, di, uo) is det.
 
-write_type_assign_2([], _, _, _, _, FoundOne) -->
+write_type_assign_types([], _, _, _, _, FoundOne) -->
 	( { FoundOne = no } ->
 		io__write_string("(No variables were assigned a type)")
 	;
 		[]
 	).
 
-write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
-			FoundOne) -->
+write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
+				TypeVarSet, FoundOne) -->
 	( 
 		{ map__search(VarTypes, Var, Type) }
 	->
@@ -4087,12 +4080,30 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 		mercury_output_var(Var, VarSet, no),
 		io__write_string(" :: "),
 		write_type_b(Type, TypeVarSet, TypeBindings),
-		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
+		write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
 			TypeVarSet, yes)
 	;
-		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
+		write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
 			TypeVarSet, FoundOne)
 	).
+
+:- pred write_type_assign_constraints(list(class_constraint),
+			tsubst, tvarset, bool, io__state, io__state).
+:- mode write_type_assign_constraints(in, in, in, in, di, uo) is det.
+
+write_type_assign_constraints([], _, _, _) --> [].
+write_type_assign_constraints([Constraint | Constraints],
+			TypeBindings, TypeVarSet, FoundOne) -->
+	( { FoundOne = no } ->
+		io__write_string("\n\t<= ")
+	;
+		io__write_string(",\n\t   ")
+	),
+	{ apply_rec_subst_to_constraint(TypeBindings, Constraint,
+		BoundConstraint) },
+	mercury_output_constraint(TypeVarSet, BoundConstraint),
+	write_type_assign_constraints(Constraints,
+		TypeBindings, TypeVarSet, yes).
 
 	% write_type_b writes out a type after applying the type bindings.
 

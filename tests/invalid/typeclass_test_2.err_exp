@@ -4,6 +4,6 @@ typeclass_test_2.m:018: Error: clause for function `typeclass_test_2:foo_type_nu
 typeclass_test_2.m:018:   without preceding `func' declaration.
 typeclass_test_2.m:008: In clause for predicate `typeclass_test_2:main/2':
 typeclass_test_2.m:008:   unsatisfied typeclass constraint(s):
-typeclass_test_2.m:008:   typeclass_test_2:numbered_type(int)
+typeclass_test_2.m:008:   typeclass_test_2:numbered_type(int).
 typeclass_test_2.m:018: Inferred :- func foo_type_num(T1) = int.
 For more information, try recompiling with `-E'.
