@@ -44,7 +44,7 @@
 
 :- type process_unify(Result, Info) ==
 	pred(prog_var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
-:- inst process_unify = (pred(in, in, out, in, out, in, out) is det).
+:- inst process_unify == (pred(in, in, out, in, out, in, out) is det).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

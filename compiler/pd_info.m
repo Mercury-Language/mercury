@@ -49,14 +49,14 @@
 		% map from version id to the info about the version.
 :- type version_index == map(pred_proc_id, version_info).
 
-:- inst unique_pd_info = ground.
+:- inst unique_pd_info == ground.
 
-:- mode pd_info_di :: unique_pd_info -> dead.
-:- mode pd_info_uo :: free -> unique_pd_info.
-:- mode pd_info_ui :: unique_pd_info -> unique_pd_info.
+:- mode pd_info_di == unique_pd_info >> dead.
+:- mode pd_info_uo == free >> unique_pd_info.
+:- mode pd_info_ui == unique_pd_info >> unique_pd_info.
 
-:- inst pd_info_no_io = ground.
-:- mode pd_info_set_io :: pd_info_no_io -> dead.
+:- inst pd_info_no_io == ground.
+:- mode pd_info_set_io == pd_info_no_io >> dead.
 
 :- pred pd_info_init(module_info, pd_arg_info, io__state, pd_info).
 :- mode pd_info_init(in, in, di, pd_info_uo) is det.

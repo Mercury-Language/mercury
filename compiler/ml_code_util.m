@@ -70,7 +70,7 @@
 
 :- type gen_pred == pred(mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- inst gen_pred = (pred(out, out, in, out) is det).
+:- inst gen_pred == (pred(out, out, in, out) is det).
 
 :- pred ml_combine_conj(code_model::in, prog_context::in,
 	gen_pred::in(gen_pred), gen_pred::in(gen_pred),

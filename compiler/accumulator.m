@@ -1458,9 +1458,9 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst call = bound(call(ground, ground, ground, ground, ground, ground)).
-:- inst hlds_call = bound('-'(call, ground)).
-:- inst call_goal = bound('-'(hlds_call, ground)).
+:- inst call ---> call(ground, ground, ground, ground, ground, ground).
+:- inst hlds_call ---> call - ground.
+:- inst call_goal ---> hlds_call - ground.
 
 	% Do a goal_store__lookup where the result is known to be a
 	% call.

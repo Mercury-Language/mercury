@@ -82,7 +82,7 @@
 % but that is not a good solution, because it causes a lot of warnings
 % about unbound type variables.
 
-:- inst task =	bound(( update_proc(pred(in, in, out) is det)
+:- inst task ==	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_predid(pred(in, in, in, out) is det)
 		;	update_proc_predprocid(pred(in, in, in, in, out)
 				is det)
@@ -100,10 +100,10 @@
 				in, out) is det, ground)
 		)).
 
-:- inst pred_error_task =
+:- inst pred_error_task ==
 		(pred(in, in, out, in, out, out, out, di, uo) is det).
 
-:- mode task ::	task -> task.
+:- mode task == task >> task.
 
 :- pred process_all_nonimported_procs(task::task,
 	module_info::in, module_info::out, io::di, io::uo) is det.

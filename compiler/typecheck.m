@@ -1622,7 +1622,7 @@ typecheck_call_pred(CallId, Args, PredId, !Info, !IO) :-
 	% the update predicate. For an ordinary predicate call,
 	% the types are not transformed.
 :- type adjust_arg_types == pred(list(type), list(type)).
-:- inst adjust_arg_types = (pred(in, out) is det).
+:- inst adjust_arg_types == (pred(in, out) is det).
 
 	% Typecheck a predicate, performing the given transformation on the
 	% argument types.

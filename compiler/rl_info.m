@@ -51,17 +51,17 @@
 	;	same_as_relation(relation_id)
 	;	schema(list(type)).
 
-:- inst uniq_rl_info	=	ground.
+:- inst uniq_rl_info == ground.
 
-:- mode rl_info_uo :: free -> uniq_rl_info.
-:- mode rl_info_ui :: uniq_rl_info -> uniq_rl_info.
-:- mode rl_info_di :: uniq_rl_info -> uniq_rl_info.
+:- mode rl_info_uo == free >> uniq_rl_info.
+:- mode rl_info_ui == uniq_rl_info >> uniq_rl_info.
+:- mode rl_info_di == uniq_rl_info >> uniq_rl_info.
 
-:- inst rl_info_no_io	=	ground.
+:- inst rl_info_no_io == ground.
 
-:- mode rl_info_get_io_state	:: uniq_rl_info -> rl_info_no_io.
-:- mode rl_info_no_io		:: rl_info_no_io -> rl_info_no_io.
-:- mode rl_info_set_io_state	:: rl_info_no_io -> dead.
+:- mode rl_info_get_io_state == uniq_rl_info >> rl_info_no_io.
+:- mode rl_info_no_io        == rl_info_no_io >> rl_info_no_io.
+:- mode rl_info_set_io_state == rl_info_no_io >> dead.
 
 %-----------------------------------------------------------------------------%
 

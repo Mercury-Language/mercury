@@ -1794,7 +1794,7 @@ check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId,
 	).
 
 :- type add_marker_pred_info == pred(pred_info, pred_info).
-:- inst add_marker_pred_info = (pred(in, out) is det).
+:- inst add_marker_pred_info == (pred(in, out) is det).
 
 :- pred do_add_pred_marker(string::in, sym_name::in, arity::in,
 	import_status::in, bool::in, term__context::in,
@@ -6286,7 +6286,7 @@ Error: !%s cannot appear as a unification argument.\n", [s(Name)]), !IO),
 	report_warning(string__format("\
 You probably meant !.%s or !:%s.\n", [s(Name), s(Name)]), !IO).
 
-:- inst dcg_record_syntax_op = bound("=^"; ":=").
+:- inst dcg_record_syntax_op == bound("=^"; ":=").
 
 :- pred transform_dcg_record_syntax(string::in(dcg_record_syntax_op),
 	list(prog_term)::in, prog_context::in, hlds_goal::out,
@@ -6689,7 +6689,7 @@ parse_field_list(Term, MaybeFieldNames) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst aditi_update_str =
+:- inst aditi_update_str ==
 	bound(	"aditi_insert"
 	;	"aditi_delete"
 	;	"aditi_bulk_insert"

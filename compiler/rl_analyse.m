@@ -52,7 +52,7 @@
 		Info	% data associated with the block (e.g. gen + kill sets)
 	).
 
-:- mode rl_analysis :: in(rl_analysis).
+:- mode rl_analysis == in(rl_analysis).
 
 :- type direction
 	--->	forward
@@ -70,23 +70,23 @@
 		pred(pair(block_id, BlockData),
 			pair(block_id, maybe(BlockData)), BlockData,
 			Globals, Globals, rl_opt_info, rl_opt_info).
-:- inst confluence = (pred(in, in, out, in, out, in, out) is det).
+:- inst confluence == (pred(in, in, out, in, out, in, out) is det).
 
 	% Given the information at entry, compute the information at exit.
 :- type block_update(BlockData, Info, Globals) ==
 		pred(block_id, BlockData, block_data(BlockData, Info),
 			block_data(BlockData, Info), Globals, Globals,
 			rl_opt_info, rl_opt_info).
-:- inst block_update = (pred(in, in, in, out, in, out, in, out) is det).
+:- inst block_update == (pred(in, in, in, out, in, out, in, out) is det).
 
 	% Do an in-in test unification.
 :- type equal(BlockData, Globals) == pred(BlockData, BlockData, Globals).
-:- inst equal = (pred(in, in, in) is semidet).
+:- inst equal == (pred(in, in, in) is semidet).
 
 	% Pretty print the block data for debugging.
 :- type write(BlockData, Info, Globals) ==
 	    (pred(block_data(BlockData, Info), Globals, io__state, io__state)).
-:- inst write = (pred(in, in, di, uo) is det).
+:- inst write == (pred(in, in, di, uo) is det).
 
 %-----------------------------------------------------------------------------%
 
