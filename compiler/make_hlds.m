@@ -2588,18 +2588,6 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError,
 		{ Module = Module0 }
 	).
 
-:- pred have_foreign_type_for_backend(compilation_target::in,
-		foreign_type_body::in, bool::out) is det.
-
-have_foreign_type_for_backend(c, ForeignTypeBody,
-		( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(il, ForeignTypeBody,
-		( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(java, ForeignTypeBody, 
-		( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
-	have_foreign_type_for_backend(c, ForeignTypeBody, Result).
-
 	% Do the options imply that we will generate code for a specific
 	% back-end?
 :- pred generating_code(bool::out, io::di, io::uo) is det.

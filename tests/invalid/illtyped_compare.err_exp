@@ -1,0 +1,17 @@
+illtyped_compare.m:015: In clause for unification predicate for type illtyped_compare.bar_rep:
+illtyped_compare.m:015:   in argument 2 of call to predicate `illtyped_compare.compare_bar/3':
+illtyped_compare.m:015:   type error: variable `HeadVar__1' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:015:   expected type was `(illtyped_compare.bar)'.
+illtyped_compare.m:015: In clause for unification predicate for type illtyped_compare.bar_rep:
+illtyped_compare.m:015:   in argument 3 of call to predicate `illtyped_compare.compare_bar/3':
+illtyped_compare.m:015:   type error: variable `HeadVar__2' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:015:   expected type was `(illtyped_compare.bar)'.
+illtyped_compare.m:015: In clause for comparison predicate for type illtyped_compare.bar_rep:
+illtyped_compare.m:015:   in argument 2 of call to predicate `illtyped_compare.compare_bar/3':
+illtyped_compare.m:015:   type error: variable `HeadVar__2' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:015:   expected type was `(illtyped_compare.bar)'.
+illtyped_compare.m:015: In clause for comparison predicate for type illtyped_compare.bar_rep:
+illtyped_compare.m:015:   in argument 3 of call to predicate `illtyped_compare.compare_bar/3':
+illtyped_compare.m:015:   type error: variable `HeadVar__3' has type `(illtyped_compare.bar_rep)',
+illtyped_compare.m:015:   expected type was `(illtyped_compare.bar)'.
+For more information, try recompiling with `-E'.

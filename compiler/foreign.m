@@ -77,6 +77,11 @@
 	% exported_type representation of that type.
 :- func foreign__non_foreign_type((type)) = exported_type.
 
+	% Does the foreign_type_body contain a definition usable
+	% when compiling to the given target.
+:- pred have_foreign_type_for_backend(compilation_target::in,
+		foreign_type_body::in, bool::out) is det.
+
 	% Given an arbitary mercury type, get the exported_type representation
 	% of that type on the current backend.
 :- func foreign__to_exported_type(module_info, (type)) = exported_type.
@@ -655,6 +660,15 @@ foreign_language_module_name(M, L) = FM :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+have_foreign_type_for_backend(c, ForeignTypeBody,
+		( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(il, ForeignTypeBody,
+		( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(java, ForeignTypeBody, 
+		( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
+	have_foreign_type_for_backend(c, ForeignTypeBody, Result).
 
 :- type exported_type
 	--->	foreign(sym_name)	% A type defined by a

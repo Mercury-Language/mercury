@@ -738,13 +738,24 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 		UserEqComp).
 
 type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
-	(
-		TypeBody ^ du_type_usereq = yes(UserEqComp)
-	;
-		TypeBody = foreign_type(ForeignTypeBody, _),
-		UserEqComp = foreign_type_body_has_user_defined_equality_pred(
-				ModuleInfo, ForeignTypeBody)
-	).
+    module_info_globals(ModuleInfo, Globals),
+    globals__get_target(Globals, Target),
+    (
+	TypeBody = du_type(_, _, _, _, _, _, _),
+        (
+	    TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
+            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
+	->
+            UserEqComp = foreign_type_body_has_user_defined_equality_pred(
+                                ModuleInfo, ForeignTypeBody)
+        ;
+            TypeBody ^ du_type_usereq = yes(UserEqComp)
+        )
+    ;
+        TypeBody = foreign_type(ForeignTypeBody, _),
+        UserEqComp = foreign_type_body_has_user_defined_equality_pred(
+                        ModuleInfo, ForeignTypeBody)
+    ).
 
 type_util__is_solver_type(ModuleInfo, Type) :-
 	module_info_types(ModuleInfo, TypeTable),

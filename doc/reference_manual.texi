@@ -5672,8 +5672,8 @@ type will only be visible in Mercury clauses for predicates or functions with
 are @samp{foreign_type} declarations for the type. 
 
 As with discriminated union types, programmers can specify the unification
-and comparison predicates to use for values of the type using the following
-syntax (@pxref{User-defined equality and comparison}):
+@w{and/or} comparison predicates to use for values of the type using the
+following syntax (@pxref{User-defined equality and comparison}):
 
 @example
 :- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor})

@@ -1036,19 +1036,34 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
 			ReservedTag, IsSolverType, MaybeForeign0)
 	    ->
-		intermod__resolve_unify_compare_overloading(ModuleInfo,
-			TypeCtor, MaybeUserEqComp0, MaybeUserEqComp,
-			Info1, Info2),
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_target(Globals, Target),
+
+		%
+		% Note that we don't resolve overloading for the definitions
+		% which won't be used on this back-end, because their
+		% unification and comparison predicates have not been
+		% typechecked. They are only written to the `.opt' it
+		% can be handy when building against a workspace for
+		% the other definitions to be present (e.g. when testing
+		% compiling a module to IL when the workspace was compiled
+		% to C).
+		%
 		(
-			MaybeForeign0 = yes(Foreign0),
+			MaybeForeign0 = yes(ForeignTypeBody0),
+			have_foreign_type_for_backend(Target,
+				ForeignTypeBody0, yes)
+		->
 			intermod__resolve_foreign_type_body_overloading(
-				ModuleInfo, TypeCtor, Foreign0, Foreign,
-				Info2, Info3),
-			MaybeForeign = yes(Foreign)
+				ModuleInfo, TypeCtor, ForeignTypeBody0,
+				ForeignTypeBody, Info1, Info3),
+			MaybeForeign = yes(ForeignTypeBody),
+			MaybeUserEqComp = MaybeUserEqComp0	
 		;
-			MaybeForeign0 = no,
-			MaybeForeign = no,
-			Info3 = Info2
+			intermod__resolve_unify_compare_overloading(ModuleInfo,
+				TypeCtor, MaybeUserEqComp0, MaybeUserEqComp,
+				Info1, Info3),
+			MaybeForeign = MaybeForeign0
 		),
 		TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
 				ReservedTag, IsSolverType, MaybeForeign),
@@ -1078,13 +1093,38 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 
 intermod__resolve_foreign_type_body_overloading(ModuleInfo,
 		TypeCtor, foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0),
-		foreign_type_body(MaybeIL, MaybeC, MaybeJava), Info0, Info) :-
-	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-		MaybeC0, MaybeC, Info0, Info1),
-	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-		MaybeIL0, MaybeIL, Info1, Info2),
-	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-		MaybeJava0, MaybeJava, Info2, Info).
+		foreign_type_body(MaybeIL, MaybeC, MaybeJava)) -->
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__get_target(Globals, Target) },
+
+	%
+	% Note that we don't resolve overloading for the foreign
+	% definitions which won't be used on this back-end, because
+	% their unification and comparison predicates have not been
+	% typechecked.
+	% They are only written to the `.opt' it can be handy when
+	% building against a workspace for the other definitions to
+	% be present (e.g. when testing compiling a module to IL when
+	% the workspace was compiled to C).
+	%
+	( { Target = c ; Target = asm } ->
+		intermod__resolve_foreign_type_body_overloading_2(ModuleInfo,
+			TypeCtor, MaybeC0, MaybeC)
+	;
+		{ MaybeC = MaybeC0 }
+	),
+	( { Target = il } ->
+		intermod__resolve_foreign_type_body_overloading_2(ModuleInfo,
+			TypeCtor, MaybeIL0, MaybeIL)
+	;
+		{ MaybeIL = MaybeIL0 }
+	),
+	( { Target = java } ->
+		intermod__resolve_foreign_type_body_overloading_2(ModuleInfo,
+			TypeCtor, MaybeJava0, MaybeJava)
+	;
+		{ MaybeJava = MaybeJava0 }
+	).
 
 :- pred intermod__resolve_foreign_type_body_overloading_2(module_info::in,
 		type_ctor::in, foreign_type_lang_body(T)::in,
