@@ -127,14 +127,14 @@ MR_trace_event(MR_trace_cmd_info *cmd,
 
 	MR_copy_regs_to_saved_regs(max_mr_num);
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-	if (MR_trace_debugger == MR_TRACE_EXTERNAL) {
+	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
 		MR_trace_event_external(layout, port, seqno, depth, path);
 	} else {
 		MR_trace_event_internal(cmd, layout, port, seqno, depth, path);
 	}
 #else
 	/*
-	** We should get here only if MR_trace_debugger == MR_TRACE_INTERNAL.
+	** We should get here only if MR_trace_handler == MR_TRACE_INTERNAL.
 	** This is enforced by mercury_wrapper.c.
 	*/
 
@@ -148,7 +148,7 @@ MR_trace_event_report(const MR_Stack_Layout_Label *layout, MR_trace_port port,
 	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-	if (MR_trace_debugger == MR_TRACE_EXTERNAL) {
+	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
 		fatal_abort("trying to report an event to external debugger");
 	} else {
 		MR_trace_event_internal_report(layout,
@@ -156,7 +156,7 @@ MR_trace_event_report(const MR_Stack_Layout_Label *layout, MR_trace_port port,
 	}
 #else
 	/*
-	** We should get here only if MR_trace_debugger == MR_TRACE_INTERNAL.
+	** We should get here only if MR_trace_handler == MR_TRACE_INTERNAL.
 	** This is enforced by mercury_wrapper.c.
 	*/
 
