@@ -6,7 +6,7 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
+PROGS=	qual_basic_test qual_is_test qual_adv_test \
 	pragma_c_code pragma_inline higher_order_func_test \
 	free_free_mode func_test string_alignment tim_qual1 c_write_string \
 	no_fully_strict float_rounding_bug string_loop func_and_pred \
