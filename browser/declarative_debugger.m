@@ -29,16 +29,54 @@
 	%
 :- type decl_truth == bool.
 
+	% This type represents the possible responses to being
+	% asked to confirm that a node is a bug.
+	%
+:- type decl_confirmation
+	--->	confirm_bug
+	;	overrule_bug
+	;	abort_diagnosis.
+
 	% This type represents the bugs which can be diagnosed.
 	% The parameter of the constructor is the type of EDT nodes.
 	%
-:- type decl_bug(T)
-	--->	e_bug(T)	% An EDT whose root node is incorrect,
-				% but whose children are all correct.
+:- type decl_bug
+			% An EDT whose root node is incorrect,
+			% but whose children are all correct.
+			%
+	--->	e_bug(decl_e_bug)
 
-	;	i_bug(T).	% An EDT whose root node is incorrect, and
-				% which has no incorrect children but at
-				% least one inadmissible one.
+			% An EDT whose root node is incorrect, and
+			% which has no incorrect children but at
+			% least one inadmissible one.
+			%
+	;	i_bug(decl_i_bug).
+
+:- type decl_e_bug
+	--->	incorrect_contour(
+			decl_atom,	% The head of the clause, in its
+					% final state of instantiation.
+			decl_contour	% The path taken through the body.
+		)
+	;	partially_uncovered_atom(
+			decl_atom	% The called atom, in its initial
+					% state.
+		).
+
+:- type decl_i_bug
+	--->	inadmissible_call(
+			decl_atom,	% The parent atom, in its initial
+					% state.
+			decl_position,	% The location of the call in the
+					% parent's body.
+			decl_atom	% The inadmissible child, in its
+					% initial state.
+		).
+
+	% XXX not yet implemented.
+	%
+:- type decl_contour == unit.
+:- type decl_position == unit.
 
 	% Values of this type represent goal behaviour.  This representation
 	% is used by the front end (in this module), as well as the
@@ -138,10 +176,10 @@ diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
 handle_analyser_response(_, no_suspects, no_bug_found, D, D) -->
 	[].
 
-handle_analyser_response(Store, bug_found(Bug), Response, Diagnoser0,
+handle_analyser_response(_, bug_found(Bug), Response, Diagnoser0,
 		Diagnoser) -->
 
-	confirm_bug(Store, Bug, Response, Diagnoser0, Diagnoser).
+	confirm_bug(Bug, Response, Diagnoser0, Diagnoser).
 
 handle_analyser_response(Store, oracle_queries(Queries), Response,
 		Diagnoser0, Diagnoser) -->
@@ -176,22 +214,13 @@ handle_oracle_response(_, no_oracle_answers, no_bug_found, D, D) -->
 handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 	io__write_string("Diagnosis aborted.\n").
 
-:- pred confirm_bug(S, decl_bug(edt_node(R)), diagnoser_response,
-		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
-		<= annotated_trace(S, R).
-:- mode confirm_bug(in, in, out, in, out, di, uo) is det.
+:- pred confirm_bug(decl_bug, diagnoser_response, diagnoser_state(R),
+		diagnoser_state(R), io__state, io__state).
+:- mode confirm_bug(in, out, in, out, di, uo) is det.
 
-confirm_bug(Store, Bug, Response, Diagnoser0, Diagnoser) -->
-	{
-		Bug = e_bug(Node),
-		Message = "Incorrect node found:\n"
-	;
-		Bug = i_bug(Node),
-		Message = "Inadmissible call node found:\n"
-	},
+confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
 	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
-	{ edt_root(wrap(Store), Node, Question) },
-	oracle_confirm_bug(Message, Question, Confirmation, Oracle0, Oracle),
+	oracle_confirm_bug(Bug, Confirmation, Oracle0, Oracle),
 	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser) },
 	{
 		Confirmation = confirm_bug,
@@ -243,7 +272,8 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [
-		pred(edt_root/3) is trace_root,
+		pred(edt_root_question/3) is trace_root_question,
+		pred(edt_root_e_bug/3) is trace_root_e_bug,
 		pred(edt_children/3) is trace_children
 	].
 
@@ -252,10 +282,11 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred trace_root(wrap(S), edt_node(R), decl_question) <= annotated_trace(S, R).
-:- mode trace_root(in, in, out) is det.
+:- pred trace_root_question(wrap(S), edt_node(R), decl_question)
+		<= annotated_trace(S, R).
+:- mode trace_root_question(in, in, out) is det.
 
-trace_root(wrap(Store), dynamic(Ref), Root) :-
+trace_root_question(wrap(Store), dynamic(Ref), Root) :-
 	det_trace_node_from_id(Store, Ref, Node),
 	(
 		Node = fail(_, CallId, RedoId)
@@ -284,6 +315,20 @@ get_answers(Store, RedoId, As0, As) :-
 		get_answers(Store, NextId, [Atom | As0], As)
 	;
 		As = As0
+	).
+
+:- pred trace_root_e_bug(wrap(S), edt_node(R), decl_e_bug)
+		<= annotated_trace(S, R).
+:- mode trace_root_e_bug(in, in, out) is det.
+
+trace_root_e_bug(S, T, Bug) :-
+	trace_root_question(S, T, Q),
+	(
+		Q = wrong_answer(Atom),
+		Bug = incorrect_contour(Atom, unit)
+	;
+		Q = missing_answer(Atom, _),
+		Bug = partially_uncovered_atom(Atom)
 	).
 
 :- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))

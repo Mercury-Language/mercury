@@ -106,9 +106,8 @@
 			list(maybe(univ))
 		).
 
-	% If the following two type is modified, some of
-	% the macros in trace/mercury_trace_declarative.h may need
-	% to be updated.
+	% If the following type is modified, some of the macros in
+	% trace/mercury_trace_declarative.h may need to be updated.
 	%
 :- type goal_status
 	--->	succeeded

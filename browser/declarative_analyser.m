@@ -26,8 +26,13 @@
 		
 		% Gives the root node of an EDT.
 		%
-	pred edt_root(S, T, decl_question),
-	mode edt_root(in, in, out) is det,
+	pred edt_root_question(S, T, decl_question),
+	mode edt_root_question(in, in, out) is det,
+	
+		% If this node is an e_bug, then find the bug.
+		%
+	pred edt_root_e_bug(S, T, decl_e_bug),
+	mode edt_root_e_bug(in, in, out) is det,
 
 		% Gives the list of children of a tree.  If the tree is
 		% represented implicitly, then the procedure fails.
@@ -45,7 +50,7 @@
 	
 			% A suspect who is guilty.
 			%
-	;	bug_found(decl_bug(T))
+	;	bug_found(decl_bug)
 
 			% The analyser desires answers to any of a list
 			% of queries.
@@ -89,125 +94,243 @@
 :- type analyser_state(T)
 	--->	analyser(
 				% Current incorrect node (initially `no').
+				% This is the most recent node that the
+				% oracle has said is incorrect.
 				%
-			maybe(T),	
+			maybe(prime_suspect(T)),
 
 				% Current suspects.
 				%
 			list(suspect(T))
 	).
 
-	% A suspect is a suspect tree along with its corresponding
-	% root node.
-	%
-:- type suspect(T) == pair(T, decl_question).
-
 analyser_state_init(analyser(no, [])).
 
 start_analysis(Store, Tree, Response, _, Analyser) :-
-	edt_root(Store, Tree, Root),
-	Response = oracle_queries([Root]),
-	Analyser = analyser(no, [Tree - Root]).
+	edt_root_question(Store, Tree, Question),
+	Response = oracle_queries([Question]),
+	create_suspect(Store, Tree, Suspect),
+	Analyser = analyser(no, [Suspect]).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 	(
-		find_incorrect_suspect(Answers, Analyser0, Node)
+		find_incorrect_suspect(Answers, Analyser0, Suspect)
 	->
-		make_new_suspects(Store, Node, Response, Analyser)
+		make_new_prime_suspect(Store, Suspect, Response, Analyser0,
+				Analyser)
 	;
-		remove_suspects(Answers, Response, Analyser0, Analyser)
+		remove_suspects(Store, Answers, Response, Analyser0, Analyser)
 	).
 
 
 	% Find an answer which is `no' and find the suspect that
 	% corresponds to it, or else fail.
 	%
-:- pred find_incorrect_suspect(list(decl_answer), analyser_state(T), T).
+:- pred find_incorrect_suspect(list(decl_answer), analyser_state(T),
+		suspect(T)).
 :- mode find_incorrect_suspect(in, in, out) is semidet.
 
 find_incorrect_suspect([Answer | Answers], Analyser, Child) :-
 	Analyser = analyser(_, Suspects),
 	(
-		Answer = Node - no,
-		find_matching_suspects(Node, Suspects, [Match | _], _)
+		Answer = _ - no,
+		find_matching_suspects(Answer, Suspects, [Match | _], _)
 	->
-		Match = Child - _
+		Match = Child
 	;
 		find_incorrect_suspect(Answers, Analyser, Child)
 	).
 
-	% Create a new suspect list from the given tree, which is
-	% assumed to have an incorrect root.
+	% Create a new prime suspect from the given suspect, which is
+	% assumed to be incorrect.
 	%
-:- pred make_new_suspects(S, T, analyser_response(T), analyser_state(T))
-		<= mercury_edt(S, T).
-:- mode make_new_suspects(in, in, out, out) is det.
+:- pred make_new_prime_suspect(S, suspect(T), analyser_response(T),
+		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
+:- mode make_new_prime_suspect(in, in, out, in, out) is det.
 
-make_new_suspects(Store, Tree, Response, Analyser) :-
+make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
+	Analyser0 = analyser(MaybeOldPrime, _),
+	suspect_get_edt_node(Suspect, Tree),
+	create_prime_suspect(Suspect, MaybeOldPrime, Prime),
 	(
 		edt_children(Store, Tree, Children)
 	->
 		make_suspects(Store, Children, Suspects, Queries),
-		Analyser = analyser(yes(Tree), Suspects),
 		(
 			Queries = []
 		->
-			Response = bug_found(e_bug(Tree))
+			edt_root_e_bug(Store, Tree, EBug),
+			Response = bug_found(e_bug(EBug))
 		;
 			Response = oracle_queries(Queries)
 		)
 	;
-		Response = require_explicit(Tree),
-		Analyser = analyser(yes(Tree), [])
-	).
+			% The real suspects cannot be found, so we
+			% just use the empty list.
+			%
+		Suspects = [],
+		Response = require_explicit(Tree)
+	),
+	Analyser = analyser(yes(Prime), Suspects).
 
 :- pred make_suspects(S, list(T), list(suspect(T)), list(decl_question))
 		<= mercury_edt(S, T).
 :- mode make_suspects(in, in, out, out) is det.
 
 make_suspects(_, [], [], []).
-make_suspects(Store, [Tree | Trees], [Tree - Root | Ss], [Root | Qs]) :-
-	edt_root(Store, Tree, Root),
+make_suspects(Store, [Tree | Trees], [Suspect | Ss], [Query | Qs]) :-
+	create_suspect(Store, Tree, Suspect),
+	Suspect = suspect(_, Query),
 	make_suspects(Store, Trees, Ss, Qs).
 
 	% Go through the answers (none of which should be `no') and
 	% remove the corresponding children from the suspect list.
 	%
-:- pred remove_suspects(list(decl_answer), analyser_response(T),
-		analyser_state(T), analyser_state(T)).
-:- mode remove_suspects(in, out, in, out) is det.
+:- pred remove_suspects(S, list(decl_answer), analyser_response(T),
+		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
+:- mode remove_suspects(in, in, out, in, out) is det.
 
-remove_suspects([], Response, Analyser, Analyser) :-
-	Analyser = analyser(MaybeTree, Suspects),
+remove_suspects(Store, [], Response, Analyser, Analyser) :-
+	Analyser = analyser(MaybePrime, Suspects),
 	(
 		Suspects = []
 	->
 		(
-			MaybeTree = yes(Tree)
+			MaybePrime = yes(Prime)
 		->
-			Response = bug_found(e_bug(Tree))
+			prime_suspect_get_edt_node(Prime, Tree),
+			edt_root_e_bug(Store, Tree, EBug),
+			Response = bug_found(e_bug(EBug))
 		;
 			Response = no_suspects
 		)
 	;
-		list__map(snd, Suspects, Queries),
+		list__map(suspect_get_question, Suspects, Queries),
 		Response = oracle_queries(Queries)
 	).
 
-remove_suspects([Node - yes | Answers], Response, Analyser0, Analyser) :-
-	Analyser0 = analyser(MaybeTree, Suspects0),
-	find_matching_suspects(Node, Suspects0, _, Suspects),
-	Analyser1 = analyser(MaybeTree, Suspects),
-	remove_suspects(Answers, Response, Analyser1, Analyser).
+remove_suspects(Store, [Answer | Answers], Response, Analyser0,
+		Analyser) :-
 
-remove_suspects([_ - no | _], _, _, _) :-
-	error("remove_suspects: unexpected incorrect node").
+	(
+		Answer = _ - yes
+	->
+		Analyser0 = analyser(MaybeTree, Suspects0),
+		find_matching_suspects(Answer, Suspects0, _, Suspects),
+		Analyser1 = analyser(MaybeTree, Suspects),
+		remove_suspects(Store, Answers, Response, Analyser1, Analyser)
+	;
+		error("remove_suspects: unexpected incorrect node")
+	).
 
-:- pred find_matching_suspects(decl_question, list(suspect(T)),
+%-----------------------------------------------------------------------------%
+
+:- type suspect(T)
+	--->	suspect(T, decl_question).
+
+:- pred create_suspect(S, T, suspect(T)) <= mercury_edt(S, T).
+:- mode create_suspect(in, in, out) is det.
+
+create_suspect(S, T, Suspect) :-
+	edt_root_question(S, T, Question),
+	Suspect = suspect(T, Question).
+
+:- pred suspect_get_edt_node(suspect(T), T).
+:- mode suspect_get_edt_node(in, out) is det.
+
+suspect_get_edt_node(suspect(Node, _), Node).
+
+:- pred suspect_get_question(suspect(T), decl_question).
+:- mode suspect_get_question(in, out) is det.
+
+suspect_get_question(suspect(_, Question), Question).
+
+:- pred suspect_answer_match(suspect(T), decl_answer, decl_truth).
+:- mode suspect_answer_match(in, in, out) is semidet.
+
+suspect_answer_match(suspect(_, Question), Question - Truth, Truth).
+
+:- pred find_matching_suspects(decl_answer, list(suspect(T)),
 		list(suspect(T)), list(suspect(T))).
 :- mode find_matching_suspects(in, in, out, out) is det.
 
-find_matching_suspects(Node, Suspects, Matches, NoMatches) :-
-	P = (pred(A::in) is semidet :- A = _ - Node),
+find_matching_suspects(Answer, Suspects, Matches, NoMatches) :-
+	P = (pred(S::in) is semidet :- suspect_answer_match(S, Answer, _)),
 	list__filter(P, Suspects, Matches, NoMatches).
+
+%-----------------------------------------------------------------------------%
+
+:- type prime_suspect(T)
+	--->	prime_suspect(
+				% Incorrect node.
+				%
+			suspect(T),
+
+				% Evidence: the oracle said these nodes
+				% were either correct or inadmissible.
+				%
+			list(suspect(T)),
+
+				% Earliest inadmissible child, if there
+				% have been any at all.  This child
+				% is also included in the list of
+				% evidence.
+				%
+			maybe(suspect(T)),
+
+				% Previous prime suspects.
+				%
+			list(suspect(T))
+		).
+
+	% Create a prime suspect from a suspect, and maybe the previous
+	% prime suspect (if there was one).
+	%
+:- pred create_prime_suspect(suspect(T), maybe(prime_suspect(T)),
+		prime_suspect(T)).
+:- mode create_prime_suspect(in, in, out) is det.
+
+create_prime_suspect(Suspect, MaybeOldPrime, Prime) :-
+	(
+		MaybeOldPrime = yes(OldPrime)
+	->
+		OldPrime = prime_suspect(OldSuspect, _, _, Previous0),
+		PreviousPrimes = [OldSuspect | Previous0]
+	;
+		PreviousPrimes = []
+	),
+	Prime = prime_suspect(Suspect, [], no, PreviousPrimes).
+
+:- pred prime_suspect_get_edt_node(prime_suspect(T), T).
+:- mode prime_suspect_get_edt_node(in, out) is det.
+
+prime_suspect_get_edt_node(prime_suspect(Suspect, _, _, _), EDT) :-
+	suspect_get_edt_node(Suspect, EDT).
+
+	% Get all the suspects who are children of the prime suspect,
+	% and who are deemed correct or inadmissible.  Maybe get
+	% the earliest inadmissible child (if there was one).
+	%
+:- pred prime_suspect_get_evidence(prime_suspect(T), list(suspect(T)),
+		maybe(suspect(T))).
+:- mode prime_suspect_get_evidence(in, out, out) is det.
+
+prime_suspect_get_evidence(prime_suspect(_, E, M, _), E, M).
+
+	% Add to the evidence against the prime suspect a child who
+	% is deemed correct or inadmissible.
+	% This predicate will be more interesting when decl_truth
+	% has three values.
+	%
+:- pred prime_suspect_add_evidence(prime_suspect(T), suspect(T), decl_truth,
+		prime_suspect(T)).
+:- mode prime_suspect_add_evidence(in, in, in, out) is det.
+
+prime_suspect_add_evidence(Prime0, Suspect, yes, Prime) :-
+	Prime0 = prime_suspect(S, Evidence0, M, P),
+	Evidence = [Suspect | Evidence0],
+	Prime = prime_suspect(S, Evidence, M, P).
+
+prime_suspect_add_evidence(_, _, no, _) :-
+	error("prime_suspect_add_evidence: not evidence").
 

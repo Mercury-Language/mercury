@@ -31,15 +31,15 @@ app([2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8])
 Valid? no
 app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
 Valid? no
-Incorrect node found:
+Found incorrect contour:
 app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
 Is this a bug? yes
       19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
 mdb> continue
 append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
-      24:    584  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
+      24:    608  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> finish -n
-      71:    584  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+      71:    608  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> dd
 app([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
@@ -61,9 +61,9 @@ app([9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
 app([0, 1, 2, 3, 4, 5], [6, 7, 8], [0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-Incorrect node found:
+Found incorrect contour:
 app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
 Is this a bug? yes
-      71:    584  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+      71:    608  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> continue
 append([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8]).

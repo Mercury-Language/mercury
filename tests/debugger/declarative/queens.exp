@@ -51,9 +51,8 @@ Call qdelete(_, [1], _)
 Solutions:
 	qdelete(1, [1], [])
 Complete? yes
-Incorrect node found:
-Call qperm([1], _)
-No solutions.
+Found partially uncovered atom:
+qperm([1], _)
 Is this a bug? yes
      161:      3  2 FAIL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> continue

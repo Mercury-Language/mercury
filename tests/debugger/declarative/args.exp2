@@ -13,7 +13,7 @@ p(1, 16, 3, 20, 5)
 Valid? no
 my_succeed
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p(1, 16, 3, 20, 5)
 Is this a bug? yes
        9:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
@@ -24,7 +24,7 @@ mdb> finish
 mdb> dd
 p(1, -2, 3, 2, 5)
 Valid? no
-Incorrect node found:
+Found incorrect contour:
 p(1, -2, 3, 2, 5)
 Is this a bug? yes
       20:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
@@ -38,11 +38,8 @@ Solutions:
 	p(1, 16, 3, 20, 5)
 	p(1, -2, 3, 2, 5)
 Complete? no
-Incorrect node found:
-Call p(1, _, 3, _, 5)
-Solutions:
-	p(1, 16, 3, 20, 5)
-	p(1, -2, 3, 2, 5)
+Found partially uncovered atom:
+p(1, _, 3, _, 5)
 Is this a bug? yes
       26:      2  2 FAIL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> continue

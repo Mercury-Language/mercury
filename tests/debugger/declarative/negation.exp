@@ -24,7 +24,7 @@ Solutions:
 	r(1, 11)
 	r(1, 21)
 Complete? yes
-Incorrect node found:
+Found incorrect contour:
 p(1, 42)
 Is this a bug? yes
       23:      2  2 EXIT pred negation:p/2-0 (det) negation.m:29 (negation.m:14)

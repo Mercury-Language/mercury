@@ -17,7 +17,7 @@ c(2, 11)
 Valid? yes
 f(11)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 a(11)
 Is this a bug? yes
       23:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
@@ -32,7 +32,7 @@ c(2, 12)
 Valid? yes
 f(12)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 a(12)
 Is this a bug? yes
       30:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
@@ -49,7 +49,7 @@ c(3, 20)
 Valid? yes
 f(20)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 a(20)
 Is this a bug? yes
       42:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)

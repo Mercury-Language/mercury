@@ -8,14 +8,14 @@
 % Purpose:
 % 	This module performs all the user interaction of the front
 % end of the declarative debugger.  It is responsible for displaying
-% edt_nodes in a human-readable format, and for getting responses to
-% debugger queries from the user.
+% questions and bugs in a human-readable format, and for getting
+% responses to debugger queries from the user.
 %
 
 :- module mdb__declarative_user.
 :- interface.
 :- import_module mdb__declarative_debugger.
-:- import_module list, io, string.
+:- import_module list, io.
 
 :- type user_response
 	--->	user_answer(decl_answer)
@@ -38,9 +38,9 @@
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.
 	%
-:- pred user_confirm_bug(string, decl_question, user_response, user_state,
-		user_state, io__state, io__state).
-:- mode user_confirm_bug(in, in, out, in, out, di, uo) is det.
+:- pred user_confirm_bug(decl_bug, decl_confirmation, user_state, user_state,
+		io__state, io__state).
+:- mode user_confirm_bug(in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -118,6 +118,13 @@ decl_question_prompt(missing_answer(_, _), "Complete? ").
 :- mode browse_edt_node(in, in, out, di, uo) is det.
 
 browse_edt_node(_Node, User, User) -->
+	io__write_string("Sorry, not implemented.\n").
+
+:- pred browse_decl_bug(decl_bug, user_state, user_state,
+		io__state, io__state).
+:- mode browse_decl_bug(in, in, out, di, uo) is det.
+
+browse_decl_bug(_Bug, User, User) -->
 	io__write_string("Sorry, not implemented.\n").
 
 	% Reverse the first argument and append the second to it.
@@ -214,20 +221,18 @@ command_chars(['?' | _], help).
 
 %-----------------------------------------------------------------------------%
 
-user_confirm_bug(Message, Question, Response, User0, User) -->
-	{ User0 = user(_, OutStr) },
-	io__write_string(OutStr, Message),
-	write_decl_question(Question, User0),
+user_confirm_bug(Bug, Response, User0, User) -->
+	write_decl_bug(Bug, User0),
 	get_command("Is this a bug? ", Command, User0, User1),
 	(
 		{ Command = yes }
 	->
-		{ Response = user_answer(Question - yes) },
+		{ Response = confirm_bug },
 		{ User = User1 }
 	;
 		{ Command = no }
 	->
-		{ Response = user_answer(Question - no) },
+		{ Response = overrule_bug },
 		{ User = User1 }
 	;
 		{ Command = abort }
@@ -237,11 +242,11 @@ user_confirm_bug(Message, Question, Response, User0, User) -->
 	;
 		{ Command = browse }
 	->
-		browse_edt_node(Question, User1, User2),
-		user_confirm_bug(Message, Question, Response, User2, User)
+		browse_decl_bug(Bug, User1, User2),
+		user_confirm_bug(Bug, Response, User2, User)
 	;
 		user_confirm_bug_help(User1),
-		user_confirm_bug(Message, Question, Response, User1, User)
+		user_confirm_bug(Bug, Response, User1, User)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -267,6 +272,28 @@ write_decl_question(missing_answer(Call, Solns), User) -->
 		io__write_string(OutStr, "Solutions:\n"),
 		list__foldl(write_decl_atom(OutStr, "\t"), Solns)
 	).
+
+:- pred write_decl_bug(decl_bug, user_state, io__state, io__state).
+:- mode write_decl_bug(in, in, di, uo) is det.
+
+write_decl_bug(e_bug(EBug), User) -->
+	{ User = user(_, OutStr) },
+	(
+		{ EBug = incorrect_contour(Atom, _) },
+		io__write_string(OutStr, "Found incorrect contour:\n"),
+		write_decl_atom(OutStr, "", Atom)
+	;
+		{ EBug = partially_uncovered_atom(Atom) },
+		io__write_string(OutStr, "Found partially uncovered atom:\n"),
+		write_decl_atom(OutStr, "", Atom)
+	).
+
+write_decl_bug(i_bug(IBug), User) -->
+	{ User = user(_, OutStr) },
+	{ IBug = inadmissible_call(Parent, _, Call) },
+	io__write_string(OutStr, "Found inadmissible call:\n"),
+	write_decl_atom(OutStr, "Parent", Parent),
+	write_decl_atom(OutStr, "Call ", Call).
 
 :- pred write_decl_atom(io__output_stream, string, decl_atom,
 		io__state, io__state).

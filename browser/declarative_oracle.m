@@ -25,7 +25,7 @@
 :- module mdb__declarative_oracle.
 :- interface.
 :- import_module mdb__declarative_debugger.
-:- import_module list, io, string.
+:- import_module list, io.
 
 	% A response that the oracle gives to a query about the
 	% truth of an EDT node.
@@ -33,13 +33,6 @@
 :- type oracle_response
 	--->	oracle_answers(list(decl_answer))
 	;	no_oracle_answers
-	;	abort_diagnosis.
-
-	% A response that the oracle gives when asked to confirm a bug.
-	%
-:- type oracle_confirmation
-	--->	confirm_bug
-	;	overrule_bug
 	;	abort_diagnosis.
 
 	% The oracle state.  This is threaded around the declarative
@@ -63,12 +56,10 @@
 :- mode query_oracle(in, out, in, out, di, uo) is det.
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.
-	% The first argument is a message from the caller to be
-	% prefixed to the question.
 	%
-:- pred oracle_confirm_bug(string, decl_question, oracle_confirmation,
-		oracle_state, oracle_state, io__state, io__state).
-:- mode oracle_confirm_bug(in, in, out, in, out, di, uo) is det.
+:- pred oracle_confirm_bug(decl_bug, decl_confirmation, oracle_state,
+		oracle_state, io__state, io__state).
+:- mode oracle_confirm_bug(in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,23 +95,10 @@ query_oracle(Queries, Response, Oracle0, Oracle) -->
 		{ Oracle = Oracle0 }
 	).
 
-oracle_confirm_bug(Message, Question, Confirmation, Oracle0, Oracle) -->
+oracle_confirm_bug(Bug, Confirmation, Oracle0, Oracle) -->
 	{ get_oracle_user(Oracle0, User0) },
-	user_confirm_bug(Message, Question, UserResponse, User0, User),
-	{ set_oracle_user(Oracle0, User, Oracle) },
-	{
-		UserResponse = user_answer(_ - yes),
-		Confirmation = confirm_bug
-	;
-		UserResponse = user_answer(_ - no),
-		Confirmation = overrule_bug
-	;
-		UserResponse = no_user_answer,
-		error("oracle_confirm_bug: no user answer")
-	;
-		UserResponse = abort_diagnosis,
-		Confirmation = abort_diagnosis
-	}.
+	user_confirm_bug(Bug, Confirmation, User0, User),
+	{ set_oracle_user(Oracle0, User, Oracle) }.
 
 %-----------------------------------------------------------------------------%
 		

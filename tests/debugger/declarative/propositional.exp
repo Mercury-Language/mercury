@@ -15,7 +15,7 @@ a
 Valid? no
 c
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 a
 Is this a bug? yes
       11:      2  2 EXIT pred propositional:a/0-0 (semidet) propositional.m:27 (propositional.m:10)
@@ -30,7 +30,7 @@ f
 Valid? no
 i
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 f
 Is this a bug? yes
       22:      5  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)

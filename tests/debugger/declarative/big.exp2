@@ -24,7 +24,7 @@ c(2, 6)
 Valid? yes
 f(6, -12)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p(-12)
 Is this a bug? yes
       28:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
@@ -39,7 +39,7 @@ c(2, 7)
 Valid? yes
 f(7, -14)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p(-14)
 Is this a bug? yes
       35:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
@@ -64,7 +64,7 @@ e(1, 10)
 Valid? yes
 f(10, -20)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p(-20)
 Is this a bug? yes
       71:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
@@ -79,7 +79,7 @@ e(1, 11)
 Valid? yes
 f(11, -22)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p(-22)
 Is this a bug? yes
       78:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
@@ -105,7 +105,7 @@ Solutions:
 	c(2, 6)
 	c(2, 7)
 Complete? yes
-Incorrect node found:
+Found incorrect contour:
 p(2)
 Is this a bug? yes
      115:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
@@ -149,14 +149,8 @@ c(4, 9)
 Valid? yes
 g(9, 99)
 Valid? yes
-Incorrect node found:
-Call p(_)
-Solutions:
-	p(-12)
-	p(-14)
-	p(-20)
-	p(-22)
-	p(2)
+Found partially uncovered atom:
+p(_)
 Is this a bug? yes
      143:      2  2 FAIL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue

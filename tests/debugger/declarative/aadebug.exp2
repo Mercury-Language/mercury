@@ -17,7 +17,7 @@ r('a', 10)
 Valid? yes
 s(10, 30)
 Valid? yes
-Incorrect node found:
+Found incorrect contour:
 p('a', 30)
 Is this a bug? yes
       15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
@@ -28,7 +28,7 @@ mdb> finish
 mdb> dd
 p('a', 31)
 Valid? no
-Incorrect node found:
+Found incorrect contour:
 p('a', 31)
 Is this a bug? yes
       22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
@@ -47,7 +47,7 @@ Complete? yes
 Call q('b', _)
 No solutions.
 Complete? yes
-Incorrect node found:
+Found incorrect contour:
 p('a', 32)
 Is this a bug? yes
       39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
@@ -67,12 +67,8 @@ Solutions:
 	q('a', 'a')
 	q('a', 'b')
 Complete? yes
-Incorrect node found:
-Call p('a', _)
-Solutions:
-	p('a', 30)
-	p('a', 31)
-	p('a', 32)
+Found partially uncovered atom:
+p('a', _)
 Is this a bug? yes
       47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue

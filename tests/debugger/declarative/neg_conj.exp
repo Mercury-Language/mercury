@@ -26,7 +26,7 @@ Solutions:
 	q(0, 0)
 	q(0, 1)
 Complete? yes
-Incorrect node found:
+Found incorrect contour:
 p(0)
 Is this a bug? yes
       18:      2  2 EXIT pred neg_conj:p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
