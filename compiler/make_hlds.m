@@ -3662,7 +3662,10 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args, Body,
 		{ code_util__predinfo_is_builtin(PredInfo1) }
 	->
 		prog_out__write_context(Context),
-		report_warning("Warning: clause for builtin.\n"),
+		% XXX change this back to use report_warning
+		% after the change to add {int,float}__checked_quotient
+		% is installed everywhere.
+		io__write_string("Warning: clause for builtin.\n"),
 		{ ModuleInfo = ModuleInfo1 },
 		{ Info = Info0 }
 	;
