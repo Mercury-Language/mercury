@@ -1994,6 +1994,17 @@ the following functions:
 :- func elem(K, map(K, V)) = V is semidet.
 :- func 'elem :='(K, map(K, V), V) = map(K, V).
 @end example
+Field access syntax may be used at the top-level of @code{func} and
+@code{mode} declarations and in the head of clauses.  For instance:
+@example
+:- func map(K, V) ^ elem(K) = V.
+:- mode in        ^ in      = out is semidet.
+Map ^ elem(Key) = map__lookup(Map, Key).
+
+:- func (map(K, V) ^ elem(K) := V)  = V.
+:- mode (in        ^ in      := in) = out is semidet.
+(Map ^ elem(Key) := Value) = map__set(Map, Key, Value).
+@end example
 
 The Mercury standard library modules @code{array} and @code{bt_array}
 define similar functions.
@@ -2022,20 +2033,20 @@ The compiler generates some field access functions for @samp{field1}.
 The functions generated for the other fields are similar.
 
 @example
-:- func field1(type1) = type2.
-field1(type1(Field1, _)) = Field1.
++:- func type1 ^ field1 = type2.
++type1(Field1, _) ^ field1 = Field1.
 
-:- func 'field1 :='(type1, type2) = type1.
-'field1 :='(type1(_, Field2), Field1) = type1(Field1, Field2).
++:- func (type1 ^ field1 := type2) = type1.
++(type1(_, Field2) ^ field1 := Field1) = type1(Field1, Field2).
 @end example
 
 Using these functions and the syntactic sugar described in
 @ref{Record syntax}, programmers can write code such as
 
 @example
-:- func increment_field3(type1) = type1.
++:- func type1 ^ increment_field3 = type1.
 
-increment_field3(Term0) =
++Term0 ^ increment_field3 =
         Term0 ^ field1 ^ field3 := Term0 ^ field1 ^ field3 + 1.
 @end example
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -979,7 +979,8 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 		parse_goal(Body, ProgVarSet, Body2, ProgVarSet2),
 		(
 			Head = term__functor(term__atom("="),
-					[FuncHead, FuncResult], _)
+					[FuncHead0, FuncResult], _),
+			FuncHead = desugar_field_access(FuncHead0)
 		->
 			parse_implicitly_qualified_term(ModuleName,
 				FuncHead, Head, "equation head", R2),
@@ -2327,7 +2328,8 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 		ExistQVars, Constraints, InstConstraints, Attributes, Result) :-
 	(
 		Term = term__functor(term__atom("="),
-				[FuncTerm, ReturnTypeTerm], _Context)
+				[FuncTerm0, ReturnTypeTerm], _Context),
+		FuncTerm = desugar_field_access(FuncTerm0)
 	->
 		parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
 			"`:- func' declaration", R),
@@ -2337,7 +2339,6 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 	;
 		Result = error("`=' expected in `:- func' declaration", Term)
 	).
-
 
 :- pred process_func_3(maybe_functor, term, term, term, varset,
 	maybe(determinism), condition, existq_tvars, class_constraints,
@@ -2404,6 +2405,32 @@ process_func_3(error(M, T), _, _, _, _, _, _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
+	% Perform one of the following field-access syntax rewrites if
+	% possible:
+	%
+	% 	A ^ f(B, ...)		--->	f(B, ..., A)
+	% 	(A ^ f(B, ...) := X)	--->	'f :='(B, ..., A, X)
+	%
+:- func desugar_field_access(term) = term.
+
+desugar_field_access(Term) =
+	( if
+		Term = functor(atom("^"), [A, RHS], _),
+		RHS  = functor(atom(FieldName), Bs, Context)
+	  then
+	  	functor(atom(FieldName), Bs ++ [A], Context)
+	  else if
+		Term = functor(atom(":="), [LHS, X], _),
+		LHS  = functor(atom("^"), [A, RHS], Context),
+		RHS  = functor(atom(FieldName), Bs, Context)
+	  then
+	  	functor(atom(FieldName ++ " :="), Bs ++ [A, X], Context)
+	  else
+	  	Term
+	).
+
+%-----------------------------------------------------------------------------%
+
 	% parse a `:- mode p(...)' declaration
 
 :- pred process_mode(module_name, varset, term, condition, decl_attrs,
@@ -2415,7 +2442,8 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes,
 	(
 		WithInst = no,
 		Term = term__functor(term__atom("="),
-				[FuncTerm, ReturnTypeTerm], _Context)
+				[FuncTerm0, ReturnTypeTerm], _Context),
+		FuncTerm = desugar_field_access(FuncTerm0)
 	->
 		parse_implicitly_qualified_term(ModuleName, FuncTerm, Term,
 				"function `:- mode' declaration", R),

@@ -1,0 +1,4 @@
+A                           = array([1, 2, 3])
+A ^ elem(0)                 = 1
+A ^ elem_from_end(0)        = 3
+(A ^ elem_from_end(2) := 4) = array([4, 2, 3])
