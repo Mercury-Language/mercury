@@ -968,7 +968,7 @@ options_help_output -->
 
 options_help_aux_output -->
 	io__write_string("\n Auxiliary Output Options:\n"),
-	io__write_string("\t--generate-bytecode"),
+	io__write_string("\t--generate-bytecode\n"),
 	io__write_string("\t\tOutput a bytecode form of the module for debugging.\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
