@@ -4,11 +4,6 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include <unistd.h>
-#include "imp.h"
-#include "ext_stdlib.h"
-#include "ext_signal.h"
-
 /*
 ** This module defines the register array and data regions of the
 ** execution algorithm.
@@ -32,6 +27,17 @@
 ** thus detecting area overflow.
 */
 
+/*---------------------------------------------------------------------------*/
+
+#include "imp.h"
+#include "conf.h"
+
+#include <unistd.h>
+
+#ifdef	HAVE_SIGINFO
+#include	<sys/siginfo.h>
+#endif 
+
 #include <stdio.h>
 
 #ifdef	HAVE_MPROTECT
@@ -39,13 +45,6 @@
 #endif
 
 #include <signal.h>
-
-#ifdef	HAVE_SIGINFO
-static	void	complex_bushandler(int, siginfo_t *, void *);
-static	void	complex_segvhandler(int, siginfo_t *, void *);
-#else
-static	void	simple_sighandler(int);
-#endif
 
 #ifdef	HAVE_UCONTEXT
 #include <ucontext.h>
@@ -67,12 +66,21 @@ extern	int	getpagesize(void);
 #ifdef	CONSERVATIVE_GC
 #define memalign(a,s)   GC_MALLOC_UNCOLLECTABLE(s)
 #else
-#ifndef	HAVE_MEMALIGN
+#ifdef	HAVE_MEMALIGN
+extern	void	*memalign(size_t, size_t);
+#else
 #define	memalign(a,s)	malloc(s)
 #endif
 #endif
 
-#include "conf.h"
+/*---------------------------------------------------------------------------*/
+
+#ifdef	HAVE_SIGINFO
+static	void	complex_bushandler(int, siginfo_t *, void *);
+static	void	complex_segvhandler(int, siginfo_t *, void *);
+#else
+static	void	simple_sighandler(int);
+#endif
 
 /*
 ** round_up(amount, align) returns `amount' rounded up to the nearest
@@ -118,14 +126,15 @@ int	heap_zone_left = 0;
 int	detstack_zone_left = 0;
 int	nondstack_zone_left = 0;
 
-static	uint	unit;
-static	uint	page_size;
+static	unsigned	unit;
+static	unsigned	page_size;
 
 void init_memory(void)
 {
 	char	*arena;
-	uint	total_size;
-	uint	fake_reg_offset, heap_offset, detstack_offset, nondstack_offset;
+	unsigned	total_size;
+	unsigned	fake_reg_offset, heap_offset,
+			detstack_offset, nondstack_offset;
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -186,7 +195,7 @@ void init_memory(void)
 	}
 	arena = (char *) round_up((int) arena, unit);
 	
-	fake_reg_offset = (uint) fake_reg % pcache_size;
+	fake_reg_offset = (unsigned) fake_reg % pcache_size;
 	heap_offset = (fake_reg_offset + pcache_size / 4) % pcache_size;
 	detstack_offset = (heap_offset + pcache_size / 4) % pcache_size;
 	nondstack_offset = (detstack_offset + pcache_size / 4) % pcache_size;
@@ -199,7 +208,7 @@ void init_memory(void)
 	heap    = (Word *) arena;
 	heapmin = (Word *) ((char *) heap + heap_offset);
 	heapend = (Word *) ((char *) heap + heap_size + unit);
-	assert(((uint) heapend) % unit == 0);
+	assert(((unsigned) heapend) % unit == 0);
 #endif
 
 #ifdef CONSERVATIVE_GC
@@ -209,12 +218,12 @@ void init_memory(void)
 #endif
 	detstackmin = (Word *) ((char *) detstack + detstack_offset);
 	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
-	assert(((uint) detstackend) % unit == 0);
+	assert(((unsigned) detstackend) % unit == 0);
 
 	nondstack    = detstackend;
 	nondstackmin = (Word *) ((char *) nondstack + nondstack_offset);
 	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
-	assert(((uint) nondstackend) % unit == 0);
+	assert(((unsigned) nondstackend) % unit == 0);
 
 #ifndef	SPEED
 	nondstackmin[PREDNM] = (Word) "bottom";

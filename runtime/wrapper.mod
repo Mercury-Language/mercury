@@ -16,17 +16,17 @@
 /* command-line options */
 
 /* size of data areas, in kilobytes */
-uint		heap_size =     40960;
-uint		detstack_size =   512;
-uint		nondstack_size =  128;
+unsigned	heap_size =     40960;
+unsigned	detstack_size =   512;
+unsigned	nondstack_size =  128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
-uint		heap_zone_size =       16;
-uint		detstack_zone_size =   16;
-uint		nondstack_zone_size =  16;
+unsigned	heap_zone_size =       16;
+unsigned	detstack_zone_size =   16;
+unsigned	nondstack_zone_size =  16;
 
 /* primary cache size to optimize for */
-uint		pcache_size =    8192;
+unsigned	pcache_size =    8192;
 
 /* other options */
 int		r1val = -1;
@@ -34,8 +34,7 @@ int		r2val = -1;
 int		r3val = -1;
 
 bool		check_space = FALSE;
-bool		benchmark_all_solns = FALSE;
-
+static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 static	Code	*which = NULL;

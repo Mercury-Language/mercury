@@ -15,16 +15,16 @@ include ../Mmake.common
 
 CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g \
 		  $(PROFFLAGS)
-MGNUC		= MERCURY_C_INCL_DIR=. mgnuc
-MGNUCFLAGS	= $(CFLAGS)
+MGNUC		= MERCURY_C_INCL_DIR=. ../scripts/mgnuc
+MGNUCFLAGS	= --no-ansi $(CFLAGS)
 
 #-----------------------------------------------------------------------------#
 
 HDRS		= access.h aux.h conf.h dlist.h debug.h dummy.h engine.h \
 		  getopt.h goto.h heap.h imp.h init.h io_rt.h label.h \
 		  overflow.h prof.h memory.h regorder.h regs.h std.h stacks.h \
-		  table.h tags.h timing.h wrapper.h ext_signal.h \
-		  ext_stdlib.h prof.h type_info.h
+		  table.h tags.h timing.h wrapper.h \
+		  prof.h type_info.h
 
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h
@@ -59,8 +59,12 @@ libmer.so: $(PIC_OBJS)
 runtime.init: $(MOD_CS)
 	cat $(MOD_CS) | grep '^INIT ' > runtime.init
 
-conf.h: ../config.status conf.h.in
+conf.h.date: ../config.status conf.h.in
 	cd ..; CONFIG_FILES= CONFIG_HEADERS=runtime/conf.h ./config.status
+	echo datestamp > conf.h.date
+
+conf.h: conf.h.date
+	
 
 .PHONY: cs
 cs: $(MOD_CS)
