@@ -2969,6 +2969,7 @@ mercury_unary_prefix_op("import_module").
 mercury_unary_prefix_op("include_module").
 mercury_unary_prefix_op("impure").
 mercury_unary_prefix_op("insert").
+mercury_unary_prefix_op("instance").
 mercury_unary_prefix_op("inst").
 mercury_unary_prefix_op("lib").
 mercury_unary_prefix_op("listing").
@@ -2987,6 +2988,7 @@ mercury_unary_prefix_op("semipure").
 mercury_unary_prefix_op("sorted").
 mercury_unary_prefix_op("spy").
 mercury_unary_prefix_op("type").
+mercury_unary_prefix_op("typeclass").
 mercury_unary_prefix_op("update").
 mercury_unary_prefix_op("useIf").
 mercury_unary_prefix_op("wait").
