@@ -1321,13 +1321,68 @@ code_info__save_variable_on_stack(Var, Code) -->
 code_info__slot_occupied([], _Var, _Slot) :- fail.
 code_info__slot_occupied([V - Stat|Rest], Var, Slot) :-
 	(
-		Stat = evaluated(Set),
-		V \= Var,
-		set__member(Slot, Set)
+		% some [Lval] (
+			Stat = evaluated(Set),
+			V \= Var,
+			set__member(Lval, Set),
+			code_info__lval_contains(Lval, Slot)
+		% )
 	->
 		true
 	;
 		code_info__slot_occupied(Rest, Var, Slot)
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__lval_contains(lval, lval).
+:- mode code_info__lval_contains(in ,in) is semidet.
+
+code_info__lval_contains(reg(R), reg(R)).
+code_info__lval_contains(stackvar(N), stackvar(N)).
+code_info__lval_contains(framevar(N), framevar(N)).
+code_info__lval_contains(field(_, Rval0, Rval1), Lval) :-
+	(
+		code_info__rval_contains(Rval0, Lval)
+	;
+		code_info__rval_contains(Rval1, Lval)
+	).
+
+:- pred code_info__rval_contains(rval, lval).
+:- mode code_info__rval_contains(in ,in) is semidet.
+
+code_info__rval_contains(lval(Lval0), Lval1) :-
+	code_info__lval_contains(Lval0, Lval1).
+code_info__rval_contains(mkword(_, Rval), Lval) :-
+	code_info__rval_contains(Rval, Lval).
+code_info__rval_contains(unop(_, Rval), Lval) :-
+	code_info__rval_contains(Rval, Lval).
+code_info__rval_contains(binop(_, Rval0, Rval1), Lval) :-
+	(
+		code_info__rval_contains(Rval0, Lval)
+	;
+		code_info__rval_contains(Rval1, Lval)
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__get_matching_lval(list(lval), lval, lval).
+:- mode code_info__get_matching_lval(in, in, out) is semidet.
+
+code_info__get_matching_lval([L|Ls], S, R) :-
+	(
+		code_info__lval_contains(L, S)
+	->
+		R = L,
+		(
+			code_info__get_matching_lval(Ls, S, _)
+		->
+			error("code_info__get_matching_lval: sanity check failed")
+		;
+			true
+		)
+	;
+		code_info__get_matching_lval(Ls, S, R)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1337,21 +1392,57 @@ code_info__slot_occupied([V - Stat|Rest], Var, Slot) :-
 						code_info, code_info).
 :- mode code_info__relocate_slot(in, in, in, out, in, out) is det.
 
+% XXX this code does not handle the case that there are multiple matching
+% lvals.
+
 code_info__relocate_slot([], _Reg, _Slot, []) --> [].
 code_info__relocate_slot([V - S0|Rest0], Reg, Slot, [V - S|Rest]) -->
 	(
 		{ S0 = evaluated(Set0) },
-		{ set__member(Slot, Set0) }
+		{ set__to_sorted_list(Set0, List0) },
+		{ code_info__get_matching_lval(List0, Slot, Lval0) }
 	->
-		{ set__singleton_set(SSet, Slot) },
+		{ set__singleton_set(SSet, Lval0) },
 		{ set__difference(Set0, SSet, Set1) },
-		{ set__insert(Set1, reg(Reg), Set2) },
+		{ code_info__replace_lval(Lval0, Slot, reg(Reg), Lval) },
+		{ set__insert(Set1, Lval, Set2) },
 		{ S = evaluated(Set2) },
 		code_info__add_variable_to_register(V, Reg)
 	;
 		{ S = S0 }
 	),
 	code_info__relocate_slot(Rest0, Reg, Slot, Rest).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__replace_lval(lval, lval, lval, lval).
+:- mode code_info__replace_lval(in, in, in, out) is det.
+
+code_info__replace_lval(Lval0, Match, Repl, Result) :-
+	(
+		Lval0 = Match
+	->
+		Result = Repl
+	;
+		Lval0 = field(T, Rval0, N)
+	->
+		code_info__replace_lval_in_rval(Rval0, Match, Repl, Rval),
+		Result = field(T, Rval, N)
+	;
+		error("code_info__replace_lval: sanity check failed")
+	).
+
+:- pred code_info__replace_lval_in_rval(rval, lval, lval, rval).
+:- mode code_info__replace_lval_in_rval(in, in, in, out) is det.
+
+code_info__replace_lval_in_rval(Rval0, Match, Repl, Result) :-
+	(
+		Rval0 = lval(Match)
+	->
+		Result = lval(Repl)
+	;
+		error("code_info__replace_lval_in_rval: sanity check failed")
+	).
 
 %---------------------------------------------------------------------------%
 
