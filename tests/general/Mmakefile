@@ -71,10 +71,18 @@ EXCEPTION_PROGS = \
 		map_corresponding \
 		unused_arg_determinism
 
-ifneq "$(findstring profdeep,$(GRADE))" ""
-	PROGS0 = $(ORDINARY_PROGS)
+# XXX Java testing is disabled for this directory since most tests
+#     currently fail.  The reason for this is that they depend too
+#     heavily on the mercury library which cannot yet be compiled
+#     in grade java.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS0 =
 else
-	PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
+	ifneq "$(findstring profdeep,$(GRADE))" ""
+		PROGS0 = $(ORDINARY_PROGS)
+	else
+		PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
+	endif
 endif
 
 	# On Dec OSF 5.1 the floating point tests of

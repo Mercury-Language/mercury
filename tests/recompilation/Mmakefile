@@ -42,7 +42,14 @@ TESTS_SHOULD_FAIL = \
 	type_qual_re \
 	with_type_re
 
-PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) $(TESTS_SHOULD_FAIL)
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
+else
+	PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
+		$(TESTS_SHOULD_FAIL)
+endif
+
 TESTS= $(PROGS:%=%-nodepend)
 SUBDIRS=
 TESTS_DIR=..

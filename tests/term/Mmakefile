@@ -6,9 +6,9 @@ THIS_DIR = term
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 # `mmc --make' doesn't know how to create `.trans_opt' files.
-PROGS=
+TERM_PROGS=
 else
-PROGS=	\
+TERM_PROGS= \
 	ack \
 	append \
 	arit_exp \
@@ -73,6 +73,13 @@ include $(TESTS_DIR)/Mmake.common
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
+
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(TERM_PROGS)
+endif
 
 %.runtest: %.trans_opt_res ;
 

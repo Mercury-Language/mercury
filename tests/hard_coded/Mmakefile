@@ -283,9 +283,16 @@ ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	endif
 endif
 
-PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
-	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS) \
-	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) $(CHAR_REP_PROGS)
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS =
+else
+	PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) \
+		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
+		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
+		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
+		$(CHAR_REP_PROGS)
+endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.

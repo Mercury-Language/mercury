@@ -8,18 +8,27 @@ THIS_DIR = benchmarks
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
+JAVA_PROGS= \
 	cqueens \
 	crypt \
 	deriv \
 	deriv2 \
 	nrev \
-	poly \
 	primes \
 	qsort \
 	queens \
 	query \
 	tak
+
+# XXX These test cases don't work in Java yet
+NONJAVA_PROGS= \
+	poly
+
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=$(JAVA_PROGS)
+else
+	PROGS=$(JAVA_PROGS) $(NONJAVA_PROGS)
+endif
 
 TESTS=$(PROGS)
 SUBDIRS=

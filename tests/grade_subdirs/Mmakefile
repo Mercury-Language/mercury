@@ -3,13 +3,18 @@
 
 THIS_DIR = grade_subdirs
 
-ifndef WORKSPACE
-PROGS=\
-	hello
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
 else
-# We can only use a workspace if it was built with `--use-grade-subdirs',
-# which in general it won't be.
-PROGS=
+	ifndef WORKSPACE
+		PROGS=\
+			hello
+	else
+		# We can only use a workspace if it was built with
+		# `--use-grade-subdirs', which in general it won't be.
+		PROGS=
+	endif
 endif
 
 # `--use-grade-subdirs' doesn't work with Mmake.

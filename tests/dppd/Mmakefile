@@ -1,10 +1,18 @@
 THIS_DIR = dppd
 TESTS_DIR = ..
 SUBDIRS =
-# For this directory, rather than having a separate main
-# for each test, there is a single Mercury test harness which
-# invokes all of the different tests.
-TESTS = run
+
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS =
+else
+	# For this directory, rather than having a separate main
+	# for each test, there is a single Mercury test harness
+	# which invokes all of the different tests.
+	PROGS = run
+endif
+
+TESTS = $(PROGS)
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

@@ -22,7 +22,12 @@ STRING_FORMAT_PROGS=	\
 ifneq "$(findstring .agc,$(GRADE))" ""
 	PROGS0=
 else
-	PROGS0=$(STRING_FORMAT_PROGS)
+	# We currently don't do any testing in grade java on this directory.
+	ifneq "$(findstring java,$(GRADE))" ""
+		PROGS0=
+	else
+		PROGS0=$(STRING_FORMAT_PROGS)
+	endif
 endif
 
 	# On solaris 5.{7,8} string_format_o fails because of a buggy

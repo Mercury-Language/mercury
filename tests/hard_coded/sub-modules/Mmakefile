@@ -14,7 +14,7 @@ THIS_DIR = hard_coded/sub-modules
 # if you use parallel make.
 #
 
-PROGS=	\
+SUB_MODULE_PROGS= \
 	accessibility \
 	accessibility2 \
 	use_submodule \
@@ -25,6 +25,13 @@ PROGS=	\
 	nested3 \
 	class \
 	nested_intermod_main
+
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(SUB_MODULE_PROGS)
+endif
 
 TESTS = $(PROGS)
 TESTS_DIR=../..

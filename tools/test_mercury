@@ -70,6 +70,10 @@ TESTDIR=$TOPDIR/test_mercury
 HOSTDIR=$TESTDIR/test_dirs/$HOST
 DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
+# Set-up the class path needed for java testing.
+CLASSPATH=$DIR/mercury/java:.
+export CLASSPATH
+
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
 ROTD_HOST=earth

@@ -35,8 +35,9 @@ EXCEPTION_PROGS = \
 
 # Deep profiling grades cannot yet handle catching exceptions, either
 # explicitly or implicitly by the runtime system.
+# We currently don't do any testing in grade java on this directory.
 
-ifneq "$(findstring profdeep,$(GRADE))" ""
+ifneq "$(findstring profdeep,$(GRADE))$(findstring java,$(GRADE))" ""
 	PROGS=
 else
 	PROGS=$(EXCEPTION_PROGS)

@@ -128,6 +128,17 @@ mmake_test () {
 	output_file_version=$1
 	mmake_should_fail=$2
 
+	# XXX This is a hacky way of testing for Java grades
+	echo "mmakeopts=$mmakeopts"
+	case $mmakeopts in
+		*java*)	target=$main_module.classes
+			run_target="java $main_module"
+			;;
+		*)	target=$main_module
+			run_target="./$main_module"
+			;;
+	esac
+
 	case $mmake_should_fail in
 	    true)	
 		#
@@ -138,10 +149,10 @@ mmake_test () {
 		# when using parallel mmakes.
 		#
 		eval mmake $mmakeopts -k \
-			$main_module > $main_module.failing_make_output 2>&1
+			$target > $main_module.failing_make_output 2>&1
 		;;
 	    false)
-		eval mmake $mmakeopts $main_module
+		eval mmake $mmakeopts $target
 		;;
 	esac
 
@@ -150,19 +161,19 @@ mmake_test () {
 		case $mmake_should_fail in
 		    true)
 			echo \
-	"** Error: mmake $mmakeopts $main_module succeeded where it should fail"
+	"** Error: mmake $mmakeopts $target succeeded where it should fail"
 			exit 1
 			;;
 		esac
 
-		./$main_module > $main_module.out
+		$run_target > $main_module.out
 		compare_files $main_module.exp.$output_file_version \
 				$main_module.out 
 		;;
 	    *)
 		case $mmake_should_fail in
 		    false)
-			echo "** Error: mmake $mmakeopts $main_module failed"
+			echo "** Error: mmake $mmakeopts $target failed"
 			exit 1
 			;;
 		esac

@@ -4,9 +4,17 @@ THIS_DIR = general/structure_reuse
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-PROGS=	if_then_else		\
+STRUCTURE_REUSE_PROGS=		\
+	if_then_else		\
 	internal_alias		\
 	interpret
+
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(STRUCTURE_REUSE_PROGS)
+endif
 
 TESTS=$(PROGS)
 TESTS_DIR=../..

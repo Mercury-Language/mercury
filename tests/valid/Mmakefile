@@ -233,12 +233,17 @@ endif
 # (i.e. grades hl* java* il*).
 # It will never be implemented for deep profiling grades.
 ifneq "$(filter hl% java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-    OBJ_PROGS=$(PROGS2)
+    # We currently don't do any testing in grade java on this directory.
+    ifneq "$(findstring java,$(GRADE))$" ""
+        OBJ_PROGS=
+    else
+        OBJ_PROGS=$(PROGS2)
+    endif
 else
     OBJ_PROGS=$(PROGS2) $(ADITI_PROGS)
 endif
 
-ifneq "$(findstring profdeep,$(GRADE))" ""
+ifneq "$(findstring profdeep,$(GRADE))$(findstring java,$(GRADE))" ""
 	ALL_RLO_PROGS =
 else
 	ALL_RLO_PROGS = $(RLO_PROGS)

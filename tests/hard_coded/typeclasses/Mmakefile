@@ -4,7 +4,7 @@ THIS_DIR = hard_coded/typeclasses
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
+TYPECLASSES_PROGS= \
 	arbitrary_constraint_class \
 	arbitrary_constraint_pred_2 \
 	arbitrary_constraint_pred_1 \
@@ -64,6 +64,13 @@ PROGS=	\
 	unqualified_method \
 	use_abstract_instance \
 	use_abstract_typeclass
+
+# We currently don't do any testing in grade java on this directory.
+ifneq "$(findstring java,$(GRADE))" ""
+	PROGS=
+else
+	PROGS=$(TYPECLASSES_PROGS)
+endif
 
 TESTS = $(PROGS)
 SUBDIRS=

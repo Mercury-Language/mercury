@@ -49,6 +49,9 @@ DIFF_OPTS=-c
 # deep profiling.
 RUN_RECOMPILATION_TESTS=yes
 
+# The Java interpreter.
+JAVA=java
+
 # We avoid picking up parameter settings from $HOME/.mdbrc that could
 # cause spurious differences between the outputs of the debugger test
 # cases and their expected outputs.
@@ -84,9 +87,19 @@ endif
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
 #
+ifneq "$(findstring java,$(GRADE))" ""
+
+%.out: %.class
+	{ [ -f $*.inp ] && cat $*.inp; } | $(JAVA) $* > $@ 2>&1 \
+		|| { grep . $@ /dev/null; exit 1; }
+
+else
+
 %.out: %$(EXT_FOR_EXE)
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
+
+endif
 
 #
 # For some test cases, there is more than one valid output.
