@@ -489,7 +489,7 @@ case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
 		CFLAGS_FOR_GOTOS="-non_shared -mno-abicalls"
-LIBRARY_PATH="$$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
+LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
 	i?86-*)
