@@ -52,7 +52,7 @@ extern	void		MR_dump_stack(Code *success_pointer,
 */
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
-				MR_Stack_Layout_Entry *entry_layout,
+				const MR_Stack_Layout_Entry *entry_layout,
 				Word *det_stack_pointer, Word *current_frame);
 
 extern	const MR_Stack_Layout_Label *MR_find_nth_ancestor(

@@ -39,15 +39,17 @@ static const char * detism_names[] = {
 	"cc_multi"	/* 14 */
 };
 
-static	MR_Stack_Walk_Step_Result MR_stack_walk_step(MR_Stack_Layout_Entry *,
-			MR_Stack_Layout_Label **, Word **, Word **,
-			const char **);
+static	MR_Stack_Walk_Step_Result MR_stack_walk_step(
+			const MR_Stack_Layout_Entry *,
+			const MR_Stack_Layout_Label **,
+			Word **, Word **, const char **);
 
 static	void	MR_dump_stack_record_init(void);
-static	void	MR_dump_stack_record_frame(FILE *fp, MR_Stack_Layout_Entry *);
+static	void	MR_dump_stack_record_frame(FILE *fp,
+			const MR_Stack_Layout_Entry *);
 static	void	MR_dump_stack_record_flush(FILE *fp);
-static	void	MR_dump_stack_record_print(FILE *fp, MR_Stack_Layout_Entry *,
-			int, int);
+static	void	MR_dump_stack_record_print(FILE *fp,
+			const MR_Stack_Layout_Entry *, int, int);
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
@@ -80,11 +82,11 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 }
 
 const char *
-MR_dump_stack_from_layout(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
+MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	Word *det_stack_pointer, Word *current_frame)
 {
 	MR_Stack_Walk_Step_Result	result;
-	MR_Stack_Layout_Label		*return_label_layout;
+	const MR_Stack_Layout_Label	*return_label_layout;
 	const char			*problem;
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
@@ -125,7 +127,7 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	const char **problem)
 {
 	MR_Stack_Walk_Step_Result	result;
-	MR_Stack_Layout_Label		*return_label_layout;
+	const MR_Stack_Layout_Label	*return_label_layout;
 	int				i;
 
 	*problem = NULL;
@@ -144,17 +146,17 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 }
 
 
-static	MR_Stack_Walk_Step_Result
-MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
-	MR_Stack_Layout_Label **return_label_layout,
+static MR_Stack_Walk_Step_Result
+MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
+	const MR_Stack_Layout_Label **return_label_layout,
 	Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,
 	const char **problem_ptr)
 {
-	Label			*label;
+	MR_Internal		*label;
 	MR_Live_Lval		location;
-	MR_Stack_Layout_Label	*label_layout;
 	MR_Lval_Type		type;
-	int			number, determinism;
+	int			number;
+	int			determinism;
 	Code			*success;
 
 	*return_label_layout = NULL;
@@ -192,26 +194,25 @@ MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
 		return STEP_OK;
 	}
 
-	label = lookup_label_addr(success);
+	label = MR_lookup_internal_by_addr(success);
 	if (label == NULL) {
 		*problem_ptr = "reached label with no stack trace info";
 		return STEP_ERROR_AFTER;
 	}
 
-	label_layout = (MR_Stack_Layout_Label *) label->e_layout;
-	if (label_layout == NULL) {
+	if (label->i_layout == NULL) {
 		*problem_ptr = "reached label with no stack layout info";
 		return STEP_ERROR_AFTER;
 	}
 
-	*return_label_layout = label_layout;
+	*return_label_layout = label->i_layout;
 	return STEP_OK;
 }
 
-static	MR_Stack_Layout_Entry	*prev_entry_layout;
-static	int			prev_entry_layout_count;
-static	int			prev_entry_start_level;
-static	int			current_level;
+static	const MR_Stack_Layout_Entry	*prev_entry_layout;
+static	int				prev_entry_layout_count;
+static	int				prev_entry_start_level;
+static	int				current_level;
 
 static void
 MR_dump_stack_record_init(void)
@@ -223,7 +224,7 @@ MR_dump_stack_record_init(void)
 }
 
 static void
-MR_dump_stack_record_frame(FILE *fp, MR_Stack_Layout_Entry *entry_layout)
+MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout)
 {
 	if (entry_layout == prev_entry_layout) {
 		prev_entry_layout_count++;
@@ -247,7 +248,7 @@ MR_dump_stack_record_flush(FILE *fp)
 }
 
 static void
-MR_dump_stack_record_print(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
+MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	int count, int start_level)
 {
 	fprintf(fp, "%9d ", start_level);

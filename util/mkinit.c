@@ -37,12 +37,13 @@
 static const char *progname = NULL;
 
 /* options and arguments, set by parse_options() */
-static const char *entry_point = "mercury__io__main_2_0";
+static const char *entry_point = "mercury__main_2_0";
 static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
 static bool output_main_func = TRUE;
 static bool c_files_contain_extra_inits = FALSE;
+static bool need_initialization_code = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
@@ -178,6 +179,12 @@ static const char main_func[] =
 	"}\n"
 	;
 
+
+static const char if_need_to_init[] = 
+	"#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"
+	;
+
+
 /* --- function prototypes --- */
 static	void parse_options(int argc, char *argv[]);
 static	void usage(void);
@@ -249,19 +256,23 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:w:lx")) != EOF) {
+	while ((c = getopt(argc, argv, "c:ilw:x")) != EOF) {
 		switch (c) {
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
 				usage();
 			break;
 
-		case 'w':
-			entry_point = optarg;
+		case 'i':
+			need_initialization_code = TRUE;
 			break;
 
 		case 'l':
 			output_main_func = FALSE;
+			break;
+
+		case 'w':
+			entry_point = optarg;
 			break;
 
 		case 'x':
@@ -309,6 +320,10 @@ output_sub_init_functions(void)
 {
 	int filenum;
 
+	if (! need_initialization_code) {
+		fputs(if_need_to_init, stdout);
+	}
+
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
 
@@ -316,7 +331,10 @@ output_sub_init_functions(void)
 		process_file(files[filenum]);
 	}
 
-	fputs("}\n\n", stdout);
+	fputs("}\n", stdout);
+	if (! need_initialization_code) {
+		fputs("\n#endif\n\n", stdout);
+	}
 }
 
 static void 
@@ -327,8 +345,16 @@ output_main_init_function(void)
 	fputs("static void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
 
+	if (! need_initialization_code) {
+		fputs(if_need_to_init, stdout);
+	}
+
 	for (i = 0; i <= num_modules; i++) {
 		printf("\tinit_modules_%d();\n", i);
+	}
+
+	if (! need_initialization_code) {
+		fputs("\n#endif\n", stdout);
 	}
 
 	fputs("}\n", stdout);

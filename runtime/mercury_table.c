@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -117,6 +117,23 @@ tab_get_all_entries(const Table *table)
 	}
 
 	return list;
+}
+
+/*
+**	Process all table entries with the specified function.
+*/
+
+void
+tab_process_all_entries(const Table *table, void f(const void *))
+{
+	reg	List	*ptr;
+	reg	int	i;
+
+	for (i = 0; i < table->ta_size; i++) {
+		for_list (ptr, table->ta_store[i]) {
+			f(ldata(ptr));
+		}
+	}
 }
 
 /*

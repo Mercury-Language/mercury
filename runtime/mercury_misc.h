@@ -17,7 +17,6 @@
 #include "mercury_types.h"	/* for `Code *' */
 
 #ifdef MR_LOWLEVEL_DEBUG
-
 extern	void	mkframe_msg(void);
 extern	void	modframe_msg(void);
 extern	void	succeed_msg(void);
@@ -36,15 +35,12 @@ extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
 #endif
 
-#if defined(MR_DEBUG_GOTOS)
-
+#ifdef MR_DEBUG_GOTOS
 extern	void	goto_msg(/* const */ Code *addr);
 extern	void	reg_msg(void);
-
 #endif
 
 #ifdef MR_LOWLEVEL_DEBUG
-
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
@@ -55,11 +51,9 @@ extern	void	dumpnondstack(void);
 extern	void	printlist(Word p);
 extern	void	printframe(const char *);
 extern	void	printregs(const char *msg);
-
 #endif
 
 extern	void	printlabel(/* const */ Code *w);
-
 
 #if __GNUC__
 	#define NO_RETURN __attribute__((noreturn))
@@ -76,6 +70,6 @@ extern	void	fatal_error(const char *msg) NO_RETURN;
 ** XXX We should fix this eventually by using -fno-builtin since pragma
 ** c_code may call the builtin functions.
 */
-void MR_memcpy(char *dest, const char *src, size_t nbytes);
+extern	void	MR_memcpy(char *dest, const char *src, size_t nbytes);
 
 #endif /* not MERCURY_MISC_H */

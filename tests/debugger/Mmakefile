@@ -14,6 +14,7 @@ DEBUGGER_PROGS=	\
 	queens
 
 MCFLAGS = --trace all $(EXTRA_MCFLAGS)
+EXTRA_C2INITFLAGS = -i
 
 # Not all grades can be used with stack layouts
 #

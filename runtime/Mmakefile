@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc -g \
-		  $(DLL_CFLAGS) $(EXTRA_CFLAGS) 
+		  $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi $(EXTRA_MGNUCFLAGS) $(CFLAGS)
 MOD2C		= $(SCRIPTS_DIR)/mod2c
@@ -67,6 +67,7 @@ HDRS		=	\
 			mercury_thread.h	\
 			mercury_timing.h	\
 			mercury_trace.h		\
+			mercury_trace_base.h	\
 			mercury_trace_external.h \
 			mercury_trace_internal.h \
 			mercury_trace_util.h	\
@@ -118,6 +119,7 @@ CFILES		= 	mercury_context.c	\
 			mercury_table_type_info.c\
 			mercury_timing.c	\
 			mercury_trace.c		\
+			mercury_trace_base.c	\
 			mercury_trace_external.c \
 			mercury_trace_internal.c \
 			mercury_trace_util.c	\

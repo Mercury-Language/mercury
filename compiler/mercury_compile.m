@@ -2359,7 +2359,13 @@ mercury_compile__link_module_list(Modules) -->
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
-	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
+	    globals__io_get_trace_level(TraceLevel),
+	    { trace_level_trace_interface(TraceLevel, yes) ->
+		CmdPrefix = "c2init -i "
+	    ;
+		CmdPrefix = "c2init "
+	    },
+	    { string__append_list([CmdPrefix | MkInitCmd0], MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->

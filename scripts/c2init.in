@@ -19,6 +19,16 @@ Help="\
 Name:	c2init - Create Mercury initialization file.
 Usage:	c2init [options] *.c *.init ...
 Options: 
+	-c <n>, --max-calls <n>
+		Break up the initialization into groups of at most <n> function
+		calls.  (Default value of <n> is 40.)
+	-i, --include-initialization-code
+		Always include code that calls the initialization functions
+		of the various modules. With this option, the debugger can use
+		information from any modules that were compiled with execution
+		tracing to print (partial) stack traces, and to print the
+		values of variables in ancestors of the current call, even
+		in grades in which this not normally possible.
 	-l, --library
 		Don't generate a \`main()' function.
 		Instead, generate a function
@@ -26,18 +36,15 @@ Options:
 		(declared in \"init.h\") that can be called from C code.
 		(A more fine-grained interface is also available;
 		see \"init.h\" for details.)
+	-w <label>, --entry-point <label>
+		Set entry point to <label>.
+		(Default value is \`mercury__main_2_0'.)
 	-x, --extra-inits
 		Search \`.c' files for extra initialization functions.
 		(This may be necessary if the C files contain
 		hand-coded C code with \`INIT' comments, rather than
 		containing only C code that was automatically generated
 		by the Mercury compiler.)
-	-c <n>, --max-calls <n>
-		Break up the initialization into groups of at most <n> function
-		calls.  (Default value of <n> is 40.)
-	-w <label>, --entry-point <label>
-		Set entry point to <label>.
-		(Default value is \`mercury__main_2_0'.)
 Environment variables:
 	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
 "
@@ -52,18 +59,21 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 # maximum number of calls to put in a single function
 maxcalls=40
 defentry=mercury__main_2_0
+init_opt=""
 library_opt=""
 extra_inits_opt=""
 while true; do
 	case "$1" in
 	-c|--max-calls)
 		maxcalls="$2"; shift; shift;;
-	-w|--entry-point)
-		defentry="$2"; shift; shift;;
+	-i|--include-initialization-code)
+		init_opt="-i"; shift;;
 	-l|--library)
 		library_opt="-l"; shift;;
 	-l-|--no-library)
 		library_opt=""; shift;;
+	-w|--entry-point)
+		defentry="$2"; shift; shift;;
 	-x|--extra-inits)
 		extra_inits_opt="-x"; shift;;
 	-x-|--no-extra-inits)
@@ -83,10 +93,10 @@ while true; do
 done
 
 case $# in
-	0) exec $MKINIT -w"$defentry" -c"$maxcalls" $library_opt \
-		$extra_inits_opt $MERCURY_MOD_LIB_MODS
+	0) exec $MKINIT -c"$maxcalls" $init_opt $library_opt \
+		-w"$defentry" $extra_inits_opt $MERCURY_MOD_LIB_MODS
 	   ;;
-	*) exec $MKINIT -w"$defentry" -c"$maxcalls" $library_opt \
-		$extra_inits_opt "$@" $MERCURY_MOD_LIB_MODS
+	*) exec $MKINIT -c"$maxcalls" $init_opt $library_opt \
+		-w"$defentry" $extra_inits_opt "$@" $MERCURY_MOD_LIB_MODS
 	   ;;
 esac
