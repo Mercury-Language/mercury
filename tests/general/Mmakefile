@@ -43,7 +43,9 @@ PROGS=		array_test \
 		liveness \
 		liveness2 \
 		mode_inf_bug \
+		mode_inf \
 		mu \
+		nondet_ite_2 \
 		parse_list \
 		petdr1 \
 		prune_switch \
@@ -53,13 +55,13 @@ PROGS=		array_test \
 		string_test \
 		string_test_2 \
 		univ \
-		unreachable \
-		nondet_ite_2
+		unreachable 
 
 # space.m does not work, due to an unfixed bug in code generation.
 NOT_WORKING =	space
 
-# mode_inf_bug needs to be compiled with `--infer-all'.
+# mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
+MCFLAGS-mode_inf = --infer-all
 MCFLAGS-mode_inf_bug = --infer-all
 
 # In grade `none' with options `-O1 --opt-space' on kryten
