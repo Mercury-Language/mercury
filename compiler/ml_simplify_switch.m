@@ -93,6 +93,18 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement) -->
 		{ Statement = ml_switch_to_if_else_chain(Cases, Default, Rval,
 			MLDS_Context) }
 	;
+	%
+	% Optimize away trivial switches
+	% (these can occur e.g. with --tags none, where the
+	% primary tag test always has only one reachable case)
+	%
+		{ Stmt0 = switch(_Type, _Rval, _Range, Cases, Default) },
+		{ Cases = [SingleCase] },
+		{ Default = default_is_unreachable }
+	->
+		{ SingleCase = _MatchCondition - CaseStatement },
+		{ Statement = CaseStatement }
+	;
 		{ Stmt = Stmt0 },
 		{ Statement = mlds__statement(Stmt, MLDS_Context) }
 	).
