@@ -1,0 +1,140 @@
+
+# Leave the first line of this file blank!
+# This is a Perl script; the following two lines allow us to avoid
+# embedding the path of the perl interpreter in the script.
+eval "exec perl -S $0 $*"
+    if $running_under_some_shell;      
+
+#-----------------------------------------------------------------------------#
+# summarize_cvslog: A Perl script for summarizing CVS commitlog files.
+#
+# The commitlog for a set of changes gets generated with a different entry
+# for each directory or branch changed.
+# This script reads through the commitlog file, merging different
+# entries with the same log message into a single combined entry.
+#-----------------------------------------------------------------------------#
+
+$prev_invariant_part_1 = "";
+$prev_invariant_part_2 = "";
+$prev_invariant_part_3 = "";
+$prev_invariant_part_4 = "";
+$accumulate_variant_part_1 = "";
+$accumulate_variant_part_2 = "";
+$accumulate_variant_part_3 = "";
+$accumulate_variant_part_4 = "";
+
+$next_blank_line = <>;
+$next_asterisk_line = <>;
+
+while(<>) {
+	$blank_line = $next_blank_line;
+	$asterisk_line = $next_asterisk_line;
+	$date_line = $_;
+	$author_line = <>;
+	$blank_line_2 = <>;
+	$repository_line = <>;
+	$working_space_line = <>;
+	$blank_line_3 = <>;
+
+	$next = <>;
+
+	$modified_files = "";
+	until (!defined($next)
+	    || $next =~ /^Log Message:/
+	    || $next =~ /^File:/
+	    || $next =~ /^\*\*\*\*\*\*\*\*\*\*\*\*\*/)
+	{
+		$modified_files .= $next;
+		$next = <>;
+	}
+		
+	$log_message = "";
+	until (!defined($next)
+	    || $next =~ /^File:/
+	    || $next =~ /^\*\*\*\*\*\*\*\*\*\*\*\*\*/)
+	{
+		$log_message .= $next;
+		$next = <>;
+	}
+		
+	$files = "";
+	until (!defined($next)
+	    || $next =~ /^\*\*\*\*\*\*\*\*\*\*\*\*\*/)
+	{
+		$files .= $next;
+		$prev = $next;
+		$next = <>;
+	}
+		
+	$next_blank_line = $prev;
+	$next_asterisk_line = $next;
+
+	$log_message =~ s/^Log Message:\n\n//;
+
+	if (0) {
+		print "[[[DEBUG INFO]]]\n" .
+		"[[Date]]" . $date_line  .
+		"[[author]]" . $author_line  .
+		"[[blank]]" . $blank_line_2 .
+		"[[repository]]" . $repository_line  .
+		"[[ws]]" . $working_space_line  .
+		"[[blank]]" . $blank_line_3  .
+		"[[modified_files]]" . $modified_files  .
+		"[[log]]" . $log_message  .
+		"[[files]]" . $files  .
+		"[[asterisk]]" . $asterisk_line .
+		"[[[END DEBUG INFO]]]\n";
+	}
+
+	$invariant_part_1 = $blank_line . $asterisk_line;
+	$variant_part_1 = $date_line;
+	$invariant_part_2 = $author_line . $blank_line_2;
+	$variant_part_2 = $repository_line .  $working_space_line .
+		$modified_files;
+	$invariant_part_3 = $blank_line_3 . $log_message;
+	$variant_part_3 =  $files;
+	$invariant_part_4 = "";
+	$variant_part_4 = "";
+
+	if ($invariant_part_1 ne $prev_invariant_part_1
+		|| $invariant_part_2 ne $prev_invariant_part_2
+		|| $invariant_part_3 ne $prev_invariant_part_3
+		|| $invariant_part_4 ne $prev_invariant_part_4)
+	{
+		if (0) {
+			if ($invariant_part_1 ne $prev_invariant_part_1) {
+				print "<<1>>";
+			}
+			if ($invariant_part_2 ne $prev_invariant_part_2) {
+				print "<<2>>";
+			}
+			if ($invariant_part_3 ne $prev_invariant_part_3) {
+				print "<<3>>";
+			}
+			if ($invariant_part_4 ne $prev_invariant_part_4) {
+				print "<<4>>";
+			}
+		}
+		print $prev_invariant_part_1 . $accumulate_variant_part_1 .
+			$prev_invariant_part_2 . $accumulate_variant_part_2 .
+			$prev_invariant_part_3 . $accumulate_variant_part_3 .
+			$prev_invariant_part_4 . $accumulate_variant_part_4;
+		$accumulate_variant_part_1 = "";
+		$accumulate_variant_part_2 = "";
+		$accumulate_variant_part_3 = "";
+		$accumulate_variant_part_4 = "";
+		$prev_invariant_part_1 = $invariant_part_1;
+		$prev_invariant_part_2 = $invariant_part_2;
+		$prev_invariant_part_3 = $invariant_part_3;
+		$prev_invariant_part_4 = $invariant_part_4;
+	}
+	$accumulate_variant_part_1 .= $variant_part_1;
+	$accumulate_variant_part_2 .= $variant_part_2;
+	$accumulate_variant_part_3 .= $variant_part_3;
+	$accumulate_variant_part_4 .= $variant_part_4;
+}
+
+print $prev_invariant_part_1 . $accumulate_variant_part_1 .
+	$prev_invariant_part_2 . $accumulate_variant_part_2 .
+	$prev_invariant_part_3 . $accumulate_variant_part_3 .
+	$prev_invariant_part_4 . $accumulate_variant_part_4;
