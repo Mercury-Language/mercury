@@ -621,7 +621,7 @@
 %-----------------------------------------------------------------------------%
 
 
-% XXX This is still not yet complete.
+% XXX This back-end is still not yet complete.
 %
 % Done:
 %	- function prototypes
@@ -639,15 +639,39 @@
 %			- deconstructions
 %		- switches
 %		- commits
-%		- most cases of `pragma c_code'
+%		- `pragma c_code'
 %	- RTTI
-% TODO:
-%	- complicated `pragma c_code'
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
-%	...
+%
+% BUGS:
+%	- XXX parameter passing problem for abstract equivalence types
+%         that are defined as float (or anything which doesn't map to `Word')
+%	- XXX setjmp() and volatile: local variables in functions that
+%	      call setjmp() need to be declared volatile
+%	- XXX problem with unboxed float on DEC Alphas.
+%
+% TODO:
+%	- XXX define compare & unify preds for array and RTTI types
+%	- XXX need to generate correct layout information for closures
+%	      so that tests/hard_coded/copy_pred works.
+%	- XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
+%
+% UNIMPLEMENTED FEATURES:
+%	- test --det-copy-out
+%	- fix --gcc-nested-functions (need forward declarations for
+%	  nested functions)
+%	- support debugging (with mdb)
+%	- support genuine parallel conjunction
+%	- support fact tables
+%	- support --split-c-files
+%	- support aditi
+%	- support trailing
+%	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
+%	- generate better code for switches
+%	- allow inlining of `pragma c_code' goals (see inlining.m)
 %	- generate local declarations for the `succeeded' variable;
 %	  this would help in nondet code, because it would avoid
 %	  the need to access the outermost function's `succeeded'
