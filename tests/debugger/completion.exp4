@@ -3,23 +3,24 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  down               maxdepth           retry
-P                  e                  mindepth           return
-alias              echo               mmc_options        s
-all_regs           enable             modules            save
-b                  exception          next               scope
-break              excp               nondet_stack       scroll
-browse             f                  p                  set
-c                  finish             print              source
-cc_query           forward            print_optionals    stack
-context            g                  printlevel         stack_regs
-continue           goto               proc_body          step
-current            h                  proc_stats         table_io
-d                  help               procedures         unalias
-delete             ignore             query              up
-disable            io_query           quit               v
-document           label_stats        r                  vars
-document_category  level              register           view
+?                  e                  mmc_options        save
+P                  echo               modules            scope
+alias              enable             next               scroll
+all_regs           exception          nondet_stack       set
+b                  excp               p                  source
+break              f                  print              stack
+browse             finish             print_optionals    stack_regs
+c                  forward            printlevel         step
+cc_query           g                  proc_body          table_io
+context            goto               proc_stats         unalias
+continue           h                  procedures         unhide_events
+current            help               query              up
+d                  ignore             quit               v
+delete             io_query           r                  vars
+disable            label_stats        register           view
+document           level              retry              
+document_category  maxdepth           return             
+down               mindepth           s                  
 h     help  
 vars  view  
 help vars 
