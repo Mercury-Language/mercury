@@ -5258,7 +5258,7 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 				Res = Res0,
 				N = N0 + 1
 			)
-		), ClauseList, [], LangClauses, 0, _) },
+		), ClauseList, [], LangClauses, 1, _) },
 
 	globals__io_get_globals(Globals),
 	globals__io_get_target(Target),
@@ -5296,12 +5296,12 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		LangClauses = [ForeignLang - ClauseNumber | Rest], 
 		ForeignLang = foreign_language(OldLang),
 		( Rest = [] ->
-			Compare = foreign__prefer_foreign_language(Globals,
-				Target, OldLang, NewLang),
+			PreferNewLang = foreign__prefer_foreign_language(
+				Globals, Target, OldLang, NewLang),
 			( 
 				% This language is preferred to the old
 				% language, so we should replace it
-				Compare = yes ->
+				PreferNewLang = yes ->
 				UpdateClauses = 
 					(pred(NewCl::in, Cs::out) is det :-
 					list__replace_nth_det(ClauseList,

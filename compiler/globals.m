@@ -246,7 +246,7 @@ globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
 	globals__lookup_accumulating_option(Globals, backend_foreign_languages,
 		LangStrs),
 	ForeignLangs = list__map(func(String) = ForeignLang :-
-		(convert_foreign_language(String, ForeignLang0) ->
+		( convert_foreign_language(String, ForeignLang0) ->
 			ForeignLang = ForeignLang0
 		;
 			error("globals__io_get_backend_foreign_languages: invalid foreign_language string")

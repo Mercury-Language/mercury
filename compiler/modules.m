@@ -2203,20 +2203,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	% needed because module__cpp_code.dll might refer to
 	% high level data in any of the mercury modules it
 	% imports plus itself.
+	% We also generate a dependency on the .il file, so that mmake
+	% knows we need to generate the .il file to get the foreign language 
+	% source file (e.g. .cpp file).
 	%
 	% For example, for MC++ we generate:
 	%
 	% 	<module>__cpp_code.dll : <module>.dll <imports>.dll
-	% 
-	%
-	% Generate the following sequence of rules which state
-	% how to generate the module__cpp_code.dll.
-	%
-	% For example, for MC++ we generate:
-	%
-	%	<module>__cpp_code.dll : <module>__cpp_code.cpp
 	%	<module>__cpp_code.cpp : <module>.il
 	%
+	% (the rule to generate .dll from .cpp is a pattern rule in
+	% scripts/Mmake.rules).
+	% 
 :- pred write_foreign_dependency_for_il(io__output_stream::in, sym_name::in,
 		foreign_language::in, io__state::di, io__state::uo) is det.
 write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
@@ -2243,7 +2241,6 @@ write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
 		io__nl(DepStream),
 
 		io__write_strings(DepStream, [
-			ForeignDllFileName, " : ", ForeignFileName,"\n",
 			ForeignFileName, " : ", IlFileName, "\n\n"])
 	;
 		% This foreign language doesn't generate an external file

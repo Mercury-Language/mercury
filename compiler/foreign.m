@@ -117,7 +117,7 @@
 	% interfaces, but if we added appropriate options we might want
 	% to do this later.
 
-	% C is always preferred over any other language.
+	% When compiling to C, C is always preferred over any other language.
 prefer_foreign_language(_Globals, c, Lang1, Lang2) = 
 	( Lang2 = c, not Lang1 = c ->
 		yes
@@ -125,12 +125,16 @@ prefer_foreign_language(_Globals, c, Lang1, Lang2) =
 		no
 	).
 
-	% Same as for C
-prefer_foreign_language(Globals, asm, Lang1, Lang2) = 
-	prefer_foreign_language(Globals, c, Lang1, Lang2).
+	% When compiling to asm, C is always preferred over any other language.
+prefer_foreign_language(_Globals, asm, Lang1, Lang2) = 
+	( Lang2 = c, not Lang1 = c ->
+		yes
+	; 
+		no
+	).
 
-	% First prefer il, then csharp, then prefer managed_cplusplus, after
-	% that we don't care.
+	% Whe compiling to il, first we prefer il, then csharp, then
+	% managed_cplusplus, after that we don't care.
 prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
 	PreferredList = [il, csharp, managed_cplusplus],
 
