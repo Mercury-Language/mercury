@@ -2,7 +2,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is multi.
+:- pred my_main(io__state::di, io__state::uo) is multi.
 
 :- implementation.
 
@@ -15,4 +15,4 @@ p(2).
 % only mostly_unique, because p/1 has multiple solutions
 % and we didn't declare main as cc_multi.
 
-main --> { p(X) }, io__write_int(X).
+my_main --> { p(X) }, io__write_int(X).
