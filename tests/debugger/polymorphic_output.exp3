@@ -54,11 +54,7 @@ browser> quit
 mdb> b std_util__det_arg
 mdb: there is no such procedure.
 mdb> c
-mdb: warning: internal label not found
-
-This may result in some exception events
-being omitted from the trace.
 Uncaught exception:
 Software Error: det_arg: argument had wrong type
-Last trace event was event #4.
+Last trace event was event #7.
 Last trace event before the unhandled exception was event #4.
