@@ -182,7 +182,7 @@ static Word deref(Word p) {
 			} while (0)
 
 #define	callentry(entry, succcont)	\
-			call(entries[entry].e_addr)
+			call(entries[entry].e_addr, succcont)
 
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
@@ -190,7 +190,7 @@ static Word deref(Word p) {
 			} while (0)
 
 #define	tailcallentry(entry, succcont)	\
-			tailcall(entries[entry].e_addr)
+			tailcall(entries[entry].e_addr, succcont)
 
 #define	proceed()	do {					\
 				debugproceed();			\
