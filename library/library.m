@@ -33,7 +33,14 @@
 :- import_module store, rbtree, parser, lexer, ops.
 :- import_module prolog.
 
-library__version("@VERSION@, configured for @FULLARCH@").
+% library__version must be implemented using pragma c_code,
+% so we can get at the MR_VERSION and MR_FULLARCH configuration
+% parameters.  We can't just generate library.m from library.m.in
+% at configuration time, because that would cause bootstrapping problems --
+% might not have a Mercury compiler around to compile library.m with.
+
+:- pragma c_code(library__version(Version::out), will_not_call_mercury,
+	"Version = MR_VERSION "", configured for "" MR_FULLARCH;").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -1,0 +1,13 @@
+%---------------------------------------------------------------------------%
+% Copyright (C) 1997 The University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+
+% We need a Prolog version of library__version, since library__version
+% is implemented in Mercury using pragma c_code, which in turn is due to
+% bootstrapping reasons explained in the comments in library.m.
+
+library__version("@VERSION@, configured for @FULLARCH@").
+
+%---------------------------------------------------------------------------%

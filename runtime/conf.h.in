@@ -165,4 +165,14 @@
 */
 #undef	IO_HAVE_TEMPNAM
 
+/*
+** Which version of Mercury is this?  (Taken from the file ../VERSION.)
+*/
+#define MR_VERSION "unknown"
+
+/*
+** What system is this version of Mercury configured for?
+*/
+#define MR_FULLARCH "unknown"
+
 #endif /* CONF_H */

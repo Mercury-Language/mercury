@@ -64,12 +64,13 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 NU_LIBRARY_NOS = \
 	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
-	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no
+	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no library.nu.no
 NU_OVERRIDING_LIBRARY_NOS = map.nu.no assoc_list.nu.no array.nu.no
 
 NU_LIBRARY_QLS = \
 	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
-	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql sp_lib.ql
+	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql library.nu.ql \
+	sp_lib.ql
 NU_OVERRIDING_LIBRARY_QLS = map.nu.ql assoc_list.nu.ql array.nu.ql
 
 #-----------------------------------------------------------------------------#
@@ -106,13 +107,10 @@ library.opts	: $(library.opts)
 
 #-----------------------------------------------------------------------------#
 
-library.m: library.m.in ../VERSION ../Mmake.common
+library.nu.nl: library.nu.nl.in ../VERSION ../Mmake.common
 	sed	-e 's/@VERSION@/$(VERSION)/g' \
 		-e 's/@FULLARCH@/$(FULLARCH)/' \
-		library.m.in > library.m
-
-library.dep : library.m
-library.depend : library.m
+		library.nu.nl.in > library.nu.nl
 
 #-----------------------------------------------------------------------------#
 
@@ -226,9 +224,6 @@ realclean:
 	rm -f sicstus_saved_state sicstus_compile sp_builtin.pl
 
 #-----------------------------------------------------------------------------#
-
-CHGRP=mercury
-CHMOD=go+w
 
 # Installation targets
 
