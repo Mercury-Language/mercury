@@ -2624,7 +2624,7 @@ mercury_format_escaped_char(Char) -->
 	% with a backslash.
 	%
 	% Note: the code here is similar to code in
-	% compiler/mercury_to_mercury.m; any changes here
+	% library/term_io.m; any changes here
 	% may require similar changes there.
 
 mercury_escape_char(Char, EscapeCode) :-
