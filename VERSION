@@ -7,7 +7,7 @@
 #
 # Please assign version numbers according to the scheme explained below.
 
-VERSION=DEV
+VERSION=DEV-hal
 
 # We use the following general scheme for version numbers:
 #
