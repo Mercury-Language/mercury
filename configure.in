@@ -2818,8 +2818,19 @@ case "$host" in
 			rm -f conftest*
 			;;
 		*)
-			AC_MSG_RESULT(no)
-			;;
+			case "$CC" in
+			lcc*)
+				AC_MSG_RESULT(yes)
+				EXT_FOR_SHARED_LIB=so
+				EXE_RPATH_OPT="-Wl-rpath -Wl"
+				EXE_RPATH_SEP=" -Wl-rpath -Wl"
+				SHLIB_RPATH_OPT="-Wl-rpath -Wl"
+				SHLIB_RPATH_SEP=" -Wl-rpath -Wl"
+				;;
+			*)
+				AC_MSG_RESULT(no)
+				;;
+			esac
 		esac
 		# Shared libraries are not the default on x86 systems that
 		# use ELF -- see README.Linux
