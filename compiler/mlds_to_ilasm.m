@@ -182,6 +182,13 @@ generate_c_code(MLDS) -->
 		"#using ""mercury_mcpp.dll""\n",
 		"#using ""mercury_il.dll""\n",
 		"#using """, ModuleNameStr, ".dll""\n",
+
+		% XXX We have to use the mercury namespace, as
+		% llds_out still generates some of the code used in the
+		% MC++ interface, and so it doesn't have "mercury::"
+		% namespace qualifiers.
+		"using namespace mercury;\n",
+
 		% XXX this supresses problems caused by references to 
 		% float.  If you don't do this, you'll get link errors.
 		% Revisit this when the .NET implementation has matured.
@@ -590,13 +597,13 @@ write_il_ret_type_as_managed_cpp_type(simple_type(T)) -->
 :- pred write_il_simple_type_as_managed_cpp_type(simple_type::in,
 	io__state::di, io__state::uo) is det.
 write_il_simple_type_as_managed_cpp_type(int8) --> 
-	io__write_string("MR_Integer8").
+	io__write_string("mercury::MR_Integer8").
 write_il_simple_type_as_managed_cpp_type(int16) --> 
-	io__write_string("MR_Integer16").
+	io__write_string("mercury::MR_Integer16").
 write_il_simple_type_as_managed_cpp_type(int32) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(int64) --> 
-	io__write_string("MR_Integer64").
+	io__write_string("mercury::MR_Integer64").
 write_il_simple_type_as_managed_cpp_type(uint8) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(uint16) --> 
@@ -606,24 +613,24 @@ write_il_simple_type_as_managed_cpp_type(uint32) -->
 write_il_simple_type_as_managed_cpp_type(uint64) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(native_int) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(native_uint) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(float32) --> 
 	io__write_string("float").
 write_il_simple_type_as_managed_cpp_type(float64) --> 
-	io__write_string("MR_Float").
+	io__write_string("mercury::MR_Float").
 write_il_simple_type_as_managed_cpp_type(native_float) --> 
-	io__write_string("MR_Float").
+	io__write_string("mercury::MR_Float").
 write_il_simple_type_as_managed_cpp_type(bool) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(char) --> 
-	io__write_string("MR_Char").
+	io__write_string("mercury::MR_Char").
 write_il_simple_type_as_managed_cpp_type(refany) --> 
-	io__write_string("MR_RefAny").
+	io__write_string("mercury::MR_RefAny").
 write_il_simple_type_as_managed_cpp_type(class(ClassName)) --> 
 	( { ClassName = il_generic_class_name } ->
-		io__write_string("MR_Box")
+		io__write_string("mercury::MR_Box")
 	;
 		io__write_string("public class "),
 		write_managed_cpp_class_name(ClassName),
@@ -641,7 +648,7 @@ write_il_simple_type_as_managed_cpp_type(interface(ClassName)) -->
 	io__write_string(" *").
 		% XXX this needs more work
 write_il_simple_type_as_managed_cpp_type('[]'(_Type, _Bounds)) --> 
-	io__write_string("MR_Word").
+	io__write_string("mercury::MR_Word").
 write_il_simple_type_as_managed_cpp_type('&'(Type)) --> 
 	io__write_string("MR_Ref("),
 	write_il_type_as_managed_cpp_type(Type),
