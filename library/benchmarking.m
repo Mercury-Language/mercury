@@ -74,7 +74,7 @@ extern void ML_report_full_memory_stats(void);
 
 :- pragma c_code(report_full_memory_stats, will_not_call_mercury,
 "
-#ifdef	MEMORY_PROFILING
+#ifdef	PROFILE_MEMORY
 	ML_report_full_memory_stats();
 #endif
 ").
@@ -87,7 +87,7 @@ extern void ML_report_full_memory_stats(void);
 #include ""mercury_prof_mem.h""
 #include ""mercury_heap_profile.h""
 
-#ifdef MEMORY_PROFILING
+#ifdef PROFILE_MEMORY
 
   #define MEMORY_PROFILE_SIZE	10	/* Profile the top 10 entries */
 
@@ -120,13 +120,13 @@ extern void ML_report_full_memory_stats(void);
 
   static int  ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 				ML_memprof_report_entry *table,
-				int table_size, int next_slot)
+				int table_size, int next_slot);
 
   static int  ML_memory_profile_top_table(MR_memprof_record *node,
 				ML_memprof_report_entry *table,
 				int size, int next_slot);
 
-  static int  ML_memory_profile_fill_table(MR_memprof_table *node,
+  static int  ML_memory_profile_fill_table(MR_memprof_record *node,
 				ML_memprof_report_entry *table, int next_slot);
 
   static void ML_memory_profile_report(const ML_memprof_report_entry *,
@@ -134,13 +134,13 @@ extern void ML_report_full_memory_stats(void);
 
   static int  ML_memory_profile_compare_final(const void *, const void *);
 
-#endif
+#endif /* PROFILE_MEMORY */
 
 void
 ML_report_stats(void)
 {
 	int			time_at_prev_stat;
-#ifdef MEMORY_PROFILING
+#ifdef PROFILE_MEMORY
 	int			num_table_entries;
 	ML_memprof_report_entry	table[MEMORY_PROFILE_SIZE];
 #endif
@@ -179,7 +179,7 @@ ML_report_stats(void)
 	);
 #endif
 
-#ifdef	MEMORY_PROFILING
+#ifdef	PROFILE_MEMORY
 
 	/*
 	** Update the overall counter (this needs to be done first,
@@ -215,12 +215,12 @@ ML_report_stats(void)
 		ML_overall_counter.words_at_period_end
 	);
 
-#endif
+#endif /* PROFILE_MEMORY */
 
 	fprintf(stderr, ""]\\n"");
 }
 
-#ifdef MEMORY_PROFILING
+#ifdef PROFILE_MEMORY
 
 void
 ML_report_full_memory_stats(void)
@@ -238,10 +238,10 @@ ML_report_full_memory_stats(void)
 	/*
 	** Allocate space for the table
 	*/
-	if (MR_memprof_proc.num_entries > MR_memprof_type.num_entries) {
-		table_size = MR_memprof_proc.num_entries;
+	if (MR_memprof_procs.num_entries > MR_memprof_types.num_entries) {
+		table_size = MR_memprof_procs.num_entries;
 	} else {
-		table_size = MR_memprof_type.num_entries;
+		table_size = MR_memprof_types.num_entries;
 	}
 	table = make_many(ML_memprof_report_entry, table_size);
 
@@ -250,12 +250,12 @@ ML_report_full_memory_stats(void)
 	*/
 	num_table_entries = ML_memory_profile_fill_table(MR_memprof_procs.root,
 		table, 0);
-	qsort(table, MR_memprof_proc.num_entries,
+	qsort(table, MR_memprof_procs.num_entries,
 		sizeof(ML_memprof_report_entry),
 		ML_memory_profile_compare_final);
 	fprintf(stderr, ""\\nMemory profile by procedure\\n"");
-	fprintf(stderr, ""%-50s       %-14s %s\\n"",
-		""procedure label"", ""Cells"", ""Words"");
+	fprintf(stderr, ""%14s %14s  %s\\n"",
+		""Cells"", ""Words"", ""Procedure label"");
 	ML_memory_profile_report(table, num_table_entries, TRUE);
 
 	/*
@@ -263,12 +263,12 @@ ML_report_full_memory_stats(void)
 	*/
 	num_table_entries = ML_memory_profile_fill_table(MR_memprof_types.root,
 		table, 0);
-	qsort(table, MR_memprof_type.num_entries,
+	qsort(table, MR_memprof_types.num_entries,
 		sizeof(ML_memprof_report_entry),
 		ML_memory_profile_compare_final);
 	fprintf(stderr, ""\\nMemory profile by type\\n"");
-	fprintf(stderr, ""%-50s       %-14s %s\\n"",
-		""procedure label"", ""Cells"", ""Words"");
+	fprintf(stderr, ""%14s %14s  %s\\n"",
+		""Cells"", ""Words"", ""Procedure label"");
 	ML_memory_profile_report(table, num_table_entries, TRUE);
 
 	/*
@@ -284,6 +284,7 @@ ML_report_full_memory_stats(void)
 		ML_overall_counter.cells_at_period_end,
 		ML_overall_counter.words_at_period_end
 	);
+}
 
 /*
 ** ML_update_counter(counter, float_counter):
@@ -295,25 +296,25 @@ static void
 ML_update_counter(MR_memprof_counter *counter,
 	ML_memprof_float_counter *float_counter)
 {
-	MR_add_two_dwords(counter.cells_at_period_start, 
-		counter.cells_since_period_start);
-	MR_add_two_dwords(counter.words_at_period_start, 
-		counter.words_since_period_start);
+	MR_add_two_dwords(counter->cells_at_period_start, 
+		counter->cells_since_period_start);
+	MR_add_two_dwords(counter->words_at_period_start, 
+		counter->words_since_period_start);
 
-	MR_convert_dword_to_double(counter.cells_since_period_start,
-		flout_counter.cells_since_period_start);
-	MR_convert_dword_to_double(counter.words_since_period_start,
-		float_counter.words_since_period_start);
+	MR_convert_dword_to_double(counter->cells_since_period_start,
+		float_counter->cells_since_period_start);
+	MR_convert_dword_to_double(counter->words_since_period_start,
+		float_counter->words_since_period_start);
 
 	/* since the 'at start' numbers have already been incremented, */
 	/* they now refer to the start of the *next* period */
-	MR_convert_dword_to_double(counter.cells_at_period_start,
-		float_counter.cells_at_period_end);
-	MR_convert_dword_to_double(counter.words_at_period_start,
-		float_counter.words_at_period_end);
+	MR_convert_dword_to_double(counter->cells_at_period_start,
+		float_counter->cells_at_period_end);
+	MR_convert_dword_to_double(counter->words_at_period_start,
+		float_counter->words_at_period_end);
 
-	MR_zero_dword(counter.cells_since_period_start);
-	MR_zero_dword(counter.words_since_period_start);
+	MR_zero_dword(counter->cells_since_period_start);
+	MR_zero_dword(counter->words_since_period_start);
 }
 
 /*
@@ -355,8 +356,8 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 	*/
 	if (slot < table_size) {
 		int i;
-		for (i = table_size - 1; i >= slot; i--) {
-			table[i + 1] = table[i];
+		for (i = table_size - 1; i > slot; i--) {
+			table[i] = table[i - 1];
 		}
 
 		table[slot] = *new_entry;
@@ -389,7 +390,7 @@ ML_memory_profile_top_table(MR_memprof_record *node,
 		new_entry.name = node->name;
 		ML_update_counter(&node->counter, &new_entry.counter);
 		next_slot = ML_insert_into_table(&new_entry,
-					table, table_size, next_slot)
+					table, table_size, next_slot);
 
 		next_slot = ML_memory_profile_top_table(node->right,
 					table, table_size, next_slot);
@@ -427,7 +428,7 @@ ML_memory_profile_fill_table(MR_memprof_record *node,
 **	Print out a profiling report for the specified table.
 */
 static void
-ML_memory_profile_report(const ML_memprof_table *table, int num_entries,
+ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
 	bool complete)
 {
 	int		i;
@@ -439,28 +440,28 @@ ML_memory_profile_report(const ML_memprof_table *table, int num_entries,
 
 	for (i = 0; i < num_entries; i++) {
 		if (complete) {
-			fprintf(stderr, ""%-50s ""
-				""%8.8g/%4.1f%% ""
-				""%8.8g/%4.1f%%\\n"",
-				table[i].name,
-				table[i].cells_at_period_end,
-				100 * table[i].cells_at_period_end /
+			fprintf(stderr,
+				""%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\\n"",
+				table[i].counter.cells_at_period_end,
+				100 * table[i].counter.cells_at_period_end /
 					ML_overall_counter.cells_at_period_end,
-				table[i].words_at_period_end,
-				100 * table[i].words_at_period_end /
-					ML_overall_counter.words_at_period_end
+				table[i].counter.words_at_period_end,
+				100 * table[i].counter.words_at_period_end /
+					ML_overall_counter.words_at_period_end,
+				table[i].name
 			);
 		} else {
-			fprintf(stderr, ""%-50s ""
-				""%8.8g/%4.1f%% ""
-				""%8.8g/%4.1f%%\\n"",
-				table[i].name,
-				table[i].cells_since_period_start,
-				100 * table[i].cells_since_period_start /
+			fprintf(stderr,
+				""%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\\n"",
+				table[i].counter.cells_since_period_start,
+				100 *
+				   table[i].counter.cells_since_period_start /
 				   ML_overall_counter.cells_since_period_start,
-				table[i].words_since_period_start,
-				100 * table[i].words_since_period_start /
-				   ML_overall_counter.words_since_period_start
+				table[i].counter.words_since_period_start,
+				100 *
+				   table[i].counter.words_since_period_start /
+				   ML_overall_counter.words_since_period_start,
+				table[i].name
 			);
 		}
 	}
@@ -478,16 +479,19 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 	const ML_memprof_report_entry *e2 =
 		(const ML_memprof_report_entry *) i2;
 
-	if (e1->words_at_period_end < e2->words_at_period_end) {
+	if (e1->counter.words_at_period_end < e2->counter.words_at_period_end)
+	{
 		return 1;
-	} else if (e1->words_at_period_end > e2->words_at_period_end) {
+	} else if
+	  (e1->counter.words_at_period_end > e2->counter.words_at_period_end)
+	{
 		return -1;
 	} else {
 		return strcmp(e1->name, e2->name);
 	}
 }
 
-#endif /* MEMORY_PROFILING */
+#endif /* PROFILE_MEMORY */
 ").
 
 %-----------------------------------------------------------------------------%
