@@ -1674,7 +1674,7 @@ mercury_runtime_terminate(void)
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_THREAD_SAFE
 	MR_exit_now = MR_TRUE;
-	pthread_cond_broadcast(MR_runqueue_cond);
+	pthread_cond_broadcast(&MR_runqueue_cond);
   #endif
 #endif
 
