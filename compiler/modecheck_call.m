@@ -91,6 +91,7 @@
 :- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, map, bool, set, require, term, varset.
 

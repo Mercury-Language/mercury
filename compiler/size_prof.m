@@ -119,6 +119,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module transform_hlds__term_norm.
 
 :- import_module bool, int, string, list, assoc_list, map, set, std_util.

@@ -132,6 +132,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module recompilation.
 :- import_module transform_hlds__term_util.
 
@@ -3805,7 +3806,7 @@ check_tvars_in_constraints(ClassContext, ArgTypes, TVarSet,
 constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
 	ClassContext = constraints(UnivCs, ExistCs),
 	( Constraints = UnivCs ; Constraints = ExistCs ),
-	type_util__constraint_list_get_tvars(Constraints, TVars),
+	prog_type__constraint_list_get_tvars(Constraints, TVars),
 	list__member(TVar, TVars),
 	\+ term__contains_var_list(ArgTypes, TVar).
 

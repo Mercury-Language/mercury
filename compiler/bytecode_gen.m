@@ -56,7 +56,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
-
+:- import_module parse_tree__prog_type.
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term, counter.
 

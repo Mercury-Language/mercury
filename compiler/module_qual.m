@@ -114,7 +114,6 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module check_hlds__type_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
@@ -122,6 +121,7 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, map, require, set, string, term, varset.
 :- import_module assoc_list.

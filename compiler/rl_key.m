@@ -61,6 +61,7 @@
 :- import_module hlds__special_pred.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list, bool, int, require, set, std_util.
 

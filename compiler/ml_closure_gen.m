@@ -88,6 +88,7 @@
 :- import_module libs__options.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_type.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.

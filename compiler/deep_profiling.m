@@ -41,6 +41,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module transform_hlds.
 :- import_module transform_hlds__dependency_graph.
 

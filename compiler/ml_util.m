@@ -152,6 +152,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool, list, std_util.
 

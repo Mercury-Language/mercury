@@ -245,6 +245,7 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module list, map, assoc_list, std_util, string, varset, int, term.
 :- import_module require.
@@ -769,7 +770,7 @@ to_type_string(csharp, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for csharp").
 to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	(
-		type_util__var(Type, _)
+		prog_type__var(Type, _)
 	->
 		TypeString = "MR_Box"
 	;

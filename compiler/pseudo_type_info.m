@@ -63,6 +63,7 @@
 :- import_module check_hlds__type_util.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, list, term, std_util, require.
 
@@ -113,7 +114,7 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 					PseudoArgs)
 			)
 		)
-	; type_util__var(Type, Var) ->
+	; prog_type__var(Type, Var) ->
 		% In the case of a type variable, we need to assign a
 		% variable number *for this constructor*, i.e. taking
 		% only the existentially quantified variables of

@@ -134,6 +134,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list, int, require, string, term, varset.
 

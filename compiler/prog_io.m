@@ -262,7 +262,6 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__modules.
@@ -272,6 +271,7 @@
 :- import_module parse_tree__prog_io_pragma.
 :- import_module parse_tree__prog_io_typeclass.
 :- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module recompilation.
@@ -895,6 +895,27 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 		ModuleName = ParentModuleName,
 		SourceFileName = SourceFileName0,
 		!:Items = [Item - Context | !.Items]
+	; Item = module_defn(VarSet, import(module(Modules))) ->
+		ImportItems = list.map(
+			make_pseudo_import_module_decl(VarSet, Context),
+			Modules),
+		SourceFileName = SourceFileName0,	
+		ModuleName = ModuleName0,
+		list.append(ImportItems, !Items)
+	; Item = module_defn(VarSet, use(module(Modules))) ->
+		UseItems = list.map(
+			make_pseudo_use_module_decl(VarSet, Context),
+			Modules),
+		SourceFileName = SourceFileName0,
+		ModuleName = ModuleName0,
+		list.append(UseItems, !Items)
+ 	; Item = module_defn(VarSet, include_module(Modules)) ->
+ 		IncludeItems = list.map(
+ 			make_pseudo_include_module_decl(VarSet, Context),
+ 			Modules),
+ 		SourceFileName = SourceFileName0,
+ 		ModuleName = ModuleName0,
+ 		list.append(IncludeItems, !Items)
 	;
 		SourceFileName = SourceFileName0,
 		ModuleName = ModuleName0,
@@ -902,6 +923,25 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 	),
 	read_items_loop(ModuleName, SourceFileName, !Msgs, !Items, !Error,
 		!IO).
+
+:- func make_pseudo_import_module_decl(prog_varset, prog_context,
+	module_specifier) = item_and_context.
+
+make_pseudo_import_module_decl(Varset, Context, ModuleSpecifier) =
+	module_defn(Varset, import(module([ModuleSpecifier]))) - Context.
+
+:- func make_pseudo_use_module_decl(prog_varset, prog_context,
+	module_specifier) = item_and_context.
+
+make_pseudo_use_module_decl(Varset, Context, ModuleSpecifier) = 
+	module_defn(Varset, use(module([ModuleSpecifier]))) - Context.
+
+:- func make_pseudo_include_module_decl(prog_varset, prog_context,
+	module_name) = item_and_context.
+
+make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) = 
+	module_defn(Varset, include_module([ModuleSpecifier])) - 
+		Context.
 
 %-----------------------------------------------------------------------------%
 
@@ -1881,7 +1921,7 @@ parse_where_inst_is(_ModuleName, Term) =
 	(
 		prog_io_util__convert_inst(no_allow_constrained_inst_var,
 			Term, Inst),
-		not inst_util__inst_contains_unconstrained_var(Inst)
+		not prog_mode__inst_contains_unconstrained_var(Inst)
 	->
 		ok(Inst)
 	;

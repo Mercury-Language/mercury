@@ -363,6 +363,7 @@
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, set, term, varset.
 :- import_module list, map, bag, string, require, std_util.

@@ -799,6 +799,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list, bool, string, list.
 :- import_module int, set, term, require, std_util.
@@ -3117,7 +3118,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
 			% Except for MC++, where polymorphic types
 			% are MR_Box.
 			(
-				type_util__var(OrigType, _),
+				prog_type__var(OrigType, _),
 				Lang \= managed_cplusplus
 			->
 				Cast = "(MR_Word) "
@@ -3326,7 +3327,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
 			% `Word' in the C interface but `MR_Box' in the
 			% MLDS back-end.
 			(
-				( type_util__var(OrigType, _)
+				( prog_type__var(OrigType, _)
 				; Cast = yes
 				)
 			->

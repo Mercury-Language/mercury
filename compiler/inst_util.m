@@ -125,13 +125,6 @@
 
 %-----------------------------------------------------------------------------%
 
-	% inst_contains_unconstrained_var(Inst) iff Inst includes an
-	% unconstrained inst variable.
-	%
-:- pred inst_contains_unconstrained_var((inst)::in) is semidet.
-
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 
 :- import_module check_hlds__det_analysis.
@@ -1744,61 +1737,5 @@ pred_inst_info_standard_func_mode(Arity) =
 	ArgModes = list__duplicate(Arity - 1, InMode) ++ [OutMode].
 
 %-----------------------------------------------------------------------------%
-
-inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
-	list.member(BoundInst, BoundInsts),
-	BoundInst = functor(_ConsId, ArgInsts),
-	list.member(ArgInst, ArgInsts),
-	inst_contains_unconstrained_var(ArgInst).
-inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
-	GroundInstInfo = higher_order(PredInstInfo),
-	PredInstInfo = pred_inst_info(_PredOrFunc, Modes, _Detism),
-	list.member(Mode, Modes),
-	(
-		Mode = (Inst -> _)
-	;
-		Mode = (_ -> Inst)
-	;
-		Mode = user_defined_mode(_SymName, Insts),
-		list.member(Inst, Insts)
-	),
-	inst_contains_unconstrained_var(Inst).
-inst_contains_unconstrained_var(inst_var(_InstVar)).
-inst_contains_unconstrained_var(defined_inst(InstName)) :-
-	(
-		InstName = user_inst(_, Insts),
-		list.member(Inst, Insts),
-		inst_contains_unconstrained_var(Inst)
-	;
-		InstName = merge_inst(Inst, _),
-		inst_contains_unconstrained_var(Inst)
-	;
-		InstName = merge_inst(_, Inst),
-		inst_contains_unconstrained_var(Inst)
-	;
-		InstName = unify_inst(_, Inst, _, _),
-		inst_contains_unconstrained_var(Inst)
-	;
-		InstName = unify_inst(_, _, Inst, _),
-		inst_contains_unconstrained_var(Inst)
-	;
-		InstName = ground_inst(InstName1, _, _, _),
-		inst_contains_unconstrained_var(defined_inst(InstName1))
-	;
-		InstName = any_inst(InstName1, _, _, _),
-		inst_contains_unconstrained_var(defined_inst(InstName1))
-	;
-		InstName = shared_inst(InstName1),
-		inst_contains_unconstrained_var(defined_inst(InstName1))
-	;
-		InstName = mostly_uniq_inst(InstName1),
-		inst_contains_unconstrained_var(defined_inst(InstName1))
-	;
-		InstName = typed_inst(_, InstName1),
-		inst_contains_unconstrained_var(defined_inst(InstName1))
-	).
-inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
-	list.member(Inst, Insts),
-	inst_contains_unconstrained_var(Inst).
-
+:- end_module inst_util.
 %-----------------------------------------------------------------------------%

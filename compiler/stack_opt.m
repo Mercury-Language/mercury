@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,6 +105,7 @@
 :- import_module ll_backend__store_alloc.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_type.
 
 :- import_module counter, bool, int, list, assoc_list.
 :- import_module map, set, std_util, require, term, varset.

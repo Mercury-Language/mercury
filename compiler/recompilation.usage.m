@@ -92,6 +92,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module recompilation__version.
 
 :- import_module assoc_list, bool, int, require, svmap.

@@ -35,6 +35,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__equiv_type.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_type.
 :- import_module recompilation.
 
 :- import_module bool, list, set, map, require, std_util, string, term, varset.

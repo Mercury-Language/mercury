@@ -135,6 +135,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module map, set, assoc_list, term, require, int.
 :- import_module string, varset.

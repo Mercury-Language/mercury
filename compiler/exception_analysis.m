@@ -112,6 +112,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module bool, list, map, set, std_util, string, term, term_io, varset.

@@ -58,6 +58,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module transform_hlds__dependency_graph.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.

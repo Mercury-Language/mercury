@@ -78,6 +78,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module transform_hlds__const_prop.
 
 :- import_module term, varset.
@@ -2180,7 +2181,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 		lookup_tabling_category(TypeCat, MaybeCatStringStep),
 		(
 			MaybeCatStringStep = no,
-			( type_util__vars(Type, []) ->
+			( prog_type__vars(Type, []) ->
 				LookupPredName = "table_lookup_insert_user",
 				Step = table_trie_step_user(Type)
 			;

@@ -150,6 +150,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module getopt.
 :- import_module int, set, string, require, multi_map.
@@ -5338,7 +5339,7 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
 :- func maybe_add_existential_quantifier(head_type_params, (type)) = (type).
 
 maybe_add_existential_quantifier(HeadTypeParams, Type0) = Type :-
-	type_util__vars(Type0, TVars),
+	prog_type__vars(Type0, TVars),
 	ExistQuantTVars = set__to_sorted_list(set__intersect(
 		set__list_to_set(HeadTypeParams), set__list_to_set(TVars))),
 	( ExistQuantTVars = [] ->

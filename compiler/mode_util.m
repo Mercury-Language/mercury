@@ -162,6 +162,7 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module require, int, string, map, set, term, std_util.
 :- import_module assoc_list, varset.

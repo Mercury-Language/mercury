@@ -379,6 +379,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool, int, string, set, map.
 :- import_module term, varset, require, assoc_list.
@@ -1185,7 +1186,7 @@ polymorphism__unification_typeinfos(Type, !Unification, !GoalInfo, !Info) :-
 	% Compute the type_info/type_class_info variables that would be
 	% used if this unification ends up being a complicated_unify.
 	%
-	type_util__vars(Type, TypeVars),
+	prog_type__vars(Type, TypeVars),
 	list__map_foldl(get_type_info_locn, TypeVars, TypeInfoLocns, !Info),
 	polymorphism__add_unification_typeinfos(TypeInfoLocns,
 		!Unification, !GoalInfo).
@@ -1199,7 +1200,7 @@ polymorphism__unification_typeinfos(Type, TypeInfoMap, !Unification,
 	% Compute the type_info/type_class_info variables that would be
 	% used if this unification ends up being a complicated_unify.
 	%
-	type_util__vars(Type, TypeVars),
+	prog_type__vars(Type, TypeVars),
 	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
 	polymorphism__add_unification_typeinfos(TypeInfoLocns,
 		!Unification, !GoalInfo).
@@ -2668,7 +2669,7 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
 		% not in a type_info variable. make_typeclass_info_headvar
 		% will fix this up when the typeclass_info is created.
 		%
-		type_util__var(Type, TypeVar),
+		prog_type__var(Type, TypeVar),
 		polymorphism__new_type_info_var(Type, type_info, Var, !Info),
 		TypeInfoLocn = type_info(Var),
 		map__det_insert(TypeInfoMap0, TypeVar, TypeInfoLocn,

@@ -1740,6 +1740,7 @@ XXX Full exception handling support is not yet implemented.
 :- import_module libs__globals.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_type.
 
 :- import_module char, int, term, string, require, library.
 

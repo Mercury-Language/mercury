@@ -61,6 +61,7 @@
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__var_locn.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 
 :- import_module varset.
 :- import_module set, stack.

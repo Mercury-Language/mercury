@@ -54,6 +54,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__special_pred.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module string, list, std_util, require.
 

@@ -91,13 +91,12 @@
 
 :- implementation.
 
-% XXX we shouldn't import the HLDS here.
-:- import_module check_hlds__type_util.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list, bool, require, std_util, map, set, term, varset.
 

@@ -780,12 +780,14 @@
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__source_file_map.
 :- import_module recompilation__version.
 
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
-:- import_module getopt, multi_map, sparse_bitset.
+:- import_module getopt, multi_map, sparse_bitset, svset.
+:- import_module deconstruct.
 
 %-----------------------------------------------------------------------------%
 
@@ -1412,6 +1414,12 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 		map__init, !:IntTypesMap,
 		map__init, !:ImplTypesMap),
 
+	% Work out which module imports in the implementation section of 
+	% the interface are required by the definitions of equivalence
+	% types in the implementation.
+	get_impl_imports_required_by_eqv_types(!.IntTypesMap, !.ImplTypesMap,
+		NecessaryImplImports),
+
 	% If a type in the implementation section doesn't have
 	% foreign type alternatives, make it abstract.
 	map__map_values(
@@ -1463,13 +1471,143 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 	IntItems = [make_pseudo_decl(interface) | IntItems0],
 
 	maybe_strip_import_decls(ImplItems1, ImplItems2),
-	( ImplItems2 = [] ->
+	strip_unnecessary_impl_imports(NecessaryImplImports, ImplItems2,
+		ImplItems3),
+
+	( ImplItems3 = [] ->
 		Items = IntItems
 	;
 		Items = IntItems ++
-			[make_pseudo_decl(implementation) | ImplItems2]
+			[make_pseudo_decl(implementation) | ImplItems3]
 	)
     ).
+
+	% strip_unnecessary_impl_imports(NecssaryModules, !Items).
+	%
+	% Remove all import_module and use_module declarations for 
+	% modules that are not in `NecessaryModules',
+	%
+	% NOTE: This will only work if each item corresponding
+	% to an import_module or use_module declaration only imports
+	% a single module.  (This should be the case, see prog_io.m.)
+	% 
+:- pred strip_unnecessary_impl_imports(set(module_name)::in, item_list::in,
+	item_list::out) is det.
+
+strip_unnecessary_impl_imports(NecessaryImports, !Items) :-
+	IsNecessaryImport = (pred(Item::in) is semidet :-
+		( Item = module_defn(_, Defn) - _ ->
+			(
+				( Defn = use(Module) 
+				; Defn = import(Module))
+			->
+				( Module = module([ModuleName]) ->
+					set.member(ModuleName,
+						NecessaryImports)
+				;
+					unexpected(this_file,
+					"strip_unnecessary_impl_imports/3" ++
+					": non-singleton import or use decl") 	
+				)
+			;
+				true
+			)
+		;
+			true
+		)
+	),			
+	list.filter(IsNecessaryImport, !Items).
+
+	% Return the set of modules that need to be imported in
+	% the implementation section of an interface file.  The
+	% required modules are those that occur on the rhs of 
+	% and equivalence type.
+	%
+	% XXX We should probably only do this for abstract equivalence
+	% types.
+	%
+:- pred get_impl_imports_required_by_eqv_types(type_defn_map::in,
+	type_defn_map::in, set(module_name)::out) is det.
+
+get_impl_imports_required_by_eqv_types(_InterfaceTypes, ImplTypes, Modules) :-
+	%
+	% Grab all of the equivalence types that are defined in the
+	% implementation section.
+	%
+	map.foldl((pred(_TypeCtor::in, V::in, !.Equivs::in, !:Equivs::out)
+			is det :-
+		%
+		% A type may have multiple definitions because it may be
+		% defined as a foreign type and a mercury type.  We
+		% grab any equivalence types that are in there.
+		%
+		list.foldl((pred(T::in, !.Equivs::in, !:Equivs::out) is det :-
+			( T = eqv_type(Type) - _Item ->
+				list.cons(Type, !Equivs)
+			;
+				true
+			)
+		), V, !Equivs)
+	), ImplTypes, [], Equivs),
+	%
+	% Now we have a list of types, strip off the module
+	% qualifiers.
+	%
+	get_modules_from_types(Equivs, set.init, Modules).
+
+	% Given a list of types, return the set of modules that
+	% define these types.  
+	%
+	% NOTE: This assumes that everything has been module
+	% qualified.
+	%
+:- pred get_modules_from_types(list(type)::in,
+	set(module_name)::in, set(module_name)::out) is det.
+
+get_modules_from_types(Types, !Modules) :-
+	list.foldl(get_modules_from_type, Types, !Modules).
+
+:- pred get_modules_from_type((type)::in,
+	set(module_name)::in, set(module_name)::out) is det.
+
+get_modules_from_type(Type, !Modules) :-
+	( type_to_ctor_and_args(Type, TypeCtor, Args) ->
+		TypeCtor = SymName - _Arity,
+		( sym_name_get_module_name(SymName, ModuleName) ->
+			svset.insert(ModuleName, !Modules),
+			get_modules_from_types(Args, !Modules)
+		;
+			( 
+				type_ctor_is_higher_order(TypeCtor, _, _, _ )
+			->
+				% Higher-order types are builtin so just get
+				% the modules required by the arguments.
+				get_modules_from_types(Args, !Modules)
+			; 
+				type_ctor_is_tuple(TypeCtor) 
+			->
+				% Tuples are builtin so just get the modules
+				% required by the arguments.
+				get_modules_from_types(Args, !Modules)
+			;
+				( SymName = unqualified("int") ;
+				  SymName = unqualified("float") ;
+				  SymName = unqualified("string") ;
+				  SymName = unqualified("character")
+				)
+			->
+				% We don't need to import these modules
+				% as the types are builtin.
+				true
+			;
+				unexpected(this_file,
+					"get_modules_from_type/5: " ++
+					"unknown type encountered")
+			)
+		)
+	;
+		true
+	).			
 
 :- type type_defn_map == multi_map(type_ctor,
 				pair(type_defn, item_and_context)).
@@ -7195,5 +7333,13 @@ get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
 		dir.directory_separator(Slash),
 	InstallNameOpt = InstallNameFlag++InstallNamePath++
 		char_to_string(Slash)++OutputFileName.
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "modules.m".
 		
+%-----------------------------------------------------------------------------%
+:- end_module modules.
 %-----------------------------------------------------------------------------%

@@ -353,6 +353,7 @@
 :- import_module hlds__hlds_llds.
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, string, require, term, varset.
 

@@ -88,6 +88,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 :- import_module transform_hlds__mmc_analysis.
 
 :- import_module bool, int, char, string, list, assoc_list, set, map.
@@ -419,7 +420,7 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 setup_typeinfo_deps([], _, _, _, !VarDep).
 setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, !VarDep) :-
 	map__lookup(VarTypeMap, Var, Type),
-	type_util__vars(Type, TVars),
+	prog_type__vars(Type, TVars),
 	list__map((pred(TVar::in, TypeInfoVar::out) is det :-
 		map__lookup(TVarMap, TVar, Locn),
 		type_info_locn_var(Locn, TypeInfoVar)

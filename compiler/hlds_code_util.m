@@ -46,6 +46,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool, char, string, require, map, std_util, term.
 

@@ -101,6 +101,7 @@
 :- import_module ml_backend__ml_util.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module int, string, map, require, term, varset.
 :- import_module assoc_list, set.
@@ -935,7 +936,7 @@ ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
 	->
 		varset__init(TypeVarSet0),
 		varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet),
-		type_util__var(BoxedFieldType, TypeVar)
+		prog_type__var(BoxedFieldType, TypeVar)
 	;
 		BoxedFieldType = FieldType
 	).

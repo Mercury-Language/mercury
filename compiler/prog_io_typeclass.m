@@ -41,10 +41,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module term, varset.
 :- import_module int, string, std_util, require, set, map.
@@ -129,7 +129,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 				% which do not occur in the type class
 				% parameters
 				%
-				type_util__constraint_list_get_tvars(
+				prog_type__constraint_list_get_tvars(
 					ConstraintList, ConstrainedVars),
 				list__member(Var, ConstrainedVars),
 				\+ list__member(Var, Vars)
@@ -299,7 +299,7 @@ parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 			list__member(Constraint, ConstraintList),
 			Constraint = constraint(_, Types),
 			list__member(Type, Types),
-			\+ type_util__var(Type, _),
+			\+ prog_type__var(Type, _),
 			\+ term__is_ground(Type)
 		->
 			Result = error(ErrorMessage, ConstraintsTerm)
@@ -484,13 +484,13 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 					% Are all the args of the
 					% functor variables?
 				list__map((pred(A::in, B::out) is semidet :-
-					type_util__var(A, B)
+					prog_type__var(A, B)
 				), Args1, _)
 			;
 					% Are all the args of the
 					% functor variables?
 				list__map((pred(A::in, B::out) is semidet :-
-					type_util__var(A, B)
+					prog_type__var(A, B)
 				), Args, _)
 			)
 		),
@@ -560,7 +560,7 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 		% argument types in the instance declaration
 		%
 		(
-			type_util__constraint_list_get_tvars(Constraints,
+			prog_type__constraint_list_get_tvars(Constraints,
 				TVars),
 			list__member(TVar, TVars),
 			\+ term__contains_var_list(Types, TVar)

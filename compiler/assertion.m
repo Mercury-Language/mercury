@@ -152,6 +152,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module string, bool, list, assoc_list, map, set, require, std_util.
 

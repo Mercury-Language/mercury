@@ -85,6 +85,7 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.

@@ -86,6 +86,12 @@
 
 :- pred unqualify_name(sym_name::in, string::out) is det.
 
+	% sym_name_get_module_name(SymName, ModName):-
+	% Given a symbol name, return the module qualifiers(s).
+	% Fails if the symbol is unqualified.
+	%
+:- pred sym_name_get_module_name(sym_name::in, module_name::out) is semidet.
+
 	% sym_name_get_module_name(SymName, DefaultModName, ModName):
 	% Given a symbol name, return the module qualifier(s).
 	% If the symbol is unqualified, then return the specified default
@@ -278,6 +284,8 @@
 :- implementation.
 
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
 
 :- import_module bool, require, string, int, map, varset.
 
@@ -314,6 +322,9 @@ any_mercury_builtin_module(Module) :-
 
 unqualify_name(unqualified(PredName), PredName).
 unqualify_name(qualified(_ModuleName, PredName), PredName).
+
+sym_name_get_module_name(unqualified(_), _) :- fail.
+sym_name_get_module_name(qualified(ModuleName, _), ModuleName).
 
 sym_name_get_module_name(unqualified(_), ModuleName, ModuleName).
 sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
@@ -683,4 +694,5 @@ get_state_args_det(Args0, Args, State0, State) :-
 	).
 
 %-----------------------------------------------------------------------------%
+:- end_module prog_util.
 %-----------------------------------------------------------------------------%

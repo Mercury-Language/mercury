@@ -37,6 +37,7 @@
 % Utility routines.
 :- include_module prog_mode.
 :- include_module prog_util.
+:- include_module prog_type.
 :- include_module error_util.
 
 % Transformations that act on the parse tree,
@@ -53,13 +54,5 @@
 % :- include_module trans_opt.
 
 %-----------------------------------------------------------------------------%
-
-% XXX lots of stuff uses hlds_data__type_id and type_util.m.
-% XXX modules.m uses llds_out for the init names.
-
-:- implementation.
-
-:- import_module check_hlds.     % XXX for type_util.m
 :- end_module parse_tree.
-
 %-----------------------------------------------------------------------------%

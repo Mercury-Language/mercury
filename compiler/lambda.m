@@ -86,6 +86,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_type.
 
 % HLDS modules
 :- import_module check_hlds__inst_match.
@@ -325,7 +326,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% to have universally quantified constraints.
 	map__keys(TCVarMap, AllConstraints),
 	map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
-	list__map(type_util__vars, LambdaVarTypes, LambdaTypeVarsList),
+	list__map(prog_type__vars, LambdaVarTypes, LambdaTypeVarsList),
 	list__condense(LambdaTypeVarsList, LambdaTypeVars),
 	list__filter(lambda__constraint_contains_vars(LambdaTypeVars),
 		AllConstraints, UnivConstraints),
@@ -592,7 +593,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 	ClassConstraint = constraint(_, ConstraintTypes),
-	list__map(type_util__vars, ConstraintTypes, ConstraintVarsList),
+	list__map(prog_type__vars, ConstraintTypes, ConstraintVarsList),
 	list__condense(ConstraintVarsList, ConstraintVars),
 		% Probably not the most efficient way of doing it, but I
 		% wouldn't think that it matters.

@@ -132,6 +132,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module ml_backend__ml_closure_gen.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool, int, string, std_util, term, varset, require, map.
 
@@ -927,7 +928,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			% For closure wrappers, the argument type_infos are
 			% stored in the `type_params' local, so we need to
 			% handle the GC tracing code specially
-			( type_util__var(CallerType, _TypeVar) ->
+			( prog_type__var(CallerType, _TypeVar) ->
 				ml_gen_local_for_output_arg(ArgVarName,
 					CalleeType, ArgNum, Context,
 					ArgVarDecl, !Info)
