@@ -125,7 +125,7 @@
 :- import_module prog_out. 
 :- import_module hlds_data, type_util, mode_util, inst_match.
 :- import_module hlds_out, mercury_to_mercury.
-:- import_module passes_aux.
+:- import_module code_util, passes_aux.
 :- import_module globals, options.
 
 :- import_module term, varset.
@@ -178,7 +178,15 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% This is similar to the reason we don't
 				% report warnings for lambda expressions.
 				{ \+ check_marker(Markers,
-					class_instance_method) }
+					class_instance_method) },
+
+				% Don't report warnings for compiler-generated
+				% Unify, Compare or Index procedures, since the
+				% user has no way to shut these up. These can
+				% happen for the Unify pred for the unit type,
+				% if such types are not boxed (as they are not
+				% boxed for the IL backend).
+				{ \+ code_util__compiler_generated(PredInfo0) }
 			->
 				{ Message = "  warning: determinism declaration could be tighter.\n" },
 				report_determinism_problem(PredId,
