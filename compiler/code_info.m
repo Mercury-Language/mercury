@@ -11,7 +11,7 @@
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
-% This file is organized indo eight submodules:
+% This file is organized into eight submodules:
 %
 %	- the code_info structure and its access predicates
 %	- simple wrappers around access predicates
@@ -41,7 +41,7 @@
 
 :- import_module hlds_module, hlds_data, code_util.
 :- import_module code_exprn, set, varset, term, stack, prog_data.
-:- import_module type_util, mode_util, options, shapes.
+:- import_module type_util, mode_util, options.
 :- import_module string, require, char, list, map, bimap, tree, int.
 
 %---------------------------------------------------------------------------%
@@ -66,7 +66,7 @@
 		% Create a new code_info structure.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int /* cell number */, shape_table, code_info).
+	int /* cell number */, continuation_info, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
@@ -116,11 +116,13 @@
 :- pred code_info__get_globals(globals, code_info, code_info).
 :- mode code_info__get_globals(out, in, out) is det.
 
-:- pred code_info__get_shapes(shape_table, code_info, code_info).
-:- mode code_info__get_shapes(out, in, out) is det.
+:- pred code_info__get_continuation_info(continuation_info, 
+		code_info, code_info).
+:- mode code_info__get_continuation_info(out, in, out) is det.
 
-:- pred code_info__set_shapes(shape_table, code_info, code_info).
-:- mode code_info__set_shapes(in, in, out) is det.
+:- pred code_info__set_continuation_info(continuation_info, 
+		code_info, code_info).
+:- mode code_info__set_continuation_info(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -228,7 +230,10 @@
 			map(lval, lval_or_ticket),
 					% The temp locations in use on the stack
 					% and what they contain (for gc).
-			shape_table,	% Table of shapes.
+			continuation_info,	
+					% Information on which values
+					% are live at continuation
+					% points, for accurate gc.
 			set(var),	% Zombie variables; variables that have
 					% been killed but are protected by a
 					% resume point.
@@ -396,7 +401,7 @@ code_info__get_temps_in_use(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
 		_, _).
 
-code_info__get_shapes(R, CI, CI) :-
+code_info__get_continuation_info(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
 		_, _).
 
@@ -445,7 +450,10 @@ code_info__get_commit_triple_count(U, CI, CI) :-
 %	Q		map(lval, lval_or_ticket),
 %					% The temp locations in use on the stack
 %					% and what they contain (for gc).
-%	R		shape_table,	% Table of shapes.
+%	R		continuation_info,	
+%					% Information on which values
+%					% are live at continuation
+%					% points, for accurate gc.
 %	S		set(var),	% Zombie variables; variables that have
 %					% been killed but are protected by a
 %					% resume point.
@@ -541,7 +549,7 @@ code_info__set_temps_in_use(Q, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U).
 
-code_info__set_shapes(R, CI0, CI) :-
+code_info__set_continuation_info(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		_, S, T, U),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
@@ -608,7 +616,8 @@ code_info__set_commit_triple_count(U, CI0, CI) :-
 
 	% Given a list of type variables, find the lvals where the
 	% corresponding type_infos are being stored.
-:- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
+:- pred code_info__find_type_infos(list(var), assoc_list(var, lval), 
+	code_info, code_info).
 :- mode code_info__find_type_infos(in, out, in, out) is det.
 
 	% Given a constructor id, and a variable (so that we can work out the
@@ -785,7 +794,7 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
 code_info__find_type_infos([], []) --> [].
-code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) -->
+code_info__find_type_infos([TVar | TVars], [TVar - Lval | Lvals]) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
 	(
@@ -917,8 +926,8 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_fail_stack(J, C3, C4),
 	code_info__get_max_temp_slot_count(PC, C1, _),
 	code_info__set_max_temp_slot_count(PC, C4, C5),
-	code_info__get_shapes(Shapes, C1, _),
-	code_info__set_shapes(Shapes, C5, C6),
+	code_info__get_continuation_info(ContInfo, C1, _),
+	code_info__set_continuation_info(ContInfo, C5, C6),
 	code_info__get_cell_count(CellCount, C1, _),
 	code_info__set_cell_count(CellCount, C6, C).
 
@@ -2685,9 +2694,9 @@ code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 :- mode code_info__generate_temp_livelvals(in, in, out) is det.
 
 code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
-code_info__generate_temp_livelvals([Slot - StoredLval | Slots],
-		LiveInfo0, [live_lvalue(Slot, S_Num, no) | LiveInfo1]) :-
-	code_info__get_shape_num(StoredLval, S_Num),
+code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
+		[live_lvalue(Slot, LiveValueType, []) | LiveInfo1]) :-
+	code_info__get_live_value_type(StoredLval, LiveValueType),
 	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
 
 :- pred code_info__generate_commit_livelvals(int,
@@ -2707,12 +2716,16 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 		CurfrVar = stackvar(CurfrSlot),
 		MaxfrVar = stackvar(MaxfrSlot),
 		RedoipVar = stackvar(RedoipSlot),
-		code_info__get_shape_num(lval(curfr), CurfrSnum),
-		code_info__get_shape_num(lval(maxfr), MaxfrSnum),
-		code_info__get_shape_num(lval(redoip(lval(maxfr))), RedoipSnum),
-		LiveInfo2 = [live_lvalue(CurfrVar, CurfrSnum, no) | LiveInfo1],
-		LiveInfo3 = [live_lvalue(MaxfrVar, MaxfrSnum, no) | LiveInfo2],
-		LiveInfo  = [live_lvalue(RedoipVar, RedoipSnum, no) | LiveInfo3]
+		code_info__get_live_value_type(lval(curfr), CurfrValueType),
+		code_info__get_live_value_type(lval(maxfr), MaxfrValueType),
+		code_info__get_live_value_type(lval(redoip(lval(maxfr))),
+			RedoipValueType),
+		LiveInfo2 = [live_lvalue(CurfrVar, CurfrValueType, []) | 
+				LiveInfo1],
+		LiveInfo3 = [live_lvalue(MaxfrVar, MaxfrValueType, []) |
+				LiveInfo2],
+		LiveInfo  = [live_lvalue(RedoipVar, RedoipValueType, []) |
+				LiveInfo3]
 	).
 
 :- pred code_info__livevals_to_livelvals(assoc_list(lval, var), gc_method,
@@ -2720,58 +2733,42 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 :- mode code_info__livevals_to_livelvals(in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _GC_Method, []) --> [].
-code_info__livevals_to_livelvals([L - V | Ls], GC_Method,
-		[live_lvalue(L, num(S_Num), TypeParams) | Lives]) -->
+code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method,
+		[LiveLval | Lives]) -->
 	(
 		{ GC_Method = accurate }
 	->
-		code_info__get_module_info(ModuleInfo),
-		code_info__get_shapes(S_Tab0),
-		{ module_info_types(ModuleInfo, Type_Table) },
-		code_info__variable_type(V, Type),
-
-		% XXX We don't yet support partial insts when allocating
-		% XXX shapes, so pass ground(shared, no) as a placeholder.
-		{ shapes__request_shape_number(Type - ground(shared, no),
-			Type_Table, S_Tab0, S_Tab1, S_Num) },
+		code_info__variable_type(Var, Type),
+		code_info__get_instmap(InstMap),
+		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
-		(
-			% if not polymorphic
-			{ TypeVars = [] }
-		->
-			{ TypeParams = no }
-		;
-			code_info__find_type_infos(TypeVars, Lvals),
-			{ TypeParams = yes(Lvals) }
-		),
-		code_info__set_shapes(S_Tab1)
+		code_info__find_type_infos(TypeVars, TypeParams),
+		{ LiveLval = live_lvalue(Lval, var(Type, Inst), TypeParams) }
 	;
-		% Dummy values
-		{ TypeParams = no },
-		{ S_Num = 0 }
+		{ LiveLval = live_lvalue(Lval, unwanted, []) }
 	),
 	code_info__livevals_to_livelvals(Ls, GC_Method, Lives).
 
-:- pred code_info__get_shape_num(lval_or_ticket, shape_num).
-:- mode code_info__get_shape_num(in, out) is det.
+:- pred code_info__get_live_value_type(lval_or_ticket, live_value_type).
+:- mode code_info__get_live_value_type(in, out) is det.
 
-code_info__get_shape_num(lval(succip), succip).
-code_info__get_shape_num(lval(hp), hp).
-code_info__get_shape_num(lval(maxfr), maxfr).
-code_info__get_shape_num(lval(curfr), curfr).
-code_info__get_shape_num(lval(succfr(_)), succfr).
-code_info__get_shape_num(lval(prevfr(_)), prevfr).
-code_info__get_shape_num(lval(redoip(_)), redoip).
-code_info__get_shape_num(lval(succip(_)), succip).
-code_info__get_shape_num(lval(sp), sp).
-code_info__get_shape_num(lval(lvar(_)), unwanted).
-code_info__get_shape_num(lval(field(_, _, _)), unwanted).
-code_info__get_shape_num(lval(temp(_, _)), unwanted).
-code_info__get_shape_num(lval(reg(_, _)), unwanted).
-code_info__get_shape_num(lval(stackvar(_)), unwanted).
-code_info__get_shape_num(lval(framevar(_)), unwanted).
-code_info__get_shape_num(lval(mem_ref(_)), unwanted).		% XXX
-code_info__get_shape_num(ticket, ticket).
+code_info__get_live_value_type(lval(succip), succip).
+code_info__get_live_value_type(lval(hp), hp).
+code_info__get_live_value_type(lval(maxfr), maxfr).
+code_info__get_live_value_type(lval(curfr), curfr).
+code_info__get_live_value_type(lval(succfr(_)), unwanted).
+code_info__get_live_value_type(lval(prevfr(_)), unwanted).
+code_info__get_live_value_type(lval(redoip(_)), unwanted).
+code_info__get_live_value_type(lval(succip(_)), unwanted).
+code_info__get_live_value_type(lval(sp), unwanted).
+code_info__get_live_value_type(lval(lvar(_)), unwanted).
+code_info__get_live_value_type(lval(field(_, _, _)), unwanted).
+code_info__get_live_value_type(lval(temp(_, _)), unwanted).
+code_info__get_live_value_type(lval(reg(_, _)), unwanted).
+code_info__get_live_value_type(lval(stackvar(_)), unwanted).
+code_info__get_live_value_type(lval(framevar(_)), unwanted).
+code_info__get_live_value_type(lval(mem_ref(_)), unwanted).		% XXX
+code_info__get_live_value_type(ticket, unwanted).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

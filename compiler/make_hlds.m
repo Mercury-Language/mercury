@@ -57,7 +57,7 @@
 
 :- import_module prog_io, prog_io_goal, prog_io_util, prog_out, hlds_out.
 :- import_module module_qual, prog_util, globals, options.
-:- import_module make_tags, quantification, shapes.
+:- import_module make_tags, quantification.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table.
@@ -758,20 +758,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 			{ special_pred_list(SpecialPredIds) },
 			{ add_special_pred_list(SpecialPredIds,
 					Module1, TVarSet, Type, TypeId,
-					Body, Context, Status, Module2a) },
-			( 
-				{ Status \= imported },
-				{ Status \= opt_imported },
-				{ Status \= abstract_imported }
-				% Only want to handle exports for types that 
-				% are defined locally (cuts down on 
-				% duplicates). 
-			->
-				{ add_abstract_export(Module2a, Type, 
-					TypeId, Module2) }
-			;
-				{ Module2 = Module2a }
-			)
+					Body, Context, Status, Module2) }
 		),
 		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
@@ -849,17 +836,6 @@ combine_status_abstract_imported(Status2, Status) :-
 	;
 		Status = abstract_imported
 	).
-
-:- pred add_abstract_export(module_info, type, type_id, module_info).
-:- mode add_abstract_export(in, in, in, out) is det.
-
-add_abstract_export(Module0, Type, TypeId, Module) :-
-	module_info_shape_info(Module0, Shape_Info0),
-	Shape_Info0 = shape_info(Shapes, Abs_Exports0, SpecialPredShapes),
-	S_Num = no(Type),
-	map__set(Abs_Exports0, TypeId, S_Num, Abs_Exports1),
-	Shape_Info = shape_info(Shapes, Abs_Exports1, SpecialPredShapes),
-	module_info_set_shape_info(Module0, Shape_Info, Module).
 
 :- pred add_special_preds(module_info, tvarset, type, type_id, 
 		hlds_type_body, term__context, import_status, module_info).

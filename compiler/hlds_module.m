@@ -12,7 +12,6 @@
 %	module_info
 %	dependency_info
 %	predicate_table
-%	shape_table
 %
 % There is a separate interface section for each of these.
 
@@ -23,11 +22,11 @@
 :- interface.
 
 :- import_module hlds_pred, unify_proc, special_pred.
-:- import_module relation, globals.
+:- import_module relation, globals, continuation_info.
 
 :- implementation.
 
-:- import_module hlds_data, hlds_out, prog_data, prog_util, shapes.
+:- import_module hlds_data, hlds_out, prog_data, prog_util.
 :- import_module require, int, string, list, map, set, std_util.
 :- import_module typecheck.
 
@@ -151,16 +150,13 @@
 :- pred module_info_get_special_pred_map(module_info, special_pred_map).
 :- mode module_info_get_special_pred_map(in, out) is det.
 
-:- pred module_info_get_shapes(module_info, shape_table).
-:- mode module_info_get_shapes(in, out) is det.
+:- pred module_info_get_continuation_info(module_info, continuation_info).
+:- mode module_info_get_continuation_info(in, out) is det.
 
 	% the cell count is used as a unique label number for
 	% constants in the generated C code
 :- pred module_info_get_cell_count(module_info, int).
 :- mode module_info_get_cell_count(in, out) is det.
-
-:- pred module_info_shape_info(module_info, shape_info).
-:- mode module_info_shape_info(in, out) is det.
 
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
@@ -228,14 +224,12 @@
 					module_info).
 :- mode module_info_set_special_pred_map(in, in, out) is det.
 
-:- pred module_info_set_shapes(module_info, shape_table, module_info).
-:- mode module_info_set_shapes(in, in, out) is det.
+:- pred module_info_set_continuation_info(module_info, continuation_info, 
+		module_info).
+:- mode module_info_set_continuation_info(in, in, out) is det.
 
 :- pred module_info_set_cell_count(module_info, int, module_info).
 :- mode module_info_set_cell_count(in, in, out) is det.
-
-:- pred module_info_set_shape_info(module_info, shape_info, module_info).
-:- mode module_info_set_shape_info(in, in, out) is det.
 
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
@@ -340,7 +334,7 @@
 			predicate_table,
 			unify_requests,
 			special_pred_map,
-			shape_info,
+			continuation_info,
 			type_table,
 			inst_table,
 			mode_table,
@@ -382,10 +376,7 @@ module_info_init(Name, Globals, Module_Info) :-
 	map__init(Types),
 	inst_table_init(Insts),
 	mode_table_init(Modes),
-	shapes__init_shape_table(ShapeTable),
-	map__init(AbsExports),
-	map__init(SpecialPredShapes),
-	Shapes = shape_info(ShapeTable, AbsExports, SpecialPredShapes),
+	continuation_info__init(ContinuationInfo),
 	map__init(Ctors),
 	DepInfo = no,
 	PragmaExports = [],
@@ -393,8 +384,8 @@ module_info_init(Name, Globals, Module_Info) :-
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
 	Module_Info = module(Name, C_Code_Info, PredicateTable, Requests, 
-		UnifyPredMap, Shapes, Types, Insts, Modes, Ctors, DepInfo, 
-		0, 0, PragmaExports, BaseTypeData, Globals,
+		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, 
+		Ctors, DepInfo, 0, 0, PragmaExports, BaseTypeData, Globals,
 		StratPreds, UnusedArgInfo, 0).
 
 	% Various access predicates which extract different pieces
@@ -468,17 +459,9 @@ module_info_get_unify_requests(ModuleInfo, Requests) :-
 	ModuleInfo = module(_, _, _, Requests, _, _, _, _, _, _, _, _,
 		_, _, _, _, _, _, _).
 
-module_info_get_shapes(ModuleInfo, Shapes) :-
-	module_info_shape_info(ModuleInfo, Shape_Info),
-	Shape_Info = shape_info(Shapes, _AbsExports, _SpecialPredShapes).
-
 module_info_get_special_pred_map(ModuleInfo, SpecialPredMap) :-
 	ModuleInfo = module(_, _, _, _, SpecialPredMap, 
 		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
-
-module_info_shape_info(ModuleInfo, ShapeInfo) :-
-	ModuleInfo = module(_, _, _, _, _, ShapeInfo, _, _, _, _, _, _,
-		_, _, _, _, _, _, _).
 
 module_info_types(ModuleInfo, Types) :-
 	ModuleInfo = module(_, _, _, _, _, _, Types, _, _, _, _, _, _, 
@@ -598,18 +581,10 @@ module_info_set_special_pred_map(ModuleInfo0, SpecialPredMap, ModuleInfo) :-
 	ModuleInfo = module(A, B, C, D, SpecialPredMap, 
 		F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
-module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, M, 
-		N, O, P, Q, R, S),
-	F = shape_info(_, AbsExports, SpecialPredShapes),
-	ModuleInfo = module(A, B, C, D, E, shape_info(Shapes, AbsExports, 
-		SpecialPredShapes), G, H, I, J,
-		K, L, M, N, O, P, Q, R, S).
-
-module_info_set_shape_info(ModuleInfo0, Shape_Info, ModuleInfo) :-
+module_info_set_continuation_info(ModuleInfo0, ContinuationInfo, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, _, G, H, I, J, K, L, M, N, 
 		O, P, Q, R, S),
-	ModuleInfo = module(A, B, C, D, E, Shape_Info, G, H, I, J, K, L, 
+	ModuleInfo = module(A, B, C, D, E, ContinuationInfo, G, H, I, J, K, L, 
 		M, N, O, P, Q, R, S).
 
 module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
@@ -674,6 +649,10 @@ module_info_next_lambda_count(ModuleInfo0, Count, ModuleInfo) :-
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, L, Count, 
 		N, O, P, Q, R, S).
 
+module_info_get_continuation_info(ModuleInfo, ContinuationInfo) :-
+	ModuleInfo = module(_, _, _, _, _, ContinuationInfo, _, _, _, _, _, _, 
+		_, _, _, _, _, _, _).
+
 module_info_get_pragma_exported_procs(ModuleInfo, Procs) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, _, 
 		Procs, _, _, _, _, _).
@@ -729,11 +708,9 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 	module_info_get_predicate_table(ModuleInfo0, Preds0),
 	predicate_table_optimize(Preds0, Preds),
-	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo2),
+	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo3),
 
-	module_info_get_shapes(ModuleInfo2, (Shapes0 - N)),
-	map__optimize(Shapes0, Shapes),
-	module_info_set_shapes(ModuleInfo2, (Shapes - N), ModuleInfo3),
+	% XXX Might want to optimize continuation_info here.
 
 	module_info_types(ModuleInfo3, Types0),
 	map__optimize(Types0, Types),
@@ -1535,37 +1512,5 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
-:- type shape_id	==	pair(type, inst).
-
-:- type shape_info	--->	shape_info(shape_table, 
-					   abs_exports,
-					   special_pred_shapes).
-
-	% A map from label of unify pred, eg '__Unify__list_1_1' to shape num.
-:- type special_pred_shapes ==  map(label, shape_num).
-
-:- type abs_exports	==	map(type_id, maybe_shape_num).
-
-:- type maybe_shape_num --->	yes(shape_num)
-			;	no(type).
-
-:- type shape		--->	quad(shape_tag, shape_tag, shape_tag,
-					 shape_tag)
-			;	abstract(type, list(shape_num))
-			;	equivalent(shape_num)
-			;	polymorphic(type, int)
-			;	closure(type).
-
-:- type shape_tag	--->	constant
-			;	simple(list(pair(shape_num, shape_id)))
-			;	complicated(list(list(pair(shape_num, shape_id)))).
-
-:- type shape_table	==	pair(map(shape_id, pair(shape_num, shape)),int).
 
 %-----------------------------------------------------------------------------%

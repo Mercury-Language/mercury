@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module tree, shapes.
+:- import_module tree, prog_data.
 :- import_module bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -120,7 +120,7 @@
 	;	call(code_addr, code_addr, list(liveinfo), call_model)
 			% call(Target, Continuation, _, _) is the same as
 			% succip = Continuation; goto(Target).
-			% The third argument is the shape table for the
+			% The third argument is the live value info for the
 			% values live on return. The last gives the model
 			% of the called procedure, and if it is nondet,
 			% says whether tail recursion is applicable to the call.
@@ -230,24 +230,38 @@
 				% where to put the output val, type and name
 				% of variable containing the output val
 
-	% Each call instruction has a list of liveinfo,
-	% which stores information about which variables
-	% are live at the point of that call.  The information
-	% is intended for use by the non-conservative garbage collector.
+	% Each call instruction has a list of liveinfo, which stores
+	% information about which variables are live after the call
+	% (that is, on return).  The information is intended for use by
+	% the non-conservative garbage collector.
 :- type liveinfo
 	--->	live_lvalue(
 			lval,
 				% What stackslot/reg does
 				% this lifeinfo structure
 				% refer to?
-			shape_num,
-				% What is the shape of this (bound) variable?
-			maybe(list(lval))
+			live_value_type,
+				% What is the type of this live value?
+			assoc_list(tvar, lval)
 				% Where are the typeinfos that determine the
 				% types of the actual parameters of the type
-				% parameters of this shape (if it is
-				% polymorphic), in the order of the arguments.
+				% parameters of this type (if it is
+				% polymorphic), and the type variable
+				% for each one.
 		).
+
+	% live_value_type describes the different sorts of data that
+	% can be considered live.
+:- type live_value_type 
+	--->	succip		% a stored succip
+	;	curfr		% a stored curfr
+	;	maxfr		% a stored maxfr
+	;	redoip
+	;	hp
+	;	var(type, inst)	% a variable
+	;	unwanted.	% something we don't need, or used as
+				% a placeholder for non-accurate gc.
+	
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.

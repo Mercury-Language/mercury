@@ -80,9 +80,9 @@
 
 :- implementation.
 
-:- import_module shapes, export.
-:- import_module exprn_aux, prog_data, prog_out, hlds_pred.
-:- import_module bool, int, list, char, string, set, std_util, term.
+:- import_module export.
+:- import_module exprn_aux, prog_data, prog_out, hlds_pred, mercury_to_mercury.
+:- import_module bool, int, list, char, string, set, std_util, term, varset.
 :- import_module require, globals, options.
 :- import_module library.	% for the version number.
 
@@ -1204,28 +1204,42 @@ output_gc_livevals(LiveVals) -->
 :- mode output_gc_livevals_2(in, di, uo) is det.
 
 output_gc_livevals_2([]) --> [].
-output_gc_livevals_2([live_lvalue(Lval, Shape, TypeParams)|Lvals]) -->
+output_gc_livevals_2([live_lvalue(Lval, LiveValueType, TypeParams)|Lvals]) -->
 	io__write_string(" *\t"),
 	output_lval(Lval),
 	io__write_string("\t"),
-	shapes__write_shape_num(Shape),
-	(
-		{ TypeParams = yes(ParamLocs) },
-		io__write_string("\t"),
-		output_gc_livevals_params(ParamLocs)
-	;
-		{ TypeParams = no }
-	),
+	output_live_value_type(LiveValueType),
+	io__write_string("\t"),
+	output_gc_livevals_params(TypeParams),
 	io__write_string("\n"),
 	output_gc_livevals_2(Lvals).
 
-:- pred output_gc_livevals_params(list(lval), io__state, io__state).
+:- pred output_gc_livevals_params(assoc_list(var, lval), io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.
 output_gc_livevals_params([]) --> [].
-output_gc_livevals_params([L|Lvals]) -->
-	output_lval(L),
+output_gc_livevals_params([Var - Lval | Lvals]) -->
+	{ term__var_to_int(Var, VarInt) },
+	io__write_int(VarInt),
+	io__write_string(" - "),
+	output_lval(Lval),
 	io__write_string("  "),
 	output_gc_livevals_params(Lvals).
+
+:- pred output_live_value_type(live_value_type, io__state, io__state).
+:- mode output_live_value_type(in, di, uo) is det.
+output_live_value_type(succip) --> io__write_string("succip").
+output_live_value_type(curfr) --> io__write_string("curfr").
+output_live_value_type(maxfr) --> io__write_string("maxfr").
+output_live_value_type(redoip) --> io__write_string("redoip").
+output_live_value_type(hp) --> io__write_string("hp").
+output_live_value_type(unwanted) --> io__write_string("unwanted").
+output_live_value_type(var(Type, Inst)) --> 
+	io__write_string("var("),
+	{ varset__init(NewVarset) },
+	mercury_output_term(Type, NewVarset, no),
+	io__write_string(", "),
+	mercury_output_inst(Inst, NewVarset),
+	io__write_string(")").
 
 :- pred output_temp_decls(int, string, io__state, io__state).
 :- mode output_temp_decls(in, in, di, uo) is det.

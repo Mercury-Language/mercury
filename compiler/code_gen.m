@@ -30,6 +30,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
+:- import_module continuation_info.
 :- import_module list, assoc_list, io.
 
 		% Translate a HLDS structure into an LLDS
@@ -39,10 +40,10 @@
 :- mode generate_code(in, out, out, di, uo) is det.
 
 :- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, 
-	shape_table, int, shape_table, int, c_procedure, io__state, io__state).
+	continuation_info, int, continuation_info, int, c_procedure, 
+	io__state, io__state).
 :- mode generate_proc_code(in, in, in, in, in, in, out, out, out,
 	di, uo) is det.
-		% N.B. could use unique mode for `shape_table'
 
 		% This predicate generates code for a goal.
 
@@ -62,7 +63,7 @@
 :- import_module disj_gen, pragma_c_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux.
 :- import_module code_util, type_util, mode_util.
-:- import_module prog_data, instmap, shapes.
+:- import_module prog_data, instmap.
 :- import_module bool, char, int, string, list, term.
 :- import_module map, tree, std_util, require, set, varset.
 
@@ -124,18 +125,19 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 		[]
 	),
 		% generate all the procedures for this predicate
-	{ module_info_get_shapes(ModuleInfo0, Shapes0) },
+	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Shapes0, Shapes, CellCount0, CellCount, [], Code),
+		ContInfo0, ContInfo, CellCount0, CellCount, [], Code),
 	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo1) },
-	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) }.
+	{ module_info_set_continuation_info(ModuleInfo1, ContInfo, 
+		ModuleInfo) }.
 
 % For all the modes of predicate PredId, generate the appropriate
 % code (deterministic, semideterministic, or nondeterministic).
 
 :- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
-	shape_table, shape_table, int, int,
+	continuation_info, continuation_info, int, int,
 	list(c_procedure), list(c_procedure), io__state, io__state).
 % :- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo)
 %	is det.
@@ -143,21 +145,21 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	di, uo) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
-		Shapes, Shapes, CellCount, CellCount, Procs, Procs) --> [].
+		ContInfo, ContInfo, CellCount, CellCount, Procs, Procs) --> [].
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		Shapes0, Shapes, CellCount0, CellCount, Procs0, Procs) -->
+		ContInfo0, ContInfo, CellCount0, CellCount, Procs0, Procs) -->
 	{ pred_info_procedures(PredInfo, ProcInfos) },
 		% locate the proc_info structure for this mode of the predicate
 	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
 		% find out if the proc is deterministic/etc
 	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0,
-		Shapes0, CellCount0, Shapes1, CellCount1, Proc),
+		ContInfo0, CellCount0, ContInfo1, CellCount1, Proc),
 	{ Procs1 = [Proc | Procs0] },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		Shapes1, Shapes, CellCount1, CellCount, Procs1, Procs).
+		ContInfo1, ContInfo, CellCount1, CellCount, Procs1, Procs).
 
 generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
-		Shapes0, CellCount0, Shapes, CellCount, Proc) -->
+		ContInfo0, CellCount0, ContInfo, CellCount, Proc) -->
 		% find out if the proc is deterministic/etc
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 		% get the goal for this procedure
@@ -185,27 +187,43 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, Shapes0, CodeInfo0) },
+		ModuleInfo, CellCount0, ContInfo0, CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
 		CodeInfo) },
-		% extract the new shape table and cell count
-	{ code_info__get_shapes(Shapes, CodeInfo, _CodeInfo1) },
+		% extract the new continuation_info and cell count
+	{ code_info__get_continuation_info(ContInfo1, CodeInfo, _CodeInfo1) },
 	{ code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2) },
+
 
 		% turn the code tree into a list
 	{ tree__flatten(CodeTree, FragmentList) },
 		% now the code is a list of code fragments (== list(instr)),
 		% so we need to do a level of unwinding to get a flat list.
 	{ list__condense(FragmentList, Instructions0) },
-	(
-		{ SUsed = yes(SlotNum) }
+	{
+		SUsed = yes(SlotNum)
 	->
-		{ code_gen__add_saved_succip(Instructions0,
-			SlotNum, Instructions) }
+		% XXX Do we need to still do this?
+		code_gen__add_saved_succip(Instructions0,
+			SlotNum, Instructions),
+
+		( GC_Method = accurate ->
+			code_info__get_total_stackslot_count(StackSize,
+				CodeInfo, _),
+			code_util__make_proc_label(ModuleInfo, 
+				PredId, ProcId, ProcLabel),
+			continuation_info__add_proc_info(Instructions, 
+				ProcLabel, StackSize, CodeModel,
+				SlotNum, ContInfo1, ContInfo)
+		;
+			ContInfo = ContInfo1
+		)
 	;
-		{ Instructions = Instructions0 }
-	),
+		ContInfo = ContInfo1,
+		Instructions = Instructions0
+	},
+
 		% get the name and arity of this predicate
 	{ predicate_name(ModuleInfo, PredId, Name) },
 	{ predicate_arity(ModuleInfo, PredId, Arity) },
@@ -1059,7 +1077,7 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
 		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip, no) |
+			[live_lvalue(stackvar(StackLoc), succip, []) |
 			LiveVals0], CM)
 	;
 		Instrn = Instrn0

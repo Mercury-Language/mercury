@@ -79,7 +79,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_data, prog_data, code_util, globals.
-:- import_module arg_info, type_util, mode_util, shapes, unify_proc.
+:- import_module arg_info, type_util, mode_util, unify_proc, instmap.
 :- import_module bool, int, list, assoc_list, tree, set, map.
 :- import_module std_util, require.
 
@@ -545,33 +545,16 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
 	(
 		{ GC_Method = accurate }
 	->
-		code_info__get_shapes(S_Tab0),
 		code_info__variable_type(Var, Type),
-		code_info__get_module_info(Module_Info),
-		{ module_info_types(Module_Info, Type_Table) },
-
-		% XXX we really should check that the inst of Var is
-		% XXX ground - but that would probably break things when
-		% XXX partial insts get implemented.
-		{ shapes__request_shape_number(Type - ground(shared, no), 
-			Type_Table, S_Tab0, S_Tab1, S_Number) },
+		code_info__get_instmap(InstMap),
+		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
-		(
-			% if not polymorphic
-			{ TypeVars = [] }
-		->
-			{ TypeParams = no }
-		;
-			code_info__find_type_infos(TypeVars, Lvals),
-			{ TypeParams = yes(Lvals) }
-		),
-		code_info__set_shapes(S_Tab1)
+		code_info__find_type_infos(TypeVars, TypeParams),
+		{ LiveVal = live_lvalue(R, var(Type, Inst), TypeParams) }
 	;
-		{ TypeParams = no },
-		{ S_Number = 0 }
+		{ LiveVal = live_lvalue(R, unwanted, []) }
 	),
 	{ code_util__arg_loc_to_register(L, R) },
-	{ LiveVal = live_lvalue(R, num(S_Number), TypeParams) },
 	call_gen__insert_arg_livelvals(As, GC_Method, [LiveVal | LiveVals0], 
 		LiveVals).
 

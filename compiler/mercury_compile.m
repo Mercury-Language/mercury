@@ -43,7 +43,7 @@
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
-:- import_module dependency_graph, garbage_out, shapes.
+:- import_module dependency_graph.
 :- import_module options, globals, passes_aux.
 
 
@@ -797,11 +797,12 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
-	{ module_info_get_shapes(ModuleInfo3, Shapes0) },
+	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
 	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3,
-		Shapes0, CellCount0, Shapes, CellCount, Proc0),
-	{ module_info_set_shapes(ModuleInfo3, Shapes, ModuleInfo4) },
+		ContInfo0, CellCount0, ContInfo, CellCount, Proc0),
+	{ module_info_set_continuation_info(ModuleInfo3, ContInfo, 
+		ModuleInfo4) },
 	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
@@ -1378,29 +1379,22 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 	bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
+mercury_compile__output_pass(HLDS, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
-	{ base_type_layout__generate_llds(HLDS0, BaseTypeLayouts) },
+	{ base_type_info__generate_llds(HLDS, BaseTypeInfos) },
+	{ base_type_layout__generate_llds(HLDS, BaseTypeLayouts) },
 
 	{ llds_common(LLDS0, BaseTypeLayouts, ModuleName, LLDS1, 
 		StaticData, CommonData) },
 
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
-	mercury_compile__chunk_llds(HLDS0, LLDS1, AllData, CommonData,
+	mercury_compile__chunk_llds(HLDS, LLDS1, AllData, CommonData,
 		LLDS2, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
 
-	mercury_compile__maybe_find_abstr_exports(HLDS0, Verbose, Stats,
-		HLDS1),
-
-	{ module_info_shape_info(HLDS1, Shape_Info) },
-	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS2,
-		Verbose, Stats),
-
-	export__produce_header_file(HLDS1, ModuleName),
+	export__produce_header_file(HLDS, ModuleName),
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
@@ -1481,44 +1475,6 @@ mercury_compile__output_llds(ModuleName, LLDS, Verbose, Stats) -->
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_flush_output(Verbose),
 	maybe_report_stats(Stats).
-
-:- pred mercury_compile__maybe_write_gc(module_name, shape_info, c_file,
-	bool, bool, io__state, io__state).
-:- mode mercury_compile__maybe_write_gc(in, in, in, in, in, di, uo) is det.
-
-mercury_compile__maybe_write_gc(ModuleName, ShapeInfo, LLDS, Verbose, Stats) -->
-	globals__io_get_gc_method(GarbageCollectionMethod),
-	( { GarbageCollectionMethod = accurate } ->
-		maybe_write_string(Verbose, "% Writing gc info to `"),
-		maybe_write_string(Verbose, ModuleName),
-		maybe_write_string(Verbose, ".garb'..."),
-		maybe_flush_output(Verbose),
-		garbage_out__do_garbage_out(ShapeInfo, LLDS),
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		[]
-	).
-
-:- pred mercury_compile__maybe_find_abstr_exports(module_info, bool, bool,
-	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_find_abstr_exports(in, in, in, out, di, uo)
-	is det.
-
-mercury_compile__maybe_find_abstr_exports(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_get_gc_method(GarbageCollectionMethod),
-	(
-		{ GarbageCollectionMethod = accurate }
-	->
-		maybe_write_string(Verbose, "% Looking up abstract type "),
-		maybe_write_string(Verbose, "exports..."),
-		maybe_flush_output(Verbose),
-		{ shapes__do_abstract_exports(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS = HLDS0 }
-	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1840,6 +1796,12 @@ mercury_compile__link_module_list(Modules) -->
 	    )
 	).
 
+	% join_string_list(Strings, Prefix, Suffix, Serarator, Result)
+	%
+	% Appends the strings in the list `Strings' together into the
+	% string Result. Each string is prefixed by Prefix, suffixed by
+	% Suffix and separated by Separator.
+
 :- pred join_string_list(list(string), string, string, string, string).
 :- mode join_string_list(in, in, in, in, out) is det.
 
@@ -1852,6 +1814,13 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
 		string__append_list([Prefix, String, Suffix, Separator,
 			Result0], Result)
 	).
+
+	% join_module_list(Strings, Separator, Terminator, Result)
+	%
+	% The list of strings `Result' is the list of strings `Strings',
+	% where each string in `Strings' has had any directory path 
+	% removed, and is separated by `Separator' from the next string, 
+	% followed by the list of strings `Terminator'.
 
 :- pred join_module_list(list(string), string, list(string), list(string)).
 :- mode join_module_list(in, in, in, out) is det.
