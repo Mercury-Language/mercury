@@ -371,13 +371,11 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 
 	FloatTotalCalls is FloatTotalCalls0 + FloatSelfCalls,
 	Calls is SelfCalls + TotalCalls,
-
-
-	builtin_float_plus(Self, CumTime0, CumTime),
-	checked_float_divide(Self, FloatTotalCalls, Self1),
-	checked_float_divide(Descendant, FloatTotalCalls, Desc1),
-	builtin_float_times(1000.0, Self1, SelfMs),
-	builtin_float_times(1000.0, Desc1, DescMs),
+	CumTime is CumTime0 + Self,
+	checked_float_divide(Self, FloatTotalCalls, SelfSeconds),
+	checked_float_divide(Descendant, FloatTotalCalls, DescSeconds),
+	SelfMs is 1000.0 * SelfSeconds,
+	DescMs is 1000.0 * DescSeconds,
 
 	output__construct_name(Name, CycleNum, FullName),
 	string__int_to_string(Index, IndexStr0),
