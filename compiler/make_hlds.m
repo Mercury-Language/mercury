@@ -657,8 +657,9 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 	% XXX we need to know the module name!!!
 	ModuleName = "xxx",
 
-	( Goal = term_functor(term_atom(PredName), Args, _) ->
-		true
+	( Goal = term_functor(term_atom(PredName0), Args0, _) ->
+		PredName = PredName0,
+		Args = Args0
 	;
 		( Goal = term_functor(_, _, Context) ->
 			term__context_file(Context, File0),
@@ -670,7 +671,8 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 			string__append(File, Str0, Str),
 			error(Str)
 		;
-			error("fatal error: call to free variable")
+			PredName = "call",
+			Args = [Goal]
 		)
 	),
 	length(Args, Arity),
