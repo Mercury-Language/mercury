@@ -1962,7 +1962,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				PicAsmFileName, " : ", SourceFileName, "\n",
 				"\trm -f ", PicAsmFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"--target-code-only --pic-reg ",
+					"--target-code-only --pic ",
 					"\\\n",
 				"\t\t--cflags ""$(GCCFLAGS_FOR_PIC)"" ",
 					"$< > ", ErrFileName,
