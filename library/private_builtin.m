@@ -1132,52 +1132,10 @@ no_clauses(PredName) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-//    public static class type_info_1
-//     {
-//	public int                              arity;
-//	public int                              type_ctor_version;
-//	public mercury.runtime.TypeCtorRep      type_ctor_rep;
-//	public int                              type_ctor_num_ptags; // if DU
-//	public mercury.runtime.MethodPtr        unify_pred;
-//	public mercury.runtime.MethodPtr        compare_pred;
-//	public java.lang.String                 type_ctor_module_name;
-//	public java.lang.String                 type_ctor_name;
-//	public mercury.runtime.TypeFunctors     type_functors;
-//	public mercury.runtime.TypeLayout       type_layout;
-//	public int 			        type_ctor_num_functors;
-//   }
-   
-    public static mercury.builtin.comparison_result_0
-    builtin_compare_int_3_p_0(int val1, int val2)
-     {
-        if(val1 == val2)
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_equal);
-	else if(val1 < val2)
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_less_than);
-	else
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_greater_than);
-	
-     }
+    public static mercury.private_builtin.type_info_1
+	    private_builtin__type_ctor_info_type_info_1 =
+		    new mercury.private_builtin.type_info_1();
 
-    public static mercury.builtin.comparison_result_0
-    builtin_compare_string_3_p_0(String string1, String string2)
-     {
-	int value = string1.compareTo(string2);
-	
-        if(value == 0)
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_equal);
-	else if(value < 0)
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_less_than);
-	else
-	     return new mercury.builtin.comparison_result_0(
-	     	mercury.builtin.comparison_result_0.f_greater_than);
-     }
-    
     public static class ref_1
      {
      	// XXX stub only
@@ -1202,8 +1160,8 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_FLOAT = 10;
     public static final int MR_TYPECTOR_REP_STRING = 11;
     public static final int MR_TYPECTOR_REP_PRED = 12;
-    public static final int MR_TYPECTOR_REP_UNIV = 13;
-    public static final int MR_TYPECTOR_REP_SUBGOAL = 14;
+    public static final int MR_TYPECTOR_REP_SUBGOAL = 13;
+    public static final int MR_TYPECTOR_REP_VOID = 14;
     public static final int MR_TYPECTOR_REP_C_POINTER = 15;
     public static final int MR_TYPECTOR_REP_TYPEINFO = 16;
     public static final int MR_TYPECTOR_REP_TYPECLASSINFO = 17;
@@ -1231,6 +1189,10 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_STABLE_C_POINTER = 39;
     public static final int MR_TYPECTOR_REP_UNKNOWN = 40;
 	
+    public static final int MR_SECTAG_NONE	= 0;
+    public static final int MR_SECTAG_LOCAL	= 1;
+    public static final int MR_SECTAG_REMOTE	= 2;
+    public static final int MR_SECTAG_VARIABLE	= 3;
 ").
 
 %-----------------------------------------------------------------------------%

@@ -685,17 +685,16 @@ namespace mercury.builtin {
 		{
 		}
 	}
+
+	public static class tuple_0
+	{
+		// stub only
+	}
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-
-    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_int_0 = new mercury.private_builtin.type_info_1();
-    
-    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_string_0 = new mercury.private_builtin.type_info_1();
-
-    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_character_0 = new mercury.private_builtin.type_info_1();
 
     public static boolean unify_2_p_0(mercury.private_builtin.type_info_1 ti,
 		    java.lang.Object x, java.lang.Object y)
