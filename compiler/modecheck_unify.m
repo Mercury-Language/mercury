@@ -347,7 +347,7 @@ modecheck_unification(X,
 	% First modecheck the lambda goal itself:
 	%
 	% initialize the initial insts of the lambda variables,
-	% check that the non-local vars are ground,
+	% check that the non-local vars are ground (XXX or any),
 	% mark the non-local vars as shared,
 	% lock the non-local vars,
 	% mark the non-clobbered lambda variables as live,
@@ -373,8 +373,11 @@ modecheck_unification(X,
 	% This variable should be marked as shared at the _top_ of the
 	% lambda goal.  As for implementing this, it probably means that
 	% the lambda goal should be re-modechecked, or even modechecked
-	% to a fixpoint.  For the moment, we get around this by sharing
-	% all non-local variables at the top of the lambda goal.
+	% to a fixpoint. 
+	%
+	% For the moment, since doing all that properly seems too hard,
+	% we just share all non-local variables at the top of the lambda goal.
+	% This is safe, but perhaps too conservative.
 	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -404,7 +407,8 @@ modecheck_unification(X,
  
 	% lock the non-locals
 	% (a lambda goal is not allowed to bind any of the non-local
-	% variables, since it could get called more than once)
+	% variables, since it could get called more than once, or
+	% from inside a negation)
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
@@ -428,7 +432,17 @@ modecheck_unification(X,
 		%     (See the above comment on merging the initial and
 		%     final instmaps.)
 
-		inst_list_is_ground(NonLocalInsts, ModuleInfo2)
+		% XXX This test is also not conservative enough!
+		%
+		%     We should not allow non-local vars to have inst `any';
+		%     because that can lead to unsoundness.
+		%     However, disallowing that idiom would break
+		%     extras/trailed_update/samples/vqueens.m, and
+		%     would make freeze/3 basically useless...
+		%     so for now at least, let's not disallow it,
+		%     even though it is unsafe.
+
+		inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
 	->
 		make_shared_inst_list(NonLocalInsts, ModuleInfo2,
 			SharedNonLocalInsts, ModuleInfo3),
