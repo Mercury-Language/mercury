@@ -1,5 +1,5 @@
 /*
- *	$Id: util.h,v 1.3 1997-01-31 04:27:17 aet Exp $
+ *	$Id: util.h,v 1.4 1997-02-01 09:22:13 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -7,31 +7,6 @@
 #if	! defined(UTIL_H)
 #define	UTIL_H
 
-/* XXX: What naming convention for types? byte_t Byte Byte_t ? */
-/* XXX: Note we assume the following:
- *	sizeof(byte) = 1
- *	sizeof(short) = 2
- *	sizeof(int) = 4
- *	sizeof(long) = 8
- *	sizeof(float) = 4
- *	sizeof(double) = 8
- */
-typedef unsigned char
-	Byte;
-typedef int
-	Word;
-typedef int
-	Int;
-typedef	short
-	Short;
-typedef long
-	Long;
-typedef float
-	Float;
-typedef double
-	Double;
-typedef char*
-	CString;
 typedef int
 	Bool;
 
