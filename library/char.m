@@ -462,7 +462,7 @@ char__lower_upper('z', 'Z').
 
 char__min_char_value(0).
 
-:- pragma c_header_code("#include <limits.h>").
+:- pragma foreign_decl("C", "#include <limits.h>").
 :- pragma foreign_proc("C",
 		char__max_char_value(Max::out),
 		[will_not_call_mercury, thread_safe], "

@@ -371,7 +371,7 @@ generate_method_defn(FunctionDefn) -->
 			% declarations.
 		{ ClassDecls = [
 			comment_term(MLDSDefnTerm),
-			ilasm__method(methodhead([static], id(Id), 
+			ilasm__method(methodhead([public, static], id(Id), 
 				ILSignature, []), MethodContents)
 		] },
 		il_info_add_classdecls(ClassDecls)
@@ -1764,7 +1764,7 @@ rval_to_function(Rval, MemberName) :-
 :- mode make_class_constructor_classdecl(in, in, in, in, out, in, out) is det.
 make_class_constructor_classdecl(DoneFieldRef, Imports, AllocInstrs, 
 		InitInstrs, Method) -->
-	{ Method = method(methodhead([static], cctor, 
+	{ Method = method(methodhead([public, static], cctor, 
 		signature(call_conv(no, default), void, []), []),
 		MethodDecls) },
 	test_rtti_initialization_field(DoneFieldRef, TestInstrs),

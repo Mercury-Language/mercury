@@ -87,8 +87,26 @@ fi
 AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
 ILASM=`basename "$ILASM"`
 
+AC_PATH_PROG(MS_CL, cl)
+AC_MSG_CHECKING(for Microsoft.NET Visual C++)
+AC_CACHE_VAL(mercury_cv_microsoft_visual_cpp, [
+if test "$MS_CL" != ""; then
+	changequote(<<,>>) 
+	MS_VISUALCPP_DIR=`expr "$MS_CL" : '\(.*\)[/\\]*[bB]in[/\\]*cl'`
+	changequote([,]) 
+	mercury_cv_microsoft_visual_cpp="yes"
+else
+	MS_VISUALCPP_DIR=""
+	mercury_cv_microsoft_visual_cpp="no"
+fi
+])
+AC_MSG_RESULT($mercury_cv_microsoft_visual_cpp)
+MS_CL=`basename "$MS_CL"`
+
 AC_SUBST(ILASM)
+AC_SUBST(MS_CL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
+AC_SUBST(MS_VISUALCPP_DIR)
 ])
 
 #-----------------------------------------------------------------------------#
