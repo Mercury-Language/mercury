@@ -6,7 +6,7 @@ include ../../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
+TYPECLASS_PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
 	existential_type_classes \
@@ -24,6 +24,25 @@ PROGS=	\
 	superclass_call \
 	test_default_func_mode \
 	typeclass_test_6
+
+# These tests are all failing in jump and fast grades b/c we can't use static
+# code initialisers.
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    PROGS=$(TYPECLASS_PROGS)
+else
+    ifneq "$(findstring jump,$(GRADE))" ""
+        PROGS=
+    else
+        ifneq "$(findstring fast,$(GRADE))" ""
+            PROGS=
+        else
+            PROGS=$(TYPECLASS_PROGS)
+        endif
+    endif
+endif
+
+
 
 # implied_instance_missing_constraint is not yet included as there is a bug
 # stopping it from working.
