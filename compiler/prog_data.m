@@ -993,15 +993,15 @@
 	--->	du_type(list(constructor), is_solver_type, maybe(unify_compare))
 	;	eqv_type(type)
 	;	abstract_type(is_solver_type)
-	;	foreign_type(foreign_language_type, maybe(unify_compare))
-	.
+	;	foreign_type(foreign_language_type, maybe(unify_compare)).
 
 :- type constructor
 	--->	ctor(
-			existq_tvars,
-			list(class_constraint),	% existential constraints
-			sym_name,
-			list(constructor_arg)
+			cons_exist	:: existq_tvars,
+			cons_constraints :: list(class_constraint),
+					% existential constraints
+			cons_name	:: sym_name,
+			cons_args	:: list(constructor_arg)
 		).
 
 :- type constructor_arg	==
