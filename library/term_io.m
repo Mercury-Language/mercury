@@ -197,7 +197,12 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 :- mode io__write_list_tail(input, input, input, output, output, di, uo).
 
 io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
-	(
+	( 
+		{ Term = term_variable(Id) },
+		{ varset__lookup_var(VarSet0, Id, Val) }
+	->
+		io__write_list_tail(Val, VarSet0, N0, VarSet, N)
+	;
 		{ Term = term_functor(term_atom("."), [ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
