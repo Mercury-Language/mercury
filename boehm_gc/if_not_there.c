@@ -16,6 +16,7 @@ char ** envp;
         return(0);
     }
     printf("^^^^Starting command^^^^\n");
+    fflush(stdout);
     execvp(argv[2], argv+2);
     exit(1);
     
