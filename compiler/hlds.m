@@ -33,7 +33,8 @@
 				% Deterministic disjunctions are converted
 				% into case statements by the determinism
 				% analysis.
-			;	switch(var_id, list(case))
+				% Variable, functor-args-goal, followvars
+			;	switch(var_id, list(case), vars)
 
 				% Initially only the two terms are filled
 				% in.  Mode analysis fills in the last
