@@ -1536,7 +1536,7 @@ type_list_to_string_2(_, [], "").
 type_list_to_string_2(VarSet, [T|Ts], String) :-
 	mercury_type_to_string(VarSet, T, String0),
 	type_list_to_string_2(VarSet, Ts, String1),
-	string__append_list([String0, ", ", String1], String).
+	string__append_list([", ", String0, String1], String).
 
 	% XXX this should probably be a little cleverer, like
 	% mercury_output_term. 
