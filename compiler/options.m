@@ -38,7 +38,8 @@
 		;	halt_at_syntax_errors
 		;	warn_singleton_vars
 		;	warn_overlapping_scopes
-		;	warn_missing_det_decls
+		;	warn_missing_det_decls % obsolete
+				% (use infer_determinism instead)
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
 		;	warn_unused_args
@@ -217,9 +218,11 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool(no),
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
+	% if you add any new warn_xxx options, you will need
+	% to modify the handling of inhibit_warnings in handle_options.m
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
-	warn_missing_det_decls	-	bool(yes),
+	warn_missing_det_decls	-	bool(yes),	 % obsolete
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
 	warn_unused_args	-	bool(no),
@@ -263,8 +266,8 @@ option_defaults_2(language_semantics_option, [
 	reorder_conj		-	bool(yes),
 	reorder_disj		-	bool(yes),
 	fully_strict		-	bool(yes),
-	infer_types		-	bool(yes),
-	infer_modes		-	bool(yes),
+	infer_types		-	bool(no),
+	infer_modes		-	bool(no),
 	infer_determinism	-	bool(yes),
 	infer_all		-	bool_special
 ]).
@@ -458,7 +461,6 @@ long_option("halt-at-warn",		halt_at_warn).
 long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("warn-overlapping-scopes",	warn_overlapping_scopes).
-long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
@@ -472,6 +474,7 @@ long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("debug-detism",		debug_detism).
+long_option("debug-determinism",	debug_detism).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
 
@@ -507,6 +510,7 @@ long_option("infer-all",		infer_all).
 long_option("infer-types",		infer_types).
 long_option("infer-modes",		infer_modes).
 long_option("infer-determinism",	infer_determinism).
+long_option("infer-detism",		infer_determinism).
 long_option("infer-det",		infer_determinism).
 
 % compilation model options
@@ -886,9 +890,6 @@ options_help_warning -->
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t--no-warn-overlapping-scopes\n"),
 	io__write_string("\t\tDon't warn about variables which occur in overlapping scopes.\n"),
-	io__write_string("\t--no-warn-missing-det-decls\n"),
-	io__write_string("\t\tDon't warn about predicate declarations which don't\n"),
-	io__write_string("\t\thave a determinism annotation.\n"),
 	io__write_string("\t--no-warn-det-decls-too-lax\n"),
 	io__write_string("\t\tDon't warn about determinism declarations\n"),
 	io__write_string("\t\twhich could have been stricter.\n"),
@@ -995,21 +996,20 @@ options_help_semantics -->
 	io__write_string("\t--no-reorder-conj\n"),
 	io__write_string("\t\tExecute conjunctions left-to-right except where the modes imply\n"),
 	io__write_string("\t\tthat reordering is unavoidable.\n"),
-	io__write_string("\t\tno-reorder-disj\n"),
+	io__write_string("\t--no-reorder-disj\n"),
 	io__write_string("\t\tExecute disjunctions strictly left-to-right.\n"),
-	io__write_string("\t\tfully-strict\n"),
+	io__write_string("\t--fully-strict\n"),
 	io__write_string("\t\tDon't optimize away loops or calls to error/1.\n"),
-	io__write_string("\t--no-infer-types\n"),
+	io__write_string("\t--infer-types\n"),
 	io__write_string("\t\tIf there is no type declaration for a predicate or function,\n"),
-	io__write_string("\t\tdon't try to infer the type, just report an errror.\n"),
+	io__write_string("\t\ttry to infer the type, rather than just reporting an error.\n"),
+	io__write_string("\t--infer-modes\n"),
+	io__write_string("\t\tIf there is no mode declaration for a predicate,\n"),
+	io__write_string("\t\ttry to infer the modes, rather than just reporting an error.\n"),
 
-	io__write_string("\t\n").
-/****
-% The --no-infer-det option has not yet been implemented.
 	io__write_string("\t--no-infer-det, --no-infer-determinism\n"),
 	io__write_string("\t\tIf there is no determinism declaration for a procedure,\n"),
-	io__write_string("\t\tdon't try to infer the determinism, just report an errror.\n").
-****/
+	io__write_string("\t\tdon't try to infer the determinism, just report an error.\n").
 
 :- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
 

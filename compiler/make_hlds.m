@@ -923,15 +923,15 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ MaybeDet = no }
 	->
 		( { pred_info_is_exported(PredInfo0) } ->
-			unspecified_det_error(PredName, Arity, PredOrFunc,
-				MContext)
+			unspecified_det_for_exported(PredName, Arity,
+				PredOrFunc, MContext)
 		;
-			globals__io_lookup_bool_option(warn_missing_det_decls,
-				ShouldWarn),
+			globals__io_lookup_bool_option(infer_determinism,
+				InferDeterminism),
 			(
-				{ ShouldWarn = yes }
+				{ InferDeterminism = no }
 			->
-				unspecified_det_warning(PredName, Arity,
+				unspecified_det_for_local(PredName, Arity,
 					PredOrFunc, MContext)
 			;
 				[]
@@ -2527,13 +2527,13 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
 		io__write_string("' declaration.\n")
 	).
 
-:- pred unspecified_det_warning(sym_name, arity, pred_or_func, term__context, 
+:- pred unspecified_det_for_local(sym_name, arity, pred_or_func, term__context, 
 				io__state, io__state).
-:- mode unspecified_det_warning(in, in, in, in, di, uo) is det.
+:- mode unspecified_det_for_local(in, in, in, in, di, uo) is det.
 
-unspecified_det_warning(Name, Arity, PredOrFunc, Context) -->
+unspecified_det_for_local(Name, Arity, PredOrFunc, Context) -->
 	prog_out__write_context(Context),
-	report_warning("Warning: no determinism declaration for local\n"),
+	report_warning("Error: no determinism declaration for local\n"),
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	hlds_out__write_call_id(PredOrFunc, Name/Arity),
@@ -2541,20 +2541,22 @@ unspecified_det_warning(Name, Arity, PredOrFunc, Context) -->
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  (The determinism of this predicate or function will be\n"),
+		io__write_string("  (This is an error because you specified the `--no-infer-det'"),
 		prog_out__write_context(Context),
-		io__write_string("  automatically inferred by the compiler. To suppress this\n"),
+		io__write_string("  option.  Use the `--infer-det' option if you want the"),
 		prog_out__write_context(Context),
-		io__write_string("  warning, use the `--no-warn-missing-det-decls' option.)\n")
+		io__write_string("  compiler to automatically infer the determinism of"),
+		prog_out__write_context(Context),
+		io__write_string("  local predicates.)")
 	;
 		[]
 	).
 
-:- pred unspecified_det_error(sym_name, arity, pred_or_func, term__context,
-				io__state, io__state).
-:- mode unspecified_det_error(in, in, in, in, di, uo) is det.
+:- pred unspecified_det_for_exported(sym_name, arity, pred_or_func,
+			term__context, io__state, io__state).
+:- mode unspecified_det_for_exported(in, in, in, in, di, uo) is det.
 
-unspecified_det_error(Name, Arity, PredOrFunc, Context) -->
+unspecified_det_for_exported(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: no determinism declaration for exported\n"),
@@ -2568,7 +2570,7 @@ unspecified_det_error(Name, Arity, PredOrFunc, Context) -->
 :- mode clause_for_imported_pred_error(in, in, in, in, di, uo) is det.
 
 clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context) -->
-	% io__set_exit_status(1),
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: clause for imported "),
 	hlds_out__write_call_id(PredOrFunc, Name/Arity),
