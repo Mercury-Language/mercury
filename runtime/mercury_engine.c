@@ -78,7 +78,7 @@ MR_init_engine(MercuryEngine *eng)
 	eng->MR_eng_heap_zone = MR_create_zone("heap", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
-	eng->MR_eng_hp = eng->heap_zone->min;
+	eng->MR_eng_hp = eng->MR_eng_heap_zone->min;
 
 #ifdef	NATIVE_GC
 	eng->MR_eng_heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
@@ -95,12 +95,12 @@ MR_init_engine(MercuryEngine *eng)
 	eng->MR_eng_solutions_heap_zone = MR_create_zone("solutions_heap", 1,
 			MR_solutions_heap_size, MR_next_offset(),
 			MR_solutions_heap_zone_size, MR_default_handler);
-	eng->MR_eng_sol_hp = eng->solutions_heap_zone->min;
+	eng->MR_eng_sol_hp = eng->MR_eng_solutions_heap_zone->min;
 
 	eng->MR_eng_global_heap_zone = MR_create_zone("global_heap", 1,
 			MR_global_heap_size, MR_next_offset(),
 			MR_global_heap_zone_size, MR_default_handler);
-	eng->MR_eng_global_hp = eng->global_heap_zone->min;
+	eng->MR_eng_global_hp = eng->MR_eng_global_heap_zone->min;
 #endif
 
 #ifdef	MR_THREAD_SAFE

@@ -295,21 +295,21 @@ MR_declare_entry(MR_do_runnext);
   ** furthest back that we can backtrack is the same as it was last time we
   ** were executing.
   */
-  #define MR_set_min_heap_reclamation_point(ctxt)		\
-	do {							\
-		if (MR_hp != (ctxt)->MR_ctxt_hp 		\
-			|| (ctxt)->MR_ctxt_hp == NULL)	{	\
-			MR_min_hp_rec = MR_hp;			\
-			(ctxt)->min_hp_rec = MR_hp;		\
-		} else {					\
-			MR_min_hp_rec =	(ctxt)->min_hp_rec;	\
-		}						\
+  #define MR_set_min_heap_reclamation_point(ctxt)			\
+	do {								\
+		if (MR_hp != (ctxt)->MR_ctxt_hp 			\
+			|| (ctxt)->MR_ctxt_hp == NULL)	{		\
+			MR_min_hp_rec = MR_hp;				\
+			(ctxt)->MR_ctxt_min_hp_rec = MR_hp;		\
+		} else {						\
+			MR_min_hp_rec =	(ctxt)->MR_ctxt_min_hp_rec;	\
+			}						\
 	} while (0)
 
   #define MR_save_hp_in_context(ctxt)				\
   	do {							\
 		(ctxt)->MR_ctxt_hp = MR_hp;			\
-		(ctxt)->min_hp_rec = MR_min_hp_rec;		\
+		(ctxt)->MR_ctxt_min_hp_rec = MR_min_hp_rec;	\
 	} while (0)
 
 #else
