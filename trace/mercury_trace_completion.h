@@ -100,4 +100,4 @@ extern MR_Completer_List *MR_trace_map_completer(MR_Completer_Map map_func,
 				MR_Free_Completer_Data free_data,
 				MR_Completer_List *list);
 
-#endif MR_TRACE_COMPLETION_H
+#endif /* MR_TRACE_COMPLETION_H */
