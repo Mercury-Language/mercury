@@ -54,20 +54,17 @@
 %	    =>
 %		V = V2
 %	    ),
-%	all [G0,V,N,G]
-%	    (
-%		graph__set_node(G0, N, V, G) => some
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module integer, map.
+:- import_module int, map.
 
 :- type node_id(_T)	==	integer.
 
-:- type graph(T)	--->	graph(node_id(T), map(node_id(T), T))).
+:- type graph(T)	--->	graph(node_id(T), map(node_id(T), T)).
 
 %-----------------------------------------------------------------------------%
 
@@ -82,15 +79,15 @@ graph__init(graph(0, Nodes)) :-
 	% create a new node with the specified value
 :- pred graph__new_node(graph(T), T, node_id(T), graph(T)).
 :- mode graph__new_node(input, input, output, output).
-graph__new_node(graph(MaxId0, Nodes), Val, MaxId0, graph(MaxId, Nodes)) :-
+graph__new_node(graph(MaxId0, Nodes0), Val, MaxId0, graph(MaxId, Nodes)) :-
 	MaxId is MaxId0 + 1,
-	map__set(MaxId0, Val).
+	map__set(Nodes0, MaxId0, Val, Nodes).
 
 %-----------------------------------------------------------------------------%
 
 	% replace the value stored in a given node
 :- pred graph__set_node(graph(T), node_id(T), T, graph(T)).
-:- pred graph__set_node(input, input, input, output).
+:- mode graph__set_node(input, input, input, output).
 graph__set_node(graph(MaxId, Nodes0), Id, Val, graph(MaxId, Nodes)) :-
 	map__set(Nodes0, Id, Val, Nodes).
 

@@ -16,17 +16,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module map.
-:- import_module list.
+:- import_module list, pair.
 :- export_pred	map__init/1, map__search/3, map__search_insert/4,
 		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2,
 		map__contains/2, map__inverse_search/3, map__member/3.
-:- export_type	map__pair.
 
 %-----------------------------------------------------------------------------%
 
-:- type map__pair(K,V)	--->	K - V.	% pair is a system type in NU-Prolog.
-
-:- type map(K,V)	==	list(map__pair(K,V)).
+:- type map(K,V)	==	list(pair(K,V)).
 
 %	where
 %	(L : all [K]
@@ -89,7 +86,7 @@ map__member(Map, K, V) :-
 	% The reason we don't just use member/2 is that we want to
 	% bootstrap this thing before we implement polymorphic modes.
 
-:- pred assoc_list_member(map__pair(K,V), list(map__pair(K,V))).
+:- pred assoc_list_member(pair(K,V), list(pair(K,V))).
 :- mode assoc_list_member(bound(ground - free) -> ground, input).
 :- mode assoc_list_member(bound(free - ground) -> ground, input).
 :- mode assoc_list_member(bound(free - free) -> ground, input).
@@ -154,7 +151,7 @@ map__keys_2([Key - _ | Rest], Keys0, Keys) :-
 
 	% convert a map to an associate list
 
-:- pred map__to_assoc_list(map(K,V), list(map__pair(K,V))).
+:- pred map__to_assoc_list(map(K,V), list(pair(K,V))).
 :- mode map__to_assoc_list(input, output).
 map__to_assoc_list(M, M).
 

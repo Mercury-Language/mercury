@@ -8,6 +8,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module bintree.
+:- import_module int, pair.
 
 :- interface.
 :- type bintree(K,V)		--->	empty
@@ -64,7 +65,7 @@ bintree__search(tree(K0 - V0, Left, Right), K, V) :-
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(input, input, output).
 
-bintree__delete(empty, K, empty).
+bintree__delete(empty, _K, empty).
 bintree__delete(tree(K0 - V0, Left, Right), K, Tree) :-
 	compare(Result, K0, K),
 	(if
@@ -104,7 +105,7 @@ bintree__fixup(Left, Right, Tree) :-
 :- mode bintree__right_depth(input, output).
 
 bintree__right_depth(empty, 0).
-bintree__right_depth(tree(Node, Left, Right), N) :-
+bintree__right_depth(tree(_Node, _Left, Right), N) :-
 	bintree__right_depth(Right, M),
 	N is M + 1.
 
@@ -112,7 +113,7 @@ bintree__right_depth(tree(Node, Left, Right), N) :-
 :- mode bintree__left_depth(input, output).
 
 bintree__left_depth(empty, 0).
-bintree__left_depth(tree(Node, Left, Right), N) :-
+bintree__left_depth(tree(_Node, Left, _Right), N) :-
 	bintree__left_depth(Left, M),
 	N is M + 1.
 

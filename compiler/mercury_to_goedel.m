@@ -5,17 +5,23 @@
 % This program converts Mercury source code into Goedel.
 
 % TODO:
-%	write error messages to stderr instead of stdout
-%	output calls to is/2 as calls to =/2;
-%	indent `ELSE IF' properly
+% (Crucial)
 %	handle escapes in string constants;
+%	handle Mercury's overloaded functors (this will require a
+%		very serious rewrite!);
+%
+% (Important)
 %	handle Mercury's implicit quantification;
-% 	translate mode declarations into delay declarations;
-%	translate Mercury's module system declarations into Goedel;
-%	handle equivalence types and undiscriminated union types;
 %	implement the Mercury IO library in Goedel;
 %	implement various NU-Prolog predicates in Goedel; 
-%	add line numbers comments to the output;
+%	handle undiscriminated union types;
+%
+% (Desireably but not crucial)
+%	write error messages to stderr instead of stdout
+%	indent `ELSE IF' properly
+% 	translate mode declarations into delay declarations;
+%	translate Mercury's module system declarations into Goedel;
+%	add a command-line option to output line number comments
 %	preserve the comments in the original source code.
 
 :- module('mercury_to_goedel').
@@ -23,6 +29,10 @@
 :- export_pred main_predicate.
 
 %-----------------------------------------------------------------------------%
+
+	% XXX - This predicate should be a command-line option.
+:- pred option_write_line_numbers.
+option_write_line_numbers :- fail.
 
 	% Validate command line arguments
 
@@ -39,7 +49,7 @@ main_predicate([_, Progname, File | Files]) -->
 :- pred usage(io__state, io__state).
 :- mode usage(di, uo).
 usage -->
-	{ io__progname(Progname) },
+	io__progname(Progname),
  	io__write_string("Mercury-to-Goedel converter version 0.1\n"),
  	io__write_string("Usage: "),
 	io__write_string(Progname),
@@ -82,6 +92,14 @@ process_files_3(ok(Warnings, Prog), Files, Progname, Items) -->
 process_files_3(error(Errors), _, _, _) -->
 	io__write_string("parse error(s).\n"),
 	prog_out__write_messages(Errors).
+
+%-----------------------------------------------------------------------------%
+
+goedel_write_context(Context) -->
+	{ term__context_line(Context, LineNumber) },
+	io__write_string("% Line "),
+	io__write_int(LineNumber),
+	io__write_string(": ").
 
 %-----------------------------------------------------------------------------%
 
@@ -293,12 +311,14 @@ goedel_replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args, Body, Found0,
 goedel_output_item_list([]) --> [].
 goedel_output_item_list([Item - Context | Items]) -->
 	( goedel_output_item(Item, Context) ->
-		{ true }
+		[]
 	;
-		{ write('failed: '),
-		  write(Item),
-		  nl
-		}
+		io__write_string("\n"),
+		goedel_write_context(Context),
+		io__write_string("mercury_to_goedel internal error.\n"),
+		io__write_string("Failed to process the following item:\n"),
+		io__write_anything(Item),
+		io__write_string("\n")
 	),
 	goedel_output_item_list(Items).
 
@@ -317,6 +337,10 @@ goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
 goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Cond), Context) -->
+	( { option_write_line_numbers } ->
+		io__write_string("\n"),
+		goedel_write_context(Context)
+	),
 	io__write_string("\n"),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
@@ -328,6 +352,10 @@ goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
 	[].
 
 goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
+	( { option_write_line_numbers } ->
+		goedel_write_context(Context),
+		io__write_string("\n")
+	),
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
 
 goedel_output_item(nothing, _) --> [].
@@ -363,11 +391,16 @@ goedel_output_type_defn(VarSet, TypeDefn, Context) -->
 			io__state, io__state).
 :- mode goedel_output_type_defn_2(input, input, input, di, uo).
 
-goedel_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, _Context) -->
-	io__write_string("% warning: undiscriminated union types not yet supported.\n").
+goedel_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
+	goedel_write_context(Context),
+	io__write_string("warning: undiscriminated union types not yet supported.\n").
 goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, _Context) -->
 	io__write_string("% warning: equivalence types not yet supported.\n").
 goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
+	( { option_write_line_numbers } ->
+		goedel_write_context(Context),
+		io__write_string("\n")
+	),
 	{ length(Args, Arity) },
 	{ unqualify_name(Name, Name2) },
 	{ convert_functor_name(Name2, Name3) },
@@ -564,7 +597,7 @@ goedel_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	io__write_string(")").
 
 goedel_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
-	io__write_string("(IF "),
+	io__write_string("(IF"),
 	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -577,7 +610,7 @@ goedel_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	io__write_string(")").
 
 goedel_output_goal(not(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(NOT"),
+	io__write_string("(~"),
 	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -600,21 +633,42 @@ goedel_output_goal((A;B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal(call(Term), VarSet, _Indent) -->
-	goedel_output_pred(Term, VarSet).
+goedel_output_goal(call(Term), VarSet, Indent) -->
+	goedel_output_call(Term, VarSet, Indent).
 
 goedel_output_goal(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).
 
-:- pred goedel_output_pred(term, varset, io__state, io__state).
-:- mode goedel_output_pred(input, input, di, uo).
+:- pred goedel_output_call(term, varset, int, io__state, io__state).
+:- mode goedel_output_call(input, input, input, di, uo).
 
-goedel_output_pred(term_variable(Var), VarSet) -->
+goedel_output_call(term_variable(Var), VarSet, _Indent) -->
 	goedel_output_var(Var, VarSet, term_var).
-goedel_output_pred(term_functor(Functor, Args, _), VarSet) -->
-	(if %%% some [Arg1, Arg2, PredName]
+goedel_output_call(term_functor(Functor, Args, Context), VarSet, Indent) -->
+	(if %%% some [Cond, Message]
+		{ Functor = term_atom("require"),
+		  Args = [Cond, Message]
+		}
+	then
+		% output `if Cond then true else error(Msg)'
+		{ parse_goal(Cond, CondGoal) },
+		goedel_output_goal(if_then_else([], CondGoal, true,
+			call(term_functor(term_atom("error"), [Message],
+			Context))), VarSet, Indent)
+	else
+	if %%% some [Arg1, Arg2, PredName]
+		{ Args = [Arg1, Arg2],
+		  Functor = term_atom("is")
+		}
+	then
+		{ goedel_convert_expression(Arg2, GoedelArg2) },
+		goedel_output_term(Arg1, VarSet),
+		io__write_string(" Is "),
+		goedel_output_term(GoedelArg2, VarSet)
+	else
+	if %%% some [Arg1, Arg2, PredName]
 		{ Args = [Arg1, Arg2],
 		  Functor = term_atom(PredName),
 		  goedel_infix_pred(PredName)
@@ -669,6 +723,23 @@ goedel_output_some(Vars, VarSet) -->
 		io__write_string(" SOME ["),
 		goedel_output_vars(Vars, VarSet),
 		io__write_string("]")
+	).
+
+:- pred goedel_convert_expression(term, term).
+:- mode goedel_convert_expression(input, output).
+
+goedel_convert_expression(Term0, Term) :-
+	( Term0 = term_functor(term_atom(F0), [X0, Y0], Context) ->
+		goedel_convert_expression(X0, X),
+		goedel_convert_expression(Y0, Y),
+		( F0 = "//" ->
+			F = "div"
+		;
+			F = F0
+		),
+		Term = term_functor(term_atom(F), [X, Y], Context)
+	; 
+		Term = Term0
 	).
 
 %-----------------------------------------------------------------------------%

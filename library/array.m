@@ -71,7 +71,7 @@ array__init(Low, High, Init, Array) :-
 	(if
 		Size = 0
 	then
-		require(fail, "Cannot have a zero length array")
+		error("Cannot have a zero length array")
 	else if
 		Size = 1
 	then
@@ -130,10 +130,10 @@ array__search(Array, Index, Item) :-
 array__search_2(node(Item), Index, Item).
 array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	Size is High - Low,
-	Half is Size / 2,
+	Half is Size // 2,
 	Mid is Low + Half,
 	(if
-		Index < Mid
+		Index =< Mid
 	then
 		array__search_2(Left, Index, Item)
 	else
@@ -141,7 +141,7 @@ array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	).
 array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 	Size is High - Low,
-	Third is Size / 3,
+	Third is (Size + 1) // 3,
 	Mid1 is Low + Third,
 	Mid2 is Mid1 + Third,
 	(if
@@ -159,7 +159,7 @@ array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 array__set(node(_), Index, Item, node(Item)).
 array__set(two(Low, High, Left, Right), Index, Item, A) :-
 	Size is High - Low,
-	Half is Size / 2,
+	Half is Size // 2,
 	Mid is Low + Half,
 	(if
 		Index < Mid
@@ -172,7 +172,7 @@ array__set(two(Low, High, Left, Right), Index, Item, A) :-
 	).
 array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
 	Size is High - Low,
-	Third is Size / 3,
+	Third is (Size + 1) // 3,
 	Mid1 is Low + Third,
 	Mid2 is Mid1 + Third,
 	(if
@@ -191,7 +191,7 @@ array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
 	).
 
 array__from_list([], _Array) :-
-	require(fail, "Cannot create an array with zero elements").
+	error("Cannot create an array with zero elements").
 
 array__from_list(List, Array) :-
 	length(List, Len),
@@ -203,7 +203,7 @@ array__from_list(List, Array) :-
 :- pred array__insert_items(array(T), int, list(T), array(T)).
 :- mode array__insert_items(input, input, input, output).
 
-array__insert_items(Array, N, [], Array).
+array__insert_items(Array, _N, [], Array).
 array__insert_items(Array0, N, [Head|Tail], Array) :-
 	array__set(Array0, N, Head, Array1),
 	N1 is N + 1,

@@ -17,7 +17,7 @@
 % layer of abstraction.
 
 :- module hlds.
-:- import_module integer, string, list, varset, term, map.
+:- import_module int, string, list, varset, term, map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

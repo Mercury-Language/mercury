@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module list.
-:- import_module integer.
+:- import_module int.
 
 :- interface.
 

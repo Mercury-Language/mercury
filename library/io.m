@@ -18,7 +18,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module io.
-:- import_module integer, float, string, list, varset, term, require.
+:- import_module int, float, string, list, varset, term, require.
 :- interface.
 
 % External interface: imported predicate
@@ -33,7 +33,7 @@
 
 % External interface: exported predicates
 
-:- pred io__progname(string).
+:- pred io__progname(string, io__state, io__state).
 %	io__progname(Progname).
 %		Returns the name that the program was invoked with.
 
@@ -67,7 +67,7 @@
 %	io__told(IO0, IO1).
 %		As per Prolog told/0.
 
-:- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fxx; fyy.
+:- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred io__op(integer, op_type, string, io__state, io__state).
 %	io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
@@ -127,8 +127,8 @@ io__gc_call(Goal) -->
 	io__update_state,
 	{ io__call(Goal) }.
 
-:- dynamic(main_predicate/3).	% needed so that spy will work.
-:- spy(main_predicate/3).	% for debugging
+%%% :- dynamic(main_predicate/3).	% needed so that spy will work.
+%%% :- spy(main_predicate/3).	% for debugging
 
 :- type io__state ---> io__state(io__state_2).
 :- type io__state_2 ---> old ; current.
@@ -174,11 +174,11 @@ atoms_to_strings(A.As,S.Ss) :-
 
 % ?- dynamic(io__progname/1).
 % save_progname(Progname._) :-
-% 	assert(io__progname(Progname)).
+% 	assert(io__progname(Progname, X, X)).
 
 	% !! this is wrong, but is necessary to avoid bugs in nit.
 save_progname(_).
-io__progname("typecheck").
+io__progname("typecheck", X, X).
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -276,12 +276,18 @@ io__read_term(Result) -->
 	% convert "double-quoted string" tokens into
 	% '$string'("double_quoted string") so that they don't get
 	% confused with lists of integers.
+	% NB we need to take care that we don't use $string directly,
+	% so that this file is self-applicable.
+
+magic_string_atom(Name) :-
+	name(Name, "$string").
 
 convert_tokens([], []).
 convert_tokens(Tok0.Toks0, Toks) :-
 	Tok0 = _Val.Type,
 	(Type = string ->
-		Toks = ['$string'.atom, '('.atom, Tok0, ')'.atom | Toks1]
+		magic_string_atom(String),
+		Toks = [String.atom, '('.atom, Tok0, ')'.atom | Toks1]
 	;
 		Toks = [Tok0 | Toks1]
 	),
@@ -308,9 +314,9 @@ io__get_token_list(Tokens, LineNumber) :-
 
 % XXX nested module
 
-:- module varmap.
-:- export_pred varmap__init, varmap__set_id, varmap__lookup.
-:- export_type maybe_name, maybe_id.
+% :- module varmap.
+% :- export_pred varmap__init, varmap__set_id, varmap__lookup.
+% :- export_type maybe_name, maybe_id.
 
 	% The "varmap" ADT.
 	% A varmap is a mapping from variables to (var_id, name).
@@ -353,7 +359,8 @@ varmap__lookup(var(V,N,I).Rest, Var, Name, Id) :-
 	;
 		varmap__lookup(Rest, Var, Name, Id)
 	).
-:- end_module varmap.
+
+% :- end_module varmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -379,7 +386,8 @@ convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, VarMap) :-
 		Term = term_functor(term_float(Term0), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
-	; Term0 = '$string'(String) ->
+	; magic_string_atom(S),
+	  Term0 =.. [S, String] ->
 		Term = term_functor(term_string(String), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0

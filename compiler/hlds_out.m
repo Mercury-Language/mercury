@@ -204,7 +204,7 @@ hlds_out__write_intlist_2(Ns0) -->
 	(if
 		{ Ns0 = [] }
 	then
-		{ require(fail,"This should be unreachable.") }
+		{ error("This should be unreachable.") }
 	else if
 		%%% nuprolog bug! some[N] (
 			{ Ns0 = [N] }
@@ -393,7 +393,7 @@ hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) -->
 	(if
 		{ ProcIds0 = [] }
 	then
-		{ require(fail,"This should never happen") }
+		{ error("This should never happen") }
 	else if
 		%%% nuprolog bug some [ProcId] (
 			{ ProcIds0 = [ProcId] }
@@ -515,7 +515,7 @@ hlds_out__write_termlist_2(Indent, Terms0) -->
 	(if
 		{ Terms0 = [] }
 	then
-		{ require(fail,"This cannot happen") }
+		{ error("This cannot happen") }
 	else if
 		%%% nuprolog bug! some [Term] (
 			{ Terms0 = [Term] }
@@ -658,7 +658,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 	(if
 		{ VarNameList0 = [] }
 	then
-		{ require(fail,"This cannot happen") }
+		{ error("This cannot happen") }
 	else if
 		%%% nuprolog bug! some [VarId, Name] (
 			{ VarNameList0 = [VarId - Name] }
@@ -704,7 +704,7 @@ hlds_out__write_varterms_2(Indent, VarTermList0) -->
 	(if
 		{ VarTermList0 = [] }
 	then
-		{ require(fail,"This cannot happen") }
+		{ error("This cannot happen") }
 	else if
 		%%% nuprolog bug! some [VarId, Term] (
 			{ VarTermList0 = [VarId - Term] }

@@ -2,7 +2,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module prog_io.
-:- import_module string, list, varset, term, io.
+:- import_module string, int, list, varset, term, io.
 
 %-----------------------------------------------------------------------------%
 %
@@ -144,9 +144,9 @@
 :- type constructor	==	pair(sym_name, list(type)).
 
 	% XXX should type parameters be variables not terms ??
-:- type type_param	=	term.
+:- type type_param	==	term.
 
-:- type (type)		=	term.
+:- type (type)		==	term.
 
 	% Types may have arbitrary assertions associated with them
 	% (eg. you can define a type which represents sorted lists).
@@ -173,7 +173,7 @@
 :- type (inst)		--->	free
 			;	bound(list(bound_inst))
 			;	ground
-			;	inst_var(var)
+			;	inst_var(variable)
 			;	user_defined_inst(sym_name, list(inst)).
 
 :- type bound_inst	--->	functor(const, list(inst)).
@@ -293,7 +293,8 @@ prog_io__read_program(FileName, Result) -->
 		},
 		io__seen
 	else
-		{ io__progname(Progname),
+		io__progname(Progname),
+		{
 		  string__append(Progname, ": can't open file '", Message1),
 		  string__append(Message1, FileName, Message2),
 		  string__append(Message2, "'.\n", Message),

@@ -23,7 +23,7 @@
 %		
 %-----------------------------------------------------------------------------%
 
-:- import_module integer, string, float.
+:- import_module int, string, float.
 :- export_pred  term__vars, term__contains_var,
 		term__context_line, term__context_init.
 :- export_type term, const, variable.
