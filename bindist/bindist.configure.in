@@ -82,6 +82,7 @@ AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(CYGPATH)
 AC_SUBST(MATH_LIB)
+AC_SUBST(SHARED_LIBS_SH)
 
 #-----------------------------------------------------------------------------#
 AC_PROG_RANLIB
@@ -205,9 +206,11 @@ top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
+CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+AC_SUBST_FILE(CANONICAL_GRADE)
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
