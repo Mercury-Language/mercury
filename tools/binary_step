@@ -157,7 +157,36 @@ touch stage2/compiler/*.c
 
 sleep 2
 
+touch stage2/library/*.int3
+touch stage2/compiler/*.int3
+
+sleep 2
+
+touch stage2/library/*.date3
+touch stage2/compiler/*.date3
+
+touch stage2/library/*.int2
+touch stage2/library/*.int
+touch stage2/compiler/*.int2
+touch stage2/compiler/*.int
+
+sleep 2
+
+touch stage2/library/*.date
+touch stage2/compiler/*.date
+
+touch stage2/library/*.opt
+
+sleep 2
+
+touch stage2/library/*.optdate
+touch stage2/library/*.trans_opt
+
+sleep 2
+
+touch stage2/library/*.trans_opt_date
 touch stage2/library/*.o
+touch stage2/library/*.pic_o
 touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
@@ -216,18 +245,22 @@ then
 	/bin/rm -f stage3/library/*.c
 	/bin/rm -f stage3/library/*.d
 	/bin/rm -f stage3/library/*.optdate
+	/bin/rm -f stage3/library/*.trans_opt_date
 	/bin/rm -f stage3/library/*.date3
 	/bin/rm -f stage3/library/*.date
 	/bin/rm -f stage3/library/*.opt
+	/bin/rm -f stage3/library/*.trans_opt
 	/bin/rm -f stage3/library/*.int3
 	/bin/rm -f stage3/library/*.int2
 	/bin/rm -f stage3/library/*.int
 	/bin/rm -f stage3/compiler/*.c
 	/bin/rm -f stage3/compiler/*.d
 	/bin/rm -f stage3/compiler/*.optdate
+	/bin/rm -f stage3/compiler/*.trans_opt_date
 	/bin/rm -f stage3/compiler/*.date3
 	/bin/rm -f stage3/compiler/*.date
 	/bin/rm -f stage3/compiler/*.opt
+	/bin/rm -f stage3/compiler/*.trans_opt
 	/bin/rm -f stage3/compiler/*.int3
 	/bin/rm -f stage3/compiler/*.int2
 	/bin/rm -f stage3/compiler/*.int

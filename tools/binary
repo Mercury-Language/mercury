@@ -5,7 +5,7 @@
 # (stage2.bad), both of which must have their object files, this script
 # uses binary search to try to find in stage2.bad first the C source file
 # and then the module within that C source file that, when put together
-# with everthing else from the stage2.ok directory, still causes the
+# with everything else from the stage2.ok directory, still causes the
 # compiler to fail.
 #
 # If the bad C source file has different numbers of modules in the bad and ok
@@ -205,8 +205,10 @@ cd stage2
 mkdir compiler
 cd compiler
 ln -s $root/compiler/[a-h]*.m .
-ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[i-o]*.m .
+ln -s $root/compiler/[p-s]*.m .
 ln -s $root/compiler/[t-z]*.m .
+ln -s $root/compiler/*.pp .
 cp $root/compiler/Mmake* .
 cd $root/stage2
 mkdir library
@@ -222,7 +224,6 @@ then
 	cd runtime
 	ln -s $root/runtime/*.h .
 	ln -s $root/runtime/*.c .
-	ln -s $root/runtime/*.mod .
 	ln -s $root/runtime/*.in .
 	ln -s $root/runtime/machdeps .
 	cp $root/runtime/Mmake* .
@@ -238,9 +239,9 @@ ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
+ln -s $root/aclocal.m4 .
 ln -s $root/VERSION .
-ln -s $root/.README.in .
-ln -s $root/.INSTALL.in .
+ln -s $root/.*.in .
 rm -f config*.log
 cp $root/stage2.ok/Mmake* .
 cd $root
@@ -250,18 +251,24 @@ cd $root
 
 # cp stage2.ok/library/*.d stage2/library
 cp stage2.ok/library/*.dep stage2/library
+cp stage2.ok/library/*.dv stage2/library
+cp stage2.ok/library/*.int3 stage2/library
+cp stage2.ok/library/*.date3 stage2/library
 cp stage2.ok/library/*.int stage2/library
 cp stage2.ok/library/*.int2 stage2/library
-cp stage2.ok/library/*.int3 stage2/library
 cp stage2.ok/library/*.date stage2/library
-cp stage2.ok/library/*.h stage2/library
+cp stage2.ok/library/*.opt stage2/library
 cp stage2.ok/library/*.optdate stage2/library
+cp stage2.ok/library/*.trans_opt stage2/library
 cp stage2.ok/library/*.trans_opt_date stage2/library
+cp stage2.ok/library/*.h stage2/library
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
+cp stage2.ok/compiler/*.dv stage2/compiler
+cp stage2.ok/compiler/*.int3 stage2/compiler
+cp stage2.ok/compiler/*.date3 stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
-cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 
 if test "$bootcheck" = ""
@@ -280,8 +287,10 @@ then
 	# This is needed to cope with small limits
 	# on the size of argument vectors.
 	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[i-o]*.m .
+	ln -s $root/compiler/[p-s]*.m .
 	ln -s $root/compiler/[t-z]*.m .
+	ln -s $root/compiler/*.pp .
 	cp $root/compiler/Mmake* .
 	cd $root/stage3
 	mkdir library
@@ -298,9 +307,9 @@ then
 	ln -s $root/runtime .
 	ln -s $root/util .
 	ln -s $root/conf* .
+	ln -s $root/aclocal.m4 .
 	ln -s $root/VERSION .
-	ln -s $root/.README.in .
-	ln -s $root/.INSTALL.in .
+	ln -s $root/.*.in .
 	rm -f config*.log
 	/bin/rm -f Mmake*
 	cp $root/stage2.$basis/Mmake* .
@@ -328,6 +337,7 @@ then
 	set +x
 	echo linking stage2/library from stage2.bad/library 1>&2
 	cp stage2.bad/library/*.[co] stage2/library
+	cp stage2.bad/library/*.pic_o stage2/library
 	echo linking stage2/compiler from stage2.ok/compiler 1>&2
 	cp stage2.ok/compiler/*.[co] stage2/compiler
 	set -x
@@ -364,6 +374,7 @@ fi
 set +x
 echo linking stage2 from stage2.$base 1>&2
 cp stage2.$base/library/*.[co] stage2/library
+cp stage2.$base/library/*.pic_o stage2/library
 cp stage2.$base/compiler/*.[co] stage2/compiler
 set -x
 
@@ -399,6 +410,7 @@ do
 	for module in $tested
 	do
 		cp stage2.$trial/$testeddir/$module.[co] stage2/$testeddir
+		cp stage2.$trial/$testeddir/$module.pic_o stage2/$testeddir
 	done
 
 	if "$negative"
