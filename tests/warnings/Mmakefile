@@ -39,7 +39,9 @@ MCFLAGS-ambiguous_overloading	= --no-intermodule-optimization
 	# the arg_order_rearrangement warning doesn't show up at
 	# lower optimization levels.
 MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
-					--excess-assign --common-struct
+					--excess-assign --common-struct \
+					--trace-optimized
+
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
