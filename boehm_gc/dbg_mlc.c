@@ -531,13 +531,15 @@ GC_PTR p;
     GC_PTR p;
 # endif
 {
-    register GC_PTR base = GC_base(p);
+    register GC_PTR base;
     register ptr_t clobbered;
-    
+
+    if (p == 0) return;
+    base = GC_base(p);
     if (base == 0) {
         GC_err_printf1("Attempt to free invalid pointer %lx\n",
         	       (unsigned long)p);
-        if (p != 0) ABORT("free(invalid pointer)");
+        ABORT("free(invalid pointer)");
     }
     if ((ptr_t)p - (ptr_t)base != sizeof(oh)) {
         GC_err_printf1(
