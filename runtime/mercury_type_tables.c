@@ -52,7 +52,7 @@ MR_register_type_ctor_info(MR_TypeCtorInfo type_ctor_info)
 				/* type_ctor_info has been registered before */
 				return;
 			} else {
-				fatal_error("MR_register_type_ctor_info: ambiguous type ctor");
+				MR_fatal_error("MR_register_type_ctor_info: ambiguous type ctor");
 			}
 		}
 	}
