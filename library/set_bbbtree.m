@@ -233,14 +233,14 @@
 
 
 	% `set_bbbtree__subset(SetA, SetB)' is true iff all the elements of
-	% `SetB' are also elements of `SetA'.
+	% `SetA' are also elements of `SetB'.
 
 :- pred set_bbbtree__subset(set_bbbtree(T), set_bbbtree(T)).
 :- mode set_bbbtree__subset(in, in) is semidet.
 
 
 	% `set_bbbtree__superset(SetA, SetB)' is true iff all the elements of
-	% `SetA' are also elements of `SetB'.
+	% `SetB' are also elements of `SetA'.
 
 :- pred set_bbbtree__superset(set_bbbtree(T), set_bbbtree(T)).
 :- mode set_bbbtree__superset(in, in) is semidet.
@@ -864,7 +864,7 @@ set_bbbtree__difference_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 %------------------------------------------------------------------------------%
 
 set_bbbtree__subset(SetA, SetB) :-
-	set_bbbtree__difference(SetB, SetA, Set),
+	set_bbbtree__difference(SetA, SetB, Set),
 	set_bbbtree__empty(Set).
 
 %------------------------------------------------------------------------------%
