@@ -1275,8 +1275,7 @@ case $host in
 		mercury_cv_use_digital_unix_threads=no ;;
 esac
 
-if $mercury_cv_use_digital_unix_threads = yes
-then
+if test $mercury_cv_use_digital_unix_threads = yes; then
 	AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
 fi
 
