@@ -4706,6 +4706,12 @@ function unless that predicate or function calls (directly or indirectly)
 a predicate or function which was explicitly declared to have an
 existentially quantified type.
 
+Note that an existentially typed procedure is not allowed to have
+different types for its existentially typed arguments in different clauses
+(even mode-specific clauses) or in different subgoals of a single clause;
+however, the same effect can be achieved in other ways
+(see @pxref{Some idioms using existentially quantified types}).
+
 For procedures involving calls to existentially-typed predicates or functions,
 the compiler's mode analysis must take account of the modes for type
 variables in all polymorphic calls.
@@ -5010,6 +5016,38 @@ harder_example(Name, Showable) :-
 	; Name = "bar", Univ = 'new mkshowable'("blah")
 	),
 	Univ = mkshowable(Showable).
+@end example
+
+The issue can also arise for mode-specific clauses
+(see @pxref{Different clauses for different modes}).
+For instance, the following example is illegal:
+
+@example
+:- some [T] pred bad_example3(string, T).
+:-          mode bad_example3(in(bound("foo")), out) is det.
+:-          mode bad_example3(in(bound("bar")), out) is det.
+:- pragma promise_pure(bad_example3/2).
+bad_example3("foo"::in(bound("foo")), 42::out).
+bad_example3("bar"::in(bound("bar")), "blah"::out).
+	% type error (cannot unify `int' and `string')
+@end example
+
+The solution is similar, although in this case an intermediate
+predicate is required:
+
+@example
+:- some [T] pred good_example3(string, T).
+:-          mode good_example3(in(bound("foo")), out) is det.
+:-          mode good_example3(in(bound("bar")), out) is det.
+good_example3(Name, univ_value(Univ)) :-
+	good_example3_univ(Name, Univ).
+
+:- pred good_example3_univ(string, univ).
+:- mode good_example3_univ(in(bound("foo")), out) is det.
+:- mode good_example3_univ(in(bound("bar")), out) is det.
+:- pragma promise_pure(good_example3_univ/2).
+good_example3_univ("foo"::in(bound("foo")), univ(42)::out).
+good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
 @end example
 
 @node Semantics
