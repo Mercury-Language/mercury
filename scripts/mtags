@@ -320,7 +320,7 @@ while ($#ARGV >= 0)
 	    $decl eq "func" ||
 	    $decl eq "type" ||
 	    $decl eq "inst" ||
-	    ($decl eq "mode" && $body =~ /::/) ||
+	    ($decl eq "mode" && ($body =~ /::/ || $body =~ /==/)) ||
 	    $decl eq "typeclass" ||
 	    ($decl eq "instance" && $keep_dups)
 	);
@@ -384,8 +384,8 @@ while ($#ARGV >= 0)
 		    }
 
 		    $name = $body;
-		    $name =~ s/[;.%].*//;
-		    $kind  = "cons";
+		    $name =~ s/[ \t;.%].*//;
+		    $kind = "cons";
 		    do output_name();
 
 		    # if there are more constructor definitions on the
