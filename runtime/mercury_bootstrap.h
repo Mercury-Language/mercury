@@ -16,8 +16,11 @@
 #define	MERCURY_BOOTSTRAP_H
 
 /*
-** This stuff is required for bootstrapping, and can't be disabled yet.
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
 */
+
+#ifndef MR_NO_BACKWARDS_COMPAT
 
 /*
 ** The next two #defines are needed for bootstrapping the new type constructor
@@ -53,13 +56,6 @@
 #ifndef FALSE
 #define FALSE			MR_FALSE
 #endif
-
-/*
-** This stuff is enabled by default,
-** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
-*/
-
-#ifndef MR_NO_BACKWARDS_COMPAT
 
 /* 
 ** For a long time the Mercury C types were defined as Char, Float,

@@ -4302,7 +4302,7 @@ static const MR_Trace_Command_Info	MR_trace_valid_command_list[] =
 	{ NULL, NULL, NULL, MR_trace_null_completer },
 };
 
-bool 
+MR_bool 
 MR_trace_command_completion_info(const char *word,
 	MR_Make_Completer *completer, const char *const **fixed_args)
 {
@@ -4310,11 +4310,11 @@ MR_trace_command_completion_info(const char *word,
 
 	command_info = MR_trace_valid_command(word);
 	if (!command_info) {
-		return FALSE;
+		return MR_FALSE;
 	} else {
 		*completer = command_info->MR_trace_command_arg_completer;
 		*fixed_args = command_info->MR_trace_command_arg_strings;
-		return TRUE;
+		return MR_TRUE;
 	}
 }
 
