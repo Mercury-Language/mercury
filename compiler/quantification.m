@@ -54,6 +54,9 @@
 :- type quant_warning
 	--->	warn_overlap(list(var), term__context).
 
+	% goal_vars(Goal, Vars):
+	%	Vars is the set of variables that are free (unquantified)
+	%	in Goal.
 :- pred goal_vars(hlds__goal, set(var)).
 :- mode goal_vars(in, out) is det.
 
@@ -62,15 +65,17 @@
 :- implementation.
 :- import_module std_util, bool, map, goal_util, require.
 
-	% The outside vars and quant vars are essentially inputs,
-	% nonlocals output, and seen so far, the varset and the
-	% types are threaded and thus input and output.
-	% The input fields are callee save, and the outputs caller
-	% save.
+	% The `outside vars', `lambda outside vars', and `quant vars'
+	% fields are inputs; the `nonlocals' field is output; and
+	% the `seen so far', the varset, the types, and the warnings fields
+	% are threaded (i.e. both input and output).
+	% We use the convention that the input fields are callee save,
+	% and the outputs are caller save.
 :- type quant_info
 	--->	quant_info(
 			set(var), % outside vars
 			set(var), % quant vars
+			set(var), % outside lambda vars
 			set(var), % nonlocals
 			set(var), % seen so far
 			varset,
@@ -78,10 +83,20 @@
 			list(quant_warning)
 		).
 
-	% `OutsideVars' are the variables that have occurred outside
-	% this goal, not counting occurrences in quantifiers, and
-	% `QuantVars' are the variables that have been explicitly
-	% existentially quantified.  For example, for
+	% `OutsideVars' are the variables that have occurred free outside
+	% this goal, not counting occurrences in parallel goals
+	% and not counting occurrences in lambda goals,
+	% or which have been explicitly existentially quantified 
+	% over a scope which includes the current goal in a negated context.
+	% `QuantVars' are the variables not in `OutsideVars' 
+	% that have been explicitly existentially quantified over a scope
+	% which includes the current goal in a positive (non-negated) context.
+	% `OutsideLambdaVars' are the variables
+	% that have occurred free in a lambda
+	% expression outside this goal, not counting occurrences in
+	% parallel goals.
+	%
+	% For example, for
 	%
 	%	test :- some [X] (p(X) ; not q(X) ; r(X), s(X)).
 	%
@@ -117,8 +132,6 @@ implicitly_quantify_goal(Goal0, Varset0, VarTypes0, OutsideVars,
 
 implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	quantification__get_seen(SeenVars),
-	{ set__init(Set0) },
-	{ goal_vars_2(Goal0, Set0, GoalVars0) },
 	{ goal_info_context(GoalInfo0, Context) },
 	implicitly_quantify_goal_2(Goal0, Context, Goal1),
 	quantification__get_nonlocals(NonLocalVars),
@@ -126,6 +139,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 		% If there are any variables that are local to the goal
 		% which we have come across before, then we rename them
 		% apart.
+		{ goal_vars(Goal0 - GoalInfo0, GoalVars0) },
 		{ set__difference(GoalVars0, NonLocalVars, LocalVars) },
 		{ set__intersect(SeenVars, LocalVars, RenameVars) },
 		{ \+ set__empty(RenameVars) }
@@ -149,12 +163,14 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 
 implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
 	quantification__get_outside(OutsideVars),
+	quantification__get_lambda_outside(LambdaOutsideVars),
 	quantification__get_quant_vars(QuantVars),
-	quantification__get_seen(SeenVars0),
 		% Rename apart all the quantified
 		% variables that occur outside this goal.
 	{ set__list_to_set(Vars0, QVars) },
-	{ set__intersect(OutsideVars, QVars, RenameVars) },
+	{ set__intersect(OutsideVars, QVars, RenameVars1) },
+	{ set__intersect(LambdaOutsideVars, QVars, RenameVars2) },
+	{ set__union(RenameVars1, RenameVars2, RenameVars) },
 	(
 		{ set__empty(RenameVars) }
 	->
@@ -166,14 +182,12 @@ implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
 			Goal0, Goal1),
 		{ goal_util__rename_var_list(Vars0, no, RenameMap, Vars) }
 	),
-	{ set__union(SeenVars0, QVars, SeenVars) },
-	quantification__set_seen(SeenVars),
+	quantification__update_seen_vars(QVars),
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
 	quantification__set_quant_vars(QuantVars1),
 	implicitly_quantify_goal(Goal1, Goal),
 	quantification__get_nonlocals(NonLocals0),
 	{ set__delete_list(NonLocals0, Vars, NonLocals) },
-	quantification__set_outside(OutsideVars),
 	quantification__set_quant_vars(QuantVars),
 	quantification__set_nonlocals(NonLocals).
 
@@ -197,6 +211,7 @@ implicitly_quantify_goal_2(not(Goal0), _, not(Goal)) -->
 		% quantified variables cannot be pushed inside a negation,
 		% so we insert the quantified vars into the outside vars set,
 		% and initialize the new quantified vars set to be empty
+		% (the lambda outside vars remain unchanged)
 	quantification__get_quant_vars(QuantVars),
 	quantification__get_outside(OutsideVars),
 	{ set__union(OutsideVars, QuantVars, OutsideVars1) },
@@ -211,12 +226,15 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
 			Context, if_then_else(Vars, Cond, Then, Else, FV)) -->
 	quantification__get_quant_vars(QuantVars),
 	quantification__get_outside(OutsideVars),
+	quantification__get_lambda_outside(LambdaOutsideVars),
 	{ set__list_to_set(Vars0, QVars) },
 		% Rename apart those variables that
 		% are quantified to the cond and then
 		% of the i-t-e that occur outside the
 		% i-t-e.
-	{ set__intersect(OutsideVars, QVars, RenameVars) },
+	{ set__intersect(OutsideVars, QVars, RenameVars1) },
+	{ set__intersect(LambdaOutsideVars, QVars, RenameVars2) },
+	{ set__union(RenameVars1, RenameVars2, RenameVars) },
 	(
 		{ set__empty(RenameVars) }
 	->
@@ -231,23 +249,24 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
 		{ goal_util__rename_var_list(Vars0, no, RenameMap, Vars) }
 	),
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
-	{ goal_vars(Then1, VarsThen) },
+	{ goal_vars(Then1, VarsThen, LambdaVarsThen) },
 	{ set__union(OutsideVars, VarsThen, OutsideVars1) },
+	{ set__union(LambdaOutsideVars, LambdaVarsThen, LambdaOutsideVars1) },
 	quantification__set_quant_vars(QuantVars1),
 	quantification__set_outside(OutsideVars1),
+	quantification__set_lambda_outside(LambdaOutsideVars1),
+	quantification__update_seen_vars(QVars),
 	implicitly_quantify_goal(Cond1, Cond),
 	quantification__get_nonlocals(NonLocalsCond),
 	{ set__union(OutsideVars, NonLocalsCond, OutsideVars2) },
 	quantification__set_outside(OutsideVars2),
-	quantification__set_quant_vars(QuantVars1),
+	quantification__set_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_goal(Then1, Then),
 	quantification__get_nonlocals(NonLocalsThen),
 	quantification__set_outside(OutsideVars),
 	quantification__set_quant_vars(QuantVars),
 	implicitly_quantify_goal(Else0, Else),
 	quantification__get_nonlocals(NonLocalsElse),
-	quantification__set_outside(OutsideVars),
-	quantification__set_quant_vars(QuantVars1),
 	{ set__union(NonLocalsCond, NonLocalsThen, NonLocalsIfThen) },
 	{ set__union(NonLocalsIfThen, NonLocalsElse, NonLocalsIfThenElse) },
 	{ set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals) },
@@ -255,44 +274,40 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
 
 implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F, G), _,
 		call(A, B, HeadVars, D, E, F, G)) -->
-	quantification__get_outside(OutsideVars),
-	{ set__list_to_set(HeadVars, GoalVars) },
-	quantification__get_seen(SeenVars0),
-	{ set__union(SeenVars0, GoalVars, SeenVars) },
-	quantification__set_seen(SeenVars),
-	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
-	quantification__set_nonlocals(NonLocals).
+	implicitly_quantify_atomic_goal(HeadVars).
 
 implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
 		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
-	quantification__get_outside(OutsideVars),
-	{ set__list_to_set([PredVar|ArgVars], GoalVars) },
-	quantification__get_seen(SeenVars0),
-	{ set__union(SeenVars0, GoalVars, SeenVars) },
-	quantification__set_seen(SeenVars),
-	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
-	quantification__set_nonlocals(NonLocals).
+	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
 
 implicitly_quantify_goal_2(unify(A, B0, X, Y, Z), Context,
 		unify(A, B, X, Y, Z)) -->
 	quantification__get_outside(OutsideVars),
+	quantification__get_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_unify_rhs(B0, Context, B),
 	quantification__get_nonlocals(VarsB),
 	{ set__insert(VarsB, A, GoalVars) },
-	quantification__get_seen(SeenVars0),
-	{ set__union(SeenVars0, GoalVars, SeenVars) },
-	quantification__set_seen(SeenVars),
-	{ set__intersect(GoalVars, OutsideVars, NonLocalVars) },
+	quantification__update_seen_vars(GoalVars),
+	{ set__intersect(GoalVars, OutsideVars, NonLocalVars1) },
+	{ set__intersect(GoalVars, LambdaOutsideVars, NonLocalVars2) },
+	{ set__union(NonLocalVars1, NonLocalVars2, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
 implicitly_quantify_goal_2(pragma_c_code(A,B,C,D,Vars,F), _,
 		pragma_c_code(A,B,C,D,Vars,F)) --> 
+	implicitly_quantify_atomic_goal(Vars).
+
+:- pred implicitly_quantify_atomic_goal(list(var), quant_info, quant_info).
+:- mode implicitly_quantify_atomic_goal(in, in, out) is det.
+
+implicitly_quantify_atomic_goal(HeadVars) -->
+	{ set__list_to_set(HeadVars, GoalVars) },
+	quantification__update_seen_vars(GoalVars),
 	quantification__get_outside(OutsideVars),
-	{ set__list_to_set(Vars, GoalVars) },
-	quantification__get_seen(SeenVars0),
-	{ set__union(SeenVars0, GoalVars, SeenVars) },
-	quantification__set_seen(SeenVars),
-	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
+	quantification__get_lambda_outside(LambdaOutsideVars),
+	{ set__intersect(GoalVars, OutsideVars, NonLocals1) },
+	{ set__intersect(GoalVars, LambdaOutsideVars, NonLocals2) },
+	{ set__union(NonLocals1, NonLocals2, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
 :- pred implicitly_quantify_unify_rhs(unify_rhs, term__context, unify_rhs,
@@ -315,7 +330,7 @@ implicitly_quantify_unify_rhs(
 	{ set__list_to_set(LambdaVars0, QVars) },
 		% Figure out which variables have overlapping scopes
 		% because they occur outside the goal and are also
-		% lambda vars.
+		% lambda-quantified vars.
 	{ set__intersect(OutsideVars0, QVars, RenameVars0) },
 	(
 		{ set__empty(RenameVars0) }
@@ -360,7 +375,7 @@ implicitly_quantify_conj(Goals0, Goals) -->
 	{ get_vars(Goals0, FollowingVarsList) },
 	implicitly_quantify_conj_2(Goals0, FollowingVarsList, Goals).
 
-:- pred implicitly_quantify_conj_2(list(hlds__goal), list(set(var)),
+:- pred implicitly_quantify_conj_2(list(hlds__goal), list(pair(set(var))),
 			list(hlds__goal), quant_info, quant_info).
 :- mode implicitly_quantify_conj_2(in, in, out, in, out) is det.
 
@@ -370,22 +385,25 @@ implicitly_quantify_conj_2([], _, []) -->
 implicitly_quantify_conj_2([_|_], [], _, _, _) :-
 	error("implicitly_quantify_conj_2: length mismatch").
 implicitly_quantify_conj_2([Goal0 | Goals0],
-			[FollowingVars | FollowingVarsList],
+		[FollowingVars - LambdaFollowingVars | FollowingVarsList],
 			[Goal | Goals]) -->
 	quantification__get_outside(OutsideVars),
-	quantification__get_quant_vars(QuantVars),
+	quantification__get_lambda_outside(LambdaOutsideVars),
 	{ set__union(OutsideVars, FollowingVars, OutsideVars1) },
+	{ set__union(LambdaOutsideVars, LambdaFollowingVars,
+			LambdaOutsideVars1) },
 	quantification__set_outside(OutsideVars1),
+	quantification__set_lambda_outside(LambdaOutsideVars1),
 	implicitly_quantify_goal(Goal0, Goal),
 	quantification__get_nonlocals(NonLocalVars1),
 	{ set__union(OutsideVars, NonLocalVars1, OutsideVars2) },
 	quantification__set_outside(OutsideVars2),
+	quantification__set_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_conj_2(Goals0, FollowingVarsList,
 				Goals),
 	quantification__get_nonlocals(NonLocalVars2),
 	{ set__union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj) },
 	{ set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVars) },
-	quantification__set_quant_vars(QuantVars),
 	quantification__set_outside(OutsideVars),
 	quantification__set_nonlocals(NonLocalVars).
 
@@ -397,16 +415,10 @@ implicitly_quantify_disj([], []) -->
 	{ set__init(NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals]) -->
-	quantification__get_quant_vars(QuantVars),
-	quantification__get_outside(OutsideVars),
 	implicitly_quantify_goal(Goal0, Goal),
 	quantification__get_nonlocals(NonLocalVars0),
-	quantification__set_quant_vars(QuantVars),
-	quantification__set_outside(OutsideVars),
 	implicitly_quantify_disj(Goals0, Goals),
 	quantification__get_nonlocals(NonLocalVars1),
-	quantification__set_quant_vars(QuantVars),
-	quantification__set_outside(OutsideVars),
 	{ set__union(NonLocalVars0, NonLocalVars1, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
@@ -419,138 +431,162 @@ implicitly_quantify_cases([], []) -->
 	quantification__set_nonlocals(NonLocalVars).
 implicitly_quantify_cases([case(Cons, Goal0) | Cases0],
 				[case(Cons, Goal) | Cases]) -->
-	quantification__get_quant_vars(QuantVars),
-	quantification__get_outside(OutsideVars),
 	implicitly_quantify_goal(Goal0, Goal),
 	quantification__get_nonlocals(NonLocalVars0),
-	quantification__set_quant_vars(QuantVars),
-	quantification__set_outside(OutsideVars),
 	implicitly_quantify_cases(Cases0, Cases),
 	quantification__get_nonlocals(NonLocalVars1),
 	{ set__union(NonLocalVars0, NonLocalVars1, NonLocalVars) },
-	quantification__set_quant_vars(QuantVars),
-	quantification__set_outside(OutsideVars),
 	quantification__set_nonlocals(NonLocalVars).
 
 %-----------------------------------------------------------------------------%
 
-	% Given a list of goals, produce a corresponding list of sets
-	% of following variables, where is the set of following variables
-	% for each goal is those variables which occur in any of the
-	% following goals in the list.
+	% insert the given set of variables into the set of `seen' variables.
 
-:- pred get_vars(list(hlds__goal), list(set(var))).
+:- pred quantification__update_seen_vars(set(var), quant_info, quant_info).
+:- mode quantification__update_seen_vars(in, in, out) is det.
+
+quantification__update_seen_vars(NewVars) -->
+	quantification__get_seen(SeenVars0),
+	{ set__union(SeenVars0, NewVars, SeenVars) },
+	quantification__set_seen(SeenVars).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a list of goals, produce a corresponding list of
+	% following variables, where the following variables
+	% for each goal are those variables which occur free in any of the
+	% following goals in the list.  The following variables
+	% are divided into a pair of sets: the first set
+	% contains following variables that occur not in lambda goals,
+	% and the second contains following variables that
+	% occur in lambda goals.
+
+:- pred get_vars(list(hlds__goal), list(pair(set(var)))).
 :- mode get_vars(in, out) is det.
 
 get_vars([], []).
-get_vars([_Goal|Goals], [Set|Sets]) :-
-	get_vars_2(Goals, Set, Sets).
+get_vars([_Goal | Goals], [Set - LambdaSet | SetPairs]) :-
+	get_vars_2(Goals, Set, LambdaSet, SetPairs).
 
-:- pred get_vars_2(list(hlds__goal), set(var), list(set(var))).
-:- mode get_vars_2(in, out, out) is det.
+:- pred get_vars_2(list(hlds__goal), set(var), set(var), list(pair(set(var)))).
+:- mode get_vars_2(in, out, out, out) is det.
 
-get_vars_2([], Set, []) :-
-	set__init(Set).
-get_vars_2([Goal | Goals], Set, SetList) :-
-	get_vars_2(Goals, Set0, SetList0),
-	goal_vars(Goal, Set1),
+get_vars_2([], Set, LambdaSet, []) :-
+	set__init(Set),
+	set__init(LambdaSet).
+get_vars_2([Goal | Goals], Set, LambdaSet, SetPairList) :-
+	get_vars_2(Goals, Set0, LambdaSet0, SetPairList0),
+	goal_vars(Goal, Set1, LambdaSet1),
 	set__union(Set0, Set1, Set),
-	SetList = [Set0 | SetList0].
+	set__union(LambdaSet0, LambdaSet1, LambdaSet),
+	SetPairList = [Set0 - LambdaSet0 | SetPairList0].
 
-	% `goal_list_vars(Goal, Vars)' is true iff 
-	% `Vars' is the set of unquantified variables in Goal.
+:- pred goal_list_vars_2(list(hlds__goal), set(var), set(var),
+			set(var), set(var)).
+:- mode goal_list_vars_2(in, in, in, out, out) is det.
 
-:- pred goal_list_vars(list(hlds__goal), set(var)).
-:- mode goal_list_vars(in, out) is det.
+goal_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
+goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
+	goal_list_vars_2(Goals, Set1, LambdaSet1, Set, LambdaSet).
 
-goal_list_vars(Goals, S) :-	
-	set__init(S0),
-	goal_list_vars_2(Goals, S0, S).
+:- pred case_list_vars_2(list(case), set(var), set(var), set(var), set(var)).
+:- mode case_list_vars_2(in, in, in, out, out) is det.
 
+case_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
+case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, LambdaSet0,
+			Set, LambdaSet) :-
+	goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
+	case_list_vars_2(Cases, Set1, LambdaSet1, Set, LambdaSet).
 
-:- pred goal_list_vars_2(list(hlds__goal), set(var), set(var)).
-:- mode goal_list_vars_2(in, in, out) is det.
+	% goal_vars(Goal, Vars):
+	%	Vars is the set of variables that occur free (unquantified)
+	%	in Goal.
+goal_vars(Goal, BothSet) :-
+	goal_vars(Goal, NonLambdaSet, LambdaSet),
+	set__union(NonLambdaSet, LambdaSet, BothSet).
 
-goal_list_vars_2([], Set, Set).
-goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, Set) :-
-	goal_vars_2(Goal, Set0, Set1),
-	goal_list_vars_2(Goals, Set1, Set).
+	% goal_vars(Goal, NonLambdaSet, LambdaSet):
+	%	Set is the set of variables that occur free (unquantified)
+	%	in Goal, not counting occurrences in lambda expressions.
+	%	LambdaSet is the set of variables that occur free (unquantified)
+	%	in lambda expressions in Goal.
+:- pred goal_vars(hlds__goal, set(var), set(var)).
+:- mode goal_vars(in, out, out) is det.
 
-:- pred case_list_vars_2(list(case), set(var), set(var)).
-:- mode case_list_vars_2(in, in, out) is det.
-
-case_list_vars_2([], Set, Set).
-case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, Set) :-
-	goal_vars_2(Goal, Set0, Set1),
-	case_list_vars_2(Cases, Set1, Set).
-
-goal_vars(Goal - _GoalInfo, Set) :-
+goal_vars(Goal - _GoalInfo, Set, LambdaSet) :-
 	set__init(Set0),
-	goal_vars_2(Goal, Set0, Set).
+	set__init(LambdaSet0),
+	goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
 
-:- pred goal_vars_2(hlds__goal_expr, set(var), set(var)).
-:- mode goal_vars_2(in, in, out) is det.
+:- pred goal_vars_2(hlds__goal_expr, set(var), set(var), set(var), set(var)).
+:- mode goal_vars_2(in, in, in, out, out) is det.
 
-goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
+goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0, Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
-	quantification__unify_rhs_vars(B, Set1, Set).
+	quantification__unify_rhs_vars(B, Set1, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _), Set0, Set) :-
+goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _), Set0, LambdaSet,
+			Set, LambdaSet) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
-goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
+goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-goal_vars_2(conj(Goals), Set0, Set) :-
-	goal_list_vars_2(Goals, Set0, Set).
+goal_vars_2(conj(Goals), Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(disj(Goals, _), Set0, Set) :-
-	goal_list_vars_2(Goals, Set0, Set).
+goal_vars_2(disj(Goals, _), Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(switch(Var, _Det, Cases, _), Set0, Set) :-
+goal_vars_2(switch(Var, _Det, Cases, _), Set0, LambdaSet0, Set, LambdaSet) :-
 	set__insert(Set0, Var, Set1),
-	case_list_vars_2(Cases, Set1, Set).
+	case_list_vars_2(Cases, Set1, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(some(Vars, Goal), Set0, Set) :-
-	goal_vars(Goal, Set1),
+goal_vars_2(some(Vars, Goal), Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_vars(Goal, Set1, LambdaSet1),
 	set__delete_list(Set1, Vars, Set2),
-	set__union(Set0, Set2, Set).
+	set__delete_list(LambdaSet1, Vars, LambdaSet2),
+	set__union(Set0, Set2, Set),
+	set__union(LambdaSet0, LambdaSet2, LambdaSet).
 
-goal_vars_2(not(Goal - _GoalInfo), Set0, Set) :-
-	goal_vars_2(Goal, Set0, Set).
+goal_vars_2(not(Goal - _GoalInfo), Set0, LambdaSet0, Set, LambdaSet) :-
+	goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, Set) :-
+goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0, Set, LambdaSet) :-
 		% This code does the following:
-		%
-		% Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
-		%
-		% where `+' is set union and `-' is relative complement.
-		%
-		% (It's times like this you wish you had a functional
-		% notation ;-)
-	goal_vars(A, Set1),
-	goal_vars(B, Set2),
+		%     Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
+		% where `+' is set union and `\' is relative complement.
+	goal_vars(A, Set1, LambdaSet1),
+	goal_vars(B, Set2, LambdaSet2),
 	set__union(Set1, Set2, Set3),
+	set__union(LambdaSet1, LambdaSet2, LambdaSet3),
 	set__delete_list(Set3, Vars, Set4),
+	set__delete_list(LambdaSet3, Vars, LambdaSet4),
 	set__union(Set0, Set4, Set5),
-	goal_vars(C, Set6),
-	set__union(Set5, Set6, Set).
+	set__union(LambdaSet0, LambdaSet4, LambdaSet5),
+	goal_vars(C, Set6, LambdaSet6),
+	set__union(Set5, Set6, Set),
+	set__union(LambdaSet5, LambdaSet6, LambdaSet).
 
-goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), Set0, Set) :-
+goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), LambdaSet, Set0,
+		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-:- pred quantification__unify_rhs_vars(unify_rhs, set(var), set(var)).
-:- mode quantification__unify_rhs_vars(in, in, out) is det.
+:- pred quantification__unify_rhs_vars(unify_rhs, set(var), set(var),
+					set(var), set(var)).
+:- mode quantification__unify_rhs_vars(in, in, in, out, out) is det.
 
-quantification__unify_rhs_vars(var(X), Set0, Set) :-
+quantification__unify_rhs_vars(var(X), Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert(Set0, X, Set).
-quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, Set) :-
+quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
+		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 quantification__unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes,
-		_Detism, Goal), Set0, Set) :-
+		_Detism, Goal), Set, LambdaSet0, Set, LambdaSet) :-
 	goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
-	set__union(Set0, GoalVars1, Set).
+	set__union(LambdaSet0, GoalVars1, LambdaSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -606,103 +642,117 @@ quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
 quantification__init(OutsideVars, Varset, VarTypes, QuantInfo) :-
 	set__init(QuantVars),
 	set__init(NonLocals),
+	set__init(LambdaOutsideVars),
 	Seen = OutsideVars,
 	OverlapWarnings = [],
-	QuantInfo = quant_info(OutsideVars, QuantVars, NonLocals, Seen, Varset,
-		VarTypes, OverlapWarnings).
+	QuantInfo = quant_info(OutsideVars, QuantVars, LambdaOutsideVars,
+		NonLocals, Seen, Varset, VarTypes, OverlapWarnings).
 
 :- pred quantification__get_outside(set(var), quant_info, quant_info).
 :- mode quantification__get_outside(out, in, out) is det.
 
 quantification__get_outside(A, Q, Q) :-
-	Q = quant_info(A, _, _, _, _, _, _).
+	Q = quant_info(A, _, _, _, _, _, _, _).
 
 :- pred quantification__set_outside(set(var), quant_info, quant_info).
 :- mode quantification__set_outside(in, in, out) is det.
 
 quantification__set_outside(A, Q0, Q) :-
-	Q0 = quant_info(_, B, C, D, E, F, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+	Q0 = quant_info(_, B, C, D, E, F, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_quant_vars(set(var), quant_info, quant_info).
 :- mode quantification__get_quant_vars(out, in, out) is det.
 
 quantification__get_quant_vars(B, Q, Q) :-
-	Q = quant_info(_, B, _, _, _, _, _).
+	Q = quant_info(_, B, _, _, _, _, _, _).
 
 :- pred quantification__set_quant_vars(set(var), quant_info, quant_info).
 :- mode quantification__set_quant_vars(in, in, out) is det.
 
 quantification__set_quant_vars(B, Q0, Q) :-
-	Q0 = quant_info(A, _, C, D, E, F, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+	Q0 = quant_info(A, _, C, D, E, F, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
+
+:- pred quantification__get_lambda_outside(set(var), quant_info, quant_info).
+:- mode quantification__get_lambda_outside(out, in, out) is det.
+
+quantification__get_lambda_outside(C, Q, Q) :-
+	Q  = quant_info(_, _, C, _, _, _, _, _).
+
+:- pred quantification__set_lambda_outside(set(var), quant_info, quant_info).
+:- mode quantification__set_lambda_outside(in, in, out) is det.
+
+quantification__set_lambda_outside(C, Q0, Q) :-
+	Q0 = quant_info(A, B, _, D, E, F, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_nonlocals(set(var), quant_info, quant_info).
 :- mode quantification__get_nonlocals(out, in, out) is det.
 
-quantification__get_nonlocals(C, Q, Q) :-
-	Q  = quant_info(_, _, C, _, _, _, _).
+quantification__get_nonlocals(D, Q, Q) :-
+	Q  = quant_info(_, _, _, D, _, _, _, _).
 
 :- pred quantification__set_nonlocals(set(var), quant_info, quant_info).
 :- mode quantification__set_nonlocals(in, in, out) is det.
 
-quantification__set_nonlocals(C, Q0, Q) :-
-	Q0 = quant_info(A, B, _, D, E, F, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+quantification__set_nonlocals(D, Q0, Q) :-
+	Q0 = quant_info(A, B, C, _, E, F, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_seen(set(var), quant_info, quant_info).
 :- mode quantification__get_seen(out, in, out) is det.
 
-quantification__get_seen(D, Q, Q) :-
-	Q  = quant_info(_, _, _, D, _, _, _).
+quantification__get_seen(E, Q, Q) :-
+	Q  = quant_info(_, _, _, _, E, _, _, _).
 
 :- pred quantification__set_seen(set(var), quant_info, quant_info).
 :- mode quantification__set_seen(in, in, out) is det.
 
-quantification__set_seen(D, Q0, Q) :-
-	Q0 = quant_info(A, B, C, _, E, F, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+quantification__set_seen(E, Q0, Q) :-
+	Q0 = quant_info(A, B, C, D, _, F, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_varset(varset, quant_info, quant_info).
 :- mode quantification__get_varset(out, in, out) is det.
 
-quantification__get_varset(E, Q, Q) :-
-	Q  = quant_info(_, _, _, _, E, _, _).
+quantification__get_varset(F, Q, Q) :-
+	Q  = quant_info(_, _, _, _, _, F, _, _).
 
 :- pred quantification__set_varset(varset, quant_info, quant_info).
 :- mode quantification__set_varset(in, in, out) is det.
 
-quantification__set_varset(E, Q0, Q) :-
-	Q0 = quant_info(A, B, C, D, _, F, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+quantification__set_varset(F, Q0, Q) :-
+	Q0 = quant_info(A, B, C, D, E, _, G, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_vartypes(map(var, type), quant_info, quant_info).
 :- mode quantification__get_vartypes(out, in, out) is det.
 
-quantification__get_vartypes(F, Q, Q) :-
-	Q  = quant_info(_, _, _, _, _, F, _).
+quantification__get_vartypes(G, Q, Q) :-
+	Q  = quant_info(_, _, _, _, _, _, G, _).
 
 :- pred quantification__set_vartypes(map(var, type), quant_info, quant_info).
 :- mode quantification__set_vartypes(in, in, out) is det.
 
-quantification__set_vartypes(F, Q0, Q) :-
-	Q0 = quant_info(A, B, C, D, E, _, G),
-	Q  = quant_info(A, B, C, D, E, F, G).
+quantification__set_vartypes(G, Q0, Q) :-
+	Q0 = quant_info(A, B, C, D, E, F, _, H),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 :- pred quantification__get_warnings(list(quant_warning),
 					quant_info, quant_info).
 :- mode quantification__get_warnings(out, in, out) is det.
 
-quantification__get_warnings(G, Q, Q) :-
-	Q  = quant_info(_, _, _, _, _, _, G).
+quantification__get_warnings(H, Q, Q) :-
+	Q  = quant_info(_, _, _, _, _, _, _, H).
 
 :- pred quantification__set_warnings(list(quant_warning),
 					quant_info, quant_info).
 :- mode quantification__set_warnings(in, in, out) is det.
 
-quantification__set_warnings(G, Q0, Q) :-
-	Q0 = quant_info(A, B, C, D, E, F, _),
-	Q  = quant_info(A, B, C, D, E, F, G).
+quantification__set_warnings(H, Q0, Q) :-
+	Q0 = quant_info(A, B, C, D, E, F, G, _),
+	Q  = quant_info(A, B, C, D, E, F, G, H).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
