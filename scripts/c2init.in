@@ -22,6 +22,8 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # include the file `parse_ml_options.sh-subr'
 @PARSE_ML_OPTIONS@
 
+# include the file `canonical_grade.sh-subr'
+@CANONICAL_GRADE@
 
 # If you change these, you will also need to change Mmake.common.in,
 # scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
@@ -66,12 +68,12 @@ esac
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		-o "$init_c_file" \
+		-g "$GRADE" -o "$init_c_file" \
 		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		-o "$init_c_file" \
+		-g "$GRADE" -o "$init_c_file" \
 		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 esac

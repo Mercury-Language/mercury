@@ -7,7 +7,7 @@
 # canonical_grade.sh-subr:
 #	An `sh' subroutine for computing a canonical grade string based on
 #	the values of grade-related options.
-#	It is used by the `ml' and `canonical_grade' scripts.
+#	It is used by the `ml', `c2init' and `canonical_grade' scripts.
 #
 #	The code here should be inserted after init_grade_options.sh-subr,
 #	parse_grade_options.sh-subr and final_grade_options.sh-subr, which
