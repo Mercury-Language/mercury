@@ -41,14 +41,10 @@ test(Val) :-
 foo(X, X).
 foo(_, 7).
 
-:- pred nl(io__state::di, io__state::uo) is det.
-nl -->
-	io__write_string("\n").
-
 :- pred print_intlist(list(int)::in,io__state::di, io__state::uo) is det.
 print_intlist([]) --> [].
 print_intlist([X|L]) -->
 	io__write_int(X),
-	nl,
+	io__nl,
 	print_intlist(L).
 

@@ -37,7 +37,7 @@ print_solnlist([]) --> [].
 print_solnlist([Le - Gr | Rest]) -->
 	print_intlist(Le),
 	print_intlist(Gr),
-	nl,
+	io__nl,
 	print_solnlist(Rest).
 
 :- pred bug(pair(list(int))::out) is nondet.
@@ -53,11 +53,8 @@ part(X, [Y|L], [Y|Le], Gr):-
 part(X, [Y|L], Le, [Y|Gr]):-
         Y > X, part(X, L, Le, Gr).
 
-:- pred nl(io__state::di, io__state::uo) is det.
-nl --> io__write_string("\n").
-
 :- pred print_intlist(list(int)::in,io__state::di, io__state::uo) is det.
-print_intlist([])--> nl.
+print_intlist([])--> io__nl.
 print_intlist([X|L])--> io__write_int(X), print_intlist(L).
 
 :- end_module partition.

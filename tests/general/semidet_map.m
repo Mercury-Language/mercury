@@ -10,14 +10,14 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
-:- pred meta__semidet_map(pred(X, Y), list(X), list(maybe(Y))).
-:- mode meta__semidet_map(pred(in, out) is semidet, in, out) is det.
+:- pred meta_semidet_map(pred(X, Y), list(X), list(maybe(Y))).
+:- mode meta_semidet_map(pred(in, out) is semidet, in, out) is det.
 
 :- implementation.
 :- import_module mercury_builtin, int, string.
 
 main -->
-	( {meta__semidet_map(pos_inc, [0, 1], [X, Y])} ->
+	( {meta_semidet_map(pos_inc, [0, 1], [X, Y])} ->
 		{maybe_to_string(string__int_to_string, X, SX)},
 		{maybe_to_string(string__int_to_string, Y, SY)},
 		io__write_strings(["Success: X = ", SX, "; Y = ", SY, ".\n"])
@@ -33,8 +33,8 @@ maybe_to_string(P, yes(T), S) :-
 :- pred pos_inc(int::in, int::out) is semidet.
 pos_inc(X, Y) :- X > 0, Y is X + 1.
 
-meta__semidet_map(_, [],  []).
-meta__semidet_map(P, [H0|T0], [H|T]) :-
+meta_semidet_map(_, [],  []).
+meta_semidet_map(P, [H0|T0], [H|T]) :-
 	( call(P, H0, H1) -> H = yes(H1) ; H = no ),
-	meta__semidet_map(P, T0, T).
+	meta_semidet_map(P, T0, T).
 
