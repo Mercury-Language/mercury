@@ -218,10 +218,10 @@ goal_util__rename_args([T0|Ts0], Subn, [T|Ts]) :-
 :- pred goal_util__rename_term(term, map(var, var), term).
 :- mode goal_util__rename_term(in, in, out) is det.
 
-goal_util__rename_term(term_variable(V), Subn, term_variable(N)) :-
+goal_util__rename_term(term__variable(V), Subn, term__variable(N)) :-
 	goal_util__rename_var(V, Subn, N).
-goal_util__rename_term(term_functor(Cons, Terms0, Cont), Subn,
-				term_functor(Cons, Terms, Cont)) :-
+goal_util__rename_term(term__functor(Cons, Terms0, Cont), Subn,
+				term__functor(Cons, Terms, Cont)) :-
 	goal_util__rename_args(Terms0, Subn, Terms).
 
 %-----------------------------------------------------------------------------%

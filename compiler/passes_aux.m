@@ -13,7 +13,8 @@
 
 :- interface.
 
-:- import_module hlds, string, io.
+:- import_module string, io.
+:- import_module hlds.
 
 :- pred write_progress_message(string, pred_id, module_info,
 	io__state, io__state).
@@ -21,7 +22,8 @@
 
 :- implementation.
 
-:- import_module options, globals, hlds_out, std_util.
+:- import_module bool, std_util.
+:- import_module options, globals, hlds_out.
 
 write_progress_message(Message, PredId, ModuleInfo) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),

@@ -75,30 +75,30 @@ special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
 		% which causes a duplicate label in the generated C code
 
 special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
-	term_context_init(Context),
-	IntType = term_functor(term_atom("int"), [], Context),
+	term__context_init(Context),
+	IntType = term__functor(term__atom("int"), [], Context),
 	in_mode(In),
 	out_mode(Out).
 
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
-	term_context_init(Context),
-	ResType = term_functor(term_atom("comparison_result"), [], Context),
+	term__context_init(Context),
+	ResType = term__functor(term__atom("comparison_result"), [], Context),
 	in_mode(In),
 	in_mode(In2),
 	out_mode(Out).
 
 special_pred_info(term_to_type, Type,
 		"__Term_To_Type__", [TermType, Type], [In, Out], semidet) :-
-	term_context_init(Context),
-	TermType = term_functor(term_atom("term"), [], Context),
+	term__context_init(Context),
+	TermType = term__functor(term__atom("term"), [], Context),
 	in_mode(In),
 	out_mode(Out).
 
 special_pred_info(type_to_term, Type,
 		"__Type_To_Term__", [Type, TermType], [In, Out], det) :-
-	term_context_init(Context),
-	TermType = term_functor(term_atom("term"), [], Context),
+	term__context_init(Context),
+	TermType = term__functor(term__atom("term"), [], Context),
 	in_mode(In),
 	out_mode(Out).
 

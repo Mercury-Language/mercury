@@ -21,7 +21,7 @@
 
 :- module options.
 :- interface.
-:- import_module int, string, std_util, list, io, map, require, getopt.
+:- import_module bool, int, string, std_util, list, io, map, require, getopt.
 
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.

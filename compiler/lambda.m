@@ -52,7 +52,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, std_util, require.
+:- import_module bool, string, std_util, require.
 :- import_module make_hlds.
 
 :- type lambda_info --->
@@ -340,7 +340,7 @@ XXX this optimization temporarily disabled, see comment above
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 	),
-	Functor = functor(term_atom(PName), ArgVars),
+	Functor = functor(term__atom(PName), ArgVars),
 	ConsId = pred_const(PredId, ModeId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
 

@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module list, llds.
+:- import_module list, bool.
+:- import_module llds.
 
 	% Build up a table showing the first instruction following each label.
 	% Then traverse the instruction list, short-circuiting jump sequences.

@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module vn_type, llds, list, io.
+:- import_module bool, list, io.
+:- import_module llds.
 
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
@@ -38,10 +39,11 @@
 
 :- implementation.
 
-:- import_module vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
+:- import_module set, map, bimap, require, int, string, std_util, assoc_list.
+
+:- import_module vn_type, vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
 :- import_module vn_cost, vn_debug, vn_util, opt_debug, labelopt.
 :- import_module globals, options, peephole, livemap, code_util, opt_util.
-:- import_module set, map, bimap, require, int, string, std_util, assoc_list.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.

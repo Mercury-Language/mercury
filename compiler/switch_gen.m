@@ -51,7 +51,7 @@
 :- implementation.
 
 :- import_module dense_switch, string_switch, tag_switch.
-:- import_module int, string, list, map, tree, std_util, require.
+:- import_module bool, int, string, list, map, tree, std_util, require.
 :- import_module llds, code_gen, unify_gen, type_util, code_util.
 :- import_module globals, options.
 

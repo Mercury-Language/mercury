@@ -50,7 +50,7 @@
 
 :- implementation.
 :- import_module string, map, list, require, std_util, term, term_io, getopt.
-:- import_module set, varset.
+:- import_module bool, set, varset.
 :- import_module prog_out, mercury_to_mercury, prog_io, globals, options.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 
@@ -186,13 +186,13 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 :- mode c_gen_type(in, di, uo) is det.
 
 c_gen_type(Type) -->
-	( { Type = term_functor(term_atom("character"), [], _) } ->
+	( { Type = term__functor(term__atom("character"), [], _) } ->
 		io__write_string("char")
-	; { Type = term_functor(term_atom("int"), [], _) } ->
+	; { Type = term__functor(term__atom("int"), [], _) } ->
 		io__write_string("int")
-	; { Type = term_functor(term_atom("string"), [], _) } ->
+	; { Type = term__functor(term__atom("string"), [], _) } ->
 		io__write_string("String")
-	; { Type = term_functor(term_atom("float"), [], _) } ->
+	; { Type = term__functor(term__atom("float"), [], _) } ->
 		io__write_string("Float")
 	;
 		io__write_string("Word")
@@ -489,8 +489,8 @@ c_gen_goal(Goal - GoalInfo, Indent, CGenInfo0, CGenInfo) -->
 	globals__io_lookup_bool_option(line_numbers, LineNumbers),
 	( { LineNumbers = yes } ->
 		{ goal_info_context(GoalInfo, Context) },
-		{ term_context_file(Context, FileName) },
-		{ term_context_line(Context, LineNumber) },
+		{ term__context_file(Context, FileName) },
+		{ term__context_line(Context, LineNumber) },
 		( { FileName \= "" } ->
 			io__write_string("#line "),
 			io__write_int(LineNumber),

@@ -76,7 +76,8 @@
 
 :- implementation.
 
-:- import_module list, map, set, std_util, require.
+:- import_module bool, list, map, set, std_util, require.
+
 :- import_module det_report, prog_io, mode_util, globals, options.
 
 %-----------------------------------------------------------------------------%

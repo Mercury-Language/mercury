@@ -24,7 +24,9 @@
 
 :- implementation.
 
-:- import_module opt_util, std_util, map, require.
+:- import_module bool, std_util, map, require.
+
+:- import_module opt_util.
 
 :- type block == pair(label, list(instruction)).
 

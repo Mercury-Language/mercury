@@ -83,7 +83,7 @@
 
 :- implementation.
 
-:- import_module set, term, type_util, std_util, assoc_list, require.
+:- import_module bool, set, term, type_util, std_util, assoc_list, require.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 	code_aux__contains_only_builtins_2(Goal).

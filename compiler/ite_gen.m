@@ -33,7 +33,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module set, tree, list, map, std_util, require, options, globals.
+:- import_module bool, set, tree, list, map, std_util, require.
+:- import_module options, globals.
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_globals(Options),

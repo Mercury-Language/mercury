@@ -15,8 +15,8 @@
 
 :- module mode_errors.
 :- interface.
-:- import_module set, hlds, prog_io, assoc_list.
-:- import_module mode_info.
+:- import_module set, assoc_list.
+:- import_module hlds, prog_io, mode_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -87,7 +87,7 @@
 				% if the one of these variables becomes
 				% more instantiated)
 		mode_error,	% the nature of the error
-		term_context,	% where the error occurred
+		term__context,	% where the error occurred
 		mode_context	% where the error occurred
 	).
 
@@ -111,9 +111,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, mode_info, io, prog_out, mercury_to_mercury, std_util.
-:- import_module map, hlds, term_io, term, hlds_out.
-:- import_module options, globals, require.
+:- import_module bool, list, map, io, term, term_io, std_util, require.
+:- import_module mode_info, prog_out, mercury_to_mercury, hlds, hlds_out.
+:- import_module options, globals.
 
 	% just dispatch on the diffferent sorts of mode errors
 
@@ -208,7 +208,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 	),
 	find_important_errors(Errors, ImportantErrors1, OtherErrors1).
 
-:- pred report_mode_error_conj_2(list(delayed_goal), varset, term_context,
+:- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
 				mode_info, io__state, io__state).
 :- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo) is det.
 
@@ -594,7 +594,7 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, term_context, io__state, io__state).
+:- pred write_mode_context(mode_context, term__context, io__state, io__state).
 :- mode write_mode_context(in, in, di, uo) is det.
 
 write_mode_context(uninitialized, _Context) -->

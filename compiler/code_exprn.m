@@ -124,7 +124,7 @@
 :- implementation.
 
 :- import_module exprn_aux.
-:- import_module map, bag, set, require, int, term, string.
+:- import_module bool, map, bag, set, require, int, term, string.
 
 :- type var_stat	--->
 		evaled(set(rval))

@@ -28,7 +28,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module set, tree, list, map, std_util, require, options, globals.
+:- import_module bool, set, tree, list, map, std_util, require.
+:- import_module options, globals.
 
 %---------------------------------------------------------------------------%
 

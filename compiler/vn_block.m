@@ -15,15 +15,15 @@
 
 :- interface.
 
-:- import_module vn_type, livemap.
-:- import_module llds, list, io.
+:- import_module list, set, bool.
+:- import_module llds, vn_type, livemap.
 
 :- pred vn_block__divide_into_blocks(list(instruction), set(label),
 	list(list(instruction))).
 :- mode vn_block__divide_into_blocks(in, in, out) is det.
 
-:- pred vn_block__build_block_info(list(instruction), livemap, list(parentry), int,
-	vn_tables, vnlvalset, bool, vn_ctrl_tuple).
+:- pred vn_block__build_block_info(list(instruction), livemap, list(parentry),
+	int, vn_tables, vnlvalset, bool, vn_ctrl_tuple).
 :- mode vn_block__build_block_info(in, in, in, in, out, out, out, out) is det.
 
 :- pred vn_block__split_at_next_ctrl_instr(list(instruction), 
@@ -35,7 +35,7 @@
 :- implementation.
 
 :- import_module vn_table, vn_util, vn_cost, opt_util, opt_debug.
-:- import_module map, set, int, string, require, std_util, assoc_list.
+:- import_module map, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -6,7 +6,7 @@
 
 :- module prog_util.
 :- interface.
-:- import_module prog_io, list.
+:- import_module string, varset, prog_io, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,7 +63,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, varset, term.
+:- import_module bool, std_util, term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -192,14 +192,14 @@ prog_util__replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 				type, bool, type, bool).
 :- mode prog_util__replace_eqv_type_type(in, in, in, in, in, out, out) is det.
 
-prog_util__replace_eqv_type_type(term_variable(V), _Name, _Args, _Body, Found,
-		term_variable(V), Found).
-prog_util__replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
+prog_util__replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
+		term__variable(V), Found).
+prog_util__replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		Body, Found0, Type, Found) :- 
 	prog_util__replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
 		TArgs1, Found1),
 	(	
-		F = term_atom(Name),
+		F = term__atom(Name),
 		list__same_length(TArgs1, Args)
 	->
 		term__term_list_to_var_list(Args, Args2),
@@ -209,7 +209,7 @@ prog_util__replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
 		% could we improve efficiency here by reclaiming
 		% garbage (or avoiding allocating it in the first place)?
 		Found = Found1,
-		Type = term_functor(F, TArgs1, Context)
+		Type = term__functor(F, TArgs1, Context)
 	).
 
 :- pred prog_util__replace_eqv_type_pred(list(type_and_mode), string,

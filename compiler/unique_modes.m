@@ -48,7 +48,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, set, std_util, require, term, varset.
+:- import_module bool, int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, inst_match, prog_io, mode_errors, llds, unify_proc.
 
@@ -215,7 +215,7 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	%
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_context(GoalInfo0, Context),
-	term_context_init(EmptyContext),
+	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
 		ModeInfo1 = ModeInfo0
 	;

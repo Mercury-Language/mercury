@@ -14,8 +14,10 @@
 
 :- interface.
 
+:- import_module bool, int, list, assoc_list, std_util.
+
 :- import_module vn_type, vn_table, vn_util, livemap, opt_util.
-:- import_module llds, atsort, list, std_util, assoc_list, int.
+:- import_module llds, atsort.
 
 :- pred opt_debug__dump_node_relmap(relmap(vn_node), string).
 :- mode opt_debug__dump_node_relmap(in, out) is det.

@@ -105,22 +105,22 @@
 %-----------------------------------------------------------------------------%
 shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 	Const = quad(constant, constant, constant, constant),
-	term_context_init(TC),
+	term__context_init(TC),
 	I = ground(shared, no),
 	Builtins = [ 
-	    (term_functor(term_atom("string"), [], TC) - I) - 
+	    (term__functor(term__atom("string"), [], TC) - I) - 
 		(num(0) - Const),
-	    (term_functor(term_atom("float"), [], TC) - I) - 
+	    (term__functor(term__atom("float"), [], TC) - I) - 
 		(num(1) - Const),
-	    (term_functor(term_atom("int"), [], TC) - I) - 
+	    (term__functor(term__atom("int"), [], TC) - I) - 
 		(num(2) - Const),
-	    (term_functor(term_atom("character"), [], TC) - I) - 
+	    (term__functor(term__atom("character"), [], TC) - I) - 
 		(num(3) - Const),
-	    (term_functor(term_atom("io__stream"), [], TC) - I) - 
+	    (term__functor(term__atom("io__stream"), [], TC) - I) - 
 		(num(4) - Const),
-	    (term_functor(term_atom("univ"), [], TC) - I) - 
+	    (term__functor(term__atom("univ"), [], TC) - I) - 
 		(num(5) - Const),
-	    (term_functor(term_atom("io__external_state"), [], TC) - I) - 
+	    (term__functor(term__atom("io__external_state"), [], TC) - I) - 
 		(num(6) - Const)
 	],
 	map__from_assoc_list(Builtins, S_Tab_Out),
@@ -235,11 +235,11 @@ shapes__replace_context(Type - Inst, NewType - Inst) :-
 shapes__replace_all_contexts([], []).
 shapes__replace_all_contexts([Type | TRest], [ NewType | NewRest ]) :-
 	(
-		Type = term_functor(C, Ts, _)
+		Type = term__functor(C, Ts, _)
 	->
 		shapes__replace_all_contexts(Ts, Ns),
-		term_context_init(Init),
-		NewType = term_functor(C, Ns, Init) 
+		term__context_init(Init),
+		NewType = term__functor(C, Ns, Init) 
 	;
 		NewType = Type
 	),
@@ -274,7 +274,7 @@ shapes__create_shape(Type_Tab, Shape_Id, Shape, S_Tab0, S_Tab) :-
 				Shape, S_Tab0, S_Tab)
 	;
 		( 
-			Type = term_variable(Var)
+			Type = term__variable(Var)
 		->
 			term__var_to_int(Var, VarInt),
 			Shape = polymorphic(Type, VarInt),
@@ -355,7 +355,7 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			error("shapes__create_shape_2: unknown type")
 		)
 	;
-		Type = term_functor(term_atom("pred"), _Vars, _Context) 
+		Type = term__functor(term__atom("pred"), _Vars, _Context) 
 	->
 		S_Tab = S_Tab0,
 		Shape = closure(Type) 

@@ -80,7 +80,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, term, require, map, std_util, prog_util.
+:- import_module bool, list, term, require, map, std_util.
+:- import_module prog_util.
 
 type_util__type_id_module(_ModuleInfo, _TypeId, ModuleName) :-
 	% XXX Module qualifiers not yet implemented
@@ -103,27 +104,27 @@ type_is_atomic(Type, ModuleInfo) :-
 
 classify_type(VarType, ModuleInfo, Type) :-
 	(
-		VarType = term_variable(_)
+		VarType = term__variable(_)
 	->
 		Type = polymorphic_type
 	;
-		VarType = term_functor(term_atom("character"), [], _)
+		VarType = term__functor(term__atom("character"), [], _)
 	->
 		Type = char_type
 	;
-		VarType = term_functor(term_atom("int"), [], _)
+		VarType = term__functor(term__atom("int"), [], _)
 	->
 		Type = int_type
 	;
-		VarType = term_functor(term_atom("float"), [], _)
+		VarType = term__functor(term__atom("float"), [], _)
 	->
 		Type = float_type
 	;
-		VarType = term_functor(term_atom("string"), [], _)
+		VarType = term__functor(term__atom("string"), [], _)
 	->
 		Type = str_type
 	;
-		VarType = term_functor(term_atom("pred"), _ArgTypes, _)
+		VarType = term__functor(term__atom("pred"), _ArgTypes, _)
 	->
 		Type = pred_type
 	;
@@ -145,7 +146,7 @@ type_is_enumeration(Type, ModuleInfo) :-
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
 
-type_to_type_id(term_functor(Name, Args, _), TypeId, Args) :-
+type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
 	list__length(Args, Arity),
 	make_type_id(Name, Arity, TypeId).
 
@@ -156,7 +157,7 @@ type_to_type_id(term_functor(Name, Args, _), TypeId, Args) :-
 	% use of integers/floats/strings as type names should
 	% be rejected by the parser in prog_io.m, not in undef_types.m.
 
-make_type_id(term_atom(Name), Arity, unqualified(Name) - Arity).
+make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -210,7 +211,7 @@ substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
 
 :- type_unify(X, Y, _, _, _) when X and Y.		% NU-Prolog indexing
 
-type_unify(term_variable(X), term_variable(Y), HeadTypeParams, Bindings0,
+type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 		Bindings) :-
 	( list__member(Y, HeadTypeParams) ->
 		type_unify_head_type_param(X, Y, HeadTypeParams,
@@ -228,7 +229,7 @@ type_unify(term_variable(X), term_variable(Y), HeadTypeParams, Bindings0,
 			term__apply_rec_substitution(BindingOfX,
 				Bindings0, SubstBindingOfX),
 			% Y is a type variable which hasn't been bound yet
-			( SubstBindingOfX = term_variable(Y) ->
+			( SubstBindingOfX = term__variable(Y) ->
 				Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
@@ -241,7 +242,7 @@ type_unify(term_variable(X), term_variable(Y), HeadTypeParams, Bindings0,
 			term__apply_rec_substitution(BindingOfY,
 				Bindings0, SubstBindingOfY),
 			% X is a type variable which hasn't been bound yet
-			( SubstBindingOfY = term_variable(X) ->
+			( SubstBindingOfY = term__variable(X) ->
 				Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfY, X, Bindings0),
@@ -254,39 +255,39 @@ type_unify(term_variable(X), term_variable(Y), HeadTypeParams, Bindings0,
 			( X = Y ->
 				Bindings = Bindings0
 			; 
-				map__set(Bindings0, X, term_variable(Y),
+				map__set(Bindings0, X, term__variable(Y),
 					Bindings)
 			)
 		)
 	).
 
-type_unify(term_variable(X), term_functor(F, As, C), HeadTypeParams,
+type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
 		Bindings0, Bindings) :-
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->
-		type_unify(BindingOfX, term_functor(F, As, C), HeadTypeParams,
+		type_unify(BindingOfX, term__functor(F, As, C), HeadTypeParams,
 			Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
+		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
-type_unify(term_functor(F, As, C), term_variable(X), HeadTypeParams,
+type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
 		Bindings0, Bindings) :-
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->
-		type_unify(term_functor(F, As, C), BindingOfX, HeadTypeParams,
+		type_unify(term__functor(F, As, C), BindingOfX, HeadTypeParams,
 			Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
+		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
-type_unify(term_functor(FX, AsX, _CX), term_functor(FY, AsY, _CY),
+type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 		HeadTypeParams, Bindings0, Bindings) :-
 	list__length(AsX, ArityX),
 	list__length(AsY, ArityY),
@@ -311,12 +312,12 @@ type_unify(term_functor(FX, AsX, _CX), term_functor(FY, AsY, _CY),
 	;
 		replace_eqv_type(FX, ArityX, AsX, EqvType)
 	->
-		type_unify(EqvType, term_functor(FY, AsY, CY), HeadTypeParams,
+		type_unify(EqvType, term__functor(FY, AsY, CY), HeadTypeParams,
 				Bindings0, Bindings)
 	;
 		replace_eqv_type(FY, ArityY, AsY, EqvType)
 	->
-		type_unify(term_functor(FX, AsX, CX), EqvType, HeadTypeParams,
+		type_unify(term__functor(FX, AsX, CX), EqvType, HeadTypeParams,
 				Bindings0, Bindings)
 	;
 		fail
@@ -352,7 +353,7 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams) -->
 type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 		Bindings) :-
 	( map__search(Bindings0, Var, BindingOfVar) ->
-		BindingOfVar = term_variable(Var2),
+		BindingOfVar = term__variable(Var2),
 		type_unify_head_type_param(Var2, HeadVar, HeadTypeParams,
 			Bindings0, Bindings)
 	;
@@ -360,7 +361,7 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 			Bindings = Bindings0
 		;
 			\+ list__member(Var, HeadTypeParams),
-			map__set(Bindings0, Var, term_variable(HeadVar),
+			map__set(Bindings0, Var, term__variable(HeadVar),
 				Bindings)
 		)
 	).

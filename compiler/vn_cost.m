@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module llds, list, int, io.
+:- import_module bool, list, int, io.
+:- import_module llds.
 
 :- pred vn_cost__block_cost(list(instruction), bool, int, io__state, io__state).
 :- mode vn_cost__block_cost(in, in, out, di, uo) is det.

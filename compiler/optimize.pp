@@ -27,9 +27,10 @@
 
 :- implementation.
 
+:- import_module bool, list, map, bimap, int, std_util.
+
 :- import_module jumpopt, labelopt, dupelim, frameopt, peephole, value_number.
 :- import_module globals, opt_util, opt_debug.
-:- import_module list, map, bimap, int, std_util.
 
 optimize__main([], []) --> [].
 optimize__main([Proc0|Procs0], [Proc|Procs]) -->

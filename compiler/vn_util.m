@@ -14,12 +14,8 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table.
-:- import_module llds, list, set, int.
-
-:- implementation.
-
-:- import_module opt_util, string, require, std_util, map.
+:- import_module list.
+:- import_module llds, vn_type, vn_table.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,6 +32,10 @@
 :- mode vn_util__convert_to_vnlval_and_insert(in, in, out) is det.
 
 :- implementation.
+
+:- import_module bool, int, string, set, map, require, std_util.
+
+:- import_module opt_util.
 
 vn_util__find_specials(vn_reg(_), []).
 vn_util__find_specials(vn_stackvar(_), []).
@@ -630,7 +630,7 @@ vn_util__is_const_expr(Vn, IsConst, VnTables) :-
 		Vnrval = vn_binop(_, Vn1, Vn2),
 		vn_util__is_const_expr(Vn1, IsConst1, VnTables),
 		vn_util__is_const_expr(Vn2, IsConst2, VnTables),
-		std_util__bool_and(IsConst1, IsConst2, IsConst)
+		bool__and(IsConst1, IsConst2, IsConst)
 	).
 
 vn_util__find_lvals_in_rval(Rval, Lvals) :-

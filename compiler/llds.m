@@ -15,8 +15,9 @@
 
 :- module llds.		
 :- interface.
-:- import_module io, std_util, list, set, term, string, int, float.
-:- import_module tree, shapes, library.
+:- import_module bool, io, std_util, list, set, term, string, int, float.
+:- import_module library.
+:- import_module tree, shapes.
 
 %-----------------------------------------------------------------------------%
 
@@ -990,11 +991,11 @@ output_pragma_decls([]) --> [].
 output_pragma_decls([D|Decls]) -->
 	{ D = pragma_c_decl(Type, VarName) },
 		% Apart from special cases, the local variables are Words
-        { Type = term_functor(term_atom("int"), [], _) ->
+        { Type = term__functor(term__atom("int"), [], _) ->
                 VarType = "Integer"
-        ; Type = term_functor(term_atom("float"), [], _) ->
+        ; Type = term__functor(term__atom("float"), [], _) ->
                 VarType = "Float"
-        ; Type = term_functor(term_atom("string"), [], _) ->
+        ; Type = term__functor(term__atom("string"), [], _) ->
                 VarType = "String"
         ;
                 VarType = "Word"
@@ -1018,12 +1019,12 @@ output_pragma_inputs([I|Inputs]) -->
 	io__write_string(VarName),
 	io__write_string(" = "),
 	(
-        	{ Type = term_functor(term_atom("string"), [], _) }
+        	{ Type = term__functor(term__atom("string"), [], _) }
 	->
 		io__write_string("(String) "),
 		output_rval(Rval)
 	;
-        	{ Type = term_functor(term_atom("float"), [], _) }
+        	{ Type = term__functor(term__atom("float"), [], _) }
 	->
 		io__write_string("word_to_float("),
 		output_rval(Rval),
@@ -1046,12 +1047,12 @@ output_pragma_outputs([O|Outputs]) -->
 	output_lval(Lval),
 	io__write_string(" = "),
 	(
-        	{ Type = term_functor(term_atom("string"), [], _) }
+        	{ Type = term__functor(term__atom("string"), [], _) }
 	->
 		io__write_string("(Word) "),
 		io__write_string(VarName)
 	;
-        	{ Type = term_functor(term_atom("float"), [], _) }
+        	{ Type = term__functor(term__atom("float"), [], _) }
 	->
 		io__write_string("float_to_word("),
 		io__write_string(VarName),

@@ -14,8 +14,8 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table.
-:- import_module llds, list.
+:- import_module llds, vn_type, vn_table.
+:- import_module bool, list.
 
 :- type order_result	--->	success(vn_tables, list(vn_node))
 			;	failure(maybe(label)).
@@ -28,12 +28,14 @@
 
 :- implementation.
 
-:- import_module vn_util, vn_debug, opt_util.
-:- import_module atsort, map, set, string, int, require, std_util, assoc_list.
+:- import_module map, set, string, int, require, std_util, assoc_list.
+
+:- import_module atsort, vn_util, vn_debug, opt_util.
 
 %-----------------------------------------------------------------------------%
 
-vn_order__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Result) -->
+vn_order__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Result)
+		-->
 	vn_debug__order_start_msg(Ctrlmap, Flushmap, VnTables0),
 	{ vn_order__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables0, no,
 		Problem, MustSuccmap0, MustPredmap0) },
@@ -121,7 +123,7 @@ vn_order__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables, LastLabel, Pro
 			;
 				CurLabel = LastLabel
 			),
-			std_util__bool_or(Heapop0, Heapop1, Heapop2),
+			bool__or(Heapop0, Heapop1, Heapop2),
 			map__lookup(Flushmap, Ctrl, FlushEntry),
 			( Ctrl > 0 ->
 				PrevCtrl is Ctrl - 1,

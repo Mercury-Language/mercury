@@ -14,7 +14,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, io, std_util.
+:- import_module bool, io.
+:- import_module hlds.
 
 :- pred check_undefined_types(module_info, module_info, bool,
 				io__state, io__state).
@@ -122,8 +123,8 @@ find_undef_type_du_body([Constructor | Constructors], ErrorContext,
 				io__state, io__state).
 :- mode find_undef_type(in, in, in, di, uo) is det.
 
-find_undef_type(term_variable(_), _ErrorContext, _TypeDefns) --> [].
-find_undef_type(term_functor(F, As, C), ErrorContext, TypeDefns) -->
+find_undef_type(term__variable(_), _ErrorContext, _TypeDefns) --> [].
+find_undef_type(term__functor(F, As, C), ErrorContext, TypeDefns) -->
 	{ list__length(As, Arity) },
 	(
 		{ make_type_id(F, Arity, TypeId) }
@@ -144,13 +145,13 @@ find_undef_type(term_functor(F, As, C), ErrorContext, TypeDefns) -->
 			report_undef_type(TypeId, ErrorContext)
 		)
 	;
-		report_invalid_type(term_functor(F, As, C), ErrorContext)
+		report_invalid_type(term__functor(F, As, C), ErrorContext)
 	),
 	find_undef_type_list(As, ErrorContext, TypeDefns).
 
 %-----------------------------------------------------------------------------%
 
-:- type error_context == pair(error_context_2, term_context).
+:- type error_context == pair(error_context_2, term__context).
 :- type error_context_2 ---> type(type_id) ; pred(pred_id).
 
 	% Output an error message about an ill-formed type

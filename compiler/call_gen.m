@@ -52,7 +52,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require, set, int, assoc_list.
+:- import_module bool, tree, list, map, std_util, require, set, int, assoc_list.
 :- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
 :- import_module shapes.
 

@@ -26,16 +26,16 @@
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
 
-:- pred unravel_unification(term, term, term_context, unify_main_context,
+:- pred unravel_unification(term, term, term__context, unify_main_context,
 				unify_sub_contexts, varset, hlds__goal, varset).
 :- mode unravel_unification(in, in, in, in, in, in, out, out) is det.
 
-:- pred create_atomic_unification(var, unify_rhs, term_context,
+:- pred create_atomic_unification(var, unify_rhs, term__context,
 			unify_main_context, unify_sub_contexts, hlds__goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
 :- pred add_new_proc(pred_info, int, list(mode), maybe(determinism),
-			term_context, pred_info, proc_id).
+			term__context, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
@@ -48,7 +48,8 @@
 
 :- implementation.
 :- import_module string, char, int, set, bintree, list, map, require, std_util.
-:- import_module assoc_list, term, term_io, varset.
+:- import_module bool, assoc_list, term, term_io, varset.
+
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
@@ -114,7 +115,7 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 
 	% dispatch on the different types of items
 
-:- pred add_item_decl(item, term_context, import_status, module_info,
+:- pred add_item_decl(item, term__context, import_status, module_info,
 			import_status, module_info, io__state, io__state).
 :- mode add_item_decl(in, in, in, in, out, out, di, uo) is det.
 
@@ -218,7 +219,7 @@ add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
 %-----------------------------------------------------------------------------%
 	% dispatch on the different types of items
 
-:- pred add_item_type_defn(item, term_context, import_status, module_info,
+:- pred add_item_type_defn(item, term__context, import_status, module_info,
 			import_status, module_info,
 			io__state, io__state).
 :- mode add_item_type_defn(in, in, in, in, out, out, di, uo) is det.
@@ -261,7 +262,7 @@ add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 
 	% dispatch on the different types of items
 
-:- pred add_item_clause(item, term_context, module_info, module_info,
+:- pred add_item_clause(item, term__context, module_info, module_info,
 			io__state, io__state).
 :- mode add_item_clause(in, in, in, out, di, uo) is det.
 
@@ -289,7 +290,7 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_mark_as_external(sym_name, int, term_context,
+:- pred module_mark_as_external(sym_name, int, term__context,
 			module_info, module_info, io__state, io__state).
 :- mode module_mark_as_external(in, in, in, in, out, di, uo) is det.
 
@@ -323,7 +324,7 @@ module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_inst_defn(module_info, varset, inst_defn, condition,
-			term_context, module_info, io__state, io__state).
+			term__context, module_info, io__state, io__state).
 :- mode module_add_inst_defn(in, in, in, in, in, out, di, uo) is det.
 
 module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
@@ -333,7 +334,7 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
 	{ module_info_set_insts(Module0, InstTable, Module) }.
 
-:- pred insts_add(user_inst_table, varset, inst_defn, condition, term_context,
+:- pred insts_add(user_inst_table, varset, inst_defn, condition, term__context,
 			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo) is det.
 
@@ -357,7 +358,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_mode_defn(module_info, varset, mode_defn, condition,
-			term_context, module_info, io__state, io__state).
+			term__context, module_info, io__state, io__state).
 :- mode module_add_mode_defn(in, in, in, in, in, out, di, uo) is det.
 
 module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
@@ -365,7 +366,7 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 	modes_add(Modes0, VarSet, ModeDefn, Cond, Context, Modes),
 	{ module_info_set_modes(Module0, Modes, Module) }.
 
-:- pred modes_add(mode_table, varset, mode_defn, condition, term_context,
+:- pred modes_add(mode_table, varset, mode_defn, condition, term__context,
 			mode_table, io__state, io__state).
 :- mode modes_add(in, in, in, in, in, out, di, uo) is det.
 
@@ -396,7 +397,7 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 	% t which defines t as an abstract_type.
 
 :- pred module_add_type_defn(module_info, tvarset, type_defn, condition,
-				term_context, import_status, module_info,
+				term__context, import_status, module_info,
 				io__state, io__state).
 :- mode module_add_type_defn(in, in, in, in, in, in, out, di, uo) is det.
 
@@ -436,8 +437,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			{ Module1 = Module0 }
 		),
 		{ unqualify_name(Name, UnqualifiedName) },
-		{ TypeFunctor = term_atom(UnqualifiedName) },
-		{ Type = term_functor(TypeFunctor, Args, Context) },
+		{ TypeFunctor = term__atom(UnqualifiedName) },
+		{ Type = term__functor(TypeFunctor, Args, Context) },
 		(
 			{ Body = abstract_type }
 		->
@@ -486,7 +487,7 @@ convert_type_defn(uu_type(Name, Args, Body), _, Name, Args, uu_type(Body)).
 convert_type_defn(eqv_type(Name, Args, Body), _, Name, Args, eqv_type(Body)).
 convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 
-:- pred ctors_add(list(constructor), type_id, term_context, cons_table,
+:- pred ctors_add(list(constructor), type_id, term__context, cons_table,
 			cons_table, io__state, io__state).
 :- mode ctors_add(in, in, in, in, out, di, uo) is det.
 
@@ -526,7 +527,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 %---------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-		maybe(determinism), condition, term_context, import_status,
+		maybe(determinism), condition, term__context, import_status,
 		module_info,
 		io__state, io__state).
 :- mode module_add_pred(in, in, in, in, in, in, in, in, out, di, uo) is det.
@@ -547,7 +548,7 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 	).
 
 :- pred add_new_pred(module_info, tvarset, sym_name, list(type),
-		condition, term_context, import_status,
+		condition, term__context, import_status,
 		module_info, io__state, io__state).
 :- mode add_new_pred(in, in, in, in, in, in, in, out, di, uo) is det.
 
@@ -598,7 +599,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 
 :- pred add_special_pred_list(list(special_pred_id),
 			module_info, tvarset, type, type_id, hlds__type_body,
-			term_context, import_status,
+			term__context, import_status,
 			module_info).
 :- mode add_special_pred_list(in, in, in, in, in, in, in, in, out) is det.
 
@@ -612,7 +613,7 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
 
 :- pred add_special_pred(special_pred_id,
 			module_info, tvarset, type, type_id, hlds__type_body,
-			term_context, import_status,
+			term__context, import_status,
 			module_info).
 :- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
 
@@ -659,7 +660,7 @@ add_special_pred(SpecialPredId,
 
 :- pred add_special_pred_decl_list(list(special_pred_id),
 			module_info, tvarset, type, type_id, 
-			term_context, import_status,
+			term__context, import_status,
 			module_info).
 :- mode add_special_pred_decl_list(in, in, in, in, in, in, in, out) is det.
 
@@ -673,7 +674,7 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
 
 :- pred add_special_pred_decl(special_pred_id,
 				module_info, tvarset, type, type_id,
-				term_context, import_status,
+				term__context, import_status,
 				module_info).
 :- mode add_special_pred_decl(in, in, in, in, in, in, in, out) is det.
 
@@ -714,7 +715,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context, PredInfo, ModeId) :-
 	% Add a mode declaration for a predicate.
 
 :- pred module_add_mode(module_info, varset, sym_name, list(mode),
-		maybe(determinism), condition, term_context, module_info,
+		maybe(determinism), condition, term__context, module_info,
 		io__state, io__state).
 :- mode module_add_mode(in, in, in, in, in, in, in, out, di, uo) is det.
 
@@ -791,7 +792,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	% spurious errors.
 
 :- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
-				term_context, pred_id, predicate_table).
+				term__context, pred_id, predicate_table).
 :- mode preds_add_implicit(in, in, in, in, in, out, out) is det.
 
 preds_add_implicit(PredicateTable0,
@@ -874,7 +875,7 @@ determinism_priority_step(10000).
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
-			term_context, module_info, io__state, io__state).
+			term__context, module_info, io__state, io__state).
 :- mode module_add_clause(in, in, in, in, in, in, out, di, uo) is det.
 
 module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
@@ -953,7 +954,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_c_header(string, term_context, module_info, module_info).
+:- pred module_add_c_header(string, term__context, module_info, module_info).
 :- mode module_add_c_header(in, in, in, out) is det.
 
 module_add_c_header(C_Header, Context, Module0, Module) :-
@@ -966,7 +967,7 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pragma_c_code(sym_name, list(pragma_var), varset, c_code, 
-	term_context, module_info, module_info, io__state, io__state).
+	term__context, module_info, module_info, io__state, io__state).
 :- mode module_add_pragma_c_code(in, in, in, in, in, in, out, di, uo) is det.
 
 module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context, 
@@ -1355,7 +1356,7 @@ warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% a substring of the given c code. If not, it gives a warning
 :- pred warn_singletons_in_pragma_c_code(string, list(var), map(var, string),
-	term_context, pred_call_id, io__state, io__state).
+	term__context, pred_call_id, io__state, io__state).
 :- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
 
 warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap, 
@@ -1389,7 +1390,7 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 %-----------------------------------------------------------------------------%
 
 :- pred warn_singletons_in_pragma_c_code_2(list(string), list(var), 
-	map(var, string), term_context, list(string)).
+	map(var, string), term__context, list(string)).
 :- mode warn_singletons_in_pragma_c_code_2(in, in, in, in, out) is det.
 
 warn_singletons_in_pragma_c_code_2(_, [], _, _, []).
@@ -1493,7 +1494,7 @@ write_string_list([X|Xs]) -->
 	%	in QuantVars, or if any of the underscore variables
 	%	in Vars do occur in NonLocals.
 
-:- pred warn_singletons(list(var), set(var), set(var), varset, term_context,
+:- pred warn_singletons(list(var), set(var), set(var), varset, term__context,
 			pred_call_id, io__state, io__state).
 :- mode warn_singletons(in, in, in, in, in, in, di, uo) is det.
 
@@ -1579,7 +1580,7 @@ clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 
 :- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, varset::in, list(term)::in, goal::in,
-		term_context::in,
+		term__context::in,
 		hlds__goal::out, varset::out, clauses_info::out,
 		list(quant_warning)::out) is det.
 
@@ -1601,7 +1602,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 % hlds__goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, pred_id, proc_id, varset, 
-		list(pragma_var), c_code, term_context, clauses_info,
+		list(pragma_var), c_code, term__context, clauses_info,
 		hlds__goal) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, out, 
 		out) is det.
@@ -1638,7 +1639,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 %-----------------------------------------------------------------------------
 
 :- pred transform(substitution, list(var), list(term), goal, varset,
-			term_context, hlds__goal, varset, list(quant_warning)).
+			term__context, hlds__goal, varset, list(quant_warning)).
 :- mode transform(in, in, in, in, in, in, out, out, out) is det.
 
 transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
@@ -1669,7 +1670,7 @@ transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet) :-
 			Goal1 - GoalInfo0, VarSet),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1).
 
-:- pred transform_goal_2(goal_expr, term_context, varset, substitution,
+:- pred transform_goal_2(goal_expr, term__context, varset, substitution,
 			hlds__goal, varset).
 :- mode transform_goal_2(in, in, in, in, out, out) is det.
 
@@ -1758,10 +1759,10 @@ transform_goal_2(call(Name, Goals0), Context, VarSet0, Subst, Goal, VarSet) :-
 		ModeId = 0,
 		hlds__is_builtin_make_builtin(no, no, Builtin),
 
-		term_context_init(Context0),
-		term__apply_substitution(term_functor(term_atom(PredName), 
+		term__context_init(Context0),
+		term__apply_substitution(term__functor(term__atom(PredName), 
 				Goals0, Context0), Subst, Goal1),
-		( Goal1 = term_functor(term_atom(PredName0), Args0, _) ->
+		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
 			( ModuleName = "" ->
 				SymName = unqualified(PredName0)
 			;
@@ -1820,7 +1821,7 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet) :-
 		).
 
 :- pred insert_arg_unifications(list(var), list(term),
-				term_context, arg_context,
+				term__context, arg_context,
 				hlds__goal, varset, hlds__goal, varset).
 :- mode insert_arg_unifications(in, in, in, in, in, in, out, out) is det.
 
@@ -1838,7 +1839,7 @@ insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 	).
 
 :- pred insert_arg_unifications_2(list(var), list(term),
-				term_context, arg_context, int,
+				term__context, arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
 :- mode insert_arg_unifications_2(in, in, in, in, in, in, in, out, out) is det.
@@ -1854,13 +1855,13 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 			List0, VarSet0, List, VarSet) :-
 	N1 is N0 + 1,
 		% skip unifications of the form `X = X'
-	( Arg = term_variable(Var) ->
+	( Arg = term__variable(Var) ->
 		insert_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet0, List, VarSet)
 	;
 		arg_context_to_unify_context(ArgContext, N1,
 				UnifyMainContext, UnifySubContext),
-		unravel_unification(term_variable(Var), Arg, Context,
+		unravel_unification(term__variable(Var), Arg, Context,
 				UnifyMainContext, UnifySubContext,
 				VarSet0, Goal, VarSet1),
 		goal_to_conj_list(Goal, ConjList),
@@ -1870,7 +1871,7 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 	).
 
 :- pred append_arg_unifications(list(var), list(term),
-				term_context, arg_context,
+				term__context, arg_context,
 				hlds__goal, varset, hlds__goal, varset).
 :- mode append_arg_unifications(in, in, in, in, in, in, out, out) is det.
 
@@ -1888,7 +1889,7 @@ append_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 	).
 
 :- pred append_arg_unifications_2(list(var), list(term),
-				term_context, arg_context, int,
+				term__context, arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
 :- mode append_arg_unifications_2(in, in, in, in, in, in, in, out, out) is det.
@@ -1904,13 +1905,13 @@ append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 			List0, VarSet0, List, VarSet) :-
 	N1 is N0 + 1,
 		% skip unifications of the form `X = X'
-	( Arg = term_variable(Var) ->
+	( Arg = term__variable(Var) ->
 		append_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet0, List, VarSet)
 	;
 		arg_context_to_unify_context(ArgContext, N1,
 				UnifyMainContext, UnifySubContext),
-		unravel_unification(term_variable(Var), Arg,
+		unravel_unification(term__variable(Var), Arg,
 				Context, UnifyMainContext, UnifySubContext,
 				VarSet0, Goal, VarSet1),
 		goal_to_conj_list(Goal, ConjList),
@@ -1955,7 +1956,7 @@ make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
 
 make_fresh_arg_vars_2([], Vars, VarSet, Vars, VarSet).
 make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
-	( Arg = term_variable(ArgVar), \+ list__member(ArgVar, Vars0) ->
+	( Arg = term__variable(ArgVar), \+ list__member(ArgVar, Vars0) ->
 		Var = ArgVar,
 		VarSet1 = VarSet0
 	;
@@ -1967,7 +1968,7 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 
 	% `X = Y' needs no unravelling.
 
-unravel_unification(term_variable(X), term_variable(Y), Context, MainContext,
+unravel_unification(term__variable(X), term__variable(Y), Context, MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
 	create_atomic_unification(X, var(Y), Context, MainContext, SubContext,
 		Goal),
@@ -1982,12 +1983,12 @@ unravel_unification(term_variable(X), term_variable(Y), Context, MainContext,
 	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term_variable(X), term_functor(F, Args, FunctorContext),
+unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet) :-
 	(
 	    (	% handle lambda expressions
-		F = term_atom("lambda"),
+		F = term__atom("lambda"),
 		Args = [LambdaExpressionTerm, GoalTerm0],
 		parse_lambda_expression(LambdaExpressionTerm,
 			Vars0, Modes0, Det0)
@@ -1998,16 +1999,16 @@ unravel_unification(term_variable(X), term_functor(F, Args, FunctorContext),
 		% handle higher-order pred expressions -
 		% same semantics as lambda expressions, different syntax
 		% (the original lambda expression syntax is now deprecated)
-		F = term_atom(":-"),
+		F = term__atom(":-"),
 		Args = [PredTerm, GoalTerm0],
 		parse_pred_expression(PredTerm, Vars0, Modes0, Det0)
 	    ->
 		Vars1 = Vars0, Modes1 = Modes0, Det1 = Det0,
 		GoalTerm = GoalTerm0
 	    ;
-		parse_pred_expression(term_functor(F, Args, FunctorContext),
+		parse_pred_expression(term__functor(F, Args, FunctorContext),
 			Vars1, Modes1, Det1),
-		GoalTerm = term_functor(term_atom("true"), [], Context)
+		GoalTerm = term__functor(term__atom("true"), [], Context)
 	    )
 	->
 		Modes = Modes1,
@@ -2039,9 +2040,9 @@ unravel_unification(term_variable(X), term_functor(F, Args, FunctorContext),
 
 	% Handle `f(...) = X' in the same way as `X = f(...)'.
 
-unravel_unification(term_functor(F, As, FC), term_variable(Y),
+unravel_unification(term__functor(F, As, FC), term__variable(Y),
 			C, MC, SC, VarSet0, Goal, VarSet) :-
-	unravel_unification(term_variable(Y), term_functor(F, As, FC),
+	unravel_unification(term__variable(Y), term__functor(F, As, FC),
 			C, MC, SC, VarSet0, Goal, VarSet).
 
 	% If we find a unification of the form `f1(...) = f2(...)',
@@ -2050,16 +2051,16 @@ unravel_unification(term_functor(F, As, FC), term_variable(Y),
 	% Note that we can't simplify it yet, because we might simplify
 	% away type errors.
 
-unravel_unification(term_functor(LeftF, LeftAs, LeftC),
-			term_functor(RightF, RightAs, RightC),
+unravel_unification(term__functor(LeftF, LeftAs, LeftC),
+			term__functor(RightF, RightAs, RightC),
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet) :-
 	varset__new_var(VarSet0, TmpVar, VarSet1),
 	unravel_unification(
-		term_variable(TmpVar), term_functor(LeftF, LeftAs, LeftC),
+		term__variable(TmpVar), term__functor(LeftF, LeftAs, LeftC),
 		Context, MainContext, SubContext, VarSet1, Goal0, VarSet2),
 	unravel_unification(
-		term_variable(TmpVar), term_functor(RightF, RightAs, RightC),
+		term__variable(TmpVar), term__functor(RightF, RightAs, RightC),
 		Context, MainContext, SubContext, VarSet2, Goal1, VarSet),
 	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
@@ -2093,8 +2094,8 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 
 substitute_vars([], _, []).
 substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
-	term__apply_substitution(term_variable(Var0), Subst, Term),
-	( Term = term_variable(Var1) ->
+	term__apply_substitution(term__variable(Var0), Subst, Term),
+	( Term = term__variable(Var1) ->
 		Var = Var1
 	;
 		error("substitute_vars: invalid substitution")
@@ -2146,7 +2147,7 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 
 	% Predicates to write out the different warning and error messages.
 
-:- pred multiple_def_error(sym_name, int, string, term_context,
+:- pred multiple_def_error(sym_name, int, string, term__context,
 				io__state, io__state).
 :- mode multiple_def_error(in, in, in, in, di, uo) is det.
 
@@ -2161,7 +2162,7 @@ multiple_def_error(Name, Arity, DefType, Context) -->
 	io__write_int(Arity),
 	io__write_string("' multiply defined\n").
 
-:- pred undefined_pred_error(sym_name, int, term_context, string,
+:- pred undefined_pred_error(sym_name, int, term__context, string,
 				io__state, io__state).
 :- mode undefined_pred_error(in, in, in, in, di, uo) is det.
 
@@ -2176,7 +2177,7 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 	io__write_int(Arity),
 	io__write_string("' without preceding pred declaration\n").
 
-:- pred unspecified_det_warning(sym_name, int, term_context, 
+:- pred unspecified_det_warning(sym_name, int, term__context, 
 				io__state, io__state).
 :- mode unspecified_det_warning(in, in, in, di, uo) is det.
 
@@ -2201,7 +2202,7 @@ unspecified_det_warning(Name, Arity, Context) -->
 		[]
 	).
 
-:- pred unspecified_det_error(sym_name, int, term_context, 
+:- pred unspecified_det_error(sym_name, int, term__context, 
 				io__state, io__state).
 :- mode unspecified_det_error(in, in, in, di, uo) is det.
 
@@ -2216,7 +2217,7 @@ unspecified_det_error(Name, Arity, Context) -->
 	io__write_int(Arity),
 	io__write_string("'\n").
 
-:- pred clause_for_imported_pred_error(sym_name, int, term_context, 
+:- pred clause_for_imported_pred_error(sym_name, int, term__context, 
 				io__state, io__state).
 :- mode clause_for_imported_pred_error(in, in, in, di, uo) is det.
 
@@ -2229,7 +2230,7 @@ clause_for_imported_pred_error(Name, Arity, Context) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred unqualified_pred_error(sym_name, int, term_context,
+:- pred unqualified_pred_error(sym_name, int, term__context,
 				io__state, io__state).
 :- mode unqualified_pred_error(in, in, in, di, uo) is det.
 

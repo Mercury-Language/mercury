@@ -14,8 +14,8 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, livemap.
-:- import_module atsort, map, list, io.
+:- import_module atsort, vn_type, vn_table, livemap.
+:- import_module bool, map, list, io.
 
 :- pred vn_debug__livemap_msg(livemap, io__state, io__state).
 :- mode vn_debug__livemap_msg(in, di, uo) is det.
@@ -29,7 +29,8 @@
 :- pred vn_debug__parallel_msg(parallel, io__state, io__state).
 :- mode vn_debug__parallel_msg(in, di, uo) is det.
 
-:- pred vn_debug__order_start_msg(ctrlmap, flushmap, vn_tables, io__state, io__state).
+:- pred vn_debug__order_start_msg(ctrlmap, flushmap, vn_tables,
+				io__state, io__state).
 :- mode vn_debug__order_start_msg(in, in, in, di, uo) is det.
 
 :- pred vn_debug__order_sink_msg(vn_node, io__state, io__state).
@@ -69,7 +70,8 @@
 :- pred vn_debug__flush_also_msg(vnlval, io__state, io__state).
 :- mode vn_debug__flush_also_msg(in, di, uo) is det.
 
-:- pred vn_debug__flush_end_msg(list(instruction), vn_tables, io__state, io__state).
+:- pred vn_debug__flush_end_msg(list(instruction), vn_tables,
+			io__state, io__state).
 :- mode vn_debug__flush_end_msg(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%

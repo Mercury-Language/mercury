@@ -46,7 +46,7 @@
 
 :- module unify_proc.
 :- interface.
-:- import_module std_util, io, list.
+:- import_module bool, std_util, io, list.
 :- import_module prog_io, hlds, llds, special_pred, modes.
 
 :- type unify_requests.
@@ -221,7 +221,7 @@ unify_proc__request_unify(UnifyId, Determinism, ModuleInfo0, ModuleInfo) :-
 		UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
 		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 		MaybeDet = yes(Determinism),
-		term_context_init(Context),
+		term__context_init(Context),
 		add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context,
 				PredInfo1, ProcId),
 
@@ -402,7 +402,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Clauses) -->
 	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
 		unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Clauses)
 	;
-		{ term_context_init(Context) },
+		{ term__context_init(Context) },
 		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
 			Goal) },
 		unify_proc__info_get_varset(Varset0),
@@ -431,7 +431,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Clauses) -->
 			Varset0, Types0, Body, Varset, Types, _Warnings) },
 		unify_proc__info_set_varset(Varset),
 		unify_proc__info_set_types(Types),
-		{ term_context_init(Context) },
+		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -453,7 +453,7 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Clauses) -->
 			Varset0, Types0, Body, Varset, Types, _Warnings) },
 		unify_proc__info_set_varset(Varset),
 		unify_proc__info_set_types(Types),
-		{ term_context_init(Context) },
+		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -476,7 +476,7 @@ unify_proc__generate_term_to_type_clauses(TypeBody, Term, X, Clauses) -->
 			Varset0, Types0, Body, Varset, Types, _Warnings) },
 		unify_proc__info_set_varset(Varset),
 		unify_proc__info_set_types(Types),
-		{ term_context_init(Context) },
+		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -498,7 +498,7 @@ unify_proc__generate_type_to_term_clauses(TypeBody, X, Term, Clauses) -->
 			Varset0, Types0, Body, Varset, Types, _Warnings) },
 		unify_proc__info_set_varset(Varset),
 		unify_proc__info_set_types(Types),
-		{ term_context_init(Context) },
+		{ term__context_init(Context) },
 		{ Clauses = [clause([], Body, Context)] }
 	).
 
@@ -542,8 +542,8 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2,
 		[Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
-	{ Functor = term_atom(UnqualifiedFunctorName) },
-	{ term_context_init(Context) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, Vars2),
 	{ create_atomic_unification(
@@ -597,14 +597,14 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, N,
 		[Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
-	{ Functor = term_atom(UnqualifiedFunctorName) },
-	{ term_context_init(Context) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
 	{ create_atomic_unification(
 		X, functor(Functor, ArgVars), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Index, functor(term_integer(N), []), Context, explicit, [], 
+		Index, functor(term__integer(N), []), Context, explicit, [], 
 		UnifyIndex_Goal) },
 	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
 	{ goal_info_init(GoalInfo) },
@@ -678,7 +678,7 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, [Clause]) -->
 		Varset0, Types0, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
-	{ term_context_init(Context) },
+	{ term__context_init(Context) },
 	{ Clause = clause([], Body, Context) }.
 
 :- pred unify_proc__generate_du_compare_clauses_2(
@@ -688,9 +688,9 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, [Clause]) -->
 	is det.
 
 unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
-	{ term_context_init(Context) },
-	{ IntType = term_functor(term_atom("int"), [], Context) },
-	{ ResType = term_functor(term_atom("comparison_result"), [],
+	{ term__context_init(Context) },
+	{ IntType = term__functor(term__atom("int"), [], Context) },
+	{ ResType = term__functor(term__atom("comparison_result"), [],
 			Context) },
 	unify_proc__info_new_var(IntType, X_Index),
 	unify_proc__info_new_var(IntType, Y_Index),
@@ -707,11 +707,11 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 	unify_proc__build_call(">", [X_Index, Y_Index], Call_Greater_Than),
 
 	{ create_atomic_unification(
-		Res, functor(term_atom("<"), []), Context, explicit, [], 
+		Res, functor(term__atom("<"), []), Context, explicit, [], 
 		Return_Less_Than) },
 
 	{ create_atomic_unification(
-		Res, functor(term_atom(">"), []), Context, explicit, [], 
+		Res, functor(term__atom(">"), []), Context, explicit, [], 
 		Return_Greater_Than) },
 
 	{ create_atomic_unification(Res, var(R), Context, explicit, [],
@@ -775,8 +775,8 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, [Case | Cases]) -->
 unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
-	{ Functor = term_atom(UnqualifiedFunctorName) },
-	{ term_context_init(Context) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
 	unify_proc__make_fresh_vars(ArgTypes, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, Vars2),
 	{ create_atomic_unification(
@@ -821,24 +821,24 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
 :- mode unify_proc__compare_args(in, in, in, out, in, out) is det.
 
 unify_proc__compare_args([], [], R, Return_Equal) -->
-	{ term_context_init(Context) },
+	{ term__context_init(Context) },
 	{ create_atomic_unification(
-		R, functor(term_atom("="), []), Context, explicit, [], 
+		R, functor(term__atom("="), []), Context, explicit, [], 
 		Return_Equal) }.
 unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
 	{ goal_info_init(GoalInfo) },
 	( { Xs = [], Ys = [] } ->
 		unify_proc__build_call("compare", [R, X, Y], Goal)
 	;
-		{ term_context_init(Context) },
-		{ ResType = term_functor(term_atom("comparison_result"), [],
+		{ term__context_init(Context) },
+		{ ResType = term__functor(term__atom("comparison_result"), [],
 				Context) },
 		unify_proc__info_new_var(ResType, R1),
 
 		unify_proc__build_call("compare", [R1, X, Y], Do_Comparison),
 
 		{ create_atomic_unification(
-			R1, functor(term_atom("="), []), Context, explicit, [],
+			R1, functor(term__atom("="), []), Context, explicit, [],
 			Check_Equal) },
 		{ Check_Not_Equal = not(Check_Equal) - GoalInfo },
 
@@ -866,10 +866,10 @@ unify_proc__compare_args([_|_], [], _, _) -->
 
 	term_to_type(Term, X) :-
 		(
-			Term = term_functor(term_atom("empty"), [], _),
+			Term = term__functor(term__atom("empty"), [], _),
 			X = empty.
 		;
-			Term = term_functor(term_atom("tree"),
+			Term = term__functor(term__atom("tree"),
 				[KeyTerm, ValTerm, LTreeTerm, RTreeTerm], _),
 			term_to_type(KeyTerm, Key),
 			term_to_type(ValTerm, Val),
@@ -878,14 +878,14 @@ unify_proc__compare_args([_|_], [], _, _) -->
 			X = tree(Key, Val, L, R)
 		).
 
-	The complex unification of Term to term_functor is achieved
+	The complex unification of Term to term__functor is achieved
 	by atomic unifications. The code that achieves this is a
 	specialized inline version of unravel_unification from
 	make_hlds.m. The actual code generated for the above type is:
 
 	term_to_type(Term, X) :-
-		Term = term_functor(V1, V2, V3),
-		V1 = term_atom(V4),
+		Term = term__functor(V1, V2, V3),
+		V1 = term__atom(V4),
 		(
 			V4 = "empty",
 			V2 = [],
@@ -914,7 +914,7 @@ unify_proc__compare_args([_|_], [], _, _) -->
 unify_proc__generate_du_term_to_type_clauses([], _Term, _X, []) --> [].
 unify_proc__generate_du_term_to_type_clauses([Ctor | Ctors], Term, X,
 								[Clause]) -->
-	{ term_context_init(Context) },
+	{ term__context_init(Context) },
 
 	% Make V1, V2, V3, V4
 	unify_proc__info_new_var(ConstType, V1),
@@ -922,25 +922,25 @@ unify_proc__generate_du_term_to_type_clauses([Ctor | Ctors], Term, X,
 	unify_proc__info_new_var(ContextType, V3),
 	unify_proc__info_new_var(StringType, V4),
 
-	% Make Term = term_functor(V1, V2, V3)
+	% Make Term = term__functor(V1, V2, V3)
 	{ create_atomic_unification(
 		Term,
-		functor(term_atom("term_functor"), [ V1, V2, V3 ]),
+		functor(term__atom("term__functor"), [ V1, V2, V3 ]),
 		Context, explicit, [],
 		TermGoal) },
 	
-	% Make V1 = term_atom(V4),
+	% Make V1 = term__atom(V4),
 	{ create_atomic_unification(
 		V1,
-		functor(term_atom("term_atom"), [ V4 ]),
+		functor(term__atom("term__atom"), [ V4 ]),
 		Context, explicit, [],
 		AtomGoal) },
 
-	{ ConstType = term_functor(term_atom("const"), [], Context) },
-	{ TermType = term_functor(term_atom("term"), [], Context) },
-	{ TermListType = term_functor(term_atom("list"),[TermType],Context) },
-	{ ContextType = term_functor(term_atom("term_context"),[],Context) },
-	{ StringType = term_functor(term_atom("string"), [], Context) },
+	{ ConstType = term__functor(term__atom("const"), [], Context) },
+	{ TermType = term__functor(term__atom("term"), [], Context) },
+	{ TermListType = term__functor(term__atom("list"),[TermType],Context) },
+	{ ContextType = term__functor(term__atom("term__context"),[],Context) },
+	{ StringType = term__functor(term__atom("string"), [], Context) },
 
 	% Make disjunctions for the difference functors of the type
 	unify_proc__generate_du_term_to_type_disjunctions([Ctor | Ctors],
@@ -976,9 +976,9 @@ unify_proc__generate_du_term_to_type_disjunctions([Ctor | Ctors], V2, V4, X,
 
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
-	{ FunctorAtom = term_atom(UnqualifiedFunctorName) },
-	{ FunctorString = term_string(UnqualifiedFunctorName) },
-	{ term_context_init(Context) },
+	{ FunctorAtom = term__atom(UnqualifiedFunctorName) },
+	{ FunctorString = term__string(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
 	
 	% Make V4 = ...
 	{ create_atomic_unification(
@@ -1012,7 +1012,7 @@ unify_proc__generate_du_term_to_type_disjunctions([Ctor | Ctors], V2, V4, X,
 
 
 :- pred unify_proc__generate_du_term_to_type_recursive(
-	list(var), var, term_context, type, type,
+	list(var), var, term__context, type, type,
 	list(hlds__goal), list(hlds__goal), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_term_to_type_recursive(
 	in, in, in, in, in,
@@ -1023,7 +1023,7 @@ unify_proc__generate_du_term_to_type_recursive(
   [ Goal ], []) -->
 	{ create_atomic_unification(
 		Var,
-		functor(term_atom("[]"), []),
+		functor(term__atom("[]"), []),
 		Context, explicit, [],
 		Goal) }.
 
@@ -1034,7 +1034,7 @@ unify_proc__generate_du_term_to_type_recursive(
 	unify_proc__info_new_var(TermListType, TermListVar),
 	{ create_atomic_unification(
 		Var,
-		functor(term_atom("."), [ TermVar, TermListVar ]),
+		functor(term__atom("."), [ TermVar, TermListVar ]),
 		Context, explicit, [],
 		TermGoal) },
 	unify_proc__build_call("term_to_type",[TermVar, ArgVar],TermToTypeGoal),
@@ -1054,20 +1054,20 @@ unify_proc__generate_du_term_to_type_recursive(
 	type_to_term(X, Term) :-
 		(
 			X = empty,
-			term_context_init(Context),
-			Term = term_functor(term_atom("empty"), [], Context)
+			term__context_init(Context),
+			Term = term__functor(term__atom("empty"), [], Context)
 		;
 			X = tree(Key, Val, L, R),
 			type_to_term(Key, KeyTerm),
 			type_to_term(Val, VeyTerm),
 			type_to_term(L, LTreeTerm),
 			type_to_term(R, RTreeTerm),
-			term_context_init(Context),
-			Term = term_functor(term_atom("tree"),
+			term__context_init(Context),
+			Term = term__functor(term__atom("tree"),
 			      [KeyTerm, ValTerm, LTreeTerm, RTreeTerm], Context)
 		).
 	
-	The complex unification of Term to term_functor is achieved
+	The complex unification of Term to term__functor is achieved
 	by atomic unifications. The code that achieves this is a
 	specialized inline version of unravel_unification from
 	make_hlds.m. The actual code generated for the above type is:
@@ -1075,11 +1075,11 @@ unify_proc__generate_du_term_to_type_recursive(
 	type_to_term(X, Term) :-
 		(
 			X = empty,
-			V1 = term_atom(V4),
+			V1 = term__atom(V4),
 			V4 = "empty",
 			V2 = [],
-			term_context_init(V3),
-			Term = term_functor(V1, V2, V3)
+			term__context_init(V3),
+			Term = term__functor(V1, V2, V3)
 		;
 			X = tree(Key, Val, L, R),
 			type_to_term(Key, KeyTerm),
@@ -1091,10 +1091,10 @@ unify_proc__generate_du_term_to_type_recursive(
 			V6 = [LTreeTerm | V7],
 			V7 = [RTreeTerm | V8],
 			V8 = [],
-			V1 = term_atom(V4),
+			V1 = term__atom(V4),
 			V4 = "tree",
-			term_context_init(V3),
-			Term = term_functor(V1, V2, V3).
+			term__context_init(V3),
+			Term = term__functor(V1, V2, V3).
 		).
 */
 
@@ -1110,15 +1110,15 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 							[Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
-	{ FunctorAtom = term_atom(UnqualifiedFunctorName) },
-        { FunctorString = term_string(UnqualifiedFunctorName) },
-        { term_context_init(Context) },
+	{ FunctorAtom = term__atom(UnqualifiedFunctorName) },
+        { FunctorString = term__string(UnqualifiedFunctorName) },
+        { term__context_init(Context) },
 
-	{ ConstType = term_functor(term_atom("const"), [], Context) },
-	{ TermType = term_functor(term_atom("term"), [], Context) },
-	{ TermListType = term_functor(term_atom("list"),[TermType],Context) },
-	{ ContextType = term_functor(term_atom("term_context"),[],Context) },
-	{ StringType = term_functor(term_atom("string"), [], Context) },
+	{ ConstType = term__functor(term__atom("const"), [], Context) },
+	{ TermType = term__functor(term__atom("term"), [], Context) },
+	{ TermListType = term__functor(term__atom("list"),[TermType],Context) },
+	{ ContextType = term__functor(term__atom("term__context"),[],Context) },
+	{ StringType = term__functor(term__atom("string"), [], Context) },
 
         % Make Key, Val, L, R
 	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
@@ -1142,10 +1142,10 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 	unify_proc__info_new_var(ConstType, V1),
 	unify_proc__info_new_var(StringType, V4),
 
-	% Make V1 = term_atom(V4),
+	% Make V1 = term__atom(V4),
 	{ create_atomic_unification(
 		V1,
-		functor(term_atom("term_atom"), [ V4 ]),
+		functor(term__atom("term__atom"), [ V4 ]),
 		Context, explicit, [],
 		AtomGoal) },
 
@@ -1159,33 +1159,33 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 	% Make V3
 	unify_proc__info_new_var(ContextType, V3),
 
-	% Make term_context(V3)
-	% unify_proc__build_call("term_context_init", [V3], ContextGoal),
+	% Make term__context(V3)
+	% unify_proc__build_call("term__context_init", [V3], ContextGoal),
 	% --- From here ---
 	unify_proc__info_new_var(StringType, ContextString),
-	{ IntType = term_functor(term_atom("string"), [], Context) },
+	{ IntType = term__functor(term__atom("string"), [], Context) },
 	unify_proc__info_new_var(IntType, ContextInt),
 	{ create_atomic_unification(
 		V3,
-		functor(term_atom("term_context"),[ContextString,ContextInt]),
+		functor(term__atom("term__context"),[ContextString,ContextInt]),
 		Context, explicit, [],
 		ContextGoal) },
 	{ create_atomic_unification(
 		ContextString,
-		functor(term_string(""), []),
+		functor(term__string(""), []),
 		Context, explicit, [],
 		ContextGoalString) },
 	{ create_atomic_unification(
 		ContextInt,
-		functor(term_integer(0), []),
+		functor(term__integer(0), []),
 		Context, explicit, [],
 		ContextGoalInt) },
 	% --- To here ---
 
-	% Make Term = term_functor(V1, V2, V3)
+	% Make Term = term__functor(V1, V2, V3)
 	{ create_atomic_unification(
 		Term,
-		functor(term_atom("term_functor"), [ V1, V2, V3 ]),
+		functor(term__atom("term__functor"), [ V1, V2, V3 ]),
 		Context, explicit, [],
 		TermGoal) },
 
@@ -1210,7 +1210,7 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 
 
 :- pred unify_proc__generate_du_type_to_term_recursive_clauses(
-	list(var), var, term_context, type, type,
+	list(var), var, term__context, type, type,
 	list(hlds__goal), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_type_to_term_recursive_clauses(
 	in, in, in, in, in,
@@ -1221,7 +1221,7 @@ unify_proc__generate_du_type_to_term_recursive_clauses(
   [ Goal ]) -->
 	{ create_atomic_unification(
 		Var,
-		functor(term_atom("[]"), []),
+		functor(term__atom("[]"), []),
 		Context, explicit, [],
 		Goal) }.
 
@@ -1233,7 +1233,7 @@ unify_proc__generate_du_type_to_term_recursive_clauses(
 	unify_proc__build_call("type_to_term",[ArgVar, TermVar],TypeToTermGoal),
 	{ create_atomic_unification(
 		Var,
-		functor(term_atom("."), [ TermVar, TermListVar ]),
+		functor(term__atom("."), [ TermVar, TermListVar ]),
 		Context, explicit, [],
 		TermGoal) },
 	unify_proc__generate_du_type_to_term_recursive_clauses(
@@ -1286,7 +1286,7 @@ unify_proc__unify_var_lists([_|_], [], _) :-
 	error("unify_proc__unify_var_lists: length mismatch").
 unify_proc__unify_var_lists([], [], []).
 unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
-	term_context_init(Context),
+	term__context_init(Context),
 	create_atomic_unification(Var1, var(Var2), Context, explicit, [],
 		Goal),
 	unify_proc__unify_var_lists(Vars1, Vars2, Goals).

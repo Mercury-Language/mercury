@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module list, llds.
+:- import_module bool, list, set.
+:- import_module llds.
 
 	% Build up a set showing which labels are branched to,
 	% then traverse the instruction list removing unnecessary labels.
@@ -33,7 +34,8 @@
 
 :- implementation.
 
-:- import_module opt_util, std_util, set.
+:- import_module opt_util.
+:- import_module std_util.
 
 labelopt__main(Instrs0, Final, Instrs, Mod) :-
 	labelopt__build_usemap(Instrs0, Usemap),

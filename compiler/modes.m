@@ -93,7 +93,7 @@ a variable live if its value will be used later on in the computation.
 
 :- module modes.
 :- interface.
-:- import_module hlds, io.
+:- import_module bool, hlds, io.
 
 :- pred modecheck(module_info, module_info, io__state, io__state).
 :- mode modecheck(in, out, di, uo) is det.
@@ -479,7 +479,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		% store the current context in the mode_info
 		%
 	goal_info_context(GoalInfo0, Context),
-	term_context_init(EmptyContext),
+	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
 		ModeInfo1 = ModeInfo0
 	;
@@ -707,7 +707,7 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		Goal = conj(GoalList)
 	).
 
-:- pred handle_extra_goals_contexts(list(hlds__goal), term_context,
+:- pred handle_extra_goals_contexts(list(hlds__goal), term__context,
 	list(hlds__goal)).
 :- mode handle_extra_goals_contexts(in, in, out) is det.
 
@@ -1624,8 +1624,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	map__lookup(VarTypes0, X0, TypeOfX),
 	(
 		% check if variable has a higher-order pred type
-		TypeOfX = term_functor(term_atom("pred"), PredArgTypes, _),
-		Name = term_atom(PName),
+		TypeOfX = term__functor(term__atom("pred"), PredArgTypes, _),
+		Name = term__atom(PName),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
@@ -2267,7 +2267,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 			Unification = complicated_unify(UniMode, CanFail,
 				Follow),
 			(
-				Type = term_functor(term_atom("pred"), _, _)
+				Type = term__functor(term__atom("pred"), _, _)
 			->
 				% we do not want to report this as an error
 				% if it occurs in a compiler-generated
@@ -2423,7 +2423,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		;
 			% Otherwise, it can fail
 			CanFail = can_fail,
-			( TypeOfX = term_functor(term_atom("pred"), _, _) ->
+			( TypeOfX = term__functor(term__atom("pred"), _, _) ->
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
 					mode_error_unify_pred,

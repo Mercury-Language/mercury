@@ -16,7 +16,7 @@
 
 :- module mercury_compile.
 :- interface.
-:- import_module io.
+:- import_module bool, string, io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
@@ -31,7 +31,7 @@
 :- implementation.
 
 	% library modules
-:- import_module int, string, list, map, set, std_util, dir, tree234, require.
+:- import_module bool, int, list, map, set, std_util, dir, tree234, require.
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
@@ -654,7 +654,7 @@ mercury_compile__semantic_pass(HLDS1, HLDS, FoundError) -->
 		    %
 		    mercury_compile__semantic_pass_2_by_phases(HLDS2, HLDS,
 			    FoundModeOrDetError),
-		    { std_util__bool_or(FoundTypeError, FoundModeOrDetError,
+		    { bool__or(FoundTypeError, FoundModeOrDetError,
 			    FoundError) }
 		)
 	    )
@@ -1437,7 +1437,7 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	( { CompileToC = no } ->
 		{ string__append(ModuleName, ".c", C_File) },
 		mercury_compile__c_to_obj(C_File, CompileOK),
-		{ std_util__bool_not(CompileOK, CompileErrors) }
+		{ bool__not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
 	).

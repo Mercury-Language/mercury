@@ -74,7 +74,8 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module type_util, special_pred, list, map, require, std_util.
+:- import_module bool, list, map, require, std_util.
+:- import_module type_util, special_pred.
 
 %---------------------------------------------------------------------------%
 

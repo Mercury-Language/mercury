@@ -13,7 +13,8 @@
 :- module frameopt.
 
 :- interface.
-:- import_module llds, list, map, bimap.
+:- import_module bool, list, map, bimap.
+:- import_module llds.
 
 	% Delay the construction of det stack frames as long as possible,
 	% in order to avoid the construction in as many cases as possible.
@@ -186,7 +187,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 			Uinstr0 = assign(Lval, Rval),
 			opt_util__lval_refers_stackvars(Lval, Use1),
 			opt_util__rval_refers_stackvars(Rval, Use2),
-			std_util__bool_or(Use1, Use2, Use),
+			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
@@ -277,7 +278,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
 			opt_util__rval_refers_stackvars(Size, Use2),
-			std_util__bool_or(Use1, Use2, Use),
+			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
@@ -695,7 +696,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			Uinstr0 = assign(Lval, Rval),
 			opt_util__lval_refers_stackvars(Lval, Use1),
 			opt_util__rval_refers_stackvars(Rval, Use2),
-			std_util__bool_or(Use1, Use2, Use),
+			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),
@@ -799,7 +800,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			Uinstr0 = incr_hp(Lval, _, Size),
 			opt_util__lval_refers_stackvars(Lval, Use1),
 			opt_util__rval_refers_stackvars(Size, Use2),
-			std_util__bool_or(Use1, Use2, Use),
+			bool__or(Use1, Use2, Use),
 			frameopt__setup_use(Use,
 				SetupFrame0, SetupFrame1,
 				SetupSuccip0, SetupSuccip1),

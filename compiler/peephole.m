@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module list, llds, map, bimap.
+:- import_module bool, list, bimap.
+:- import_module llds.
 
 :- pred peephole__optimize(list(instruction), list(instruction),
 	bimap(label, label), bool, bool).
@@ -22,7 +23,8 @@
 
 :- implementation.
 
-:- import_module code_util, opt_util, opt_debug, map, string, std_util.
+:- import_module map, string, std_util.
+:- import_module code_util, opt_util, opt_debug.
 
 peephole__optimize(Instrs0, Instrs, TeardownMap, AfterFrameopt, Mod) :-
 	( AfterFrameopt = yes ->

@@ -66,7 +66,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, string, list, set, map, term, varset, std_util, require.
+
+:- import_module bool, int, string, list, set, map.
+:- import_module term, varset, std_util, require.
+
 :- import_module prog_io, type_util, mode_util, quantification.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
 :- import_module llds, (lambda).
@@ -282,7 +285,7 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		=(poly_info(_, VarTypes, _, _TypeInfoMap, ModuleInfo)),
 		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
 		{ map__lookup(VarTypes, MainVar, Type) },
-		{ Type \= term_variable(_) }
+		{ Type \= term__variable(_) }
 	    ->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
@@ -313,7 +316,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, ModuleInfo)),
 		{ map__lookup(VarTypes, XVar, Type) },
-		( { Type = term_variable(TypeVar) } ->
+		( { Type = term__variable(TypeVar) } ->
 			% Convert polymorphic unifications into calls to
 			% `unify/2', the general unification predicate, passing
 			% the appropriate Type_info
@@ -344,7 +347,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
 				yes(CallContext), SymName, Follow) - GoalInfo }
 
-		; { Type = term_functor(term_atom("pred"), _, _) } ->
+		; { Type = term__functor(term__atom("pred"), _, _) } ->
 			{ SymName = unqualified("builtin_unify_pred") },
 			{ ArgVars = [XVar, YVar] },
 			{ module_info_get_predicate_table(ModuleInfo,
@@ -606,8 +609,8 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		% Create a unification `CountVar = <NumTypeArgs>'
 		varset__new_var(VarSet0, CountVar, VarSet1a),
 		varset__name_var(VarSet1a, CountVar, "TypeArity", VarSet1),
-		term_context_init(Context),
-		IntType = term_functor(term_atom("int"), [], Context),
+		term__context_init(Context),
+		IntType = term__functor(term__atom("int"), [], Context),
 		map__set(VarTypes0, CountVar, IntType, VarTypes1),
 		list__length(TypeArgs, NumTypeArgs),
 		polymorphism__init_with_int_constant(CountVar, NumTypeArgs,
@@ -649,7 +652,7 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 			ExtraGoals0),
 		list__append(ExtraGoals0, [TypeInfoGoal], ExtraGoals1)
 	;
-		Type = term_variable(TypeVar1),
+		Type = term__variable(TypeVar1),
 		map__search(TypeInfoMap, TypeVar1, TypeInfoVar)
 	->
 		% This occurs for code where a predicate calls a polymorphic
@@ -721,7 +724,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	CountConsId = int_const(Num),
 	CountUnification = construct(CountVar, CountConsId, [], []),
 
-	CountConst = term_integer(Num),
+	CountConst = term__integer(Num),
 	CountTerm = functor(CountConst, []),
 	CountInst = bound(shared, [functor(CountConst, [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
@@ -764,8 +767,8 @@ polymorphism__get_special_proc_list([Id | Ids],
 	varset__new_var(VarSet0, Var, VarSet1a),
 	string__append("Var__", PredName, VarName),
 	varset__name_var(VarSet1a, Var, VarName, VarSet1),
-	term_context_init(Context),
-	PredType = term_functor(term_atom("pred"), TypeArgs, Context),
+	term__context_init(Context),
+	PredType = term__functor(term__atom("pred"), TypeArgs, Context),
 	map__set(VarTypes0, Var, PredType, VarTypes1),
 
 	% get the ConsId for the address of the appropriate pred
@@ -781,7 +784,7 @@ polymorphism__get_special_proc_list([Id | Ids],
 
 	Unification = construct(Var, ConsId, [], []),
 
-	Functor = term_atom(PredName2),
+	Functor = term__atom(PredName2),
 	Term = functor(Functor, []),
 
 	Inst = bound(shared, [functor(Functor, [])]),
@@ -877,7 +880,7 @@ polymorphism__get_pred_id(Name, Arity, ModuleInfo, PredId) :-
 polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	TypeInfoFunctor = term_atom("type_info"),
+	TypeInfoFunctor = term__atom("type_info"),
 	ConsId = cons("type_info", 1),
 	TypeInfoTerm = functor(TypeInfoFunctor, ArgVars),
 
@@ -925,7 +928,7 @@ polymorphism__make_head_vars([], _, VarSet, VarTypes, [], VarSet, VarTypes).
 polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet,
 				VarSet0, VarTypes0,
 				TypeInfoVars, VarSet, VarTypes) :-
-	Type = term_variable(TypeVar),
+	Type = term__variable(TypeVar),
 	polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
 					Var, VarSet1, VarTypes1),
 	( varset__lookup_name(TypeVarSet, TypeVar, TypeVarName) ->
@@ -948,8 +951,8 @@ polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
 	% introduce new variable
 	varset__new_var(VarSet0, Var, VarSet1),
 	varset__name_var(VarSet1, Var, "TypeInfo", VarSet),
-	term_context_init(Context),
-	UnifyPredType = term_functor(term_atom("type_info"), [Type],
+	term__context_init(Context),
+	UnifyPredType = term__functor(term__atom("type_info"), [Type],
 				Context),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes).
 

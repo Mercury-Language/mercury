@@ -14,7 +14,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, io, std_util.
+:- import_module bool, io, std_util.
+:- import_module hlds.
 
 :- pred check_undefined_modes(module_info, module_info, bool,
 				io__state, io__state).
@@ -23,7 +24,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_io, prog_out, hlds_out, list, map, std_util, require.
+:- import_module list, map, std_util, require.
+:- import_module prog_io, prog_out, hlds_out.
 
 	% Check for any possible undefined insts/modes.
 	% Should we add a definition for undefined insts/modes?
@@ -258,7 +260,7 @@ find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
 
 %-----------------------------------------------------------------------------%
 
-:- type mode_error_context == pair(mode_error_context_2, term_context).
+:- type mode_error_context == pair(mode_error_context_2, term__context).
 :- type mode_error_context_2	--->	inst(inst_id)
 				;	mode(mode_id)
 				;	pred(pred_id).

@@ -23,7 +23,7 @@
 
 :- module hlds.
 :- interface.
-:- import_module float, int, string, list, set, map, std_util, relation.
+:- import_module bool, float, int, string, list, set, map, std_util, relation.
 :- import_module varset, term.
 :- import_module prog_io, llds, special_pred.
 
@@ -95,12 +95,12 @@
 					list(proc_id),	% modes for which
 							% this clause applies
 					hlds__goal,	% Body
-					term_context
+					term__context
 				).
 
 :- type c_header_info 	==	list(c_header_lines).
 
-:- type c_header_lines	--->	string  - term_context.
+:- type c_header_lines	--->	string  - term__context.
 
 :- implementation.
 
@@ -111,7 +111,7 @@
 					list(var),	% head vars
 					list(mode), 	% modes of args
 					hlds__goal,	% Body
-					term_context,	% The context of
+					term__context,	% The context of
 							% the :- mode decl,
 							% not the clause.
 					call_info,	% stack allocations
@@ -664,7 +664,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 				% (computed during determinism analysis)
 		instmap_delta,	% the change in insts over this goal
 				% (computed during mode analysis)
-		term_context,
+		term__context,
 		set(var),	% the non-local vars in the goal
 				% (computed by quantification.m)
 		delta_liveness,	% the changes in liveness before goal
@@ -732,7 +732,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 				% :- type sorted_list(T) == list(T)
 				%	where sorted.
 
-			term_context		% the location of this type
+			term__context		% the location of this type
 						% definition in the original
 						% source code
 		).
@@ -832,7 +832,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
-			term_context		% The location in the source
+			term__context		% The location in the source
 						% code of this inst definition.
 		).
 
@@ -865,7 +865,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
-			term_context		% The location of this mode
+			term__context		% The location of this mode
 						% definition in the original
 						% source code.
 		).
@@ -886,7 +886,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
-			term_context		% The location of this
+			term__context		% The location of this
 						% ctor definition in the
 						% original source code
 		).
@@ -1583,15 +1583,15 @@ invalid_pred_id(-1).
 
 :- implementation.
 
-cons_id_to_const(cons(Name, Arity), term_atom(Name), Arity).
-cons_id_to_const(int_const(Int), term_integer(Int), 0).
-cons_id_to_const(string_const(String), term_string(String), 0).
-cons_id_to_const(float_const(Float), term_float(Float), 0).
+cons_id_to_const(cons(Name, Arity), term__atom(Name), Arity).
+cons_id_to_const(int_const(Int), term__integer(Int), 0).
+cons_id_to_const(string_const(String), term__string(String), 0).
+cons_id_to_const(float_const(Float), term__float(Float), 0).
 
-make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
-make_functor_cons_id(term_integer(Int), _, int_const(Int)).
-make_functor_cons_id(term_string(String), _, string_const(String)).
-make_functor_cons_id(term_float(Float), _, float_const(Float)).
+make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term__integer(Int), _, int_const(Int)).
+make_functor_cons_id(term__string(String), _, string_const(String)).
+make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
 make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	list__length(Args, Arity).
@@ -1634,7 +1634,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- mode predicate_arity(in, in, out) is det.
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
-			condition, term_context, clauses_info, import_status,
+			condition, term__context, clauses_info, import_status,
 			bool, goal_type, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
 
@@ -1675,7 +1675,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_procedures(pred_info, proc_table, pred_info).
 :- mode pred_info_set_procedures(in, in, out) is det.
 
-:- pred pred_info_context(pred_info, term_context).
+:- pred pred_info_context(pred_info, term__context).
 :- mode pred_info_context(in, out) is det.
 
 :- pred pred_info_import_status(pred_info::in, import_status::out) is det.
@@ -1750,7 +1750,7 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 
 			proc_table,
 
-			term_context,	% the location (line #)
+			term__context,	% the location (line #)
 					% of the :- pred decl.
 
 			module_name,	% module in which pred occurs
@@ -1881,7 +1881,7 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 
 :- interface.
 
-:- pred proc_info_init(int, list(mode), maybe(determinism), term_context,
+:- pred proc_info_init(int, list(mode), maybe(determinism), term__context,
 	proc_info).
 :- mode proc_info_init(in, in, in, in, out) is det.
 
@@ -1927,7 +1927,7 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 :- pred proc_info_goal(proc_info, hlds__goal).
 :- mode proc_info_goal(in, out) is det.
 
-:- pred proc_info_context(proc_info, term_context).
+:- pred proc_info_context(proc_info, term__context).
 :- mode proc_info_context(in, out) is det.
 
 :- pred proc_info_call_info(proc_info, call_info).
@@ -2048,7 +2048,7 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 				D	list(var),	% head vars
 % 				E	list(mode), 	% modes of args
 % 				F	hlds__goal,	% Body
-% 				G	term_context,	% The context of
+% 				G	term__context,	% The context of
 % 							% the :- mode decl,
 % 							% not the clause.
 % 				H	call_info,	% stack allocations
@@ -2210,10 +2210,10 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 				hlds__goal_info).
 :- mode goal_info_set_instmap_delta(in, in, out) is det.
 
-:- pred goal_info_context(hlds__goal_info, term_context).
+:- pred goal_info_context(hlds__goal_info, term__context).
 :- mode goal_info_context(in, out) is det.
 
-:- pred goal_info_set_context(hlds__goal_info, term_context, hlds__goal_info).
+:- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
 :- pred goal_info_store_map(hlds__goal_info, maybe(map(var, lval))).
@@ -2287,7 +2287,7 @@ goal_info_init(GoalInfo) :-
 	DeltaLiveness = Births - Deaths,
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
-	term_context_init(Context),
+	term__context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(DeltaLiveness, unit, ExternalDetism,
 		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no,

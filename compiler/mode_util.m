@@ -864,7 +864,7 @@ constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 	Ctor = Name0 - Args,
 	type_list_to_inst_list(Args, Uniq, Insts),
 	unqualify_name(Name0, Name),
-	BoundInst = functor(term_atom(Name), Insts),
+	BoundInst = functor(term__atom(Name), Insts),
 	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).
 
 :- pred type_list_to_inst_list(list(type), uniqueness, list(inst)).
@@ -981,7 +981,7 @@ inst_apply_substitution(not_reached, _, not_reached).
 inst_apply_substitution(inst_var(Var), Subst, Result) :-
 	(
 		% XXX should params be vars?
-		map__search(Subst, term_variable(Var), Replacement)
+		map__search(Subst, term__variable(Var), Replacement)
 	->
 		Result = Replacement
 	;

@@ -13,6 +13,7 @@
 
 :- interface.
 
+:- import_module bool, std_util.
 :- import_module hlds, llds.
 
 :- pred move_follow_code(module_info, pair(bool), module_info).
@@ -29,7 +30,7 @@
 :- implementation.
 
 :- import_module det_analysis, mode_util, quantification.
-:- import_module list, map, set, std_util.
+:- import_module list, map, set.
 :- import_module term, require.
 
 %-----------------------------------------------------------------------------%

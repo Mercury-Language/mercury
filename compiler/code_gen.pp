@@ -64,7 +64,7 @@
 
 :- implementation.
 
-:- import_module char, string, list, varset, term, map, tree, require.
+:- import_module bool, char, string, list, varset, term, map, tree, require.
 :- import_module type_util, mode_util, std_util, int, set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
@@ -1043,9 +1043,9 @@ code_gen__generate_negation(Goal, Code) -->
 		code_info__produce_variable(R, Code1, ValB),
 		code_aux__post_goal_update(GoalInfo),
 		code_info__variable_type(L, Type),
-		{ Type = term_functor(term_atom("string"), [], _) ->
+		{ Type = term__functor(term__atom("string"), [], _) ->
 			Op = str_eq
-		; Type = term_functor(term_atom("float"), [], _) ->
+		; Type = term__functor(term__atom("float"), [], _) ->
 			Op = float_eq
 		;
 			Op = eq

@@ -32,7 +32,7 @@
 
 :- module make_tags.
 :- interface.
-:- import_module std_util.
+:- import_module bool, std_util.
 :- import_module prog_io, prog_util, hlds, globals.
 
 % assign_constructor_tags(Constructors, Globals, TagValues, IsEnum):
@@ -50,7 +50,7 @@
 
 :- implementation.
 :- import_module map, list, int, require.
-:- import_module globals, options, getopt.
+:- import_module globals, options.
 
 %-----------------------------------------------------------------------------%
 

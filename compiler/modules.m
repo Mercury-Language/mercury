@@ -72,7 +72,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module set, map, term, varset, dir, std_util, library.
+:- import_module bool, set, map, term, varset, dir, std_util, library.
 :- import_module globals, options, prog_out, mercury_to_mercury.
 :- import_module mercury_compile.
 
@@ -219,7 +219,7 @@ grab_imported_modules(ModuleName, Items0, Module, Error) -->
 		% of the item list, so that make_hlds knows which items
 		% are imported and which are defined in the main module
 	{ varset__init(VarSet) },
-	{ term_context_init(ModuleName, 0, Context) },
+	{ term__context_init(ModuleName, 0, Context) },
 	{ list__append(Items0,
 		[module_defn(VarSet, imported) - Context], Items1) },
 	{ dir__basename(ModuleName, BaseModuleName) },
@@ -691,7 +691,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		( { ModuleName = BuiltinModule } ->
 			[]
 		;
-			{ term_context_init(ModuleName, 1, Context) },
+			{ term__context_init(ModuleName, 1, Context) },
 			prog_out__write_context(Context),
 			io__write_string("Warning: module imports itself!\n")
 		),
