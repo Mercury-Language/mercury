@@ -379,11 +379,9 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo, IO0, IO) :-
 		ModuleInfo = ModuleInfo0,
 		IO = IO0
 	;
-		write_pred_progress_message("% Transforming polymorphism for ",
-			PredId, ModuleInfo0, IO0, IO1),
 		pred_info_procids(PredInfo, ProcIds),
 		polymorphism__process_procs(PredId, ProcIds,
-			ModuleInfo0, ModuleInfo, IO1, IO)
+			ModuleInfo0, ModuleInfo, IO0, IO)
 	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
