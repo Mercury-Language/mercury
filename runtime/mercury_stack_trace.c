@@ -59,7 +59,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 	Label			*label;
 	MR_Stack_Layout_Label	*layout;
 	MR_Stack_Layout_Entry	*entry_layout;
-	char			*result;
+	const char		*result;
 
 	fprintf(stderr, "Stack dump follows:\n");
 
