@@ -18,7 +18,6 @@ endif
 PROGS=		array_test \
 		commit_bug \
 		commit_bug_2 \
-		common_type_cast \
 		disj_disj \
 		dnf \
 		hello_again \

@@ -13,6 +13,7 @@ PROGS=	\
 	boyer \
 	c_write_string \
 	cc_nondet_disj \
+	common_type_cast \
 	construct \
 	curry \
 	curry2 \
