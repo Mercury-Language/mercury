@@ -1,15 +1,15 @@
 /*
- * ** Copyright (C) 2002 The University of Melbourne.
- * ** This file may only be copied under the terms of the GNU Library General
- * ** Public License - see the file COPYING.LIB in the Mercury distribution.
- * */
+** Copyright (C) 2002-2003 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
 
 /*
- * ** mercury_conf_bootstrap.h
- * **
- * ** Backwards compatability definitions for auto-configured macros.
- * ** All of the definitions here will go away eventually, so don't use them!
- * */
+** mercury_conf_bootstrap.h
+**
+** Backwards compatability definitions for auto-configured macros.
+** All of the definitions here will go away eventually, so don't use them!
+*/
 
 #ifndef MERCURY_CONF_BOOTSTRAP_H
 #define MERCURY_CONF_BOOTSTRAP_H
