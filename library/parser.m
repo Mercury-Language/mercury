@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -359,13 +359,28 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		% infix op
 		parser__get_token(Token, Context),
 		{ Token = comma, IsArg = no ->
-			Op = ","
+			Op0 = ","
 		;
-			Token = name(Op)
+			Token = name(Op0)
 		},
-		parser__get_ops_table(OpTable),
-		{ ops__lookup_infix_op(OpTable, Op,
-				OpPriority, LeftAssoc, RightAssoc) },
+		(
+				% A token surrounded by backquotes is a
+				% prefix token being using in an
+				% infix manner.
+			{ Op0 = "`" }
+		->
+			parser__get_token(name(Op), _),
+			parser__get_token(name("`"), _),
+
+			{ OpPriority = 100 },
+			{ LeftAssoc = y },
+			{ RightAssoc = x }
+		;
+			{ Op = Op0 },
+			parser__get_ops_table(OpTable),
+			{ ops__lookup_infix_op(OpTable, Op,
+					OpPriority, LeftAssoc, RightAssoc) }
+		),
 		{ OpPriority =< MaxPriority },
 		{ parser__check_priority(LeftAssoc, OpPriority, LeftPriority) }
 	->

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -313,6 +313,9 @@ lexer__get_token(Token, Context) -->
 			lexer__get_slash(Token, Context)
 		; { Char = ('#') } ->
 			lexer__get_source_line_number([], Token, Context)
+		; { Char = ('`') } ->
+			lexer__get_context(Context),
+			{ Token = name("`") }
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_context(Context),
 			lexer__get_graphic([Char], Token)
@@ -364,6 +367,9 @@ lexer__string_get_token(String, Len, Token, Context) -->
 			=(Posn1),
 			lexer__string_get_source_line_number(String, Len,
 				Posn1, Token, Context)
+		; { Char = ('`') } ->
+			lexer__string_get_context(Posn0, Context),
+			{ Token = name("`") }
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__string_get_graphic(String, Len, Posn0,
 				Token, Context)
@@ -423,6 +429,9 @@ lexer__get_token_2(Token, Context) -->
 			lexer__get_slash(Token, Context)
 		; { Char = ('#') } ->
 			lexer__get_source_line_number([], Token, Context)
+		; { Char = ('`') } ->
+			lexer__get_context(Context),
+			{ Token = name("`") }
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_context(Context),
 			lexer__get_graphic([Char], Token)
@@ -471,6 +480,9 @@ lexer__string_get_token_2(String, Len, Token, Context) -->
 			=(Posn1),
 			lexer__string_get_source_line_number(String, Len,
 				Posn1, Token, Context)
+		; { Char = ('`') } ->
+			lexer__string_get_context(Posn0, Context),
+			{ Token = name("`") }
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__string_get_graphic(String, Len, Posn0,
 				Token, Context)
