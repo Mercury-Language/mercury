@@ -12,70 +12,70 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module string, list, char.
 
-main -->
-	io__command_line_arguments(Args),
-	( { Args = [] } ->
-		cat
+main(!IO) :-
+	io.command_line_arguments(Args, !IO),
+	( Args = [] ->
+		cat(!IO)
 	;
-		cat_file_list(Args)
+		cat_file_list(Args, !IO)
 	).
 		
 
-:- pred cat_file_list(list(string)::in, io__state::di, io__state::uo) is det.
+:- pred cat_file_list(list(string)::in, io::di, io::uo) is det.
 
-cat_file_list([]) --> [].
-cat_file_list([File | Files]) -->
-	cat_file(File),
-	cat_file_list(Files).
+cat_file_list([], !IO).
+cat_file_list([File | Files], !IO) :-
+	cat_file(File, !IO),
+	cat_file_list(Files, !IO).
 
-:- pred cat_file(string::in, io__state::di, io__state::uo) is det.
+:- pred cat_file(string::in, io::di, io::uo) is det.
 
-cat_file(File) -->
-	io__open_input(File, Result),
+cat_file(File, !IO) :-
+	io.open_input(File, Result, !IO),
 	(
-		{ Result = ok(Stream) },
-		cat_stream(Stream)
+		Result = ok(Stream),
+		cat_stream(Stream, !IO)
 	;
-		{ Result = error(Error) },
-		io__progname("cat", Progname),
-		{ io__error_message(Error, Message) },
-		io__write_strings([
+		Result = error(Error),
+		io.progname("cat", Progname, !IO),
+		io.error_message(Error, Message),
+		io.write_strings([
 			Progname, ": ",
 			"error opening file `", File, "' for input:\n\t",
 			Message, "\n"
-		])
+		], !IO)
 	).
 
-:- pred cat_stream(io__input_stream::in, io__state::di, io__state::uo) is det.
+:- pred cat_stream(io.input_stream::in, io::di, io::uo) is det.
 
-cat_stream(Stream) -->
-	io__set_input_stream(Stream, _OldStream),
-	cat.
+cat_stream(Stream, !IO) :-
+	io.set_input_stream(Stream, _OldStream, !IO),
+	cat(!IO).
 
-:- pred cat(io__state::di, io__state::uo) is det.
+:- pred cat(io::di, io::uo) is det.
 
-cat -->
-	io__read_line_as_string(Result),
-	( { Result = ok(Line) },
-		io__write_string(Line),
-		cat
-	; { Result = eof }
-	; { Result = error(Error) },
-		{ io__error_message(Error, Message) },
-		io__input_stream_name(StreamName),
-		io__progname("cat", ProgName),
-		io__write_strings([
+cat(!IO) :-
+	io.read_line_as_string(Result, !IO),
+	( Result = ok(Line),
+		io.write_string(Line, !IO),
+		cat(!IO)
+	; Result = eof
+	; Result = error(Error),
+		io.error_message(Error, Message),
+		io.input_stream_name(StreamName, !IO),
+		io.progname("cat", ProgName, !IO),
+		io.write_strings([
 			ProgName, ": ",
 			"error reading input file `", StreamName, "': \n\t",
 			Message, "\n"
-		])
+		], !IO)
 	).
 
 %-----------------------------------------------------------------------------%
