@@ -22,6 +22,8 @@
 
 LIBDIR=${MERCURY_C_LIB_DIR=@LIBDIR@/lib}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
+DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 
 verbose=false
 GRADE=$DEFAULT_GRADE
@@ -88,6 +90,7 @@ case "`hostname`" in
 esac
 
 if $verbose; then
-	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC
+	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC \
+		"2>&1 | $DEMANGLER"
 fi
-exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC
+exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC 2>&1 | $DEMANGLER
