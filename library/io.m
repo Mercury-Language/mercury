@@ -1580,8 +1580,6 @@ void sys_init_io_run_module(void) {
 	update_io(IO0, IO);
 ").
 
-		% XXX need to test this with gcc-2.7.0 on i386;
-		% might trigger gcc internal error
 :- pragma(c_code, io__write_char(Character::in, IO0::di, IO::uo), "
 	if (putc(Character, mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -1600,14 +1598,13 @@ void sys_init_io_run_module(void) {
 ").
 
 :- pragma(c_code, io__write_float(Val::in, IO0::di, IO::uo), "
-	if (fprintf(mercury_current_text_output->file, ""%f"", Val) < 0) {
+	if (fprintf(mercury_current_text_output->file, ""%.15g"", Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
 ").
 
 :- pragma(c_code, io__write_byte(Byte::in, IO0::di, IO::uo), "
-	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
 	if (putc(Byte, mercury_current_binary_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
@@ -1644,7 +1641,6 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
 "{
-	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (putc(Character, stream->file) < 0) {
 		mercury_output_error(stream);
@@ -1665,14 +1661,13 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, io__write_float(Stream::in, Val::in, IO0::di, IO::uo), "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fprintf(stream->file, ""%f"", Val) < 0) {
+	if (fprintf(stream->file, ""%.15g"", Val) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
 }").
 
 :- pragma(c_code, io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo), "{
-	/* XXX  Beware of a gcc internal error for gcc-2.7.0 on i386. */
 	MercuryFile *stream = (MercuryFile *) Stream;
 	if (putc(Byte, stream->file) < 0) {
 		mercury_output_error(stream);

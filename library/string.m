@@ -286,8 +286,8 @@
 %		Extra precision (as `0's) may be added to floats if the 
 %		precision value asks for this - IE numbers may come out more
 %		accurate than when they were typed.  A precision value of more
-%		than 6 will not find more accuracy, as string__float_to_string
-%		only generates 6 significant figures.
+%		than 15 will not find more accuracy, as string__float_to_string
+%		only generates 15 significant figures.
 %
 %		If a width or precision is specified, without a `.', a number
 %		is assumed to be a width and a `*' is assumed to be a precision.
@@ -1156,13 +1156,12 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 			Texp is Exp - 1,
 			builtin_float_times(F, 10.0, FF),
 			string__format_calc_exp(FF, Fstring, Precision, Texp)
-		;
-		( builtin_float_ge(F, 10.0) ->
+		; builtin_float_ge(F, 10.0) ->
 			Texp is Exp + 1,
 			builtin_float_divide(F, 10.0, FF),
 			string__format_calc_exp(FF, Fstring, Precision, Texp)
 		;
-			string__float_to_string(F, Fs),
+			string__float_to_f_string(F, Fs),
 			string__format_calc_prec(Fs, Fs2, Precision),
 			string__int_to_string(Exp, Exps),
 			( Exp < 0 ->
@@ -1172,7 +1171,6 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 				string__append("e+", Exps, TFstring),
 				string__append(Fs2, TFstring, Fstring)
 			)
-		)
 		)
 	).
 
@@ -1187,16 +1185,16 @@ string__format_calc_prec(Istring0, Ostring, Precision) :-
 	->
 		Prec = Prec0
 	;
-		Prec = 6
+		Prec = 15
 	),
 	(
 		string__find_index(Istring0, '.', Index)
 	->
-		TargetLenght1 is Prec + Index,
+		TargetLength1 is Prec + Index,
 		Istring1 = Istring0
 	;
-		string__length(Istring0, TargetLenght0),
-		TargetLenght1 is TargetLenght0 + 1 + Prec,
+		string__length(Istring0, TargetLength0),
+		TargetLength1 is TargetLength0 + 1 + Prec,
 		string__append(Istring0, ".", Istring1)
 
 		%  This branch should never be called if mercury is implemented
@@ -1213,9 +1211,9 @@ string__format_calc_prec(Istring0, Ostring, Precision) :-
 		Prec = 0
 	->
 			%  Forget the '.'.
-		TargetLength is TargetLenght1 - 1
+		TargetLength is TargetLength1 - 1
 	;
-		TargetLength = TargetLenght1
+		TargetLength = TargetLength1
 	),
 	(
 		string__length(Istring1, Length),
@@ -1491,7 +1489,7 @@ string__float_abs(Fin, Fout) :-
 
 :- pred string__default_precision_and_width(int).
 :- mode string__default_precision_and_width(out) is det.
-string__default_precision_and_width(-6).
+string__default_precision_and_width(-15).
 
 :- pred string__special_precision_and_width(int).
 :- mode string__special_precision_and_width(out) is det.
