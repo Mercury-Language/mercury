@@ -1,9 +1,9 @@
-impure_func_t7.m:028: Purity error: unification with expression was declared
-impure_func_t7.m:028:   impure, but expression was not a function call.
-impure_func_t7.m:024: Purity error: unification with expression was declared
-impure_func_t7.m:024:   impure, but expression was not a function call.
 impure_func_t7.m:021: Purity error: unification with expression was declared
 impure_func_t7.m:021:   impure, but expression was not a function call.
+impure_func_t7.m:024: Purity error: unification with expression was declared
+impure_func_t7.m:024:   impure, but expression was not a function call.
+impure_func_t7.m:028: Purity error: unification with expression was declared
+impure_func_t7.m:028:   impure, but expression was not a function call.
 impure_func_t7.m:031: Purity error: unification with expression was declared
 impure_func_t7.m:031:   impure, but expression was not a function call.
 For more information, try recompiling with `-E'.
