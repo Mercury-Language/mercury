@@ -107,6 +107,8 @@
 **	with at least interface tracing.  This effect is achieved
 **	by including MR_REQUIRE_TRACING in the mangled grade
 **	(see mercury_grade.h).
+**	Note that MR_REQUIRE_TRACING is talking about execution tracing,
+**	not stack tracing; these are two independently configurable features.
 **
 ** MR_USE_EXTERNAL_DEBUGGER:
 **	Allow MR_trace() to use an external process debugger
