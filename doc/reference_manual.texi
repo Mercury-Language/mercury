@@ -405,7 +405,7 @@ The ``Specifier'' field indicates what structure terms
 constructed with an operator are allowed to take. 
 ``f'' represents the operator and ``x'' and ``y'' represent arguments. 
 ``x'' represents an argument whose priority must be 
-strictly lower that that of the operator.
+strictly lower than that of the operator.
 ``y'' represents an argument whose priority is 
 lower or equal to that of the operator.
 For example, ``yfx'' indicates a left-associative infix operator, 
@@ -2375,7 +2375,7 @@ different arguments --- on success of the predicate, the list elements
 would be free variables but they would not be distinct.
 
 In Mercury it is always possible to call a procedure with an
-argument that is is more bound than the initial inst specified for that
+argument that is more bound than the initial inst specified for that
 argument in the procedure's mode declaration.  In such cases, the
 compiler will insert additional unifications to ensure that the
 argument actually passed to the procedure will have the inst specified.
@@ -3747,7 +3747,7 @@ Another case when this arises is when want to curry a higher-order
 term.  Suppose, for example, that you have a higher-order predicate
 term @samp{OldPred} of type @samp{pred(int, char, float)}, and you want
 to construct a new higher-order predicate term @samp{NewPred} of type
-@samp{pred(char, float)} from @samp{OldPred} by supplying a value for
+@samp{pred(char, float)} from @samp{OldPred} by supplying a value
 for just the first argument.  The solution is the same: use
 an explicit lambda expression or a forwarding predicate.
 In either case, the body of the lambda expression or the forwarding
@@ -5144,7 +5144,7 @@ univ_value(mkuniv(X)) = X.
 @end example
 
 An existentially typed procedure is not allowed to have different
-types for its existentially typed arguments in different clauses or
+types for its existentially typed arguments in different clauses
 or in different subgoals of a single clause.  For instance, both
 of the following examples are illegal:
 
@@ -5307,7 +5307,7 @@ semantics, which may have non-determinism, so long as they are sound
 with respect to the declarative semantics, and so long as they meet a
 minimum level of completeness (they must be at least as complete as the
 strict commutative semantics, in the sense that every program which
-terminates for all possible orderings must must also terminate in any
+terminates for all possible orderings must also terminate in any
 implementation-defined operational semantics).
 
 This compromise allows Mercury to be used in several different ways.
@@ -5341,7 +5341,7 @@ and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
 prevents the compiler from improving completeness by optimizing away infinite
 loops or calls to @code{require__error/1} or @code{exception__throw/1}.)
 The default semantics are the commutative semantics.  Enabling all of these
-options gives you the the strict sequential semantics.  Enabling just some
+options gives you the strict sequential semantics.  Enabling just some
 of them gives you a semantics somewhere in between.
 
 Future implementations of Mercury may wish to offer other operational semantics.
@@ -5707,7 +5707,7 @@ language, if appropriate).
 
 Entities declared in @samp{pragma foreign_decl} declarations are
 visible in @samp{pragma foreign_code} and @samp{pragma foreign_proc}
-declarations that specify the same foreign language and occur in in the
+declarations that specify the same foreign language and occur in the
 same Mercury module.
 
 To make the declarations for Mercury predicates or functions
@@ -5762,7 +5762,7 @@ language, if appropriate).
 
 Entities declared in @samp{pragma foreign_code} declarations are
 visible in @samp{pragma foreign_proc} declarations that specify the same
-foreign language and occur in in the same Mercury module.
+foreign language and occur in the same Mercury module.
 
 @c -----------------------------------------------------------------------
 
@@ -5856,7 +5856,7 @@ For example:
 an assignment.
 (For example, it may be @code{#define}d to a register, so you should not
 try to take its address.) 
-Procedures whose determinism indicates that that they cannot fail
+Procedures whose determinism indicates that they cannot fail
 should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
@@ -6030,7 +6030,7 @@ For example:
 @end example
 
 @noindent
-C# code for procedures whose determinism indicates that that they cannot fail
+C# code for procedures whose determinism indicates that they cannot fail
 should not access @code{succeeded}.
 
 Arguments whose mode is input will have their values set by the
@@ -6279,7 +6279,7 @@ For example:
 @end example
 
 @noindent
-MC++ code for procedures whose determinism indicates that that they cannot fail
+MC++ code for procedures whose determinism indicates that they cannot fail
 should not access @code{succeeded}.
 
 Arguments whose mode is input will have their values set by the
@@ -6526,7 +6526,7 @@ For example:
 an assignment.
 (For example, it may be @code{#define}d to a register, so you should not
 try to take its address.) 
-Procedures whose determinism indicates that that they cannot fail
+Procedures whose determinism indicates that they cannot fail
 should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
@@ -7097,7 +7097,7 @@ execution, whenever you perform a destructive modification to
 a data structure that may still be live on backtracking,
 you should record whatever information is necessary to restore it
 on a stack-like data structure called the ``trail''.  Then, if
-a computation fails, and execution backtracks to before those
+a computation fails, and execution backtracks to before
 those updates were performed, the Mercury runtime engine will
 traverse the trail back to the most recent choice point,
 undoing all those updates.

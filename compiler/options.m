@@ -2883,8 +2883,8 @@ options_help_compilation_model -->
 % The ilc grade is not documented because it is not useful;
 % it has been superceded by the il grade.
 		"\tor one of those with one or more of the grade modifiers",
-		"\t`.gc', `.mps', `.prof', `.memprof', `.tr', `.rt', `.debug',",
-		"\t`.par' and/or `.pic_reg' appended.",
+		"\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',", 
+		"\t`rt', `.debug', `.par' and/or `.pic_reg' appended.",
 		"\tDepending on your particular installation, only a subset",
 		"\tof these possible grades will have been installed.",
 		"\tAttempting to use a grade which has not been installed",
@@ -2923,7 +2923,8 @@ options_help_compilation_model -->
 		"\tDon't use MS CLR specific workarounds in the generated code.",
 		
 		"--support-rotor-clr",
-		"\tUse specific workarounds for the ROTOR CLR in the generated code.",
+		"\tUse specific workarounds for the ROTOR CLR in the generated",
+		"\tcode.",
 		
 		"--java",
 		"\tAn abbreviation for `--target java'.",
@@ -3442,7 +3443,7 @@ options_help_hlds_hlds_optimization -->
 		"\tthat the compiler considers to be deterministic.",
 	 	"--constraint-propagation",
 	 	"\tEnable the constraint propagation transformation,",
-		"\twhich attemps to transform the code so that goals",
+		"\twhich attempts to transform the code so that goals",
 		"\twhich can fail are executed as early as possible.",
 	 	"--local-constraint-propagation",
 		"\tEnable the constraint propagation transformation,",
@@ -3570,7 +3571,7 @@ options_help_hlds_llds_optimization -->
 		"--no-static-ground-terms",
 		"\tDisable the optimization of constructing constant ground terms",
 		"\tat compile time and storing them as static constants.",
-		"\tNote that auxiliarity data structures created by the compiler",
+		"\tNote that auxiliary data structures created by the compiler",
 		"\tfor purposes such as debugging will still be created as",
 		"\tstatic constants.",
 		"--no-middle-rec",
@@ -3608,7 +3609,7 @@ options_help_llds_llds_optimization -->
 		"\tminimize stack consumption, possibly at the expense of speed.",
 		"--use-local-vars",
 		"\tDisable the transformation to use local variables in C code",
-		"\tblocks whereever possible.",
+		"\tblocks wherever possible.",
 		"--no-optimize-labels",
 		"\tDisable elimination of dead labels and code.",
 		"--optimize-dups",
@@ -3750,7 +3751,7 @@ options_help_target_code_compilation -->
 		% --cflags-for-optimization, --c-flag-to-name-object-file,
 		% --object-file-extension, --pic-object-file-extension
 		% and --link-with-pic-object-file-extension
-		% options are are reserved for use by the `mmc' script;
+		% options are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 
 		"--javac <javac>",
@@ -3895,7 +3896,7 @@ options_help_link -->
 		% --shlib-linker-rpath-flag, --shlib-linker-rpath-separator,
 		% --linker-allow-undefined-flag and
 		% --linker-error-undefined-flag,
-		% options are are reserved for use by the `mmc' script;
+		% options are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 	]).
 

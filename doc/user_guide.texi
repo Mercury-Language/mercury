@@ -2385,7 +2385,7 @@ the option @samp{-i} or @samp{--interactive} restores the question
 if a previous option suppressed it.
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
-@c behavior would be hard for non-developers to understand. The option is
+@c behaviour would be hard for non-developers to understand. The option is
 @c therefore deliberately not documented.
 @c
 @c @sp 1
@@ -3161,7 +3161,7 @@ Sourcing the file will recreate the current breakpoints and aliases.
 @c @item dd [--assume-all-io-is-tabled]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
-@c behavior would be hard for non-developers to understand. The option is
+@c behaviour would be hard for non-developers to understand. The option is
 @c therefore deliberately not documented.
 Starts declarative debugging
 using the current event as the initial symptom.
@@ -3288,7 +3288,7 @@ Tells the debugger to hide events that are normally hidden.
 @c @item dd_dd [--assume-all-io-is-tabled] [filename]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
-@c behavior would be hard for non-developers to understand. The option is
+@c behaviour would be hard for non-developers to understand. The option is
 @c therefore deliberately not documented.
 Starts declarative debugging
 using the current event as the initial symptom,
@@ -7020,7 +7020,7 @@ to the file or device specified by @var{filename}.
 @cindex Threads, Debugging
 
 Output information to the standard error stream about the locking and
-unlocking occuring in each module which has been compiled with the C macro
+unlocking occurring in each module which has been compiled with the C macro
 symbol @samp{MR_DEBUG_THREADS} defined.
 
 @end table
