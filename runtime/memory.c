@@ -304,10 +304,14 @@ debug_memory(void)
   #endif /* HAVE_SIGINFO */
 		fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
 			zone->name, zone->id, (void *) zone->hardmax);
-#endif /* HAVE_MPROTECT */
 		fprintf(stderr, "%-16s#%d-size		= %lu\n",
 			zone->name, zone->id, (unsigned long)
 			((char *)zone->hardmax - (char *)zone->min));
+#else
+		fprintf(stderr, "%-16s#%d-size		= %lu\n",
+			zone->name, zone->id, (unsigned long)
+			((char *)zone->top - (char *)zone->min));
+#endif /* HAVE_MPROTECT */
 		fprintf(stderr, "\n");
 	}
 }
