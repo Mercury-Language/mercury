@@ -42,6 +42,7 @@
 :- import_module bitmap.
 :- import_module hash_table.
 
+:- import_module rtti_implementation.
 :- import_module builtin, private_builtin, table_builtin, profiling_builtin.
 
 % library__version must be implemented using pragma c_code,
