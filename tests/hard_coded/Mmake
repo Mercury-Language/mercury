@@ -12,7 +12,7 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
-%.res:	%.out
+%.res: %.out %.exp
 	-rm -f $@
 	diff $*.exp $*.out > $@
 
