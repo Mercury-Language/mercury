@@ -98,7 +98,7 @@ fi
 } > $tmpfile 2>&1
 # NB we can't just pipe into $mail, because $mail times out while
 # waiting for the message.  So we need to use a temp file.
-$mail fjh,conway < $tmpfile
+$mail fjh < $tmpfile
 rm -f $tmpfile
 
 #-----------------------------------------------------------------------------#
