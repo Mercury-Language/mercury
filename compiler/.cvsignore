@@ -3,6 +3,7 @@
 *.pl
 *.prof
 *.err
+rl_file.m rl_out.m
 mercury_compile.stats
 mercury_compile
 mercury_compile.dep
