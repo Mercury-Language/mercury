@@ -3140,9 +3140,9 @@ undefined_mode_error(Name, Arity, Context, Description) -->
 	prog_out__write_context(Context),
 	io__write_string("Error: "),
 	io__write_string(Description),
-	io__write_string(" for `"),
+	io__write_string(" for\n"),
 	prog_out__write_context(Context),
-	io__write_string("`"),
+	io__write_string("  `"),
 	hlds_out__write_pred_call_id(Name/Arity),
 	io__write_string("' specifies non-existent mode.\n").
 
