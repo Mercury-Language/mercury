@@ -874,7 +874,9 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 		{
 			% executable files
 			( Ext = ""
+			; Ext = ".exe"
 			; Ext = ".split"
+			; Ext = ".split.exe"
 			% library files
 			; Ext = ".a"
 			; Ext = ".$A"
