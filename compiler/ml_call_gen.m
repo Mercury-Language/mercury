@@ -488,7 +488,6 @@ ml_gen_success_cont(OutputArgTypes, OutputArgLvals, Context,
 		ml_get_env_ptr(EnvPtrRval),
 		{ NewSuccessCont = success_cont(ContFuncLabelRval,
 			EnvPtrRval, OutputArgTypes, OutputArgLvals) },
-		ml_gen_info_push_success_cont(NewSuccessCont),
 		{ Cont = NewSuccessCont }
 	).
 
