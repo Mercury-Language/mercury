@@ -17,6 +17,9 @@ export HOME
 
 . ../subdir_runtests
 
+# Don't let any single test run for more than ten minutes.
+ulimit -t 600
+
 if test "$subdir_failures" = ""
 then
 	subdir_status=0
