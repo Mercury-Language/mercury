@@ -558,59 +558,53 @@ process_func_clause(error(ErrMessage, Term), _, _, _, error(ErrMessage, Term)).
 %-----------------------------------------------------------------------------%
 
 	% Parse a goal.
-	% We just check if it matches the appropriate pattern
-	% for one of the builtins.  If it doesn't match any of the
-	% builtins, then it's just a predicate call.
-	% XXX we should do more parsing here
 	%
 	% We could do some error-checking here, but all errors are picked up
 	% in either the type-checker or parser anyway.
 
 parse_goal(Term, VarSet0, Goal, VarSet) :-
+	% We just check if it matches the appropriate pattern
+	% for one of the builtins.  If it doesn't match any of the
+	% builtins, then it's just a predicate call.
 	(
+		% check for builtins...
 		Term = term__functor(term__atom(Name), Args, Context),
 		parse_goal_2(Name, Args, VarSet0, GoalExpr, VarSet1)
 	->
 		Goal = GoalExpr - Context,
 		VarSet = VarSet1
 	;
+		% it's not a builtin
 		(
+			% check for predicate calls
 			Term = term__functor(term__atom(Name), Terms, Context)
 		->
 			VarSet = VarSet0,
-			( Name = ":" ->
-				(
-					Terms = [term__functor(term__atom(
-							ModuleName), [], _), 
-						term__functor(term__atom(
-							PredName), Args, _)]
-				->
-					Goal = call(qualified(ModuleName, 
-						PredName), Args) - Context
-				;
-				Term0 = term__functor(term__atom("call"), 
-							[Term], Context),
-				Goal = call(unqualified("call"), [Term0])
-							- Context
-				% Goal contains ill-formed qualified 
-				% predicate calls..
-				)
+			% check for module qualification
+			(
+				Name = ":",
+				Terms = [term__functor(term__atom(ModuleName),
+						[], _), 
+					term__functor(term__atom(PredName),
+						Args, _)]
+			->
+				Goal = call(qualified(ModuleName, 
+					PredName), Args) - Context
 			;
 				Goal = call(unqualified(Name), Terms) - Context
 			)
 		;
+		% A call to a free variable, or to a number or string.
+		% Just translate it into a call to call/1 - the typechecker
+		% will catch calls to numbers and strings.
 			(
 				Term = term__functor(_, _, Context)
 			;
 				Term = term__variable(_),
 				term__context_init(Context)
 			),
-			Term0 = term__functor(term__atom("call"), [Term],
-							Context),
-			Goal = call(unqualified("call"), [Term0]) - Context,
+			Goal = call(unqualified("call"), [Term]) - Context,
 			VarSet = VarSet0
-			% Term in Goal above is a term__constant or 
-			% term__variable that is definately not a function call.
 		)
 	).
 
@@ -825,9 +819,9 @@ new_dcg_var(VarSet0, N0, VarSet, N, DCG_0_Var) :-
 :- pred parse_dcg_goal(term, varset, int, var, goal, varset, int, var).
 :- mode parse_dcg_goal(in, in, in, in, out, out, out, out) is det.
 
-parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
+parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	(
-		Term0 = term__functor(term__atom(Functor), Args0, Context)
+		Term = term__functor(term__atom(Functor), Args0, Context)
 	->
 		% First check for the special cases:
 		(
@@ -852,32 +846,30 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 					term__functor(term__atom(PredName),
 						Args_of_pred0, _)]
 			->
-				list__append(Args_of_pred0, [
-						term__variable(Var0),
-						term__variable(Var)
-					], Args_of_pred),
-				Goal = call(qualified(ModuleName, PredName), Args_of_pred) - Context
+				Pred = qualified(ModuleName, PredName),
+				Args1 = Args_of_pred0
 			;
-				list__append(Args0, [
-						term__variable(Var0),
-						term__variable(Var)
-					], Args),
-				Goal = call(unqualified(Functor), Args) - Context
-			)
+				Pred = unqualified(Functor),
+				Args1 = Args0
+			),
+			list__append(Args1,
+				[term__variable(Var0), term__variable(Var)],
+				Args),
+			Goal = call(Pred, Args) - Context
 		)
 	;
 		% A call to a free variable, or to a number or string.
-		% Just translate it into a call to call/2 - the typecheck will
-		% catch calls to numbers and strings.
-
+		% Just translate it into a call to call/3 - the typechecker
+		% will catch calls to numbers and strings.
+		(
+			Term = term__functor(_, _, CallContext)
+		;
+			Term = term__variable(_),
+			term__context_init(CallContext)
+		),
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
-		term__context_init(CallContext),
-		Term = term__functor(term__atom("call"), [
-				Term0,
-				term__variable(Var0),
-				term__variable(Var)
-			], CallContext),
-		Goal = call(unqualified("call"), [Term]) - CallContext
+		Goal = call(unqualified("call"), [Term, term__variable(Var0),
+				term__variable(Var)]) - CallContext
 	).
 
 	% parse_dcg_goal_2(Functor, Args, Context, VarSet0, N0, Var0,
