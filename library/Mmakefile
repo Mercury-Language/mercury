@@ -62,8 +62,8 @@ MCOI	=	$(M_ENV) $(MC) --make-opt-int $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
 MCTOI	=	$(M_ENV) $(MC) --make-trans-opt $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
-MCG	=	$(M_ENV) $(MC) --compile-to-c $(INTERMODULE_OPTS) \
-			$(CHECK_TERM_OPTS)
+MCG	=	$(M_ENV) $(MC) --compile-to-c --trace minimum \
+			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc

@@ -1,11 +1,13 @@
-       1:      1  1 CALL pred interpreter:main/2-0 (det) 
+       1:      1  1 CALL pred interpreter:main/2-0 (det) interpreter.m:35
 mdb> echo on
 Command echo enabled.
+mdb> context none
+Contexts will not be printed.
 mdb> register --quiet
 mdb> 10 step
 Pure Prolog Interpreter.
 
-      11:      6  3 CALL pred interpreter:consult/5-0 (det) 
+      11:      6  3 CALL pred interpreter:consult/5-0 (det)
 mdb> vars
         1 HeadVar__1
         2 HeadVar__2
@@ -16,27 +18,26 @@ mdb> print *
        HeadVar__4             	state('<<c_pointer>>')
 mdb> goto 30
 Consulting file `interpreter.m'...
-      30:     17  9 CALL pred tree234:set2/4-1 (det) 
+      30:     14  6 EXIT pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
-       HeadVar__1             	two('<<c_pointer>>', "<standard input>", empty, empty)
-       HeadVar__2             	'<<c_pointer>>'
-       HeadVar__3             	"interpreter.m"
+       HeadVar__1             	[]
+       HeadVar__2             	varset(var_supply(0), empty, empty)
+       HeadVar__3             	functor(atom(":-"), .(functor(atom/1, ./2, context/2), []), context("interpreter.m", 22))
+       HeadVar__4             	.(clause(varset(var_supply/1, empty, empty), functor(atom/1, ./2, context/2), functor(atom/1, [], context/2)), [])
 mdb> finish -a
-      31:     17  9 THEN pred tree234:set2/4-1 (det) c2;t;
-      32:     17  9 SWTC pred tree234:set2/4-1 (det) c2;t;c2;s1;
-      33:     17  9 EXIT pred tree234:set2/4-1 (det) 
-mdb> print *
-       HeadVar__1             	two('<<c_pointer>>', "<standard input>", empty, empty)
-       HeadVar__2             	'<<c_pointer>>'
-       HeadVar__3             	"interpreter.m"
-       HeadVar__4             	three(<<c_pointer>>, "interpreter.m", <<c_pointer>>, "<standard input>", empty, empty, empty)
-mdb> 
-      34:     16  8 EXIT pred tree234:set/4-1 (det) 
-mdb> finish -n
 This command is a no-op from this port.
+mdb> print *
+       HeadVar__1             	[]
+       HeadVar__2             	varset(var_supply(0), empty, empty)
+       HeadVar__3             	functor(atom(":-"), .(functor(atom/1, ./2, context/2), []), context("interpreter.m", 22))
+       HeadVar__4             	.(clause(varset(var_supply/1, empty, empty), functor(atom/1, ./2, context/2), functor(atom/1, [], context/2)), [])
 mdb> 
-      35:     15  7 EXIT pred map:set/4-1 (det) 
+      31:     16  6 CALL pred interpreter:consult_until_eof/4-0 (det)
+mdb> finish -n
+    1009:     16  6 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> 
-      36:     18  7 CALL pred io:set_stream_names/3-0 (det) 
+    1010:     13  5 EXIT pred interpreter:consult_until_eof_2/5-0 (det)
+mdb> 
+    1011:     11  4 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> continue
 ?- 
