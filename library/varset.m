@@ -59,6 +59,10 @@
 :- pred varset__bind_var(varset, var, term, varset).
 :- mode varset__bind_var(in, in, in, out).
 
+	% bind a a set of terms to a set of variables.
+:- pred varset__bind_vars(varset, substitution, varset).
+:- mode varset__bind_vars(in, in, out).
+
 	% lookup the value of a variable
 :- pred varset__lookup_var(varset, var, term).
 :- mode varset__lookup_var(in, in, out).
@@ -155,6 +159,20 @@ varset__lookup_name(varset(_, Names, _), Id, Name) :-
 varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
 		varset(MaxId, Names, Vals)) :-
 	map__search_insert(Vals0, Id, Val, Vals).
+
+%-----------------------------------------------------------------------------%
+
+varset__bind_vars(Varset0, Subst, Varset) :-
+	map__to_assoc_list(Subst, VarTermList),
+	varset__bind_vars_2(VarTermList, Varset0, Varset).
+
+:- pred varset__bind_vars_2(assoc_list(var, term), varset, varset).
+:- mode varset__bind_vars_2(in, in, out).
+
+varset__bind_vars_2([], Varset, Varset).
+varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-
+	varset__bind_var(Varset0, V, T, Varset1),
+	varset__bind_vars_2(Rest, Varset1, Varset).
 
 %-----------------------------------------------------------------------------%
 
