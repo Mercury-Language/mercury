@@ -129,15 +129,15 @@
 				% This is the most recent node that the
 				% oracle has said is incorrect.
 				%
-			maybe(prime_suspect(T)),
+			maybe_prime	:: maybe(prime_suspect(T)),
 
 				% Current suspects.
 				%
-			list(suspect(T)),
+			suspects	:: list(suspect(T)),
 
 				% Previous prime suspects.
 				%
-			list(suspect(T))
+			previous	:: list(suspect(T))
 	).
 
 analyser_state_init(analyser(no, [], [])).
@@ -158,7 +158,7 @@ continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 	% suspects until last, since these generally prune the search space
 	% by the least amount.
 	%
-	Analyser0 = analyser(_, Suspects, _),
+	Suspects = Analyser0 ^ suspects,
 	(
 		find_suspicious_subterm(Answers, Suspects, Suspect, ArgPos,
 				TermPath)
@@ -292,14 +292,14 @@ make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
 :- pred get_all_prime_suspects(analyser_state(T), list(suspect(T))).
 :- mode get_all_prime_suspects(in, out) is det.
 
-get_all_prime_suspects(analyser(MaybePrime, _, OldPrimes0), OldPrimes) :-
+get_all_prime_suspects(Analyser, OldPrimes) :-
 	(
-		MaybePrime = yes(Prime)
+		Analyser ^ maybe_prime = yes(Prime)
 	->
 		prime_suspect_get_suspect(Prime, Suspect),
-		OldPrimes = [Suspect | OldPrimes0]
+		OldPrimes = [Suspect | Analyser ^ previous]
 	;
-		OldPrimes = OldPrimes0
+		OldPrimes = Analyser ^ previous
 	).
 
 :- pred make_suspects(S, list(T), list(suspect(T)), list(decl_question))
@@ -320,12 +320,11 @@ make_suspects(Store, [Tree | Trees], [Suspect | Ss], [Query | Qs]) :-
 :- mode remove_suspects(in, in, out, in, out) is det.
 
 remove_suspects(Store, [], Response, Analyser, Analyser) :-
-	Analyser = analyser(MaybePrime, Suspects, _),
 	(
-		Suspects = []
+		Analyser ^ suspects = []
 	->
 		(
-			MaybePrime = yes(Prime)
+			Analyser ^ maybe_prime = yes(Prime)
 		->
 			prime_suspect_get_edt_node(Prime, Tree),
 			edt_root_e_bug(Store, Tree, EBug),
@@ -334,7 +333,7 @@ remove_suspects(Store, [], Response, Analyser, Analyser) :-
 			Response = no_suspects
 		)
 	;
-		list__map(suspect_get_question, Suspects, Queries),
+		list__map(suspect_get_question, Analyser ^ suspects, Queries),
 		Response = oracle_queries(Queries)
 	).
 
@@ -344,10 +343,9 @@ remove_suspects(Store, [Answer | Answers], Response, Analyser0,
 	(
 		Answer = truth_value(_, yes)
 	->
-		Analyser0 = analyser(MaybePrime, Suspects0, OldPrimes),
-		find_matching_suspects(get_decl_question(Answer), Suspects0,
-				_, Suspects),
-		Analyser1 = analyser(MaybePrime, Suspects, OldPrimes),
+		find_matching_suspects(get_decl_question(Answer),
+				Analyser0 ^ suspects, _, Suspects),
+		Analyser1 = Analyser0 ^ suspects := Suspects,
 		remove_suspects(Store, Answers, Response, Analyser1, Analyser)
 	;
 		error("remove_suspects: unexpected incorrect node")
