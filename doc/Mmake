@@ -16,6 +16,7 @@ include $(MERCURY_DIR)/Mmake.common
 TEXI2DVI=texi2dvi
 MAKEINFO=makeinfo
 TEXI2HTML=perl texi2html
+TEXI2HTML_SPLIT=perl texi2html -split
 DVIPS=dvips
 
 #-----------------------------------------------------------------------------#
@@ -33,6 +34,9 @@ DVIPS=dvips
  
 %.html %_toc.html: %.texi
 	$(TEXI2HTML) $<
+
+%_1.html: %.texi
+	$(TEXI2HTML_SPLIT) $<
 
 #-----------------------------------------------------------------------------#
 
@@ -59,6 +63,10 @@ ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
 .PHONY: text
 text: user_guide.text reference_manual.text library.text faq.text \
 	transition_guide.text
+
+.PHONY: split_html
+split_html: mercury.html user_guide_1.html reference_manual_1.html \
+	library_1.html faq_1.html transition_guide_1.html
 
 #-----------------------------------------------------------------------------#
 
@@ -144,6 +152,23 @@ install_dvi: dvi
 .PHONY: uninstall
 uninstall:
 	-cd $(INSTALL_INFO_DIR); rm mercury*.info*
+
+#-----------------------------------------------------------------------------#
+
+# This install is for installing the Mercury webpage, which goes to
+# a different directory (supplied by the environment variable
+# INSTALL_WEBPAGE_DIR).
+
+.PHONY: install_webpage
+install_webpage: split_html ps 
+	[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+	cp *.ps $(INSTALL_WEBPAGE_DIR)
+	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
+		gzip -f -9 $$file ; \
+	done
+	chmod a+r $(INSTALL_WEBPAGE_DIR)/*.ps.gz
+	cp *.html $(INSTALL_WEBPAGE_DIR)
+	chmod a+r $(INSTALL_WEBPAGE_DIR)/*.html
 
 #-----------------------------------------------------------------------------#
 
