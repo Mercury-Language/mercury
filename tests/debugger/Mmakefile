@@ -27,6 +27,7 @@ NONRETRY_PROGS = \
 	higher_order			\
 	implied_instance		\
 	interpreter			\
+	label_layout			\
 	loopcheck			\
 	lval_desc_array			\
 	multi_parameter			\
@@ -263,6 +264,9 @@ higher_order.out: higher_order higher_order.inp
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \
 		> implied_instance.out 2>&1
+
+label_layout.out: label_layout label_layout.inp
+	$(MDB) ./label_layout < label_layout.inp > label_layout.out 2>&1
 
 loopcheck.out: loopcheck loopcheck.inp
 	if $(MDB) ./loopcheck < loopcheck.inp			\

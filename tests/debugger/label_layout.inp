@@ -1,0 +1,8 @@
+echo on
+register --quiet
+break a
+continue
+finish
+continue
+finish
+quit -y

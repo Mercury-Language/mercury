@@ -3,6 +3,9 @@
 # the input is not a terminal.
 MLFLAGS-completion = --runtime-flags --force-readline
 
+# The label_layout test is for a bug that showed up only with --opt-space.
+MCFLAGS-label_layout = --opt-space
+
 MCFLAGS-no_inline_builtins = --no-inline-builtins
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
