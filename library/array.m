@@ -1004,10 +1004,23 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
+
 :- pragma foreign_proc("C#",
-		array__resize(_Array0::array_di, _Size::in, _Item::in,
-		_Array::array_uo), [will_not_call_mercury, thread_safe], "
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+		array__resize(Array0::array_di, Size::in, Item::in,
+		Array::array_uo), [will_not_call_mercury, thread_safe], "
+
+	if (Array0.Length == Size) {
+		Array = Array0;
+	} else if (Array0.Length > Size) {
+		Array = System.Array.CreateInstance(Item.GetType(), Size);
+		System.Array.Copy(Array0, Array, Size);
+	} else {
+		Array = System.Array.CreateInstance(Item.GetType(), Size);
+		System.Array.Copy(Array0, Array, Array0.Length);
+		for (int i = Array0.Length; i < Size; i++) {
+			Array.SetValue(Item, i);
+		}
+	}
 ").
 
 
@@ -1062,10 +1075,13 @@ array__shrink(Array0, Size, Array) :-
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
+
 :- pragma foreign_proc("C#",
-		array__shrink_2(_Array0::array_di, _Size::in, _Array::array_uo),
+		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	Array = System.Array.CreateInstance(
+				Array0.GetType().GetElementType(), Size);
+	System.Array.Copy(Array0, Array, Size);
 ").
 
 
@@ -1117,10 +1133,12 @@ ML_copy_array(MR_ArrayType *old_array)
 :- pragma foreign_proc("C#",
 		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-		// XXX need to deep copy it
-	mercury.runtime.Errors.SORRY(""foreign code for this function"");
-	Array = Array0;
 
+	// XXX we implement the same as ML_copy_array, which doesn't appear
+	// to deep copy the array elements
+	Array = System.Array.CreateInstance(
+			Array0.GetType().GetElementType(), Array0.Length);
+	System.Array.Copy(Array0, Array, Array0.Length); 
 ").
 
 :- pragma foreign_proc("C#",
