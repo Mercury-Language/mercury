@@ -48,6 +48,10 @@
 			% call(Target, Continuation) is the same as
 			% succip = Continuation; goto(Target)
 
+	;	call_closure(bool, code_addr) 
+			% setup the arguments and branch to a higher
+			% order call. The closure is in r1.
+
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
 			% creates a nondet stack frame
@@ -357,6 +361,12 @@ output_instruction(call(Target, Continuation)) -->
 	output_call(Target, Continuation),
 	io__write_string(" }").
 
+output_instruction(call_closure(IsSemidet, Continuation)) -->
+	io__write_string("\t{ "),
+	output_code_addr_decls(Continuation),
+	output_call_closure(IsSemidet, Continuation),
+	io__write_string(" }").
+
 output_instruction(c_code(C_Code_String)) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
@@ -590,6 +600,26 @@ output_call(Target, Continuation) -->
 		io__write_string("call("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
+		output_code_addr(Continuation),
+		io__write_string(");")
+	).
+
+:- pred output_call_closure(bool, code_addr, io__state, io__state).
+:- mode output_call_closure(in, in, di, uo) is det.
+
+	% Note that we also do some optimization here by
+	% outputting `localcall' rather than `call' for
+	% calls to local labels.
+
+output_call_closure(IsSemidet, Continuation) -->
+	(
+		{ IsSemidet = no }
+	->
+		io__write_string("call_closure("),
+		output_code_addr(Continuation),
+		io__write_string(");")
+	;
+		io__write_string("call_semidet_closure("),
 		output_code_addr(Continuation),
 		io__write_string(");")
 	).

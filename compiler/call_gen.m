@@ -217,23 +217,32 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
+call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
 		{ code_util__builtin_binop(PredName, 3, BinOp) },
 		{ Args = [ X, Y, Var ] }
 	->
-		code_info__cache_expression(Var, binop(BinOp, var(X), var(Y)))
+		code_info__cache_expression(Var, binop(BinOp, var(X), var(Y))),
+		{ Code = empty }
 	;
 		{ code_util__builtin_unop(PredName, 2, UnOp) },
 		{ Args = [ X, Var ] }
 	->
-		code_info__cache_expression(Var, unop(UnOp, var(X)))
+		code_info__cache_expression(Var, unop(UnOp, var(X))),
+		{ Code = empty }
 	;
-		PredName = "call"
+		{ PredName = "call" }
 	->
-		{ error("XXX") }
+		(
+			{ Args = [PredTerm] }
+		->
+			call_gen__generate_higher_call(deterministic,
+								PredTerm, Code)
+		;
+			{ error("call_gen__generate_det_builtin: call/N, N > 1, unimplemented") }
+		)
 	;
 		{ error("Unknown builtin predicate") }
 	).
@@ -261,22 +270,36 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 			unop(UnOp, XRval), TestCode),
 		{ Code = tree(CodeX, TestCode) }
 	;
-		PredName = "call"
+		{ PredName = "call" }
 	->
-		{ error("XXX") }
+		(
+			{ Args = [PredTerm] }
+		->
+			call_gen__generate_higher_call(semideterministic,
+								PredTerm, Code)
+		;
+			{ error("call_gen__generate_semi_builtin: call/N, N > 1, unimplemented") }
+		)
 	;
 		{ error("Unknown builtin predicate") }
 	).
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_nondet_builtin(PredId, _ProcId, _Args, Code) -->
+call_gen__generate_nondet_builtin(PredId, _ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
-		PredName = "call"
+		{ PredName = "call" }
 	->
-		{ error("XXX") }
+		(
+			{ Args = [PredTerm] }
+		->
+			call_gen__generate_higher_call(nondeterministic,
+								PredTerm, Code)
+		;
+			{ error("call_gen__generate_non_builtin: call/N, N > 1, unimplemented") }
+		)
 	;
 		{ error("Unknown nondet builtin predicate") }
 	).
@@ -392,18 +415,62 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-/**** not used
+:- pred call_gen__generate_higher_call(category, var, code_tree,
+						code_info, code_info).
+:- mode call_gen__generate_higher_call(in, in, out, in, out) is det.
 
-:- pred call_gen__is_imported(pred_id, code_info, code_info).
-:- mode call_gen__is_imported(in, in, out) is semidet.
-
-call_gen__is_imported(PredId) -->
-	code_info__get_module_info(Module),
-	{ module_info_preds(Module, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_is_imported(PredInfo) }.
-
-****/
+call_gen__generate_higher_call(Det, Var, Code) -->
+	call_gen__save_variables(SaveCode),
+	code_info__clear_reserved_registers,
+	code_info__produce_variable(Var, VarCode, RVal),
+	(
+		{ RVal = lval(reg(r(1))) }
+	->
+		{ CopyCode = empty }
+	;
+		{ CopyCode = node([
+			assign(reg(r(1)), RVal) - "Copy pred-term"
+		])}
+	),
+	code_info__get_next_label(ReturnLabel),
+	(
+		{ Det = deterministic },
+		{ CallCode = node([
+			call_closure(no, label(ReturnLabel)) - "setup and call higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
+	;
+		{ Det = semideterministic },
+		{ CallCode = node([
+			call_closure(yes, label(ReturnLabel)) - "setup and call higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
+	;
+		{ Det = nondeterministic },
+		{ CallCode = node([
+			call_closure(no, label(ReturnLabel)) - "setup and call higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
+	),
+	(
+		{ Det = deterministic },
+		{ ReturnCode = empty }
+	;
+		{ Det = semideterministic },
+		code_info__generate_failure(FailCode),
+		code_info__get_next_label(ContLab),
+		{ ReturnCode = tree(node([
+			if_val(lval(reg(r(1))), label(ContLab)) -
+				"Test for success"
+			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
+	;
+		{ Det = nondeterministic },
+		{ ReturnCode = empty }
+		% XXX we don't handle commits across nondet calls
+	),
+	{ Code = tree(tree(SaveCode, VarCode),
+		tree(CopyCode, tree(CallCode, ReturnCode))) },
+	call_gen__rebuild_registers([]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

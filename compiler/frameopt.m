@@ -161,6 +161,15 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
 			frameopt__build_sets(Instrs0, FrameSize, yes, no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
+			% XXX zs, check this
+			Uinstr0 = call_closure(_, ReturnAddr),
+			frameopt__targeting_code_addr(ReturnAddr,
+				yes, FrameSet0, FrameSet1),
+			frameopt__targeting_code_addr(ReturnAddr,
+				yes, SuccipSet0, SuccipSet1),
+			frameopt__build_sets(Instrs0, FrameSize, yes, no, no,
+				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
+		;
 			Uinstr0 = mkframe(_, _, _),
 			error("mkframe in frameopt__build_sets")
 		;
@@ -429,6 +438,15 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = call(_, _),
+			frameopt__generate_setup(SetupFrame0, yes,
+				SetupSuccip0, yes, FrameSize, SetupCode),
+			frameopt__doit(Instrs0, FrameSize, yes, no, no,
+				FrameSet, SuccipSet, TeardownMap,
+				ProcLabel, N0, N, Instrs1),
+			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
+		;
+			% XXX zs, check this
+			Uinstr0 = call_closure(_, _),
 			frameopt__generate_setup(SetupFrame0, yes,
 				SetupSuccip0, yes, FrameSize, SetupCode),
 			frameopt__doit(Instrs0, FrameSize, yes, no, no,
