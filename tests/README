@@ -36,3 +36,6 @@ invalid
 	not compile - but automation of this is not yet implemented.
 	***These tests are not yet run automatically.***
 
+warnings
+	This directory is for tests of compiler warnings. These work by
+	comparing the warnings given in the hand-written '.exp' file. 
