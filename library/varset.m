@@ -56,15 +56,17 @@ varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
 
 :- pred varset__name_var(varset, var_id, string, varset).
 :- mode varset__name_var(input, input, input, output).
-varset__name_var(VarSet0, , Id, Name, VarSet) :-
+varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
-	(if some [OtherId]
-		map_inverse_search(Names0, Name)
+	(if
+		some [OtherId] (
+			map_inverse_search(Names0, Name)
+		)
 	then
 		string__append(Name, "'", Name2),
 		varset__name_var(VarSet0, Id, Name2, VarSet)
 	else
-		map__search_insert(Names0, Id, Name, Names).
+		map__search_insert(Names0, Id, Name, Names),
 		VarSet = varset(MaxId, Names, Vals)
 	).
 
@@ -110,7 +112,9 @@ varset__merge(VarSet0, varset(MaxId, Names, Vals),
 :- mode varset__merge(input, input, input, input, input, output).
 
 varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
-	(if N = Max then
+	(if
+		N = Max
+	then
 		VarSet = VarSet0
 	else
 		varset__new_var(VarSet0, VarId, VarSet1),
@@ -122,7 +126,7 @@ varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
 			VarSet2 = VarSet1
 		),
 		N1 is N + 1,
-		varset__merge_2(N1, Max, Names, Vals, VarSet2, VarSet).
+		varset__merge_2(N1, Max, Names, Vals, VarSet2, VarSet)
 	).
 
 %-----------------------------------------------------------------------------%
