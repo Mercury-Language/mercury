@@ -107,7 +107,6 @@ ORDINARY_PROGS=	\
 	test_imported_no_tag \
 	tim_qual1 \
 	type_qual \
-	type_tables \
 	type_to_term_bug \
 	tuple_test \
 	user_defined_equality \
@@ -117,13 +116,18 @@ ORDINARY_PROGS=	\
 # factt_non does not work in the hl* grades (e.g. hlc.gc),
 # because the code for nondet fact tables assumes that
 # we're using the LLDS back-end.
+#
+# type_tables does not work in the hl* grades because the test itself
+# is a quick hack that assumes the use of the LLDS backend; it should
+# be replaced by a test that exercises functionality enabled by type tables.
+# However, this must wait for the implementation of that functionality.
 ifeq "$(findstring hl,$(GRADE))" ""
-FACTT_NON_PROGS = factt_non
+BACKEND_PROGS = factt_non type_tables
 else
-FACTT_NON_PROGS =
+BACKEND_PROGS =
 endif
 
-PROGS = $(ORDINARY_PROGS) $(FACTT_NON_PROGS)
+PROGS = $(ORDINARY_PROGS) $(BACKEND_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
