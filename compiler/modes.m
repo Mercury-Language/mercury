@@ -441,11 +441,13 @@ modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), NonLocals, Goal)
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
-modecheck_goal_2(unify(A0, B0, _, _, UnifyContext), NonLocals, Goal) -->
+modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), NonLocals, Goal)
+		-->
 	mode_checkpoint(enter, "unify"),
 	mode_info_set_call_context(unify(UnifyContext)),
 	=(ModeInfo0),
-	modecheck_unification(A0, B0, A, B, ExtraGoals, Mode, UnifyInfo),
+	modecheck_unification(A0, B0, UnifyInfo0, A, B, ExtraGoals,
+				Mode, UnifyInfo),
 	=(ModeInfo),
 	{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
 	{ handle_extra_goals(Unify, ExtraGoals, NonLocals, [A0, B0], [A, B],
@@ -1489,12 +1491,13 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 
 	% Mode check a unification.
 
-:- pred modecheck_unification(term, term, term, term, pair(list(hlds__goal)),
+:- pred modecheck_unification(term, term, unification,
+			term, term, pair(list(hlds__goal)),
 			pair(mode, mode), unification, mode_info, mode_info).
-:- mode modecheck_unification(in, in, out, out,
+:- mode modecheck_unification(in, in, in, out, out,
 			out, out, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_unification(term__variable(X), term__variable(Y),
+modecheck_unification(term__variable(X), term__variable(Y), _Unification0,
 			term__variable(X), term__variable(Y),
 			ExtraGoals, Modes, Unification, ModeInfo0, ModeInfo) :-
 	ExtraGoals = [] - [],
@@ -1536,6 +1539,7 @@ modecheck_unification(term__variable(X), term__variable(Y),
 			Det, VarTypes, ModeInfo3, Unification, ModeInfo).
 
 modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
+			Unification0,
 			term__variable(X), term__functor(Name, Args, Context),
 			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -1590,8 +1594,9 @@ modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 	),
 	mode_info_get_var_types(ModeInfo1, VarTypes),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
-			VarTypes, ModeInfo1, Unification0, ModeInfo2),
-	split_complicated_subunifies(Unification0, Args0, ArgVars0,
+			VarTypes, Unification0, ModeInfo1,
+			Unification1, ModeInfo2),
+	split_complicated_subunifies(Unification1, Args0, ArgVars0,
 			Unification, Args, ArgVars,
 			ExtraGoals, ModeInfo2, ModeInfo3),
 	modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
@@ -1602,17 +1607,24 @@ modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 	).
 
 modecheck_unification(term__functor(F, As, Context), term__variable(Y),
+		Unification0,
 		Var, Functor, ExtraGoals, Modes, Unification,
 		ModeInfo0, ModeInfo) :-
 	modecheck_unification(term__variable(Y), term__functor(F, As, Context),
+		Unification0,
 		Var, Functor, ExtraGoals, Modes, Unification,
 		ModeInfo0, ModeInfo).
 	
 modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
-		_, _, _, _, _, _, _) :-
+		_, _, _, _, _, _, _, _) :-
 	error("modecheck internal error: unification of term with term\n").
 
 %-----------------------------------------------------------------------------%
+
+	% The argument unifications in a construction or deconstruction
+	% unification must be simple assignments, they cannot be
+	% complicated unifications.  If they are, we split them out
+	% into separate unifications by introducing fresh variables here.
 
 :- pred split_complicated_subunifies(unification, list(term), list(var),
 			unification, list(term), list(var),
@@ -2324,16 +2336,22 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
-			list(var), map(var, type), mode_info,
+			list(var), map(var, type), unification, mode_info,
 			unification, mode_info).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, mode_info_di,
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, mode_info_di,
 			out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
-		ModeInfo0, Unification, ModeInfo) :-
+		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	list__length(ArgVars, Arity),
-	make_functor_cons_id(Name, Arity, ConsId),
+	( Unification0 = construct(_, ConsId0, _, _) ->
+		ConsId = ConsId0
+	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
+		ConsId = ConsId1
+	;
+		make_functor_cons_id(Name, Arity, ConsId)
+	),
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
 						ModuleInfo, ArgModes),
 	map__lookup(VarTypes, X, TypeX),
