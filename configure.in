@@ -187,7 +187,7 @@ if test "$MKFIFO" = ""; then
 	fi
 fi
 if test "$MKFIFO" = ""; then
-	AC_MSG_WARN(cannot find a working mkfifo or mknod)
+	AC_MSG_WARN(cannot find a working \`mkfifo' or \`mknod')
 	MKFIFO=none
 fi
 AC_SUBST(MKFIFO)
@@ -256,7 +256,7 @@ fi
 # check the basics of sigaction
 #
 if test "$ac_cv_func_sigaction" = yes; then
-	AC_MSG_CHECKING(for sigaction field name)
+	AC_MSG_CHECKING(for \`sigaction' field name)
 	AC_CACHE_VAL(mercury_cv_sigaction_field,
 	AC_TRY_RUN([
 
@@ -303,7 +303,7 @@ fi
 #
 # check the basics of sigcontext_struct
 #
-AC_MSG_CHECKING(for working sigcontext_struct)
+AC_MSG_CHECKING(for working \`sigcontext_struct')
 AC_CACHE_VAL(mercury_cv_sigcontext_struct,
 mercury_cv_sigcontext_struct=no
 AC_TRY_RUN([
@@ -349,7 +349,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	#
 	# check for sigcontext_struct.eip
 	#
-	AC_MSG_CHECKING(for sigcontext_struct pc access at signals)
+	AC_MSG_CHECKING(for \`sigcontext_struct' pc access at signals)
 	AC_CACHE_VAL(mercury_cv_pc_access,
 	mercury_cv_pc_access=no
 	AC_TRY_RUN([
@@ -392,7 +392,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	}], [mercury_cv_pc_access=yes], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_pc_access)
 else
-	AC_MSG_CHECKING(for siginfo_t)
+	AC_MSG_CHECKING(for \`siginfo_t')
 	AC_CACHE_VAL(mercury_cv_siginfo_t,
 	mercury_cv_siginfo_t=no
 	AC_TRY_RUN([
@@ -448,7 +448,7 @@ else
 		AC_DEFINE(HAVE_SIGINFO_T)
 		AC_DEFINE(HAVE_SIGINFO)
 
-		AC_MSG_CHECKING(for siginfo pc access at signals)
+		AC_MSG_CHECKING(for \`siginfo' pc access at signals)
 		AC_CACHE_VAL(mercury_cv_pc_access,
 		mercury_cv_pc_access=no
 		AC_TRY_RUN([
@@ -623,7 +623,7 @@ AC_DEFINE_UNQUOTED(WORD_TYPE, $mercury_cv_word_type)
 WORD_TYPE=$mercury_cv_word_type
 AC_SUBST(WORD_TYPE)
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for the number of low tag bits)
+AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	AC_TRY_RUN([
 	#include <stdio.h>
@@ -1293,6 +1293,22 @@ AC_SUBST(NUM_REAL_R_REGS)
 AC_SUBST(NUM_REAL_R_TEMPS)
 AC_SUBST(HAVE_DELAY_SLOT)
 
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether the assembler barfs on .type)
+AC_CACHE_VAL(mercury_cv_barfs_on_asm_type_directive, [
+	case "$host" in
+		*-sunos4.*)
+			mercury_cv_barfs_on_asm_type_directive=yes
+			;;
+		*)
+			mercury_cv_barfs_on_asm_type_directive=no
+			;;
+	esac
+])
+AC_MSG_RESULT($mercury_cv_barfs_on_asm_type_directive)
+if test $mercury_cv_barfs_on_asm_type_directive = "yes"; then
+	AC_DEFINE(MR_BARFS_ON_ASM_TYPE_DIRECTIVE)
+fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
