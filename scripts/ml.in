@@ -74,6 +74,7 @@ MAYBE_STATIC_OPT=""
 make_shared_lib=false
 leave_shlib_dirs_relative=false
 user_shlib_dirs=""
+use_thread_libs=false
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -147,6 +148,12 @@ Debugging options:
 		Don't link in the GPL'd GNU Readline Library.
 	-g, --c-debug, --no-strip
 		Do not strip C debugging information.
+
+Threads options:
+	--use-thread-libs
+		Link with the POSIX thread libraries. This option is useful
+		if a C library being linked with uses threads, but the
+		Mercury code being linked doesn't.
 
 $grade_usage"
 
@@ -268,6 +275,13 @@ EOF
 			;;
 		esac
 		user_shlib_dirs="$user_shlib_dirs $dir"
+		;;
+
+	--use-thread-libs)
+		use_thread_libs=true
+		;;
+	--no-use-thread-libs)
+		use_thread_libs=false
 		;;
 
 	# include the file `parse_grade_options.sh-subr'
@@ -464,14 +478,14 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
-case $thread_safe in
+case $thread_safe in true)
+	use_thread_libs=true ;;
+esac
+
+case $use_thread_libs in
 	true)
 		case "$FULLARCH" in
- 		*-osf*)		# Older versions of OSF may require
-				# "-lpthreads -lc_r" (?), but at least
-				# for OSF 3.2, no special libraries are
-				# needed.
-				THREAD_LIBS="" ;;
+ 		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
 		*-linux*)	THREAD_LIBS="-lpthread" ;;
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*)		echo "$0: warning: don't know which" \
