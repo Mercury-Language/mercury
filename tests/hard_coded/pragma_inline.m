@@ -15,8 +15,8 @@ main -->
 
 :- pred c_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma(c_code, c_write_string(String::in, IO0::di, IO::uo), "
-        printf(""%s"", (char *)String);
+:- pragma(c_code, c_write_string(Message::in, IO0::di, IO::uo), "
+        printf(""%s"", Message);
         IO = IO0;
 ").
 
