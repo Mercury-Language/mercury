@@ -2,10 +2,20 @@
 
 % Main author: fjh.
 
-% This file converts Mercury source code into Goedel.
+% This program converts Mercury source code into Goedel.
 
-% TODO: output lists correctly; output calls to is/2 as calls to =/2;
-% fix bug(s).
+% TODO:
+%	output calls to is/2 as calls to =/2;
+%	indent `ELSE IF' properly
+%	handle escapes in string constants;
+%	handle Mercury's implicit quantification;
+% 	translate mode declarations into delay declarations;
+%	translate Mercury's module system declarations into Goedel;
+%	handle equivalence types and undiscriminated union types;
+%	implement the Mercury IO library in Goedel;
+%	implement various NU-Prolog predicates in Goedel; 
+%	add line numbers comments to the output;
+%	preserve the comments in the original source code.
 
 :- module('mercury_to_goedel').
 :- import_module io, prog_io, prog_out.
@@ -62,10 +72,13 @@ process_file_2(error(Errors)) -->
 :- mode convert_to_goedel(input, di, uo).
 
 convert_to_goedel(module(Name, Items)) -->
-	io__write_string("MODULE "),
+	io__write_string("MODULE       "),
 	{ convert_to_upper(Name, GoedelName) },
 	io__write_string(GoedelName),
 	io__write_string(".\n"),
+	io__write_string("IMPORT       Floats, Flocks, Integers, Lists, Numbers, Programs, Rationals.\n"),
+	io__write_string("IMPORT       Scripts, Sets, Strings, Syntax, Tables, Theories, Units.\n"),
+	%%% io__write_string("IMPORT       IO TheoriesIO ScriptsIO ProgramsIO NumbersIO FlocksIO.\n"),
 	goedel_output_item_list(Items).
 
 %-----------------------------------------------------------------------------%
@@ -92,6 +105,7 @@ goedel_output_item_list([Item - Context | Items]) -->
 	% dispatch on the different types of items
 
 goedel_output_item(type_defn(VarSet, TypeDefn, _Cond), Context) -->
+	io__write_string("\n"),
 	goedel_output_type_defn(VarSet, TypeDefn, Context).
 
 goedel_output_item(inst_defn(VarSet, InstDefn, _Cond), Context) -->
@@ -101,13 +115,15 @@ goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
 goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Cond), Context) -->
+	io__write_string("\n"),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
 goedel_output_item(mode(VarSet, PredName, Modes, _Cond), Context) -->
 	goedel_output_mode(VarSet, PredName, Modes, Context).
 
 goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
-	io__write_string("warning: module declarations not yet supported.\n").
+	% io__write_string("warning: module declarations not yet supported.\n").
+	[].
 
 goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
@@ -119,14 +135,16 @@ goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 :- mode goedel_output_inst_defn(input, input, input, di, uo).
 
 goedel_output_inst_defn(_VarSet, _InstDefn, _Context) -->
-	io__write_string("% inst definitions not supported\n").
+	% io__write_string("% inst definitions not supported\n"),
+	[].
 
 :- pred goedel_output_mode_defn(varset, mode_defn, term__context,
 			io__state, io__state).
 :- mode goedel_output_mode_defn(input, input, input, di, uo).
 
 goedel_output_mode_defn(_VarSet, _ModeDefn, _Context) -->
-	io__write_string("% mode definitions not supported\n").
+	% io__write_string("% mode definitions not supported\n"),
+	[].
 
 %-----------------------------------------------------------------------------%
 
@@ -173,12 +191,28 @@ goedel_output_ctors([Name - ArgTypes | Ctors], Type, VarSet) -->
 	{ unqualify_name(Name, Name2),
 	  convert_to_upper(Name2, Name3) },
 	(if %%% some [Type | Rest]
-		{ ArgTypes = [Type | Rest] }
+		{ ArgTypes = [ArgType | Rest] }
 	then
 		io__write_string("FUNCTION     "),
 		io__write_string(Name3),
+		{ length(ArgTypes, Arity) },
+		(if
+			{ Arity = 2, goedel_infix_op(Name2) }
+		then
+			io__write_string(" : xFx(100)")
+		else if
+			{ Arity = 1, goedel_unary_prefix_op(Name2) }
+		then
+			io__write_string(" : Fx(100)")
+		else if
+			{ Arity = 1, goedel_unary_postfix_op(Name2) }
+		then
+			io__write_string(" : xF(100)")
+		else
+			[]
+		),
 		io__write_string(" : "),
-		goedel_output_term(Type, VarSet),
+		goedel_output_term(ArgType, VarSet),
 		goedel_output_remaining_types(Rest, VarSet),
 		io__write_string(" -> ")
 	else
@@ -219,6 +253,14 @@ goedel_output_pred_type(VarSet, PredName, Types, _Context) -->
 	then
 		io__write_string("PREDICATE    "),
 		io__write_string(PredName3),
+		{ length(Types, Arity) },
+		(if
+			{ Arity = 2, goedel_infix_pred(PredName2) }
+		then
+			io__write_string(" : zPz")
+		else
+			[]
+		),
 		io__write_string(" : "),
 		goedel_output_term(Type, VarSet),
 		goedel_output_remaining_types(Rest, VarSet)
@@ -246,7 +288,8 @@ goedel_output_remaining_types([Type | Types], VarSet) -->
 :- mode goedel_output_mode(input, input, input, input, di, uo).
 
 goedel_output_mode(_VarSet, _PredName, _Modes, _Context) -->
-	io__write_string("% warning: mode declarations not supported.\n").
+	% io__write_string("% warning: mode declarations not supported.\n"),
+	[].
 
 %-----------------------------------------------------------------------------%
 
@@ -300,7 +343,7 @@ goedel_output_goal(all(Vars, Goal), VarSet, Indent) -->
 	io__write_string(")").
 
 goedel_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
-	io__write_string("(IF "),
+	io__write_string("(IF"),
 	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -354,17 +397,50 @@ goedel_output_goal((A;B), VarSet, Indent) -->
 	io__write_string(")").
 
 goedel_output_goal(call(Term), VarSet, _Indent) -->
-	goedel_output_term(Term, VarSet).
+	goedel_output_pred(Term, VarSet).
 
 goedel_output_goal(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).
 
+:- pred goedel_output_pred(term, varset, io__state, io__state).
+:- mode goedel_output_pred(input, input, di, uo).
+
+goedel_output_pred(term_variable(Var), VarSet) -->
+	goedel_output_var(Var, VarSet).
+goedel_output_pred(term_functor(Functor, Args, _), VarSet) -->
+	(if %%% some [Arg1, Arg2, PredName]
+		{ Args = [Arg1, Arg2],
+		  Functor = term_atom(PredName),
+		  goedel_infix_pred(PredName)
+		}
+	then
+		goedel_output_term(Arg1, VarSet),
+		io__write_string(" "),
+		{ convert_to_upper(PredName, PredName1) },
+		io__write_string(PredName1),
+		io__write_string(" "),
+		goedel_output_term(Arg2, VarSet)
+	else
+		goedel_output_constant(Functor),
+		(if %%% some [X,Xs]		% NU-Prolog inconsistency
+			{ Args = [X | Xs] }
+		then
+			io__write_string("("),
+			goedel_output_term(X, VarSet),
+			goedel_output_term_args(Xs, VarSet),
+			io__write_string(")")
+		else
+			[]
+		)
+	).
+
 :- pred goedel_output_disj(goal, varset, int, io__state, io__state).
 :- mode goedel_output_disj(input, input, input, di, uo).
 
 goedel_output_disj(Goal, VarSet, Indent) -->
+	goedel_output_newline(Indent),
 	io__write_string("\\/"),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
@@ -416,6 +492,28 @@ goedel_output_tabs(Indent) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred goedel_output_list_args(term, varset, io__state, io__state).
+:- mode goedel_output_list_args(input, input, di, uo).
+
+goedel_output_list_args(Term, VarSet) -->
+	(if %%% some [Args, Context, X, Xs]
+	    	{ Term = term_functor(term_atom("."), Args, Context),
+		  Args = [X, Xs]
+	    	}
+	then
+		io__write_string(", "),
+		goedel_output_term(X, VarSet),
+		goedel_output_list_args(Xs, VarSet)
+	else
+	if %%% some [Context2]
+		{ Term = term_functor(term_atom("[]"), [], Context2) }
+	then
+		[]
+	else
+		io__write_string(" | "),
+		goedel_output_term(Term, VarSet)
+	).
+
 	% write a term to standard output.
 
 :- pred goedel_output_term(term, varset, io__state, io__state).
@@ -424,9 +522,20 @@ goedel_output_tabs(Indent) -->
 goedel_output_term(term_variable(Var), VarSet) -->
 	goedel_output_var(Var, VarSet).
 goedel_output_term(term_functor(Functor, Args, _), VarSet) -->
-	(if %%% some [PrefixArg]	% NU-Prolog inconsistency
+	(if %%% some [X, Xs]
+	    	{ Functor = term_atom("."),
+		  Args = [X, Xs]
+	    	}
+	then
+		io__write_string("["),
+		goedel_output_term(X, VarSet),
+		goedel_output_list_args(Xs, VarSet),
+		io__write_string("]")
+	else
+	if %%% some [PrefixArg]	% NU-Prolog inconsistency
 		{ Args = [PrefixArg],
-		  goedel_unary_prefix_op(Functor)
+		  Functor = term_atom(FunctorName),
+		  goedel_unary_prefix_op(FunctorName)
 	    	}
 	then
 		io__write_string("("),
@@ -437,7 +546,8 @@ goedel_output_term(term_functor(Functor, Args, _), VarSet) -->
 	else
 	if %%% some [PostfixArg]
 		{ Args = [PostfixArg],
-		  goedel_unary_postfix_op(Functor)
+		  Functor = term_atom(FunctorName),
+		  goedel_unary_postfix_op(FunctorName)
 	    	}
 	then
 		io__write_string("("),
@@ -448,7 +558,8 @@ goedel_output_term(term_functor(Functor, Args, _), VarSet) -->
 	else
 	if %%% some [Arg1, Arg2]
 		{ Args = [Arg1, Arg2],
-		  goedel_infix_op(Functor)
+		  Functor = term_atom(FunctorName),
+		  goedel_infix_op(FunctorName)
 		}
 	then
 		io__write_string("("),
@@ -513,8 +624,8 @@ goedel_output_vars([Var | Vars], VarSet) -->
 :- pred goedel_output_vars_2(list(var), varset, io__state, io__state).
 :- mode goedel_output_vars_2(input, input, di, uo).
 
-goedel_output_vars([], _VarSet) --> [].
-goedel_output_vars([Var | Vars], VarSet) -->
+goedel_output_vars_2([], _VarSet) --> [].
+goedel_output_vars_2([Var | Vars], VarSet) -->
 	io__write_string(", "),
 	goedel_output_var(Var, VarSet),
 	goedel_output_vars_2(Vars, VarSet).
@@ -538,39 +649,43 @@ goedel_output_var(Id, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Predicates to test whether a functor is a Goedel operator.
+	% Predicates to test whether a functor is a Goedel operator
+	% (an operator defined in one of the Goedel system modules).
 
 :- pred goedel_infix_op(string).
 :- mode goedel_infix_op(input).
 
-goedel_infix_op(Op) :-
-	some [Type, Prec] (
-		goedel_current_op(Prec, Type, Op),
-		member(Type, [xfx, xfy, yfx])
-	).
+goedel_infix_op("+").
+goedel_infix_op("-").
+goedel_infix_op("*").
+goedel_infix_op("/").
+goedel_infix_op("^").
+goedel_infix_op("++").
+goedel_infix_op("\\").
+goedel_infix_op("//").
+goedel_infix_op("div").		% NB. This is NOT capitalized.
+goedel_infix_op("mod").
 
 :- pred goedel_unary_prefix_op(string).
 :- mode goedel_unary_prefix_op(input).
 
-goedel_unary_prefix_op(Op) :-
-	some [Type, Prec] (
-		goedel_current_op(Prec, Type, Op),
-		member(Type, [fx, fy])
-	).
+goedel_unary_prefix_op("-").
 
 :- pred goedel_unary_postfix_op(string).
 :- mode goedel_unary_postfix_op(input).
 
-goedel_unary_postfix_op(Op) :-
-	some [Type, Prec] (
-		goedel_current_op(Prec, Type, Op),
-		member(Type, [xf, yf])
-	).
+goedel_unary_postfix_op(_) :- fail.
 
-:- pred goedel_current_op(integer, op_type, string).
-:- mode goedel_current_op(input, input, input).
+:- pred goedel_infix_pred(string).
+:- mode goedel_infix_pred(input).
 
-goedel_current_op(_,_,_) :- fail.	% stub only
+goedel_infix_pred("<").
+goedel_infix_pred(">").
+goedel_infix_pred("=<").
+goedel_infix_pred(">=").
+goedel_infix_pred("in").
+goedel_infix_pred("subset").
+goedel_infix_pred("strictSubset").
 
 %-----------------------------------------------------------------------------%
 
