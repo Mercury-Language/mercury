@@ -22,6 +22,7 @@ ENDINIT
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
 
+#ifndef MR_HIGHLEVEL_CODE
 static	MR_Word	MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 
@@ -400,3 +401,5 @@ void mercury_sys_init_call(void); /* suppress gcc warning */
 void mercury_sys_init_call(void) {
 	call_module();
 }
+
+#endif /* not MR_HIGHLEVEL_CODE */
