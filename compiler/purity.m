@@ -502,9 +502,8 @@ compute_purity([Clause0|Clauses0], [Clause|Clauses], PredInfo, ModuleInfo,
 :- mode compute_expr_purity(in, out, in, in, in, in, out, in, out, di, uo)
 	is det.
 
-compute_expr_purity(conj(Goals0), conj(Goals), GoalInfo, PredInfo, ModuleInfo,
+compute_expr_purity(conj(Goals0), conj(Goals), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
@@ -540,57 +539,44 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 						    DeclaredPurity),
 		{ NumErrors = NumErrors0 }
 	).
-compute_expr_purity(HOCall, HOCall, GoalInfo, _, _, InClosure, pure,
-		NumErrors0, NumErrors) -->
-	{ HOCall = higher_order_call(_,_,_,_,_,_) },
-	error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors,
-				       InClosure, "higher order goal").
-compute_expr_purity(CMCall, CMCall, GoalInfo, _, _, InClosure, pure,
-		NumErrors0, NumErrors) -->
-	{ CMCall = class_method_call(_,_,_,_,_,_) },
-	error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors,
-				       InClosure, "class method goal").
+compute_expr_purity(HOCall, HOCall, _, _, _, _, pure, NumErrors, NumErrors) -->
+	{ HOCall = higher_order_call(_,_,_,_,_,_) }.
+compute_expr_purity(CMCall, CMCall, _, _, _, _, pure, NumErrors, NumErrors) -->
+	{ CMCall = class_method_call(_,_,_,_,_,_) }.
 compute_expr_purity(switch(Var,Canfail,Cases0,Storemap),
-		switch(Var,Canfail,Cases,Storemap), GoalInfo, PredInfo,
+		switch(Var,Canfail,Cases,Storemap), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_cases_purity(Cases0, Cases, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, InClosure,
+compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 		pure, NumErrors0, NumErrors) -->
 	{ Unif0 = unify(A,RHS0,C,D,E) },
 	{ Unif  = unify(A,RHS,C,D,E) },
-	error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors1,
-				       InClosure, "unification"),
 	(   { RHS0 = lambda_goal(F, G, H, I, Goal0 - Info0) } ->
 		{ RHS = lambda_goal(F, G, H, I, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
-				    yes, Purity, NumErrors1, NumErrors2),
+				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,
-					NumErrors2, NumErrors)
+					NumErrors1, NumErrors)
 	;
 		{ RHS = RHS0 },
 		{ NumErrors = NumErrors0 }
 	).
-compute_expr_purity(disj(Goals0,Store), disj(Goals,Store), GoalInfo, PredInfo,
+compute_expr_purity(disj(Goals0,Store), disj(Goals,Store), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(not(Goal0), not(Goal), GoalInfo, PredInfo, ModuleInfo,
+compute_expr_purity(not(Goal0), not(Goal), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(some(Vars,Goal0), some(Vars,Goal), GoalInfo, PredInfo,
+compute_expr_purity(some(Vars,Goal0), some(Vars,Goal), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
-		if_then_else(Vars,Goali,Goalt,Goale,Store), GoalInfo, PredInfo,
+		if_then_else(Vars,Goali,Goalt,Goale,Store), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
-	warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure),
 	compute_goal_purity(Goali0, Goali, PredInfo, ModuleInfo,
 			    InClosure, Purity1, NumErrors0, NumErrors1),
 	compute_goal_purity(Goalt0, Goalt, PredInfo, ModuleInfo,
@@ -797,73 +783,6 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, _, PredId, Context,
 		io__write_string("' is sufficient.\n")
 	).
 	
-
-:- pred warn_if_body_purity_indicated(hlds_goal_info, pred_info, bool,
-	io__state, io__state).
-:- mode warn_if_body_purity_indicated(in, in, in, di, uo) is det.
-
-warn_if_body_purity_indicated(GoalInfo, PredInfo, InClosure) -->
-	(   { InClosure = yes } ->
-		[]
-	;   { code_util__compiler_generated(PredInfo) } ->
-		[]
-	;   { infer_goal_info_purity(GoalInfo, Purity) },
-	    (   { Purity = pure } ->
-		    []
-	    ;	
-		    { goal_info_get_context(GoalInfo, Context) },
-		    prog_out__write_context(Context),
-		    io__write_string("Warning: inappropriate placement of `"),
-		    write_purity(Purity),
-		    io__write_string("' indicator.\n"),
-		    globals__io_lookup_bool_option(verbose_errors,
-						   VerboseErrors),
-		    (   { VerboseErrors = yes } ->
-			    prog_out__write_context(Context),
-			    io__write_string(
-	    "  Impurity indicators only belong before predicate calls.\n")
-		    ;   
-			    []
-		    )
-	    )
-	).
-
-
-
-:- pred error_if_body_purity_indicated(hlds_goal_info, int, int, bool,
-	string, io__state, io__state).
-:- mode error_if_body_purity_indicated(in, in, out, in, in, di, uo) is det.
-
-error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors, InClosure,
-		Kind) -->
-	{ infer_goal_info_purity(GoalInfo, Purity) },
-	(   { Purity = pure } ->
-		{ NumErrors = NumErrors0 }
-	;   { InClosure = yes } ->
-		% Don't report purity errors inside a closure
-		{ NumErrors = NumErrors0 }
-	;
-		{ NumErrors is NumErrors0 + 1 },
-		{ goal_info_get_context(GoalInfo, Context) },
-		prog_out__write_context(Context),
-		io__write_string("Error: inappropriate placement of `"),
-		write_purity(Purity),
-		io__write_string("' indicator.\n"),
-		prog_out__write_context(Context),
-		io__write_string("  A "),
-		io__write_string(Kind),
-		io__write_string(" can never be "),
-		write_purity(Purity),
-		io__write_string(".\n"),
-		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-		(   { VerboseErrors = yes } ->
-			prog_out__write_context(Context),
-			io__write_string("  Impurity indicators only belong before predicate calls.\n")
-		;   
-			[]
-		)
-	).
-
 
 :- pred error_if_closure_impure(hlds_goal_info, purity, int, int,
 	io__state, io__state).

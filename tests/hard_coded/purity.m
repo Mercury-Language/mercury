@@ -12,18 +12,22 @@ main -->
 	impure test1,
 	impure test2,
 	impure test3,
+	impure test4,
 	impure test1_inline,
 	impure test2_inline,
-	impure test3_inline.
+	impure test3_inline,
+	impure test4_inline.
 
 
 :- impure pred test1(io__state::di, io__state::uo) is det.
 :- impure pred test2(io__state::di, io__state::uo) is det.
 :- impure pred test3(io__state::di, io__state::uo) is det.
+:- impure pred test4(io__state::di, io__state::uo) is det.
 
 :- impure pred test1_inline(io__state::di, io__state::uo) is det.
 :- impure pred test2_inline(io__state::di, io__state::uo) is det.
 :- impure pred test3_inline(io__state::di, io__state::uo) is det.
+:- impure pred test4_inline(io__state::di, io__state::uo) is det.
 
 
 :- impure pred set_x(int::in) is det.
@@ -80,15 +84,27 @@ test3 -->
 	    io__format("%d\n", [i(Y)])
 	).
 
+% regression test for problem with calls to implied modes of impure/semipure
+% preds reporting spurious warnings about impurity markers in the wrong place.
+test4 -->
+	{ semipure get_x(OldX) },
+	{ impure incr_x },
+	(   { semipure get_x(OldX+1) } ->
+		io__write_string("test4 succeeds\n")
+	;   io__write_string("test4 fails\n")
+	),
+	{ impure set_x(OldX) }.
+
+
 %  Now do it all again with inlining requested
 
+% tempt compiler to optimize away duplicate semipure goals.
 test1_inline -->
 	{ semipure get_x_inline(X) },
 	io__format("%d\n", [i(X)]),
 	{ impure set_x_inline(X+1) },
 	{ semipure get_x_inline(Y) },
 	io__format("%d\n", [i(Y)]).
-
 
 % tempt compiler to optimize away duplicate impure goals, or to compile away
 % det goals with no outputs.
@@ -106,3 +122,13 @@ test3_inline -->
 	    io__format("%d\n", [i(Y)])
 	).
 
+% regression test for problem with calls to implied modes of impure/semipure
+% preds reporting spurious warnings about impurity markers in the wrong place.
+test4_inline -->
+	{ semipure get_x_inline(OldX) },
+	{ impure incr_x_inline },
+	(   { semipure get_x_inline(OldX+1) } ->
+		io__write_string("test4_inline succeeds\n")
+	;   io__write_string("test4_inline fails\n")
+	),
+	{ impure set_x_inline(OldX) }.
