@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2002 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
