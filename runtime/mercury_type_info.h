@@ -797,17 +797,19 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
-Word * MR_create_type_info(const Word *, const Word *);
-Word * MR_create_type_info_maybe_existq(const Word *, const Word *,
-		const Word *, const Word *);
 int MR_compare_type_info(Word, Word);
 Word MR_collapse_equivalences(Word);
 
 /* 
-** definitions for creating type infos from pseudo_type_info's
+** Functions for creating type_infos from pseudo_type_infos.
+** See mercury_type_info.c for documentation on these.
 */
 
-/* for make_type_info(), we keep a list of allocated memory cells */
+Word * MR_create_type_info(const Word *, const Word *);
+Word * MR_create_type_info_maybe_existq(const Word *, const Word *,
+		const Word *, const Word *);
+
+/* for MR_make_type_info(), we keep a list of allocated memory cells */
 struct MR_MemoryCellNode {
 	void				*data;
 	struct MR_MemoryCellNode	*next;
