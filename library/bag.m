@@ -224,16 +224,16 @@ bag__subtract(Bag0, SubBag, Bag) :-
 
 	
 bag__union(A, B, Out) :-
-	( map__remove_smallest(A, Key, AVal,A0) ->
-		( map__search(B, Key, BVal) ->
+	( map__remove_smallest(B, Key, BVal, B0) ->
+		( map__search(A, Key, AVal) ->
 			NewVal = AVal + BVal,
-			map__det_update(B, Key, NewVal, B0)
+			map__det_update(A, Key, NewVal, A0)
 		;
-			map__det_insert(B, Key, AVal, B0)
+			map__det_insert(A, Key, BVal, A0)
 		),
 		bag__union(A0, B0, Out)
 	;
-		Out = B
+		Out = A
 	).
 			
 		
