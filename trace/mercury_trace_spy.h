@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,6 +55,8 @@ extern	MR_Spy_Point    **MR_spy_points;
 extern	int		MR_spy_point_next;
 extern	int		MR_spy_point_max;
 
+extern	int		MR_most_recent_spy_point;
+
 /*
 ** Check whether the event described by the given label layout and port
 ** matches any spy points. If yes, return TRUE and set *action to say what
@@ -88,5 +90,22 @@ extern	int		MR_add_line_spy_point(MR_Spy_Action action,
 */
 
 extern	void		MR_delete_spy_point(int point_table_slot);
+
+/*
+** Print the spy point with the given number in a nice format for humans to
+** read to the given file.
+*/
+
+extern	void		MR_print_spy_point(FILE *fp, int i);
+
+/*
+** Print the set of current spy points (including those that are currently
+** disabled) to fp in a format that, when sourced by mdb, recreates those
+** spy points. Any internal errors encountered while trying to do this
+** should be reported to err_fp. Return TRUE iff the debugger's data structures
+** are inconsistent, and the spy points could not be saved.
+*/
+
+extern	bool		MR_save_spy_points(FILE *fp, FILE *err_fp);
 
 #endif	/* not MERCURY_TRACE_SPY_H */

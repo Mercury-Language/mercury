@@ -2166,6 +2166,10 @@ Reports an error if there is no break point with that number.
 @item disable *
 Disables all break points.
 @sp 1
+@item disable
+Disables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
 @item enable @var{num}
 Enables the break point with the given number.
 Reports an error if there is no break point with that number.
@@ -2173,12 +2177,21 @@ Reports an error if there is no break point with that number.
 @item enable *
 Enables all break points.
 @sp 1
+@item enable
+Enables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
 @item delete @var{num}
 Deletes the break point with the given number.
 Reports an error if there is no break point with that number.
 @sp 1
 @item delete *
 Deletes all break points.
+@sp 1
+@item delete
+Deletes the most recently added breakpoint.
+Reports an error if the most recently added breakpoint
+has already been deleted.
 @sp 1
 @item modules
 Lists all the debuggable modules
@@ -2379,8 +2392,16 @@ Prints the contents of all the virtual machine registers.
 @subsection Miscellaneous commands
 @sp 1
 @table @code
-@item source @var{filename}
+@item source [-i] @var{filename}
 Executes the commands in the file named @var{filename}.
+@sp 1
+The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
+not to complain if the named file does not exist or is not readable.
+@sp 1
+@item save @var{filename}
+Saves current set of breakpoints and the current set of aliases
+in the named file as a set of @samp{break} and @samp{alias} commands.
+Sourcing the file will recreate the current breakpoints and aliases.
 @sp 1
 @item quit [-y]
 Quits the debugger and aborts the execution of the program.

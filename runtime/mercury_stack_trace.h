@@ -185,6 +185,14 @@ extern	void	MR_print_call_trace_info(FILE *fp,
 extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry);
 
 /*
+** MR_print_proc_spec prints a string that uniquely specifies the given
+** procedure to the debugger.
+*/
+
+extern	void	MR_print_proc_spec(FILE *fp,
+			const MR_Stack_Layout_Entry *entry);
+
+/*
 ** MR_print_proc_id_trace_and_context prints an identification of the given
 ** procedure, together with call trace information (if available), a context
 ** within the procedure, and possibly a context identifying the caller.

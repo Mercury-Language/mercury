@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,9 +59,13 @@ extern	bool		MR_trace_lookup_alias(const char *name,
 extern	void		MR_trace_print_alias(FILE *fp, const char *name);
 
 /*
-** Print all the aliases to the given file.
+** Print all the aliases to the given file. If mdb_command_format is TRUE,
+** print them in a form that, when sourced from mdb , recreate the aliases.
+** Otherwise, print the aliases in a format that is nice for humans to read.
 */
 
-extern	void		MR_trace_print_all_aliases(FILE *fp);
+extern	void		MR_trace_print_all_aliases(FILE *fp,
+				bool mdb_command_format);
+
 
 #endif	/* MERCURY_TRACE_ALIAS_H */

@@ -23,6 +23,9 @@ static	void	MR_dump_stack_record_frame(FILE *fp,
 static	void	MR_dump_stack_record_flush(FILE *fp, 
 			MR_Print_Stack_Record print_stack_record);
 
+static	void	MR_print_proc_id_internal(FILE *fp,
+			const MR_Stack_Layout_Entry *entry, bool spec);
+
 static	void	MR_maybe_print_context(FILE *fp,
 			const char *filename, int lineno);
 static	void	MR_maybe_print_parent_context(FILE *fp, bool print_parent,
@@ -502,11 +505,29 @@ MR_print_call_trace_info(FILE *fp, const MR_Stack_Layout_Entry *entry,
 void
 MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry)
 {
+	MR_print_proc_id_internal(fp, entry, FALSE);
+}
+
+void
+MR_print_proc_spec(FILE *fp, const MR_Stack_Layout_Entry *entry)
+{
+	MR_print_proc_id_internal(fp, entry, TRUE);
+}
+
+static void
+MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
+	bool spec)
+{
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
 		fatal_error("cannot print procedure id without layout");
 	}
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		if (spec) {
+			fatal_error("cannot generate specifications "
+				"for compiler generated procedures");
+		}
+
 		fprintf(fp, "%s for %s:%s/%ld-%ld",
 			entry->MR_sle_comp.MR_comp_pred_name,
 			entry->MR_sle_comp.MR_comp_type_module,
@@ -531,13 +552,19 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry)
 			fatal_error("procedure is not pred or func");
 		}
 
-		fprintf(fp, " %s:%s/%ld-%ld",
+		if (spec) {
+			fprintf(fp, "*");
+		} else {
+			fprintf(fp, " ");
+		}
+
+		fprintf(fp, "%s:%s/%ld-%ld",
 			entry->MR_sle_user.MR_user_decl_module,
 			entry->MR_sle_user.MR_user_name,
 			(long) entry->MR_sle_user.MR_user_arity,
 			(long) entry->MR_sle_user.MR_user_mode);
 
-		if (strcmp(entry->MR_sle_user.MR_user_decl_module,
+		if (!spec && strcmp(entry->MR_sle_user.MR_user_decl_module,
 				entry->MR_sle_user.MR_user_def_module) != 0)
 		{
 			fprintf(fp, " {%s}",
@@ -545,7 +572,9 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry)
 		}
 	}
 
-	fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
+	if (! spec) {
+		fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
+	}
 }
 
 void
