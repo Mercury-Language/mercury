@@ -3922,10 +3922,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 "{
 	MR_MercuryFile stream = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(Stream));
-	System::IO::StreamWriter *w = new System::IO::StreamWriter(
-		mercury_current_binary_output->stream);
-	w->Write(Message);
-	w->Flush();
+	mercury_print_string(stream, Message);
 	update_io(IO0, IO);
 }").
 
