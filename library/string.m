@@ -951,7 +951,8 @@ string__do_conversion_hack(Conv_c, Poly_t, Ostring, Precision, Flags,
 	;
 	Conv_c = 'X',
 		Poly_t = i(I),
-		( I = 0 ->
+		( I = 0
+		->
 			SS = "0",
 			Pfix_len = 0,
 			string__format_int_precision(SS, Ostring, Precision, _)
@@ -1038,14 +1039,13 @@ string__format_int_precision(S, Ostring, Precision, Added_width) :-
 	),
 	string__length(S, L),
 	(string__first_char(S, '-', _)
-		->
+	->
 		Xzeros is Prec - L + 1
-		;
+	;
 		Xzeros is Prec - L
 	),
 	Added_width = Xzeros,
-	(
-	Xzeros > 0
+	( Xzeros > 0
 	->	
 		string__duplicate_char( '0', Xzeros, Pfix),
 		string__first_char(S, C, Rest),
@@ -1067,7 +1067,7 @@ string__format_int_precision(S, Ostring, Precision, Added_width) :-
 :- pred string__format_calc_exp(float, string, int, int).
 :- mode string__format_calc_exp(in, out, in, in) is det.
 string__format_calc_exp(F, Fstring, Precision, Exp) :-
-	builtin_float_lt(F, 0.0)
+	(builtin_float_lt(F, 0.0)
 	-> 	
 		builtin_float_minus( 0.0, F, Tf),
 		string__format_calc_exp( Tf, Tst, Precision, Exp),
@@ -1097,7 +1097,8 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 				string__append_list([ Fs2, "e+", Exps], Fstring)
 			)
 		)
-		).
+		)
+	).
 
 	
 %
@@ -1106,7 +1107,9 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 :- pred string__format_calc_prec(string, string, int).
 :- mode string__format_calc_prec(in, out, in) is det.
 string__format_calc_prec(Istring, Ostring, Precision) :-
-	(string__default_precision_and_width(Precision) ->
+	(
+	(string__default_precision_and_width(Precision)
+	->
 		Prec = 6
 	;
 		Prec = Precision
@@ -1134,7 +1137,8 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 	;
 		Space = Spa
 	),
-	string__split(Mstring, Space, Ostring, _).
+	string__split(Mstring, Space, Ostring, _)
+	).
 
 
 
@@ -1200,13 +1204,14 @@ string__format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 			string__append_list( [Lstring, "+", Rstring], Ostring),
 			Mvw2 is Mvw1 + 1
 		;
-			list__member(' ', Flags)
+			(list__member(' ', Flags)
 			->
 				string__append_list( [Lstring, " ", Rstring], Ostring),
 				Mvw2 is Mvw1 + 1
 			; 
 				Ostring = Istring,
 				Mvw2 = Mvw1
+			)
 		)
 	).
 
@@ -1238,12 +1243,13 @@ string__format_pad_width( Istring, Width, Flags, Out_string, Mv_cs) :-
 		->
 			string__append(Istring, Pad_string, Out_string)
 		;
-			list__member('0', Flags)
+			(list__member('0', Flags)
 			->
 				string__split(Istring, Mv_cs, B4, After),
 				string__append_list( [B4, Pad_string, After], Out_string)
 			;
 			string__append( Pad_string, Istring,  Out_string)
+			)
 		)
 	;
 		Out_string = Istring
@@ -1265,13 +1271,14 @@ string__format_get_optional_args( [], Flags, Width, Precision, Mods) :-
 		string__default_precision_and_width(Precision),
 		Mods = ' '.
 string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
-		(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
+	(
+	(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
 	->
 		string__format_get_optional_args( As, Oflags, Width, Precision, Mods),
 		UFlags = [A | Oflags],
 		list__sort(UFlags, Flags)
 	;
-		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
+	(	( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
 		  A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
 	->
 		string__format_string_to_ints([A|As], Bs, Numl1, Numl2, yes),
@@ -1284,23 +1291,25 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 			Precision = Prec
 		)
 	;
-		( A = 'h' ; A = 'l' ; A = 'L' )
+	(	( A = 'h' ; A = 'l' ; A = 'L' )
 	->
 		Mods = A,
 		string__format_get_optional_args( As, Flags, Width, Precision, _)
 	;
-		A = ('*')
+	(	A = ('*')
 	->
 		string__format_get_optional_args( As, Flags, _W, P, Mods),
 		(string__default_precision_and_width(P)
-			->
-		string__special_precision_and_width(Precision)
-			; 
-		Precision = P),
+		->
+			string__special_precision_and_width(Precision)
+		; 
+			Precision = P
+		),
 		string__special_precision_and_width(Width)
 	;
 		error("string__format:  Unrecognised formatting information\n")
-	.
+		)
+	))) .
 
 :- pred string__format_takewhile1(list(char), list(char), list(char)).
 :- mode string__format_takewhile1(in, out, out) is det.
@@ -1312,6 +1321,7 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 %
 string__format_takewhile1([], [], []).
 string__format_takewhile1( [A|As], Rem, Finf) :-
+	(
 	( A = 'd';A = 'i';A = 'o';A = 'x';A = 'X';A = 'u';A = 's';
 	  A = 'c';A = 'f';A = 'e';A = 'E';A = 'g';A = 'G';A = 'p')
 	->	
@@ -1319,7 +1329,8 @@ string__format_takewhile1( [A|As], Rem, Finf) :-
 		Finf = []
 	;
 		string__format_takewhile1(As, Rem, F),
-		Finf = [A|F].
+		Finf = [A|F]
+	).
 
 
 	
@@ -1332,7 +1343,7 @@ string__format_takewhile1( [A|As], Rem, Finf) :-
 %
 string__format_string_to_ints( [], [], [], [], _).
 string__format_string_to_ints( [A|As], Bs, Int1, Int2, Bool) :-
-	char__is_digit(A)
+	(char__is_digit(A)
 	->
 	(	Bool = yes
 		->
@@ -1350,9 +1361,9 @@ string__format_string_to_ints( [A|As], Bs, Int1, Int2, Bool) :-
 			Bs = [A|As],
 			Int1 = [],
 			Int2 = []
+	)
 	).
 
-			
 			
 
 
@@ -1362,23 +1373,24 @@ string__format_string_to_ints( [A|As], Bs, Int1, Int2, Bool) :-
 %
 string__format_int_from_char_list( [], 0).
 string__format_int_from_char_list( [L|Ls], I) :-
-	string__from_char_list( [L|Ls], S),
+	(string__from_char_list( [L|Ls], S),
 	string__to_int( S, I_hack)
 		->
 	I = I_hack
 		;
-	I = 0.
+	I = 0
+	).
 
 
 :- pred string__float_abs(float, float).
 :- mode string__float_abs(in, out) is det.
 string__float_abs(Fin, Fout) :-
-	builtin_float_lt(Fin, 0.0)
+	(builtin_float_lt(Fin, 0.0)
 	->
 		builtin_float_minus(0.0, Fin, Fout)
 	;
 		Fout = Fin
-	.
+	).
 
 
 :- pred string__default_precision_and_width(int).
