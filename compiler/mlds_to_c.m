@@ -759,14 +759,7 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 		% Now output the declaration for this mlds__defn.
 		%
 		mlds_indent(Context, Indent),
-		( { Name = data(_) } ->
-			% XXX for private data and private functions,
-			% we should use "static"
-			io__write_string("extern ")
-		;
-			[]
-		),
-		mlds_output_decl_flags(Flags),
+		mlds_output_decl_flags(Flags, forward_decl, Name),
 		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
 			DefnBody)
 	).
@@ -846,7 +839,7 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 		[]
 	),
 	mlds_indent(Context, Indent),
-	mlds_output_decl_flags(Flags),
+	mlds_output_decl_flags(Flags, definition, Name),
 	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
 			DefnBody).
 
@@ -1646,41 +1639,88 @@ mlds_output_type_suffix(mlds__rtti_type(_)) --> [].
 % Code to output declaration specifiers
 %
 
-:- pred mlds_output_decl_flags(mlds__decl_flags, io__state, io__state).
-:- mode mlds_output_decl_flags(in, di, uo) is det.
+:- type decl_or_defn
+	--->	forward_decl
+	;	definition.
 
-mlds_output_decl_flags(Flags) -->
-	mlds_output_access(access(Flags)),
-	mlds_output_per_instance(per_instance(Flags)),
+:- pred mlds_output_decl_flags(mlds__decl_flags, decl_or_defn,
+		mlds__entity_name, io__state, io__state).
+:- mode mlds_output_decl_flags(in, in, in, di, uo) is det.
+
+mlds_output_decl_flags(Flags, DeclOrDefn, Name) -->
+	%
+	% mlds_output_extern_or_static handles both the
+	% `access' and the `per_instance' fields of the mlds__decl_flags.
+	% We have to handle them together because C overloads `static'
+	% to mean both `private' and `one_copy', rather than having
+	% separate keywords for each.  To make it clear which MLDS
+	% construct each `static' keyword means, we precede the `static'
+	% without (optionally-enabled) comments saying whether it is
+	% `private', `one_copy', or both.
+	%
+	mlds_output_access_comment(access(Flags)),
+	mlds_output_per_instance_comment(per_instance(Flags)),
+	mlds_output_extern_or_static(access(Flags), per_instance(Flags),
+		DeclOrDefn, Name),
 	mlds_output_virtuality(virtuality(Flags)),
 	mlds_output_finality(finality(Flags)),
 	mlds_output_constness(constness(Flags)),
 	mlds_output_abstractness(abstractness(Flags)).
 
-:- pred mlds_output_access(access, io__state, io__state).
-:- mode mlds_output_access(in, di, uo) is det.
+:- pred mlds_output_access_comment(access, io__state, io__state).
+:- mode mlds_output_access_comment(in, di, uo) is det.
 
-mlds_output_access(Access) -->
+mlds_output_access_comment(Access) -->
 	globals__io_lookup_bool_option(auto_comments, Comments),
 	( { Comments = yes } ->
-		mlds_output_access_2(Access)
+		mlds_output_access_comment_2(Access)
 	;
 		[]
 	).
 
-:- pred mlds_output_access_2(access, io__state, io__state).
-:- mode mlds_output_access_2(in, di, uo) is det.
+:- pred mlds_output_access_comment_2(access, io__state, io__state).
+:- mode mlds_output_access_comment_2(in, di, uo) is det.
 
-mlds_output_access_2(public)    --> [].
-mlds_output_access_2(private)   --> io__write_string("/* private: */ ").
-mlds_output_access_2(protected) --> io__write_string("/* protected: */ ").
-mlds_output_access_2(default)   --> io__write_string("/* default access */ ").
+mlds_output_access_comment_2(public)    --> [].
+mlds_output_access_comment_2(private)   --> io__write_string("/* private: */ ").
+mlds_output_access_comment_2(protected) --> io__write_string("/* protected: */ ").
+mlds_output_access_comment_2(default)   --> io__write_string("/* default access */ ").
 
-:- pred mlds_output_per_instance(per_instance, io__state, io__state).
-:- mode mlds_output_per_instance(in, di, uo) is det.
+:- pred mlds_output_per_instance_comment(per_instance, io__state, io__state).
+:- mode mlds_output_per_instance_comment(in, di, uo) is det.
 
-mlds_output_per_instance(one_copy)     --> io__write_string("static ").
-mlds_output_per_instance(per_instance) --> [].
+mlds_output_per_instance_comment(PerInstance) -->
+	globals__io_lookup_bool_option(auto_comments, Comments),
+	( { Comments = yes } ->
+		mlds_output_per_instance_comment_2(PerInstance)
+	;
+		[]
+	).
+
+:- pred mlds_output_per_instance_comment_2(per_instance, io__state, io__state).
+:- mode mlds_output_per_instance_comment_2(in, di, uo) is det.
+
+mlds_output_per_instance_comment_2(per_instance) --> [].
+mlds_output_per_instance_comment_2(one_copy)     --> io__write_string("/* one_copy */ ").
+
+:- pred mlds_output_extern_or_static(access, per_instance, decl_or_defn,
+		mlds__entity_name, io__state, io__state).
+:- mode mlds_output_extern_or_static(in, in, in, in, di, uo) is det.
+
+mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name) -->
+	(
+		{ Access = private ; PerInstance = one_copy },
+		{ Name \= type(_, _) }
+	->
+		io__write_string("static ")
+	;
+		{ DeclOrDefn = forward_decl },
+		{ Name = data(_) }
+	->
+		io__write_string("extern ")
+	;
+		[]
+	).
 
 :- pred mlds_output_virtuality(virtuality, io__state, io__state).
 :- mode mlds_output_virtuality(in, di, uo) is det.

@@ -1091,8 +1091,15 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		%
 		% Generate a local static constant for this float
 		%
-		ml_gen_info_new_conv_var(SequenceNum),
-		{ string__format("float_%d", [i(SequenceNum)], ConstName) },
+		ml_gen_info_new_const(SequenceNum),
+		=(MLDSGenInfo),
+		{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+		{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+		{ pred_id_to_int(PredId, PredIdNum) },
+		{ proc_id_to_int(ProcId, ProcIdNum) },
+		{ string__format("float_%d_%d_%d",
+			[i(PredIdNum), i(ProcIdNum), i(SequenceNum)],
+			ConstName) },
 		{ Initializer = init_obj(Rval) },
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, Type,
 			Initializer, Context) },
@@ -1124,16 +1131,41 @@ ml_gen_static_const_arg_list([], [_|_], _) -->
 	{ error("ml_gen_static_const_arg_list: length mismatch") }.
 
 	% Generate the name of the local static constant
-	% for a given variable.
+	% for a given variable.  To ensure that the names
+	% are unique, we qualify them with the pred_id and
+	% proc_id numbers, as well as a sequence number.
+	% This is needed to allow ml_elim_nested.m to hoist
+	% such constants out to top level.
 	%
 :- pred ml_gen_static_const_name(prog_var, mlds__var_name,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_static_const_name(in, out, in, out) is det.
 ml_gen_static_const_name(Var, ConstName) -->
+	ml_gen_info_new_const(SequenceNum),
+	ml_gen_info_set_const_num(Var, SequenceNum),
+	ml_format_static_const_name(Var, SequenceNum, ConstName).
+
+:- pred ml_lookup_static_const_name(prog_var, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_lookup_static_const_name(in, out, in, out) is det.
+ml_lookup_static_const_name(Var, ConstName) -->
+	ml_gen_info_lookup_const_num(Var, SequenceNum),
+	ml_format_static_const_name(Var, SequenceNum, ConstName).
+
+:- pred ml_format_static_const_name(prog_var, const_seq, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_format_static_const_name(in, in, out, in, out) is det.
+
+ml_format_static_const_name(Var, SequenceNum, ConstName) -->
 	=(MLDSGenInfo),
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ pred_id_to_int(PredId, PredIdNum) },
+	{ proc_id_to_int(ProcId, ProcIdNum) },
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ VarName = ml_gen_var_name(VarSet, Var) },
-	{ string__format("const_%s", [s(VarName)], ConstName) }.
+	{ string__format("const_%d_%d_%d_%s", [i(PredIdNum), i(ProcIdNum),
+		i(SequenceNum), s(VarName)], ConstName) }.
 
 	% Generate an rval containing the address of the local static constant
 	% for a given variable.
@@ -1142,7 +1174,7 @@ ml_gen_static_const_name(Var, ConstName) -->
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_static_const_addr(in, out, in, out) is det.
 ml_gen_static_const_addr(Var, ConstAddrRval) -->
-	ml_gen_static_const_name(Var, ConstName),
+	ml_lookup_static_const_name(Var, ConstName),
 	ml_qualify_var(ConstName, ConstLval),
 	{ ConstAddrRval = mem_addr(ConstLval) }.
 
@@ -1158,20 +1190,6 @@ ml_gen_static_const_defn(ConstName, ConstType, Initializer, Context) =
 	DeclFlags = ml_static_const_decl_flags,
 	MLDS_Context = mlds__make_context(Context),
 	MLDS_Defn = mlds__defn(Name, MLDS_Context, DeclFlags, Defn).
-
-	% Return the declaration flags appropriate for an
-	% initialized local static constant.
-	%
-:- func ml_static_const_decl_flags = mlds__decl_flags.
-ml_static_const_decl_flags = MLDS_DeclFlags :-
-	Access = private,
-	PerInstance = one_copy,
-	Virtuality = non_virtual,
-	Finality = overridable,
-	Constness = const,
-	Abstractness = concrete,
-	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-		Virtuality, Finality, Constness, Abstractness).
 
 :- pred ml_cons_name(cons_id, ctor_name, ml_gen_info, ml_gen_info).
 :- mode ml_cons_name(in, out, in, out) is det.

@@ -83,6 +83,25 @@
 % means that in the situation described by [situation],
 % for the the specified [construct] we will generate the specified [code].
 
+% There is one other important thing which can be considered part of the
+% calling convention for the code that we generate for each goal.
+% If static ground term optimization is enabled, then for the terms
+% marked as static by mark_static_terms.m, we will generate static consts.
+% These static consts can refer to other static consts defined earlier.
+% We need to be careful about the scopes of variables to ensure that
+% for any term that mark_static_terms.m marks as static, the C constants
+% representing the arguments of that term are in scope at the point
+% where that term is constructed.  Basically this means that
+% all the static consts generated inside a goal must be hoist out to
+% the top level scope for that goal, except for goal types where
+% goal_expr_mark_static_terms (in mark_static_terms.m) returns the
+% same static_info unchanged, i.e. branched goals and negations.
+%
+% Handling static constants also requires that the calls to ml_gen_goal
+% for each subgoal must be done in the right order, so that the
+% const_num_map in the ml_gen_info holds the right sequence numbers
+% for the constants in scope.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for wrapping goals
@@ -106,12 +125,10 @@
 %	semi goal in nondet context:
 %		<Goal && SUCCEED()>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
-%	}
 
 %-----------------------------------------------------------------------------%
 %
@@ -244,6 +261,10 @@
 %			<Goal && success()>
 %		}
 
+% Note that for all of these versions, we must hoist any static declarations
+% generated for <Goal> out to the top level; this is needed so that such
+% declarations remain in scope for any following goals.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for empty conjunctions (`true')
@@ -289,12 +310,12 @@
 %		<Goals>
 
 % If the first goal is model_semidet, then there are two cases:
-% if the disj as a whole is semidet, things are simple, and
-% if the disj as a whole is model_non, then we do the same as
+% if the conj as a whole is semidet, things are simple, and
+% if the conj as a whole is model_non, then we do the same as
 % for the semidet case, except that we also (ought to) declare
 % a local `succeeded' variable.
 %
-%	model_semi Goal in model_semi disj:
+%	model_semi Goal in model_semi conj:
 %		<succeeded = (Goal, Goals)>
 % 	===>
 %		<succeeded = Goal>;
@@ -302,17 +323,22 @@
 %			<Goals>;
 %		}
 %
-%	model_semi Goal in model_non disj:
+%	model_semi Goal in model_non conj:
 %		<Goal && Goals>
 % 	===>
-%	{
 %		bool succeeded;
 %
 %		<succeeded = Goal>;
 %		if (succeeded) {
 %			<Goals>;
 %		}
-%	}
+%
+% The actual code generation scheme we use is slightly
+% different to that: we hoist any declarations generated
+% for <Goals> to the outer scope, rather than keeping
+% them inside the `if', so that they remain in
+% scope for any later goals which follow this.
+% This is needed for declarations of static consts.
 
 % For model_non goals, there are a couple of different
 % ways that we could generate code, depending on whether
@@ -325,7 +351,6 @@
 %	model_non Goal (optimized for readability)
 %		<Goal, Goals>
 % 	===>
-%	{
 %		entry_func() {
 %			<Goal && succ_func()>;
 %		}
@@ -334,7 +359,6 @@
 %		}
 %
 %		entry_func();
-%	}
 %
 % The more efficient method generates the goals in
 % reverse order, so it's less readable, but it has fewer
@@ -344,13 +368,11 @@
 %	model_non Goal (optimized for efficiency):
 %		<Goal, Goals>
 % 	===>
-%	{
 %		succ_func() {
 %			<Goals && SUCCEED()>;
 %		}
 %
 %		<Goal && succ_func()>;
-%	}
 %
 % The more efficient method is the one we actually use.
 %
@@ -360,7 +382,6 @@
 %	model_non goals (optimized for readability):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label0_func() {
 %			<Goal1 && label1_func()>;
 %		}
@@ -375,12 +396,10 @@
 %		}
 %
 %		label0_func();
-%	}
 %
 %	model_non goals (optimized for efficiency):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label1_func() {
 %			label2_func() {
 %				label3_func() {
@@ -391,7 +410,6 @@
 %			<Goal2 && label2_func()>;
 %		}
 %		<Goal1 && label1_func()>;
-%	}
 %
 % Note that it might actually make more sense to generate
 % conjunctions of nondet goals like this:
@@ -399,7 +417,6 @@
 %	model_non goals (optimized for efficiency, alternative version):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label3_func() {
 %			<Goals && SUCCEED()>;
 %		}
@@ -411,13 +428,21 @@
 %		}
 %
 %		<Goal1 && label1_func()>;
-%	}
 %
 % This would avoid the undesirable deep nesting that we sometimes get
 % with our current scheme.  However, if we're eliminating nested
 % functions, as is normally the case, then after the ml_elim_nested
 % transformation all the functions and variables have been hoisted
 % to the top level, so there is no difference between these two.
+%
+% As with semidet conjunctions, we hoist declarations
+% out so that they remain in scope for any following goals.
+% This is needed for declarations of static consts.
+% However, we want to keep the declarations of non-static
+% variables local, since accessing local variables is more
+% efficient that accessing variables in the environment
+% from a nested function.  So we only hoist declarations
+% of static constants.
 
 %-----------------------------------------------------------------------------%
 %
@@ -450,32 +475,27 @@
 %	model_semi Goal:
 %		<do (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>;
 %		if (!succeeded) {
 %			<do Goals>;
 %		}
-%	}
 
 % model_semi disj:
 
 %	model_det Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %
 %		<do Goal>
 %		succeeded = TRUE
 %		/* <Goals> will never be reached */
-%	}
 
 %	model_semi Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %
 %		<succeeded = Goal>;
@@ -495,13 +515,11 @@
 %	model_semi Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
 %		<Goals && SUCCEED()>
-%	}
 %
 %	model_non Goal:
 %		<(Goal ; Goals) && SUCCEED()>
@@ -517,7 +535,6 @@
 %	model_semi Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Cond>
@@ -526,7 +543,6 @@
 %		} else {
 %			<Else>
 %		}
-%	}
 
 %	/*
 %	** XXX The following transformation does not do as good a job of GC
@@ -538,7 +554,6 @@
 %	model_non Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%	{
 %		bool cond_<N>;
 %
 %		void then_func() {
@@ -551,7 +566,10 @@
 %		if (!cond_<N>) {
 %			<Else>
 %		}
-%	}
+%	except that we hoist any declarations generated
+%	for <Cond> to the top of the scope, so that they
+%	are in scope for the <Then> goal
+%	(this is needed for declarations of static consts)
 
 %-----------------------------------------------------------------------------%
 %
@@ -561,12 +579,10 @@
 % model_det negation
 %		<not(Goal)>
 %	===>
-%	{
 %		bool succeeded;
 %		<succeeded = Goal>
 %		/* now ignore the value of succeeded,
 %		   which we know will be FALSE */
-%	}
 
 % model_semi negation, model_det Goal:
 %		<succeeded = not(Goal)>
@@ -1349,12 +1365,10 @@ ml_gen_wrap_goal(model_non, model_semi, Context,
 	% semi goal in nondet context:
 	%	<Goal && SUCCEED()>
 	% ===>
-	% {
 	%	bool succeeded;
 	%
 	%	<succeeded = Goal>
 	%	if (succeeded) SUCCEED()
-	% }
 	%
 	ml_gen_test_success(Succeeded),
 	ml_gen_call_current_success_cont(Context, CallCont),
@@ -1383,6 +1397,7 @@ ml_gen_wrap_goal(model_semi, model_non, _, _, _) -->
 ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
+	{ goal_info_get_context(GoalInfo, GoalContext) },
 
 	( { GoalCodeModel = model_non, CodeModel = model_semi } ->
 
@@ -1434,7 +1449,13 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
 			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_goal(model_non, Goal, GoalDecls, GoalStatements),
+		% hoist any static constant declarations for Goal
+		% out to the top level
+		{ list__filter(ml_decl_is_static_const, GoalDecls,
+			GoalStaticDecls, GoalOtherDecls) },
+		{ GoalStatement = ml_gen_block(GoalOtherDecls,
+			GoalStatements, GoalContext) },
 		ml_gen_info_pop_success_cont,
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
 		ml_gen_set_success(const(true), Context, SetSuccessTrue),
@@ -1446,7 +1467,8 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Decls = list__append([CommitRefDecl,
+			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
 		{ MLDS_Statements = [TryCommitStatement] },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
@@ -1496,7 +1518,13 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
 			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_goal(model_non, Goal, GoalDecls, GoalStatements),
+		% hoist any static constant declarations for Goal
+		% out to the top level
+		{ list__filter(ml_decl_is_static_const, GoalDecls,
+			GoalStaticDecls, GoalOtherDecls) },
+		{ GoalStatement = ml_gen_block(GoalOtherDecls,
+			GoalStatements, GoalContext) },
 		ml_gen_info_pop_success_cont,
 
 		{ TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
@@ -1504,7 +1532,8 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Decls = list__append([CommitRefDecl,
+			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
 		{ MLDS_Statements = [TryCommitStatement] },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
@@ -2506,7 +2535,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_semi cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%	{
 		%		bool succeeded;
 		%	
 		%		<succeeded = Cond>
@@ -2515,7 +2543,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%		} else {
 		%			<Else>
 		%		}
-		%	}
 		{ CondCodeModel = model_semi },
 		ml_gen_goal(model_semi, Cond, CondDecls, CondStatements),
 		ml_gen_test_success(Succeeded),
@@ -2541,7 +2568,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_non cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%	{
 		%		bool cond_<N>;
 		%
 		%		void then_func() {
@@ -2554,17 +2580,33 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%		if (!cond_<N>) {
 		%			<Else>
 		%		}
-		%	}
+		%	except that we hoist any declarations generated
+		%	for <Cond> to the top of the scope, so that they
+		%	are in scope for the <Then> goal
+		%	(this is needed for declarations of static consts)
+
 
 		{ CondCodeModel = model_non },
 
-		% generate the `cond_<N>' var
+		% generate the `cond_<N>' var and the code to initialize it to false
 		ml_gen_info_new_cond_var(CondVar),
 		{ MLDS_Context = mlds__make_context(Context) },
 		{ CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context) },
+		ml_gen_set_cond_var(CondVar, const(false), Context,
+			SetCondFalse),
+
+		% allocate a name for the `then_func'
+		ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval),
+
+		% generate <Cond && then_func()>
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval,
+			[], []) },
+		ml_gen_info_push_success_cont(SuccessCont),
+		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
+		ml_gen_info_pop_success_cont,
 
 		% generate the `then_func'
-		ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval),
 		/* push nesting level */
 		{ Then = _ - ThenGoalInfo },
 		{ goal_info_get_context(ThenGoalInfo, ThenContext) },
@@ -2577,15 +2619,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		ml_gen_nondet_label_func(ThenFuncLabel, ThenContext,
 			ThenFuncBody, ThenFunc),
 
-		% generate the main body
-		ml_gen_set_cond_var(CondVar, const(false), Context,
-			SetCondFalse),
-		ml_get_env_ptr(EnvPtrRval),
-		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval,
-			[], []) },
-		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
-		ml_gen_info_pop_success_cont,
+		% generate `if (!cond_<N>) { <Else> }'
 		ml_gen_test_cond_var(CondVar, CondSucceeded),
 		ml_gen_goal(CodeModel, Else, ElseStatement),
 		{ IfStmt = if_then_else(unop(std_unop(not), CondSucceeded),
@@ -2593,7 +2627,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		{ IfStatement = mlds__statement(IfStmt, MLDS_Context) },
 
 		% package it all up in the right order
-		{ MLDS_Decls = [CondVarDecl, ThenFunc | CondDecls] },
+		{ MLDS_Decls = list__append([CondVarDecl | CondDecls], [ThenFunc]) },
 		{ MLDS_Statements = list__append(
 			[SetCondFalse | CondStatements], [IfStatement]) }
 	).

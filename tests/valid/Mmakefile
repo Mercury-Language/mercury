@@ -130,6 +130,7 @@ OTHER_SOURCES= \
 	soln_context.m \
 	some_switch.m \
 	stack_alloc.m \
+	static.m \
 	subtype_switch.m \
 	switch_detection_bug.m \
 	switch_detection_bug2.m \
