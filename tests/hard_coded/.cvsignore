@@ -59,6 +59,7 @@ reorder_di
 rev_arith
 reverse_arith
 rnd
+rtc_bug
 string_alignment
 string_loop
 test_imported_no_tag
