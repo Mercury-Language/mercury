@@ -438,6 +438,10 @@ Changes to the Mercury implementation:
 
 * The system has been ported to Linux/PPC.
 
+* The system has been ported to work with version b19 of cygwin32
+  (this port has not been tested well, though). 
+  See README.MS-Windows for details.
+
 * We've updated to version 4.12 of the Boehm garbage collector.
 
 * Numerous bug fixes.

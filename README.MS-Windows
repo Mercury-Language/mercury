@@ -17,14 +17,26 @@ PREPARATION
 To use or build Mercury on Windows, you need to first get gnu-win32
 from Cygnus, and install it. 
 
-(If you're going to use a binary distribution of Mercury for Windows,
+If you're going to use a binary distribution of Mercury for Windows,
 you need to make sure that you get a version of gnu-win32 that is
 compatible with the one that the binary distribution was compiled with.
-Currently we suggest using gnu-win32 version b18.)
+For the current binary distributions, that means version b18.
+
+The version of gcc that comes with gnu-win32 version b19 (and b19.1),
+called `gcc 2.7-b19', has a bug which causes it to generate incorrect
+code when compiling Mercury.  So if you want to use gnu-win32 version b19,
+then you need to also install a version of gcc that has this bug fixed,
+such as egcs version 1.0.2 or later.  Note that Mercury has not yet
+been tested properly with b19, so currently we recommend using b18.
 
 You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
+You can download a binary distribution of egcs 1.0.2 for gnu-win32
+from <http://www.xraylith.wisc.edu/~khan/software/gnu-win32/>
+or <ftp://ftp.xraylith.wisc.edu/pub/khan/gnu-win32/cygwin32/releases/>.
 
-Once you have installed gnu-win32, check that `bash' and `gcc' work. 
+Once you have installed gnu-win32 and (for b19) egcs, check that
+`bash' and `gcc' work.   Make sure that `gcc --version' does not
+report `2.7-b19'.
 
 For more information on gnu-win32, see <ftp://ftp.cygnus.com/pub/gnu-win32>
 or <http://www.cygnus.com/misc/gnu-win32/>.

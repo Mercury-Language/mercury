@@ -606,10 +606,22 @@
 #   endif
 #   ifdef CYGWIN32
 #       define OS_TYPE "CYGWIN32"
-        extern int _bss_start__;
-#       define DATASTART       ((ptr_t)&_bss_start__)
+        extern int _data_start__;
         extern int _data_end__;
-#       define DATAEND          ((ptr_t)&_data_end__)
+        extern int _bss_start__;
+        extern int _bss_end__;
+	/* For binutils 2.9.1, we have			*/
+	/*	DATASTART   = _data_start__		*/
+	/*	DATAEND	    = _bss_end__		*/
+	/* whereas for some earlier versions it was	*/
+	/*	DATASTART   = _bss_start__		*/
+	/*	DATAEND	    = _data_end__		*/
+	/* To get it right for both, we take the	*/
+	/* minumum/maximum of the two.			*/
+#   	define MAX(x,y) ((x) > (y) ? (x) : (y))
+#   	define MIN(x,y) ((x) < (y) ? (x) : (y))
+#       define DATASTART ((ptr_t) MIN(_data_start__, _bss_start__))
+#       define DATAEND	 ((ptr_t) MAX(_data_end__, _bss_end__))
 #	undef STACK_GRAN
 #       define STACK_GRAN 0x10000
 #       define HEURISTIC1
