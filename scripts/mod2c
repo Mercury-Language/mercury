@@ -25,9 +25,16 @@ sub printlines {
 $decl = $code = $init = $special_init = $gnudecl = $gnuinit = "";
 $in_module = $in_code = 0;
 
-shift;
 unshift(@ARGV, '-') if $#ARGV < $[;
+FILE:
 while ($ARGV = shift) {
+  if ($ARGV eq "-s") {
+    shift;
+    next FILE;
+  }
+  if ($ARGV =~ /^-s/) {
+    next FILE;
+  }
   open(F, $ARGV) || die "mod2c: can't open input file `$ARGV': $!\n";
   LINE:
   while (<F>) {
