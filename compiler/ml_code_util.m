@@ -1255,19 +1255,23 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-			_PredInfo, ProcInfo),
+			PredInfo, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	map__from_corresponding_lists(HeadVars, ArgTypes, HeadVarTypes),
 	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
-		VarTypes),
+		HeadVarTypes, VarTypes),
+
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
 	CondVarCounter = 0,
 	ConvVarCounter = 0,
 	stack__init(SuccContStack),
 	ExtraDefns = [],
+
 	MLDSGenInfo = ml_gen_info(
 			ModuleInfo,
 			PredId,
@@ -1342,20 +1346,34 @@ ml_gen_info_get_extra_defns(Info, Info^extra_defns).
 	% an output mode.
 	%
 :- func select_output_vars(module_info, list(prog_var), list(mode),
-		map(prog_var, prog_type)) = list(prog_var).
+		vartypes, vartypes) = list(prog_var).
 
-select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
+select_output_vars(ModuleInfo, HeadVars, HeadModes, HeadVarTypes, VarTypes)
+		= OutputVars :-
 	( HeadVars = [], HeadModes = [] ->
 		OutputVars = []
 	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
-		map__lookup(VarTypes, Var, Type),
-		( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
+		map__lookup(VarTypes, Var, VarType),
+		map__lookup(HeadVarTypes, Var, HeadType),
+		(
+			\+ mode_to_arg_mode(ModuleInfo, Mode, VarType, top_in),
+			%
+			% if this argument is an existentially typed output
+			% that we need to box, then don't include it in the
+			% output_vars; ml_gen_box_existential_outputs
+			% will handle these outputs separately.
+			%
+			\+ (
+				HeadType = term__variable(_),
+				VarType = term__functor(_, _, _)
+			)
+		->
 			OutputVars1 = select_output_vars(ModuleInfo,
-					Vars, Modes, VarTypes),
+					Vars, Modes, HeadVarTypes, VarTypes),
 			OutputVars = [Var | OutputVars1]
 		;
 			OutputVars = select_output_vars(ModuleInfo,
-					Vars, Modes, VarTypes)
+					Vars, Modes, HeadVarTypes, VarTypes)
 		)
 	;
 		error("select_output_vars: length mismatch")
