@@ -311,7 +311,8 @@ case $HOST in murlibobo)
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
 	rm -f mercury-latest-unstable/* &&
-	mv mercury-$version.tar.gz mercury-latest-unstable
+	mv mercury-$version.tar.gz mercury-latest-unstable &&
+	mv mercury-$version-extras.tar.gz mercury-latest-unstable
 	} || status=1
 	;;
 esac
@@ -388,8 +389,12 @@ case $status in
 	    rm -f mercury-latest-stable/* &&
 	    ln mercury-latest-unstable/mercury-$version.tar.gz \
 	        mercury-latest-stable/mercury-$version.tar.gz &&
+	    ln mercury-latest-unstable/mercury-$version-extras.tar.gz
+	        mercury-latest-stable/mercury-$version-extras.tar.gz &&
 	    rm -f /home/tsa/ftp/pub/mercury/beta-releases/mercury-rotd-*.tar.gz
 	    cp mercury-latest-stable/mercury-$version.tar.gz \
+	        /home/tsa/ftp/pub/mercury/beta-releases
+	    cp mercury-latest-stable/mercury-$version-extras.tar.gz \
 	        /home/tsa/ftp/pub/mercury/beta-releases
 	    ;;
 	esac
