@@ -10,6 +10,7 @@ PROGS=	\
 	infinite_recursion \
 	missing_if \
 	pragma_source_file \
+	simple_code \
 	singleton_test \
 	unused_args_test \
 	unused_import
