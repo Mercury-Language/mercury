@@ -4,14 +4,19 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Definitions of data structures for representing run-time type information
-% within the compiler, and code to output them.
+% This module contains code to output the RTTI data structures
+% defined in rtti.m as C code.
 %
-% Eventually, this module will be independent of whether we are compiling
-% to LLDS or MLDS. For the time being, it depends on LLDS.
+% This module is part of the LLDS back-end.  The decl_set data type
+% that it uses, which is defined in llds_out.m, represents a set of LLDS
+% declarations, and thus depends on the LLDS.  Also the code to output
+% code_addrs depends on the LLDS.
 %
-% Author: zs.
-
+% The MLDS back-end does not use this module; instead it converts the RTTI
+% data structures to MLDS (and then to C or Java, etc.).
+%
+% Main author: zs.
+%
 %-----------------------------------------------------------------------------%
 
 :- module rtti_out.
@@ -50,12 +55,6 @@
 	% The bool should be `yes' iff it is for a definition.
 :- pred output_rtti_addr_storage_type_name(rtti_type_id::in, rtti_name::in,
 	bool::in, io__state::di, io__state::uo) is det.
-
-	% convert a rtti_data to an rtti_type_id and an rtti_name.
-	% This calls error/1 if the argument is a type_var/1 rtti_data,
-	% since there is no rtti_type_id to return in that case.
-:- pred rtti_data_to_name(rtti_data::in, rtti_type_id::out, rtti_name::out)
-	is det.
 
         % Return true iff the given type of RTTI data structure includes
 	% code addresses.
@@ -468,43 +467,6 @@ output_rtti_data_decl(RttiData, DeclSet0, DeclSet) -->
 			DeclSet0, DeclSet)
 	).
 
-rtti_data_to_name(exist_locns(RttiTypeId, Ordinal, _),
-	RttiTypeId, exist_locns(Ordinal)).
-rtti_data_to_name(exist_info(RttiTypeId, Ordinal, _, _, _, _),
-	RttiTypeId, exist_info(Ordinal)).
-rtti_data_to_name(field_names(RttiTypeId, Ordinal, _),
-	RttiTypeId, field_names(Ordinal)).
-rtti_data_to_name(field_types(RttiTypeId, Ordinal, _),
-	RttiTypeId, field_types(Ordinal)).
-rtti_data_to_name(enum_functor_desc(RttiTypeId, _, Ordinal),
-	RttiTypeId, enum_functor_desc(Ordinal)).
-rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _),
-	RttiTypeId, notag_functor_desc).
-rtti_data_to_name(du_functor_desc(RttiTypeId, _,_,_,_, Ordinal, _,_,_,_,_),
-	RttiTypeId, du_functor_desc(Ordinal)).
-rtti_data_to_name(enum_name_ordered_table(RttiTypeId, _),
-	RttiTypeId, enum_name_ordered_table).
-rtti_data_to_name(enum_value_ordered_table(RttiTypeId, _),
-	RttiTypeId, enum_value_ordered_table).
-rtti_data_to_name(du_name_ordered_table(RttiTypeId, _),
-	RttiTypeId, du_name_ordered_table).
-rtti_data_to_name(du_stag_ordered_table(RttiTypeId, Ptag, _),
-	RttiTypeId, du_stag_ordered_table(Ptag)).
-rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
-	RttiTypeId, du_ptag_ordered_table).
-rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
-	RttiTypeId, type_ctor_info).
-rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
-		pseudo_type_info(PseudoTypeInfo)) :-
-	RttiTypeId = pti_get_rtti_type_id(PseudoTypeInfo).
-
-:- func pti_get_rtti_type_id(pseudo_type_info) = rtti_type_id.
-pti_get_rtti_type_id(type_ctor_info(RttiTypeId)) = RttiTypeId.
-pti_get_rtti_type_id(type_info(RttiTypeId, _)) = RttiTypeId.
-pti_get_rtti_type_id(higher_order_type_info(RttiTypeId, _, _)) = RttiTypeId.
-pti_get_rtti_type_id(type_var(_)) = _ :-
-	error("rtti_data_to_name: type_var").
-
 %-----------------------------------------------------------------------------%
 
 :- pred output_generic_rtti_data_decl(rtti_type_id::in, rtti_name::in,
@@ -857,27 +819,11 @@ pseudo_type_info_would_incl_code_addr(type_ctor_info(_))		= yes.
 pseudo_type_info_would_incl_code_addr(type_info(_, _))			= no.
 pseudo_type_info_would_incl_code_addr(higher_order_type_info(_, _, _))	= no.
 
-rtti_name_linkage(exist_locns(_),            static).
-rtti_name_linkage(exist_info(_),             static).
-rtti_name_linkage(field_names(_),            static).
-rtti_name_linkage(field_types(_),            static).
-rtti_name_linkage(enum_functor_desc(_),      static).
-rtti_name_linkage(notag_functor_desc,        static).
-rtti_name_linkage(du_functor_desc(_),        static).
-rtti_name_linkage(enum_name_ordered_table,   static).
-rtti_name_linkage(enum_value_ordered_table,  static).
-rtti_name_linkage(du_name_ordered_table,     static).
-rtti_name_linkage(du_stag_ordered_table(_),  static).
-rtti_name_linkage(du_ptag_ordered_table,     static).
-rtti_name_linkage(type_ctor_info,            extern).
-rtti_name_linkage(pseudo_type_info(Pseudo),  pseudo_type_info_linkage(Pseudo)).
-rtti_name_linkage(type_hashcons_pointer,     static).
-
-:- func pseudo_type_info_linkage(pseudo_type_info) = linkage.
-pseudo_type_info_linkage(type_var(_))				= static.
-pseudo_type_info_linkage(type_ctor_info(_))			= extern.
-pseudo_type_info_linkage(type_info(_, _))			= static.
-pseudo_type_info_linkage(higher_order_type_info(_, _, _))	= static.
+rtti_name_linkage(RttiName, Linkage) :-
+	Exported = rtti_name_is_exported(RttiName),
+	( Exported = yes, Linkage = extern
+	; Exported = no, Linkage = static
+        ).
 
 rtti_name_c_type(exist_locns(_),           "MR_DuExistLocn", "[]").
 rtti_name_c_type(exist_info(_),            "MR_DuExistInfo", "").

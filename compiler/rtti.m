@@ -24,6 +24,7 @@
 
 :- interface.
 
+:- import_module llds.	% XXX for code_model
 :- import_module hlds_module, hlds_pred.
 :- import_module prog_data, pseudo_type_info.
 
@@ -317,6 +318,16 @@
 	;	pseudo_type_info(pseudo_type_info)
 	;	type_hashcons_pointer.
 
+	% convert a rtti_data to an rtti_type_id and an rtti_name.
+	% This calls error/1 if the argument is a type_var/1 rtti_data,
+	% since there is no rtti_type_id to return in that case.
+:- pred rtti_data_to_name(rtti_data::in, rtti_type_id::out, rtti_name::out)
+	is det.
+
+	% return yes iff the specified rtti_name should be exported
+	% for use by other modules.
+:- func rtti_name_is_exported(rtti_name) = bool.
+
 	% The rtti_proc_label type holds all the information about a procedure
 	% that we need to compute the entry label for that procedure
 	% in the target language (the llds__code_addr or mlds__code_addr).
@@ -330,6 +341,10 @@
 			arg_types		::	list(type),
 			pred_id			::	pred_id,
 			proc_id			::	proc_id,
+			proc_varset		::	prog_varset,
+			proc_headvars		::	list(prog_var),
+			proc_arg_modes		::	list(arg_mode),
+			proc_interface_code_model ::	code_model,
 			%
 			% The following booleans hold values computed from the
 			% pred_info, using procedures
@@ -354,42 +369,104 @@
 		).
 
 	% Construct an rtti_proc_label for a given procedure.
-
 :- func rtti__make_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
 
 	% Return the C variable name of the RTTI data structure identified
 	% by the input arguments.
 	% XXX this should be in rtti_out.m
-
 :- pred rtti__addr_to_string(rtti_type_id::in, rtti_name::in, string::out)
 	is det.
 
 	% Return the C representation of a secondary tag location.
 	% XXX this should be in rtti_out.m
-
 :- pred rtti__sectag_locn_to_string(sectag_locn::in, string::out) is det.
 
 	% Return the C representation of a type_ctor_rep value.
 	% XXX this should be in rtti_out.m
-
 :- pred rtti__type_ctor_rep_to_string(type_ctor_rep::in, string::out) is det.
 
 :- implementation.
 
-:- import_module code_util.	% for code_util__compiler_defined
+:- import_module code_util.	% for code_util__compiler_generated
 :- import_module llds_out.	% for name_mangle and sym_name_mangle
-:- import_module hlds_data, type_util.
+:- import_module hlds_data, type_util, mode_util.
 
 :- import_module string, require.
 
+rtti_data_to_name(exist_locns(RttiTypeId, Ordinal, _),
+	RttiTypeId, exist_locns(Ordinal)).
+rtti_data_to_name(exist_info(RttiTypeId, Ordinal, _, _, _, _),
+	RttiTypeId, exist_info(Ordinal)).
+rtti_data_to_name(field_names(RttiTypeId, Ordinal, _),
+	RttiTypeId, field_names(Ordinal)).
+rtti_data_to_name(field_types(RttiTypeId, Ordinal, _),
+	RttiTypeId, field_types(Ordinal)).
+rtti_data_to_name(enum_functor_desc(RttiTypeId, _, Ordinal),
+	RttiTypeId, enum_functor_desc(Ordinal)).
+rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _),
+	RttiTypeId, notag_functor_desc).
+rtti_data_to_name(du_functor_desc(RttiTypeId, _,_,_,_, Ordinal, _,_,_,_,_),
+	RttiTypeId, du_functor_desc(Ordinal)).
+rtti_data_to_name(enum_name_ordered_table(RttiTypeId, _),
+	RttiTypeId, enum_name_ordered_table).
+rtti_data_to_name(enum_value_ordered_table(RttiTypeId, _),
+	RttiTypeId, enum_value_ordered_table).
+rtti_data_to_name(du_name_ordered_table(RttiTypeId, _),
+	RttiTypeId, du_name_ordered_table).
+rtti_data_to_name(du_stag_ordered_table(RttiTypeId, Ptag, _),
+	RttiTypeId, du_stag_ordered_table(Ptag)).
+rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
+	RttiTypeId, du_ptag_ordered_table).
+rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
+	RttiTypeId, type_ctor_info).
+rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
+		pseudo_type_info(PseudoTypeInfo)) :-
+	RttiTypeId = pti_get_rtti_type_id(PseudoTypeInfo).
+
+:- func pti_get_rtti_type_id(pseudo_type_info) = rtti_type_id.
+pti_get_rtti_type_id(type_ctor_info(RttiTypeId)) = RttiTypeId.
+pti_get_rtti_type_id(type_info(RttiTypeId, _)) = RttiTypeId.
+pti_get_rtti_type_id(higher_order_type_info(RttiTypeId, _, _)) = RttiTypeId.
+pti_get_rtti_type_id(type_var(_)) = _ :-
+	error("rtti_data_to_name: type_var").
+
+rtti_name_is_exported(exist_locns(_))		= no.
+rtti_name_is_exported(exist_info(_))            = no.
+rtti_name_is_exported(field_names(_))           = no.
+rtti_name_is_exported(field_types(_))           = no.
+rtti_name_is_exported(enum_functor_desc(_))     = no.
+rtti_name_is_exported(notag_functor_desc)       = no.
+rtti_name_is_exported(du_functor_desc(_))       = no.
+rtti_name_is_exported(enum_name_ordered_table)  = no.
+rtti_name_is_exported(enum_value_ordered_table) = no.
+rtti_name_is_exported(du_name_ordered_table)    = no.
+rtti_name_is_exported(du_stag_ordered_table(_)) = no.
+rtti_name_is_exported(du_ptag_ordered_table)    = no.
+rtti_name_is_exported(type_ctor_info)           = yes.
+rtti_name_is_exported(pseudo_type_info(Pseudo)) =
+	pseudo_type_info_is_exported(Pseudo).
+rtti_name_is_exported(type_hashcons_pointer)    = no.
+
+:- func pseudo_type_info_is_exported(pseudo_type_info) = bool.
+pseudo_type_info_is_exported(type_var(_))			= no.
+pseudo_type_info_is_exported(type_ctor_info(_))			= yes.
+pseudo_type_info_is_exported(type_info(_, _))			= no.
+pseudo_type_info_is_exported(higher_order_type_info(_, _, _))	= no.
+
 rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	module_info_name(ModuleInfo, ThisModule),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
 	pred_info_arg_types(PredInfo, ArgTypes),
+	proc_info_varset(ProcInfo, ProcVarSet),
+	proc_info_headvars(ProcInfo, ProcHeadVars),
+	proc_info_argmodes(ProcInfo, ProcModes),
+	proc_info_interface_code_model(ProcInfo, ProcCodeModel),
+	modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
 	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
@@ -397,6 +474,7 @@ rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 		(code_util__compiler_generated(PredInfo) -> yes ; no),
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, Arity, ArgTypes, PredId, ProcId,
+		ProcVarSet, ProcHeadVars, ProcArgModes, ProcCodeModel,
 		IsImported, IsPseudoImp, IsExported, IsSpecialPredInstance).
 
 rtti__addr_to_string(RttiTypeId, RttiName, Str) :-

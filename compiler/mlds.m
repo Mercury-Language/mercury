@@ -261,7 +261,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, prog_data, builtin_ops.
+:- import_module hlds_pred, hlds_data, prog_data, builtin_ops, rtti.
 
 % To avoid duplication, we use a few things from the LLDS.
 % It would be nice to avoid this dependency...
@@ -380,7 +380,7 @@
 		% constants or variables
 	--->	mlds__data(
 			mlds__type,
-			maybe(mlds__initializer)
+			mlds__initializer
 		)
 		% functions
 	;	mlds__function(
@@ -395,7 +395,12 @@
 			mlds__class_defn
 		).
 
-:- type mlds__initializer == list(mlds__rval).
+:- type mlds__initializer
+	--->	init_obj(mlds__rval)
+	;	init_struct(list(mlds__initializer))
+	;	init_array(list(mlds__initializer))
+	;	no_initializer
+	.
 
 :- type mlds__func_params
 	---> mlds__func_params(
@@ -497,7 +502,9 @@
 		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type
 
-	;	mlds__base_type_info_type.
+	;	mlds__base_type_info_type
+	
+	;	mlds__rtti_type(rtti_name).
 
 :- type mercury_type == prog_data__type.
 
@@ -1005,8 +1012,10 @@ XXX Full exception handling support is not yet implemented.
 			% global constants.  These are called "common"
 			% because they may be common sub-expressions.
 	%
-	% Stuff for handling polymorphism and type classes
+	% Stuff for handling polymorphism and type classes,
+	% and RTTI.
 	%
+	;	rtti(rtti_type_id, rtti_name)
 	;	type_ctor(mlds__base_data, string, arity)
 			% base_data, type name, type arity
 	;	base_typeclass_info(hlds_data__class_id, string)

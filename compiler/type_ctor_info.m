@@ -45,8 +45,8 @@
 :- pred type_ctor_info__generate_hlds(module_info::in, module_info::out)
 	is det.
 
-:- pred type_ctor_info__generate_rtti(module_info::in, module_info::out,
-	list(rtti_data)::out) is det.
+:- pred type_ctor_info__generate_rtti(module_info::in, list(rtti_data)::out)
+	is det.
 
 :- implementation.
 
@@ -145,7 +145,7 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 
 %---------------------------------------------------------------------------%
 
-type_ctor_info__generate_rtti(ModuleInfo, ModuleInfo, Tables) :-
+type_ctor_info__generate_rtti(ModuleInfo, Tables) :-
 	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
 	type_ctor_info__construct_type_ctor_infos(TypeCtorGenInfos,
 		ModuleInfo, [], Dynamic, [], Static0),

@@ -330,8 +330,7 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	EnvVarName = data(var("env")),
 	EnvVarFlags = env_decl_flags,
 	EnvVarType = mlds__class_type(qual(ModuleName, EnvClassName), 0),
-	EnvVarInitializer = no,
-	EnvVarDefnBody = mlds__data(EnvVarType, EnvVarInitializer),
+	EnvVarDefnBody = mlds__data(EnvVarType, no_initializer),
 	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags, EnvVarDefnBody),
 
 	%
@@ -405,8 +404,7 @@ ml_init_env(EnvClassName, EnvPtrVal, Context, ModuleName,
 	EnvPtrVarName = data(var("env_ptr")),
 	EnvPtrVarFlags = env_decl_flags,
 	EnvPtrVarType = mlds__ptr_type(EnvVarType),
-	EnvPtrVarInitializer = no,
-	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, EnvPtrVarInitializer),
+	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer),
 	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
 		EnvPtrVarDefnBody),
 
@@ -431,8 +429,7 @@ ml_init_env(EnvClassName, EnvPtrVal, Context, ModuleName,
 
 ml_conv_arg_to_var(Context, Name - Type, LocalVar) :-
 	Flags = env_decl_flags,
-	Initializer = no,
-	DefnBody = mlds__data(Type, Initializer),
+	DefnBody = mlds__data(Type, no_initializer),
 	LocalVar = mlds__defn(Name, Context, Flags, DefnBody).
 
 	% Return the declaration flags appropriate for a local variable.
@@ -1079,8 +1076,8 @@ defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
 :- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
 :- mode defn_body_contains_var(in, in) is semidet.
 
-defn_body_contains_var(mlds__data(_Type, yes(Initializer)), Name) :-
-	rvals_contains_var(Initializer, Name).
+defn_body_contains_var(mlds__data(_Type, Initializer), Name) :-
+	initializer_contains_var(Initializer, Name).
 defn_body_contains_var(mlds__function(_PredProcId, _Params, MaybeBody),
 		Name) :-
 	maybe_statement_contains_var(MaybeBody, Name).
@@ -1088,6 +1085,19 @@ defn_body_contains_var(mlds__class(ClassDefn), Name) :-
 	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
 		FieldDefns),
 	defns_contains_var(FieldDefns, Name).
+
+:- pred initializer_contains_var(mlds__initializer, mlds__var).
+:- mode initializer_contains_var(in, in) is semidet.
+
+initializer_contains_var(no_initializer, _) :- fail.
+initializer_contains_var(init_obj(Rval), Name) :-
+	rval_contains_var(Rval, Name).
+initializer_contains_var(init_struct(Inits), Name) :-
+	list__member(Init, Inits),
+	initializer_contains_var(Init, Name).
+initializer_contains_var(init_array(Inits), Name) :-
+	list__member(Init, Inits),
+	initializer_contains_var(Init, Name).
 
 :- pred maybe_statement_contains_var(maybe(mlds__statement), mlds__var).
 :- mode maybe_statement_contains_var(in, in) is semidet.

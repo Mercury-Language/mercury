@@ -599,7 +599,7 @@
 
 :- implementation.
 
-:- import_module ml_base_type_info, ml_call_gen, ml_unify_gen, ml_code_util.
+:- import_module ml_call_gen, ml_unify_gen, ml_code_util.
 :- import_module llds. % XXX needed for `code_model'.
 :- import_module export, llds_out. % XXX needed for pragma C code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
@@ -660,8 +660,10 @@ ml_gen_defns(ModuleInfo, MLDS_Defns) -->
 :- pred ml_gen_types(module_info, mlds__defns, io__state, io__state).
 :- mode ml_gen_types(in, out, di, uo) is det.
 
-ml_gen_types(ModuleInfo, MLDS_BaseTypeInfoDefns) -->
-	{ ml_base_type_info__generate_mlds(ModuleInfo, MLDS_BaseTypeInfoDefns) }.
+ml_gen_types(_ModuleInfo, MLDS_TypeDefns) -->
+	% XXX currently we use a low-level data representation,
+	% so we don't map Mercury types to MLDS types.
+	{ MLDS_TypeDefns = [] }.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1813,7 +1815,10 @@ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
 		string__append_list(["*", MangledModuleName, "__",
 			MangledVarName], Var_ArgName)
 	;
-		sorry("complicated pragma c_code")
+		% XXX don't complain until run-time
+		% sorry("complicated pragma c_code")
+		Var_ArgName =
+		"*(fatal_error(""complicated pragma c_code""),(Word *)0)"
 	).
 
 %-----------------------------------------------------------------------------%

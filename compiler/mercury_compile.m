@@ -29,24 +29,41 @@
 :- import_module library, getopt, set_bbbtree, term, varset.
 :- import_module gc.
 
+	%
 	% the main compiler passes (mostly in order of execution)
+	%
+
+	% semantic analysis
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
 :- import_module equiv_type, make_hlds, typecheck, purity, polymorphism, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
-:- import_module table_gen.
-:- import_module bytecode_gen, bytecode.
-:- import_module (lambda), termination, higher_order, accumulator, inlining.
-:- import_module deforest, dnf, magic, dead_proc_elim.
-:- import_module unused_args, lco, saved_vars, liveness.
+:- import_module stratify, simplify.
+
+	% high-level HLDS transformations
+:- import_module check_typeclass, intermod, trans_opt, table_gen, (lambda).
+:- import_module type_ctor_info, termination, higher_order, accumulator.
+:- import_module inlining, deforest, dnf, magic, dead_proc_elim.
+:- import_module unused_args, lco.
+
+	% the LLDS back-end
+:- import_module saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export.
-:- import_module type_ctor_info, base_typeclass_info.
-:- import_module rl_gen, rl_opt, rl_out.
+:- import_module base_typeclass_info.
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
 
-:- import_module mlds, ml_code_gen, ml_elim_nested, ml_tailcall, mlds_to_c.
+	% the Aditi-RL back-end
+:- import_module rl_gen, rl_opt, rl_out.
+
+	% the bytecode back-end
+:- import_module bytecode_gen, bytecode.
+
+	% the MLDS back-end
+:- import_module mlds.
+:- import_module ml_code_gen, ml_elim_nested, ml_tailcall.
+:- import_module rtti_to_mlds.
+:- import_module mlds_to_c.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -2027,11 +2044,23 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(common_data, CommonData),
-	{ type_ctor_info__generate_rtti(HLDS0, HLDS1, TypeCtorRttiData) },
+	%
+	% Here we generate the LLDS representations for
+	% various data structures used for RTTI, type classes,
+	% and stack layouts.
+	% XXX this should perhaps be part of backend_pass
+	% rather than output_pass.
+	%
+	{ type_ctor_info__generate_rtti(HLDS0, TypeCtorRttiData) },
 	{ list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables) },
-	{ base_typeclass_info__generate_llds(HLDS1, TypeClassInfos) },
-	{ stack_layout__generate_llds(HLDS1, HLDS, GlobalData,
+	{ base_typeclass_info__generate_llds(HLDS0, TypeClassInfos) },
+	{ stack_layout__generate_llds(HLDS0, HLDS, GlobalData,
 		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) },
+	%
+	% Here we perform some optimizations on the LLDS data.
+	% XXX this should perhaps be part of backend_pass
+	% rather than output_pass.
+	%
 	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
@@ -2044,6 +2073,10 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 		{ CommonableData = CommonableData0 },
 		{ Procs1 = Procs0 }
 	),
+
+	%
+	% Next we put it all together and output it to one or more C files.
+	%
 	{ list__condense([CommonableData, NonCommonStaticData,
 		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
 		AllData) },
@@ -2055,6 +2088,9 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ C_InterfaceInfo = c_interface_info(_, _, _, C_ExportDecls, _) },
 	export__produce_header_file(C_ExportDecls, ModuleName),
 
+	%
+	% Finally we invoke the C compiler to compile it.
+	%
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
 		mercury_compile__c_to_obj(ModuleName, NumChunks, CompileOK),
@@ -2209,15 +2245,34 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 
 	maybe_write_string(Verbose, "% Detecting tail calls...\n"),
 	ml_mark_tailcalls(MLDS0, MLDS1),
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats),
 
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
 		maybe_write_string(Verbose,
 			"% Flattening nested functions...\n"),
-		ml_elim_nested(MLDS1, MLDS)
+		ml_elim_nested(MLDS1, MLDS2)
 	;
-		{ MLDS = MLDS1 }
-	).
+		{ MLDS2 = MLDS1 }
+	),
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats),
+
+	maybe_write_string(Verbose, "% Generating RTTI data...\n"),
+	{ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS2, MLDS) },
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats).
+
+:- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).
+:- mode mercury_compile__mlds_gen_rtti_data(in, in, out) is det.
+
+mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
+	type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
+	TypeCtorDefns = rtti_data_list_to_mlds(TypeCtorRtti),
+	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
+	list__append(TypeCtorDefns, Defns0, Defns),
+	MLDS = mlds(ModuleName, ForeignCode, Imports, Defns).
 
 % The `--high-level-C' MLDS output pass
 

@@ -32,11 +32,13 @@
 
 :- implementation.
 
-:- import_module llds. % XXX needed for C interface types
-:- import_module llds_out. % XXX needed for llds_out__name_mangle.
+:- import_module llds.		% XXX needed for C interface types
+:- import_module llds_out.	% XXX needed for llds_out__name_mangle.
+:- import_module rtti.		% for rtti__addr_to_string.
+:- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
+:- import_module hlds_pred.	% for `pred_proc_id'.
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
-:- import_module hlds_pred. % for `pred_proc_id'.
 :- import_module prog_data, prog_out.
 
 :- import_module bool, int, string, list, term, std_util, require.
@@ -356,7 +358,7 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 
 mlds_output_decl_body(Indent, Name, DefnBody) -->
 	(
-		{ DefnBody = mlds__data(Type, _MaybeInitializer) },
+		{ DefnBody = mlds__data(Type, _Initializer) },
 		mlds_output_data_decl(Name, Type)
 	;
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
@@ -375,8 +377,8 @@ mlds_output_decl_body(Indent, Name, DefnBody) -->
 
 mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 	(
-		{ DefnBody = mlds__data(Type, MaybeInitializer) },
-		mlds_output_data_defn(Name, Type, MaybeInitializer)
+		{ DefnBody = mlds__data(Type, Initializer) },
+		mlds_output_data_defn(Name, Type, Initializer)
 	;
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			MaybeBody) },
@@ -431,13 +433,12 @@ mlds_output_data_decl(Name, Type) -->
 	mlds_output_fully_qualified_name(Name).
 
 :- pred mlds_output_data_defn(mlds__qualified_entity_name, mlds__type,
-			maybe(mlds__initializer), io__state, io__state).
+			mlds__initializer, io__state, io__state).
 :- mode mlds_output_data_defn(in, in, in, di, uo) is det.
 
-mlds_output_data_defn(Name, Type, MaybeInitializer) -->
+mlds_output_data_defn(Name, Type, Initializer) -->
 	mlds_output_data_decl(Name, Type),
-	mlds_output_maybe(MaybeInitializer,
-		mlds_output_initializer(Type)),
+	mlds_output_initializer(Type, Initializer),
 	io__write_string(";\n").
 
 :- pred mlds_output_maybe(maybe(T), pred(T, io__state, io__state),
@@ -456,14 +457,27 @@ mlds_output_maybe(MaybeValue, OutputAction) -->
 :- mode mlds_output_initializer(in, in, di, uo) is det.
 
 mlds_output_initializer(_Type, Initializer) -->
-	( { Initializer = [SingleValue] } ->
-		io__write_string(" = "),
-		mlds_output_rval(SingleValue)
+	( { Initializer = no_initializer } ->
+		[]
 	;
-		io__write_string(" = {\n\t\t"),
-		io__write_list(Initializer, ",\n\t\t", mlds_output_rval),
-		io__write_string("}")
+		io__write_string(" = "),
+		mlds_output_initializer_body(Initializer)
 	).
+
+:- pred mlds_output_initializer_body(mlds__initializer, io__state, io__state).
+:- mode mlds_output_initializer_body(in, di, uo) is det.
+
+mlds_output_initializer_body(no_initializer) --> [].
+mlds_output_initializer_body(init_obj(Rval)) -->
+	mlds_output_rval(Rval).
+mlds_output_initializer_body(init_struct(FieldInits)) -->
+	io__write_string("{\n\t\t"),
+	io__write_list(FieldInits, ",\n\t\t", mlds_output_initializer_body),
+	io__write_string("}").
+mlds_output_initializer_body(init_array(ElementInits)) -->
+	io__write_string("{\n\t\t"),
+	io__write_list(ElementInits, ",\n\t\t", mlds_output_initializer_body),
+	io__write_string("}").
 
 %-----------------------------------------------------------------------------%
 %
@@ -739,6 +753,9 @@ mlds_output_data_name(var(Name)) -->
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
+mlds_output_data_name(rtti(RttiTypeId, RttiName)) -->
+	{ rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName) },
+	io__write_string(RttiAddrName).
 mlds_output_data_name(type_ctor(BaseData, Name, Arity)) -->
 	{ llds_out__name_mangle(Name, MangledName) },
 	io__write_string("base_type_"),
@@ -820,6 +837,9 @@ mlds_output_type(mlds__commit_type) -->
 	;
 		io__write_string("jmp_buf")
 	).
+mlds_output_type(mlds__rtti_type(RttiName)) -->
+	io__write_string("MR_"),
+	io__write_string(mlds_rtti_type_name(RttiName)).
 
 %-----------------------------------------------------------------------------%
 %

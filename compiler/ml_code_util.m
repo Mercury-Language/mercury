@@ -101,6 +101,8 @@
 	%
 :- func ml_gen_proc_params(module_info, pred_id, proc_id) = mlds__func_params.
 
+:- func ml_gen_proc_params_from_rtti(rtti_proc_label) = mlds__func_params.
+
 	% Generate the function prototype for a procedure with the
 	% given argument types, modes, and code model.
 	%
@@ -616,17 +618,52 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
 		HeadModes, CodeModel).
 
+	% As above, but from the rtti_proc_id rather than
+	% from the module_info, pred_id, and proc_id.
+	%
+ml_gen_proc_params_from_rtti(RttiProcId) = FuncParams :-
+	VarSet = RttiProcId^proc_varset,
+	HeadVars = RttiProcId^proc_headvars,
+	ArgTypes = RttiProcId^arg_types,
+	ArgModes = RttiProcId^proc_arg_modes,
+	CodeModel = RttiProcId^proc_interface_code_model,
+
+	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
+
+	% XXX The setting of `UseNestedFunctions' to `no' is wrong!
+	%     We ought to thread the globals through here.
+	%     However, the UseNestedFunctions setting here
+	%     is only used to compute the source type for a cast,
+	%     and our current back-ends don't make use of that,
+	%     so currently it's not a big deal.
+	UseNestedFunctions = no,
+
+	FuncParams = ml_gen_params_base(UseNestedFunctions, HeadVarNames,
+		ArgTypes, ArgModes, CodeModel).
+	
 	% Generate the function prototype for a procedure with the
 	% given argument types, modes, and code model.
 	%
 ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 		FuncParams :-
+	modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, gcc_nested_functions,
+		NestedFunctions),
+	FuncParams = ml_gen_params_base(NestedFunctions, HeadVarNames,
+		HeadTypes, ArgModes, CodeModel).
+
+:- func ml_gen_params_base(bool, list(string), list(prog_type),
+		list(arg_mode), code_model) = mlds__func_params.
+
+ml_gen_params_base(NestedFunctions, HeadVarNames, HeadTypes, HeadModes,
+		CodeModel) = FuncParams :-
 	( CodeModel = model_semi ->
 		RetTypes = [mlds__native_bool_type]
 	;
 		RetTypes = []
 	),
-	ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
+	ml_gen_arg_decls(HeadVarNames, HeadTypes, HeadModes,
 		FuncArgs0),
 	( CodeModel = model_non ->
 		ContType = mlds__cont_type,
@@ -636,9 +673,7 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 		ContEnvName = data(var("cont_env_ptr")),
 		ContEnvArg = ContEnvName - ContEnvType,
 		(
-			module_info_globals(ModuleInfo, Globals),
-			globals__lookup_bool_option(Globals,
-				gcc_nested_functions, yes)
+			NestedFunctions = yes
 		->
 			FuncArgs = list__append(FuncArgs0, [ContArg])
 		;
@@ -653,11 +688,11 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 	% Given the argument variable names, and corresponding lists of their
 	% types and modes, generate the MLDS argument list declaration.
 	%
-:- pred ml_gen_arg_decls(module_info, list(mlds__var_name), list(prog_type),
-		list(mode), mlds__arguments).
-:- mode ml_gen_arg_decls(in, in, in, in, out) is det.
+:- pred ml_gen_arg_decls(list(mlds__var_name), list(prog_type), list(arg_mode),
+		mlds__arguments).
+:- mode ml_gen_arg_decls(in, in, in, out) is det.
 
-ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
+ml_gen_arg_decls(HeadVars, HeadTypes, HeadModes, FuncArgs) :-
 	(
 		HeadVars = [], HeadTypes = [], HeadModes = []
 	->
@@ -667,12 +702,12 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
 		HeadTypes = [Type | Types],
 		HeadModes = [Mode | Modes]
 	->
-		ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, FuncArgs0),
+		ml_gen_arg_decls(Vars, Types, Modes, FuncArgs0),
 		% exclude types such as io__state, etc.
 		( type_util__is_dummy_argument_type(Type) ->
 			FuncArgs = FuncArgs0
 		;
-			ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg),
+			ml_gen_arg_decl(Var, Type, Mode, FuncArg),
 			FuncArgs = [FuncArg | FuncArgs0]
 		)
 	;
@@ -682,13 +717,13 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
 	% Given an argument variable, and its type and mode,
 	% generate an MLDS argument declaration for it.
 	%
-:- pred ml_gen_arg_decl(module_info, var_name, prog_type, mode,
+:- pred ml_gen_arg_decl(var_name, prog_type, arg_mode,
 			pair(mlds__entity_name, mlds__type)).
-:- mode ml_gen_arg_decl(in, in, in, in, out) is det.
+:- mode ml_gen_arg_decl(in, in, in, out) is det.
 
-ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg) :-
+ml_gen_arg_decl(Var, Type, ArgMode, FuncArg) :-
 	MLDS_Type = mercury_type_to_mlds_type(Type),
-	( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
+	( ArgMode \= top_in ->
 		MLDS_ArgType = mlds__ptr_type(MLDS_Type)
 	;
 		MLDS_ArgType = MLDS_Type
@@ -754,8 +789,10 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 
 ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,	
-		PredName, Arity, ArgTypes, _PredId, ProcId, IsImported,
-		_IsPseudoImported, _IsExported, IsSpecialPredInstance),
+		PredName, PredArity, ArgTypes, _PredId, ProcId,
+		_VarSet, _HeadVars, _ArgModes, _CodeModel,
+		IsImported, _IsPseudoImported, _IsExported,
+		IsSpecialPredInstance),
 	(
 		IsSpecialPredInstance = yes
 	->
@@ -765,7 +802,7 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 			% All type_ids here should be module qualified,
 			% since builtin types are handled separately in
 			% polymorphism.m.
-			TypeId = qualified(TypeModule, TypeName) - Arity
+			TypeId = qualified(TypeModule, TypeName) - TypeArity
 		->
 			(
 				ThisModule \= TypeModule,
@@ -779,7 +816,7 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 				DeclaringModule = no
 			),
 			MLDS_PredLabel = special_pred(PredName,
-				DeclaringModule, TypeName, Arity),
+				DeclaringModule, TypeName, TypeArity),
 			MLDS_Module = mercury_module_name_to_mlds(TypeModule)
 		;
 			string__append_list(["ml_gen_pred_label:\n",
@@ -803,7 +840,7 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 			MaybeDeclaringModule = no
 		),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
-				PredName, Arity),
+				PredName, PredArity),
 		MLDS_Module = mercury_module_name_to_mlds(PredModule)
 	).
 
@@ -890,8 +927,7 @@ ml_gen_var_decl(VarName, Type, Context) =
 	%
 ml_gen_mlds_var_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
 	Name = data(DataName),
-	MaybeInitializer = no,
-	Defn = data(MLDS_Type, MaybeInitializer),
+	Defn = data(MLDS_Type, no_initializer),
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
