@@ -1,35 +1,27 @@
-# To use shared libraries under Linux you need this.
-#MGNUCFLAGS    = --pic-reg
-#EXTRA_MLFLAGS = -shared
+MAIN_TARGET = maze 
 
-TCLTK_VERSION = 8.0
 
-EXTRA_MLLIBS = -ltk$(TCLTK_VERSION) -ltcl$(TCLTK_VERSION) -lGLU -lGL \
-		-L/usr/X11R6/lib -lX11 -lXmu -lXext -ldl -lSM -lXt -lXi
+# Specify the location of the `mercury_opengl' and `mercury_glut'
+# packages.
+MERCURY_OPENGL_DIR = ../../mercury_opengl
+MERCURY_GLUT_DIR = ../../mercury_glut
 
-# Specify the location of the `mercury_tcltk', `mtogl'  and 
-# `mercury_opengl' packages.
-MERCURY_TCLTK_DIR   = ../../mercury_tcltk
-MERCURY_OPENGL_DIR  = ../../mercury_opengl
-MERCURY_MTOGL_DIR   = ../../mercury_opengl
+MGNUCFLAGS = --pic-reg -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
+EXTRA_MLFLAGS = -shared
 
-# Tell mmake to use the `mercury_tcltk' and `mtogl', `mercury_opengl' libraries.
-VPATH = $(MERCURY_MTOGL_DIR):$(MERCURY_OPENGL_DIR):$(MMAKE_VPATH)
-VPATH = $(MERCURY_TCLTK_VERSION):$(MMAKE_VPATH)
+EXTRA_MLLIBS = -lGLU -lglut -lGL -L/usr/X11R6/lib -lX11 -lXext -lXmu -lXi \
+	 -lpthread -ldl -lm
 
-MCFLAGS = -I$(MERCURY_MTOGL_DIR) -I$(MERCURY_TCLTK_DIR) \
-	  -I$(MERCURY_OPENGL_DIR) $(EXTRA_MCFLAGS)
-MLFLAGS = -R$(MERCURY_MTOGL_DIR) -R$(MERCURY_TCLTK_DIR) \
-	  -R$(MERCURY_OPENGL_DIR) $(EXTRA_MLFLAGS) -L$(MERCURY_TCLTK_DIR)  \
-	  -L$(MERCURY_OPENGL_DIR) -L$(MERCURY_OPENGL_DIR)
-MLLIBS  = -lmtogl -lmercury_opengl -lmercury_tcltk $(EXTRA_MLLIBS)
-C2INITARGS      = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init \
-		  $(MERCURY_OPENGL_DIR)/mercury_opengl.init \
-		  $(MERCURY_MTOGL_DIR)/mtogl.init
+VPATH = $(MERCURY_OPENGL_DIR):$(MERCURY_GLUT_DIR):$(MMAKE_VPATH)
 
-MGNUCFLAGS = -I../../mercury_tcltk
+MCFLAGS = -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR) \
+	$(EXTRA_MCFLAGS)
+MLFLAGS = -R$(MERCURY_OPENGL_DIR) -R$(MERCURY_GLUT_DIR) \
+	-L$(MERCURY_OPENGL_DIR) -L$(MERCURY_GLUT_DIR) $(EXTRA_MLFLAGS) 
 
-default_target : maze
+MLLIBS += -lmercury_opengl -lmercury_glut $(EXTRA_MLLIBS)
 
-depend : maze.depend
+C2INITARGS = $(MERCURY_OPENGL_DIR)/mercury_opengl.init \
+	$(MERCURY_GLUT_DIR)/mercury_glut.init
 
+depend: maze.depend

@@ -6,75 +6,66 @@
 % This source file is hereby placed in the public domain. -conway (the author).
 %
 %------------------------------------------------------------------------------
-%
 
 :- module globals.
 
 :- interface.
 
-:- import_module io.
+:- import_module io, string.
 
-:- pred init_globals(io__state, io__state).
-:- mode init_globals(di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-:- pred get_global(string, T, io__state, io__state).
-:- mode get_global(in, out, di, uo) is det.
+:- pred globals.init(io::di, io::uo) is det.
 
-:- pred set_global(string, T, io__state, io__state).
-:- mode set_global(in, in, di, uo) is det.
+:- pred globals.get(string::in, T::out, io::di, io::uo) is det.
+
+:- pred globals.set(string::in, T::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module list, map, require, string, std_util.
+:- import_module io, string, map, require, std_util.
 
-init_globals -->
-	{ my_map_init(Map) },
-	{ type_to_univ(Map, UMap1) },
-	{ unsafe_promise_unique(UMap1, UMap) },
-	io__set_globals(UMap).
+%-----------------------------------------------------------------------------%
 
-get_global(Name, Value) -->
-	io__get_globals(UMap0),
-	(
-		{ univ_to_type(UMap0, Map0) }
-	->
-		(
-			{ map__search(Map0, Name, UValue) }
-		->
-			(
-				{ univ_to_type(UValue, Value0) }
-			->
-				{ Value = Value0 }
-			;
-				{ string__format(
-					"globals: value for `%s' has bad type",
-					[s(Name)], Str) },
-				{ error(Str) }
+globals.init(!IO) :-
+	Map = map.init `with_type` map(string, univ), 
+	type_to_univ(Map, UMap1),
+	unsafe_promise_unique(UMap1, UMap),
+	io.set_globals(UMap, !IO).
+
+globals.get(Name, Value, !IO) :-
+	io.get_globals(UMap0, !IO),
+	( if univ_to_type(UMap0, Map0) 
+	  then
+		( if 	UValue = Map0 ^ elem(Name)
+		  then
+			( if   univ_to_type(UValue, Value0) 
+			  then Value = Value0
+			  else error("globals.get/4: value has bad type.")
 			)
-		;
-			{ string__format("globals: %s not found",
-				[s(Name)], Str) },
-			{ error(Str) }
+		  else
+			error("globals.get/4: name not found.")
 		)
-	;
-		{ error("globals: global store stuffed up") }
+	  else
+		error("globals.get/4: global store corrupt.")
 	).
 
-set_global(Name, Value) -->
-	io__get_globals(UMap0),
-	(
-		{ univ_to_type(UMap0, Map0) }
-	->
-		{ type_to_univ(Value, UValue) },
-		{ map__set(Map0, Name, UValue, Map) },
-		{ type_to_univ(Map, UMap1) },
-		{ unsafe_promise_unique(UMap1, UMap) },
-		io__set_globals(UMap)
-	;
-		{ error("globals: global store stuffed up") }
+globals.set(Name, Value, !IO) :-
+	io.get_globals(UMap0, !IO),
+	( if univ_to_type(UMap0, Map0)
+	  then
+	  	type_to_univ(Value, UValue),
+		map.set(Map0, Name, UValue, Map),
+		type_to_univ(Map, UMap1),
+		unsafe_promise_unique(UMap1, UMap),
+		io.set_globals(UMap, !IO)
+	  else
+	  	error("globals.set/4: global store corrupt.")
 	).
 
-:- pred my_map_init(map(string, univ)::out) is det.
-
-my_map_init(Map) :-
-	map__init(Map).
+%-----------------------------------------------------------------------------%
+:- end_module globals.
+%-----------------------------------------------------------------------------%

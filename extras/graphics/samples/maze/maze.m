@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % file: maze.m
 % author: conway, June 1997
 %
@@ -14,532 +14,472 @@
 %	-y --height <N> : the heigt of the maze
 %	-s --seed <N>   : the random number seed to use
 %
-%------------------------------------------------------------------------------%
+% GLUT version by juliensf
+% - I've also added a keyboard handler so you can press escape 
+%   order to quit.
+% 
+%-----------------------------------------------------------------------------%
+
 :- module maze.
 
-%------------------------------------------------------------------------------%
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module mtcltk, mogl, mglu, mtogl.
 :- import_module globals.
-:- import_module bool, getopt, map, set, random, require.
-:- import_module char, list, math, string, float, int, std_util.
 
-:- type option
-	--->	height
-	;	width
-	;	seed
-	.
+:- import_module glut, glut.window, glut.callback.	
+:- import_module mogl, mglu.
 
-:- type wall
-	--->	north
-	;	south
-	;	east
-	;	west
-	.
+:- import_module bool, char, float, getopt, int, list, map, math.
+:- import_module random, require, set, std_util, string.
 
-:- type pos
-	--->	pos(int, int).
+%-----------------------------------------------------------------------------%
 
-:- type adj
-	--->	adj(pos, pos).
+:- type option ---> height ; width ; seed.
 
-:- type maze	==	map(pos, set(pos)).
+:- type wall ---> north ; south ; east ; west.
 
-:- type walls	==	map(pos, list(wall)).
+:- type pos ---> pos(int, int).
 
-:- type wander
-	--->	w(set(pos), list(pos)).
+:- type adj ---> adj(pos, pos).
+
+:- type maze ==	map(pos, set(pos)).
+
+:- type walls == map(pos, list(wall)).
+
+:- type wander ---> w(set(pos), list(pos)).
 
 %------------------------------------------------------------------------------%
 
-main -->
-	init_globals,
+main(!IO) :-
+	globals.init(!IO),
 		% Process the command line options...
-	io__command_line_arguments(Args0),
-	{ getopt__process_options(option_ops(short, long, defaults),
-		Args0, _Args, MOpts) },
+	io.command_line_arguments(Args0, !IO),
+	getopt.process_options(option_ops_multi(short, long, defaults),
+		Args0, _Args, MOpts),
 	(
-		{ MOpts = ok(Opts) },
+		MOpts = ok(Opts),
 			% Create the maze
-		io__write_string("generating maze...."),
-		io__flush_output,
-		{ getopt__lookup_int_option(Opts, width, Xmax) },
-		{ getopt__lookup_int_option(Opts, height, Ymax) },
-		{ getopt__lookup_int_option(Opts, seed, Seed) },
-		set_global("Size", float(Xmax)),
-		{ map__init(Maze0) },
-		{ XPred = lambda([X::out] is nondet, (
-				between(0, Xmax-1, X)
-		)) },
-		{ solutions(XPred, XIndexs) },
-		{ YPred = lambda([Y::out] is nondet, (
-				between(0, Ymax-1, Y)
-		)) },
-		{ solutions(YPred, YIndexes) },
-		{ random__init(Seed, Rnd0) },
-		{ dig(pos(Xmax, Ymax), XIndexs, YIndexes, Maze0, Maze1,
-			Rnd0, Rnd) },
-		io__write_string(" done.\n"),
-		io__flush_output,
-		set_global("Rnd", Rnd),
-			% enter Tcl/Tk.
-		main(doit(Maze1), ["maze"])
+		io.write_string("generating maze....", !IO),
+		io.flush_output(!IO),
+		getopt.lookup_int_option(Opts, width, XMax),
+		getopt.lookup_int_option(Opts, height, YMax),
+		getopt.lookup_int_option(Opts, seed, Seed),
+		globals.set("Size", float(XMax), !IO),
+		std_util.solutions(
+			(pred(X::out) is nondet :- between(0, XMax - 1, X)),
+			XIndexs),
+		std_util.solutions(
+			(pred(Y::out) is nondet :- between(0, YMax - 1, Y)),
+			YIndexes),
+		random.init(Seed, Rnd0),
+		maze.dig(pos(XMax, YMax), XIndexs, YIndexes, map.init, Maze, 
+			Rnd0, Rnd),
+		io.write_string(" done.\n", !IO),
+		io.flush_output(!IO),
+		globals.set("Rnd", Rnd, !IO),
+		maze.main_2(Maze, !IO)
 
 	;
-		{ MOpts = error(Str) },
-		{ string__format("usage: maze [-xN] [-yN] [-sN]\nerror: %s\n",
-			[s(Str)], Msg) },
-		io__stderr_stream(StdErr),
-		io__write_string(StdErr, Msg)
+		MOpts = error(Str),
+		io.stderr_stream(StdErr, !IO),
+		io.format(StdErr, "usage: maze [-xN] [-yN] [-sN]\nerror: %s\n",
+			[s(Str)], !IO),
+		io.set_exit_status(1, !IO)
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-	% Main callback from Tcl/Tk.
 
-:- pred doit(maze, tcl_interp, io__state, io__state).
-:- mode doit(in, in, di, uo) is det.
+	% Set the display mode and initial window attributes.  Register
+	% callbacks and then start the thing running.
+:- pred maze.main_2(maze::in, io::di, io::uo) is det.
 
-doit(Maze, Interp) -->
-		% Initialize the Togl widget.
-	mtogl__init(Interp, Res0),
-	{ Res0 \= tcl_ok -> error("Mtogl__init failed") ; true },
-	mtogl__create(maze__create(Maze)),
-	mtogl__display(maze__display),
-	mtogl__reshape(maze__reshape),
-
-	set_global("Maze", Maze),
-	set_global("Pos", pos(0, 0)),
-	set_global("Dir", east),
-	set_global("Phi", 0.0),
-	set_global("Theta", 0.0),
-	{ set__init(Set) },
-	set_global("W", w(Set, [])),
-	create_command(Interp, "nextframe", nextframe),
-		% Create a new togl widget
-	eval(Interp, "
-		togl .togl -rgb true -double true -depth true \
-			-privatecmap true -height 300 -width 300
-		pack .togl
-		nextframe
-	", Res1, Str),
-	{ Res1 \= tcl_ok -> error(Str) ; true }.
-
-	% Compute each frame of the display.
-:- pred nextframe(tcl_interp, list(string),
-		tcl_status, string, io__state, io__state).
-:- mode nextframe(in, in, out, out, di, uo) is det.
-
-nextframe(Interp, _Args, tcl_ok, "") -->
-	next_pos,
-	eval(Interp, "
-		.togl render
-		after 1 nextframe
-	", Res, Str),
-	{ Res \= tcl_ok -> error(Str) ; true }.
-
-	% Work out the next position in the traversal of the maze.
-:- pred next_pos(io__state, io__state).
-:- mode next_pos(di, uo) is det.
-
-next_pos -->
-	get_global("Maze", Maze),
-	get_global("Pos", Pos0),
-	get_global("W", w(Visited0, Others0)),
-	{ set__insert(Visited0, Pos0, Visited) },
-	{ map__lookup(Maze, Pos0, Nexts) },
-	{ set__list_to_set(Nexts, AdjSet) },
-	{ set__difference(AdjSet, Visited, Choices0) },
-	{ set__to_sorted_list(Choices0, ChoiceList) },
-	{ list__append(ChoiceList, Others0, Others1) },
-	(
-		{ Others1 = [] },
-		{ set__init(Set) },
-		set_global("W", w(Set, []))
-	;
-		{ Others1 = [Pos|Others] },
-		set_global("Pos", Pos),
-		set_global("W", w(Visited, Others))
-	),
-	[].
-
-:- pred move(pos, wall, pos).
-:- mode move(in, in, out) is det.
-
-move(pos(X, Y), east, pos(X+1, Y)).
-move(pos(X, Y), west, pos(X-1, Y)).
-move(pos(X, Y), north, pos(X, Y+1)).
-move(pos(X, Y), south, pos(X, Y-1)).
-
-:- pred left(wall, wall).
-:- mode left(in, out) is det.
-:- mode left(out, in) is det.
-
-left(north, west).
-left(west, south).
-left(south, east).
-left(east, north).
-
-%------------------------------------------------------------------------------%
-
-:- pred maze__create(maze, togl, io__state, io__state).
-:- mode maze__create(in, in, di, uo) is det.
-
-	% Set up everything for the display.
-
-maze__create(Maze, _Togl) -->
-	{ map__to_assoc_list(Maze, MazeList) },
-	{ map__init(Walls0) },
-	{ cons_walls(MazeList, Walls0, Walls) },
-	{ map__to_assoc_list(Walls, List) },
-	new_list(7, compile),
-		begin(quads),
-		make_mlist(List),
-		end,
-	end_list,
-
-	point_size(1.5),
-
-	light_model(light_model_two_side(yes)),
-	light_model(light_model_local_viewer(yes)),
-
-	enable(normalize),
-	enable(lighting),
-	enable(light(0)),
-	enable(light(1)),
-
-	shade_model(smooth),
-	enable(depth_test).
-
-:- pred make_mlist(list(pair(pos, list(wall))), io__state, io__state).
-:- mode make_mlist(in, di, uo) is det.
-
-make_mlist([]) --> [].
-make_mlist([Pos - Walls|Rest]) -->
-/*
-	{ Pos = pos(X, Z) },
-	{ Xf = float(X) },
-	{ Zf = float(Z) },
-		% Top
-	color3(1.0, 0.7, 0.0),
-	vertex3(Xf, 1.0, Zf),
-	vertex3(Xf+1.0, 1.0, Zf),
-	vertex3(Xf+1.0, 1.0, Zf+1.0),
-	vertex3(Xf, 1.0, Zf+1.0),
-		% Bottom
-	color3(0.0, 0.0, 0.7),
-	vertex3(Xf, 0.0, Zf),
-	vertex3(Xf+1.0, 0.0, Zf),
-	vertex3(Xf+1.0, 0.0, Zf+1.0),
-	vertex3(Xf, 0.0, Zf+1.0),
-*/
-		% Walls
-	color3(0.7, 0.7, 0.7),
-	list__foldl(wall(Pos), Walls),
+maze.main_2(Maze, !IO) :-
+	glut.init(!IO),
+	glut.init_display_mode([double, rgba], !IO),
+	glut.init_window_size(300, 300, !IO),
+	glut.window.create("Maze", !IO),
 	
-	make_mlist(Rest).
+	maze.create(Maze, !IO),
+	glut.callback.display_func(maze.display, !IO),
+	glut.callback.reshape_func(maze.reshape, !IO),
+	glut.callback.keyboard_func(maze.keyboard, !IO),
+	glut.callback.idle_func(maze.idle, !IO),
+	
+	globals.set("Maze",  Maze, !IO),
+	globals.set("Pos",   pos(0, 0), !IO),
+	globals.set("Dir",   east, !IO),
+	globals.set("Phi",   0.0,  !IO),
+	globals.set("Theta", 0.0,  !IO),
+	globals.set("W",     w(set.init, []), !IO),
+	
+	glut.main_loop(!IO).
 
-:- pred wall(pos, wall, io__state, io__state).
-:- mode wall(in, in, di, uo) is det.
+%------------------------------------------------------------------------------%
+% 
+% Solve the maze.
+%
 
-wall(pos(X0, Z0), north) -->
-	{ X = float(X0) },
-	{ Z = float(Z0) },
-	vertex3(X, 0.0, Z+1.0),
-	vertex3(X+1.0, 0.0, Z+1.0),
-	vertex3(X+1.0, 1.0, Z+1.0),
-	vertex3(X, 1.0, Z+1.0).
-wall(pos(X0, Z0), south) -->
-	{ X = float(X0) },
-	{ Z = float(Z0) },
-	vertex3(X, 0.0, Z),
-	vertex3(X+1.0, 0.0, Z),
-	vertex3(X+1.0, 1.0, Z),
-	vertex3(X, 1.0, Z).
-wall(pos(X0, Z0), east) -->
-	{ X = float(X0) },
-	{ Z = float(Z0) },
-	vertex3(X+1.0, 0.0, Z),
-	vertex3(X+1.0, 0.0, Z+1.0),
-	vertex3(X+1.0, 1.0, Z+1.0),
-	vertex3(X+1.0, 1.0, Z).
-wall(pos(X0, Z0), west) -->
-	{ X = float(X0) },
-	{ Z = float(Z0) },
-	vertex3(X, 0.0, Z),
-	vertex3(X, 0.0, Z+1.0),
-	vertex3(X, 1.0, Z+1.0),
-	vertex3(X, 1.0, Z).
+	% Work out the next position in the traversal of the maze and then
+	% tell OpenGL to redisplay it.
+:- pred maze.idle(io::di, io::uo) is det.
+
+maze.idle(!IO) :-
+	next_pos(!IO),
+	glut.window.post_redisplay(!IO).
+
+:- pred next_pos(io::di, io::uo) is det.
+
+next_pos(!IO) :-
+	globals.get("Maze", Maze, !IO),
+	globals.get("Pos", Pos0, !IO),
+	globals.get("W", w(Visited0, Others0), !IO),
+	Visited    = set.insert(Visited0, Pos0),
+	Nexts      = Maze ^ det_elem(Pos0),
+	AdjSet     = set.list_to_set(Nexts),
+	Choices0   = set.difference(AdjSet, Visited),
+	ChoiceList = set.to_sorted_list(Choices0),
+	Others1    = ChoiceList ++ Others0,
+	(
+		Others1 = [],
+		globals.set("W", w(set.init, []), !IO)
+	;
+		Others1 = [Pos | Others],
+		globals.set("Pos", Pos, !IO),
+		globals.set("W", w(Visited, Others), !IO)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maze.create(maze::in, io::di, io::uo) is det.
+
+maze.create(Maze, !IO) :-
+	MazeList = map.to_assoc_list(Maze),
+	Walls    = maze.cons_walls(MazeList),
+	WallList = map.to_assoc_list(Walls),
+	mogl.new_list(maze_list, compile, !IO),
+		mogl.begin(quads, !IO),
+			maze.make_mlist(WallList, !IO),
+		mogl.end(!IO),
+	mogl.end_list(!IO),
+
+	mogl.point_size(1.5, !IO),
+
+	mogl.light_model(light_model_two_side(yes), !IO),
+	mogl.light_model(light_model_local_viewer(yes), !IO),
+
+	mogl.enable(normalize,!IO),
+	mogl.enable(lighting, !IO),
+	mogl.enable(light(0), !IO),
+	mogl.enable(light(1), !IO),
+
+	mogl.shade_model(smooth, !IO),
+	mogl.enable(depth_test, !IO).
+
+:- pred make_mlist(list(pair(pos, list(wall)))::in, io::di, io::uo) is det.
+
+make_mlist([], !IO).
+make_mlist([Pos - Walls | Rest], !IO) :-
+	mogl.color3(0.7, 0.7, 0.7, !IO),
+	list.foldl(maze.wall(Pos), Walls, !IO),
+	maze.make_mlist(Rest, !IO).
+
+:- pred maze.wall(pos::in, wall::in, io::di, io::uo) is det.
+
+maze.wall(pos(X0, Z0), north, !IO) :-
+	X = float(X0),
+	Z = float(Z0),
+	mogl.vertex3(X,       0.0, Z + 1.0, !IO),
+	mogl.vertex3(X + 1.0, 0.0, Z + 1.0, !IO),
+	mogl.vertex3(X + 1.0, 1.0, Z + 1.0, !IO),
+	mogl.vertex3(X,       1.0, Z + 1.0, !IO).
+maze.wall(pos(X0, Z0), south, !IO) :-
+	X = float(X0),
+	Z = float(Z0),
+	mogl.vertex3(X,       0.0, Z, !IO),
+	mogl.vertex3(X + 1.0, 0.0, Z, !IO),
+	mogl.vertex3(X + 1.0, 1.0, Z, !IO),
+	mogl.vertex3(X,       1.0, Z, !IO).
+maze.wall(pos(X0, Z0), east, !IO) :-
+	X = float(X0),
+	Z = float(Z0),
+	mogl.vertex3(X + 1.0, 0.0, Z,       !IO),
+	mogl.vertex3(X + 1.0, 0.0, Z + 1.0, !IO),
+	mogl.vertex3(X + 1.0, 1.0, Z + 1.0, !IO),
+	mogl.vertex3(X + 1.0, 1.0, Z,       !IO).
+maze.wall(pos(X0, Z0), west, !IO) :-
+	X = float(X0),
+	Z = float(Z0),
+	mogl.vertex3(X, 0.0, Z,       !IO),
+	mogl.vertex3(X, 0.0, Z + 1.0, !IO),
+	mogl.vertex3(X, 1.0, Z + 1.0, !IO),
+	mogl.vertex3(X, 1.0, Z,       !IO).
 
 	% The stuff that happens for each frame.
+:- pred maze.display(io::di, io::uo) is det.
 
-:- pred maze__display(togl, io__state, io__state).
-:- mode maze__display(in, di, uo) is det.
+maze.display(!IO) :-
+	globals.get("Size", Size, !IO),
+	mogl.clear_color(0.0, 0.0, 0.0, 0.0, !IO),
+	mogl.clear([color, depth], !IO),
 
-maze__display(Togl) -->
-	get_global("Size", Size),
-	clear_color(0.0, 0.0, 0.0, 0.0),
-	clear([color, depth]),
+	mogl.matrix_mode(modelview, !IO),
+	mogl.push_matrix(!IO),
+		mogl.load_identity(!IO),
+		mogl.light(0, position(0.0, 0.0, 0.0, 1.0),   !IO),
+		mogl.light(0, ambient(0.5, 0.5, 0.0, 1.0),    !IO),
+		mogl.light(0, diffuse(0.7, 0.7, 0.0, 1.0),    !IO),
+		mogl.light(0, specular(0.7, 0.7, 0.0, 1.0),   !IO),
+		mogl.light(1, position(Size, 0.0, Size, 1.0), !IO),
+		mogl.light(1, ambient(0.0, 0.0, 0.7, 1.0),    !IO),
+		mogl.light(1, diffuse(0.8, 0.0, 0.7, 1.0),    !IO),
+		mogl.light(1, specular(0.0, 0.0, 0.7, 1.0),   !IO),
+	mogl.pop_matrix(!IO),
 
-	matrix_mode(modelview),
-	push_matrix,
-		load_identity,
-		light(0, position(0.0, 0.0, 0.0, 1.0)),
-		light(0, ambient(0.5, 0.5, 0.0, 1.0)),
-		light(0, diffuse(0.7, 0.7, 0.0, 1.0)),
-		light(0, specular(0.7, 0.7, 0.0, 1.0)),
-		light(1, position(Size, 0.0, Size, 1.0)),
-		light(1, ambient(0.0, 0.0, 0.7, 1.0)),
-		light(1, diffuse(0.8, 0.0, 0.7, 1.0)),
-		light(1, specular(0.0, 0.0, 0.7, 1.0)),
-	pop_matrix,
+	maze.draw_maze(!IO),
 
-	draw_maze,
+	glut.window.swap_buffers(!IO).
 
-	mtogl__swap_buffers(Togl).
+:- pred maze.reshape(int::in, int::in, io::di, io::uo) is det.
 
-	% The stuff that happens if we resize the togl widget.
-
-:- pred maze__reshape(togl, io__state, io__state).
-:- mode maze__reshape(in, di, uo) is det.
-
-maze__reshape(_Togl) -->
-	matrix_mode(projection),
-	load_identity,
-	perspective(55.0, 1.0, 0.1, 10000.0),
-	matrix_mode(modelview).
+maze.reshape(Width, Height, !IO) :-
+	mogl.viewport(0, 0, Width, Height, !IO),
+	mogl.matrix_mode(projection, !IO),
+	mogl.load_identity(!IO),
+	mglu.perspective(55.0, float(Width) / float(Height), 0.1, 10000.0, !IO),
+	mogl.matrix_mode(modelview, !IO).
 
 %------------------------------------------------------------------------------%
+%
+% Maze drawing.
+%
 
-:- pred draw_maze(io__state, io__state).
-:- mode draw_maze(di, uo) is det.
+:- pred draw_maze(io::di, io::uo) is det.
 
-draw_maze -->
-	load_identity,
-	get_global("W", w(Visited, Other)),
-	get_global("Size", Size),
-	get_global("Phi", Phi),
-	get_global("Theta", Theta),
-	{ R = 1.5 * Size },
-	{ Y = R * sin(Theta) },
-	{ Q = R * cos(Theta) },
-	{ X = Q * cos(Phi) + 0.5*Size },
-	{ Z = Q * sin(Phi) + 0.5*Size },
-	look_at(X, Y, Z, 0.5*Size, 0.0, 0.5*Size, 0.0, 0.0, 1.0),
-	disable(lighting),
-	begin(points),
-		color3(0.0, 1.0, 0.0),
-		{ set__to_sorted_list(Visited, VisList) },
-		list__foldl(draw_vis, VisList),
-		color3(1.0, 0.0, 0.0),
-		list__foldl(draw_vis, Other),
-	end,
-	enable(lighting),
-	call_list(7),
-	set_global("Phi", Phi+0.005),
-	set_global("Theta", Theta+0.006).
+draw_maze(!IO) :-
+	mogl.load_identity(!IO),
+	globals.get("W", w(Visited, Other), !IO),
+	globals.get("Size", Size, !IO),
+	globals.get("Phi", Phi, !IO),
+	globals.get("Theta", Theta, !IO),
+	R = 1.5 * Size,
+	Y = R * sin(Theta),
+	Q = R * cos(Theta),
+	X = Q * cos(Phi) + 0.5 * Size,
+	Z = Q * sin(Phi) + 0.5 * Size,
+	mglu.look_at(X, Y, Z, 0.5 * Size, 0.0, 0.5 * Size, 0.0, 0.0, 1.0, !IO),
+	mogl.disable(lighting, !IO),
+	mogl.begin(points, !IO),
+		mogl.color3(0.0, 1.0, 0.0, !IO),
+		VisList = set.to_sorted_list(Visited),
+		list.foldl(draw_vis, VisList, !IO),
+		mogl.color3(1.0, 0.0, 0.0, !IO),
+		list.foldl(draw_vis, Other, !IO),
+	mogl.end(!IO),
+	mogl.enable(lighting, !IO),
+	mogl.call_list(maze_list, !IO),
+	globals.set("Phi", Phi + 0.005, !IO),
+	globals.set("Theta", Theta + 0.006, !IO).
 
-:- pred draw_vis(pos, io__state, io__state).
-:- mode draw_vis(in, di, uo) is det.
+:- pred maze.draw_vis(pos::in, io::di, io::uo) is det.
 
-draw_vis(pos(Xi, Zi)) -->
-	vertex3(float(Xi)+0.5, 0.5, float(Zi)+0.5).
+maze.draw_vis(pos(Xi, Zi), !IO) :-
+	mogl.vertex3(float(Xi) + 0.5, 0.5, float(Zi) + 0.5, !IO).
 
 %------------------------------------------------------------------------------%
 
 	% Convert the adjacency representation of the maze to a walls
 	% representation.
-:- pred cons_walls(list(pair(pos, set(pos))), walls, walls).
-:- mode cons_walls(in, in, out) is det.
+:- func cons_walls(list(pair(pos, set(pos)))) = walls.
 
-cons_walls([], Walls, Walls).
-cons_walls([F-T|Rest], Walls0, Walls) :-
-	(
-		map__search(Walls0, F, Sides0)
-	->
-		Sides1 = Sides0
-	;
-		Sides1 = [north, south, east, west]
+cons_walls(Maze) = Walls :-
+	ConsWalls = (func(F - T, Wall0) = Wall :-
+		( if	Wall0 ^ elem(F) = Sides0
+		  then	Sides1 = Sides0
+		  else	Sides1 = [north, south, east, west]
+		),
+		Nexts  = set.to_sorted_list(T),
+		Sides2 = list.foldl(remove_side(F), Nexts, Sides1),
+		Wall   = Wall0 ^ elem(F) := Sides2
 	),
-	set__to_sorted_list(T, Nexts),
-	list__foldl(remove_side(F), Nexts, Sides1, Sides2),
-	map__set(Walls0, F, Sides2, Walls1),
-	cons_walls(Rest, Walls1, Walls).
+	Walls = list.foldl(ConsWalls, Maze, map.init).
 
-:- pred remove_side(pos, pos, list(wall), list(wall)).
-:- mode remove_side(in, in, in, out) is det.
+:- func remove_side(pos, pos, list(wall)) = list(wall).
 
-remove_side(pos(X0, Y0), pos(X1, Y1), Sides0, Sides) :-
-	( X1 is X0 + 1 ->
-		Side = east
-	; X1 is X0 - 1 ->
-		Side = west
-	; Y1 is Y0 + 1 ->
-		Side = north
-	;
-		Side = south
+remove_side(pos(X0, Y0), pos(X1, Y1), Sides0) = Sides :-
+	( X1 = X0 + 1 -> Side = east
+	; X1 = X0 - 1 -> Side = west
+	; Y1 = Y0 + 1 -> Side = north
+	; 		 Side = south
 	),
-	list__delete_all(Sides0, Side, Sides).
+	Sides = list.delete_all(Sides0, Side).
 
 %------------------------------------------------------------------------------%
+%
+% Maze creation.
+%
 
-	% Create the maze.
+:- pred dig(pos::in, list(int)::in, list(int)::in, maze::in, maze::out,
+	random.supply::mdi, random.supply::muo) is det.
 
-:- pred dig(pos, list(int), list(int), maze, maze,
-		random__supply, random__supply).
-:- mode dig(in, in, in, in, out, mdi, muo) is det.
+dig(_, [], _, !Maze, !Rnd).
+dig(FarPos, [X | Xs], Ys, !Maze, !Rnd) :-
+	dig1(FarPos, X, Ys, !Maze, !Rnd),
+	dig(FarPos, Xs, Ys, !Maze, !Rnd).
 
-dig(_Pos, [], _, Maze, Maze, Rnd, Rnd).
-dig(FarPos, [X|Xs], Ys, Maze0, Maze, Rnd0, Rnd) :-
-	dig1(FarPos, X, Ys, Maze0, Maze1, Rnd0, Rnd1),
-	dig(FarPos, Xs, Ys, Maze1, Maze, Rnd1, Rnd).
+:- pred dig1(pos::in, int::in, list(int)::in, maze::in, maze::out,
+	random.supply::mdi, random.supply::muo) is det.
 
-:- pred dig1(pos, int, list(int), maze, maze, random__supply, random__supply).
-:- mode dig1(in, in, in, in, out, mdi, muo) is det.
-
-dig1(_FarPos, _X, [], Maze, Maze, Rnd, Rnd).
-dig1(FarPos, X, [Y|Ys], Maze0, Maze, Rnd0, Rnd) :-
+dig1(_, _, [], !Maze, !Rnd).
+dig1(FarPos, X, [Y | Ys], !Maze, !Rnd) :-
 	Pos = pos(X, Y),
-	adj(FarPos, Pos, AdjPoss, Rnd0, Rnd1),
-	dig2(FarPos, AdjPoss, Maze0, Maze1, Rnd1, Rnd2),
-	dig1(FarPos, X, Ys, Maze1, Maze, Rnd2, Rnd).
+	adj(FarPos, Pos, AdjPoss, !Rnd),
+	dig2(FarPos, AdjPoss, !Maze, !Rnd),
+	dig1(FarPos, X, Ys, !Maze, !Rnd).
 
-:- pred dig2(pos, list(adj), maze, maze, random__supply, random__supply).
-:- mode dig2(in, in, in, out, mdi, muo) is det.
+:- pred dig2(pos::in, list(adj)::in, maze::in, maze::out,
+	random.supply::mdi, random.supply::muo) is det.
 
-dig2(_FarPos, [], Maze, Maze, Rnd, Rnd).
-dig2(FarPos, [adj(NewPos, OldPos)|Rest], Maze0, Maze, Rnd0, Rnd) :-
+dig2(_, [], !Maze, !Rnd).
+dig2(FarPos, [adj(NewPos, OldPos) | Rest], !Maze, !Rnd) :-
 	(
-		\+ map__contains(Maze0, NewPos)
+		not map.contains(!.Maze, NewPos)
 	->
-		knock_out_wall(OldPos, NewPos, Maze0, Maze1),
-		adj(FarPos, NewPos, AdjPoss, Rnd0, Rnd1),
-		dig2(FarPos, AdjPoss, Maze1, Maze, Rnd1, Rnd)
+		knock_out_wall(OldPos, NewPos, !Maze),
+		adj(FarPos, NewPos, AdjPoss, !Rnd),
+		dig2(FarPos, AdjPoss, !Maze, !Rnd)
 	;
-		dig2(FarPos, Rest, Maze0, Maze, Rnd0, Rnd)
+		dig2(FarPos, Rest, !Maze, !Rnd)
 	).
 
-:- pred adj(pos, pos, list(adj), random__supply, random__supply).
-:- mode adj(in, in, out, mdi, muo) is det.
+:- pred maze.adj(pos::in, pos::in, list(adj)::out, random.supply::mdi,
+	random.supply::muo) is det.
 
-adj(pos(FarX, FarY), pos(X, Y), Adjs, Rnd0, Rnd) :-
-	Pred = lambda([Adj::out] is nondet, (
+maze.adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
+	Pred = (pred(Adj::out) is nondet :-
 			(
-				X1 is X - 1,
+				X1 = X - 1,
 				Y1 = Y
 			;
-				X1 is X + 1,
+				X1 = X + 1,
 				Y1 = Y
 			;
 				X1 = X,
-				Y1 is Y + 1
+				Y1 = Y + 1
 			;
 				X1 = X,
-				Y1 is Y - 1
+				Y1 = Y - 1
 			),
 			Adj = adj(pos(X1, Y1), pos(X, Y)),
 			X1 >= 0, X1 < FarX,
 			Y1 >= 0, Y1 < FarY
-	)),
-	solutions(Pred, Adjs0),
-	shuffle(20, Adjs0, Adjs, Rnd0, Rnd).
-
-:- pred knock_out_wall(pos, pos, maze, maze).
-:- mode knock_out_wall(in, in, in, out) is det.
-
-knock_out_wall(NewPos, OldPos, Maze0, Maze) :-
-	(
-		map__search(Maze0, NewPos, NewSet0)
-	->
-		set__insert(NewSet0, OldPos, NewSet)
-	;
-		set__singleton_set(NewSet, OldPos)
 	),
-	map__set(Maze0, NewPos, NewSet, Maze1),
-	(
-		map__search(Maze1, OldPos, OldSet0)
-	->
-		set__insert(OldSet0, NewPos, OldSet)
-	;
-		set__singleton_set(OldSet, NewPos)
+	std_util.solutions(Pred, Adjs0),
+	shuffle(20, Adjs0, Adjs, !Rnd).
+
+:- pred knock_out_wall(pos::in, pos::in, maze::in, maze::out) is det.
+
+knock_out_wall(NewPos, OldPos, !Maze) :-
+	( if	!.Maze ^ elem(NewPos) = NewSet0
+	  then	NewSet = set.insert(NewSet0, OldPos)
+	  else	set.singleton_set(NewSet, OldPos)
 	),
-	map__set(Maze1, OldPos, OldSet, Maze).
+	!:Maze = !.Maze ^ elem(NewPos) := NewSet,
+	( if	!.Maze ^ elem(OldPos) = OldSet0
+	  then	OldSet = set.insert(OldSet0, NewPos)
+	  else	set.singleton_set(OldSet, NewPos)
+	),
+	!:Maze = !.Maze ^ elem(OldPos) := OldSet.
 
-:- pred shuffle(int, list(T), list(T), random__supply, random__supply).
-:- mode shuffle(in, in, out, mdi, muo) is det.
+:- pred shuffle(int::in, list(T)::in, list(T)::out, random.supply::mdi,
+	random.supply::muo) is det.
 
-shuffle(C, List0, List, Rnd0, Rnd) :-
+shuffle(C, !List, !Rnd) :-
 	( C > 0 ->
-		list__length(List0, L),
-		random__random(J, Rnd0, Rnd1),
-		get_nth(List0, J mod L, X, List1),
-		C1 is C - 1,
-		shuffle(C1, [X|List1], List, Rnd1, Rnd)
+		L = list.length(!.List),
+		random.random(J, !Rnd),
+		get_nth(!.List, J mod L, X, !:List),
+		shuffle(C - 1, [X | !.List], !:List, !Rnd)
 	;
-		List = List0,
-		Rnd = Rnd0
+		true
 	).
 
-:- pred get_nth(list(T), int, T, list(T)).
-:- mode get_nth(in, in, out, out) is det.
+:- pred get_nth(list(T)::in, int::in, T::out, list(T)::out) is det.
 
 get_nth([], _, _, _) :-
 	error("get_nth: ran out of items!").
-get_nth([X|Xs], I, Y, Ys) :-
+get_nth([X | Xs], I, Y, Ys) :-
 	( I =< 0 ->
 		Y = X,
 		Ys = Xs
 	;
-		I1 is I - 1,
+		I1 = I - 1,
 		get_nth(Xs, I1, Y, Zs),
-		Ys = [X|Zs]
+		Ys = [X | Zs]
 	).
 
-:- pred between(int, int, int).
-:- mode between(in, in, out) is nondet.
+:- pred between(int::in, int::in, int::out) is nondet.
 
 between(Min, Max, I) :-
 	Min =< Max,
 	(
 		I = Min
 	;
-		Min1 is Min + 1,
+		Min1 = Min + 1,
 		between(Min1, Max, I)
 	).
 
 %------------------------------------------------------------------------------%
+%
+% Keyboard handling.
+%
 
-:- pred short(char, option).
-:- mode short(in, out) is semidet.
+:- pred maze.keyboard(char::in, int::in, int::in, io::di, io::uo) is det.
+
+maze.keyboard(Key, _, _, !IO) :-
+	( if char.to_int(Key, 27) then glut.quit(!IO) else true ).
+
+%-----------------------------------------------------------------------------%
+%
+% Options processing.
+%
+
+:- pred short(char::in, option::out) is semidet.
 
 short('x', width).
 short('y', height).
 short('s', seed).
 
-:- pred long(string, option).
-:- mode long(in, out) is semidet.
+:- pred long(string::in, option::out) is semidet.
 
-long("width", width).
+long("width",  width).
 long("height", height).
-long("seed", seed).
+long("seed",   seed).
 
-:- pred defaults(option, option_data).
-:- mode defaults(out, out) is nondet.
+:- pred defaults(option::out, option_data::out) is multi.
 
-defaults(Option, Value) :-
-	semidet_succeed, defaults0(Option, Value).
+defaults(width,  int(12)).
+defaults(height, int(12)).
+defaults(seed,	  int(0)).
 
-:- pred defaults0(option, option_data).
-:- mode defaults0(out, out) is multi.
+%-----------------------------------------------------------------------------%
+%
+% Display list ids.
+%
 
-defaults0(width,	int(12)).
-defaults0(height,	int(12)).
-defaults0(seed,		int(0)).
+:- func maze_list = int.
+
+maze_list = 7.
+
+%-----------------------------------------------------------------------------%
+:- end_module maze.
+%-----------------------------------------------------------------------------%
