@@ -16,7 +16,7 @@
 
 :- module array.
 :- interface.
-:- import_module list.
+:- import_module list, std_util.
 
 :- type array(T).
 
@@ -203,7 +203,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, int.
+:- import_module int.
 
 :- type array(T).
 
