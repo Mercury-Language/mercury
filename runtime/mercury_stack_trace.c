@@ -378,9 +378,34 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 		fatal_error("cannot print procedure id without layout");
 	}
 
-	if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-		if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-			if (base_sp != NULL) {
+	if (base_sp != NULL && base_curfr != NULL) {
+		bool print_details = FALSE;
+		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+			Word maybe_from_full = entry->MR_sle_maybe_from_full;
+			if (maybe_from_full > 0) {
+				/*
+				** for procedures compiled with shallow
+				** tracing, the details will be valid only
+				** if the value of MR_from_full saved in
+				** the appropriate stack slot was TRUE.
+			    	*/
+				if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+					print_details = MR_based_stackvar(
+						base_sp, maybe_from_full);
+				} else {
+					print_details = MR_based_framevar(
+						base_curfr, maybe_from_full);
+				}
+			} else {
+				/*
+				** for procedures compiled with full tracing,
+				** always print out the details
+				*/
+				print_details = TRUE;
+			}
+		}
+		if (print_details) {
+			if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 				fprintf(fp, "%7lu %7lu %4lu ",
 					(unsigned long)
 					MR_event_num_stackvar(base_sp) + 1,
@@ -388,9 +413,7 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 					MR_call_num_stackvar(base_sp),
 					(unsigned long)
 					MR_call_depth_stackvar(base_sp));
-			}
-		} else {
-			if (base_curfr != NULL) {
+			} else {
 				fprintf(fp, "%7lu %7lu %4lu ",
 					(unsigned long)
 					MR_event_num_framevar(base_curfr) + 1,
@@ -399,6 +422,9 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 					(unsigned long)
 					MR_call_depth_framevar(base_curfr));
 			}
+		} else {
+			/* ensure that the remaining columns line up */
+			fprintf(fp, "%21s", "");
 		}
 	}
 

@@ -12,12 +12,13 @@
 % "Opium: An extendable trace analyser for Prolog" by Mireille Ducasse,
 % available from http://www.irisa.fr/lande/ducasse.
 %
-% We reserve two slots in the stack frame of the traced procedure.
+% We reserve some slots in the stack frame of the traced procedure.
 % One contains the call sequence number, which is set in the procedure prologue
-% by incrementing a global counter. The other contains the call depth, which
+% by incrementing a global counter. An other contains the call depth, which
 % is also set by incrementing a global variable containing the depth of the
 % caller. The caller sets this global variable from its own saved depth
-% just before the call.
+% just before the call.  We also save the event number, and sometimes also
+% the redo layout and the from_full flag.
 %
 % Each event has a label associated with it. The stack layout for that label
 % records what variables are live and where they are at the time of the event.
@@ -350,6 +351,8 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
 			FillFourSlots, "\n",
+			"\t\t} else {\n",
+			"\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
 			"\t\t}"
 		], TraceStmt)
 	;

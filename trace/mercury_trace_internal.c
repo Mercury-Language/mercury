@@ -607,6 +607,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_strict = FALSE;
 			cmd->MR_trace_print_level = MR_default_print_level;
 			goto return_stop_interacting;
+		} else if (stop_depth == depth && MR_port_is_entry(port)) {
+			printf("This command is a no-op from this port.\n");
 		} else {
 			char	*retry_cmd;
 
@@ -1471,6 +1473,8 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 
 	MR_trace_call_seqno = seqno - 1;
 	MR_trace_call_depth = depth - 1;
+
+	MR_trace_from_full = TRUE;
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 		MR_Live_Lval	location;
