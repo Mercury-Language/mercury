@@ -55,7 +55,7 @@ postprocess_options(ok(OptionTable0), Error) -->
 	{ map__lookup(OptionTable0, grade, GradeOpt) },
 	(   
 		{ GradeOpt = string(GradeString) },
-		{ convert_gc_grade_option(GradeString, OptionTable0,
+		{ convert_grade_option(GradeString, OptionTable0,
 			OptionTable) }
 	->
 		{ map__lookup(OptionTable, gc, GC_Method0) },
@@ -172,68 +172,75 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 		[]
 	).
 
-% Set the type of gc that the grade option implies.
-% 'accurate' is not set in the grade, so we don't override it here.
-:- pred convert_gc_grade_option(string::in, option_table::in, option_table::out)
-	is semidet.
-
-convert_gc_grade_option(GC_Grade) -->
-	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
-		( get_string_opt(gc, "accurate") ->
-			convert_grade_option(Grade)
-		;
-			set_string_opt(gc, "conservative"),
-			convert_grade_option(Grade)
-		)
-	;
-		( get_string_opt(gc, "accurate") ->
-			convert_grade_option(GC_Grade)
-		;
-			set_string_opt(gc, "none"),
-			convert_grade_option(GC_Grade)
-		)
-	).
-
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
-convert_grade_option("asm_fast") -->
+convert_grade_option(Grade0) -->
+	( { string__remove_suffix(Grade0, ".prof", Grade1) } ->
+		{ Grade2 = Grade1 },
+		set_bool_opt(profiling, yes)
+	;
+		{ Grade2 = Grade0 },
+		set_bool_opt(profiling, no)
+	),
+	( { string__remove_suffix(Grade2, ".gc", Grade3) } ->
+		{ Grade = Grade3 },
+		{ GC = conservative }
+	;
+		{ Grade = Grade2 },
+		{ GC = none }
+	),
+	% Set the type of gc that the grade option implies.
+	% 'accurate' is not set in the grade, so we don't override it here.
+	( get_string_opt(gc, "accurate") ->
+		[]
+	; { GC = conservative } ->
+		set_string_opt(gc, "conservative")
+	;
+		set_string_opt(gc, "none")
+	),
+	convert_grade_option_2(Grade).
+
+:- pred convert_grade_option_2(string::in, option_table::in, option_table::out)
+	is semidet.
+
+convert_grade_option_2("asm_fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, yes).
-convert_grade_option("fast") -->
+convert_grade_option_2("fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
-convert_grade_option("asm_jump") -->
+convert_grade_option_2("asm_jump") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, yes).
-convert_grade_option("jump") -->
+convert_grade_option_2("jump") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).
-convert_grade_option("reg") -->
+convert_grade_option_2("reg") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
-convert_grade_option("none") -->
+convert_grade_option_2("none") -->
 	set_bool_opt(debug, yes),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).
-convert_grade_option("debug") -->
+convert_grade_option_2("debug") -->
 	set_bool_opt(debug, yes),
 	set_bool_opt(c_optimize, no),
 	set_bool_opt(gcc_non_local_gotos, no),
@@ -1531,7 +1538,7 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, ModuleInfo) -->
                 { Profiling = yes }
         ->
                 globals__io_lookup_bool_option(verbose, Verbose),
-                maybe_write_string(Verbose, "% Output profiling call graph..."),
+                maybe_write_string(Verbose, "% Outputing profiling call graph..."),
                 maybe_flush_output(Verbose),
                 { module_info_name(ModuleInfo0, Name) },
                 { string__append(Name, ".prof", WholeName) },
@@ -1546,7 +1553,7 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, ModuleInfo) -->
                         report_error("unable to write profiling static call graph"),
 			{ ModuleInfo = ModuleInfo0 }
                 ),
-                maybe_write_string(Verbose, "done.\n")
+                maybe_write_string(Verbose, " done.\n")
         ;
 		{ ModuleInfo = ModuleInfo0 }
         ).
@@ -2250,6 +2257,12 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	;
 		GC_Opt = ""
 	},
+	globals__io_lookup_bool_option(profiling, Profiling),
+	{ Profiling = yes ->
+		ProfileOpt = "-DPROFILE_CALLS -DPROFILE_TIME"
+	;
+		ProfileOpt = ""
+	},
 	globals__io_get_tags_method(Tags_Method),
 	{ Tags_Method = high ->
 		TagsOpt = "-DHIGHTAGS "
@@ -2273,8 +2286,8 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 		OptimizeOpt = ""
 	},
 	{ string__append_list([CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
-		GC_Opt, TagsOpt, NumTagBitsOpt, DebugOpt, OptimizeOpt, CFLAGS,
-		" -c ", C_File], Command) },
+		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		OptimizeOpt, CFLAGS, " -c ", C_File], Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file")
