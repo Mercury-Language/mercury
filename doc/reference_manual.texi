@@ -969,6 +969,13 @@ There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
 It is an error to declare the same predicate or function twice.
 
+Note that a predicate defined using DCG notation (@pxref{DCG-rules})
+will appear to be defined with two fewer arguments than it is declared
+with.  It will also appear to be called with two fewer arguments when
+called from predicates defined using DCG notation.  However, when called
+from an ordinary predicate or function, it must have all the arguments
+it was declared with.
+
 The compiler infers the types of data-terms, and in particular the types
 of variables and overloaded constructors, functions, and predicates.
 A @dfn{type assignment} is an assignment of a type
