@@ -16,6 +16,9 @@ realclean_local:
 		rm -rf $$module.m $${module}_2.m ;\
 	done
 
+should_run_recompilation_tests:
+	@echo $(RUN_RECOMPILATION_TESTS)
+
 # Smart recompilation doesn't yet work with --intermodule-optimization.
 # The `override' is needed because otherwise make ignores the assignment if
 # EXTRA_MCFLAGS is set on the command line, as it is for the nightly tests.

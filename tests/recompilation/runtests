@@ -4,6 +4,13 @@
 # Return a status of 0 (true) if everything is all right, and 1 otherwise.
 
 . ../handle_options
+
+case "`mmake $mmakeopts should_run_recompilation_tests`" in
+	no)	
+		exit 0
+		;;
+esac
+
 . ../startup
 
 . ./TESTS

@@ -6,11 +6,19 @@
 # file by setting both GRADEFLAGS-foo.
 #
 
-# override this with `mmake HAVE_NUPROLOG=yes'
+# Override this with `mmake HAVE_NUPROLOG=yes'
 # if you want to rebuild the `.exp' files.
 HAVE_NUPROLOG=no
 
 DIFF_OPTS=-c
+
+# Override this with `RUN_RECOMPILATION_TESTS=no'
+# if your compiler cannot run smart recompilation.
+# This is only necessary for compilers built in deep
+# profiling grades, because smart recompilation uses
+# exception handling, which does not yet work with
+# deep profiling.
+RUN_RECOMPILATION_TESTS=yes
 
 #-----------------------------------------------------------------------------#
 
