@@ -12,7 +12,11 @@ code generation:
 - generate code for complicated_unify's (there are some comments about
   this in the paper.)
 
-- generate code for higher-order preds and polymorphic complicated_unify's.
+- generate code for complicated unifies
+
+- generate code for polymorphic predicates
+
+- generate code for higher-order predicates
 
 typechecking
 ------------
