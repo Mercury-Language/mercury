@@ -418,7 +418,7 @@ procinfo_headvars(ProcInfo, HeadVars) :-
 	ProcInfo = procedure(_Category, _Names, _Types, HeadVars,
 				_ModeInfo, _Goal).
 procinfo_modeinfo(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(Category, _Names, _Types, _HeadVars,
+	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
 				ModeInfo, _Goal).
 procinfo_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
@@ -431,12 +431,18 @@ procinfo_goal(ProcInfo, Goal) :-
 
 :- interface.
 
+:- pred goalinfo_init(goal_info).
+:- mode goalinfo_init(output).
+
 :- pred goalinfo_liveness(goal_info, map(var_id, is_live)).
 :- mode goalinfo_liveness(input, output).
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+goalinfo_init(goalinfo(Liveness)) :-
+	map__init(Liveness).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
 	GoalInfo = goalinfo(Liveness).
@@ -470,7 +476,7 @@ liveness_livevars(Liveness, LiveVars) :-
 
 mode_is_input(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
-	inst_is_bound(InitialInst).
+	inst_is_bound(ModuleInfo, InitialInst).
 
 	% A mode is considered an output mode if the top-level
 	% node is output.
@@ -512,7 +518,7 @@ inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
 
 inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),
-	module_modes(ModuleInfo, Modes),
+	moduleinfo_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, ModeDefn),
 	ModeDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond),
 	inst_substitute_args(Inst0, Args, Params, Inst).
@@ -523,10 +529,10 @@ inst_lookup(ModuleInfo, Name, Args, Inst) :-
 :- pred mode_get_insts(module_info, mode, inst, inst).
 :- mode mode_get_insts(input, input, output, output).
 
-mode_get_insts(ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
+mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	length(Args, Arity),
-	module_modes(ModuleInfo, Modes),
+	moduleinfo_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, HLDS_Mode),
 	HLDS_Mode = hlds__mode_defn(_VarSet, Params, Mode0, _Cond),
 	mode_substitute_args(Args, Params, Mode0, Mode),
@@ -554,7 +560,7 @@ mode_substitute_args([Arg|Args], [Param|Params], Mode0, Mode) :-
 
 mode_substitute_arg(I0 -> F0, Arg, Param, I -> F) :-
 	inst_substitute_arg(I0, Arg, Param, I),
-	inst_substitute_arg(I, Arg, Param, F).
+	inst_substitute_arg(F0, Arg, Param, F).
 mode_substitute_arg(user_defined_mode(Name, Args0), Arg, Param,
 		    user_defined_mode(Name, Args)) :-
 	inst_substitute_args(Args0, Arg, Param, Args).
