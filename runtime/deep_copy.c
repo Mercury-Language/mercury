@@ -231,7 +231,7 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             break;
         }
 
-        case_TYPELAYOUT_EQUIV_TAG:
+        case TYPELAYOUT_EQUIV_TAG:
             /* note: we treat no_tag types just like equivalences */
 
             if ((Word) entry_value < TYPELAYOUT_MAX_VARINT) {
