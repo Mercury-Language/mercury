@@ -1941,9 +1941,11 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	MR_set_char(Str, Index, Ch);
 ").
 :- pragma foreign_proc("MC++",
-	string__unsafe_set_char(_Ch::in, _Index::in, _Str0::in, _Str::out),
+	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	Str = System::String::Concat(Str0->Substring(0, Index),
+		System::Convert::ToString(Ch), 
+		Str0->Substring(Index + 1));
 ").
 
 /*
@@ -1957,9 +1959,11 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	MR_set_char(Str, Index, Ch);
 ").
 :- pragma foreign_proc("MC++",
-	string__unsafe_set_char(_Ch::in, _Index::in, _Str0::di, _Str::uo),
+	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	Str = System::String::Concat(Str0->Substring(0, Index),
+		System::Convert::ToString(Ch), 
+		Str0->Substring(Index + 1));
 ").
 
 /*-----------------------------------------------------------------------*/
@@ -2020,9 +2024,9 @@ string__append(S1::out, S2::out, S3::in) :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__append_iii(_S1::in, _S2::in, _S3::in),
+	string__append_iii(S1::in, S2::in, S3::in),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	SUCCESS_INDICATOR = S3->Equals(System::String::Concat(S1, S2));
 }").
 
 :- pred string__append_ioi(string::in, string::out, string::in) is semidet.
@@ -2114,10 +2118,11 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__append_ooi_3(_S1Len::in, _S3Len::in,
-			_S1::out, _S2::out, _S3::in),
+	string__append_ooi_3(S1Len::in, _S3Len::in,
+			S1::out, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	S1 = S3->Substring(0, S1Len);
+	S2 = S3->Substring(S1Len);
 ").
 
 /*-----------------------------------------------------------------------*/
@@ -2179,11 +2184,11 @@ strchars(I, End, Str) =
 	SubString[Count] = '\\0';
 }").
 :- pragma foreign_proc("MC++",
-	string__unsafe_substring(_Str::in, _Start::in, _Count::in,
-		_SubString::out),
+	string__unsafe_substring(Str::in, Start::in, Count::in,
+		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	SubString = Str->Substring(Start, Count);
 }").
 
 
