@@ -76,9 +76,12 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 
 THE IL GRADE
 
-The Mercury compiler currently supports the grade 'il' to target the
-Microsoft.NET CLR.  Support for building and installation of this grade
-is still somewhat rudimentary.
+The Mercury compiler currently supports the grade `il' to target the
+Microsoft.NET CLR.  This grade is enabled by any of the options
+`--grade il', `--target il', or just `--il'.
+
+Support for building and installation of this grade is still somewhat
+rudimentary.
 
 To run a Mercury program using the il grade, you need to build the
 library and runtime in the il grade, using the Mercury source distribution.
@@ -92,7 +95,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 	
 	cd samples
-	mmc --make --grade il hello
+	mmc --make --il hello
 
 Now you can run hello
 
@@ -229,7 +232,6 @@ A. The following standard library modules are completely unimplemented:
 
 	benchmarking
 	store
-	time
 
    The standard library modules that provide RTTI are only partly implemented
    (basically just enough to make io.print work):
@@ -241,8 +243,19 @@ A. The following standard library modules are completely unimplemented:
    are still not yet implemented:
 
 	io.binary_stream_offset/4
-	io.seek_binary_2/5
+	io.seek_binary/5
 	type_desc.make_type/2
 	type_desc.type_ctor/1
+	time.clock/3
+	time.times/4
+
+   The following procedures are implemented, but not completely:
+
+        time.local_time/3 
+        time.mktime/3 
+	   During times close to the transition to/from daylight savings time,
+	   local_time/3 may return incorrect values for the tm_dst field,
+	   and mktime/3 may incorrectly ignore the value of the tm_dst field
+	   in its input.  The problem is due to flaws in the .NET time APIs.
 
 -----------------------------------------------------------------------------
