@@ -19,9 +19,10 @@
 #define	tag(w)		((w) & 0x3)
 #define	body(w, t)	((w) - (t))
 #define	mkword(t, p)	((uint)(t) + (uint)(p))
-#define	field(t, p, i)	(* (((Word *) body((p), (t))) + (i)))
+#define	field(t, p, i)	((Word *) body((p), (t)))[i]
 
 /* 
+#define	field(t, p, i)	(* (((Word *) body((p), (t))) + (i)))
 old def	field(t, p, i)	(* (Word *) (body((p), (t)) + (i) * WORDSIZE))
 */
 
