@@ -142,12 +142,12 @@
 #define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[39])
 #define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[40])
 #define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[41])
-#define MR_saved_gen_stack(save_area)	LVALUE_CAST(Integer, save_area[42])
-#define MR_saved_gen_next(save_area)	LVALUE_CAST(			      \
+#define MR_saved_gen_next(save_area)	LVALUE_CAST(Integer, save_area[42])
+#define MR_saved_gen_stack(save_area)	LVALUE_CAST(			      \
 					struct MR_GeneratorStackFrameStruct *,\
 					save_area[43])
-#define MR_saved_cut_stack(save_area)	LVALUE_CAST(Integer, save_area[44])
-#define MR_saved_cut_next(save_area)	LVALUE_CAST(			      \
+#define MR_saved_cut_next(save_area)	LVALUE_CAST(Integer, save_area[44])
+#define MR_saved_cut_stack(save_area)	LVALUE_CAST(			      \
 					struct MR_CutStackFrameStruct *,      \
 					save_area[45])
 

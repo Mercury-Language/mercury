@@ -1928,6 +1928,9 @@ Prints the contents of the fixed slots of the frames on the nondet stack.
 @item stack_regs
 Prints the contents of the virtual machine registers
 that point to the det and nondet stacks.
+@sp 1
+@item all_regs
+Prints the contents of all the virtual machine registers.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands

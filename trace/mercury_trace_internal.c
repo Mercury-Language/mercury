@@ -141,6 +141,10 @@ static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, Code **jumpaddr);
+static	void	MR_print_stack_regs(Word *saved_regs);
+static	void	MR_print_heap_regs(Word *saved_regs);
+static	void	MR_print_tabling_regs(Word *saved_regs);
+static	void	MR_print_succip_reg(Word *saved_regs);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -1324,18 +1328,18 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #endif
 	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
-			fprintf(MR_mdb_out, "sp = ");
-			MR_print_detstackptr(MR_mdb_out,
-				MR_saved_sp(saved_regs));
-			fprintf(MR_mdb_out, ", curfr = ");
-			MR_print_nondstackptr(MR_mdb_out,
-				MR_saved_curfr(saved_regs));
-			fprintf(MR_mdb_out, ", maxfr = ");
-			MR_print_nondstackptr(MR_mdb_out,
-				MR_saved_maxfr(saved_regs));
-			fprintf(MR_mdb_out, "\n");
+			MR_print_stack_regs(saved_regs);
 		} else {
 			MR_trace_usage("developer", "stack_regs");
+		}
+	} else if (streq(words[0], "all_regs")) {
+		if (word_count == 1) {
+			MR_print_stack_regs(saved_regs);
+			MR_print_heap_regs(saved_regs);
+			MR_print_tabling_regs(saved_regs);
+			MR_print_succip_reg(saved_regs);
+		} else {
+			MR_trace_usage("developer", "all_regs");
 		}
 	} else if (streq(words[0], "source")) {
 		if (word_count == 2) {
@@ -1414,6 +1418,57 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"Give the command `help' for help.\n", words[0]);
 	}
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_print_stack_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "sp = ");
+	MR_print_detstackptr(MR_mdb_out,
+		MR_saved_sp(saved_regs));
+	fprintf(MR_mdb_out, "\ncurfr = ");
+	MR_print_nondstackptr(MR_mdb_out,
+		MR_saved_curfr(saved_regs));
+	fprintf(MR_mdb_out, "\nmaxfr = ");
+	MR_print_nondstackptr(MR_mdb_out,
+		MR_saved_maxfr(saved_regs));
+	fprintf(MR_mdb_out, "\n");
+}
+
+static void
+MR_print_heap_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_hp(saved_regs));
+	fprintf(MR_mdb_out, "\nsol_hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_sol_hp(saved_regs));
+	fprintf(MR_mdb_out, "\nmin_hp_rec = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_min_hp_rec(saved_regs));
+	fprintf(MR_mdb_out, "\nglobal_hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_global_hp(saved_regs));
+	fprintf(MR_mdb_out, "\n");
+}
+
+static void
+MR_print_tabling_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "gen_next = %ld\n",
+		(long) MR_saved_gen_next(saved_regs));
+	fprintf(MR_mdb_out, "cut_next = %ld\n",
+		(long) MR_saved_cut_next(saved_regs));
+}
+
+static void
+MR_print_succip_reg(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "succip = ");
+	MR_print_label(MR_mdb_out,
+		MR_saved_gen_next(saved_regs));
+	fprintf(MR_mdb_out, "\n");
 }
 
 static struct MR_option MR_trace_strict_print_opts[] =
@@ -2224,6 +2279,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "developer", "gen_stack" },
 #endif
 	{ "developer", "stack_regs" },
+	{ "developer", "all_regs" },
 	{ "misc", "source" },
 	{ "misc", "quit" },
 	/* End of doc/mdb_command_list. */
