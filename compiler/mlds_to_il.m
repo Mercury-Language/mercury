@@ -1966,53 +1966,82 @@ unaryop_to_il(std_unop((not)), _,
 
 		% if we are casting from an unboxed type, we should box
 		% it first.
-		% XXX should also test the cast-to type, to handle the
-		% cases where it is unboxed.
 unaryop_to_il(cast(Type), Rval, Instrs) -->
 	DataRep =^ il_data_rep,
 	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
-	{ 
-		Rval = const(Const),
-		RvalType = rval_const_to_type(Const),
-		RvalILType = mlds_type_to_ilds_type(DataRep, RvalType),
-		not already_boxed(RvalILType)
-	->
-		Instrs = node([call(convert_to_object(RvalILType)),
-			castclass(ILType)])
-	;
-		Instrs = node([castclass(ILType)])
-	}.
-
-
-	% XXX boxing and unboxing should be fixed.
-	% currently for boxing and unboxing we call some conversion
-	% methods that written by hand. 
-	% We should do a small MLDS->MLDS transformation to introduce
-	% locals so we can box the address of the locals.
-	% then unboxing should just be castclass(System.Int32 or whatever),
-	% then unbox.
-unaryop_to_il(box(Type), _, Instrs) -->
-	DataRep =^ il_data_rep,
-	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
+	{ rval_to_type(Rval, RvalType) },
+	{ RvalILType = mlds_type_to_ilds_type(DataRep, RvalType) },
 	{ already_boxed(ILType) ->
-		Instrs = node([isinst(il_generic_type)])
+		( already_boxed(RvalILType) ->
+			( RvalType = Type ->
+				Instrs = empty
+			;
+				Instrs = node([castclass(ILType)])
+			)
+		;
+			Instrs = tree__list([
+				convert_to_object(RvalILType),
+				instr_node(castclass(ILType))
+			])
+		)
 	;
-		Instrs = node([call(convert_to_object(ILType))])
-		% XXX can't just use box, because it requires a pointer to
-		% the object, so it's useless for anything that isn't
-		% addressable
-		% Instrs = [box(ILType)]  
+		( already_boxed(RvalILType) ->
+			( RvalType = mercury_type(_, user_type) ->
+				% XXX we should look into a nicer way to
+				% generate MLDS so we don't need to do this
+				Instrs = tree__list([
+					comment_node(
+						"loading out of an MR_Word"),
+					instr_node(ldc(int32, i(0))),
+					instr_node(ldelem(
+						il_generic_simple_type)),
+					comment_node(
+						"turning a cast into an unbox"),
+					convert_from_object(ILType)
+				])
+
+
+			;
+				% XXX It would be nicer if the MLDS used an
+				% unbox to do this.
+				Instrs = tree__list([
+					comment_node(
+					"turning a cast into an unbox"),
+					convert_from_object(ILType)
+				])
+			)
+		;
+			sorry(this_file, "cast operations between value types")
+		)
 	}.
 
-unaryop_to_il(unbox(Type), _, Instrs) -->
+unaryop_to_il(box(UnboxedType), _, Instrs) -->
 	DataRep =^ il_data_rep,
-	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
-	{ ILType = ilds__type(_, class(_)) ->
-		Instrs = node([castclass(ILType)])
+	{ UnboxedILType = mlds_type_to_ilds_type(DataRep, UnboxedType) },
+	{ already_boxed(UnboxedILType) ->
+			% It is already boxed, so we don't need
+			% to do anything.
+			% It would be good if we didn't generate 
+			% such code, but it's no big deal
+		Instrs = empty
 	;
-		Instrs = node([call(convert_from_object(ILType))])
-		% since we can't use box, we can't use unbox
-		% Instrs = [unbox(ILType)]
+		Instrs = convert_to_object(UnboxedILType)
+	}.
+
+unaryop_to_il(unbox(UnboxedType), Rval, Instrs) -->
+	DataRep =^ il_data_rep,
+	{ rval_to_type(Rval, RvalType) },
+	{ UnboxedILType = mlds_type_to_ilds_type(DataRep, UnboxedType) },
+	{ already_boxed(UnboxedILType) ->
+		( RvalType = UnboxedType ->
+				% We already have the correct type
+			Instrs = empty
+		;
+				% We have a different boxed type
+			Instrs = instr_node(castclass(UnboxedILType))
+		)
+	;
+		Instrs = convert_from_object(UnboxedILType)
 	}.
 
 :- pred already_boxed(ilds__type::in) is semidet.
@@ -3066,63 +3095,61 @@ defn_to_local(ModuleName,
 % These functions are for converting to/from generic objects.
 %
 
-:- func convert_to_object(ilds__type) = methodref.
+:- func convert_to_object(ilds__type) = instr_tree.
 
-convert_to_object(Type) = methoddef(call_conv(no, default), 
-		simple_type(il_generic_simple_type),
-		class_member_name(il_conversion_class_name, id("ToObject")),
-		[Type]).
-
-:- func convert_from_object(ilds__type) = methodref.
-
-convert_from_object(Type) = 
-	methoddef(call_conv(no, default), simple_type(SimpleType),
-		class_member_name(il_conversion_class_name, id(Id)),
-			[il_generic_type]) :-
+convert_to_object(Type) = instr_node(box(ValueType)) :-
 	Type = ilds__type(_, SimpleType),
-	ValueClassName = simple_type_to_value_class_name(SimpleType),
-	string__append("To", ValueClassName, Id).
+	ValueType = simple_type_to_value_class(SimpleType).
 
+:- func convert_from_object(ilds__type) = instr_tree.
 
-	% XXX String and Array should be converted to/from Object using a
-	% cast, not a call to runtime convert.  When that is done they can be
-	% removed from this list
-:- func simple_type_to_value_class_name(simple_type) = string.
-simple_type_to_value_class_name(int8) = "Int8".
-simple_type_to_value_class_name(int16) = "Int16".
-simple_type_to_value_class_name(int32) = "Int32".
-simple_type_to_value_class_name(int64) = "Int64".
-simple_type_to_value_class_name(uint8) = "Int8".
-simple_type_to_value_class_name(uint16) = "UInt16".
-simple_type_to_value_class_name(uint32) = "UInt32".
-simple_type_to_value_class_name(uint64) = "UInt64".
-simple_type_to_value_class_name(float32) = "Single".
-simple_type_to_value_class_name(float64) = "Double".
-simple_type_to_value_class_name(bool) = "Bool".
-simple_type_to_value_class_name(char) = "Char".
-simple_type_to_value_class_name(refany) = _ :-
-	error("no value class name for refany").
-simple_type_to_value_class_name(class(Name)) = VCName :-
-	( Name = il_string_class_name ->
-		VCName = "String"
-	;
-		error("unknown class name")
-	).
-simple_type_to_value_class_name(value_class(_)) = _ :-
-	error("no value class name for value_class").
-simple_type_to_value_class_name(interface(_)) = _ :-
-	error("no value class name for interface").
-simple_type_to_value_class_name('[]'(_, _)) = "Array".
-simple_type_to_value_class_name('&'( _)) = _ :-
-	error("no value class name for '&'").
-simple_type_to_value_class_name('*'(_)) = _ :-
-	error("no value class name for '*'").
-simple_type_to_value_class_name(native_float) = _ :-
-	error("no value class name for native float").
-simple_type_to_value_class_name(native_int) = _ :-
-	error("no value class name for native int").
-simple_type_to_value_class_name(native_uint) = _ :-
-	error("no value class name for native uint").
+convert_from_object(Type) = node([unbox(Type), ldobj(Type)]).
+
+:- func simple_type_to_value_class(simple_type) = ilds__type.
+simple_type_to_value_class(int8) = 
+	ilds__type([], value_class(il_system_name(["SByte"]))).
+simple_type_to_value_class(int16) =
+	ilds__type([], value_class(il_system_name(["Int16"]))).
+simple_type_to_value_class(int32) =
+	ilds__type([], value_class(il_system_name(["Int32"]))).
+simple_type_to_value_class(int64) =
+	ilds__type([], value_class(il_system_name(["Int64"]))).
+simple_type_to_value_class(uint8) = 
+	ilds__type([], value_class(il_system_name(["Byte"]))).
+simple_type_to_value_class(uint16) =
+	ilds__type([], value_class(il_system_name(["UInt16"]))).
+simple_type_to_value_class(uint32) =
+	ilds__type([], value_class(il_system_name(["UInt32"]))).
+simple_type_to_value_class(uint64) = 
+	ilds__type([], value_class(il_system_name(["UInt64"]))).
+simple_type_to_value_class(float32) = 
+	ilds__type([], value_class(il_system_name(["Single"]))).
+simple_type_to_value_class(float64) = 
+	ilds__type([], value_class(il_system_name(["Double"]))).
+simple_type_to_value_class(bool) = 
+	ilds__type([], value_class(il_system_name(["Boolean"]))).
+simple_type_to_value_class(char) = 
+	ilds__type([], value_class(il_system_name(["Char"]))).
+simple_type_to_value_class(refany) = _ :-
+	error("no value class for refany").
+simple_type_to_value_class(class(_)) = _ :-
+	error("no value class for class").
+simple_type_to_value_class(value_class(_)) = _ :-
+	error("no value class for value_class").
+simple_type_to_value_class(interface(_)) = _ :-
+	error("no value class for interface").
+simple_type_to_value_class('[]'(_, _)) = _ :-
+	error("no value class for array").
+simple_type_to_value_class('&'( _)) = _ :-
+	error("no value class for '&'").
+simple_type_to_value_class('*'(_)) = _ :-
+	error("no value class for '*'").
+simple_type_to_value_class(native_float) = _ :-
+	error("no value class for native float").
+simple_type_to_value_class(native_int) = _ :-
+	error("no value class for native int").
+simple_type_to_value_class(native_uint) = _ :-
+	error("no value class for native uint").
 
 %-----------------------------------------------------------------------------%
 %
