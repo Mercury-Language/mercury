@@ -84,3 +84,6 @@ Each symbol is followed by the correct decoding.
 mercury_data_foo
 mercury_data_foo
 
+	some lambda goals
+<pred goal from 'simplex' line 262 label 5>
+<func goal from 'collect_vars' line 153>

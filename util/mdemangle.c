@@ -291,7 +291,14 @@ demangle(char *name) {
 		}
 	}
 
-	if (category == ORDINARY && strip_prefix(&start, introduced)) {
+	/*
+	** chop off the module name,
+	** look for "IntroducedFrom"
+	*/
+	position = start;
+	if (category == ORDINARY
+			&& cut_at_double_underscore(&start, end)
+			&& strip_prefix(&start, introduced)) {
 		category = LAMBDA;
 		if (strip_prefix(&start, pred)) {
 			lambda_kind = "pred";
@@ -309,6 +316,8 @@ demangle(char *name) {
 			lambda_line = lambda_line * 10 + (*start - '0');
 			start++;
 		}
+	} else {
+		start = position;
 	}
 
 			
