@@ -62,7 +62,7 @@
 ** adjust this factor based on profiling information.
 */
 
-#define MR_EDT_DEPTH_STEP_SIZE		6
+#define MR_EDT_DEPTH_STEP_SIZE		3
 
 /*
 ** These macros are to aid debugging of the code which constructs

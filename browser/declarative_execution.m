@@ -126,7 +126,7 @@
 	% Members of this typeclass represent an entire annotated
 	% trace.  The second parameter is the type of identifiers
 	% for trace nodes, and the first parameter is the type of
-	% an abstract mapping from the identfiers to the nodes they
+	% an abstract mapping from identifiers to the nodes they
 	% identify.
 	%
 :- typeclass annotated_trace(S, R) where [
@@ -139,6 +139,29 @@
 	mode trace_node_from_id(in, in, out) is semidet
 ].
 
+	% Given any node in an annotated trace, find the most recent
+	% node in the same contour (ie. the last node which has not been
+	% backtracked over, skipping negations, failed conditions, the
+	% bodies of calls, and alternative disjuncts).  Throw an exception
+	% if there is no such node (ie. if we are at the start of a
+	% negation, call, or failed condition).
+	%
+	% In some cases the contour may reach a dead end.  This can
+	% happen if, for example, a DISJ node is not present because
+	% it is beyond the depth bound or in a module that is not traced;
+	% "stepping left" will arrive at a FAIL, REDO or NEGF node.  Since
+	% it is not possible to follow the original contour in these
+	% circumstances, we follow the previous contour instead.
+	%
+:- func step_left_in_contour(S, trace_node(R)) = R <= annotated_trace(S, R).
+
+	% Given any node in an annotated trace, find the most recent
+	% node in the same stratum (ie. the most recent node, skipping
+	% negations, failed conditions, and the bodies of calls).
+	% Throw an exception if there is no such node (ie. if we are at
+	% the start of a negation, call, or failed negation).
+	%
+:- func step_in_stratum(S, trace_node(R)) = R <= annotated_trace(S, R).
 
 	% The following procedures also dereference the identifiers,
 	% but they give an error if the node is not of the expected type.
@@ -223,6 +246,121 @@
 
 :- implementation.
 :- import_module map, require, store.
+
+step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
+	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
+step_left_in_contour(_, switch(Prec, _)) = Prec.
+step_left_in_contour(_, first_disj(Prec, _)) = Prec.
+step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
+	first_disj_node_from_id(Store, FirstDisj, first_disj(Prec, _)).
+step_left_in_contour(_, cond(Prec, _, Status)) = Node :-
+	(
+		Status = failed
+	->
+		error("step_left_in_contour: failed COND node")
+	;
+		Node = Prec
+	).
+step_left_in_contour(_, then(Prec, _)) = Prec.
+step_left_in_contour(Store, else(_, Cond)) = Prec :-
+	cond_node_from_id(Store, Cond, cond(Prec, _, _)).
+step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
+	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
+	%
+	% The following cases are at the left end of a contour,
+	% so we cannot step any further.
+	%
+step_left_in_contour(_, call(_, _, _, _, _, _)) = _ :-
+	error("step_left_in_contour: unexpected CALL node").
+step_left_in_contour(_, neg(_, _, _)) = _ :-
+	error("step_left_in_contour: unexpected NEGE node").
+	%
+	% In the remaining cases we have reached a dead end, so we
+	% step to the previous contour instead.
+	%
+step_left_in_contour(Store, Node) = Prec :-
+	Node = fail(_, _, _, _),
+	find_prev_contour(Store, Node, Prec).
+step_left_in_contour(Store, Node) = Prec :-
+	Node = redo(_, _),
+	find_prev_contour(Store, Node, Prec).
+step_left_in_contour(Store, Node) = Prec :-
+	Node = neg_fail(_, _),
+	find_prev_contour(Store, Node, Prec).
+
+	% Given any node which is not on a contour, find a node on
+	% the previous contour in the same stratum.
+	%
+:- pred find_prev_contour(S, trace_node(R), R) <= annotated_trace(S, R).
+:- mode find_prev_contour(in, in, out) is semidet.
+:- mode find_prev_contour(in, in(trace_node_reverse), out) is det.
+
+:- inst trace_node_reverse =
+	bound(	fail(ground, ground, ground, ground)
+	;	redo(ground, ground)
+	;	neg_fail(ground, ground)).
+
+find_prev_contour(Store, fail(_, Call, _, _), OnContour) :-
+	call_node_from_id(Store, Call, call(OnContour, _, _, _, _, _)).
+find_prev_contour(Store, redo(_, Exit), OnContour) :-
+	exit_node_from_id(Store, Exit, exit(OnContour, _, _, _, _)).
+find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
+	neg_node_from_id(Store, Neg, neg(OnContour, _, _)).
+	%
+	% The following cases are at the left end of a contour,
+	% so there are no previous contours in the same stratum.
+	%
+find_prev_contour(_, call(_, _, _, _, _, _), _) :-
+	error("find_prev_contour: reached CALL node").
+find_prev_contour(_, cond(_, _, _), _) :-
+	error("find_prev_contour: reached COND node").
+find_prev_contour(_, neg(_, _, _), _) :-
+	error("find_prev_contour: reached NEGE node").
+
+step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _)) = Next :-
+	(
+		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
+	->
+		Redo = redo(Next, _)
+	;
+		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
+	).
+step_in_stratum(Store, fail(_, Call, MaybeRedo, _)) = Next :-
+	(
+		maybe_redo_node_from_id(Store, MaybeRedo, Redo)
+	->
+		Redo = redo(Next, _)
+	;
+		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
+	).
+step_in_stratum(Store, redo(_, Exit)) = Next :-
+	exit_node_from_id(Store, Exit, exit(Next, _, _, _, _)).
+step_in_stratum(_, switch(Next, _)) = Next.
+step_in_stratum(_, first_disj(Next, _)) = Next.
+step_in_stratum(_, later_disj(Next, _, _)) = Next.
+step_in_stratum(_, cond(Prec, _, Status)) = Next :-
+	(
+		Status = failed
+	->
+		error("step_in_stratum: failed COND node")
+	;
+		Next = Prec
+	).
+step_in_stratum(_, then(Next, _)) = Next.
+step_in_stratum(Store, else(_, Cond)) = Next :-
+	cond_node_from_id(Store, Cond, cond(Next, _, _)).
+step_in_stratum(Store, neg_succ(_, Neg)) = Next :-
+	neg_node_from_id(Store, Neg, neg(Next, _, _)).
+step_in_stratum(Store, neg_fail(_, Neg)) = Next :-
+	neg_node_from_id(Store, Neg, neg(Next, _, _)).
+	%
+	% The following cases mark the boundary of the stratum,
+	% so we cannot step any further.
+	%
+step_in_stratum(_, call(_, _, _, _, _, _)) = _ :-
+	error("step_in_stratum: unexpected CALL node").
+step_in_stratum(_, neg(_, _, _)) = _ :-
+	error("step_in_stratum: unexpected NEGE node").
 
 det_trace_node_from_id(Store, NodeId, Node) :-
 	(
@@ -503,83 +641,36 @@ trace_node_first_disj(first_disj(_, _), NULL) :-
 	null_trace_node_id(NULL).
 trace_node_first_disj(later_disj(_, _, FirstDisj), FirstDisj).	
 
-	% Given any node in an annotated trace, find the most recent
-	% node in the same contour (ie. the last node which has not been
-	% backtracked over, skipping negations, conditions, the bodies
-	% of calls, and alternative disjuncts).  Return the NULL reference
-	% if there is no such node (eg. if we are at the start of a
-	% negation, condition, or call).
+	% Export a version of this function to be called by C code
+	% in trace/declarative_debugger.c.
 	%
-:- func step_left_in_contour(trace_node_store, trace_node(trace_node_id))
+:- func step_left_in_contour_store(trace_node_store, trace_node(trace_node_id))
 		= trace_node_id.
-:- pragma export(step_left_in_contour(in, in) = out,
+:- pragma export(step_left_in_contour_store(in, in) = out,
 		"MR_DD_step_left_in_contour").
 
-step_left_in_contour(_, call(_, _, _, _, _, _)) = _ :-
-	error("step_left_in_contour: unexpected CALL node").
-step_left_in_contour(_, cond(Prec, _, Status)) = Node :-
-	(
-		Status = succeeded
-	->
-		Node = Prec
-	;
-		null_trace_node_id(Node)
-	).
-step_left_in_contour(_, neg(_, _, _)) = _ :-
-	error("step_left_in_contour: unexpected NEGE node").
-step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
-step_left_in_contour(Store, fail(_, Call, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
-step_left_in_contour(_, redo(_, _)) = _ :-
-	error("step_left_in_contour: unexpected REDO node").
-step_left_in_contour(_, switch(Prec, _)) = Prec.
-step_left_in_contour(_, first_disj(Prec, _)) = Prec.
-step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
-	first_disj_node_from_id(Store, FirstDisj, first_disj(Prec, _)).
-step_left_in_contour(_, then(Prec, _)) = Prec.
-step_left_in_contour(Store, else(_, Cond)) = Prec :-
-	cond_node_from_id(Store, Cond, cond(Prec, _, _)).
-step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
-	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
-step_left_in_contour(Store, neg_fail(_, Neg)) = Prec :-
-	neg_node_from_id(Store, Neg, neg(Prec, _, _)).
+step_left_in_contour_store(Store, Node) = step_left_in_contour(Store, Node).
 
-	% Given any node in an annotated trace, find a node in
-	% the previous contour.
+	% Export a version of this function to be called by C code
+	% in trace/declarative_debugger.c.  If called with a node
+	% that is already on a contour, this function returns the
+	% same node.  This saves the C code from having to perform
+	% that check itself.
 	%
-:- func find_prev_contour(trace_node_store, trace_node_id)
+:- func find_prev_contour_store(trace_node_store, trace_node_id)
 		= trace_node_id.
-:- pragma export(find_prev_contour(in, in) = out,
+:- pragma export(find_prev_contour_store(in, in) = out,
 		"MR_DD_find_prev_contour").
 
-find_prev_contour(Store, NodeId) = OnContour :-
-	det_trace_node_from_id(Store, NodeId, Node),
-	find_prev_contour_1(Store, NodeId, Node, OnContour).
-
-:- pred find_prev_contour_1(trace_node_store, trace_node_id,
-		trace_node(trace_node_id), trace_node_id).
-:- mode find_prev_contour_1(in, in, in, out) is det.
-
-find_prev_contour_1(_, _, call(_, _, _, _, _, _), _) :-
-	error("find_prev_contour: reached CALL node").
-find_prev_contour_1(_, Exit, exit(_, _, _, _, _), Exit).
-find_prev_contour_1(Store, _, redo(_, Exit), OnContour) :-
-	exit_node_from_id(Store, Exit, exit(OnContour, _, _, _, _)).
-find_prev_contour_1(Store, _, fail(_, Call, _, _), OnContour) :-
-	call_node_from_id(Store, Call, call(OnContour, _, _, _, _, _)).
-find_prev_contour_1(_, _, cond(_, _, _), _) :-
-	error("find_prev_contour: reached COND node").
-find_prev_contour_1(_, Then, then(_, _), Then).
-find_prev_contour_1(_, Else, else(_, _), Else).
-find_prev_contour_1(_, _, neg(_, _, _), _) :-
-	error("find_prev_contour: reached NEGE node").
-find_prev_contour_1(_, NegS, neg_succ(_, _), NegS).
-find_prev_contour_1(Store, _, neg_fail(_, Neg), OnContour) :-
-	neg_node_from_id(Store, Neg, neg(OnContour, _, _)).
-find_prev_contour_1(_, Swtc, switch(_, _), Swtc).
-find_prev_contour_1(_, FirstDisj, first_disj(_, _), FirstDisj).
-find_prev_contour_1(_, LaterDisj, later_disj(_, _, _), LaterDisj).
+find_prev_contour_store(Store, Id) = Prev :-
+	det_trace_node_from_id(Store, Id, Node),
+	(
+		find_prev_contour(Store, Node, Prev0)
+	->
+		Prev = Prev0
+	;
+		Prev = Id
+	).
 
 	% Print a text representation of a trace node, useful
 	% for debugging purposes.

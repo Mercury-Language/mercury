@@ -35,6 +35,10 @@ DECLARATIVE_PROGS=		\
 	queens			\
 	small
 
+# The following should not be run in `debug' grades.
+NONDEBUG_DECLARATIVE_PROGS=	\
+	untraced_subgoal
+
 NONWORKING_DECLARATIVE_PROGS=	\
 	family			\
 	higher_order		\
@@ -44,6 +48,14 @@ NONWORKING_DECLARATIVE_PROGS=	\
 MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
 C2INITFLAGS = --trace
+
+MCFLAGS-untraced_subgoal_sub=--trace minimum
+
+ifneq "$(findstring .debug,$(GRADE))" ""
+    PROGS_2=$(DECLARATIVE_PROGS)
+else
+    PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS)
+endif
 
 # Debugging does not work in MLDS (hl*) grades.
 # Base grades `jump' and `fast' cannot be used with
@@ -55,7 +67,7 @@ ifneq "$(findstring hl,$(GRADE))" ""
 else
     ifneq "$(findstring .gc,$(GRADE))" ""
         ifneq "$(findstring asm_,$(GRADE))" ""
-            PROGS=$(DECLARATIVE_PROGS)
+            PROGS=$(PROGS_2)
         else
             ifneq "$(findstring jump,$(GRADE))" ""
                 PROGS=
@@ -63,7 +75,7 @@ else
                 ifneq "$(findstring fast,$(GRADE))" ""
                     PROGS=
                 else
-                    PROGS=$(DECLARATIVE_PROGS)
+                    PROGS=$(PROGS_2)
                 endif
             endif
         endif
@@ -133,6 +145,10 @@ small.out: small small.inp
 
 solutions.out: solutions solutions.inp
 	$(MDB) ./solutions < solutions.inp > solutions.out 2>&1
+
+untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
+	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \
+			> untraced_subgoal.out 2>&1
 
 #-----------------------------------------------------------------------------#
 

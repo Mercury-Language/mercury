@@ -403,59 +403,37 @@ not_at_depth_limit(Store, Ref) :-
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _, _, _, _),
-		Ns = Ns0
-	;
-		Node = neg(_, _, _),
-		Ns = Ns0
-	;
-		Node = exit(_, Call, _, _, _),
-		call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)),
-		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
-	;
-		Node = redo(_, _),
-		error("wrong_answer_children: unexpected REDO node")
-	;
-		Node = fail(_, Call, _, _),
-		call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)),
-		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
-	;
-		Node = cond(Prec, _, Flag),
-		(
-			Flag = succeeded
-		->
-			wrong_answer_children(Store, Prec, Ns0, Ns)
-		;
-			Ns = Ns0
+		( Node = call(_, _, _, _, _, _)
+		; Node = neg(_, _, _)
+		; Node = cond(_, _, failed)
 		)
+	->
+			%
+			% We have reached the end of the contour.
+			%
+		Ns = Ns0
 	;
-		Node = switch(Back, _),
-		wrong_answer_children(Store, Back, Ns0, Ns)
-	;
-		Node = first_disj(Back, _),
-		wrong_answer_children(Store, Back, Ns0, Ns)
-	;
-		Node = later_disj(_, _, FirstDisj),
-		first_disj_node_from_id(Store, FirstDisj, first_disj(Back, _)),
-		wrong_answer_children(Store, Back, Ns0, Ns)
-	;
-		Node = then(Back, _),
-		wrong_answer_children(Store, Back, Ns0, Ns)
-	;
-		Node = else(Prec, Cond),
-		missing_answer_children(Store, Prec, Ns0, Ns1),
-		cond_node_from_id(Store, Cond, cond(Back, _, _)),
-		wrong_answer_children(Store, Back, Ns1, Ns)
-	;
-		Node = neg_succ(Prec, Neg),
-		missing_answer_children(Store, Prec, Ns0, Ns1),
-		neg_node_from_id(Store, Neg, neg(Back, _, _)),
-		wrong_answer_children(Store, Back, Ns1, Ns)
-	;
-		Node = neg_fail(Prec, Neg),
-		wrong_answer_children(Store, Prec, Ns0, Ns1),
-		neg_node_from_id(Store, Neg, neg(Back, _, _)),
-		wrong_answer_children(Store, Back, Ns1, Ns)
+		(
+			Node = exit(_, _, _, _, _)
+		->
+				%
+				% Add a child for this node.
+				%
+			Ns1 = [dynamic(NodeId) | Ns0]
+		;
+			( Node = else(Prec, _)
+			; Node = neg_succ(Prec, _)
+			)
+		->
+				%
+				% There is a nested context.
+				% 
+			missing_answer_children(Store, Prec, Ns0, Ns1)
+		;
+			Ns1 = Ns0
+		),
+		Next = step_left_in_contour(Store, Node),
+		wrong_answer_children(Store, Next, Ns1, Ns)
 	).
 
 :- pred missing_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
@@ -465,77 +443,46 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 missing_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _, _, _, _),
-		Ns = Ns0
-	;
-		Node = neg(_, _, _),
-		Ns = Ns0
-	;
-		Node = exit(_, Call, Redo, _, _),
-		(
-			maybe_redo_node_from_id(Store, Redo, redo(Prec0, _))
-		->
-			Prec = Prec0
-		;
-			call_node_from_id(Store, Call, CallNode),
-			CallNode = call(Prec, _, _, _, _, _)
-		),
-		missing_answer_children(Store, Prec, [dynamic(NodeId) | Ns0],
-				Ns)
-	;
-		Node = redo(_, Exit),
-		exit_node_from_id(Store, Exit, exit(Prec, _, _, _, _)),
-		missing_answer_children(Store, Prec, Ns0, Ns)
-	;
-		Node = fail(_, CallId, MaybeRedo, _),
-		(
-			maybe_redo_node_from_id(Store, MaybeRedo, Redo)
-		->
-			Redo = redo(Prec, _),
-			Next = Prec
-		;
-			call_node_from_id(Store, CallId, Call),
-			Call = call(Back, _, _, _, _, _),
-			Next = Back
-		),
-		missing_answer_children(Store, Next, [dynamic(NodeId) | Ns0],
-				Ns)
-	;
-		Node = cond(Prec, _, Flag),
-		(
-			Flag = succeeded
-		->
-			missing_answer_children(Store, Prec, Ns0, Ns)
-		;
-			Ns = Ns0
+		( Node = call(_, _, _, _, _, _)
+		; Node = neg(_, _, _)
+		; Node = cond(_, _, failed)
 		)
+	->
+			%
+			% We have reached the boundary of the stratum.
+			%
+		Ns = Ns0
 	;
-		Node = switch(Prec, _),
-		missing_answer_children(Store, Prec, Ns0, Ns)
-	;
-		Node = first_disj(Prec, _),
-		missing_answer_children(Store, Prec, Ns0, Ns)
-	;
-		Node = later_disj(Prec, _, _),
-		missing_answer_children(Store, Prec, Ns0, Ns)
-	;
-		Node = then(Prec, _),
-		missing_answer_children(Store, Prec, Ns0, Ns)
-	;
-		Node = else(Prec, Cond),
-		missing_answer_children(Store, Prec, Ns0, Ns1),
-		cond_node_from_id(Store, Cond, cond(Back, _, _)),
-		missing_answer_children(Store, Back, Ns1, Ns)
-	;
-		Node = neg_succ(Prec, Neg),
-		missing_answer_children(Store, Prec, Ns0, Ns1),
-		neg_node_from_id(Store, Neg, neg(Back, _, _)),
-		missing_answer_children(Store, Back, Ns1, Ns)
-	;
-		Node = neg_fail(Prec, Neg),
-		wrong_answer_children(Store, Prec, Ns0, Ns1),
-		neg_node_from_id(Store, Neg, neg(Back, _, _)),
-		missing_answer_children(Store, Back, Ns1, Ns)
+		(
+			( Node = exit(_, _, _, _, _)
+			; Node = fail(_, _, _, _)
+			)
+		->
+				%
+				% Add a child for this node.
+				%
+			Ns1 = [dynamic(NodeId) | Ns0]
+		;
+			Node = neg_fail(Prec, _)
+		->
+				%
+				% There is a nested successful context.
+				% 
+			wrong_answer_children(Store, Prec, Ns0, Ns1)
+		;
+			( Node = else(Prec, _)
+			; Node = neg_succ(Prec, _)
+			)
+		->
+				%
+				% There is a nested failed context.
+				%
+			missing_answer_children(Store, Prec, Ns0, Ns1)
+		;
+			Ns1 = Ns0
+		),
+		Next = step_in_stratum(Store, Node),
+		missing_answer_children(Store, Next, Ns1, Ns)
 	).
 
 :- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number)
