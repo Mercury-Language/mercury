@@ -11,6 +11,15 @@
 % This module provides dynamically-sized one-dimensional arrays.
 % Array indices start at zero.
 
+% By default, the array__set and array__lookup procedures will check
+% for bounds errors.  But for maximum performance, it is possible to
+% disable the checking by compiling with `--intermodule-optimization'
+% and with the C macro symbol `ML_OMIT_ARRAY_BOUNDS_CHECKS'
+% defined, e.g. by using `MCFLAGS=--intermodule-optimization' and
+% `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
+% or by compiling with the command
+% `mmc --intermodule-optimization --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS'.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -447,16 +456,20 @@ array__slow_set(Array0, Index, Item, Array) :-
 :- pragma(c_code, array__lookup(Array::array_ui, Index::in,
 		Item::out), "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
+#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
 		fatal_error(""array__lookup: array index out of bounds"");
 	}
+#endif
 	Item = array->elements[Index];
 }").
 :- pragma(c_code, array__lookup(Array::in, Index::in, Item::out), "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
+#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
 		fatal_error(""array__lookup: array index out of bounds"");
 	}
+#endif
 	Item = array->elements[Index];
 }").
 
@@ -465,9 +478,11 @@ array__slow_set(Array0, Index, Item, Array) :-
 :- pragma(c_code, array__set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo), "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
+#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
 		fatal_error(""array__set: array index out of bounds"");
 	}
+#endif
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
 }").
