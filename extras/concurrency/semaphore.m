@@ -10,6 +10,9 @@
 % This module implements a simple semaphore data type for allowing
 % coroutines to synchronise with one another.
 %
+% Note if you are compiling in a hlc grade, the grade component must
+% contain a `.par'.
+%
 %---------------------------------------------------------------------------%
 :- module semaphore.
 
@@ -51,45 +54,62 @@
 :- type semaphore	== c_pointer.
 
 :- pragma c_header_code("
+#if defined(MR_HIGHLEVEL_CODE) && !defined(MR_THREAD_SAFE)
+  #error Semaphores only work in the hlc.par.* grades.
+#endif
+
 	#include <stdio.h>
 	#include ""mercury_context.h""
 	#include ""mercury_thread.h""
 
 	typedef struct ME_SEMAPHORE_STRUCT {
 		int		count;
+#ifndef MR_HIGHLEVEL_CODE
 		MR_Context	*suspended;
+#else
+		MercuryCond	cond;
+#endif
 #ifdef MR_THREAD_SAFE
-		MercuryLock		lock;
+		MercuryLock	lock;
 #endif
 	} ME_Semaphore;
 ").
 
 :- pragma c_code(semaphore__new(Semaphore::out, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	ME_Semaphore	*sem;
 
-	incr_hp((Word *) sem, round_up(sizeof(ME_Semaphore), sizeof(Word)));
+	incr_hp(sem, round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
 	sem->count = 0;
+#ifndef MR_HIGHLEVEL_CODE
 	sem->suspended = NULL;
-#ifdef	MR_THREAD_SAFE
+#else
+	pthread_cond_init(&(sem->cond), MR_COND_ATTR);
+#endif
+#ifdef MR_THREAD_SAFE
 	pthread_mutex_init(&(sem->lock), MR_MUTEX_ATTR);
 #endif
-	Semaphore = (Word) sem;
+	Semaphore = (MR_Word) sem;
 	IO = IO0;
 }").
 
 		% because semaphore__signal has a local label, we may get
 		% C compilation errors if inlining leads to multiple copies
 		% of this code.
+		% XXX get rid of this limitation at some stage.
 :- pragma no_inline(semaphore__signal/3).
 :- pragma c_code(semaphore__signal(Semaphore::in, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	ME_Semaphore	*sem;
+#ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
+#endif
 
 	sem = (ME_Semaphore *) Semaphore;
 
 	MR_LOCK(&(sem->lock), ""semaphore__signal"");
+
+#ifndef MR_HIGHLEVEL_CODE
 	if (sem->count >= 0 && sem->suspended != NULL) {
 		ctxt = sem->suspended;
 		sem->suspended = ctxt->next;
@@ -111,21 +131,31 @@ signal_skip_to_the_end_1:
 		runnext();
 signal_skip_to_the_end_2:
 	}
+#else
+	sem->count++;
+	MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
+	MR_SIGNAL(&(sem->cond));
+#endif
 	IO = IO0;
 }").
 
 		% because semaphore__wait has a local label, we may get
 		% C compilation errors if inlining leads to multiple copies
 		% of this code.
+		% XXX get rid of this limitation at some stage.
 :- pragma no_inline(semaphore__wait/3).
 :- pragma c_code(semaphore__wait(Semaphore::in, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	ME_Semaphore	*sem;
+#ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
+#endif
 
 	sem = (ME_Semaphore *) Semaphore;
 
 	MR_LOCK(&(sem->lock), ""semaphore__wait"");
+
+#ifndef MR_HIGHLEVEL_CODE
 	if (sem->count > 0) {
 		sem->count--;
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
@@ -138,6 +168,15 @@ signal_skip_to_the_end_2:
 		runnext();
 wait_skip_to_the_end:
 	}
+#else
+	while (sem->count <= 0) {
+		MR_WAIT(&(sem->cond), &(sem->lock));
+	}
+
+	sem->count--;
+
+	MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+#endif
 	IO = IO0;
 }").
 
@@ -153,21 +192,19 @@ semaphore__try_wait(Sem, Res) -->
 :- mode semaphore__try_wait0(in, out, di, uo) is det.
 
 :- pragma c_code(semaphore__try_wait0(Semaphore::in, Res::out, IO0::di, IO::uo),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	ME_Semaphore	*sem;
-	MR_Context	*ctxt;
 
 	sem = (ME_Semaphore *) Semaphore;
 
-	MR_LOCK(&(sem->lock), ""semaphore__wait"");
+	MR_LOCK(&(sem->lock), ""semaphore__try_wait"");
 	if (sem->count > 0) {
 		sem->count--;
-		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+		MR_UNLOCK(&(sem->lock), ""semaphore__try_wait"");
 		Res = 0;
 	} else {
-		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
+		MR_UNLOCK(&(sem->lock), ""semaphore__try_wait"");
 		Res = 1;
 	}
 	IO = IO0;
 }").
-
