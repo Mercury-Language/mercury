@@ -1,6 +1,31 @@
 NEWS since Mercury release 0.8:
 -------------------------------
 
+* We've made a small change to the rule for quantification of lambda
+  expressions.  
+
+  The new rule is that all variables in the arguments of lambda
+  expressions are treated as locally quantified to that lambda expression.
+  For function lambda expressions, variables in the result term
+  use the normal quantification rules.  See the "Data-terms" section
+  of the "Syntax" chapter of the Mercury language reference manual
+  for details.
+  
+  Previously, the exact quantification rule for lambda expressions was
+  not documented, but the compiler would locally quantify variables in
+  function return values, and it would only locally quantify variables
+  occuring at the top level of an argument term, not those occurring in
+  subterms.  Both of these were rather surprising for functional
+  programmers.
+
+  It is possible that this change may break some existing code using
+  predicate lambda expressions with compound terms as arguments, but we
+  expect this to be extremely rare.  If it does occur, the compiler
+  will issue a warning about variables having overlapping scopes, and
+  the work-around is simple: use a fresh variable for the lambda
+  predicate argument and unify it with the compound term in the body of
+  the lambda expression.
+
 * We've added a new predicate to the Mercury standard library:
 	bag__count_value/3.	
 
