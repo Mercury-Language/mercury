@@ -7,52 +7,30 @@
 # samples/Mmake - this is the main part of the Makefile
 # for building the Mercury sample programs.
 
-MERCURY_DIR=..
+# To build these programs, first install the Mercury compiler, then
+# type `mmake depend; mmake'.
 
-MAIN_TARGET=samples
+# You can also type `mmake strip' to strip the executables
+# (this can reduce the size of executables considerably).
 
-#-----------------------------------------------------------------------------#
+PROGS=	all_solutions calculator committed_choice eliza hello
 
-# Specify which compilers to use to compile the samples.
-# Don't change these without good reason - if you want to
-# do a temporary change, change ../Mmake.params.
+DEPENDS=$(PROGS:%=%.depend)
 
-MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" mnc
-MNL	=	MERCURY_LIB_DIR=. \
-	MERCURY_LIB_NOS="`vpath_find $(samples.nos) $(NU_LIBRARY_NOS)`" \
-		mnl
-
-MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile msc
-MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
-MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(samples.qls) $(NU_LIBRARY_QLS)`" \
-		msl
-
-MCD	=	MERCURY_INT_DIR=. \
-		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --generate-dependencies
-MCI	=	MERCURY_INT_DIR=. \
-		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --make-interface
-MCG	=	MERCURY_INT_DIR=. \
-		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --generate-code
-MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
-MGNUCFLAGS =	-I $(BOEHM_GC_DIR) -g
-C2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
-		MERCURY_MOD_LIB_MODS="$(SYS_CS)" \
-		MERCURY_MKINIT=../util/mkinit \
-		c2init
+MAIN_TARGET=all
 
 #-----------------------------------------------------------------------------#
 
 # targets
 
 .PHONY: all
-all : samples
+all : $(PROGS)
 
-.PHONY: samples
-samples : eliza
+.PHONY: depend
+depend: $(DEPENDS)
 
-#-----------------------------------------------------------------------------#
-
-eliza : eliza.m
-	$(MC) --link eliza
+.PHONY: strip
+strip: $(PROGS)
+	strip $(PROGS)
 
 #-----------------------------------------------------------------------------#

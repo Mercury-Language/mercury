@@ -7,6 +7,8 @@
 % File: eliza.m.
 % Main author: bromage.
 
+% Eliza, the famous psychotherapist.
+
 %-----------------------------------------------------------------------------%
 
 :- module eliza.
