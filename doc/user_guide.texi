@@ -841,6 +841,9 @@ The advantages of the @samp{mmc --make} over Mmake are that there
 is no @samp{mmake depend} step and the dependencies are more accurate.
 Parallel builds are not yet supported.
 
+Note that @samp{--use-subdirs} is automatically enabled if you specify
+@samp{--mmake}.
+
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}
 file has the same syntax as an Mmakefile, but only variable assignments and
@@ -5971,7 +5974,9 @@ do not need to be materialised.
 @findex -m
 @findex --make
 Treat the non-option arguments to @samp{mmc} as files to
-make, rather than source files.
+make, rather than source files.  Create the specified files,
+if they are not already up-to-date.
+(Note that this option also enables @samp{--use-subdirs}.)
 
 @item -r
 @itemx --rebuild

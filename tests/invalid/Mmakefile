@@ -77,7 +77,6 @@ SINGLEMODULE_PROGS= \
 	multisoln_func \
 	nested_impl_in_int \
 	no_exports \
-	nonexistent_import \
 	not_a_switch \
 	nullary_ho_func_error \
 	occurs \
@@ -135,6 +134,18 @@ SINGLEMODULE_PROGS= \
 	vars_in_wrong_places \
 	with_type
 
+# The following tests can only be run when building with --use-subdirs
+# Note that tests which are compiled with --use-subdirs (or --make,
+# which implies --use-subdirs) can only be run if we are building with
+# --use-subdirs, otherwise (1) these tests will create the `Mercury'
+# subdirectory, which will mean that all remaining tests get run with
+# --use-subdirs and (2) if we're testing against a work-space, and the
+# workspace wasn't built with --use-subdirs, these tests will be fail with
+# some misleading error messages, due to the standard library not being
+# in the expected place.
+USE_SUBDIR_MODULES = \
+	nonexistent_import
+
 # XXX we do not yet pass the following tests:
 #	foreign_decl_line_number (due to some errors being reported in .c
 #		files and .mh files rather than in .m files)
@@ -154,7 +165,11 @@ SINGLEMODULE_PROGS= \
 
 #-----------------------------------------------------------------------------#
 
+ifeq($(MMAKE_USE_SUBDIRS),yes)
+PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS) $(USE_SUBDIR_MODULES)
+else
 PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
+endif
 
 TESTS = $(MULTIMODULE_PROGS) $(SINGLEMODULE_PROGS:%=%-nodepend)
 SUBDIRS = purity

@@ -3562,7 +3562,9 @@ options_help_build_system -->
 		% when compiling a module.
 		"-m, --make",
 		"\tTreat the non-option arguments to `mmc' as files to",
-		"\tmake, rather than source files.",
+		"\tmake, rather than source files.  Create the specified",
+		"\tfiles, if they are not already up-to-date.",
+		"\tNote that this option also enables `--use-subdirs'.",
 		"-r, --rebuild",
 		"\tSame as `--make', but always rebuild the target files",
 		"\teven if they are up to date.",
