@@ -80,7 +80,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+	 	 $BOOTSTRAP_MC conftest </dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
@@ -94,7 +94,7 @@ fi
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
 if test "$GNU_MAKE" != ""; then
-	case "`$GNU_MAKE -v bogus 2>&1`" in
+	case "`$GNU_MAKE -v bogus </dev/null 2>&1`" in
 		"GNU Make"*)
 			;;
 		*)
@@ -103,6 +103,7 @@ if test "$GNU_MAKE" != ""; then
 fi
 if test "$GNU_MAKE" = ""; then
 	AC_MSG_ERROR(cannot find GNU Make)
+	exit 1
 else
 	MERCURY_MSG("found GNU Make: $GNU_MAKE")
 fi
@@ -467,13 +468,25 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	[mercury_cv_low_tag_bits=0])
 )
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
-# XXX tag bits != 2 causes bootstrapping problems
 if test "$mercury_cv_low_tag_bits" -lt 2; then
-	AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
+		exit 1
+	else
+		MERCURY_MSG("rebuilding with fewer tag bits")
+		MERCURY_MSG("installation may take longer than usual")
+		rm -f library/*.c compiler/*.c profiler/*.c
+	fi
 fi
 if test "$mercury_cv_low_tag_bits" -gt 2; then
-	AC_MSG_WARN("bootstrapping using only 2 low tag bits")
-	mercury_cv_low_tag_bits=2
+	if test "$BOOTSTRAP_MC" = ""; then
+		AC_MSG_WARN("bootstrapping using only 2 low tag bits")
+		mercury_cv_low_tag_bits=2
+	else
+		MERCURY_MSG("rebuilding with extra tag bits")
+		MERCURY_MSG("installation may take longer than usual")
+		rm -f library/*.c compiler/*.c profiler/*.c
+	fi
 fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
