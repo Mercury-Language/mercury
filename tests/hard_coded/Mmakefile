@@ -58,16 +58,10 @@ PROGS=	\
 	minint_bug \
 	mode_choice \
 	name_mangling \
-	nested \
-	nested2 \
-	nested3 \
-	nested_intermod_main \
 	no_fully_strict \
 	no_inline \
 	nondet_ctrl_vn \
 	nullary_ho_func \
-	parent \
-	parent2 \
 	pragma_c_code \
 	pragma_inline \
 	pragma_import \
@@ -94,11 +88,6 @@ PROGS=	\
 	write \
 	write_reg1
 
-# The following is required to make the test cases
-#	nested, nested2, and nested3
-# work reliabily with parallel makes -- without this they occasionally fail.
-RM_C = :
-
 #-----------------------------------------------------------------------------#
 
 # some tests need to be compiled with particular options
@@ -111,8 +100,6 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
-MCFLAGS-nested_intermod	=	--intermodule-optimization
-MCFLAGS-nested_intermod_main =	--intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
@@ -145,7 +132,7 @@ RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = typeclasses
+SUBDIRS = typeclasses nested_mods
 
 #-----------------------------------------------------------------------------#
 
