@@ -1956,6 +1956,8 @@ io__write_univ(Univ, Priority) -->
 		io__write_float(Float)
 	; { univ_to_type(Univ, TypeDesc) } ->
 		io__write_type_desc(TypeDesc)
+	; { univ_to_type(Univ, TypeCtorDesc) } ->
+		io__write_type_ctor_desc(TypeCtorDesc)
 	; { univ_to_type(Univ, OrigUniv) } ->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
@@ -2208,6 +2210,25 @@ arg_priority(1000) --> [].
 
 io__write_type_desc(TypeDesc) -->
 	io__write_string(type_name(TypeDesc)).
+
+:- pred io__write_type_ctor_desc(type_ctor_desc, io__state, io__state).
+:- mode io__write_type_ctor_desc(in, di, uo) is det.
+
+io__write_type_ctor_desc(TypeCtorDesc) -->
+        { type_ctor_name_and_arity(TypeCtorDesc, ModuleName, Name, Arity0) },
+	{ ModuleName = "builtin", Name = "func" ->
+		% The type ctor that we call `builtin:func/N' takes N + 1
+		% type parameters: N arguments plus one return value.
+		% So we need to subtract one from the arity here.
+		Arity = Arity0 - 1
+	;
+		Arity = Arity0
+	},
+	( { ModuleName = "builtin" } ->
+		io__format("%s/%d", [s(Name), i(Arity)])
+	;
+		io__format("%s:%s/%d", [s(ModuleName), s(Name), i(Arity)])
+	).
 
 :- pred io__write_univ_as_univ(univ, io__state, io__state).
 :- mode io__write_univ_as_univ(in, di, uo) is det.

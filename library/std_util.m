@@ -1315,7 +1315,7 @@ void sys_init_unify_univ_module(void) {
 ** tuple, plus one encodes a predicate, plus two encodes a function.
 ** The maximum arity that can be encoded is given by MR_MAX_VARIABLE_ARITY
 ** (see below).
-** The C type corresponding to std_util:type_ctor_desc is `MR_TypeCtorInfo'.
+** The C type corresponding to std_util:type_ctor_desc is `MR_TypeCtorDesc'.
 */
 
 /*
@@ -1441,10 +1441,9 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 				             MR_Word arg_type_list);
 ").
 
-	% A type_ctor_desc is really just a subtype of type_desc,
-	% but we hide this from users, since it is an implementation
-	% detail.
-:- type type_ctor_desc == type_desc.
+	% A type_ctor_desc is not (quite) a subtype of type_desc,
+	% so we use a separate type for it.
+:- type type_ctor_desc ---> type_ctor_desc(c_pointer).
 
 :- pragma c_code(type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, "
