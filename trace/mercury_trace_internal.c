@@ -2195,7 +2195,7 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 		(long) event_info->MR_event_number,
 		(long) event_info->MR_call_seqno,
 		(long) event_info->MR_call_depth,
-		MR_port_names[event_info->MR_trace_port);
+		MR_port_names[event_info->MR_trace_port]);
 
 	MR_print_proc_id(MR_mdb_out, event_info->MR_event_sll->MR_sll_entry,
 			event_info->MR_event_path, NULL, NULL);
