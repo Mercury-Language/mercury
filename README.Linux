@@ -26,7 +26,7 @@ happened to be a little bit harder to implement.  We may change this in
 a future release.)
 
 To use the shared libraries, you must compile your program with
-`mc --cflags -DPIC_REG' and link with `ml --mercury-libs shared'
+`mmc --cflags -DPIC_REG' and link with `ml --mercury-libs shared'
 or add `MGNUCFLAGS=-DPIC_REG' and `MLFLAGS=--mercury-libs shared'
 to your Mmake file.
 
