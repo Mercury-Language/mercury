@@ -657,7 +657,7 @@ expand_predids([], _, ProcCalls, ProcCalls, HOInfo, HOInfo, CallsHO, CallsHO).
 expand_predids([PredId|PredIds], Module, ProcCalls0, ProcCalls, HOInfo0, 
 		HOInfo, CallsHO0, CallsHO) :- 
 	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, Procs),
+	Procs = pred_info_non_imported_procids(PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	process_procs(Procs, Module, PredId, ArgTypes, ProcTable, ProcCalls0, 

@@ -881,11 +881,11 @@ mode_info_write_context(ModeInfo) -->
 	{ mode_info_get_procid(ModeInfo, ProcId) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_get_markers(PredInfo, PredMarkers) },
 	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
-	{ pred_info_name(PredInfo, Name0) },
+	{ Name0 = pred_info_name(PredInfo) },
 	{ Name = unqualified(Name0) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 	{ MaybeDet = no },
@@ -1006,7 +1006,7 @@ write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	( { check_marker(Markers, infer_modes) } ->
-		{ pred_info_all_procids(PredInfo, ProcIds) },
+		{ ProcIds = pred_info_all_procids(PredInfo) },
 		{ pred_info_procedures(PredInfo, Procs) },
 		write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
 			OutputDetism, ModuleInfo)
@@ -1053,10 +1053,10 @@ write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo,
 :- mode write_mode_inference_message(in, in, in, in, di, uo) is det.
 
 write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo) -->
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredName = pred_info_name(PredInfo) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ pred_info_arity(PredInfo, PredArity) },
+	{ PredArity = pred_info_arity(PredInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
 	% We need to strip off the extra type_info arguments inserted at the
@@ -1071,7 +1071,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo) -->
 	),
 
 	{ varset__init(VarSet) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	( { OutputDetism = yes } ->
 		{ proc_info_inferred_determinism(ProcInfo, Detism) },
 		{ MaybeDet0 = yes(Detism) }
@@ -1197,19 +1197,19 @@ report_indistinguishable_modes_error(OldProcId, NewProcId,
 	io__write_string(
 		"  Here is the conflicting mode declaration.\n").
 
-output_mode_decl(ProcId, PredInfo) -->
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ pred_info_name(PredInfo, Name0) },
-	{ pred_info_procedures(PredInfo, Procs) },
-	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
-	{ proc_info_declared_determinism(ProcInfo, MaybeDet) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ varset__init(InstVarSet) },
-	{ Name = unqualified(Name0) },
-	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
+output_mode_decl(ProcId, PredInfo, !IO) :-
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	Name0 = pred_info_name(PredInfo),
+	Name = unqualified(Name0),
+	pred_info_procedures(PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo),
+	proc_info_declared_argmodes(ProcInfo, Modes0),
+	proc_info_declared_determinism(ProcInfo, MaybeDet),
+	proc_info_context(ProcInfo, Context),
+	varset__init(InstVarSet),
+	strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
 	mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
-				MaybeDet, Context).
+		MaybeDet, Context, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -92,9 +92,9 @@ generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
 generate_method_id(ModuleInfo, ClassProc) = MethodId :-
 	ClassProc = hlds_class_proc(PredId, _ProcId),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, MethodName),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	MethodName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	MethodId = tc_method_id(MethodName, Arity, PredOrFunc).
 
 %---------------------------------------------------------------------------%

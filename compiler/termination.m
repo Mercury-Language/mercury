@@ -384,10 +384,10 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, Module0, Module) :-
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	map__lookup(OutputSupplierMap, PPId, OutputSuppliers),
 	ArgSizeInfo = finite(Gamma, OutputSuppliers),
-	proc_info_set_maybe_arg_size_info(ProcInfo, yes(ArgSizeInfo),
-		ProcInfo1),
+	proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo),
+		ProcInfo, ProcInfo1),
 	map__set(ProcTable, ProcId, ProcInfo1, ProcTable1),
-	pred_info_set_procedures(PredInfo, ProcTable1, PredInfo1),
+	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
 	map__set(PredTable0, PredId, PredInfo1, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	set_finite_arg_size_infos(Solns, OutputSupplierMap, Module1, Module).
@@ -402,10 +402,10 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, Module0, Module) :-
 	map__lookup(PredTable0, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_set_maybe_arg_size_info(ProcInfo, yes(ArgSizeInfo),
-		ProcInfo1),
+	proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo),
+		ProcInfo, ProcInfo1),
 	map__set(ProcTable, ProcId, ProcInfo1, ProcTable1),
-	pred_info_set_procedures(PredInfo, ProcTable1, PredInfo1),
+	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
 	map__set(PredTable0, PredId, PredInfo1, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	set_infinite_arg_size_infos(PPIds, ArgSizeInfo, Module1, Module).
@@ -422,10 +422,10 @@ set_termination_infos([PPId | PPIds], TerminationInfo, Module0, Module) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
-	proc_info_set_maybe_termination_info(ProcInfo0, yes(TerminationInfo),
-		ProcInfo),
+	proc_info_set_maybe_termination_info(yes(TerminationInfo),
+		ProcInfo0, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	set_termination_infos(PPIds, TerminationInfo, Module1, Module).
@@ -525,7 +525,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_context(PredInfo0, Context),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	pred_info_get_markers(PredInfo0, Markers),
-	pred_info_procids(PredInfo0, ProcIds),
+	ProcIds = pred_info_procids(PredInfo0),
 	( 
 		% It is possible for compiler generated/mercury builtin
 		% predicates to be imported or locally defined, so they
@@ -583,7 +583,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	;
 		ProcTable = ProcTable2
 	),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	check_preds(PredIds, Module1, Module, State2, State).
@@ -611,10 +611,10 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
 			ProcTable0, ProcTable)
 	;
 		(
-			pred_info_name(PredInfo, Name),
-			pred_info_arity(PredInfo, Arity),
+			ModuleName = pred_info_module(PredInfo),
+			Name = pred_info_name(PredInfo),
+			Arity = pred_info_arity(PredInfo),
 			special_pred_name_arity(SpecPredId0, Name, Arity),
-			pred_info_module(PredInfo, ModuleName),
 			any_mercury_builtin_module(ModuleName)
 		->
 			SpecialPredId = SpecPredId0
@@ -641,9 +641,9 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId,
 	proc_info_headvars(ProcInfo0, HeadVars),
 	special_pred_id_to_termination(SpecialPredId, HeadVars,
 		ArgSize, Termination),
-	proc_info_set_maybe_arg_size_info(ProcInfo0, yes(ArgSize), ProcInfo1),
-	proc_info_set_maybe_termination_info(ProcInfo1, yes(Termination),
-		ProcInfo),
+	proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
+	proc_info_set_maybe_termination_info(yes(Termination),
+		ProcInfo1, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
 	set_generated_terminates(ProcIds, SpecialPredId,
 		ProcTable1, ProcTable).
@@ -687,9 +687,9 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 		Error = is_builtin(PredId),
 		ArgSizeInfo = yes(infinite([Context - Error]))
 	),
-	proc_info_set_maybe_arg_size_info(ProcInfo0, ArgSizeInfo, ProcInfo1),
-	proc_info_set_maybe_termination_info(ProcInfo1, yes(cannot_loop),
-		ProcInfo),
+	proc_info_set_maybe_arg_size_info(ArgSizeInfo, ProcInfo0, ProcInfo1),
+	proc_info_set_maybe_termination_info(yes(cannot_loop),
+		ProcInfo1, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
 	set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
 		ProcTable1, ProcTable).
@@ -747,8 +747,8 @@ change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
 			proc_info_get_maybe_arg_size_info(ProcInfo0, no)
 		)
 	->
-		proc_info_set_maybe_arg_size_info(ProcInfo0,
-			yes(ArgSize), ProcInfo),
+		proc_info_set_maybe_arg_size_info(yes(ArgSize),
+			ProcInfo0, ProcInfo),
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1)
 	;
 		ProcTable1 = ProcTable0
@@ -781,8 +781,8 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 			proc_info_get_maybe_termination_info(ProcInfo0, no)
 		)
 	->
-		proc_info_set_maybe_termination_info(ProcInfo0,
-			yes(Termination), ProcInfo),
+		proc_info_set_maybe_termination_info(yes(Termination),
+			ProcInfo0, ProcInfo),
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1)
 	;
 		ProcTable1 = ProcTable0
@@ -849,11 +849,11 @@ termination__write_pred_termination_info(Module, PredId) -->
 		% in an undefined predicate error.
 		\+ { set__member(PredId, TypeSpecForcePreds) }
 	->
-		{ pred_info_name(PredInfo, PredName) },
+		{ PredName = pred_info_name(PredInfo) },
+		{ ProcIds = pred_info_procids(PredInfo) },
+		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
+		{ ModuleName = pred_info_module(PredInfo) },
 		{ pred_info_procedures(PredInfo, ProcTable) },
-		{ pred_info_procids(PredInfo, ProcIds) },
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-		{ pred_info_module(PredInfo, ModuleName) },
 		{ pred_info_context(PredInfo, Context) },
 		{ SymName = qualified(ModuleName, PredName) },
 		termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 

@@ -148,7 +148,7 @@ lambda__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 lambda__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
+	ProcIds = pred_info_procids(PredInfo),
 	lambda__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo).
 
 :- pred lambda__process_procs(pred_id, list(proc_id), module_info, module_info).
@@ -168,52 +168,50 @@ lambda__process_proc(PredId, ProcId, ModuleInfo0, ModuleInfo) :-
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
-					ProcInfo, PredInfo1, ModuleInfo1),
+	lambda__process_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
+		ModuleInfo0, ModuleInfo1),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
 	module_info_preds(ModuleInfo1, PredTable1),
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
 
-:- pred lambda__process_proc_2(proc_info, pred_info, module_info,
-				proc_info, pred_info, module_info).
-:- mode lambda__process_proc_2(in, in, in, out, out, out) is det.
+:- pred lambda__process_proc_2(proc_info::in, proc_info::out,
+	pred_info::in, pred_info::out, module_info::in, module_info::out)
+	is det.
 
-lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
-				ProcInfo, PredInfo, ModuleInfo) :-
+lambda__process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 	% grab the appropriate fields from the pred_info and proc_info
-	pred_info_name(PredInfo0, PredName),
-	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
-	pred_info_typevarset(PredInfo0, TypeVarSet0),
-	pred_info_get_markers(PredInfo0, Markers),
-	pred_info_get_class_context(PredInfo0, Constraints0),
-	pred_info_get_aditi_owner(PredInfo0, Owner),
-	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_varset(ProcInfo0, VarSet0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
-	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
-	proc_info_inst_varset(ProcInfo0, InstVarSet0),
+	PredName = pred_info_name(!.PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
+	pred_info_typevarset(!.PredInfo, TypeVarSet0),
+	pred_info_get_markers(!.PredInfo, Markers),
+	pred_info_get_class_context(!.PredInfo, Constraints0),
+	pred_info_get_aditi_owner(!.PredInfo, Owner),
+	proc_info_headvars(!.ProcInfo, HeadVars),
+	proc_info_varset(!.ProcInfo, VarSet0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap0),
+	proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
+	proc_info_inst_varset(!.ProcInfo, InstVarSet0),
 	MustRecomputeNonLocals0 = no,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
 		InstVarSet0, TVarMap0, TCVarMap0, Markers, PredOrFunc, 
-		PredName, Owner, ModuleInfo0, MustRecomputeNonLocals0),
+		PredName, Owner, !.ModuleInfo, MustRecomputeNonLocals0),
 	lambda__process_goal(Goal0, Goal1, Info0, Info1),
 	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet, 
-		_, TVarMap, TCVarMap, _, _, _, _, ModuleInfo,
+		_, TVarMap, TCVarMap, _, _, _, _, !:ModuleInfo,
 		MustRecomputeNonLocals),
 
 	% check if we need to requantify
 	( MustRecomputeNonLocals = yes ->
-		implicitly_quantify_clause_body(HeadVars,
-			Goal1, VarSet1, VarTypes1,
-			Goal, VarSet, VarTypes, _Warnings)
+		implicitly_quantify_clause_body(HeadVars, _Warnings,
+			Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes)
 	;
 		Goal = Goal1,
 		VarSet = VarSet1,
@@ -221,13 +219,13 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	),
 
 	% set the new values of the fields in proc_info and pred_info
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4),
-	proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo),
-	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
-	pred_info_set_class_context(PredInfo1, Constraints, PredInfo).
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_typeinfo_varmap(TVarMap, !ProcInfo),
+	proc_info_set_typeclass_info_varmap(TCVarMap, !ProcInfo),
+	pred_info_set_typevarset(TypeVarSet, !PredInfo),
+	pred_info_set_class_context(Constraints, !PredInfo).
 
 :- pred lambda__process_goal(hlds_goal, hlds_goal,
 					lambda_info, lambda_info).
@@ -430,8 +428,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			)
 		;
 			HighLevelCode = yes,
-			pred_info_get_is_pred_or_func(Call_PredInfo,
-				Call_PredOrFunc),
+			Call_PredOrFunc =
+				pred_info_is_pred_or_func(Call_PredInfo),
 			PredOrFunc = Call_PredOrFunc,
 			CodeModel = Call_CodeModel
 		),
@@ -453,8 +451,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% we need to mark the procedure as having had its
 		% address taken
 		%
-		proc_info_set_address_taken(Call_ProcInfo, address_is_taken,
-			Call_NewProcInfo),
+		proc_info_set_address_taken(address_is_taken,
+			Call_ProcInfo, Call_NewProcInfo),
 		module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
 			Call_PredInfo, Call_NewProcInfo, ModuleInfo)
 	;

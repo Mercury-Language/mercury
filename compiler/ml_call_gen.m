@@ -413,7 +413,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	%
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_arg_types(PredInfo, PredArgTypes) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 

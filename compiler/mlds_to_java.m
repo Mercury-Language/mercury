@@ -786,8 +786,8 @@ generate_call_method(CodeAddr, MethodDefn) :-
 	% XXX We should fill in the Context properly.
 	Context = mlds__make_context(term__context_init),
 	ModuleName = ProcLabel ^ mod_name,
-	hlds_pred__initial_pred_id(PredID),
-	initial_proc_id(ProcID),
+	PredID = hlds_pred__initial_pred_id,
+	ProcID = initial_proc_id,
 	%
 	% Create new method name
 	%

@@ -216,7 +216,7 @@ modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 	pred_info_procedures(PredInfo, Procs),
 
 	( MayChangeCalledProc = may_not_change_called_proc ->
-		( invalid_proc_id(ProcId0) ->
+		( ProcId0 = invalid_proc_id ->
 			error("modecheck_call_pred: invalid proc_id")
 		;
 			ProcIds = [ProcId0]
@@ -224,7 +224,7 @@ modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 	;
 			% Get the list of different possible
 			% modes for the called predicate
-		pred_info_all_procids(PredInfo, ProcIds)
+		ProcIds = pred_info_all_procids(PredInfo)
 	),
 
 	compute_arg_offset(PredInfo, ArgOffset),
@@ -240,7 +240,7 @@ modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 		set__init(WaitingVars),
 		mode_info_error(WaitingVars, mode_error_no_mode_decl,
 			ModeInfo0, ModeInfo),
-		invalid_proc_id(TheProcId),
+		TheProcId = invalid_proc_id,
 		ArgVars = ArgVars0,
 		ExtraGoals = no_extra_goals
 	;
@@ -364,7 +364,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
 		instmap__init_unreachable(Instmap),
 		mode_info_set_instmap(Instmap, ModeInfo1, ModeInfo)
 	;
-		invalid_proc_id(TheProcId),	% dummy value
+		TheProcId = invalid_proc_id,	% dummy value
 		mode_info_get_instmap(ModeInfo0, InstMap),
 		instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
 		mode_info_set_call_arg_context(0, ModeInfo0, ModeInfo1),

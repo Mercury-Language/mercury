@@ -33,8 +33,8 @@
 	--->	final_allocation
 	;	for_stack_opt.
 
-:- pred allocate_store_maps(store_map_run_type::in, proc_info::in, pred_id::in,
-	module_info::in, proc_info::out) is det.
+:- pred allocate_store_maps(store_map_run_type::in, pred_id::in,
+	module_info::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,14 +61,14 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
+allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	( RunType = final_allocation ->
-		proc_info_goal(ProcInfo0, Goal0),
+		proc_info_goal(!.ProcInfo, Goal0),
 
-		find_final_follow_vars(ProcInfo0,
+		find_final_follow_vars(!.ProcInfo,
 			FollowVarsMap0, NextNonReserved0),
-		proc_info_vartypes(ProcInfo0, VarTypes),
+		proc_info_vartypes(!.ProcInfo, VarTypes),
 		find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo,
 			FollowVarsMap0, NextNonReserved0,
 			Goal1, FollowVarsMap, NextNonReserved),
@@ -78,23 +78,23 @@ allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 			GoalInfo2),
 		Goal2 = GoalExpr1 - GoalInfo2
 	;
-		proc_info_goal(ProcInfo0, Goal2)
+		proc_info_goal(!.ProcInfo, Goal2)
 	),
-	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
+	initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	( eff_trace_level_is_none(PredInfo, ProcInfo0, TraceLevel) = no ->
-		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+	( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
+		trace__fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
 	;
 		set__init(ResumeVars0)
 	),
-	arg_info__build_input_arg_list(ProcInfo0, InputArgLvals),
+	arg_info__build_input_arg_list(!.ProcInfo, InputArgLvals),
 	LastLocns0 = initial_last_locns(InputArgLvals),
-	proc_info_stack_slots(ProcInfo0, StackSlots),
+	proc_info_stack_slots(!.ProcInfo, StackSlots),
 	StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
 	store_alloc_in_goal(Goal2, Liveness0, ResumeVars0, LastLocns0,
 		StoreAllocInfo, Goal, _, _),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
+	proc_info_set_goal(Goal, !ProcInfo).
 
 :- func initial_last_locns(assoc_list(prog_var, lval)) = last_locns.
 

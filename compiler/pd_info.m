@@ -705,7 +705,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ counter__allocate(Count, Counter0, Counter) },
 	pd_info_set_counter(Counter),
 	pd_info_get_pred_info(PredInfo),
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredName = pred_info_name(PredInfo) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ term__context_line(Context, Line) },
 	pd_info_get_module_info(ModuleInfo0),

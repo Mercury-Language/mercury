@@ -391,10 +391,8 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 		generate_stub_clause(PredName, !PredInfo, ModuleInfo,
 			StubClause, VarSet0, VarSet),
 		Clauses1 = [StubClause],
-	        clauses_info_set_clauses(ClausesInfo0, Clauses1,
-			ClausesInfo1),
-	        clauses_info_set_varset(ClausesInfo1, VarSet,
-			ClausesInfo2)
+	        clauses_info_set_clauses(Clauses1, ClausesInfo0, ClausesInfo1),
+	        clauses_info_set_varset(VarSet, ClausesInfo1, ClausesInfo2)
 	    ;
 	    	VarSet = VarSet0,
 	        Clauses1 = Clauses0,
@@ -411,18 +409,17 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 				% of the head vars into the clauses_info
 			map__from_corresponding_lists(HeadVars, ArgTypes0,
 				VarTypes),
-			clauses_info_set_vartypes(ClausesInfo2, VarTypes,
-				ClausesInfo),
-			pred_info_set_clauses_info(!.PredInfo, ClausesInfo,
-				!:PredInfo),
+			clauses_info_set_vartypes(VarTypes,
+				ClausesInfo2, ClausesInfo),
+			pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 				% We also need to set the head_type_params
 				% field to indicate that all the existentially
 				% quantified tvars in the head of this
 				% pred are indeed bound by this predicate.
 			term__vars_list(ArgTypes0,
 				HeadVarsIncludingExistentials),
-			pred_info_set_head_type_params(!.PredInfo,
-				HeadVarsIncludingExistentials, !:PredInfo),
+			pred_info_set_head_type_params(
+				HeadVarsIncludingExistentials, !PredInfo),
 			Error = no,
 			Changed = no
 		;
@@ -492,8 +489,8 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 				InferredTypeConstraints0, ConstraintProofs,
 				TVarRenaming, ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
-		clauses_info_set_vartypes(ClausesInfo2, InferredVarTypes,
-				ClausesInfo3),
+		clauses_info_set_vartypes(InferredVarTypes,
+			ClausesInfo2, ClausesInfo3),
 
 		%
 		% Apply substitutions to the explicit vartypes.
@@ -507,13 +504,12 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 		apply_variable_renaming_to_type_map(TVarRenaming,
 			ExplicitVarTypes1, ExplicitVarTypes),
 
-		clauses_info_set_explicit_vartypes(ClausesInfo3,
-			ExplicitVarTypes, ClausesInfo4),
-		clauses_info_set_clauses(ClausesInfo4, Clauses, ClausesInfo),
-		pred_info_set_clauses_info(!.PredInfo, ClausesInfo, !:PredInfo),
-		pred_info_set_typevarset(!.PredInfo, TypeVarSet, !:PredInfo),
-		pred_info_set_constraint_proofs(!.PredInfo, ConstraintProofs,
-			!:PredInfo),
+		clauses_info_set_explicit_vartypes(ExplicitVarTypes,
+			ClausesInfo3, ClausesInfo4),
+		clauses_info_set_clauses(Clauses, ClausesInfo4, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+		pred_info_set_typevarset(TypeVarSet, !PredInfo),
+		pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
 
 		%
 		% Split the inferred type class constraints into those 
@@ -535,8 +531,8 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 		% bound in to types that make the constraints satisfiable,
 		% causing the error to go away.
 		%
-		pred_info_set_unproven_body_constraints(!.PredInfo,
-				UnprovenBodyConstraints, !:PredInfo),
+		pred_info_set_unproven_body_constraints(
+			UnprovenBodyConstraints, !PredInfo),
 
 		( Inferring = yes ->
 			%
@@ -549,14 +545,14 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 			%
 			% Now save the information we inferred in the pred_info
 			%
-			pred_info_set_head_type_params(!.PredInfo,
-				HeadTypeParams, !:PredInfo),
-			pred_info_set_arg_types(!.PredInfo, TypeVarSet,
-				ExistQVars, ArgTypes, !:PredInfo),
+			pred_info_set_head_type_params(HeadTypeParams,
+				!PredInfo),
+			pred_info_set_arg_types(TypeVarSet, ExistQVars,
+				ArgTypes, !PredInfo),
 			pred_info_get_class_context(!.PredInfo,
 				OldTypeConstraints),
-			pred_info_set_class_context(!.PredInfo,
-				InferredTypeConstraints, !:PredInfo),
+			pred_info_set_class_context(InferredTypeConstraints,
+				!PredInfo),
 			%
 			% Check if anything changed
 			%
@@ -575,8 +571,8 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 				Changed = yes
 			)
 		; % Inferring = no
-			pred_info_set_head_type_params(!.PredInfo,
-				HeadTypeParams2, !:PredInfo),
+			pred_info_set_head_type_params(HeadTypeParams2,
+				!PredInfo),
 			pred_info_get_maybe_instance_method_constraints(
 				!.PredInfo, MaybeInstanceMethodConstraints0),
 
@@ -626,13 +622,12 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 				MaybeInstanceMethodConstraints),
 
 			% save the results in the pred_info
-			pred_info_set_arg_types(!.PredInfo, TypeVarSet,
-				ExistQVars, RenamedOldArgTypes, !:PredInfo),
-			pred_info_set_class_context(!.PredInfo,
-				RenamedOldConstraints, !:PredInfo),
+			pred_info_set_arg_types(TypeVarSet, ExistQVars,
+				RenamedOldArgTypes, !PredInfo),
+			pred_info_set_class_context(RenamedOldConstraints,
+				!PredInfo),
 			pred_info_set_maybe_instance_method_constraints(
-				!.PredInfo, MaybeInstanceMethodConstraints,
-				!:PredInfo),
+				MaybeInstanceMethodConstraints, !PredInfo),
 
 			Changed = no
 		),
@@ -655,35 +650,34 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 :- pred generate_stub_clause(string, pred_info, pred_info, module_info, clause,
 		prog_varset, prog_varset).
 :- mode generate_stub_clause(in, in, out, in, out, in, out) is det.
-generate_stub_clause(PredName, PredInfo0, PredInfo, ModuleInfo, StubClause,
-		VarSet0, VarSet) :-
+
+generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	%
 	% Mark the predicate as a stub
 	% (i.e. record that it originally had no clauses)
 	%
-	pred_info_get_markers(PredInfo0, Markers0),
+	pred_info_get_markers(!.PredInfo, Markers0),
 	add_marker(Markers0, stub, Markers),
-	pred_info_set_markers(PredInfo0, Markers, PredInfo),
+	pred_info_set_markers(Markers, !PredInfo),
 
 	%
 	% Generate `PredName = "<PredName>"'
 	%
-	varset__new_named_var(VarSet0, "PredName", PredNameVar, VarSet),
+	varset__new_named_var(!.VarSet, "PredName", PredNameVar, !:VarSet),
 	make_string_const_construction(PredNameVar, PredName, UnifyGoal),
 	%
 	% Generate `private_builtin.no_clauses(PredName)'
 	% or `private_builtin.sorry(PredName)'
 	%
-	mercury_private_builtin_module(PrivateBuiltin),
-	pred_info_module(PredInfo, ModuleName),
+	ModuleName = pred_info_module(!.PredInfo),
 	( mercury_std_library_module_name(ModuleName) ->
 		CalleeName = "sorry"
 	;
 		CalleeName = "no_clauses"
 	),
-	pred_info_context(PredInfo, Context),
-	generate_simple_call(PrivateBuiltin, CalleeName, predicate,
-		[PredNameVar], only_mode, det, no, [], ModuleInfo,
+	pred_info_context(!.PredInfo, Context),
+	generate_simple_call(mercury_private_builtin_module, CalleeName,
+		predicate, [PredNameVar], only_mode, det, no, [], ModuleInfo,
 		Context, CallGoal),
 	%
 	% Combine the unification and call into a conjunction
@@ -896,21 +890,21 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 		pred_info, pred_info).
 :- mode maybe_add_field_access_function_clause(in, in, out) is det.
 
-maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
-	pred_info_import_status(PredInfo0, ImportStatus),
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
+	pred_info_import_status(!.PredInfo, ImportStatus),
+	pred_info_clauses_info(!.PredInfo, ClausesInfo0),
 	clauses_info_clauses(ClausesInfo0, Clauses0),
 	(
-		pred_info_is_field_access_function(ModuleInfo, PredInfo0),
+		pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 		Clauses0 = [],
 		status_defined_in_this_module(ImportStatus, yes)
 	->
 		clauses_info_headvars(ClausesInfo0, HeadVars),
 		pred_args_to_func_args(HeadVars, FuncArgs, FuncRetVal),
-		pred_info_context(PredInfo0, Context),
-		pred_info_module(PredInfo0, FuncModule),
-		pred_info_name(PredInfo0, FuncName),
-		pred_info_arity(PredInfo0, PredArity),
+		pred_info_context(!.PredInfo, Context),
+		FuncModule = pred_info_module(!.PredInfo),
+		FuncName = pred_info_name(!.PredInfo),
+		PredArity = pred_info_arity(!.PredInfo),
 		adjust_func_arity(function, FuncArity, PredArity),
 		FuncSymName = qualified(FuncModule, FuncName),
 		create_atomic_unification(FuncRetVal,
@@ -922,14 +916,14 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 		Goal = GoalExpr - GoalInfo,
 		ProcIds = [], % the clause applies to all procedures.
 		Clause = clause(ProcIds, Goal, mercury, Context),
-		clauses_info_set_clauses(ClausesInfo0, [Clause], ClausesInfo),
-		pred_info_update_goal_type(PredInfo0, clauses, PredInfo1),
-		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
-		pred_info_get_markers(PredInfo2, Markers0),
+		clauses_info_set_clauses([Clause], ClausesInfo0, ClausesInfo),
+		pred_info_update_goal_type(clauses, !PredInfo),
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+		pred_info_get_markers(!.PredInfo, Markers0),
 		add_marker(Markers0, calls_are_fully_qualified, Markers),
-		pred_info_set_markers(PredInfo2, Markers, PredInfo)
+		pred_info_set_markers(Markers, !PredInfo)
 	;
-		PredInfo = PredInfo0
+		true
 	).
 
 	% If there is only one clause, use the original head variables
@@ -940,8 +934,8 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 :- pred maybe_improve_headvar_names(globals, pred_info, pred_info).
 :- mode maybe_improve_headvar_names(in, in, out) is det.
 
-maybe_improve_headvar_names(Globals, PredInfo0, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+maybe_improve_headvar_names(Globals, !PredInfo) :-
+	pred_info_clauses_info(!.PredInfo, ClausesInfo0),
 	clauses_info_clauses(ClausesInfo0, Clauses0),
 	clauses_info_headvars(ClausesInfo0, HeadVars0),
 	clauses_info_varset(ClausesInfo0, VarSet0),
@@ -955,7 +949,7 @@ maybe_improve_headvar_names(Globals, PredInfo0, PredInfo) :-
 		globals__lookup_bool_option(Globals,
 			make_optimization_interface, yes)
 	->
-		PredInfo = PredInfo0
+		true
 	;
 		Clauses0 = [SingleClause0]
 	->
@@ -973,14 +967,14 @@ maybe_improve_headvar_names(Globals, PredInfo0, PredInfo) :-
 		conj_list_to_goal(list__reverse(RevConj), GoalInfo, Goal),
 
 		apply_partial_map_to_list(HeadVars0, Subst, HeadVars),
-		clauses_info_set_headvars(ClausesInfo0,
-			HeadVars, ClausesInfo1),
+		clauses_info_set_headvars(HeadVars,
+			ClausesInfo0, ClausesInfo1),
 
 		SingleClause = clause(A, Goal, C, D),
-		clauses_info_set_clauses(ClausesInfo1,
-			[SingleClause], ClausesInfo2),
-		clauses_info_set_varset(ClausesInfo2, VarSet, ClausesInfo),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
+		clauses_info_set_clauses([SingleClause],
+			ClausesInfo1, ClausesInfo2),
+		clauses_info_set_varset(VarSet, ClausesInfo2, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo)
 	;
 		%
 		% If a headvar is assigned to a variable with the
@@ -998,8 +992,8 @@ maybe_improve_headvar_names(Globals, PredInfo0, PredInfo) :-
 			    VarSet1
 			)
 		    ), HeadVarNames, VarSet0),
-		clauses_info_set_varset(ClausesInfo0, VarSet, ClausesInfo),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
+		clauses_info_set_varset(VarSet, ClausesInfo0, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo)
 	).
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in, list(prog_var)::in,
@@ -1718,7 +1712,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
 			% at that point, enough information is
 			% available to determine which predicate it is.
 			%
-			invalid_pred_id(PredId)
+			PredId = invalid_pred_id
 		),
 
 			% Arguably, we could do context reduction at
@@ -1730,7 +1724,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
 			TypeCheckInfo)
 
 	;
-		invalid_pred_id(PredId),
+		PredId = invalid_pred_id,
 		report_pred_call_error(CallId, TypeCheckInfo1, TypeCheckInfo)
 	).
 
@@ -1828,7 +1822,7 @@ report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
 typecheck_find_arities(_, [], []).
 typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_arity(PredInfo, Arity),
+	Arity = pred_info_arity(PredInfo),
 	typecheck_find_arities(Preds, PredIds, Arities).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id), list(prog_var),
@@ -1934,8 +1928,8 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		% we've found a matching predicate
 		% was there was more than one matching predicate/function?
 		%
-		pred_info_name(PredInfo, PName),
-		pred_info_module(PredInfo, Module),
+		PName = pred_info_name(PredInfo),
+		Module = pred_info_module(PredInfo),
 		PredName = qualified(Module, PName),
 		(
 			typecheck__find_matching_pred_id(PredIds,
@@ -1943,7 +1937,11 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		->
 			% XXX this should report an error properly, not
 			% via error/1
-			error("Type error in predicate call: unresolvable predicate overloading.  You need to use an explicit module qualifier.  Compile with -V to find out where.")
+			error("Type error in predicate call: " ++
+				"unresolvable predicate overloading. " ++
+				"You need to use an explicit " ++
+				"module qualifier. " ++
+				"Compile with -V to find out where.")
 		;
 			ThePredId = PredId
 		)
@@ -3092,11 +3090,11 @@ make_pred_cons_info_list(TypeCheckInfo, [PredId|PredIds], PredTable, Arity,
 make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 		_ModuleInfo, L0, L) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_arity(PredInfo, PredArity),
-	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
+	PredArity = pred_info_arity(PredInfo),
+	IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-			CompleteArgTypes),
+		CompleteArgTypes),
 	pred_info_get_purity(PredInfo, Purity),
 	(
 		IsPredOrFunc = predicate,
@@ -5053,12 +5051,12 @@ write_inference_messages([PredId | PredIds], ModuleInfo) -->
 :- mode write_inference_message(in, di, uo) is det.
 
 write_inference_message(PredInfo) -->
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredName = pred_info_name(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_arg_types(PredInfo, VarSet, ExistQVars, Types0) },
 	{ strip_builtin_qualifiers_from_type_list(Types0, Types) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ MaybeDet = no },

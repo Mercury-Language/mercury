@@ -2374,7 +2374,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		ModuleInfo, GlobalData0, GlobalData, Code) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_non_imported_procids(PredInfo) },
 	( 
 		{ ProcIds = []
 		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
@@ -2393,9 +2393,9 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 			[]
 		),
 		(
-			{ pred_info_module(PredInfo, PredModule) },
-			{ pred_info_name(PredInfo, PredName) },
-                        { pred_info_arity(PredInfo, PredArity) },
+			{ PredModule = pred_info_module(PredInfo) },
+			{ PredName = pred_info_name(PredInfo) },
+                        { PredArity = pred_info_arity(PredInfo) },
                         { no_type_info_builtin(PredModule, PredName,
 				PredArity) }
 		->
@@ -2511,15 +2511,15 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	write_proc_progress_message(
 		"% Allocating storage locations for live vars in ",
 		PredId, ProcId, ModuleInfoSimplify),
-	{ allocate_store_maps(final_allocation, ProcInfoStackSlot,
-		PredId, ModuleInfoSimplify, ProcInfoStoreAlloc) },
+	{ allocate_store_maps(final_allocation, PredId, ModuleInfoSimplify,
+		ProcInfoStackSlot, ProcInfoStoreAlloc) },
 	globals__io_get_trace_level(TraceLevel),
 	( { given_trace_level_is_none(TraceLevel) = no } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 			PredId, ProcId, ModuleInfoSimplify),
-		{ goal_path__fill_slots(ProcInfoStoreAlloc, ModuleInfoSimplify,
-			ProcInfo) }
+		{ goal_path__fill_slots(ModuleInfoSimplify,
+			ProcInfoStoreAlloc, ProcInfo) }
 	;
 		{ ProcInfo = ProcInfoStoreAlloc }
 	),
@@ -3142,7 +3142,7 @@ mercury_compile__maybe_transform_dnf(HLDS0, Verbose, Stats, HLDS) -->
 add_aditi_procs(HLDS0, PredId, AditiPreds0, AditiPreds) :-
 	module_info_pred_info(HLDS0, PredId, PredInfo),
 	( hlds_pred__pred_info_is_aditi_relation(PredInfo) ->
-		pred_info_procids(PredInfo, ProcIds),
+		ProcIds = pred_info_procids(PredInfo),
 		AddProc = 
 		    lambda([ProcId::in, Preds0::in, Preds::out] is det, (
 			set__insert(Preds0, proc(PredId, ProcId), Preds)

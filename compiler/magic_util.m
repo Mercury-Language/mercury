@@ -316,9 +316,9 @@ magic_util__restrict_nonlocals(NonLocals0, NonLocals) -->
 	{ set__sorted_list_to_set(NonLocals2, NonLocals) }.
 
 magic_util__make_pred_name(PredInfo, ProcId, Prefix0, AddCount, Name) -->
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name0) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
+	{ Module = pred_info_module(PredInfo) },
+	{ Name0 = pred_info_name(PredInfo) },
 	{ proc_id_to_int(ProcId, ProcInt) },
 	{ string__int_to_string(ProcInt, ProcStr) },
 	{ string__append_list([Prefix0, "_Mode_", ProcStr, "_Of"], Prefix) },
@@ -386,8 +386,8 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			magic_info_get_module_info(ModuleInfo),
 			{ module_info_pred_proc_info(ModuleInfo, PredProcId,
 				CalledPredInfo, CalledProcInfo) },
-			{ pred_info_module(CalledPredInfo, PredModule) },
-			{ pred_info_name(CalledPredInfo, PredName) },
+			{ PredModule = pred_info_module(CalledPredInfo) },
+			{ PredName = pred_info_name(CalledPredInfo) },
 			{ Name = qualified(PredModule, PredName) },
 			{ proc_info_argmodes(CalledProcInfo, ArgModes) },
 			magic_info_get_proc_info(ProcInfo0),
@@ -496,11 +496,11 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		% Update the unify_rhs.
 		magic_info_get_module_info(ModuleInfo),
 		{ module_info_pred_info(ModuleInfo, PredId, CallPredInfo) },
-		{ pred_info_module(CallPredInfo, PredModule) },
-		{ pred_info_name(CallPredInfo, PredName) },
+		{ PredModule = pred_info_module(CallPredInfo) },
+		{ PredName = pred_info_name(CallPredInfo) },
 		{ list__length(InputVars, Arity) },
 		{ Rhs = functor(cons(qualified(PredModule, PredName), Arity),
-				no, InputVars) },
+			no, InputVars) },
 
 		{ Uni = construct(Var, ConsId, InputVars, Modes,
 			construct_dynamically, cell_is_unique, no) },
@@ -508,8 +508,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
 	;
-		{ error(
-	"magic_util__setup_aggregate_input: non-closure input to aggregate") }
+		{ error("magic_util__setup_aggregate_input: " ++
+			"non-closure input to aggregate") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -571,10 +571,10 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	magic_info_get_module_info(ModuleInfo),
 	{ PredProcId = proc(PredId, ProcId) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, PredModule) },
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredModule = pred_info_module(PredInfo) },
+	{ PredName = pred_info_name(PredInfo) },
 	{ CallGoal = call(PredId, ProcId, AllArgs, not_builtin, no,
-			qualified(PredModule, PredName)) - GoalInfo }.
+		qualified(PredModule, PredName)) - GoalInfo }.
 
 magic_util__create_input_test_unifications(_, [], _, [_|_],
 		_, _, _, _, _, _, _) :-
@@ -608,15 +608,15 @@ magic_util__create_input_test_unifications(ModuleInfo, [Var | Vars], InputArgs,
 		hlds_goal_info::out, proc_info::in, proc_info::out) is det.
 
 magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
-		Test, CallInfo0, CallInfo, ProcInfo0, ProcInfo) :-
+		Test, CallInfo0, CallInfo, !ProcInfo) :-
 	mode_get_insts(ModuleInfo, Mode, _, FinalInst), 
-	proc_info_varset(ProcInfo0, VarSet0),
+	proc_info_varset(!.ProcInfo, VarSet0),
 	varset__new_var(VarSet0, OutputVar, VarSet),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
 	map__lookup(VarTypes0, Var, VarType),
 	map__det_insert(VarTypes0, OutputVar, VarType, VarTypes),
-	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
 
 	set__list_to_set([Var, OutputVar], NonLocals),
 	instmap_delta_init_reachable(InstMapDelta),
@@ -718,8 +718,8 @@ magic_util__create_input_closures([_ | MagicVars], InputArgs,
 		% since it is not being directly called, so create an empty
 		% input relation.
 		%
-		{ proc_info_create_vars_from_types(ProcInfo1, ArgTypes, 
-			LambdaVars, ProcInfo) },
+		{ proc_info_create_vars_from_types(ArgTypes, LambdaVars,
+			ProcInfo1, ProcInfo) },
 		{ fail_goal(LambdaGoal) },
 		{ LambdaInputs = [] }
 	),
@@ -743,7 +743,7 @@ magic_util__create_input_closures([_ | MagicVars], InputArgs,
 		list(type)::out, proc_info::in, proc_info::out) is det.
 
 magic_util__get_input_var(MagicTypes, CurrVar, InputVar, ArgTypes, 
-		ProcInfo0, ProcInfo) :-
+		!ProcInfo) :-
 	list__index1_det(MagicTypes, CurrVar, MagicType),
 	(
 		type_is_higher_order(MagicType, (pure), predicate,
@@ -752,8 +752,8 @@ magic_util__get_input_var(MagicTypes, CurrVar, InputVar, ArgTypes,
 		ArgTypes = ArgTypes1,
 		construct_higher_order_type((pure), predicate,
 			(aditi_bottom_up), ArgTypes, ClosureType),
-		proc_info_create_var_from_type(ProcInfo0, ClosureType, no,
-			InputVar, ProcInfo)
+		proc_info_create_var_from_type(ClosureType, no, InputVar,
+			!ProcInfo)
 	;
 		error("magic_util__get_input_var")
 	).
@@ -834,8 +834,8 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 
 		% Construct the unify_rhs.
 		{ module_info_pred_info(ModuleInfo, SuppPredId, PredInfo) },
-		{ pred_info_module(PredInfo, SuppModule) },
-		{ pred_info_name(PredInfo, SuppName) },
+		{ SuppModule = pred_info_module(PredInfo) },
+		{ SuppName = pred_info_name(PredInfo) },
 		{ list__length(LambdaInputs, SuppArity) },
 		{ Rhs = functor(cons(qualified(SuppModule, SuppName), 
 				SuppArity), no, LambdaInputs) },
@@ -870,7 +870,7 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 	magic_info::in, magic_info::out) is det.
 
 magic_util__project_supp_call(SuppCall, UnrenamedInputVars,
-		ProcInfo0, ProcInfo, SuppInputArgs, LambdaVars, LambdaGoal) -->
+		!ProcInfo, SuppInputArgs, LambdaVars, LambdaGoal) -->
 	(
 		{ SuppCall = call(SuppPredId1, SuppProcId1,
 			SuppArgs1, _, _, _) - _ }
@@ -888,10 +888,10 @@ magic_util__project_supp_call(SuppCall, UnrenamedInputVars,
 
 		% Rename the outputs of the supp call, 
 		% but not the magic input relations.
-	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ proc_info_vartypes(!.ProcInfo, VarTypes0) },
 	{ map__apply_to_list(SuppOutputArgs, VarTypes0, SuppOutputArgTypes) },
-	{ proc_info_create_vars_from_types(ProcInfo0, SuppOutputArgTypes, 
-		NewArgs, ProcInfo) },
+	{ proc_info_create_vars_from_types(SuppOutputArgTypes, 
+		NewArgs, !ProcInfo) },
 	{ map__from_corresponding_lists(SuppOutputArgs, NewArgs, Subn) },
 	{ map__apply_to_list(UnrenamedInputVars, Subn, LambdaVars) },
 	{ goal_util__rename_vars_in_goal(SuppCall, Subn, LambdaGoal0) },
@@ -944,15 +944,14 @@ magic_util__add_to_magic_predicate(PredProcId, Rule, RuleArgs) -->
 	{ MagicGoal0 = _ - GoalInfo },	% near enough.
 	{ disj_list_to_goal([ExtraDisjunct | MagicDisjList0], 
 		GoalInfo, MagicGoal) },
-	{ proc_info_set_vartypes(MagicProcInfo0,
-		MagicVarTypes, MagicProcInfo1) },
-	{ proc_info_set_varset(MagicProcInfo1,
-		MagicVarSet, MagicProcInfo2) },
-	{ proc_info_set_goal(MagicProcInfo2, MagicGoal, MagicProcInfo) },
+	{ proc_info_set_vartypes(MagicVarTypes,
+		MagicProcInfo0, MagicProcInfo1) },
+	{ proc_info_set_varset(MagicVarSet, MagicProcInfo1, MagicProcInfo2) },
+	{ proc_info_set_goal(MagicGoal, MagicProcInfo2, MagicProcInfo) },
 	{ map__det_update(MagicProcs0, MagicProcId, MagicProcInfo,
 		MagicProcs) },
-	{ pred_info_set_procedures(MagicPredInfo0, 
-		MagicProcs, MagicPredInfo) },
+	{ pred_info_set_procedures(MagicProcs,
+		MagicPredInfo0, MagicPredInfo) },
 	{ map__det_update(Preds0, MagicPredId, MagicPredInfo, Preds) },
 	{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo).
@@ -986,8 +985,8 @@ magic_util__magic_call_info(MagicPredId, MagicProcId,
 	magic_info_get_magic_map(MagicMap),
 	{ map__lookup(MagicMap, PredProcId, proc(MagicPredId, MagicProcId)) },
 	{ module_info_pred_info(ModuleInfo, MagicPredId, MagicPredInfo) },
-	{ pred_info_name(MagicPredInfo, PredName) },
-	{ pred_info_module(MagicPredInfo, PredModule) }.
+	{ PredName = pred_info_name(MagicPredInfo) },
+	{ PredModule = pred_info_module(MagicPredInfo) }.
 
 %-----------------------------------------------------------------------------%
 

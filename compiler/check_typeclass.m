@@ -438,11 +438,11 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		error("check_instance_pred: no constraint on class method")
 	),
 
-	pred_info_name(PredInfo, MethodName0),
-	pred_info_module(PredInfo, PredModule),
+	MethodName0 = pred_info_name(PredInfo),
+	PredModule = pred_info_module(PredInfo),
 	MethodName = qualified(PredModule, MethodName0),
-	pred_info_arity(PredInfo, PredArity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredArity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	pred_info_procedures(PredInfo, ProcTable),
 	list__map(
@@ -754,7 +754,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+	pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
 	% Fill in some information in the pred_info which is
 	% used by polymorphism to make sure the type-infos
@@ -762,8 +762,8 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	MethodConstraints = instance_method_constraints(ClassId,
 			InstanceTypes, InstanceConstraints,
 			ClassMethodClassContext),
-	pred_info_set_maybe_instance_method_constraints(PredInfo1,
-		yes(MethodConstraints), PredInfo2),
+	pred_info_set_maybe_instance_method_constraints(
+		yes(MethodConstraints), PredInfo1, PredInfo2),
 
 		% Add procs with the expected modes and determinisms
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,

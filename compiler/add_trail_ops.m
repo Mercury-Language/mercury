@@ -33,7 +33,7 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- pred add_trail_ops(proc_info::in, module_info::in, proc_info::out) is det.
+:- pred add_trail_ops(module_info::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,21 +74,21 @@
 		module_info :: module_info
 	).
 
-add_trail_ops(Proc0, ModuleInfo0, Proc) :-
-	proc_info_goal(Proc0, Goal0),
-	proc_info_varset(Proc0, VarSet0),
-	proc_info_vartypes(Proc0, VarTypes0),
+add_trail_ops(ModuleInfo0, !Proc) :-
+	proc_info_goal(!.Proc, Goal0),
+	proc_info_varset(!.Proc, VarSet0),
+	proc_info_vartypes(!.Proc, VarTypes0),
 	TrailOpsInfo0 = trail_ops_info(VarSet0, VarTypes0, ModuleInfo0),
 	goal_add_trail_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
 	TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _),
-	proc_info_set_goal(Proc0, Goal, Proc1),
-	proc_info_set_varset(Proc1, VarSet, Proc2),
-	proc_info_set_vartypes(Proc2, VarTypes, Proc3),
+	proc_info_set_goal(Goal, !Proc),
+	proc_info_set_varset(VarSet, !Proc),
+	proc_info_set_vartypes(VarTypes, !Proc),
 	% The code below does not maintain the non-local variables,
 	% so we need to requantify.
 	% XXX it would be more efficient to maintain them
 	%     rather than recomputing them every time.
-	requantify_proc(Proc3, Proc).
+	requantify_proc(!Proc).
 
 :- pred goal_add_trail_ops(hlds_goal::in, hlds_goal::out,
 		trail_ops_info::in, trail_ops_info::out) is det.

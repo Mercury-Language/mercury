@@ -1280,15 +1280,14 @@ mode_id_to_int(_ - X, X).
 	% and deconstructions may become non-local (XXX does this require
 	% rerunning mode analysis rather than just recompute_instmap_delta?).
 
-recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo0, ProcInfo) -->
-	=(ModuleInfo0),
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes) },
-	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_inst_varset(ProcInfo0, InstVarSet) },
+recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
+	proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+	proc_info_vartypes(!.ProcInfo, VarTypes),
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_inst_varset(!.ProcInfo, InstVarSet),
 	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal,
-		VarTypes, InstVarSet, InstMap0),
-	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) }.
+		VarTypes, InstVarSet, InstMap0, !ModuleInfo),
+	proc_info_set_goal(Goal, !ProcInfo).
 
 recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
 		InstMap0, ModuleInfo0, ModuleInfo) :-

@@ -259,20 +259,21 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
-trace__do_we_need_maxfr_slot(Globals, PredInfo0, ProcInfo0, ProcInfo) :-
+trace__do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
 	globals__get_trace_level(Globals, TraceLevel),
-	proc_info_interface_code_model(ProcInfo0, CodeModel),
+	proc_info_interface_code_model(!.ProcInfo, CodeModel),
 	(
-		eff_trace_level_is_none(PredInfo0, ProcInfo0, TraceLevel) = no,
+		eff_trace_level_is_none(PredInfo0, !.ProcInfo, TraceLevel)
+			= no,
 		CodeModel \= model_non,
-		proc_info_goal(ProcInfo0, Goal),
+		proc_info_goal(!.ProcInfo, Goal),
 		code_util__goal_may_alloc_temp_frame(Goal)
 	->
 		MaxfrFlag = yes
 	;
 		MaxfrFlag = no
 	),
-	proc_info_set_need_maxfr_slot(ProcInfo0, MaxfrFlag, ProcInfo).
+	proc_info_set_need_maxfr_slot(MaxfrFlag, !ProcInfo).
 
 	% trace__reserved_slots and trace__setup cooperate in the allocation
 	% of stack slots for tracing purposes. The allocation is done in the

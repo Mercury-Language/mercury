@@ -1112,7 +1112,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 		PredInfo, ProcInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_headvars(ProcInfo, HeadVars),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_arg_types(PredInfo, HeadTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -1126,7 +1126,7 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, MLGenInfo0, MLGenInfo) :-
 		PredInfo, ProcInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_headvars(ProcInfo, HeadVars),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_arg_types(PredInfo, HeadTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -1134,9 +1134,9 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, MLGenInfo0, MLGenInfo) :-
 	% we must not generate GC tracing code for no_type_info_builtin
 	% procedures, because the generated GC tracing code would refer
 	% to type_infos that don't get passed
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
+	PredModule = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	PredArity = pred_info_arity(PredInfo),
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
 			HeadModes, PredOrFunc, CodeModel),
@@ -1360,12 +1360,10 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg,
 	),
 	FuncArg = mlds__argument(Name, MLDS_ArgType, Maybe_GC_TraceCode).
 
-
 ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
-			ProcInfo),
-	
-	pred_info_get_is_pred_or_func(PredInfo, function),
+		ProcInfo),
+	pred_info_is_pred_or_func(PredInfo) = function,
 	proc_info_interface_code_model(ProcInfo, model_det),
 
 	proc_info_argmodes(ProcInfo, Modes),
@@ -1378,7 +1376,6 @@ ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
 
 	RetArgMode = top_out,
 	\+ type_util__is_dummy_argument_type(RetArgType).
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -2341,7 +2338,7 @@ ml_gen_trace_var(VarName, Type, TypeInfoRval, Context, MLDS_TraceStatement) -->
 	{ PredOrigArity = 1 },
 	{ Pred = pred((predicate), no, PredName, PredOrigArity, model_det,
 		no) },
-	{ hlds_pred__initial_proc_id(ProcId) },
+	{ ProcId = hlds_pred__initial_proc_id },
 	{ mercury_private_builtin_module(PredModule) },
 	{ MLDS_Module = mercury_module_name_to_mlds(PredModule) },
 	{ Proc = qual(MLDS_Module, Pred - ProcId) },

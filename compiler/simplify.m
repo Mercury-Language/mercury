@@ -113,7 +113,7 @@
 simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 		PredInfo0, PredInfo, WarnCnt, ErrCnt) -->
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0),
-	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
+	{ ProcIds = pred_info_non_imported_procids(PredInfo0) },
 	{ MaybeMsgs0 = no },
 	{
 		% Don't warn for compiler-generated procedures.
@@ -142,50 +142,49 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 :- mode simplify__procs(in, in, in, in, out, in, out,
 		in, out) is det.
 
-simplify__procs(_, _, [], ModuleInfo, ModuleInfo, PredInfo, PredInfo,
-		Msgs, Msgs). 
-simplify__procs(Simplifications, PredId, [ProcId | ProcIds], ModuleInfo0,
-		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) :-
-	pred_info_procedures(PredInfo0, Procs0),
+simplify__procs(_, _, [], !ModuleInfo, !PredInfo, !Msgs). 
+simplify__procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
+		!PredInfo, !MaybeMsgs) :-
+	pred_info_procedures(!.PredInfo, Procs0),
 	map__lookup(Procs0, ProcId, Proc0),
-	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
-		ModuleInfo1, Proc0, Proc, Msgs1),
+	simplify__proc_2(Simplifications, PredId, ProcId, !ModuleInfo,
+		Proc0, Proc, Msgs1),
 	map__det_update(Procs0, ProcId, Proc, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo1),
+	pred_info_set_procedures(Procs, !PredInfo),
 	set__to_sorted_list(Msgs1, Msgs2),
 	list__filter(lambda([Msg::in] is semidet,
 		det_msg_is_any_mode_msg(Msg, any_mode)),
 		Msgs2, AnyModeMsgs1, AllModeMsgs1),
 	set__sorted_list_to_set(AnyModeMsgs1, AnyModeMsgs2),
 	set__sorted_list_to_set(AllModeMsgs1, AllModeMsgs2),
-	( MaybeMsgs0 = yes(AnyModeMsgs0 - AllModeMsgs0) ->
+	( !.MaybeMsgs = yes(AnyModeMsgs0 - AllModeMsgs0) ->
 		set__union(AnyModeMsgs0, AnyModeMsgs2, AnyModeMsgs),
 		set__intersect(AllModeMsgs0, AllModeMsgs2, AllModeMsgs),
-		MaybeMsgs1 = yes(AllModeMsgs - AnyModeMsgs)
+		!:MaybeMsgs = yes(AllModeMsgs - AnyModeMsgs)
 	;
-		MaybeMsgs1 = yes(AnyModeMsgs2 - AllModeMsgs2)
+		!:MaybeMsgs = yes(AnyModeMsgs2 - AllModeMsgs2)
 	),
-	simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo1, 
-		ModuleInfo, PredInfo1, PredInfo, MaybeMsgs1, MaybeMsgs).
+	simplify__procs(Simplifications, PredId, ProcIds, !ModuleInfo, 
+		!PredInfo, !MaybeMsgs).
 
-simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
-		Proc0, Proc)  -->
-	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0),
-	{ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
-			ModuleInfo, Proc0, Proc, _) }.
+simplify__proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
+	write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo,
+		!IO),
+	simplify__proc_2(Simplifications, PredId, ProcId, !ModuleInfo,
+		!Proc, _).
 
-simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
-		ProcInfo0, ProcInfo, Msgs) :-
-	module_info_globals(ModuleInfo0, Globals),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals,
+simplify__proc_2(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo,
+		Msgs) :-
+	module_info_globals(!.ModuleInfo, Globals),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals,
 		DetInfo0),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_varset(ProcInfo0, VarSet0),
-	proc_info_inst_varset(ProcInfo0, InstVarSet0),
-	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
-	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
-	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+	proc_info_varset(!.ProcInfo, VarSet0),
+	proc_info_inst_varset(!.ProcInfo, InstVarSet0),
+	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap0),
+	proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
+	proc_info_goal(!.ProcInfo, Goal0),
 
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
 		VarSet0, InstVarSet0, TVarMap0, TCVarMap0, Info0),
@@ -195,12 +194,12 @@ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	simplify_info_get_var_types(Info, VarTypes),
 	simplify_info_get_type_info_varmap(Info, TVarMap),
 	simplify_info_get_typeclass_info_varmap(Info, TCVarMap),
-	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
-	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4),
-	proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo),
-	simplify_info_get_module_info(Info, ModuleInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_typeinfo_varmap(TVarMap, !ProcInfo),
+	proc_info_set_typeclass_info_varmap(TCVarMap, !ProcInfo),
+	simplify_info_get_module_info(Info, !:ModuleInfo),
 	simplify_info_get_msgs(Info, Msgs).
 
 simplify__process_goal(Goal0, Goal, Info0, Info) :-
@@ -242,8 +241,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 	( simplify_info_requantify(Info1) ->
 		Goal1 = _ - GoalInfo1,
 		goal_info_get_nonlocals(GoalInfo1, NonLocals),
-		implicitly_quantify_goal(Goal1, VarSet0, VarTypes0,
-			NonLocals, Goal2, VarSet, VarTypes, _),
+		implicitly_quantify_goal(NonLocals, _, Goal1, Goal2,
+			VarSet0, VarSet, VarTypes0, VarTypes),
 
 		simplify_info_set_varset(Info1, VarSet, Info2),
 		simplify_info_set_var_types(Info2, VarTypes, Info3),
@@ -256,7 +255,7 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, Info3^inst_varset, InstMap0, ModuleInfo3,
+			VarTypes, Info3 ^ inst_varset, InstMap0, ModuleInfo3,
 			ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
@@ -279,8 +278,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		det_info_get_proc_id(DetInfo4, ProcId),
 		module_info_pred_proc_info(ModuleInfo5, PredId, ProcId,
 			PredInfo, ProcInfo0),
-		proc_info_set_vartypes(ProcInfo0, VarTypes4, ProcInfo1),
-		proc_info_set_varset(ProcInfo1, VarSet4, ProcInfo),
+		proc_info_set_vartypes(VarTypes4, ProcInfo0, ProcInfo1),
+		proc_info_set_varset(VarSet4, ProcInfo1, ProcInfo),
 		module_info_set_pred_proc_info(ModuleInfo5, PredId, ProcId,
 			PredInfo, ProcInfo, ModuleInfo6),
 		simplify_info_set_module_info(Info4, ModuleInfo6, Info),
@@ -771,9 +770,9 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	%
 	(
 		Args                = [TI, X, Y],
-		prog_util__mercury_public_builtin_module(BuiltinModule),
-		hlds_pred__pred_info_module(PredInfo, BuiltinModule),
-		hlds_pred__pred_info_name(PredInfo, Name),
+		mercury_public_builtin_module =
+			hlds_pred__pred_info_module(PredInfo),
+		Name = hlds_pred__pred_info_name(PredInfo),
 		(	Name =  "@<", Inequality = "<", Invert = no
 		;	Name = "@=<", Inequality = ">", Invert = yes
 		;	Name = "@>=", Inequality = "<", Invert = yes
@@ -1501,8 +1500,8 @@ simplify__call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
 	module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 	map__lookup(SpecialPredMap, unify - TypeCtor, PredId),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, PredName),
+	ModuleName = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
 	SymName = qualified(ModuleName, PredName),
 	CallContext = call_unify_context(XVar, var(YVar), Context),
 	CallExpr = call(PredId, ProcId, ArgVars, not_builtin,
@@ -1534,8 +1533,8 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 	%
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 		PredInfo0, ProcInfo0),
-	proc_info_set_vartypes(ProcInfo0, VarTypes0, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, VarSet0, ProcInfo2),
+	proc_info_set_vartypes(VarTypes0, ProcInfo0, ProcInfo1),
+	proc_info_set_varset(VarSet0, ProcInfo1, ProcInfo2),
 
 	%
 	% Call polymorphism.m to create the type_infos

@@ -151,15 +151,13 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__initialize_preds(in, in, in, out, in, out) is det.
 
-dead_proc_elim__initialize_preds([], _PredTable, Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_preds([], _PredTable, !Queue, !Needed).
 dead_proc_elim__initialize_preds([PredId | PredIds], PredTable,
-		Queue0, Queue, Needed0, Needed) :-
+		!Queue, !Needed) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_exported_procids(PredInfo, ProcIds),
-	dead_proc_elim__initialize_procs(PredId, ProcIds,
-		Queue0, Queue1, Needed0, Needed1),
-	dead_proc_elim__initialize_preds(PredIds, PredTable,
-		Queue1, Queue, Needed1, Needed).
+	ProcIds = pred_info_exported_procids(PredInfo),
+	dead_proc_elim__initialize_procs(PredId, ProcIds, !Queue, !Needed),
+	dead_proc_elim__initialize_preds(PredIds, PredTable, !Queue, !Needed).
 
 	% Add the listed procedures to the queue and map.
 
@@ -388,22 +386,21 @@ dead_proc_elim__examine_refs([Ref | Refs], Queue0, Queue, Needed0, Needed) :-
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_proc(in, in, in, out, in, out) is det.
 
-dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo, Queue0, Queue,
-		Needed0, Needed) :-
+dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo,
+		!Queue, !Needed) :-
 	(
 		module_info_preds(ModuleInfo, PredTable),
 		map__lookup(PredTable, PredId, PredInfo),
-		pred_info_non_imported_procids(PredInfo, ProcIds),
+		ProcIds = pred_info_non_imported_procids(PredInfo),
 		list__member(ProcId, ProcIds),
 		pred_info_procedures(PredInfo, ProcTable),
 		map__lookup(ProcTable, ProcId, ProcInfo)
 	->
 		proc_info_goal(ProcInfo, Goal),
 		dead_proc_elim__examine_goal(Goal, proc(PredId, ProcId),
-			Queue0, Queue, Needed0, Needed)
+			!Queue, !Needed)
 	;
-		Queue = Queue0,
-		Needed = Needed0
+		true
 	).
 
 :- pred dead_proc_elim__examine_goals(list(hlds_goal), pred_proc_id,
@@ -608,7 +605,7 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 				% containing procedure if appropriate.
 				% Likewise, don't warn for procedures
 				% introduced for type specialization.
-				pred_info_name(PredInfo0, PredName),
+				PredName = pred_info_name(PredInfo0),
 				( string__prefix(PredName, "IntroducedFrom__")
 				; string__prefix(PredName, "TypeSpecOf__")
 				)
@@ -626,13 +623,13 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 			WarnForThisProc = no
 		)
 	->
-		pred_info_procids(PredInfo0, ProcIds),
+		ProcIds = pred_info_procids(PredInfo0),
 		pred_info_procedures(PredInfo0, ProcTable0),
 		list__foldl2(dead_proc_elim__eliminate_proc(Pass, PredId,
 			Keep, WarnForThisProc, ElimInfo0),
 			ProcIds, Changed0 - ProcTable0, Changed - ProcTable,
 			State0, State),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
 		% Don't generate code in the current module for
@@ -645,7 +642,7 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 		Status = opt_imported
 	->
 		Changed = yes,
-		pred_info_procids(PredInfo0, ProcIds),
+		ProcIds = pred_info_procids(PredInfo0),
 		pred_info_procedures(PredInfo0, ProcTable0),
 			% Reduce memory usage by replacing the goals with 
 			% conj([]).
@@ -655,13 +652,13 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 				map__lookup(ProcTable0, Id, ProcInfo0),
 				goal_info_init(GoalInfo),
 				Goal = conj([]) - GoalInfo,
-				proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+				proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
 				map__det_update(PTable0, Id, ProcInfo, PTable)
 			)),
 		list__foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo1),
-		pred_info_set_import_status(PredInfo1, imported(interface),
-				PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+		pred_info_set_import_status(imported(interface),
+			PredInfo1, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose,
 			State0, State1),
@@ -850,9 +847,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	( 
-		pred_info_module(PredInfo, PredModule),
-		pred_info_name(PredInfo, PredName),
-		pred_info_arity(PredInfo, PredArity),
+		PredModule = pred_info_module(PredInfo),
+		PredName = pred_info_name(PredInfo),
+		PredArity = pred_info_arity(PredInfo),
 		(
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after 

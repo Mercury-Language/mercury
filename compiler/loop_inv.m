@@ -751,7 +751,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_pred__pred_info_get_markers(PredInfo, Markers),
     hlds_pred__pred_info_get_aditi_owner(PredInfo, Owner),
 
-    hlds_pred__pred_info_name(PredInfo, PredName),
+    PredName = hlds_pred__pred_info_name(PredInfo),
     hlds_goal__goal_info_get_context(GoalInfo, Context),
     term__context_line(Context, Line),
     hlds_pred__proc_id_to_int(ProcId, ProcNo),

@@ -956,7 +956,7 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 		\+ {
 			% `index/2' doesn't work in Aditi.
 			is_unify_or_compare_pred(PredInfo),
-			\+ pred_info_name(PredInfo, "__Index__")
+			\+ (pred_info_name(PredInfo) = "__Index__")
 		},
 		{ \+ pred_info_is_builtin(PredInfo) },
 		{ \+ rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
@@ -1547,8 +1547,8 @@ rl_exprn__do_generate_pop_var(Index, Type, node([ByteCode])) -->
 
 rl_exprn__generate_builtin_call(_PredId, ProcId,
 		PredInfo, Args, Fail, Code) -->
-	{ pred_info_module(PredInfo, PredModule0) },
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredModule0 = pred_info_module(PredInfo) },
+	{ PredName = pred_info_name(PredInfo) },
 
 	%
 	% Generate LLDS for the builtin, then convert that to Aditi bytecode.
@@ -1582,7 +1582,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		)
 	;
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
-		{ pred_info_arity(PredInfo, Arity) },
+		{ Arity = pred_info_arity(PredInfo) },
 		{ string__format("Sorry, not implemented in Aditi: %s.%s/%i",
 			[s(PredModule), s(PredName), i(Arity)], Msg) },
 		{ error(Msg) }
@@ -1701,11 +1701,11 @@ rl_exprn__push_builtin_args([Var | Vars], Code0, Code) -->
 		bytecode::out) is semidet.
 
 rl_exprn__is_simple_extra_aditi_builtin(PredInfo, ProcId, Bytecode) :-
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	pred_info_module(PredInfo, PredModule),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	PredModule = pred_info_module(PredInfo),
 	PredModule = unqualified(PredModuleName),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity0),
+	PredName = pred_info_name(PredInfo),
+	PredArity0 = pred_info_arity(PredInfo),
 	hlds_pred__proc_id_to_int(ProcId, ProcInt),
 	adjust_func_arity(PredOrFunc, PredArity, PredArity0),
 	rl_exprn__simple_extra_builtin(PredOrFunc, PredModuleName,

@@ -2461,8 +2461,7 @@ build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
 	% so we can use get_func_name below
 	ProcLabel = PredLabel - ProcId,
 	MaybeSeqNum = no,
-	invalid_pred_id(InvalidPredId),
-	Name = function(PredLabel, ProcId, MaybeSeqNum, InvalidPredId),
+	Name = function(PredLabel, ProcId, MaybeSeqNum, invalid_pred_id),
 	get_func_name(Name, _FuncName, AsmFuncName),
 	TablingPointerName = string__append("table_for_", AsmFuncName).
 
@@ -3531,9 +3530,8 @@ build_code_addr(CodeAddr, GlobalInfo, Expr) -->
 	% convert the label into a entity_name, 
 	% so we can use make_func_decl below
 	{ Label = qual(ModuleName, PredLabel - ProcId) },
-	{ invalid_pred_id(InvalidPredId) },
 	{ Name = qual(ModuleName, function(PredLabel, ProcId,
-		MaybeSeqNum, InvalidPredId)) },
+		MaybeSeqNum, invalid_pred_id)) },
 	% build a function declaration for the function,
 	% and take its address.
 	make_func_decl(Name, Signature, GlobalInfo, FuncDecl),

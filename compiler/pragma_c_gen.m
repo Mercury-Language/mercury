@@ -490,7 +490,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		ReleaseLock = pragma_c_raw_code("", live_lvals_info(set__init))
 	;
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_name(PredInfo, Name),
+		Name = pred_info_name(PredInfo),
 		c_util__quote_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ObtainLockStr),
@@ -651,126 +651,127 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
 	string::in, maybe(prog_context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		_Fields, _FieldsContext, First, FirstContext,
-		Later, LaterContext, Treat, Shared, SharedContext, Code) -->
-	{ require(unify(CodeModel, model_non),
-		"inappropriate code model for nondet pragma C code") },
+pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+		ArgVars, ArgDatas, OrigArgTypes, _Fields, _FieldsContext,
+		First, FirstContext, Later, LaterContext, Treat, Shared,
+		SharedContext, Code, !CI) :-
+	require(unify(CodeModel, model_non),
+		"inappropriate code model for nondet pragma C code"),
 	%
 	% Extract the may_call_mercury attribute
 	%
-	{ may_call_mercury(Attributes, MayCallMercury) },
+	may_call_mercury(Attributes, MayCallMercury),
 
 	%
 	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
 	% and #undef MR_PROC_LABEL
 	%
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(CallerPredId),
-	code_info__get_proc_id(CallerProcId),
-	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
-		ProcLabelDefine, ProcLabelUndef) },
+	code_info__get_module_info(ModuleInfo, !CI),
+	code_info__get_pred_id(CallerPredId, !CI),
+	code_info__get_proc_id(CallerProcId, !CI),
+	make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
+		ProcLabelDefine, ProcLabelUndef),
 
 	%
 	% Generate a unique prefix for the C labels that we will define
 	%
-	{ ProcLabelString = make_proc_label_string(ModuleInfo,
-		PredId, ProcId) },
+	ProcLabelString = make_proc_label_string(ModuleInfo,
+		PredId, ProcId),
 
 	%
 	% Get a list of input and output arguments
 	%
-	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
-	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
-	{ pragma_select_in_args(Args, InArgs) },
-	{ pragma_select_out_args(Args, OutArgs) },
-	{ make_pragma_decls(Args, ModuleInfo, Decls) },
-	{ make_pragma_decls(OutArgs, ModuleInfo, OutDecls) },
+	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos, !CI),
+	make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args),
+	pragma_select_in_args(Args, InArgs),
+	pragma_select_out_args(Args, OutArgs),
+	make_pragma_decls(Args, ModuleInfo, Decls),
+	make_pragma_decls(OutArgs, ModuleInfo, OutDecls),
 
-	input_descs_from_arg_info(InArgs, InputDescs),
-	output_descs_from_arg_info(OutArgs, OutputDescs),
+	input_descs_from_arg_info(InArgs, InputDescs, !CI),
+	output_descs_from_arg_info(OutArgs, OutputDescs, !CI),
 
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, ModuleName) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
-		StructName) },
-	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
-	{ string__format("\tLOCALS = (struct %s *) ((char *)
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	ModuleName = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
+		StructName),
+	SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS"),
+	string__format("\tLOCALS = (struct %s *) ((char *)
 		(MR_curfr + 1 - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
 		- sizeof(struct %s));\n",
 		[s(StructName), s(StructName)],
-		InitSaveStruct) },
+		InitSaveStruct),
 
-	code_info__get_next_label(RetryLabel),
-	{ ModFrameCode = node([
+	code_info__get_next_label(RetryLabel, !CI),
+	ModFrameCode = node([
 		assign(redoip(lval(curfr)),
 			const(code_addr_const(label(RetryLabel))))
 			- "Set up backtracking to retry label"
-	]) },
-	{ RetryLabelCode = node([
+	]),
+	RetryLabelCode = node([
 		label(RetryLabel) -
 			"Start of the retry block"
-	]) },
+	]),
 
-	code_info__get_globals(Globals),
+	code_info__get_globals(Globals, !CI),
 
-	{ globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
-		ReclaimHeap) },
-	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot),
-	code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
+	globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+		ReclaimHeap),
+	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
+	code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode, !CI),
 
-	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
-	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
-	code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+	globals__lookup_bool_option(Globals, use_trail, UseTrail),
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
+		MaybeTicketSlot, !CI),
+	code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
+		RestoreTicketCode, !CI),
 
-	{ FirstContext = yes(FirstContextPrime) ->
+	( FirstContext = yes(FirstContextPrime) ->
 		ActualFirstContext = FirstContextPrime
 	;
 		term__context_init(ActualFirstContext)
-	},
+	),
 	trace__maybe_generate_pragma_event_code(nondet_pragma_first,
-		ActualFirstContext, FirstTraceCode),
-	{ LaterContext = yes(LaterContextPrime) ->
+		ActualFirstContext, FirstTraceCode, !CI),
+	( LaterContext = yes(LaterContextPrime) ->
 		ActualLaterContext = LaterContextPrime
 	;
 		term__context_init(ActualLaterContext)
-	},
+	),
 	trace__maybe_generate_pragma_event_code(nondet_pragma_later,
-		ActualLaterContext, LaterTraceCode),
+		ActualLaterContext, LaterTraceCode, !CI),
 
-	{ FirstDisjunctCode =
+	( FirstDisjunctCode =
 		tree(SaveHeapCode,
 		tree(SaveTicketCode,
 		     FirstTraceCode))
-	},
-	{ LaterDisjunctCode =
+	),
+	( LaterDisjunctCode =
 		tree(RestoreHeapCode,
 		tree(RestoreTicketCode,
 		     LaterTraceCode))
-	},
+	),
 
 	%
 	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
-	{ MayCallMercury = will_not_call_mercury ->
+	( MayCallMercury = will_not_call_mercury ->
 		SaveRegs = ""
 	;
 		SaveRegs = "\tMR_save_registers();\n"
-	},
+	),
 
 	%
 	% MR_restore_registers(); /* see notes (1) and (3) above */
 	%
-	{ MayCallMercury = will_not_call_mercury ->
+	( MayCallMercury = will_not_call_mercury ->
 		RestoreRegs = ""
 	;
 		RestoreRegs = "\tMR_restore_registers();\n"
-	},
+	),
 
-	{
 	Succeed	 = "\tMR_succeed();\n",
 	SucceedDiscard = "\tMR_succeed_discard();\n",
 
@@ -798,8 +799,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 
 	Undef1 = "#undef\tSUCCEED\n",
 	Undef2 = "#undef\tSUCCEED_LAST\n",
-	Undef3 = "#undef\tFAIL\n"
-	},
+	Undef3 = "#undef\tFAIL\n",
 
 	(
 			% Use the form that duplicates the common code
@@ -816,7 +816,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			% We use the number of semicolons in the code
 			% as an indication how many C statements it has
 			% and thus how big its object code is likely to be.
-		{
+		(
 			Treat = duplicate
 		;
 			Treat = automatic,
@@ -831,9 +831,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			),
 			string__foldl(CountSemis, Shared, 0, Semis),
 			Semis < 32
-		}
+		)
 	->
-		{
 		CallDecls = [SaveStructDecl | Decls],
 		CallComponents = [
 			pragma_c_inputs(InputDescs),
@@ -903,10 +902,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			tree(RetryLabelCode, 
 			tree(LaterDisjunctCode, 
 			     RetryBlockCode)))))
-		}
 	;
-		code_info__get_next_label(SharedLabel),
-		{
+		code_info__get_next_label(SharedLabel, !CI),
 		SharedLabelCode = node([
 			label(SharedLabel) -
 				"Start of the shared block"
@@ -1029,7 +1026,6 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			tree(RetryBlockCode,
 			tree(SharedLabelCode, 
 			     SharedBlockCode)))))))
-		}
 	).
 
 %---------------------------------------------------------------------------%

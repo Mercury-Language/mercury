@@ -306,12 +306,12 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	Detism = eval_method_change_determinism(EvalMethod, Detism2),		
 			
 		% Save the newly inferred information
-	proc_info_set_goal(Proc0, Goal, Proc1),
-	proc_info_set_inferred_determinism(Proc1, Detism, Proc),
+	proc_info_set_goal(Goal, Proc0, Proc1),
+	proc_info_set_inferred_determinism(Detism, Proc1, Proc),
 
 		%  Put back the new proc_info structure.
 	map__det_update(Procs0, ProcId, Proc, Procs),
-	pred_info_set_procedures(Pred0, Procs, Pred),
+	pred_info_set_procedures(Procs, Pred0, Pred),
 	map__det_update(Preds0, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
 
@@ -1234,7 +1234,7 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
-	pred_info_procids(Pred, ProcIds),
+	ProcIds = pred_info_procids(Pred),
 	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
@@ -1264,12 +1264,10 @@ segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
 			pred_proc_list, pred_proc_list).
 :- mode segregate_procs_2(in, in, in, out, in, out, in, out) is det.
 
-segregate_procs_2(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
-		UndeclaredProcs, UndeclaredProcs, NoInferProcs, NoInferProcs).
+segregate_procs_2(_ModuleInfo, [], !DeclaredProcs,
+		!UndeclaredProcs, !NoInferProcs).
 segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
-		DeclaredProcs0, DeclaredProcs,
-		UndeclaredProcs0, UndeclaredProcs,
-		NoInferProcs0, NoInferProcs) :-
+		!DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, Pred),
 	( 
@@ -1283,29 +1281,23 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 			check_marker(Markers, class_method)
 		)
 	->
-		UndeclaredProcs1 = UndeclaredProcs0,
-		DeclaredProcs1 = DeclaredProcs0,
-		NoInferProcs1 = [proc(PredId, ProcId) | NoInferProcs0]
+		!:NoInferProcs = [proc(PredId, ProcId) | !.NoInferProcs]
 	;
 		pred_info_procedures(Pred, Procs),
 		map__lookup(Procs, ProcId, Proc),
 		proc_info_declared_determinism(Proc, MaybeDetism),
 		(
 			MaybeDetism = no,
-			UndeclaredProcs1 =
-				[proc(PredId, ProcId) | UndeclaredProcs0],
-			DeclaredProcs1 = DeclaredProcs0
+			!:UndeclaredProcs =
+				[proc(PredId, ProcId) | !.UndeclaredProcs]
 		;
 			MaybeDetism = yes(_),
-			DeclaredProcs1 =
-				[proc(PredId, ProcId) | DeclaredProcs0],
-			UndeclaredProcs1 = UndeclaredProcs0
-		),
-		NoInferProcs1 = NoInferProcs0
+			!:DeclaredProcs =
+				[proc(PredId, ProcId) | !.DeclaredProcs]
+		)
 	),
-	segregate_procs_2(ModuleInfo, PredProcs, DeclaredProcs1, DeclaredProcs,
-		UndeclaredProcs1, UndeclaredProcs,
-		NoInferProcs1, NoInferProcs).
+	segregate_procs_2(ModuleInfo, PredProcs, !DeclaredProcs,
+		!UndeclaredProcs, !NoInferProcs).
 
 	% We can't infer a tighter determinism for imported procedures or
 	% for class methods, so set the inferred determinism to be the
@@ -1317,20 +1309,19 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 		module_info, module_info).
 :- mode set_non_inferred_proc_determinism(in, in, out) is det.
 
-set_non_inferred_proc_determinism(proc(PredId, ProcId),
-		ModuleInfo0, ModuleInfo) :-
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, Procs0),
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_declared_determinism(ProcInfo0, MaybeDet),
 	( MaybeDet = yes(Det) ->
-		proc_info_set_inferred_determinism(ProcInfo0, Det, ProcInfo),
+		proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
 		map__det_update(Procs0, ProcId, ProcInfo, Procs),
-		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
-		module_info_set_pred_info(ModuleInfo0,
-			PredId, PredInfo, ModuleInfo)
+		pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+		module_info_set_pred_info(!.ModuleInfo,
+			PredId, PredInfo, !:ModuleInfo)
 	;
-		ModuleInfo = ModuleInfo0
+		true
 	).
 
 %-----------------------------------------------------------------------------%

@@ -50,29 +50,28 @@
 
 %-----------------------------------------------------------------------------%
 
-delay_construct_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
+delay_construct_proc(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
 	write_proc_progress_message("% Delaying construction unifications in ",
-		PredId, ProcId, ModuleInfo),
-	globals__io_get_globals(Globals),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ delay_construct_proc_no_io(ProcInfo0, PredInfo, ModuleInfo, Globals,
-		ProcInfo) }.
+		PredId, ProcId, ModuleInfo, !IO),
+	globals__io_get_globals(Globals, !IO),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals,
+		!ProcInfo).
 
-:- pred delay_construct_proc_no_io(proc_info::in, pred_info::in,
-	module_info::in, globals::in, proc_info::out) is det.
+:- pred delay_construct_proc_no_io(pred_info::in, module_info::in, globals::in,
+	proc_info::in, proc_info::out) is det.
 
-delay_construct_proc_no_io(ProcInfo0, PredInfo, ModuleInfo, Globals, ProcInfo)
-		:-
+delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 	body_should_use_typeinfo_liveness(PredInfo, Globals,
 		BodyTypeinfoLiveness),
-	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, InstMap0),
+	proc_info_vartypes(!.ProcInfo, VarTypes),
+	proc_info_typeinfo_varmap(!.ProcInfo, TypeInfoVarMap),
+	proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
 	DelayInfo = delay_construct_info(ModuleInfo, BodyTypeinfoLiveness,
 		VarTypes, TypeInfoVarMap),
-	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_goal(!.ProcInfo, Goal0),
 	delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
+	proc_info_set_goal(Goal, !ProcInfo).
 
 :- type delay_construct_info
 	--->	delay_construct_info(

@@ -16,7 +16,7 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- pred goal_path__fill_slots(proc_info::in, module_info::in, proc_info::out)
+:- pred goal_path__fill_slots(module_info::in, proc_info::in, proc_info::out)
 	is det.
 
 :- implementation.
@@ -34,13 +34,13 @@
 			module_info
 		).
 
-goal_path__fill_slots(Proc0, ModuleInfo, Proc) :-
+goal_path__fill_slots(ModuleInfo, !Proc) :-
 		% The ModuleInfo argument is there just for passes_aux
-	proc_info_goal(Proc0, Goal0),
-	proc_info_vartypes(Proc0, VarTypes),
+	proc_info_goal(!.Proc, Goal0),
+	proc_info_vartypes(!.Proc, VarTypes),
 	SlotInfo = slot_info(VarTypes, ModuleInfo),
 	fill_goal_slots(Goal0, [], SlotInfo, Goal),
-	proc_info_set_goal(Proc0, Goal, Proc).
+	proc_info_set_goal(Goal, !Proc).
 
 :- pred fill_goal_slots(hlds_goal::in, goal_path::in, slot_info::in,
 	hlds_goal::out) is det.

@@ -89,15 +89,15 @@ detect_switches_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	io__state, io__state).
 :- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
-detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
-	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
-	( { ProcIds \= [] } ->
+detect_switches_in_pred(PredId, PredInfo0, !ModuleInfo, !IO) :-
+	ProcIds = pred_info_non_imported_procids(PredInfo0),
+	( ProcIds \= [] ->
 		write_pred_progress_message("% Detecting switches in ", PredId,
-			ModuleInfo0)
+			!.ModuleInfo, !IO)
 	;
-		[]
+		true
 	),
-	{ detect_switches_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo) }.
+	detect_switches_in_procs(ProcIds, PredId, !ModuleInfo).
 
 :- pred detect_switches_in_procs(list(proc_id), pred_id,
 	module_info, module_info).
@@ -122,9 +122,9 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo0, Goal),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+	proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 

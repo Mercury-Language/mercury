@@ -58,36 +58,35 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
-		IO, IO) :-
-	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
+allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
+	initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
 	(
-		eff_trace_level_needs_input_vars(PredInfo, ProcInfo0,
+		eff_trace_level_needs_input_vars(PredInfo, !.ProcInfo,
 			TraceLevel) = yes
 	->
-		trace__fail_vars(ModuleInfo, ProcInfo0, FailVars)
+		trace__fail_vars(ModuleInfo, !.ProcInfo, FailVars)
 	;
 		set__init(FailVars)
 	),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
 		OptNoReturnCalls),
-	AllocData = alloc_data(ModuleInfo, ProcInfo0, TypeInfoLiveness,
+	AllocData = alloc_data(ModuleInfo, !.ProcInfo, TypeInfoLiveness,
 		OptNoReturnCalls),
 	set__init(NondetLiveness0),
 	SimpleStackAlloc0 = stack_alloc(set__make_singleton_set(FailVars)),
-	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_goal(!.ProcInfo, Goal0),
 	build_live_sets_in_goal(Goal0, Goal, FailVars, AllocData,
 		SimpleStackAlloc0, SimpleStackAlloc, Liveness0, _Liveness,
 		NondetLiveness0, _NondetLiveness),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo3),
+	proc_info_set_goal(Goal, !ProcInfo),
 	SimpleStackAlloc = stack_alloc(LiveSets0),
 
-	trace__do_we_need_maxfr_slot(Globals, PredInfo, ProcInfo3, ProcInfo4),
-	trace__reserved_slots(ModuleInfo, PredInfo, ProcInfo4, Globals,
+	trace__do_we_need_maxfr_slot(Globals, PredInfo, !ProcInfo),
+	trace__reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
 		NumReservedSlots, MaybeReservedVarInfo),
 	(
 		MaybeReservedVarInfo = yes(ResVar - _),
@@ -99,11 +98,10 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
-	proc_info_interface_code_model(ProcInfo4, CodeModel),
+	proc_info_interface_code_model(!.ProcInfo, CodeModel),
 	allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
 		MaybeReservedVarInfo, StackSlots),
-
-	proc_info_set_stack_slots(ProcInfo4, StackSlots, ProcInfo).
+	proc_info_set_stack_slots(StackSlots, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

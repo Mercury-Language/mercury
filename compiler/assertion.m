@@ -657,15 +657,15 @@ assertion__record_preds_used_in(Goal, AssertId, Module0, Module) :-
 	% Record in the pred_info pointed to by Id that that predicate
 	% is used in the assertion pointed to by A.
 	%
-:- pred update_pred_info(assert_id::in, pred_id::in, module_info::in,
-		module_info::out) is det.
+:- pred update_pred_info(assert_id::in, pred_id::in,
+	module_info::in, module_info::out) is det.
 
-update_pred_info(AssertId, PredId, Module0, Module) :-
-	module_info_pred_info(Module0, PredId, PredInfo0),
+update_pred_info(AssertId, PredId, !Module) :-
+	module_info_pred_info(!.Module, PredId, PredInfo0),
 	pred_info_get_assertions(PredInfo0, Assertions0),
 	set__insert(Assertions0, AssertId, Assertions),
-	pred_info_set_assertions(PredInfo0, Assertions, PredInfo),
-	module_info_set_pred_info(Module0, PredId, PredInfo, Module).
+	pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
+	module_info_set_pred_info(!.Module, PredId, PredInfo, !:Module).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -749,8 +749,8 @@ assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
 		{ is_defined_in_implementation_section(ImportStatus, yes) }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
-		{ pred_info_get_is_pred_or_func(CallPredInfo, PredOrFunc) },
-		{ pred_info_arity(CallPredInfo, Arity) },
+		{ PredOrFunc = pred_info_is_pred_or_func(CallPredInfo) },
+		{ Arity = pred_info_arity(CallPredInfo) },
 		write_assertion_interface_error(Context,
 				call(PredOrFunc, SymName, Arity),
 				Module0, Module)
@@ -772,10 +772,10 @@ assertion__in_interface_check(foreign_proc(_,PredId,_,_,_,_,_) -
 		{ is_defined_in_implementation_section(ImportStatus, yes) }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
-		{ pred_info_get_is_pred_or_func(PragmaPredInfo, PredOrFunc) },
-		{ pred_info_name(PragmaPredInfo, Name) },
+		{ PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo) },
+		{ Name = pred_info_name(PragmaPredInfo) },
 		{ SymName = unqualified(Name) },
-		{ pred_info_arity(PragmaPredInfo, Arity) },
+		{ Arity = pred_info_arity(PragmaPredInfo) },
 		write_assertion_interface_error(Context,
 				call(PredOrFunc, SymName, Arity),
 				Module0, Module)

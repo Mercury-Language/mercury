@@ -44,7 +44,7 @@ rl_dump__write_procedure(ModuleInfo, Proc) -->
 	    lambda([PredProcId::in, IO0::di, IO::uo] is det, (
 		PredProcId = proc(PredId, _ProcId),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_name(PredInfo, PredName),
+		PredName = pred_info_name(PredInfo),
 		io__write_string("%\t", IO0, IO1),
 		io__write_string(PredName, IO1, IO2),
 		io__nl(IO2, IO)
@@ -87,8 +87,8 @@ rl_dump__declare_relation(ModuleInfo, RelationInfos, RelId) -->
 		{ RelType = permanent(proc(PredId, _)) },
 		io__write_string("base relation `"),
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_name(PredInfo, PredName) },
-		{ pred_info_arity(PredInfo, PredArity) },
+		{ PredName = pred_info_name(PredInfo) },
+		{ PredArity = pred_info_arity(PredInfo) },
 		io__write_string(PredName),
 		io__write_string("'/"),
 		io__write_int(PredArity)

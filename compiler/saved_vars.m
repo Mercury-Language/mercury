@@ -61,32 +61,32 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ saved_vars_proc_no_io(ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) }.
 
-saved_vars_proc_no_io(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_varset(ProcInfo0, Varset0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
+saved_vars_proc_no_io(!ProcInfo, !ModuleInfo) :-
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_varset(!.ProcInfo, Varset0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
 	init_slot_info(Varset0, VarTypes0, SlotInfo0),
 
 	saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo),
 
 	final_slot_info(Varset1, VarTypes1, SlotInfo),
-	proc_info_headvars(ProcInfo0, HeadVars),
+	proc_info_headvars(!.ProcInfo, HeadVars),
 
-	% hlds_out__write_goal(Goal1, ModuleInfo, Varset1, 0, "\n"),
+	% hlds_out__write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
 
 	% recompute the nonlocals for each goal
-	implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
-		VarTypes1, Goal2, Varset, VarTypes, _Warnings),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_inst_varset(ProcInfo0, InstVarSet),
-	recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet, InstMap0,
-		ModuleInfo0, ModuleInfo),
+	implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+		Varset1, Varset, VarTypes1, VarTypes),
+	proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+	proc_info_inst_varset(!.ProcInfo, InstVarSet),
+	recompute_instmap_delta(no, Goal2, Goal, VarTypes,
+		InstVarSet, InstMap0, !ModuleInfo),
 
-	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, "\n"),
+	% hlds_out__write_goal(Goal, !.ModuleInfo, Varset, 0, "\n"),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_varset(Varset, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -300,27 +300,24 @@ table_gen__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo, S0, S) :-
 :- pred table_gen__process_pred(pred_id::in, module_info::in, module_info::out,
 	io__state::di, io__state::uo) is det.
 
-table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo, S0, S) :-
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
-	table_gen__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo,
-		S0, S).
+table_gen__process_pred(PredId, !ModuleInfo, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+	ProcIds = pred_info_procids(PredInfo),
+	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !IO).
 
 :- pred table_gen__process_procs(pred_id::in, list(proc_id)::in,
 	module_info::in, module_info::out, io__state::di, io__state::uo)
 	is det.
 
-table_gen__process_procs(_PredId, [], ModuleInfo, ModuleInfo, S, S).
-table_gen__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo,
-		S0, S) :-
-	module_info_preds(ModuleInfo0, PredTable),
+table_gen__process_procs(_PredId, [], !ModuleInfo, !IO).
+table_gen__process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !IO) :-
+	module_info_preds(!.ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo0),
 	table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo,
-		ModuleInfo0, ModuleInfo1, S0, S1),
-	table_gen__process_procs(PredId, ProcIds, ModuleInfo1, ModuleInfo,
-		S1, S).
+		!ModuleInfo, !IO),
+	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !IO).
 
 :- pred table_gen__process_proc(pred_id::in, proc_id::in, proc_info::in,
 	pred_info::in, module_info::in, module_info::out, io__state::di,
@@ -383,8 +380,8 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 				Decl = table_io_proc
 			),
 			TableIoMethod = eval_table_io(Decl, Unitize),
-			proc_info_set_eval_method(ProcInfo0, TableIoMethod,
-				ProcInfo1),
+			proc_info_set_eval_method(TableIoMethod,
+				ProcInfo0, ProcInfo1),
 			table_gen__transform_proc(TableIoMethod,
 				PredId, ProcId, ProcInfo1, _, PredInfo0, _,
 				!ModuleInfo)
@@ -559,13 +556,11 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 
 	% set the new values of the fields in proc_info and pred_info
 	% and save in the module info
-	proc_info_set_goal(!.ProcInfo, Goal, !:ProcInfo),
-	proc_info_set_varset(!.ProcInfo, VarSet, !:ProcInfo),
-	proc_info_set_vartypes(!.ProcInfo, VarTypes, !:ProcInfo),
-	proc_info_set_call_table_tip(!.ProcInfo, MaybeCallTableTip,
-		!:ProcInfo),
-	proc_info_set_maybe_proc_table_info(!.ProcInfo, MaybeProcTableInfo,
-		!:ProcInfo),
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_call_table_tip(MaybeCallTableTip, !ProcInfo),
+	proc_info_set_maybe_proc_table_info(MaybeProcTableInfo, !ProcInfo),
 
 	% Some of the instmap_deltas generated in this module
 	% are pretty dodgy (especially those for if-then-elses), so
@@ -577,7 +572,7 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 
 	pred_info_procedures(!.PredInfo, ProcTable1),
 	map__det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
-	pred_info_set_procedures(!.PredInfo, ProcTable, !:PredInfo),
+	pred_info_set_procedures(ProcTable, !PredInfo),
 
 	%
 	% The transformation doesn't pay attention to the purity
@@ -1698,10 +1693,10 @@ generate_loop_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 	ModuleInfo = TableInfo ^ table_module_info,
 	PredInfo = TableInfo ^ table_cur_pred_info,
 
-	pred_info_module(PredInfo, Module),
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	Module = pred_info_module(PredInfo),
+	Name = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS),
 	prog_out__sym_name_to_string(qualified(Module, Name), NameS),
 	string__int_to_string(Arity, ArityS),
@@ -1935,8 +1930,8 @@ table_gen__make_type_info_vars(Types, Context, !VarTypes, !VarSet, !TableInfo,
 	% Put the varset and vartypes from the simplify_info
 	% back in the proc_info
 	%
-	proc_info_set_vartypes(ProcInfo0, !.VarTypes, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, !.VarSet, ProcInfo2),
+	proc_info_set_vartypes(!.VarTypes, ProcInfo0, ProcInfo1),
+	proc_info_set_varset(!.VarSet, ProcInfo1, ProcInfo2),
 
 	%
 	% Call polymorphism.m to create the type_infos

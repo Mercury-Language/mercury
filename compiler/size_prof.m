@@ -248,14 +248,13 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 		% the nonlocal vars and the non-atomic instmap deltas.
 	proc_info_headvars(!.ProcInfo, HeadVars),
 	proc_info_inst_varset(!.ProcInfo, InstVarSet),
-	implicitly_quantify_clause_body(HeadVars,
-		Goal1, Info ^ varset, Info ^ vartypes,
-		Goal2, VarSet, VarTypes, _Warnings),
+	implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+		Info ^ varset, VarSet, Info ^ vartypes, VarTypes),
 	recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
 		InstMap0, !ModuleInfo),
-	proc_info_set_goal(!.ProcInfo, Goal, !:ProcInfo),
-	proc_info_set_varset(!.ProcInfo, VarSet, !:ProcInfo),
-	proc_info_set_vartypes(!.ProcInfo, VarTypes, !:ProcInfo).
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 :- pred process_goal(hlds_goal::in, hlds_goal::out, info::in, info::out)
 	is det.

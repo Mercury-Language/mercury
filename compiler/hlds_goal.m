@@ -1760,33 +1760,24 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 
 %-----------------------------------------------------------------------------%
 
-make_int_const_construction(Int, MaybeName, Goal, Var, ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, int_type, MaybeName,
-		Var, ProcInfo),
+make_int_const_construction(Int, MaybeName, Goal, Var, !ProcInfo) :-
+	proc_info_create_var_from_type(int_type, MaybeName, Var, !ProcInfo),
 	make_int_const_construction(Var, Int, Goal).
 
-make_string_const_construction(String, MaybeName, Goal, Var,
-		ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, string_type, MaybeName,
-		Var, ProcInfo),
+make_string_const_construction(String, MaybeName, Goal, Var, !ProcInfo) :-
+	proc_info_create_var_from_type(string_type, MaybeName, Var, !ProcInfo),
 	make_string_const_construction(Var, String, Goal).
 
-make_float_const_construction(Float, MaybeName, Goal, Var,
-		ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, float_type, MaybeName,
-		Var, ProcInfo),
+make_float_const_construction(Float, MaybeName, Goal, Var, !ProcInfo) :-
+	proc_info_create_var_from_type(float_type, MaybeName, Var, !ProcInfo),
 	make_float_const_construction(Var, Float, Goal).
 
-make_char_const_construction(Char, MaybeName, Goal, Var,
-		ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, char_type, MaybeName,
-		Var, ProcInfo),
+make_char_const_construction(Char, MaybeName, Goal, Var, !ProcInfo) :-
+	proc_info_create_var_from_type(char_type, MaybeName, Var, !ProcInfo),
 	make_char_const_construction(Var, Char, Goal).
 
-make_const_construction(ConsId, Type, MaybeName, Goal, Var,
-		ProcInfo0, ProcInfo) :-
-	proc_info_create_var_from_type(ProcInfo0, Type, MaybeName,
-		Var, ProcInfo),
+make_const_construction(ConsId, Type, MaybeName, Goal, Var, !ProcInfo) :-
+	proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
 	make_const_construction(Var, ConsId, Goal).
 
 make_int_const_construction(Int, MaybeName, Goal, Var, VarTypes0, VarTypes,

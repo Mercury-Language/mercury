@@ -69,7 +69,7 @@ maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
 
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 	pred_info_procedures(PredInfo0, Procs0),
-	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
 	( 
 		%
 		% Is this a function with no modes?
@@ -85,7 +85,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		% for this function.  (N.B. functions which can
 		% fail must be explicitly declared as semidet.)
 		%
-		pred_info_arity(PredInfo0, PredArity),
+		PredArity = pred_info_arity(PredInfo0),
 		FuncArity = PredArity - 1,
 		in_mode(InMode),
 		out_mode(OutMode),
@@ -131,12 +131,12 @@ copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
 	copy_module_clauses_to_procs_2(PredIds, Preds1, Preds).
 
 
-copy_clauses_to_procs(PredInfo0, PredInfo) :-
-	pred_info_procedures(PredInfo0, Procs0),
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	pred_info_all_non_imported_procids(PredInfo0, ProcIds),
+copy_clauses_to_procs(!PredInfo) :-
+	pred_info_procedures(!.PredInfo, Procs0),
+	pred_info_clauses_info(!.PredInfo, ClausesInfo),
+	ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
+	pred_info_set_procedures(Procs, !PredInfo).
 
 :- pred copy_clauses_to_procs_2(list(proc_id), clauses_info,
 	proc_table, proc_table).

@@ -230,16 +230,16 @@ unneeded_code__process_proc_msg(PredId, ProcId, ProcInfo0, ProcInfo,
 
 :- pred unneeded_code__pre_process_proc(proc_info::in, proc_info::out) is det.
 
-unneeded_code__pre_process_proc(ProcInfo0, ProcInfo) :-
-	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_varset(ProcInfo0, Varset0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
-		Goal, Varset, VarTypes, _Warnings),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+unneeded_code__pre_process_proc(!ProcInfo) :-
+	proc_info_headvars(!.ProcInfo, HeadVars),
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_varset(!.ProcInfo, Varset0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
+		Varset0, Varset, VarTypes0, VarTypes),
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_varset(Varset, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 % The source-to-source transform operates in two phases.
 %
@@ -277,17 +277,16 @@ unneeded_code__pre_process_proc(ProcInfo0, ProcInfo) :-
 :- pred unneeded_code__process_proc(proc_info::in, proc_info::out,
 	module_info::in, module_info::out, bool::out) is det.
 
-unneeded_code__process_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
-		Successful) :-
-	goal_path__fill_slots(ProcInfo0, ModuleInfo0, ProcInfo1),
-	proc_info_goal(ProcInfo1, Goal0),
-	proc_info_varset(ProcInfo1, Varset0),
-	proc_info_vartypes(ProcInfo1, VarTypes0),
-	proc_info_get_initial_instmap(ProcInfo1, ModuleInfo0, InstMap0),
+unneeded_code__process_proc(!ProcInfo, !ModuleInfo, Successful) :-
+	goal_path__fill_slots(!.ModuleInfo, !ProcInfo),
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_varset(!.ProcInfo, Varset0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-	proc_info_instantiated_head_vars(ModuleInfo0, ProcInfo1,
+	proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo,
 		NeededVarsList),
 	map__init(WhereNeededMap0),
 	NeededEverywhere =
@@ -297,14 +296,14 @@ unneeded_code__process_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
 	list__foldl(NeededEverywhere, NeededVarsList,
 		WhereNeededMap0, WhereNeededMap1),
 	map__init(RefinedGoals0),
-	module_info_globals(ModuleInfo0, Globals),
+	module_info_globals(!.ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
 	globals__lookup_int_option(Globals, unneeded_code_copy_limit,
 		Limit),
 	Options = option_values(FullyStrict, ReorderConj, Limit),
 	unneeded_code__process_goal(Goal0, Goal1, InstMap0, InstMap,
-		VarTypes0, ModuleInfo0, Options, WhereNeededMap1, _,
+		VarTypes0, !.ModuleInfo, Options, WhereNeededMap1, _,
 		RefinedGoals0, RefinedGoals1, no, Changed),
 	unneeded_code__refine_goal(Goal1, RefinedGoals1, Goal2, RefinedGoals),
 	require(map__is_empty(RefinedGoals),
@@ -312,22 +311,18 @@ unneeded_code__process_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
 	( Changed = yes ->
 			% We need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
-		proc_info_headvars(ProcInfo0, HeadVars),
-		proc_info_inst_varset(ProcInfo0, InstVarSet),
-		implicitly_quantify_clause_body(HeadVars,
-			Goal2, Varset0, VarTypes0,
-			Goal3, Varset, VarTypes, _Warnings),
+		proc_info_headvars(!.ProcInfo, HeadVars),
+		proc_info_inst_varset(!.ProcInfo, InstVarSet),
+		implicitly_quantify_clause_body(HeadVars, _Warnings,
+			Goal2, Goal3, Varset0, Varset, VarTypes0, VarTypes),
 		recompute_instmap_delta(no, Goal3, Goal, VarTypes, InstVarSet,
-			InstMap0, ModuleInfo0, ModuleInfo1),
-		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
-		proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-		unneeded_code__process_proc(ProcInfo4, ProcInfo,
-			ModuleInfo1, ModuleInfo, _),
+			InstMap0, !ModuleInfo),
+		proc_info_set_goal(Goal, !ProcInfo),
+		proc_info_set_varset(Varset, !ProcInfo),
+		proc_info_set_vartypes(VarTypes, !ProcInfo),
+		unneeded_code__process_proc(!ProcInfo, !ModuleInfo, _),
 		Successful = yes
 	;
-		ProcInfo = ProcInfo0,
-		ModuleInfo = ModuleInfo0,
 		Successful = no
 	).
 

@@ -199,8 +199,8 @@ pd_util__propagate_constraints(Goal0, Goal) -->
 		{ constraint_info_deconstruct(CInfo, ModuleInfo,
 			VarTypes, VarSet, Changed) },
 		pd_info_set_module_info(ModuleInfo),
-		{ proc_info_set_vartypes(ProcInfo0, VarTypes, ProcInfo1) },
-		{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo) },
+		{ proc_info_set_vartypes(VarTypes, ProcInfo0, ProcInfo1) },
+		{ proc_info_set_varset(VarSet, ProcInfo1, ProcInfo) },
 		pd_info_set_proc_info(ProcInfo),
 		( { Changed = yes } ->
 			pd_debug__output_goal(
@@ -258,10 +258,10 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	{ simplify_info_get_type_info_varmap(SimplifyInfo, TVarMap) },
 	{ simplify_info_get_typeclass_info_varmap(SimplifyInfo, TCVarMap) },
 	pd_info_get_proc_info(ProcInfo1),
-	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
-	{ proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4) },
-	{ proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo) },
+	{ proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2) },
+	{ proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo3) },
+	{ proc_info_set_typeinfo_varmap(TVarMap, ProcInfo3, ProcInfo4) },
+	{ proc_info_set_typeclass_info_varmap(TCVarMap, ProcInfo4, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 	pd_info_incr_cost_delta(CostDelta),
 	pd_info_set_module_info(ModuleInfo).
@@ -316,8 +316,8 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo1) },
 	pd_info_set_pred_info(PredInfo),
-	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) },
+	{ proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2) },
+	{ proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 	pd_info_set_io_state(IO).
 
@@ -797,10 +797,10 @@ pd_util__requantify_goal(Goal0, NonLocals, Goal) -->
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ implicitly_quantify_goal(Goal0, VarSet0, VarTypes0, NonLocals,
-		Goal, VarSet, VarTypes, _) },
-	{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
-	{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo) },
+	{ implicitly_quantify_goal(NonLocals, _, Goal0, Goal,
+		VarSet0, VarSet, VarTypes0, VarTypes) },
+	{ proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1) },
+	{ proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo).
 
 pd_util__recompute_instmap_delta(Goal0, Goal) -->

@@ -294,10 +294,10 @@ set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, Module0, Module) :-
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_set_maybe_arg_size_info(ProcInfo0, yes(ArgSize), ProcInfo),
+	proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	set_pred_proc_ids_arg_size_info(PPIds, ArgSize, Module1, Module).
@@ -311,11 +311,11 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_set_maybe_termination_info(ProcInfo0, yes(Termination),
-		ProcInfo),
+	proc_info_set_maybe_termination_info(yes(Termination),
+		ProcInfo0, ProcInfo),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(Module0, PredTable, Module1),
 	set_pred_proc_ids_termination_info(PPIds, Termination,

@@ -849,7 +849,7 @@ module_info_set_pred_proc_info(MI0, proc(PredId, ProcId),
 module_info_set_pred_proc_info(MI0, PredId, ProcId, PredInfo0, ProcInfo, MI) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	map__set(Procs0, ProcId, ProcInfo, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+	pred_info_set_procedures(Procs, PredInfo0, PredInfo),
 	module_info_set_pred_info(MI0, PredId, PredInfo, MI).
 
 module_info_typeids(MI, TypeCtors) :-
@@ -1386,7 +1386,7 @@ predicate_table_init(PredicateTable) :-
 				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
 				Func_N_Index, Func_NA_Index, Func_MNA_Index),
 	map__init(Preds),
-	hlds_pred__initial_pred_id(NextPredId),
+	NextPredId = hlds_pred__initial_pred_id,
 	PredIds = [],
 	map__init(Pred_N_Index),
 	map__init(Pred_NA_Index),
@@ -1429,10 +1429,10 @@ predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
 		PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
 	list__delete_all(PredIds0, PredId, PredIds),
 	map__det_remove(Preds0, PredId, PredInfo, Preds),
-	pred_info_module(PredInfo, Module),
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
+	Module = pred_info_module(PredInfo),
+	Name = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	(
 		IsPredOrFunc = predicate,
 		predicate_table_remove_from_index(Module, Name, Arity, PredId,
@@ -1739,7 +1739,7 @@ maybe_filter_pred_ids_matching_module(is_fully_qualified, ModuleName,
 	PredIds = list__filter(
 			(pred(PredId::in) is semidet :-
 				map__lookup(Preds, PredId, PredInfo),
-				pred_info_module(PredInfo, ModuleName)
+				ModuleName = pred_info_module(PredInfo)
 			), PredIds0).
 
 %-----------------------------------------------------------------------------%
@@ -1853,9 +1853,9 @@ predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo0,
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
 				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
 				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
-	pred_info_module(PredInfo0, Module),
-	pred_info_name(PredInfo0, Name),
-	pred_info_arity(PredInfo0, Arity),
+	Module = pred_info_module(PredInfo0),
+	Name = pred_info_name(PredInfo0),
+	Arity = pred_info_arity(PredInfo0),
 
 	( MaybePredId = yes(PredId),
 		NextPredId = NextPredId0
@@ -1868,7 +1868,7 @@ predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo0,
 
 		% insert the pred_id into either the function or predicate
 		% indices, as appropriate
-	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
 	( 
 		PredOrFunc = predicate,
 		predicate_table_do_insert(Module, Name, Arity,
@@ -1916,7 +1916,7 @@ predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo0,
 
 predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		PredId, N_Index0, N_Index, NA_Index0, NA_Index, 
-		MNA_Index0, MNA_Index, PredInfo0, PredInfo) :-
+		MNA_Index0, MNA_Index, !PredInfo) :-
 	( NeedQual = may_be_unqualified ->
 			% insert the unqualified name into the name index
 		multi_map__set(N_Index0, Name, PredId, N_Index),
@@ -1924,17 +1924,15 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 			% insert the unqualified name/arity into the
 			% name/arity index
 		NA = Name / Arity,
-		multi_map__set(NA_Index0, NA, PredId, NA_Index),
-
-		PredInfo1 = PredInfo0
+		multi_map__set(NA_Index0, NA, PredId, NA_Index)
 	;
 		N_Index = N_Index0,
 		NA_Index = NA_Index0,
 
-		pred_info_get_markers(PredInfo0, MarkersA0),
+		pred_info_get_markers(!.PredInfo, MarkersA0),
 		add_marker(MarkersA0, not_accessible_by_unqualifed_name,
 				MarkersA),
-		pred_info_set_markers(PredInfo0, MarkersA, PredInfo1)
+		pred_info_set_markers(MarkersA, !PredInfo)
 	),
 
 	( MaybeQualInfo = yes(QualInfo) ->
@@ -1946,23 +1944,20 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 				MNAs0::in, MNAs::out] is det,
 			insert_into_mna_index(AncModule, Name, Arity, PredId,
 					MNAs0, MNAs)),
-			PartialQuals, _, MNA_Index0, MNA_Index1),
-
-		PredInfo = PredInfo1
+			PartialQuals, _, MNA_Index0, MNA_Index1)
 	;
 		MNA_Index1 = MNA_Index0,
 
-		pred_info_get_markers(PredInfo1, MarkersB0),
+		pred_info_get_markers(!.PredInfo, MarkersB0),
 		add_marker(MarkersB0,
-				not_accessible_by_partially_qualified_names,
-				MarkersB),
-		pred_info_set_markers(PredInfo1, MarkersB, PredInfo)
+			not_accessible_by_partially_qualified_names, MarkersB),
+		pred_info_set_markers(MarkersB, !PredInfo)
 	),
 
 		% insert the fully-qualified name into the
 		% module:name/arity index
 	insert_into_mna_index(Module, Name, Arity, PredId,
-			MNA_Index1, MNA_Index).
+		MNA_Index1, MNA_Index).
 
 :- pred insert_into_mna_index(module_name, string, arity, pred_id,
 			module_name_arity_index, module_name_arity_index).
@@ -2023,13 +2018,13 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 
 get_proc_id(ModuleInfo, PredId, ProcId) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
+	ProcIds = pred_info_procids(PredInfo),
 	( ProcIds = [ProcId0] ->
 		ProcId = ProcId0
 	;
-		pred_info_name(PredInfo, Name),
-		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-		pred_info_arity(PredInfo, Arity),
+		Name = pred_info_name(PredInfo),
+		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+		Arity = pred_info_arity(PredInfo),
 		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
 		string__int_to_string(Arity, ArityString),
 		( ProcIds = [] ->
@@ -2097,12 +2092,10 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		error(ErrorMessage)
 	),
 	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
+	ProcIds = pred_info_procids(PredInfo),
 	(
 		ModeNo = only_mode,
-		(
-			ProcIds = [ProcId0]
-		->
+		( ProcIds = [ProcId0] ->
 			ProcId = ProcId0
 		;
 			error(string__format( 
@@ -2111,9 +2104,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		)
 	;
 		ModeNo = mode_no(N),
-		(	       
-			list__index0(ProcIds, N, ProcId0)
-		->
+		( list__index0(ProcIds, N, ProcId0) ->
 			ProcId = ProcId0
 		;
 			error(string__format(
@@ -2127,23 +2118,23 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity).
+	ModuleName = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo).
 
 predicate_module(ModuleInfo, PredId, ModuleName) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName).
+	ModuleName = pred_info_module(PredInfo).
 
 predicate_name(ModuleInfo, PredId, PredName) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName).
+	PredName = pred_info_name(PredInfo).
 
 predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_arity(PredInfo, Arity).
+	Arity = pred_info_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%

@@ -144,19 +144,19 @@ deforestation(ModuleInfo0, ModuleInfo, IO0, IO) :-
 :- pred reset_inferred_proc_determinism(pred_proc_id::in,
 		module_info::in, module_info::out) is det.
 
-reset_inferred_proc_determinism(PredProcId, ModuleInfo0, ModuleInfo) :-
-	module_info_pred_proc_info(ModuleInfo0, PredProcId,
+reset_inferred_proc_determinism(PredProcId, !ModuleInfo) :-
+	module_info_pred_proc_info(!.ModuleInfo, PredProcId,
 		PredInfo, ProcInfo0),
 	proc_info_inferred_determinism(ProcInfo0, Detism0),
 	( determinism_components(Detism0, _, at_most_many_cc) ->
 		% `cc_multi' or `cc_nondet' determinisms are never inferred,
 		% so resetting the determinism would cause determinism errors.
-		ModuleInfo = ModuleInfo0
+		true
 	;	
-		proc_info_set_inferred_determinism(ProcInfo0, erroneous,
-			ProcInfo),
-		module_info_set_pred_proc_info(ModuleInfo0, PredProcId,
-			PredInfo, ProcInfo, ModuleInfo)
+		proc_info_set_inferred_determinism(erroneous,
+			ProcInfo0, ProcInfo),
+		module_info_set_pred_proc_info(!.ModuleInfo, PredProcId,
+			PredInfo, ProcInfo, !:ModuleInfo)
 	).
 
 :- pred proc_arg_info_init(map(pred_proc_id, pd_proc_arg_info)::out) is det.
@@ -212,7 +212,7 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 	deforest__goal(Goal2, Goal3),
 
 	pd_info_get_proc_info(ProcInfo1),
-	{ proc_info_set_goal(ProcInfo1, Goal3, ProcInfo2) },
+	{ proc_info_set_goal(Goal3, ProcInfo1, ProcInfo2) },
 	pd_info_get_changed(Changed),
 
 	( { Changed = yes } ->
@@ -228,7 +228,7 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
-		{ proc_info_set_goal(ProcInfo3, Goal, ProcInfo) },
+		{ proc_info_set_goal(Goal, ProcInfo3, ProcInfo) },
 		{ module_info_set_pred_proc_info(ModuleInfo3, PredId, ProcId,
 			PredInfo, ProcInfo, ModuleInfo4) },
 
@@ -1207,15 +1207,15 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 		% Rename the argument types using the current pred's tvarset.
 	{ varset__merge_subst(TVarSet0, CalledTVarSet,
 		TVarSet, TypeRenaming) },
-	{ pred_info_set_typevarset(PredInfo0, TVarSet, PredInfo) },	
+	{ pred_info_set_typevarset(TVarSet, PredInfo0, PredInfo) },	
 	pd_info_set_pred_info(PredInfo),
 	{ term__apply_substitution_to_list(ArgTypes0, 
 		TypeRenaming, ArgTypes1) },
 
 	{ deforest__create_deforest_call_args(OldArgs, ArgTypes1, Renaming, 
 		TypeSubn, Args, VarSet0, VarSet, VarTypes0, VarTypes) },
-	{ proc_info_set_vartypes(ProcInfo0, VarTypes, ProcInfo1) },
-	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo) },
+	{ proc_info_set_vartypes(VarTypes, ProcInfo0, ProcInfo1) },
+	{ proc_info_set_varset(VarSet, ProcInfo1, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 
 		% Compute a goal_info.
@@ -1227,8 +1227,8 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	{ pred_info_get_purity(CalledPredInfo, Purity) },
 	{ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) },
 
-	{ pred_info_module(CalledPredInfo, PredModule) },
-	{ pred_info_name(CalledPredInfo, PredName) },
+	{ PredModule = pred_info_module(CalledPredInfo) },
+	{ PredName = pred_info_name(CalledPredInfo) },
 	{ Goal = call(PredId, ProcId, Args, not_builtin, no, 
 			qualified(PredModule, PredName)) - GoalInfo }.
 	
@@ -1877,11 +1877,11 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 			CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
 			TypeVarSet0, TypeVarSet, TypeInfoVarMap0, 
 			TypeInfoVarMap, Goal1) },
-		{ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) },
-		{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
-		{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2) },
-		{ proc_info_set_typeinfo_varmap(ProcInfo2,
-			TypeInfoVarMap, ProcInfo) },
+		{ pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo) },
+		{ proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1) },
+		{ proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2) },
+		{ proc_info_set_typeinfo_varmap(TypeInfoVarMap,
+			ProcInfo2, ProcInfo) },
 		pd_info_set_pred_info(PredInfo),
 		pd_info_set_proc_info(ProcInfo),
 

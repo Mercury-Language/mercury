@@ -291,10 +291,10 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 		pred_info_get_constraint_proofs(PredInfo0, Proofs0),
 		bind_type_vars_to_void(Set, VarTypesMap0, VarTypesMap,
 			Proofs0, Proofs),
-		clauses_info_set_vartypes(ClausesInfo0, VarTypesMap,
-			ClausesInfo),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
-		pred_info_set_constraint_proofs(PredInfo1, Proofs, PredInfo)
+		clauses_info_set_vartypes(VarTypesMap,
+			ClausesInfo0, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
+		pred_info_set_constraint_proofs(Proofs, PredInfo1, PredInfo)
 	).
 
 :- pred check_type_bindings_2(assoc_list(prog_var, (type)), list(tvar),
@@ -458,7 +458,7 @@ write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
 
 post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 		ModuleInfo, PredName0, PredName, PredId) :-
-	( invalid_pred_id(PredId0) ->
+	( PredId0 = invalid_pred_id ->
 		%
 		% Find the set of candidate pred_ids for predicates which
 		% have the specified name and arity
@@ -480,8 +480,8 @@ post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 
 get_qualified_pred_name(ModuleInfo, PredId, qualified(PredModule, PredName)) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName).
+	PredModule = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -608,7 +608,7 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 		AdjustArgTypes, PredId0, PredId, SymName0, SymName) :-
 	% make_hlds.m checks the arity, so this is guaranteed to succeed.
 	get_state_args_det(Args, OtherArgs, _, _),
-	( invalid_pred_id(PredId0) ->
+	( PredId0 = invalid_pred_id ->
 		(
 			OtherArgs = [HOArg],
 			pred_info_typevarset(CallerPredInfo, TVarSet),
@@ -712,7 +712,7 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 	{ pred_info_get_markers(PredInfo0, Markers) },
 	(
 		{ check_marker(Markers, base_relation) },
-		{ pred_info_module(PredInfo0, ModuleName) },
+		{ ModuleName = pred_info_module(PredInfo0) },
 		{ module_info_name(ModuleInfo, ModuleName) }
 	->
 		check_aditi_state(ModuleInfo, PredInfo0)
@@ -726,24 +726,23 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 	check_for_indistinguishable_modes(ModuleInfo, PredId,
 		PredInfo2, PredInfo).
 
-post_typecheck__finish_imported_pred_no_io(ModuleInfo, Errors,
-		PredInfo0, PredInfo) :-
+post_typecheck__finish_imported_pred_no_io(ModuleInfo, Errors, !PredInfo) :-
 	% Make sure the var-types field in the clauses_info is
 	% valid for imported predicates.
 	% Unification procedures have clauses generated, so
 	% they already have valid var-types.
-	( pred_info_is_pseudo_imported(PredInfo0) ->
-		PredInfo1 = PredInfo0
+	( pred_info_is_pseudo_imported(!.PredInfo) ->
+		true
 	;
-		pred_info_clauses_info(PredInfo0, ClausesInfo0),
+		pred_info_clauses_info(!.PredInfo, ClausesInfo0),
 		clauses_info_headvars(ClausesInfo0, HeadVars),
-		pred_info_arg_types(PredInfo0, ArgTypes),
+		pred_info_arg_types(!.PredInfo, ArgTypes),
 		map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1)
+		clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo)
 	),
-	post_typecheck__propagate_types_into_modes(ModuleInfo,
-		Errors, PredInfo1, PredInfo).
+	post_typecheck__propagate_types_into_modes(ModuleInfo, Errors,
+		!PredInfo).
 
 	%
 	% Now that the promise has finished being typechecked,
@@ -843,8 +842,8 @@ check_type_of_main(PredInfo) -->
 		% Check if this predicate is the
 		% program entry point main/2.
 		%
-		{ pred_info_name(PredInfo, "main") },
-		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_name(PredInfo) = "main" },
+		{ pred_info_arity(PredInfo) = 2 },
 		{ pred_info_is_exported(PredInfo) }
 	->
 		%
@@ -879,14 +878,15 @@ check_type_of_main(PredInfo) -->
 		list(proc_id), pred_info, pred_info).
 :- mode post_typecheck__propagate_types_into_modes(in, out, in, out)
 		is det.
+
 post_typecheck__propagate_types_into_modes(ModuleInfo, ErrorProcs,
-		PredInfo0, PredInfo) :-
-	pred_info_arg_types(PredInfo0, ArgTypes),
-	pred_info_procedures(PredInfo0, Procs0),
-	pred_info_procids(PredInfo0, ProcIds),
+		!PredInfo) :-
+	pred_info_arg_types(!.PredInfo, ArgTypes),
+	pred_info_procedures(!.PredInfo, Procs0),
+	ProcIds = pred_info_procids(!.PredInfo),
 	propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
-			[], ErrorProcs, Procs0, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
+		[], ErrorProcs, Procs0, Procs),
+	pred_info_set_procedures(Procs, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -913,7 +913,7 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
 		Procs1 = Procs0
 	;
 		ErrorProcs1 = ErrorProcs0,
-		proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
+		proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
 		map__det_update(Procs0, ProcId, ProcInfo, Procs1)
 	),
 	propagate_types_into_proc_modes(ModuleInfo, ProcIds,
@@ -923,21 +923,26 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
 		pred_info, pred_info, io__state, io__state).
 :- mode report_unbound_inst_vars(in, in, in, in, out, di, uo) is det.
 
-report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs,
-		PredInfo0, PredInfo) -->
-	( { ErrorProcs = [] } ->
-	    { PredInfo = PredInfo0 }
+report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO) :-
+	( ErrorProcs = [] ->
+		true
 	;
-	    { pred_info_procedures(PredInfo0, ProcTable0) },
-	    list__foldl2(
-		(pred(ProcId::in, Procs0::in, Procs::out, di, uo) is det -->
-		    { map__lookup(Procs0, ProcId, ProcInfo) },
-		    unbound_inst_var_error(PredId, ProcInfo, ModuleInfo),
-		    % delete this mode, to avoid internal errors
-		    { map__det_remove(Procs0, ProcId, _, Procs) }
-		), ErrorProcs, ProcTable0, ProcTable),
-	    { pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) }
+		pred_info_procedures(!.PredInfo, ProcTable0),
+		list__foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
+			ErrorProcs, ProcTable0, ProcTable, !IO),
+		pred_info_set_procedures(ProcTable, !PredInfo)
 	).
+
+:- pred report_unbound_inst_var_error(module_info::in,
+	pred_id::in, proc_id::in, proc_table::in, proc_table::out,
+	io__state::di, io__state::uo) is det.
+
+report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
+		!IO) :-
+	map__lookup(Procs0, ProcId, ProcInfo),
+	unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO),
+	% delete this mode, to avoid internal errors
+	map__det_remove(Procs0, ProcId, _, Procs).
 
 :- pred unbound_inst_var_error(pred_id, proc_info, module_info,
 				io__state, io__state).
@@ -961,7 +966,7 @@ unbound_inst_var_error(PredId, ProcInfo, ModuleInfo) -->
 		pred_info, pred_info, io__state, io__state).
 :- mode check_for_indistinguishable_modes(in, in, in, out, di, uo) is det.
 
-check_for_indistinguishable_modes(ModuleInfo, PredId, PredInfo0, PredInfo) -->
+check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
 	(
 		%
 		% Don't check for indistinguishable modes in unification
@@ -973,14 +978,14 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 		% but the polymorphic unify needs to be able to call
 		% the semidet mode.)
 		%
-		{ pred_info_get_maybe_special_pred(PredInfo0, MaybeSpecial) },
-		{ MaybeSpecial = yes(unify - _) }
+		pred_info_get_maybe_special_pred(!.PredInfo, MaybeSpecial),
+		MaybeSpecial = yes(unify - _)
 	->
-		{ PredInfo = PredInfo0 }
+		true
 	;
-		{ pred_info_procids(PredInfo0, ProcIds) },
+		ProcIds = pred_info_procids(!.PredInfo),
 		check_for_indistinguishable_modes(ModuleInfo, PredId,
-			ProcIds, [], PredInfo0, PredInfo)
+			ProcIds, [], !PredInfo, !IO)
 	).
 
 :- pred check_for_indistinguishable_modes(module_info, pred_id, list(proc_id),
@@ -1005,14 +1010,14 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
 :- mode check_for_indistinguishable_mode(in, in, in,
 	in, out, in, out, di, uo) is det.
 
-check_for_indistinguishable_mode(_, _, _, [], no, PredInfo, PredInfo) --> [].
+check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo) --> [].
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
-		[ProcId | ProcIds], Removed, PredInfo0, PredInfo) -->
+		[ProcId | ProcIds], Removed, !PredInfo) -->
 	(
 		{ modes_are_indistinguishable(ProcId, ProcId1,
-			PredInfo0, ModuleInfo) }
+			!.PredInfo, ModuleInfo) }
 	->
-		{ pred_info_import_status(PredInfo0, Status) },
+		{ pred_info_import_status(!.PredInfo, Status) },
 		globals__io_lookup_bool_option(intermodule_optimization,
 			Intermod),
 		globals__io_lookup_bool_option(make_optimization_interface,
@@ -1030,15 +1035,15 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 			}
 		->
 			report_indistinguishable_modes_error(ProcId1,
-				ProcId, PredId, PredInfo0, ModuleInfo)
+				ProcId, PredId, !.PredInfo, ModuleInfo)
 		;
 			[]
 		),
-		{ pred_info_remove_procid(PredInfo0, ProcId1, PredInfo) },
+		{ pred_info_remove_procid(ProcId1, !PredInfo) },
 		{ Removed = yes }
 	;
 		check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
-			ProcIds, Removed, PredInfo0, PredInfo)
+			ProcIds, Removed, !PredInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1052,7 +1057,7 @@ check_aditi_state(ModuleInfo, PredInfo) -->
 	( { AditiStateTypes = [] } ->
 		report_no_aditi_state(PredInfo)
 	;
-		{ pred_info_procids(PredInfo, ProcIds) },
+		{ ProcIds = pred_info_procids(PredInfo) },
 		list__foldl(
 			check_aditi_state_modes(ModuleInfo,
 				PredInfo, ArgTypes),
@@ -1136,10 +1141,10 @@ report_no_input_aditi_state(PredInfo, Context) -->
 :- mode report_aditi_pragma(in, out) is det.
 
 report_aditi_pragma(PredInfo, ErrorPieces) :-
-	pred_info_module(PredInfo, Module),
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	Module = pred_info_module(PredInfo),
+	Name = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, base_relation) ->
 		Pragma = "base_relation"
@@ -1150,7 +1155,7 @@ report_aditi_pragma(PredInfo, ErrorPieces) :-
 	CallId = PredOrFunc - qualified(Module, Name)/Arity,
 	hlds_out__simple_call_id_to_string(CallId, CallIdStr),
 	ErrorPieces = [fixed("Error:"), fixed(PragmaStr),
-			words("declaration for"), fixed(CallIdStr)].
+		words("declaration for"), fixed(CallIdStr)].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1249,7 +1254,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% replace `X = f(A, B, C)'
 		% with `f(A, B, C, X)'
 		%
-		invalid_proc_id(ProcId),
+		ProcId = invalid_proc_id,
 		list__append(ArgVars0, [X0], ArgVars),
 		FuncCallUnifyContext = call_unify_context(X0,
 			functor(ConsId0, no, ArgVars0), UnifyContext),
@@ -1555,7 +1560,7 @@ post_typecheck__translate_set_function(ModuleInfo, PredInfo0, PredInfo,
 		out, out, in, out) is det.
 
 get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
-		ArgTypes, NewExistQVars, PredInfo0, PredInfo) :-
+		ArgTypes, NewExistQVars, !PredInfo) :-
 	%
 	% Split the list of argument types at the named field. 
 	%
@@ -1565,17 +1570,16 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
 	assoc_list__values(Args, ArgTypes0),
 	( ExistQVars = [] ->
 		ArgTypes1 = ArgTypes0,
-		PredInfo = PredInfo0,
 		NewExistQVars = []
 	;
 		%
 		% Rename apart the existentially quantified type variables.
 		%
 		list__length(ExistQVars, NumExistQVars),
-		pred_info_typevarset(PredInfo0, TVarSet0),
+		pred_info_typevarset(!.PredInfo, TVarSet0),
 		varset__new_vars(TVarSet0, NumExistQVars, NewExistQVars,
 			TVarSet),
-		pred_info_set_typevarset(PredInfo0, TVarSet, PredInfo),
+		pred_info_set_typevarset(TVarSet, !PredInfo),
 		map__from_corresponding_lists(ExistQVars, NewExistQVars,
 			TVarSubst),
 		term__apply_variable_renaming_to_list(ArgTypes0, TVarSubst,
@@ -1586,8 +1590,8 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
 	( type_to_ctor_and_args(TermType, _, TypeArgs) ->
 		map__from_corresponding_lists(TypeDefnArgs, TypeArgs, TSubst)
 	;
-		error(
-	"get_cons_id_arg_types_adding_existq_tvars: type_to_ctor_and_args failed")
+		error("get_cons_id_arg_types_adding_existq_tvars: " ++
+			"type_to_ctor_and_args failed")
 
 	),
 	term__apply_substitution_to_list(ArgTypes1, TSubst, ArgTypes).

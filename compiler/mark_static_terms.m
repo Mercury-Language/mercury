@@ -21,7 +21,7 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- pred mark_static_terms(proc_info::in, module_info::in, proc_info::out)
+:- pred mark_static_terms(module_info::in, proc_info::in, proc_info::out)
 	is det.
 
 %-----------------------------------------------------------------------------%
@@ -44,12 +44,12 @@
 :- import_module hlds__hlds_goal.
 :- import_module int, list, std_util, require.
 
-mark_static_terms(Proc0, _ModuleInfo, Proc) :-
+mark_static_terms(_ModuleInfo, !Proc) :-
 		% The ModuleInfo argument is there just for passes_aux
-	proc_info_goal(Proc0, Goal0),
+	proc_info_goal(!.Proc, Goal0),
 	map__init(StaticInfo0),
 	goal_mark_static_terms(Goal0, Goal, StaticInfo0, _StaticInfo),
-	proc_info_set_goal(Proc0, Goal, Proc).
+	proc_info_set_goal(Goal, !Proc).
 
 :- pred goal_mark_static_terms(hlds_goal::in, hlds_goal::out,
 		static_info::in, static_info::out) is det.

@@ -437,11 +437,11 @@ get_later_words([Word | Words], OldLen, MaxLen, Line0, Line, RestWords) :-
 
 error_util__describe_one_pred_name(Module, PredId, Piece) :-
 	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
+	ModuleName = pred_info_module(PredInfo),
 	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredOrFuncPart = pred_or_func_to_string(PredOrFunc),
 	adjust_func_arity(PredOrFunc, OrigArity, Arity),
 	(

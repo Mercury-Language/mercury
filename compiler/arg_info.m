@@ -32,8 +32,8 @@
 
 	% Annotate a single procedure with information
 	% about its argument passing interface.
-:- pred generate_proc_arg_info(proc_info::in, list(type)::in, module_info::in,
-	proc_info::out) is det.
+:- pred generate_proc_arg_info(list(type)::in, module_info::in,
+	proc_info::in, proc_info::out) is det.
 
 	% Given the list of types and modes of the arguments of a procedure
 	% and its code model, return its argument passing interface.
@@ -117,44 +117,44 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 :- pred generate_pred_arg_info(list(pred_id)::in,
 	module_info::in, module_info::out) is det.
 
-generate_pred_arg_info([], ModuleInfo, ModuleInfo).
-generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
+generate_pred_arg_info([], !ModuleInfo).
+generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
-	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
-	generate_pred_arg_info(PredIds, ModuleInfo1, ModuleInfo).
+	generate_proc_list_arg_info(PredId, pred_info_procids(PredInfo),
+		!ModuleInfo),
+	generate_pred_arg_info(PredIds, !ModuleInfo).
 
 :- pred generate_proc_list_arg_info(pred_id::in, list(proc_id)::in,
 	module_info::in, module_info::out) is det.
 
-generate_proc_list_arg_info(_PredId, [], ModuleInfo, ModuleInfo).
+generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], 
-		ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+		!ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	( hlds_pred__pred_info_is_aditi_relation(PredInfo0) ->
-		ModuleInfo1 = ModuleInfo0
+		true
 	;
 		pred_info_procedures(PredInfo0, ProcTable0),
 		pred_info_arg_types(PredInfo0, ArgTypes),
 		map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-		generate_proc_arg_info(ProcInfo0, ArgTypes, 
-			ModuleInfo0, ProcInfo),
+		generate_proc_arg_info(ArgTypes, !.ModuleInfo,
+			ProcInfo0, ProcInfo),
 
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
-		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1)
+		module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo)
 	),
-	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
+	generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 
-generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
-	proc_info_argmodes(ProcInfo0, ArgModes),
-	proc_info_interface_code_model(ProcInfo0, CodeModel),
+generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-
+	proc_info_argmodes(!.ProcInfo, ArgModes),
+	proc_info_interface_code_model(!.ProcInfo, CodeModel),
 	make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
-	proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo).
+	proc_info_set_arg_info(ArgInfo, !ProcInfo).
 
 %---------------------------------------------------------------------------%
 

@@ -145,39 +145,37 @@ generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
 	% by mercury_compile__backend_pass_by_preds, so modifications here may
 	% also need to be repeated there.
 
-generate_maybe_pred_code(ModuleInfo0, GlobalData0, GlobalData,
-		PredId, Predicates) -->
-	{ module_info_preds(ModuleInfo0, PredInfos) },
+generate_maybe_pred_code(ModuleInfo0, !GlobalData, PredId, Predicates, !IO) :-
+	module_info_preds(ModuleInfo0, PredInfos),
 		% get the pred_info structure for this predicate
-	{ map__lookup(PredInfos, PredId, PredInfo) },
+	map__lookup(PredInfos, PredId, PredInfo),
 		% extract a list of all the procedure ids for this
 		% predicate and generate code for them
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	ProcIds = pred_info_non_imported_procids(PredInfo),
 	(
-		{ ProcIds = []
+		( ProcIds = []
 		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
-		}
+		)
 	->
-		{ Predicates = [] },
-		{ GlobalData = GlobalData0 }
+		Predicates = []
 	;
-		{ module_info_globals(ModuleInfo0, Globals0) },
-		{ globals__lookup_bool_option(Globals0, very_verbose,
-			VeryVerbose) },
-		( { VeryVerbose = yes } ->
-			io__write_string("% Generating code for "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string("\n"),
-			{ globals__lookup_bool_option(Globals0,
-				statistics, Statistics) },
-			maybe_report_stats(Statistics)
+		module_info_globals(ModuleInfo0, Globals0),
+		globals__lookup_bool_option(Globals0, very_verbose,
+			VeryVerbose),
+		( VeryVerbose = yes ->
+			io__write_string("% Generating code for ", !IO),
+			hlds_out__write_pred_id(ModuleInfo0, PredId, !IO),
+			io__write_string("\n", !IO),
+			globals__lookup_bool_option(Globals0,
+				statistics, Statistics),
+			maybe_report_stats(Statistics, !IO)
 		;
-			[]
+			true
 		),
-		{
-			pred_info_module(PredInfo, PredModule),
-			pred_info_name(PredInfo, PredName),
-			pred_info_arity(PredInfo, PredArity),
+		(
+			PredModule = pred_info_module(PredInfo),
+			PredName = pred_info_name(PredInfo),
+			PredArity = pred_info_arity(PredInfo),
 			no_type_info_builtin(PredModule, PredName, PredArity)
 		->
 				% These predicates should never be traced,
@@ -188,14 +186,12 @@ generate_maybe_pred_code(ModuleInfo0, GlobalData0, GlobalData,
 			globals__set_trace_level_none(Globals0, Globals1),
 			module_info_set_globals(ModuleInfo0, Globals1,
 				ModuleInfo1),
-			generate_pred_code(ModuleInfo1,
-				GlobalData0, GlobalData,
+			generate_pred_code(ModuleInfo1, !GlobalData,
 				PredId, PredInfo, ProcIds, Predicates)
 		;
-			generate_pred_code(ModuleInfo0,
-				GlobalData0, GlobalData,
+			generate_pred_code(ModuleInfo0, !GlobalData,
 				PredId, PredInfo, ProcIds, Predicates)
-		}
+		)
 	).
 
 	% Translate a HLDS predicate to LLDS.
@@ -378,8 +374,8 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		ProcLabel, !GlobalData),
 
-	pred_info_name(PredInfo, Name),
-	pred_info_arity(PredInfo, Arity),
+	Name = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
 
 	code_info__get_label_counter(LabelCounter, CodeInfo, _),
 	(
@@ -764,9 +760,9 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		{ TraceFillCode = empty }
 	),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, ModuleName) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
+	{ ModuleName = pred_info_module(PredInfo) },
+	{ PredName = pred_info_name(PredInfo) },
+	{ Arity = pred_info_arity(PredInfo) },
 
 	{ PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId) },
 	(
@@ -1282,19 +1278,19 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleSymName),
+	ModuleSymName = pred_info_module(PredInfo),
 
 	prog_out__sym_name_to_string(ModuleSymName, "__", ModuleName),
 	
 	code_util__make_local_entry_label(ModuleInfo, PredId,
 		ProcId, no, Entry),
 
-	pred_info_name(PredInfo, PredName),
+	PredName = pred_info_name(PredInfo),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(ProcNum, ProcStr),
-	pred_info_arity(PredInfo, Arity),
+	Arity = pred_info_arity(PredInfo),
 	int_to_string(Arity, ArityStr),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
 	CallStructName = "bytecode_call_info",
 
@@ -1340,10 +1336,10 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
 code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	ModuleName = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
 	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
 	( MaybeSpecial = yes(SpecialId - TypeCtor) ->
 		code_gen__find_arg_type_ctor_name(TypeCtor, TypeName),

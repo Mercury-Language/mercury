@@ -343,74 +343,79 @@ check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 %  them, and in the translation from goal to hlds_goal, the attached purity is
 %  turned into the appropriate feature in the hlds_goal_info.)
 
-:- pred puritycheck_pred(pred_id, pred_info, pred_info, module_info, int,
-		io__state, io__state).
-:- mode puritycheck_pred(in, in, out, in, out, di, uo) is det.
+:- pred puritycheck_pred(pred_id::in, pred_info::in, pred_info::out,
+	module_info::in, int::out, io__state::di, io__state::uo) is det.
 
-puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
-	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
-	{ pred_info_get_promised_purity(PredInfo0, PromisedPurity) },
+puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
+	pred_info_get_purity(!.PredInfo, DeclPurity) ,
+	pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
 
-	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-	{ pred_info_procids(PredInfo0, ProcIds) },
-	{ clauses_info_clauses(ClausesInfo0, Clauses0) },
-	{ clauses_info_vartypes(ClausesInfo0, VarTypes0) },
-	{ clauses_info_varset(ClausesInfo0, VarSet0) },
-	{ RunPostTypecheck = yes },
-	{ PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
-		PredInfo0, VarTypes0, VarSet0, []) },
-	{ pred_info_get_goal_type(PredInfo0, GoalType) },
-	{ compute_purity(GoalType, Clauses0, Clauses, ProcIds, pure, Purity,
-		PurityInfo0, PurityInfo) },
-	{ PurityInfo = purity_info(_, _, PredInfo1,
-		VarTypes, VarSet, RevMessages) },
-	{ clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo1) },
-	{ clauses_info_set_varset(ClausesInfo1, VarSet, ClausesInfo2) },
-	{ Messages = list__reverse(RevMessages) },
-	list__foldl(report_post_typecheck_message(ModuleInfo), Messages),
-	{ NumErrors0 = list__length(
+	pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+	ProcIds = pred_info_procids(!.PredInfo),
+	clauses_info_clauses(ClausesInfo0, Clauses0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	clauses_info_varset(ClausesInfo0, VarSet0),
+	RunPostTypecheck = yes,
+	PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
+		!.PredInfo, VarTypes0, VarSet0, []),
+	pred_info_get_goal_type(!.PredInfo, GoalType),
+	compute_purity(GoalType, Clauses0, Clauses, ProcIds, pure, Purity,
+		PurityInfo0, PurityInfo),
+	PurityInfo = purity_info(_, _, !:PredInfo,
+		VarTypes, VarSet, RevMessages),
+	clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo1),
+	clauses_info_set_varset(VarSet, ClausesInfo1, ClausesInfo2),
+	Messages = list__reverse(RevMessages),
+	list__foldl(report_post_typecheck_message(ModuleInfo), Messages, !IO),
+	NumErrors0 = list__length(
 			list__filter((pred(error(_)::in) is semidet),
-			Messages)) },
-	{ clauses_info_set_clauses(ClausesInfo2, Clauses, ClausesInfo) },
-	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo) },
-	{ WorstPurity = Purity },
-	{ perform_pred_purity_checks(PredInfo, Purity, DeclPurity,
-		PromisedPurity, PurityCheckResult) },
-	( { PurityCheckResult = inconsistent_promise },
-		{ NumErrors = NumErrors0 + 1 },
-		error_inconsistent_promise(ModuleInfo, PredInfo, PredId,
-					  DeclPurity)
-	; { PurityCheckResult = unnecessary_decl },
-		{ NumErrors = NumErrors0 },
-		warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
-					     DeclPurity, WorstPurity)
-	; { PurityCheckResult = insufficient_decl },
-		{ NumErrors = NumErrors0 + 1 },
-		error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity)
-	; { PurityCheckResult = unnecessary_promise_pure },
-		{ NumErrors = NumErrors0 },
-		warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId,
-			PromisedPurity)
-	; { PurityCheckResult = no_worries },
-		{ NumErrors = NumErrors0 }
+			Messages)),
+	clauses_info_set_clauses(Clauses, ClausesInfo2, ClausesInfo),
+	pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+	WorstPurity = Purity,
+	perform_pred_purity_checks(!.PredInfo, Purity, DeclPurity,
+		PromisedPurity, PurityCheckResult),
+	(
+		PurityCheckResult = inconsistent_promise,
+		NumErrors = NumErrors0 + 1,
+		error_inconsistent_promise(ModuleInfo, !.PredInfo, PredId,
+			DeclPurity, !IO)
+	;
+		PurityCheckResult = unnecessary_decl,
+		NumErrors = NumErrors0,
+		warn_exaggerated_impurity_decl(ModuleInfo, !.PredInfo, PredId,
+			DeclPurity, WorstPurity, !IO)
+	;
+		PurityCheckResult = insufficient_decl,
+		NumErrors = NumErrors0 + 1,
+		error_inferred_impure(ModuleInfo, !.PredInfo, PredId, Purity,
+			!IO)
+	;
+		PurityCheckResult = unnecessary_promise_pure,
+		NumErrors = NumErrors0,
+		warn_unnecessary_promise_pure(ModuleInfo, !.PredInfo, PredId,
+			PromisedPurity, !IO)
+	;
+		PurityCheckResult = no_worries,
+		NumErrors = NumErrors0
 	).
 
-repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
-	pred_info_procedures(PredInfo0, Procs0),
+repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
+	pred_info_procedures(!.PredInfo, Procs0),
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_varset(ProcInfo0, VarSet0),
 	RunPostTypeCheck = no,
 	PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
-		PredInfo0, VarTypes0, VarSet0, []),
+		!.PredInfo, VarTypes0, VarSet0, []),
 	compute_goal_purity(Goal0, Goal, Bodypurity, PurityInfo0, PurityInfo),
-	PurityInfo = purity_info(_, _, PredInfo1, VarTypes, VarSet, _),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo),
+	PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _),
+	proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+	proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
+	proc_info_set_varset(VarSet, ProcInfo2, ProcInfo),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs),
-	pred_info_set_procedures(PredInfo1, Procs, PredInfo2),
+	pred_info_set_procedures(Procs, !PredInfo),
 
 	%
 	% A predicate should never become less pure after inlining,
@@ -418,8 +423,8 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 	% the goal worsened (for example if a promised pure predicate
 	% was inlined).
 	%
-	pred_info_get_purity(PredInfo2, OldPurity),
-	pred_info_get_markers(PredInfo2, Markers0),
+	pred_info_get_purity(!.PredInfo, OldPurity),
+	pred_info_get_markers(!.PredInfo, Markers0),
 	(
 		less_pure(Bodypurity, OldPurity)
 	->
@@ -434,12 +439,11 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 			OldPurity = (impure),
 			Markers = Markers0
 		),
-		pred_info_set_markers(PredInfo2, Markers, PredInfo)
+		pred_info_set_markers(Markers, !PredInfo)
 	;
 		less_pure(OldPurity, Bodypurity),
-		pred_info_procids(PredInfo2, [_])
+		[_] = pred_info_procids(!.PredInfo)
 	->
-
 		%
 		% If there is only one procedure, update the
 		% purity in the pred_info if the purity improved.
@@ -461,9 +465,9 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 			Bodypurity = (impure),
 			Markers = Markers0
 		),
-		pred_info_set_markers(PredInfo2, Markers, PredInfo)
+		pred_info_set_markers(Markers, !PredInfo)
 	;
-		PredInfo = PredInfo2
+		true
 	).
 
 % Infer the purity of a single (non-pragma c_code) predicate
@@ -999,7 +1003,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 	io__write_string("' but promised pure.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		prog_out__write_context(Context),
 		io__write_string("  A pure "),
 		hlds_out__write_pred_or_func(PredOrFunc),
@@ -1055,7 +1059,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		io__write_string("  This "),
 		hlds_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" does not invoke any "),
@@ -1076,7 +1080,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 
 error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	{ pred_info_context(PredInfo, Context) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
 	prog_out__write_context(Context),
 	io__write_string("  purity error: "),
@@ -1164,7 +1168,7 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context) -->
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	( { PredOrFunc = predicate } ->
 		io__write_string("  purity error: call must be preceded by `"),

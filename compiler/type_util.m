@@ -1791,7 +1791,7 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
 	;
 		NewVar = Var
 	),
-	type_info_locn_set_var(Locn, NewVar, NewLocn),
+	type_info_locn_set_var(NewVar, Locn, NewLocn),
 
 		% find the new tvar, if there is one, otherwise just
 		% create the old var as a type variable.

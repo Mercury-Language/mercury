@@ -261,10 +261,10 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 			InferredDetism) = yes }
 	->
 		{
-		    proc_info_set_eval_method(ProcInfo0, EvalMethod, ProcInfo),
+		    proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
 		    pred_info_procedures(PredInfo0, ProcTable0),
 		    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-		    pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		    module_info_set_pred_info(ModuleInfo1, PredId, PredInfo, 
 		    	ModuleInfo)
 		}
@@ -334,8 +334,8 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 	%
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
 	( 
-		{ pred_info_name(PredInfo, "main") },
-		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_name(PredInfo) = "main" },
+		{ pred_info_arity(PredInfo) = 2 },
 		{ pred_info_is_exported(PredInfo) },
 		{ MaybeDetism = yes(DeclaredDetism) },
 		{ DeclaredDetism \= det, DeclaredDetism \= cc_multidet }
@@ -363,7 +363,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 	% function are not allowed.)
 	(
 		% if it is a mode for a function...
-		{ pred_info_get_is_pred_or_func(PredInfo, function) },
+		{ pred_info_is_pred_or_func(PredInfo) = function },
 		% ... that can succeed more than once ...
 		{ determinism_components(InferredDetism, _CanFail, NumSolns) },
 		{ NumSolns \= at_most_zero },
@@ -379,7 +379,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 	 	} 
 	->
 		% ... then it is an error.
-		{ pred_info_name(PredInfo, PredName) },
+		{ PredName = pred_info_name(PredInfo) },
 
 		{ proc_info_context(ProcInfo, FuncContext) },
 		prog_out__write_context(FuncContext),
@@ -885,8 +885,8 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredName = pred_info_name(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	%
 	% if the error was in a call to a type-specific unification predicate

@@ -119,7 +119,7 @@ dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_non_imported_procids(PredInfo0, ProcIds),
+	ProcIds = pred_info_non_imported_procids(PredInfo0),
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo, [], NewPredIds).
 
@@ -139,7 +139,7 @@ dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo1, ProcInfo, NewPredIds0, NewPredIds1),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	% We must look up the pred table again
 	% since dnf__transform_proc may have added new predicates
 	module_info_preds(ModuleInfo1, PredTable1),
@@ -151,7 +151,7 @@ dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
 
 dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo, ProcInfo, NewPredIds0, NewPredIds) :-
-	pred_info_name(PredInfo0, PredName),
+	PredName = pred_info_name(PredInfo0),
 	pred_info_typevarset(PredInfo0, TVarSet),
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, ClassContext),
@@ -163,13 +163,13 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
 	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
-			VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
+		VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo,
 		PredName, DnfInfo, Goal, NewPredIds0, NewPredIds),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
+	proc_info_set_goal(Goal, ProcInfo0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

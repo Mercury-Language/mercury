@@ -22,12 +22,12 @@
 %-----------------------------------------------------------------------------%
 
 :- type task	--->	update_proc(pred(
-				proc_info, module_info, proc_info))
+				module_info, proc_info, proc_info))
 		;	update_proc_predid(pred(
-				proc_info, pred_id, module_info, proc_info))
+				pred_id, module_info, proc_info, proc_info))
 		;	update_proc_predprocid(pred(
-				proc_info, pred_id, proc_id,
-				module_info, proc_info))
+				pred_id, proc_id, module_info,
+				proc_info, proc_info))
 		;	update_proc_io(pred(
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, io__state, io__state))
@@ -331,106 +331,82 @@ process_nonimported_pred(Task, Filter, PredId, ModuleInfo0, ModuleInfo,
 :- mode process_nonimported_procs_in_preds(in, task, out(task), 
 	pred(in) is semidet, in, out, di, uo) is det.
 
-process_nonimported_procs_in_preds([], Task, Task, _, ModuleInfo, ModuleInfo)
-		--> [].
-process_nonimported_procs_in_preds([PredId | PredIds], Task0, Task, Filter,
-		ModuleInfo0, ModuleInfo) -->
-	{ module_info_preds(ModuleInfo0, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	( { call(Filter, PredInfo) } ->
-		{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-		process_nonimported_procs(ProcIds, PredId, Task0, Task1,
-			ModuleInfo0, ModuleInfo1)
+process_nonimported_procs_in_preds([], !Task, _, !ModuleInfo, !IO).
+process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
+		!ModuleInfo, !IO) :-
+	module_info_preds(!.ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	( call(Filter, PredInfo) ->
+		ProcIds = pred_info_non_imported_procids(PredInfo),
+		process_nonimported_procs(ProcIds, PredId, !Task,
+			!ModuleInfo, !IO)
 	;
-		{ ModuleInfo1 = ModuleInfo0 },
-		{ Task1 = Task0 }
+		true
 	),
-	process_nonimported_procs_in_preds(PredIds, Task1, Task, Filter,
-		ModuleInfo1, ModuleInfo).
+	process_nonimported_procs_in_preds(PredIds, !Task, Filter,
+		!ModuleInfo, !IO).
 
 :- pred process_nonimported_procs(list(proc_id), pred_id, task, task,
 	module_info, module_info, io__state, io__state).
 :- mode process_nonimported_procs(in, in, task, out(task), in, out, di, uo)
 	is det.
 
-process_nonimported_procs([], _PredId, Task, Task,
-		ModuleInfo, ModuleInfo, State, State).
-process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
-		ModuleInfo0, ModuleInfo, State0, State) :-
-
-	module_info_preds(ModuleInfo0, Preds0),
+process_nonimported_procs([], _PredId, !Task, !ModuleInfo, !IO).
+process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
+		!IO) :-
+	module_info_preds(!.ModuleInfo, Preds0),
 	map__lookup(Preds0, PredId, Pred0),
 	pred_info_procedures(Pred0, Procs0),
 	map__lookup(Procs0, ProcId, Proc0),
 
 	(
-		Task0 = update_module(Closure),
-		call(Closure, PredId, ProcId, Pred0, Proc0, Proc,
-			ModuleInfo0, ModuleInfo8),
-		Task1 = Task0,
-		State9 = State0
+		!.Task = update_module(Closure),
+		call(Closure, PredId, ProcId, Pred0, Proc0, Proc, !ModuleInfo)
 	;
-		Task0 = update_module_io(Closure),
-		call(Closure, PredId, ProcId, Proc0, Proc,
-			ModuleInfo0, ModuleInfo8, State0, State9),
-		Task1 = Task0
+		!.Task = update_module_io(Closure),
+		call(Closure, PredId, ProcId, Proc0, Proc, !ModuleInfo, !IO)
 	;
-		Task0 = update_proc(Closure),
-		call(Closure, Proc0, ModuleInfo0, Proc),
-		ModuleInfo8 = ModuleInfo0,
-		Task1 = Task0,
-		State9 = State0
+		!.Task = update_proc(Closure),
+		call(Closure, !.ModuleInfo, Proc0, Proc)
 	;
-		Task0 = update_proc_predid(Closure),
-		call(Closure, Proc0, PredId, ModuleInfo0, Proc),
-		ModuleInfo8 = ModuleInfo0,
-		Task1 = Task0,
-		State9 = State0
+		!.Task = update_proc_predid(Closure),
+		call(Closure, PredId, !.ModuleInfo, Proc0, Proc)
 	;
-		Task0 = update_proc_predprocid(Closure),
-		call(Closure, Proc0, PredId, ProcId, ModuleInfo0, Proc),
-		ModuleInfo8 = ModuleInfo0,
-		Task1 = Task0,
-		State9 = State0
+		!.Task = update_proc_predprocid(Closure),
+		call(Closure, PredId, ProcId, !.ModuleInfo, Proc0, Proc)
 	;
-		Task0 = update_proc_io(Closure),
-		call(Closure, PredId, ProcId, ModuleInfo0,
-			Proc0, Proc, State0, State9),
-		ModuleInfo8 = ModuleInfo0,
-		Task1 = Task0
+		!.Task = update_proc_io(Closure),
+		call(Closure, PredId, ProcId, !.ModuleInfo, Proc0, Proc, !IO)
 	;
-		Task0 = update_proc_error(Closure),
-		call(Closure, PredId, ProcId, ModuleInfo0, ModuleInfo1,
-			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
-		Task1 = Task0,
+		!.Task = update_proc_error(Closure),
+		call(Closure, PredId, ProcId, !ModuleInfo, Proc0, Proc,
+			WarnCnt, ErrCnt, !IO),
 		passes_aux__handle_errors(WarnCnt, ErrCnt,
-			ModuleInfo1, ModuleInfo8, State1, State9)
+			!ModuleInfo, !IO)
 	;
-		Task0 = update_pred_error(_),
+		!.Task = update_pred_error(_),
 		error("passes_aux:process_non_imported_procs")
 	;
-		Task0 = update_module_cookie(Closure, Cookie0),
+		!.Task = update_module_cookie(Closure, Cookie0),
 		call(Closure, PredId, ProcId, Proc0, Proc,
-			Cookie0, Cookie1, ModuleInfo0, ModuleInfo8),
-		Task1 = update_module_cookie(Closure, Cookie1),
-		State9 = State0
+			Cookie0, Cookie1, !ModuleInfo),
+		!:Task = update_module_cookie(Closure, Cookie1)
 	),
 
 	% If the pass changed the module_info, it may have changed
 	% the pred table or the proc table for this pred_id.  Don't
 	% take any chances.
 
-	module_info_preds(ModuleInfo8, Preds8),
+	module_info_preds(!.ModuleInfo, Preds8),
 	map__lookup(Preds8, PredId, Pred8),
 	pred_info_procedures(Pred8, Procs8),
 
 	map__det_update(Procs8, ProcId, Proc, Procs),
-	pred_info_set_procedures(Pred8, Procs, Pred),
+	pred_info_set_procedures(Procs, Pred8, Pred),
 	map__det_update(Preds8, PredId, Pred, Preds),
-	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
+	module_info_set_preds(!.ModuleInfo, Preds, !:ModuleInfo),
 
-	process_nonimported_procs(ProcIds, PredId, Task1, Task,
-		ModuleInfo9, ModuleInfo, State9, State).
+	process_nonimported_procs(ProcIds, PredId, !Task, !ModuleInfo, !IO).
 
 write_pred_progress_message(Message, PredId, ModuleInfo) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -721,9 +697,9 @@ tree_stats(Description, Tree) -->
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredName = pred_info_name(PredInfo) },
+	{ Arity = pred_info_arity(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 

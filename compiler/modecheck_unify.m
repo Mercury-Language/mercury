@@ -1080,8 +1080,8 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 			->
 				module_info_pred_info(ModuleInfo,
 					PredId, PredInfo),
-				pred_info_module(PredInfo, PredModule),
-				pred_info_name(PredInfo, PredName),
+				PredModule = pred_info_module(PredInfo),
+				PredName = pred_info_name(PredInfo),
 				RHS = functor(
 					cons(qualified(PredModule, PredName),
 						Arity),

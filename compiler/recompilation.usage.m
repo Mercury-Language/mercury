@@ -654,7 +654,7 @@ recompilation__usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
 			(func(PredId) = PredId - PredModule :-
 				module_info_pred_info(ModuleInfo,
 					PredId, PredInfo),
-				pred_info_module(PredInfo, PredModule)
+				PredModule = pred_info_module(PredInfo)
 			),
 			MatchingPredIds)) },
 		{ map__det_insert(MatchingNames0, ModuleQualifier,
@@ -790,9 +790,10 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 recompilation__usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 		PredId) = ResolvedCtor :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),	
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	PredModule = pred_info_module(PredInfo),
+	PredArity = pred_info_arity(PredInfo),
 	pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
-	pred_info_arity(PredInfo, PredArity),
 	adjust_func_arity(PredOrFunc, OrigArity, PredArity),
 	(
 		PredOrFunc = predicate,
@@ -812,7 +813,6 @@ recompilation__usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 		; OrigArity = Arity
 		)
 	),
-	pred_info_module(PredInfo, PredModule),
 	ResolvedCtor = pred_or_func(PredId, PredModule, PredOrFunc, OrigArity).
 
 %-----------------------------------------------------------------------------%

@@ -996,25 +996,24 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 	% Generate MLDS definitions for all the non-imported
 	% procedures of a given predicate (or function).
 	%
-:- pred ml_gen_pred(module_info, pred_id, pred_info, import_status,
-			mlds__defns, mlds__defns, io__state, io__state).
-:- mode ml_gen_pred(in, in, in, in, in, out, di, uo) is det.
+:- pred ml_gen_pred(module_info::in, pred_id::in, pred_info::in,
+	import_status::in, mlds__defns::in, mlds__defns::out,
+	io__state::di, io__state::uo) is det.
 
-ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
-		MLDS_Defns0, MLDS_Defns) -->
-	( { ImportStatus = external(_) } ->
-		{ pred_info_procids(PredInfo, ProcIds) }
+ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !MLDS_Defns, !IO) :-
+	( ImportStatus = external(_) ->
+		ProcIds = pred_info_procids(PredInfo)
 	;
-		{ pred_info_non_imported_procids(PredInfo, ProcIds) }
+		ProcIds = pred_info_non_imported_procids(PredInfo)
 	),
-	( { ProcIds = [] } ->
-		{ MLDS_Defns = MLDS_Defns0 }
+	( ProcIds = [] ->
+		true
 	;
 		write_pred_progress_message("% Generating MLDS code for ",
-			PredId, ModuleInfo),
-		{ pred_info_procedures(PredInfo, ProcTable) },
-		{ ml_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo,
-				ProcTable, MLDS_Defns0, MLDS_Defns) }
+			PredId, ModuleInfo, !IO),
+		pred_info_procedures(PredInfo, ProcTable),
+		ml_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo,
+			ProcTable, !MLDS_Defns)
 	).
 
 :- pred ml_gen_procs(list(proc_id), module_info, pred_id, pred_info,
@@ -2890,7 +2889,7 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ThreadSafe = not_thread_safe
 	->
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_name(PredInfo, Name),
+		Name = pred_info_name(PredInfo),
 		c_util__quote_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ObtainLock),

@@ -248,7 +248,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 		{ pred_info_procedures(PredInfo1, ProcTable0) },
 		infer_determinism_pass_2(ProcStreams, ProcFiles,
 		    ExistsAllInMode, ProcTable0, ProcTable),
-		{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
+		{ pred_info_set_procedures(ProcTable, PredInfo1, PredInfo) },
 		io__make_temp(DataFileName),
 		write_fact_table_arrays(ProcFiles, DataFileName, StructName, 
 		    ProcTable, ModuleInfo, NumFacts, FactArgInfos,
@@ -265,7 +265,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	    	% to type-check all the facts.
 	    	{ PredInfo = PredInfo0 },
 	    	{ C_HeaderCode = C_HeaderCode0 },
-	    	{ invalid_proc_id(PrimaryProcID) },
+	    	{ PrimaryProcID = invalid_proc_id },
 	    	{ WriteDataAfterSorting = no },
 	    	{ DataFileName = "" }
 	    ),
@@ -285,7 +285,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	    io__set_exit_status(1),
 	    { PredInfo = PredInfo0 },
 	    { C_HeaderCode = "" },
-	    { invalid_proc_id(PrimaryProcID) }
+	    { PrimaryProcID = invalid_proc_id }
 	)
     ;
 	{ Result0 = error(ErrorCode) },
@@ -302,7 +302,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	io__set_exit_status(1),
 	{ PredInfo = PredInfo0 },
 	{ C_HeaderCode = "" },
-	{ invalid_proc_id(PrimaryProcID) }
+	{ PrimaryProcID = invalid_proc_id }
     ).
 
 %---------------------------------------------------------------------------%
@@ -377,7 +377,7 @@ check_fact_term(_, _, _, _, term__variable(_V), _, _, _, _, error) -->
 check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 	term__functor(Const, Terms0, Context), FactArgInfos, ProcStreams, 
 	MaybeOutput, FactNum, Result) -->
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ unqualify_name(PredName, PredString) },
 	(
 	    { Const = term__atom(TopLevel) }
@@ -801,11 +801,11 @@ infer_determinism_pass_1(PredInfo0, PredInfo, Context, ModuleInfo, CheckProcs,
 		ExistsAllInMode, WriteHashTables, WriteDataTable,
 		FactArgInfos0, FactArgInfos, Result) -->
 	{ pred_info_procedures(PredInfo0, ProcTable0) },
-	{ pred_info_procids(PredInfo0, ProcIDs) },
+	{ ProcIDs = pred_info_procids(PredInfo0) },
 	( { ProcIDs = [] } ->
 		% There are no declared modes so report an error.
-		{ pred_info_name(PredInfo0, PredString) },
-		{ pred_info_arity(PredInfo0, Arity) },
+		{ PredString = pred_info_name(PredInfo0) },
+		{ Arity = pred_info_arity(PredInfo0) },
 		prog_out__write_context(Context),
 		io__format("Error: no modes declared for fact table `%s/%d'.\n",
 			[s(PredString), i(Arity)]),
@@ -840,7 +840,7 @@ infer_determinism_pass_1(PredInfo0, PredInfo, Context, ModuleInfo, CheckProcs,
 		% need to get order right for CheckProcs because first procedure
 		% in list is used to derive the primary lookup key.
 		{ list__reverse(CheckProcs1, CheckProcs) },
-		{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
+		{ pred_info_set_procedures(ProcTable, PredInfo0, PredInfo) },
 		{ Result = ok }
 	).
 
@@ -926,8 +926,8 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ProcTable0, ProcTable,
 	{
 		InferredDetism = inferred(Determinism)
 	->
-		proc_info_set_inferred_determinism(ProcInfo0, Determinism, 
-			ProcInfo),
+		proc_info_set_inferred_determinism(Determinism,
+			ProcInfo0, ProcInfo),
 		map__det_update(ProcTable0, ProcID, ProcInfo, ProcTable1)
 	;
 		ProcTable1 = ProcTable0
@@ -1216,8 +1216,8 @@ infer_determinism_pass_2([proc_stream(ProcID, Stream) | ProcStreams],
 	    io__set_exit_status(1),
 	    { Determinism = erroneous }
 	),
-	{ proc_info_set_inferred_determinism(ProcInfo0, Determinism, 
-	    ProcInfo)},
+	{ proc_info_set_inferred_determinism(Determinism,
+		ProcInfo0, ProcInfo)},
 	{ map__det_update(ProcTable0, ProcID, ProcInfo, ProcTable1) },
 	infer_determinism_pass_2(ProcStreams, ProcFiles, ExistsAllInMode,
 		ProcTable1, ProcTable).
@@ -1240,7 +1240,7 @@ write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
 	    { ProcFiles0 = [] },
 	    { C_HeaderCode = "" },
 			% This won't get used anyway.
-	    { hlds_pred__initial_proc_id(PrimaryProcID) }
+	    { PrimaryProcID = hlds_pred__initial_proc_id }
 	;
 	    { ProcFiles0 = [(PrimaryProcID - FileName) | ProcFiles1] },
 	    (

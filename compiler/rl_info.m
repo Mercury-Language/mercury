@@ -302,8 +302,8 @@ rl_info_init(ModuleInfo, IO, RLInfo) :-
 	map__init(VarRels),
 	map__init(VarStat),
 	set__init(DelayedDiffs),
-	invalid_pred_id(PredId),
-	invalid_proc_id(ProcId),
+	PredId = invalid_pred_id,
+	ProcId = invalid_proc_id,
 	RLInfo = rl_info(IO, ModuleInfo, no, no, [], RelMap, RelInfo,
 		unit, VarRels, [], 0, 0, 0, proc(PredId, ProcId),
 		[], VarStat, DelayedDiffs, no, []).
@@ -499,10 +499,10 @@ rl_info_lookup_relation(TempRelationId, RelationId) -->
 
 		% Get a (sort of) human readable version of the relation name.
 		{ proc_relation_type_to_str(ProcRelType, ProcRelStr) },
-		{ pred_info_module(PredInfo, PredModule0) },
+		{ PredModule0 = pred_info_module(PredInfo) },
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
-		{ pred_info_name(PredInfo, PredName) },
-		{ pred_info_arity(PredInfo, Arity) },
+		{ PredName = pred_info_name(PredInfo) },
+		{ Arity = pred_info_arity(PredInfo) },
 		rl_info_get_next_relation_id(RelationId),
 		{ string__format("%s-%s.%s/%i-%i",
 			[s(ProcRelStr), s(PredModule), s(PredName),
@@ -635,8 +635,8 @@ rl_info_write_message(FormatStr, Items) -->
 rl_info__comment(Comment) -->
 	rl_info_get_pred_info(PredInfo),
 	rl_info_get_rule_number(RuleNo),
-	{ pred_info_name(PredInfo, PredName) },
-	{ string__format("%s rule %i", [s(PredName), i(RuleNo)], Comment) }.
+	{ string__format("%s rule %i",
+		[s(pred_info_name(PredInfo)), i(RuleNo)], Comment) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

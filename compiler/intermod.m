@@ -293,10 +293,10 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 			{ DoWrite = no }
 		),
 		( { DoWrite = yes } ->
-			{ clauses_info_set_clauses(ClausesInfo0, Clauses,
-				ClausesInfo) },
-			{ pred_info_set_clauses_info(PredInfo0, ClausesInfo,
-					PredInfo) },	
+			{ clauses_info_set_clauses(Clauses,
+				ClausesInfo0, ClausesInfo) },
+			{ pred_info_set_clauses_info(ClausesInfo,
+				PredInfo0, PredInfo) },	
 			{ map__det_update(PredTable0, PredId,
 					PredInfo, PredTable) },
 			{ module_info_set_preds(ModuleInfo0, PredTable,
@@ -344,7 +344,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		pred_info_clauses_info(PredInfo, ClauseInfo),
 		clauses_info_clauses(ClauseInfo, Clauses),
 
-		pred_info_procids(PredInfo, [ProcId | _ProcIds]),
+		[ProcId | _ProcIds] = pred_info_procids(PredInfo),
 		pred_info_procedures(PredInfo, Procs),
 		map__lookup(Procs, ProcId, ProcInfo),
 
@@ -352,7 +352,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		% HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away
 		% later.  To counter for this, we add the arity to the
 		% size thresholds.
-		pred_info_arity(PredInfo, Arity),
+		Arity = pred_info_arity(PredInfo),
 
 		% Predicates with `class_method' markers contain
 		% class_method_call goals which can't be written
@@ -589,7 +589,7 @@ intermod__traverse_cases([case(F, Goal0) | Cases0],
 		intermod_info::in, intermod_info::out) is det.
 
 intermod__add_proc(PredId, DoWrite) -->
-	( { invalid_pred_id(PredId) } ->
+	( { PredId = invalid_pred_id } ->
 		% This will happen for type class instance methods
 		% defined using the clause syntax.  Currently we
 		% can't handle intermodule-optimization of those.
@@ -605,7 +605,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_procids(PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	(
 		%
@@ -705,7 +705,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% imported pred - add import for module
 		%
 		{ DoWrite = yes },
-		{ pred_info_module(PredInfo, PredModule) },
+		{ PredModule = pred_info_module(PredInfo) },
 		intermod_info_get_modules(Modules0),
 		{ set__insert(Modules0, PredModule, Modules) },
 		intermod_info_set_modules(Modules)
@@ -893,7 +893,7 @@ intermod__qualify_instance_method(ModuleInfo,
 		;
 			% This will force intermod__add_proc to
 			% return DoWrite = no
-			invalid_pred_id(PredId),
+			PredId = invalid_pred_id,
 			PredIds = [PredId | PredIds0],
 
 			% We can just leave the method definition unchanged
@@ -918,7 +918,7 @@ intermod__qualify_instance_method(ModuleInfo,
 		% syntax.
 		%
 		% This will force intermod__add_proc to return DoWrite = no
-		invalid_pred_id(PredId),
+		PredId = invalid_pred_id,
 		PredIds = [PredId | PredIds0],
 		% We can just leave the method definition unchanged
 		InstanceMethodDefn = InstanceMethodDefn0
@@ -1487,12 +1487,12 @@ intermod__write_instance(ClassId - InstanceDefn) -->
 intermod__write_pred_decls(_, []) --> [].
 intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
+	{ Module = pred_info_module(PredInfo) },
+	{ Name = pred_info_name(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_get_purity(PredInfo, Purity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	{ pred_info_get_goal_type(PredInfo, GoalType) },
 	{
@@ -1532,7 +1532,7 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 			AppendVarNums)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_procids(PredInfo) },
 		% Make sure the mode declarations go out in the same
 		% order they came in, so that the all the modes get the
 		% same proc_id in the importing modules.
@@ -1585,10 +1585,10 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
+	{ Module = pred_info_module(PredInfo) },
+	{ Name = pred_info_name(PredInfo) },
 	{ SymName = qualified(Module, Name) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	intermod__write_pragmas(PredInfo),
 	% The type specialization pragmas for exported preds should
 	% already be in the interface file.
@@ -1777,13 +1777,13 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
 		io__state::di, io__state::uo) is det.
 
 intermod__write_pragmas(PredInfo) -->
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arity(PredInfo, Arity) },
+	{ Module = pred_info_module(PredInfo) },
+	{ Name = pred_info_name(PredInfo) },
+	{ Arity = pred_info_arity(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ SymName = qualified(Module, Name) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ markers_to_marker_list(Markers, MarkerList) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc).
 
 :- pred intermod__write_pragmas(sym_name::in, int::in, list(marker)::in,
@@ -2182,7 +2182,7 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 		;
 			NewStatus = opt_exported
 		),
-		pred_info_set_import_status(PredInfo0, NewStatus, PredInfo),
+		pred_info_set_import_status(NewStatus, PredInfo0, PredInfo),
 		map__det_update(Preds0, PredId, PredInfo, Preds1)
 	;
 		Preds1 = Preds0

@@ -1509,26 +1509,25 @@ output_instruction_and_comment(Instr, Comment, PrintComments,
 	% output_instruction_and_comment/5 is only for debugging.
 	% Normally we use output_instruction_and_comment/6.
 
-output_instruction_and_comment(Instr, Comment, PrintComments) -->
-	{ bintree_set__init(ContLabelSet) },
-	{ hlds_pred__initial_proc_id(ProcId) },
-	{ DummyModule = unqualified("DEBUG") },
-	{ DummyPredName = "DEBUG" },
-	{ ProfInfo = local(proc(DummyModule, predicate, DummyModule,
-			DummyPredName, 0, ProcId)) - ContLabelSet },
-	output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo).
+output_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
+	bintree_set__init(ContLabelSet),
+	DummyModule = unqualified("DEBUG"),
+	DummyPredName = "DEBUG",
+	ProfInfo = local(proc(DummyModule, predicate, DummyModule,
+		DummyPredName, 0, hlds_pred__initial_proc_id)) - ContLabelSet,
+	output_instruction_and_comment(Instr, Comment, PrintComments,
+		ProfInfo, !IO).
 
 	% output_instruction/3 is only for debugging.
 	% Normally we use output_instruction/4.
 
-output_instruction(Instr) -->
-	{ bintree_set__init(ContLabelSet) },
-	{ hlds_pred__initial_proc_id(ProcId) },
-	{ DummyModule = unqualified("DEBUG") },
-	{ DummyPredName = "DEBUG" },
-	{ ProfInfo = local(proc(DummyModule, predicate, DummyModule,
-			DummyPredName, 0, ProcId)) - ContLabelSet },
-	output_instruction(Instr, ProfInfo).
+output_instruction(Instr, !IO) :-
+	bintree_set__init(ContLabelSet),
+	DummyModule = unqualified("DEBUG"),
+	DummyPredName = "DEBUG",
+	ProfInfo = local(proc(DummyModule, predicate, DummyModule,
+		DummyPredName, 0, hlds_pred__initial_proc_id)) - ContLabelSet,
+	output_instruction(Instr, ProfInfo, !IO).
 
 :- pred output_instruction(instr, pair(label, bintree_set(label)),
 	io__state, io__state).

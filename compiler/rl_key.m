@@ -677,8 +677,8 @@ rl_key__extract_key_range_switch(Cnstrs0, Var, [Case | Cases],
 rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 	key_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },	
-	{ pred_info_module(PredInfo, PredModule) },
-	{ pred_info_name(PredInfo, PredName) },
+	{ PredModule = pred_info_module(PredInfo) },
+	{ PredName = pred_info_name(PredInfo) },
 	{ list__length(Args, Arity) },
 	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
 	(

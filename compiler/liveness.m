@@ -211,14 +211,13 @@
 :- import_module bool, string, map, std_util, list, assoc_list, require.
 :- import_module term, varset.
 
-detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
-		IO0, IO) :-
-	requantify_proc(ProcInfo0, ProcInfo1),
+detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
+	requantify_proc(!ProcInfo),
 
-	proc_info_goal(ProcInfo1, Goal0),
-	proc_info_varset(ProcInfo1, VarSet),
-	proc_info_vartypes(ProcInfo1, VarTypes),
-	proc_info_typeinfo_varmap(ProcInfo1, TVarMap),
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_varset(!.ProcInfo, VarSet),
+	proc_info_vartypes(!.ProcInfo, VarTypes),
+	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap),
 	module_info_globals(ModuleInfo, Globals),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
@@ -228,20 +227,20 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	globals__lookup_int_option(Globals, debug_liveness, DebugLiveness),
 	pred_id_to_int(PredId, PredIdInt),
 	maybe_write_progress_message("\nbefore liveness",
-		DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, IO0, IO1),
+		DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, !IO),
 
-	initial_liveness(ProcInfo1, PredId, ModuleInfo, Liveness0),
+	initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
 		_, Goal1),
 
 	maybe_write_progress_message("\nafter liveness",
-		DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, IO1, IO2),
+		DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, !IO),
 
-	initial_deadness(ProcInfo1, LiveInfo, ModuleInfo, Deadness0),
+	initial_deadness(!.ProcInfo, LiveInfo, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, Liveness0, LiveInfo,
 		_, Goal2),
 	maybe_write_progress_message("\nafter deadness",
-		DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, IO2, IO3),
+		DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, !IO),
 
 	(
 		globals__get_trace_level(Globals, TraceLevel),
@@ -253,24 +252,23 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 		delay_death_proc_body(Goal2, VarSet, Liveness0, Goal3),
 		maybe_write_progress_message("\nafter delay death",
 			DebugLiveness, PredIdInt, Goal3, VarSet, ModuleInfo,
-			IO3, IO4)
+			!IO)
 	;
-		Goal3 = Goal2,
-		IO4 = IO3
+		Goal3 = Goal2
 	),
 
 	globals__get_trace_level(Globals, TraceLevel),
-	( eff_trace_level_is_none(PredInfo, ProcInfo1, TraceLevel) = no ->
-		trace__fail_vars(ModuleInfo, ProcInfo1, ResumeVars0)
+	( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
+		trace__fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
 	;
 		set__init(ResumeVars0)
 	),
 	detect_resume_points_in_goal(Goal3, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 	maybe_write_progress_message("\nafter resume point",
-		DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, IO4, IO),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-	proc_info_set_liveness_info(ProcInfo2, Liveness0, ProcInfo).
+		DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, !IO),
+	proc_info_set_goal(Goal, !ProcInfo),
+	proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
 :- pred maybe_write_progress_message(string::in, int::in, int::in,
 	hlds_goal::in, prog_varset::in, module_info::in,

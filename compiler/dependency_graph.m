@@ -215,12 +215,11 @@ dependency_graph__add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported,
 		% which are imported (i.e. which we don't have any
 		% `clauses' for).
 		Imported = no,
-		pred_info_non_imported_procids(PredInfo, ProcIds)
+		ProcIds = pred_info_non_imported_procids(PredInfo)
 	;
 		Imported = yes,
-		pred_info_procids(PredInfo, ProcIds)
+		ProcIds = pred_info_procids(PredInfo)
 	),
-
 	dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
 		!DepGraph),
 	dependency_graph__add_pred_proc_nodes(PredIds, ModuleInfo, Imported,
@@ -230,7 +229,7 @@ dependency_graph__add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported,
 	dependency_graph, dependency_graph).
 :- mode dependency_graph__add_proc_nodes(in, in, in, in, out) is det.
 
-dependency_graph__add_proc_nodes([], _PredId, _ModuleInfo, DepGraph, DepGraph).
+dependency_graph__add_proc_nodes([], _PredId, _ModuleInfo, !DepGraph).
 dependency_graph__add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo,
 		!DepGraph) :-
 	relation__add_element(!.DepGraph, proc(PredId, ProcId), _, !:DepGraph),
@@ -268,7 +267,7 @@ dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
 	dependency_graph, dependency_graph).
 :- mode dependency_graph__add_pred_proc_arcs(in, in, in, in, out) is det.
 
-dependency_graph__add_pred_proc_arcs([], _ModuleInfo, _, DepGraph, DepGraph).
+dependency_graph__add_pred_proc_arcs([], _ModuleInfo, _, !DepGraph).
 dependency_graph__add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported,
 		!DepGraph) :-
 	module_info_preds(ModuleInfo, PredTable),
@@ -278,10 +277,10 @@ dependency_graph__add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported,
 		% which are imported (i.e. which we don't have any
 		% `clauses' for).
 		Imported = no,
-		pred_info_non_imported_procids(PredInfo, ProcIds)
+		ProcIds = pred_info_non_imported_procids(PredInfo)
 	;
 		Imported = yes,
-		pred_info_procids(PredInfo, ProcIds)
+		ProcIds = pred_info_procids(PredInfo)
 	),
 	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo, Imported,
 		!DepGraph),
@@ -549,7 +548,7 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
 		!IO) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
-	pred_info_name(PredInfo, Name),
+	Name = pred_info_name(PredInfo),
 	proc_info_declared_determinism(ProcInfo, Det),
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_context(ProcInfo, Context),
@@ -614,11 +613,11 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
 		PPredInfo, PProcInfo),
 	module_info_pred_proc_info(ModuleInfo, CPredId, CProcId,
 		CPredInfo, CProcInfo),
-	pred_info_name(PPredInfo, PName),
+	PName = pred_info_name(PPredInfo),
 	proc_info_declared_determinism(PProcInfo, PDet),
 	proc_info_argmodes(PProcInfo, PModes),
 	proc_info_context(PProcInfo, PContext),
-	pred_info_name(CPredInfo, CName),
+	CName = pred_info_name(CPredInfo),
 	proc_info_declared_determinism(CProcInfo, CDet),
 	proc_info_argmodes(CProcInfo, CModes),
 	proc_info_context(CProcInfo, CContext),

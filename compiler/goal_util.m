@@ -1239,8 +1239,8 @@ goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, Args, ModeNo,
 	% builtin_state only uses this to work out whether
 	% this is the "recursive" clause generated for the compiler
 	% for each builtin, so an invalid pred_id won't cause problems.
-	invalid_pred_id(InvalidPredId),
-	builtin_state(Module, InvalidPredId, PredId, ProcId, BuiltinState),
+	InvalidPredId = invalid_pred_id,
+	BuiltinState = builtin_state(Module, InvalidPredId, PredId, ProcId),
 
 	Call = call(PredId, ProcId, Args, BuiltinState, no,
 		qualified(ModuleName, ProcName)),

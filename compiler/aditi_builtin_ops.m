@@ -68,22 +68,20 @@ transform_aditi_builtins(ModuleInfo0, ModuleInfo) -->
 :- mode transform_aditi_builtins_in_proc(in, in, in, out,
 		in, out, di, uo) is det.
 
-transform_aditi_builtins_in_proc(PredId, _ProcId, ProcInfo0, ProcInfo,
-		ModuleInfo0, ModuleInfo, IO, IO) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	construct_aditi_transform_info(ModuleInfo0, PredId, ProcInfo0,
+transform_aditi_builtins_in_proc(PredId, _ProcId, !ProcInfo,
+		!ModuleInfo, IO, IO) :-
+	proc_info_goal(!.ProcInfo, Goal0),
+	construct_aditi_transform_info(!.ModuleInfo, PredId, !.ProcInfo,
 		Info0),
 	transform_aditi_builtins_in_goal(Goal0, Goal, Info0, Info),
 	deconstruct_aditi_transform_info(Info, PredId,
-		ModuleInfo1, ProcInfo1, Changed),
+		!:ModuleInfo, !:ProcInfo, Changed),
 	( Changed = yes ->
-		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-		requantify_proc(ProcInfo2, ProcInfo3),
-		recompute_instmap_delta_proc(yes, ProcInfo3, ProcInfo,
-			ModuleInfo1, ModuleInfo)
+		proc_info_set_goal(Goal, !ProcInfo),
+		requantify_proc(!ProcInfo),
+		recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo)
 	;
-		ProcInfo = ProcInfo1,
-		ModuleInfo = ModuleInfo1
+		true
 	).
 
 :- pred transform_aditi_builtins_in_goal(hlds_goal, hlds_goal,
@@ -257,8 +255,8 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 		{ status_defined_in_this_module(CalleeStatus, yes) },
 		\+ { hlds_pred__pred_info_is_base_relation(CalleePredInfo0) }
 	->
-		{ pred_info_set_import_status(CalleePredInfo0,
-			exported, CalleePredInfo) },
+		{ pred_info_set_import_status(exported,
+			CalleePredInfo0, CalleePredInfo) },
 		{ module_info_set_pred_info(ModuleInfo1, PredId,
 			CalleePredInfo, ModuleInfo) },
 		^ module_info := ModuleInfo
@@ -270,7 +268,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	% Cast the closure to the type and inst of the original closure,
 	% so that the HLDS is still type and mode correct.
 	%
-	{ pred_info_get_is_pred_or_func(CalleePredInfo, CalleePredOrFunc) },
+	{ CalleePredOrFunc = pred_info_is_pred_or_func(CalleePredInfo) },
 	{ proc_info_argmodes(CalleeProcInfo, CalleeArgModes) },
 	{
 		list__drop(list__length(Args), CalleeArgModes,
@@ -386,7 +384,7 @@ transform_aditi_builtin_2(
 	ModuleInfo =^ module_info,
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_arg_types(PredInfo, ArgTypes) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ list__length(ArgTypes, PredArity) },
 	{
 		Op = bulk_delete,
@@ -447,7 +445,7 @@ create_aditi_call_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 	create_aditi_call_goal(ProcNameStr, HeadVars, ArgModes, Det, Goal,
 		Info0, Info),
 	Info = aditi_transform_info(ModuleInfo1, PredInfo, ProcInfo1, _),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
+	proc_info_set_goal(Goal, ProcInfo1, ProcInfo2),
 	requantify_proc(ProcInfo2, ProcInfo3),
 	recompute_instmap_delta_proc(yes, ProcInfo3, ProcInfo,
 		ModuleInfo1, ModuleInfo2),
@@ -565,8 +563,8 @@ make_tuple_var(Args, TupleVar, TupleTypeInfo, TupleTypeInfoGoal) -->
 	{ map__apply_to_list(Args, VarTypes, ArgTypes) },
 	{ construct_type(unqualified("{}") - list__length(Args), 
 		ArgTypes, TupleType) },
-	{ proc_info_create_var_from_type(ProcInfo0, TupleType, no,
-		TupleVar, ProcInfo) },
+	{ proc_info_create_var_from_type(TupleType, no, TupleVar,
+		ProcInfo0, ProcInfo) },
 	^ proc_info := ProcInfo,
 	make_type_info_for_var(TupleVar, TupleTypeInfo, TupleTypeInfoGoal).
 	
@@ -645,8 +643,8 @@ create_bulk_update_closure_var(NewVar, Info0, Info) :-
 		[], RelationType),
 	construct_higher_order_pred_type(pure, normal,
 		[aditi_state_type, RelationType], PredType),
-	proc_info_create_var_from_type(Info0 ^ proc_info, PredType, no,
-		NewVar, ProcInfo),
+	proc_info_create_var_from_type(PredType, no, NewVar,
+		Info0 ^ proc_info, ProcInfo),
 	Info = Info0 ^ proc_info := ProcInfo.
 
 	% Work out which predicate from aditi_private_builtin.m

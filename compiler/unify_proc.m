@@ -367,15 +367,15 @@ unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet,
 	pred_info_procedures(PredInfo1, Procs1),
 	pred_info_clauses_info(PredInfo1, ClausesInfo),
 	map__lookup(Procs1, ProcId, ProcInfo0),
-	proc_info_set_can_process(ProcInfo0, no, ProcInfo1),
+	proc_info_set_can_process(no, ProcInfo0, ProcInfo1),
 
 	copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
 
 	proc_info_goal(ProcInfo2, Goal0),
 	set_goal_contexts(Context, Goal0, Goal),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	proc_info_set_goal(Goal, ProcInfo2, ProcInfo),
 	map__det_update(Procs1, ProcId, ProcInfo, Procs2),
-	pred_info_set_procedures(PredInfo1, Procs2, PredInfo2),
+	pred_info_set_procedures(Procs2, PredInfo1, PredInfo2),
 	map__det_update(Preds0, PredId, PredInfo2, Preds2),
 	module_info_set_preds(ModuleInfo0, Preds2, ModuleInfo2),
 
@@ -479,9 +479,9 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, ModuleInfo0,
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, Procs0),
 	map__lookup(Procs0, ProcId, ProcInfo0),
-	proc_info_set_can_process(ProcInfo0, yes, ProcInfo1),
+	proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
 	map__det_update(Procs0, ProcId, ProcInfo1, Procs1),
-	pred_info_set_procedures(PredInfo0, Procs1, PredInfo1),
+	pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
 	map__det_update(Preds0, PredId, PredInfo1, Preds1),
 	module_info_set_preds(ModuleInfo0, Preds1, ModuleInfo1)
 	},
@@ -532,7 +532,7 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 	map__lookup(OldPredTable0, PredId, OldPredInfo0),
 	pred_info_procedures(OldPredInfo0, OldProcTable0),
 	map__set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
-	pred_info_set_procedures(OldPredInfo0, OldProcTable, OldPredInfo),
+	pred_info_set_procedures(OldProcTable, OldPredInfo0, OldPredInfo),
 	map__det_update(OldPredTable0, PredId, OldPredInfo, OldPredTable).
 
 %-----------------------------------------------------------------------------%
@@ -795,8 +795,8 @@ unify_proc__generate_user_defined_unify_clauses(UserEqCompare, H1, H2,
 		% (The pred_id and proc_id will be figured
 		% out by type checking and mode analysis.)
 		%
-		{ invalid_pred_id(PredId) },
-		{ invalid_proc_id(ModeId) },
+		{ PredId = invalid_pred_id },
+		{ ModeId = invalid_proc_id },
 		{ Call = call(PredId, ModeId, [H1, H2], not_builtin,
 				no, UnifyPredName) },
 		{ goal_info_init(Context, GoalInfo) },
@@ -812,8 +812,8 @@ unify_proc__generate_user_defined_unify_clauses(UserEqCompare, H1, H2,
 		% out by type checking and mode analysis.)
 		%
 		unify_proc__info_new_var(comparison_result_type, ResultVar),
-		{ invalid_pred_id(PredId) },
-		{ invalid_proc_id(ModeId) },
+		{ PredId = invalid_pred_id },
+		{ ModeId = invalid_proc_id },
 		{ Call = call(PredId, ModeId, [ResultVar, H1, H2],
 				not_builtin, no, ComparePredName) },
 		{ goal_info_init(Context, GoalInfo) },
@@ -990,8 +990,8 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
 		% (The pred_id and proc_id will be figured
 		% out by type checking and mode analysis.)
 		%
-		{ invalid_pred_id(PredId) },
-		{ invalid_proc_id(ModeId) },
+		{ PredId = invalid_pred_id },
+		{ ModeId = invalid_proc_id },
 		{ Call = call(PredId, ModeId, ArgVars, not_builtin,
 				no, ComparePredName) },
 		{ goal_info_init(Context, GoalInfo) },
@@ -1047,14 +1047,14 @@ unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses) -->
 	prog_context::in, clause::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause) -->
-	unify_proc__info_get_varset(Varset0),
-	unify_proc__info_get_types(Types0),
-	{ implicitly_quantify_clause_body(HeadVars, Goal, Varset0, Types0,
-		Body, Varset, Types, _Warnings) },
-	unify_proc__info_set_varset(Varset),
-	unify_proc__info_set_types(Types),
-	{ Clause = clause([], Body, mercury, Context) }.
+unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
+	unify_proc__info_get_varset(Varset0, !Info),
+	unify_proc__info_get_types(Types0, !Info),
+	implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
+		Varset0, Varset, Types0, Types),
+	unify_proc__info_set_varset(Varset, !Info),
+	unify_proc__info_set_types(Types, !Info),
+	Clause = clause([], Goal, mercury, Context).
 
 %-----------------------------------------------------------------------------%
 

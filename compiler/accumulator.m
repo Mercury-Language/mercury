@@ -1316,9 +1316,9 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, Substs0, Types0,
 			% Ensure that the reordering doesn't cause a
 			% efficiency problem
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_module(PredInfo, ModuleName),
-		pred_info_name(PredInfo, PredName),
-		pred_info_arity(PredInfo, Arity),
+		ModuleName = pred_info_module(PredInfo),
+		PredName = pred_info_name(PredInfo),
+		Arity = pred_info_arity(PredInfo),
 		(
 			has_heuristic(ModuleName, PredName, Arity)
 		->
@@ -1551,8 +1551,7 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 	acc_pred_info(AccTypes, AccProcInfo, OrigPredInfo, AccProcId,
 			AccPredInfo),
 
-	pred_info_name(AccPredInfo, AccPredName),
-	AccName = unqualified(AccPredName),
+	AccName = unqualified(pred_info_name(AccPredInfo)),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, AccPredInfo, AccPredId, PredTable),
@@ -1568,9 +1567,9 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 	top_level(TopLevel, OrigGoal0, OrigBaseGoal, OrigRecGoal,
 			AccBaseGoal, AccRecGoal, OrigGoal, AccGoal),
 
-	proc_info_set_goal(OrigProcInfo0, OrigGoal, OrigProcInfo1),
-	proc_info_set_varset(OrigProcInfo1, VarSet, OrigProcInfo2),
-	proc_info_set_vartypes(OrigProcInfo2, VarTypes, OrigProcInfo3),
+	proc_info_set_goal(OrigGoal, OrigProcInfo0, OrigProcInfo1),
+	proc_info_set_varset(VarSet, OrigProcInfo1, OrigProcInfo2),
+	proc_info_set_vartypes(VarTypes, OrigProcInfo2, OrigProcInfo3),
 
 	requantify_proc(OrigProcInfo3, OrigProcInfo),
 
@@ -1645,12 +1644,12 @@ acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
 		% PredInfo stuff that must change.
 	pred_info_arg_types(PredInfo, TypeVarSet, ExistQVars, Types0),
 
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, Name),
+	ModuleName = pred_info_module(PredInfo),
+	Name = pred_info_name(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	Cond = true,
 	pred_info_context(PredInfo, PredContext),
 	pred_info_get_markers(PredInfo, Markers),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 
@@ -1978,9 +1977,7 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 			PredInfo, ProcInfo0),
-
-	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo1),
-
+	proc_info_set_goal(AccGoal, ProcInfo0, ProcInfo1),
 	requantify_proc(ProcInfo1, ProcInfo),
 	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 		PredInfo, ProcInfo, ModuleInfo).

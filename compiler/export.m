@@ -333,7 +333,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	;
 		HowToDeclareLabel = "MR_declare_static"
 	),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
@@ -341,8 +341,8 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	( MaybeArgInfos = yes(ArgInfos0) ->
 		ArgInfos = ArgInfos0
 	;
-		generate_proc_arg_info(ProcInfo, ArgTypes,
-			Module, NewProcInfo),
+		generate_proc_arg_info(ArgTypes, Module,
+			ProcInfo, NewProcInfo),
 		proc_info_arg_info(NewProcInfo, ArgInfos)
 	),
 	proc_info_interface_code_model(ProcInfo, CodeModel),

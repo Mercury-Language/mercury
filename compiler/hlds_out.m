@@ -370,38 +370,38 @@ hlds_out__write_cons_id(table_io_decl(_)) -->
 	% error_util__describe_one_pred_name. Changes here should be made
 	% there as well.
 
-hlds_out__write_pred_id(ModuleInfo, PredId) -->
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
+hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	Module = pred_info_module(PredInfo),
+	Name = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
 	( 
-		{ MaybeSpecial = yes(SpecialId - TypeCtor) } 
+		MaybeSpecial = yes(SpecialId - TypeCtor) 
 	->
-		{ special_pred_description(SpecialId, Descr) },
-		io__write_string(Descr),
-		{ TypeCtor = _TypeSymName - TypeArity },
-		( { TypeArity = 0 } ->
-			io__write_string(" for type ")
+		special_pred_description(SpecialId, Descr),
+		io__write_string(Descr, !IO),
+		TypeCtor = _TypeSymName - TypeArity,
+		( TypeArity = 0 ->
+			io__write_string(" for type ", !IO)
 		;
-			io__write_string(" for type constructor ")
+			io__write_string(" for type constructor ", !IO)
 		),
-		hlds_out__write_type_name(TypeCtor)
+		hlds_out__write_type_name(TypeCtor, !IO)
 	; 
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ check_marker(Markers, class_instance_method) }
+		pred_info_get_markers(PredInfo, Markers),
+		check_marker(Markers, class_instance_method)
 	->
-		io__write_string("type class method implementation")
+		io__write_string("type class method implementation", !IO)
 	;
-		{ pred_info_get_goal_type(PredInfo, promise(PromiseType)) }
+		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
 		io__write_string("`" ++ prog_out__promise_to_string(PromiseType)
-					++ "' declaration")
+					++ "' declaration", !IO)
 	;
 		hlds_out__write_simple_call_id(PredOrFunc,
-			qualified(Module, Name), Arity)
+			qualified(Module, Name), Arity, !IO)
 	).
 
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId) -->
@@ -816,7 +816,7 @@ hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
 			% mode for them.
 			\+ string__contains_char(Verbose, 'I'),
 			pred_info_is_pseudo_imported(PredInfo),
-			pred_info_procids(PredInfo, ProcIds),
+			ProcIds = pred_info_procids(PredInfo),
 			hlds_pred__in_in_unification_proc_id(ProcId),
 			ProcIds = [ProcId]
 		;
@@ -838,16 +838,16 @@ hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
 :- mode hlds_out__write_pred(in, in, in, in, di, uo) is det.
 
 hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
-	{ pred_info_module(PredInfo, Module) },
+	{ Module = pred_info_module(PredInfo) },
+	{ PredName = pred_info_name(PredInfo) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) },
 	{ pred_info_typevarset(PredInfo, TVarSet) },
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ pred_info_context(PredInfo, Context) },
-	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ pred_info_get_markers(PredInfo, Markers) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	{ pred_info_get_constraint_proofs(PredInfo, Proofs) },
 	{ pred_info_get_purity(PredInfo, Purity) },
@@ -1116,7 +1116,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		io__nl
 	),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_procids(PredInfo) },
 	( { Modes = [] ; Modes = ProcIds } ->
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadTerms, PredOrFunc)
@@ -1664,14 +1664,14 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 		[]
 	),
 	hlds_out__write_indent(Indent),
-	( { invalid_pred_id(PredId) } ->
+	( { PredId = invalid_pred_id } ->
 			% If we don't know then the call must be treated
 			% as a predicate.
 		{ PredOrFunc = predicate }
 	;
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_get_purity(PredInfo, Purity) },
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		write_purity_prefix(Purity)
 	),
 	(
@@ -2478,8 +2478,8 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 	;
 		{ ConsId = pred_const(PredId, _, _) },
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_module(PredInfo, PredModule) },
-		{ pred_info_name(PredInfo, PredName) },
+		{ PredModule = pred_info_module(PredInfo) },
+		{ PredName = pred_info_name(PredInfo) },
 		hlds_out__write_functor_cons_id(
 			cons(qualified(PredModule, PredName),
 				list__length(ArgVars)),
@@ -3367,11 +3367,11 @@ hlds_out__write_modes(Indent, _ModeTable) -->
 :- mode hlds_out__write_procs(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
-		ImportStatus, PredInfo) -->
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+		ImportStatus, PredInfo, !IO) :-
+	pred_info_procedures(PredInfo, ProcTable),
+	ProcIds = pred_info_procids(PredInfo),
 	hlds_out__write_procs_2(ProcIds, AppendVarnums, ModuleInfo, Indent,
-		PredId, ImportStatus, ProcTable).
+		PredId, ImportStatus, ProcTable, !IO).
 
 :- pred hlds_out__write_procs_2(list(proc_id), bool, module_info, int, pred_id,
 	import_status, proc_table, io__state, io__state).
@@ -3498,7 +3498,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ varset__init(ModeVarSet) },
 	( 
 		{ PredOrFunc = predicate },

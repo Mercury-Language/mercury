@@ -476,12 +476,12 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		TypeVarSet, TypeInfoVarMap, DidInlining, Requantify,
 		DetChanged, PurityChanged),
 
-	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
+	pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
 
-	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
-	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoVarMap, ProcInfo3),
-	proc_info_set_goal(ProcInfo3, Goal, ProcInfo4),
+	proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
+	proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
+	proc_info_set_typeinfo_varmap(TypeInfoVarMap, ProcInfo2, ProcInfo3),
+	proc_info_set_goal(Goal, ProcInfo3, ProcInfo4),
 
 	(
 		Requantify = yes,
@@ -502,7 +502,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo2),
+	pred_info_set_procedures(ProcTable, PredInfo1, PredInfo2),
 
 	(
 		PurityChanged = yes,

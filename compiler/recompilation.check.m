@@ -470,7 +470,7 @@ parse_pred_or_func_item(Info, Term, Set0, Set) :-
 	resolved_pred_or_func_map::in, resolved_pred_or_func_map::out) is det.
 
 parse_pred_or_func_item_match(Info, Term, Items0, Items) :-
-	invalid_pred_id(PredId),
+	PredId = invalid_pred_id,
 	(
 		(
 			Term = term__functor(term__atom("=>"),
@@ -536,9 +536,8 @@ parse_resolved_functor(Info, Term, Ctor) :-
 		sym_name_and_args(ModuleTerm, ModuleName, []),
 		ArityTerm = term__functor(term__integer(Arity), [], _)
 	->
-		invalid_pred_id(PredId),
-		Ctor = pred_or_func(PredId, ModuleName,
-				PredOrFunc, Arity)
+		PredId = invalid_pred_id,
+		Ctor = pred_or_func(PredId, ModuleName, PredOrFunc, Arity)
 	;
 		Term = term__functor(term__atom("ctor"), [NameArityTerm], _),
 		parse_name_and_arity(NameArityTerm, TypeName, TypeArity)
@@ -1059,7 +1058,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
 		    []
 		),
 
-		{ invalid_pred_id(PredId) },
+		{ PredId = invalid_pred_id },
 		( { SymName = qualified(ModuleName, _) } ->
 			{
 				WithType = yes(_),

@@ -80,9 +80,9 @@ detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	module_info::in, module_info::out, io__state::di, io__state::uo)
 	is det.
 
-detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
-	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
-	detect_cse_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo).
+detect_cse_in_pred(PredId, PredInfo0, !ModuleInfo, !IO) :-
+	ProcIds = pred_info_non_imported_procids(PredInfo0),
+	detect_cse_in_procs(ProcIds, PredId, !ModuleInfo, !IO).
 
 :- pred detect_cse_in_procs(list(proc_id)::in, pred_id::in,
 	module_info::in, module_info::out, io__state::di, io__state::uo)
@@ -177,19 +177,19 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 			TypeInfoVarMap, TypeClassInfoVarMap, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
 
-		implicitly_quantify_clause_body(HeadVars, Goal1, VarSet1,
-			VarTypes1, Goal, VarSet, VarTypes, _Warnings),
+		implicitly_quantify_clause_body(HeadVars, _Warnings,
+			Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes),
 
-		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-		proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
-		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-		proc_info_set_typeinfo_varmap(ProcInfo3,
-			TypeInfoVarMap, ProcInfo4),
-		proc_info_set_typeclass_info_varmap(ProcInfo4,
-			TypeClassInfoVarMap, ProcInfo),
+		proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+		proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2),
+		proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo3),
+		proc_info_set_typeinfo_varmap(TypeInfoVarMap,
+			ProcInfo3, ProcInfo4),
+		proc_info_set_typeclass_info_varmap(TypeClassInfoVarMap,
+			ProcInfo4, ProcInfo),
 
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo)
 	).
@@ -835,7 +835,7 @@ find_type_info_locn_tvar_map(FirstOldNewMap, Tvar - TypeInfoLocn0,
 		NewTvarMap0, NewTvarMap) :-
  	type_info_locn_var(TypeInfoLocn0, Old),
  	( map__search(FirstOldNewMap, Old, New) ->
-  		type_info_locn_set_var(TypeInfoLocn0, New, TypeInfoLocn),
+  		type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
  		map__det_insert(NewTvarMap0, TypeInfoLocn, Tvar, NewTvarMap)
  	;
  		NewTvarMap = NewTvarMap0
@@ -850,7 +850,7 @@ reconstruct_type_info_varmap(FirstOldNewMap, NewTvarMap, Tvar - TypeInfoLocn0,
 		TypeInfoVarMap0, TypeInfoVarMap, TvarSub0, TvarSub) :-
  	type_info_locn_var(TypeInfoLocn0, Old),
  	( map__search(FirstOldNewMap, Old, New) ->
-  		type_info_locn_set_var(TypeInfoLocn0, New, TypeInfoLocn),
+  		type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
  		map__det_insert(TypeInfoVarMap0, Tvar, TypeInfoLocn,
 			TypeInfoVarMap),
 		map__lookup(NewTvarMap, TypeInfoLocn, NewTvar),

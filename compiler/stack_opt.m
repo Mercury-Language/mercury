@@ -222,71 +222,67 @@
 	--->	needs_flush
 	;	doesnt_need_flush.
 
-stack_opt_cell(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
-	detect_liveness_proc(PredId, ProcId, !.ModuleInfo,
-		ProcInfo0, ProcInfo1, !IO),
-	initial_liveness(ProcInfo1, PredId, !.ModuleInfo, Liveness0),
+stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+	detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
+	initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
 	module_info_globals(!.ModuleInfo, Globals),
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
 		OptNoReturnCalls),
-	AllocData = alloc_data(!.ModuleInfo, ProcInfo1, TypeInfoLiveness,
+	AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
 		OptNoReturnCalls),
-	goal_path__fill_slots(ProcInfo1, !.ModuleInfo, ProcInfo2),
-	proc_info_goal(ProcInfo2, Goal2),
+	goal_path__fill_slots(!.ModuleInfo, !ProcInfo),
+	proc_info_goal(!.ProcInfo, Goal2),
 	OptStackAlloc0 = init_opt_stack_alloc,
 	set__init(FailVars),
 	set__init(NondetLiveness0),
 	build_live_sets_in_goal(Goal2, Goal, FailVars, AllocData,
 		OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
 		NondetLiveness0, _NondetLiveness),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
-	allocate_store_maps(for_stack_opt, ProcInfo3, PredId, !.ModuleInfo,
-		ProcInfo4),
+	proc_info_set_goal(Goal, !ProcInfo),
+	allocate_store_maps(for_stack_opt, PredId, !.ModuleInfo, !ProcInfo),
 	globals__lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
 	pred_id_to_int(PredId, PredIdInt),
 	maybe_write_progress_message("\nbefore stack opt cell",
-		DebugStackOpt, PredIdInt, ProcInfo4, !.ModuleInfo, !IO),
-	optimize_live_sets(!.ModuleInfo, ProcInfo4, OptStackAlloc, ProcInfo5,
+		DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
+	optimize_live_sets(!.ModuleInfo, OptStackAlloc, !ProcInfo,
 		Changed, DebugStackOpt, PredIdInt, !IO),
 	(
 		Changed = yes,
 		maybe_write_progress_message(
 			"\nafter stack opt transformation",
-			DebugStackOpt, PredIdInt, ProcInfo5, !.ModuleInfo,
+			DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo,
 			!IO),
-		requantify_proc(ProcInfo5, ProcInfo6),
+		requantify_proc(!ProcInfo),
 		maybe_write_progress_message(
 			"\nafter stack opt requantify",
-			DebugStackOpt, PredIdInt, ProcInfo6, !.ModuleInfo,
+			DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo,
 			!IO),
-		recompute_instmap_delta_proc(yes, ProcInfo6, ProcInfo,
-			!ModuleInfo),
+		recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
 		maybe_write_progress_message(
 			"\nafter stack opt recompute instmaps",
-			DebugStackOpt, PredIdInt, ProcInfo, !.ModuleInfo,
+			DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo,
 			!IO)
 	;
-		Changed = no,
-		ProcInfo = ProcInfo0
+		Changed = no
 	).
 
 :- func init_opt_stack_alloc = opt_stack_alloc.
 
 init_opt_stack_alloc = opt_stack_alloc(set__init).
 
-:- pred optimize_live_sets(module_info::in, proc_info::in, opt_stack_alloc::in,
-	proc_info::out, bool::out, int::in, int::in,
+:- pred optimize_live_sets(module_info::in, opt_stack_alloc::in,
+	proc_info::in, proc_info::out, bool::out, int::in, int::in,
 	io__state::di, io__state::uo) is det.
 
-optimize_live_sets(ModuleInfo, ProcInfo0, OptAlloc, ProcInfo, Changed,
-		DebugStackOpt, PredIdInt, IO0, IO) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_varset(ProcInfo0, VarSet0),
+optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
+		PredIdInt, !IO) :-
+	proc_info_goal(!.ProcInfo, Goal0),
+	proc_info_vartypes(!.ProcInfo, VarTypes0),
+	proc_info_varset(!.ProcInfo, VarSet0),
 	OptAlloc = opt_stack_alloc(ParConjOwnSlot),
-	arg_info__partition_proc_args(ProcInfo0, ModuleInfo,
+	arg_info__partition_proc_args(!.ProcInfo, ModuleInfo,
 		InputArgs, OutputArgs, UnusedArgs),
 	HeadVars = set__union_list([InputArgs, OutputArgs, UnusedArgs]),
 	module_info_globals(ModuleInfo, Globals),
@@ -345,13 +341,12 @@ optimize_live_sets(ModuleInfo, ProcInfo0, OptAlloc, ProcInfo, Changed,
 		SuccMap0, VarsMap0, map__init, []),
 	optimize_live_sets_in_goal(Goal0, OptInfo0, OptInfo),
 	( DebugStackOpt = PredIdInt ->
-		dump_opt_info(OptInfo, IO0, IO)
+		dump_opt_info(OptInfo, !IO)
 	;
-		IO = IO0
+		true
 	),
 	InsertMap = OptInfo ^ left_anchor_inserts,
 	( map__is_empty(InsertMap) ->
-		ProcInfo = ProcInfo0,
 		Changed = no
 	;
 		VarInfo0 = var_info(VarSet0, VarTypes0),
@@ -359,9 +354,9 @@ optimize_live_sets(ModuleInfo, ProcInfo0, OptAlloc, ProcInfo, Changed,
 			map__init, RenameMap, InsertMap),
 		apply_headvar_correction(HeadVars, RenameMap, Goal1, Goal),
 		VarInfo = var_info(VarSet, VarTypes),
-		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-		proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
-		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
+		proc_info_set_goal(Goal, !ProcInfo),
+		proc_info_set_varset(VarSet, !ProcInfo),
+		proc_info_set_vartypes(VarTypes, !ProcInfo),
 		Changed = yes
 	).
 

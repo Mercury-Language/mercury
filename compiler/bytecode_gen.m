@@ -74,7 +74,7 @@ bytecode_gen__preds([], _ModuleInfo, empty) --> [].
 bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_non_imported_procids(PredInfo) },
 	( { ProcIds = [] } ->
 		{ PredCode = empty }
 	;
@@ -82,7 +82,7 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 			ProcsCode),
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ list__length(ProcIds, ProcsCount) },
-		{ pred_info_arity(PredInfo, Arity) },
+		{ Arity = pred_info_arity(PredInfo) },
 		{ bytecode_gen__get_is_func(PredInfo, IsFunc) },
 		{ EnterCode = node([enter_pred(PredName, Arity, IsFunc,
 			ProcsCount)]) },
@@ -911,8 +911,7 @@ bytecode_gen__get_counts(ByteInfo0, Label, Temp) :-
 :- mode bytecode_gen__get_is_func(in, out) is det.
 
 bytecode_gen__get_is_func(PredInfo, IsFunc) :-
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	( PredOrFunc = predicate ->
+	( pred_info_is_pred_or_func(PredInfo) = predicate ->
 		IsFunc = 0
 	;
 		IsFunc = 1

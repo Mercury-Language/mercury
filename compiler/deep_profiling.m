@@ -122,7 +122,7 @@ apply_tail_recursion_to_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 			Goal, no, FoundTailCall, _),
 		FoundTailCall = yes
 	->
-		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+		proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
 		figure_out_rec_call_numbers(Goal, 0, _N, [], TailCallSites),
 		OrigDeepProfileInfo = deep_profile_proc_info(
 			outer_proc(ClonePredProcId),
@@ -132,14 +132,14 @@ apply_tail_recursion_to_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 			inner_proc(PredProcId),
 			[visible_scc_data(PredProcId, ClonePredProcId,
 				TailCallSites)]),
-		proc_info_set_maybe_deep_profile_info(ProcInfo1,
-			yes(OrigDeepProfileInfo), ProcInfo),
-		proc_info_set_maybe_deep_profile_info(ProcInfo1,
-			yes(CloneDeepProfileInfo), CloneProcInfo),
+		proc_info_set_maybe_deep_profile_info(
+			yes(OrigDeepProfileInfo), ProcInfo1, ProcInfo),
+		proc_info_set_maybe_deep_profile_info(
+			yes(CloneDeepProfileInfo), ProcInfo1, CloneProcInfo),
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
 		map__det_insert(ProcTable1, CloneProcId, CloneProcInfo,
 			ProcTable),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo)
 	;
@@ -463,11 +463,11 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], N0, N,
 transform_predicate(ModuleInfo, PredId, PredMap0, PredMap,
 		ProcStatics0, ProcStatics) :-
 	map__lookup(PredMap0, PredId, PredInfo0),
-	pred_info_non_imported_procids(PredInfo0, ProcIds),
+	ProcIds = pred_info_non_imported_procids(PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	list__foldl2(maybe_transform_procedure(ModuleInfo, PredId),
 		ProcIds, ProcTable0, ProcTable, ProcStatics0, ProcStatics),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredMap0, PredId, PredInfo, PredMap).
 
 :- pred maybe_transform_procedure(module_info::in, pred_id::in, proc_id::in,
@@ -556,11 +556,11 @@ transform_procedure2(ModuleInfo, PredProcId, Proc0, Proc,
 :- pred transform_det_proc(module_info::in, pred_proc_id::in,
 	proc_info::in, proc_info::out, maybe(layout_data)::out) is det.
 
-transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
-	proc_info_goal(Proc0, Goal0),
+transform_det_proc(ModuleInfo, PredProcId, !Proc, yes(ProcStatic)) :-
+	proc_info_goal(!.Proc, Goal0),
 	Goal0 = _ - GoalInfo0,
-	proc_info_varset(Proc0, Vars0),
-	proc_info_vartypes(Proc0, VarTypes0),
+	proc_info_varset(!.Proc, Vars0),
+	proc_info_vartypes(!.Proc, VarTypes0),
 	CPointerType = c_pointer_type,
 	varset__new_named_var(Vars0, "TopCSD", TopCSD, Vars1),
 	map__set(VarTypes0, TopCSD, CPointerType, VarTypes1),
@@ -583,11 +583,11 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		VarTypes5 = VarTypes3,
 		MaybeActivationPtr = no
 	),
-	proc_info_context(Proc0, Context),
+	proc_info_context(!.Proc, Context),
 	FileName = term__context_file(Context),
 	LineNumber = term__context_line(Context),
 
-	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
+	proc_info_get_maybe_deep_profile_info(!.Proc, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
@@ -637,18 +637,18 @@ transform_det_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		TransformedGoal,
 		ExitPortCode
 	]) - GoalInfo,
-	proc_info_set_varset(Proc0, Vars, Proc1),
-	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
-	proc_info_set_goal(Proc2, Goal, Proc).
+	proc_info_set_varset(Vars, !Proc),
+	proc_info_set_vartypes(VarTypes, !Proc),
+	proc_info_set_goal(Goal, !Proc).
 
 :- pred transform_semi_proc(module_info::in, pred_proc_id::in,
 	proc_info::in, proc_info::out, maybe(layout_data)::out) is det.
 
-transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
-	proc_info_goal(Proc0, Goal0),
+transform_semi_proc(ModuleInfo, PredProcId, !Proc, yes(ProcStatic)) :-
+	proc_info_goal(!.Proc, Goal0),
 	Goal0 = _ - GoalInfo0,
-	proc_info_varset(Proc0, Vars0),
-	proc_info_vartypes(Proc0, VarTypes0),
+	proc_info_varset(!.Proc, Vars0),
+	proc_info_vartypes(!.Proc, VarTypes0),
 	CPointerType = c_pointer_type,
 	varset__new_named_var(Vars0, "TopCSD", TopCSD, Vars1),
 	map__set(VarTypes0, TopCSD, CPointerType, VarTypes1),
@@ -671,11 +671,11 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		VarTypes5 = VarTypes3,
 		MaybeActivationPtr = no
 	),
-	proc_info_context(Proc0, Context),
+	proc_info_context(!.Proc, Context),
 	FileName = term__context_file(Context),
 	LineNumber = term__context_line(Context),
 
-	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
+	proc_info_get_maybe_deep_profile_info(!.Proc, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
@@ -740,18 +740,18 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			FailPortCode
 		]) - ExitConjGoalInfo
 	]) - GoalInfo,
-	proc_info_set_varset(Proc0, Vars, Proc1),
-	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
-	proc_info_set_goal(Proc2, Goal, Proc).
+	proc_info_set_varset(Vars, !Proc),
+	proc_info_set_vartypes(VarTypes, !Proc),
+	proc_info_set_goal(Goal, !Proc).
 
 :- pred transform_non_proc(module_info::in, pred_proc_id::in,
 	proc_info::in, proc_info::out, maybe(layout_data)::out) is det.
 
-transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
-	proc_info_goal(Proc0, Goal0),
+transform_non_proc(ModuleInfo, PredProcId, !Proc, yes(ProcStatic)) :-
+	proc_info_goal(!.Proc, Goal0),
 	Goal0 = _ - GoalInfo0,
-	proc_info_varset(Proc0, Vars0),
-	proc_info_vartypes(Proc0, VarTypes0),
+	proc_info_varset(!.Proc, Vars0),
+	proc_info_vartypes(!.Proc, VarTypes0),
 	CPointerType = c_pointer_type,
 	varset__new_named_var(Vars0, "TopCSD", TopCSD, Vars1),
 	map__set(VarTypes0, TopCSD, CPointerType, VarTypes1),
@@ -781,11 +781,11 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			VarTypes5),
 		MaybeOldActivationPtr = no
 	),
-	proc_info_context(Proc0, Context),
+	proc_info_context(!.Proc, Context),
 	FileName = term__context_file(Context),
 	LineNumber = term__context_line(Context),
 
-	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
+	proc_info_get_maybe_deep_profile_info(!.Proc, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
 		counter__init(0), [], Vars5, VarTypes5,
 		FileName, MaybeRecInfo),
@@ -878,18 +878,18 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			FailPortCode
 		]) - CallExitRedoGoalInfo
 	]) - GoalInfo,
-	proc_info_set_varset(Proc0, Vars, Proc1),
-	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
-	proc_info_set_goal(Proc2, Goal, Proc).
+	proc_info_set_varset(Vars, !Proc),
+	proc_info_set_vartypes(VarTypes, !Proc),
+	proc_info_set_goal(Goal, !Proc).
 
 :- pred transform_inner_proc(module_info::in, pred_proc_id::in,
 	proc_info::in, proc_info::out, maybe(layout_data)::out) is det.
 
-transform_inner_proc(ModuleInfo, PredProcId, Proc0, Proc, no) :-
-	proc_info_goal(Proc0, Goal0),
+transform_inner_proc(ModuleInfo, PredProcId, !Proc, no) :-
+	proc_info_goal(!.Proc, Goal0),
 	Goal0 = _ - GoalInfo0,
-	proc_info_varset(Proc0, Vars0),
-	proc_info_vartypes(Proc0, VarTypes0),
+	proc_info_varset(!.Proc, Vars0),
+	proc_info_vartypes(!.Proc, VarTypes0),
 	CPointerType = c_pointer_type,
 	% MiddleCSD should be unused
 	varset__new_named_var(Vars0, "MiddleCSD", MiddleCSD, Vars1),
@@ -898,7 +898,7 @@ transform_inner_proc(ModuleInfo, PredProcId, Proc0, Proc, no) :-
 	goal_info_get_context(GoalInfo0, Context),
 	FileName = term__context_file(Context),
 
-	proc_info_get_maybe_deep_profile_info(Proc0, MaybeRecInfo),
+	proc_info_get_maybe_deep_profile_info(!.Proc, MaybeRecInfo),
 	DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
 		counter__init(0), [], Vars1, VarTypes1,
 		FileName, MaybeRecInfo),
@@ -908,9 +908,9 @@ transform_inner_proc(ModuleInfo, PredProcId, Proc0, Proc, no) :-
 	Vars = DeepInfo ^ vars,
 	VarTypes = DeepInfo ^ var_types,
 
-	proc_info_set_varset(Proc0, Vars, Proc1),
-	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
-	proc_info_set_goal(Proc2, TransformedGoal, Proc).
+	proc_info_set_varset(Vars, !Proc),
+	proc_info_set_vartypes(VarTypes, !Proc),
+	proc_info_set_goal(TransformedGoal, !Proc).
 
 %-----------------------------------------------------------------------------%
 
@@ -1720,19 +1720,22 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
 			PredIds = [PredId],
 			predicate_table_get_preds(PredTable, Preds),
 			lookup(Preds, PredId, PredInfo),
-			pred_info_procids(PredInfo, ProcIds),
+			ProcIds = pred_info_procids(PredInfo),
 			(
 				ProcIds = [],
-				error("get_deep_profile_builtin_ppid: no proc_id")
+				error("get_deep_profile_builtin_ppid: " ++
+					"no proc_id")
 			;
 				ProcIds = [ProcId]
 			;
 				ProcIds = [_, _ | _],
-				error("get_deep_profile_builtin_ppid: proc_id not unique")
+				error("get_deep_profile_builtin_ppid: " ++
+					"proc_id not unique")
 			)
 		;
 			PredIds = [_, _ | _],
-			error("get_deep_profile_builtin_ppid: pred_id not unique")
+			error("get_deep_profile_builtin_ppid: " ++
+				"pred_id not unique")
 		)
 	;
 		format("couldn't find pred_id for `%s'/%d",

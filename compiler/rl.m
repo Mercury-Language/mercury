@@ -1070,8 +1070,8 @@ rl__swap_tuple_num(two, one).
 rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) :-
 	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
+	PredName = pred_info_name(PredInfo),
+	Arity = pred_info_arity(PredInfo),
 	rl__get_entry_proc_name(ModuleInfo, PredProcId,
 		PredInfo, PredName, Arity, ProcName).
 
@@ -1082,8 +1082,8 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 		ProcName) :-
 	PredProcId = proc(_, ProcId),
 	module_info_name(ModuleInfo, ModuleName),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	pred_info_module(PredInfo, PredModule),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	PredModule = pred_info_module(PredInfo),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	ProcLabel = make_user_proc_label(ModuleName, IsImported,
@@ -1108,7 +1108,7 @@ rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) :-
 		pred_id::in, string::in, rl_proc_name::out) is det.
 
 rl__get_update_proc_name(ModuleInfo, PredId, ProcNamePrefix, ProcName) :-
-	hlds_pred__initial_proc_id(ProcId),
+	ProcId = hlds_pred__initial_proc_id,
 	rl__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName0),
 	ProcName0 = rl_proc_name(Owner, Module, Name0, Arity),
 	string__append(ProcNamePrefix, Name0, Name),
@@ -1117,7 +1117,7 @@ rl__get_update_proc_name(ModuleInfo, PredId, ProcNamePrefix, ProcName) :-
 rl__get_c_interface_proc_name(ModuleInfo, PredProcId, PredName) :-
 	PredProcId = proc(PredId, ProcId),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName0),
+	PredName0 = pred_info_name(PredInfo),
 	proc_id_to_int(ProcId, ProcInt),
 	string__int_to_string(ProcInt, ProcStr),
 	pred_info_arg_types(PredInfo, ArgTypes),
@@ -1151,11 +1151,11 @@ rl__permanent_relation_name(ModuleInfo, PredId, ProcName) :-
 rl__get_permanent_relation_info(ModuleInfo, PredId, Owner, PredModule,
 		PredName, PredArity, RelName, SchemaString) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName),
-	pred_info_module(PredInfo, PredModule0),
+	PredName = pred_info_name(PredInfo),
+	PredModule0 = pred_info_module(PredInfo),
 	prog_out__sym_name_to_string(PredModule0, PredModule),
 	pred_info_get_aditi_owner(PredInfo, Owner),
-	pred_info_arity(PredInfo, PredArity),
+	PredArity = pred_info_arity(PredInfo),
 	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
 	pred_info_arg_types(PredInfo, ArgTypes0),
 	type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),

@@ -404,9 +404,9 @@ polymorphism__maybe_process_pred(PredId, !ModuleInfo, !IO) :-
 			% to handle complicated unifications.
 			hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
 		;
-			pred_info_module(PredInfo, PredModule),
-			pred_info_name(PredInfo, PredName),
-			pred_info_arity(PredInfo, PredArity),
+			PredModule = pred_info_module(PredInfo),
+			PredName = pred_info_name(PredInfo),
+			PredArity = pred_info_arity(PredInfo),
 			no_type_info_builtin(PredModule, PredName, PredArity)
 		)
 	->
@@ -453,8 +453,8 @@ polymorphism__fixup_pred(PredId, !ModuleInfo) :-
 
 	map__apply_to_list(ExtraHeadVars, VarTypes0, ExtraArgTypes),
 	list__append(ExtraArgTypes, ArgTypes0, ArgTypes),
-	pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars,
-		ArgTypes, PredInfo1),
+	pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
+		PredInfo0, PredInfo1),
 
 	%
 	% If the clauses binds some existentially quantified
@@ -479,8 +479,8 @@ polymorphism__fixup_pred(PredId, !ModuleInfo) :-
 					Subn, HeadVarType),
 				map__set(Types0, HeadVar, HeadVarType, Types)
 			), ExtraHeadVars, VarTypes0, VarTypes),
-		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
-		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+		clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
+		pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
 
 		% Fix up the var-types in the procedures as well.
 		% It would be better if this were done before copying
@@ -488,10 +488,10 @@ polymorphism__fixup_pred(PredId, !ModuleInfo) :-
 		pred_info_procedures(PredInfo2, Procs0),
 		map__map_values(
 			(pred(_::in, ProcInfo0::in, ProcInfo::out) is det :-
-				proc_info_set_vartypes(ProcInfo0,
-					VarTypes, ProcInfo)
+				proc_info_set_vartypes(VarTypes,
+					ProcInfo0, ProcInfo)
 			), Procs0, Procs),
-		pred_info_set_procedures(PredInfo2, Procs, PredInfo)
+		pred_info_set_procedures(Procs, PredInfo2, PredInfo)
 	;
 		PredInfo = PredInfo1
 	),
@@ -529,19 +529,19 @@ polymorphism__process_pred(PredId, !ModuleInfo) :-
 		ClausesInfo0, ClausesInfo, Info, ExtraArgModes),
 	poly_info_get_module_info(Info, !:ModuleInfo),
 	poly_info_get_typevarset(Info, TypeVarSet),
-	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
-	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+	pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
+	pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
 
 	%
 	% do a pass over the proc_infos, copying the relevant information
 	% from the clauses_info and the poly_info, and updating all
 	% the argmodes with modes for the extra arguments.
 	%
-	pred_info_procids(PredInfo2, ProcIds),
+	ProcIds = pred_info_procids(PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),
 	list__foldl(polymorphism__process_proc_in_table(PredInfo2, ClausesInfo,
 		ExtraArgModes), ProcIds, Procs0, Procs),
-	pred_info_set_procedures(PredInfo2, Procs, PredInfo),
+	pred_info_set_procedures(Procs, PredInfo2, PredInfo),
 
 	module_info_set_pred_info(!.ModuleInfo, PredId, PredInfo,
 		!:ModuleInfo).
@@ -650,13 +650,12 @@ polymorphism__process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
 		clauses_info_type_info_varmap(ClausesInfo, TypeInfoVarMap),
 		clauses_info_varset(ClausesInfo, VarSet),
 		clauses_info_vartypes(ClausesInfo, VarTypes),
-		proc_info_set_headvars(!.ProcInfo, HeadVars, !:ProcInfo),
-		proc_info_set_typeclass_info_varmap(!.ProcInfo,
-			TypeClassInfoVarMap, !:ProcInfo),
-		proc_info_set_typeinfo_varmap(!.ProcInfo,
-			TypeInfoVarMap, !:ProcInfo),
-		proc_info_set_varset(!.ProcInfo, VarSet, !:ProcInfo),
-		proc_info_set_vartypes(!.ProcInfo, VarTypes, !:ProcInfo)
+		proc_info_set_headvars(HeadVars, !ProcInfo),
+		proc_info_set_typeclass_info_varmap(TypeClassInfoVarMap,
+			!ProcInfo),
+		proc_info_set_typeinfo_varmap(TypeInfoVarMap, !ProcInfo),
+		proc_info_set_varset(VarSet, !ProcInfo),
+		proc_info_set_vartypes(VarTypes, !ProcInfo)
 	;
 		copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo)
 	),
@@ -666,7 +665,7 @@ polymorphism__process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
 	%
 	proc_info_argmodes(!.ProcInfo, ArgModes1),
 	list__append(ExtraArgModes, ArgModes1, ArgModes),
-	proc_info_set_argmodes(!.ProcInfo, ArgModes, !:ProcInfo).
+	proc_info_set_argmodes(ArgModes, !ProcInfo).
 
 % XXX the following code ought to be rewritten to handle
 % existential/universal type_infos and type_class_infos
@@ -1025,9 +1024,9 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, !Info) :-
 	poly_info_get_module_info(!.Info, ModuleInfo),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
+	PredModule = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	PredArity = pred_info_arity(PredInfo),
 
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		Goal = Goal0 - GoalInfo
@@ -1404,8 +1403,8 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 		PredInfo, ProcInfo),
 
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
+	PredModule = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
 	QualifiedPName = qualified(PredModule, PredName),
 
 	CallUnifyContext = call_unify_context(X0,
@@ -1455,7 +1454,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 	%
 	% construct the lambda expression
 	%
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
 		ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
@@ -1807,9 +1806,9 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		term__vars_list(PredArgTypes, PredTypeVars0)
 	),
 
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
+	PredModule = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
+	PredArity = pred_info_arity(PredInfo),
 	(
 		(
 			% optimize for common case of non-polymorphic call
@@ -1971,8 +1970,8 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
 		poly_info_get_varset(!.Info, VarSet0),
 		poly_info_get_var_types(!.Info, VarTypes0),
 		set__list_to_set(HeadVars, OutsideVars),
-		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
+		implicitly_quantify_goal(OutsideVars, _Warnings,
+			Goal0, Goal, VarSet0, VarSet, VarTypes0, VarTypes),
 		poly_info_set_varset_and_types(VarSet, VarTypes, !Info)
 	).
 
@@ -2011,8 +2010,8 @@ polymorphism__fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars,
 			TypeClassVarMap, VarTypes0, ExistQVars,
 			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
-		implicitly_quantify_goal(!.Goal, VarSet0, VarTypes0,
-			OutsideVars, !:Goal, VarSet, VarTypes, _Warnings),
+		implicitly_quantify_goal(OutsideVars, _Warnings, !Goal,
+			VarSet0, VarSet, VarTypes0, VarTypes),
 		poly_info_set_varset_and_types(VarSet, VarTypes, !Info)
 	).
 
@@ -2729,8 +2728,8 @@ polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 				"type_to_ctor_and_args failed")
 		),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_module(PredInfo, Module),
-		pred_info_name(PredInfo, Name),
+		Module = pred_info_module(PredInfo),
+		Name = pred_info_name(PredInfo),
 		PredName = qualified(Module, Name),
 		special_pred_mode_num(SpecialPredId, ProcInt),
 		proc_id_to_int(ProcId, ProcInt)
@@ -3133,8 +3132,8 @@ polymorphism__build_type_info_type(Kind, Type, TypeInfoType) :-
 polymorphism__is_typeclass_info_manipulator(ModuleInfo, PredId,
 		TypeClassManipulator) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, mercury_private_builtin_module),
-	pred_info_name(PredInfo, PredName),
+	mercury_private_builtin_module = pred_info_module(PredInfo),
+	PredName = pred_info_name(PredInfo),
 	(
 		PredName = "type_info_from_typeclass_info",
 		TypeClassManipulator = type_info_from_typeclass_info
@@ -3263,11 +3262,11 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
 	goal_info_init(NonLocals, InstmapDelta, Detism, Purity, GoalInfo),
 	BodyGoal = BodyGoalExpr - GoalInfo,
 
-	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo),
+	proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo1),
+	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
 	( pred_info_is_imported(PredInfo1) ->
-		pred_info_set_import_status(PredInfo1, opt_imported, PredInfo)
+		pred_info_set_import_status(opt_imported, PredInfo1, PredInfo)
 	;
 		PredInfo = PredInfo1
 	),
@@ -3372,12 +3371,11 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
 		TypeclassInfoLocations, _Proofs, _OldPredInfo, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
-	proc_info_set_varset(!.ProcInfo, VarSet, !:ProcInfo),
-	proc_info_set_vartypes(!.ProcInfo, VarTypes, !:ProcInfo),
-	proc_info_set_typeinfo_varmap(!.ProcInfo, TypeInfoMap, !:ProcInfo),
-	proc_info_set_typeclass_info_varmap(!.ProcInfo, TypeclassInfoLocations,
-		!:ProcInfo),
-	pred_info_set_typevarset(!.PredInfo, TypeVarSet, !:PredInfo).
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_typeinfo_varmap(TypeInfoMap, !ProcInfo),
+	proc_info_set_typeclass_info_varmap(TypeclassInfoLocations, !ProcInfo),
+	pred_info_set_typevarset(TypeVarSet, !PredInfo).
 
 %---------------------------------------------------------------------------%
 

@@ -463,7 +463,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
 	%
 	% lookup some information we need from the pred_info and proc_info
 	%
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),

@@ -532,7 +532,7 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
 		map__keys(OldProcTable, OldProcIds),
 		list__foldl(copy_proc_body(OldProcTable), OldProcIds,
 			ProcTable0, ProcTable),
-		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__set(PredTable0, PredId, PredInfo, PredTable)
 	).
 
@@ -545,7 +545,7 @@ copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
 	map__lookup(OldProcTable, ProcId, OldProcInfo),
 	proc_info_goal(OldProcInfo, OldProcBody),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
-	proc_info_set_goal(ProcInfo0, OldProcBody, ProcInfo),
+	proc_info_set_goal(OldProcBody, ProcInfo0, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable).
 
 :- pred modecheck_pred_modes_2(list(pred_id), how_to_check_goal,
@@ -670,10 +670,10 @@ modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 	% pred_info_all_procids here, which means that we
 	% don't process modes that have already been inferred
 	% as invalid.
-	{ pred_info_procids(PredInfo0, ProcIds) },
+	{ ProcIds = pred_info_procids(PredInfo0) },
 	modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-				ModuleInfo0, Changed0, 0,
-				ModuleInfo, Changed, NumErrors).
+		ModuleInfo0, Changed0, 0,
+		ModuleInfo, Changed, NumErrors).
 
 	% Iterate over the list of modes for a predicate.
 
@@ -717,63 +717,61 @@ modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc, ModuleInfo0,
 :- mode modecheck_proc_2(in, in, in, in, in, in, out, out, out, di, uo) is det.
 
 modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, Changed0, ModuleInfo, Changed, NumErrors) -->
+		ModuleInfo0, Changed0, ModuleInfo, Changed, NumErrors, !IO) :-
 		% get the proc_info from the module_info
-	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-					_PredInfo0, ProcInfo0) },
-	( { proc_info_can_process(ProcInfo0, no) } ->
-		{ ModuleInfo = ModuleInfo0 },
-		{ Changed = Changed0 },
-		{ NumErrors = 0 }
+	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+					_PredInfo0, ProcInfo0),
+	( proc_info_can_process(ProcInfo0, no) ->
+		ModuleInfo = ModuleInfo0,
+		Changed = Changed0,
+		NumErrors = 0
 	;
 			% modecheck it
 		modecheck_proc_3(ProcId, PredId, WhatToCheck,
-			MayChangeCalledProc, ModuleInfo0, ProcInfo0, Changed0,
-			ModuleInfo1, ProcInfo, Changed, NumErrors),
+			MayChangeCalledProc, ModuleInfo0, ModuleInfo1,
+			ProcInfo0, ProcInfo, Changed0, Changed,
+			NumErrors, !IO),
 
 			% save the proc_info back in the module_info
-		{ module_info_preds(ModuleInfo1, Preds1) },
-		{ map__lookup(Preds1, PredId, PredInfo1) },
-		{ pred_info_procedures(PredInfo1, Procs1) },
-		{ map__set(Procs1, ProcId, ProcInfo, Procs) },
-		{ pred_info_set_procedures(PredInfo1, Procs, PredInfo) },
-		{ map__set(Preds1, PredId, PredInfo, Preds) },
-		{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }
+		module_info_preds(ModuleInfo1, Preds1),
+		map__lookup(Preds1, PredId, PredInfo1),
+		pred_info_procedures(PredInfo1, Procs1),
+		map__set(Procs1, ProcId, ProcInfo, Procs),
+		pred_info_set_procedures(Procs, PredInfo1, PredInfo),
+		map__set(Preds1, PredId, PredInfo, Preds),
+		module_info_set_preds(ModuleInfo1, Preds, ModuleInfo)
 	).
 
 modecheck_proc_info(ProcId, PredId, ModuleInfo0, ProcInfo0,
 		ModuleInfo, ProcInfo, NumErrors) -->
 	{ WhatToCheck = check_modes },
 	modecheck_proc_3(ProcId, PredId, WhatToCheck, may_change_called_proc,
-			ModuleInfo0, ProcInfo0, no,
-			ModuleInfo, ProcInfo, _Changed, NumErrors).
+		ModuleInfo0, ModuleInfo, ProcInfo0, ProcInfo, no, _Changed,
+		NumErrors).
 
-:- pred modecheck_proc_3(proc_id, pred_id, how_to_check_goal,
-		may_change_called_proc, module_info, proc_info, bool,
-		module_info, proc_info, bool, int, io__state, io__state).
-:- mode modecheck_proc_3(in, in, in, in, in, in, in,
-		out, out, out, out, di, uo) is det.
+:- pred modecheck_proc_3(proc_id::in, pred_id::in, how_to_check_goal::in,
+	may_change_called_proc::in, module_info::in, module_info::out,
+	proc_info::in, proc_info::out, bool::in, bool::out, int::out,
+	io__state::di, io__state::uo) is det.
 
 modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-			ModuleInfo0, ProcInfo0, Changed0,
-			ModuleInfo, ProcInfo, Changed, NumErrors,
-			IOState0, IOState) :-
+		!ModuleInfo, !ProcInfo, !Changed, NumErrors, !IO) :-
 		% extract the useful fields in the proc_info
-	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
-	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives0),
-	proc_info_goal(ProcInfo0, Body0),
+	proc_info_headvars(!.ProcInfo, HeadVars),
+	proc_info_argmodes(!.ProcInfo, ArgModes0),
+	proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
+	proc_info_goal(!.ProcInfo, Body0),
 
 		% We use the context of the first clause, unless
 		% there weren't any clauses at all, in which case
 		% we use the context of the mode declaration.
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_clauses(ClausesInfo, ClauseList),
 	( ClauseList = [FirstClause | _] ->
 		FirstClause = clause(_, _, _, Context)
 	;
-		proc_info_context(ProcInfo0, Context)
+		proc_info_context(!.ProcInfo, Context)
 	),
 
 	%
@@ -784,8 +782,9 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	%
 
 		% construct the initial instmap
-	mode_list_get_initial_insts(ArgModes0, ModuleInfo0, ArgInitialInsts),
-	assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts, InstAL),
+	mode_list_get_initial_insts(ArgModes0, !.ModuleInfo, ArgInitialInsts),
+	assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts,
+		InstAL),
 	instmap__from_assoc_list(InstAL, InstMap0),
 
 		% construct the initial set of live vars:
@@ -794,10 +793,10 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	set__list_to_set(LiveVarsList, LiveVars),
 
 		% initialize the mode info
-	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context,
+	mode_info_init(!.IO, !.ModuleInfo, PredId, ProcId, Context,
 		LiveVars, InstMap0, WhatToCheck,
 		MayChangeCalledProc, ModeInfo0),
-	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
+	mode_info_set_changed_flag(!.Changed, ModeInfo0, ModeInfo1),
 
 		% modecheck the procedure body
 	( WhatToCheck = check_unique_modes ->
@@ -808,7 +807,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 
 		% check that final insts match those specified in the
 		% mode declaration
-	mode_list_get_final_insts(ArgModes0, ModuleInfo0, ArgFinalInsts0),
+	mode_list_get_final_insts(ArgModes0, !.ModuleInfo, ArgFinalInsts0),
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, infer_modes) ->
 		InferModes = yes
@@ -826,25 +825,24 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 		% This is sometimes handy for debugging:
 		% report_mode_errors(ModeInfo3, ModeInfo),
 		mode_info_get_errors(ModeInfo, ModeErrors),
-		ProcInfo1 = ProcInfo0 ^ mode_errors := ModeErrors,
+		!:ProcInfo = !.ProcInfo ^ mode_errors := ModeErrors,
 		NumErrors = 0
 	;
 		% report any errors we found
 		report_mode_errors(ModeInfo3, ModeInfo),
-		mode_info_get_num_errors(ModeInfo, NumErrors),
-		ProcInfo1 = ProcInfo0
+		mode_info_get_num_errors(ModeInfo, NumErrors)
 	),
 	% save away the results
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
-	mode_info_get_changed_flag(ModeInfo, Changed),
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_io_state(ModeInfo, IOState),
+	mode_info_get_changed_flag(ModeInfo, !:Changed),
+	mode_info_get_module_info(ModeInfo, !:ModuleInfo),
+	mode_info_get_io_state(ModeInfo, !:IO),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
-	proc_info_set_goal(ProcInfo1, Body, ProcInfo2),
-	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo).
+	proc_info_set_goal(Body, !ProcInfo),
+	proc_info_set_varset(VarSet, !ProcInfo),
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_argmodes(ArgModes, !ProcInfo).
 
 	% modecheck_final_insts for a lambda expression
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
@@ -1181,7 +1179,7 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ mode_info_get_predid(ModeInfo, CallerPredId) },
-	{ builtin_state(ModuleInfo, CallerPredId, PredId, Mode, Builtin) },
+	{ Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, Mode) },
 	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName) },
 	handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 				InstMap0, Goal),
@@ -1795,7 +1793,7 @@ modecheck_par_conj_list([Goal0 | Goals0], [Goal|Goals], NonLocals,
 	% type_info arguments get argument numbers less than or equal to 0.
 	%
 compute_arg_offset(PredInfo, ArgOffset) :-
-	pred_info_arity(PredInfo, OrigArity),
+	OrigArity = pred_info_arity(PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	list__length(ArgTypes, CurrentArity),
 	ArgOffset = OrigArity - CurrentArity.
@@ -2236,7 +2234,7 @@ pred_check_eval_methods([], M, M) --> [].
 pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) --> 
 	{ module_info_preds(ModuleInfo0, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_procids(PredInfo, ProcIds) },
+	{ ProcIds = pred_info_procids(PredInfo) },
 	proc_check_eval_methods(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
 	pred_check_eval_methods(Rest, ModuleInfo1, ModuleInfo).	
 
@@ -2269,8 +2267,8 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 		{ ModuleInfo2 = ModuleInfo1 }	
 	),
 	(
-		{ pred_info_name(PredInfo, "main") },
-		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_name(PredInfo) = "main" },
+		{ pred_info_arity(PredInfo) = 2 },
 		{ pred_info_is_exported(PredInfo) },
 		{ \+ check_mode_of_main(Modes, ModuleInfo2) }
 	->

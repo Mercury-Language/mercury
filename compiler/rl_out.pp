@@ -112,7 +112,7 @@ rl_out__generate_schema_file_2(ModuleInfo, PredId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ module_info_name(ModuleInfo, Module) },
-	{ pred_info_module(PredInfo, PredModule) },
+	{ PredModule = pred_info_module(PredInfo) },
 	(
 		{ Module = PredModule },
 		{ check_marker(Markers, base_relation) }
@@ -145,10 +145,10 @@ rl_out__generate_derived_schema(ModuleInfo, Proc) -->
 		{ Outputs = [OutputRel] }
 	->
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_module(PredInfo, PredModule0) }, 
+		{ PredModule0 = pred_info_module(PredInfo) }, 
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
-		{ pred_info_name(PredInfo, PredName) },
-		{ pred_info_arity(PredInfo, PredArity0) },
+		{ PredName = pred_info_name(PredInfo) },
+		{ PredArity0 = pred_info_arity(PredInfo) },
 		{ string__int_to_string(PredArity0, PredArity) },
 		{ rl_out__get_proc_schema(ModuleInfo, RelInfo,
 			[InputRel, OutputRel], SchemaString) },
@@ -386,7 +386,7 @@ rl_out__generate_update_procs(PredId) -->
 	rl_out_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ module_info_name(ModuleInfo, ModuleName) },
-	{ pred_info_module(PredInfo, PredModule) },
+	{ PredModule = pred_info_module(PredInfo) },
 	(
 		{ ModuleName = PredModule },
 		{ hlds_pred__pred_info_is_base_relation(PredInfo) }
