@@ -1909,7 +1909,7 @@ code_info__remap_variable(Var, Lval0, Lval) -->
 							code_info, code_info).
 :- mode code_info__reenter_lvalues(in, in, in, in, in, out) is det.
 
-:- code_info__reenter_lvalues(_,_,_,L) when L.
+:- code_info__reenter_lvalues(_,_,_,L,_,_) when L.
 
 code_info__reenter_lvalues(_Var, _Lval0, _Lval, []) --> [].
 code_info__reenter_lvalues(Var, Lval0, Lval, [L|Ls]) -->
