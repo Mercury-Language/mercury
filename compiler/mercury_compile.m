@@ -10,6 +10,8 @@
 % This is the top-level of the Mercury compiler.
 
 % This module invokes the different passes of the compiler as appropriate.
+% The constraints on pass ordering are documented in
+% compiler/notes/compiler_design.html.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,13 +55,13 @@
 :- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info, transform_hlds__termination.
 :- import_module transform_hlds__higher_order, transform_hlds__accumulator.
-:- import_module transform_hlds__inlining, transform_hlds__deforest.
+:- import_module transform_hlds__inlining, transform_hlds__loop_inv.
+:- import_module transform_hlds__deforest.
 :- import_module aditi_backend__dnf, aditi_backend__magic.
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__delay_construct, transform_hlds__unused_args.
 :- import_module transform_hlds__unneeded_code, transform_hlds__lco.
 :- import_module ll_backend__deep_profiling.
-:- import_module transform_hlds__loop_inv.
 
 	% the LLDS back-end
 :- import_module ll_backend__saved_vars, ll_backend__stack_opt.
@@ -1939,14 +1941,14 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 			Verbose, Stats, HLDS33),
 	mercury_compile__maybe_dump_hlds(HLDS33, "33", "accum"),
 
-	% Hoisting loop invariants first invokes pass 34, "mark_static".
+	mercury_compile__maybe_do_inlining(HLDS33, Verbose, Stats, HLDS34),
+	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
+
+	% Hoisting loop invariants first invokes pass 35, "mark_static".
 	% "mark_static" is also run at stage 60.
 	%
-	mercury_compile__maybe_loop_inv(HLDS33, Verbose, Stats, HLDS35),
-	mercury_compile__maybe_dump_hlds(HLDS35, "35", "loop_inv"),
-
-	mercury_compile__maybe_do_inlining(HLDS35, Verbose, Stats, HLDS36),
-	mercury_compile__maybe_dump_hlds(HLDS36, "36", "inlining"),
+	mercury_compile__maybe_loop_inv(HLDS34, Verbose, Stats, HLDS36),
+	mercury_compile__maybe_dump_hlds(HLDS36, "36", "loop_inv"),
 
 	mercury_compile__maybe_deforestation(HLDS36, Verbose, Stats, HLDS37),
 	mercury_compile__maybe_dump_hlds(HLDS37, "37", "deforestation"),
@@ -2917,7 +2919,7 @@ mercury_compile__maybe_loop_inv(HLDS0, Verbose, Stats, HLDS) -->
 			%
 		mercury_compile__maybe_mark_static_terms(HLDS0, Verbose, Stats,
 			HLDS1),
-		mercury_compile__maybe_dump_hlds(HLDS1, "34", "mark_static"),
+		mercury_compile__maybe_dump_hlds(HLDS1, "35", "mark_static"),
 
 		maybe_write_string(Verbose,
 			"% Hoisting loop invariants...\n"),

@@ -257,7 +257,7 @@
 
 :- func string__index_det(string, int) = char.
 :- pred string__index_det(string, int, char).
-:- mode string__index_det(in, in, out) is det.
+:- mode string__index_det(in, in, uo) is det.
 %	string__index_det(String, Index, Char):
 %	`Char' is the (`Index' + 1)-th character of `String'.
 %	Calls error/1 if `Index' is out of range (negative, or greater than or
@@ -269,7 +269,7 @@
 
 :- func string__unsafe_index(string, int) = char.
 :- pred string__unsafe_index(string, int, char).
-:- mode string__unsafe_index(in, in, out) is det.
+:- mode string__unsafe_index(in, in, uo) is det.
 %	string__unsafe_index(String, Index, Char):
 %	`Char' is the (`Index' + 1)-th character of `String'.
 %	WARNING: behavior is UNDEFINED if `Index' is out of range
@@ -693,8 +693,10 @@ accumulate_int(Base, Char, N, (Base * N) + M) :-
 	char__digit_to_int(Char, M),
 	M < Base.
 
-
-
+% It's important to inline string__index and string__index_det.
+% so that the compiler can do loop invariant hoisting
+% on calls to string__length that occur in loops.
+:- pragma inline(string__index_det/3).
 string__index_det(String, Int, Char) :-
 	( string__index(String, Int, Char0) ->
 		Char = Char0
@@ -2978,62 +2980,65 @@ string__contains_char(Str, Char, Index, Length) :-
 
 /*-----------------------------------------------------------------------*/
 
-/*
-:- pred string__index(string, int, char).
-:- mode string__index(in, in, out) is semidet.
-*/
-:- pragma foreign_proc("C", string__index(Str::in, Index::in, Ch::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-
-                /*
-		** We do not test for negative values of Index
-                ** because (a) MR_Word is unsigned and hence a
-                ** negative argument will appear as a very large
-                ** positive one after the cast and (b) anybody
-                ** dealing with the case where strlen(Str) > MAXINT
-                ** is clearly barking mad (and one may well
-                ** get an integer overflow error in this case).
-                */
-
-	if ((MR_Unsigned) Index >= strlen(Str)) {
-		SUCCESS_INDICATOR = MR_FALSE;
-	} else {
-		SUCCESS_INDICATOR = MR_TRUE;
-		Ch = Str[Index];
-	}
-").
-:- pragma foreign_proc("MC++", string__index(Str::in, Index::in, Ch::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-	if (Index < 0 || Index >= Str->get_Length()) {
-		SUCCESS_INDICATOR = MR_FALSE;
-	} else {
-		SUCCESS_INDICATOR = MR_TRUE;
-		Ch = Str->get_Chars(Index);
-	}
-").
+/* :- pred string__index(string, int, char). */
+/* :- mode string__index(in, in, out) is semidet. */
+% It's important to inline string__index and string__index_det.
+% so that the compiler can do loop invariant hoisting
+% on calls to string__length that occur in loops.
+:- pragma inline(string__index/3).
 string__index(Str, Index, Char) :-
-	string__first_char(Str, First, Rest),
-	( Index = 0 ->
-		Char = First
+	Len = string__length(Str),
+	( string__index_check(Index, Len) ->
+		string__unsafe_index(Str, Index, Char)
 	;
-		string__index(Rest, Index - 1, Char)
+		fail
 	).
+
+:- pred string__index_check(int, int).
+:- mode string__index_check(in, in) is semidet.
+:- pragma promise_pure(string__index_check/2).
+/* We should consider making this routine a compiler built-in. */
+:- pragma foreign_proc("C", string__index_check(Index::in, Length::in),
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
+	/*
+	** We do not test for negative values of Index
+	** because (a) MR_Unsigned is unsigned and hence a
+	** negative argument will appear as a very large
+	** positive one after the cast and (b) anybody
+	** dealing with the case where strlen(Str) > MAXINT
+	** is clearly barking mad (and one may well
+	** get an integer overflow error in this case).
+	*/
+	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
+").
+:- pragma foreign_proc("MC++", string__index_check(Index::in, Length::in),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	SUCCESS_INDICATOR = ((MR_Unsigned) Index < (MR_Unsigned) Length);
+").
+string__index_check(Index, Length) :-
+	Index >= 0,
+	Index < Length.
 
 /*-----------------------------------------------------------------------*/
 
 :- pragma foreign_proc("C", 
-	string__unsafe_index(Str::in, Index::in, Ch::out),
+	string__unsafe_index(Str::in, Index::in, Ch::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Ch = Str[Index];
 ").
 :- pragma foreign_proc("MC++", 
-	string__unsafe_index(Str::in, Index::in, Ch::out),
+	string__unsafe_index(Str::in, Index::in, Ch::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Ch = Str->get_Chars(Index);
 ").
 string__unsafe_index(Str, Index, Char) :-
-	( string__index(Str, Index, IndexChar) ->
-		Char = IndexChar
+	( string__first_char(Str, First, Rest) ->
+		( Index = 0 ->
+			Char = First
+		;
+			string__unsafe_index(Rest, Index - 1, Char)
+		)
 	;
 		error("string__unsafe_index: out of bounds")
 	).

@@ -619,38 +619,30 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
-<li> deforestation and partial evaluation (deforest.m). This optimizes
-  multiple traversals of data structures within a conjunction, and
-  avoids creating intermediate data structures. It also performs
-  loop unrolling where the clause used is known at compile time.
-  deforest.m makes use of the following sub-modules
-  (`pd_' stands for "partial deduction"):
-  <ul>
-  <li>
-  constraint.m transforms goals so that goals which can fail
-  are executed earlier.
-  <li>
-  pd_cost.m contains some predicates to estimate the improvement
-  caused by deforest.m.
-  <li>
-  pd_debug.m produces debugging output.
-  <li>
-  pd_info.m contains a state type for deforestation.
-  <li>
-  pd_term.m contains predicates to check that the deforestation algorithm
-  terminates.
-  <li>
-  pd_util.m contains various utility predicates.
-  </ul>
-
 <li> loop_inv.m: loop invariant hoisting.  This transformation moves
   computations within loops that are the same on every iteration to the outside
   of the loop so that the invariant computations are only computed once.  The
   transformation turns a single looping predicate containing invariant
   computations into two: one that computes the invariants on the first
   iteration and then loops by calling the second predicate with extra arguments
-  for the invariant values.
- 
+  for the invariant values.  This pass should come after inlining, since
+  inlining can expose important opportunities for loop invariant hoisting.
+  Such opportunities might not be visible before inlining because only
+  *part* of the body of a called procedure is loop-invariant.
+
+<li> deforestation and partial evaluation (deforest.m). This optimizes
+  multiple traversals of data structures within a conjunction, and
+  avoids creating intermediate data structures. It also performs
+  loop unrolling where the clause used is known at compile time.
+  deforest.m makes use of the following sub-modules (`pd_' stands for
+  "partial deduction"): <ul> <li> constraint.m transforms goals so that
+  goals which can fail are executed earlier.  <li> pd_cost.m contains
+  some predicates to estimate the improvement caused by deforest.m.
+  <li> pd_debug.m produces debugging output.  <li> pd_info.m contains
+  a state type for deforestation.  <li> pd_term.m contains predicates
+  to check that the deforestation algorithm terminates.  <li> pd_util.m
+  contains various utility predicates.  </ul>
+
 <li> issue warnings about unused arguments from predicates, and create
 specialized versions without them (unused_args.m); type_infos are often unused.
 
@@ -1274,6 +1266,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2003-01-10 10:45:02 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-02-22 13:54:43 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
