@@ -4,20 +4,20 @@ mdb> echo on
 Command echo enabled.
 mdb> trust trust_1.
 Ambiguous predicate or function specification. The matches are:
-0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+0: pred trust_1.lambda_trust_1_15/3
 1: pred trust_1.w_cmp/3
 
 Which predicate or function do you want to trust (0-1 or *)? *
-Trusting pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+Trusting pred trust_1.lambda_trust_1_15/3
 Trusting pred trust_1.w_cmp/3
 mdb> trusted
 Trusted Objects:
-1: predicate trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+1: predicate trust_1.lambda_trust_1_15/3
 2: predicate trust_1.w_cmp/3
 mdb> untrust 2
 mdb> trusted
 Trusted Objects:
-1: predicate trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+1: predicate trust_1.lambda_trust_1_15/3
 mdb> untrust 1
 mdb> trusted
 There are no trusted modules, predicates or functions.
@@ -80,7 +80,7 @@ w_cmp('=', w("aaB"), w("aAB"))
 Valid? trust
 concat(w("aaa"), w("bbb"), w("aaabbb"))
 Valid? trust module
-IntroducedFrom__pred__w_cmp__15__1(w("aaB"), w("aAB"), '=')
+lambda_trust_1_15(w("aaB"), w("aAB"), '=')
 Valid? trust module
 Found incorrect contour:
 w_cmp('=', w("aaB"), w("aAB"))

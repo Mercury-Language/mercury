@@ -1072,7 +1072,7 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) :-
 	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	rl__get_entry_proc_name(ModuleInfo, PredProcId,
 		PredInfo, PredName, Arity, ProcName).
 
@@ -1156,7 +1156,7 @@ rl__get_permanent_relation_info(ModuleInfo, PredId, Owner, PredModule,
 	PredModule0 = pred_info_module(PredInfo),
 	prog_out__sym_name_to_string(PredModule0, PredModule),
 	pred_info_get_aditi_owner(PredInfo, Owner),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
 	pred_info_arg_types(PredInfo, ArgTypes0),
 	type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),

@@ -436,12 +436,10 @@ unify_gen__generate_construction_2(
 	),
 	code_info__get_module_info(!.CI, ModuleInfo),
 	RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-	IsSpecial = RttiProcLabel ^ pred_is_special_pred,
-	(
-		IsSpecial = yes(_),
+	Origin = RttiProcLabel ^ pred_info_origin,
+	( Origin = special_pred(_) ->
 		UserOrUCI = uci
 	;
-		IsSpecial = no,
 		UserOrUCI = user
 	),
 	ProcKind = proc_layout_proc_id(UserOrUCI),

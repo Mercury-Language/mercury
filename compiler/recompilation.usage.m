@@ -817,7 +817,7 @@ recompilation__usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredModule = pred_info_module(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
 	adjust_func_arity(PredOrFunc, OrigArity, PredArity),
 	(

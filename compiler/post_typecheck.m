@@ -806,7 +806,7 @@ check_type_of_main(PredInfo, !IO) :-
 		% program entry point main/2.
 		%
 		pred_info_name(PredInfo) = "main",
-		pred_info_arity(PredInfo) = 2,
+		pred_info_orig_arity(PredInfo) = 2,
 		pred_info_is_exported(PredInfo)
 	->
 		%
@@ -936,8 +936,8 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
 		% but the polymorphic unify needs to be able to call
 		% the semidet mode.)
 		%
-		pred_info_get_maybe_special_pred(!.PredInfo, MaybeSpecial),
-		MaybeSpecial = yes(unify - _)
+		pred_info_get_origin(!.PredInfo, Origin),
+		Origin = special_pred(unify - _)
 	->
 		true
 	;
@@ -1095,7 +1095,7 @@ report_no_input_aditi_state(PredInfo, Context, !IO) :-
 report_aditi_pragma(PredInfo, ErrorPieces) :-
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, base_relation) ->

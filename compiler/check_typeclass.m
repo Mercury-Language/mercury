@@ -428,7 +428,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	MethodName0 = pred_info_name(PredInfo),
 	PredModule = pred_info_module(PredInfo),
 	MethodName = qualified(PredModule, MethodName0),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -723,20 +723,16 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !IO),
 
-	pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
-		Context, Status, none, Markers,
-		ArgTypes, ArgTypeVars, ExistQVars, ClassContext, Proofs,
-		User, ClausesInfo, PredInfo0),
-	pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
-
-	% Fill in some information in the pred_info which is
-	% used by polymorphism to make sure the type-infos
-	% and typeclass-infos are added in the correct order.
+		% Fill in some information in the pred_info which is
+		% used by polymorphism to make sure the type-infos
+		% and typeclass-infos are added in the correct order.
 	MethodConstraints = instance_method_constraints(ClassId,
-			InstanceTypes, InstanceConstraints,
-			ClassMethodClassContext),
-	pred_info_set_maybe_instance_method_constraints(
-		yes(MethodConstraints), PredInfo1, PredInfo2),
+		InstanceTypes, InstanceConstraints, ClassMethodClassContext),
+	pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
+		Context, instance_method(MethodConstraints), Status, none,
+		Markers, ArgTypes, ArgTypeVars, ExistQVars, ClassContext,
+		Proofs, User, ClausesInfo, PredInfo0),
+	pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
 		% Add procs with the expected modes and determinisms
 	AddProc = (pred(ModeAndDet::in, NewProcId::out,
@@ -747,7 +743,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 			OldPredInfo, NewPredInfo, NewProcId)
 	),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds,
-		PredInfo2, PredInfo),
+		PredInfo1, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
 	module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),

@@ -1109,10 +1109,11 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ map__init(TCVarMap) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ unqualify_name(NewName, NewPredName) },
-	{ hlds_pred__define_new_pred(SuppGoal, SuppCall, SuppArgs, ExtraArgs,
-		InstMap, NewPredName, TVarSet, VarTypes, ClassConstraints,
-		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
-		address_is_not_taken, ModuleInfo0, ModuleInfo, _) },
+	{ hlds_pred__define_new_pred(created(aditi_magic_supp), SuppGoal,
+		SuppCall, SuppArgs, ExtraArgs, InstMap, NewPredName, TVarSet,
+		VarTypes, ClassConstraints, TVarMap, TCVarMap, VarSet,
+		InstVarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo0, ModuleInfo, _) },
 	{ ExtraArgs = [] ->
 		true
 	;

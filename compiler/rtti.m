@@ -959,7 +959,7 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_varset(ProcInfo, ProcVarSet),
 	proc_info_headvars(ProcInfo, ProcHeadVars),
@@ -970,7 +970,7 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	PredIsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
 	ProcIsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
 		-> yes ; no),
-	pred_info_get_maybe_special_pred(PredInfo, PredMaybeSpecial),
+	pred_info_get_origin(PredInfo, Origin),
 	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
 			Name = varset__lookup_name(ProcVarSet, Var)
 		), ProcHeadVars),
@@ -989,7 +989,7 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, Arity, ArgTypes, PredId, ProcId,
 		ProcHeadVarsWithNames, ProcArgModes, ProcDetism,
-		PredIsImported, PredIsPseudoImp, PredMaybeSpecial,
+		PredIsImported, PredIsPseudoImp, Origin,
 		ProcIsExported, ProcIsImported).
 
 rtti__proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-

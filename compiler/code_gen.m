@@ -379,7 +379,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 		ProcLabel, !GlobalData),
 
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 
 	code_info__get_label_counter(CodeInfo, LabelCounter),
 	(
@@ -425,7 +425,7 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
 	(
 		PredModule = pred_info_module(PredInfo),
 		PredName = pred_info_name(PredInfo),
-		PredArity = pred_info_arity(PredInfo),
+		PredArity = pred_info_orig_arity(PredInfo),
 		no_type_info_builtin(PredModule, PredName, PredArity)
 	->
 			% These predicates should never be traced,
@@ -436,13 +436,11 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
 		globals__set_trace_level_none(Globals0, Globals1),
 		module_info_set_globals(Globals1, !ModuleInfo)
 	;
-		pred_info_get_maybe_special_pred(PredInfo, yes(_)),
+		pred_info_get_origin(PredInfo, special_pred(_)),
 		globals__get_trace_level(Globals0, TraceLevel),
-		UC_TraceLevel =
-			trace_level_for_unify_compare(TraceLevel)
+		UC_TraceLevel = trace_level_for_unify_compare(TraceLevel)
 	->
-		globals__set_trace_level(UC_TraceLevel,
-			Globals0, Globals1),
+		globals__set_trace_level(UC_TraceLevel, Globals0, Globals1),
 		module_info_set_globals(Globals1, !ModuleInfo)
 	;
 		true
@@ -830,7 +828,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 
 	PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId),
 	( CodeModel = model_non ->
@@ -1402,7 +1400,7 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 	PredName = pred_info_name(PredInfo),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(ProcNum, ProcStr),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	int_to_string(Arity, ArityStr),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
@@ -1452,9 +1450,9 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
-	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
-	( MaybeSpecial = yes(SpecialId - TypeCtor) ->
+	Arity = pred_info_orig_arity(PredInfo),
+	pred_info_get_origin(PredInfo, Origin),
+	( Origin = special_pred(SpecialId - TypeCtor) ->
 		code_gen__find_arg_type_ctor_name(TypeCtor, TypeName),
 		special_pred_name_arity(SpecialId, SpecialPredName, _),
 		string__append_list([SpecialPredName, "_for_", TypeName],

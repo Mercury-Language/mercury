@@ -682,13 +682,13 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 	{ PredModule = pred_info_module(PredInfo) },
 	{ PredName = pred_info_name(PredInfo) },
 	{ list__length(Args, Arity) },
-	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
+	{ pred_info_get_origin(PredInfo, Origin) },
 	(
 		{ hlds_pred__in_in_unification_proc_id(ProcId) },
 		{
 			is_builtin_unify_pred(PredModule, PredName, Arity)
 		;
-			MaybeSpecial = yes(unify - _)
+			Origin = special_pred(unify - _)
 		}
 	->
 		% Find the last two arguments, the rest will be type_infos.
@@ -705,7 +705,7 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 		->
 			CompareType = CompareTypePrime
 		;
-			MaybeSpecial = yes(compare - _),
+			Origin = special_pred(compare - _),
 			% We could do better here
 			CompareType = unknown
 		}

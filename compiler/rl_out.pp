@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,7 +149,7 @@ rl_out__generate_derived_schema(ModuleInfo, Proc) -->
 		{ PredModule0 = pred_info_module(PredInfo) }, 
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
 		{ PredName = pred_info_name(PredInfo) },
-		{ PredArity0 = pred_info_arity(PredInfo) },
+		{ PredArity0 = pred_info_orig_arity(PredInfo) },
 		{ string__int_to_string(PredArity0, PredArity) },
 		{ rl_out__get_proc_schema(ModuleInfo, RelInfo,
 			[InputRel, OutputRel], SchemaString) },

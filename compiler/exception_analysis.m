@@ -299,15 +299,14 @@ check_goal_for_exceptions_2(SCC, Module, VarTypes,
 			ModuleName = pred_info_module(CallPredInfo),
 			any_mercury_builtin_module(ModuleName),
 			Name = pred_info_name(CallPredInfo),
-			Arity = pred_info_arity(CallPredInfo),
+			Arity = pred_info_orig_arity(CallPredInfo),
 			( SpecialPredId = compare
 			; SpecialPredId = unify ),
 			special_pred_name_arity(SpecialPredId, Name,
 				Arity)
 		;
-			pred_info_get_maybe_special_pred(CallPredInfo,
-				MaybeSpecial),
-			MaybeSpecial = yes(SpecialPredId - _),
+			pred_info_get_origin(CallPredInfo, Origin),
+			Origin = special_pred(SpecialPredId - _),
 			( SpecialPredId = compare
 			; SpecialPredId = unify )
 		)	
@@ -662,7 +661,7 @@ write_pragma_exceptions(Module, ExceptionInfo, PredId, !IO) :-
 	->
 		ModuleName = pred_info_module(PredInfo),
 		Name       = pred_info_name(PredInfo),
-		Arity      = pred_info_arity(PredInfo),
+		Arity      = pred_info_orig_arity(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 		ProcIds    = pred_info_procids(PredInfo),
 		%

@@ -61,7 +61,7 @@
 :- import_module transform_hlds__inlining.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
-:- import_module std_util, string, varset, term.
+:- import_module std_util, string, varset, term, counter.
 
 	% Iterate collecting requests and processing them until there
 	% are no more requests remaining.
@@ -80,12 +80,11 @@ specialize_higher_order(!ModuleInfo, !IO) :-
 	Params = ho_params(HigherOrder, TypeSpec,
 		UserTypeSpec, SizeLimit, ArgLimit),
 	map__init(NewPreds0),
-	NextHOid0 = 1,
 	map__init(GoalSizes0),
 	set__init(Requests0),
 	map__init(VersionInfo0),
 	Info0 = higher_order_global_info(Requests0, NewPreds0, VersionInfo0,
-		!.ModuleInfo, GoalSizes0, Params, NextHOid0),
+		!.ModuleInfo, GoalSizes0, Params, counter__init(1)),
 
 	module_info_predids(!.ModuleInfo, PredIds0),
 	module_info_type_spec_info(!.ModuleInfo,
@@ -193,7 +192,7 @@ recursively_process_requests(!Info, !IO) :-
 		module_info			:: module_info,
 		goal_sizes			:: goal_sizes,
 		ho_params			:: ho_params,
-		next_higher_order_id		:: int
+		next_higher_order_id		:: counter
 						% Number identifying
 						% a specialized version.
 	).
@@ -1297,7 +1296,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 			% specialized version of the pred.
 			FindResult = request(Request),
 			Result = not_specialized,
-			( CanRequest = yes ->
+			(
+				CanRequest = yes,
 				set__insert(!.Info ^ global_info ^ requests,
 					Request, Requests),
 				update_changed_status(!.Info ^ changed,
@@ -1306,7 +1306,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 					^ requests := Requests)
 					^ changed := Changed
 			;
-				true
+				CanRequest = no
 			)
 		;
 			FindResult = no_request,
@@ -1882,7 +1882,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
 	module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
 	mercury_public_builtin_module = pred_info_module(CalledPredInfo),
 	PredName = pred_info_name(CalledPredInfo),
-	PredArity = pred_info_arity(CalledPredInfo),
+	PredArity = pred_info_orig_arity(CalledPredInfo),
 	special_pred_name_arity(SpecialId, PredName, PredArity),
 	special_pred_get_type(SpecialId, Args, Var),
 	map__lookup(VarTypes, Var, SpecialPredType),
@@ -2290,7 +2290,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	pred_info_arg_types(PredInfo, Types),
 	list__length(Types, ActualArity),
 	maybe_write_request(VeryVerbose, ModuleInfo, "Request for",
@@ -2437,12 +2437,13 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	Request = request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
 		HOArgs, ArgTypes, TypeInfoLiveness, CallerTVarSet,
 		IsUserTypeSpec, Context),
+	Caller = proc(CallerPredId, CallerProcId),
 	ModuleInfo0 = !.Info ^ module_info,
 	module_info_pred_proc_info(ModuleInfo0, CalledPredProc,
 		PredInfo0, ProcInfo0),
 
 	Name0 = pred_info_name(PredInfo0),
-	Arity = pred_info_arity(PredInfo0),
+	Arity = pred_info_orig_arity(PredInfo0),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
 	PredModule = pred_info_module(PredInfo0),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -2459,7 +2460,6 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 		% are derived from the names of predicates, duplicate predicate
 		% names lead to duplicate global variable names and hence to
 		% link errors.
-		Caller = proc(CallerPredId, CallerProcId),
 		predicate_name(ModuleInfo0, CallerPredId, PredName0),
 		proc_id_to_int(CallerProcId, CallerProcInt),
 
@@ -2472,6 +2472,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 			[PredName0, "_", int_to_string(CallerProcInt), "_",
 			int_to_string(higher_order_arg_order_version)]),
 		SymName = qualified(PredModule, PredName),
+		Transform = higher_order_type_specialization(CallerProcInt),
 		NewProcId = CallerProcId,
 		% For exported predicates the type specialization must
 		% be exported.
@@ -2481,11 +2482,13 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	;
 		IsUserTypeSpec = no,
 		NewProcId = hlds_pred__initial_proc_id,
-		NextHOid = !.Info ^ next_higher_order_id,
-		!:Info = !.Info ^ next_higher_order_id := NextHOid + 1,
-		string__int_to_string(NextHOid, IdStr),
+		IdCounter0 = !.Info ^ next_higher_order_id,
+		counter__allocate(Id, IdCounter0, IdCounter),
+		!:Info = !.Info ^ next_higher_order_id := IdCounter,
+		string__int_to_string(Id, IdStr),
 		string__append_list([Name0, "__ho", IdStr], PredName),
 		SymName = qualified(PredModule, PredName),
+		Transform = higher_order_specialization(Id),
 		Status = local
 	),
 
@@ -2494,6 +2497,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 		qualified(PredModule, Name0), Arity, ActualArity,
 		yes(PredName), HOArgs, Context, !IO),
 
+	pred_info_get_origin(PredInfo0, OrigOrigin),
 	pred_info_typevarset(PredInfo0, TypeVarSet),
 	pred_info_get_markers(PredInfo0, MarkerList),
 	pred_info_get_goal_type(PredInfo0, GoalType),
@@ -2511,7 +2515,8 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
 		EmptyTVarNameMap, EmptyVarTypes, [], [],
 		EmptyTIMap, EmptyTCIMap, no),
-	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context,
+	Origin = transformed(Transform, OrigOrigin, CallerPredId),
+	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
 		ClassContext, EmptyProofs, Owner, ClausesInfo, NewPredInfo0),
 	pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
@@ -2589,7 +2594,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
 		proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		Name = pred_info_name(PredInfo),
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 			% adjust message for type_infos
 		DeclaredArgNo = ArgNo - NumToDrop,
 		io__write_string("HeadVar__", !IO),

@@ -62,9 +62,9 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
 		PredModule, PredName, PredArity, _ArgTypes, _PredId, ProcId,
 		_ProcHeadVarsWithNames, _ArgModes, _CodeModel,
-		PredIsImported, _PredIsPseudoImported, IsSpecialPred,
+		PredIsImported, _PredIsPseudoImported, Origin,
 		_ProcIsExported, _ProcIsImported),
-	( IsSpecialPred = yes(SpecialPred - TypeCtor) ->
+	( Origin = special_pred(SpecialPred - TypeCtor) ->
 		(
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are

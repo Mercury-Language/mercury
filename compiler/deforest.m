@@ -1154,8 +1154,8 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 			% Create the new version.
 			%
 
-			pd_info__define_new_pred(DeforestGoal, PredProcId,
-				CallGoal, !PDInfo),
+			pd_info__define_new_pred(created(deforestation),
+				DeforestGoal, PredProcId, CallGoal, !PDInfo),
 			PredProcId = proc(PredId, _),
 
 			pd_info_get_module_info(!.PDInfo, ModuleInfo),

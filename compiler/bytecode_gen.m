@@ -83,7 +83,7 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
 			ProcsCode, !IO),
 		predicate_name(ModuleInfo, PredId, PredName),
 		list__length(ProcIds, ProcsCount),
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 		bytecode_gen__get_is_func(PredInfo, IsFunc),
 		EnterCode = node([enter_pred(PredName, Arity, IsFunc,
 			ProcsCount)]),

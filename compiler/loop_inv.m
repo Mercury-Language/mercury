@@ -760,6 +760,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_pred__proc_info_inst_varset(ProcInfo, InstVarSet),
     hlds_pred__pred_info_get_markers(PredInfo, Markers),
     hlds_pred__pred_info_get_aditi_owner(PredInfo, Owner),
+    hlds_pred__pred_info_get_origin(PredInfo, OrigOrigin),
 
     PredName = hlds_pred__pred_info_name(PredInfo),
     hlds_goal__goal_info_get_context(GoalInfo, Context),
@@ -776,7 +777,9 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
         % Put in oven at gas mark 11 and bake.
         %
+    Origin = transformed(loop_invariant(ProcNo), OrigOrigin, PredId),
     hlds_pred__define_new_pred(
+        Origin,         % in    - The origin of this new predicate
         Goal,           % in    - The goal for the new aux proc.
         CallAux,        % out   - How we can call the new aux proc.
         AuxHeadVars,    % in    - The args for the new aux proc.

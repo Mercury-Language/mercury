@@ -150,7 +150,7 @@
 		% pred_info, using procedures
 		%	pred_info_is_imported/1,
 		%	pred_info_is_pseudo_imported/1,
-		%	pred_info_get_maybe_special_pred_info/1
+		%	pred_info_get_origin/1
 		% respectively.
 		% We store booleans here, rather than storing the
 		% pred_info, to avoid retaining a reference to the
@@ -163,7 +163,7 @@
 
 		pred_is_imported	::	bool,
 		pred_is_pseudo_imported	::	bool,
-		pred_is_special_pred	::	maybe(special_pred),
+		pred_info_origin	::	pred_origin,
 
 		% The following boolean holds a value computed from the
 		% proc_info, using procedure_is_exported/2
@@ -216,7 +216,7 @@
 						% by polymorphism.m
 		clause_type_info_varmap	:: type_info_varmap,
 		clause_typeclass_info_varmap :: typeclass_info_varmap,
-		have_foreign_clauses	::	bool
+		have_foreign_clauses	:: bool
 						% do we have foreign
 						% language clauses?
 	).
@@ -399,8 +399,8 @@
 
 	% returns yes if the status indicates that the item was
 	% exported to importing modules (not just to sub-modules).
-:- pred status_is_exported_to_non_submodules(import_status::in,
-		bool::out) is det.
+:- pred status_is_exported_to_non_submodules(import_status::in, bool::out)
+	is det.
 
 	% returns yes if the status indicates that the item was
 	% in any way imported -- that is, if it was defined in
@@ -597,7 +597,7 @@
 	% records where the type_info for that type variable is stored.
 :- type type_info_varmap == map(tvar, type_info_locn).
 
-	% A type_info_locn specifies how to access a type_info.
+	%  A type_info_locn specifies how to access a type_info.
 :- type type_info_locn
 	--->	type_info(prog_var)
 				% It is a normal type_info, i.e. the type
@@ -626,20 +626,97 @@
 :- pred type_info_locn_set_var(prog_var::in,
 	type_info_locn::in, type_info_locn::out) is det.
 
+:- type pred_transformation
+	--->	higher_order_specialization(
+			int	% Sequence number among the higher order
+				% specializations of the original predicate.
+		)
+	;	higher_order_type_specialization(
+			int	% The procedure number of the original
+				% procedure.
+		)
+	;	type_specialization(
+			assoc_list(int, type)
+				% The substitution from type variables
+				% (represented by the integers) to types
+				% (represented by the terms).
+		)
+	;	unused_argument_elimination(
+			list(int)
+				% The list of eliminated argument numbers.
+		)
+	;	accumulator(
+			list(int)
+				% The list of the numbers of the variables
+				% in the original predicate interface that have
+				% been converted to accumulators.
+		)
+	;	loop_invariant(
+			int	% The procedure number of the original
+				% procedure.
+		)
+	;	table_generator
+	;	dnf(
+			int	% This predicate was originally part of a
+				% predicate transformed into disjunctive normal
+				% form; this integers gives the part number.
+		).
+
+:- type pred_creation
+	--->	aditi_magic
+	;	aditi_magic_interface
+	;	aditi_magic_supp
+	;	aditi_join
+	;	aditi_rl_exprn
+	;	deforestation.
+
+:- type pred_origin
+	--->	special_pred(special_pred)
+				% If the predicate is a unify, compare,
+				% index or initialisation predicate, specify
+				% which one, and for which type constructor.
+	;	instance_method(instance_method_constraints)
+				% If this predicate is a class method
+				% implementation, record extra information
+				% about the class context to allow
+				% polymorphism.m to correctly set up the extra
+				% type_info and typeclass_info arguments.
+	;	transformed(pred_transformation, pred_origin, pred_id)
+				% The predicate is a transformed version of
+				% another predicate, whose origin and identity
+				% are given by the second and third arguments.
+	;	created(pred_creation)
+				% The predicate was created by the compiler,
+				% and there is no information available on
+				% where it came from. (Mostly because such
+				% relationships are fuzzy in the aditi
+				% backend.)
+	;	assertion(string, int)
+				% The predicate represents an assertion.
+	;	lambda(string, int)
+				% The predicate is a higher-order manifest
+				% constant. The arguments specify its location
+				% in the source, as a filename/line number
+				% pair.
+	;	user(sym_name).
+				% The predicate is a normal user-written
+				% predicate; the string is its name.
+
 	% pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
-	%	Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-	%	ClassContext, ClassProofs, User, ClausesInfo, PredInfo)
+	%	Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
+	%	ExistQVars, ClassContext, ClassProofs, User, ClausesInfo,
+	%	PredInfo)
 	%
 	% Return a pred_info whose fields are filled in from the information
 	% (direct and indirect) in the arguments, and from defaults.
 
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
-	pred_or_func::in, prog_context::in, import_status::in, goal_type::in,
-	pred_markers::in, list(type)::in, tvarset::in, existq_tvars::in,
-	class_constraints::in, constraint_proof_map::in, aditi_owner::in,
-	clauses_info::in, pred_info::out) is det.
+	pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
+	goal_type::in, pred_markers::in, list(type)::in, tvarset::in,
+	existq_tvars::in, class_constraints::in, constraint_proof_map::in,
+	aditi_owner::in, clauses_info::in, pred_info::out) is det.
 
-	% pred_info_create(ModuleName, SymName, PredOrFunc, Context,
+	% pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
 	%	Status, Markers, TypeVarSet, ExistQVars, ArgTypes,
 	%	ClassContext, Assertions, User, ProcInfo, ProcId, PredInfo)
 	%
@@ -649,14 +726,14 @@
 	% and its proc_id is returned as the second last argument.
 
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
-	prog_context::in, import_status::in, pred_markers::in,
+	prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
 	list(type)::in, tvarset::in, existq_tvars::in, class_constraints::in,
 	set(assert_id)::in, aditi_owner::in, proc_info::in, proc_id::out,
 	pred_info::out) is det.
 
-	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
-	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-	%	VarSet, Markers, Owner, IsAddressTaken,
+	% hlds_pred__define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
+	% 	InstMap, PredName, TVarSet, VarTypes, ClassContext,
+	%	TVarMap, TCVarMap, VarSet, Markers, Owner, IsAddressTaken,
 	%	ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to
@@ -664,12 +741,13 @@
 	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
 
-:- pred hlds_pred__define_new_pred(hlds_goal::in, hlds_goal::out,
-	list(prog_var)::in, list(prog_var)::out, instmap::in, string::in,
-	tvarset::in, vartypes::in, class_constraints::in, type_info_varmap::in,
-	typeclass_info_varmap::in, prog_varset::in, inst_varset::in,
-	pred_markers::in, aditi_owner::in, is_address_taken::in,
-	module_info::in, module_info::out, pred_proc_id::out) is det.
+:- pred hlds_pred__define_new_pred(pred_origin::in,
+	hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
+	instmap::in, string::in, tvarset::in, vartypes::in,
+	class_constraints::in, type_info_varmap::in, typeclass_info_varmap::in,
+	prog_varset::in, inst_varset::in, pred_markers::in, aditi_owner::in,
+	is_address_taken::in, module_info::in, module_info::out,
+	pred_proc_id::out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
@@ -679,9 +757,9 @@
 :- func pred_info_module(pred_info) =  module_name.
 :- func pred_info_name(pred_info) = string.
 
-	% pred_info_arity returns the arity of the predicate
+	% pred_info_orig_arity returns the arity of the predicate
 	% *not* counting inserted type_info arguments for polymorphic preds.
-:- func pred_info_arity(pred_info) = arity.
+:- func pred_info_orig_arity(pred_info) = arity.
 
 	% N-ary functions are converted into N+1-ary predicates.
 	% (Clauses are converted in make_hlds, but calls to functions
@@ -693,6 +771,7 @@
 :- func pred_info_is_pred_or_func(pred_info) = pred_or_func.
 
 :- pred pred_info_context(pred_info::in, prog_context::out) is det.
+:- pred pred_info_get_origin(pred_info::in, pred_origin::out) is det.
 :- pred pred_info_import_status(pred_info::in, import_status::out) is det.
 :- pred pred_info_get_goal_type(pred_info::in, goal_type::out) is det.
 :- pred pred_info_get_markers(pred_info::in, pred_markers::out) is det.
@@ -709,16 +788,14 @@
 	constraint_proof_map::out) is det.
 :- pred pred_info_get_unproven_body_constraints(pred_info::in,
 	list(class_constraint)::out) is det.
-:- pred pred_info_get_maybe_special_pred(pred_info::in,
-	maybe(special_pred)::out) is det.
-:- pred pred_info_get_maybe_instance_method_constraints(pred_info::in,
-	maybe(instance_method_constraints)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
 :- pred pred_info_get_aditi_owner(pred_info::in, string::out) is det.
 :- pred pred_info_get_indexes(pred_info::in, list(index_spec)::out) is det.
 :- pred pred_info_clauses_info(pred_info::in, clauses_info::out) is det.
 :- pred pred_info_procedures(pred_info::in, proc_table::out) is det.
 
+:- pred pred_info_set_origin(pred_origin::in,
+	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_import_status(import_status::in,
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_goal_type(goal_type::in,
@@ -736,11 +813,6 @@
 :- pred pred_info_set_constraint_proofs(constraint_proof_map::in,
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_unproven_body_constraints(list(class_constraint)::in,
-	pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_maybe_special_pred(maybe(special_pred)::in,
-	pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_maybe_instance_method_constraints(
-	maybe(instance_method_constraints)::in,
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_assertions(set(assert_id)::in,
 	pred_info::in, pred_info::out) is det.
@@ -1001,7 +1073,7 @@ calls_are_fully_qualified(Markers) =
 				% module in which pred occurs
 		name		:: string,
 				% predicate name
-		arity		:: arity,
+		orig_arity	:: arity,
 				% the arity of the pred
 				% (*not* counting any inserted
 				% type_info arguments)
@@ -1010,6 +1082,8 @@ calls_are_fully_qualified(Markers) =
 				% a predicate or a function
 		context		:: prog_context,
 				% the location (line #) of the :- pred decl.
+		pred_origin	:: pred_origin,
+				% where did the predicate come from.
 
 		import_status	:: import_status,
 		goal_type	:: goal_type,
@@ -1068,20 +1142,6 @@ calls_are_fully_qualified(Markers) =
 				% post_typecheck.m will report a type
 				% error).
 
-		maybe_special_pred :: maybe(special_pred),
-				% If the predicate is a unify, compare
-				% or index predicate, specify which
-				% one, and for which type constructor.
-		maybe_instance_method_constraints
-				:: maybe(instance_method_constraints),
-				% If this predicate is a class method
-				% implementation, record extra
-				% information about the class context
-				% to allow polymorphism.m to
-				% correctly set up the extra
-				% type_info and typeclass_info
-				% arguments.
-
 		inst_graph_info	:: inst_graph_info,
 				% The predicate's inst graph, for constraint
 				% based mode analysis.
@@ -1107,7 +1167,7 @@ calls_are_fully_qualified(Markers) =
 		procedures	:: proc_table
 	).
 
-pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
+pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
 		ClassContext, ClassProofs, User, ClausesInfo, PredInfo) :-
 	unqualify_name(SymName, PredName),
@@ -1116,21 +1176,19 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	Attributes = [],
 	UnprovenBodyConstraints = [],
-	MaybeUCI = no,
-	MaybeInstanceConstraints = no,
 	set__init(Assertions),
 	Indexes = [],
 	map__init(Procs),
 	PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
-		Context, Status, GoalType, Markers, Attributes,
+		Context, Origin, Status, GoalType, Markers, Attributes,
 		ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
 		ClassContext, ClassProofs, UnprovenBodyConstraints,
-		MaybeUCI, MaybeInstanceConstraints, inst_graph_info_init, [],
-		Assertions, User, Indexes, ClausesInfo, Procs).
+		inst_graph_info_init, [], Assertions, User, Indexes,
+		ClausesInfo, Procs).
 
-pred_info_create(ModuleName, SymName, PredOrFunc, Context, Status, Markers,
-		ArgTypes, TypeVarSet, ExistQVars, ClassContext, Assertions,
-		User, ProcInfo, ProcId, PredInfo) :-
+pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
+		Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
+		Assertions, User, ProcInfo, ProcId, PredInfo) :-
 	list__length(ArgTypes, Arity),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
@@ -1142,8 +1200,6 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Status, Markers,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
 	Indexes = [],
-	MaybeUCI = no,
-	MaybeInstanceConstraints = no,
 
 	% The empty list of clauses is a little white lie.
 	Clauses = [],
@@ -1161,16 +1217,16 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Status, Markers,
 	map__det_insert(Procs0, ProcId, ProcInfo, Procs),
 
 	PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
-		Context, Status, clauses, Markers, Attributes,
+		Context, Origin, Status, clauses, Markers, Attributes,
 		ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
 		ClassContext, ClassProofs, UnprovenBodyConstraints,
-		MaybeUCI, MaybeInstanceConstraints, inst_graph_info_init, [],
-		Assertions, User, Indexes, ClausesInfo, Procs).
+		inst_graph_info_init, [], Assertions, User, Indexes,
+		ClausesInfo, Procs).
 
-hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
-		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, InstVarSet, Markers, Owner, IsAddressTaken,
-		ModuleInfo0, ModuleInfo, PredProcId) :-
+hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
+		InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
+		TVarMap, TCVarMap, VarSet0, InstVarSet, Markers, Owner,
+		IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -1222,14 +1278,14 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	),
 
 	MaybeDeclaredDetism = no,
-	proc_info_create(Context,VarSet, VarTypes, ArgVars, InstVarSet,
+	proc_info_create(Context, VarSet, VarTypes, ArgVars, InstVarSet,
 		ArgModes, MaybeDeclaredDetism, Detism, Goal0, 
 		TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
 	proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
 	set__init(Assertions),
 
-	pred_info_create(ModuleName, SymName, predicate, Context,
+	pred_info_create(ModuleName, SymName, predicate, Context, Origin,
 		ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
 		ClassContext, Assertions, Owner, ProcInfo, ProcId, PredInfo),
 
@@ -1260,10 +1316,11 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 pred_info_module(PI) = PI ^ module_name.
 pred_info_name(PI) = PI ^ name.
-pred_info_arity(PI) = PI ^ arity.
+pred_info_orig_arity(PI) = PI ^ orig_arity.
 
 pred_info_is_pred_or_func(PI) = PI ^ is_pred_or_func.
 pred_info_context(PI, PI ^ context).
+pred_info_get_origin(PI, PI ^ pred_origin).
 pred_info_import_status(PI, PI ^ import_status).
 pred_info_get_goal_type(PI, PI ^ goal_type).
 pred_info_get_markers(PI, PI ^ markers).
@@ -1275,15 +1332,13 @@ pred_info_get_head_type_params(PI, PI ^ head_type_params).
 pred_info_get_class_context(PI, PI ^ class_context).
 pred_info_get_constraint_proofs(PI, PI ^ constraint_proofs).
 pred_info_get_unproven_body_constraints(PI, PI ^ unproven_body_constraints).
-pred_info_get_maybe_special_pred(PI, PI ^ maybe_special_pred).
-pred_info_get_maybe_instance_method_constraints(PI,
-	PI ^ maybe_instance_method_constraints).
 pred_info_get_assertions(PI, PI ^ assertions).
 pred_info_get_aditi_owner(PI, PI ^ aditi_owner).
 pred_info_get_indexes(PI, PI ^ indexes).
 pred_info_clauses_info(PI, PI ^ clauses_info).
 pred_info_procedures(PI, PI ^ procedures).
 
+pred_info_set_origin(X, PI, PI ^ pred_origin := X).
 pred_info_set_import_status(X, PI, PI ^ import_status := X).
 pred_info_set_goal_type(X, PI, PI ^ goal_type := X).
 pred_info_set_markers(X, PI, PI ^ markers := X).
@@ -1294,10 +1349,6 @@ pred_info_set_class_context(X, PI, PI ^ class_context := X).
 pred_info_set_constraint_proofs(X, PI, PI ^ constraint_proofs := X).
 pred_info_set_unproven_body_constraints(X, PI,
 	PI ^ unproven_body_constraints := X).
-pred_info_set_maybe_special_pred(X, PI,
-	PI ^ maybe_special_pred := X).
-pred_info_set_maybe_instance_method_constraints(X, PI,
-	PI ^ maybe_instance_method_constraints := X).
 pred_info_set_assertions(X, PI, PI ^ assertions := X).
 pred_info_set_aditi_owner(X, PI, PI ^ aditi_owner := X).
 pred_info_set_indexes(X, PI, PI ^ indexes := X).
@@ -1427,7 +1478,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
 		ImportStatus = external(ExternalImportStatus),
 		status_is_exported(ExternalImportStatus, yes)
 	;
-		pred_info_get_maybe_special_pred(PredInfo, yes(SpecialPred)),
+		pred_info_get_origin(PredInfo, special_pred(SpecialPred)),
 		SpecialPred = SpecialId - TypeCtor,
 		module_info_types(ModuleInfo, TypeTable),
 		% If the search fails, then TypeCtor must be a builtin type
@@ -1550,7 +1601,7 @@ pred_info_get_call_id(PredInfo, PredOrFunc - qualified(Module, Name)/Arity) :-
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo).
+	Arity = pred_info_orig_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2508,7 +2559,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
 		InterfaceTypeInfoLiveness) :-
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		InterfaceTypeInfoLiveness = no
 	;
@@ -2554,7 +2605,7 @@ non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
 body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		BodyTypeInfoLiveness = no
 	;
@@ -2789,7 +2840,7 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 	pred_info_is_pred_or_func(PredInfo) = function,
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	adjust_func_arity(function, FuncArity, PredArity),
 	is_field_access_function_name(ModuleInfo, qualified(Module, Name),
 		FuncArity, _, _).
@@ -2827,7 +2878,7 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 pred_info_is_builtin(PredInfo) :-
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	ProcId = hlds_pred__initial_proc_id,
 	is_inline_builtin(ModuleName, PredName, ProcId, Arity).
 
@@ -2835,7 +2886,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
 	(
@@ -2866,7 +2917,7 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 prog_varset_init(VarSet) :- varset__init(VarSet).
 
 is_unify_or_compare_pred(PredInfo) :-
-	pred_info_get_maybe_special_pred(PredInfo, yes(_)).
+	pred_info_get_origin(PredInfo, special_pred(_)). % XXX bug
 
 %-----------------------------------------------------------------------------%
 
@@ -2937,7 +2988,7 @@ hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) :-
 hlds_pred__pred_info_is_aditi_aggregate(PredInfo) :-
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	hlds_pred__aditi_aggregate(Module, Name, Arity).
 
 :- pred hlds_pred__aditi_aggregate(sym_name::in, string::in, int::in)

@@ -298,7 +298,7 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
 	ItemId = item_id(pred_or_func_to_item_type(
 			pred_info_is_pred_or_func(!.PredInfo)),
 			qualified(pred_info_module(!.PredInfo), PredName) -
-				pred_info_arity(!.PredInfo)),
+				pred_info_orig_arity(!.PredInfo)),
 	equiv_type__finish_recording_expanded_items(ItemId,
 		!.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
 	module_info_set_maybe_recompilation_info(MaybeRecompInfo,

@@ -1089,10 +1089,11 @@ rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
 
 	{ ClassContext = constraints([], []) },
 	{ PredArgs = [InputTupleVar, OutputTupleVar] },
-	{ hlds_pred__define_new_pred(Goal, _CallGoal, PredArgs, _ExtraArgs,
-		InitialInstMap, ProcName, TVarSet, VarTypes, ClassContext,
-		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
-		IsAddressTaken, ModuleInfo0, ModuleInfo1, PredProcId) },
+	{ hlds_pred__define_new_pred(created(aditi_rl_exprn), Goal, _CallGoal,
+		PredArgs, _ExtraArgs, InitialInstMap, ProcName, TVarSet,
+		VarTypes, ClassContext, TVarMap, TCVarMap, VarSet, InstVarSet,
+		Markers, Owner, IsAddressTaken, ModuleInfo0, ModuleInfo1,
+		PredProcId) },
 
 	{ PredProcId = proc(PredId, ProcId) },
 	{ rtti__id_to_c_identifier(
@@ -1595,7 +1596,7 @@ rl_exprn__call_not_implemented_error(Context,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
-	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
+	{ pred_info_get_origin(PredInfo, Origin) },
 	(
 		{ pred_info_is_builtin(PredInfo) }
 	->
@@ -1611,7 +1612,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		% Handle unify/2 specially, since it is possibly recursive,
 		% which will cause the code below to fall over. Also, magic.m
 		% doesn't add type_info arguments yet.
-		{ MaybeSpecial = yes(unify - _) },
+		{ Origin = special_pred(unify - _) },
 		{ list__reverse(Args, [Arg1, Arg2 | _]) },
 		{ hlds_pred__in_in_unification_proc_id(ProcId) }
 	->
@@ -1622,7 +1623,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	;
 		% Handle compare/3 specially for the same reason
 		% as unify/2 above.
-		{ MaybeSpecial = yes(compare - _) },
+		{ Origin = special_pred(compare - _) },
 		{ list__reverse(Args, [Arg2, Arg1, Res | _]) }
 	->
 		rl_exprn_info_lookup_var(Arg1, Arg1Loc),
@@ -2182,7 +2183,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		)
 	;
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
-		{ Arity = pred_info_arity(PredInfo) },
+		{ Arity = pred_info_orig_arity(PredInfo) },
 		{ string__format("Sorry, not implemented in Aditi: %s.%s/%i",
 			[s(PredModule), s(PredName), i(Arity)], Msg) },
 		{ error(Msg) }
@@ -2305,7 +2306,7 @@ rl_exprn__is_simple_extra_aditi_builtin(PredInfo, ProcId, Bytecode) :-
 	PredModule = pred_info_module(PredInfo),
 	PredModule = unqualified(PredModuleName),
 	PredName = pred_info_name(PredInfo),
-	PredArity0 = pred_info_arity(PredInfo),
+	PredArity0 = pred_info_orig_arity(PredInfo),
 	hlds_pred__proc_id_to_int(ProcId, ProcInt),
 	adjust_func_arity(PredOrFunc, PredArity, PredArity0),
 	rl_exprn__simple_extra_builtin(PredOrFunc, PredModuleName,

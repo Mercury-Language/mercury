@@ -771,7 +771,7 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
 	( ProcIDs = [] ->
 		% There are no declared modes so report an error.
 		PredString = pred_info_name(!.PredInfo),
-		Arity = pred_info_arity(!.PredInfo),
+		Arity = pred_info_orig_arity(!.PredInfo),
 		string__format(
 			"Error: no modes declared for fact table `%s/%d'.\n",
 			[s(PredString), i(Arity)], Msg),

@@ -75,13 +75,13 @@ describe_one_pred_name(Module, ShouldModuleQualify, PredId) = Pieces :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
 	adjust_func_arity(PredOrFunc, OrigArity, Arity),
 	pred_info_get_markers(PredInfo, Markers),
-	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
-	( MaybeSpecial = yes(SpecialId - TypeCtor) ->
+	pred_info_get_origin(PredInfo, Origin),
+	( Origin = special_pred(SpecialId - TypeCtor) ->
 		special_pred_description(SpecialId, Descr),
 		TypeCtor = TypeSymName - TypeArity,
 		( TypeArity = 0 ->
@@ -113,7 +113,7 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
 	module_info_pred_info(Module, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	list__length(ArgModes0, NumArgModes),
 	% We need to strip off the extra type_info arguments inserted at the

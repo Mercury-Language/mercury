@@ -650,7 +650,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
 	{ PredName = pred_info_name(PredInfo) },
-	{ Arity = pred_info_arity(PredInfo) },
+	{ Arity = pred_info_orig_arity(PredInfo) },
 	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },

@@ -318,7 +318,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		% HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away
 		% later.  To counter for this, we add the arity to the
 		% size thresholds.
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 
 		% Predicates with `class_method' markers contain
 		% class_method_call goals which can't be written
@@ -1759,7 +1759,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
 intermod__write_pragmas(PredInfo, !IO) :-
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	SymName = qualified(Module, Name),
 	pred_info_get_markers(PredInfo, Markers),
@@ -2158,9 +2158,8 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
 		import_status_to_write(Status)
 	->
 		(
-			pred_info_get_maybe_special_pred(PredInfo0,
-				MaybeSpecial),
-			MaybeSpecial = yes(unify - _)
+			pred_info_get_origin(PredInfo0, Origin),
+			Origin = special_pred(unify - _)
 		->
 			NewStatus = pseudo_exported
 		;

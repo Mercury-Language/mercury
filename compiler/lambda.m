@@ -464,6 +464,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		module_info_next_lambda_count(LambdaCount,
 			ModuleInfo0, ModuleInfo1),
 		goal_info_get_context(LambdaGoalInfo, OrigContext),
+		term__context_file(OrigContext, OrigFile),
 		term__context_line(OrigContext, OrigLine),
 		make_pred_name_with_context(ModuleName, "IntroducedFrom",
 			PredOrFunc, OrigPredName, OrigLine,
@@ -566,9 +567,10 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		set__init(Assertions),
 
 		pred_info_create(ModuleName, PredName, PredOrFunc,
-			LambdaContext, local, LambdaMarkers,
-			ArgTypes, TVarSet, ExistQVars, Constraints,
-			Assertions, Owner, ProcInfo, ProcId, PredInfo),
+			LambdaContext, lambda(OrigFile, OrigLine), local,
+			LambdaMarkers, ArgTypes, TVarSet, ExistQVars,
+			Constraints, Assertions, Owner, ProcInfo, ProcId,
+			PredInfo),
 
 		% save the new predicate in the predicate table
 

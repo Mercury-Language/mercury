@@ -661,15 +661,14 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module, !ProcTable) :-
 		(
 			ModuleName = pred_info_module(PredInfo),
 			Name = pred_info_name(PredInfo),
-			Arity = pred_info_arity(PredInfo),
+			Arity = pred_info_orig_arity(PredInfo),
 			special_pred_name_arity(SpecPredId0, Name, Arity),
 			any_mercury_builtin_module(ModuleName)
 		->
 			SpecialPredId = SpecPredId0
 		;
-			pred_info_get_maybe_special_pred(PredInfo,
-				MaybeSpecial),
-			MaybeSpecial = yes(SpecialPredId - _)
+			pred_info_get_origin(PredInfo, Origin),
+			Origin = special_pred(SpecialPredId - _)
 		)
 	->
 		set_generated_terminates(ProcIds, SpecialPredId, !ProcTable)

@@ -2253,7 +2253,7 @@ modecheck_par_conj_list([Goal0 | Goals0], [Goal | Goals], NonLocals,
 	% type_info arguments get argument numbers less than or equal to 0.
 	%
 compute_arg_offset(PredInfo, ArgOffset) :-
-	OrigArity = pred_info_arity(PredInfo),
+	OrigArity = pred_info_orig_arity(PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	list__length(ArgTypes, CurrentArity),
 	ArgOffset = OrigArity - CurrentArity.
@@ -2750,7 +2750,7 @@ proc_check_eval_methods([ProcId | Rest], PredId, !ModuleInfo, !IO) :-
 	),
 	(
 		pred_info_name(PredInfo) = "main",
-		pred_info_arity(PredInfo) = 2,
+		pred_info_orig_arity(PredInfo) = 2,
 		pred_info_is_exported(PredInfo),
 		\+ check_mode_of_main(Modes, !.ModuleInfo)
 	->

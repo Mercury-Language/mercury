@@ -622,7 +622,7 @@ magic__adjust_pred_info(EntryPoints, MagicTypes,
 	% to leave the original declarations so that predicates compiled
 	% to C can call the procedure.
 :- pred magic__separate_proc(pred_id::in, proc_id::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 magic__separate_proc(PredId, ProcId) -->
 	magic_info_get_module_info(ModuleInfo0),
@@ -660,8 +660,8 @@ magic__separate_proc(PredId, ProcId) -->
 	{ ClassConstraints = constraints([], []) },
 	{ set__init(Assertions) },
 	{ pred_info_create(Module, NewName, PredOrFunc, Context,
-		Status, Markers, ArgTypes, TVarSet, ExistQVars,
-		ClassConstraints, Assertions, Owner, ProcInfo0,
+		created(aditi_magic), Status, Markers, ArgTypes, TVarSet,
+		ExistQVars, ClassConstraints, Assertions, Owner, ProcInfo0,
 		NewProcId, NewPredInfo0) },
 	{ pred_info_set_indexes(Indexes, NewPredInfo0, NewPredInfo) },
 
@@ -880,11 +880,11 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ map__init(TVarMap) },
 	{ map__init(TCVarMap) },
 	{ varset__init(TVarSet) },
-	{ hlds_pred__define_new_pred(Goal, CallGoal, HeadVars, ExtraArgs,
-		InstMap, PredName, TVarSet, VarTypes, ClassContext, TVarMap,
-		TCVarMap, VarSet, InstVarSet, Markers, Owner,
-		address_is_not_taken, ModuleInfo1, ModuleInfo2,
-		LocalPredProcId) },
+	{ hlds_pred__define_new_pred(created(aditi_magic_interface),
+		Goal, CallGoal, HeadVars, ExtraArgs, InstMap, PredName,
+		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo1, ModuleInfo2, LocalPredProcId) },
 	{ ExtraArgs = [] ->
 		true
 	;
@@ -1159,8 +1159,8 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 	ExistQVars = [],
 	set__init(Assertions),
 	pred_info_create(PredModule, qualified(PredModule, NewPredName),
-		predicate, DummyContext, exported, Markers,
-		NewArgTypes, TVarSet, ExistQVars,
+		predicate, DummyContext, created(aditi_join), exported,
+		Markers, NewArgTypes, TVarSet, ExistQVars,
 		ClassContext, Assertions, User,
 		JoinProcInfo, JoinProcId, JoinPredInfo),
 
@@ -1297,9 +1297,9 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ ExistQVars = [] },
 	{ set__init(Assertions) },
 	{ pred_info_create(ModuleName, SymName, predicate, Context,
-		local, Markers, AllArgTypes, TVarSet, ExistQVars,
-		ClassConstraints, Assertions, Owner, ProcInfo, MagicProcId,
-		MagicPredInfo) },
+		created(aditi_magic), local, Markers, AllArgTypes,
+		TVarSet, ExistQVars, ClassConstraints, Assertions, Owner,
+		ProcInfo, MagicProcId, MagicPredInfo) },
 
 	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
 	{ predicate_table_insert(MagicPredInfo, MagicPredId,

@@ -761,14 +761,20 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 	(
 		% The declared purity must match any promises.
 		% (A promise of impure means no promise was made).
-		PromisedPurity \= (impure), DeclaredPurity \= PromisedPurity
+		PromisedPurity \= (impure),
+		DeclaredPurity \= PromisedPurity
 	->
 		PurityCheckResult = inconsistent_promise
 	;
 		% You shouldn't promise pure unnecessarily.
 		% It's OK in the case of foreign_procs though.
-		PromisedPurity \= (impure), ActualPurity = PromisedPurity,
-		not pred_info_pragma_goal_type(PredInfo)
+		% There is also no point in warning about compiler-generated
+		% predicates.
+		PromisedPurity \= (impure),
+		ActualPurity = PromisedPurity,
+		not pred_info_pragma_goal_type(PredInfo),
+		pred_info_get_origin(PredInfo, Origin),
+		not ( Origin = transformed(_, _, _) ; Origin = created(_) )
 	->
 		PurityCheckResult = unnecessary_promise_pure
 	;

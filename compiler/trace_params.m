@@ -148,9 +148,8 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 	( TraceLevel = none ->
 		EffTraceLevel = none
 	;
-		pred_info_get_maybe_special_pred(PredInfo, MaybeSpecialPred),
-		(
-			MaybeSpecialPred = yes(SpecialPred - _),
+		pred_info_get_origin(PredInfo, Origin),
+		( Origin = special_pred(SpecialPred - _) ->
 			% Unify and compare predicates can be called from
 			% the generic unify and compare predicates in
 			% builtin.m, so they can be called from outside this
@@ -177,7 +176,6 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 				EffTraceLevel = TraceLevel
 			)
 		;
-			MaybeSpecialPred = no,
 			pred_info_import_status(PredInfo, Status),
 			(
 				TraceLevel = shallow,

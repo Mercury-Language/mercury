@@ -1077,7 +1077,7 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
 	% to type_infos that don't get passed
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
 			HeadModes, PredOrFunc, CodeModel)
@@ -1385,8 +1385,8 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		PredName, PredArity, _ArgTypes, PredId, ProcId,
 		_HeadVarsWithNames, _ArgModes, Detism,
 		PredIsImported, _PredIsPseudoImported,
-		IsSpecialPred, _ProcIsExported, _ProcIsImported),
-	( IsSpecialPred = yes(SpecialPred - TypeCtor) ->
+		Origin, _ProcIsExported, _ProcIsImported),
+	( Origin = special_pred(SpecialPred - TypeCtor) ->
 		(
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are handled

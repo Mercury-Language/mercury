@@ -1682,9 +1682,13 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 
 			ModuleName = pred_info_module(PredInfo0),
 			pred_info_get_aditi_owner(PredInfo0, Owner),
+			pred_info_get_origin(PredInfo0, OrigOrigin),
+			SubstDesc = list__map(subst_desc, Subst),
+			Origin = transformed(type_specialization(SubstDesc),
+				OrigOrigin, PredId),
 			pred_info_init(ModuleName, SpecName, PredArity,
-				PredOrFunc, Context, Status, none, Markers,
-				Types, TVarSet, ExistQVars,
+				PredOrFunc, Context, Origin, Status,
+				none, Markers, Types, TVarSet, ExistQVars,
 				ClassContext, Proofs,
 				Owner, Clauses, NewPredInfo0),
 			pred_info_set_procedures(Procs,
@@ -1748,6 +1752,10 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 	;
 		TransformInfo = transform_info(ModuleInfo1, Info0)
 	).
+
+:- func subst_desc(pair(tvar, type)) = pair(int, type).
+
+subst_desc(TVar - Type) = var_to_int(TVar) - Type.
 
 	% Check that the type substitution for a `:- pragma type_spec'
 	% declaration is valid.
@@ -1968,7 +1976,7 @@ report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars) -->
 report_pragma_type_spec(PredInfo0, Context) -->
 	{ Module = pred_info_module(PredInfo0) },
 	{ Name = pred_info_name(PredInfo0) },
-	{ Arity = pred_info_arity(PredInfo0) },
+	{ Arity = pred_info_orig_arity(PredInfo0) },
 	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo0) },
 	prog_out__write_context(Context),
 	io__write_string("In `:- pragma type_spec' declaration for "),
@@ -3735,7 +3743,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 		list__foldl(add_marker, MarkersList, Markers0, Markers),
 		globals__io_lookup_string_option(aditi_user, Owner, !IO),
 		pred_info_init(ModuleName, PredName, Arity, PredOrFunc,
-			Context, Status, none, Markers,
+			Context, user(PredName), Status, none, Markers,
 			Types, TVarSet, ExistQVars, ClassContext, Proofs,
 			Owner, ClausesInfo, PredInfo0),
 		(
@@ -4218,7 +4226,7 @@ add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
 	pred_info_get_markers(PredInfo2, Markers2),
 	add_marker(calls_are_fully_qualified, Markers2, Markers),
 	pred_info_set_markers(Markers, PredInfo2, PredInfo3),
-	pred_info_set_maybe_special_pred(yes(SpecialPredId - TypeCtor),
+	pred_info_set_origin(special_pred(SpecialPredId - TypeCtor),
 		PredInfo3, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Preds, !Module).
@@ -4288,6 +4296,7 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 	),
 	special_pred_name_arity(SpecialPredId, _, Arity),
 	clauses_info_init(Arity, ClausesInfo0),
+	Origin = special_pred(SpecialPredId - TypeCtor),
 	adjust_special_pred_status(SpecialPredId, Status0, Status),
 	map__init(Proofs),
 	init_markers(Markers),
@@ -4298,16 +4307,14 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 	module_info_globals(!.Module, Globals),
 	globals__lookup_string_option(Globals, aditi_user, Owner),
 	pred_info_init(ModuleName, PredName, Arity, predicate, Context,
-		Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
+		Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
 		ClassContext, Proofs, Owner, ClausesInfo0, PredInfo0),
-	pred_info_set_maybe_special_pred(yes(SpecialPredId - TypeCtor),
-		PredInfo0, PredInfo1),
 	ArgLives = no,
 	varset__init(InstVarSet),
 		% Should not be any inst vars here so it's ok to use a
 		% fresh inst_varset.
 	add_new_proc(InstVarSet, Arity, ArgModes, yes(ArgModes), ArgLives,
-		yes(Det), Context, address_is_not_taken, PredInfo1, PredInfo,
+		yes(Det), Context, address_is_not_taken, PredInfo0, PredInfo,
 		_),
 
 	module_info_get_predicate_table(!.Module, PredicateTable0),
@@ -4410,7 +4417,8 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
 	;
 		preds_add_implicit_report_error(ModuleName, PredOrFunc,
 			PredName, Arity, Status, IsClassMethod, MContext,
-			"mode declaration", PredId, !ModuleInfo, !IO)
+			user(PredName), "mode declaration", PredId,
+			!ModuleInfo, !IO)
 	),
 
 		% Lookup the pred_info for this predicate
@@ -4475,35 +4483,39 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
 
 :- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
 	sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,
-	string::in, pred_id::out, module_info::in, module_info::out,
-	io::di, io::uo) is det.
+	pred_origin::in, string::in, pred_id::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
-		Status, IsClassMethod, Context, Description, PredId,
+		Status, IsClassMethod, Context, Origin, Description, PredId,
 		!ModuleInfo, !IO) :-
 	maybe_undefined_pred_error(PredName, Arity, PredOrFunc, Status,
 		IsClassMethod, Context, Description, !IO),
-	( PredOrFunc = function ->
+	(
+		PredOrFunc = function,
 		adjust_func_arity(function, FuncArity, Arity),
 		maybe_check_field_access_function(PredName, FuncArity,
 			Status, Context, !.ModuleInfo, !IO)
 	;
-		true
+		PredOrFunc = predicate
 	),
 	module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
 	preds_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity, Status,
-		Context, PredOrFunc, PredId, PredicateTable0, PredicateTable),
+		Context, Origin, PredOrFunc, PredId,
+		PredicateTable0, PredicateTable),
 	module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 
 :- pred preds_add_implicit(module_info::in, module_name::in, sym_name::in,
-	arity::in, import_status::in, prog_context::in, pred_or_func::in,
-	pred_id::out, predicate_table::in, predicate_table::out) is det.
+	arity::in, import_status::in, prog_context::in, pred_origin::in,
+	pred_or_func::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
 preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
-		PredOrFunc, PredId, !PredicateTable) :-
+		Origin, PredOrFunc, PredId, !PredicateTable) :-
 	clauses_info_init(Arity, ClausesInfo),
 	preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
-		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable).
+		Arity, Status, Context, Origin, PredOrFunc, PredId,
+		!PredicateTable).
 
 :- pred preds_add_implicit_for_assertion(prog_vars::in, module_info::in,
 	module_name::in, sym_name::in, arity::in, import_status::in,
@@ -4513,16 +4525,20 @@ preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
 preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
 		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable) :-
 	clauses_info_init_for_assertion(HeadVars, ClausesInfo),
+	term__context_file(Context, FileName),
+	term__context_line(Context, LineNum),
 	preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
-		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable).
+		Arity, Status, Context, assertion(FileName, LineNum),
+		PredOrFunc, PredId, !PredicateTable).
 
 :- pred preds_add_implicit_2(clauses_info::in, module_info::in,
 	module_name::in, sym_name::in, arity::in, import_status::in,
-	prog_context::in, pred_or_func::in, pred_id::out,
+	prog_context::in, pred_origin::in, pred_or_func::in, pred_id::out,
 	predicate_table::in, predicate_table::out) is det.
 
 preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
-		Status, Context, PredOrFunc, PredId, !PredicateTable) :-
+		Status, Context, Origin, PredOrFunc, PredId,
+		!PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
 	term__var_list_to_term_list(TypeVars, Types),
@@ -4537,7 +4553,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_string_option(Globals, aditi_user, Owner),
 	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-		Status, none, Markers0, Types, TVarSet, ExistQVars,
+		Origin, Status, none, Markers0, Types, TVarSet, ExistQVars,
 		ClassContext, Proofs, Owner, ClausesInfo, PredInfo0),
 	add_marker(infer_type, Markers0, Markers),
 	pred_info_set_markers(Markers, PredInfo0, PredInfo),
@@ -4633,7 +4649,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 		;
 			preds_add_implicit_report_error(ModuleName,
 				PredOrFunc, PredName, Arity, Status, no,
-				Context, "clause", PredId, !ModuleInfo, !IO)
+				Context, user(PredName), "clause", PredId,
+				!ModuleInfo, !IO)
 		)
 	),
 		% Lookup the pred_info for this pred,
@@ -5054,7 +5071,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 		PredId = PredId0
 	;
 		preds_add_implicit_report_error(ModuleName, PredOrFunc,
-			PredName, Arity, Status, no, Context,
+			PredName, Arity, Status, no, Context, user(PredName),
 			"`:- pragma import' declaration", PredId,
 			!ModuleInfo, !IO)
 	),
@@ -5174,14 +5191,15 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 	list__length(PVars, Arity),
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-	( VeryVerbose = yes ->
+	(
+		VeryVerbose = yes,
 		io__write_string("% Processing `:- pragma foreign_proc' for ",
 			!IO),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
 			!IO),
 		io__write_string("...\n", !IO)
 	;
-		true
+		VeryVerbose = no
 	),
 
 	globals__io_get_backend_foreign_languages(BackendForeignLangs, !IO),
@@ -5198,7 +5216,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 		PredId = PredId0
 	;
 		preds_add_implicit_report_error(ModuleName, PredOrFunc,
-			PredName, Arity, Status, no, Context,
+			PredName, Arity, Status, no, Context, user(PredName),
 			"`:- pragma foreign_proc' declaration",
 			PredId, !ModuleInfo, !IO)
 	),
@@ -5317,8 +5335,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 
 	% Find out if we are tabling a predicate or a function
 	(
-		MaybePredOrFunc = yes(PredOrFunc0)
-	->
+		MaybePredOrFunc = yes(PredOrFunc0),
 		PredOrFunc = PredOrFunc0,
 
 			% Lookup the pred declaration in the predicate table.
@@ -5337,10 +5354,12 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 
 			preds_add_implicit_report_error(ModuleName, PredOrFunc,
 				PredName, Arity, Status, no, Context,
-				Message1, PredId, !ModuleInfo, !IO),
+				user(PredName), Message1, PredId, !ModuleInfo,
+				!IO),
 			PredIds = [PredId]
 		)
 	;
+		MaybePredOrFunc = no,
 		(
 			predicate_table_search_sym_arity(PredicateTable0,
 				is_fully_qualified, PredName,
@@ -5354,7 +5373,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 
 			preds_add_implicit_report_error(ModuleName,
 				predicate, PredName, Arity, Status, no,
-				Context, Message1, PredId,
+				Context, user(PredName), Message1, PredId,
 				!ModuleInfo, !IO),
 			PredIds = [PredId]
 		)
@@ -8940,7 +8959,7 @@ pred_method_with_no_modes_error(PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ Module = pred_info_module(PredInfo) },
 	{ Name = pred_info_name(PredInfo) },
-	{ Arity = pred_info_arity(PredInfo) },
+	{ Arity = pred_info_orig_arity(PredInfo) },
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: no mode declaration for type class method\n"),

@@ -85,7 +85,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		% for this function.  (N.B. functions which can
 		% fail must be explicitly declared as semidet.)
 		%
-		PredArity = pred_info_arity(PredInfo0),
+		PredArity = pred_info_orig_arity(PredInfo0),
 		FuncArity = PredArity - 1,
 		in_mode(InMode),
 		out_mode(OutMode),

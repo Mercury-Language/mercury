@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,7 +87,7 @@ rl_dump__declare_relation(ModuleInfo, RelationInfos, RelId) -->
 		io__write_string("base relation `"),
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ PredName = pred_info_name(PredInfo) },
-		{ PredArity = pred_info_arity(PredInfo) },
+		{ PredArity = pred_info_orig_arity(PredInfo) },
 		io__write_string(PredName),
 		io__write_string("'/"),
 		io__write_int(PredArity)

@@ -373,8 +373,8 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 	% Create a new predicate for the input goal, returning a
 	% goal which calls the new predicate.
-:- pred pd_info__define_new_pred(hlds_goal::in, pred_proc_id::out,
-	hlds_goal::out, pd_info::in, pd_info::out) is det.
+:- pred pd_info__define_new_pred(pred_origin::in, hlds_goal::in,
+	pred_proc_id::out, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
 	% Add a version to the table.
 :- pred pd_info__register_version(pred_proc_id::in, version_info::in,
@@ -594,7 +594,7 @@ pd_info__check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 
 %-----------------------------------------------------------------------------%
 
-pd_info__define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
+pd_info__define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 	pd_info_get_instmap(!.PDInfo, InstMap),
 	Goal = _ - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -624,10 +624,10 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
 	proc_info_inst_varset(ProcInfo, InstVarSet),
 	% XXX handle the extra typeinfo arguments for
 	% --typeinfo-liveness properly.
-	hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap,
-		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
-		ModuleInfo0, ModuleInfo, PredProcId),
+	hlds_pred__define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
+		InstMap, Name, TVarSet, VarTypes, ClassContext,
+		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
+		address_is_not_taken, ModuleInfo0, ModuleInfo, PredProcId),
 	pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,7 +53,7 @@
 :- pred dnf__transform_module(bool::in, maybe(set(pred_proc_id))::in,
 	module_info::in, module_info::out) is det.
 
-:- pred dnf__transform_proc(proc_info::in, pred_info::in,
+:- pred dnf__transform_proc(proc_info::in, pred_info::in, pred_id::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
 	proc_info::out, list(pred_id)::in, list(pred_id)::out) is det.
 
@@ -85,14 +85,14 @@ dnf__transform_module(TransformAll, MaybeNonAtomic, !ModuleInfo) :-
 :- pred dnf__transform_preds(list(pred_id)::in, bool::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out) is det.
 
-dnf__transform_preds([], _, _, ModuleInfo, ModuleInfo).
+dnf__transform_preds([], _, _, !ModuleInfo).
 dnf__transform_preds([PredId | PredIds0], TransformAll, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo) :-
+		!ModuleInfo) :-
 	(
 		(
 			TransformAll = yes
 		;
-			module_info_preds(ModuleInfo0, PredTable),
+			module_info_preds(!.ModuleInfo, PredTable),
 			map__lookup(PredTable, PredId, PredInfo),
 			pred_info_get_markers(PredInfo, Markers),
 			( check_marker(Markers, dnf)
@@ -100,26 +100,24 @@ dnf__transform_preds([PredId | PredIds0], TransformAll, MaybeNonAtomic,
 			)
 		)
 	->
-		dnf__transform_pred(PredId, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo1, NewPredIds),
+		dnf__transform_pred(PredId, MaybeNonAtomic, !ModuleInfo,
+			NewPredIds),
 		list__append(NewPredIds, PredIds0, PredIds1)
 	;
-		PredIds1 = PredIds0,
-		ModuleInfo1 = ModuleInfo0
+		PredIds1 = PredIds0
 	),
 	dnf__transform_preds(PredIds1, TransformAll, MaybeNonAtomic,
-		ModuleInfo1, ModuleInfo).
+		!ModuleInfo).
 
 :- pred dnf__transform_pred(pred_id::in, maybe(set(pred_proc_id))::in,
 	module_info::in, module_info::out, list(pred_id)::out) is det.
 
-dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
-		NewPredIds) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+dnf__transform_pred(PredId, MaybeNonAtomic, !ModuleInfo, NewPredIds) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	ProcIds = pred_info_non_imported_procids(PredInfo0),
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, [], NewPredIds).
+		!ModuleInfo, [], NewPredIds).
 
 :- pred dnf__transform_procs(list(proc_id)::in, pred_id::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
@@ -127,14 +125,14 @@ dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 
 dnf__transform_procs([], _, _, !ModuleInfo, NewPredIds, NewPredIds).
 dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
-		!ModuleInfo, NewPredIds0, NewPredIds) :-
+		!ModuleInfo, !NewPredIds) :-
 	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
-		!ModuleInfo, ProcInfo, NewPredIds0, NewPredIds1),
+	dnf__transform_proc(ProcInfo0, PredInfo0, PredId, MaybeNonAtomic,
+		!ModuleInfo, ProcInfo, !NewPredIds),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -145,11 +143,12 @@ dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
 	module_info_set_preds(PredTable, !ModuleInfo),
 
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,
-		!ModuleInfo, NewPredIds1, NewPredIds).
+		!ModuleInfo, !NewPredIds).
 
-dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
-		!ModuleInfo, ProcInfo, NewPredIds0, NewPredIds) :-
+dnf__transform_proc(ProcInfo0, PredInfo0, PredId, MaybeNonAtomic,
+		!ModuleInfo, ProcInfo, !NewPredIds) :-
 	PredName = pred_info_name(PredInfo0),
+	pred_info_get_origin(PredInfo0, Origin),
 	pred_info_typevarset(PredInfo0, TVarSet),
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, ClassContext),
@@ -160,41 +159,46 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext,
-		VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
+	DnfInfo = dnf_info(PredId, Origin, PredName, TVarSet, VarTypes,
+		ClassContext, VarSet, InstVarSet, Markers, TVarMap, TCVarMap,
+		Owner),
 
 	proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic, !ModuleInfo,
-		PredName, DnfInfo, Goal, NewPredIds0, NewPredIds),
+		DnfInfo, Goal, !NewPredIds),
 	proc_info_set_goal(Goal, ProcInfo0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- type dnf_info --->	dnf_info(
-				tvarset,
-				map(prog_var, type),
-				class_constraints,
-				prog_varset,
-				inst_varset,
-				pred_markers,
-				map(tvar, type_info_locn),
-				map(class_constraint, prog_var),
-				aditi_owner
-			).
+:- type dnf_info
+	--->	dnf_info(
+			orig_pred_id	:: pred_id,
+			orig_origin	:: pred_origin,
+			orig_pred_name	:: string,
+			orig_tvarset	:: tvarset,
+			orig_vartypes	:: vartypes,
+			orig_classes	:: class_constraints,
+			orig_varset	:: prog_varset,
+			orig_instvarset	:: inst_varset,
+			orig_markers	:: pred_markers,
+			orig_ti_locns	:: map(tvar, type_info_locn),
+			orig_tcis	:: map(class_constraint, prog_var),
+			orig_owner	:: aditi_owner
+		).
 
 :- pred dnf__transform_goal(hlds_goal::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, dnf_info::in, hlds_goal::out,
-	list(pred_id)::in, list(pred_id)::out) is det.
+	dnf_info::in, hlds_goal::out, list(pred_id)::in, list(pred_id)::out)
+	is det.
 
-dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
-		Base, DnfInfo, Goal, NewPredIds0, NewPredIds) :-
+dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		DnfInfo, Goal, !NewPredIds) :-
 	Goal0 = GoalExpr0 - GoalInfo,
 	(
 		GoalExpr0 = conj(Goals0),
 		dnf__transform_conj(Goals0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, counter__init(0), _,
-			DnfInfo, Goals, NewPredIds0, NewPredIds),
+			!ModuleInfo, counter__init(0), _, DnfInfo, Goals,
+			!NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
 		GoalExpr0 = par_conj(_Goals0),
@@ -202,56 +206,45 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	;
 		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
 		dnf__make_goal_literal(SomeGoal0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, no, yes, Base,
-			counter__init(0), _, DnfInfo, SomeGoal,
-			NewPredIds0, NewPredIds),
+			!ModuleInfo, no, yes, counter__init(0), _, DnfInfo,
+			SomeGoal, !NewPredIds),
 		Goal = some(Vars, CanRemove, SomeGoal) - GoalInfo
 	;
 		GoalExpr0 = not(NegGoal0),
 		dnf__make_goal_literal(NegGoal0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, yes, no, Base,
-			counter__init(0), _, DnfInfo, NegGoal,
-			NewPredIds0, NewPredIds),
+			!ModuleInfo, yes, no, counter__init(0), _, DnfInfo,
+			NegGoal, !NewPredIds),
 		Goal = not(NegGoal) - GoalInfo
 	;
 		GoalExpr0 = disj(Goals0),
 		dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, counter__init(0),
-			DnfInfo, Goals, NewPredIds0, NewPredIds),
+			!ModuleInfo, counter__init(0), DnfInfo, Goals,
+			!NewPredIds),
 		Goal = disj(Goals) - GoalInfo
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
 		dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, counter__init(0),
-			DnfInfo, Cases, NewPredIds0, NewPredIds),
+			!ModuleInfo, counter__init(0), DnfInfo, Cases,
+			!NewPredIds),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
 		% XXX should handle nonempty Vars
 		dnf__transform_ite(Cond0, Then0, Else0, InstMap0,
-			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base,
-			counter__init(0), DnfInfo, Cond, Then, Else,
-			NewPredIds0, NewPredIds),
+			MaybeNonAtomic, !ModuleInfo, counter__init(0), DnfInfo,
+			Cond, Then, Else, !NewPredIds),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
 		GoalExpr0 = call(_, _, _, _, _, _),
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
 		GoalExpr0 = unify(_, _, _, _, _),
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
 		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
 		GoalExpr0 = shorthand(_),
@@ -263,157 +256,140 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 
 :- pred dnf__transform_disj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, counter::in, dnf_info::in, list(hlds_goal)::out,
+	counter::in, dnf_info::in, list(hlds_goal)::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__transform_disj([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
-		NewPredIds, NewPredIds).
-dnf__transform_disj([Goal0 | Goals0], InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, Base, Counter0, DnfInfo,
-		[Goal | Goals], NewPredIds0, NewPredIds) :-
+dnf__transform_disj([], _, _, !ModuleInfo, _, _, [], !NewPredIds).
+dnf__transform_disj([Goal0 | Goals0], InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!.Counter, DnfInfo, [Goal | Goals], !NewPredIds) :-
 	Goal0 = _ - GoalInfo,
 	goal_to_conj_list(Goal0, ConjList0),
 	dnf__transform_conj(ConjList0, InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, Base, Counter0, Counter1, DnfInfo,
-		ConjList, NewPredIds0, NewPredIds1),
+		!ModuleInfo, !Counter, DnfInfo, ConjList, !NewPredIds),
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
-		ModuleInfo1, ModuleInfo, Base, Counter1, DnfInfo,
-		Goals, NewPredIds1, NewPredIds).
+		!ModuleInfo, !.Counter, DnfInfo, Goals, !NewPredIds).
 
 :- pred dnf__transform_switch(list(case)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, counter::in, dnf_info::in, list(case)::out,
-	list(pred_id)::in, list(pred_id)::out) is det.
+	counter::in, dnf_info::in,
+	list(case)::out, list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__transform_switch([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
-		NewPredIds, NewPredIds).
-dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, Base, Counter0, DnfInfo,
-		[Case | Cases], NewPredIds0, NewPredIds) :-
+dnf__transform_switch([], _, _, !ModuleInfo, _, _, [], !NewPredIds).
+dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!.Counter, DnfInfo, [Case | Cases], !NewPredIds) :-
 	Case0 = case(ConsId, Goal0),
 	goal_to_conj_list(Goal0, ConjList0),
 	% XXX should adjust instmap to account for binding of switch variable
-	dnf__transform_conj(ConjList0, InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, Base, Counter0, Counter1, DnfInfo,
-		ConjList, NewPredIds0, NewPredIds1),
+	dnf__transform_conj(ConjList0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!Counter, DnfInfo, ConjList, !NewPredIds),
 	Goal0 = _ - GoalInfo,
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	Case = case(ConsId, Goal),
-	dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
-		ModuleInfo1, ModuleInfo, Base, Counter1, DnfInfo,
-		Cases, NewPredIds1, NewPredIds).
+	dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!.Counter, DnfInfo, Cases, !NewPredIds).
 
 :- pred dnf__transform_ite(hlds_goal::in, hlds_goal::in, hlds_goal::in,
-	instmap::in, maybe(set(pred_proc_id))::in, module_info::in,
-	module_info::out, string::in, counter::in, dnf_info::in,
+	instmap::in, maybe(set(pred_proc_id))::in,
+	module_info::in, module_info::out, counter::in, dnf_info::in,
 	hlds_goal::out, hlds_goal::out, hlds_goal::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__transform_ite(Cond0, Then0, Else0, InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, Base, Counter0, DnfInfo,
-		Cond, Then, Else, NewPredIds0, NewPredIds) :-
+dnf__transform_ite(Cond0, Then0, Else0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!.Counter, DnfInfo, Cond, Then, Else, !NewPredIds) :-
 	Cond0 = _ - CondInfo,
-	dnf__make_goal_literal(Cond0, InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, yes, no, Base, Counter0, Counter1,
-		DnfInfo, Cond, NewPredIds0, NewPredIds1),
+	dnf__make_goal_literal(Cond0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		yes, no, !Counter, DnfInfo, Cond, !NewPredIds),
 	goal_info_get_instmap_delta(CondInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 	Then0 = _ - ThenInfo,
 	goal_to_conj_list(Then0, ThenList0),
-	dnf__transform_conj(ThenList0, InstMap1, MaybeNonAtomic,
-		ModuleInfo1, ModuleInfo2, Base, Counter1, Counter2, DnfInfo,
-		ThenList, NewPredIds1, NewPredIds2),
+	dnf__transform_conj(ThenList0, InstMap1, MaybeNonAtomic, !ModuleInfo,
+		!Counter, DnfInfo, ThenList, !NewPredIds),
 	conj_list_to_goal(ThenList, ThenInfo, Then),
 	Else0 = _ - ElseInfo,
 	goal_to_conj_list(Else0, ElseList0),
-	dnf__transform_conj(ElseList0, InstMap0, MaybeNonAtomic,
-		ModuleInfo2, ModuleInfo, Base, Counter2, _, DnfInfo,
-		ElseList, NewPredIds2, NewPredIds),
+	dnf__transform_conj(ElseList0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!.Counter, _, DnfInfo, ElseList, !NewPredIds),
 	conj_list_to_goal(ElseList, ElseInfo, Else).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dnf__transform_conj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, counter::in, counter::out, dnf_info::in,
+	counter::in, counter::out, dnf_info::in,
 	list(hlds_goal)::out, list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__transform_conj([], _, _, ModuleInfo, ModuleInfo, _, Counter, Counter,
-		_, [], NewPreds, NewPreds).
-dnf__transform_conj([Goal0 | Goals0], InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, Base, Counter0, Counter, DnfInfo,
-		[Goal | Goals], NewPredIds0, NewPredIds) :-
-	dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, no, no, Base, Counter0, Counter1,
-		DnfInfo, Goal, NewPredIds0, NewPredIds1),
+dnf__transform_conj([], _, _, !ModuleInfo, !Counter, _, [], !NewPreds).
+dnf__transform_conj([Goal0 | Goals0], InstMap0, MaybeNonAtomic, !ModuleInfo,
+		!Counter, DnfInfo, [Goal | Goals], !NewPredIds) :-
+	dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		no, no, !Counter, DnfInfo, Goal, !NewPredIds),
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
-	dnf__transform_conj(Goals0, InstMap1, MaybeNonAtomic,
-		ModuleInfo1, ModuleInfo, Base, Counter1, Counter, DnfInfo,
-		Goals, NewPredIds1, NewPredIds).
+	dnf__transform_conj(Goals0, InstMap1, MaybeNonAtomic, !ModuleInfo,
+		!Counter, DnfInfo, Goals, !NewPredIds).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dnf__make_goal_literal(hlds_goal::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	bool::in, bool::in, string::in, counter::in, counter::out,
-	dnf_info::in, hlds_goal::out, list(pred_id)::in, list(pred_id)::out)
-	is det.
+	bool::in, bool::in, counter::in, counter::out, dnf_info::in,
+	hlds_goal::out, list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0,
-		ModuleInfo, InNeg, InSome, Base, Counter0, Counter,
-		DnfInfo, Goal, NewPredIds0, NewPredIds) :-
+dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic, !ModuleInfo,
+		InNeg, InSome, !Counter, DnfInfo, Goal, !NewPredIds) :-
 	(
-		dnf__is_considered_literal_goal(Goal0,
-			InNeg, InSome, MaybeNonAtomic)
+		dnf__is_considered_literal_goal(Goal0, InNeg, InSome,
+			MaybeNonAtomic)
 	->
-		Goal = Goal0,
-		Counter = Counter0,
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0
+		Goal = Goal0
 	;
-		module_info_get_predicate_table(ModuleInfo0, PredTable0),
-		dnf__get_new_pred_name(PredTable0, Base, Name,
-			Counter0, Counter),
-		dnf__define_new_pred(Goal0, Goal, InstMap0, Name, DnfInfo,
-			ModuleInfo0, ModuleInfo, NewPredId),
-		NewPredIds = [NewPredId | NewPredIds0]
+		module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+		OrigPredId = DnfInfo ^ orig_pred_id,
+		OrigOrigin = DnfInfo ^ orig_origin,
+		OrigPredName = DnfInfo ^ orig_pred_name,
+		dnf__get_new_pred_name(PredTable0, OrigPredName, Name, Num,
+			!Counter),
+		Origin = transformed(dnf(Num), OrigOrigin, OrigPredId),
+		dnf__define_new_pred(Origin, Goal0, Goal, InstMap0, Name,
+			DnfInfo, !ModuleInfo, NewPredId),
+		!:NewPredIds = [NewPredId | !.NewPredIds]
 	).
 
 :- pred dnf__get_new_pred_name(predicate_table::in, string::in, string::out,
-	counter::in, counter::out) is det.
+	int::out, counter::in, counter::out) is det.
 
-dnf__get_new_pred_name(PredTable, Base, Name, Counter0, Counter) :-
-	counter__allocate(N, Counter0, Counter1),
+dnf__get_new_pred_name(PredTable, Base, Name, Num, !Counter) :-
+	counter__allocate(N, !Counter),
 	string__int_to_string(N, Suffix),
 	string__append_list([Base, "__part_", Suffix], TrialName),
 	( predicate_table_search_name(PredTable, TrialName, _) ->
-		dnf__get_new_pred_name(PredTable, Base, Name, Counter1, Counter)
+		dnf__get_new_pred_name(PredTable, Base, Name, Num, !Counter)
 	;
 		Name = TrialName,
-		Counter = Counter1
+		Num = N
 	).
 
-:- pred dnf__define_new_pred(hlds_goal::in, hlds_goal::out, instmap::in,
-	string::in, dnf_info::in, module_info::in, module_info::out,
-	pred_id::out) is det.
+:- pred dnf__define_new_pred(pred_origin::in, hlds_goal::in, hlds_goal::out,
+	instmap::in, string::in, dnf_info::in,
+	module_info::in, module_info::out, pred_id::out) is det.
 
-dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
-		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext,
-			VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
+dnf__define_new_pred(Origin, Goal0, Goal, InstMap0, PredName, DnfInfo,
+		!ModuleInfo, PredId) :-
+	DnfInfo = dnf_info(_, _, _, TVarSet, VarTypes, ClassContext, VarSet,
+		InstVarSet, Markers, TVarMap, TCVarMap, Owner),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
 		% This ClassContext is a conservative approximation.
 		% We could get rid of some constraints on variables
 		% that are not part of the goal.
-	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, _, InstMap0, PredName,
-		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+	hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars, _, InstMap0,
+		PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
 		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
-		ModuleInfo0, ModuleInfo, PredProcId),
+		!ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
 %-----------------------------------------------------------------------------%

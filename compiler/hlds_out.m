@@ -353,11 +353,11 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
+	pred_info_get_origin(PredInfo, Origin),
 	(
-		MaybeSpecial = yes(SpecialId - TypeCtor)
+		Origin = special_pred(SpecialId - TypeCtor)
 	->
 		special_pred_description(SpecialId, Descr),
 		io__write_string(Descr, !IO),
@@ -997,9 +997,9 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			true
 		),
 
-		pred_info_get_maybe_instance_method_constraints(PredInfo,
-			MaybeCs),
-		( MaybeCs = yes(MethodConstraints) ->
+		pred_info_get_origin(PredInfo, Origin),
+		(
+			Origin = instance_method(MethodConstraints),
 			MethodConstraints = instance_method_constraints(
 				ClassId, InstanceTypes, InstanceConstraints,
 				ClassMethodConstraints),
@@ -1028,9 +1028,28 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 				mercury_output_constraint(TVarSet,
 					AppendVarNums), !IO),
 			io__nl(!IO)
-
 		;
-			true
+			Origin = special_pred(_),
+			io__write_string("% special pred\n", !IO)
+		;
+			Origin = transformed(Transformation, _, OrigPredId),
+			io__write_string("% transformed from ", !IO),
+			write_pred_id(ModuleInfo, OrigPredId, !IO),
+			io__write_string(": ", !IO),
+			io__write(Transformation, !IO),
+			io__nl(!IO)
+		;
+			Origin = created(Creation),
+			io__write_string("% created: ", !IO),
+			io__write(Creation, !IO),
+			io__nl(!IO)
+		;
+			Origin = assertion(_, _),
+			io__write_string("% assertion\n", !IO)
+		;
+			Origin = lambda(_, _)
+		;
+			Origin = user(_)
 		)
 	;
 		true

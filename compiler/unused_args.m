@@ -330,7 +330,7 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
 		PredModule = pred_info_module(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 		PredName = pred_info_name(PredInfo),
-		PredArity = pred_info_arity(PredInfo),
+		PredArity = pred_info_orig_arity(PredInfo),
 		FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
 			PredName, PredArity, ProcId),
 		module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
@@ -861,7 +861,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 			Intermod = yes,
 			module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
 			PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
-			PredArity = pred_info_arity(OrigPredInfo),
+			PredArity = pred_info_orig_arity(OrigPredInfo),
 			ModuleId = module_name_to_module_id(PredModule),
 			FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
 				PredName, PredArity, ProcId),
@@ -995,13 +995,13 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 :- pred make_new_pred_info(module_info::in, list(int)::in, import_status::in,
 	pred_proc_id::in, pred_info::in, pred_info::out) is det.
 
-make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(_PredId, ProcId),
+make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
 		!PredInfo) :-
 	PredModule = pred_info_module(!.PredInfo),
 	Name0 = pred_info_name(!.PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
 	pred_info_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
-	pred_info_get_maybe_special_pred(!.PredInfo, MaybeSpecial),
+	pred_info_get_origin(!.PredInfo, OrigOrigin),
 		% create a unique new pred name using the old proc_id
 	(
 		string__prefix(Name0, "__"),
@@ -1009,7 +1009,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(_PredId, ProcId),
 	->
 		(
 				% fix up special pred names
-			MaybeSpecial = yes(_SpecialId - TypeCtor)
+			OrigOrigin = special_pred(_SpecialId - TypeCtor)
 		->
 			type_util__type_ctor_module(ModuleInfo,
 				TypeCtor, TypeModule),
@@ -1044,7 +1044,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(_PredId, ProcId),
 	% link errors.
 	proc_id_to_int(ProcId, ProcInt),
 	add_sym_name_suffix(Name2, "_" ++ int_to_string(ProcInt), Name),
-	Arity = pred_info_arity(!.PredInfo),
+	Arity = pred_info_orig_arity(!.PredInfo),
 	pred_info_typevarset(!.PredInfo, TypeVars),
 	remove_listof_elements(ArgTypes0, 1, UnusedArgs, ArgTypes),
 	pred_info_context(!.PredInfo, Context),
@@ -1054,7 +1054,9 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(_PredId, ProcId),
 	pred_info_get_class_context(!.PredInfo, ClassContext),
 	pred_info_get_aditi_owner(!.PredInfo, Owner),
 	map__init(EmptyProofs),
-	pred_info_init(PredModule, Name, Arity, PredOrFunc, Context,
+	Origin = transformed(unused_argument_elimination(UnusedArgs),
+		OrigOrigin, PredId),
+	pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
 		ClassContext, EmptyProofs, Owner, ClausesInfo, !:PredInfo),
 	pred_info_set_typevarset(TypeVars, !PredInfo).
@@ -1578,7 +1580,7 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
 	->
 		Module = pred_info_module(PredInfo),
 		Name = pred_info_name(PredInfo),
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 		io__set_output_stream(OptStream, OldOutput, !IO),
 		proc_id_to_int(ProcId, ModeNum),
@@ -1608,7 +1610,7 @@ maybe_warn_unused_args(yes, _ModuleInfo, PredInfo, PredId, ProcId,
 
 		% Strip off the extra type_info arguments
 		% inserted at the front by polymorphism.m
-		NumToDrop = NumHeadVars - pred_info_arity(PredInfo),
+		NumToDrop = NumHeadVars - pred_info_orig_arity(PredInfo),
 		adjust_unused_args(NumToDrop, UnusedArgs0, UnusedArgs),
 		(
 			UnusedArgs = [_ | _],
@@ -1630,7 +1632,7 @@ report_unused_args(PredInfo, UnusedArgs) -->
 	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ Module = pred_info_module(PredInfo) },
 	{ Name = pred_info_name(PredInfo) },
-	{ Arity = pred_info_arity(PredInfo) },
+	{ Arity = pred_info_orig_arity(PredInfo) },
 	prog_out__write_context(Context),
 	io__write_string("In "),
 	write_pred_or_func(PredOrFunc),

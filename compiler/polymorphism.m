@@ -425,7 +425,7 @@ polymorphism__maybe_process_pred(PredId, !ModuleInfo, !IO) :-
 		;
 			PredModule = pred_info_module(PredInfo),
 			PredName = pred_info_name(PredInfo),
-			PredArity = pred_info_arity(PredInfo),
+			PredArity = pred_info_orig_arity(PredInfo),
 			no_type_info_builtin(PredModule, PredName, PredArity)
 		)
 	->
@@ -696,10 +696,14 @@ polymorphism__process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
 polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 		HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
 		ExistHeadTypeClassInfoVars, !Info) :-
-	pred_info_get_maybe_instance_method_constraints(PredInfo,
-		MaybeInstanceMethodConstraints),
-	(
-		MaybeInstanceMethodConstraints = no,
+	pred_info_get_origin(PredInfo, Origin),
+	( Origin = instance_method(InstanceMethodConstraints) ->
+		polymorphism__setup_headvars_instance_method(PredInfo,
+			InstanceMethodConstraints, HeadVars0, HeadVars,
+			ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
+			ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
+			!Info)
+	;
 		pred_info_get_class_context(PredInfo, ClassContext),
 		ExtraHeadVars0 = [],
 		ExtraArgModes0 = [],
@@ -709,14 +713,6 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 			ExtraHeadVars0, ExtraArgModes0,
 			InstanceUnconstrainedTVars,
 			InstanceUnconstrainedTypeInfoVars, HeadVars0, HeadVars,
-			ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
-			ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
-			!Info)
-	;
-		MaybeInstanceMethodConstraints =
-			yes(InstanceMethodConstraints),
-		polymorphism__setup_headvars_instance_method(PredInfo,
-			InstanceMethodConstraints, HeadVars0, HeadVars,
 			ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
 			ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
 			!Info)
@@ -1032,7 +1028,7 @@ polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
 		Goal = Goal0 - GoalInfo0
@@ -1789,7 +1785,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	(
 		(
 			% Optimize for the common case of non-polymorphic call

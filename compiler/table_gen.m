@@ -1542,7 +1542,8 @@ table_gen__do_own_stack_transform(Detism, OrigGoal, PredId, ProcId,
 	( map__search(!.GenMap, PredId, GeneratorPredIdPrime) ->
 		GeneratorPredId = GeneratorPredIdPrime
 	;
-		clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo),
+		clone_pred_info(PredId, PredInfo0, GeneratorPredId,
+			!TableInfo),
 		map__det_insert(!.GenMap, PredId, GeneratorPredId, !:GenMap)
 	),
 
@@ -1709,16 +1710,16 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
 	module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo),
 	!:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
 
-:- pred clone_pred_info(pred_info::in, pred_id::out,
+:- pred clone_pred_info(pred_id::in, pred_info::in, pred_id::out,
 	table_info::in, table_info::out) is det.
 
-clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo) :-
+clone_pred_info(OrigPredId, PredInfo0, GeneratorPredId, !TableInfo) :-
 	% We don't have any procedures for the generator yet. We will copy
 	% the consumers' procedures later, one by one, as they are transformed.
 
 	ModuleName = pred_info_module(PredInfo0),
 	PredName0 = pred_info_name(PredInfo0),
-	Arity0 = pred_info_arity(PredInfo0),
+	Arity0 = pred_info_orig_arity(PredInfo0),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
 	pred_info_context(PredInfo0, Context),
 	% The generator is local even if the original predicate is exported.
@@ -1731,6 +1732,7 @@ clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo) :-
 	pred_info_get_class_context(PredInfo0, ClassContext),
 	pred_info_get_constraint_proofs(PredInfo0, ClassProofs),
 	pred_info_get_aditi_owner(PredInfo0, Owner),
+	pred_info_get_origin(PredInfo0, OrigOrigin),
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
 
 	PredName = qualified(ModuleName, "GeneratorFor_" ++ PredName0),
@@ -1742,9 +1744,11 @@ clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo) :-
 	list__filter(filter_marker, MarkerList0, MarkerList),
 	marker_list_to_markers(MarkerList, Markers),
 
+	Origin = transformed(table_generator, OrigOrigin, OrigPredId),
 	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-		Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-		ClassContext, ClassProofs, Owner, ClausesInfo, PredInfo),
+		Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
+		ExistQVars, ClassContext, ClassProofs, Owner, ClausesInfo,
+		PredInfo),
 
 	ModuleInfo0 = !.TableInfo ^ table_module_info,
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -2866,7 +2870,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 	prog_out__sym_name_to_string(qualified(Module, Name), NameStr),

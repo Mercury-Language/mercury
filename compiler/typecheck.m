@@ -555,8 +555,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 			Inferring = no,
 			pred_info_set_head_type_params(HeadTypeParams2,
 				!PredInfo),
-			pred_info_get_maybe_instance_method_constraints(
-				!.PredInfo, MaybeInstanceMethodConstraints0),
+			pred_info_get_origin(!.PredInfo, Origin0),
 
 			%
 			% leave the original argtypes etc., but
@@ -575,8 +574,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 				ExistQVars1 = [],
 				ArgTypes1 = ArgTypes0,
 				PredConstraints1 = PredConstraints,
-				MaybeInstanceMethodConstraints1 =
-					MaybeInstanceMethodConstraints0
+				Origin1 = Origin0
 			;
 				apply_var_renaming_to_var_list(ExistQVars0,
 					ExistTypeRenaming, ExistQVars1),
@@ -587,9 +585,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 					ExistTypeRenaming,
 					PredConstraints, PredConstraints1),
 				rename_instance_method_constraints(
-					ExistTypeRenaming,
-					MaybeInstanceMethodConstraints0,
-					MaybeInstanceMethodConstraints1)
+					ExistTypeRenaming, Origin0, Origin1)
 			),
 
 			% rename them all to match the new typevarset
@@ -600,16 +596,14 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 			apply_variable_renaming_to_constraints(TVarRenaming,
 				PredConstraints1, RenamedOldConstraints),
 			rename_instance_method_constraints(TVarRenaming,
-				MaybeInstanceMethodConstraints1,
-				MaybeInstanceMethodConstraints),
+				Origin1, Origin),
 
 			% save the results in the pred_info
 			pred_info_set_arg_types(TypeVarSet, ExistQVars,
 				RenamedOldArgTypes, !PredInfo),
 			pred_info_set_class_context(RenamedOldConstraints,
 				!PredInfo),
-			pred_info_set_maybe_instance_method_constraints(
-				MaybeInstanceMethodConstraints, !PredInfo),
+			pred_info_set_origin(Origin, !PredInfo),
 
 			Changed = no
 		),
@@ -666,24 +660,27 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	StubClause = clause([], Body, mercury, Context).
 
 :- pred rename_instance_method_constraints(map(tvar, tvar)::in,
-	maybe(instance_method_constraints)::in,
-	maybe(instance_method_constraints)::out) is det.
+	pred_origin::in,
+	pred_origin::out) is det.
 
-rename_instance_method_constraints(_, no, no).
-rename_instance_method_constraints(Renaming,
-		yes(Constraints0), yes(Constraints)) :-
-	Constraints0 = instance_method_constraints(ClassId,
-		InstanceTypes0, InstanceConstraints0,
-		ClassMethodClassContext0),
-	term__apply_variable_renaming_to_list(InstanceTypes0,
-		Renaming, InstanceTypes),
-	apply_variable_renaming_to_constraint_list(Renaming,
-		InstanceConstraints0, InstanceConstraints),
-	apply_variable_renaming_to_constraints(Renaming,
-		ClassMethodClassContext0, ClassMethodClassContext),
-	Constraints = instance_method_constraints(ClassId,
-		InstanceTypes, InstanceConstraints,
-		ClassMethodClassContext).
+rename_instance_method_constraints(Renaming, Origin0, Origin) :-
+	( Origin0 = instance_method(Constraints0) ->
+		Constraints0 = instance_method_constraints(ClassId,
+			InstanceTypes0, InstanceConstraints0,
+			ClassMethodClassContext0),
+		term__apply_variable_renaming_to_list(InstanceTypes0,
+			Renaming, InstanceTypes),
+		apply_variable_renaming_to_constraint_list(Renaming,
+			InstanceConstraints0, InstanceConstraints),
+		apply_variable_renaming_to_constraints(Renaming,
+			ClassMethodClassContext0, ClassMethodClassContext),
+		Constraints = instance_method_constraints(ClassId,
+			InstanceTypes, InstanceConstraints,
+			ClassMethodClassContext),
+		Origin = instance_method(Constraints)
+	;
+		Origin = Origin0
+	).
 
 	%
 	% infer which of the head variable
@@ -839,8 +836,8 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	% check if the predicate is a compiler-generated special
 	% predicate, and if so, for which type
 	%
-	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
-	MaybeSpecial = yes(_SpecialId - TypeCtor),
+	pred_info_get_origin(PredInfo, Origin),
+	Origin = special_pred(_SpecialId - TypeCtor),
 	%
 	% check that the special pred isn't one of the builtin
 	% types which don't have a hlds_type_defn
@@ -882,7 +879,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 		pred_info_context(!.PredInfo, Context),
 		FuncModule = pred_info_module(!.PredInfo),
 		FuncName = pred_info_name(!.PredInfo),
-		PredArity = pred_info_arity(!.PredInfo),
+		PredArity = pred_info_orig_arity(!.PredInfo),
 		adjust_func_arity(function, FuncArity, PredArity),
 		FuncSymName = qualified(FuncModule, FuncName),
 		create_atomic_unification(FuncRetVal,
@@ -1765,7 +1762,7 @@ report_pred_call_error(PredCallId, !Info, !IO) :-
 typecheck_find_arities(_, [], []).
 typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 	map__lookup(Preds, PredId, PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	typecheck_find_arities(Preds, PredIds, Arities).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id)::in, list(prog_var)::in,
@@ -2952,7 +2949,7 @@ make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
 
 make_pred_cons_info(_Info, PredId, PredTable, FuncArity, _, !ConsInfos) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	PredArity = pred_info_arity(PredInfo),
+	PredArity = pred_info_orig_arity(PredInfo),
 	IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,

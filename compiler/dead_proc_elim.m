@@ -792,7 +792,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	(
 		PredModule = pred_info_module(PredInfo),
 		PredName = pred_info_name(PredInfo),
-		PredArity = pred_info_arity(PredInfo),
+		PredArity = pred_info_orig_arity(PredInfo),
 		(
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after

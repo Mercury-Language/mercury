@@ -2576,7 +2576,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
 		(
 			PredModule = pred_info_module(PredInfo),
 			PredName = pred_info_name(PredInfo),
-			PredArity = pred_info_arity(PredInfo),
+			PredArity = pred_info_orig_arity(PredInfo),
 			no_type_info_builtin(PredModule, PredName, PredArity)
 		->
 				% These predicates should never be traced,

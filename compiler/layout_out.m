@@ -96,8 +96,9 @@
 :- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__mercury_to_mercury.
 
-:- import_module int, char, string, require, std_util, list.
+:- import_module int, char, string, require, std_util, list, varset.
 
 output_layout_data_defn(label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
 		MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
@@ -683,7 +684,8 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
 
 		output_proc_layout_data_defn_start(RttiProcLabel, Kind,
 			Traversal, !IO),
-		output_layout_proc_id_group(ProcLabel, !IO),
+		Origin = RttiProcLabel ^ pred_info_origin,
+		output_layout_proc_id_group(ProcLabel, Origin, !IO),
 		(
 			MaybeExecTrace = no,
 			io__write_string("NULL,\n", !IO)
@@ -793,11 +795,12 @@ detism_to_c_detism(failure) =	  "MR_DETISM_FAILURE".
 detism_to_c_detism(cc_nondet) =	  "MR_DETISM_CCNON".
 detism_to_c_detism(cc_multidet) = "MR_DETISM_CCMULTI".
 
-:- pred output_layout_proc_id_group(proc_label::in, io::di, io::uo) is det.
+:- pred output_layout_proc_id_group(proc_label::in, pred_origin::in,
+	io::di, io::uo) is det.
 
-output_layout_proc_id_group(ProcLabel, !IO) :-
+output_layout_proc_id_group(ProcLabel, Origin, !IO) :-
 	io__write_string("{\n", !IO),
-	output_proc_id(ProcLabel, !IO),
+	output_proc_id(ProcLabel, Origin, !IO),
 	io__write_string("},\n", !IO).
 
 :- pred output_layout_no_proc_id_group(io::di, io::uo) is det.
@@ -1005,7 +1008,7 @@ output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
 	LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
 	output_layout_name_storage_type_name(LayoutName, yes, !IO),
 	io__write_string(" = {\n{\n", !IO),
-	output_proc_id(ClosureProcLabel, !IO),
+	output_proc_id(ClosureProcLabel, lambda(FileName, LineNumber), !IO),
 	io__write_string("},\n", !IO),
 	prog_out__sym_name_to_string(ModuleName, ModuleNameStr),
 	quote_and_write_string(ModuleNameStr, !IO),
@@ -1018,12 +1021,13 @@ output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
 	io__write_string("\n};\n", !IO),
 	decl_set_insert(data_addr(layout_addr(LayoutName)), !DeclSet).
 
-:- pred output_proc_id(proc_label::in, io::di, io::uo) is det.
+:- pred output_proc_id(proc_label::in, pred_origin::in, io::di, io::uo) is det.
 
-output_proc_id(ProcLabel, !IO) :-
+output_proc_id(ProcLabel, Origin, !IO) :-
 	(
 		ProcLabel = proc(DefiningModule, PredOrFunc, DeclaringModule,
-			Name, Arity, Mode),
+			PredName0, Arity, Mode),
+		PredName = origin_name(Origin, PredName0),
 		prog_out__sym_name_to_string(DefiningModule,
 			DefiningModuleStr),
 		prog_out__sym_name_to_string(DeclaringModule,
@@ -1034,7 +1038,7 @@ output_proc_id(ProcLabel, !IO) :-
 		io__write_string(",\n", !IO),
 		quote_and_write_string(DefiningModuleStr, !IO),
 		io__write_string(",\n", !IO),
-		quote_and_write_string(Name, !IO),
+		quote_and_write_string(PredName, !IO),
 		io__write_string(",\n", !IO),
 		io__write_int(Arity, !IO),
 		io__write_string(",\n", !IO),
@@ -1043,6 +1047,9 @@ output_proc_id(ProcLabel, !IO) :-
 	;
 		ProcLabel = special_proc(DefiningModule, SpecialPredId,
 			TypeModule, TypeName, TypeArity, Mode),
+		TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+		PredName0 = special_pred_name(SpecialPredId, TypeCtor),
+		PredName = origin_name(Origin, PredName0),
 		prog_out__sym_name_to_string(DefiningModule,
 			DefiningModuleStr),
 		prog_out__sym_name_to_string(TypeModule, TypeModuleStr),
@@ -1052,8 +1059,6 @@ output_proc_id(ProcLabel, !IO) :-
 		io__write_string(",\n", !IO),
 		quote_and_write_string(DefiningModuleStr, !IO),
 		io__write_string(",\n", !IO),
-		TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
-		PredName = special_pred_name(SpecialPredId, TypeCtor),
 		quote_and_write_string(PredName, !IO),
 		io__write_string(",\n", !IO),
 		io__write_int(TypeArity, !IO),
@@ -1061,6 +1066,93 @@ output_proc_id(ProcLabel, !IO) :-
 		io__write_int(Mode, !IO),
 		io__write_string("\n", !IO)
 	).
+
+:- func origin_name(pred_origin, string) = string.
+
+origin_name(Origin, Name0) = Name :-
+	(
+		Origin = lambda(FileName0, LineNum),
+		( string__append("IntroducedFrom", _, Name0) ->
+			( string__remove_suffix(FileName0, ".m", FileName1) ->
+				FileName2 = FileName1
+			;
+				FileName2 = FileName0
+			),
+			string__replace_all(FileName2, ".", "_", FileName),
+			string__format("lambda_%s_%d",
+				[s(FileName), i(LineNum)], Name)
+		;
+			% If the lambda pred has a meaningful name, use it.
+			% This happens when the lambda is a partial application
+			% that happens to supply zero arguments.
+			Name = Name0
+		)
+	;
+		Origin = special_pred(_SpecialPredId - _TypeCtor),
+		Name = Name0
+		% We can't use the following code until we have adapted the
+		% code in the runtime and trace directories to handle the names
+		% of special preds the same way as we do user-defined names.
+% 		(
+% 			SpecialPredId = unify,
+% 			SpecialName = "unify"
+% 		;
+% 			SpecialPredId = compare,
+% 			SpecialName = "compare"
+% 		;
+% 			SpecialPredId = index,
+% 			SpecialName = "index"
+% 		;
+% 			SpecialPredId = initialise,
+% 			SpecialName = "init"
+% 		),
+% 		TypeCtor = TypeSymName - TypeArity,
+% 		TypeName = sym_name_to_string(TypeSymName),
+% 		string__format("%s_for_%s_%d",
+% 			[s(SpecialName), s(TypeName), i(TypeArity)], Name)
+	;
+		Origin = transformed(Transform, OldOrigin, _),
+		OldName = origin_name(OldOrigin, ""),
+		( OldName = "" ->
+			Name = Name0
+		;
+			Name = OldName ++ "_" ++ pred_transform_name(Transform)
+		)
+	;
+		Origin = instance_method(_),
+		Name = Name0
+	;
+		Origin = created(_),
+		Name = Name0
+	;
+		Origin = assertion(_, _),
+		Name = Name0
+	;
+		Origin = user(_),
+		Name = Name0
+	).
+
+:- func pred_transform_name(pred_transformation) = string.
+
+pred_transform_name(higher_order_specialization(Seq)) =
+	"ho" ++ int_to_string(Seq).
+pred_transform_name(higher_order_type_specialization(Proc)) =
+	"hoproc" ++ int_to_string(Proc).
+pred_transform_name(type_specialization(Substs)) =
+	string__join_list("_", list__map(subst_to_name, Substs)).
+pred_transform_name(unused_argument_elimination(Posns)) = "ua_" ++
+	string__join_list("_", list__map(int_to_string, Posns)).
+pred_transform_name(accumulator(Posns)) = "acc_" ++
+	string__join_list("_", list__map(int_to_string, Posns)).
+pred_transform_name(loop_invariant(Proc)) = "inv_" ++ int_to_string(Proc).
+pred_transform_name(table_generator) = "table_gen".
+pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
+
+:- func subst_to_name(pair(int, type)) = string.
+
+subst_to_name(TVar - Type) =
+	string__format("%d/%s",
+		[i(TVar), s(mercury_term_to_string(Type, varset__init, no))]).
 
 %-----------------------------------------------------------------------------%
 

@@ -326,7 +326,7 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	(
 		pred_info_name(PredInfo) = "main",
-		pred_info_arity(PredInfo) = 2,
+		pred_info_orig_arity(PredInfo) = 2,
 		pred_info_is_exported(PredInfo),
 		MaybeDetism = yes(DeclaredDetism),
 		DeclaredDetism \= det,
@@ -871,7 +871,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredName = pred_info_name(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
+	pred_info_get_origin(PredInfo, Origin),
 	%
 	% if the error was in a call to a type-specific unification predicate
 	% (i.e. in the unification itself), then don't print out the predicate
@@ -879,7 +879,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
 	% both out. (The latter can happen if there is a determinism error
 	% in a function call inside some unification.)
 	%
-	( MaybeSpecial = yes(unify - _) ->
+	( Origin = special_pred(unify - _) ->
 		(
 			CallUnifyContext = yes(
 				call_unify_context(LHS, RHS, UC)),

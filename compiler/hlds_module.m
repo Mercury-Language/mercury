@@ -1432,7 +1432,7 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 	map__det_remove(AccessibilityTable0, PredId, _, AccessibilityTable),
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	(
 		IsPredOrFunc = predicate,
@@ -1849,7 +1849,7 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
 		Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo),
+	Arity = pred_info_orig_arity(PredInfo),
 	(
 		MaybePredId = yes(PredId),
 		NextPredId = NextPredId0
@@ -2016,7 +2016,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 	;
 		Name = pred_info_name(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 		PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 		string__int_to_string(Arity, ArityString),
 		( ProcIds = [] ->
@@ -2112,7 +2112,7 @@ predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
 	map__lookup(Preds, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
-	Arity = pred_info_arity(PredInfo).
+	Arity = pred_info_orig_arity(PredInfo).
 
 predicate_module(ModuleInfo, PredId, ModuleName) :-
 	module_info_preds(ModuleInfo, Preds),
@@ -2127,6 +2127,6 @@ predicate_name(ModuleInfo, PredId, PredName) :-
 predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	Arity = pred_info_arity(PredInfo).
+	Arity = pred_info_orig_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%

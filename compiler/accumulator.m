@@ -373,7 +373,7 @@ attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
 	identify_recursive_calls(PredId, ProcId, C, RecCallIds),
 	M = list__length(Rec),
 	attempt_transform_2(RecCallIds, C, M, Rec, HeadVars, InitialInstMap,
-		TopLevel, DoLCO, FullyStrict, PredInfo,
+		TopLevel, DoLCO, FullyStrict, PredId, PredInfo,
 		!ProcInfo, !ModuleInfo, Warnings).
 
 	%
@@ -390,11 +390,12 @@ attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
 	%
 :- pred attempt_transform_2(list(goal_id)::in, goal_store::in, int::in,
 	hlds_goals::in, prog_vars::in, instmap::in, top_level::in,
-	bool::in, bool::in, pred_info::in, proc_info::in, proc_info::out,
-	module_info::in, module_info::out, warnings::out) is semidet.
+	bool::in, bool::in, pred_id::in, pred_info::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out,
+	warnings::out) is semidet.
 
 attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
-		DoLCO, FullyStrict, PredInfo, !ProcInfo, !ModuleInfo,
+		DoLCO, FullyStrict, PredId, PredInfo, !ProcInfo, !ModuleInfo,
 		Warnings) :-
 	(
 		proc_info_vartypes(!.ProcInfo, VarTypes0),
@@ -406,17 +407,16 @@ attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
 		stage2(Id, C, Sets, OutPrime, Out, !.ModuleInfo, !.ProcInfo,
 			VarSet, VarTypes, Accs, BaseCase, BasePairs,
 			Substs, CS, Warnings0),
-
 		stage3(Id, Accs, VarSet, VarTypes, C, CS, Substs,
 			HeadToCallSubst, CallToHeadSubst,
-			BaseCase, BasePairs, Sets, TopLevel, PredInfo,
-			!ProcInfo, !ModuleInfo)
+			BaseCase, BasePairs, Sets, Out, TopLevel,
+			PredId, PredInfo, !ProcInfo, !ModuleInfo)
 	->
 		Warnings = Warnings0
 	;
 		attempt_transform_2(Ids, C, M, Rec, HeadVars, InitialInstMap,
 			TopLevel, DoLCO, FullyStrict,
-			PredInfo, !ProcInfo, !ModuleInfo, Warnings)
+			PredId, PredInfo, !ProcInfo, !ModuleInfo, Warnings)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1137,7 +1137,7 @@ is_associative_construction(ConsId, PredId, ModuleInfo) :-
 
 stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
 		!:VarSet, !:VarTypes, Accs, BaseCase, BasePairs,
-		Substs, CS, Warnings) :-
+		!:Substs, CS, Warnings) :-
 	Sets = sets(Before0, Assoc, ConstructAssoc, Construct, Update, _),
 	Before = Before0 `union` set_upto(N, K-1),
 
@@ -1162,15 +1162,14 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
 	proc_info_vartypes(ProcInfo0, !:VarTypes),
 
 	substs_init(set__to_sorted_list(InitAccs), !VarSet, !VarTypes,
-		Substs0),
+		!:Substs),
 
-	process_assoc_set(set__to_sorted_list(Assoc), GoalStore,
-		set__list_to_set(OutPrime), ModuleInfo, Substs0, Substs1,
-		!VarSet, !VarTypes, CS, Warnings),
+	set__list_to_set(OutPrime, OutPrimeSet),
+	process_assoc_set(set__to_sorted_list(Assoc), GoalStore, OutPrimeSet,
+		ModuleInfo, !Substs, !VarSet, !VarTypes, CS, Warnings),
 
-	process_update_set(set__to_sorted_list(Update), GoalStore,
-		set__list_to_set(OutPrime), ModuleInfo,
-		Substs1, Substs, !VarSet, !VarTypes, UpdateOut,
+	process_update_set(set__to_sorted_list(Update), GoalStore, OutPrimeSet,
+		ModuleInfo, !Substs, !VarSet, !VarTypes, UpdateOut,
 		UpdateAccOut, BasePairs),
 
 	Accs = set__to_sorted_list(InitAccs) `append` UpdateAccOut,
@@ -1280,7 +1279,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		ModuleName = pred_info_module(PredInfo),
 		PredName = pred_info_name(PredInfo),
-		Arity = pred_info_arity(PredInfo),
+		Arity = pred_info_orig_arity(PredInfo),
 		(
 			has_heuristic(ModuleName, PredName, Arity)
 		->
@@ -1488,17 +1487,19 @@ lookup_call(GoalStore, Id, Call - InstMap) :-
 :- pred stage3(goal_id::in, prog_vars::in, prog_varset::in, vartypes::in,
 	goal_store::in, goal_store::in, substs::in, subst::in,
 	subst::in, base::in, list(pair(prog_var))::in, sets::in,
-	top_level::in, pred_info::in, proc_info::in, proc_info::out,
-	module_info::in, module_info::out) is det.
+	prog_vars::in, top_level::in, pred_id::in, pred_info::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out)
+	is det.
 
 stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 		HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs,
-		Sets, TopLevel, OrigPredInfo, !OrigProcInfo, !ModuleInfo) :-
+		Sets, Out, TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo,
+		!ModuleInfo) :-
 
 	acc_proc_info(Accs, VarSet, VarTypes, Substs, !.OrigProcInfo,
 		AccTypes, AccProcInfo),
-	acc_pred_info(AccTypes, AccProcInfo, OrigPredInfo, AccProcId,
-		AccPredInfo),
+	acc_pred_info(AccTypes, Out, AccProcInfo, OrigPredId, OrigPredInfo,
+		AccProcId, AccPredInfo),
 	AccName = unqualified(pred_info_name(AccPredInfo)),
 
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1578,21 +1579,23 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 	%
 	% Construct the pred_info for the introduced predicate
 	%
-:- pred acc_pred_info(list(type)::in, proc_info::in, pred_info::in,
-		proc_id::out, pred_info::out) is det.
+:- pred acc_pred_info(list(type)::in, prog_vars::in, proc_info::in,
+	pred_id::in, pred_info::in, proc_id::out, pred_info::out) is det.
 
-acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
+acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
+		NewProcId, NewPredInfo) :-
 
 		% PredInfo stuff that must change.
-	pred_info_arg_types(PredInfo, TypeVarSet, ExistQVars, Types0),
+	pred_info_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
 
-	ModuleName = pred_info_module(PredInfo),
-	Name = pred_info_name(PredInfo),
-	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	pred_info_context(PredInfo, PredContext),
-	pred_info_get_markers(PredInfo, Markers),
-	pred_info_get_class_context(PredInfo, ClassContext),
-	pred_info_get_aditi_owner(PredInfo, Owner),
+	ModuleName = pred_info_module(OrigPredInfo),
+	Name = pred_info_name(OrigPredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
+	pred_info_context(OrigPredInfo, PredContext),
+	pred_info_get_markers(OrigPredInfo, Markers),
+	pred_info_get_class_context(OrigPredInfo, ClassContext),
+	pred_info_get_aditi_owner(OrigPredInfo, Owner),
+	pred_info_get_origin(OrigPredInfo, OldOrigin),
 
 	set__init(Assertions),
 
@@ -1605,7 +1608,9 @@ acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
 	make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
 		Line, Counter, SymName),
 
-	pred_info_create(ModuleName, SymName, PredOrFunc, PredContext,
+	OutVarNums = list__map(term__var_to_int, OutVars),
+	Origin = transformed(accumulator(OutVarNums), OldOrigin, OrigPredId),
+	pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
 		local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
 		Assertions, Owner, NewProcInfo, NewProcId, NewPredInfo).
 

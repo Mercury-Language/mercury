@@ -1016,7 +1016,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo) -->
 	{ PredName = pred_info_name(PredInfo) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ PredArity = pred_info_arity(PredInfo) },
+	{ PredArity = pred_info_orig_arity(PredInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
 	% We need to strip off the extra type_info arguments inserted at the

@@ -735,7 +735,7 @@ assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
 	( is_defined_in_implementation_section(ImportStatus) = yes ->
 		goal_info_get_context(GoalInfo, Context),
 		PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
-		Arity = pred_info_arity(CallPredInfo),
+		Arity = pred_info_orig_arity(CallPredInfo),
 		write_assertion_interface_error(Context,
 			call(PredOrFunc, SymName, Arity), !Module, !IO)
 	;
@@ -757,7 +757,7 @@ assertion__in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
 		PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
 		Name = pred_info_name(PragmaPredInfo),
 		SymName = unqualified(Name),
-		Arity = pred_info_arity(PragmaPredInfo),
+		Arity = pred_info_orig_arity(PragmaPredInfo),
 		write_assertion_interface_error(Context,
 			call(PredOrFunc, SymName, Arity), !Module, !IO)
 	;
