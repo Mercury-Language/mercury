@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 :- func dev(stat) = dev_t.
 :- func ino(stat) = ino_t.
 :- func mode(stat) = mode_t.
-:- func file_type(stat) = file_type.
+:- func file_type(stat) = posix__stat__file_type.
 :- func nlink(stat) = nlink_t.
 :- func uid(stat) = uid_t.
 :- func gid(stat) = gid_t.
