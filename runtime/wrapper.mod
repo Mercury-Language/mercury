@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 
 	init_entries();
 
-#if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS) || \
+#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS) || \
 		defined(PROFILE_CALLS)  || defined(PROFILE_TIME)
 	do_init_modules();
 #endif
