@@ -49,6 +49,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -844,13 +845,13 @@ reconstruct_type_info_varmap(FirstOldNewMap, NewTvarMap, Tvar - TypeInfoLocn0,
  	).
 
 :- pred reconstruct_typeclass_info_varmap(map(prog_var, prog_var)::in,
-	map(tvar, tvar)::in, pair(class_constraint, prog_var)::in,
+	map(tvar, tvar)::in, pair(prog_constraint, prog_var)::in,
 	typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
 reconstruct_typeclass_info_varmap(OldNewMap, TvarSub,
 		Constraint0 - TypeClassInfoVar0,
 		TypeClassInfoVarMap0, TypeClassInfoVarMap) :-
-	type_util__apply_variable_renaming_to_constraint(TvarSub,
+	apply_variable_renaming_to_prog_constraint(TvarSub,
 		Constraint0, Constraint),
 	( map__search(OldNewMap, TypeClassInfoVar0, TypeClassInfoVar1) ->
 		TypeClassInfoVar = TypeClassInfoVar1

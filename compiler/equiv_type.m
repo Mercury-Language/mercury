@@ -58,15 +58,14 @@
 	list(type)::in, list(type)::out, bool::out, tvarset::in, tvarset::out,
 	equiv_type_info::in, equiv_type_info::out) is det.
 
-:- pred equiv_type__replace_in_class_constraints(eqv_map::in,
-	class_constraints::in, class_constraints::out,
+:- pred equiv_type__replace_in_prog_constraints(eqv_map::in,
+	prog_constraints::in, prog_constraints::out,
 	tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
 	is det.
 
-:- pred equiv_type__replace_in_class_constraint(eqv_map::in,
-	class_constraint::in, class_constraint::out,
-	tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
-	is det.
+:- pred equiv_type__replace_in_prog_constraint(eqv_map::in,
+	prog_constraint::in, prog_constraint::out, tvarset::in, tvarset::out,
+	equiv_type_info::in, equiv_type_info::out) is det.
 
 :- pred equiv_type__replace_in_ctors(eqv_map::in,
 	list(constructor)::in, list(constructor)::out,
@@ -338,7 +337,7 @@ equiv_type__replace_in_item(ModuleName,
 	list__length(Vars, Arity),
 	equiv_type__maybe_record_expanded_items(ModuleName, ClassName,
 		!.Info, ExpandedItems0),
-	equiv_type__replace_in_class_constraint_list(EqvMap,
+	equiv_type__replace_in_prog_constraint_list(EqvMap,
 		Constraints0, Constraints, VarSet0, VarSet,
 		ExpandedItems0, ExpandedItems1),
 	(
@@ -369,7 +368,7 @@ equiv_type__replace_in_item(ModuleName,
 	;
 		UsedTypeCtors0 = yes(ModuleName - set__init)
 	),
-	equiv_type__replace_in_class_constraint_list(EqvMap,
+	equiv_type__replace_in_prog_constraint_list(EqvMap,
 		Constraints0, Constraints, VarSet0, VarSet1,
 		UsedTypeCtors0, UsedTypeCtors1),
 	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, _, _,
@@ -428,24 +427,24 @@ equiv_type__replace_in_type_defn(EqvMap, TypeCtor,
 
 %-----------------------------------------------------------------------------%
 
-equiv_type__replace_in_class_constraints(EqvMap, Cs0, Cs, !VarSet, !Info) :-
+equiv_type__replace_in_prog_constraints(EqvMap, Cs0, Cs, !VarSet, !Info) :-
 	Cs0 = constraints(UnivCs0, ExistCs0),
 	Cs = constraints(UnivCs, ExistCs),
-	equiv_type__replace_in_class_constraint_list(EqvMap, UnivCs0, UnivCs,
+	equiv_type__replace_in_prog_constraint_list(EqvMap, UnivCs0, UnivCs,
 		!VarSet, !Info),
-	equiv_type__replace_in_class_constraint_list(EqvMap, ExistCs0, ExistCs,
+	equiv_type__replace_in_prog_constraint_list(EqvMap, ExistCs0, ExistCs,
 		!VarSet, !Info).
 
-:- pred equiv_type__replace_in_class_constraint_list(eqv_map::in,
-	list(class_constraint)::in, list(class_constraint)::out,
+:- pred equiv_type__replace_in_prog_constraint_list(eqv_map::in,
+	list(prog_constraint)::in, list(prog_constraint)::out,
 	tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
 	is det.
 
-equiv_type__replace_in_class_constraint_list(EqvMap, !Cs, !VarSet, !Info) :-
-	list__map_foldl2(equiv_type__replace_in_class_constraint(EqvMap),
+equiv_type__replace_in_prog_constraint_list(EqvMap, !Cs, !VarSet, !Info) :-
+	list__map_foldl2(equiv_type__replace_in_prog_constraint(EqvMap),
 		!Cs, !VarSet, !Info).
 
-equiv_type__replace_in_class_constraint(EqvMap, Constraint0, Constraint,
+equiv_type__replace_in_prog_constraint(EqvMap, Constraint0, Constraint,
 		!VarSet, !Info) :-
 	Constraint0 = constraint(ClassName, Ts0),
 	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts,
@@ -530,7 +529,7 @@ equiv_type__replace_in_ctor(EqvMap,
 		ctor(ExistQVars, Constraints, TName, Targs), !VarSet, !Info) :-
 	equiv_type__replace_in_ctor_arg_list(EqvMap, Targs0, Targs, _,
 		!VarSet, !Info),
-	equiv_type__replace_in_class_constraint_list(EqvMap,
+	equiv_type__replace_in_prog_constraint_list(EqvMap,
 		Constraints0, Constraints, !VarSet, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -716,7 +715,7 @@ equiv_type__replace_in_inst(Inst0, EqvInstMap, ExpandedInstIds,
 
 :- pred equiv_type__replace_in_pred_type(sym_name::in, pred_or_func::in,
 	prog_context::in, eqv_map::in, eqv_inst_map::in,
-	class_constraints::in, class_constraints::out,
+	prog_constraints::in, prog_constraints::out,
 	list(type_and_mode)::in, list(type_and_mode)::out,
 	tvarset::in, tvarset::out,
 	maybe(type)::in, maybe(type)::out, maybe(inst)::in, maybe(inst)::out,
@@ -729,7 +728,7 @@ equiv_type__replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap,
 		TypesAndModes0, TypesAndModes, !TypeVarSet,
 		MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
 		Det0, Det, !Info, Errors) :-
-	equiv_type__replace_in_class_constraints(EqvMap,
+	equiv_type__replace_in_prog_constraints(EqvMap,
 		ClassContext0, ClassContext, !TypeVarSet, !Info),
 	equiv_type__replace_in_tms(EqvMap, TypesAndModes0,
 		TypesAndModes1, !TypeVarSet, !Info),

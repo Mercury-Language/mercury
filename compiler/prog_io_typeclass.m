@@ -32,14 +32,14 @@
 
 	% parse a list of class constraints
 :- pred parse_class_constraints(module_name::in, term::in,
-	maybe1(list(class_constraint))::out) is det.
+	maybe1(list(prog_constraint))::out) is det.
 
 	% parse a list of class and inst constraints
 :- pred parse_class_and_inst_constraints(module_name::in, term::in,
 	maybe_class_and_inst_constraints::out) is det.
 
 :- type maybe_class_and_inst_constraints ==
-	maybe2(list(class_constraint), inst_var_sub).
+	maybe2(list(prog_constraint), inst_var_sub).
 
 :- implementation.
 
@@ -161,7 +161,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 	).
 
 :- pred parse_superclass_constraints(module_name::in, term::in,
-	maybe1(list(class_constraint))::out) is det.
+	maybe1(list(prog_constraint))::out) is det.
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
@@ -286,7 +286,7 @@ parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
 % Parse constraints which can only constrain type variables and ground types.
 
 :- pred parse_simple_class_constraints(module_name::in, term::in, string::in,
-	maybe1(list(class_constraint))::out) is det.
+	maybe1(list(prog_constraint))::out) is det.
 
 parse_simple_class_constraints(ModuleName, ConstraintsTerm, ErrorMessage,
 		Result) :-
@@ -354,7 +354,7 @@ combine_class_and_inst_constraints(ok(inst_constraint(InstVar, Inst)),
 	ok(ClassConstraints, InstConstraints ^ elem(InstVar) := Inst).
 
 :- type class_or_inst_constraint
-	--->	class_constraint(class_constraint)
+	--->	class_constraint(prog_constraint)
 	;	inst_constraint(inst_var, inst).
 
 :- pred parse_class_or_inst_constraint(module_name::in, term::in,
@@ -388,7 +388,7 @@ parse_inst_constraint(Term, InstVar, Inst) :-
 	convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
 :- pred extract_class_constraints(maybe_class_and_inst_constraints::in,
-	maybe1(list(class_constraint))::out) is det.
+	maybe1(list(prog_constraint))::out) is det.
 
 extract_class_constraints(ok(ClassConstraints, _), ok(ClassConstraints)).
 extract_class_constraints(error(String, Term), error(String, Term)).
@@ -455,7 +455,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 	).
 
 :- pred parse_instance_constraints(module_name::in, term::in,
-	maybe1(list(class_constraint))::out) is det.
+	maybe1(list(prog_constraint))::out) is det.
 
 parse_instance_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,

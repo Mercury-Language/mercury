@@ -127,8 +127,8 @@
 	% type variable.
 	%
 :- pred goal_util__extra_nonlocal_typeinfos(map(tvar, type_info_locn)::in,
-	map(class_constraint, prog_var)::in, map(prog_var, type)::in,
-	existq_tvars::in, set(prog_var)::in, set(prog_var)::out) is det.
+	typeclass_info_varmap::in, map(prog_var, type)::in, existq_tvars::in,
+	set(prog_var)::in, set(prog_var)::out) is det.
 
 	% See whether the goal is a branched structure.
 :- pred goal_util__goal_is_branched(hlds_goal_expr::in) is semidet.

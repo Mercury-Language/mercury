@@ -242,25 +242,25 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 	pred_info::in, pred_info::out, bool::in, int::out, io::di, io::uo)
 	is det.
 
-post_typecheck__check_type_bindings(ModuleInfo, PredId, PredInfo0, PredInfo,
-		ReportErrs, NumErrors, !IO) :-
+post_typecheck__check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs,
+		NumErrors, !IO) :-
 	(
 		ReportErrs = yes,
-		pred_info_get_unproven_body_constraints(PredInfo0,
+		pred_info_get_unproven_body_constraints(!.PredInfo,
 			UnprovenConstraints0),
 		UnprovenConstraints0 \= []
 	->
 		list__sort_and_remove_dups(UnprovenConstraints0,
 			UnprovenConstraints),
 		report_unsatisfied_constraints(UnprovenConstraints,
-			PredId, PredInfo0, ModuleInfo, !IO),
+			PredId, !.PredInfo, ModuleInfo, !IO),
 		list__length(UnprovenConstraints, NumErrors)
 	;
 		NumErrors = 0
 	),
 
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	pred_info_get_head_type_params(PredInfo0, HeadTypeParams),
+	pred_info_clauses_info(!.PredInfo, ClausesInfo0),
+	pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
 	clauses_info_varset(ClausesInfo0, VarSet),
 	clauses_info_vartypes(ClausesInfo0, VarTypesMap0),
 	map__to_assoc_list(VarTypesMap0, VarTypesList),
@@ -268,14 +268,14 @@ post_typecheck__check_type_bindings(ModuleInfo, PredId, PredInfo0, PredInfo,
 	check_type_bindings_2(VarTypesList, HeadTypeParams, [], Errs,
 		Set0, Set),
 	( Errs = [] ->
-		PredInfo = PredInfo0
+		true
 	;
 		( ReportErrs = yes ->
 			%
 			% report the warning
 			%
-			report_unresolved_type_warning(Errs, PredId, PredInfo0,
-				ModuleInfo, VarSet, !IO)
+			report_unresolved_type_warning(Errs, PredId,
+				!.PredInfo, ModuleInfo, VarSet, !IO)
 		;
 			true
 		),
@@ -283,13 +283,15 @@ post_typecheck__check_type_bindings(ModuleInfo, PredId, PredInfo0, PredInfo,
 		%
 		% bind all the type variables in `Set' to `void' ...
 		%
-		pred_info_get_constraint_proofs(PredInfo0, Proofs0),
+		pred_info_get_constraint_proofs(!.PredInfo, Proofs0),
+		pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
 		bind_type_vars_to_void(Set, VarTypesMap0, VarTypesMap,
-			Proofs0, Proofs),
+			Proofs0, Proofs, ConstraintMap0, ConstraintMap),
 		clauses_info_set_vartypes(VarTypesMap,
 			ClausesInfo0, ClausesInfo),
-		pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
-		pred_info_set_constraint_proofs(Proofs, PredInfo1, PredInfo)
+		pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+		pred_info_set_constraint_proofs(Proofs, !PredInfo),
+		pred_info_set_constraint_map(ConstraintMap, !PredInfo)
 	).
 
 :- pred check_type_bindings_2(assoc_list(prog_var, (type))::in, list(tvar)::in,
@@ -314,9 +316,11 @@ check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams, !Errs, !Set) :-
 %
 :- pred bind_type_vars_to_void(set(tvar)::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
-	constraint_proof_map::in, constraint_proof_map::out) is det.
+	constraint_proof_map::in, constraint_proof_map::out,
+	constraint_map::in, constraint_map::out) is det.
 
-bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs) :-
+bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs,
+		!ConstraintMap) :-
 	%
 	% first create a pair of corresponding lists (UnboundTypeVars, Voids)
 	% that map the unbound type variables to void
@@ -341,13 +345,14 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs) :-
 		Types0, Types),
 	map__from_corresponding_lists(Vars, Types, !:VarTypesMap),
 
-	apply_subst_to_constraint_proofs(VoidSubst, !Proofs).
+	apply_subst_to_constraint_proofs(VoidSubst, !Proofs),
+	apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
 %
 % report an error: unsatisfied type class constraints
 %
-:- pred report_unsatisfied_constraints(list(class_constraint)::in,
+:- pred report_unsatisfied_constraints(list(prog_constraint)::in,
 	pred_id::in, pred_info::in, module_info::in, io::di, io::uo) is det.
 
 report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo) -->

@@ -110,7 +110,7 @@
 			pf_maybe_detism		:: maybe(determinism),
 			pf_cond			:: condition,
 			pf_purity		:: purity,
-			pf_class_context	:: class_constraints
+			pf_class_context	:: prog_constraints
 		)
 		%	The WithType and WithInst fields hold the `with_type`
 		% 	and `with_inst` annotations, which are syntactic
@@ -144,7 +144,7 @@
 		)
 
 	;	typeclass(
-			tc_constraints		:: list(class_constraint),
+			tc_constraints		:: list(prog_constraint),
 			tc_class_name		:: class_name,
 			tc_class_params		:: list(tvar),
 			tc_class_methods	:: class_interface,
@@ -152,7 +152,7 @@
 		)
 
 	;	instance(
-			ci_deriving_class	:: list(class_constraint),
+			ci_deriving_class	:: list(prog_constraint),
 			ci_class_name		:: class_name,
 			ci_types		:: list(type),
 			ci_method_instances	:: instance_body,
@@ -795,18 +795,18 @@
 	% expected semantics.
 	% (This invariant now applies to all types, but is
 	% especially important here.)
-:- type class_constraint
+:- type prog_constraint
 	--->	constraint(
 			class_name,
 			list(type)
 		).
 
-:- type class_constraints
+:- type prog_constraints
 	--->	constraints(
-			univ_constraints	:: list(class_constraint),
+			univ_constraints	:: list(prog_constraint),
 						% universally quantified
 						% constraints
-			exist_constraints	:: list(class_constraint)
+			exist_constraints	:: list(prog_constraint)
 						% existentially quantified
 						% constraints
 		).
@@ -844,7 +844,7 @@
 			maybe(determinism),	% any determinism declaration
 			condition,		% any attached declaration
 			purity,			% any purity annotation
-			class_constraints,	% the typeclass constraints on
+			prog_constraints,	% the typeclass constraints on
 						% the declaration
 			prog_context		% the declaration's context
 		)
@@ -1246,7 +1246,7 @@
 :- type constructor
 	--->	ctor(
 			cons_exist		:: existq_tvars,
-			cons_constraints	:: list(class_constraint),
+			cons_constraints	:: list(prog_constraint),
 						% existential constraints
 			cons_name		:: sym_name,
 			cons_args		:: list(constructor_arg)
@@ -1318,8 +1318,8 @@
 	% returned by term__context_init). prog_io_util__convert_type
 	% ensures this is the case. There are at least two reasons that this
 	% is required:
-	% - Various parts of the code to handle typeclasses creates maps
-	%   indexed by `class_constraint's, which contain types.
+	% - Various parts of the code to handle typeclasses create maps
+	%   indexed by `prog_constraint's, which contain types.
 	% - Smart recompilation requires that the items which occur in
 	%   interface files can be unified using the builtin unification
 	%   operation.

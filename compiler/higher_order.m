@@ -888,7 +888,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 
 :- pred find_matching_instance_method(list(hlds_instance_defn)::in, int::in,
 	list(type)::in, pred_id::out, proc_id::out,
-	list(class_constraint)::out, list(type)::out,
+	list(prog_constraint)::out, list(type)::out,
 	tvarset::in, tvarset::out) is semidet.
 
 find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
@@ -910,7 +910,7 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
 	).
 
 :- pred instance_matches(list(type)::in, hlds_instance_defn::in,
-	list(class_constraint)::out, list(type)::out,
+	list(prog_constraint)::out, list(type)::out,
 	tvarset::in, tvarset::out) is semidet.
 
 instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
@@ -921,14 +921,14 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0,
 		RenameSubst, InstanceTypes),
-	apply_subst_to_constraint_list(RenameSubst,
+	apply_subst_to_prog_constraint_list(RenameSubst,
 		Constraints0, Constraints1),
 	term__vars_list(InstanceTypes, InstanceTVars),
 	get_unconstrained_tvars(InstanceTVars, Constraints1,
 		UnconstrainedTVars0),
 
 	type_list_subsumes(InstanceTypes, ClassTypes, Subst),
-	apply_rec_subst_to_constraint_list(Subst,
+	apply_rec_subst_to_prog_constraint_list(Subst,
 		Constraints1, Constraints),
 
 	term__var_list_to_term_list(UnconstrainedTVars0,
@@ -942,7 +942,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 	% This simulates the action of `do_call_class_method' in
 	% runtime/mercury_ho_call.c.
 :- pred get_arg_typeclass_infos(module_info::in, prog_var::in,
-	list(class_constraint)::in, int::in, list(hlds_goal)::out,
+	list(prog_constraint)::in, int::in, list(hlds_goal)::out,
 	list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
 get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
@@ -1406,7 +1406,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 	% the class constraints match an instance which was not matched
 	% before.
 :- pred type_subst_makes_instance_known(module_info::in,
-	list(class_constraint)::in, tvarset::in, list(tvar)::in,
+	list(prog_constraint)::in, tvarset::in, list(tvar)::in,
 	list(type)::in, tvarset::in, existq_tvars::in, list(type)::in)
 	is semidet.
 
@@ -1422,9 +1422,9 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 	% Substitute the types in the callee's class constraints.
 	inlining__get_type_substitution(CalleeArgTypes1, ArgTypes,
 		CallerHeadTypeParams, CalleeExistQVars, TypeSubn),
-	apply_subst_to_constraint_list(TypeRenaming,
+	apply_subst_to_prog_constraint_list(TypeRenaming,
 		CalleeUnivConstraints0, CalleeUnivConstraints1),
-	apply_rec_subst_to_constraint_list(TypeSubn,
+	apply_rec_subst_to_prog_constraint_list(TypeSubn,
 		CalleeUnivConstraints1, CalleeUnivConstraints),
 	assoc_list__from_corresponding_lists(CalleeUnivConstraints0,
 		CalleeUnivConstraints, CalleeUnivConstraintAL),
@@ -2518,6 +2518,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	map__init(EmptyVarTypes),
 	map__init(EmptyTVarNameMap),
 	map__init(EmptyProofs),
+	map__init(EmptyConstraintMap),
 	map__init(EmptyTIMap),
 	map__init(EmptyTCIMap),
 
@@ -2529,7 +2530,8 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	Origin = transformed(Transform, OrigOrigin, CallerPredId),
 	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
-		ClassContext, EmptyProofs, Owner, ClausesInfo, NewPredInfo0),
+		ClassContext, EmptyProofs, EmptyConstraintMap, Owner,
+		ClausesInfo, NewPredInfo0),
 	pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -3170,12 +3172,12 @@ higher_order_arg_depth(higher_order_arg(_, _, _, _, _, CurriedArgs, _)) =
 
 %-----------------------------------------------------------------------------%
 
-	% Collect the list of class_constraints from the list of argument
+	% Collect the list of prog_constraints from the list of argument
 	% types. The typeclass_info for universal constraints is input,
 	% output for existential constraints.
 :- pred find_class_context(module_info::in, list(type)::in, list(mode)::in,
-	list(class_constraint)::in, list(class_constraint)::in,
-	class_constraints::out) is det.
+	list(prog_constraint)::in, list(prog_constraint)::in,
+	prog_constraints::out) is det.
 
 find_class_context(_, [], [], Univ0, Exist0, Constraints) :-
 	list__reverse(Univ0, Univ),
@@ -3199,8 +3201,8 @@ find_class_context(ModuleInfo, [Type | Types], [Mode | Modes], !.Univ, !.Exist,
 	find_class_context(ModuleInfo, Types, Modes, !.Univ, !.Exist,
 		Constraints).
 
-:- pred maybe_add_constraint(class_constraint::in,
-	list(class_constraint)::in, list(class_constraint)::out) is det.
+:- pred maybe_add_constraint(prog_constraint::in,
+	list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
 maybe_add_constraint(Constraint, !Constraints) :-
 	(

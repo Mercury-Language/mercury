@@ -185,7 +185,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 	).
 
 	% check one instance of one class
-:- pred check_class_instance(class_id::in, list(class_constraint)::in,
+:- pred check_class_instance(class_id::in, list(prog_constraint)::in,
 	list(tvar)::in, hlds_class_interface::in, class_interface::in,
 	tvarset::in, list(pred_id)::in,
 	hlds_instance_defn::in, hlds_instance_defn::out,
@@ -387,7 +387,7 @@ format_method_name(Method) = StringName :-
 							% type variables
 		list(type),				% Expected types of
 							% arguments.
-		class_constraints,			% Constraints from
+		prog_constraints,			% Constraints from
 							% class method.
 		list(modes_and_detism),			% Modes and
 							% determinisms of the
@@ -656,7 +656,7 @@ pred_or_func_to_string(predicate, "predicate").
 pred_or_func_to_string(function, "function").
 
 :- pred produce_auxiliary_procs(class_id::in, list(tvar)::in, pred_markers::in,
-	list(type)::in, list(class_constraint)::in, tvarset::in,
+	list(type)::in, list(prog_constraint)::in, tvarset::in,
 	module_name::in, instance_proc_def::in, prog_context::in,
 	pred_id::out, list(proc_id)::out,
 	instance_method_info::in, instance_method_info::out,
@@ -676,14 +676,14 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
 		InstanceTypes1),
-	apply_subst_to_constraint_list(RenameSubst, InstanceConstraints0,
+	apply_subst_to_prog_constraint_list(RenameSubst, InstanceConstraints0,
 		InstanceConstraints1),
 
 		% Work out what the type variables are bound to for this
 		% instance, and update the class types appropriately.
 	map__from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
 	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes1),
-	apply_subst_to_constraints(TypeSubst, ClassMethodClassContext0,
+	apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
 		ClassMethodClassContext1),
 
 		% Get rid of any unwanted type variables
@@ -692,12 +692,12 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	varset__squash(ArgTypeVars1, VarsToKeep, ArgTypeVars, SquashSubst),
 	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst,
 		ArgTypes),
-	apply_variable_renaming_to_constraints(SquashSubst,
+	apply_variable_renaming_to_prog_constraints(SquashSubst,
 		ClassMethodClassContext1, ClassMethodClassContext),
 	apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
 	apply_variable_renaming_to_list(InstanceTypes1, SquashSubst,
 		InstanceTypes),
-	apply_variable_renaming_to_constraint_list(SquashSubst,
+	apply_variable_renaming_to_prog_constraint_list(SquashSubst,
 		InstanceConstraints1, InstanceConstraints),
 
 		% Add the constraints from the instance declaration to the
@@ -712,6 +712,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
 	map__init(Proofs),
+	map__init(ConstraintMap),
 	add_marker(class_instance_method, Markers0, Markers1),
 	( InstancePredDefn = name(_) ->
 		% For instance methods which are defined using the named
@@ -745,7 +746,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
 		Context, instance_method(MethodConstraints), Status, none,
 		Markers, ArgTypes, ArgTypeVars, ExistQVars, ClassContext,
-		Proofs, User, ClausesInfo, PredInfo0),
+		Proofs, ConstraintMap, User, ClausesInfo, PredInfo0),
 	pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
 		% Add procs with the expected modes and determinisms
@@ -821,21 +822,24 @@ check_typeclass__introduced_pred_name_prefix = "ClassMethod_for_".
 	% Check that the superclass constraints are satisfied for the
 	% types in this instance declaration.
 
-:- pred check_superclass_conformance(class_id::in, list(class_constraint)::in,
+:- pred check_superclass_conformance(class_id::in, list(prog_constraint)::in,
 	list(tvar)::in, tvarset::in, module_info::in,
 	hlds_instance_defn::in, hlds_instance_defn::out,
 	error_messages::in, error_messages::out) is det.
 
-check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
-		ModuleInfo, InstanceDefn0, InstanceDefn, Errors0, Errors) :-
+check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
+		ClassVarSet, ModuleInfo, InstanceDefn0, InstanceDefn,
+		Errors0, Errors) :-
 
-	InstanceDefn0 = hlds_instance_defn(A, B, Context, InstanceConstraints,
-		InstanceTypes, F, G, InstanceVarSet0, Proofs0),
+	InstanceDefn0 = hlds_instance_defn(A, B, Context,
+		InstanceProgConstraints, InstanceTypes, F, G, InstanceVarSet0,
+		Proofs0),
 	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
 		Subst),
 
 		% Make the constraints in terms of the instance variables
-	apply_subst_to_constraint_list(Subst, SuperClasses0, SuperClasses),
+	apply_subst_to_prog_constraint_list(Subst, ProgSuperClasses0,
+		ProgSuperClasses),
 
 		% Now handle the class variables
 	map__apply_to_list(ClassVars0, Subst, ClassVarTerms),
@@ -851,19 +855,29 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	module_info_instances(ModuleInfo, InstanceTable),
 	module_info_superclasses(ModuleInfo, SuperClassTable),
 
+		% These constraints are not required to be put into the
+		% final constraint_map, so we initialise them with no
+		% constraint_id and throw away the constraint_map that
+		% results.
+	map__init(ConstraintMap0),
+	init_hlds_constraint_list(InstanceProgConstraints,
+		InstanceConstraints),
+	init_hlds_constraint_list(ProgSuperClasses, SuperClasses),
+
 		% Try to reduce the superclass constraints,
 		% using the declared instance constraints
 		% and the usual context reduction rules.
 	typecheck__reduce_context_by_rule_application(InstanceTable,
 		SuperClassTable, InstanceConstraints, TypeSubst,
 		InstanceVarSet1, InstanceVarSet2, Proofs0, Proofs1,
+		ConstraintMap0, _,
 		SuperClasses, UnprovenConstraints),
 
 	(
 		UnprovenConstraints = [],
 		Errors = Errors0,
 		InstanceDefn = hlds_instance_defn(A, B, Context,
-			InstanceConstraints, InstanceTypes, F, G,
+			InstanceProgConstraints, InstanceTypes, F, G,
 			InstanceVarSet2, Proofs1)
 	;
 		UnprovenConstraints = [_ | _],
@@ -884,21 +898,23 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		InstanceDefn = InstanceDefn0
 	).
 
-:- pred constraint_list_to_string(tvarset::in, list(class_constraint)::in,
+:- pred constraint_list_to_string(tvarset::in, list(hlds_constraint)::in,
 	string::out) is det.
 
 constraint_list_to_string(_, [], "").
 constraint_list_to_string(VarSet, [C | Cs], String) :-
-	String0 = mercury_constraint_to_string(VarSet, C),
+	retrieve_prog_constraint(C, P),
+	String0 = mercury_constraint_to_string(VarSet, P),
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list(["`", String0, "'", String1], String).
 
-:- pred constraint_list_to_string_2(tvarset::in, list(class_constraint)::in,
+:- pred constraint_list_to_string_2(tvarset::in, list(hlds_constraint)::in,
 	string::out) is det.
 
 constraint_list_to_string_2(_VarSet, [], "").
 constraint_list_to_string_2(VarSet, [C | Cs], String) :-
-	String0 = mercury_constraint_to_string(VarSet, C),
+	retrieve_prog_constraint(C, P),
+	String0 = mercury_constraint_to_string(VarSet, P),
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list([", `", String0, "'", String1], String).
 
@@ -970,11 +986,12 @@ find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
 
 get_superclass_ids(ClassTable, ClassId) = SuperclassIds :-
 	ClassDefn = map.lookup(ClassTable, ClassId),
-	SuperclassIds = list.map(get_constraint_id, ClassDefn ^ class_supers).
+	SuperclassIds = list.map(get_constraint_class_id,
+		ClassDefn ^ class_supers).
 
-:- func get_constraint_id(class_constraint) = class_id.
+:- func get_constraint_class_id(prog_constraint) = class_id.
 
-get_constraint_id(constraint(Name, Args)) = class_id(Name, length(Args)).
+get_constraint_class_id(constraint(Name, Args)) = class_id(Name, length(Args)).
 
 	% Report an error using the format
 	%

@@ -289,7 +289,7 @@
 	--->	ctor_defn(
 			tvarset,
 			existq_tvars,
-			list(class_constraint),	% existential constraints
+			list(prog_constraint),	% existential constraints
 			list(type),	% functor argument types
 			(type)		% functor result type
 		).
@@ -394,53 +394,63 @@
 	tsubst::in, map(tvar, type)::in, map(prog_var, prog_var)::in,
 	map(tvar, type_info_locn)::out) is det.
 
-	% Update a map from class_constraint to var, using the type renaming
+	% Update a map from prog_constraint to var, using the type renaming
 	% and substitution to rename tvars and a variable substition to
 	% rename vars. The type renaming is applied before the type
 	% substitution.
 	%
 :- pred apply_substitutions_to_typeclass_var_map(
-	map(class_constraint, prog_var)::in, tsubst::in, map(tvar, type)::in,
-	map(prog_var, prog_var)::in, map(class_constraint, prog_var)::out)
+	typeclass_info_varmap::in, tsubst::in, map(tvar, type)::in,
+	map(prog_var, prog_var)::in, typeclass_info_varmap::out)
 	is det.
 
-:- pred apply_rec_subst_to_constraints(tsubst::in, class_constraints::in,
-	class_constraints::out) is det.
+:- pred apply_rec_subst_to_constraints(tsubst::in, hlds_constraints::in,
+	hlds_constraints::out) is det.
 
 :- pred apply_rec_subst_to_constraint_list(tsubst::in,
-	list(class_constraint)::in, list(class_constraint)::out) is det.
+	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-:- pred apply_rec_subst_to_constraint(tsubst::in, class_constraint::in,
-	class_constraint::out) is det.
+:- pred apply_rec_subst_to_constraint(tsubst::in, hlds_constraint::in,
+	hlds_constraint::out) is det.
 
-:- pred apply_subst_to_constraints(tsubst::in, class_constraints::in,
-	class_constraints::out) is det.
+:- pred apply_subst_to_constraints(tsubst::in, hlds_constraints::in,
+	hlds_constraints::out) is det.
 
-:- pred apply_subst_to_constraint_list(tsubst::in, list(class_constraint)::in,
-	list(class_constraint)::out) is det.
+:- pred apply_subst_to_constraint_list(tsubst::in, list(hlds_constraint)::in,
+	list(hlds_constraint)::out) is det.
 
-:- pred apply_subst_to_constraint(tsubst::in, class_constraint::in,
-	class_constraint::out) is det.
+:- pred apply_subst_to_constraint(tsubst::in, hlds_constraint::in,
+	hlds_constraint::out) is det.
 
 :- pred apply_subst_to_constraint_proofs(tsubst::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out) is det.
+	constraint_proof_map::in, constraint_proof_map::out) is det.
 
 :- pred apply_rec_subst_to_constraint_proofs(tsubst::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out) is det.
+	constraint_proof_map::in, constraint_proof_map::out) is det.
+
+:- pred apply_subst_to_constraint_map(tsubst::in,
+	constraint_map::in, constraint_map::out) is det.
+
+:- pred apply_rec_subst_to_constraint_map(tsubst::in,
+	constraint_map::in, constraint_map::out) is det.
 
 :- pred apply_variable_renaming_to_type_map(map(tvar, tvar)::in,
 	vartypes::in, vartypes::out) is det.
 
 :- pred apply_variable_renaming_to_constraints(map(tvar, tvar)::in,
-	class_constraints::in, class_constraints::out) is det.
+	hlds_constraints::in, hlds_constraints::out) is det.
 
 :- pred apply_variable_renaming_to_constraint_list(map(tvar, tvar)::in,
-	list(class_constraint)::in, list(class_constraint)::out) is det.
+	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 :- pred apply_variable_renaming_to_constraint(map(tvar, tvar)::in,
-	class_constraint::in, class_constraint::out) is det.
+	hlds_constraint::in, hlds_constraint::out) is det.
+
+:- pred apply_variable_renaming_to_constraint_proofs(map(tvar, tvar)::in,
+	constraint_proof_map::in, constraint_proof_map::out) is det.
+
+:- pred apply_variable_renaming_to_constraint_map(map(tvar, tvar)::in,
+	constraint_map::in, constraint_map::out) is det.
 
 % Apply a renaming (partial map) to a list.
 % Useful for applying a variable renaming to a list of variables.
@@ -1651,13 +1661,13 @@ apply_substitutions_to_typeclass_var_map(VarMap0, TRenaming, TSubst, Subst,
 
 :- pred apply_substitutions_to_typeclass_var_map_2(tsubst::in,
 	map(tvar, type)::in, map(prog_var, prog_var)::in,
-	pair(class_constraint, prog_var)::in,
-	pair(class_constraint, prog_var)::out) is det.
+	pair(prog_constraint, prog_var)::in,
+	pair(prog_constraint, prog_var)::out) is det.
 
 apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
 		Constraint0 - Var0, Constraint - Var) :-
-	apply_subst_to_constraint(TRenaming, Constraint0, Constraint1),
-	apply_rec_subst_to_constraint(TSubst, Constraint1, Constraint),
+	apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
+	apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
 	( map__search(VarRenaming, Var0, Var1) ->
 		Var = Var1
 	;
@@ -1666,19 +1676,19 @@ apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
 
 %-----------------------------------------------------------------------------%
 
-apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
-	Constraints0 = constraints(UnivCs0, ExistCs0),
+apply_rec_subst_to_constraints(Subst, !Constraints) :-
+	!.Constraints = constraints(UnivCs0, ExistCs0),
 	apply_rec_subst_to_constraint_list(Subst, UnivCs0, UnivCs),
 	apply_rec_subst_to_constraint_list(Subst, ExistCs0, ExistCs),
-	Constraints = constraints(UnivCs, ExistCs).
+	!:Constraints = constraints(UnivCs, ExistCs).
 
 apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 	list__map(apply_rec_subst_to_constraint(Subst), !Constraints).
 
-apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types),
-	Constraint  = constraint(ClassName, Types).
+apply_rec_subst_to_constraint(Subst, !Constraint) :-
+	!.Constraint = constraint(Ids, Name, Types0),
+	term.apply_rec_substitution_to_list(Types0, Subst, Types),
+	!:Constraint = constraint(Ids, Name, Types).
 
 apply_subst_to_constraints(Subst,
 		constraints(UniversalCs0, ExistentialCs0),
@@ -1690,27 +1700,26 @@ apply_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 	list__map(apply_subst_to_constraint(Subst), Constraints0, Constraints).
 
 apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, Types0),
+	Constraint0 = constraint(Ids, ClassName, Types0),
 	term__apply_substitution_to_list(Types0, Subst, Types),
-	Constraint  = constraint(ClassName, Types).
+	Constraint  = constraint(Ids, ClassName, Types).
 
 apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 	map__foldl(apply_subst_to_constraint_proofs_2(Subst), Proofs0,
 		map__init, Proofs).
 
 :- pred apply_subst_to_constraint_proofs_2(tsubst::in,
-	class_constraint::in, constraint_proof::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out) is det.
+	prog_constraint::in, constraint_proof::in,
+	constraint_proof_map::in, constraint_proof_map::out) is det.
 
 apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
-	apply_subst_to_constraint(Subst, Constraint0, Constraint),
+	apply_subst_to_prog_constraint(Subst, Constraint0, Constraint),
 	(
 		Proof0 = apply_instance(_),
 		Proof = Proof0
 	;
 		Proof0 = superclass(Super0),
-		apply_subst_to_constraint(Subst, Super0, Super),
+		apply_subst_to_prog_constraint(Subst, Super0, Super),
 		Proof = superclass(Super)
 	),
 	map__set(Map0, Constraint, Proof, Map).
@@ -1720,21 +1729,40 @@ apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 		map__init, Proofs).
 
 :- pred apply_rec_subst_to_constraint_proofs_2(tsubst::in,
-	class_constraint::in, constraint_proof::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out) is det.
+	prog_constraint::in, constraint_proof::in,
+	constraint_proof_map::in, constraint_proof_map::out) is det.
 
 apply_rec_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
-	apply_rec_subst_to_constraint(Subst, Constraint0, Constraint),
+	apply_rec_subst_to_prog_constraint(Subst, Constraint0, Constraint),
 	(
 		Proof0 = apply_instance(_),
 		Proof = Proof0
 	;
 		Proof0 = superclass(Super0),
-		apply_rec_subst_to_constraint(Subst, Super0, Super),
+		apply_rec_subst_to_prog_constraint(Subst, Super0, Super),
 		Proof = superclass(Super)
 	),
 	map__set(Map0, Constraint, Proof, Map).
+
+apply_subst_to_constraint_map(Subst, !ConstraintMap) :-
+	map__map_values(apply_subst_to_constraint_map_2(Subst),
+		!ConstraintMap).
+
+:- pred apply_subst_to_constraint_map_2(tsubst::in, constraint_id::in,
+	prog_constraint::in, prog_constraint::out) is det.
+
+apply_subst_to_constraint_map_2(Subst, _Key, !Value) :-
+	apply_subst_to_prog_constraint(Subst, !Value).
+
+apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
+	map__map_values(apply_rec_subst_to_constraint_map_2(Subst),
+		!ConstraintMap).
+
+:- pred apply_rec_subst_to_constraint_map_2(tsubst::in, constraint_id::in,
+	prog_constraint::in, prog_constraint::out) is det.
+
+apply_rec_subst_to_constraint_map_2(Subst, _Key, !Value) :-
+	apply_rec_subst_to_prog_constraint(Subst, !Value).
 
 apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
 	map__map_values(
@@ -1755,10 +1783,44 @@ apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
 		!Constraints).
 
 apply_variable_renaming_to_constraint(Renaming, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, ClassArgTypes0),
+	Constraint0 = constraint(Ids, ClassName, ClassArgTypes0),
 	term__apply_variable_renaming_to_list(ClassArgTypes0,
 		Renaming, ClassArgTypes),
-	Constraint = constraint(ClassName, ClassArgTypes).
+	Constraint = constraint(Ids, ClassName, ClassArgTypes).
+
+apply_variable_renaming_to_constraint_proofs(Renaming, Proofs0, Proofs) :-
+	( map__is_empty(Proofs0) ->
+		% Optimize the simple case.
+		Proofs = Proofs0
+	;
+		map__keys(Proofs0, Keys0),
+		map__values(Proofs0, Values0),
+		apply_variable_renaming_to_prog_constraint_list(Renaming,
+			Keys0, Keys),
+		list__map(rename_constraint_proof(Renaming), Values0, Values),
+		map__from_corresponding_lists(Keys, Values, Proofs)
+	).
+
+	% Apply a type variable renaming to a class constraint proof.
+	%
+:- pred rename_constraint_proof(map(tvar, tvar)::in, constraint_proof::in,
+	constraint_proof::out) is det.
+
+rename_constraint_proof(_TSubst, apply_instance(Num), apply_instance(Num)).
+rename_constraint_proof(TSubst, superclass(ClassConstraint0),
+		superclass(ClassConstraint)) :-
+	apply_variable_renaming_to_prog_constraint(TSubst, ClassConstraint0,
+		ClassConstraint).
+
+apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
+	map__map_values(apply_variable_renaming_to_constraint_map_2(Renaming),
+		!ConstraintMap).
+
+:- pred apply_variable_renaming_to_constraint_map_2(map(tvar, tvar)::in,
+	constraint_id::in, prog_constraint::in, prog_constraint::out) is det.
+
+apply_variable_renaming_to_constraint_map_2(Renaming, _Key, !Value) :-
+	apply_variable_renaming_to_prog_constraint(Renaming, !Value).
 
 %-----------------------------------------------------------------------------%
 

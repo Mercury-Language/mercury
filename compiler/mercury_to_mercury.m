@@ -79,9 +79,9 @@
     %
 :- pred mercury_output_pred_type(tvarset::in, existq_tvars::in, sym_name::in,
     list(type)::in, maybe(determinism)::in, purity::in,
-    class_constraints::in, prog_context::in, bool::in, io::di, io::uo) is det.
+    prog_constraints::in, prog_context::in, bool::in, io::di, io::uo) is det.
 :- func mercury_pred_type_to_string(tvarset, existq_tvars, sym_name,
-    list(type), maybe(determinism), purity, class_constraints,
+    list(type), maybe(determinism), purity, prog_constraints,
     prog_context, bool) = string.
 
     % Output a `:- func' declaration, making sure that the variable number
@@ -89,9 +89,9 @@
     %
 :- pred mercury_output_func_type(tvarset::in, existq_tvars::in, sym_name::in,
     list(type)::in, (type)::in, maybe(determinism)::in, purity::in,
-    class_constraints::in, prog_context::in, bool::in, io::di, io::uo) is det.
+    prog_constraints::in, prog_context::in, bool::in, io::di, io::uo) is det.
 :- func mercury_func_type_to_string(tvarset, existq_tvars, sym_name,
-    list(type), type, maybe(determinism), purity, class_constraints,
+    list(type), type, maybe(determinism), purity, prog_constraints,
     prog_context, bool) = string.
 
 :- pred mercury_output_pred_mode_decl(inst_varset::in, sym_name::in,
@@ -279,9 +279,9 @@
     % Output a constraint, making sure that the variable number appears
     % in variable names if the boolean argument is set to `yes'.
     %
-:- pred mercury_output_constraint(tvarset::in, bool::in, class_constraint::in,
+:- pred mercury_output_constraint(tvarset::in, bool::in, prog_constraint::in,
     io::di, io::uo) is det.
-:- func mercury_constraint_to_string(tvarset, class_constraint) = string.
+:- func mercury_constraint_to_string(tvarset, prog_constraint) = string.
 
     % Output an existential quantifier, making sure that the variable
     % number appears in variable names if the boolean argument
@@ -702,7 +702,7 @@ mercury_output_item(UnqualifiedItemNames,
         ), !IO),
     io__write_char(')', !IO),
     AppendVarnums = no,
-    mercury_format_class_constraint_list(Constraints, VarSet, "<=",
+    mercury_format_prog_constraint_list(Constraints, VarSet, "<=",
         AppendVarnums, !IO),
     (
         Interface = abstract,
@@ -725,7 +725,7 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
     io__write_char(')', !IO),
     io__write_char(')', !IO),
     AppendVarnums = no,
-    mercury_format_class_constraint_list(Constraints, VarSet, "<=",
+    mercury_format_prog_constraint_list(Constraints, VarSet, "<=",
         AppendVarnums, !IO),
     (
         Body = abstract
@@ -1811,7 +1811,7 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
         BraceWrap = no
     ),
     AppendVarnums = no,
-    mercury_format_class_constraint_list(Constraints, VarSet, "=>",
+    mercury_format_prog_constraint_list(Constraints, VarSet, "=>",
         AppendVarnums, !IO),
     (
         ParenWrap = no
@@ -1847,7 +1847,7 @@ mercury_output_ctor_arg_name_prefix(yes(Name), !IO) :-
 :- pred mercury_format_pred_or_func_decl(pred_or_func::in, tvarset::in,
     inst_varset::in, existq_tvars::in, sym_name::in,
     list(type_and_mode)::in, maybe(type)::in, maybe(inst)::in,
-    maybe(determinism)::in, purity::in, class_constraints::in,
+    maybe(determinism)::in, purity::in, prog_constraints::in,
     prog_context::in, string::in, string::in,
     string::in, U::di, U::uo) is det <= output(U).
 
@@ -1888,7 +1888,7 @@ mercury_pred_type_to_string(VarSet, ExistQVars, PredName, Types, MaybeDet,
 
 :- pred mercury_format_pred_type(tvarset::in, existq_tvars::in, sym_name::in,
     list(type)::in, maybe(type)::in, maybe(determinism)::in, purity::in,
-    class_constraints::in, prog_context::in, bool::in, U::di, U::uo)
+    prog_constraints::in, prog_context::in, bool::in, U::di, U::uo)
     is det <= output(U).
 
 mercury_format_pred_type(VarSet, ExistQVars, PredName, Types, WithType,
@@ -1899,7 +1899,7 @@ mercury_format_pred_type(VarSet, ExistQVars, PredName, Types, WithType,
 
 :- pred mercury_format_pred_or_func_type_2(pred_or_func::in, tvarset::in,
     existq_tvars::in, sym_name::in, list(type)::in, maybe(type)::in,
-    maybe(determinism)::in, purity::in, class_constraints::in,
+    maybe(determinism)::in, purity::in, prog_constraints::in,
     prog_context::in, bool::in, string::in, string::in,
     U::di, U::uo) is det <= output(U).
 
@@ -1972,7 +1972,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
 :- pred mercury_format_func_decl(tvarset::in, inst_varset::in,
     existq_tvars::in, sym_name::in, list(type_and_mode)::in,
     type_and_mode::in, maybe(determinism)::in, purity::in,
-    class_constraints::in, prog_context::in, string::in, string::in,
+    prog_constraints::in, prog_context::in, string::in, string::in,
     string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_func_decl(TypeVarSet, InstVarSet, ExistQVars, FuncName,
@@ -2011,7 +2011,7 @@ mercury_func_type_to_string(VarSet, ExistQVars, FuncName, Types, RetType,
 
 :- pred mercury_format_func_type(tvarset::in, existq_tvars::in, sym_name::in,
     list(type)::in, (type)::in, maybe(determinism)::in, purity::in,
-    class_constraints::in, prog_context::in, bool::in, U::di, U::uo)
+    prog_constraints::in, prog_context::in, bool::in, U::di, U::uo)
     is det <= output(U).
 
 mercury_format_func_type(VarSet, ExistQVars, FuncName, Types, RetType,
@@ -2022,7 +2022,7 @@ mercury_format_func_type(VarSet, ExistQVars, FuncName, Types, RetType,
 
 :- pred mercury_format_func_type_2(tvarset::in, existq_tvars::in, sym_name::in,
     list(type)::in, (type)::in, maybe(determinism)::in,
-    purity::in, class_constraints::in, prog_context::in, bool::in,
+    purity::in, prog_constraints::in, prog_context::in, bool::in,
     string::in, string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
@@ -2083,7 +2083,7 @@ mercury_format_quantifier(VarSet, AppendVarNums, ExistQVars, !U) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_class_context(class_constraints::in, existq_tvars::in,
+:- pred mercury_output_class_context(prog_constraints::in, existq_tvars::in,
     tvarset::in, bool::in, io::di, io::uo) is det.
 
 mercury_output_class_context(ClassContext, ExistQVars, VarSet,
@@ -2091,13 +2091,13 @@ mercury_output_class_context(ClassContext, ExistQVars, VarSet,
     mercury_format_class_context(ClassContext, ExistQVars, VarSet,
         AppendVarnums, !IO).
 
-:- pred mercury_format_class_context(class_constraints::in, existq_tvars::in,
+:- pred mercury_format_class_context(prog_constraints::in, existq_tvars::in,
     tvarset::in, bool::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_class_context(ClassContext, ExistQVars, VarSet,
         AppendVarnums, !U) :-
     ClassContext = constraints(UnivCs, ExistCs),
-    mercury_format_class_constraint_list(ExistCs, VarSet, "=>", AppendVarnums,
+    mercury_format_prog_constraint_list(ExistCs, VarSet, "=>", AppendVarnums,
         !U),
     (
         ExistQVars = [],
@@ -2107,13 +2107,13 @@ mercury_format_class_context(ClassContext, ExistQVars, VarSet,
     ;
         add_string(")", !U)
     ),
-    mercury_format_class_constraint_list(UnivCs, VarSet, "<=",
+    mercury_format_prog_constraint_list(UnivCs, VarSet, "<=",
         AppendVarnums, !U).
 
-:- pred mercury_format_class_constraint_list(list(class_constraint)::in,
+:- pred mercury_format_prog_constraint_list(list(prog_constraint)::in,
     tvarset::in, string::in, bool::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_class_constraint_list(Constraints, VarSet, Operator,
+mercury_format_prog_constraint_list(Constraints, VarSet, Operator,
         AppendVarnums, !U) :-
     (
         Constraints = []
@@ -2133,7 +2133,7 @@ mercury_output_constraint(VarSet, AppendVarnums, constraint(Name, Types),
 mercury_constraint_to_string(VarSet, constraint(Name, Types)) = String :-
     mercury_format_constraint(VarSet, no, constraint(Name, Types), "", String).
 
-:- pred mercury_format_constraint(tvarset::in, bool::in, class_constraint::in,
+:- pred mercury_format_constraint(tvarset::in, bool::in, prog_constraint::in,
     U::di, U::uo) is det <= output(U).
 
 mercury_format_constraint(VarSet, AppendVarnums, constraint(Name, Types), !U) :-

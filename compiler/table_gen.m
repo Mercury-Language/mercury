@@ -1740,6 +1740,7 @@ clone_pred_info(OrigPredId, PredInfo0, GeneratorPredId, !TableInfo) :-
 	pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
 	pred_info_get_class_context(PredInfo0, ClassContext),
 	pred_info_get_constraint_proofs(PredInfo0, ClassProofs),
+	pred_info_get_constraint_map(PredInfo0, ClassConstraintMap),
 	pred_info_get_aditi_owner(PredInfo0, Owner),
 	pred_info_get_origin(PredInfo0, OrigOrigin),
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
@@ -1756,8 +1757,8 @@ clone_pred_info(OrigPredId, PredInfo0, GeneratorPredId, !TableInfo) :-
 	Origin = transformed(table_generator, OrigOrigin, OrigPredId),
 	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
 		Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
-		ExistQVars, ClassContext, ClassProofs, Owner, ClausesInfo,
-		PredInfo),
+		ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
+		Owner, ClausesInfo, PredInfo),
 
 	ModuleInfo0 = !.TableInfo ^ table_module_info,
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),

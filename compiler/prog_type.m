@@ -87,15 +87,15 @@
 	%	return the list of type variables contained in a
 	%	list of constraints
 	%
-:- pred constraint_list_get_tvars(list(class_constraint)::in, list(tvar)::out)
+:- pred constraint_list_get_tvars(list(prog_constraint)::in, list(tvar)::out)
 	is det.
 	
 	% constraint_list_get_tvars(Constraint, TVars):
 	%	return the list of type variables contained in a constraint.
 	%
-:- pred constraint_get_tvars(class_constraint::in, list(tvar)::out) is det.
+:- pred constraint_get_tvars(prog_constraint::in, list(tvar)::out) is det.
 
-:- pred get_unconstrained_tvars(list(tvar)::in, list(class_constraint)::in,
+:- pred get_unconstrained_tvars(list(tvar)::in, list(prog_constraint)::in,
 	list(tvar)::out) is det.
 
 %-----------------------------------------------------------------------------%

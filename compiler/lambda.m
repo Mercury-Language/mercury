@@ -118,14 +118,13 @@
 	lambda_info(
 		prog_varset,		% from the proc_info
 		map(prog_var, type),	% from the proc_info
-		class_constraints,	% from the pred_info
+		prog_constraints,	% from the pred_info
 		tvarset,		% from the proc_info
 		inst_varset,		% from the proc_info
 		map(tvar, type_info_locn),
 					% from the proc_info
 					% (typeinfos)
-		map(class_constraint, prog_var),
-					% from the proc_info
+		typeclass_info_varmap,	% from the proc_info
 					% (typeclass_infos)
 		pred_markers,		% from the pred_info
 		pred_or_func,
@@ -597,7 +596,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
 		Owner, ModuleInfo, MustRecomputeNonLocals).
 
-:- pred lambda__constraint_contains_vars(list(tvar)::in, class_constraint::in)
+:- pred lambda__constraint_contains_vars(list(tvar)::in, prog_constraint::in)
 	is semidet.
 
 lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-

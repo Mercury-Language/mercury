@@ -915,6 +915,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 	pred_info_get_markers(PredInfo, Markers),
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_get_constraint_proofs(PredInfo, Proofs),
+	pred_info_get_constraint_map(PredInfo, ConstraintMap),
 	pred_info_get_purity(PredInfo, Purity),
 	pred_info_get_head_type_params(PredInfo, HeadTypeParams),
 	pred_info_get_indexes(PredInfo, Indexes),
@@ -979,6 +980,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			hlds_out__write_constraint_proofs(Indent, TVarSet,
 				Proofs, AppendVarNums, !IO),
 			io__write_string("\n", !IO)
+		),
+		( map__is_empty(ConstraintMap) ->
+			true
+		;
+			hlds_out__write_constraint_map(Indent, TVarSet,
+				ConstraintMap, AppendVarNums, !IO)
 		),
 
 		% XXX The indexes are not part of the clauses_info,
@@ -3139,7 +3146,7 @@ hlds_out__write_typeclass_info_varmap(Indent, AppendVarNums,
 		AppendVarNums, VarSet, TVarSet), TypeClassInfoVarMap, !IO).
 
 :- pred hlds_out__write_typeclass_info_varmap_2(int::in, bool::in,
-	prog_varset::in, tvarset::in, class_constraint::in, prog_var::in,
+	prog_varset::in, tvarset::in, prog_constraint::in, prog_var::in,
 	io::di, io::uo) is det.
 
 hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarNums, VarSet, TVarSet,
@@ -3928,8 +3935,7 @@ hlds_out__write_intlist_2(H, T, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_constraint_proofs(int::in, tvarset::in,
-	map(class_constraint, constraint_proof)::in, bool::in,
-	io::di, io::uo) is det.
+	constraint_proof_map::in, bool::in, io::di, io::uo) is det.
 
 hlds_out__write_constraint_proofs(Indent, VarSet, Proofs, AppendVarNums,
 		!IO) :-
@@ -3941,7 +3947,7 @@ hlds_out__write_constraint_proofs(Indent, VarSet, Proofs, AppendVarNums,
 			VarSet, AppendVarNums), !IO).
 
 :- pred hlds_out__write_constraint_proof(int::in, tvarset::in, bool::in,
-	pair(class_constraint, constraint_proof)::in, io::di, io::uo) is det.
+	pair(prog_constraint, constraint_proof)::in, io::di, io::uo) is det.
 
 hlds_out__write_constraint_proof(Indent, VarSet, AppendVarNums,
 		Constraint - Proof, !IO) :-
@@ -3958,6 +3964,45 @@ hlds_out__write_constraint_proof(Indent, VarSet, AppendVarNums,
 		io__write_string("super class of ", !IO),
 		mercury_output_constraint(VarSet, AppendVarNums, Super, !IO)
 	).
+
+:- pred hlds_out__write_constraint_map(int::in, tvarset::in,
+	constraint_map::in, bool::in, io::di, io::uo) is det.
+
+hlds_out__write_constraint_map(Indent, VarSet, ConstraintMap, AppendVarNums,
+		!IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% Constraint Map:\n", !IO),
+	map__foldl(write_constraint_map_2(Indent, VarSet, AppendVarNums),
+		ConstraintMap, !IO).
+
+:- pred write_constraint_map_2(int::in, tvarset::in, bool::in,
+	constraint_id::in, prog_constraint::in, io::di, io::uo) is det.
+
+write_constraint_map_2(Indent, VarSet, AppendVarNums, ConstraintId,
+		ProgConstraint, !IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% ", !IO),
+	hlds_out__write_constraint_id(ConstraintId, !IO),
+	io__write_string(": ", !IO),
+	mercury_output_constraint(VarSet, AppendVarNums, ProgConstraint, !IO),
+	io__nl(!IO).
+
+:- pred hlds_out__write_constraint_id(constraint_id::in, io::di, io::uo)
+	is det.
+
+hlds_out__write_constraint_id(ConstraintId, !IO) :-
+	ConstraintId = constraint_id(ConstraintType, GoalPath, N),
+	(
+		ConstraintType = existential,
+		io__write_string("(E, ", !IO)
+	;
+		ConstraintType = universal,
+		io__write_string("(A, ", !IO)
+	),
+	goal_path_to_string(GoalPath, GoalPathStr),
+	io__write_strings(["""", GoalPathStr, """, "], !IO),
+	io__write_int(N, !IO),
+	io__write_char(')', !IO).
 
 %-----------------------------------------------------------------------------%
 

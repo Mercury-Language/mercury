@@ -897,7 +897,7 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
 	Statement = mlds__statement(atomic(assign(Field, Val)), Context).
 
 :- pred ml_gen_typeclass_info_member(module_info::in, prog_context::in,
-	class_constraint::in, mlds__defn::out, int::in, int::out) is det.
+	prog_constraint::in, mlds__defn::out, int::in, int::out) is det.
 
 ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, MLDS_Defn,
 		ArgNum0, ArgNum) :-

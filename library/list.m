@@ -886,6 +886,21 @@
 :- pred list__filter_map(pred(X, Y)::in(pred(in, out) is semidet),
 	list(X)::in, list(Y)::out, list(X)::out) is det.
 
+	% Same as list__filter_map/3 except that it only returns the first
+	% match:
+	% 	find_first_map(X, Y, Z) <=> list__filter_map(X, Y, [Z | _])
+:- pred list__find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
+        list(X)::in, Y::out) is semidet.
+
+	% Same as list__find_first_map, except with two outputs.
+:- pred list__find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
+	list(X)::in, A::out, B::out) is semidet.
+
+	% Same as list__find_first_map, except with three outputs.
+:- pred list__find_first_map3(
+	pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
+	list(X)::in, A::out, B::out, C::out) is semidet.
+
 	% list__takewhile(Predicate, List, UptoList, AfterList) takes a
 	% closure with one input argument, and calls it on successive members
 	% of List as long as the calls succeed. The elements for which
@@ -1703,6 +1718,30 @@ list__filter_map(P, [H0 | T0], True, False) :-
 	;
 		True = TrueTail,
 		False = [H0 | FalseTail]
+	).
+
+list__find_first_map(P, [X | Xs], A) :-
+        ( call(P, X, A0) ->
+		A = A0
+	;
+		list__find_first_map(P, Xs, A)
+	).
+
+list__find_first_map2(P, [X | Xs], A, B) :-
+        ( call(P, X, A0, B0) ->
+		A = A0,
+		B = B0
+	;
+		list__find_first_map2(P, Xs, A, B)
+	).
+
+list__find_first_map3(P, [X | Xs], A, B, C) :-
+        ( call(P, X, A0, B0, C0) ->
+		A = A0,
+		B = B0,
+		C = C0
+	;
+		list__find_first_map3(P, Xs, A, B, C)
 	).
 
 list__takewhile(_, [], [], []).

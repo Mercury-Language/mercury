@@ -794,7 +794,7 @@ item_is_unchanged(Item1, Item2) = Result :-
 
 	%
 	% Apply a substitution to the existq_tvars, types_and_modes, and
-	% class_constraints so that the type variables from both declarations
+	% prog_constraints so that the type variables from both declarations
 	% being checked are contained in the same tvarset, then check that
 	% they are identical.
 	%
@@ -806,9 +806,9 @@ item_is_unchanged(Item1, Item2) = Result :-
 	% declaration in a single varset (it doesn't know which are which).
 	%
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
-	list(type_and_mode)::in, maybe(type)::in, class_constraints::in,
+	list(type_and_mode)::in, maybe(type)::in, prog_constraints::in,
 	tvarset::in, existq_tvars::in, list(type_and_mode)::in,
-	maybe(type)::in, class_constraints::in) is semidet.
+	maybe(type)::in, prog_constraints::in) is semidet.
 
 pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 		MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
@@ -858,9 +858,9 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 	%
 	% Check that the class constraints are identical.
 	%
-	apply_subst_to_constraints(RenameSubst,
+	apply_subst_to_prog_constraints(RenameSubst,
 		Constraints2, RenamedConstraints2),
-	apply_rec_subst_to_constraints(Types2ToTypes1Subst,
+	apply_rec_subst_to_prog_constraints(Types2ToTypes1Subst,
 		RenamedConstraints2, SubstConstraints2),
 	Constraints1 = SubstConstraints2.
 

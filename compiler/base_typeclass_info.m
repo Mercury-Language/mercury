@@ -114,7 +114,7 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc))::in,
-	list(type)::in, list(class_constraint)::in, module_info::in,
+	list(type)::in, list(prog_constraint)::in, module_info::in,
 	class_id::in, base_typeclass_info::out) is det.
 
 base_typeclass_info__gen_body(no, _, _, _, _, _) :-

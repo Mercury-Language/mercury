@@ -575,12 +575,6 @@
 	% module, name and arity.
 :- type aditi_owner == string.
 
-	% The constraint_proof_map is a map which for each type class
-	% constraint records how/why that constraint was satisfied.
-	% This information is used to determine how to construct the
-	% typeclass_info for that constraint.
-:- type constraint_proof_map == map(class_constraint, constraint_proof).
-
 	% Describes the class constraints on an instance method implementation.
 	% This information is used by polymorphism.m to ensure that the
 	% type_info and typeclass_info arguments are added in the order in
@@ -590,9 +584,9 @@
 		class_id,
 		list(type),		% The types in the head of the
 					% instance declaration.
-		list(class_constraint),	% The universal constraints
+		list(prog_constraint),	% The universal constraints
 					% on the instance declaration.
-		class_constraints	% The contraints on the method's
+		prog_constraints	% The contraints on the method's
 					% type declaration in the
 					% `:- typeclass' declaration.
 	).
@@ -600,7 +594,7 @@
 	% A typeclass_info_varmap is a map which for each type class constraint
 	% records which variable contains the typeclass_info for that
 	% constraint.
-:- type typeclass_info_varmap == map(class_constraint, prog_var).
+:- type typeclass_info_varmap == map(prog_constraint, prog_var).
 
 	% A type_info_varmap is a map which for each type variable
 	% records where the type_info for that type variable is stored.
@@ -721,8 +715,8 @@
 
 	% pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
 	%	Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
-	%	ExistQVars, ClassContext, ClassProofs, User, ClausesInfo,
-	%	PredInfo)
+	%	ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
+	%	User, ClausesInfo, PredInfo)
 	%
 	% Return a pred_info whose fields are filled in from the information
 	% (direct and indirect) in the arguments, and from defaults.
@@ -730,8 +724,9 @@
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
 	pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
 	goal_type::in, pred_markers::in, list(type)::in, tvarset::in,
-	existq_tvars::in, class_constraints::in, constraint_proof_map::in,
-	aditi_owner::in, clauses_info::in, pred_info::out) is det.
+	existq_tvars::in, prog_constraints::in, constraint_proof_map::in,
+	constraint_map::in, aditi_owner::in, clauses_info::in,
+	pred_info::out) is det.
 
 	% pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
 	%	Status, Markers, TypeVarSet, ExistQVars, ArgTypes,
@@ -744,7 +739,7 @@
 
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
 	prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
-	list(type)::in, tvarset::in, existq_tvars::in, class_constraints::in,
+	list(type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
 	set(assert_id)::in, aditi_owner::in, proc_info::in, proc_id::out,
 	pred_info::out) is det.
 
@@ -761,7 +756,7 @@
 :- pred hlds_pred__define_new_pred(pred_origin::in,
 	hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
 	instmap::in, string::in, tvarset::in, vartypes::in,
-	class_constraints::in, type_info_varmap::in, typeclass_info_varmap::in,
+	prog_constraints::in, type_info_varmap::in, typeclass_info_varmap::in,
 	prog_varset::in, inst_varset::in, pred_markers::in, aditi_owner::in,
 	is_address_taken::in, module_info::in, module_info::out,
 	pred_proc_id::out) is det.
@@ -799,12 +794,14 @@
 	is det.
 :- pred pred_info_get_head_type_params(pred_info::in, head_type_params::out)
 	is det.
-:- pred pred_info_get_class_context(pred_info::in, class_constraints::out)
+:- pred pred_info_get_class_context(pred_info::in, prog_constraints::out)
 	is det.
 :- pred pred_info_get_constraint_proofs(pred_info::in,
 	constraint_proof_map::out) is det.
+:- pred pred_info_get_constraint_map(pred_info::in,
+	constraint_map::out) is det.
 :- pred pred_info_get_unproven_body_constraints(pred_info::in,
-	list(class_constraint)::out) is det.
+	list(prog_constraint)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
 :- pred pred_info_get_aditi_owner(pred_info::in, string::out) is det.
 :- pred pred_info_get_indexes(pred_info::in, list(index_spec)::out) is det.
@@ -825,11 +822,13 @@
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_head_type_params(head_type_params::in,
 	pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_class_context(class_constraints::in,
+:- pred pred_info_set_class_context(prog_constraints::in,
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_constraint_proofs(constraint_proof_map::in,
 	pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_unproven_body_constraints(list(class_constraint)::in,
+:- pred pred_info_set_constraint_map(constraint_map::in,
+	pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_unproven_body_constraints(list(prog_constraint)::in,
 	pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_assertions(set(assert_id)::in,
 	pred_info::in, pred_info::out) is det.
@@ -1140,7 +1139,7 @@ calls_are_fully_qualified(Markers) =
 				% the called preds).
 				% Computed during type checking.
 
-		class_context	:: class_constraints,
+		class_context	:: prog_constraints,
 				% the class constraints on the
 				% type variables in the predicate's
 				% type declaration
@@ -1151,7 +1150,11 @@ calls_are_fully_qualified(Markers) =
 				% work out where to get the
 				% typeclass_infos from.
 				% Computed during type checking.
-		unproven_body_constraints :: list(class_constraint),
+		constraint_map	:: constraint_map,
+				% maps constraint identifiers to the actual
+				% constraints.
+				% Computed during type checking.
+		unproven_body_constraints :: list(prog_constraint),
 				% unproven class constraints on type
 				% variables in the predicate's body,
 				% if any (if this remains non-empty
@@ -1186,7 +1189,8 @@ calls_are_fully_qualified(Markers) =
 
 pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-		ClassContext, ClassProofs, User, ClausesInfo, PredInfo) :-
+		ClassContext, ClassProofs, ClassConstraintMap, User,
+		ClausesInfo, PredInfo) :-
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	term__vars_list(ArgTypes, TVars),
@@ -1199,9 +1203,9 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 	PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
 		Context, Origin, Status, GoalType, Markers, Attributes,
 		ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
-		ClassContext, ClassProofs, UnprovenBodyConstraints,
-		inst_graph_info_init, [], Assertions, User, Indexes,
-		ClausesInfo, Procs).
+		ClassContext, ClassProofs, ClassConstraintMap,
+		UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
+		User, Indexes, ClausesInfo, Procs).
 
 pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 		Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
@@ -1213,6 +1217,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 	unqualify_name(SymName, PredName),
 	Attributes = [],
 	map__init(ClassProofs),
+	map__init(ClassConstraintMap),
 	term__vars_list(ArgTypes, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
@@ -1236,9 +1241,9 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 	PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
 		Context, Origin, Status, clauses, Markers, Attributes,
 		ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
-		ClassContext, ClassProofs, UnprovenBodyConstraints,
-		inst_graph_info_init, [], Assertions, User, Indexes,
-		ClausesInfo, Procs).
+		ClassContext, ClassProofs, ClassConstraintMap,
+		UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
+		User, Indexes, ClausesInfo, Procs).
 
 hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
@@ -1348,6 +1353,7 @@ pred_info_get_exist_quant_tvars(PI, PI ^ exist_quant_tvars).
 pred_info_get_head_type_params(PI, PI ^ head_type_params).
 pred_info_get_class_context(PI, PI ^ class_context).
 pred_info_get_constraint_proofs(PI, PI ^ constraint_proofs).
+pred_info_get_constraint_map(PI, PI ^ constraint_map).
 pred_info_get_unproven_body_constraints(PI, PI ^ unproven_body_constraints).
 pred_info_get_assertions(PI, PI ^ assertions).
 pred_info_get_aditi_owner(PI, PI ^ aditi_owner).
@@ -1364,6 +1370,7 @@ pred_info_set_typevarset(X, PI, PI ^ typevarset := X).
 pred_info_set_head_type_params(X, PI, PI ^ head_type_params := X).
 pred_info_set_class_context(X, PI, PI ^ class_context := X).
 pred_info_set_constraint_proofs(X, PI, PI ^ constraint_proofs := X).
+pred_info_set_constraint_map(X, PI, PI ^ constraint_map := X).
 pred_info_set_unproven_body_constraints(X, PI,
 	PI ^ unproven_body_constraints := X).
 pred_info_set_assertions(X, PI, PI ^ assertions := X).

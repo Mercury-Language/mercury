@@ -87,7 +87,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 
 	% typecheck(Module0, Module, FoundError, ExceededIterationLimit, !IO)
 	%
@@ -123,11 +122,11 @@
 	% redundant constraints
 	%
 :- pred typecheck__reduce_context_by_rule_application(instance_table::in,
-	superclass_table::in, list(class_constraint)::in, tsubst::in,
+	superclass_table::in, list(hlds_constraint)::in, tsubst::in,
 	tvarset::in, tvarset::out,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::in, list(class_constraint)::out) is det.
+	constraint_proof_map::in, constraint_proof_map::out,
+	constraint_map::in, constraint_map::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -135,6 +134,7 @@
 :- implementation.
 
 :- import_module check_hlds__clause_to_proc.
+:- import_module check_hlds__goal_path.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
@@ -158,6 +158,7 @@
 :- import_module assoc_list.
 :- import_module getopt_io.
 :- import_module int.
+:- import_module map.
 :- import_module multi_map.
 :- import_module require.
 :- import_module set.
@@ -339,6 +340,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		!IO) :-
 	globals__io_get_globals(Globals, !IO),
 	( Iteration = 1 ->
+		% Goal paths are used to identify typeclass constraints.
+		goal_path__fill_slots_in_clauses(!.ModuleInfo, no, !PredInfo),
 		maybe_add_field_access_function_clause(!.ModuleInfo,
 			!PredInfo),
 		maybe_improve_headvar_names(Globals, !PredInfo),
@@ -450,7 +453,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		% is something that we must prove in the callee,
 		% and vice versa)
 		%
-		dual_constraints(PredConstraints, Constraints),
+		make_hlds_constraints(PredConstraints, [], Constraints),
+		dual_constraints(Constraints, DualConstraints),
 		(
 			pred_info_is_field_access_function(!.ModuleInfo,
 				!.PredInfo)
@@ -463,7 +467,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		typecheck_info_init(!.ModuleInfo, PredId,
 			IsFieldAccessFunction, TypeVarSet0, VarSet,
 			ExplicitVarTypes0, HeadTypeParams1,
-			Constraints, Status, Markers, Info1),
+			DualConstraints, Status, Markers, Info1),
 		typecheck_info_get_type_assign_set(Info1, OrigTypeAssignSet),
 		typecheck_clause_list(HeadVars, ArgTypes0,
 			Clauses1, Clauses, Info1, Info2, !IO),
@@ -477,7 +481,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 			ExistQVars0, ExplicitVarTypes0, TypeVarSet,
 			HeadTypeParams2, InferredVarTypes0,
 			InferredTypeConstraints0, ConstraintProofs,
-			TVarRenaming, ExistTypeRenaming),
+			ConstraintMap, TVarRenaming, ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		clauses_info_set_vartypes(InferredVarTypes,
 			ClausesInfo2, ClausesInfo3),
@@ -502,6 +506,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 		pred_info_set_typevarset(TypeVarSet, !PredInfo),
 		pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
+		pred_info_set_constraint_map(ConstraintMap, !PredInfo),
 
 		%
 		% Split the inferred type class constraints into those
@@ -593,7 +598,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 				term__apply_variable_renaming_to_list(
 					ArgTypes0, ExistTypeRenaming,
 					ArgTypes1),
-				apply_variable_renaming_to_constraints(
+				apply_variable_renaming_to_prog_constraints(
 					ExistTypeRenaming,
 					PredConstraints, PredConstraints1),
 				rename_instance_method_constraints(
@@ -605,8 +610,9 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 				TVarRenaming, ExistQVars),
 			term__apply_variable_renaming_to_list(ArgTypes1,
 				TVarRenaming, RenamedOldArgTypes),
-			apply_variable_renaming_to_constraints(TVarRenaming,
-				PredConstraints1, RenamedOldConstraints),
+			apply_variable_renaming_to_prog_constraints(
+				TVarRenaming, PredConstraints1,
+				RenamedOldConstraints),
 			rename_instance_method_constraints(TVarRenaming,
 				Origin1, Origin),
 
@@ -681,9 +687,9 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
 			ClassMethodClassContext0),
 		term__apply_variable_renaming_to_list(InstanceTypes0,
 			Renaming, InstanceTypes),
-		apply_variable_renaming_to_constraint_list(Renaming,
+		apply_variable_renaming_to_prog_constraint_list(Renaming,
 			InstanceConstraints0, InstanceConstraints),
-		apply_variable_renaming_to_constraints(Renaming,
+		apply_variable_renaming_to_prog_constraints(Renaming,
 			ClassMethodClassContext0, ClassMethodClassContext),
 		Constraints = instance_method_constraints(ClassId,
 			InstanceTypes, InstanceConstraints,
@@ -740,23 +746,23 @@ infer_existential_types(ArgTypeVars, ExistQVars,
 	%	UnprovenConstraints is any unproven (universally quantified)
 	%	type constraints on variables not in HeadVarTypes.
 	%
-:- pred restrict_to_head_vars(class_constraints::in, list(tvar)::in,
-	class_constraints::out, list(class_constraint)::out) is det.
+:- pred restrict_to_head_vars(prog_constraints::in, list(tvar)::in,
+	prog_constraints::out, list(prog_constraint)::out) is det.
 
 restrict_to_head_vars(constraints(UnivCs0, ExistCs0), ArgVarTypes,
 		constraints(UnivCs, ExistCs), UnprovenCs) :-
 	restrict_to_head_vars_2(UnivCs0, ArgVarTypes, UnivCs, UnprovenCs),
 	restrict_to_head_vars_2(ExistCs0, ArgVarTypes, ExistCs, _).
 
-:- pred restrict_to_head_vars_2(list(class_constraint)::in, list(tvar)::in,
-	list(class_constraint)::out, list(class_constraint)::out) is det.
+:- pred restrict_to_head_vars_2(list(prog_constraint)::in, list(tvar)::in,
+	list(prog_constraint)::out, list(prog_constraint)::out) is det.
 
 restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
 		OtherClassConstraints) :-
 	list__filter(is_head_class_constraint(HeadTypeVars),
 		ClassConstraints, HeadClassConstraints, OtherClassConstraints).
 
-:- pred is_head_class_constraint(list(tvar)::in, class_constraint::in)
+:- pred is_head_class_constraint(list(tvar)::in, prog_constraint::in)
 	is semidet.
 
 is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
@@ -775,8 +781,8 @@ is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
 	% then compare them in a single call to identical_up_to_renaming.
 	%
 :- pred argtypes_identical_up_to_renaming(
-	existq_tvars::in, list(type)::in, class_constraints::in,
-	existq_tvars::in, list(type)::in, class_constraints::in) is semidet.
+	existq_tvars::in, list(type)::in, prog_constraints::in,
+	existq_tvars::in, list(type)::in, prog_constraints::in) is semidet.
 
 argtypes_identical_up_to_renaming(ExistQVarsA, ArgTypesA, TypeConstraintsA,
 		ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
@@ -795,7 +801,7 @@ argtypes_identical_up_to_renaming(ExistQVarsA, ArgTypesA, TypeConstraintsA,
 	% arities) and if so, concatenate the argument types for all the
 	% type classes in each set of type class constraints and return them.
 	%
-:- pred same_structure(class_constraints::in, class_constraints::in,
+:- pred same_structure(prog_constraints::in, prog_constraints::in,
 	list(type)::out, list(type)::out) is semidet.
 
 same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
@@ -810,7 +816,7 @@ same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
 	list__append(ExistTypesA, UnivTypesA, TypesA),
 	list__append(ExistTypesB, UnivTypesB, TypesB).
 
-:- pred same_structure_2(list(class_constraint)::in, list(class_constraint)::in,
+:- pred same_structure_2(list(prog_constraint)::in, list(prog_constraint)::in,
 	list(type)::out, list(type)::out) is semidet.
 
 same_structure_2([], [], [], []).
@@ -1314,26 +1320,27 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
 		typecheck_info_set_context(Context, !Info)
 	),
 		% type-check the goal
-	typecheck_goal_2(Goal0, Goal, !Info, !IO),
+	typecheck_goal_2(Goal0, Goal, GoalInfo, !Info, !IO),
 	check_warn_too_much_overloading(!Info, !IO).
 
 :- pred typecheck_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
-	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+	hlds_goal_info::in, typecheck_info::in, typecheck_info::out,
+	io::di, io::uo) is det.
 
-typecheck_goal_2(conj(List0), conj(List), !Info, !IO) :-
+typecheck_goal_2(conj(List0), conj(List), _, !Info, !IO) :-
 	checkpoint("conj", !Info, !IO),
 	typecheck_goal_list(List0, List, !Info, !IO).
 
-typecheck_goal_2(par_conj(List0), par_conj(List), !Info, !IO) :-
+typecheck_goal_2(par_conj(List0), par_conj(List), _, !Info, !IO) :-
 	checkpoint("par_conj", !Info, !IO),
 	typecheck_goal_list(List0, List, !Info, !IO).
 
-typecheck_goal_2(disj(List0), disj(List), !Info, !IO) :-
+typecheck_goal_2(disj(List0), disj(List), _, !Info, !IO) :-
 	checkpoint("disj", !Info, !IO),
 	typecheck_goal_list(List0, List, !Info, !IO).
 
 typecheck_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-		if_then_else(Vars, Cond, Then, Else), !Info, !IO) :-
+		if_then_else(Vars, Cond, Then, Else), _, !Info, !IO) :-
 	checkpoint("if", !Info, !IO),
 	typecheck_goal(Cond0, Cond, !Info, !IO),
 	checkpoint("then", !Info, !IO),
@@ -1342,11 +1349,11 @@ typecheck_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	typecheck_goal(Else0, Else, !Info, !IO),
 	ensure_vars_have_a_type(Vars, !Info, !IO).
 
-typecheck_goal_2(not(SubGoal0), not(SubGoal), !Info, !IO) :-
+typecheck_goal_2(not(SubGoal0), not(SubGoal), _, !Info, !IO) :-
 	checkpoint("not", !Info, !IO),
 	typecheck_goal(SubGoal0, SubGoal, !Info, !IO).
 
-typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), !Info,
+typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), _, !Info,
 		!IO) :-
 	checkpoint("scope", !Info, !IO),
 	typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
@@ -1367,14 +1374,16 @@ typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), !Info,
 	).
 
 typecheck_goal_2(call(_, B, Args, D, E, Name),
-		call(PredId, B, Args, D, E, Name), !Info, !IO) :-
+		call(PredId, B, Args, D, E, Name), GoalInfo, !Info, !IO) :-
 	checkpoint("call", !Info, !IO),
 	list__length(Args, Arity),
 	typecheck_info_set_called_predid(call(predicate - Name/Arity), !Info),
-	typecheck_call_pred(predicate - Name/Arity, Args, PredId, !Info, !IO).
+	goal_info_get_goal_path(GoalInfo, GoalPath),
+	typecheck_call_pred(predicate - Name/Arity, Args, GoalPath,
+		PredId, !Info, !IO).
 
 typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
-		generic_call(GenericCall, Args, C, D), !Info, !IO) :-
+		generic_call(GenericCall, Args, C, D), GoalInfo, !Info, !IO) :-
 	hlds_goal__generic_call_id(GenericCall0, CallId),
 	typecheck_info_set_called_predid(CallId, !Info),
 	(
@@ -1393,22 +1402,24 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
 	;
 		GenericCall0 = aditi_builtin(AditiBuiltin0, PredCallId),
 		checkpoint("aditi builtin", !Info, !IO),
-		typecheck_aditi_builtin(PredCallId, Args,
+		goal_info_get_goal_path(GoalInfo, GoalPath),
+		typecheck_aditi_builtin(PredCallId, Args, GoalPath,
 			AditiBuiltin0, AditiBuiltin, !Info, !IO),
 		GenericCall = aditi_builtin(AditiBuiltin, PredCallId)
 	).
 
 typecheck_goal_2(unify(LHS, RHS0, C, D, UnifyContext),
-		unify(LHS, RHS, C, D, UnifyContext), !Info, !IO) :-
+		unify(LHS, RHS, C, D, UnifyContext), GoalInfo, !Info, !IO) :-
 	checkpoint("unify", !Info, !IO),
 	typecheck_info_set_arg_num(0, !Info),
 	typecheck_info_set_unify_context(UnifyContext, !Info),
-	typecheck_unification(LHS, RHS0, RHS, !Info, !IO).
+	goal_info_get_goal_path(GoalInfo, GoalPath),
+	typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info, !IO).
 
-typecheck_goal_2(switch(_, _, _), _, !Info, !IO) :-
+typecheck_goal_2(switch(_, _, _), _, _, !Info, !IO) :-
 	error("unexpected switch").
 
-typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal,
+typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal, GoalInfo,
 		!Info, !IO) :-
 	% foreign_procs are automatically generated, so they will
 	% always be type-correct, but we need to do the type analysis in order
@@ -1417,10 +1428,11 @@ typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal,
 	% more efficiently than the way it is done below, though.)
 	typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
 	ArgVars = list__map(foreign_arg_var, Args),
-	typecheck_call_pred_id(PredId, ArgVars, !Info, !IO),
+	goal_info_get_goal_path(GoalInfo, GoalPath),
+	typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info, !IO),
 	perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 
-typecheck_goal_2(shorthand(ShorthandGoal0), shorthand(ShorthandGoal), !Info,
+typecheck_goal_2(shorthand(ShorthandGoal0), shorthand(ShorthandGoal), _, !Info,
 		!IO) :-
 	typecheck_goal_2_shorthand(ShorthandGoal0, ShorthandGoal, !Info, !IO).
 
@@ -1525,10 +1537,10 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_aditi_builtin(simple_call_id::in, list(prog_var)::in,
-	aditi_builtin::in, aditi_builtin::out,
+	goal_path::in, aditi_builtin::in, aditi_builtin::out,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_aditi_builtin(CallId, Args, !Builtin, !Info, !IO) :-
+typecheck_aditi_builtin(CallId, Args, GoalPath, !Builtin, !Info, !IO) :-
 	% This must succeed because make_hlds.m does not add a clause
 	% to the clauses_info if it contains Aditi updates with the
 	% wrong number of arguments.
@@ -1536,7 +1548,8 @@ typecheck_aditi_builtin(CallId, Args, !Builtin, !Info, !IO) :-
 	% XXX using the old version of !Builtin in typecheck_aditi_state_args
 	% looks wrong; it should be documented or fixed - zs
 	Builtin0 = !.Builtin,
-	typecheck_aditi_builtin_2(CallId, OtherArgs, !Builtin, !Info, !IO),
+	typecheck_aditi_builtin_2(CallId, OtherArgs, GoalPath,
+		!Builtin, !Info, !IO),
 	typecheck_aditi_state_args(Builtin0, CallId, State0, State, !Info,
 		!IO).
 
@@ -1544,16 +1557,16 @@ typecheck_aditi_builtin(CallId, Args, !Builtin, !Info, !IO) :-
 	% the `aditi__state' arguments.
 	%
 :- pred typecheck_aditi_builtin_2(simple_call_id::in, list(prog_var)::in,
-	aditi_builtin::in, aditi_builtin::out,
+	goal_path::in, aditi_builtin::in, aditi_builtin::out,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_aditi_builtin_2(CallId, Args,
+typecheck_aditi_builtin_2(CallId, Args, GoalPath,
 		aditi_tuple_update(Update, _),
 		aditi_tuple_update(Update, PredId), !Info, !IO) :-
 	% The tuple to insert or delete has the same argument types
 	% as the relation being inserted into or deleted from.
-	typecheck_call_pred(CallId, Args, PredId, !Info, !IO).
-typecheck_aditi_builtin_2(CallId, Args,
+	typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO).
+typecheck_aditi_builtin_2(CallId, Args, GoalPath,
 		aditi_bulk_update(Update, _, Syntax),
 		aditi_bulk_update(Update, PredId, Syntax), !Info, !IO) :-
 	CallId = PredOrFunc - _,
@@ -1587,21 +1600,22 @@ typecheck_aditi_builtin_2(CallId, Args,
 		Update = bulk_modify,
 		AdjustArgTypes = ModifyAdjustArgTypes
 	),
-	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId,
-		!Info, !IO).
+	typecheck_aditi_builtin_closure(CallId, Args, GoalPath, AdjustArgTypes,
+		PredId, !Info, !IO).
 
 	% Check that there is only one argument (other than the `aditi__state'
 	% arguments) passed to an `aditi_delete', `aditi_bulk_insert',
 	% `aditi_bulk_delete' or `aditi_modify', then typecheck that argument.
 :- pred typecheck_aditi_builtin_closure(simple_call_id::in,
-	list(prog_var)::in, adjust_arg_types::in(adjust_arg_types),
+	list(prog_var)::in, goal_path::in,
+	adjust_arg_types::in(adjust_arg_types),
 	pred_id::out, typecheck_info::in, typecheck_info::out,
 	io::di, io::uo) is det.
 
-typecheck_aditi_builtin_closure(CallId, OtherArgs, AdjustArgTypes, PredId,
-		!Info, !IO) :-
+typecheck_aditi_builtin_closure(CallId, OtherArgs, GoalPath, AdjustArgTypes,
+		PredId, !Info, !IO) :-
 	( OtherArgs = [HOArg] ->
-		typecheck_call_pred_adjust_arg_types(CallId, [HOArg],
+		typecheck_call_pred_adjust_arg_types(CallId, [HOArg], GoalPath,
 			AdjustArgTypes, PredId, !Info, !IO)
 	;
 		% An error should have been reported by make_hlds.m.
@@ -1642,12 +1656,12 @@ aditi_builtin_first_state_arg(aditi_bulk_update(_, _, _), _) = 2 .
 assign(X, X).
 
 :- pred typecheck_call_pred(simple_call_id::in, list(prog_var)::in,
-	pred_id::out, typecheck_info::in, typecheck_info::out,
+	goal_path::in, pred_id::out, typecheck_info::in, typecheck_info::out,
 	io::di, io::uo) is det.
 
-typecheck_call_pred(CallId, Args, PredId, !Info, !IO) :-
-	typecheck_call_pred_adjust_arg_types(CallId, Args, assign, PredId,
-		!Info, !IO).
+typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
+	typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, assign,
+		PredId, !Info, !IO).
 
 	% A closure of this type performs a transformation on
 	% the argument types of the called predicate. It is used to
@@ -1663,12 +1677,13 @@ typecheck_call_pred(CallId, Args, PredId, !Info, !IO) :-
 	% argument types.
 	%
 :- pred typecheck_call_pred_adjust_arg_types(simple_call_id::in,
-	list(prog_var)::in, adjust_arg_types::in(adjust_arg_types),
+	list(prog_var)::in, goal_path::in,
+	adjust_arg_types::in(adjust_arg_types),
 	pred_id::out, typecheck_info::in, typecheck_info::out,
 	io::di, io::uo) is det.
 
-typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes, PredId,
-		!Info, !IO) :-
+typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
+		PredId, !Info, !IO) :-
 	typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
 
 		% look up the called predicate's arg types
@@ -1686,10 +1701,10 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes, PredId,
 		( PredIdList = [PredId0] ->
 			PredId = PredId0,
 			typecheck_call_pred_id_adjust_arg_types(PredId, Args,
-				AdjustArgTypes, !Info, !IO)
+				GoalPath, AdjustArgTypes, !Info, !IO)
 		;
 			typecheck_call_overloaded_pred(PredIdList, Args,
-				AdjustArgTypes, !Info, !IO),
+				GoalPath, AdjustArgTypes, !Info, !IO),
 
 			%
 			% In general, we can't figure out which
@@ -1719,22 +1734,23 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes, PredId,
 
 	% Typecheck a call to a specific predicate.
 	%
-:- pred typecheck_call_pred_id(pred_id::in, list(prog_var)::in,
+:- pred typecheck_call_pred_id(pred_id::in, list(prog_var)::in, goal_path::in,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_call_pred_id(PredId, Args, !Info, !IO) :-
-	typecheck_call_pred_id_adjust_arg_types(PredId, Args, assign, !Info,
-		!IO).
+typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
+	typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath,
+		assign, !Info, !IO).
 
 	% Typecheck a call to a specific predicate, performing the given
 	% transformation on the argument types.
 	%
 :- pred typecheck_call_pred_id_adjust_arg_types(pred_id::in,
-	list(prog_var)::in, adjust_arg_types::in(adjust_arg_types),
+	list(prog_var)::in, goal_path::in,
+	adjust_arg_types::in(adjust_arg_types),
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes, !Info,
-		!IO) :-
+typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
+		!Info, !IO) :-
 	typecheck_info_get_module_info(!.Info, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
@@ -1755,8 +1771,10 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes, !Info,
 	->
 		typecheck_var_has_type_list(Args, PredArgTypes, 1, !Info, !IO)
 	;
+		make_hlds_constraints(PredClassContext, GoalPath,
+			HLDSClassContext),
 		typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet,
-			PredExistQVars, PredArgTypes, PredClassContext, !Info,
+			PredExistQVars, PredArgTypes, HLDSClassContext, !Info,
 			!IO)
 	).
 
@@ -1802,10 +1820,11 @@ typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 	typecheck_find_arities(Preds, PredIds, Arities).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id)::in, list(prog_var)::in,
-	adjust_arg_types::in(adjust_arg_types),
+	goal_path::in, adjust_arg_types::in(adjust_arg_types),
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_call_overloaded_pred(PredIdList, Args, AdjustArgTypes, !Info, !IO) :-
+typecheck_call_overloaded_pred(PredIdList, Args, GoalPath, AdjustArgTypes,
+		!Info, !IO) :-
 	%
 	% Let the new arg_type_assign_set be the cross-product
 	% of the current type_assign_set and the set of possible
@@ -1816,8 +1835,8 @@ typecheck_call_overloaded_pred(PredIdList, Args, AdjustArgTypes, !Info, !IO) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
-	get_overloaded_pred_arg_types(PredIdList, Preds, AdjustArgTypes,
-		TypeAssignSet0, [], ArgsTypeAssignSet),
+	get_overloaded_pred_arg_types(PredIdList, Preds, GoalPath,
+		AdjustArgTypes, TypeAssignSet0, [], ArgsTypeAssignSet),
 	%
 	% Then unify the types of the call arguments with the
 	% called predicates' arg types.
@@ -1826,21 +1845,23 @@ typecheck_call_overloaded_pred(PredIdList, Args, AdjustArgTypes, !Info, !IO) :-
 		!IO).
 
 :- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
-	adjust_arg_types::in(adjust_arg_types), type_assign_set::in,
+	goal_path::in, adjust_arg_types::in(adjust_arg_types),
+	type_assign_set::in,
 	args_type_assign_set::in, args_type_assign_set::out) is det.
 
-get_overloaded_pred_arg_types([], _Preds, _AdjustArgTypes, _TypeAssignSet0,
-		!ArgsTypeAssignSet).
-get_overloaded_pred_arg_types([PredId | PredIds], Preds, AdjustArgTypes,
-		TypeAssignSet0, !ArgsTypeAssignSet) :-
+get_overloaded_pred_arg_types([], _Preds, _GoalPath, _AdjustArgTypes,
+		_TypeAssignSet0, !ArgsTypeAssignSet).
+get_overloaded_pred_arg_types([PredId | PredIds], Preds, GoalPath,
+		AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
 		PredArgTypes0),
 	call(AdjustArgTypes, PredArgTypes0, PredArgTypes),
 	pred_info_get_class_context(PredInfo, PredClassContext),
+	make_hlds_constraints(PredClassContext, GoalPath, HLDSConstraints),
 	rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
-		PredArgTypes, PredClassContext, !ArgsTypeAssignSet),
-	get_overloaded_pred_arg_types(PredIds, Preds, AdjustArgTypes,
+		PredArgTypes, HLDSConstraints, !ArgsTypeAssignSet),
+	get_overloaded_pred_arg_types(PredIds, Preds, GoalPath, AdjustArgTypes,
 		TypeAssignSet0, !ArgsTypeAssignSet).
 
 %-----------------------------------------------------------------------------%
@@ -1932,7 +1953,7 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 	% types contained within renamed apart.
 	%
 :- pred typecheck_var_has_polymorphic_type_list(list(prog_var)::in,
-	tvarset::in, existq_tvars::in, list(type)::in, class_constraints::in,
+	tvarset::in, existq_tvars::in, list(type)::in, hlds_constraints::in,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredExistQVars,
@@ -1944,20 +1965,19 @@ typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredExistQVars,
 		!IO).
 
 :- pred rename_apart(type_assign_set::in, tvarset::in, existq_tvars::in,
-	list(type)::in, class_constraints::in,
+	list(type)::in, hlds_constraints::in,
 	args_type_assign_set::in, args_type_assign_set::out) is det.
 
 rename_apart([], _, _, _, _, !ArgTypeAssigns).
 rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars0,
-		PredArgTypes0, PredClassConstraints0, !ArgTypeAssigns) :-
+		PredArgTypes0, HLDSConstraints0, !ArgTypeAssigns) :-
 	%
 	% rename everything apart
 	%
 	type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
 		TypeAssign1, PredArgTypes, Subst),
 	apply_substitution_to_var_list(PredExistQVars0, Subst, PredExistQVars),
-	apply_subst_to_constraints(Subst, PredClassConstraints0,
-		PredClassConstraints),
+	apply_subst_to_constraints(Subst, HLDSConstraints0, HLDSConstraints),
 
 	%
 	% insert the existentially quantified type variables for the called
@@ -1971,11 +1991,10 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars0,
 	%
 	% save the results and recurse
 	%
-	NewArgTypeAssign = args(TypeAssign, PredArgTypes,
-		PredClassConstraints),
+	NewArgTypeAssign = args(TypeAssign, PredArgTypes, HLDSConstraints),
 	!:ArgTypeAssigns = [NewArgTypeAssign | !.ArgTypeAssigns],
 	rename_apart(TypeAssigns0, PredTypeVarSet, PredExistQVars0,
-		PredArgTypes0, PredClassConstraints0, !ArgTypeAssigns).
+		PredArgTypes0, HLDSConstraints0, !ArgTypeAssigns).
 
 :- pred type_assign_rename_apart(type_assign::in, tvarset::in, list(type)::in,
 	type_assign::out, list(type)::out, tsubst::out) is det.
@@ -2097,7 +2116,7 @@ typecheck_var_has_arg_type_2([ArgsTypeAssign | ArgsTypeAssignSets], Var,
 		!ArgsTypeAssignSet).
 
 :- pred arg_type_assign_var_has_type(type_assign::in, list(type)::in,
-	prog_var::in, class_constraints::in,
+	prog_var::in, hlds_constraints::in,
 	args_type_assign_set::in, args_type_assign_set::out) is det.
 
 arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
@@ -2397,19 +2416,21 @@ checkpoint_tree_stats(Description, Tree, !IO) :-
 	% iterate over all the possible type assignments.
 	%
 :- pred typecheck_unification(prog_var::in, unify_rhs::in, unify_rhs::out,
-	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+	goal_path::in, typecheck_info::in, typecheck_info::out,
+	io::di, io::uo) is det.
 
-typecheck_unification(X, var(Y), var(Y), !Info, !IO) :-
+typecheck_unification(X, var(Y), var(Y), _, !Info, !IO) :-
 	typecheck_unify_var_var(X, Y, !Info, !IO).
-typecheck_unification(X, functor(F, E, As), functor(F, E, As), !Info, !IO) :-
+typecheck_unification(X, functor(F, E, As), functor(F, E, As), GoalPath,
+		!Info, !IO) :-
 	typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
-	typecheck_unify_var_functor(X, F, As, !Info, !IO),
+	typecheck_unify_var_functor(X, F, As, GoalPath, !Info, !IO),
 	perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 typecheck_unification(X,
 		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals, Vars, Modes, Det, Goal0),
 		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-			NonLocals, Vars, Modes, Det, Goal), !Info, !IO) :-
+			NonLocals, Vars, Modes, Det, Goal), _, !Info, !IO) :-
  	typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
 		!Info, !IO),
 	typecheck_goal(Goal0, Goal, !Info, !IO).
@@ -2431,16 +2452,16 @@ typecheck_unify_var_var(X, Y, !Info, !IO) :-
 	).
 
 :- pred typecheck_unify_var_functor(prog_var::in, cons_id::in,
-	list(prog_var)::in,
+	list(prog_var)::in, goal_path::in,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_unify_var_functor(Var, Functor, Args, !Info, !IO) :-
+typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
 	%
 	% Get the list of possible constructors that match this functor/arity.
 	% If there aren't any, report an undefined constructor error.
 	%
 	list__length(Args, Arity),
-	typecheck_info_get_ctor_list(!.Info, Functor, Arity,
+	typecheck_info_get_ctor_list(!.Info, Functor, Arity, GoalPath,
 		ConsDefnList, InvalidConsDefnList),
 	(
 		ConsDefnList = [],
@@ -2488,7 +2509,7 @@ typecheck_unify_var_functor(Var, Functor, Args, !Info, !IO) :-
 		% Check that the type of the arguments of the functor matches
 		% their expected type for this functor.
 		%
-		typecheck_functor_arg_types( ArgsTypeAssignSet, Args, !.Info,
+		typecheck_functor_arg_types(ArgsTypeAssignSet, Args, !.Info,
 			[], TypeAssignSet),
 		(
 			TypeAssignSet = [],
@@ -2527,7 +2548,7 @@ typecheck_unify_var_functor(Var, Functor, Args, !Info, !IO) :-
 						% Type assignment,
 			callee_arg_types	:: list(type),
 						% types of callee args,
-			callee_constraints	:: class_constraints
+			callee_constraints	:: hlds_constraints
 						% constraints from callee
 		).
 
@@ -2793,14 +2814,14 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 	% we can assume in the caller is something that we must prove
 	% in the callee, and vice versa.
 	%
-:- pred dual_constraints(class_constraints::in, class_constraints::out) is det.
+:- pred dual_constraints(hlds_constraints::in, hlds_constraints::out) is det.
 
 dual_constraints(constraints(Univs, Exists), constraints(Exists, Univs)).
 
 	% Add the specified constraints to the current constraint set.
 	%
-:- pred add_constraints(class_constraints::in, class_constraints::in,
-	class_constraints::out) is det.
+:- pred add_constraints(hlds_constraints::in, hlds_constraints::in,
+	hlds_constraints::out) is det.
 
 add_constraints(Constraints0, CsToAdd, Constraints) :-
 	Constraints0 = constraints(UnivCs0, ExistCs0),
@@ -2928,22 +2949,23 @@ builtin_atomic_type(string_const(_), "string").
 builtin_atomic_type(cons(unqualified(String), 0), "character") :-
 	string__char_to_string(_, String).
 
-	% builtin_pred_type(Info, Functor, Arity, PredConsInfoList):
+	% builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList):
 	%
 	% If Functor/Arity is a constant of a pred type, instantiates
 	% the output parameters, otherwise fails.
 	%
 	% Instantiates PredConsInfoList to the set of cons_type_info structures
 	% for each predicate with name `Functor' and arity greater than
-	% or equal to Arity.
+	% or equal to Arity.  GoalPath is used to identify any constraints
+	% introduced.
 	%
 	% For example, functor `map__search/1' has type `pred(K,V)'
 	% (hence PredTypeParams = [K,V]) and argument types [map(K,V)].
 	%
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
-	list(cons_type_info)::out) is semidet.
+	goal_path::in, list(cons_type_info)::out) is semidet.
 
-builtin_pred_type(Info, Functor, Arity, PredConsInfoList) :-
+builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList) :-
 	Functor = cons(SymName, _),
 	typecheck_info_get_module_info(Info, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -2954,22 +2976,22 @@ builtin_pred_type(Info, Functor, Arity, PredConsInfoList) :-
 	->
 		predicate_table_get_preds(PredicateTable, Preds),
 		make_pred_cons_info_list(Info, PredIdList, Preds, Arity,
-			ModuleInfo, [], PredConsInfoList)
+			GoalPath, [], PredConsInfoList)
 	;
 		PredConsInfoList = []
 	).
 
 :- pred make_pred_cons_info_list(typecheck_info::in, list(pred_id)::in,
-	pred_table::in, int::in, module_info::in,
+	pred_table::in, int::in, goal_path::in,
 	list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
 make_pred_cons_info_list(_, [], _, _, _, !ConsTypeInfos).
 make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
-		ModuleInfo, !ConsTypeInfos) :-
+		GoalPath, !ConsTypeInfos) :-
 	make_pred_cons_info(Info, PredId, PredTable, Arity,
-		ModuleInfo, !ConsTypeInfos),
+		GoalPath, !ConsTypeInfos),
 	make_pred_cons_info_list(Info, PredIds, PredTable, Arity,
-		ModuleInfo, !ConsTypeInfos).
+		GoalPath, !ConsTypeInfos).
 
 :- type cons_type_info
 	--->	cons_type_info(
@@ -2978,7 +3000,7 @@ make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
 						% type vars
 			type, 			% Constructor type
 			list(type), 		% Types of the arguments
-			class_constraints	% Constraints introduced by
+			hlds_constraints	% Constraints introduced by
 						% this constructor (e.g. if
 						% it is actually a function,
 						% or if it is an existentially
@@ -2986,10 +3008,11 @@ make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
 		).
 
 :- pred make_pred_cons_info(typecheck_info::in, pred_id::in, pred_table::in,
-	int::in, module_info::in, list(cons_type_info)::in,
-	list(cons_type_info)::out) is det.
+	int::in, goal_path::in,
+	list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
-make_pred_cons_info(_Info, PredId, PredTable, FuncArity, _, !ConsInfos) :-
+make_pred_cons_info(_Info, PredId, PredTable, FuncArity, GoalPath,
+		!ConsInfos) :-
 	map__lookup(PredTable, PredId, PredInfo),
 	PredArity = pred_info_orig_arity(PredInfo),
 	IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -3011,9 +3034,11 @@ make_pred_cons_info(_Info, PredId, PredTable, FuncArity, _, !ConsInfos) :-
 		->
 			construct_higher_order_pred_type(Purity, normal,
 				PredTypeParams, PredType),
+			make_hlds_constraints(ClassContext, GoalPath,
+				HLDSContext),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 				PredExistQVars, PredType, ArgTypes,
-				ClassContext),
+				HLDSContext),
 			!:ConsInfos = [ConsInfo | !.ConsInfos],
 
 			% If the predicate has an Aditi marker,
@@ -3027,7 +3052,7 @@ make_pred_cons_info(_Info, PredId, PredTable, FuncArity, _, !ConsInfos) :-
 					PredType2),
 				ConsInfo2 = cons_type_info(PredTypeVarSet,
 					PredExistQVars, PredType2,
-					ArgTypes, ClassContext),
+					ArgTypes, HLDSContext),
 				!:ConsInfos = [ConsInfo2 | !.ConsInfos]
 			;
 				true
@@ -3058,9 +3083,11 @@ make_pred_cons_info(_Info, PredId, PredTable, FuncArity, _, !ConsInfos) :-
 					normal, FuncArgTypeParams,
 					FuncReturnTypeParam, FuncType)
 			),
+			make_hlds_constraints(ClassContext, GoalPath,
+				HLDSContext),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 				PredExistQVars, FuncType, FuncArgTypes,
-				ClassContext),
+				HLDSContext),
 			!:ConsInfos = [ConsInfo | !.ConsInfos]
 		;
 			error("make_pred_cons_info: split_list failed")
@@ -3095,15 +3122,16 @@ builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
 	ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
 		[FuncType | ArgTypes], Constraints)].
 
-	% builtin_field_access_function_type(Info, Functor,
+	% builtin_field_access_function_type(Info, GoalPath, Functor,
 	%	Arity, ConsTypeInfos):
 	% Succeed if Functor is the name of one the automatically
 	% generated field access functions (fieldname, '<fieldname> :=').
 	%
-:- pred builtin_field_access_function_type(typecheck_info::in, cons_id::in,
-	arity::in, list(maybe_cons_type_info)::out) is semidet.
+:- pred builtin_field_access_function_type(typecheck_info::in, goal_path::in,
+	cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
 
-builtin_field_access_function_type(Info, Functor, Arity, MaybeConsTypeInfos) :-
+builtin_field_access_function_type(Info, GoalPath, Functor, Arity,
+		MaybeConsTypeInfos) :-
 	%
 	% Taking the address of automatically generated field access
 	% functions is not allowed, so currying does have to be
@@ -3118,17 +3146,18 @@ builtin_field_access_function_type(Info, Functor, Arity, MaybeConsTypeInfos) :-
 	map__search(CtorFieldTable, FieldName, FieldDefns),
 
 	list__filter_map(
-		make_field_access_function_cons_type_info(Info, Name,
+		make_field_access_function_cons_type_info(Info, GoalPath, Name,
 			Arity, AccessType, FieldName),
 		FieldDefns, MaybeConsTypeInfos).
 
 :- pred make_field_access_function_cons_type_info(typecheck_info::in,
-	sym_name::in, arity::in, field_access_type::in, ctor_field_name::in,
-	hlds_ctor_field_defn::in, maybe_cons_type_info::out) is semidet.
+	goal_path::in, sym_name::in, arity::in, field_access_type::in,
+	ctor_field_name::in, hlds_ctor_field_defn::in,
+	maybe_cons_type_info::out) is semidet.
 
-make_field_access_function_cons_type_info(Info, FuncName, Arity,
+make_field_access_function_cons_type_info(Info, GoalPath, FuncName, Arity,
 		AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
-	get_field_access_constructor(Info, FuncName, Arity,
+	get_field_access_constructor(Info, GoalPath, FuncName, Arity,
 		AccessType, FieldDefn, MaybeFunctorConsTypeInfo),
 	(
 		MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
@@ -3139,12 +3168,12 @@ make_field_access_function_cons_type_info(Info, FuncName, Arity,
 		ConsTypeInfo = MaybeFunctorConsTypeInfo
 	).
 
-:- pred get_field_access_constructor(typecheck_info::in, sym_name::in,
-	arity::in, field_access_type::in, hlds_ctor_field_defn::in,
-	maybe_cons_type_info::out) is semidet.
+:- pred get_field_access_constructor(typecheck_info::in, goal_path::in,
+	sym_name::in, arity::in, field_access_type::in,
+	hlds_ctor_field_defn::in, maybe_cons_type_info::out) is semidet.
 
-get_field_access_constructor(Info, FuncName, Arity, _AccessType, FieldDefn,
-		FunctorConsTypeInfo) :-
+get_field_access_constructor(Info, GoalPath, FuncName, Arity, _AccessType,
+		FieldDefn, FunctorConsTypeInfo) :-
 	FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
 	TypeCtor = qualified(TypeModule, _) - _,
 
@@ -3172,7 +3201,7 @@ get_field_access_constructor(Info, FuncName, Arity, _AccessType, FieldDefn,
 			TypeCtor = CtorDefn ^ cons_type_ctor
 		), ConsDefns0, ConsDefns),
 	ConsDefns = [ConsDefn],
-	convert_cons_defn(Info, ConsDefn, FunctorConsTypeInfo).
+	convert_cons_defn(Info, GoalPath, ConsDefn, FunctorConsTypeInfo).
 
 :- type maybe_cons_type_info
 	--->	ok(cons_type_info)
@@ -3191,7 +3220,7 @@ get_field_access_constructor(Info, FuncName, Arity, _AccessType, FieldDefn,
 convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 		FunctorConsTypeInfo, ConsTypeInfo) :-
 	FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars0,
-		FunctorType, ConsArgTypes, ClassConstraints0),
+		FunctorType, ConsArgTypes, Constraints0),
 	FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
 	list__index1_det(ConsArgTypes, FieldNumber, FieldType),
 	(
@@ -3200,9 +3229,9 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 		ArgTypes = [FunctorType],
 		TVarSet = TVarSet0,
 		ExistQVars = ExistQVars0,
-		ClassConstraints = ClassConstraints0,
+		Constraints = Constraints0,
 		ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-			RetType, ArgTypes, ClassConstraints))
+			RetType, ArgTypes, Constraints))
 	;
 		AccessType = set,
 
@@ -3242,10 +3271,10 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 			% are local to the set function, so they don't
 			% have to be considered here.
 			%
-			ClassConstraints0 = constraints(UnivConstraints, _),
-			ClassConstraints = constraints(UnivConstraints, []),
+			Constraints0 = constraints(UnivConstraints, _),
+			Constraints = constraints(UnivConstraints, []),
 			ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-				RetType, ArgTypes, ClassConstraints))
+				RetType, ArgTypes, Constraints))
 		;
 			TVarsInField = [_ | _],
 			%
@@ -3306,15 +3335,15 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 				term__vars_list([FunctorType, FieldType],
 					CallTVars0),
 				set__list_to_set(CallTVars0, CallTVars),
-				project_rename_flip_class_constraints(CallTVars,
-					TVarRenaming, ClassConstraints0,
-					ClassConstraints),
+				project_rename_flip_constraints(CallTVars,
+					TVarRenaming, Constraints0,
+					Constraints),
 
 				RetType = OutputFunctorType,
 				ArgTypes = [FunctorType, RenamedFieldType],
 				ConsTypeInfo = ok(cons_type_info(TVarSet,
 					ExistQVars, RetType, ArgTypes,
-					ClassConstraints))
+					Constraints))
 			;
 				%
 				% This field cannot be set. Pass out some
@@ -3338,13 +3367,12 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 	% These constraints are all universal constraints - the values
 	% of the type variables are supplied by the caller.
 	%
-:- pred project_rename_flip_class_constraints(set(tvar)::in,
-	map(tvar, tvar)::in, class_constraints::in, class_constraints::out)
+:- pred project_rename_flip_constraints(set(tvar)::in,
+	map(tvar, tvar)::in, hlds_constraints::in, hlds_constraints::out)
 	is det.
 
-project_rename_flip_class_constraints(CallTVars, TVarRenaming,
-		Constraints0, Constraints) :-
-	Constraints0 = constraints(UnivConstraints0, ExistConstraints0),
+project_rename_flip_constraints(CallTVars, TVarRenaming, !Constraints) :-
+	!.Constraints = constraints(UnivConstraints0, ExistConstraints0),
 
 	%
 	% XXX We currently don't allow universal constraints on types or
@@ -3355,8 +3383,7 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 		UnivConstraints0 = []
 	;
 		UnivConstraints0 = [_ | _],
-		error("project_rename_flip_class_constraints: " ++
-			"universal constraints")
+		error("project_rename_flip_constraints: universal constraints")
 	),
 
 	%
@@ -3370,29 +3397,28 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 
 	% The variables which were previously existentially quantified
 	% are now universally quantified.
-	Constraints = constraints(NewConstraints, []).
+	!:Constraints = constraints(NewConstraints, []).
 
-:- pred project_constraint(set(tvar)::in, class_constraint::in) is semidet.
+:- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
 
 project_constraint(CallTVars, Constraint) :-
-	Constraint = constraint(_, TypesToCheck),
+	Constraint = constraint(_, _, TypesToCheck),
 	term__vars_list(TypesToCheck, TVarsToCheck0),
 	set__list_to_set(TVarsToCheck0, TVarsToCheck),
 	set__intersect(TVarsToCheck, CallTVars, RelevantTVars),
 	\+ set__empty(RelevantTVars).
 
-:- pred rename_constraint(map(tvar, tvar)::in, class_constraint::in,
-	class_constraint::out) is semidet.
+:- pred rename_constraint(map(tvar, tvar)::in, hlds_constraint::in,
+	hlds_constraint::out) is semidet.
 
 rename_constraint(TVarRenaming, Constraint0, Constraint) :-
-	Constraint0 = constraint(ClassName, ConstraintTypes0),
+	Constraint0 = constraint(Ids, Name, Types0),
 	some [Var] (
-		term__contains_var_list(ConstraintTypes0, Var),
+		term__contains_var_list(Types0, Var),
 		map__contains(TVarRenaming, Var)
 	),
-	term__apply_variable_renaming_to_list(ConstraintTypes0,
-		TVarRenaming, ConstraintTypes),
-	Constraint = constraint(ClassName, ConstraintTypes).
+	term__apply_variable_renaming_to_list(Types0, TVarRenaming, Types),
+	Constraint = constraint(Ids, Name, Types).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3459,7 +3485,7 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
 
 :- pred typecheck_info_init(module_info::in, pred_id::in,
 	bool::in, tvarset::in, prog_varset::in, map(prog_var, type)::in,
-	headtypes::in, class_constraints::in, import_status::in,
+	headtypes::in, hlds_constraints::in, import_status::in,
 	pred_markers::in, typecheck_info::out) is det.
 
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
@@ -3469,6 +3495,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
 	term__context_init(Context),
 	map__init(TypeBindings),
 	map__init(Proofs),
+	map__init(ConstraintMap),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,
 	Info = typecheck_info(
@@ -3476,7 +3503,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
 		IsFieldAccessFunction, Context,
 		unify_context(explicit, []), VarSet,
 		[type_assign(VarTypes, TypeVarSet, HeadTypeParams,
-			TypeBindings, Constraints, Proofs)],
+			TypeBindings, Constraints, Proofs, ConstraintMap)],
 		FoundTypeError, WarnedAboutOverloading
 	).
 
@@ -3598,14 +3625,14 @@ typecheck_info_get_pred_markers(Info, PredMarkers) :-
 	%
 :- pred typecheck_info_get_final_info(typecheck_info::in, list(tvar)::in,
 	existq_tvars::in, vartypes::in, tvarset::out, existq_tvars::out,
-	map(prog_var, type)::out, class_constraints::out,
-	map(class_constraint, constraint_proof)::out, map(tvar, tvar)::out,
-	map(tvar, tvar)::out) is det.
+	map(prog_var, type)::out, prog_constraints::out,
+	constraint_proof_map::out, constraint_map::out,
+	map(tvar, tvar)::out, map(tvar, tvar)::out) is det.
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 		OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
-		NewVarTypes, NewTypeConstraints, NewConstraintProofs, TSubst,
-		ExistTypeRenaming) :-
+		NewVarTypes, NewTypeConstraints, NewConstraintProofs,
+		NewConstraintMap, TSubst, ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(Info, TypeAssignSet),
 	(
 		TypeAssignSet = [TypeAssign | _],
@@ -3614,14 +3641,35 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 		type_assign_get_var_types(TypeAssign, VarTypes0),
 		type_assign_get_type_bindings(TypeAssign, TypeBindings),
 		type_assign_get_typeclass_constraints(TypeAssign,
-			TypeConstraints),
+			HLDSTypeConstraints),
 		type_assign_get_constraint_proofs(TypeAssign,
 			ConstraintProofs0),
+		type_assign_get_constraint_map(TypeAssign, ConstraintMap0),
 
 		map__keys(VarTypes0, Vars),
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
 		apply_rec_subst_to_constraint_proofs(TypeBindings,
 			ConstraintProofs0, ConstraintProofs),
+		apply_rec_subst_to_constraint_map(TypeBindings,
+			ConstraintMap0, ConstraintMap1),
+
+		%
+		% When inferring the typeclass constraints, the universal
+		% constraints here may be assumed (if this is the last pass)
+		% but will not have been eliminated during context reduction,
+		% hence they will not yet be in the constraint map.  Since
+		% they may be required, put them in now.
+		%
+		% Additionally, existential constraints are assumed so don't
+		% need to be eliminated during context reduction, so they
+		% need to be put in the constraint map now.
+		%
+		HLDSTypeConstraints = constraints(HLDSUnivConstraints,
+			HLDSExistConstraints),
+		list__foldl(update_constraint_map, HLDSUnivConstraints,
+			ConstraintMap1, ConstraintMap2),
+		list__foldl(update_constraint_map, HLDSExistConstraints,
+			ConstraintMap2, ConstraintMap),
 
 		%
 		% Figure out how we should rename the existential types
@@ -3681,21 +3729,14 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 			NewTypes),
 		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes),
 		map__apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
-		apply_variable_renaming_to_constraints(TSubst, TypeConstraints,
-			NewTypeConstraints),
-		( map__is_empty(ConstraintProofs) ->
-			% Optimize the simple case.
-			NewConstraintProofs = ConstraintProofs
-		;
-			map__keys(ConstraintProofs, ProofKeysList),
-			map__values(ConstraintProofs, ProofValuesList),
-			apply_variable_renaming_to_constraint_list(TSubst,
-				ProofKeysList, NewProofKeysList),
-			list__map(rename_constraint_proof(TSubst),
-				ProofValuesList, NewProofValuesList),
-			map__from_corresponding_lists(NewProofKeysList,
-				NewProofValuesList, NewConstraintProofs)
-		)
+		retrieve_prog_constraints(HLDSTypeConstraints,
+			TypeConstraints),
+		apply_variable_renaming_to_prog_constraints(TSubst,
+			TypeConstraints, NewTypeConstraints),
+		apply_variable_renaming_to_constraint_proofs(TSubst,
+			ConstraintProofs, NewConstraintProofs),
+		apply_variable_renaming_to_constraint_map(TSubst,
+			ConstraintMap, NewConstraintMap)
 	;
 		TypeAssignSet = [],
 		error("internal error in typecheck_info_get_vartypes")
@@ -3743,17 +3784,6 @@ expand_types([Var | Vars], TypeSubst, !VarTypes) :-
 	map__det_update(!.VarTypes, Var, Type, !:VarTypes),
 	expand_types(Vars, TypeSubst, !VarTypes).
 
-:- pred rename_constraint_proof(map(tvar, tvar)::in, constraint_proof::in,
-	constraint_proof::out) is det.
-
-	% Apply a type variable renaming to a class constraint proof.
-	%
-rename_constraint_proof(_TSubst, apply_instance(Num), apply_instance(Num)).
-rename_constraint_proof(TSubst, superclass(ClassConstraint0),
-		superclass(ClassConstraint)) :-
-	apply_variable_renaming_to_constraint(TSubst, ClassConstraint0,
-		ClassConstraint).
-
 %-----------------------------------------------------------------------------%
 
 	% Note: changes here may require changes to
@@ -3763,9 +3793,11 @@ rename_constraint_proof(TSubst, superclass(ClassConstraint0),
 	% and recompilation__check__check_functor_ambiguities.
 	%
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
-	list(cons_type_info)::out, list(cons_error)::out) is det.
+	goal_path::in, list(cons_type_info)::out, list(cons_error)::out)
+	is det.
 
-typecheck_info_get_ctor_list(Info, Functor, Arity, ConsInfoList, ConsErrors) :-
+typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfoList,
+		ConsErrors) :-
 	(
 		%
 		% If we're typechecking the clause added for
@@ -3780,7 +3812,7 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, ConsInfoList, ConsErrors) :-
 		Info ^ import_status \= opt_imported
 	->
 		(
-			builtin_field_access_function_type(Info,
+			builtin_field_access_function_type(Info, GoalPath,
 				Functor, Arity, FieldAccessConsInfoList)
 		->
 			split_cons_errors(FieldAccessConsInfoList,
@@ -3790,14 +3822,15 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, ConsInfoList, ConsErrors) :-
 			ConsErrors = []
 		)
 	;
-		typecheck_info_get_ctor_list_2(Info, Functor, Arity,
+		typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath,
 			ConsInfoList, ConsErrors)
 	).
 
 :- pred typecheck_info_get_ctor_list_2(typecheck_info::in, cons_id::in,
-	int::in, list(cons_type_info)::out, list(cons_error)::out) is det.
+	int::in, goal_path::in, list(cons_type_info)::out,
+	list(cons_error)::out) is det.
 
-typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
+typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
 		ConsErrors) :-
 	% Check if `Functor/Arity' has been defined as a constructor
 	% in some discriminated union type(s).  This gives
@@ -3807,7 +3840,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 		Functor = cons(_, _),
 		map__search(Ctors, Functor, HLDS_ConsDefnList)
 	->
-		convert_cons_defn_list(Info, HLDS_ConsDefnList,
+		convert_cons_defn_list(Info, GoalPath, HLDS_ConsDefnList,
 			MaybeConsInfoList0)
 	;
 		MaybeConsInfoList0 = []
@@ -3837,7 +3870,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 		OrigFunctor = cons(OrigName, Arity),
 		map__search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
 	->
-		convert_cons_defn_list(Info, HLDS_ExistQConsDefnList,
+		convert_cons_defn_list(Info, GoalPath, HLDS_ExistQConsDefnList,
 			ExistQuantifiedConsInfoList),
 		list__filter_map(flip_quantifiers, ExistQuantifiedConsInfoList,
 			UnivQuantifiedConsInfoList),
@@ -3852,8 +3885,8 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 	% user has not supplied a declaration.
 	%
 	(
-		builtin_field_access_function_type(Info, Functor, Arity,
-			FieldAccessConsInfoList)
+		builtin_field_access_function_type(Info, GoalPath, Functor,
+			Arity, FieldAccessConsInfoList)
 	->
 		MaybeConsInfoList = FieldAccessConsInfoList ++
 			MaybeConsInfoList1
@@ -3910,7 +3943,10 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
-	( builtin_pred_type(Info, Functor, Arity, PredConsInfoList) ->
+	(
+		builtin_pred_type(Info, Functor, Arity, GoalPath,
+			PredConsInfoList)
+	->
 		list__append(ConsInfoList3, PredConsInfoList, ConsInfoList4)
 	;
 		ConsInfoList4 = ConsInfoList3
@@ -3989,18 +4025,20 @@ report_unsatisfiable_constraints(TypeAssignSet, !Info, !IO) :-
 
 write_constraints(Context, TypeAssign, !IO) :-
 	type_assign_get_typeclass_constraints(TypeAssign, Constraints),
-	Constraints = constraints(UnprovenConstraints0, _AssumedConstraints),
+	Constraints = constraints(UnprovenConstraints, _AssumedConstraints),
+	retrieve_prog_constraint_list(UnprovenConstraints,
+		UnprovenProgConstraints0),
 
 	type_assign_get_typevarset(TypeAssign, VarSet),
 	type_assign_get_type_bindings(TypeAssign, Bindings),
-	apply_rec_subst_to_constraint_list(Bindings,
-		UnprovenConstraints0, UnprovenConstraints1),
-	list__sort_and_remove_dups(UnprovenConstraints1,
-		UnprovenConstraints),
+	apply_rec_subst_to_prog_constraint_list(Bindings,
+		UnprovenProgConstraints0, UnprovenProgConstraints1),
+	list__sort_and_remove_dups(UnprovenProgConstraints1,
+		UnprovenProgConstraints),
 	prog_out__write_context(Context, !IO),
 	io__write_string("  `", !IO),
 	AppendVarnums = no,
-	io__write_list(UnprovenConstraints, "', `",
+	io__write_list(UnprovenProgConstraints, "', `",
 		mercury_output_constraint(VarSet, AppendVarnums), !IO),
 	io__write_string("'.\n", !IO).
 
@@ -4085,68 +4123,120 @@ reduce_type_assign_context(SuperClassTable, InstanceTable, !TypeAssign) :-
 	type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
 	type_assign_get_typevarset(!.TypeAssign, TVarSet0),
 	type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
+	type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
 	Constraints0 = constraints(UnprovenConstraints0, AssumedConstraints),
 	typecheck__reduce_context_by_rule_application(InstanceTable,
 		SuperClassTable, AssumedConstraints,
 		Bindings, TVarSet0, TVarSet, Proofs0, Proofs,
+		ConstraintMap0, ConstraintMap,
 		UnprovenConstraints0, UnprovenConstraints),
 	check_satisfiability(UnprovenConstraints, HeadTypeParams),
 	Constraints = constraints(UnprovenConstraints, AssumedConstraints),
 
 	type_assign_set_typeclass_constraints(Constraints, !TypeAssign),
 	type_assign_set_typevarset(TVarSet, !TypeAssign),
-	type_assign_set_constraint_proofs(Proofs, !TypeAssign).
+	type_assign_set_constraint_proofs(Proofs, !TypeAssign),
+	type_assign_set_constraint_map(ConstraintMap, !TypeAssign).
 
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
-		AssumedConstraints, Bindings, TVarSet0, TVarSet,
-		Proofs0, Proofs, Constraints0, Constraints) :-
+		AssumedConstraints, Bindings, !TVarSet, !Proofs,
+		!ConstraintMap, !Constraints) :-
 	typecheck__reduce_context_by_rule_application_2(InstanceTable,
-		SuperClassTable, AssumedConstraints, Bindings, TVarSet0,
-		TVarSet, Proofs0, Proofs, Constraints0, Constraints,
-		Constraints0, _).
+		SuperClassTable, AssumedConstraints, Bindings, !TVarSet,
+		!Proofs, !ConstraintMap, !Constraints, !.Constraints, _).
 
 :- pred typecheck__reduce_context_by_rule_application_2(instance_table::in,
-	superclass_table::in, list(class_constraint)::in, tsubst::in,
+	superclass_table::in, list(hlds_constraint)::in, tsubst::in,
 	tvarset::in, tvarset::out,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::in, list(class_constraint)::out,
-	list(class_constraint)::in, list(class_constraint)::out) is det.
+	constraint_proof_map::in, constraint_proof_map::out,
+	constraint_map::in, constraint_map::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 typecheck__reduce_context_by_rule_application_2(InstanceTable,
 		SuperClassTable, AssumedConstraints, Bindings,
-		!TVarSet, !Proofs, !Constraints, !Seen) :-
+		!TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen) :-
 	InitialTVarSet = !.TVarSet,
 	apply_rec_subst_to_constraint_list(Bindings, !Constraints),
-	eliminate_assumed_constraints(AssumedConstraints, !Constraints,
-		Changed1),
-	apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !Seen,
-		!Constraints, Changed2),
+	eliminate_assumed_constraints(AssumedConstraints, !ConstraintMap,
+		!Constraints, Changed1),
+	apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !ConstraintMap,
+		!Seen, !Constraints, Changed2),
 	varset__vars(!.TVarSet, TVars),
 	apply_class_rules(AssumedConstraints, TVars, SuperClassTable,
-		InitialTVarSet, !Proofs, !Constraints, Changed3),
+		InitialTVarSet, !Proofs, !ConstraintMap, !Constraints,
+		Changed3),
 	(
 		Changed1 = no,
 		Changed2 = no,
 		Changed3 = no
 	->
 			% We have reached fixpoint
-		list__sort_and_remove_dups(!Constraints)
+		sort_and_merge_dups(!Constraints)
 	;
 		typecheck__reduce_context_by_rule_application_2(InstanceTable,
 			SuperClassTable, AssumedConstraints, Bindings,
-			!TVarSet, !Proofs, !Constraints, !Seen)
+			!TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen)
 	).
 
-:- pred eliminate_assumed_constraints(list(class_constraint)::in,
-	list(class_constraint)::in, list(class_constraint)::out, bool::out)
+:- pred sort_and_merge_dups(list(hlds_constraint)::in,
+	list(hlds_constraint)::out) is det.
+
+sort_and_merge_dups(!Constraints) :-
+	list__sort(compare_hlds_constraints, !Constraints),
+	merge_adjacent_constraints(!Constraints).
+
+:- pred merge_adjacent_constraints(list(hlds_constraint)::in,
+	list(hlds_constraint)::out) is det.
+
+merge_adjacent_constraints([], []).
+merge_adjacent_constraints([C | Cs], Constraints) :-
+	merge_adjacent_constraints_2(C, Cs, Constraints).
+
+:- pred merge_adjacent_constraints_2(hlds_constraint::in,
+	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
+
+merge_adjacent_constraints_2(C0, [], [C0]).
+merge_adjacent_constraints_2(C0, [C1 | Cs], Constraints) :-
+	(
+		merge_constraints(C0, C1, C)
+	->
+		merge_adjacent_constraints_2(C, Cs, Constraints)
+	;
+		merge_adjacent_constraints_2(C1, Cs, Constraints0),
+		Constraints = [C0 | Constraints0]
+	).
+
+	% merge_constraints(A, B, C) succeeds if A and B represent equivalent
+	% constraints.  In this case, C is the equivalent constraint with the
+	% list of ids being the union of the ids of A and B.
+	%
+:- pred merge_constraints(hlds_constraint::in, hlds_constraint::in,
+	hlds_constraint::out) is semidet.
+
+merge_constraints(constraint(IdsA, Name, Types), constraint(IdsB, Name, Types),
+		constraint(Ids, Name, Types)) :-
+	list__append(IdsA, IdsB, Ids0),
+	list__sort_and_remove_dups(Ids0, Ids).
+
+:- pred eliminate_assumed_constraints(list(hlds_constraint)::in,
+	constraint_map::in, constraint_map::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out)
 	is det.
 
-eliminate_assumed_constraints(_, [], [], no).
-eliminate_assumed_constraints(AssumedCs, [C | Cs], NewCs, Changed) :-
-	eliminate_assumed_constraints(AssumedCs, Cs, NewCs0, Changed0),
-	( list__member(C, AssumedCs) ->
+eliminate_assumed_constraints(_, !ConstraintMap, [], [], no).
+eliminate_assumed_constraints(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
+		Changed) :-
+	eliminate_assumed_constraints(AssumedCs, !ConstraintMap, Cs, NewCs0,
+		Changed0),
+	(
+		some [A] (
+			list__member(A, AssumedCs),
+			matching_constraints(A, C)
+		)
+	->
+		update_constraint_map(C, !ConstraintMap),
 		NewCs = NewCs0,
 		Changed = yes
 	;
@@ -4155,29 +4245,29 @@ eliminate_assumed_constraints(AssumedCs, [C | Cs], NewCs, Changed) :-
 	).
 
 :- pred apply_instance_rules(instance_table::in, tvarset::in, tvarset::out,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::in, list(class_constraint)::out,
-	list(class_constraint)::in, list(class_constraint)::out, bool::out)
+	constraint_proof_map::in, constraint_proof_map::out,
+	constraint_map::in, constraint_map::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out)
 	is det.
 
-apply_instance_rules(_, !TVarSet, !Proofs, !Seen, [], [], no).
-apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !Seen,
+apply_instance_rules(_, !TVarSet, !Proofs, !ConstraintMap, !Seen, [], [], no).
+apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !ConstraintMap, !Seen,
 		[C | Cs], Constraints, Changed) :-
-	C = constraint(ClassName, Types),
+	C = constraint(_, ClassName, Types),
 	list__length(Types, Arity),
 	map__lookup(InstanceTable, class_id(ClassName, Arity), Instances),
 	InitialTVarSet = !.TVarSet,
 	(
-		find_matching_instance_rule(Instances, ClassName, Types,
-			!TVarSet, !Proofs, NewConstraints0),
-
+		find_matching_instance_rule(Instances, C, !TVarSet, !Proofs,
+			NewConstraints0)
+	->
+		update_constraint_map(C, !ConstraintMap),
 			% Remove any constraints we've already seen.
 			% This ensures we don't get into an infinite loop.
-		NewConstraints1 = NewConstraints0 `list__delete_elems` !.Seen
-	->
+		list__filter(matches_no_constraint(!.Seen), NewConstraints0,
+			NewConstraints),
 			% Put the new constraints at the front of the list
-		NewConstraints = NewConstraints1,
 		!:Seen = NewConstraints ++ !.Seen,
 		Changed1 = yes
 	;
@@ -4186,10 +4276,19 @@ apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !Seen,
 		!:TVarSet = InitialTVarSet,
 		Changed1 = no
 	),
-	apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !Seen,
-		Cs, TailConstraints, Changed2),
+	apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !ConstraintMap,
+		!Seen, Cs, TailConstraints, Changed2),
 	bool__or(Changed1, Changed2, Changed),
 	list__append(NewConstraints, TailConstraints, Constraints).
+
+:- pred matches_no_constraint(list(hlds_constraint)::in, hlds_constraint::in)
+	is semidet.
+
+matches_no_constraint(Seen, Constraint) :-
+	\+ (some [S] (
+		list__member(S, Seen),
+		matching_constraints(S, Constraint)
+	)).
 
 	% We take the first matching instance rule that we can find; any
 	% overlapping instance declarations will have been caught earlier.
@@ -4201,78 +4300,81 @@ apply_instance_rules(InstanceTable, !TVarSet, !Proofs, !Seen,
 	% a new varset: this substitution should have been worked out before,
 	% as these varsets would already have been merged.
 	%
-:- pred find_matching_instance_rule(list(hlds_instance_defn)::in, sym_name::in,
-	list(type)::in, tvarset::in, tvarset::out,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::out) is semidet.
+:- pred find_matching_instance_rule(list(hlds_instance_defn)::in,
+	hlds_constraint::in, tvarset::in, tvarset::out,
+	constraint_proof_map::in, constraint_proof_map::out,
+	list(hlds_constraint)::out) is semidet.
 
-find_matching_instance_rule(Instances, ClassName, Types, !TVarSet, !Proofs,
+find_matching_instance_rule(Instances, Constraint, !TVarSet, !Proofs,
 		NewConstraints) :-
 	% Start a counter so we remember which instance decl we have used.
-	find_matching_instance_rule_2(Instances, 1, ClassName, Types,
-		!TVarSet, !Proofs, NewConstraints).
+	find_matching_instance_rule_2(Instances, 1, Constraint, !TVarSet,
+		!Proofs, NewConstraints).
 
 :- pred find_matching_instance_rule_2(list(hlds_instance_defn)::in, int::in,
-	sym_name::in, list(type)::in, tvarset::in, tvarset::out,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::out) is semidet.
+	hlds_constraint::in, tvarset::in, tvarset::out,
+	constraint_proof_map::in, constraint_proof_map::out,
+	list(hlds_constraint)::out) is semidet.
 
-find_matching_instance_rule_2([Instance | Instances], InstanceNum0, ClassName,
-		Types, !TVarSet, !Proofs, NewConstraints) :-
+find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
+		!TVarSet, !Proofs, NewConstraints) :-
+	Constraint = constraint(_Ids, _Name, Types),
+	ProgConstraints0 = Instance ^ instance_constraints,
+	InstanceTypes0 = Instance ^ instance_types,
+	InstanceTVarSet = Instance ^ instance_tvarset,
+	varset__merge_subst(!.TVarSet, InstanceTVarSet, NewTVarSet,
+		RenameSubst),
+	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
+		InstanceTypes),
 	(
-		NewConstraints0 = Instance ^ instance_constraints,
-		InstanceTypes0 = Instance ^ instance_types,
-		InstanceTVarSet = Instance ^ instance_tvarset,
-		varset__merge_subst(!.TVarSet, InstanceTVarSet, NewTVarSet,
-			RenameSubst),
-		term__apply_substitution_to_list(InstanceTypes0,
-			RenameSubst, InstanceTypes),
 		type_list_subsumes(InstanceTypes, Types, Subst)
 	->
 		!:TVarSet = NewTVarSet,
-		apply_subst_to_constraint_list(RenameSubst,
-			NewConstraints0, NewConstraints1),
-		apply_rec_subst_to_constraint_list(Subst,
-			NewConstraints1, NewConstraints),
+		apply_subst_to_prog_constraint_list(RenameSubst,
+			ProgConstraints0, ProgConstraints1),
+		apply_rec_subst_to_prog_constraint_list(Subst,
+			ProgConstraints1, ProgConstraints),
+		init_hlds_constraint_list(ProgConstraints, NewConstraints),
 
 		NewProof = apply_instance(InstanceNum0),
-		Constraint = constraint(ClassName, Types),
-		map__set(!.Proofs, Constraint, NewProof, !:Proofs)
+		retrieve_prog_constraint(Constraint, ProgConstraint),
+		map__set(!.Proofs, ProgConstraint, NewProof, !:Proofs)
 	;
 		InstanceNum = InstanceNum0 + 1,
 		find_matching_instance_rule_2(Instances, InstanceNum,
-			ClassName, Types, !TVarSet, !Proofs, NewConstraints)
+			Constraint, !TVarSet, !Proofs, NewConstraints)
 	).
 
 	% To reduce a constraint using class declarations, we search the
 	% superclass relation to find a path from the inferred constraint to
 	% another (declared or inferred) constraint.
 	%
-:- pred apply_class_rules(list(class_constraint)::in, list(tvar)::in,
+:- pred apply_class_rules(list(hlds_constraint)::in, list(tvar)::in,
 	superclass_table::in, tvarset::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out,
-	list(class_constraint)::in, list(class_constraint)::out, bool::out)
+	constraint_proof_map::in, constraint_proof_map::out,
+	constraint_map::in, constraint_map::out,
+	list(hlds_constraint)::in, list(hlds_constraint)::out, bool::out)
 	is det.
 
-apply_class_rules(_, _, _, _, !Proofs, [], [], no).
+apply_class_rules(_, _, _, _, !Proofs, !ConstraintMap, [], [], no).
 apply_class_rules(AssumedConstraints, HeadTypeParams, SuperClassTable, TVarSet,
-		!Proofs, [Constraint0 | Constraints0], Constraints, Changed) :-
+		!Proofs, !ConstraintMap,
+		[Constraint0 | Constraints0], Constraints, Changed) :-
 	(
 		Parents = [],
-		eliminate_constraint_by_class_rules(Constraint0, _, _,
+		retrieve_prog_constraint(Constraint0, ProgConstraint0),
+		eliminate_constraint_by_class_rules(ProgConstraint0, _, _,
 			HeadTypeParams, AssumedConstraints, SuperClassTable,
 			TVarSet, Parents, !Proofs)
 	->
+		update_constraint_map(Constraint0, !ConstraintMap),
 		apply_class_rules(AssumedConstraints, HeadTypeParams,
-			SuperClassTable, TVarSet, !Proofs,
+			SuperClassTable, TVarSet, !Proofs, !ConstraintMap,
 			Constraints0, Constraints, _),
 		Changed = yes
 	;
 		apply_class_rules(AssumedConstraints, HeadTypeParams,
-			SuperClassTable, TVarSet, !Proofs,
+			SuperClassTable, TVarSet, !Proofs, !ConstraintMap,
 			Constraints0, TailConstraints, Changed),
 		Constraints = [Constraint0 | TailConstraints]
 	).
@@ -4288,12 +4390,11 @@ apply_class_rules(AssumedConstraints, HeadTypeParams, SuperClassTable, TVarSet,
 	% type variables that must not be bound as we search through the
 	% superclass relation).
 	%
-:- pred eliminate_constraint_by_class_rules(class_constraint::in,
-	class_constraint::out, tsubst::out, list(tvar)::in,
-	list(class_constraint)::in, superclass_table::in, tvarset::in,
-	list(class_constraint)::in,
-	map(class_constraint, constraint_proof)::in,
-	map(class_constraint, constraint_proof)::out) is semidet.
+:- pred eliminate_constraint_by_class_rules(prog_constraint::in,
+	prog_constraint::out, tsubst::out, list(tvar)::in,
+	list(hlds_constraint)::in, superclass_table::in, tvarset::in,
+	list(prog_constraint)::in,
+	constraint_proof_map::in, constraint_proof_map::out) is semidet.
 
 eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 		AssumedConstraints, SuperClassTable, TVarSet,
@@ -4308,7 +4409,7 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 	SuperClassId = class_id(SuperClassName, SuperClassArity),
 	multi_map__search(SuperClassTable, SuperClassId, SubClasses),
 
-		% Convert all the subclass_details into class_constraints by
+		% Convert all the subclass_details into prog_constraints by
 		% doing the appropriate variable renaming and applying the
 		% type variable bindings.
 		% If the unification of the type variables for a particular
@@ -4322,13 +4423,13 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 			% Do the first level of search. We search for
 			% an assumed constraint which unifies with any
 			% of the subclass constraints.
-		find_first_map(
+		list.find_first_map(
 			match_assumed_constraint(ConstVars,
 				SubClassConstraints),
 			AssumedConstraints, SubClass - SubClassSubst0)
 	->
 		SubClassSubst = SubClassSubst0,
-		apply_rec_subst_to_constraint(SubClassSubst, C, SubstC),
+		apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
 		map__set(Proofs0, SubstC, superclass(SubClass), Proofs)
 	;
 		NewParentConstraints = [C | ParentConstraints],
@@ -4349,12 +4450,12 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 			% (i.e. by manually doing a "cut").
 		find_first_map(SubClassSearch, SubClassConstraints,
 			{NewSubClass, SubClassSubst, NewProofs}),
-		apply_rec_subst_to_constraint(SubClassSubst, C, SubstC),
+		apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
 		map__set(NewProofs, SubstC, superclass(NewSubClass), Proofs)
 	).
 
-:- pred match_assumed_constraint(list(tvar)::in, list(class_constraint)::in,
-	class_constraint::in, pair(class_constraint, tsubst)::out) is semidet.
+:- pred match_assumed_constraint(list(tvar)::in, list(prog_constraint)::in,
+	hlds_constraint::in, pair(prog_constraint, tsubst)::out) is semidet.
 
 match_assumed_constraint(ConstVars, SubClassConstraints, AssumedConstraint,
 		Match) :-
@@ -4362,25 +4463,26 @@ match_assumed_constraint(ConstVars, SubClassConstraints, AssumedConstraint,
 		match_assumed_constraint_2(ConstVars, AssumedConstraint),
 		SubClassConstraints, Match).
 
-:- pred match_assumed_constraint_2(list(tvar)::in, class_constraint::in,
-	class_constraint::in, pair(class_constraint, tsubst)::out) is semidet.
+:- pred match_assumed_constraint_2(list(tvar)::in, hlds_constraint::in,
+	prog_constraint::in, pair(prog_constraint, tsubst)::out) is semidet.
 
 match_assumed_constraint_2(ConstVars, AssumedConstraint,
 		SubClassConstraint, Match) :-
-	AssumedConstraint = constraint(AssumedConstraintClass,
+	AssumedConstraint = constraint(_, AssumedConstraintClass,
 		AssumedConstraintTypes),
 	SubClassConstraint = constraint(AssumedConstraintClass,
 		SubClassConstraintTypes),
 	map__init(EmptySub),
 	type_unify_list(SubClassConstraintTypes, AssumedConstraintTypes,
 		ConstVars, EmptySub, AssumedConstraintSub),
-	Match = AssumedConstraint - AssumedConstraintSub.
+	retrieve_prog_constraint(AssumedConstraint, MatchingProgConstraint),
+	Match = MatchingProgConstraint - AssumedConstraintSub.
 
 	% subclass_details_to_constraint will fail iff the call to
 	% type_unify_list fails.
 	%
 :- pred subclass_details_to_constraint(tvarset::in, list(type)::in,
-	subclass_details::in, class_constraint::out) is semidet.
+	subclass_details::in, prog_constraint::out) is semidet.
 
 subclass_details_to_constraint(TVarSet, SuperClassTypes, SubClassDetails,
 		SubC) :-
@@ -4434,7 +4536,7 @@ subclass_details_to_constraint(TVarSet, SuperClassTypes, SubClassDetails,
 	% contains at least one type variable that is not in the
 	% head type params.
 	%
-:- pred check_satisfiability(list(class_constraint)::in, head_type_params::in)
+:- pred check_satisfiability(list(hlds_constraint)::in, head_type_params::in)
 	is semidet.
 
 check_satisfiability(Constraints, HeadTypeParams) :-
@@ -4442,7 +4544,7 @@ check_satisfiability(Constraints, HeadTypeParams) :-
 		list__member(Constraint, Constraints)
 	=>
 		(
-			Constraint = constraint(_ClassName, Types),
+			Constraint = constraint(_Ids, _ClassName, Types),
 			term__contains_var_list(Types, TVar),
 			not list__member(TVar, HeadTypeParams)
 		)
@@ -4450,19 +4552,19 @@ check_satisfiability(Constraints, HeadTypeParams) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred convert_cons_defn_list(typecheck_info::in, list(hlds_cons_defn)::in,
-	list(maybe_cons_type_info)::out) is det.
+:- pred convert_cons_defn_list(typecheck_info::in, goal_path::in,
+	list(hlds_cons_defn)::in, list(maybe_cons_type_info)::out) is det.
 
-convert_cons_defn_list(_Info, [], []).
-convert_cons_defn_list(Info, [X | Xs], [Y | Ys]) :-
-	convert_cons_defn(Info, X, Y),
-	convert_cons_defn_list(Info, Xs, Ys).
+convert_cons_defn_list(_Info, _GoalPath, [], []).
+convert_cons_defn_list(Info, GoalPath, [X | Xs], [Y | Ys]) :-
+	convert_cons_defn(Info, GoalPath, X, Y),
+	convert_cons_defn_list(Info, GoalPath, Xs, Ys).
 
-:- pred convert_cons_defn(typecheck_info::in, hlds_cons_defn::in,
-	maybe_cons_type_info::out) is det.
+:- pred convert_cons_defn(typecheck_info::in, goal_path::in,
+	hlds_cons_defn::in, maybe_cons_type_info::out) is det.
 
-convert_cons_defn(Info, HLDS_ConsDefn, ConsTypeInfo) :-
-	HLDS_ConsDefn = hlds_cons_defn(ExistQVars, ExistConstraints, Args,
+convert_cons_defn(Info, GoalPath, HLDS_ConsDefn, ConsTypeInfo) :-
+	HLDS_ConsDefn = hlds_cons_defn(ExistQVars, ExistProgConstraints, Args,
 		TypeCtor, _),
 	assoc_list__values(Args, ArgTypes),
 	typecheck_info_get_types(Info, Types),
@@ -4515,6 +4617,8 @@ convert_cons_defn(Info, HLDS_ConsDefn, ConsTypeInfo) :-
 	;
 		construct_type(TypeCtor, ConsTypeParams, ConsType),
 		UnivConstraints = [],
+		make_hlds_constraint_list(ExistProgConstraints, existential,
+			GoalPath, ExistConstraints),
 		Constraints = constraints(UnivConstraints, ExistConstraints),
 		ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars,
 			ConsType, ArgTypes, Constraints))
@@ -4536,7 +4640,7 @@ convert_cons_defn(Info, HLDS_ConsDefn, ConsTypeInfo) :-
 					% universally quantified type variables
 		type_bindings		:: tsubst,
 					% type bindings
-		class_constraints	:: class_constraints,
+		class_constraints	:: hlds_constraints,
 					% This field has the form
 					% constraints(Universal, Existential).
 					% The first element in this pair
@@ -4554,11 +4658,13 @@ convert_cons_defn(Info, HLDS_ConsDefn, ConsTypeInfo) :-
 					% declaration of the predicate
 					% we are analyzing.
 
-		constraint_proofs	:: map(class_constraint,
-						constraint_proof)
+		constraint_proofs	:: constraint_proof_map,
 					% for each constraint
 					% found to be redundant,
 					% why is it so?
+		constraint_map		:: constraint_map
+					% Maps constraint identifiers to the
+					% actual constraints.
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4572,9 +4678,11 @@ convert_cons_defn(Info, HLDS_ConsDefn, ConsTypeInfo) :-
 :- pred type_assign_get_type_bindings(type_assign::in,
 	tsubst::out) is det.
 :- pred type_assign_get_typeclass_constraints(type_assign::in,
-	class_constraints::out) is det.
+	hlds_constraints::out) is det.
 :- pred type_assign_get_constraint_proofs(type_assign::in,
-	map(class_constraint, constraint_proof)::out) is det.
+	constraint_proof_map::out) is det.
+:- pred type_assign_get_constraint_map(type_assign::in,
+	constraint_map::out) is det.
 
 type_assign_get_var_types(TA, TA ^ var_types).
 type_assign_get_typevarset(TA, TA ^ type_varset).
@@ -4582,6 +4690,7 @@ type_assign_get_head_type_params(TA, TA ^ head_type_params).
 type_assign_get_type_bindings(TA, TA ^ type_bindings).
 type_assign_get_typeclass_constraints(TA, TA ^ class_constraints).
 type_assign_get_constraint_proofs(TA, TA ^ constraint_proofs).
+type_assign_get_constraint_map(TA, TA ^ constraint_map).
 
 %-----------------------------------------------------------------------------%
 
@@ -4593,10 +4702,11 @@ type_assign_get_constraint_proofs(TA, TA ^ constraint_proofs).
 	type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_type_bindings(tsubst::in,
 	type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_typeclass_constraints(class_constraints::in,
+:- pred type_assign_set_typeclass_constraints(hlds_constraints::in,
 	type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_constraint_proofs(
-	map(class_constraint, constraint_proof)::in,
+:- pred type_assign_set_constraint_proofs(constraint_proof_map::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_constraint_map(constraint_map::in,
 	type_assign::in, type_assign::out) is det.
 
 type_assign_set_var_types(X, TA, TA ^ var_types := X).
@@ -4605,6 +4715,7 @@ type_assign_set_head_type_params(X, TA, TA ^ head_type_params := X).
 type_assign_set_type_bindings(X, TA, TA ^ type_bindings := X).
 type_assign_set_typeclass_constraints(X, TA, TA ^ class_constraints := X).
 type_assign_set_constraint_proofs(X, TA, TA ^ constraint_proofs := X).
+type_assign_set_constraint_map(X, TA, TA ^ constraint_map := X).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -5341,7 +5452,7 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
 			TypeVarSet, FoundOne, !IO)
 	).
 
-:- pred write_type_assign_constraints(class_constraints::in,
+:- pred write_type_assign_constraints(hlds_constraints::in,
 	tsubst::in, tvarset::in, io::di, io::uo) is det.
 
 write_type_assign_constraints(Constraints, TypeBindings, TypeVarSet, !IO) :-
@@ -5351,7 +5462,7 @@ write_type_assign_constraints(Constraints, TypeBindings, TypeVarSet, !IO) :-
 	write_type_assign_constraints("<=", ConstraintsToProve,
 		TypeBindings, TypeVarSet, no, !IO).
 
-:- pred write_type_assign_constraints(string::in, list(class_constraint)::in,
+:- pred write_type_assign_constraints(string::in, list(hlds_constraint)::in,
 	tsubst::in, tvarset::in, bool::in, io::di, io::uo) is det.
 
 write_type_assign_constraints(_, [], _, _, _, !IO).
@@ -5367,7 +5478,8 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 	apply_rec_subst_to_constraint(TypeBindings, Constraint,
 		BoundConstraint),
 	AppendVarNums = no,
-	mercury_output_constraint(TypeVarSet, AppendVarNums, BoundConstraint,
+	retrieve_prog_constraint(BoundConstraint, ProgConstraint),
+	mercury_output_constraint(TypeVarSet, AppendVarNums, ProgConstraint,
 		!IO),
 	write_type_assign_constraints(Operator, Constraints, TypeBindings,
 		TypeVarSet, yes, !IO).
@@ -6300,35 +6412,6 @@ strip_builtin_qualifiers_from_type(Type0, Type) :-
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
 	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
-
-%-----------------------------------------------------------------------------%
-
-	% XXX this should probably work its way into the library.
-	% This is just like list__filter_map except that it only returns
-	% the first match:
-	% 	find_first_map(X, Y, Z) <=> list__filter_map(X, Y, [Z | _])
-	%
-:- pred find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
-	list(X)::in, Y::out) is semidet.
-
-find_first_map(Pred, [X | Xs], Result) :-
-	( call(Pred, X, Result0) ->
-		Result = Result0
-	;
-		find_first_map(Pred, Xs, Result)
-	).
-
-	% find_first(X, Y, Z) <=> list__takewhile(not X, Y, _, [Z | _])
-	%
-:- pred find_first(pred(X)::in(pred(in) is semidet), list(X)::in, X::out)
-	is semidet.
-
-find_first(Pred, [X | Xs], Result) :-
-	( call(Pred, X) ->
-		Result = X
-	;
-		find_first(Pred, Xs, Result)
-	).
 
 %-----------------------------------------------------------------------------%
 :- end_module typecheck.

@@ -19,6 +19,12 @@
 
 :- import_module bool.
 
+	% IMPORTANT: the type constraint_id in hlds_data.m makes use of
+	% goal_paths to identify constraints between the typechecking pass
+	% and the polymorphism pass.  For this reason, goal paths should not
+	% be recalculated anywhere between these two passes.  See the XXX
+	% comment near the declaration of constraint_id.
+
 :- pred goal_path__fill_slots(module_info::in, proc_info::in, proc_info::out)
 	is det.
 
@@ -152,9 +158,18 @@ fill_expr_slots(if_then_else(A, Cond0, Then0, Else0), _, Path0, SlotInfo,
 	fill_goal_slots(Cond0, [ite_cond | Path0], SlotInfo, Cond),
 	fill_goal_slots(Then0, [ite_then | Path0], SlotInfo, Then),
 	fill_goal_slots(Else0, [ite_else | Path0], SlotInfo, Else).
+fill_expr_slots(unify(LHS, RHS0, Mode, Kind, Context), _, Path0, SlotInfo,
+		unify(LHS, RHS,  Mode, Kind, Context)) :-
+	(
+		RHS0 = lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0)
+	->
+		fill_goal_slots(LambdaGoal0, Path0, SlotInfo, LambdaGoal),
+		RHS = lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal)
+	;
+		RHS = RHS0
+	).
 fill_expr_slots(Goal @ call(_, _, _, _, _, _), _, _, _, Goal).
 fill_expr_slots(Goal @ generic_call(_, _, _, _), _, _, _, Goal).
-fill_expr_slots(Goal @ unify(_, _, _, _, _), _, _, _, Goal).
 fill_expr_slots(Goal @ foreign_proc(_, _, _, _, _, _), _, _, _, Goal).
 fill_expr_slots(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now

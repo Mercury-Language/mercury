@@ -834,7 +834,7 @@ type_ctor_info__contains_var_bit_vector_size = 16.
 % of a functor.
 
 :- pred type_ctor_info__generate_exist_into(list(tvar)::in,
-	list(class_constraint)::in, class_table::in, exist_info::out) is det.
+	list(prog_constraint)::in, class_table::in, exist_info::out) is det.
 
 type_ctor_info__generate_exist_into(ExistTvars, Constraints, ClassTable,
 		ExistInfo) :-
@@ -862,7 +862,7 @@ type_ctor_info__generate_exist_into(ExistTvars, Constraints, ClassTable,
 		ExistTvars, ExistLocns),
 	ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
 
-:- pred find_type_info_index(list(class_constraint)::in, class_table::in,
+:- pred find_type_info_index(list(prog_constraint)::in, class_table::in,
 	int::in, tvar::in, map(tvar, exist_typeinfo_locn)::in,
 	map(tvar, exist_typeinfo_locn)::out) is det.
 
@@ -879,8 +879,8 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar,
 	Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
 	map__det_insert(LocnMap0, Tvar, Locn, LocnMap).
 
-:- pred first_matching_type_class_info(list(class_constraint)::in, tvar::in,
-	class_constraint::out, int::in, int::out, int::out) is det.
+:- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
+	prog_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, _, _, _) :-
 	error("first_matching_type_class_info: not found").

@@ -634,7 +634,7 @@ module_qualify_item(
 	mq_info_set_error_context(
 		pred_or_func(PredOrFunc, SymName - Arity) - Context, !Info),
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, !Info, !IO),
-	qualify_class_constraints(Constraints0, Constraints, !Info, !IO),
+	qualify_prog_constraints(Constraints0, Constraints, !Info, !IO),
 	map_fold2_maybe(qualify_type, WithType0, WithType, !Info, !IO),
 	map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
 
@@ -666,7 +666,7 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 		!Info, yes, !IO) :-
 	list.length(Vars, Arity),
 	mq_info_set_error_context(class(Name - Arity) - Context, !Info),
-	qualify_class_constraint_list(Constraints0, Constraints, !Info, !IO),
+	qualify_prog_constraint_list(Constraints0, Constraints, !Info, !IO),
 	(
 		Interface0 = abstract,
 		Interface = abstract
@@ -687,7 +687,7 @@ module_qualify_item(
 	mq_info_set_error_context(instance(Id) - Context, !Info),
 		% We don't qualify the implementation yet, since that requires
 		% us to resolve overloading.
-	qualify_class_constraint_list(Constraints0, Constraints, !Info, !IO),
+	qualify_prog_constraint_list(Constraints0, Constraints, !Info, !IO),
 	qualify_class_name(Id, Name - _, !Info, !IO),
 	qualify_type_list(Types0, Types, !Info, !IO),
 	qualify_instance_body(Name, Body0, Body).
@@ -758,7 +758,7 @@ qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], !Info, !IO) :-
 	Ctor0 = ctor(ExistQVars, Constraints0, SymName, Args0),
 	qualify_constructor_arg_list(Args0, Args, !Info, !IO),
 	qualify_constructors(Ctors0, Ctors, !Info, !IO),
-	qualify_class_constraint_list(Constraints0, Constraints, !Info, !IO),
+	qualify_prog_constraint_list(Constraints0, Constraints, !Info, !IO),
 	Ctor  = ctor(ExistQVars, Constraints, SymName, Args).
 
 	% Qualify the inst parameters of an inst definition.
@@ -1061,28 +1061,28 @@ qualify_type_spec_subst([Var - Type0 |  Subst0], [Var - Type | Subst],
 	qualify_type(Type0, Type, !Info, !IO),
 	qualify_type_spec_subst(Subst0, Subst, !Info, !IO).
 
-:- pred qualify_class_constraints(class_constraints::in,
-	class_constraints::out, mq_info::in, mq_info::out,
+:- pred qualify_prog_constraints(prog_constraints::in,
+	prog_constraints::out, mq_info::in, mq_info::out,
 	io::di, io::uo) is det.
 
-qualify_class_constraints(constraints(UnivCs0, ExistCs0),
+qualify_prog_constraints(constraints(UnivCs0, ExistCs0),
 		constraints(UnivCs, ExistCs), !Info, !IO) :-
-	qualify_class_constraint_list(UnivCs0, UnivCs, !Info, !IO),
-	qualify_class_constraint_list(ExistCs0, ExistCs, !Info, !IO).
+	qualify_prog_constraint_list(UnivCs0, UnivCs, !Info, !IO),
+	qualify_prog_constraint_list(ExistCs0, ExistCs, !Info, !IO).
 
-:- pred qualify_class_constraint_list(list(class_constraint)::in,
-	list(class_constraint)::out, mq_info::in, mq_info::out,
+:- pred qualify_prog_constraint_list(list(prog_constraint)::in,
+	list(prog_constraint)::out, mq_info::in, mq_info::out,
 	io::di, io::uo) is det.
 
-qualify_class_constraint_list([], [], !Info, !IO).
-qualify_class_constraint_list([C0|C0s], [C|Cs], !Info, !IO) :-
-	qualify_class_constraint(C0, C, !Info, !IO),
-	qualify_class_constraint_list(C0s, Cs, !Info, !IO).
+qualify_prog_constraint_list([], [], !Info, !IO).
+qualify_prog_constraint_list([C0|C0s], [C|Cs], !Info, !IO) :-
+	qualify_prog_constraint(C0, C, !Info, !IO),
+	qualify_prog_constraint_list(C0s, Cs, !Info, !IO).
 
-:- pred qualify_class_constraint(class_constraint::in, class_constraint::out,
+:- pred qualify_prog_constraint(prog_constraint::in, prog_constraint::out,
 	mq_info::in, mq_info::out, io::di, io::uo) is det.
 
-qualify_class_constraint(constraint(ClassName0, Types0),
+qualify_prog_constraint(constraint(ClassName0, Types0),
 	constraint(ClassName, Types), !Info, !IO) :-
 	list.length(Types0, Arity),
 	qualify_class_name(ClassName0 - Arity, ClassName - _, !Info, !IO),
@@ -1119,7 +1119,7 @@ qualify_class_method(
 			Cond, Purity, ClassContext, Context),
 		!Info, !IO) :-
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, !Info, !IO),
-	qualify_class_constraints(ClassContext0, ClassContext, !Info, !IO),
+	qualify_prog_constraints(ClassContext0, ClassContext, !Info, !IO),
 	map_fold2_maybe(qualify_type, WithType0, WithType, !Info, !IO),
 	map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
 qualify_class_method(

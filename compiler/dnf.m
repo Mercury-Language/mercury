@@ -188,12 +188,12 @@ dnf__transform_proc(ProcInfo0, PredInfo0, PredId, MaybeNonAtomic,
 			orig_pred_name	:: string,
 			orig_tvarset	:: tvarset,
 			orig_vartypes	:: vartypes,
-			orig_classes	:: class_constraints,
+			orig_classes	:: prog_constraints,
 			orig_varset	:: prog_varset,
 			orig_instvarset	:: inst_varset,
 			orig_markers	:: pred_markers,
 			orig_ti_locns	:: map(tvar, type_info_locn),
-			orig_tcis	:: map(class_constraint, prog_var),
+			orig_tcis	:: typeclass_info_varmap,
 			orig_owner	:: aditi_owner
 		).
 

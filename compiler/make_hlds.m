@@ -1681,6 +1681,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(calls_are_fully_qualified, Markers0, Markers),
             map__init(Proofs),
+            map__init(ConstraintMap),
 
             ( pred_info_is_imported(PredInfo0) ->
                 Status = opt_imported
@@ -1696,8 +1697,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 OrigOrigin, PredId),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
                 Context, Origin, Status, none, Markers, Types, TVarSet,
-                ExistQVars, ClassContext, Proofs, Owner, Clauses,
-                NewPredInfo0),
+                ExistQVars, ClassContext, Proofs, ConstraintMap, Owner,
+                Clauses, NewPredInfo0),
             pred_info_set_procedures(Procs, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
@@ -1769,7 +1770,7 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
     % of the current implementation, so it only results in a warning.
 :- pred handle_pragma_type_spec_subst(prog_context::in,
     assoc_list(tvar, type)::in, pred_info::in, tvarset::in, tvarset::out,
-    list(type)::out, existq_tvars::out, class_constraints::out,
+    list(type)::out, existq_tvars::out, prog_constraints::out,
     maybe(tsubst)::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -1843,8 +1844,8 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                     pred_info_get_class_context(PredInfo0, ClassContext0),
                     term__apply_rec_substitution_to_list(Types0, TypeSubst,
                         Types),
-                    apply_rec_subst_to_constraints(TypeSubst, ClassContext0,
-                        ClassContext),
+                    apply_rec_subst_to_prog_constraints(TypeSubst,
+                        ClassContext0, ClassContext),
                     SubstOk = yes(TypeSubst)
                 ;
                     SubExistQVars = [_ | _],
@@ -3270,7 +3271,7 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
 :- pred module_add_pred_or_func(tvarset::in, inst_varset::in, existq_tvars::in,
     pred_or_func::in, sym_name::in, list(type_and_mode)::in,
     maybe(determinism)::in, purity::in,
-    class_constraints::in, pred_markers::in, prog_context::in,
+    prog_constraints::in, pred_markers::in, prog_context::in,
     item_status::in, maybe(pair(pred_id, proc_id))::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -3325,7 +3326,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         MaybePredProcId = no
     ).
 
-:- pred module_add_class_defn(list(class_constraint)::in, sym_name::in,
+:- pred module_add_class_defn(list(prog_constraint)::in, sym_name::in,
     list(tvar)::in, class_interface::in, tvarset::in, prog_context::in,
     item_status::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -3421,17 +3422,8 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
         module_info_set_classes(Classes, !ModuleInfo),
 
         ( IsNewDefn = yes ->
-                % insert an entry into the super class table
-                % for each super class of this class
-            AddSuper = (pred(Super::in, Ss0::in, Ss::out) is det :-
-                Super = constraint(SuperName, SuperTypes),
-                list__length(SuperTypes, SuperClassArity),
-                SuperClassId = class_id(SuperName, SuperClassArity),
-                SubClassDetails = subclass_details(SuperTypes, ClassId,
-                    Vars, VarSet),
-                multi_map__set(Ss0, SuperClassId, SubClassDetails, Ss)
-            ),
-            list__foldl(AddSuper, Constraints, SuperClasses0, SuperClasses),
+            update_superclass_table(ClassId, Vars, VarSet, Constraints,
+                SuperClasses0, SuperClasses),
 
             module_info_set_superclasses(SuperClasses, !ModuleInfo),
 
@@ -3448,17 +3440,18 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
     ).
 
 :- pred superclass_constraints_are_identical(list(tvar)::in, tvarset::in,
-    list(class_constraint)::in, list(tvar)::in, tvarset::in,
-    list(class_constraint)::in) is semidet.
+    list(prog_constraint)::in, list(tvar)::in, tvarset::in,
+    list(prog_constraint)::in) is semidet.
 
 superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
         Vars, VarSet, Constraints) :-
     varset__merge_subst(VarSet, OldVarSet, _, Subst),
-    apply_subst_to_constraint_list(Subst, OldConstraints0, OldConstraints1),
+    apply_subst_to_prog_constraint_list(Subst, OldConstraints0,
+        OldConstraints1),
     OldVars = term__term_list_to_var_list(map__apply_to_list(OldVars0, Subst)),
 
     map__from_corresponding_lists(OldVars, Vars, VarRenaming),
-    apply_variable_renaming_to_constraint_list(VarRenaming,
+    apply_variable_renaming_to_prog_constraint_list(VarRenaming,
         OldConstraints1, OldConstraints),
     OldConstraints = Constraints.
 
@@ -3524,6 +3517,27 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         )
     ).
 
+    % Insert an entry into the super class table for each super class of
+    % this class.
+    %
+:- pred update_superclass_table(class_id::in, list(tvar)::in, tvarset::in,
+    list(prog_constraint)::in, superclass_table::in, superclass_table::out)
+    is det.
+
+update_superclass_table(ClassId, Vars, VarSet, Constraints, !Supers) :-
+    list.foldl(update_superclass_table_2(ClassId, Vars, VarSet), Constraints,
+        !Supers).
+
+:- pred update_superclass_table_2(class_id::in, list(tvar)::in, tvarset::in,
+    prog_constraint::in, superclass_table::in, superclass_table::out) is det.
+
+update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
+    Constraint = constraint(SuperName, SuperTypes),
+    list__length(SuperTypes, SuperClassArity),
+    SuperClassId = class_id(SuperName, SuperClassArity),
+    SubClassDetails = subclass_details(SuperTypes, ClassId, Vars, VarSet),
+    multi_map__set(!.Supers, SuperClassId, SubClassDetails, !:Supers).
+
     % Go through the list of class methods, looking for
     % - functions without mode declarations: add a default mode
     % - predicates without mode declarations: report an error
@@ -3584,7 +3598,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
     ),
     check_method_modes(Methods, !PredProcIds, !ModuleInfo, !IO).
 
-:- pred module_add_instance_defn(module_name::in, list(class_constraint)::in,
+:- pred module_add_instance_defn(module_name::in, list(prog_constraint)::in,
     sym_name::in, list(type)::in, instance_body::in, tvarset::in,
     import_status::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -3651,7 +3665,7 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 %-----------------------------------------------------------------------------%
 
 :- pred add_new_pred(tvarset::in, existq_tvars::in, sym_name::in,
-    list(type)::in, purity::in, class_constraints::in,
+    list(type)::in, purity::in, prog_constraints::in,
     pred_markers::in, prog_context::in, import_status::in,
     need_qualifier::in, pred_or_func::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -3661,7 +3675,8 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
     % to be reflected there too.
 
 add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
-        Markers0, Context, ItemStatus, NeedQual, PredOrFunc, !ModuleInfo, !IO) :-
+        Markers0, Context, ItemStatus, NeedQual, PredOrFunc, !ModuleInfo,
+        !IO) :-
     % Only preds with opt_imported clauses are tagged as opt_imported, so
     % that the compiler doesn't look for clauses for other preds read in
     % from optimization interfaces.
@@ -3685,13 +3700,15 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         clauses_info_init(Arity, ClausesInfo),
         map__init(Proofs),
+        map__init(ConstraintMap),
         purity_to_markers(Purity, PurityMarkers),
         markers_to_marker_list(PurityMarkers, MarkersList),
         list__foldl(add_marker, MarkersList, Markers0, Markers),
         globals__io_lookup_string_option(aditi_user, Owner, !IO),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
             user(PredName), Status, none, Markers, Types, TVarSet, ExistQVars,
-            ClassContext, Proofs, Owner, ClausesInfo, PredInfo0),
+            ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo,
+            PredInfo0),
         (
             predicate_table_search_pf_m_n_a(PredTable0,
                 is_fully_qualified, PredOrFunc, MNameOfPred,
@@ -3731,7 +3748,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     % check for type variables which occur in the the class constraints,
     % but which don't occur in the predicate argument types
     %
-:- pred check_tvars_in_constraints(class_constraints::in, list(type)::in,
+:- pred check_tvars_in_constraints(prog_constraints::in, list(type)::in,
     tvarset::in, pred_or_func::in, sym_name::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -3748,8 +3765,8 @@ check_tvars_in_constraints(ClassContext, ArgTypes, TVarSet,
             TVarSet, PredOrFunc, PredName, Context, !IO)
     ).
 
-:- pred constrained_tvar_not_in_arg_types(class_constraints::in,
-    list(type)::in, tvar::out) is nondet.
+:- pred constrained_tvar_not_in_arg_types(prog_constraints::in, list(type)::in,
+    tvar::out) is nondet.
 
 constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
     ClassContext = constraints(UnivCs, ExistCs),
@@ -4219,6 +4236,7 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     Origin = special_pred(SpecialPredId - TypeCtor),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
     map__init(Proofs),
+    map__init(ConstraintMap),
     init_markers(Markers),
         % XXX If/when we have "comparable" or "unifiable" typeclasses,
         % XXX this context might not be empty
@@ -4228,7 +4246,7 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, predicate, Context,
         Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
-        ClassContext, Proofs, Owner, ClausesInfo0, PredInfo0),
+        ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo0, PredInfo0),
     ArgLives = no,
     varset__init(InstVarSet),
         % Should not be any inst vars here so it's ok to use a
@@ -4452,6 +4470,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
     make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
     term__var_list_to_term_list(TypeVars, Types),
     map__init(Proofs),
+    map__init(ConstraintMap),
         % The class context is empty since this is an implicit
         % definition. Inference will fill it in.
     ClassContext = constraints([], []),
@@ -4463,7 +4482,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
     globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
         Origin, Status, none, Markers0, Types, TVarSet, ExistQVars,
-        ClassContext, Proofs, Owner, ClausesInfo, PredInfo0),
+        ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo, PredInfo0),
     add_marker(infer_type, Markers0, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     (

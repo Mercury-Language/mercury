@@ -1489,7 +1489,7 @@ recompilation__usage__find_items_used_by_inst_name(
 	recompilation__usage__find_items_used_by_inst_name(InstName, !Info).
 
 :- pred recompilation__usage__find_items_used_by_class_context(
-	class_constraints::in,
+	prog_constraints::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_class_context(
@@ -1500,7 +1500,7 @@ recompilation__usage__find_items_used_by_class_context(
 		Constraints2, !Info).
 
 :- pred recompilation__usage__find_items_used_by_class_constraints(
-	list(class_constraint)::in,
+	list(prog_constraint)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_class_constraints(Constraints,
@@ -1509,7 +1509,7 @@ recompilation__usage__find_items_used_by_class_constraints(Constraints,
 		Constraints, !Info).
 
 :- pred recompilation__usage__find_items_used_by_class_constraint(
-	class_constraint::in,
+	prog_constraint::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_class_constraint(

@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module hlds__hlds_pred.
+:- import_module hlds__hlds_goal.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
@@ -47,7 +48,7 @@
 		% you can get the tvarset from the hlds__type_defn.
 		cons_exist_tvars	:: existq_tvars,
 					% existential type vars
-		cons_constraints	:: list(class_constraint),
+		cons_constraints	:: list(prog_constraint),
 					% existential class constraints
 		cons_args		:: list(constructor_arg),
 					% The field names and types of
@@ -791,7 +792,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- type hlds_class_defn --->
 	hlds_class_defn(
 		class_status		:: import_status,
-		class_supers		:: list(class_constraint),
+		class_supers		:: list(prog_constraint),
 					% SuperClasses
 		class_vars		:: list(tvar),
 					% ClassVars
@@ -831,8 +832,9 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% declaration
 		instance_context	:: prog_context,
 					% context of declaration
-		instance_constraints	:: list(class_constraint),
-					% Constraints
+		instance_constraints	:: list(prog_constraint),
+					% Constraints on the instance
+					% declaration.
 		instance_types		:: list(type),
 					% ClassTypes
 		instance_body		:: instance_body,
@@ -843,13 +845,68 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% proc_ids of all the methods
 		instance_tvarset	:: tvarset,
 					% VarNames
-		instance_proofs		:: map(class_constraint,
-						constraint_proof)
+		instance_proofs		:: constraint_proof_map
 					% "Proofs" of how to build the
 					% typeclass_infos for the
-					% superclasses of this class,
-					% for this instance
+					% superclasses of this class (that is,
+					% the constraints on the class
+					% declaration), for this instance.
 	).
+
+	% Identifiers for constraints which are unique across a given
+	% type_assign.  Integers in these values refer to the position in
+	% the list of constraints at that location, beginning from 1.
+	%
+	% Only identifiers for constraints appearing directly on a goal are
+	% needed at the moment, so there is no way to represent the
+	% appropriate identifier for the superclass of such a constraint.
+	%
+	% XXX a more robust and efficient solution would be to allocate
+	% unique integers to the constraints as they are encountered, and
+	% store the allocated integer in the relevant hlds_goal_expr.
+	%
+:- type constraint_id
+	--->	constraint_id(
+			constraint_type,
+				% Existential or universal.
+
+			goal_path,
+				% The location of the atomic goal which is
+				% constrained.
+
+			int	% The position of the constraint.
+		).
+
+:- type constraint_type
+	--->	existential
+	;	universal.
+
+	% The identifier of a constraint is stored along with the constraint.
+	% Each value of this type may have more than one identifier because
+	% if two constraints in a context are equivalent then we merge them
+	% together in order to not have to prove the same constraint twice.
+	%
+:- type hlds_constraint
+	--->	constraint(
+			list(constraint_id),
+			class_name,
+			list(type)
+		).
+
+:- type hlds_constraints
+	--->	constraints(
+			universal	:: list(hlds_constraint),
+						% Universal constraints.
+
+			existential	:: list(hlds_constraint)
+						% Existential constraints.
+		).
+
+	% During type checking we fill in a constraint_map which gives
+	% the constraint that corresponds to each identifier.  This is used
+	% by the polymorphism translation to retrieve details of constraints.
+	%
+:- type constraint_map == map(constraint_id, prog_constraint).
 
 	% `Proof' of why a constraint is redundant
 :- type constraint_proof
@@ -871,9 +928,137 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 			% The constraint is redundant because of the
 			% following class's superclass declaration
-	;	superclass(class_constraint).
+	;	superclass(prog_constraint).
+
+:- type constraint_proof_map == map(prog_constraint, constraint_proof).
+
+:- pred init_hlds_constraint_list(list(prog_constraint)::in,
+	list(hlds_constraint)::out) is det.
+
+:- pred make_hlds_constraints(prog_constraints::in, goal_path::in,
+	hlds_constraints::out) is det.
+
+:- pred make_hlds_constraint_list(list(prog_constraint)::in,
+	constraint_type::in, goal_path::in, list(hlds_constraint)::out) is det.
+
+:- pred retrieve_prog_constraints(hlds_constraints::in, prog_constraints::out)
+	is det.
+
+:- pred retrieve_prog_constraint_list(list(hlds_constraint)::in,
+	list(prog_constraint)::out) is det.
+
+:- pred retrieve_prog_constraint(hlds_constraint::in, prog_constraint::out)
+	is det.
+
+:- pred matching_constraints(hlds_constraint::in, hlds_constraint::in)
+	is semidet.
+
+:- pred compare_hlds_constraints(hlds_constraint::in, hlds_constraint::in,
+	comparison_result::out) is det.
+
+:- pred update_constraint_map(hlds_constraint::in, constraint_map::in,
+	constraint_map::out) is det.
+
+:- pred lookup_hlds_constraint_list(constraint_map::in, constraint_type::in,
+	goal_path::in, int::in, list(prog_constraint)::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- implementation.
+
+init_hlds_constraint_list(ProgConstraints, Constraints) :-
+	list.map(init_hlds_constraint, ProgConstraints, Constraints).
+
+:- pred init_hlds_constraint(prog_constraint::in, hlds_constraint::out) is det.
+
+init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
+
+make_hlds_constraints(ProgConstraints, GoalPath, Constraints) :-
+	ProgConstraints = constraints(UnivProgConstraints,
+		ExistProgConstraints),
+	make_hlds_constraint_list(UnivProgConstraints, universal, GoalPath,
+		UnivConstraints),
+	make_hlds_constraint_list(ExistProgConstraints, existential, GoalPath,
+		ExistConstraints),
+	Constraints = constraints(UnivConstraints, ExistConstraints).
+
+make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
+		Constraints) :-
+	make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalPath,
+		1, Constraints).
+
+:- pred make_hlds_constraint_list_2(list(prog_constraint)::in,
+	constraint_type::in, goal_path::in, int::in,
+	list(hlds_constraint)::out) is det.
+
+make_hlds_constraint_list_2([], _, _, _, []).
+make_hlds_constraint_list_2([P | Ps], T, G, N, [H | Hs]) :-
+	P = constraint(Name, Types),
+	Id = constraint_id(T, G, N),
+	H = constraint([Id], Name, Types),
+	make_hlds_constraint_list_2(Ps, T, G, N + 1, Hs).
+
+retrieve_prog_constraints(Constraints, ProgConstraints) :-
+	Constraints = constraints(UnivConstraints, ExistConstraints),
+	retrieve_prog_constraint_list(UnivConstraints, UnivProgConstraints),
+	retrieve_prog_constraint_list(ExistConstraints, ExistProgConstraints),
+	ProgConstraints = constraints(UnivProgConstraints,
+		ExistProgConstraints).
+
+retrieve_prog_constraint_list(Constraints, ProgConstraints) :-
+	list.map(retrieve_prog_constraint, Constraints, ProgConstraints).
+
+retrieve_prog_constraint(Constraint, ProgConstraint) :-
+	Constraint = constraint(_, Name, Types),
+	ProgConstraint = constraint(Name, Types).
+
+matching_constraints(constraint(_, Name, Types), constraint(_, Name, Types)).
+
+compare_hlds_constraints(constraint(_, NA, TA), constraint(_, NB, TB), R) :-
+	compare(R0, NA, NB),
+	( R0 = (=) ->
+		compare(R, TA, TB)
+	;
+		R = R0
+	).
+
+update_constraint_map(Constraint, !ConstraintMap) :-
+	Constraint = constraint(Ids, Name, Types),
+	ProgConstraint = constraint(Name, Types),
+	list.foldl(update_constraint_map_2(ProgConstraint), Ids,
+		!ConstraintMap).
+
+:- pred update_constraint_map_2(prog_constraint::in, constraint_id::in,
+	constraint_map::in, constraint_map::out) is det.
+
+update_constraint_map_2(ProgConstraint, ConstraintId, ConstraintMap0,
+		ConstraintMap) :-
+	map.set(ConstraintMap0, ConstraintId, ProgConstraint, ConstraintMap).
+
+lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
+		Constraints) :-
+	lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
+		Count, [], Constraints).
+
+:- pred lookup_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
+	goal_path::in, int::in, list(prog_constraint)::in,
+	list(prog_constraint)::out) is det.
+
+lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
+		!Constraints) :-
+	( Count = 0 ->
+		true
+	;
+		ConstraintId = constraint_id(ConstraintType, GoalPath, Count),
+		map.lookup(ConstraintMap, ConstraintId, Constraint),
+		!:Constraints = [Constraint | !.Constraints],
+		lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType,
+			GoalPath, Count - 1, !Constraints)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
 
 :- type subclass_details --->
 	subclass_details(

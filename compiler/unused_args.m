@@ -1061,12 +1061,19 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
 	pred_info_get_goal_type(!.PredInfo, GoalType),
 	pred_info_get_class_context(!.PredInfo, ClassContext),
 	pred_info_get_aditi_owner(!.PredInfo, Owner),
+
+		% Since this pred_info isn't built until after the
+		% polymorphism transformation is complete, we just use
+		% dummy maps for the class constraints.
+		%
 	map__init(EmptyProofs),
+	map__init(EmptyConstraintMap),
 	Origin = transformed(unused_argument_elimination(UnusedArgs),
 		OrigOrigin, PredId),
 	pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
-		ClassContext, EmptyProofs, Owner, ClausesInfo, !:PredInfo),
+		ClassContext, EmptyProofs, EmptyConstraintMap, Owner,
+		ClausesInfo, !:PredInfo),
 	pred_info_set_typevarset(TypeVars, !PredInfo).
 
 	% Replace the goal in the procedure with one to call the given

@@ -2565,7 +2565,7 @@ convert_constructor_2(ModuleName, ExistQVars, Term0, Term1) = Result :-
 	).
 
 :- func convert_constructor_3(module_name, list(tvar),
-	list(class_constraint), term, term) = maybe1(constructor).
+	list(prog_constraint), term, term) = maybe1(constructor).
 
 convert_constructor_3(ModuleName, ExistQVars, Constraints, Term0, Term1) =
 		Result :-
@@ -2614,7 +2614,7 @@ process_pred_or_func(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
 
 :- pred process_pred_or_func_2(pred_or_func::in, maybe_functor::in, term::in,
 	varset::in, maybe(type)::in, maybe(inst)::in, maybe(determinism)::in,
-	condition::in, existq_tvars::in, class_constraints::in,
+	condition::in, existq_tvars::in, prog_constraints::in,
 	inst_var_sub::in, decl_attrs::in, maybe1(item)::out) is det.
 
 process_pred_or_func_2(PredOrFunc, ok(F, As0), PredType, VarSet0,
@@ -2697,7 +2697,7 @@ pred_or_func_decl_string(predicate) = "`:- pred' declaration".
 
 :- pred get_class_context_and_inst_constraints(module_name::in,
 	decl_attrs::in, decl_attrs::out,
-	maybe3(existq_tvars, class_constraints, inst_var_sub)::out) is det.
+	maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
 get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
 		RevAttributes, MaybeContext) :-
@@ -2752,7 +2752,7 @@ get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
 
 :- pred combine_quantifier_results(maybe_class_and_inst_constraints::in,
 	maybe_class_and_inst_constraints::in, existq_tvars::in,
-	maybe3(existq_tvars, class_constraints, inst_var_sub)::out) is det.
+	maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
 combine_quantifier_results(error(Msg, Term), _, _, error(Msg, Term)).
 combine_quantifier_results(ok(_, _), error(Msg, Term), _, error(Msg, Term)).
@@ -2805,7 +2805,7 @@ combine_constraint_list_results(ok(CC0, IC0), ok(CC1, IC1),
 		ok(CC0 ++ CC1, IC0 `map__merge` IC1)).
 
 :- pred get_existential_constraints_from_term(module_name::in,
-	term::in, term::out, maybe1(list(class_constraint))::out) is det.
+	term::in, term::out, maybe1(list(prog_constraint))::out) is det.
 
 get_existential_constraints_from_term(ModuleName, !PredType,
 		MaybeExistentialConstraints) :-
@@ -2865,7 +2865,7 @@ process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Attributes0, Result) :-
 	).
 
 :- pred process_func_2(module_name::in, varset::in, term::in, condition::in,
-	maybe(determinism)::in, existq_tvars::in, class_constraints::in,
+	maybe(determinism)::in, existq_tvars::in, prog_constraints::in,
 	inst_var_sub::in, decl_attrs::in, maybe1(item)::out) is det.
 
 process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
@@ -2887,7 +2887,7 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 
 :- pred process_func_3(maybe_functor::in, term::in, term::in, term::in,
 	varset::in, maybe(determinism)::in, condition::in, existq_tvars::in,
-	class_constraints::in, inst_var_sub::in, decl_attrs::in,
+	prog_constraints::in, inst_var_sub::in, decl_attrs::in,
 	maybe1(item)::out) is det.
 
 process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,

@@ -298,7 +298,7 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
 	% The constraint_proofs aren't used after polymorphism,
 	% so they don't need to be processed.
 	pred_info_get_class_context(!.PredInfo, ClassContext0),
-	equiv_type__replace_in_class_constraints(EqvMap, ClassContext0,
+	equiv_type__replace_in_prog_constraints(EqvMap, ClassContext0,
 		ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
 	pred_info_set_class_context(ClassContext, !PredInfo),
     	pred_info_set_arg_types(ArgTVarSet, ExistQVars, ArgTypes, !PredInfo),
@@ -361,7 +361,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
 	list__map_foldl(
 		(pred((Constraint0 - Locn)::in, (Constraint - Locn)::out,
 				!.TVarSet::in, !:TVarSet::out) is det :-
-			equiv_type__replace_in_class_constraint(EqvMap,
+			equiv_type__replace_in_prog_constraint(EqvMap,
 				Constraint0, Constraint, !TVarSet, no, _)
 		), TCVarAL0, TCVarAL, !TVarSet),
 	map__from_assoc_list(TCVarAL, TCVarMap),
