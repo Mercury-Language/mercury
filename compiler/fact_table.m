@@ -577,17 +577,17 @@ write_fact_table_header(PredName, PredInfo, FileName, FactArgInfos,
 
 struct MR_fact_table_hash_table_s {
 	MR_Integer size;		/* size of the hash table */
-	struct fact_table_hash_entry_s *table;	/* the actual table */
+	struct MR_fact_table_hash_entry_s *table;	/* the actual table */
 };
 
 struct MR_fact_table_hash_table_f {
 	MR_Integer size;		/* size of the hash table */
-	struct fact_table_hash_entry_f *table;	/* the actual table */
+	struct MR_fact_table_hash_entry_f *table;	/* the actual table */
 };
 
 struct MR_fact_table_hash_table_i {
 	MR_Integer size;		/* size of the hash table */
-	struct fact_table_hash_entry_i *table;	/* the actual table */
+	struct MR_fact_table_hash_entry_i *table;	/* the actual table */
 };
 
 /* hash table for string keys */
