@@ -540,7 +540,7 @@ database_assert_clause(Database0, VarSet, Term, Database) :-
 		;
 			%
 			% we can't do first-argument indexing -- just
-			% insert into the unindex clauses
+			% insert into the unindexed clauses
 			%
 			( map__search(Preds0, PredId, Pred0) ->
 				Pred0 = db_pred(PredUnindexedClauses,
