@@ -30,6 +30,7 @@ ORDINARY_PROGS=	\
 	cycles2 \
 	deep_copy \
 	deep_copy_bug \
+	deep_copy_exist \
 	det_in_semidet_cntxt \
 	division_test \
 	dupcall_types_bug \
