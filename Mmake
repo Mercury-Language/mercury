@@ -29,10 +29,14 @@ dep: dep_library dep_compiler
 
 .PHONY: dep_library
 dep_library: library/library.dep
+
+library/library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
 dep_compiler: compiler/mercury_compile.dep
+
+compiler/mercury_compile.dep:
 	cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend
