@@ -8,12 +8,14 @@
 
 #include "imp.h"
 
+#include <stdio.h>
 #include <unistd.h>		/* for getpid() and fork() */
 #ifdef PARALLEL
 #include <signal.h>
 #endif
 
 #include "context.h"
+#include "engine.h"	/* for `memdebug' */
 
 #ifdef	PARALLEL
 unsigned numprocs = 1;
@@ -75,9 +77,27 @@ init_processes(void)
 
 }
 
+void
+shutdown_processes(void)
+{
+#ifdef PARALLEL
+	/* XXX not yet implemented */
+	if (numprocs > 1) {
+		fprintf(stderr, "Mercury runtime: shutdown_processes()"
+			" not yet implemented\n");
+	}
+#endif
+}
+
 void 
 init_process_context(void)
 {
+	/*
+	** Each process has its own heap, in shared memory;
+	** each process may only allocate from its own heap,
+	** although it may access or modify data allocated
+	** by other processes in different heaps.
+	*/
 	init_heap();
 
 	if (my_procnum == 0) { /* the original process */
@@ -87,6 +107,8 @@ init_process_context(void)
 		restore_transient_registers();
 		load_context(this_context);
 		save_transient_registers();
+
+		if (memdebug) debug_memory();
 	}
 }
 
@@ -259,7 +281,7 @@ do_runnext:
 			** is currently runnable. If none are, then
 			** we've just floundered.
 			*/
-			is_runnable=FALSE;
+			is_runnable = FALSE;
 			for(i = 0; i < numprocs; i++)
 			{
 				if (procwaiting[i] == FALSE)

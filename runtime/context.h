@@ -170,6 +170,12 @@ extern	SpinLock *free_context_list_lock;
 void	init_processes(void);
 
 /*
+** shutdown_processes() sends a signal to the other processes
+** to tell them to shut down.  (NOT YET IMPLEMENTED - STUB ONLY.)
+*/
+void	shutdown_processes(void);
+
+/*
 ** init_process_context() creates a top-level context for
 ** the original process, and allocates a heap and a solutions-
 ** heap for each process.

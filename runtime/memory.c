@@ -193,8 +193,6 @@ MemoryZone *nondetstack_zone;
 static	size_t		unit;
 static	size_t		page_size;
 
-static void		debug_memory(void);
-
 static MemoryZone	*get_zone(void);
 static void		unget_zone(MemoryZone *zone);
 
@@ -287,7 +285,7 @@ init_memory(void)
 	if (memdebug) debug_memory();
 } /* end init_memory() */
 
-static void
+void
 debug_memory(void)
 {
 	MemoryZone	*zone;

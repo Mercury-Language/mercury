@@ -194,9 +194,10 @@ ZoneHandler default_handler;
 */
 ZoneHandler null_handler;
 
-/* for these two functions, see the comments in memory.c and engine.mod */
+/* for these functions, see the comments in memory.c and engine.mod */
 extern	void	init_memory(void);
 extern	void	init_heap(void);
+extern	void	debug_memory(void);
 
 /*
 ** next_offset() returns sucessive offsets across the primary cache. Useful
