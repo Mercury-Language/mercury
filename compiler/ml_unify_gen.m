@@ -309,8 +309,11 @@ ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), _ConsId,
 		PredLabel, PredModule) },
 	{ DataAddr = data_addr(PredModule,
 			tabling_pointer(PredLabel - ProcId)) },
+	ml_variable_type(Var, VarType),
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
-		const(data_addr_const(DataAddr)), Context) }.
+		unop(cast(mercury_type(VarType)),
+			const(data_addr_const(DataAddr))),
+		Context) }.
 
 ml_gen_construct_rep(code_addr_constant(PredId, ProcId), _ConsId,
 		Var, Args, _ArgModes, Context, [], [MLDS_Statement]) -->
