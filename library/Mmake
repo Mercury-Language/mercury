@@ -33,21 +33,17 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 				$(library.qls) $(NU_LIBRARY_QLS) portray.ql`" \
 		$(SCRIPTS_DIR)/msl
 
-# The library is always built with --intermodule-optimization to make sure
-# that the `.opt' files are available.
-# The --intermodule-optimizations are commented out for now because of a bug.
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--generate-dependencies #--intermodule-optimization
+			--generate-dependencies
 MCI	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --make-interface
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--compile-to-c #--intermodule-optimization
+			--compile-to-c
 MCS	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --split-c-files -c \
-		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
-		#--intermodule-optimization
+		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)"
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
@@ -70,7 +66,7 @@ NU_LIBRARY_QLS = \
 all : mercury nuprolog sicstus
 
 .PHONY: mercury
-mercury : ints $(library.opts) libmercury
+mercury : ints opts libmercury
 
 .PHONY: nuprolog
 nuprolog : ints library.nu library.nu.debug $(library.nos) $(NU_LIBRARY_NOS) \
@@ -90,9 +86,9 @@ check		: library.check
 .PHONY: ints 
 ints		: library.ints
 
-.PHONY: mods
-mods		: library.mods
-library.mods	: $(library.mods)
+.PHONY: opts 
+opts		: library.opts
+library.opts	: $(library.opts)
 
 #-----------------------------------------------------------------------------#
 
