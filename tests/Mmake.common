@@ -1,16 +1,11 @@
 #-----------------------------------------------------------------------------#
 
 #
-# You can override MCFLAGS for a particular file by setting MCFLAGS-foo.
-# You can override GRADEFLAGS for a particular file by setting both
-# GRADEFLAGS-foo and (for compiling the foo_init.c file) GRADEFLAGS-foo_init.
+# Note: Mmake lets you override MCFLAGS for a particular file by setting
+# MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
+# file by setting both GRADEFLAGS-foo and (for compiling the foo_init.c
+# file) GRADEFLAGS-foo_init.
 #
-
-GRADEFLAGS =	--grade $(GRADE) $(GRADEFLAGS-$*) $(GRADEFLAGS-$@) \
-		$(EXTRA_GRADEFLAGS)
-MCFLAGS =	$(MCFLAGS-$*) $(EXTRA_MCFLAGS)
-MGNUCFLAGS =	-g $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
-MLFLAGS =	$(MLFLAGS-$@) $(EXTRA_MLFLAGS)
 
 # override this with `mmake HAVE_NUPROLOG=yes'
 # if you want to rebuild the `.exp' files.
@@ -45,6 +40,3 @@ clean_res:
 	rm -f *.res
 
 #-----------------------------------------------------------------------------#
-
-test:
-	@echo $(HAVE_NUPROLOG)

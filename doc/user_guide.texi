@@ -878,22 +878,30 @@ any target explicitly named on the command line.
 @item MC
 The executable that invokes the Mercury compiler.
 
+@item GRADEFLAGS and EXTRA_GRADEFLAGS
+Compilation model options (@pxref{Compilation model options})
+to pass to the Mercury compiler, linker, and other tools.
+
 @item MCFLAGS and EXTRA_MCFLAGS
-Flags to pass to the Mercury compiler.
+Options to pass to the Mercury compiler.
+(Note that compilation model options should be
+specified in @code{GRADEFLAGS}, not in @code{MCFLAGS}.)
 
 @item MGNUC
 The executable that invokes the C compiler.
 
 @item MGNUCFLAGS and EXTRA_MGNUCFLAGS
-Flags to pass to the C compiler.
+Options to pass to the C compiler.
 
 @item ML
 The executable that invokes the linker.
 
 @item MLFLAGS and EXTRA_MLFLAGS
-Flags to pass to the linker.
+Options to pass to the linker.
+(Note that compilation model options should be
+specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
 
-@item MLLIBS
+@item MLLIBS and EXTRA_MLLIBS
 A list of @samp{-l} options specifying libraries used by the program
 (or library) that you are building.  @xref{Using libraries}.
 
@@ -906,21 +914,37 @@ Other variables also exist - see
 @file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list.
 
 If you wish to temporarily change the flags passed to an executable,
-rather than setting the various @samp{FLAGS} variables directly, one can
-supply a @samp{EXTRA_} variable.  When defining a @samp{FLAGS} option
-directly (in your own @samp{Mmake} file), it is recommended you include
-the @samp{EXTRA_} version at the end.  This is particularly intended for
+rather than setting the various @samp{FLAGS} variables directly, you can
+set an @samp{EXTRA_} variable.  This is particularly intended for
 use where a shell script needs to call mmake and add an extra parameter,
-without interfering with the flag settings in the @samp{Mmake} file.
+without interfering with the flag settings in the @samp{Mmakefile}.
+
+For each of the variables for which there is version with an @samp{EXTRA_}
+prefix, there is also a version with an @samp{ALL_} prefix that
+is defined to include both the ordinary and the @samp{EXTRA_} version.
+If you wish to @emph{use} the values any of these variables
+in your Mmakefile (as opposed to @emph{setting} the values),
+then you should use the @samp{ALL_} version.
+
+It is also possible to override these variables on a per-file basis.
+For example, if you have a module called say @file{bad_style.m}
+which triggers lots of compiler warnings, and you want to disable
+the warnings just for that file, but keep them for all the other modules,
+then you can override @code{MCFLAGS} just for that file.  This is done by
+setting the variable @samp{MCFLAGS-bad_style}, as shown here:
 
 @example
-MCFLAGS = -O6 $(EXTRA_MCFLAGS)
+MCFLAGS-bad_style = --inhibit-warnings
 @end example
 
-Note that since Mmake is built on top of Make or GNU Make,
-you can make use of the features supported by the underlying Make.
-In particular, GNU Make has support for running jobs in parallel,
-which is very useful if you have a machine with more than one CPU.
+Mmake has a few options, including @samp{--use-subdirs},
+@samp{--save-makefile}, @samp{--verbose}, and @samp{--no-warn-undefined-vars}.
+For details about these options, see the man page or type @samp{mmake --help}.
+
+Finally, since Mmake is built on top of Make or GNU Make, you can also
+make use of the features and options supported by the underlying Make.
+In particular, GNU Make has support for running jobs in parallel, which
+is very useful if you have a machine with more than one CPU.
 
 @node Libraries
 @chapter Libraries

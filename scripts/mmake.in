@@ -30,9 +30,10 @@ Options:
 		your Mmake file.
 	-v, --verbose:
 		Print verbose progress messages.
-	-w, --warn-undefined-vars:
-		Warn about variable which are used but not defined.
-		(This warning is disabled when doing \`mmake clean'
+	-w-, --no-warn-undefined-vars:
+		Normally Mmake will warn about variables which are used
+		but not defined.  This option disables that warning.
+		(The warning is never enabled when doing \`mmake clean'
 		or \`mmake depend' or the like, to avoid spurious
 		warnings when the dependencies have not yet been made.)
 	-h, --help:
@@ -76,7 +77,7 @@ if [ -d Mercury ]; then
 else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
-warn_undefined_vars=false
+warn_undefined_vars=true
 
 while [ $# -gt 0 ]; do
 	case "$1" in

@@ -429,10 +429,24 @@ Changes to the Mercury implementation:
   `GRADEFLAGS = --profiling' in your Mmakefile, rather than having to
   use the more obscure incantation `GRADE = asm_fast.gc.prof'.
 
-* The components of the GRADE mmake variable/the argument to the --grade
-  option may now be given in any order. The compiler also has a new option
-  `--output-grade-string' which prints the cannonical grade string for
-  the set of options with which the compiler was invoked.
+* Mmake now supports per-file settings of MCFLAGS and other *FLAGS variables.
+
+  For example, if you want to disable singleton variable warnings just
+  for a single module `horrible_code.m', you can just include the line
+
+	  MCFLAGS-horrible_code = --no-warn-singleton-variables
+
+  in your Mmakefile.
+
+* Mmake now warns about variables which are defined but not used.
+
+  To disable this warning, use the `-w-' or `--no-warn-undef-variables'
+  option.
+
+* The components of the argument to the `--grade' option and of the `GRADE'
+  Mmake variable may now be given in any order. The compiler also has a
+  new option `--output-grade-string' which prints the canonical grade string
+  for the set of options with which the compiler was invoked.
 
 * We've made a few small improvements to the efficiency of the generated code.
 

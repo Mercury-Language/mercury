@@ -57,16 +57,16 @@ endif
 	sicstus_conv $<
 
 $(nos_subdir)%.no : %.m
-	$(MNC) $(MNCFLAGS) -o $@ $<
+	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
 
 $(nos_subdir)%.no : %.nl
-	$(MNC) $(MNCFLAGS) -o $@ $<
+	$(MNC) $(ALL_MNCFLAGS) -o $@ $<
 
 $(qls_subdir)%.ql : %.m
-	$(MSC) $(MSCFLAGS) -o $@ $<
+	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
 
 $(qls_subdir)%.ql : %.nl
-	$(MSC) $(MSCFLAGS) -o $@ $<
+	$(MSC) $(ALL_MSCFLAGS) -o $@ $<
 
 #-----------------------------------------------------------------------------#
 #
@@ -82,7 +82,7 @@ $(qls_subdir)%.ql : %.nl
 
 # beware the code for `%.depend' and `%.dep' is duplicated
 $(deps_subdir)%.dep:
-	$(MCD) $(MCDFLAGS) $*
+	$(MCD) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
@@ -94,7 +94,7 @@ endif
 # beware the code for `%.depend' and `%.dep' is duplicated
 .PHONY: %.depend
 %.depend :
-	$(MCD) $(MCDFLAGS) $*
+	$(MCD) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
@@ -121,19 +121,19 @@ endif
 #
 
 $(date0s_subdir)%.date0 : %.m
-	$(MCPI) $(MCPIFLAGS) $<
+	$(MCPI) $(ALL_MCPIFLAGS) $<
 
 $(dates_subdir)%.date : %.m
-	$(MCI) $(MCIFLAGS) $<
+	$(MCI) $(ALL_MCIFLAGS) $<
 
 $(date3s_subdir)%.date3 : %.m
-	$(MCSI) $(MCSIFLAGS) $<
+	$(MCSI) $(ALL_MCSIFLAGS) $<
 
 $(optdates_subdir)%.optdate : %.m
-	$(MCOI) $(MCOIFLAGS) $<
+	$(MCOI) $(ALL_MCOIFLAGS) $<
 
 $(trans_opt_dates_subdir)%.trans_opt_date : %.m
-	$(MCTOI) $(MCTOIFLAGS) $<
+	$(MCTOI) $(ALL_MCTOIFLAGS) $<
 
 # Be very careful about changing the following rules.
 # The `@:' is a silent do-nothing command.
@@ -168,7 +168,7 @@ $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 
 $(cs_subdir)%.c : %.m
 	rm -f $(cs_subdir)$*.c
-	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
 
 # If we are removing the .c files, we need to tell Make that we're
 # generating the .o files directly from the .m files, but
@@ -179,13 +179,15 @@ $(cs_subdir)%.c : %.m
 ifneq ($(RM_C),:)
 
 $(os_subdir)%.o : %.m
-	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" $(cs_subdir)$*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
+	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" \
+		EXTRA_GRADEFLAGS="$(EXTRA_GRADEFLAGS)" $(cs_subdir)$*.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
 	$(RM_C) $(cs_subdir)$*.c
 
 $(os_subdir)%.pic_o : %.m
-	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" $(cs_subdir)$*.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+	$(MMAKE_MAKE_CMD) $(MFLAGS) GRADEFLAGS="$(GRADEFLAGS)" \
+		EXTRA_GRADEFLAGS="$(EXTRA_GRADEFLAGS)" $(cs_subdir)$*.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $(cs_subdir)$*.c -o $@
 
 endif # RM_C != :
@@ -197,7 +199,7 @@ endif # RM_C != :
 
 $(dirs_subdir)%.dir/*.o: %.m
 	rm -f $@
-	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
+	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $<
 
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
@@ -206,11 +208,11 @@ $(dirs_subdir)%.dir/*.o: %.m
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MC) $(MCFLAGS) --errorcheck-only $< > $@ 2>&1
+	$(MC) $(ALL_MCFLAGS) --errorcheck-only $< > $@ 2>&1
 	@touch $@
 
 .m.ugly:
-	$(MC) --convert-to-mercury $(MCFLAGS) $<
+	$(MC) --convert-to-mercury $(ALL_MCFLAGS) $<
 
 #-----------------------------------------------------------------------------#
 #
@@ -218,19 +220,21 @@ $(dirs_subdir)%.dir/*.o: %.m
 #
 
 .c.o:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
 
 .c.pic_o:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< -o $@
 
 .c.s:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
 
 .c.pic_s:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-S $< -o $@
 
 .c.i:
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
 
 #-----------------------------------------------------------------------------#
 #
@@ -243,19 +247,21 @@ $(dirs_subdir)%.dir/*.o: %.m
 ifneq ("$(cs_subdir)","")
 
 $(os_subdir)%.o : $(cs_subdir)%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
 
 $(os_subdir)%.pic_o : $(cs_subdir)%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $< -o $@
 
 %.s: $(cs_subdir)%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@
 
 %.pic_s: $(cs_subdir)%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-S $< -o $@
 
 %.i: $(cs_subdir)%.c
-	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
 
 endif # $(cs_subdir) != ""
 
@@ -278,15 +284,6 @@ endif # $(cs_subdir) != ""
 
 $(MLOBJS_DEPS) : $(MLOBJS)
 $(MLPICOBJS_DEPS) : $(MLPICOBJS)
-
-# The following is obsolete; I've kept it here only for
-# bootstrapping reasons and for compatibility with old `.dep' files.
-
-MLOBJS-%: $(MLOBJS)
-	@
-
-MLPICOBJS-%: $(MLPICOBJS)
-	@
 
 #-----------------------------------------------------------------------------#
 #

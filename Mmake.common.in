@@ -169,7 +169,7 @@ COMPILER_DIR = $(MERCURY_DIR)/compiler
 UTIL_DIR = $(MERCURY_DIR)/util
 
 # Options to pass to the Mercury compiler
-MCFLAGS	= --no-infer-all --halt-at-warn $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
+MCFLAGS	= --no-infer-all --halt-at-warn
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule
