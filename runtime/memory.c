@@ -105,8 +105,8 @@ int	heap_zone_left = 0;
 int	detstack_zone_left = 0;
 int	nondstack_zone_left = 0;
 
-static	int	unit;
-static	int	page_size;
+static	uint	unit;
+static	uint	page_size;
 
 void init_memory(void)
 {
