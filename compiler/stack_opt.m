@@ -87,6 +87,7 @@
 :- import_module check_hlds__goal_path.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
+:- import_module check_hlds__simplify.
 :- import_module check_hlds__type_util.
 :- import_module hlds__arg_info.
 :- import_module hlds__code_model.
@@ -223,6 +224,10 @@
 	;	doesnt_need_flush.
 
 stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+	% This simplication is necessary to fix some bad inputs from
+	% getting to the liveness computation.
+	% (see tests/valid/stack_opt_simplify.m)
+	simplify__proc([], PredId, ProcId, !ModuleInfo, !ProcInfo, !IO),
 	detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
 	initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
 	module_info_globals(!.ModuleInfo, Globals),
