@@ -55,6 +55,7 @@
 :- import_module bytecode_gen, bytecode.
 
 	% the MLDS back-end
+:- import_module add_trail_ops.			% HLDS -> HLDS
 :- import_module mark_static_terms.		% HLDS -> HLDS
 :- import_module mlds.				% MLDS data structure
 :- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
@@ -1648,6 +1649,27 @@ mercury_compile__maybe_mark_static_terms(HLDS0, Verbose, Stats, HLDS) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_compile__maybe_add_trail_ops(module_info, bool, bool,
+		module_info, io__state, io__state).
+:- mode mercury_compile__maybe_add_trail_ops(in, in, in, out, di, uo)
+		is det.
+
+mercury_compile__maybe_add_trail_ops(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(use_trail, UseTrail),
+	( { UseTrail = yes } ->
+		maybe_write_string(Verbose,
+			"% Adding trailing operations...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_proc(add_trail_ops),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_compile__maybe_write_dependency_graph(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_write_dependency_graph(in, in, in, out, di, uo)
@@ -2438,7 +2460,11 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 		process_all_nonimported_nonaditi_procs, HLDS53),
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
-	mercury_compile__maybe_mark_static_terms(HLDS53, Verbose, Stats,
+	mercury_compile__maybe_add_trail_ops(HLDS53, Verbose, Stats,
+		HLDS55),
+	mercury_compile__maybe_dump_hlds(HLDS55, "55", "add_trail_ops"),
+
+	mercury_compile__maybe_mark_static_terms(HLDS55, Verbose, Stats,
 		HLDS60),
 	mercury_compile__maybe_dump_hlds(HLDS60, "60", "mark_static"),
 

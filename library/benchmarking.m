@@ -188,7 +188,7 @@ ML_report_stats(void)
 	fprintf(stderr,
 		"" Trail: %.3fk,"",
 		((char *) MR_trail_ptr - (char *)
-			eng->context.trail_zone->min) / 1024.0
+			MR_trail_zone->min) / 1024.0
 	);
 #endif
 

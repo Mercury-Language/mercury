@@ -43,6 +43,8 @@ ENDINIT
 #include	"mercury_stack_layout.h"
 #include	"mercury_trace_base.h"
 #include	"mercury_memory.h"	/* for MR_copy_string() */
+#include	"mercury_memory_handlers.h"	/* for MR_default_handler */
+#include	"mercury_memory_zones.h"	/* for MR_default_handler */
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -315,7 +317,18 @@ mercury_runtime_init(int argc, char **argv)
 
 	(*MR_address_of_mercury_init_io)();
 
-#ifndef MR_HIGHLEVEL_CODE
+#ifdef MR_HIGHLEVEL_CODE
+	MR_init_memory();
+  #ifdef MR_USE_TRAIL
+	/* initialize the trail */
+	MR_trail_zone = MR_create_zone("trail", 0,
+		MR_trail_size, MR_next_offset(),
+		MR_trail_zone_size, MR_default_handler);
+	MR_trail_ptr = (MR_TrailEntry *) MR_trail_zone->min;
+	MR_ticket_counter = 1;
+	MR_ticket_high_water = 1;
+  #endif
+#else
 	/* start up the Mercury engine */
   #ifndef MR_THREAD_SAFE
 	MR_init_thread(MR_use_now);

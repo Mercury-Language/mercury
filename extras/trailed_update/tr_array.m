@@ -173,7 +173,11 @@ lower bounds other than zero are not supported
 % Arrays are implemented in array.m using the C interface.
 
 % The C type which defines the representation of arrays is
-% MR_ArrayType; it is defined in runtime/type_info.h.
+% MR_ArrayType; it is defined in runtime/mercury_library_types.h.
+
+:- pragma c_header_code("
+	#include ""mercury_library_types.h""
+").
 
 %-----------------------------------------------------------------------------%
 

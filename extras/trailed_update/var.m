@@ -474,6 +474,8 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
+	#include ""mercury_trail.h""
+
 	void ML_var_untrail_func(
 		ML_var_delayed_conj *old_delayed_goals,
 		MR_untrail_reason reason);

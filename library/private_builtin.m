@@ -463,6 +463,119 @@ void sys_init_type_info_module(void) {
 
 %-----------------------------------------------------------------------------%
 
+	% This section of the module contains predicates that are used
+	% by the MLDS back-end, to implement trailing.
+	% (The LLDS back-end does not use these; instead it inserts
+	% the corresponding LLDS instructions directly during code
+	% generation.)
+	% These predicates should not be used by user programs directly.
+
+:- interface.
+
+:- type ticket == c_pointer.
+:- type ticket_counter == c_pointer.
+
+	% For documentation, see the corresponding LLDS instructions
+	% in compiler/llds.m.  See also compiler/notes/trailing.html.
+
+:- impure pred store_ticket(ticket::out) is det.
+:- impure pred reset_ticket_undo(ticket::in) is det.
+:- impure pred reset_ticket_commit(ticket::in) is det.
+:- impure pred reset_ticket_solve(ticket::in) is det.
+:- impure pred discard_ticket is det.
+:- impure pred prune_ticket is det.
+:- impure pred mark_ticket_stack(ticket_counter::out) is det.
+:- impure pred prune_tickets_to(ticket_counter::in) is det.
+
+	% XXX currently we don't support nondet pragma
+	% foreign_code when trailing is enabled.
+	% Instead we generate code which calls this procedure,
+	% which will call error/1 with an appropriate message.
+:- pred trailed_nondet_pragma_foreign_code is erroneous.
+
+	% N.B. interface continued below.
+
+:- implementation.
+
+:- pragma c_code(store_ticket(Ticket::out),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_store_ticket(Ticket);
+#else
+	Ticket = 0;
+#endif
+").
+
+:- pragma c_code(reset_ticket_undo(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_reset_ticket(Ticket, MR_undo);
+#endif
+").
+
+:- pragma c_code(reset_ticket_commit(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_reset_ticket(Ticket, MR_commit);
+#endif
+").
+
+:- pragma c_code(reset_ticket_solve(Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_reset_ticket(Ticket, MR_solve);
+#endif
+").
+
+:- pragma c_code(discard_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_discard_ticket();
+#endif
+").
+
+:- pragma c_code(prune_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_prune_ticket();
+#endif
+").
+
+:- pragma c_code(mark_ticket_stack(TicketCounter::out),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_mark_ticket_stack(TicketCounter);
+#else
+	TicketCounter = 0;
+#endif
+").
+
+:- pragma c_code(prune_tickets_to(TicketCounter::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_TRAIL
+	MR_prune_tickets_to(TicketCounter);
+#endif
+").
+
+trailed_nondet_pragma_foreign_code :-
+	Msg = string__append_list([
+		"Sorry, not implemented:\n",
+		"for the MLDS back-end (`--high-level-code')\n",
+		"nondet `pragma c_code' or `pragma foreign_code'\n",
+		"is not supported when trailing (`--use_trail') is enabled."
+	]),
+	error(Msg).
+
+%-----------------------------------------------------------------------------%
+
 :- interface.
 
 	% This section of the module is for miscellaneous predicates
@@ -481,7 +594,7 @@ void sys_init_type_info_module(void) {
 
 :- implementation.
 
-:- external(unsafe_type_cast/2).
+% unsafe_type_cast is a builtin; the compiler generates inline code for it
 
 unused :-
 	( semidet_succeed ->
