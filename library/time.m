@@ -146,12 +146,13 @@ Define_entry(mercury__time__benchmark_nondet_5_0);
 	** framevar(2): the number of iterations left to be done.
 	** framevar(3): the number of solutions found so far.
 	** framevar(4): the time at entry to the first iteration.
+	** framevar(5): the saved heap pointer
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	mkframe(""benchmark_nondet"", 5,
+	mkframe(""benchmark_nondet"", 6,
 		LABEL(mercury__time__benchmark_nondet_5_0_i2));
 
 	framevar(0) = r3;
@@ -163,6 +164,7 @@ Define_entry(mercury__time__benchmark_nondet_5_0);
 		framevar(2) = rep_count;
 
 	framevar(3) = 0;
+	mark_hp(framevar(5));
 	framevar(4) = get_run_time();
 
 	/* call the higher-order pred closure that we were passed in r3 */
@@ -185,6 +187,8 @@ Define_label(mercury__time__benchmark_nondet_5_0_i1);
 Define_label(mercury__time__benchmark_nondet_5_0_i2);
 	/* no more solutions for this iteration, so mark it completed */
 	framevar(2) = framevar(2) - 1;
+	/* we can now reclaim memory by resetting the heap pointer */
+	restore_hp(framevar(5));
 	/* are there any other iterations? */
 	if (framevar(2) > 0)
 	{
@@ -226,14 +230,16 @@ Define_entry(mercury__time__benchmark_det_5_0);
 	** detstackvar(2): the input for the closure.
 	** detstackvar(3): the number of iterations left to be done.
 	** detstackvar(4): the time at entry to the first iteration.
-	** detstackvar(5): the return address.
+	** detstackvar(5): the saved heap pointer
+	** detstackvar(6): the return address.
 	**
 	** We must make that the closure is called at least once,
 	** otherwise the count we return isn't valid.
 	*/
 
-	incr_sp(5);
-	detstackvar(5) = (Word) succip;
+	incr_sp(6);
+	detstackvar(6) = (Word) succip;
+	mark_hp(detstackvar(5));
 
 	detstackvar(1) = r3;
 	detstackvar(2) = r4;
@@ -264,6 +270,7 @@ Define_label(mercury__time__benchmark_det_5_0_i1);
 	if (detstackvar(3) > 0)
 	{
 		/* yes, so set up the call just like last time */
+		restore_hp(detstackvar(5));
 		r1 = detstackvar(1);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
@@ -279,7 +286,7 @@ Define_label(mercury__time__benchmark_det_5_0_i1);
 	/* no more iterations */
 	soln_output = r1; /* the closure *always* returns its output in r1 */
 	time_output = get_run_time() - detstackvar(4);
-	succip = (Word *) detstackvar(5);
+	succip = (Word *) detstackvar(6);
 	decr_sp(5);
 	proceed();
 END_MODULE
