@@ -657,17 +657,21 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 	% XXX we need to know the module name!!!
 	ModuleName = "xxx",
 
-	( Goal = term_functor(term_atom(PredName), Args, Cont) ->
+	( Goal = term_functor(term_atom(PredName), Args, _) ->
 		true
 	;
-		term__context_file(Cont, File0),
-		string__append(File0, ": ", File),
-		term__context_line(Cont, Line0),
-		string__int_to_string(Line0, Line),
-		string__append(Line, ": fatal error: called term is not an atom",
-					Str0),
-		string__append(File, Str0, Str),
-		error(Str)
+		( term = term_functor(_, _, Context) ->
+			term__context_file(Context, File0),
+			string__append(File0, ":", File),
+			term__context_line(Context, Line0),
+			string__int_to_string(Line0, Line),
+			string__append(Line, ": fatal error: called term is not an atom",
+						Str0),
+			string__append(File, Str0, Str),
+			error(Str)
+		;
+			error("fatal error: call to free variable")
+		)
 	),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
