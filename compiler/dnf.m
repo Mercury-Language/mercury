@@ -375,32 +375,12 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
 	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers),
 	Goal0 = _GoalExpr - GoalInfo,
-	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-
-	goal_info_get_context(GoalInfo, Context),
-	goal_info_get_determinism(GoalInfo, Detism),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
-	dnf__compute_arg_types_modes(ArgVars, VarTypes, InstMap0, InstMap,
-		ArgTypes, ArgModes),
-
-	module_info_name(ModuleInfo0, ModuleName),
-	SymName = qualified(ModuleName, PredName),
-	map__init(TVarMap), % later, polymorphism.m will fill this in. 
-	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism,
-		Goal0, Context, TVarMap, ProcInfo),
-	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
-		Context, local, Markers, predicate, ProcInfo, ProcId, PredInfo),
-
-	module_info_get_predicate_table(ModuleInfo0, PredTable0),
-	predicate_table_insert(PredTable0, PredInfo, PredId,
-		PredTable),
-	module_info_set_predicate_table(ModuleInfo0, PredTable,
-		ModuleInfo),
-
-	GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
-	Goal = GoalExpr - GoalInfo.
+	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName,
+		TVarSet, VarTypes, VarSet, Markers, 
+		ModuleInfo0, ModuleInfo, PredProcId),
+	PredProcId = proc(PredId, _).
 
 :- pred dnf__compute_arg_types_modes(list(var)::in, map(var, type)::in,
 	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.

@@ -199,7 +199,7 @@
 				% Used for pragma(inline).
 				% Since the transformation affects *other*
 				% predicates, the `done' status is not
-				% meaningful
+				% meaningful.
 	;	no_inline	% Requests that this be predicate not be 
 				% inlined.
 				% Used for pragma(no_inline).
@@ -244,6 +244,20 @@
 :- type marker_status
 	--->	request(marker)
 	;	done(marker).
+
+
+	% hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, PredName,
+	% 	TVarSet, VarTypes, VarSet, Markers, ModuleInfo0, ModuleInfo,
+	% 	PredProcId)
+	%
+	% Create a new predicate for the given goal, returning a goal to 
+	% call the created predicate. This must only be called after 
+	% polymorphism.m.
+:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
+		instmap, string, tvarset, map(var, type), varset, 
+		list(marker_status), module_info, module_info, pred_proc_id).
+:- mode hlds_pred__define_new_pred(in, out, in, in, in, 
+		in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
@@ -591,6 +605,51 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 			IsPredOrFunc).
 
 %-----------------------------------------------------------------------------%
+
+hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName, TVarSet, 
+		VarTypes, VarSet, Markers, ModuleInfo0,
+		ModuleInfo, PredProcId) :-
+	Goal0 = _GoalExpr - GoalInfo,
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+
+	goal_info_get_context(GoalInfo, Context),
+	goal_info_get_determinism(GoalInfo, Detism),
+	compute_arg_types_modes(ArgVars, VarTypes, InstMap0, InstMap,
+		ArgTypes, ArgModes),
+
+	module_info_name(ModuleInfo0, ModuleName),
+	SymName = qualified(ModuleName, PredName),
+	map__init(TVarMap), % later, polymorphism.m will fill this in. 
+	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism,
+		Goal0, Context, TVarMap, ProcInfo),
+	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
+		Context, local, Markers, predicate, ProcInfo, ProcId, PredInfo),
+
+	module_info_get_predicate_table(ModuleInfo0, PredTable0),
+	predicate_table_insert(PredTable0, PredInfo, PredId,
+		PredTable),
+	module_info_set_predicate_table(ModuleInfo0, PredTable,
+		ModuleInfo),
+
+	GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
+	Goal = GoalExpr - GoalInfo,
+	PredProcId = proc(PredId, ProcId).
+
+:- pred compute_arg_types_modes(list(var)::in, map(var, type)::in,
+	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
+
+compute_arg_types_modes([], _, _, _, [], []).
+compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
+		[Type | Types], [Mode | Modes]) :-
+	map__lookup(VarTypes, Var, Type),
+	instmap__lookup_var(InstMap0, Var, Inst0),
+	instmap__lookup_var(InstMap, Var, Inst),
+	Mode = (Inst0 -> Inst),
+	compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap,
+		Types, Modes).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Various predicates for accessing the proc_info data structure.
@@ -741,6 +800,15 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 
 :- pred proc_info_ensure_unique_names(proc_info, proc_info).
 :- mode proc_info_ensure_unique_names(in, out) is det.
+
+	% Create a new variable of the given type to the procedure.
+:- pred proc_info_create_var_from_type(proc_info, type, var, proc_info).
+:- mode proc_info_create_var_from_type(in, in, out, out) is det.
+
+	% Create a new variable for each element of the list of types.
+:- pred proc_info_create_vars_from_types(proc_info, 
+		list(type), list(var), proc_info).
+:- mode proc_info_create_vars_from_types(in, in, out, out) is det.
 
 :- implementation.
 
@@ -1064,6 +1132,24 @@ proc_info_ensure_unique_names(ProcInfo0, ProcInfo) :-
 	proc_info_variables(ProcInfo0, VarSet0),
 	varset__ensure_unique_names(AllVars, "p", VarSet0, VarSet),
 	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo).
+
+proc_info_create_var_from_type(ProcInfo0, Type, NewVar, ProcInfo) :-
+	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	varset__new_var(VarSet0, NewVar, VarSet),
+	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
+	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
+
+proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
+	list__length(Types, NumVars),
+	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	varset__new_vars(VarSet0, NumVars, NewVars, VarSet),
+	map__det_insert_from_corresponding_lists(VarTypes0, 
+		NewVars, Types, VarTypes),
+	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
