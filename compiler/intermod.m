@@ -598,7 +598,7 @@ intermod__gather_pred_modes(_, _, _, _, []) --> [].
 intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, [ProcId | ProcIds])
 		-->
 	{ map__lookup(Procs, ProcId, ProcInfo) }, 
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 	intermod__gather_proc_modes(ModuleInfo, Modes, Insts, ArgModes),
 	intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, ProcIds).
 
