@@ -36,7 +36,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, varset, std_util, term_io.
+:- import_module string, list, varset, std_util, term_io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -83,10 +83,9 @@ prog_out__write_context(Context) -->
 	( { FileName = "" } ->
 		[]
 	;
-		io__write_string(FileName),
-		io__write_string(":"),
-		io__write_int(LineNumber),
-		io__write_string(": ")
+		{ string__format("%s:%03d: ", [s(FileName), i(LineNumber)],
+			ContextMessage) }, 
+		io__write_string(ContextMessage)
 	).
 
 %-----------------------------------------------------------------------------%

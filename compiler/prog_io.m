@@ -3362,12 +3362,11 @@ report_warning(Stream, Message) -->
 	),
 	io__write_string(Stream, Message).
 
-report_warning(Module_name, Line_num, Message) -->
-	{ string__int_to_string(Line_num, Line_str) },
-	{ string__append_list([Module_name, ".m:", Line_str, ": Warning: ",
-			Message, "\n"], Message_0) },
+report_warning(ModuleName, LineNum, Message) -->
+	{ string__format("%s.m:%3d: Warning: %s\n",
+		[s(ModuleName), i(LineNum), s(Message)], FullMessage) },
 	io__stderr_stream(StdErr),
-	io__write_string(StdErr, Message_0),
+	io__write_string(StdErr, FullMessage),
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)
