@@ -641,7 +641,7 @@ math__log(B, X) = Log :-
 	Log = System.Math.Log(X, B);
 ").
 % Java implementation will default to mercury here.
-math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
+math__log_2(B, X) = math__ln_2(X) / math__ln_2(B).
 
 %
 % math__sin(X) = Sin is true if Sin is the sine of X.
