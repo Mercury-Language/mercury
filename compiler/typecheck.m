@@ -4487,7 +4487,7 @@ apply_class_rules([C|Constraints0], AssumedConstraints, HeadTypeParams,
 		Constraints, Changed) :-
 	(
 		Parents = [],
-		eliminate_constraint_by_class_rules(C, HeadTypeParams, 
+		eliminate_constraint_by_class_rules(C, _, _, HeadTypeParams, 
 			AssumedConstraints,
 			SuperClassTable, TVarSet, Parents, Proofs0, Proofs1)
 	->
@@ -4512,15 +4512,16 @@ apply_class_rules([C|Constraints0], AssumedConstraints, HeadTypeParams,
 	% original constraint that we are trying to prove. (These are the
 	% type variables that must not be bound as we search through the
 	% superclass relation).
-:- pred eliminate_constraint_by_class_rules(class_constraint, list(tvar),
+:- pred eliminate_constraint_by_class_rules(class_constraint, class_constraint,
+	tsubst, list(tvar),
 	list(class_constraint), superclass_table, tvarset,
 	list(class_constraint),
 	map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof)).
-:- mode eliminate_constraint_by_class_rules(in, in, in, in, in, in, in, out) 
-	is semidet.
+:- mode eliminate_constraint_by_class_rules(in, out, out,
+	in, in, in, in, in, in, out) is semidet.
 
-eliminate_constraint_by_class_rules(C, ConstVars,
+eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 		AssumedConstraints, SuperClassTable,
 		TVarSet, ParentConstraints, Proofs0, Proofs) :-
 
@@ -4536,60 +4537,21 @@ eliminate_constraint_by_class_rules(C, ConstVars,
 		% Convert all the subclass_details into class_constraints by
 		% doing the appropriate variable renaming and applying the
 		% type variable bindings.
-	SubDetailsToConstraint = (pred(SubClassDetails::in, SubC::out) 
-			is det :-
-		SubClassDetails = subclass_details(SuperVars0, SubID,
-			SubVars0, SuperVarset),
-
-			% Rename the variables from the typeclass
-			% declaration into those of the current pred
-		varset__merge_subst(TVarSet, SuperVarset, _NewTVarSet, 
-			RenameSubst),
-		term__var_list_to_term_list(SubVars0, SubVars1),
-		term__apply_substitution_to_list(SubVars1, 
-			RenameSubst, SubVars),
-		term__apply_substitution_to_list(SuperVars0,
-			RenameSubst, SuperVars),
-
-			% Work out what the (renamed) vars from the
-			% typeclass declaration are bound to here
-		map__init(Empty),
-		(
-			type_unify_list(SuperVars, SuperClassTypes, [],
-				Empty, Bindings)
-		->
-			SubID = class_id(SubName, _SubArity),
-			term__apply_substitution_to_list(SubVars, Bindings,
-				SubClassTypes),
-			SubC = constraint(SubName, SubClassTypes)
-		;
-			error("eliminate_constraint_by_class_rules: type_unify_list failed")
-		)
-	),
-	list__map(SubDetailsToConstraint, SubClasses, SubClassConstraints),
+	list__map(subclass_details_to_constraint(TVarSet, SuperClassTypes),
+		SubClasses, SubClassConstraints),
 
 	(
 			% Do the first level of search. We search for
 			% an assumed constraint which unifies with any
 			% of the subclass constraints.
-		FindSub = (pred(TheConstraint::in) is semidet :-
-			some [SubClassConstraint] (
-				TheConstraint = constraint(TheConstraintClass,
-					TheConstraintTypes),
-				list__member(SubClassConstraint, 
-					SubClassConstraints),
-				SubClassConstraint = 
-					constraint(TheConstraintClass, 
-					SubClassConstraintTypes),
-				map__init(EmptySub),
-				type_unify_list(SubClassConstraintTypes, 
-					TheConstraintTypes,
-					ConstVars, EmptySub, _)
-			)
-		),
-		find_first_match(FindSub, AssumedConstraints, Sub)
+		find_first(
+			match_assumed_constraint(ConstVars,
+				SubClassConstraints),
+			AssumedConstraints, SubClass - SubClassSubst0)
 	->
-		map__set(Proofs0, C, superclass(Sub), Proofs)
+		SubClassSubst = SubClassSubst0,
+		apply_rec_subst_to_constraint(SubClassSubst, C, SubstC),
+		map__set(Proofs0, SubstC, superclass(SubClass), Proofs)
 	;
 		NewParentConstraints = [C|ParentConstraints],
 
@@ -4598,17 +4560,42 @@ eliminate_constraint_by_class_rules(C, ConstVars,
 		SubClassSearch = (pred(Constraint::in, CnstrtAndProof::out) 
 				is semidet :-
 			eliminate_constraint_by_class_rules(Constraint, 
+				SubstConstraint, SubClassSubst0,
 				ConstVars, AssumedConstraints, SuperClassTable,
 				TVarSet, NewParentConstraints,
 				Proofs0, SubProofs),
-			CnstrtAndProof = Constraint - SubProofs
+			CnstrtAndProof = {SubstConstraint,
+				SubClassSubst0, SubProofs}
 		),
 			% XXX this could (and should) be more efficient. 
 			% (ie. by manually doing a "cut").
 		find_first(SubClassSearch, SubClassConstraints,
-			NewSub - NewProofs),
-		map__set(NewProofs, C, superclass(NewSub), Proofs)
+			{NewSubClass, SubClassSubst, NewProofs}),
+		apply_rec_subst_to_constraint(SubClassSubst, C, SubstC),
+		map__set(NewProofs, SubstC, superclass(NewSubClass), Proofs)
 	).
+
+:- pred match_assumed_constraint(list(tvar)::in, list(class_constraint)::in,
+	class_constraint::in, pair(class_constraint, tsubst)::out) is semidet.
+
+match_assumed_constraint(ConstVars, SubClassConstraints,
+		AssumedConstraint, Match) :-
+	find_first(match_assumed_constraint_2(ConstVars, AssumedConstraint), 
+		SubClassConstraints, Match).
+
+:- pred match_assumed_constraint_2(list(tvar)::in, class_constraint::in,
+	class_constraint::in, pair(class_constraint, tsubst)::out) is semidet.
+
+match_assumed_constraint_2(ConstVars, AssumedConstraint,
+		SubClassConstraint, Match) :-
+	AssumedConstraint = constraint(AssumedConstraintClass,
+		AssumedConstraintTypes),
+	SubClassConstraint = constraint(AssumedConstraintClass,
+		SubClassConstraintTypes),
+	map__init(EmptySub),
+	type_unify_list(SubClassConstraintTypes, AssumedConstraintTypes,
+		ConstVars, EmptySub, AssumedConstraintSub),
+	Match = AssumedConstraint - AssumedConstraintSub.
 
 	% XXX this should probably work its way into the library.
 	% This is just like list__filter_map except that it only returns
@@ -4638,6 +4625,39 @@ find_first_match(Pred, [X|Xs], Result) :-
 		Result = X
 	;
 		find_first_match(Pred, Xs, Result)
+	).
+
+:- pred subclass_details_to_constraint(tvarset::in, list(type)::in,
+		subclass_details::in, class_constraint::out) is det.
+
+subclass_details_to_constraint(TVarSet, SuperClassTypes,
+			SubClassDetails, SubC) :-
+	SubClassDetails = subclass_details(SuperVars0, SubID,
+		SubVars0, SuperVarset),
+
+		% Rename the variables from the typeclass
+		% declaration into those of the current pred
+	varset__merge_subst(TVarSet, SuperVarset, _NewTVarSet, 
+		RenameSubst),
+	term__var_list_to_term_list(SubVars0, SubVars1),
+	term__apply_substitution_to_list(SubVars1, 
+		RenameSubst, SubVars),
+	term__apply_substitution_to_list(SuperVars0,
+		RenameSubst, SuperVars),
+
+		% Work out what the (renamed) vars from the
+		% typeclass declaration are bound to here
+	map__init(Empty),
+	(
+		type_unify_list(SuperVars, SuperClassTypes, [],
+			Empty, Bindings)
+	->
+		SubID = class_id(SubName, _SubArity),
+		term__apply_substitution_to_list(SubVars, Bindings,
+			SubClassTypes),
+		SubC = constraint(SubName, SubClassTypes)
+	;
+		error("subclass_details_to_constraint: type_unify_list failed")
 	).
 
 	%
