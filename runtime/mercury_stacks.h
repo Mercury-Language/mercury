@@ -330,7 +330,7 @@ enum MR_HandlerCodeModel {
 typedef struct MR_Exception_Handler_Frame_struct {
 	/*
 	** The `code_model' field is used to identify what kind of
-	** handler it is. It holds values of type MR_HandlerMR_CodeModel
+	** handler it is. It holds values of type MR_HandlerCodeModel
 	** (see above), but it is declared to have type `MR_Word' to ensure
 	** that everything remains word-aligned.
 	*/
