@@ -564,7 +564,9 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		%
 
 		% generate a declaration for the fresh variable
-		{ ArgVarName = string__append("conv_", VarName) },
+		ml_gen_info_new_conv_var(ConvVarNum),
+		{ string__format("conv%d_%s", [i(ConvVarNum), s(VarName)],
+			ArgVarName) },
 		{ ArgVarDecl = ml_gen_var_decl(ArgVarName, CalleeType,
 			mlds__make_context(Context)) },
 		{ ConvDecls = [ArgVarDecl] },

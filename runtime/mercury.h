@@ -96,75 +96,58 @@ typedef MR_Box				MR_BaseTypeclassInfo[];
 /*
 ** XXX Currently we hard-code the declarations of the first
 ** five of these type-info struct types; this imposes a fixed
-** limit of 5 on the arity of types.  (If this is exceeded,
-** you'll get an undeclared type error in the generated C code.)
+** limit of 10 on the arity of types.  (If this is exceeded,
+** you'll get a parse error in the generated C code, due to
+** an undeclared type.)
 ** Note that the code for compare and unify in runtime/mercury.c
 ** also has a fixed limit of 5 on the arity of types.
 ** Fortunately types with a high arity tend not to be used very
 ** often, so this is probably OK for now...
 */
 
-#ifndef MR_HO_PseudoTypeInfo_Struct1_GUARD
-#define MR_HO_PseudoTypeInfo_Struct1_GUARD
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct1, 1);
-#endif
-
-#ifndef MR_HO_PseudoTypeInfo_Struct2_GUARD
-#define MR_HO_PseudoTypeInfo_Struct2_GUARD
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct2, 2);
-#endif
-
-#ifndef MR_HO_PseudoTypeInfo_Struct3_GUARD
-#define MR_HO_PseudoTypeInfo_Struct3_GUARD
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct3, 3);
-#endif
-
-#ifndef MR_HO_PseudoTypeInfo_Struct4_GUARD
-#define MR_HO_PseudoTypeInfo_Struct4_GUARD
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct4, 4);
-#endif
-
-#ifndef MR_HO_PseudoTypeInfo_Struct5_GUARD
-#define MR_HO_PseudoTypeInfo_Struct5_GUARD
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct5, 5);
-#endif
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct6, 6);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct7, 7);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct8, 8);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct9, 9);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct10, 10);
 
-#ifndef MR_FO_PseudoTypeInfo_Struct1_GUARD
-#define MR_FO_PseudoTypeInfo_Struct1_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct1, 1);
-#endif
-
-#ifndef MR_FO_PseudoTypeInfo_Struct2_GUARD
-#define MR_FO_PseudoTypeInfo_Struct2_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct2, 2);
-#endif
-
-#ifndef MR_FO_PseudoTypeInfo_Struct3_GUARD
-#define MR_FO_PseudoTypeInfo_Struct3_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct3, 3);
-#endif
-
-#ifndef MR_FO_PseudoTypeInfo_Struct4_GUARD
-#define MR_FO_PseudoTypeInfo_Struct4_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct4, 4);
-#endif
-
-#ifndef MR_FO_PseudoTypeInfo_Struct5_GUARD
-#define MR_FO_PseudoTypeInfo_Struct5_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct5, 5);
-#endif
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct6, 6);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct7, 7);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct8, 8);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct9, 9);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct10, 10);
 
 typedef struct MR_HO_PseudoTypeInfo_Struct1 MR_HO_PseudoTypeInfo_Struct1;
 typedef struct MR_HO_PseudoTypeInfo_Struct2 MR_HO_PseudoTypeInfo_Struct2;
 typedef struct MR_HO_PseudoTypeInfo_Struct3 MR_HO_PseudoTypeInfo_Struct3;
 typedef struct MR_HO_PseudoTypeInfo_Struct4 MR_HO_PseudoTypeInfo_Struct4;
 typedef struct MR_HO_PseudoTypeInfo_Struct5 MR_HO_PseudoTypeInfo_Struct5;
+typedef struct MR_HO_PseudoTypeInfo_Struct6 MR_HO_PseudoTypeInfo_Struct6;
+typedef struct MR_HO_PseudoTypeInfo_Struct7 MR_HO_PseudoTypeInfo_Struct7;
+typedef struct MR_HO_PseudoTypeInfo_Struct8 MR_HO_PseudoTypeInfo_Struct8;
+typedef struct MR_HO_PseudoTypeInfo_Struct9 MR_HO_PseudoTypeInfo_Struct9;
+typedef struct MR_HO_PseudoTypeInfo_Struct10 MR_HO_PseudoTypeInfo_Struct10;
 
 typedef struct MR_FO_PseudoTypeInfo_Struct1 MR_FO_PseudoTypeInfo_Struct1;
 typedef struct MR_FO_PseudoTypeInfo_Struct2 MR_FO_PseudoTypeInfo_Struct2;
 typedef struct MR_FO_PseudoTypeInfo_Struct3 MR_FO_PseudoTypeInfo_Struct3;
 typedef struct MR_FO_PseudoTypeInfo_Struct4 MR_FO_PseudoTypeInfo_Struct4;
 typedef struct MR_FO_PseudoTypeInfo_Struct5 MR_FO_PseudoTypeInfo_Struct5;
+typedef struct MR_FO_PseudoTypeInfo_Struct6 MR_FO_PseudoTypeInfo_Struct6;
+typedef struct MR_FO_PseudoTypeInfo_Struct7 MR_FO_PseudoTypeInfo_Struct7;
+typedef struct MR_FO_PseudoTypeInfo_Struct8 MR_FO_PseudoTypeInfo_Struct8;
+typedef struct MR_FO_PseudoTypeInfo_Struct9 MR_FO_PseudoTypeInfo_Struct9;
+typedef struct MR_FO_PseudoTypeInfo_Struct10 MR_FO_PseudoTypeInfo_Struct10;
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -290,15 +273,24 @@ extern	Word	mercury__private_builtin__dummy_var;
 ** XXX we should optimize the case where sizeof(MR_Float) == sizeof(MR_Box)
 */ 
 
-MR_EXTERN_INLINE MR_Box MR_box_float(MR_Float f);
+#if defined(__GNUC__) && !defined(MR_AVOID_MACROS)
+  #define MR_box_float(f) ({						\
+	MR_Float *MR_box_float_ptr = (MR_Float *)			\
+		MR_new_object(MR_Float, sizeof(MR_Float), "float");	\
+	*MR_box_float_ptr = (f);					\
+	/* return */ (MR_Box) MR_box_float_ptr;				\
+  })
+#else
+  MR_EXTERN_INLINE MR_Box MR_box_float(MR_Float f);
 
-MR_EXTERN_INLINE MR_Box
-MR_box_float(MR_Float f) {
+  MR_EXTERN_INLINE MR_Box
+  MR_box_float(MR_Float f) {
 	MR_Float *ptr = (MR_Float *)
 		MR_new_object(MR_Float, sizeof(MR_Float), "float");
 	*ptr = f;
 	return (MR_Box) ptr;
-}
+  }
+#endif
 
 #ifdef MR_AVOID_MACROS
   MR_EXTERN_INLINE MR_Float MR_unbox_float(MR_Box b);

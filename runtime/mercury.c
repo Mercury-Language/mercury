@@ -770,6 +770,41 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef __GNUC__
+
+/* provide definitions for functions declared `extern inline' */
+
+Word
+create1(Word w1) 
+{
+	Word *p = (Word *) MR_new_object(Word, 1 * sizeof(Word), "create1");
+	p[0] = w1;
+	return (Word) p;
+}
+
+Word
+create2(Word w1, Word w2) 
+{
+	Word *p = (Word *) MR_new_object(Word, 2 * sizeof(Word), "create2");
+	p[0] = w1;
+	p[1] = w2;
+	return (Word) p;
+}
+
+Word
+create3(Word w1, Word w2, Word w3) 
+{
+	Word *p = (Word *) MR_new_object(Word, 3 * sizeof(Word), "create3");
+	p[0] = w1;
+	p[1] = w2;
+	p[2] = w3;
+	return (Word) p;
+}
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 /*
 ** XXX this is a hack to work-around the current lack of
 ** support for `pragma export'.

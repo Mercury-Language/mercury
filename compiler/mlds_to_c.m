@@ -36,7 +36,9 @@
 				% llds_out__make_base_typeclass_info_name.
 :- import_module rtti.		% for rtti__addr_to_string.
 :- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
-:- import_module hlds_pred.	% for `pred_proc_id'.
+:- import_module hlds_pred.	% for pred_proc_id.
+:- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
+				% the code that handles tail recursion.
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
 :- import_module prog_data, prog_out.
@@ -1350,24 +1352,54 @@ mlds_output_assign_args(_, _, _, [], [_|_]) -->
 	{ error("mlds_output_assign_args: length mismatch") }.
 mlds_output_assign_args(_, _, _, [], []) --> [].
 mlds_output_assign_args(Indent, ModuleName, Context,
-		[Name - _Type | Rest], [Arg | Args]) -->
+		[Name - Type | Rest], [Arg | Args]) -->
+	%
+	% extract the variable name
+	%
+	{ Name = data(var(VarName1)) ->
+		VarName = VarName1
+	;
+		error("mlds_output_assign_args: arg is not a variable!")
+	},
 	(
 		%
 		% don't bother assigning a variable to itself
 		%
-		{ Name = data(var(VarName)) },
-		{ QualVarName = qual(ModuleName, VarName) },
-		{ Arg = lval(var(QualVarName)) }
+		{ Arg = lval(var(qual(ModuleName, VarName))) }
 	->
-		[]
+		mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args)
 	;
+		% Declare a temporary variable, initialized it to the arg,
+		% recursively process the remaining args,
+		% and then assign the temporary to the parameter:
+		%
+		%	SomeType argN__tmp_copy = new_argN_value;
+		%	...
+		%	new_argN_value = argN_tmp_copy;
+		%
+		% The temporaries are needed for the case where
+		% we are e.g. assigning v1, v2 to v2, v1;
+		% they ensure that we don't try to reference the old value of
+		% a parameter after it has already been clobbered by the
+		% new value.
+
+		{ string__append(VarName, "__tmp_copy", TempName) },
+		{ QualTempName = qual(ModuleName, data(var(TempName))) },
+		{ Initializer = init_obj(Arg) },
+		{ TempDefn = ml_gen_mlds_var_decl(var(TempName), Type,
+			Initializer, Context) },
+		mlds_output_defn(Indent, ModuleName, TempDefn),
+
+		mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args),
+
 		mlds_indent(Context, Indent),
 		mlds_output_fully_qualified_name(qual(ModuleName, Name)),
 		io__write_string(" = "),
-		mlds_output_rval(Arg),
+		mlds_output_fully_qualified_name(QualTempName),
 		io__write_string(";\n")
-	),
-	mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args).
+	).
+
+%-----------------------------------------------------------------------------%
 
 	%
 	% exception handling
