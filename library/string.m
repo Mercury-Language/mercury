@@ -815,7 +815,13 @@ string__format(Format_string, Poly_list, Out_string ) :-
 %	is not efficient.  Instead, many short strings are added to the front
 %	of a (long) and growing string.
 %
-string__format_2([], _, "").
+string__format_2([], Vars_in, Result) :-
+	( Vars_in = [] ->
+		Result = ""
+	;
+		error(
+	"string__format: argument list has more elements than format string")
+	).
 string__format_2([Achar|As], Vars_in, Ostring) :-
 	(
 		Achar = '%'
@@ -833,7 +839,8 @@ string__format_2([Achar|As], Vars_in, Ostring) :-
 				string__format_2(As_out, Vars_out, String_2),
 				string__append(String_1, String_2, Ostring)
 			;
-				error("string__format: Too few variables.")
+				error(
+	"string__format: argument list has fewer elements than format string")
 			)
 		)
 	;

@@ -57,6 +57,8 @@ PROGS=		\
 		semidet_map \
 		set_test \
 		string_format_test \
+		string_format_test_2 \
+		string_format_test_3 \
 		string_test \
 		string_test_2 \
 		univ \
@@ -65,6 +67,11 @@ PROGS=		\
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
 NOT_WORKING =	dnf
+
+#-----------------------------------------------------------------------------#
+#
+# Some test cases need special handling.
+#
 
 # mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
 MCFLAGS-mode_inf = --infer-all
@@ -83,6 +90,15 @@ MCFLAGS-intermod_type2 = --intermodule-optimization
 # tracking it down.
 MLFLAGS-string_test = --no-strip
 
+# string_format_test_2 and string__format_test_3 are expected to fail
+# (string__format should call error/1 for these test cases)
+# so we need to ignore the exit status (hence the leading `-')
+string_format_test_2.out: string_format_test_2
+	-./string_format_test_2 > string_format_test_2.out 2>&1;
+string_format_test_3.out: string_format_test_3
+	-./string_format_test_3 > string_format_test_3.out 2>&1;
+
+#-----------------------------------------------------------------------------#
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
