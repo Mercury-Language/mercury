@@ -3,8 +3,8 @@
 % File: typecheck.nl.
 % Main author: fjh.
 %
-% This file contains a type-checker which I started writing a fair while
-% ago.  It still needs a bit of work to get it to actually work.
+% This file contains a type-checker.
+% It still has a few bugs.
 % 
 % The predicates in this module are named as follows:
 % 
@@ -68,9 +68,11 @@
 %	of types can be equivalent; the *canonical* one is the one
 %	which is not defined using ==):
 %	:- type real == float.
+%    Currently references to equivalence types are expanded
+%    in a separate pass by toplevel.nl.
 %
 % 4) builtin types
-%	char, int, float, string
+%	character, int, float, string
 %	(plus types for higher-order preds, details to be worked out later).
 %       These types have special syntax for constants.
 %	There may be other types (short integers, complex numbers, rationals,
@@ -84,16 +86,16 @@
 %  TODO:
 %
 % 	XXX 	we should check that a predicate's type parameters
-%		don't get bound.
+%		don't get bound!
 %
-% 	XXX 	we should handle explicit type qualifications
+% 	 	we should handle explicit type qualifications
 % 		(and remove them here) but we don't do so yet
 %
-%	XXX	we should handle equivalence types here
+%		we should handle equivalence types here
 %
-%	XXX	we should handle overloading of predicates
+%		we should handle overloading of predicates
 %
-%	XXX	error reporting could still be improved;
+%		error reporting could still be improved;
 %		eg. undefined symbols are only handled cleanly
 %		if they occur as predicate arguments.
 %
@@ -171,12 +173,16 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 				ModuleInfo, Error) -->
 	{ moduleinfo_preds(ModuleInfo0, Preds0) },
 	{ map__search(Preds0, PredId, PredInfo0) },
-	io__write_string("Type-checking predicate "),
-	write_pred_id(PredId),
-	io__write_string("\n"),
-	    %%% { report_stats },
 	{ predinfo_arg_types(PredInfo0, TypeVarSet, ArgTypes) },
 	{ predinfo_clauses(PredInfo0, Clauses0) },
+	( { Clauses0 = [] } ->
+		[]
+	;
+		io__write_string("Type-checking predicate "),
+		write_pred_id(PredId),
+		io__write_string("\n")
+		    %%% { report_stats }
+	),
 	typecheck_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes,
 		ModuleInfo0, Error0, Clauses, Error1),
 	{ predinfo_set_clauses(PredInfo0, Clauses, PredInfo) },
@@ -936,7 +942,7 @@ type_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 		->
 			% both X and Y already have bindings - just
 			% unify the types they are bound to
-			type_unify(Bindings0, BindingOfX, BindingOfY, Bindings)
+			type_unify(BindingOfX, BindingOfY, Bindings0, Bindings)
 		;
 			% Y is a type variable which hasn't been bound yet
 			( BindingOfX = term_variable(Y) ->
