@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,6 +53,10 @@
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
 	is det.
 :- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
+
+	% A synonym for pqueue.assoc_list_to_pqueue/1.
+	%
+:- func pqueue__from_assoc_list(assoc_list(K, V)) = pqueue(K, V).
 
 %---------------------------------------------------------------------------%
 
@@ -143,6 +147,9 @@ pqueue__assoc_list_to_pqueue([], Q) :-
 pqueue__assoc_list_to_pqueue([K - V | L], Q) :-
 	pqueue__assoc_list_to_pqueue(L, Q0),
 	pqueue__insert(Q0, K, V, Q).
+
+pqueue__from_assoc_list(List) = PQueue :-
+	pqueue__assoc_list_to_pqueue(List, PQueue).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

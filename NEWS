@@ -126,6 +126,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We've added the function pqueue.from_assoc_list/1 ad a synonym
+  for pqueue.assoc_list_to_pqueue/1.
+
 * We've added functions set.from_list/1 and set.from_sorted_list/1
   as synonyms for set.list_to_set/1 and set.sorted_list_to_set/1
   respectively.  Similar additions have also been made to the
