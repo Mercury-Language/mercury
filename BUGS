@@ -104,7 +104,6 @@ Date: Sat, 25 May 1996 19:24:12 +1000 (EST)
 :- func f(int) = foo.
 f(_) = g.
 
-
 -----------------------------------------------------------------------------
 Subject: missed mode error
 Date: Tue, 28 May 1996 02:27:34 +1000 (EST)
@@ -142,7 +141,6 @@ Date: Wed, 12 Jun 1996 15:45:59 +1000
 On the alpha, if the Mercury runtime catches a signal, it
 sometimes prints out the wrong value for the PC.
 
-
 -----------------------------------------------------------------------------
 Subject: inference bug
 Date: Mon, 24 Jun 1996 15:48:12 +1000 (EST)
@@ -156,5 +154,20 @@ Date: Mon, 29 Jul 1996 16:34:46 +1000 (EST)
 
 relation__atsort does not correctly compute the topological sort for
 disconnected cliques.  These cliques do not appear in the output list.
+
+-----------------------------------------------------------------------------
+Subject: cc_nondet and cc_multi disjunctions
+
+The code generator aborts with "Software Error: map__lookup failed"
+when compiling certain code involving disjunctions with output
+variables that occur in single-solution contexts, e.g.
+
+:- pred main(io__state::di, io__state::uo) is cc_multi.
+
+main --> io__read_line(Res),
+	( { Res = ok(['y']) }, io__write_string("Yes\n")
+	; { Res = ok(['n']) }, io__write_string("No\n")
+	; io__write_string("Huh?\n")
+	).
 
 -----------------------------------------------------------------------------
