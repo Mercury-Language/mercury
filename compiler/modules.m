@@ -631,6 +631,10 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".int3s"
 		; Ext = ".opts"
 		; Ext = ".trans_opts"
+		% The current interface to `mercury_update_interface'
+		% requires .h.tmp files to be in the same directory as
+		% the .h files
+		; Ext = ".h.tmp"
 		}
 	->
 		{ FileName0 = BaseName }
@@ -700,7 +704,7 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 	{
 		HighLevelCode = yes,
-		Ext = ".h",
+		( Ext = ".h" ; Ext = ".h.tmp" ),
 		ModuleName = unqualified(UnqualModuleName),
 		mercury_std_library_module(UnqualModuleName),
 		\+ string__prefix(FileName0, "mercury.")

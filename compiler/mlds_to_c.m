@@ -56,21 +56,32 @@ mlds_to_c__output_mlds(MLDS) -->
 	% don't, then we get name clashes with the standard C header files.
 	% For example, `time.h' clashes with the standard <time.h> header.
 	%
-	% But to keep the Mmake auto-dependencies working (or at least
-	% _mostly_ working!), we still want to name the `.c' file based
-	% on just the Mercury module name, giving e.g. `time.c', not
-	% `mercury.time.c'.
-	%
+	% But to keep the Mmake auto-dependencies working, we still
+	% want to name the `.c' file based on just the Mercury module
+	% name, giving e.g. `time.c', not `mercury.time.c'.
 	% Hence the different treatment of SourceFile and HeaderFile below.
+	%
+	% We write the header file out to <module>.h.tmp and then
+	% call `update_interface' to move the <module>.h.tmp file to
+	% <module>.h; this avoids updating the timestamp on the `.h'
+	% file if it hasn't changed.
+	% 
+	% We output the source file before outputting the header,
+	% since the Mmake dependencies say the header file depends
+	% on the source file, and so if we wrote them out in the
+	% other order this might lead to unnecessary recompilation
+	% next time Mmake is run.
 	%
 	{ ModuleName = mlds__get_module_name(MLDS) },
 	module_name_to_file_name(ModuleName, ".c", yes, SourceFile),
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	{ ModuleSymName = mlds_module_name_to_sym_name(MLDS_ModuleName) },
+	module_name_to_file_name(ModuleSymName, ".h.tmp", yes, TmpHeaderFile),
 	module_name_to_file_name(ModuleSymName, ".h", yes, HeaderFile),
 	{ Indent = 0 },
-	mlds_output_to_file(HeaderFile, mlds_output_hdr_file(Indent, MLDS)),
-	mlds_output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)).
+	mlds_output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
+	mlds_output_to_file(TmpHeaderFile, mlds_output_hdr_file(Indent, MLDS)),
+	update_interface(HeaderFile).
 	%
 	% XXX at some point we should also handle output of any non-C
 	%     foreign code (Ada, Fortran, etc.) to appropriate files.
