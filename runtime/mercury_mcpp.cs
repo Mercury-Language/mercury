@@ -104,5 +104,53 @@ public class Constants
     public static int MR_SECTAG_REMOTE				= 2;
 }
 
+public class LowLevelData
+{
+	// Make a Mercury enumeration with the given integer value.
+    public static object[] make_enum(int enum_value)
+    {
+        object[] e;
+        e = make_MR_Word(enum_value, 0);
+        return e;
+    }
+
+	// Make a MR_Word with the given tag and arity.
+    public static object[] make_MR_Word(int tag, int arity)
+    {
+        object[] o = new object[arity + 1];
+        o[0] = tag;
+        return o;
+    }
+
+	// Set a field of an MR_Word with a given value.
+	// The first field is at index 1.
+    public static void set_MR_Word_field(object[] w, int index, object value)
+    {
+        w[index] = value;
+    }
+
+	// Get the value from an MR_Word.
+	// The first field is at index 1.
+    public static object get_MR_Word_field(object[] w, int index)
+    {
+        return w[index];
+    }
+
+    public static bool list_is_cons(object[] w)
+    {
+	    return (System.Convert.ToInt32(w[0]) != 0);
+    }
+
+    public static object list_get_head(object[] w)
+    {
+        return w[1];
+    }
+
+    public static object[] list_get_tail(object[] w)
+    {
+        return ((object[]) w[2]);
+    }
+}
+
 }
 }
