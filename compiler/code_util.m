@@ -63,13 +63,13 @@
 :- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
 :- mode code_util__is_builtin(in, in, in, out) is det.
 
-:- pred code_util__builtin_binop(string, int, binary_op).
-:- mode code_util__builtin_binop(in, in, out) is semidet.
-:- mode code_util__builtin_binop(out, out, in) is semidet.
+:- pred code_util__builtin_binop(string, string, int, binary_op).
+:- mode code_util__builtin_binop(in, in, in, out) is semidet.
+% :- mode code_util__builtin_binop(out, out, out, in) is semidet.
 
-:- pred code_util__builtin_unop(string, int, unary_op).
-:- mode code_util__builtin_unop(in, in, out) is semidet.
-:- mode code_util__builtin_unop(out, out, in) is semidet.
+:- pred code_util__builtin_unop(string, string, int, unary_op).
+:- mode code_util__builtin_unop(in, in, in, out) is semidet.
+% :- mode code_util__builtin_unop(out, out, out, in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -143,18 +143,20 @@ code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
 %-----------------------------------------------------------------------------%
 
 code_util__predinfo_is_builtin(_ModuleInfo, PredInfo) :-
+	pred_info_module(PredInfo, ModuleName),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
-	code_util__builtin(PredName, Arity).
+	code_util__builtin(ModuleName, PredName, Arity).
 
 code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
+	predicate_module(ModuleInfo, PredId0, ModuleName),
 	predicate_name(ModuleInfo, PredId0, PredName),
 	predicate_arity(ModuleInfo, PredId0, Arity),
 	(
 		(
-			code_util__builtin_binop(PredName, Arity, _)
+			code_util__builtin_binop(ModuleName, PredName, Arity, _)
 		;
-			code_util__builtin_unop(PredName, Arity, _)
+			code_util__builtin_unop(ModuleName, PredName, Arity, _)
 		)
 	->
 		hlds__is_builtin_make_builtin(yes, yes, IsBuiltin)
@@ -166,42 +168,61 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 		hlds__is_builtin_make_builtin(no, no, IsBuiltin)
 	).
 
-	% XXX module qualifiers
+:- pred code_util__builtin(string, string, int).
+:- mode code_util__builtin(in, in, in) is semidet.
 
-:- pred code_util__builtin(string, int).
-:- mode code_util__builtin(in, in) is semidet.
-
-code_util__builtin(PredName, Arity) :-
-	( code_util__builtin_binop(PredName, Arity, _)
-	; code_util__builtin_unop(PredName, Arity, _)
-	; PredName = "call"
+code_util__builtin(ModuleName, PredName, Arity) :-
+	( code_util__builtin_binop(ModuleName, PredName, Arity, _)
+	; code_util__builtin_unop(ModuleName, PredName, Arity, _)
+	; ModuleName = "mercury_builtin", PredName = "call"
 	).
 
-code_util__builtin_binop("builtin_plus", 3, (+)).
-code_util__builtin_binop("builtin_minus", 3, (-)).
-code_util__builtin_binop("builtin_times", 3, (*)).
-code_util__builtin_binop("builtin_div", 3, (/)).
-code_util__builtin_binop("builtin_mod", 3, (mod)).
-code_util__builtin_binop("builtin_left_shift", 3, (<<)).
-code_util__builtin_binop("builtin_right_shift", 3, (>>)).
-code_util__builtin_binop("builtin_bit_and", 3, (&)).
-code_util__builtin_binop("builtin_bit_or", 3, ('|')).
+code_util__builtin_binop("int", "builtin_plus", 3, (+)).
+code_util__builtin_binop("int", "+", 3, (+)).
+code_util__builtin_binop("int", "builtin_minus", 3, (-)).
+code_util__builtin_binop("int", "-", 3, (-)).
+code_util__builtin_binop("int", "builtin_times", 3, (*)).
+code_util__builtin_binop("int", "*", 3, (*)).
+code_util__builtin_binop("int", "builtin_div", 3, (/)).
+code_util__builtin_binop("int", "/", 3, (/)).
+code_util__builtin_binop("int", "builtin_mod", 3, (mod)).
+code_util__builtin_binop("int", "mod", 3, (mod)).
+code_util__builtin_binop("int", "builtin_left_shift", 3, (<<)).
+code_util__builtin_binop("int", "<<", 3, (<<)).
+code_util__builtin_binop("int", "builtin_right_shift", 3, (>>)).
+code_util__builtin_binop("int", ">>", 3, (>>)).
+code_util__builtin_binop("int", "builtin_bit_and", 3, (&)).
+code_util__builtin_binop("int", "/\\", 3, ('&')).
 			% Need single quotes around '|' for Sicstus Prolog
-code_util__builtin_binop("builtin_bit_xor", 3, (^)).
-code_util__builtin_binop(">", 2, (>)).
-code_util__builtin_binop("<", 2, (<)).
-code_util__builtin_binop(">=", 2, (>=)).
-code_util__builtin_binop("=<", 2, (<=)).
-code_util__builtin_binop("builtin_float_plus", 3, float_plus).
-code_util__builtin_binop("builtin_float_minus", 3, float_minus).
-code_util__builtin_binop("builtin_float_times", 3, float_times).
-code_util__builtin_binop("builtin_float_divide", 3, float_divide).
-code_util__builtin_binop("builtin_float_gt", 2, float_gt).
-code_util__builtin_binop("builtin_float_lt", 2, float_lt).
-code_util__builtin_binop("builtin_float_ge", 2, float_ge).
-code_util__builtin_binop("builtin_float_le", 2, float_le).
+code_util__builtin_binop("int", "builtin_bit_or", 3, ('|')).
+code_util__builtin_binop("int", "\\/", 3, ('|')).
+code_util__builtin_binop("int", "builtin_bit_xor", 3, (^)).
+code_util__builtin_binop("int", "^", 3, (^)).
+code_util__builtin_binop("int", ">", 2, (>)).
+code_util__builtin_binop("int", "<", 2, (<)).
+code_util__builtin_binop("mercury_builtin", ">", 2, (>)).
+code_util__builtin_binop("mercury_builtin", "<", 2, (<)).
+code_util__builtin_binop("int", ">=", 2, (>=)).
+code_util__builtin_binop("int", "=<", 2, (<=)).
+code_util__builtin_binop("float", "builtin_float_plus", 3, float_plus).
+code_util__builtin_binop("float", "+", 3, float_plus).
+code_util__builtin_binop("float", "builtin_float_minus", 3, float_minus).
+code_util__builtin_binop("float", "-", 3, float_minus).
+code_util__builtin_binop("float", "builtin_float_times", 3, float_times).
+code_util__builtin_binop("float", "*", 3, float_times).
+code_util__builtin_binop("float", "builtin_float_divide", 3, float_divide).
+code_util__builtin_binop("float", "/", 3, float_divide).
+code_util__builtin_binop("float", "builtin_float_gt", 2, float_gt).
+code_util__builtin_binop("float", ">", 2, float_gt).
+code_util__builtin_binop("float", "builtin_float_lt", 2, float_lt).
+code_util__builtin_binop("float", "<", 2, float_lt).
+code_util__builtin_binop("float", "builtin_float_ge", 2, float_ge).
+code_util__builtin_binop("float", ">=", 2, float_ge).
+code_util__builtin_binop("float", "builtin_float_le", 2, float_le).
+code_util__builtin_binop("float", "=<", 2, float_le).
 
-code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
+code_util__builtin_unop("int", "builtin_bit_neg", 2, bitwise_complement).
+code_util__builtin_unop("int", "\\", 2, bitwise_complement).
 
 %-----------------------------------------------------------------------------%
 

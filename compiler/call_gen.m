@@ -235,20 +235,22 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 
 call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
-		{ code_util__builtin_binop(PredName, 3, BinOp) },
+		{ code_util__builtin_binop(ModuleName, PredName, 3, BinOp) },
 		{ Args = [ X, Y, Var ] }
 	->
 		code_info__cache_expression(Var, binop(BinOp, var(X), var(Y))),
 		{ Code = empty }
 	;
-		{ code_util__builtin_unop(PredName, 2, UnOp) },
+		{ code_util__builtin_unop(ModuleName, PredName, 2, UnOp) },
 		{ Args = [ X, Var ] }
 	->
 		code_info__cache_expression(Var, unop(UnOp, var(X))),
 		{ Code = empty }
 	;
+		{ ModuleName = "mercury_builtin" },
 		{ PredName = "call" }
 	->
 		(
@@ -274,9 +276,10 @@ call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
 
 call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
-		{ code_util__builtin_binop(PredName, 2, BinOp) },
+		{ code_util__builtin_binop(ModuleName, PredName, 2, BinOp) },
 		{ Args = [ X, Y ] }
 	->
 		code_info__produce_variable(X, CodeX, XRval),
@@ -285,7 +288,7 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 			binop(BinOp, XRval, YRval), TestCode),
 		{ Code = tree(tree(CodeX,CodeY), TestCode) }
 	;
-		{ code_util__builtin_unop(PredName, 1, UnOp) },
+		{ code_util__builtin_unop(ModuleName, PredName, 1, UnOp) },
 		{ Args = [ X ] }
 	->
 		code_info__produce_variable(X, CodeX, XRval),
@@ -293,6 +296,7 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 			unop(UnOp, XRval), TestCode),
 		{ Code = tree(CodeX, TestCode) }
 	;
+		{ ModuleName = "mercury_builtin" },
 		{ PredName = "call" }
 	->
 		(

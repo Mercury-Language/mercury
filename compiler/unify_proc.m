@@ -1252,13 +1252,13 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 	{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
 	{ list__length(ArgVars, Arity) },
 	{
-		predicate_table_search_name_arity(PredicateTable, Name, Arity,
-			[PredId])
+		predicate_table_search_m_n_a(PredicateTable,
+			"mercury_builtin", Name, Arity, [PredId])
 	->
 		IndexPredId = PredId
 	;
 		string__append_list(["unify_proc__build_call: ",
-			"invalid/ambiguous pred `", Name, "'"],
+			"invalid/ambiguous pred `mercury_builtin:", Name, "'"],
 			ErrorMessage),
 		error(ErrorMessage)
 	},
