@@ -65,7 +65,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module (transform_hlds__lambda).
+:- module transform_hlds__lambda.
 
 :- interface. 
 
