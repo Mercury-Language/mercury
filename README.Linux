@@ -27,7 +27,9 @@ a future release.)
 To use the shared libraries, you must compile your program with
 `mmc --pic-reg' and link with `ml --mercury-libs shared'
 or add `MGNUCFLAGS=--pic-reg' and `MLFLAGS=--mercury-libs shared'
-to your Mmake file.
+to your Mmake file.  If you are linking against Mercury libraries
+other than the standard library, replace `--mercury-libs shared'
+with `--shared'.
 
 Mercury code compiled with `--pic-reg' or with gcc's `-fpic' option has
 what we shall call "PIC linkage", whereas Mercury code compiled without
@@ -42,16 +44,3 @@ or `MR_runtime_grade' multiply defined.
 offset table pointer register in PIC code.  If only the Intel
 architecture wasn't so register-starved, we wouldn't need to use `ebx',
 and then PIC and non-PIC code could be mixed without any problems.)
-
---------------------
-
---- os_dep.c	Tue Feb 10 15:37:42 1998
-+++ new/os_dep.c	Tue Feb 10 16:04:24 1998
-@@ -38,6 +38,7 @@
-       /* 10-Feb-1998 Modified to use autoconf to handle this for      */
-       /*             Mercury -- Tyson Dowd <trd@cs.mu.oz.au>          */
- #     ifdef MERCURY_LINUX_NEED_ASM_SIGCONTEXT
-+/*** #     include <asm/sigcontext.h> ***/
- #        include <asm/sigcontext.h>
- #     endif
- #   endif

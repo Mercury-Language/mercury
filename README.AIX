@@ -1,22 +1,58 @@
 -----------------------------------------------------------------------------
 
-This file lists what you need to do to get Mercury to work on an
+This file documents what you need to do to get Mercury to work on an
 RS/6000 running AIX using GNU C.
 
-1.  Put the following line in the file Mmake.params
+Previous versions of Mercury have worked successfully on AIX,
+but Rodney Brown <rodneybrown@pmsc.com> reported some problems
+with a recent version.  We believe that we have fixed these problems,
+but we do not have a machine running AIX to test it on, so we do 
+not know if the current version will build correctly out-of-the-box.
+
+If there are any problems remaining, we would be happy to assist
+in resolving them.
+
+-----------------------------------------------------------------------------
+
+1.  Put the following line in the file Mmake.params:
 
 	EXTRA_CFLAGS=-mminimal-toc
 
     This works around a fixed limit on the size of the TOC (Table of Contents)
     in the RS/6000 object file format.
 
-2.  Change directory to the `compiler' directory, and run the command
+2.  Also add the following line to Mmake.params:
+
+    	RM_C=:
+
+    This prevents the intermediate C files from being removed,
+    which will make it easier to debug things later.
+
+3.  Follow the instructions in the INSTALL file.
+
+The last version of Mercury which was known to work on AIX was
+Mercury 0.6 -- actually a version just prior to 0.6, namely
+the 30Apr1996 development snapshot (the source for this version
+and a binary distribution of this version for AIX are still
+available from <ftp://turiel.cs.mu.oz.au/pub/mercury/old-releases>).
+That version was verified to work on AIX 4.1.3 using GNU C 2.7.2.
+For that version, following the steps above would result in
+an error message from the assembler, so the following additional
+step was needed.
+
+4. Change directory to the `compiler' directory, and run the command
 
 	sh ../scripts/rs6000_hack
 
-    This works around a fixed limit of 32k on the size of relative jumps
-    in the RS/6000 object file format.
+   Then continue following the instructions in the INSTALL file.
 
-3.  Follow the instructions in the INSTALL file.
+   This works around a fixed limit of 32k on the size of relative jumps
+   in the RS/6000 object file format.
+
+It is possible that something similar to this will still be needed,
+but the rs6000_hack script no longer works as is, so a little more
+hacking will be needed if that is the case. 
+(We'd be happy to offer assistance with this task.  Indeed, we'd do it
+ourselves, but we don't have an AIX machine -- donations happily accepted ;-)
 
 -----------------------------------------------------------------------------

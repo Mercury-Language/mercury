@@ -1,24 +1,21 @@
 This directory contains stuff for doing graphics with Mercury.
 We have created bindings to Tcl/Tk and OpenGL. Neither are complete,
-but both a complete *enough* to be very useful.
+but both are complete *enough* to be very useful.
 
 If you add missing functionality to any of these modules, let us know,
 and we'll see about incorporating enhancements in the main distribution.
 
-It contains the following modules:
-	mtcltk.m	- a binding to Tcl/Tk (Tk 4.0 or later)
-	mtk.m		- a layer on top of mtcltk making it easier to
-			  create and manipulate Tk widgets.
-	mogl.m		- a binding to OpenGL
-	mglu.m 		- a binding to the GLU library
-	mtogl.m		- a binding to the ToGL widget for Tk.
+	mercury_tcltk/		A Mercury binding to Tcl/Tk.
 
-We have included the Togl-1.2 distribution for convenience. See the
-LICENSE file in the Togl-1.2 directory.
+	mercury_opengl/		A Mercury binding to OpenGL (or the
+				free alternative, Mesa).
+	samples/
+		calc/		A calculator that uses mercury_tcltk
 
-We have included two sample programs in the samples directory:
-	samples/calc	- a calculator that uses the Tcl/Tk and Tk modules.
-	samples/maze	- draws pretty mazes in 3D using OpenGL.
+		maze/		Draws pretty mazes in 3D using OpenGL.
+
+		pent/		Places pentominoes on a board in 3D 
+				using OpenGL.
 
 We haven't worked out how to prevent the Tcl/Tk library from giving a
 tcl prompt when it enters the event loop. If you know how, let us know!

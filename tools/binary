@@ -56,6 +56,11 @@ Options:
 		Execute runtests from the named subdirectory of tests.
 "
 
+# If you change this, you will also need to change scripts/ml.in,
+# scripts/c2init.in, Mmake.common.in, tools/bootcheck, tools/binary_step
+# and tools/linear.
+STD_LIB_NAME=mer_std
+
 set -x
 
 bootcheck=""
@@ -208,7 +213,7 @@ mkdir library
 cd library
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
-ln -s $root/library/libmercury.init .
+ln -s $root/library/lib$STD_LIB_NAME.init .
 cp $root/library/Mmake* .
 cd $root/stage2
 if "$copy_runtime"
@@ -226,6 +231,8 @@ else
 	ln -s $root/runtime .
 fi
 ln -s $root/boehm_gc .
+ln -s $root/browser .
+ln -s $root/trace .
 ln -s $root/doc .
 ln -s $root/scripts .
 ln -s $root/util .
@@ -248,6 +255,8 @@ cp stage2.ok/library/*.int2 stage2/library
 cp stage2.ok/library/*.int3 stage2/library
 cp stage2.ok/library/*.date stage2/library
 cp stage2.ok/library/*.h stage2/library
+cp stage2.ok/library/*.optdate stage2/library
+cp stage2.ok/library/*.trans_opt_date stage2/library
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler
@@ -255,7 +264,7 @@ cp stage2.ok/compiler/*.int2 stage2/compiler
 cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 
-if test $bootcheck = ""
+if test "$bootcheck" = ""
 then
 	cd $root
 	[ -d stage3 ] || mkdir stage3
@@ -279,7 +288,7 @@ then
 	cd library
 	ln -s $root/library/[a-l]*.m .
 	ln -s $root/library/[m-z]*.m .
-	ln -s $root/library/libmercury.init .
+	ln -s $root/library/lib$STD_LIB_NAME.init .
 	cp $root/library/Mmake* .
 	cd $root/stage3
 	ln -s $root/boehm_gc .

@@ -1,2 +1,3 @@
 mercury_conf.h
-runtime.init
+mer_rt.init
+mercury_conf.h.date

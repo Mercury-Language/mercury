@@ -1,3 +1,28 @@
 This directory contains various additional libraries, tools,
 and so forth that are not part of the Mercury standard library.
 
+cgi		A couple of Mercury library modules for doing HTML forms
+		programming using CGI (Common Gateway Interface).
+
+clpr		A Mercury interface to the CLP(R) constraint solver,
+		for solving arithmetic constraints on (floating point)
+		real numbers.
+
+complex_numbers
+		A Mercury library package containing support for
+		complex and imaginary numbers.
+
+exceptions	A library module containing a (tentative)
+		exception handling interface for Mercury.
+
+graphics	A couple of packages for doing graphics programming
+		and GUIs in Mercury: a Mercury interface to tcl/tk
+		and a Mercury binding to OpenGL.
+
+odbc		A Mercury interface to ODBC (Open DataBase Connectivity,
+		I think), for interfacing to standard relational
+		database packages.
+
+references	A library package containing modules for manipulating
+		ML-style references (mutable state).
+

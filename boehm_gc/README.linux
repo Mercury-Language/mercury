@@ -6,9 +6,14 @@ Incremental GC is supported.
 Dynamic libraries are supported on an ELF system.  A static executable
 should be linked with the gcc option "-Wl,-defsym,_DYNAMIC=0".
 
-Threads almost work OK without incremental collection.
-However, unfortunately it is still a bit buggy --
-in particular, if/when threads exit, it sometimes deadlocks.
+The collector appears to work with Linux threads.  We have seen
+intermittent hangs in sem_wait.  So far we have been unable to reproduce
+these unless the process was being debugged or traced.  Thus it's
+possible that the only real issue is that the debugger loses
+signals on rare occasions.
+
+The garbage collector uses SIGPWR and SIGXCPU if it is used with
+Linux threads.  These should not be touched by the client program.
 
 To use threads, you need to abide by the following requirements:
 
@@ -27,7 +32,8 @@ To use threads, you need to abide by the following requirements:
    pthread primitives as macros which also provide the collector with
    information it requires.
 
-4) Don't use dlopen().
-   [I'm not sure why not, but it says this in README.sgi, and the same
-   is probably true of Linux.  Maybe there is some race condition?]
-
+4) Currently dlopen() is probably not safe.  The collector must traverse
+   the list of libraries maintained by the runtime loader.  That can
+   probably be an inconsistent state when a thread calling the loader is
+   is stopped for GC.  (It's possible that this is fixable in the
+   same way it is handled for SOLARIS_THREADS, with GC_dlopen.)

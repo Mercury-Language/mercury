@@ -19,8 +19,8 @@
    write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.  */
 
-#ifndef _GETOPT_H
-#define _GETOPT_H 1
+#ifndef MERCURY_GETOPT_H
+#define MERCURY_GETOPT_H 1
 
 #ifdef	__cplusplus
 extern "C" {
@@ -63,8 +63,8 @@ extern int MR_optopt;
    zero.
 
    The field `has_arg' is:
-   no_argument		(or 0) if the MR_option does not take an argument,
-   required_argument	(or 1) if the MR_option requires an argument,
+   MR_no_argument		(or 0) if the MR_option does not take an argument,
+   MR_required_argument	(or 1) if the MR_option requires an argument,
    MR_optional_argument 	(or 2) if the MR_option takes an MR_optional argument.
 
    If the field `flag' is not NULL, it points to a variable that is set
@@ -94,8 +94,8 @@ struct MR_option
 
 /* Names for the values of the `has_arg' field of `struct MR_option'.  */
 
-#define	no_argument		0
-#define required_argument	1
+#define	MR_no_argument		0
+#define MR_required_argument	1
 #define MR_optional_argument	2
 
 #if defined (__STDC__) && __STDC__
@@ -130,4 +130,4 @@ extern int MR__getopt_internal ();
 }
 #endif
 
-#endif /* _GETOPT_H */
+#endif /* MERCURY_GETOPT_H */

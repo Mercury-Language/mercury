@@ -105,11 +105,11 @@ void trace_redo(int handle, MR_untrail_reason reason) {
 
 :- pragma c_code(enter(I::in), will_not_call_mercury, "
 	printf("">> enter (%d)\n"", (int) I);
-	MR_trail_function(trace_fail, I);
+	MR_trail_function(trace_fail, (void *) I);
 ").
 
 
 :- pragma c_code(leave(I::in), will_not_call_mercury, "
 	printf(""<< leave (%d)\n"", (int) I);
-	MR_trail_function(trace_redo, I);
+	MR_trail_function(trace_redo, (void *) I);
 ").

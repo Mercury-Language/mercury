@@ -34,9 +34,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
-<li> fix various bugs in mode inference;
-     in particular need to infer mostly-unique vs unique distinctions,
-     and need to fix it to work properly in the presence of functions.
+<li> fix various bugs in mode inference:
+     need to fix it to work properly in the presence of functions;
+     also need to change normalise_inst so that it handles complicated
+     insts such as `list_skel(any)'.
 
 <li> extend the mode system to allow known aliasing.
      This is needed to make partially instantiated modes and unique modes work.
@@ -70,7 +71,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
   independently of any declarations or imports in the implementation
   section
 
-<li> imports should not be transitive
+<li> use_module should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
 
@@ -112,10 +113,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> allow explicit type qualifications `X : Type'
 	[already done, but need to change module qualifier op to `.' first]
 
-<li> allow existential types at the top level of func or pred declarations,
-     e.g. <samp>:- some [T] (func univ_value(univ) = T).</samp>.
-
-<li> allow existential types in data structures
+<li> improve support for existential types
 
 <li> remove limitation that higher-order terms are monomorphic.
      i.e. allow universal quantifiers at the top level of
@@ -179,6 +177,14 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      arguments, and to have unique modes for curried arguments.
  
 <li> allow taking the address of a predicate with multiple modes
+
+<li> improve support for higher-order programming, eg. by providing
+     operators in the standard library which do things like:
+     <ul>
+     <li>compose functions
+     <li>take a predicate with one output argument and treat it like a function.
+     ie. <tt>:- func (pred(T)) = T.</tt>
+     </ul>
 </ul>
 
 <h2> module system: </h2>
@@ -218,8 +224,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      using accumulators
 	[being worked on by petdr]
 
-<li> deforestation and partial deduction
-	[being worked on by stayl]
+<li> improvements to deforestation / partial deduction
+
 </ul>
 
 <h2> low-level optimizations </h2>
@@ -333,6 +339,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-06-29 05:37:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-11-13 10:10:32 $ by $Author: warwick $@cs.mu.oz.au. <br>
 </body>
 </html>

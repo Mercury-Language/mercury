@@ -102,7 +102,11 @@
 # if defined(_M_XENIX) && defined(_M_SYSV) && defined(_M_I386)
 	/* The above test may need refinement	*/
 #   define I386
-#   define SCO
+#   if defined(_SCO_ELF)
+#     define SCO_ELF
+#   else
+#     define SCO
+#   endif
 #   define mach_type_known
 # endif
 # if defined(_AUX_SOURCE)
@@ -110,25 +114,29 @@
 #   define SYSV
 #   define mach_type_known
 # endif
-# if defined(_PA_RISC1_0) || defined(_PA_RISC1_1)
+# if defined(_PA_RISC1_0) || defined(_PA_RISC1_1) \
+	|| defined(hppa) || defined(__hppa__)
 #   define HP_PA
 #   define mach_type_known
 # endif
-# if defined(linux) && defined(i386)
-#    define I386
+# if defined(linux) || defined(__linux__)
 #    define LINUX
+# endif
+# if defined(LINUX) && defined(i386)
+#    define I386
 #    define mach_type_known
 # endif
-# if defined(linux) && defined(powerpc)
+# if defined(LINUX) && defined(powerpc)
 #    define POWERPC
-#    define LINUX
+#    define mach_type_known
+# endif
+# if defined(LINUX) && defined(__mc68000__)
+#    define M68K
 #    define mach_type_known
 # endif
 # if defined(__alpha) || defined(__alpha__)
 #   define ALPHA
-#   if defined(linux) || defined(__linux__)
-#     define LINUX
-#   else
+#   if !defined(LINUX)
 #     define OSF1	/* a.k.a Digital Unix */
 #   endif
 #   define mach_type_known
@@ -195,7 +203,9 @@
 # endif
 # if defined(__DJGPP__)
 #   define I386
-#   define DJGPP  /* MSDOS running the DJGPP port of GCC */
+#   ifndef DJGPP
+#     define DJGPP  /* MSDOS running the DJGPP port of GCC */
+#   endif
 #   define mach_type_known
 # endif
 # if defined(__CYGWIN32__)
@@ -364,6 +374,29 @@
 #	define HEURISTIC2
 	extern char etext;
 #	define DATASTART ((ptr_t)(&etext))
+#   endif
+#   ifdef LINUX
+#      define OS_TYPE "LINUX"
+#      define STACKBOTTOM ((ptr_t)0xf0000000)
+#      define MPROTECT_VDB
+#       ifdef __ELF__
+#            define DYNAMIC_LOADING
+             extern char **__environ;
+#            define DATASTART ((ptr_t)(&__environ))
+                             /* hideous kludge: __environ is the first */
+                             /* word in crt0.o, and delimits the start */
+                             /* of the data segment, no matter which   */
+                             /* ld options were passed through.        */
+                             /* We could use _etext instead, but that  */
+                             /* would include .rodata, which may       */
+                             /* contain large read-only data tables    */
+                             /* that we'd rather not scan.             */
+             extern int _end;
+#            define DATAEND (&_end)
+#       else
+             extern int etext;
+#            define DATASTART ((ptr_t)((((word) (&etext)) + 0xfff) & ~0xfff))
+#       endif
 #   endif
 #   ifdef SUNOS4
 #	define OS_TYPE "SUNOS4"
@@ -570,9 +603,20 @@
 				 +((word)&etext & 0xfff))
 #	define STACKBOTTOM ((ptr_t) 0x7ffffffc)
 #   endif
+#   ifdef SCO_ELF
+#       define OS_TYPE "SCO_ELF"
+        extern int etext;
+#       define DATASTART ((ptr_t)(&etext))
+#       define STACKBOTTOM ((ptr_t) 0x08048000)
+#       define DYNAMIC_LOADING
+#	define ELF_CLASS ELFCLASS32
+#   endif
 #   ifdef LINUX
 #	define OS_TYPE "LINUX"
 #	define STACKBOTTOM ((ptr_t)0xc0000000)
+	/* Appears to be 0xe0000000 for at least one 2.1.91 kernel.	*/
+	/* Probably needs to be more flexible, but I don't yet 		*/
+	/* fully understand how flexible.				*/
 #	define MPROTECT_VDB
 #       ifdef __ELF__
 #            define DYNAMIC_LOADING
@@ -606,22 +650,22 @@
 #   endif
 #   ifdef CYGWIN32
 #       define OS_TYPE "CYGWIN32"
-        extern int _data_start__;
-        extern int _data_end__;
-        extern int _bss_start__;
-        extern int _bss_end__;
-	/* For binutils 2.9.1, we have			*/
-	/*	DATASTART   = _data_start__		*/
-	/*	DATAEND	    = _bss_end__		*/
-	/* whereas for some earlier versions it was	*/
-	/*	DATASTART   = _bss_start__		*/
-	/*	DATAEND	    = _data_end__		*/
-	/* To get it right for both, we take the	*/
-	/* minumum/maximum of the two.			*/
+          extern int _data_start__;
+          extern int _data_end__;
+          extern int _bss_start__;
+          extern int _bss_end__;
+  	/* For binutils 2.9.1, we have			*/
+  	/*	DATASTART   = _data_start__		*/
+  	/*	DATAEND	    = _bss_end__		*/
+  	/* whereas for some earlier versions it was	*/
+  	/*	DATASTART   = _bss_start__		*/
+  	/*	DATAEND	    = _data_end__		*/
+  	/* To get it right for both, we take the	*/
+  	/* minumum/maximum of the two.			*/
 #   	define MAX(x,y) ((x) > (y) ? (x) : (y))
 #   	define MIN(x,y) ((x) < (y) ? (x) : (y))
-#       define DATASTART ((ptr_t) MIN(_data_start__, _bss_start__))
-#       define DATAEND	 ((ptr_t) MAX(_data_end__, _bss_end__))
+#       define DATASTART ((ptr_t) MIN(&_data_start__, &_bss_start__))
+#       define DATAEND	 ((ptr_t) MAX(&_data_end__, &_bss_end__))
 #	undef STACK_GRAN
 #       define STACK_GRAN 0x10000
 #       define HEURISTIC1
@@ -716,7 +760,7 @@
       extern int _fdata;
 #     define DATASTART ((ptr_t)(&_fdata))
 #     ifdef USE_MMAP
-#         define HEAP_START (ptr_t)0x40000000
+#         define HEAP_START (ptr_t)0x30000000
 #     else
 #	  define HEAP_START DATASTART
 #     endif
@@ -738,9 +782,7 @@
 #   endif
 #   ifdef IRIX5
 #	define OS_TYPE "IRIX5"
-#       ifndef IRIX_THREADS
-#	    define MPROTECT_VDB
-#       endif
+#       define MPROTECT_VDB
 #       ifdef _MIPS_SZPTR
 #	  define CPP_WORDSZ _MIPS_SZPTR
 #	  define ALIGNMENT (_MIPS_SZPTR/8)
@@ -760,7 +802,7 @@
 #   define ALIGNMENT 4
 #   define DATASTART ((ptr_t)0x20000000)
     extern int errno;
-#   define STACKBOTTOM ((ptr_t)((ulong)&errno + 2*sizeof(int)))
+#   define STACKBOTTOM ((ptr_t)((ulong)&errno))
 #   define DYNAMIC_LOADING
 	/* For really old versions of AIX, this may have to be removed. */
 # endif
@@ -796,6 +838,8 @@
 #   ifdef OSF1
 #	define OS_TYPE "OSF1"
 #   	define DATASTART ((ptr_t) 0x140000000)
+	extern _end;
+#   	define DATAEND ((ptr_t) &_end)
 #   	define HEURISTIC2
 	/* Normally HEURISTIC2 is too conervative, since		*/
 	/* the text segment immediately follows the stack.		*/

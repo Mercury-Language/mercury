@@ -2,5 +2,6 @@
 *.text
 *.info *.info-*
 *.html
-*.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
+*.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr *.ps *.dvi
 library-menu.texi library-chapters.texi
+mdb_doc mdb_command_list mdb_command_test.inp

@@ -37,6 +37,11 @@ Options:
 		Execute runtests from the named subdirectory of tests.
 "
 
+# If you change this, you will also need to change scripts/ml.in,
+# scripts/c2init.in, Mmake.common.in, tools/bootcheck, tools/binary
+# and tools/linear.
+STD_LIB_NAME=mer_std
+
 set -x
 
 alltestdirs="benchmarks general hard_coded invalid valid warnings"
@@ -133,7 +138,7 @@ done
 
 root=`/bin/pwd`
 
-MERCURY_COMPILER=$root/stage1/mercury_compile
+MERCURY_COMPILER=$root/compiler/mercury_compile
 export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage2/library
 export MERCURY_INT_DIR
@@ -157,14 +162,14 @@ touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
 
-/bin/rm -f stage2/library/libmercury.a stage2/library/libmercury.so
+/bin/rm -f stage2/library/lib$STD_LIB_NAME.a stage2/library/lib$STD_LIB_NAME.so
 /bin/rm -f stage2/compiler/mercury_compile
 
 set -x
 
 # the `RM_C=:' ensures that the `.c' files do not get deleted
 
-if (cd stage2/library ; mmake $mmake_opts $jfactor RM_C=: libmercury)
+if (cd stage2/library ; mmake $mmake_opts $jfactor RM_C=: )
 then
 	echo "building of stage 2 library successful"
 else

@@ -2,7 +2,8 @@ Work in progress
 ----------------
 
 The compiler contains some code for the following features,
-which are not yet completed:
+which are not yet completed, but which we hope to complete
+at some time in the future:
 
 * Existential types.
 
@@ -13,12 +14,6 @@ which are not yet completed:
 * We have added support for dynamic link libraries (DLLs) on Windows.
   This is not yet enabled by default because it has not yet been tested
   properly.
-
-* There is a new `--generate-bytecode' option --
-  but the bytecode interpreter isn't working yet.
-
-* There is a new `--generate-prolog' option
-  which does not work yet.
 
 * There is a new `--optimize-constructor-last-call' option
   which identifies opportunities for LCO where a call
@@ -33,10 +28,43 @@ which are not yet completed:
   code, and needs a great deal of tuning and optimization.  It also
   needs testing.
 
+* Mercury is now the official programming language for Melbourne Uni's
+  "Aditi" deductive database system.  The Mercury compiler includes
+  support for interfacing to Aditi.  However Aditi itself is not yet
+  complete and has not yet been made publicly available.
+  (The Aditi support is documented in doc/reference_manual.texi,
+  but for now that documentation is commented out -- it's not
+  included in the formatted versions of the reference manual,
+  only in the TexInfo source code.)
+
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
 code has not yet been committed and thus is not part of the standard
 distribution.
 
-* [Currently no features in this category.]
+* Support for aliasing in the mode system.
 
+* Converting procedures to tail-recursive form via automatic
+  accumulator introduction.
+
+
+Work not in progress
+--------------------
+
+The compiler also contains some code for the following features,
+but work on them has stopped, since finishing them off would be
+quite a bit more work, and our current priorities lie elsewhere.
+Still, these would make interesting and worthwhile projects
+if someone has the time for it.
+
+* There is a `--generate-bytecode' option, for a new back-end
+  that generates bytecode.  The bytecode generator is basically
+  complete, but we don't have a bytecode interpreter.
+
+* There is a `--generate-prolog' option for a new back-end
+  that generates Prolog code.
+  Not very much progress has really been made on this.
+
+* There is a `--high-level-c' option, for a new back-end
+  that generates C code but at a much higher level than the
+  current back-end.  

@@ -298,37 +298,48 @@ GC_API int GC_collect_a_little GC_PROTO((void));
 GC_API GC_PTR GC_malloc_ignore_off_page GC_PROTO((size_t lb));
 GC_API GC_PTR GC_malloc_atomic_ignore_off_page GC_PROTO((size_t lb));
 
+#if defined(__sgi) && !defined(__GNUC__) && _COMPILER_VERSION >= 720
+#   define GC_ADD_CALLER
+#   define GC_RETURN_ADDR (GC_word)__return_address
+#endif
+
+#ifdef GC_ADD_CALLER
+#  define GC_EXTRAS GC_RETURN_ADDR, __FILE__, __LINE__
+#  define GC_EXTRA_PARAMS GC_word ra, char * descr_string, int descr_int
+#else
+#  define GC_EXTRAS __FILE__, __LINE__
+#  define GC_EXTRA_PARAMS char * descr_string, int descr_int
+#endif
+
 /* Debugging (annotated) allocation.  GC_gcollect will check 		*/
 /* objects allocated in this way for overwrites, etc.			*/
 GC_API GC_PTR GC_debug_malloc
-	GC_PROTO((size_t size_in_bytes, char * descr_string, int descr_int));
+	GC_PROTO((size_t size_in_bytes, GC_EXTRA_PARAMS));
 GC_API GC_PTR GC_debug_malloc_atomic
-	GC_PROTO((size_t size_in_bytes, char * descr_string, int descr_int));
+	GC_PROTO((size_t size_in_bytes, GC_EXTRA_PARAMS));
 GC_API GC_PTR GC_debug_malloc_uncollectable
-	GC_PROTO((size_t size_in_bytes, char * descr_string, int descr_int));
+	GC_PROTO((size_t size_in_bytes, GC_EXTRA_PARAMS));
 GC_API GC_PTR GC_debug_malloc_stubborn
-	GC_PROTO((size_t size_in_bytes, char * descr_string, int descr_int));
+	GC_PROTO((size_t size_in_bytes, GC_EXTRA_PARAMS));
 GC_API void GC_debug_free GC_PROTO((GC_PTR object_addr));
 GC_API GC_PTR GC_debug_realloc
 	GC_PROTO((GC_PTR old_object, size_t new_size_in_bytes,
-  		  char * descr_string, int descr_int));
+  		  GC_EXTRA_PARAMS));
   			 	 
 GC_API void GC_debug_change_stubborn GC_PROTO((GC_PTR));
 GC_API void GC_debug_end_stubborn_change GC_PROTO((GC_PTR));
 # ifdef GC_DEBUG
-#   define GC_MALLOC(sz) GC_debug_malloc(sz, __FILE__, __LINE__)
-#   define GC_MALLOC_ATOMIC(sz) GC_debug_malloc_atomic(sz, __FILE__, __LINE__)
+#   define GC_MALLOC(sz) GC_debug_malloc(sz, GC_EXTRAS)
+#   define GC_MALLOC_ATOMIC(sz) GC_debug_malloc_atomic(sz, GC_EXTRAS)
 #   define GC_MALLOC_UNCOLLECTABLE(sz) GC_debug_malloc_uncollectable(sz, \
-							__FILE__, __LINE__)
-#   define GC_REALLOC(old, sz) GC_debug_realloc(old, sz, __FILE__, \
-							       __LINE__)
+							GC_EXTRAS)
+#   define GC_REALLOC(old, sz) GC_debug_realloc(old, sz, GC_EXTRAS)
 #   define GC_FREE(p) GC_debug_free(p)
 #   define GC_REGISTER_FINALIZER(p, f, d, of, od) \
 	GC_debug_register_finalizer(p, f, d, of, od)
 #   define GC_REGISTER_FINALIZER_IGNORE_SELF(p, f, d, of, od) \
 	GC_debug_register_finalizer_ignore_self(p, f, d, of, od)
-#   define GC_MALLOC_STUBBORN(sz) GC_debug_malloc_stubborn(sz, __FILE__, \
-							       __LINE__)
+#   define GC_MALLOC_STUBBORN(sz) GC_debug_malloc_stubborn(sz, GC_EXTRAS);
 #   define GC_CHANGE_STUBBORN(p) GC_debug_change_stubborn(p)
 #   define GC_END_STUBBORN_CHANGE(p) GC_debug_end_stubborn_change(p)
 #   define GC_GENERAL_REGISTER_DISAPPEARING_LINK(link, obj) \
@@ -664,11 +675,6 @@ GC_PTR GC_malloc_many(size_t lb);
 extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 #endif /* THREADS && !SRC_M3 */
 
-#if defined(SOLARIS_THREADS) || defined(IRIX_THREADS) || \
-	defined(LINUX_THREADS)
-extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
-#endif
-
 /*
  * If you are planning on putting
  * the collector in a SunOS 5 dynamic library, you need to call GC_INIT()
@@ -676,7 +682,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
  * This circumvents a Solaris 2.X (X<=4) linker bug.
  */
 #if defined(sparc) || defined(__sparc)
-#   define GC_INIT() { extern end, etext; \
+#   define GC_INIT() { extern int end, etext; \
 		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
 #else
@@ -685,6 +691,8 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
      * Similarly gnu-win32 DLLs need explicit initialization.
      * (We can't use DATASTART and DATAEND here, because gc_private.h
      * may not have been included.)
+     * XXX The use of _bss_start__ and _data_end__ below is WRONG!
+     *     It does not match the code in config.h.
      */
 #   define GC_INIT() { \
                extern int _bss_start__, _data_end__; \
