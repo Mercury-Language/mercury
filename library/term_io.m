@@ -176,6 +176,18 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 		term_io__write_term_2(BracedTerm, VarSet0, N0, VarSet, N),
 		io__write_string(" }")
 	;
+		% the empty functor '' is used for higher-order syntax:
+		% Var(Arg, ...) gets parsed as ''(Var, Arg).  When writing
+		% it out, we want to use the nice syntax.
+		{ Functor = term__atom("") },
+		{ Args = [term__variable(Var), FirstArg | OtherArgs] }
+	->
+		term_io__write_variable_2(Var, VarSet0, N0, VarSet1, N1),
+		io__write_char('('),
+		term_io__write_term_2(FirstArg, VarSet1, N1, VarSet2, N2),
+		term_io__write_term_args(OtherArgs, VarSet2, N2, VarSet, N),
+		io__write_char(')')
+	;
 		{ Args = [PrefixArg] },
 		{ Functor = term__atom(OpName) },
 		{ ops__lookup_prefix_op(OpTable, OpName,
@@ -351,9 +363,12 @@ term_io__quote_atom(S) -->
 		;
 			{ S = "," }
 		;
+			{ S = "[]" }
+		;
 			{ string__to_char_list(S, Chars) },
 			{ \+ (  list__member(Char, Chars),
-				\+ lexer__graphic_token_char(Char)) }
+				\+ lexer__graphic_token_char(Char)) },
+			{ S \= "" }
 		)
 	->
 		io__write_string(S)
