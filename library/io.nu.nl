@@ -278,6 +278,9 @@ io__putback_char(Stream, Char, IO_0, IO) :-
 	),
 	IO = io__state(A, PutBack, C, D, E).
 
+io__putback_byte(_Stream, _Char, IO, IO) :-
+	error("io__putback_byte: binary IO is not implemented for NU-Prolog.").
+
 io__read_anything(S, Result) -->
 	{ read(S, Term) },
 	{ eof(Term) ->
@@ -307,6 +310,9 @@ io__write_char(S, C) -->
 	{ write(S, C) },
 	io__update_state.
 
+io__write_byte(_, _) -->
+	{ error("io__write_byte: binary IO not implemented for NU-Prolog.") }.
+
 io__write_float(S, F) -->
 	{ write(S, F) },
 	io__update_state.
@@ -322,6 +328,9 @@ io__write_anything(S, I) -->
 io__flush_output(Stream) -->
 	{ flushOutput(Stream) },
 	io__update_state.
+
+io__flush_binary_output(Stream) -->
+	{ error("io__flush_binary_output: binary IO not implemented for NU-Prolog.") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -360,6 +369,12 @@ io__stdout_stream(user_output) --> [].
 
 io__stderr_stream(user_error) --> [].
 
+io__stdin_binary_stream(_) -->
+	{ error("io__stdin_binary_stream: binary IO not implemented for NU-Prolog.") }.
+
+io__stdout_binary_stream(_) -->
+	{ error("io__stdout_binary_stream: binary IO not implemented for NU-Prolog.") }.
+
 %-----------------------------------------------------------------------------%
 
 io__input_stream(Stream) -->
@@ -377,6 +392,18 @@ io__set_output_stream(NewStream, OldStream) -->
 	{ currentOutput(OldStream) },
 	{ setOutput(NewStream) },
 	io__update_state.
+
+io__input_stream(Stream) -->
+	{ error("io__input_stream: binary IO not implemented for NU-Prolog.") }.
+
+io__output_stream(Stream) -->
+	{ error("io__output_stream: binary IO not implemented for NU-Prolog.") }.
+
+io__set_input_stream(NewStream, OldStream) -->
+	{ error("io__set_input_stream: binary IO not implemented for NU-Prolog.") }.
+
+io__set_output_stream(NewStream, OldStream) -->
+	{ error("io__set_output_stream: binary IO not implemented for NU-Prolog.") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -406,6 +433,12 @@ io__close_input(Stream) -->
 
 io__close_output(Stream) -->
 	io__do_close(Stream).
+
+io__close_input(Stream) -->
+	{ error("io__close_input: binary IO not implemented for NU-Prolog.") }.
+
+io__close_output(Stream) -->
+	{ error("io__close_output: binary IO not implemented for NU-Prolog.") }.
 
 io__do_close(Stream) -->
 	{ close(Stream) -> true ; true },

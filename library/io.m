@@ -42,11 +42,17 @@
 
 :- type io__state.
 
-	% Opaque handles for I/O streams.
+	% Opaque handles for text I/O streams.
 
 :- type io__input_stream.
 
 :- type io__output_stream.
+
+	% Opaque handles for binary I/O streams.
+
+:- type io__binary_input_stream.
+
+:- type io__binary_output_stream.
 
 	% Various types used for the result from the access predicates
 
@@ -83,7 +89,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Input predicates.
+% Text input predicates.
 
 :- pred io__read_char(io__result(char), io__state, io__state).
 :- mode io__read_char(out, di, uo) is det.
@@ -154,7 +160,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Output predicates.
+% Text output predicates.
 
 :- pred io__write_string(string, io__state, io__state).
 :- mode io__write_string(in, di, uo) is det.
@@ -235,7 +241,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Input stream predicates.
+% Input text stream predicates.
 
 :- pred io__see(string, io__res, io__state, io__state).
 :- mode io__see(in, out, di, uo) is det.
@@ -302,7 +308,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Output stream predicates.
+% Output text stream predicates.
 
 :- pred io__tell(string, io__res, io__state, io__state).
 :- mode io__tell(in, out, di, uo) is det.
@@ -373,6 +379,184 @@
 %	For file streams, this is the filename.
 %	For stdout this is the string "<standard input>".
 %	For stderr this is the string "<standard error>".
+
+%-----------------------------------------------------------------------------%
+
+% Binary input predicates.
+
+:- pred io__read_byte(io__result(int), io__state, io__state).
+:- mode io__read_byte(out, di, uo) is det.
+%		Reads a single byte from the current binary input
+%		stream and returns it in the bottom 8 bits of an integer.
+
+:- pred io__putback_byte(int, io__state, io__state).
+:- mode io__putback_byte(in, di, uo) is det.
+%		Un-reads a byte from the current binary input stream.
+%		You can put back as many bytes as you like.
+%		You can even put back something that you didn't actually read.
+%		The byte is taken from the bottom 8 bits of an integer.
+
+:- pred io__read_byte(io__binary_input_stream, io__result(int),
+				io__state, io__state).
+:- mode io__read_byte(in, out, di, uo) is det.
+%		Reads a single byte from specified stream.
+
+:- pred io__putback_byte(io__binary_input_stream, int, io__state, io__state).
+:- mode io__putback_byte(in, in, di, uo) is det.
+%		Un-reads a byte from specified binary input stream.
+%		You can put back as many bytes as you like.
+%		You can even put back something that you didn't actually read.
+%		The byte is returned in the bottom 8 bits of an integer.
+
+%-----------------------------------------------------------------------------%
+
+% Binary output predicates.
+
+:- pred io__write_byte(int, io__state, io__state).
+:- mode io__write_byte(in, di, uo) is det.
+%		Writes a single byte to the current binary output stream.
+%		The byte is taken from the bottom 8 bits of an int.
+
+:- pred io__write_byte(io__output_stream, char, io__state, io__state).
+:- mode io__write_byte(in, in, di, uo) is det.
+%		Writes a character to the specified binary output stream.
+%		The byte is taken from the bottom 8 bits of an int.
+
+:- pred io__flush_binary_output(io__state, io__state).
+:- mode io__flush_binary_output(di, uo) is det.
+%	Flush the output buffer of the current binary output stream.
+
+:- pred io__flush_binary_output(io__binary_output_stream, io__state, io__state).
+:- mode io__flush_binary_output(in, di, uo) is det.
+%	Flush the output buffer of the specified binary output stream.
+
+%-----------------------------------------------------------------------------%
+
+% Binary input stream predicates.
+
+:- pred io__see_binary(string, io__res, io__state, io__state).
+:- mode io__see_binary(in, out, di, uo) is det.
+%	io__see_binary(File, Result, IO0, IO1).
+%		Attempts to open a file for binary input, and if successful
+%		sets the current binary input stream to the newly opened stream.
+%		Result is either 'ok' or 'error'.
+
+:- pred io__seen_binary(io__state, io__state).
+:- mode io__seen_binary(di, uo) is det.
+%		Closes the current input stream.
+%		The current input stream reverts to standard input.
+
+:- pred io__open_binary_input(string, io__res(io__binary_input_stream),
+			io__state, io__state).
+:- mode io__open_binary_input(in, out, di, uo) is det.
+%	io__open_binary_input(File, Result, IO0, IO1).
+%		Attempts to open a binary file for input.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+
+:- pred io__close_binary_input(io__binary_input_stream, io__state, io__state).
+:- mode io__close_binary_input(in, di, uo) is det.
+%	io__close_binary_input(File, IO0, IO1).
+%		Closes an open binary input stream.
+
+:- pred io__binary_input_stream(io__binary_input_stream, io__state, io__state).
+:- mode io__binary_input_stream(out, di, uo) is det.
+%		Retrieves the current binary input stream.
+%		Does not modify the IO state.
+
+:- pred io__set_binary_input_stream(io__binary_input_stream,
+			io__binary_input_stream, io__state, io__state).
+:- mode io__set_binary_input_stream(in, out, di, uo) is det.
+%       io__set_binary_input_stream(NewStream, OldStream, IO0, IO1)
+%		Changes the current input stream to the stream specified.
+%		Returns the previous stream.
+
+:- pred io__stdin_binary_stream(io__binary_input_stream, io__state, io__state).
+:- mode io__stdin_binary_stream(out, di, uo) is det.
+%		Retrieves the standard binary input stream.
+%		Does not modify the IO state.
+
+:- pred io__binary_input_stream_name(string, io__state, io__state).
+:- mode io__binary_input_stream_name(out, di, uo) is det.
+%	Retrieves the human-readable name associated with the current binary
+%	input stream.
+%	For file streams, this is the filename.
+
+:- pred io__binary_input_stream_name(io__binary_input_stream, string,
+		io__state, io__state).
+:- mode io__binary_input_stream_name(in, out, di, uo) is det.
+%	Retrieves the human-readable name associated with the specified binary
+%	input stream.
+%	For file streams, this is the filename.
+
+%-----------------------------------------------------------------------------%
+
+% Binary output stream predicates.
+
+:- pred io__tell_binary(string, io__res, io__state, io__state).
+:- mode io__tell_binary(in, out, di, uo) is det.
+%	io__tell_binary(File, Result, IO0, IO1).
+%		Attempts to open a file for binary output, and if successful
+%		sets the current binary output stream to the newly opened
+%		stream. As per Prolog tell/1. Result is either 'ok' or
+%		'error(ErrCode)'.
+
+:- pred io__told_binary(io__state, io__state).
+:- mode io__told_binary(di, uo) is det.
+%	io__told_binary(IO0, IO1).
+%		Closes the current binary output stream.
+%		The default binary output stream reverts to standard output.
+%		As per Prolog told/0.
+
+:- pred io__open_binary_output(string, io__res(io__binary_output_stream),
+				io__state, io__state).
+:- mode io__open_binary_output(in, out, di, uo) is det.
+%	io__open_binary_output(File, Result, IO0, IO1).
+%		Attempts to open a file for binary output.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+
+:- pred io__open_binary_append(string, io__res(io__binary_output_stream),
+				io__state, io__state).
+:- mode io__open_binary_append(in, out, di, uo) is det.
+%	io__open_binary_append(File, Result, IO0, IO1).
+%		Attempts to open a file for binary appending.
+%		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
+
+:- pred io__close_binary_output(io__binary_output_stream, io__state, io__state).
+:- mode io__close_binary_output(in, di, uo) is det.
+%	io__close_binary_output(File, IO0, IO1).
+%		Closes an open binary output stream.
+
+:- pred io__binary_output_stream(io__binary_output_stream,
+			io__state, io__state).
+:- mode io__binary_output_stream(out, di, uo) is det.
+%		Retrieves the current binary output stream.
+%		Does not modify the IO state.
+
+:- pred io__stdout_binary_stream(io__binary_output_stream, io__state,
+				io__state).
+:- mode io__stdout_binary_stream(out, di, uo) is det.
+%		Retrieves the standard binary output stream.
+%		Does not modify the IO state.
+
+:- pred io__set_binary_output_stream(io__binary_output_stream,
+			io__binary_output_stream, io__state, io__state).
+:- mode io__set_binary_output_stream(in, out, di, uo) is det.
+%	io__set_binary_output_stream(NewStream, OldStream, IO0, IO)
+%		Changes the current binary output stream to the stream
+%		specified. Returns the previous stream.
+
+:- pred io__binary_output_stream_name(string, io__state, io__state).
+:- mode io__binary_output_stream_name(out, di, uo) is det.
+%	Retrieves the human-readable name associated with the current
+%	binary output stream.
+%	For file streams, this is the filename.
+
+:- pred io__binary_output_stream_name(io__binary_output_stream, string,
+			io__state, io__state).
+:- mode io__binary_output_stream_name(in, out, di, uo) is det.
+%	Retrieves the human-readable name associated with the specified 
+%	output stream.
+%	For file streams, this is the filename.
 
 %-----------------------------------------------------------------------------%
 
@@ -521,6 +705,12 @@
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
 
+:- type io__binary_stream_names ==	map(io__stream, string).
+:- type io__binary_stream_putback ==	map(io__stream, list(char)).
+
+:- type io__binary_input_stream ==	io__stream.
+:- type io__binary_output_stream ==	io__stream.
+
 :- type io__stream.
 /*
  * In NU-Prolog: 
@@ -568,6 +758,27 @@
 %		Attempts to open a file for appending.
 %		Result is 0 for success, -1 for failure.
 
+:- pred io__do_open_binary_input(string, int, io__binary_input_stream, io__state, io__state).
+:- mode io__do_open_binary_input(in, out, out, di, uo) is det.
+
+%	io__do_open_binary_input(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for binary input.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_binary_output(string, int, io__binary_output_stream,
+					io__state, io__state).
+:- mode io__do_open_binary_output(in, out, out, di, uo) is det.
+%	io__do_open_binary_output(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for binary output.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_binary_append(string, int, io__binary_output_stream,
+					io__state, io__state).
+:- mode io__do_open_binary_append(in, out, out, di, uo) is det.
+%	io__do_open_binary_append(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for binary appending.
+%		Result is 0 for success, -1 for failure.
+
 :- pred io__getenv(string, string).
 :- mode io__getenv(in, out) is semidet.
 %	io__getenv(Var, Value).
@@ -601,6 +812,8 @@
 :- external(io__stdin_stream/3).
 :- external(io__stdout_stream/3).
 :- external(io__stderr_stream/3).
+:- external(io__stdin_binary_stream/3).
+:- external(io__stdout_binary_stream/3).
 :- external(io__input_stream/3).
 :- external(io__output_stream/3).
 :- external(io__set_input_stream/4).
@@ -610,6 +823,20 @@
 :- external(io__do_open_append/5).
 :- external(io__close_input/3).
 :- external(io__close_output/3).
+:- external(io__putback_byte/4).
+:- external(io__write_byte/3).
+:- external(io__write_byte/4).
+:- external(io__flush_binary_output/2).
+:- external(io__flush_binary_output/3).
+:- external(io__binary_input_stream/3).
+:- external(io__binary_output_stream/3).
+:- external(io__set_binary_input_stream/4).
+:- external(io__set_binary_output_stream/4).
+:- external(io__do_open_binary_input/5).
+:- external(io__do_open_binary_output/5).
+:- external(io__do_open_binary_append/5).
+:- external(io__close_binary_input/3).
+:- external(io__close_binary_output/3).
 :- external(io__get_line_number/3).
 :- external(io__get_line_number/4).
 :- external(io__command_line_arguments/3).
@@ -642,6 +869,25 @@ io__read_char(Stream, Result, IO_0, IO) :-
 	;
 		% XXX improve error message
 		Result = error("read error")
+	).
+
+io__read_byte(Result) -->
+	io__binary_input_stream(Stream),
+	io__read_byte(Stream, Result).
+
+io__read_byte(Stream, Result, IO_0, IO) :-
+	io__read_char_code(Stream, Code, IO_0, IO),
+	(
+		Code = -1
+	->
+		Result = eof
+	;
+		Code = -2
+	->
+		% XXX improve error message
+		Result = error("read error")
+	;
+		Result = ok(Code)
 	).
 
 io__read_word(Result) -->
@@ -729,6 +975,10 @@ io__read_line(Stream, Result) -->
 io__putback_char(Char) -->
 	io__input_stream(Stream),
 	io__putback_char(Stream, Char).
+
+io__putback_byte(Char) -->
+	io__binary_input_stream(Stream),
+	io__putback_byte(Stream, Char).
 
 io__read_anything(X) -->
 	term_io__read_term(ReadResult),
@@ -852,6 +1102,36 @@ io__open_append(FileName, Result) -->
 		{ Result = error("can't append to file") }
 	).
 
+io__open_binary_input(FileName, Result) -->
+	io__do_open_binary_input(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
+	;
+		% XXX improve error message
+		{ Result = error("can't open input file") }
+	).
+
+io__open_binary_output(FileName, Result) -->
+	io__do_open_binary_output(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
+	;
+		% XXX improve error message
+		{ Result = error("can't open output file") }
+	).
+
+io__open_binary_append(FileName, Result) -->
+	io__do_open_binary_append(FileName, Result0, NewStream),
+	( { Result0 \= -1 } ->
+		{ Result = ok(NewStream) },
+		io__insert_stream_name(NewStream, FileName)
+	;
+		% XXX improve error message
+		{ Result = error("can't append to file") }
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Declarative versions of Prolog's see/1 and seen/0.
@@ -872,6 +1152,24 @@ io__seen -->
 	io__set_input_stream(Stdin, OldStream),
 	io__close_input(OldStream).
 
+	% Plus binary IO versions.
+
+io__see_binary(File, Result) -->
+	io__open_binary_input(File, Result0),
+	(
+		{ Result0 = ok(Stream) },
+		io__set_binary_input_stream(Stream, _),
+		{ Result = ok }
+	;
+		{ Result0 = error(Error) },
+		{ Result = error(Error) }
+	).
+
+io__seen_binary -->
+	io__stdin_binary_stream(Stdin),
+	io__set_binary_input_stream(Stdin, OldStream),
+	io__close_binary_input(OldStream).
+
 %-----------------------------------------------------------------------------%
 
 	% Declarative versions of Prolog's tell/1 and told/0.
@@ -885,6 +1183,21 @@ io__tell(File, Result) -->
 	io__open_output(File, Result0),
 	( { Result0 = ok(Stream) } ->
 		io__set_output_stream(Stream, _),
+		{ Result = ok }
+	;
+		% XXX improve error message
+		{ Result = error("can't open output file") }
+	).
+
+io__told_binary -->
+	io__stdout_binary_stream(Stdout),
+	io__set_binary_output_stream(Stdout, OldStream),
+	io__close_binary_output(OldStream).
+
+io__tell_binary(File, Result) -->
+	io__open_binary_output(File, Result0),
+	( { Result0 = ok(Stream) } ->
+		io__set_binary_output_stream(Stream, _),
 		{ Result = ok }
 	;
 		% XXX improve error message
@@ -908,6 +1221,20 @@ io__output_stream_name(Name) -->
 	io__stream_name(Stream, Name).
 
 io__output_stream_name(Stream, Name) -->
+	io__stream_name(Stream, Name).
+
+io__binary_input_stream_name(Name) -->
+	io__binary_input_stream(Stream),
+	io__stream_name(Stream, Name).
+
+io__binary_input_stream_name(Stream, Name) -->
+	io__stream_name(Stream, Name).
+
+io__binary_output_stream_name(Name) -->
+	io__binary_output_stream(Stream),
+	io__stream_name(Stream, Name).
+
+io__binary_output_stream_name(Stream, Name) -->
 	io__stream_name(Stream, Name).
 
 :- pred io__stream_name(io__stream, string, io__state, io__state).
