@@ -96,6 +96,7 @@ SINGLEMODULE= \
 	merge_ground_any \
 	method_impl \
 	missing_det_decls \
+	missing_init_pred \
 	missing_interface_import \
 	mode_inf \
 	modes_erroneous \

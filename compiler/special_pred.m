@@ -243,6 +243,8 @@ special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQTVars, _, _, _),
 		ExistQTVars \= []
+	;
+		type_body_is_solver_type(ModuleInfo, Body)
 	).
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
