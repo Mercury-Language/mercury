@@ -1171,6 +1171,9 @@ main() {
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 #-----------------------------------------------------------------------------#
 
+#
+# figure out the most efficient base grade to use.
+#
 if test $mercury_cv_asm_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
 		BEST_GRADE=asm_fast
@@ -1237,6 +1240,9 @@ fi
 MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
 AC_SUBST(DEFAULT_GRADE)
 
+#
+# Figure out which grades to use if --enable-all-grades is specified.
+#
 ALL_LIBGRADES="none"
 if test $mercury_cv_gcc_model_reg = yes; then
 	ALL_LIBGRADES="$ALL_LIBGRADES reg"
@@ -1266,32 +1272,34 @@ else
 	LIBGRADES="$BEST_GRADE"
 fi
 
+# add `.gc' (--conservative-gc) grades
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
 
+# add `.prof' (--profiling) grades, or, if time profiling is not supported,
+# a `.profcalls' (--profile-calls) grade.
 if test $mercury_cv_profiling = yes; then
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
-	`echo $DEFAULT_GRADE|sed 's/\.gc$//'`.prof"
+	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
 	if test $GRADE != $DEFAULT_GRADE; then
-		LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
+		GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
+		LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
+	fi
+else
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.profcalls"
+fi
+
+# add `.tr' (--trailing) grades
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
+if test $enable_all_grades = yes; then
+	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+	if test $mercury_cv_profiling = yes; then
+		LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
 	fi
 fi
-#
-# on the alpha, the grades that use non-local gotos are a bit
-# flakey, due to problems with register $15 (fp) being clobbered,
-# so always install reg.gc and reg.gc.prof
-#
-case "$host" in
-	alpha-dec-*)
-		if test $enable_all_grades != yes; then
-			LIBGRADES="$LIBGRADES reg.gc"
-			if test $mercury_cv_profiling = yes; then
-				LIBGRADES="$LIBGRADES reg.gc.prof"
-			fi
-		fi
-		;;
-esac
+
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
