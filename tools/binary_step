@@ -282,6 +282,11 @@ then
 			echo "stage2.$basis and stage3 compare ok"
 		fi
 	fi
+else
+	# since we have not created any stage3, we can't let MERCURY_INT_DIR
+	# to continue to refer to stage3/library
+	MERCURY_INT_DIR=$root/stage2/library
+	export MERCURY_INT_DIR
 fi
 
 for testdir in $testdirs
