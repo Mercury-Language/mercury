@@ -583,11 +583,40 @@
 	% heap management
 	%
 
-	;	alloc_mem(mlds__lval, maybe(tag), mlds__rval, mlds__type)
-			% Get a memory block of a size given by an rval
-			% and put its address in the given lval,
-			% possibly after tagging it with a given tag.
+		% XXX the following is still quite tentative
+			% new_object(Target, Tag, Type,
+			%	Size, CtorName, Args, ArgTypes):
+			% Allocate a memory block of the given size,
+			% initialize it with a new object of the given
+			% type by calling the constructor with the specified
+			% arguments, and put its address in the given lval,
+			% possibly after tagging the address with a given tag.
 			% (Some targets might not support tags.)
+	;	new_object(
+			mlds__lval,	% The target to assign the new object's
+					% address to.
+			maybe(mlds__tag),
+					% A tag to tag the address with
+					% before assigning the result to the
+					% target.
+			mlds__type,	% The type of the object being
+					% allocated.
+			maybe(mlds__rval),
+					% The amount of memory that needs to
+					% be allocated for the new object,
+					% measured in bytes.
+					% (XXX would it be better to measure
+					% this in bits or words rather than
+					% bytes?)
+			maybe(ctor_name),
+					% The name of the constructor to
+					% invoke.
+			list(mlds__rval),
+					% The arguments to the constructor.
+			list(mlds__type)
+					% The types of the arguments to the
+					% constructor.
+		)
 
 	;	mark_hp(mlds__lval)
 			% Tell the heap sub-system to store a marker
@@ -637,6 +666,8 @@
 	;	lang_java_bytecode
 	.
 
+	% XXX I'm not sure what representation we should use here
+:- type ctor_name == string.
 
 	%
 	% trail management
@@ -646,7 +677,7 @@
 	--->	store_ticket(mlds__lval)
 			% Allocate a new "ticket" and store it in the lval.
 
-	;	reset_ticket(mlds__rval, reset_trail_reason)
+	;	reset_ticket(mlds__rval, mlds__reset_trail_reason)
 			% The rval must specify a ticket allocated with
 			% `store_ticket' and not yet invalidated or
 			% deallocated.
@@ -702,7 +733,7 @@
 	% values on the heap
 	% or fields of a structure
 	%
-	--->	field(maybe(tag), mlds__rval, field_id)
+	--->	field(maybe(mlds__tag), mlds__rval, field_id)
 				% field(Tag, Address, FieldName)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
@@ -740,49 +771,12 @@
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
 
-	;	create(tag, list(maybe(mlds__rval)), create_arg_types,
-			static_or_dynamic, int, mlds__type)
-		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
-		%	LabelNumber, CellKind):
-		% A `create' instruction is used during code generation
-		% for creating a term, either on the heap or
-		% (if the term is constant) as a static constant.
-		% After code generation, only constant term create() rvals
-		% should be present in the LLDS, others will get transformed
-		% to incr_hp(..., Tag, Size) plus assignments to the fields.
-		%
-		% MaybeArgTypes may explicitly give the C level types of
-		% the arguments, although usually these types will be implicit.
-		%
-		% StaticOrDynamic may say that the cell must be allocated
-		% dynamically on the heap, because the resulting data structure
-		% must be unique (e.g. if we're doing to do destructive update
-		% on it). It may say that the cell must be allocated
-		% statically, e.g. because the MaybeArgTypes includes
-		% explicitly specified types that differ in size from Word
-		% (the code generator cannot fill in such cells).
-		% Or it may say that this cell can be allocated either way,
-		% subject to other constraints (e.g. a cell cannot be allocated
-		% statically unless all of its components are statically
-		% allocated as well).
-		%
-		% The label number is needed for the case when
-		% we can construct the term at compile-time
-		% and just reference the label.
-		%
-		% The last argument gives the name of the type constructor
-		% of the function symbol of which this is a cell, for use
-		% in memory profiling.
-		%
-		% For the time being, you must leave the argument types
-		% implicit if the cell is to be unique. This is because
-		% (a) the code generator assumes that each argument of a cell
-		% it creates on the heap is the same size as a Word; (b)
-		% this assumption may be incorrect with explicitly defined
-		% argument types.
-
-	;	mkword(tag, mlds__rval)
+	;	mkword(mlds__tag, mlds__rval)
 		% Given a pointer and a tag, mkword returns a tagged pointer.
+		%
+		% (XXX It might be more consistent to make this a binary_op,
+		% with the tag argument just being an rval, rather than
+		% having `mkword' be a separate kind of rval.)
 
 	;	const(mlds__rval_const)
 
@@ -824,13 +818,15 @@
 	%
 	% Stuff for handling polymorphism and type classes
 	%
-	;	type_ctor(base_data, string, arity)
+	;	type_ctor(mlds__base_data, string, arity)
 			% base_data, type name, type arity
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
 	%
-	% Stuff for handling debugging and accurate garbage collection
+	% Stuff for handling debugging and accurate garbage collection.
+	% (Those features are not yet implemented for the MLDS back-end,
+	% so these data_names are not yet used.)
 	%
 	;	module_layout
 			% Layout information for the current module.
@@ -845,6 +841,44 @@
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
+
+%-----------------------------------------------------------------------------%
+
+%
+% Note: the types `tag', `base_data', and `reset_trail_reason' here are all
+% defined exactly the same as the ones in llds.m.  The definitions are
+% duplicated here because we don't want mlds.m to depend on llds.m.
+% (Alternatively, we could move all these definitions into a new module
+% imported by both mlds.m and llds.m, but these definitions are small enough
+% and simple enough that I don't think it is worth creating a new module
+% just for them.)
+%
+
+	% A tag should be a small non-negative integer.
+:- type tag == int.
+
+	% See the definition in llds.m for comments about the meaning
+	% of the `base_data' type.
+	% For some targets, the target language and runtime system might
+	% provide all the necessary information about type layouts,
+	% in which case we won't need to define the type_functors and
+	% type_layout stuff, and we may also be able to use the language's
+	% RTTI rather than defining the type_infos ourselves.
+:- type base_data
+	--->	info
+	;	functors
+	;	layout.
+
+	% see runtime/mercury_trail.h
+:- type reset_trail_reason
+	--->	undo
+	;	commit
+	;	solve
+	;	exception
+	;	gc
+	.
+
+%-----------------------------------------------------------------------------%
 
 :- type mlds__qualified_proc_label
 	==	mlds__fully_qualified_name(mlds__proc_label).
