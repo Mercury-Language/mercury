@@ -615,11 +615,13 @@ mercury__string__float_to_string_2_0:
 
 mercury__string__to_float_2_0:
 		/* mode string__to_float(in, out) is semidet */
-	{ float tmp;
+	{ double double_tmp;
+	  Float Float_tmp;
 		/* use a temporary, since we can't take the address of a reg */
-	  r1 = (sscanf((char *)r2, "%f", &tmp) == 1);
+	  r1 = (sscanf((char *)r2, "%lf", &double_tmp) == 1);
 		/* r1 is TRUE if sscanf succeeds, FALSE otherwise */
-	  r3 = float_to_word(tmp);
+	  Float_tmp = double_tmp;
+	  r3 = float_to_word(Float_tmp);
 	}
 	proceed();
 
