@@ -24,6 +24,20 @@ Changes to the Mercury language:
 * We've generalized the higher-order term syntax a little:
   in `Foo(Args)', we now allow Foo to be any term, not just
   a variable.
+
+* The syntax for defining insts and modes has been changed to be 
+  more uniform.  For example, the old syntax
+
+  	:- inst myfree = free.
+  	:- mode out :: myfree -> ground.
+
+  would now be written
+
+  	:- inst myfree == free.
+  	:- mode out == myfree >> ground.
+
+  The old syntax is still accepted but is deprecated.  Support for it may
+  eventually be dropped.
  
 Changes to the standard library:
 

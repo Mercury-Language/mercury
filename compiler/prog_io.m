@@ -2000,6 +2000,10 @@ process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
 
 	% Parse a `:- inst <InstDefn>.' declaration.
 	%
+	% `==' is the correct operator to use, although we accept
+	% `=' as well.  Since `=' was once the standard operator, make
+	% sure warnings are given before it is phased out.
+	%
 :- pred parse_inst_decl(module_name, varset, term, maybe1(item)).
 :- mode parse_inst_decl(in, in, in, out) is det.
 parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
@@ -2029,7 +2033,7 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 		convert_inst_defn(ModuleName, H, Body1, R),
 		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
 	;
-		Result = error("`=' expected in `:- inst' definition", InstDefn)
+		Result = error("`==' expected in `:- inst' definition", InstDefn)
 	).
 		% we should check the condition for errs
 		% (don't bother at the moment, since we ignore
@@ -2157,14 +2161,31 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
 	).
 
-	% People never seem to remember what the right operator to use in a
-	% `:- mode' declaration is, so the syntax is forgiving.  We allow
-	% `::', the standard one which has the right precedence, but we
-	% also allow `==' just to be nice.
+	% People never seemed to remember what the right operator to use
+	% in a `:- mode' declaration is, so the syntax is accepted both
+	% `::' and `==', with `::' formerly the standard operator.  
+	%
+	%	% Old syntax
+	% :- mode foo :: someinst -> someotherinst.
+	%
+	% But using `==' was a pain, because the precedence of `->' was
+	% too high.  We now accept `>>' as an alternative to `->', and
+	% `==' is now the standard operator to use in a `:- mode'
+	% declaration.  This is part of a long term plan to free up
+	% `::' as an operator so we can use it for mode qualification.
+	%
+	%	% New syntax
+	% :- mode foo == someinst >> someotherinst.
+	%
+	% We still support `::' in mode declarations for backwards
+	% compatibility, but it might be removed one day.
+	% Before phasing it out, a deprecated syntax warning should be
+	% given for a version or two.
+	%
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
-	( Op = "::" ; Op = "==" ).
+	( Op = "==" ; Op = "::" ).
 
 :- pred convert_mode_defn(module_name, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn(in, in, in, out) is det.

@@ -97,6 +97,7 @@ OTHER_SOURCES= \
 	loop_in_disj.m \
 	middle_rec_labels.m \
 	modes_bug.m \
+	mode_syntax.m \
 	module_a.m \
 	module_b.m \
 	module_c.m \

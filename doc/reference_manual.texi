@@ -1525,7 +1525,7 @@ Mercury's mode system allows users
 to declare names for instantiatedness trees using declarations such as
 
 @example
-:- inst listskel = bound( [] ; [free | listskel] ).
+:- inst listskel == bound( [] ; [free | listskel] ).
 @end example
 
 This instantiatedness tree describes lists
@@ -1547,27 +1547,31 @@ from an initial instantiatedness tree to a final instantiatedness tree,
 with the constraint that no node of the type tree
 is transformed from bound to free.
 Mercury allows the user to specify mode mappings directly
-by expressions such as @code{inst1 -> inst2},
+by expressions such as @code{inst1 >> inst2},
 or to give them a name using declarations such as
 
 @example
-:- mode m :: inst1 -> inst2.
+:- mode m == inst1 >> inst2.
 @end example
+
+It is also possible to write mode declarations using @code{::}
+and @code{->} instead of @code{==} and @code{>>} respectively,
+however this syntax is deprecated and may not be supported in future.
 
 Two standard shorthand modes are provided,
 corresponding to the standard notions of inputs and outputs:
 
 @example
-:- mode in :: ground -> ground.
-:- mode out :: free -> ground.
+:- mode in == ground >> ground.
+:- mode out == free >> ground.
 @end example
 
 Prolog fans who want to use the symbols @samp{+} and @samp{-}
 can do so by simply defining them using a mode declaration:
 
 @example
-:- mode (+) :: in.
-:- mode (-) :: out.
+:- mode (+) == in.
+:- mode (-) == out.
 @end example
 
 These two modes are enough for most functions and predicates.
@@ -1586,19 +1590,19 @@ the database over a network, you would need declarations such as
 :- type operation
         --->    lookup(key, data)
         ;       set(key, data).
-:- inst request =
+:- inst request ==
         bound(  lookup(ground, free)
         ;       set(ground, ground)
         ).
-:- mode create_request :: free -> request.
-:- mode satisfy_request :: request -> ground.
+:- mode create_request == free >> request.
+:- mode satisfy_request == request >> ground.
 @end example
 
 @samp{inst} and @samp{mode} declarations can be parametric.
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) = bound( [] ; [Inst | listskel(Inst)] ).
+:- inst listskel(Inst) == bound( [] ; [Inst | listskel(Inst)] ).
 @end example
 
 @noindent

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -221,9 +221,26 @@ convert_mode_list([H0|T0], [H|T]) :-
 	convert_mode(H0, H),
 	convert_mode_list(T0, T).
 
+
+	% 
+	% The new operator for mode declarations is >>.
+	% Previously we used ->, but this required a high-precedence
+	% operator such as :: for the :- mode delcaration.
+	%
+	% Using >> allows us to use == for the :- mode declaration.
+	%
+	% Eventually we can stop supporting :: and -> in :- mode
+	% declarations altogether.
+	%
 convert_mode(Term, Mode) :-
 	(
-		Term = term__functor(term__atom("->"), [InstA, InstB], _Context)
+		( 
+			Term = term__functor(term__atom(">>"), 
+				[InstA, InstB], _)
+		;
+			Term = term__functor(term__atom("->"),
+				[InstA, InstB], _)
+		)
 	->
 		convert_inst(InstA, ConvertedInstA),
 		convert_inst(InstB, ConvertedInstB),
