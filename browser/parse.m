@@ -133,9 +133,7 @@ parse__read_command(Prompt, Comm) -->
 
 parse__read_command_external(Comm) -->
 	io__read(Result),
-	( 
-		{ Result = ok(external_request(StringToParse)) }
-	->
+	( { Result = ok(external_request(StringToParse)) } ->
 		{ string__to_char_list(StringToParse, Cs) },
 		{ lexer(Cs, Tokens) },
 		( { parse(Tokens, Comm2) } ->
@@ -221,7 +219,7 @@ digits_to_int_acc(Acc, [C | Cs], Num) :-
 :- pred lexer_name(char, list(char), list(token)).
 :- mode lexer_name(in, in, out) is det.
 lexer_name(C, Cs, Toks) :-
-	list__takewhile(char__is_alpha_or_underscore, Cs, Letters, Rest),
+	list__takewhile(char__is_alnum_or_underscore, Cs, Letters, Rest),
 	string__from_char_list([C | Letters], Name),
 	lexer(Rest, Toks2),
 	Toks = [name(Name) | Toks2].
@@ -306,7 +304,11 @@ parse_dirs([], []).
 parse_dirs([Tok | Toks], Dirs) :-
 	(
 		Tok = num(Subdir),
-		Dirs = [child(Subdir) | RestDirs],
+		Dirs = [child_num(Subdir) | RestDirs],
+		parse_dirs(Toks, RestDirs)
+	;
+		Tok = name(NamedSubdir),
+		Dirs = [child_name(NamedSubdir) | RestDirs],
 		parse_dirs(Toks, RestDirs)
 	;
 		Tok = (..),
@@ -410,8 +412,12 @@ show_path(dot_rel(Dirs)) -->
 :- mode show_dirs(in, di, uo) is det.
 show_dirs([]) -->
 	io__nl.
-show_dirs([child(Num) | Dirs]) -->
+show_dirs([child_num(Num) | Dirs]) -->
 	io__write_int(Num),
+	io__write_string("/"),
+	show_dirs(Dirs).
+show_dirs([child_name(Name) | Dirs]) -->
+	io__write_string(Name),
 	io__write_string("/"),
 	show_dirs(Dirs).
 show_dirs([parent | Dirs]) -->

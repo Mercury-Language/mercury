@@ -671,9 +671,13 @@ write_path(Debugger, [Dir]) -->
 		{ Dir = parent },
 		write_string_debugger(Debugger, "/")
 	;
-		{ Dir = child(N) },
+		{ Dir = child_num(N) },
 		write_string_debugger(Debugger, "/"), 
 		write_int_debugger(Debugger, N)
+	;
+		{ Dir = child_name(Name) },
+		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, Name)
 	).
 write_path(Debugger, [Dir, Dir2 | Dirs]) -->
 	write_path_2(Debugger, [Dir, Dir2 | Dirs]).
@@ -688,9 +692,13 @@ write_path_2(Debugger, [Dir]) -->
 		{ Dir = parent },
 		write_string_debugger(Debugger, "/..")
 	;
-		{ Dir = child(N) },
+		{ Dir = child_num(N) },
 		write_string_debugger(Debugger, "/"), 
 		write_int_debugger(Debugger, N)
+	;
+		{ Dir = child_name(Name) },
+		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, Name)
 	).
 write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
 	(
@@ -698,9 +706,14 @@ write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
 		write_string_debugger(Debugger, "/.."),
 		write_path_2(Debugger, [Dir2 | Dirs])
 	;
-		{ Dir = child(N) },
+		{ Dir = child_num(N) },
 		write_string_debugger(Debugger, "/"), 
 		write_int_debugger(Debugger, N),
+		write_path_2(Debugger, [Dir2 | Dirs])
+	;
+		{ Dir = child_name(Name) },
+		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, Name),
 		write_path_2(Debugger, [Dir2 | Dirs])
 	).
 
@@ -709,44 +722,41 @@ write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
 :- pred deref_subterm(univ, list(dir), univ) is semidet.
 :- mode deref_subterm(in, in, out) is semidet.
 deref_subterm(Univ, Path, SubUniv) :-
-	path_to_int_list(Path, PathN),
-	deref_subterm_2(Univ, PathN, SubUniv).
+	simplify_dirs(Path, SimplifiedPath),
+	deref_subterm_2(Univ, SimplifiedPath, SubUniv).
 
-:- pred path_to_int_list(list(dir), list(int)).
-:- mode path_to_int_list(in, out) is semidet.
-path_to_int_list(Path, Ints) :-
-	simplify_dirs(Path, NewPath),
-	dirs_to_ints(NewPath, Ints).
-
-:- pred dirs_to_ints(list(dir), list(int)).
-:- mode dirs_to_ints(in, out) is semidet.
-dirs_to_ints([], []).
-dirs_to_ints([child(N) | Dirs], [N | Ns]) :-
-	dirs_to_ints(Dirs, Ns).
-dirs_to_ints([parent | _], _) :-
- 	error("dirs_to_ints: software error").
-
-:- pred deref_subterm_2(univ, list(int), univ) is semidet.
+:- pred deref_subterm_2(univ, list(dir), univ) is semidet.
 :- mode deref_subterm_2(in, in, out) is semidet.
 deref_subterm_2(Univ, Path, SubUniv) :-
-	( Path = [] ->
+	(
+		Path = [],
 		Univ = SubUniv
 	; 
-		Path = [N | Ns],
+		Path = [Dir | Dirs],
+		(
+			Dir = child_num(N),
 		(
 			TypeCtor = type_ctor(univ_type(Univ)),
 			type_ctor_name(TypeCtor) = "array",
 			type_ctor_module_name(TypeCtor) = "array"
 		->
-			% The first element of an array is at index zero.
+				% The first element of an array is at
+				% index zero.
 			ArgN = argument(univ_value(Univ), N)
 		;
 			% The first argument of a non-array is numbered
 			% argument 1 by the user but argument 0 by
 			% std_util:argument.
 			ArgN = argument(univ_value(Univ), N - 1)
+			)
+		;
+			Dir = child_name(Name),
+			ArgN = named_argument(univ_value(Univ), Name)
+		;
+			Dir = parent,
+			error("deref_subterm_2: found parent")
 		),
-		deref_subterm_2(ArgN, Ns, SubUniv)
+		deref_subterm_2(ArgN, Dirs, SubUniv)
 	).
 
 %---------------------------------------------------------------------------%
@@ -854,9 +864,11 @@ names_to_dirs([Name | Names], Dirs) :-
 		names_to_dirs(Names, RestDirs)
 	; Name = "." ->
 		names_to_dirs(Names, Dirs)
+	; string__to_int(Name, Num) ->
+		Dirs = [child_num(Num) | RestDirs],
+		names_to_dirs(Names, RestDirs)
 	;
-		string__to_int(Name, Num),
-		Dirs = [child(Num) | RestDirs],
+		Dirs = [child_name(Name) | RestDirs],
 		names_to_dirs(Names, RestDirs)
 	).
 
@@ -901,11 +913,17 @@ simplify_dirs(Dirs, SimpleDirs) :-
 :- pred simplify(list(dir), list(dir)).
 :- mode simplify(in, out) is det.
 simplify([], []).
-simplify([parent | Dirs], Dirs).
-simplify([child(Dir)], [child(Dir)]).
-simplify([child(_Dir), parent | Dirs], Dirs).
-simplify([child(Dir1), child(Dir2) | Dirs], [child(Dir1) | Rest]) :-
-	simplify([child(Dir2) | Dirs], Rest).
+simplify([First | Rest], Simplified) :-
+	( First = parent ->
+		Simplified = Rest
+	; Rest = [] ->
+		Simplified = [First]
+	; Rest = [parent | Tail] ->
+		Simplified = Tail
+	;
+		simplify(Rest, SimplifiedRest),
+		Simplified = [First | SimplifiedRest]
+	).
 
 %---------------------------------------------------------------------------%
 

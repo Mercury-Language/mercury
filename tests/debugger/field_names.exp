@@ -29,6 +29,28 @@ mdb> p 5^t1d
        HeadVar__5             	44
 mdb> p 5^t1e
 mdb: the path t1e does not exist.
+mdb> browse 5
+browser> ^1x
+error: cannot change to subterm
+browser> ^1
+browser> p
+41
+browser> ^..^t1a
+browser> p
+41
+browser> ^..^t1b
+browser> p
+42
+browser> ^..^t1c
+error: cannot change to subterm
+browser> ^..^t1d
+browser> p
+44
+browser> ^..^t1e
+error: cannot change to subterm
+browser> p
+44
+browser> quit
 mdb> step
        4:      3  2 CALL pred field_names:make_t1f2/4-0 (det)
 mdb> finish
@@ -49,6 +71,18 @@ mdb> p 4^t1f
 mdb: the path t1f does not exist.
 mdb> p 4^t1g
        HeadVar__4             	53
+mdb> browse 4
+browser> ^t1a
+error: cannot change to subterm
+browser> ^t1e
+browser> p
+51
+browser> ^..^t1f
+error: cannot change to subterm
+browser> ^..^t1g
+browser> p
+53
+browser> quit
 mdb> step
        6:      4  2 CALL pred field_names:make_t2/5-0 (det)
 mdb> finish
@@ -105,6 +139,25 @@ mdb> p 5^t2c^t1f
 mdb: the path t1f does not exist.
 mdb> p 5^t2c^t1g
        HeadVar__5             	53
+mdb> browse 5
+browser> ^3^t1a
+browser> p
+41
+browser> ^..^..^3^t1b
+browser> p
+42
+browser> quit
+mdb> browse 5
+browser> ^t2b
+browser> p
+t1f1(41, 42, 43, 44)
+browser> ^t1a
+browser> p
+41
+browser> ^..^..^t2c^t1e
+browser> p
+51
+browser> quit
 mdb> step
        8:      5  2 CALL pred field_names:make_t3/4-0 (det)
 mdb> finish

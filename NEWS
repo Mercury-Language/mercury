@@ -125,6 +125,10 @@ Changes to the Mercury standard library:
   `std_util__map_maybe/2' to apply a predicate or a function to
   a value stored in a term of type `std_util__maybe'.
 
+* We've added two predicates, named_argument and det_named_argument, to
+  std_util.m. These are analogous to argument and det_argument, but specify
+  the desired argument by its name, not its position.
+
 * We've added a predicate version of `set__fold'.
 
 * We've added function versions of `builtin__unsafe_promise_unique',
@@ -145,16 +149,19 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury implementation:
 
-* We've added a 'view' command to `mdb', which opens a `vim' window and
-  in it displays the current source location, updated at each event.  This
-  requires X11 and a version of `vim' with the `clientserver' feature
-  enabled.
+* You can now navigate terms in the debugger by argument name as well as by
+  argument number.
   
 * The Mercury compiler can now perform smart recompilation, enabled by the
   `--smart-recompilation' option. With smart recompilation, when the
   interface of a module changes, only modules which use the changed
   declarations are recompiled. Smart recompilation does not yet work
   with `--intermodule-optimization'.
+
+* We've added a 'view' command to `mdb', which opens a `vim' window and
+  in it displays the current source location, updated at each event.  This
+  requires X11 and a version of `vim' with the `clientserver' feature
+  enabled.
 
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in

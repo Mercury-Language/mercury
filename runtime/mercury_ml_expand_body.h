@@ -40,8 +40,17 @@
 **                          function will fill in this field.
 **
 ** EXPAND_CHOSEN_ARG        If defined, the function will have an extra
-**                          argument, chosen, and it will fill in the fields
-**                          of the ML_Expand_Chosen_Arg_Only structure.
+**                          argument, chosen, which specifies the position of
+**                          the one desired argument (with the first argument
+**                          having position 0), and the function will fill in
+**                          the fields of the ML_Expand_Chosen_Arg_Only
+**                          structure.
+**
+** EXPAND_NAMED_ARG         If defined, the function will have an extra
+**                          argument, chosen_name, which specifies the name
+**                          of the one desired argument, and the function will
+**                          fill in the fields of the ML_Expand_Chosen_Arg_Only
+**                          structure.
 **
 ** EXPAND_APPLY_LIMIT       If defined, the function will have an extra
 **                          argument, max_arity. If the number of arguments
@@ -51,7 +60,8 @@
 **
 ** Most combinations are allowed, but
 **
-** - only one of EXPAND_ARGS_FIELD and EXPAND_CHOSEN_ARG may be defined at once
+** - only one of EXPAND_ARGS_FIELD, EXPAND_CHOSEN_ARG and EXPAND_NAMED_ARG
+**   may be defined at once, and
 ** - EXPAND_APPLY_LIMIT should be defined only if EXPAND_ARGS_FIELD is also
 **   defined.
 **
@@ -82,7 +92,7 @@
 ** MR_malloc() or malloc(), since this vector may contain pointers into the
 ** Mercury heap, and memory allocated with MR_malloc() or malloc() will not be
 ** traced by the Boehm collector.) The elements of the array should not be
-** freed, since they point either previously allocated data, which is either
+** freed, since they point to previously allocated data, which is either
 ** on the heap or is in constant storage (e.g. type_ctor_infos).
 ** If the can_free_arg_type_infos field is false, then the array returned in
 ** the arg_type_infos field was not allocated by the function (it came from the
@@ -95,7 +105,7 @@
 **  afterwards, call MR_restore_transient_registers().
 **
 **  If you change this code, you may also have to reflect your changes
-**  in runtime/mercury_deep_copy_body.h and runtime/mercury_tabling.c
+**  in runtime/mercury_deep_copy_body.h and runtime/mercury_tabling.c.
 **
 **  We use 4 space tabs here (sw=4 ts=4) because of the level of indenting.
 */
@@ -118,7 +128,18 @@
 #else
   #define   EXTRA_ARG2
 #endif
-#define EXTRA_ARGS  EXTRA_ARG1 EXTRA_ARG2
+#ifdef  EXPAND_NAMED_ARG
+  #define   EXTRA_ARG3  chosen_name,
+#else
+  #define   EXTRA_ARG3
+#endif
+#define EXTRA_ARGS  EXTRA_ARG1 EXTRA_ARG2 EXTRA_ARG3
+
+#if defined(EXPAND_CHOSEN_ARG) || defined(EXPAND_NAMED_ARG)
+  #define   EXPAND_ONE_ARG
+#else   /* defined(EXPAND_CHOSEN_ARG) || defined(EXPAND_NAMED_ARG) */
+  #undef    EXPAND_ONE_ARG
+#endif  /* defined(EXPAND_CHOSEN_ARG) || defined(EXPAND_NAMED_ARG) */
 
 /* set up macro for setting field names without #ifdefs */
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -146,21 +167,21 @@
             ((void) 0)
 #endif  /* EXPAND_ARGS_FIELD */
 
-#ifdef  EXPAND_CHOSEN_ARG
-  #define handle_zero_arity_chosen_arg()                                \
+#ifdef  EXPAND_ONE_ARG
+  #define handle_zero_arity_one_arg()                                   \
             do {                                                        \
                 expand_info->chosen_index_exists = FALSE;               \
             } while (0)
-#else   /* EXPAND_CHOSEN_ARG */
-  #define handle_zero_arity_chosen_arg()                                \
+#else   /* EXPAND_ONE_ARG */
+  #define handle_zero_arity_one_arg()                                   \
             ((void) 0)
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
 
 #define handle_zero_arity_args()                                        \
             do {                                                        \
                 expand_info->arity = 0;                                 \
                 handle_zero_arity_all_args();                           \
-                handle_zero_arity_chosen_arg();                         \
+                handle_zero_arity_one_arg();                            \
             } while (0)
 
 /***********************************************************************/
@@ -173,10 +194,22 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_CHOSEN_ARG
     int chosen,
 #endif  /* EXPAND_CHOSEN_ARG */
+#ifdef  EXPAND_NAMED_ARG
+    MR_ConstString chosen_name,
+#endif  /* EXPAND_NAMED_ARG */
     EXPAND_TYPE_NAME *expand_info)
 {
     MR_TypeCtorInfo type_ctor_info;
     MR_DuTypeLayout du_type_layout;
+#ifdef EXPAND_NAMED_ARG
+    /*
+    ** No arm of the switch on type_ctor_rep handles named arguments by
+    ** default. Only those type_ctor_reps that support named arguments
+    ** need have code for searching for argument names. For the rest,
+    ** initializing chosen to -1 ensures that no argument will be returned.
+    */
+    int chosen = -1;
+#endif /* EXPAND_NAMED_ARG */
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     expand_info->non_canonical_type = FALSE;
@@ -201,67 +234,70 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             expand_info->non_canonical_type = TRUE;
-	    /* fall through */
+        /* fall through */
 
         case MR_TYPECTOR_REP_RESERVED_ADDR:
-	    {
-		int i;
+        {
+        int i;
                 MR_Word data;
-		MR_ReservedAddrTypeLayout ra_layout;
+        MR_ReservedAddrTypeLayout ra_layout;
 
-		ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
-		data = *data_word_ptr;
+        ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+        data = *data_word_ptr;
 
-		/*
-		** First check if this value is one of
-		** the numeric reserved addresses.
-		*/
-		if ((MR_Unsigned) data <
-		    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-		{
-		    handle_functor_name(ra_layout->MR_ra_constants[data]->
-			    	MR_ra_functor_name);
-		    handle_zero_arity_args();
-		    break;
-		}
+        /*
+        ** First check if this value is one of
+        ** the numeric reserved addresses.
+        */
+        if ((MR_Unsigned) data <
+            (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+        {
+            handle_functor_name(ra_layout->MR_ra_constants[data]->
+                    MR_ra_functor_name);
+            handle_zero_arity_args();
+            break;
+        }
 
-		/*
-		** Next check if this value is one of the
-		** the symbolic reserved addresses.
-		*/
-		for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-		    if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
-			int offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
-		    	handle_functor_name(ra_layout->MR_ra_constants[offset]->
-					MR_ra_functor_name);
-		    	handle_zero_arity_args();
-		    	/* "break" here would just exit the "for" loop */
-		    	return;
-		    }
-		}
-		    
-		/*
-		** Otherwise, it is not one of the reserved addresses,
-		** so handle it like a normal DU type.
-		*/
-		du_type_layout = ra_layout->MR_ra_other_functors;
-		goto du_type;
-	    }
+        /*
+        ** Next check if this value is one of the
+        ** the symbolic reserved addresses.
+        */
+        for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+                    if (data == (MR_Word) ra_layout->
+                            MR_ra_res_symbolic_addrs[i])
+                    {
+                        int offset;
+                        offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
+                        handle_functor_name(ra_layout->
+                            MR_ra_constants[offset]->MR_ra_functor_name);
+                handle_zero_arity_args();
+                /* "break" here would just exit the "for" loop */
+                return;
+            }
+        }
+            
+        /*
+        ** Otherwise, it is not one of the reserved addresses,
+        ** so handle it like a normal DU type.
+        */
+        du_type_layout = ra_layout->MR_ra_other_functors;
+        goto du_type;
+        }
 
         case MR_TYPECTOR_REP_DU_USEREQ:
             expand_info->non_canonical_type = TRUE;
             /* fall through */
 
         case MR_TYPECTOR_REP_DU:
-	    du_type_layout = type_ctor_info->type_layout.layout_du;
-	    /* fall through */
+        du_type_layout = type_ctor_info->type_layout.layout_du;
+        /* fall through */
 
-	/*
-	** This label handles both the DU case and the second half of the
-	** RESERVED_ADDR case.  `du_type_layout' must be set before
-	** this code is entered.
-	*/
-	du_type:
+    /*
+    ** This label handles both the DU case and the second half of the
+    ** RESERVED_ADDR case.  `du_type_layout' must be set before
+    ** this code is entered.
+    */
+    du_type:
             {
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
@@ -294,24 +330,24 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                         break;
                     case MR_SECTAG_VARIABLE:
-		        handle_functor_name("<<variable>>");
-		        handle_zero_arity_args();
-				/*
-				** XXX We should do something like the
-				** following, since deconstructing a value
-				** that might be a variable should be
-				** cc_multi rather than det. However, there
-				** is no such version of deconstruct yet,
-				** so we'll leave it out.
-				*/
-			/*expand_info->non_canonical_type = TRUE;*/
-		        return;
+                handle_functor_name("<<variable>>");
+                handle_zero_arity_args();
+                /*
+                ** XXX We should do something like the
+                ** following, since deconstructing a value
+                ** that might be a variable should be
+                ** cc_multi rather than det. However, there
+                ** is no such version of deconstruct yet,
+                ** so we'll leave it out.
+                */
+            /*expand_info->non_canonical_type = TRUE;*/
+                return;
                 }
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
                 expand_info->arity = functor_desc->MR_du_functor_orig_arity;
 
-#if     defined(EXPAND_ARGS_FIELD) || defined(EXPAND_CHOSEN_ARG)
+#if     defined(EXPAND_ARGS_FIELD) || defined(EXPAND_ONE_ARG)
                 exist_info = functor_desc->MR_du_functor_exist_info;
                 if (exist_info != NULL) {
                     extra_args = exist_info->MR_exist_typeinfos_plain
@@ -319,7 +355,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 } else {
                     extra_args = 0;
                 }
-#endif  /* defined(EXPAND_ARGS_FIELD) || defined(EXPAND_CHOSEN_ARG) */
+#endif  /* defined(EXPAND_ARGS_FIELD) || defined(EXPAND_ONE_ARG) */
 
 #ifdef  EXPAND_ARGS_FIELD
   #ifdef    EXPAND_APPLY_LIMIT
@@ -352,7 +388,24 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     }
                 }
 #endif  /* EXPAND_ARGS_FIELD */
-#ifdef  EXPAND_CHOSEN_ARG
+
+#ifdef  EXPAND_ONE_ARG
+  #ifdef  EXPAND_NAMED_ARG
+                {
+                    int i;
+
+                    for (i = 0; i < expand_info->arity; i++) {
+                        if (functor_desc->MR_du_functor_arg_names[i] != NULL
+                            && streq(functor_desc->MR_du_functor_arg_names[i],
+                                chosen_name))
+                        {
+                            chosen = i;
+                            break;
+                        }
+                    }
+                }
+  #endif  /* EXPAND_NAMED_ARG */
+
                 if (0 <= chosen && chosen < expand_info->arity) {
                     expand_info->chosen_index_exists = TRUE;
                     expand_info->chosen_value_ptr =
@@ -372,7 +425,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 } else {
                     expand_info->chosen_index_exists = FALSE;
                 }
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
             }
             break;
 
@@ -397,7 +450,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     type_ctor_info->type_layout.layout_notag->
                         MR_notag_functor_arg_type);
 #endif  /* EXPAND_ARGS_FIELD */
-#ifdef  EXPAND_CHOSEN_ARG
+
+#ifdef  EXPAND_ONE_ARG
+  #ifdef    EXPAND_NAMED_ARG
+            if (type_ctor_info->type_layout.layout_notag
+                    ->MR_notag_functor_arg_name != NULL
+               && streq(chosen_name, type_ctor_info->type_layout.layout_notag
+                    ->MR_notag_functor_arg_name))
+            {
+                chosen = 0;
+            }
+  #endif    /* EXPAND_NAMED_ARG */
+
             if (chosen == 0) {
                 expand_info->chosen_index_exists = TRUE;
                 expand_info->chosen_value_ptr = data_word_ptr;
@@ -409,7 +473,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             } else {
                 expand_info->chosen_index_exists = FALSE;
             }
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
             break;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
@@ -431,7 +495,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_pseudo_type_info_is_ground(type_ctor_info->
                     type_layout.layout_notag->MR_notag_functor_arg_type);
 #endif  /* EXPAND_ARGS_FIELD */
-#ifdef  EXPAND_CHOSEN_ARG
+
+#ifdef  EXPAND_ONE_ARG
+  #ifdef    EXPAND_NAMED_ARG
+            if (type_ctor_info->type_layout.layout_notag
+                    ->MR_notag_functor_arg_name != NULL
+               && streq(chosen_name, type_ctor_info->type_layout.layout_notag
+                    ->MR_notag_functor_arg_name))
+            {
+                chosen = 0;
+            }
+  #endif    /* EXPAND_NAMED_ARG */
+
             if (chosen == 0) {
                 expand_info->chosen_index_exists = TRUE;
                 expand_info->chosen_value_ptr = data_word_ptr;
@@ -441,7 +516,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             } else {
                 expand_info->chosen_index_exists = FALSE;
             }
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
             break;
 
         case MR_TYPECTOR_REP_EQUIV:
@@ -576,7 +651,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info) + 1;
             }
 #endif  /* EXPAND_ARGS_FIELD */
-#ifdef  EXPAND_CHOSEN_ARG
+
+#ifdef  EXPAND_ONE_ARG
             if (0 <= chosen && chosen < expand_info->arity) {
                 MR_Word *arg_vector;
 
@@ -588,7 +664,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             } else {
                 expand_info->chosen_index_exists = FALSE;
             }
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
             break;
 
         case MR_TYPECTOR_REP_UNIV: {
@@ -668,7 +744,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     }
                 }
 #endif  /* EXPAND_ARGS_FIELD */
-#ifdef  EXPAND_CHOSEN_ARG
+
+#ifdef  EXPAND_ONE_ARG
                 if (0 <= chosen && chosen < array->size) {
                     MR_TypeInfoParams   params;
 
@@ -679,7 +756,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 } else {
                     expand_info->chosen_index_exists = FALSE;
                 }
-#endif  /* EXPAND_CHOSEN_ARG */
+#endif  /* EXPAND_ONE_ARG */
             }
             break;
 
@@ -733,8 +810,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
 #undef  EXTRA_ARG1
 #undef  EXTRA_ARG2
+#undef  EXTRA_ARG3
 #undef  EXTRA_ARGS
+#undef  EXPAND_ONE_ARG
 #undef  handle_functor_name
 #undef  handle_zero_arity_args
 #undef  handle_zero_arity_all_args
-#undef  handle_zero_arity_chosen_arg
+#undef  handle_zero_arity_one_arg

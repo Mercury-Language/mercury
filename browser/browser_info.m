@@ -39,7 +39,8 @@
 
 :- type dir
 	--->	parent
-	;	child(int).
+	;	child_num(int)
+	;	child_name(string).
 
 	% The browser is required to behave differently for different
 	% caller circumstances.  The following type enumerates the

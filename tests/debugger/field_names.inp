@@ -13,6 +13,20 @@ p 5^t1b
 p 5^t1c
 p 5^t1d
 p 5^t1e
+browse 5
+^1x
+^1
+p
+^..^t1a
+p
+^..^t1b
+p
+^..^t1c
+^..^t1d
+p
+^..^t1e
+p
+quit
 step
 finish
 p 4
@@ -23,6 +37,14 @@ p 4^t1a
 p 4^t1e
 p 4^t1f
 p 4^t1g
+browse 4
+^t1a
+^t1e
+p
+^..^t1f
+^..^t1g
+p
+quit
 step
 finish
 p 5
@@ -51,6 +73,20 @@ p 5^t2c^t1a
 p 5^t2c^t1e
 p 5^t2c^t1f
 p 5^t2c^t1g
+browse 5
+^3^t1a
+p
+^..^..^3^t1b
+p
+quit
+browse 5
+^t2b
+p
+^t1a
+p
+^..^..^t2c^t1e
+p
+quit
 step
 finish
 p 4

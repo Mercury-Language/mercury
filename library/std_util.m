@@ -582,6 +582,14 @@
 :- func arg(T::in, int::in) = (ArgT::out) is semidet.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
 
+	% named_argument(Data, ArgumentName) = ArgumentUniv
+	%
+	% Same as argument/2, except the chosen argument is specified by giving
+	% its name rather than its position. If Data has no argument with that
+	% name, named_argument fails.
+	%
+:- func named_argument(T::in, string::in) = (univ::out) is semidet.
+
 	% det_arg(Data, ArgumentIndex) = Argument
 	% det_argument(Data, ArgumentIndex) = ArgumentUniv
 	%
@@ -591,6 +599,13 @@
 	%
 :- func det_arg(T::in, int::in) = (ArgT::out) is det.
 :- func det_argument(T::in, int::in) = (univ::out) is det.
+
+	% det_named_argument(Data, ArgumentName) = ArgumentUniv
+	%
+	% Same as named_argument/2, except that for cases where
+	% named_argument/2 would fail, det_named_argument/2 will abort.
+	%
+:- func det_named_argument(T::in, string::in) = (univ::out) is det.
 
 	% deconstruct(Data, Functor, Arity, Arguments)
 	%
@@ -3133,6 +3148,10 @@ extern  void    ML_expand_chosen_arg_only(MR_TypeInfo type_info,
                     MR_Word *data_word_ptr, int chosen,
                     ML_Expand_Chosen_Arg_Only_Info *expand_info);
 
+extern  void    ML_expand_named_arg_only(MR_TypeInfo type_info,
+                    MR_Word *data_word_ptr, MR_ConstString chosen_name,
+                    ML_Expand_Chosen_Arg_Only_Info *expand_info);
+
     /*
     ** NB. ML_arg() is also used by arg_ref and new_arg_ref
     ** in store.m, in trace/mercury_trace_vars.m, and in
@@ -3140,6 +3159,10 @@ extern  void    ML_expand_chosen_arg_only(MR_TypeInfo type_info,
     */
 extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
+
+extern  bool    ML_named_arg(MR_TypeInfo type_info, MR_Word *term,
+                    MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
+                    MR_Word **argument_ptr);
 
     /*
     ** NB. ML_named_arg_num() is used in mercury_trace_vars.c.
@@ -3262,6 +3285,14 @@ extern  bool    ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 #undef  EXPAND_TYPE_NAME
 #undef  EXPAND_CHOSEN_ARG
 
+#define EXPAND_FUNCTION_NAME        ML_expand_named_arg_only
+#define EXPAND_TYPE_NAME            ML_Expand_Chosen_Arg_Only_Info
+#define EXPAND_NAMED_ARG
+#include ""mercury_ml_expand_body.h""
+#undef  EXPAND_FUNCTION_NAME
+#undef  EXPAND_TYPE_NAME
+#undef  EXPAND_NAMED_ARG
+
 /*
 ** ML_arg() is a subroutine used to implement arg/2, argument/2,
 ** and also store__arg_ref/5 in store.m.
@@ -3281,6 +3312,35 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
 
     ML_expand_chosen_arg_only(type_info, term_ptr, arg_index, &expand_info);
     ML_abort_if_type_is_noncanonical(expand_info, ""argument/2"");
+
+        /* Check range */
+    if (expand_info.chosen_index_exists) {
+        *arg_type_info_ptr = expand_info.chosen_type_info;
+        *arg_ptr = expand_info.chosen_value_ptr;
+		return TRUE;
+    }
+
+    return FALSE;
+}
+
+/*
+** ML_named_arg() is a subroutine used to implement named_arg/2.
+** It takes the address of a term, its type, and an argument name.
+** If an argument with that name exists, it succeeds and returns the address
+** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+bool
+ML_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
+    MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr)
+{
+    ML_Expand_Chosen_Arg_Only_Info	expand_info;
+
+    ML_expand_named_arg_only(type_info, term_ptr, arg_name, &expand_info);
+    ML_abort_if_type_is_noncanonical(expand_info, ""named_argument/2"");
 
         /* Check range */
     if (expand_info.chosen_index_exists) {
@@ -3536,6 +3596,30 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     SUCCESS_INDICATOR = success;
 }").
 
+:- pragma foreign_proc("C",
+    named_argument(Term::in, ArgumentName::in) = (ArgumentUniv::out),
+    [will_not_call_mercury], "
+{
+    MR_TypeInfo type_info;
+    MR_TypeInfo arg_type_info;
+    MR_Word     *argument_ptr;
+    bool        success;
+
+    type_info = (MR_TypeInfo) TypeInfo_for_T;
+
+    MR_save_transient_registers();
+    success = ML_named_arg(type_info, &Term, (MR_ConstString) ArgumentName,
+        &arg_type_info, &argument_ptr);
+    MR_restore_transient_registers();
+
+    if (success) {
+        /* Allocate enough room for a univ */
+        MR_new_univ_on_hp(ArgumentUniv, arg_type_info, *argument_ptr);
+    }
+
+    SUCCESS_INDICATOR = success;
+}").
+
 :- pragma foreign_proc("MC++", functor(_Term::in, _Functor::out, _Arity::out),
     will_not_call_mercury, "
 {
@@ -3565,10 +3649,17 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 	SUCCESS_INDICATOR = false;
 }").
 
+:- pragma foreign_proc("C#",
+        named_argument(_Term::in, _ArgumentName::in) = (_ArgumentUniv::out),
+        [will_not_call_mercury], "
+{
+	mercury.runtime.Errors.SORRY(""foreign code for argument"");
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
+}").
+
 det_arg(Type, ArgumentIndex) = Argument :-
-    (
-        arg(Type, ArgumentIndex) = Argument0
-    ->
+    ( arg(Type, ArgumentIndex) = Argument0 ->
         Argument = Argument0
     ;
         ( argument(Type, ArgumentIndex) = _ArgumentUniv ->
@@ -3579,12 +3670,17 @@ det_arg(Type, ArgumentIndex) = Argument :-
     ).
 
 det_argument(Type, ArgumentIndex) = Argument :-
-    (
-        argument(Type, ArgumentIndex) = Argument0
-    ->
+    ( argument(Type, ArgumentIndex) = Argument0 ->
         Argument = Argument0
     ;
         error("det_argument: argument out of range")
+    ).
+
+det_named_argument(Type, ArgumentName) = Argument :-
+    ( named_argument(Type, ArgumentName) = Argument0 ->
+        Argument = Argument0
+    ;
+        error("det_named_argument: no argument with that name")
     ).
 
 :- pragma foreign_proc("C", 
