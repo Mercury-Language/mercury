@@ -21,6 +21,7 @@ PATH="/home/mercury/public/mercury-0.6/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
@@ -52,6 +53,7 @@ case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;
+	taifun) 	OPTIMIZE=-O1 ;;
 	mercury) 	OPTIMIZE=-O3 ;;
 	hydra)		OPTIMIZE=-O2 ;;
 	muse)		OPTIMIZE=-O0 ;;
@@ -95,7 +97,7 @@ BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mer
 # df (disk free) command
 DF=df
 case $HOST in
-	kryten)		DF="df -k" ;;
+	kryten|taifun)	DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -393,6 +395,11 @@ case $HOST in
 			jump.gc fast.gc asm_jump.gc
 			asm_fast.gc asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.tr"
+		;;
+	taifun)
+		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr
+			asm_fast.gc.tr.debug"
 		;;
 	muse|munta)
 		GRADES="reg.gc asm_fast asm_fast.gc
