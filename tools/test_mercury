@@ -16,8 +16,7 @@ case $# in
 esac
 
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
-PATH="/home/mercury/public/mercury-0.5/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/mercury-0.6/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-0.8/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
@@ -83,6 +82,8 @@ case $ARCH in
 		INSTALL_DIR=/home/mercury/public/.a
 		;;
 esac
+
+PATH="$INSTALL_DIR/bin:$PATH"
 
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
