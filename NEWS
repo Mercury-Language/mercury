@@ -26,6 +26,8 @@ Changes to the standard library:
 * We've added func versions of the remaining preds in int.m that
   did not already have them.
 
+* We've added a new `bitmap' library module.
+
 NEWS for Mercury release 0.10:
 ------------------------------
 
