@@ -65,6 +65,7 @@
 		;	compile_to_c
 		;	compile_only
 	% Auxiliary output options
+		;	assume_gmake
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -147,7 +148,7 @@
 		;	constraint_propagation
 		;	optimize_unused_args
 		;	optimize_higher_order
-		;	optimize_constructor_recursion
+		;	optimize_constructor_last_call
 		;	excess_assign
 		;	follow_code
 		;	prev_code
@@ -263,6 +264,7 @@ option_defaults_2(output_option, [
 ]).
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
+	assume_gmake		-	bool(yes),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -385,7 +387,7 @@ option_defaults_2(optimization_option, [
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
-	optimize_constructor_recursion - bool(no),
+	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	intermodule_optimization -	bool(no),
 
@@ -518,6 +520,7 @@ long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
 
 % aux output options
+long_option("assume-gmake",		assume_gmake).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -615,8 +618,8 @@ long_option("optimize-unused-args",	optimize_unused_args).
 long_option("optimise-unused-args",	optimize_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
-long_option("optimise-constructor-recursion",	optimize_constructor_recursion).
-long_option("optimize-constructor-recursion",	optimize_constructor_recursion).
+long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
+long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
 
@@ -1016,10 +1019,16 @@ options_help_output -->
 
 options_help_aux_output -->
 	io__write_string("\n Auxiliary Output Options:\n"),
+	io__write_string("\t--no-assume-gmake\n"),
+	io__write_string("\t\tWhen generating `.dep' files, generate Makefile\n"),
+	io__write_string("\t\tfragments that use only the features of standard make;\n"),
+	io__write_string("\t\tdo not assume the availability of GNU Make extensions.\n"),
 	io__write_string("\t--generate-bytecode\n"),
-	io__write_string("\t\tOutput a bytecode form of the module for debugging.\n"),
+	io__write_string("\t\tOutput a bytecode form of the module for use\n"),
+	io__write_string("\t\tby an experimental debugger.\n"),
 	io__write_string("\t--generate-prolog\n"),
-	io__write_string("\t\tConvert the program to Prolog. Output to file `<module>.pl'.\n"),
+	io__write_string("\t\tConvert the program to Prolog. Output to file `<module>.pl'\n"),
+	io__write_string("\t\tor `<module>.nl' (depending the the dialect).\n"),
 	io__write_string("\t--prolog-dialect {sicstus,nu}\n"),
 	io__write_string("\t\tTarget the named dialect if generating Prolog code.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
@@ -1283,8 +1292,8 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
-	io__write_string("\t--optimize-constructor recursion\n"),
-	io__write_string("\t\tEnable the optimization of tail recursion modulo\n"),
+	io__write_string("\t--optimize-constructor-last-call\n"),
+	io__write_string("\t\tEnable the optimization of `last' calls that are followed by\n"),
 	io__write_string("\t\tconstructor application.\n").
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.

@@ -1103,13 +1103,12 @@ mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 	is det.
 
 mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(optimize_constructor_recursion, LCO),
+	globals__io_lookup_bool_option(optimize_constructor_last_call, LCO),
 	( { LCO = yes } ->
 		maybe_write_string(Verbose, "% Looking for LCO modulo constructor application ...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
-			update_proc_io(lco_modulo_constructors),
-			HLDS0, HLDS),
+			update_proc_io(lco_modulo_constructors), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

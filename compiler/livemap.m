@@ -71,18 +71,18 @@ livemap__build_2(Backinstrs, Livemap0, MaybeLivemap) :-
 	).
 
 	% Check whether the two livemaps agree on the set of live lvals
-	% at every label.
-	%
-	% Livemap1 will be empty in the first call, which must fail.
-	% On the later calls, both Livemaps should include the same set
-	% of labels, which ought to be every label in the procedure.
+	% at every label. They must agree on the set of labels as well.
+	% This is important. Livemap1 will be empty in the first call,
+	% so agreement only on the set of labels in Livemap1 is useless.
+	% The domain of Livemap2 should always be every label in the procedure.
+	% as should the domain of Livemap1 in every call after the first.
 
 :- pred livemap__equal_livemaps(livemap, livemap).
 :- mode livemap__equal_livemaps(in, in) is semidet.
 
 livemap__equal_livemaps(Livemap1, Livemap2) :-
-	\+ map__is_empty(Livemap1),
 	map__keys(Livemap1, Labels),
+	map__keys(Livemap2, Labels),
 	livemap__equal_livemaps_keys(Labels, Livemap1, Livemap2).
 
 :- pred livemap__equal_livemaps_keys(list(label), livemap, livemap).
