@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2003 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -733,9 +733,7 @@ time__mktime(TM) = time_t(Time) :-
 	// If the time we constructed is not in daylight savings time, but
 	// it should be, we need to subtract the DSTSavings.
 	if (N == 1 && gc.getTimeZone().inDaylightTime(Time) == false) {
-		Time.setTime(Time.getTime() -
-				((java.util.SimpleTimeZone) gc.getTimeZone()).
-				getDSTSavings());
+		Time.setTime(Time.getTime() - getDSTSavings(gc.getTimeZone()));
 		if (gc.getTimeZone().inDaylightTime(Time) == false) {
 			throw new RuntimeException(
 				""time__mktime: failed to correct for DST"");
@@ -745,14 +743,52 @@ time__mktime(TM) = time_t(Time) :-
 	// If the time we constructed is in daylight savings time, but
 	// should not be, we need to add the DSTSavings.
 	if (N == 0 && gc.getTimeZone().inDaylightTime(Time) == true) {
-		Time.setTime(Time.getTime() +
-				((java.util.SimpleTimeZone) gc.getTimeZone()).
-				getDSTSavings());
+		Time.setTime(Time.getTime() + getDSTSavings(gc.getTimeZone()));
 		if (gc.getTimeZone().inDaylightTime(Time) == true) {
 			throw new RuntimeException(
 				""time__mktime: failed to correct for DST"");
 		}
 	}
+").
+
+:- pragma foreign_code("Java",
+"
+/*
+** getDSTSavings():
+**	This method uses reflection to retrieve and call the getDSTSavings()
+**	method for a given TimeZone object.
+**
+**	The reason we do this is that for Java versions < 1.4, the
+**	TimeZone.getDSTSavings() method did not exist, but the
+**	SimpleTimeZone.getDSTSavings() method did, and the concrete instance of
+**	TimeZone used by GregorianCalender (which is what we use in this
+**	module) is a SimpleTimeZone.
+**	However, we can't just cast the TimeZone instance to SimpleTimeZone,
+**	because for Java versions >= 1.4, GregorianCalender no longer uses a
+**	SimpleTimeZone.  So in this case, what we really want is
+**	TimeZone.getDSTSavings(), but we can't just put that or the code won't
+**	compile for Java versions < 1.4.
+**
+**	Thus, the solution is to invoke the getDSTSavings() method using
+**	reflection, which will cover both cases.
+*/
+public static int
+getDSTSavings(java.util.TimeZone tz) {
+	try {
+		// Simulate
+		//	return tz.getDSTSavings()
+		// using reflection.
+
+		return ((java.lang.Integer) (tz.getClass().
+				getMethod(""getDSTSavings"", null).
+				invoke(tz, null))).intValue();
+	}
+	catch (java.lang.Exception e) {
+		throw new java.lang.RuntimeException(
+				""time__c_mktime: Failed to locate "" +
+				""getDSTSavings() method."");
+	}
+}
 ").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
