@@ -759,6 +759,11 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
   puts them at the front. If a static term originally appeared several times,
   it will now appear as a single static term with multiple references to it.
 
+<li> transform_llds.m is responsible for doing any source to source
+     transformations on the llds which are required to make the C output
+     acceptable to various C compilers.  Currently computed gotos can have
+     their maximum size limited to avoid a fixed limit in lcc.
+
 <li> Final generation of C code is done in llds_out.m.
 </ul>
 
@@ -953,6 +958,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-07-13 02:16:31 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-13 02:26:03 $ by $Author: petdr $@cs.mu.oz.au. <br>
 </body>
 </html>
