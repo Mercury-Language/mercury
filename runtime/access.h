@@ -7,7 +7,7 @@
 #define	ACCESS_H
 
 #ifndef		LIST_H
-#include	"list.h"
+#include	"dlist.h"
 #endif
 
 extern	void	reset(void);

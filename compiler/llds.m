@@ -228,6 +228,7 @@
 	%	label, and whether the predicate is exported
 	% exported(proc_label)
 	%	entry label, which can be accessed from any where.
+
 :- type label
 	--->		local(proc_label)
 	;		local(proc_label, int, cont_type)
@@ -285,22 +286,23 @@
 
 %-----------------------------------------------------------------------------%
 
-	% The following code is very straightforward and
-	% unremarkable.  The only thing of note is that is
-	% uses the logical io library, and that it uses DCGs
-	% to avoid having to explicitly shuffle the state-of-the-world
-	% arguments around all the time, as discussed in my hons thesis. -fjh.
-
-output_c_file(c_file(Name, Modules)) -->
-	{ string__append(Name, ".mod", FileName) },
+output_c_file(c_file(BaseName, Modules)) -->
+	{ string__append(BaseName, ".c", FileName) },
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
-		io__write_string("/* this code automatically generated - do no edit.*/\n"),
+		io__write_string("/* this code automatically generated - do not edit.*/\n\n"),
+		io__write_string("/*\n"),
+		io__write_string("INIT "),
+		output_init_name(BaseName),
 		io__write_string("\n"),
+		io__write_string("ENDINIT\n"),
+		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
 		output_c_module_list(Modules),
+		io__write_string("\n"),
+		output_c_module_init_list(BaseName, Modules),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -311,6 +313,90 @@ output_c_file(c_file(Name, Modules)) -->
 		io__write_string("' for output\n"),
 		io__set_exit_status(1)
 	).
+
+:- pred output_c_module_init_list(string, list(c_module), io__state, io__state).
+:- mode output_c_module_init_list(in, in, di, uo) is det.
+
+output_c_module_init_list(BaseName, Modules) -->
+	io__write_string("static void "),
+	output_bunch_name(BaseName, 0),
+	io__write_string("(void)\n"),
+	io__write_string("{\n"),
+	output_c_module_init_list_2(Modules, BaseName, 0, 40, 0, InitFuncs),
+	io__write_string("}\n\n"),
+	io__write_string("/* suppress gcc warning */\n"),
+	io__write_string("extern void "),
+	output_init_name(BaseName),
+	io__write_string("(void);\n"),
+	io__write_string("void "),
+	output_init_name(BaseName),
+	io__write_string("(void)\n"),
+	io__write_string("{\n"),
+	output_c_module_init_list_3(0, BaseName, InitFuncs),
+	io__write_string("}\n").
+
+:- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
+	io__state, io__state).
+:- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
+
+output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
+output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
+		Calls0, MaxCalls, InitFunc0, InitFunc) -->
+	( { Calls0 > MaxCalls } ->
+		io__write_string("}\n\n"),
+		{ InitFunc1 is InitFunc0 + 1 },
+		io__write_string("static void "),
+		output_bunch_name(BaseName, InitFunc1),
+		io__write_string("(void)\n"),
+		io__write_string("{\n"),
+		{ Calls1 = 1 }
+	;
+		{ InitFunc1 = InitFunc0 },
+		{ Calls1 is Calls0 + 1 }
+	),
+	io__write_string("\t"),
+	output_module_name(ModuleName),
+	io__write_string("();\n"),
+	output_c_module_init_list_2(Ms, BaseName,
+		Calls1, MaxCalls, InitFunc1, InitFunc).
+
+:- pred output_c_module_init_list_3(int, string, int, io__state, io__state).
+:- mode output_c_module_init_list_3(in, in, in, di, uo) is det.
+
+output_c_module_init_list_3(InitFunc0, BaseName, MaxInitFunc) -->
+	( { InitFunc0 > MaxInitFunc } ->
+		[]
+	;
+		io__write_string("\t"),
+		output_bunch_name(BaseName, InitFunc0),
+		io__write_string("();\n"),
+		{ InitFunc1 is InitFunc0 + 1},
+		output_c_module_init_list_3(InitFunc1, BaseName, MaxInitFunc)
+	).
+
+:- pred output_init_name(string, io__state, io__state).
+:- mode output_init_name(in, di, uo) is det.
+
+output_init_name(BaseName) -->
+	io__write_string("mercury__"),
+	io__write_string(BaseName),
+	io__write_string("__init").
+
+:- pred output_bunch_name(string, int, io__state, io__state).
+:- mode output_bunch_name(in, in, di, uo) is det.
+
+output_bunch_name(BaseName, Number) -->
+	io__write_string("mercury__"),
+	io__write_string(BaseName),
+	io__write_string("_bunch_"),
+	io__write_int(Number).
+
+:- pred output_module_name(string, io__state, io__state).
+:- mode output_module_name(in, di, uo) is det.
+
+output_module_name(ModuleName) -->
+	io__write_string("mercury__"),
+	io__write_string(ModuleName).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
 :- mode output_c_module_list(in, di, uo) is det.
@@ -323,15 +409,109 @@ output_c_module_list([M|Ms]) -->
 :- pred output_c_module(c_module, io__state, io__state).
 :- mode output_c_module(in, di, uo) is det.
 
-output_c_module(c_module(Name,Predicates)) -->
+output_c_module(c_module(ModuleName, Procedures)) -->
+	{ gather_labels(Procedures, Labels) },
 	io__write_string("\n"),
-	io__write_string("BEGIN_MODULE(mercury__"),
-	io__write_string(Name),
+	output_c_label_decl_list(Labels),
+	io__write_string("\n"),
+	io__write_string("BEGIN_MODULE("),
+	output_module_name(ModuleName),
 	io__write_string(")\n"),
+	output_c_label_init_list(Labels),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
-	output_c_procedure_list(Predicates),
+	output_c_procedure_list(Procedures),
 	io__write_string("END_MODULE\n").
+
+:- pred output_c_label_decl_list(list(label), io__state, io__state).
+:- mode output_c_label_decl_list(in, di, uo) is det.
+
+output_c_label_decl_list(Labels) -->
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	output_c_label_decl_list_2(Labels, ProcsPerFunc).
+
+:- pred output_c_label_decl_list_2(list(label), int, io__state, io__state).
+:- mode output_c_label_decl_list_2(in, in, di, uo) is det.
+
+output_c_label_decl_list_2([], _) --> [].
+output_c_label_decl_list_2([Label | Labels], ProcsPerFunc) -->
+	output_c_label_decl(Label, ProcsPerFunc),
+	output_c_label_decl_list_2(Labels, ProcsPerFunc).
+
+:- pred output_c_label_decl(label, int, io__state, io__state).
+:- mode output_c_label_decl(in, in, di, uo) is det.
+
+output_c_label_decl(Label, ProcsPerFunc) -->
+	(
+		{ Label = exported(_) },
+		io__write_string("Define_extern_entry("),
+		output_label(Label),
+		io__write_string(");\n")
+	;
+		{ Label = local(_) },
+		( { ProcsPerFunc = 0 } ->
+			io__write_string("Declare_local("),
+			output_label(Label),
+			io__write_string(");\n")
+		;
+			io__write_string("Define_extern_entry("),
+			output_label(Label),
+			io__write_string(");\n")
+		)
+	;
+		{ Label = local(_, _, _) },
+		io__write_string("Declare_label("),
+		output_label(Label),
+		io__write_string(");\n")
+	).
+
+:- pred output_c_label_init_list(list(label), io__state, io__state).
+:- mode output_c_label_init_list(in, di, uo) is det.
+
+output_c_label_init_list(Labels) -->
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	output_c_label_init_list_2(Labels, ProcsPerFunc).
+
+:- pred output_c_label_init_list_2(list(label), int, io__state, io__state).
+:- mode output_c_label_init_list_2(in, in, di, uo) is det.
+
+output_c_label_init_list_2([], _) --> [].
+output_c_label_init_list_2([Label | Labels], ProcsPerFunc) -->
+	output_c_label_init(Label, ProcsPerFunc),
+	output_c_label_init_list_2(Labels, ProcsPerFunc).
+
+:- pred output_c_label_init(label, int, io__state, io__state).
+:- mode output_c_label_init(in, in, di, uo) is det.
+
+output_c_label_init(Label, ProcPerFunc) -->
+	(
+		{ Label = exported(_) },
+		io__write_string("\tinit_entry("),
+		output_label(Label),
+		io__write_string(");\n")
+	;
+		{ Label = local(_) },
+		( { ProcPerFunc = 0 } ->
+			io__write_string("\tinit_local("),
+			output_label(Label),
+			io__write_string(");\n")
+		;
+			io__write_string("\tinit_entry("),
+			output_label(Label),
+			io__write_string(");\n")
+		)
+	;
+		{ Label = local(_, _, _) },
+		io__write_string("\tinit_label("),
+		output_label(Label),
+		io__write_string(");\n")
+	).
+
+	% The following code is very straightforward and
+	% unremarkable.  The only thing of note is that is
+	% uses the logical io library, and that it uses DCGs
+	% to avoid having to explicitly shuffle the state-of-the-world
+	% arguments around all the time, as discussed in my hons thesis. -fjh.
 
 :- pred output_c_procedure_list(list(c_procedure), io__state, io__state).
 :- mode output_c_procedure_list(in, di, uo) is det.
@@ -465,8 +645,7 @@ output_instruction(modframe(FailureContinuation)) -->
 	io__write_string("); }").
 
 output_instruction(label(Label)) -->
-	output_label(Label),
-	io__write_string(":\n\t;"),
+	output_label_defn(Label),
 	maybe_output_update_prof_counter(Label).
 	
 output_instruction(goto(CodeAddr, CallerAddr)) -->
@@ -863,8 +1042,36 @@ output_label_list_2([Label | Labels]) -->
 	io__write_string(")"),
 	output_label_list_2(Labels).
 
-% Note that the suffixes _l etc. are interpreted by mod2c,
-% which generates different code depending on the suffix.
+:- pred output_label_defn(label, io__state, io__state).
+:- mode output_label_defn(in, di, uo) is det.
+
+output_label_defn(exported(ProcLabel)) -->
+	io__write_string("Define_entry("),
+	output_proc_label(ProcLabel),
+	io__write_string(");").
+output_label_defn(local(ProcLabel)) -->
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	% if we are splitting procs between functions, then
+	% every procedure could be referred to by a procedure
+	% in a different function, so don't make them local
+	( { ProcsPerFunc = 0 } ->
+		io__write_string("Define_local("),
+		output_proc_label(ProcLabel),
+		io__write_string("_l);")	% l for "local".
+	;
+		io__write_string("Define_entry("),
+		output_proc_label(ProcLabel),
+		io__write_string(");")
+	).
+output_label_defn(local(ProcLabel, Num, _)) -->
+	io__write_string("Define_label("),
+	output_proc_label(ProcLabel),
+	io__write_string("_i"),		% i for "internal" (not Intel ;-)
+	io__write_int(Num),
+	io__write_string(");").
+
+% Note that the suffixes _l etc. used to be interpreted by mod2c,
+% which generated different code depending on the suffix.
 
 output_label(exported(ProcLabel)) -->
 	output_proc_label(ProcLabel).
@@ -1411,6 +1618,33 @@ llds__mangle_char(C, Chars) :-
 	;
 		Chars = [C]
 	).
+
+:- pred gather_labels(list(c_procedure), list(label)).
+:- mode gather_labels(in, out) is det.
+
+gather_labels(Procs, Labels) :-
+	gather_labels_2(Procs, [], Labels1),
+	list__reverse(Labels1, Labels).
+
+:- pred gather_labels_2(list(c_procedure), list(label), list(label)).
+:- mode gather_labels_2(in, di, uo) is det.
+
+gather_labels_2([], Labels, Labels).
+gather_labels_2([c_procedure(_, _, _, Instrs) | Procs], Labels0, Labels) :-
+	gather_labels_from_instrs(Instrs, Labels0, Labels1),
+	gather_labels_2(Procs, Labels1, Labels).
+
+:- pred gather_labels_from_instrs(list(instruction), list(label), list(label)).
+:- mode gather_labels_from_instrs(in, di, uo) is det.
+
+gather_labels_from_instrs([], Labels, Labels).
+gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
+	( Instr = label(Label) - _ ->
+		Labels1 = [Label | Labels0]
+	;
+		Labels1 = Labels0
+	),
+	gather_labels_from_instrs(Instrs, Labels1, Labels).
 
 :- end_module llds.
 

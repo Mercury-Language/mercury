@@ -58,39 +58,13 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 	vn__flush_start_msg(Node),
 	(
 		{ Node = node_shared(Vn) },
-		{ vn__choose_loc_for_shared_vn(Vn, Vnlval, VnTables0,
-			Templocs0, Templocs1) },
-		( { vn__search_desired_value(Vnlval, Vn, VnTables0) } ->
-			vn__flush_also_msg(Vnlval),
-			{ list__delete_all(Nodes0, node_lval(Vnlval), Nodes) }
-		;
-			{ Nodes = Nodes0 }
-		),
-		{ vn__ensure_assignment(Vnlval, Vn,
-			VnTables0, VnTables, Templocs1, Templocs, Instrs) }
+		vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
+			Templocs0, Templocs, Instrs)
+
 	;
 		{ Node = node_lval(Vnlval) },
-		{ vn__lookup_desired_value(Vnlval, DesVn, VnTables0) },
-		{ vn__lookup_current_value(Vnlval, CurVn, VnTables0) },
-		(
-			{ CurVn = DesVn },
-			{ vn__vnlval_access_vns(Vnlval, AccessVns) },
-			{ AccessVns = [_|_] }
-			% XXX { vn__vnlval_access_vns(Vnlval, [_|_]) }
-		->
-			% Even if a vnlval already has the right value,
-			% we must make sure its access path will not be
-			% needed again. This requires its storage in a
-			% register or temporary if it is ever used again.
-			vn__flush_node(node_shared(DesVn), Ctrlmap,
-				Nodes0, Nodes, VnTables0, VnTables,
-				Templocs0, Templocs, Instrs)
-		;
-			{ vn__ensure_assignment(Vnlval, DesVn,
-				VnTables0, VnTables,
-				Templocs0, Templocs, Instrs) },
-			{ Nodes = Nodes0 }
-		)
+		vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
+			VnTables0, VnTables, Templocs0, Templocs, Instrs)
 	;
 		{ Node = node_origlval(Vnlval) },
 		{ Nodes = Nodes0 },
@@ -105,6 +79,66 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 			VnTables0, VnTables, Templocs0, Templocs, Instrs) }
 	),
 	vn__flush_end_msg(Instrs, VnTables).
+
+%-----------------------------------------------------------------------------%
+
+:- pred vn__flush_lval_node(vnlval, ctrlmap, list(vn_node), list(vn_node),
+	vn_tables, vn_tables, templocs, templocs, list(instruction),
+	io__state, io__state).
+:- mode vn__flush_lval_node(in, in, di, uo, di, uo, di, uo, out, di, uo) is det.
+
+vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
+		VnTables0, VnTables, Templocs0, Templocs, Instrs) -->
+	{ vn__lookup_desired_value(Vnlval, DesVn, "vn__flush_lval_node",
+		VnTables0) },
+	{ vn__lookup_current_value(Vnlval, CurVn, "vn__flush_lval_node",
+		VnTables0) },
+	(
+		% Even if a vnlval already has the right value,
+		% we must make sure its access path will not be
+		% needed again. This requires its storage in a
+		% register or temporary if it is ever used again.
+
+		{ CurVn = DesVn },
+		{ vn__vnlval_access_vns(Vnlval, AccessVns) },
+		{ AccessVns = [_|_] },
+		{ vn__lookup_uses(DesVn, Uses, "vn__flush_lval_node",
+			VnTables0) },
+		{ vn__real_uses(Uses, RealUses, VnTables0) },
+		{ RealUses = [_|_] }
+	->
+		% This path should be taken only if some circularities
+		% are broken arbitrarily. Otherwise, the shared node
+		% should come before the user lval nodes.
+		vn__flush_node(node_shared(DesVn), Ctrlmap,
+			Nodes0, Nodes, VnTables0, VnTables,
+			Templocs0, Templocs, Instrs)
+	;
+		{ vn__ensure_assignment(Vnlval, DesVn,
+			VnTables0, VnTables,
+			Templocs0, Templocs, Instrs) },
+		{ Nodes = Nodes0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred vn__flush_shared_node(vn, list(vn_node), list(vn_node),
+	vn_tables, vn_tables, templocs, templocs, list(instruction),
+	io__state, io__state).
+:- mode vn__flush_shared_node(in, di, uo, di, uo, di, uo, out, di, uo) is det.
+
+vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
+		Templocs0, Templocs, Instrs) -->
+	{ vn__choose_loc_for_shared_vn(Vn, Vnlval, VnTables0,
+		Templocs0, Templocs1) },
+	( { vn__search_desired_value(Vnlval, Vn, VnTables0) } ->
+		vn__flush_also_msg(Vnlval),
+		{ list__delete_all(Nodes0, node_lval(Vnlval), Nodes) }
+	;
+		{ Nodes = Nodes0 }
+	),
+	{ vn__ensure_assignment(Vnlval, Vn,
+		VnTables0, VnTables, Templocs1, Templocs, Instrs) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -165,7 +199,8 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Vn_instr = vn_mark_hp(Vnlval),
 		vn__flush_access_path(Vnlval, [src_ctrl(N)], Lval,
 			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
-		vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn, VnTables1),
+		vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn,
+			"vn__flush_ctrl_node", VnTables1),
 		vn__set_current_value(Vnlval, OldhpVn, VnTables1, VnTables),
 		Instr = mark_hp(Lval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
@@ -211,13 +246,15 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 
 vn__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 	(
-		vn__lookup_current_locs(Vn, CurrentLocs, VnTables),
+		vn__lookup_current_locs(Vn, CurrentLocs,
+			"vn__choose_loc_for_shared_vn", VnTables),
 		vn__choose_cheapest_loc(CurrentLocs, BestHolder),
 		vn__vnlval_access_vns(BestHolder, []),
 		(
 			vn__classify_loc_cost(BestHolder, 0)
 		;
-			vn__lookup_uses(Vn, Uses, VnTables),
+			vn__lookup_uses(Vn, Uses,
+				"vn__choose_loc_for_shared_vn", VnTables),
 			list__delete_first(Uses, src_liveval(BestHolder),
 				NewUses),
 			( NewUses = [] ; NewUses = [_] )
@@ -232,7 +269,8 @@ vn__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 		(
 			vn__classify_loc_cost(BestUser, 0)
 		;
-			vn__lookup_uses(Vn, Uses, VnTables),
+			vn__lookup_uses(Vn, Uses,
+				"vn__choose_loc_for_shared_vn", VnTables),
 			list__delete_first(Uses, src_liveval(BestUser), [])
 		)
 	->
@@ -274,7 +312,8 @@ vn__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 		% \+ Live = vn_field(_, _, _)
 	->
 		( vn__search_current_value(Live, Vn, VnTables) ->
-			vn__lookup_uses(Vn, Uses, VnTables),
+			vn__lookup_uses(Vn, Uses, "vn__find_cheap_users_2",
+				VnTables),
 			(
 				Uses = []
 			->
@@ -288,7 +327,9 @@ vn__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 						VnTables)
 				->
 					User = vn_reg(_),
-					vn__lookup_uses(UserVn, [], VnTables)
+					vn__lookup_uses(UserVn, [],
+						"vn__find_cheap_users_2",
+						VnTables)
 				;
 					true
 				)
@@ -474,8 +515,8 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 			VnTables0, VnTables3, Templocs0, Templocs, Instrs)
 	;
 		IsConst = no,
-		vn__lookup_current_locs(Vn, Locs, VnTables0),
-		vn__lookup_uses(Vn, Uses, VnTables0),
+		vn__lookup_current_locs(Vn, Locs, "vn__flush_vn", VnTables0),
+		vn__lookup_uses(Vn, Uses, "vn__flush_vn", VnTables0),
 		list__delete_all(Uses, Src, NewUses),
 		( vn__choose_cheapest_loc(Locs, Loc) ->
 			(
@@ -525,11 +566,11 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 	),
 	vn__del_old_use(Vn, Src, VnTables3, VnTables),
 	true.
-	% vn__lookup_uses(Vn, NewUses, VnTables),
+	% vn__lookup_uses(Vn, NewUses, "vn__flush_vn", VnTables),
 	% ( NewUses = [_|_] ->
 	% 	NewlyFree = NewlyFree0
 	% ;
-	% 	vn__lookup_current_locs(Vn, NewlyFree1, VnTables0)
+	% 	vn__lookup_current_locs(Vn, NewlyFree1, "vn__flush_vn", VnTables0)
 	% 	list__append(NewlyFree0, NewlyFree1, NewlyFree)
 	% ).
 
@@ -541,7 +582,7 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 
 vn__flush_vn_value(Vn, Srcs, Rval, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs) :-
-	vn__lookup_defn(Vn, Vnrval, VnTables0),
+	vn__lookup_defn(Vn, Vnrval, "vn__flush_vn_value", VnTables0),
 	(
 		Vnrval = vn_origlval(Vnlval),
 		( Vnlval = vn_hp ->
@@ -550,12 +591,13 @@ vn__flush_vn_value(Vn, Srcs, Rval, VnTables0, VnTables, Templocs0, Templocs,
 		;
 			true
 		),
-		vn__lookup_current_locs(Vn, Locs0, VnTables0),
+		vn__lookup_current_locs(Vn, Locs0, "vn__flush_vn_value",
+			VnTables0),
 		(
 			% For code understandability, and for aesthetics,
 			% we prefer to take the value from its original home,
 			% but only if by doing so we incur no cost penalty.
-			vn__lookup_current_value(Vnlval, CurVn, VnTables0),
+			vn__lookup_current_value(Vnlval, CurVn, "vn__flush_vn_value", VnTables0),
 			Vn = CurVn
 		->
 			Locs1 = [Vnlval | Locs0]
@@ -576,13 +618,15 @@ vn__flush_vn_value(Vn, Srcs, Rval, VnTables0, VnTables, Templocs0, Templocs,
 	;
 		Vnrval = vn_mkword(Tag, SubVn1),
 		(
-			vn__lookup_defn(SubVn1, SubVnrval, VnTables0),
+			vn__lookup_defn(SubVn1, SubVnrval, "vn__flush_vn_value",
+				VnTables0),
 			SubVnrval = vn_origlval(vn_hp)
 		->
 			vn__flush_vn(SubVn1, [src_vn(Vn) | Srcs], Rval1,
 				VnTables0, VnTables,
 				Templocs0, Templocs, Instrs),
-			vn__lookup_current_locs(Vn, Locs, VnTables),
+			vn__lookup_current_locs(Vn, Locs, "vn__flush_vn_value",
+				VnTables),
 			( Locs = [Loc0 | _] ->
 				% see below for an explanation
 				vn__flush_access_path(Loc0, [], Lval,
@@ -634,7 +678,7 @@ vn__flush_old_hp(Srcs0, ReturnRval, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs) :-
 
 	% First take care of the "assignment to hp" part of incr_hp.
-	vn__lookup_desired_value(vn_hp, NewhpVn, VnTables0),
+	vn__lookup_desired_value(vn_hp, NewhpVn, "vn__flush_old_hp", VnTables0),
 	vn__flush_hp_incr(NewhpVn, Srcs0, MaybeRval, VnTables0, VnTables1,
 		Templocs0, Templocs1, IncrInstrs),
 	(
@@ -654,7 +698,8 @@ vn__flush_old_hp(Srcs0, ReturnRval, VnTables0, VnTables, Templocs0, Templocs,
 	vn__set_current_value(vn_hp, NewhpVn, VnTables1, VnTables2),
 
 	% Find out whether we should tag the old hp, and if so, with what.
-	vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn, VnTables2),
+	vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn, "vn__flush_old_hp",
+		VnTables2),
 	( Srcs0 = [Src0Prime | Srcs1Prime] ->
 		Src0 = Src0Prime,
 		Srcs1 = Srcs1Prime
@@ -662,11 +707,12 @@ vn__flush_old_hp(Srcs0, ReturnRval, VnTables0, VnTables, Templocs0, Templocs,
 		error("empty src list in vn__flush_old_hp")
 	),
 	vn__del_old_use(OldhpVn, Src0, VnTables2, VnTables3),
-	vn__lookup_uses(OldhpVn, OldhpUses, VnTables3),
+	vn__lookup_uses(OldhpVn, OldhpUses, "vn__flush_old_hp", VnTables3),
 	(
 		OldhpUses = [],
 		Src0 = src_vn(UserVn),
-		vn__lookup_defn(UserVn, UserVnrval, VnTables3),
+		vn__lookup_defn(UserVn, UserVnrval, "vn__flush_old_hp",
+			VnTables3),
 		UserVnrval = vn_mkword(Tag, OldhpVn)
 	->
 		MaybeTag = yes(Tag),
@@ -754,7 +800,7 @@ vn__flush_hp_incr(Vn, Srcs, MaybeRval, VnTables0, VnTables,
 			Templocs0, Templocs, Instrs),
 		MaybeRval = yes(Rval)
 	;
-		vn__lookup_defn(Vn, Vnrval, VnTables0),
+		vn__lookup_defn(Vn, Vnrval, "vn__flush_hp_incr", VnTables0),
 		(
 			Vnrval = vn_origlval(Vnlval),
 			( Vnlval = vn_hp ->
@@ -834,7 +880,7 @@ vn__flush_hp_incr(Vn, Srcs, MaybeRval, VnTables0, VnTables,
 
 vn__free_of_old_hp([], _VnTables).
 vn__free_of_old_hp([Vn | Vns], VnTables) :-
-	vn__lookup_defn(Vn, Vnrval, VnTables),
+	vn__lookup_defn(Vn, Vnrval, "vn__free_of_old_hp", VnTables),
 	\+ Vnrval = vn_origlval(vn_hp),
 	vn__free_of_old_hp(Vns, VnTables).
 
@@ -842,7 +888,7 @@ vn__free_of_old_hp([Vn | Vns], VnTables) :-
 :- mode vn__rec_find_ref_vns(in, out, in) is det.
 
 vn__rec_find_ref_vns(Vn, [Vn | DeepVns], VnTables) :-
-	vn__lookup_defn(Vn, Vnrval, VnTables),
+	vn__lookup_defn(Vn, Vnrval, "vn__rec_find_ref_vns", VnTables),
 	vn__find_sub_vns(Vnrval, ImmedVns),
 	vn__rec_find_ref_vns_list(ImmedVns, DeepVns, VnTables).
 
@@ -961,7 +1007,8 @@ vn__maybe_save_prev_value(Vnlval, Vn, ForbiddenLvals,
 		vn__search_uses(Vn, Uses, VnTables0),
 		Uses = [_|_],
 		vn__is_const_expr(Vn, no, VnTables0),
-		vn__lookup_current_locs(Vn, Locs0, VnTables0),
+		vn__lookup_current_locs(Vn, Locs0, "vn__maybe_save_prev_value",
+			VnTables0),
 		list__delete_all(Locs0, Vnlval, Locs),
 		vn__no_good_copies(Locs)
 	->

@@ -128,6 +128,13 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 :- mode vn__optimize_fragment(in, in, in, in, out, out, di, uo) is det.
 
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
+	% io__write_string("in vn__optimize_fragment starting at\n"),
+	% ( { Instrs0 = [Uinstr0 - _ | _] } ->
+	% 	output_instruction(Uinstr0),
+	% 	io__write_string("\n")
+	% ;
+	% 	{ error("empty instruction sequence in vn__optimize_fragment") }
+	% ),
 	{ vn__build_block_info(Instrs0, Livemap, ParEntries, LabelNo0,
 		VnTables0, Liveset, SeenIncr, Tuple0) },
 	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
@@ -160,11 +167,11 @@ vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 
 		{ VnCost < OrigCost ->
 			Instrs = Instrs6,
-			Tuple = Tuple0
+			vn__build_block_info(Instrs6, Livemap, ParEntries,
+				LabelNo0, _, _, _, Tuple)
 		;
 			Instrs = Instrs0,
-			vn__build_block_info(Instrs0, Livemap, ParEntries,
-				LabelNo0, _, _, _, Tuple)
+			Tuple = Tuple0
 		}
 	;
 		{ Maybe = no },

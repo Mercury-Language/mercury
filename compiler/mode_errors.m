@@ -361,15 +361,11 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 :- mode report_mode_error_implied_mode(mode_info_ui, in, in, in, di, uo) is det.
 
 report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
-		%
 		% This "error" message is really a "sorry, not implemented"
 		% message.  We only print the message if we are actually
 		% going to generating code.
-		%
 	globals__io_lookup_bool_option(generate_code, GenerateCode),
-	globals__io_lookup_bool_option(compile, Compile),
-	globals__io_lookup_bool_option(compile_to_c, CompileToC),
-	( { GenerateCode = yes ; Compile = yes ; CompileToC = yes } ->
+	( { GenerateCode = yes } ->
 		{ mode_info_get_context(ModeInfo, Context) },
 		{ mode_info_get_varset(ModeInfo, VarSet) },
 		{ mode_info_get_instvarset(ModeInfo, InstVarSet) },

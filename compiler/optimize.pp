@@ -16,8 +16,12 @@
 
 :- import_module llds, io, options.
 
-:- pred optimize__main(c_file, c_file, io__state, io__state).
+:- pred optimize__main(list(c_procedure), list(c_procedure),
+	io__state, io__state).
 :- mode optimize__main(in, out, di, uo) is det.
+
+:- pred optimize__proc(c_procedure, c_procedure, io__state, io__state).
+:- mode optimize__proc(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -28,40 +32,10 @@
 :- import_module jumpopt, labelopt, frameopt, peephole, value_number.
 :- import_module int, std_util.
 
-	% Boring LLDS traversal code.
-
-optimize__main(c_file(Name, Modules0), c_file(Name, Modules)) -->
-	optimize__module_list(Modules0, Modules).
-
-:- pred optimize__module_list(list(c_module), list(c_module),
-	io__state, io__state).
-:- mode optimize__module_list(in, out, di, uo) is det.
-
-optimize__module_list([], []) --> [].
-optimize__module_list([M0|Ms0], [M|Ms]) -->
-	optimize__module(M0, M),
-	optimize__module_list(Ms0, Ms).
-
-:- pred optimize__module(c_module, c_module, io__state, io__state).
-:- mode optimize__module(in, out, di, uo) is det.
-
-optimize__module(c_module(Name, Procs0), c_module(Name, Procs)) -->
-	optimize__proc_list(Procs0, Procs).
-
-:- pred optimize__proc_list(list(c_procedure), list(c_procedure),
-	io__state, io__state).
-:- mode optimize__proc_list(in, out, di, uo) is det.
-
-optimize__proc_list([], []) --> [].
-optimize__proc_list([P0|Ps0], [P|Ps]) -->
-	optimize__proc(P0, P),
-	optimize__proc_list(Ps0, Ps).
-
-	% We short-circuit jump sequences before normal peepholing
-	% to create more opportunities for use of the tailcall macro.
-
-:- pred optimize__proc(c_procedure, c_procedure, io__state, io__state).
-:- mode optimize__proc(in, out, di, uo) is det.
+optimize__main([], []) --> [].
+optimize__main([Proc0|Procs0], [Proc|Procs]) -->
+	optimize__proc(Proc0, Proc),
+	optimize__main(Procs0, Procs).
 
 optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
 		   c_procedure(Name, Arity, Mode, Instructions)) -->
@@ -100,6 +74,9 @@ optimize__repeat(Iter, DoVn, Instructions0, Instructions) -->
 	;
 		{ Instructions = Instructions1 }
 	).
+
+	% We short-circuit jump sequences before normal peepholing
+	% to create more opportunities for use of the tailcall macro.
 
 :- pred optimize__repeated(list(instruction), bool, list(instruction), bool,
 	io__state, io__state).

@@ -113,7 +113,7 @@ call_engine_label:
 	static bool prof_initialized = FALSE;
 	if (!prof_initialized)
 	{
-		makeentry("call_engine_label", LABEL(call_engine_label));
+		insert_entry("call_engine_label", LABEL(call_engine_label));
 		prof_initialized = TRUE;
 	}
 }

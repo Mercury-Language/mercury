@@ -19,16 +19,16 @@ MGNUCFLAGS	= $(CFLAGS)
 
 #-----------------------------------------------------------------------------#
 
-HDRS		= access.h aux.h conf.h dummy.h engine.h getopt.h imp.h init.h \
-		  label.h list.h memory.h regorder.h regs.h std.h table.h \
-		  tags.h timing.h wrapper.h ext_signal.h ext_stdio.h \
+HDRS		= access.h aux.h conf.h dlist.h dummy.h engine.h getopt.h \
+		  imp.h init.h label.h memory.h regorder.h regs.h std.h \
+		  table.h tags.h timing.h wrapper.h ext_signal.h ext_stdio.h \
 		  ext_stdlib.h
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h
-MODS		= engine.mod io.mod wrapper.mod call.mod solutions.mod
-OBJS		= engine.o io.o wrapper.o call.o \
-		  access.o aux.o dummy.o label.o \
-		  list.o memory.o table.o timing.o solutions.o
+MODS		= engine.mod io_rt.mod wrapper.mod call.mod solutions.mod
+OBJS		= engine.o io_rt.o wrapper.o call.o solutions.o \
+		  access.o aux.o dlist.o dummy.o label.o \
+		  memory.o table.o timing.o
 PIC_OBJS	= $(OBJS:.o=.$(PIC_O))
 
 #-----------------------------------------------------------------------------#
@@ -77,7 +77,7 @@ install_lib: libmer.a libmer.$(SO)
 #-----------------------------------------------------------------------------#
 
 # prevent GNU make from removing these intermediate files
-dont_remove: engine.c io.c wrapper.c call.c solutions.c
+dont_remove: engine.c io_rt.c wrapper.c call.c solutions.c
 
 #-----------------------------------------------------------------------------#
 

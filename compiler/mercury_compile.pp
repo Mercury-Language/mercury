@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % File: mercury-compile.m.
-% Main author: fjh.
+% Main authors: fjh, zs
 
 % This is the top-level of the Mercury compiler.
 
@@ -25,7 +25,7 @@
 
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
-:- import_module polymorphism, garbage_out, shapes.
+:- import_module cse_detection, polymorphism, garbage_out, shapes.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
@@ -35,124 +35,118 @@
 :- import_module negation, call_graph.
 :- import_module common, require.
 
-
 %-----------------------------------------------------------------------------%
 
 main -->
 	io__command_line_arguments(Args0),
-	{ getopt__process_options(Args0, Args, Result) },
+	{ getopt__process_options(Args0, Args, Result0) },
+	postprocess_options(Result0, Result), 
 	main_2(Result, Args).
 
-	% Validate command line arguments
+% Convert string-valued options into the appropriate enumeration types,
+% and process implications among the options.
 
-:- pred main_2(maybe_option_table, list(string), io__state, io__state).
-:- mode main_2(in, in, di, uo) is det.
+:- pred postprocess_options(maybe_option_table, maybe(string),
+	io__state, io__state).
+:- mode postprocess_options(in, out, di, uo) is det.
 
-main_2(error(ErrorMessage), _) -->
-	usage_error(ErrorMessage).
-
-main_2(ok(OptionTable0), Args) -->
-	{ map__lookup(OptionTable0, help, Help) },
-	( { Help = bool(yes) } ->
-	    long_usage
-	; { Args = [] } ->
-	    usage
-        ;
-	    % work around for NU-Prolog memory management problems
-	    (
-		{ map__search(OptionTable0, heap_space, int(HeapSpace)) }
-	    ->
-	        io__preallocate_heap_space(HeapSpace)
-	    ;
-		[]
-	    ),
-    
-	    % convert string-valued options into values of the appropriate
-	    % enumeration types, initialize the global data, and then
-	    % process the modules
-
-	    { map__lookup(OptionTable0, grade, GradeOpt) },
-	    (   
+postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
+postprocess_options(ok(OptionTable0), Error) -->
+	{ map__lookup(OptionTable0, grade, GradeOpt) },
+	(   
 		{ GradeOpt = string(GradeString) },
 		{ convert_gc_grade_option(GradeString, OptionTable0,
 			OptionTable) }
-	    ->
-	        { map__lookup(OptionTable, gc, GC_Method0) },
-	        (
-		    { GC_Method0 = string(GC_Method_String) },
-		    { convert_gc_method(GC_Method_String, GC_Method) }
-	        ->
-	            { map__lookup(OptionTable, tags, Tags_Method0) },
-	            ( 
-		        { Tags_Method0 = string(Tags_Method_String) },
-		        { convert_tags_method(Tags_Method_String,
-				Tags_Method1) }
-		    ->
-			% --gc conservative implies --tags none
-			{ GC_Method = conservative ->
-				Tags_Method = none
-			;
-				Tags_Method = Tags_Method1
-			},
-		        globals__io_init(OptionTable, GC_Method, Tags_Method),
-			% --gc conservative implies --no-reclaim-heap-*
-			( { GC_Method = conservative } ->
-				globals__io_set_option(
-					reclaim_heap_on_semidet_failure,
-					bool(no)
+	->
+		{ map__lookup(OptionTable, gc, GC_Method0) },
+		(
+			{ GC_Method0 = string(GC_Method_String) },
+			{ convert_gc_method(GC_Method_String, GC_Method) }
+		->
+			{ map__lookup(OptionTable, tags, Tags_Method0) },
+			( 
+				{ Tags_Method0 = string(Tags_Method_String) },
+				{ convert_tags_method(Tags_Method_String,
+					Tags_Method1) }
+			->
+				% work around for NU-Prolog problems
+				( { map__search(OptionTable0, heap_space,
+					int(HeapSpace)) }
+				->
+					io__preallocate_heap_space(HeapSpace)
+				;
+					[]
 				),
-				globals__io_set_option(
-					reclaim_heap_on_nondet_failure,
-					bool(no)
-				)
+				% --gc conservative implies --tags none
+				{ GC_Method = conservative ->
+					Tags_Method = none
+				;
+					Tags_Method = Tags_Method1
+				},
+				globals__io_init(OptionTable, GC_Method,
+					Tags_Method),
+				% --gc conservative implies --no-reclaim-heap-*
+				( { GC_Method = conservative } ->
+					globals__io_set_option(
+						reclaim_heap_on_semidet_failure,
+						bool(no)
+					),
+					globals__io_set_option(
+						reclaim_heap_on_nondet_failure,
+						bool(no)
+					)
+				;
+					[]
+				),
+				% --tags none implies --num-tag-bits 0
+				( { Tags_Method = none } ->
+					globals__io_set_option(num_tag_bits,
+						int(0))
+				;	
+					[]
+				),
+				% --very-verbose implies --verbose
+				globals__io_lookup_bool_option(very_verbose,
+					VeryVerbose),
+				( { VeryVerbose = yes } ->
+					globals__io_set_option(verbose,
+						bool(yes))
+				;	
+					[]
+				),
+				% --link implies --compile
+				globals__io_lookup_bool_option(link, Link),
+				( { Link = yes } ->
+					globals__io_set_option(compile,
+						bool(yes))
+				;	
+					[]
+				),
+				% --compile implies --generate-code
+				globals__io_lookup_bool_option(compile,
+					Compile),
+				( { Compile = yes } ->
+					globals__io_set_option(generate_code,
+						bool(yes))
+				;	
+					[]
+				),
+				{ Error = no }
 			;
-				[]
-			),
-			% --tags none implies --num-tag-bits 0
-			( { Tags_Method = none } ->
-				globals__io_set_option(num_tag_bits, int(0))
-			;	
-				[]
-			),
-			% --very-verbose implies --verbose
-			globals__io_lookup_bool_option(very_verbose,
-				VeryVerbose),
-			( { VeryVerbose = yes } ->
-				globals__io_set_option(verbose, bool(yes))
-			;	
-				[]
-			),
-		        { strip_module_suffixes(Args, ModuleNames) },
-		        process_module_list(ModuleNames),
-			globals__io_lookup_bool_option(link, Link),
-			io__get_exit_status(ExitStatus),
-			( { Link = yes, ExitStatus = 0 } ->
-			    link_module_list(ModuleNames)
-			;
-			    []
+				{ Error = yes("Invalid tags option (must be `none', `low' or `high')") }
 			)
-		    ;
-		        usage_error(
-			    "Invalid tags option (must be `none', `low' or `high')"
-		        )
-		    )
-	        ;
-		    usage_error(
-	    "Invalid GC option (must be `none', `conservative' or `accurate')"
-		    )
-	        )
-	    ;
-		usage_error("Invalid grade option")
-	    )
+		;
+			{ Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+		)
+	;
+		{ Error = yes("Invalid grade option") }
 	).
 
 :- pred convert_gc_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
 convert_gc_grade_option(GC_Grade) -->
-	( { GC_Grade = "" } ->
-		[]
-	; { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
+	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
 		set_string_opt(gc, "conservative"),
 		convert_grade_option(Grade)
 	;
@@ -163,6 +157,7 @@ convert_gc_grade_option(GC_Grade) -->
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
+convert_grade_option("") --> [].
 convert_grade_option("asm_fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
@@ -261,6 +256,29 @@ long_usage -->
 	options_help.
 
 %-----------------------------------------------------------------------------%
+
+:- pred main_2(maybe(string), list(string), io__state, io__state).
+:- mode main_2(in, in, di, uo) is det.
+
+main_2(yes(ErrorMessage), _) -->
+	usage_error(ErrorMessage).
+main_2(no, Args) -->
+	globals__io_lookup_bool_option(help, Help),
+	( { Help = yes } ->
+		long_usage
+	; { Args = [] } ->
+		usage
+        ;
+		{ strip_module_suffixes(Args, ModuleNames) },
+		process_module_list(ModuleNames),
+		globals__io_lookup_bool_option(link, Link),
+		io__get_exit_status(ExitStatus),
+		( { Link = yes, ExitStatus = 0 } ->
+			mercury_compile__link_module_list(ModuleNames)
+		;
+			[]
+		)
+	).
 
 	% Process a list of module names.
 	% Remove any `.nl' or `.m' extension extension before processing
@@ -453,7 +471,7 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 		io__write_string(DepStream, "\n"),
 
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".mod : "),
+		io__write_string(DepStream, ".c : "),
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".m"),
 		write_dependencies_list(LongDeps, ".int", DepStream),
@@ -549,11 +567,6 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".mods = "),
-	write_dependencies_list(Modules, ".mod", DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dates = "),
 	write_dependencies_list(Modules, ".date", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -587,7 +600,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "_init.c : $("),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs)\n"),
-	io__write_string(DepStream, "\t$(MOD2INIT) $(MOD2INITFLAGS) $("),
+	io__write_string(DepStream, "\t$(MKINIT) $(MKINITFLAGS) $("),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".cs) > "),
 	io__write_string(DepStream, ModuleName),
@@ -671,11 +684,11 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	lookup_dependencies(Module, DepsMap0, Done, Error, ImplDeps, IntDeps,
 				DepsMap1),
 	%
-	% If the module hadn't been processed yet, compute it's
-	% transitive dependencies (we already know it's primary dependencies),
+	% If the module hadn't been processed yet, compute its
+	% transitive dependencies (we already know its primary dependencies),
 	% output a line for this module to the dependency file
 	% (if the file exists),
-	% add it's imports to the list of dependencies we need to
+	% add its imports to the list of dependencies we need to
 	% generate, and mark it as having been processed.
 	%
 	( { Done = no } ->
@@ -733,7 +746,6 @@ transitive_dependencies(Modules, DepsMap0, Dependencies, DepsMap) -->
 				io__state, io__state).
 :- mode transitive_dependencies_2(in, in, in, out, out, di, uo) is det.
 
-
 transitive_dependencies_2([], Deps, DepsMap, Deps, DepsMap) --> [].
 transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Deps, DepsMap)
 		-->
@@ -778,7 +790,7 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 		{ Done = no }
 	).
 
-	% Read a module to determine it's dependencies.
+	% Read a module to determine its dependencies.
 	
 :- pred read_dependencies(string, list(string), list(string), module_error,
 				io__state, io__state).
@@ -1106,7 +1118,7 @@ make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _Ctors), Cond),
 %-----------------------------------------------------------------------------%
 
 	% Given a fully expanded module (i.e. a module name and a list
-	% of all the items in the module and any of it's imports),
+	% of all the items in the module and any of its imports),
 	% compile it.
 
 :- pred mercury_compile(module, io__state, io__state).
@@ -1127,259 +1139,68 @@ make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _Ctors), Cond),
 :- mode erase(in) is det.
 #endif
 
-mercury_compile(module(Module, ShortDeps, LongDeps, Items0,
-		FoundSyntaxError)) -->
+%-----------------------------------------------------------------------------%
+
+mercury_compile(Module) -->
+	{ Module = module(ModuleName, _, _, _, _) },
+	mercury_compile__pre_hlds_pass(Module, HLDS1, Proceed1),
+	mercury_compile__semantic_pass(HLDS1, HLDS9, Proceed1, Proceed2),
+	(
+		{ Proceed2 = yes },
+		mercury_compile__middle_pass(HLDS9, HLDS11, Proceed3),
+		globals__io_lookup_bool_option(generate_code, GenerateCode),
+		{ bool__and(GenerateCode, Proceed3, Proceed4) },
+		(
+			{ Proceed4 = yes },
+			mercury_compile__backend_pass(HLDS11, HLDS16, LLDS2),
+			mercury_compile__output_pass(HLDS16, LLDS2, ModuleName)
+		;
+			{ Proceed4 = no }
+		)
+	;
+		{ Proceed2 = no }
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__pre_hlds_pass(module, module_info, bool,
+	io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, out, out, di, uo) is det.
+
+mercury_compile__pre_hlds_pass(module(Module, ShortDeps, LongDeps, Items0, _),
+		HLDS1, Proceed) -->
+	globals__io_lookup_bool_option(statistics, Statistics),
+
 	write_dependency_file(Module, ShortDeps, LongDeps),
 
 	negation__transform(Items0, Items1),
 	mercury_compile__expand_equiv_types(Items1, Items),
+	maybe_report_stats(Statistics),
 
-	mercury_compile__make_hlds(Module, Items, HLDS0, FoundSemanticError),
+	mercury_compile__make_hlds(Module, Items, HLDS0, FoundError),
+	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS0, "0", "initial"),
 
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS0 - FoundSemanticError), fail }.
-mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS0 - FoundSemanticError, Ref), erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-
-	( { FoundSyntaxError = yes } ->
-		{ module_info_incr_errors(HLDS0, HLDS0b) }
+	( { FoundError = yes } ->
+		{ module_info_incr_errors(HLDS0, HLDS1) },
+		{ Proceed = no }
 	;	
-		{ HLDS0b = HLDS0 }
+		{ HLDS1 = HLDS0 },
+		{ Proceed = yes }
 	),
 
-	mercury_compile__typecheck(HLDS0b, HLDS1, FoundTypeError),
-	mercury_compile__maybe_dump_hlds(HLDS1, "1", "typecheck"),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS1 - FoundSemanticError - FoundTypeError), fail }.
-mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS1 - FoundSemanticError - FoundTypeError, Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-
-	globals__io_lookup_bool_option(modecheck, DoModeCheck),
-	globals__io_lookup_bool_option(make_call_graph, MakeCallGraph),
-	( { DoModeCheck = yes } ->
-		mercury_compile__modecheck(HLDS1, HLDS2, FoundModeError),
-		mercury_compile__maybe_dump_hlds(HLDS2, "2", "modecheck"),
-
-		( { MakeCallGraph = yes } ->
-			mercury_compile__make_call_graph(HLDS2)
-		;
-			[]
-		),
-
-		mercury_compile__maybe_polymorphism(HLDS2, HLDS3),
-		mercury_compile__detect_switches(HLDS3, HLDS3a),
-		common__optimise_common_subexpressions(HLDS3a, HLDS4),
-		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),
-
-		(
-			{ FoundSyntaxError = no,
-			  FoundSemanticError = no,
-			  FoundTypeError = no,
-			  FoundModeError = no
-			}
-		->
-			mercury_compile__maybe_do_inlining(HLDS4, HLDS5)
-		;
-			{ HLDS4 = HLDS5 }
-		),
-
-		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
-
-		mercury_compile__check_determinism(HLDS6, HLDS7,
-			FoundDeterminismError),
-		mercury_compile__maybe_dump_hlds(HLDS7, "7", "determinism")
-
-	;
-		{ HLDS7 = HLDS1 },
-		{ FoundModeError = no },
-		{ FoundDeterminismError = no }
-	),
-	
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS7 - [FoundSemanticError,
-		FoundTypeError, FoundModeError, FoundDeterminismError]),
-	fail }.
-mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS7 - [FoundSemanticError, 
-		FoundTypeError, FoundModeError, FoundDeterminismError], Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-
-	globals__io_lookup_bool_option(generate_code, GenerateCode),
-	globals__io_lookup_bool_option(compile_to_c, CompileToC),
-	globals__io_lookup_bool_option(compile, Compile),
-	globals__io_lookup_bool_option(link, Link),
-	(
-		{
-		  FoundSyntaxError = no,
-		  FoundSemanticError = no,
-		  FoundTypeError = no,
-		  FoundModeError = no,
-		  FoundDeterminismError = no,
-		  ( GenerateCode = yes
-		  ; CompileToC = yes
-		  ; Compile = yes
-		  ; Link = yes
-		  )
-		}
-	->
-		{ DoCodeGen = yes }
-	;
-		{ DoCodeGen = no }
-	),
-	{ bool__or(DoCodeGen, no, _) },	% hack to resolve type ambiguity
-
-	( { DoCodeGen = yes } ->
-		mercury_compile__compute_liveness(HLDS7, HLDS8),
-		mercury_compile__maybe_dump_hlds(HLDS8, "8", "liveness"),
-
-		mercury_compile__map_args_to_regs(HLDS8, HLDS9),
-		mercury_compile__maybe_dump_hlds(HLDS9, "9", "args_to_regs"),
-
-		mercury_compile__maybe_compute_followvars(HLDS9, HLDS10)
-	;
-		{ HLDS10 = HLDS7 }
-	),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile, Link]),
-	fail }.
-mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile, Link], Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-
-	( { DoCodeGen = yes } ->
-		mercury_compile__compute_stack_vars(HLDS10, HLDS11),
-		mercury_compile__maybe_dump_hlds(HLDS11, "11", "stackvars"),
-
-		mercury_compile__allocate_store_map(HLDS11, HLDS12),
-		mercury_compile__maybe_dump_hlds(HLDS12, "12", "store_map")
-	;
-		{ HLDS12 = HLDS10 }
-	),
-
-	mercury_compile__maybe_report_sizes(HLDS12),
-	mercury_compile__maybe_dump_hlds(HLDS12, "99", "final"),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile, Link]),
-	fail }.
-mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile, Link], Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-
-	( { DoCodeGen = yes } ->
-		mercury_compile__generate_code(HLDS12, HLDS13, LLDS1),
-#if NU_PROLOG
-		[]
-	;
-		[]
-	),
-	{ putprop(mc, mc, HLDS13 - LLDS1 -
-		[DoCodeGen, CompileToC, Compile, Link]),
-	fail }.
-mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, HLDS13 - LLDS1 -
-		[DoCodeGen, CompileToC, Compile, Link], Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 
-	( { DoCodeGen = yes } ->
-#endif
-		mercury_compile__maybe_find_abstr_exports(HLDS13, HLDS14), 
-		{ module_info_shape_info(HLDS14, Shape_Info) },
 #if NU_PROLOG
-		[]
-	;
-		[]
-	),
-	{ putprop(mc, mc, LLDS1 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
-	fail }.
-mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS1 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
-	erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-
-	( { DoCodeGen = yes } ->
+	{ putprop(mc, mc, HLDS1 - Proceed), fail }.
+mercury_compile__pre_hlds_pass(_, HLDS1, Proceed) -->
+	{ getprop(mc, mc, HLDS1 - Proceed, Ref), erase(Ref) },
 #endif
-		mercury_compile__maybe_do_optimize(LLDS1, LLDS2),
-#if NU_PROLOG
-		[]
-	;
-		[]
-	),
-	{ putprop(mc, mc, LLDS2 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
-	fail }.
-mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
-	erase(Ref) },
-	( { DoCodeGen = yes } ->
-#endif
-		mercury_compile__output_llds(Module, LLDS2),
-#if NU_PROLOG
-		[]
-	;
-		[]
-	),
-	{ putprop(mc, mc, LLDS2 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
-	fail }.
-mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 -
-		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
-	erase(Ref) },
-	( { DoCodeGen = yes } ->
-#endif
-		mercury_compile__maybe_write_gc(Module, Shape_Info, LLDS2),
-		(
-			{ CompileToC = yes ; Compile = yes ; Link = yes }
-		->
-			mercury_compile__mod_to_c(Module,
-				CompileToC_went_OK),
-			(
-				{ CompileToC_went_OK = yes },
-				{ Compile = yes ; Link = yes }
-			->
-				{ string__append(Module, ".c", C_File) },
-				mercury_compile__c_to_obj(C_File,
-					_Compile_went_OK)
-			;	
-				[]
-			)
-		;
-			[]
-		)
-	;
-		[]
-	).
-
-%-----------------------------------------------------------------------------%
+	{ true }.
 
 :- pred mercury_compile__expand_equiv_types(item_list, item_list,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__expand_equiv_types(in, out, di, uo) is det.
 
 mercury_compile__expand_equiv_types(Items0, Items) -->
@@ -1387,13 +1208,10 @@ mercury_compile__expand_equiv_types(Items0, Items) -->
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
 	{ prog_util__expand_eqv_types(Items0, Items) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	maybe_write_string(Verbose, " done.\n").
 
 :- pred mercury_compile__make_hlds(module_name, item_list,
-						module_info, bool,
-						io__state, io__state).
+	module_info, bool, io__state, io__state).
 :- mode mercury_compile__make_hlds(in, in, out, out, di, uo) is det.
 
 mercury_compile__make_hlds(Module, Items, HLDS, FoundSemanticError) -->
@@ -1407,12 +1225,100 @@ mercury_compile__make_hlds(Module, Items, HLDS, FoundSemanticError) -->
 	;
 		{ FoundSemanticError = no }
 	),
-	maybe_write_string(Verbose, "% done.\n"),
+	maybe_write_string(Verbose, "% done.\n").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__semantic_pass(module_info, module_info,
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__semantic_pass(di, uo, in, out, di, uo) is det.
+
+mercury_compile__semantic_pass(HLDS1, HLDS9, Proceed0, Proceed) -->
+	globals__io_lookup_bool_option(trad_passes, TradPasses),
+	(
+		{ TradPasses = no },
+		mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9,
+			Proceed0, Proceed)
+	;
+		{ TradPasses = yes },
+		mercury_compile__semantic_pass_by_preds(HLDS1, HLDS9,
+			Proceed0, Proceed)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__semantic_pass_by_phases(module_info, module_info,
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__semantic_pass_by_phases(di, uo, in, out, di, uo)
+	is det.
+
+mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+
+	mercury_compile__typecheck(HLDS1, HLDS2, FoundTypeError),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS2, "2", "typecheck"),
+	{ bool__not(FoundTypeError, Proceed1) },
+
+	globals__io_lookup_bool_option(modecheck, DoModeCheck),
+	( { DoModeCheck = yes } ->
+		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
+		{ bool__not(FoundModeError, Proceed2) },
+
+		globals__io_lookup_bool_option(make_call_graph, MakeCallGraph),
+		( { MakeCallGraph = yes } ->
+			mercury_compile__make_call_graph(HLDS3),
+			maybe_report_stats(Statistics)
+		;
+			[]
+		),
+
+		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
+		( { Proceed = yes } ->
+			mercury_compile__maybe_polymorphism(HLDS3, HLDS4),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS4, "4", "polymorphism"),
+
+			mercury_compile__detect_switches(HLDS4, HLDS5),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS5, "5", "switch_detect"),
+
+			mercury_compile__detect_cse(HLDS5, HLDS6),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS6, "6", "cse"),
+
+			mercury_compile__maybe_detect_common_struct(HLDS6, HLDS7),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS7, "7", "common"),
+
+			mercury_compile__maybe_do_inlining(HLDS7, HLDS8),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS8, "8", "inlining"),
+
+			mercury_compile__maybe_migrate_followcode(HLDS8, HLDS9),
+			maybe_report_stats(Statistics),
+			mercury_compile__maybe_dump_hlds(HLDS9, "9", "followcode")
+		;
+			{ HLDS9 = HLDS3 }
+		)
+	;
+		{ HLDS9 = HLDS2 },
+		{ Proceed = no }
+	),
+
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS9 - Proceed), fail }.
+mercury_compile__semantic_pass_by_phases(_, HLDS9, _, Proceed) -->
+	{ getprop(mc, mc, HLDS9 - Proceed, Ref), erase(Ref) },
+#endif
+
+	{ true }.
 
 :- pred mercury_compile__typecheck(module_info, module_info, bool,
-					io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__typecheck(in, out, out, di, uo) is det.
 
 mercury_compile__typecheck(HLDS0, HLDS, FoundTypeError) -->
@@ -1424,12 +1330,10 @@ mercury_compile__typecheck(HLDS0, HLDS, FoundTypeError) -->
 			"% Program contains type error(s).\n")
 	;
 		maybe_write_string(Verbose, "% Program is type-correct.\n")
-	),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	).
 
 :- pred mercury_compile__modecheck(module_info, module_info, bool,
-					io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__modecheck(in, out, out, di, uo) is det.
 
 mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
@@ -1446,12 +1350,10 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 		{ FoundModeError = no },
 		maybe_write_string(Verbose,
 			"% Program is mode-correct.\n")
-	),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	).
 
 :- pred mercury_compile__make_call_graph(module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__make_call_graph(in, di, uo) is det.
 
 mercury_compile__make_call_graph(ModuleInfo) -->
@@ -1463,75 +1365,199 @@ mercury_compile__make_call_graph(ModuleInfo) -->
 	{ module_info_name(ModuleInfo, Name) },
 	{ string__append(Name, ".call_graph", WholeName) },
 	io__tell(WholeName, Res),
-	(
-		{ Res = ok }
-	->
+	( { Res = ok } ->
 		call_graph__write_call_graph(CallGraph, ModuleInfo),
 		io__told
 	;
 		report_error("unable to write call graph")
 	).
 	
-
 :- pred mercury_compile__maybe_polymorphism(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__maybe_polymorphism(in, out, di, uo) is det.
 
 mercury_compile__maybe_polymorphism(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(polymorphism, Polymorphism),
-	(
-		{ Polymorphism = yes }
-	->
+	( { Polymorphism = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose,
 			"% Transforming polymorphic unifications..."),
 		maybe_flush_output(Verbose),
 		{ polymorphism__process_module(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics),
-		mercury_compile__maybe_dump_hlds(HLDS, "3", "polymorphism")
+		maybe_write_string(Verbose, " done.\n")
 	;
 		{ HLDS = HLDS0 }
 	).
 
-
 :- pred mercury_compile__detect_switches(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__detect_switches(in, out, di, uo) is det.
 
 mercury_compile__detect_switches(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Detecting switches..."),
 	maybe_flush_output(Verbose),
-	{ detect_switches(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	detect_switches(HLDS0, HLDS),
+	maybe_write_string(Verbose, " done.\n").
 
-:- pred mercury_compile__maybe_migrate_followcode(module_info, module_info,
-						io__state, io__state).
-:- mode mercury_compile__maybe_migrate_followcode(in, out, di, uo) is det.
+:- pred mercury_compile__detect_cse(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__detect_cse(in, out, di, uo) is det.
 
-mercury_compile__maybe_migrate_followcode(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(follow_code, FollowCode),
-	(
-		{ FollowCode = yes }
-	->
+mercury_compile__detect_cse(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(common_goal, CommonGoal),
+	( { CommonGoal = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose,"% Migrating followcode..."),
+		maybe_write_string(Verbose, "% Detecting common deconstructions..."),
 		maybe_flush_output(Verbose),
-		{ move_follow_code(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics),
-		mercury_compile__maybe_dump_hlds(HLDS, "6", "followcode")
+		detect_cse(HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n")
+	;
+		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_detect_common_struct(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__maybe_detect_common_struct(in, out, di, uo) is det.
+
+mercury_compile__maybe_detect_common_struct(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(common_struct, CommonStruct),
+	( { CommonStruct = yes } ->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Detecting common structures..."),
+		maybe_flush_output(Verbose),
+		common__optimise_common_subexpressions(HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n")
 	;
 		{ HLDS0 = HLDS }
 	).
 
+:- pred mercury_compile__maybe_do_inlining(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__maybe_do_inlining(in, out, di, uo) is det.
+
+mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(inlining, Inlining),
+	(
+		{ Inlining = yes }
+	->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Inlining..."),
+		maybe_flush_output(Verbose),
+		{ inlining(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n")
+	;
+		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_migrate_followcode(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__maybe_migrate_followcode(in, out, di, uo) is det.
+
+mercury_compile__maybe_migrate_followcode(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(follow_code, FollowCode),
+	( { FollowCode = yes } ->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Migrating followcode..."),
+		maybe_flush_output(Verbose),
+		{ move_follow_code(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n")
+	;
+		{ HLDS0 = HLDS }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__semantic_pass_by_preds(module_info, module_info,
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__semantic_pass_by_preds(di, uo, in, out, di, uo) is det.
+
+mercury_compile__semantic_pass_by_preds(HLDS1, HLDS9, Proceed0, Proceed) -->
+	mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9,
+		Proceed0, Proceed).
+
+%-----------------------------------------------------------------------------%
+
+% semantic_analyze_predicate(PredId, ModuleInfo0, ModuleInfo) -->
+% 	{ module_info_preds(ModuleInfo0, Preds0) },
+% 	{ map__lookup(Preds0, PredId, PredInfo0) },
+% 	( { pred_info_is_imported(PredInfo0) } ->
+% 		{ ModuleInfo = ModuleInfo0 }
+% 	;
+% 		semantic_analyze_predicate_1(PredId, ModuleInfo0, ModuleInfo)
+% 	).
+% 
+% semantic_analyze_predicate_1(PredId, ModuleInfo0, ModuleInfo) -->
+% 	write_progress_message("% Type-checking predicate ", PredId,
+% 		ModuleInfo0),
+% 	typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, MaybePredInfo1),
+% 	(
+% 		{ MaybePredInfo1 = no },
+% 		{ module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) }
+% 	;
+% 		{ MaybePredInfo1 = yes(PredInfo1) },
+% 		{ map__set(Preds0, PredId, PredInfo1, Preds1) },
+% 		{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1) },
+% 		semantic_analyze_predicate_2(PredId, PredInfo1, ModuleInfo1,
+% 			ModuleInfo)
+% 	).
+% 
+% semantic_analyze_predicate_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
+% 	write_progress_message("% Mode-checking predicate ", PredId,
+% 		ModuleInfo0),
+% 	modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo1, Errs),
+% 	( { Errs \= 0 } ->
+% 		{ module_info_num_errors(ModuleInfo1, NumErrors1) },
+% 		{ NumErrors is NumErrors1 + Errs },
+% 		{ module_info_set_num_errors(ModuleInfo1, NumErrors,
+% 			ModuleInfo2) },
+% 		{ module_info_remove_predid(ModuleInfo2, PredId,
+% 			ModuleInfo) }
+% 	;
+% 		semantic_analyze_predicate_3(PredId, ModuleInfo1, ModuleInfo)
+% 	).
+% 
+% semantic_analyze_predicate_3(PredId, ModuleInfo1, ModuleInfo) -->
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__middle_pass(module_info, module_info,
+	bool, io__state, io__state).
+:- mode mercury_compile__middle_pass(di, uo, out, di, uo) is det.
+
+mercury_compile__middle_pass(HLDS9, HLDS11, Proceed) -->
+	globals__io_lookup_bool_option(trad_passes, TradPasses),
+	(
+		{ TradPasses = no },
+		mercury_compile__middle_pass_by_phases(HLDS9, HLDS11,
+			Proceed)
+	;
+		{ TradPasses = yes },
+		mercury_compile__middle_pass_by_preds(HLDS9, HLDS11,
+			Proceed)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__middle_pass_by_phases(module_info, module_info,
+	bool, io__state, io__state).
+:- mode mercury_compile__middle_pass_by_phases(di, uo, out, di, uo) is det.
+
+mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, Proceed) -->
+	globals__io_lookup_bool_option(statistics, Statistics),
+
+	mercury_compile__check_determinism(HLDS9, HLDS10, FoundError),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS10, "10", "determinism"),
+
+	mercury_compile__map_args_to_regs(HLDS10, HLDS11),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs"),
+	{ bool__not(FoundError, Proceed) }.
+
 :- pred mercury_compile__check_determinism(module_info, module_info, bool,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__check_determinism(in, out, out, di, uo) is det.
 
 mercury_compile__check_determinism(HLDS0, HLDS, FoundDeterminismError) -->
@@ -1547,46 +1573,10 @@ mercury_compile__check_determinism(HLDS0, HLDS, FoundDeterminismError) -->
 		{ FoundDeterminismError = no },
 		maybe_write_string(Verbose,
 			"% Program is determinism-correct.\n")
-	),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
-
-:- pred mercury_compile__compute_liveness(module_info, module_info,
-						io__state, io__state).
-:- mode mercury_compile__compute_liveness(in, out, di, uo) is det.
-
-mercury_compile__compute_liveness(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Computing liveness..."),
-	maybe_flush_output(Verbose),
-	{ detect_liveness(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
-
-:- pred mercury_compile__maybe_do_inlining(module_info, module_info,
-						io__state, io__state).
-:- mode mercury_compile__maybe_do_inlining(in, out, di, uo) is det.
-
-mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(inlining, Inlining),
-	(
-		{ Inlining = yes }
-	->
-		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose, "% Inlining..."),
-		maybe_flush_output(Verbose),
-		{ inlining(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics), 
-		mercury_compile__maybe_dump_hlds(HLDS, "5", "inlining")
-	;
-		{ HLDS = HLDS0 }
 	).
 
 :- pred mercury_compile__map_args_to_regs(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__map_args_to_regs(in, out, di, uo) is det.
 
 mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
@@ -1594,33 +1584,118 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 	maybe_write_string(Verbose, "% Mapping args to regs..."),
 	maybe_flush_output(Verbose),
 	{ generate_arg_info(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
+	maybe_write_string(Verbose, " done.\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__middle_pass_by_preds(module_info, module_info,
+	bool, io__state, io__state).
+:- mode mercury_compile__middle_pass_by_preds(di, uo, out, di, uo) is det.
+
+mercury_compile__middle_pass_by_preds(HLDS9, HLDS11, Proceed) -->
+	mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, Proceed).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__backend_pass(module_info, module_info,
+	list(c_procedure), io__state, io__state).
+:- mode mercury_compile__backend_pass(di, uo, out, di, uo) is det.
+
+mercury_compile__backend_pass(HLDS11, HLDS16, LLDS2) -->
+	globals__io_lookup_bool_option(trad_passes, TradPasses),
+	(
+		{ TradPasses = no },
+		mercury_compile__backend_pass_by_phases(HLDS11, HLDS16, LLDS2)
+	;
+		{ TradPasses = yes },
+		mercury_compile__backend_pass_by_preds(HLDS11, HLDS16, LLDS2)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__backend_pass_by_phases(module_info, module_info,
+	list(c_procedure), io__state, io__state).
+:- mode mercury_compile__backend_pass_by_phases(in, out, out, di, uo) is det.
+
+mercury_compile__backend_pass_by_phases(HLDS11, HLDS16, LLDS2) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
+
+	mercury_compile__compute_liveness(HLDS11, HLDS12),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS12, "12", "liveness"),
+
+	mercury_compile__maybe_compute_followvars(HLDS12, HLDS13),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS13, "13", "followvars"),
+
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS13), fail }.
+mercury_compile__backend_pass_by_phases(_, _, _) -->
+	{ getprop(mc, mc, HLDS13, Ref), erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+#endif
+
+	mercury_compile__compute_stack_vars(HLDS13, HLDS14),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS14, "14", "stackvars"),
+
+	mercury_compile__allocate_store_map(HLDS14, HLDS15),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS15, "15", "store_map"),
+
+	mercury_compile__maybe_report_sizes(HLDS15),
+
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS15), fail }.
+mercury_compile__backend_pass_by_phases(_, _, _) -->
+	{ getprop(mc, mc, HLDS15, Ref), erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+#endif
+
+	mercury_compile__generate_code(HLDS15, HLDS16, LLDS1),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS16, "99", "final"),
+
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS16 - LLDS1), fail }.
+mercury_compile__backend_pass_by_phases(_, HLDS16, LLDS2) -->
+	{ getprop(mc, mc, HLDS16 - LLDS1, Ref), erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+#endif
+
+	mercury_compile__maybe_do_optimize(LLDS1, LLDS2),
 	maybe_report_stats(Statistics).
 
+:- pred mercury_compile__compute_liveness(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__compute_liveness(in, out, di, uo) is det.
+
+mercury_compile__compute_liveness(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Computing liveness..."),
+	maybe_flush_output(Verbose),
+	{ detect_liveness(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
+
 :- pred mercury_compile__maybe_compute_followvars(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__maybe_compute_followvars(in, out, di, uo) is det.
 
 mercury_compile__maybe_compute_followvars(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(follow_vars, FollowVars),
-	(
-		{ FollowVars = yes }
-	->
+	( { FollowVars = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose,"% Computing followvars..."),
+		maybe_write_string(Verbose, "% Computing followvars..."),
 		maybe_flush_output(Verbose),
 		{ find_follow_vars(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics),
-		mercury_compile__maybe_dump_hlds(HLDS, "10", "followvars")
+		maybe_write_string(Verbose, " done.\n")
 	;
 		{ HLDS = HLDS0 }
 	).
 
 :- pred mercury_compile__compute_stack_vars(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__compute_stack_vars(in, out, di, uo) is det.
 
 mercury_compile__compute_stack_vars(HLDS0, HLDS) -->
@@ -1628,12 +1703,10 @@ mercury_compile__compute_stack_vars(HLDS0, HLDS) -->
 	maybe_write_string(Verbose, "% Computing stack vars..."),
 	maybe_flush_output(Verbose),
 	{ detect_live_vars(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	maybe_write_string(Verbose, " done.\n").
 
 :- pred mercury_compile__allocate_store_map(module_info, module_info,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__allocate_store_map(in, out, di, uo) is det.
 
 mercury_compile__allocate_store_map(HLDS0, HLDS) -->
@@ -1641,12 +1714,10 @@ mercury_compile__allocate_store_map(HLDS0, HLDS) -->
 	maybe_write_string(Verbose, "% Allocating store map..."),
 	maybe_flush_output(Verbose),
 	{ store_alloc(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	maybe_write_string(Verbose, " done.\n").
 
-:- pred mercury_compile__generate_code(module_info, module_info, c_file,
-						io__state, io__state).
+:- pred mercury_compile__generate_code(module_info, module_info,
+	list(c_procedure), io__state, io__state).
 :- mode mercury_compile__generate_code(in, out, out, di, uo) is det.
 
 mercury_compile__generate_code(HLDS0, HLDS, LLDS) -->
@@ -1654,30 +1725,185 @@ mercury_compile__generate_code(HLDS0, HLDS, LLDS) -->
 	maybe_write_string(Verbose, "% Generating code...\n"),
 	maybe_flush_output(Verbose),
 	generate_code(HLDS0, HLDS, LLDS),
-	maybe_write_string(Verbose, "% done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	maybe_write_string(Verbose, "% done.\n").
 
-:- pred mercury_compile__maybe_do_optimize(c_file, c_file,
-						io__state, io__state).
+:- pred mercury_compile__maybe_do_optimize(list(c_procedure), list(c_procedure),
+	io__state, io__state).
 :- mode mercury_compile__maybe_do_optimize(in, out, di, uo) is det.
 
 mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 	globals__io_lookup_bool_option(optimize, Optimize),
-	(
-		{ Optimize = yes }
-	->
+	( { Optimize = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose,
 			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
 		optimize__main(LLDS0, LLDS),
-		maybe_write_string(Verbose, "% done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ LLDS = LLDS0 }
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__backend_pass_by_preds(module_info, module_info,
+	list(c_procedure), io__state, io__state).
+:- mode mercury_compile__backend_pass_by_preds(di, uo, out, di, uo) is det.
+
+mercury_compile__backend_pass_by_preds(HLDS10, HLDS16, LLDS2) -->
+	{ module_info_predids(HLDS10, PredIds) },
+	mercury_compile__backend_pass_by_preds_2(PredIds, HLDS10, HLDS16, LLDS2).
+
+:- pred mercury_compile__backend_pass_by_preds_2(list(pred_id),
+	module_info, module_info, list(c_procedure), io__state, io__state).
+:- mode mercury_compile__backend_pass_by_preds_2(in, di, uo, out, di, uo)
+	is det.
+
+mercury_compile__backend_pass_by_preds_2([], ModuleInfo, ModuleInfo, [])
+	--> [].
+mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
+		ModuleInfo, Code) -->
+	{ module_info_preds(ModuleInfo0, PredTable) },
+	{ map__lookup(PredTable, PredId, PredInfo) },
+	( { pred_info_is_imported(PredInfo) } ->
+		{ ModuleInfo1 = ModuleInfo0 },
+		{ Code1 = [] }
+	;
+		globals__io_lookup_bool_option(verbose, Verbose),
+		( { Verbose = yes } ->
+			io__write_string("% Processing ..."),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("... "),
+			io__flush_output
+		;
+			[]
+		),
+
+		{ pred_info_procids(PredInfo, ProcIds) },
+		{ module_info_shapes(ModuleInfo0, Shapes0) },
+		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
+			PredInfo, ModuleInfo0, Shapes0, Shapes, Code1),
+		{ module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo1) },
+
+		( { Verbose = yes } ->
+			io__write_string("done\n"),
+			io__flush_output
+		;
+			[]
+		)
+	),
+	mercury_compile__backend_pass_by_preds_2(PredIds,
+		ModuleInfo1, ModuleInfo, Code2),
+	{ list__append(Code1, Code2, Code) }.
+
+:- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
+	pred_info, module_info, shape_table, shape_table,
+	list(c_procedure), io__state, io__state).
+:- mode mercury_compile__backend_pass_by_preds_3(in, in, in, in, di, uo, out,
+	di, uo) is det.
+
+mercury_compile__backend_pass_by_preds_3([], _, _, _, Shapes, Shapes, [])
+		--> [].
+mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
+		ModuleInfo, Shapes0, Shapes, [Proc | Procs]) -->
+	{ pred_info_procedures(PredInfo, ProcTable) },
+	{ map__lookup(ProcTable, ProcId, ProcInfo) },
+	mercury_compile__backend_pass_by_preds_4(ProcInfo, ProcId, PredId,
+		ModuleInfo, Shapes0, Shapes1, Proc),
+	mercury_compile__backend_pass_by_preds_3(ProcIds, PredId, PredInfo,
+		ModuleInfo, Shapes1, Shapes, Procs).
+
+:- pred mercury_compile__backend_pass_by_preds_4(proc_info, proc_id, pred_id,
+	module_info, shape_table, shape_table, c_procedure,
+	io__state, io__state).
+:- mode mercury_compile__backend_pass_by_preds_4(in, in, in, in, di, uo, out,
+	di, uo) is det.
+
+mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId, ModuleInfo,
+		Shapes0, Shapes, Proc) -->
+	{ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo1) },
+	globals__io_lookup_bool_option(follow_vars, FollowVars),
+	(
+		{ FollowVars = yes }
+	->
+		{ find_follow_vars_in_proc(ProcInfo1, ModuleInfo, ProcInfo2) }
+	;
+		{ ProcInfo2 = ProcInfo1 }
+	),
+	{ detect_live_vars_in_proc(ProcInfo2, ModuleInfo, ProcInfo3) },
+	{ store_alloc_in_proc(ProcInfo3, ModuleInfo, ProcInfo4) },
+	generate_proc_code(ProcInfo4, ProcId, PredId, ModuleInfo,
+		Shapes0, Shapes, Proc0),
+	optimize__proc(Proc0, Proc).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__output_pass(module_info, list(c_procedure), string,
+	io__state, io__state).
+:- mode mercury_compile__output_pass(in, in, in, di, uo) is det.
+
+mercury_compile__output_pass(HLDS16, LLDS2, ModuleName) -->
+	globals__io_lookup_bool_option(statistics, Statistics),
+
+	mercury_compile__chunk_llds(HLDS16, LLDS2, LLDS3),
+	mercury_compile__output_llds(ModuleName, LLDS3),
+	maybe_report_stats(Statistics),
+
+	mercury_compile__maybe_find_abstr_exports(HLDS16, HLDS17), 
+	% maybe_report_stats(Statistics),
+
+	{ module_info_shape_info(HLDS17, Shape_Info) },
+	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS3),
+	% maybe_report_stats(Statistics),
+
+	globals__io_lookup_bool_option(compile, Compile),
+	( { Compile = yes } ->
+		{ string__append(ModuleName, ".c", C_File) },
+		mercury_compile__c_to_obj(C_File, _Compile_went_OK)
+	;
+		[]
+	).
+
+	% Split the code up into bite-size chunks for the C compiler.
+
+:- pred mercury_compile__chunk_llds(module_info, list(c_procedure), c_file,
+	io__state, io__state).
+:- mode mercury_compile__chunk_llds(in, di, uo, di, uo) is det.
+
+mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, ModuleList)) -->
+	{ module_info_name(HLDS, Name) },
+	{ string__append(Name, "_module", ModName) },
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	( { ProcsPerFunc = 0 } ->
+		% ProcsPerFunc = 0 really means infinity -
+		% we store all the procs in a single function.
+		{ ModuleList = [c_module(ModName, Procedures)] }
+	;
+		{ list__chunk(Procedures, ProcsPerFunc, ChunkList) },
+		{ mercury_compile__combine_chunks(ChunkList, ModName,
+			ModuleList) }
+	).
+
+:- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
+	list(c_module)).
+:- mode mercury_compile__combine_chunks(in, in, out) is det.
+
+mercury_compile__combine_chunks(ChunkList, ModName, Modules) :-
+	mercury_compile__combine_chunks_2(ChunkList, ModName, 0, Modules).
+
+:- pred mercury_compile__combine_chunks_2(list(list(c_procedure)), string, int,
+	list(c_module)).
+:- mode mercury_compile__combine_chunks_2(in, in, in, out) is det.
+
+mercury_compile__combine_chunks_2([], _ModName, _N, []).
+mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
+		[Module | Modules]) :-
+	string__int_to_string(Num, NumString),
+	string__append(ModName, NumString, ThisModuleName),
+	Module = c_module(ThisModuleName, Chunk),
+	Num1 is Num + 1,
+	mercury_compile__combine_chunks_2(Chunks, ModName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name, c_file, io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, di, uo) is det.
@@ -1687,36 +1913,31 @@ mercury_compile__output_llds(ModuleName, LLDS) -->
 	maybe_write_string(Verbose,
 		"% Writing output to `"),
 	maybe_write_string(Verbose, ModuleName),
-	maybe_write_string(Verbose, ".mod'..."),
+	maybe_write_string(Verbose, ".c'..."),
 	maybe_flush_output(Verbose),
 	output_c_file(LLDS),
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+	maybe_write_string(Verbose, " done.\n").
 
 :- pred mercury_compile__maybe_write_gc(module_name, shape_info, c_file,
-						io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__maybe_write_gc(in, in, in, di, uo) is det.
+
 mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 	globals__io_lookup_string_option(gc, Garbage),
-	(
-		{ Garbage = "accurate" }
-	->
+	( { Garbage = "accurate" } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Writing gc info to `"),
 		maybe_write_string(Verbose, ModuleName),
 		maybe_write_string(Verbose, ".garb'..."),
 		maybe_flush_output(Verbose),
 		garbage_out__do_garbage_out(Shape_Info, LLDS),
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_write_string(Verbose, " done.\n")
 	;
 		[]		
 	).
 
 :- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info, 
-				io__state, io__state).
+	io__state, io__state).
 :- mode mercury_compile__maybe_find_abstr_exports(in, out, di, uo) is det.
 mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
 	globals__io_get_gc_method(GarbageCollectionMethod),
@@ -1728,65 +1949,9 @@ mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
 		maybe_write_string(Verbose, "exports..."),
 		maybe_flush_output(Verbose),
 		{ shapes__do_abstract_exports(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics)
+		maybe_write_string(Verbose, " done.\n")
 	;
 		{ HLDS = HLDS0 }
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mercury_compile__maybe_report_sizes(module_info, io__state, io__state).
-:- mode mercury_compile__maybe_report_sizes(in, di, uo) is det.
-
-mercury_compile__maybe_report_sizes(HLDS) -->
-	globals__io_lookup_bool_option(statistics, Statistics),
-	( { Statistics = yes } ->
-		mercury_compile__report_sizes(HLDS)
-	;
-		[]
-	).
-
-:- pred mercury_compile__report_sizes(module_info, io__state, io__state).
-:- mode mercury_compile__report_sizes(in, di, uo) is det.
-
-mercury_compile__report_sizes(ModuleInfo) -->
-	{ module_info_preds(ModuleInfo, Preds) },
-	mercury_compile__tree_stats("Pred table", Preds),
-	{ module_info_types(ModuleInfo, Types) },
-	mercury_compile__tree_stats("Type table", Types),
-	{ module_info_ctors(ModuleInfo, Ctors) },
-	mercury_compile__tree_stats("Constructor table", Ctors).
-
-:- pred mercury_compile__tree_stats(string, map(_K, _V), io__state, io__state).
-:- mode mercury_compile__tree_stats(in, in, di, uo) is det.
-
-mercury_compile__tree_stats(Description, Tree) -->
-	{ tree234__count(Tree, Count) },
-	%{ tree234__depth(Tree, Depth) },
-	io__write_string(Description),
-	io__write_string(": count = "),
-	io__write_int(Count),
-	%io__write_string(", depth = "),
-	%io__write_int(Depth),
-	io__write_string("\n").
-
-%-----------------------------------------------------------------------------%
-
-:- pred mercury_compile__mod_to_c(string, bool, io__state, io__state).
-:- mode mercury_compile__mod_to_c(in, out, di, uo) is det.
-
-mercury_compile__mod_to_c(Module, Succeeded) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Converting .mod file to C:\n"),
-	{ string__append_list( ["mod2c ", Module, ".mod > ", Module, ".c"],
-			Command) },
-	mercury_compile__invoke_system_command(Command, Succeeded),
-	( { Succeeded = no } ->
-		report_error("problem converting .mod file to C")
-	;
-		[]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1853,10 +2018,9 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	;
 		OptimizeOpt = ""
 	},
-	{ string__append_list( [CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
-		GC_Opt, TagsOpt, NumTagBitsOpt,
-		DebugOpt, OptimizeOpt, CFLAGS, " -c ", C_File],
-		Command) },
+	{ string__append_list([CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
+		GC_Opt, TagsOpt, NumTagBitsOpt, DebugOpt, OptimizeOpt, CFLAGS,
+		" -c ", C_File], Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file")
@@ -1866,78 +2030,10 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__invoke_system_command(string, bool,
-						io__state, io__state).
-:- mode mercury_compile__invoke_system_command(in, out, di, uo) is det.
+:- pred mercury_compile__link_module_list(list(string), io__state, io__state).
+:- mode mercury_compile__link_module_list(in, di, uo) is det.
 
-mercury_compile__invoke_system_command(Command, Succeeded) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Invoking system command `"),
-	maybe_write_string(Verbose, Command),
-	maybe_write_string(Verbose, "'...\n"),
-	io__call_system(Command, Result),
-	( { Result = ok(0) } ->
-		maybe_write_string(Verbose, "% done\n"),
-		{ Succeeded = yes }
-	; { Result = ok(_) } ->
-		report_error("system command returned non-zero exit status"),
-		{ Succeeded = no }
-	;	
-		report_error("unable to invoke system command"),
-		{ Succeeded = no }
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mercury_compile__maybe_dump_hlds(module_info, string, string,
-					io__state, io__state).
-:- mode mercury_compile__maybe_dump_hlds(in, in, in, di, uo) is det.
-
-mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
-	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
-	(
-		{ list__member(StageNum, DumpStages)
-		; list__member(StageName, DumpStages)
-		}
-	->
-		{ module_info_name(HLDS, ModuleName) },
-		{ string__append_list(
-			[ModuleName, ".hlds_dump.", StageNum, "-", StageName],
-			HLDS_DumpFile) },
-		mercury_compile__dump_hlds(HLDS_DumpFile, HLDS)
-	;
-		[]
-	).
-
-:- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).
-:- mode mercury_compile__dump_hlds(in, in, di, uo) is det.
-
-mercury_compile__dump_hlds(HLDS_DumpFile, HLDS) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_write_string(Verbose, "% Dumping out HLDS to `"),
-	maybe_write_string(Verbose, HLDS_DumpFile),
-	maybe_write_string(Verbose, "'..."),
-	maybe_flush_output(Verbose),
-	io__tell(HLDS_DumpFile, Res),
-	( { Res = ok } ->
-		io__gc_call(hlds_out__write_hlds(0, HLDS)),
-		io__told,
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Statistics)
-	;
-		maybe_write_string(Verbose, "\n"),
-		{ string__append_list( ["can't open file `",
-			HLDS_DumpFile, "' for output"], ErrorMessage) },
-		report_error(ErrorMessage)
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred link_module_list(list(string), io__state, io__state).
-:- mode link_module_list(in, di, uo) is det.
-
-link_module_list(Modules) -->
+mercury_compile__link_module_list(Modules) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	( { Modules = [Module | _] } ->
@@ -1945,11 +2041,11 @@ link_module_list(Modules) -->
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    { string__append(Module, "_init.c", C_Init_File) },
 	    { join_string_list(Modules, ".c ", ["> ", C_Init_File],
-				Mod2InitCmd0) },
-	    { string__append_list(["mod2init " | Mod2InitCmd0], Mod2InitCmd) },
-	    mercury_compile__invoke_system_command(Mod2InitCmd, Mod2InitOK),
+				MkInitCmd0) },
+	    { string__append_list(["mkinit " | MkInitCmd0], MkInitCmd) },
+	    mercury_compile__invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Statistics),
-	    ( { Mod2InitOK = no } ->
+	    ( { MkInitOK = no } ->
 		report_error("creation of init file failed")
 	    ;
 		% compile it
@@ -1989,6 +2085,110 @@ join_string_list([], _Separator, Terminator, Terminator).
 join_string_list([String0 | Strings0], Separator, Terminator,
 			[String0, Separator | Strings]) :-
 	join_string_list(Strings0, Separator, Terminator, Strings).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__invoke_system_command(string, bool,
+	io__state, io__state).
+:- mode mercury_compile__invoke_system_command(in, out, di, uo) is det.
+
+mercury_compile__invoke_system_command(Command, Succeeded) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Invoking system command `"),
+	maybe_write_string(Verbose, Command),
+	maybe_write_string(Verbose, "'...\n"),
+	io__call_system(Command, Result),
+	( { Result = ok(0) } ->
+		maybe_write_string(Verbose, "% done\n"),
+		{ Succeeded = yes }
+	; { Result = ok(_) } ->
+		report_error("system command returned non-zero exit status"),
+		{ Succeeded = no }
+	;	
+		report_error("unable to invoke system command"),
+		{ Succeeded = no }
+	).
+
+:- pred mercury_compile__maybe_report_sizes(module_info, io__state, io__state).
+:- mode mercury_compile__maybe_report_sizes(in, di, uo) is det.
+
+mercury_compile__maybe_report_sizes(HLDS) -->
+	globals__io_lookup_bool_option(statistics, Statistics),
+	( { Statistics = yes } ->
+		mercury_compile__report_sizes(HLDS)
+	;
+		[]
+	).
+
+:- pred mercury_compile__report_sizes(module_info, io__state, io__state).
+:- mode mercury_compile__report_sizes(in, di, uo) is det.
+
+mercury_compile__report_sizes(ModuleInfo) -->
+	{ module_info_preds(ModuleInfo, Preds) },
+	mercury_compile__tree_stats("Pred table", Preds),
+	{ module_info_types(ModuleInfo, Types) },
+	mercury_compile__tree_stats("Type table", Types),
+	{ module_info_ctors(ModuleInfo, Ctors) },
+	mercury_compile__tree_stats("Constructor table", Ctors).
+
+:- pred mercury_compile__tree_stats(string, map(_K, _V), io__state, io__state).
+:- mode mercury_compile__tree_stats(in, in, di, uo) is det.
+
+mercury_compile__tree_stats(Description, Tree) -->
+	{ tree234__count(Tree, Count) },
+	%{ tree234__depth(Tree, Depth) },
+	io__write_string(Description),
+	io__write_string(": count = "),
+	io__write_int(Count),
+	%io__write_string(", depth = "),
+	%io__write_int(Depth),
+	io__write_string("\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__maybe_dump_hlds(module_info, string, string,
+	io__state, io__state).
+:- mode mercury_compile__maybe_dump_hlds(in, in, in, di, uo) is det.
+
+mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
+	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
+	(
+		{ list__member(StageNum, DumpStages)
+		; list__member(StageName, DumpStages)
+		}
+	->
+		{ module_info_name(HLDS, ModuleName) },
+		{ string__append_list(
+			[ModuleName, ".hlds_dump.", StageNum, "-", StageName],
+			DumpFile) },
+		mercury_compile__dump_hlds(DumpFile, HLDS)
+	;
+		[]
+	).
+
+:- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).
+:- mode mercury_compile__dump_hlds(in, in, di, uo) is det.
+
+mercury_compile__dump_hlds(DumpFile, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_write_string(Verbose, "% Dumping out HLDS to `"),
+	maybe_write_string(Verbose, DumpFile),
+	maybe_write_string(Verbose, "'..."),
+	maybe_flush_output(Verbose),
+	io__tell(DumpFile, Res),
+	( { Res = ok } ->
+		io__gc_call(hlds_out__write_hlds(0, HLDS)),
+		io__told,
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Statistics)
+	;
+		maybe_write_string(Verbose, "\n"),
+		{ string__append_list( ["can't open file `",
+			DumpFile, "' for output"], ErrorMessage) },
+		report_error(ErrorMessage)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

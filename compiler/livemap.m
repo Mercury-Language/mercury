@@ -30,8 +30,7 @@
 
 :- implementation.
 
-:- import_module vn_util, opt_util.
-:- import_module require.
+:- import_module opt_util, require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -112,7 +111,7 @@ livemap__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		% want make_live to put it back into the liveval set.
 
 		set__delete(Livevals0, Lval, Livevals1),
-		vn__lval_access_rval(Lval, Rvals),
+		opt_util__lval_access_rvals(Lval, Rvals),
 		livemap__make_live([Rval | Rvals], Livevals1, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
@@ -256,14 +255,14 @@ livemap__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		% common. This is why doing the deletion first works.
 
 		set__delete(Livevals0, Lval, Livevals1),
-		vn__lval_access_rval(Lval, Rvals),
+		opt_util__lval_access_rvals(Lval, Rvals),
 		livemap__make_live([Rval | Rvals], Livevals1, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	;
 		Uinstr = mark_hp(Lval),
-		vn__lval_access_rval(Lval, Rvals),
+		opt_util__lval_access_rvals(Lval, Rvals),
 		livemap__make_live(Rvals, Livevals0, Livevals2),
 		Livemap1 = Livemap0,
 		Moreinstrs2 = Moreinstrs,

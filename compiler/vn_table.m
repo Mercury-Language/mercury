@@ -34,23 +34,23 @@
 :- pred vn__init_tables(vn_tables).
 :- mode vn__init_tables(out) is det.
 
-:- pred vn__lookup_desired_value(vnlval, vn, vn_tables).
-:- mode vn__lookup_desired_value(in, out, in) is det.
+:- pred vn__lookup_desired_value(vnlval, vn, string, vn_tables).
+:- mode vn__lookup_desired_value(in, out, in, in) is det.
 
-:- pred vn__lookup_assigned_vn(vnrval, vn, vn_tables).
-:- mode vn__lookup_assigned_vn(in, out, in) is det.
+:- pred vn__lookup_assigned_vn(vnrval, vn, string, vn_tables).
+:- mode vn__lookup_assigned_vn(in, out, in, in) is det.
 
-:- pred vn__lookup_defn(vn, vnrval, vn_tables).
-:- mode vn__lookup_defn(in, out, in) is det.
+:- pred vn__lookup_defn(vn, vnrval, string, vn_tables).
+:- mode vn__lookup_defn(in, out, in, in) is det.
 
-:- pred vn__lookup_uses(vn, list(vn_src), vn_tables).
-:- mode vn__lookup_uses(in, out, in) is det.
+:- pred vn__lookup_uses(vn, list(vn_src), string, vn_tables).
+:- mode vn__lookup_uses(in, out, in, in) is det.
 
-:- pred vn__lookup_current_locs(vn, list(vnlval), vn_tables).
-:- mode vn__lookup_current_locs(in, out, in) is det.
+:- pred vn__lookup_current_locs(vn, list(vnlval), string, vn_tables).
+:- mode vn__lookup_current_locs(in, out, in, in) is det.
 
-:- pred vn__lookup_current_value(vnlval, vn, vn_tables).
-:- mode vn__lookup_current_value(in, out, in) is det.
+:- pred vn__lookup_current_value(vnlval, vn, string, vn_tables).
+:- mode vn__lookup_current_value(in, out, in, in) is det.
 
 :- pred vn__search_desired_value(vnlval, vn, vn_tables).
 :- mode vn__search_desired_value(in, out, in) is semidet.
@@ -116,7 +116,7 @@ vn__init_tables(VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0).
 
-vn__lookup_desired_value(Vnlval, Vn, VnTables) :-
+vn__lookup_desired_value(Vnlval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -125,11 +125,11 @@ vn__lookup_desired_value(Vnlval, Vn, VnTables) :-
 		Vn = VnPrime
 	;
 		opt_debug__dump_vnlval(Vnlval, Value),
-		string__append("cannot find desired value for ", Value, Error),
+		string__append_list([From, ": cannot find desired value for ", Value], Error),
 		error(Error)
 	).
 
-vn__lookup_assigned_vn(Vnrval, Vn, VnTables) :-
+vn__lookup_assigned_vn(Vnrval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -138,11 +138,11 @@ vn__lookup_assigned_vn(Vnrval, Vn, VnTables) :-
 		Vn = VnPrime
 	;
 		opt_debug__dump_vnrval(Vnrval, Value),
-		string__append("cannot find assigned vn for ", Value, Error),
+		string__append_list([From, ": cannot find assigned vn for ", Value], Error),
 		error(Error)
 	).
 
-vn__lookup_defn(Vn, Vnrval, VnTables) :-
+vn__lookup_defn(Vn, Vnrval, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		Vn_to_rval_table, _Vn_to_uses_table,
@@ -151,11 +151,11 @@ vn__lookup_defn(Vn, Vnrval, VnTables) :-
 		Vnrval = VnrvalPrime
 	;
 		opt_debug__dump_vn(Vn, Value),
-		string__append("cannot find definition for ", Value, Error),
+		string__append_list([From, ": cannot find definition for ", Value], Error),
 		error(Error)
 	).
 
-vn__lookup_uses(Vn, Uses, VnTables) :-
+vn__lookup_uses(Vn, Uses, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, Vn_to_uses_table,
@@ -164,11 +164,11 @@ vn__lookup_uses(Vn, Uses, VnTables) :-
 		Uses = UsesPrime
 	;
 		opt_debug__dump_vn(Vn, Value),
-		string__append("cannot find uses for ", Value, Error),
+		string__append_list([From, ": cannot find uses for ", Value], Error),
 		error(Error)
 	).
 
-vn__lookup_current_locs(Vn, Locs, VnTables) :-
+vn__lookup_current_locs(Vn, Locs, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -177,11 +177,11 @@ vn__lookup_current_locs(Vn, Locs, VnTables) :-
 		Locs = LocsPrime
 	;
 		opt_debug__dump_vn(Vn, Value),
-		string__append("cannot find current locs for ", Value, Error),
+		string__append_list([From, ": cannot find current locs for ", Value], Error),
 		error(Error)
 	).
 
-vn__lookup_current_value(Vnlval, Vn, VnTables) :-
+vn__lookup_current_value(Vnlval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -190,7 +190,7 @@ vn__lookup_current_value(Vnlval, Vn, VnTables) :-
 		Vn = VnPrime
 	;
 		opt_debug__dump_vnlval(Vnlval, Value),
-		string__append("cannot find current value for ", Value, Error),
+		string__append_list([From, ": cannot find current value for ", Value], Error),
 		error(Error)
 	).
 

@@ -54,9 +54,9 @@
 
 :- type templocs ---> quad(list(vnlval), vnlvalset, int, int).
 
-vn__init_templocs(MaxTemp, MaxReg, Livevals, Vn_tables, Templocs) :-
+vn__init_templocs(MaxTemp, MaxReg, Livevals, VnTables, Templocs) :-
 	vn__get_n_temps(1, MaxTemp, Temps),
-	vn__find_free_regs(1, MaxReg, Livevals, Vn_tables, Regs),
+	vn__find_free_regs(1, MaxReg, Livevals, VnTables, Regs),
 	list__append(Regs, Temps, Queue),
 	NextTemp is MaxTemp + 1,
 	Templocs = quad(Queue, Livevals, 0, NextTemp).
@@ -102,22 +102,22 @@ vn__max_temploc(quad(_Queue0, _Livevnlvals, MaxUsed, _Next), MaxUsed).
 :- pred vn__find_free_regs(int, int, vnlvalset, vn_tables, list(vnlval)).
 :- mode vn__find_free_regs(in, in, in, in, out) is det.
 
-vn__find_free_regs(N, Max, Livevals, Vn_tables, Freeregs) :-
+vn__find_free_regs(N, Max, Livevals, VnTables, Freeregs) :-
 	( N > Max ->
 		Freeregs = []
 	;
 		N1 is N + 1,
-		vn__find_free_regs(N1, Max, Livevals, Vn_tables, Freeregs0),
+		vn__find_free_regs(N1, Max, Livevals, VnTables, Freeregs0),
 		(
 			set__member(vn_reg(r(N)), Livevals)
 		->
 			Freeregs = Freeregs0
 		;
 			Vnrval = vn_origlval(vn_reg(r(N))), 
-			vn__search_assigned_vn(Vnrval, Vn, Vn_tables)
+			vn__search_assigned_vn(Vnrval, Vn, VnTables)
 		->
 			(
-				vn__search_uses(Vn, Uses, Vn_tables),
+				vn__search_uses(Vn, Uses, VnTables),
 				Uses \= []
 			->
 				Freeregs = Freeregs0

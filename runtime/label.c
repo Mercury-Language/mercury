@@ -3,6 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 #include	"imp.h"
 #include	"table.h"
 #include	"prof.h"
@@ -28,7 +29,7 @@ void init_entries(void)
 	init_table(entry_addr_table);
 }
 
-Label *makeentry(const char *name, Code *addr)
+Label *insert_entry(const char *name, Code *addr)
 {
 	Label	*entry;
 

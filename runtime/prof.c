@@ -3,6 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 /*
 **      Profiling module
 **
@@ -45,6 +46,7 @@ void prof_init_time_profile()
 			"open the file 'addr.out'!\n");
 		exit(1);
 	}
+
 	fprintf(fptr, "%d\n", HZ);
 	fclose(fptr);
 
@@ -65,6 +67,7 @@ void prof_init_time_profile()
 **		Saves the callee, caller pair into a hash table. If the
 **		address pair already exists then it increments a count.
 */
+
 void prof_call_profile(Code *Callee, Code *Caller)
 {
         prof_call_node *temp, *prev, *new_node;
@@ -104,9 +107,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
         return;
 }
 
-
 /* ======================================================================== */
-
 
 /*
 **	prof_time_profile:
@@ -114,6 +115,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
 **		Saves the current code address into a hash table.  If the
 **		address already exists, it increments it's count.
 */
+
 void prof_time_profile(int signum)
 {
         prof_time_node *temp, *prev, *new_node;
@@ -154,7 +156,6 @@ void prof_time_profile(int signum)
         return;
 }
 
-
 /* ======================================================================== */
 
 /*
@@ -177,18 +178,17 @@ void prof_turn_off_time_profiling()
 	
 /* ======================================================================== */
 
-
 /*
 **	prof_output_addr_pair_table :
 **		Writes the hash table to a file called "addrpair.out".
 **		Callee then caller followed by count.
 */
+
 void prof_output_addr_pair_table(void)
 {
 	FILE *fptr;
 	int  i;
 	prof_call_node *current;
-
 	if ( (fptr = fopen("addrpair.out", "w")) ) {
 		for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 			current = addr_pair_table[i];
@@ -206,17 +206,16 @@ void prof_output_addr_pair_table(void)
 
 }
 
-
 /* ======================================================================== */
-
 
 /*
 **	prof_output_addr_decls:
 **		Ouputs the main predicate labels as well as their machine
 **		addresses to a file called "addrdecl.out".
 **		At the moment I think the best place to insert this call
-**		is in the makeentry call in label.c
+**		is in the insert_entry call in label.c
 */
+
 void prof_output_addr_decls(const char *name, const Code *address)
 {
 	if (declfptr) {
@@ -234,15 +233,14 @@ void prof_output_addr_decls(const char *name, const Code *address)
 	return;
 }
 
-
 /* ======================================================================== */
-
 
 /*
 **	prof_output_addr_table:
 **		Outputs the addresses saved whenever SIGPROF is received to
 **		the file "addr.out"
 */
+
 void prof_output_addr_table()
 {
 	FILE *fptr;
@@ -263,5 +261,4 @@ void prof_output_addr_table()
 		fprintf(stderr, "%p\nCouldn't create addrpair.out\n", fptr);
 		exit(1);
 	}
-
 }

@@ -27,6 +27,9 @@
 :- pred generate_arg_info(module_info, module_info).
 :- mode generate_arg_info(in, out) is det.
 
+:- pred make_arg_infos(proc_info, module_info, proc_info).
+:- mode make_arg_infos(in, in, out) is det.
+
 :- pred arg_info__unify_arg_info(code_model, list(arg_info)).
 :- mode arg_info__unify_arg_info(in, out) is det.
 
@@ -66,11 +69,14 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
+
 	make_arg_infos(ProcInfo0, ModuleInfo0, ProcInfo),
+
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+
 	generate_proc_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
 
 %---------------------------------------------------------------------------%
@@ -83,9 +89,6 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 	% number 1, except for semi-deterministic procs, where the
 	% first register is reserved for the result and hence the arguments
 	% start at register number 2.
-
-:- pred make_arg_infos(proc_info, module_info, proc_info).
-:- mode make_arg_infos(in, in, out) is det.
 
 make_arg_infos(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, ArgModes),

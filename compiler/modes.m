@@ -37,7 +37,7 @@ If goal is
 		see whether we should wake up a delayed goal,
 		and if so, wake it up next time we get back to
 		the conjunction.  If there are still delayed goals
-		handing around at the end of the conjunction, 
+		hanging around at the end of the conjunction, 
 		report a mode error.
 	(c) a negation
 		Mode-check the sub-goal.
@@ -82,6 +82,10 @@ a local variable, then report the error [this idea not yet implemented].
 :- pred modecheck(module_info, module_info, io__state, io__state).
 :- mode modecheck(in, out, di, uo) is det.
 
+:- pred modecheck_pred_mode(pred_id, pred_info, module_info, module_info,
+	int, io__state, io__state).
+:- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
+
 	% inst_merge should probably be moved to mode_util
 :- pred inst_merge(inst, inst, module_info, inst, module_info).
 :- mode inst_merge(in, in, in, out, out) is semidet.
@@ -95,6 +99,7 @@ a local variable, then report the error [this idea not yet implemented].
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module type_util, mode_util, code_util, prog_io, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
+:- import_module passes_aux.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,8 +133,6 @@ check_pred_modes(ModuleInfo0, ModuleInfo) -->
 	modecheck_pred_modes_2(PredIds, ModuleInfo0, ModuleInfo1),
 	modecheck_unify_procs(ModuleInfo1, ModuleInfo).
 
-%-----------------------------------------------------------------------------%
-
 	% Iterate over the list of pred_ids in a module.
 
 :- pred modecheck_pred_modes_2(list(pred_id), module_info, 
@@ -141,8 +144,9 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
-		{ ModuleInfo4 = ModuleInfo0 }
+		{ ModuleInfo3 = ModuleInfo0 }
 	;
+<<<<<<< modes.m
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
@@ -164,103 +168,36 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 		{ Errs \= 0 ->
 			module_info_remove_predid(ModuleInfo3, PredId,
 				ModuleInfo4)
+=======
+		write_progress_message("% Mode-checking predicate ",
+			PredId, ModuleInfo0),
+		modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0,
+			ModuleInfo1, Errs),
+		{ Errs = 0 ->
+			ModuleInfo3 = ModuleInfo1
+>>>>>>> 1.101.2.1
 		;
+<<<<<<< modes.m
 			ModuleInfo4 = ModuleInfo3
+=======
+			module_info_num_errors(ModuleInfo1, NumErrors0),
+			NumErrors is NumErrors0 + Errs,
+			module_info_set_num_errors(ModuleInfo1, NumErrors,
+				ModuleInfo2),
+			module_info_remove_predid(ModuleInfo2, PredId,
+				ModuleInfo3)
+>>>>>>> 1.101.2.1
 		}
 	),
-	modecheck_pred_modes_2(PredIds, ModuleInfo4, ModuleInfo).
+	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-	% In the hlds, we initially record the clauses for a predicate
-	% in the clauses_info data structure which is part of the
-	% pred_info data structure.  But once the clauses have been
-	% type-checked, we want to have a separate copy of each clause
-	% for each different mode of the predicate, since we may
-	% end up reordering the clauses differently in different modes.
-	% Here we copy the clauses from the clause_info data structure
-	% into the proc_info data structure.  Each clause is marked
-	% with a list of the modes for which it applies, so that
-	% there can be different code to implement different modes
-	% of a predicate (e.g. sort).  For each mode of the predicate,
-	% we select the clauses for that mode, disjoin them together,
-	% and save this in the proc_info.
-
-:- pred copy_clauses_to_proc(pred_info, proc_id, pred_info).
-:- mode copy_clauses_to_proc(in, in, out) is det.
-
-copy_clauses_to_proc(PredInfo0, ProcId, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	pred_info_procedures(PredInfo0, Procs0),
-	copy_clauses_to_procs_2([ProcId], ClausesInfo, Procs0, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
-
-:- pred copy_clauses_to_procs(pred_info, pred_info).
-:- mode copy_clauses_to_procs(in, out) is det.
-
-copy_clauses_to_procs(PredInfo0, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	pred_info_procedures(PredInfo0, Procs0),
-	map__keys(Procs0, ProcIds),
-	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
-
-:- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
-				proc_table::in, proc_table::out) is det.
-
-copy_clauses_to_procs_2([], _, Procs, Procs).
-copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
-	map__lookup(Procs0, ProcId, Proc0),
-	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
-	select_matching_clauses(Clauses, ProcId, MatchingClauses),
-	get_clause_goals(MatchingClauses, GoalList),
-	( GoalList = [SingleGoal] ->
-		Goal = SingleGoal
-	;
-		% Construct a goal_info for the disjunction.
-		% We use the context of the first clause, unless
-		% there weren't any clauses at all, in which case
-		% we use the context of the mode declaration.
-		% The non-local vars are just the head variables.
-		goal_info_init(GoalInfo0),
-		( GoalList = [FirstGoal | _] ->
-			FirstGoal = _ - FirstGoalInfo,
-			goal_info_context(FirstGoalInfo, Context)
-		;
-			proc_info_context(Proc0, Context)
-		),
-		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-		set__list_to_set(HeadVars, NonLocalVars),
-		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo),
-		Goal = disj(GoalList) - GoalInfo
-	),
-	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc),
-	map__set(Procs0, ProcId, Proc, Procs1),
-	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
-
-:- pred select_matching_clauses(list(clause), proc_id, list(clause)).
-:- mode select_matching_clauses(in, in, out) is det.
-
-select_matching_clauses([], _, []).
-select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
-	Clause = clause(ProcIds, _, _),
-	( ProcIds = [] ->
-		MatchingClauses = [Clause | MatchingClauses1]
-	; list__member(ProcId, ProcIds) ->
-		MatchingClauses = [Clause | MatchingClauses1]
-	;
-		MatchingClauses = MatchingClauses1
-	),
-	select_matching_clauses(Clauses, ProcId, MatchingClauses1).
-
-:- pred get_clause_goals(list(clause)::in, list(hlds__goal)::out) is det.
-
-get_clause_goals([], []).
-get_clause_goals([Clause | Clauses], Goals) :-
-	Clause = clause(_, Goal, _),
-	goal_to_disj_list(Goal, GoalList),
-	list__append(GoalList, Goals1, Goals),
-	get_clause_goals(Clauses, Goals1).
+modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, Errs) -->
+	modecheck_procs(PredId, ModuleInfo0, PredInfo0, PredInfo, Errs),
+	{ module_info_preds(ModuleInfo0, Preds0) },
+	{ map__set(Preds0, PredId, PredInfo, Preds) },
+	{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 

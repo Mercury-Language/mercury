@@ -131,7 +131,8 @@ vn__record_ctrl_deps([], _Sink, _VnTables,
 		MustSuccmap, MustSuccmap, MustPredmap, MustPredmap).
 vn__record_ctrl_deps([Vnlval - Vn | FlushList], Sink, VnTables,
 		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap) :-
-	vn__lookup_desired_value(Vnlval, Des_vn, VnTables),
+	vn__lookup_desired_value(Vnlval, Des_vn, "vn__record_ctrl_deps",
+		VnTables),
 	Vn = Des_vn,
 	vn__add_link(node_lval(Vnlval), Sink,
 		MustSuccmap0, MustSuccmap1, MustPredmap0, MustPredmap1),
@@ -151,8 +152,10 @@ vn__prod_cons_order([], VnTables, VnTables,
 		Succmap, Succmap, Predmap, Predmap).
 vn__prod_cons_order([Vnlval | Vnlvals], VnTables0, VnTables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
-	vn__lookup_desired_value(Vnlval, NewVn, VnTables0),
-	vn__lookup_current_value(Vnlval, OldVn, VnTables0),
+	vn__lookup_desired_value(Vnlval, NewVn, "vn__prod_cons_order",
+		VnTables0),
+	vn__lookup_current_value(Vnlval, OldVn, "vn__prod_cons_order",
+		VnTables0),
 	( OldVn = NewVn ->
 		VnTables1 = VnTables0,
 		Succmap1 = Succmap0,
@@ -367,7 +370,8 @@ vn__use_sink_before_redef(Sink, VnTables, Liveset,
 		;
 			Users1 = []
 		},
-		{ vn__lookup_uses(OldVn, Uses, VnTables) },
+		{ vn__lookup_uses(OldVn, Uses, "vn__use_sink_before_redef",
+			VnTables) },
 		{ vn__find_access_users(Uses, VnTables, Succmap0, Users2) },
 		{ list__append(Users1, Users2, Users) },
 
@@ -409,8 +413,10 @@ vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 		),
 		% opt_debug__write(" and "),
 		(
-			vn__lookup_current_value(Vnlval, OldVn, VnTables),
-			vn__lookup_desired_value(Vnlval, NewVn, VnTables),
+			vn__lookup_current_value(Vnlval, OldVn,
+				"vn__find_access_users", VnTables),
+			vn__lookup_desired_value(Vnlval, NewVn,
+				"vn__find_access_users", VnTables),
 			NewVn \= OldVn,
 			map__search(Succmap, node_lval(Vnlval), Users3Prime)
 		->
@@ -481,34 +487,6 @@ vn__add_aliases([Pair | Pairs], Vn, Sink, Liveset,
 
 %-----------------------------------------------------------------------------%
 
-:- pred vn__is_vn_shared(vn, vnrval, list(vn_src), vn_tables).
-:- mode vn__is_vn_shared(in, in, in, in) is semidet.
-
-vn__is_vn_shared(Vn, Vnrval, Uses0, VnTables) :-
-	vn__is_const_expr(Vn, no, VnTables),
-	\+ Vnrval = vn_origlval(vn_hp),
-	vn__real_uses(Uses0, Uses1, VnTables),
-	Uses1 = [_,_|_].
-
-:- pred vn__real_uses(list(vn_src), list(vn_src), vn_tables).
-:- mode vn__real_uses(di, uo, in) is semidet.
-
-vn__real_uses([], [], _VnTables).
-vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
-	vn__real_uses(Uses0, Uses1, VnTables),
-	( Use0 = src_liveval(Vnlval) ->
-		(
-			vn__search_desired_value(Vnlval, Vn, VnTables),
-			vn__search_current_value(Vnlval, Vn, VnTables)
-		->
-			Uses = Uses1
-		;
-			Uses = [Use0 | Uses1]
-		)
-	;
-		Uses = [Use0 | Uses1]
-	).
-
 	% Record the dependency of the nodes inside the given vn
 	% on the given node.
 
@@ -518,8 +496,8 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 
 vn__find_links(Vn, Sink, VnTables0, VnTables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
-	vn__lookup_uses(Vn, Uses0, VnTables0),
-	vn__lookup_defn(Vn, Vnrval, VnTables0),
+	vn__lookup_uses(Vn, Uses0, "vn__find_links", VnTables0),
+	vn__lookup_defn(Vn, Vnrval, "vn__find_links", VnTables0),
 	(
 		vn__is_vn_shared(Vn, Vnrval, Uses0, VnTables0),
 		\+ Sink = node_shared(_)
@@ -823,7 +801,8 @@ vn__reorder_noops_2([Node | Nodes], VnTables, Noops, Ops) :-
 			Node = node_origlval(_)
 		;
 			Node = node_lval(Vnlval),
-			vn__lookup_desired_value(Vnlval, Vn, VnTables),
+			vn__lookup_desired_value(Vnlval, Vn,
+				"vn__reorder_noops_2", VnTables),
 			vn__search_current_value(Vnlval, Vn, VnTables),
 			vn__vnlval_access_vns(Vnlval, [])
 		)

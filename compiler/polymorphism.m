@@ -15,9 +15,9 @@
 % which contains higher-order predicate variables for each of the builtin
 % polymorphic operations (currently unification, compare/3, and index/2).
 %
-% The type_info structure is layed out as follows:
+% The type_info structure is laid out as follows:
 %
-%	word 0		<arity of type>
+%	word 0		<arity of type constructor>
 %			e.g. 0 for `int', 1 for `list(T)', 2 for `map(K, V)'.
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
@@ -29,6 +29,7 @@
 %	:- pred p(T1).
 %	:- pred q(T2).
 %	:- pred r(T3).
+%
 %	p(X) :- q([X]), r(0).
 %
 % into
@@ -36,6 +37,7 @@
 %	:- pred p(T1, pred(T1, T1)).
 %	:- pred q(T2, pred(T2, T2)).
 %	:- pred r(T3, pred(T2, T2)).
+%
 %	p(X, TypeInfo) :-
 %		q([X], type_info(1, list_unify, list_index, list_compare,
 %				TypeInfo)),

@@ -560,12 +560,10 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code) :-
 	code_info__generate_stack_livelvals(OutArgs, LiveVals0, Code0, Code1),
 	code_info__get_module_info(Module, Code1, Code2),
-	module_info_shapes(Module, S_Tab0),
+	code_info__get_shapes(S_Tab0, Code2, Code3),
 	call_gen__insert_arg_livelvals(OutputArgs, Module,
-					LiveVals0, LiveVals, Code2, Code3,
-					S_Tab0, S_Tab),
-	module_info_set_shapes(Module, S_Tab, Module1),
-	code_info__set_module_info(Module1, Code3, Code).
+		LiveVals0, LiveVals, Code3, Code4, S_Tab0, S_Tab),
+	code_info__set_shapes(S_Tab, Code4, Code).
 
 % Maybe a varlist to type_id list would be a better way to do this...
 

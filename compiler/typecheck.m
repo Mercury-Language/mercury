@@ -115,6 +115,10 @@
 :- pred typecheck(module_info, module_info, bool, io__state, io__state).
 :- mode typecheck(in, out, out, di, uo) is det.
 
+:- pred typecheck_pred_type(pred_id, pred_info, module_info,
+	maybe(pred_info), io__state, io__state).
+:- mode typecheck_pred_type(in, in, in, out, di, uo) is det.
+
 /*
 	Formally, typecheck(Module0, Module, FoundError, IO0, IO) is
 	intended to be true iff Module is Module0 annotated with the
@@ -129,6 +133,12 @@
 	(returning the result in Module), prints out appropriate error
 	messages, and sets FoundError to `yes' if it finds any errors
 	and `no' otherwise.
+
+	Typecheck also copies the clause_info structure it annotates
+	to the proc structures. This is done at the end of typecheck
+	and not at the start of modecheck because modecheck may be
+	reinvoked after HLDS transformations. Any transformation that
+	needs typechecking should work with the clause_info structure.
 */
 
 %-----------------------------------------------------------------------------%
@@ -138,7 +148,7 @@
 :- import_module int, list, map, string, require, std_util, tree234.
 :- import_module varset, term, prog_util, type_util, code_util.
 :- import_module term_io, prog_out, hlds_out, mercury_to_mercury.
-:- import_module options, getopt, globals.
+:- import_module options, getopt, globals, passes_aux, clause_to_proc.
 :- import_module undef_types.
 
 %-----------------------------------------------------------------------------%
@@ -176,28 +186,65 @@ typecheck(Module0, Module, FoundError) -->
 
 check_pred_types(Module0, Module, FoundError) -->
 	{ module_info_predids(Module0, PredIds) },
-	typecheck_pred_types_2(PredIds, Module0, no, Module, FoundError).
+	typecheck_pred_types_2(PredIds, Module0, Module, no, FoundError).
 
 %-----------------------------------------------------------------------------%
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred typecheck_pred_types_2(list(pred_id), module_info, bool,
-			module_info, bool, io__state, io__state).
-:- mode typecheck_pred_types_2(in, in, in, out, out, di, uo) is det.
+:- pred typecheck_pred_types_2(list(pred_id), module_info, module_info,
+	bool, bool, io__state, io__state).
+:- mode typecheck_pred_types_2(in, in, out, in, out, di, uo) is det.
 
-typecheck_pred_types_2([], ModuleInfo, Error, ModuleInfo, Error) --> [].
-typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
-				ModuleInfo, Error, IOState0, IOState) :-
-	module_info_preds(ModuleInfo0, Preds0),
-	map__lookup(Preds0, PredId, PredInfo0),
+typecheck_pred_types_2([], ModuleInfo, ModuleInfo, Error, Error) --> [].
+typecheck_pred_types_2([PredId | PredIds],
+		ModuleInfo0, ModuleInfo, Error0, Error) -->
+	{ module_info_preds(ModuleInfo0, Preds0) },
+	{ map__lookup(Preds0, PredId, PredInfo0) },
 	(
-	    pred_info_is_imported(PredInfo0)
+		{ pred_info_is_imported(PredInfo0) }
 	->
-	    ModuleInfo2 = ModuleInfo0,
-	    IOState2 = IOState0,
-	    Error2 = Error0
+		{ Error1 = Error0 },
+		{ ModuleInfo1 = ModuleInfo0 }
 	;
+		write_progress_message("% Type-checking predicate ",
+			PredId, ModuleInfo0),
+		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0,
+			MaybePredInfo),
+		{
+			MaybePredInfo = yes(PredInfo1),
+			Error1 = Error0,
+			map__set(Preds0, PredId, PredInfo1, Preds),
+			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
+		;
+			MaybePredInfo = no,
+			Error1 = yes,
+			module_info_remove_predid(ModuleInfo0, PredId,
+				ModuleInfo1)
+		}
+	),
+	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, Error1, Error).
+
+typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
+		IOState0, IOState) :-
+	typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo0,
+		IOState0, IOState),
+	(
+		MaybePredInfo0 = no,
+		MaybePredInfo = no
+	;
+		MaybePredInfo0 = yes(PredInfo1),
+		copy_clauses_to_procs(PredInfo1, PredInfo),
+		MaybePredInfo = yes(PredInfo)
+	).
+
+:- pred typecheck_pred_type_2(pred_id, pred_info, module_info,
+	maybe(pred_info), io__state, io__state).
+:- mode typecheck_pred_type_2(in, in, in, out, di, uo) is det.
+
+typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
+		IOState0, IOState) :-
+	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.
 	    pred_info_name(PredInfo0, PredName),
@@ -208,33 +255,28 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	    )
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
-					Clauses0),
+	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
 	    ( Clauses0 = [] ->
-		% XXX we should probably report an error "undefined type"
-		pred_info_mark_as_external(PredInfo0, PredInfo),
-		map__set(Preds0, PredId, PredInfo, Preds),
-		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo2)
+		pred_info_mark_as_external(PredInfo0, PredInfo)
 	    ;
-	        ModuleInfo2 = ModuleInfo0
+	        PredInfo = PredInfo0
 	    ),
-	    IOState2 = IOState0,
-	    Error2 = Error0
+	    MaybePredInfo = yes(PredInfo),
+	    IOState = IOState0
 	;
 	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes),
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
-					Clauses0),
+	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
 	    ( Clauses0 = [] ->
-		report_error_no_clauses(PredId, PredInfo0,
-			ModuleInfo0, IOState0, IOState2),
-		module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo2),
-		Error2 = yes
+		report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
+			IOState0, IOState),
+		MaybePredInfo = no
 	    ;
-		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
+		write_progress_message("% Type-checking predicate ",
+			PredId, ModuleInfo, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
-		type_info_init(IOState1, ModuleInfo0, PredId,
+		type_info_init(IOState1, ModuleInfo, PredId,
 				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
 				TypeInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes, Clauses,
@@ -244,33 +286,16 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo),
-		type_info_get_found_error(TypeInfo2, Error1),
-		map__set(Preds0, PredId, PredInfo, Preds),
-		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-		( Error1 = yes ->
-			module_info_remove_predid(ModuleInfo1, PredId,
-				ModuleInfo2)
+		type_info_get_found_error(TypeInfo2, Error),
+		(
+			Error = yes,
+			MaybePredInfo = no
 		;
-			ModuleInfo2 = ModuleInfo1
+			Error = no,
+			MaybePredInfo = yes(PredInfo)
 		),
-		bool__or(Error0, Error1, Error2),
-		type_info_get_io_state(TypeInfo2, IOState2)
+		type_info_get_io_state(TypeInfo2, IOState)
 	    )
-	),
-	typecheck_pred_types_2(PredIds, ModuleInfo2, Error2, ModuleInfo, Error,
-		IOState2, IOState).
-
-:- pred write_progress_message(pred_id, module_info, io__state, io__state).
-:- mode write_progress_message(in, in, di, uo) is det.
-
-write_progress_message(PredId, ModuleInfo) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	( { VeryVerbose = yes } ->
-		io__write_string("% Type-checking predicate "),
-		hlds_out__write_pred_id(ModuleInfo, PredId),
-		io__write_string("\n")
-	;
-		[]
 	).
 
 %-----------------------------------------------------------------------------%

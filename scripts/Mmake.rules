@@ -11,8 +11,8 @@ main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
-		.date .c .nu .o .pic_o .mod .pp .s .garb .mod_h .ql .pl
+.SUFFIXES: .pp .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
+		.date .mod .c .nu .o .pic_o .s .garb .mod_h .ql .pl
 
 .PRECIOUS: %.date
 
@@ -42,9 +42,13 @@ main_target: $(MAIN_TARGET)
 # the new .err file is also of size zero,
 # the time-stamp doesn't get updated!
 # (Is that a bug in unix? In bash?)
-.nl.err:
+
+.m.err:
 	$(MC) $(MCFLAGS) $< > $@ 2>&1
 	@touch $@
+
+.m.date:
+	$(MCI) $(MCFLAGS) $(MCIFLAGS) $<
 
 # do not remove the whitespace in the following two rules!
 
@@ -54,21 +58,18 @@ main_target: $(MAIN_TARGET)
 .date.int2:
 	
 
-.nl.date:
-	$(MCI) $(MCFLAGS) $(MCIFLAGS) $<
-
-.nl.garb:
+.m.garb:
 	$(MCG) --garbage-collection accurate $(MCGFLAGS) $<
 
-.nl.ugly:
+.m.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
 
-.nl.dep:
+.m.dep:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
 	@-chmod -w $*.dep
 
-.nl.depend:
+.m.depend:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
 	@-chmod -w $*.dep
@@ -82,12 +83,18 @@ main_target: $(MAIN_TARGET)
 		-e 's/$$/ portray ]./' \
 		> $@
 
-.nl.mod:
-	rm -f $*.mod
-	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+# the --compile-to-c is only temporary
+
+.m.c:
+	rm -f $*.c
+	$(MCG) -s $(GRADE) --compile-to-c $(MCGFLAGS) $< > $*.err2 2>&1
+
+# the next rule should be needed only in runtime in a short while
 
 .mod.c:
 	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
+
+# the next rule will need changing (probably by Tyson)
 
 .mod.mod_h:
 	[ -f $< ] && $(MOD2H) -s$(GRADE) $(MOD2HFLAGS) $< > $@

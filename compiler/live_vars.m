@@ -4,7 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module live_vars.
 % Main author: conway.
 
 % Computes the `live_vars', i.e. which variables are either live across a
@@ -14,16 +13,23 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module live_vars.
+
 :- interface.
+
 :- import_module hlds, llds.
 
 :- pred detect_live_vars(module_info, module_info).
 :- mode detect_live_vars(in, out) is det.
 
+:- pred detect_live_vars_in_proc(proc_info, module_info, proc_info).
+:- mode detect_live_vars_in_proc(di, in, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module list, map, set, std_util.
 :- import_module mode_util, int, term, require.
 :- import_module graph_colour.
@@ -65,26 +71,29 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_interface_code_model(ProcInfo0, CodeModel),
-
-	detect_initial_live_vars(ProcInfo0, ModuleInfo0, Liveness0),
-	set__init(LiveSets0),
-	set__init(ExtraLives0),
-	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			CodeModel, ModuleInfo0, _ExtraLives, _Liveness,
-			LiveSets),
-	graph_colour__group_elements(LiveSets, ColourSets),
-	set__to_sorted_list(ColourSets, ColourList),
-	live_vars__allocate_call_info(ColourList, CodeModel, CallInfo),
-
-	proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo),
+	detect_live_vars_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+
 	detect_live_vars_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+detect_live_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_interface_code_model(ProcInfo0, CodeModel),
+
+	detect_initial_live_vars(ProcInfo0, ModuleInfo, Liveness0),
+	set__init(LiveSets0),
+	set__init(ExtraLives0),
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+		CodeModel, ModuleInfo, _ExtraLives, _Liveness, LiveSets),
+	graph_colour__group_elements(LiveSets, ColourSets),
+	set__to_sorted_list(ColourSets, ColourList),
+	live_vars__allocate_call_info(ColourList, CodeModel, CallInfo),
+
+	proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

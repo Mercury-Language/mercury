@@ -4,27 +4,32 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module liveness.
 % Main author: conway.
 
-	% This module traverses the goal for each procedure, and adds
-	% liveness annotations to the goal_info for each sub-goal.
+% This module traverses the goal for each procedure, and adds
+% liveness annotations to the goal_info for each sub-goal.
 
-	% Note - the concept of `liveness' here is different to that
-	% used in the mode analysis.  The mode analysis is concerned
-	% with the liveness of what is *pointed* to by a variable, for
-	% the purpose of avoiding aliasing and for structure re-use
-	% optimization, whereas here we are concerned with the liveness
-	% of the variable itself, for the purposes of minimizing stack
-	% slot usage and for register re-use.
+% Note - the concept of `liveness' here is different to that
+% used in the mode analysis.  The mode analysis is concerned
+% with the liveness of what is *pointed* to by a variable, for
+% the purpose of avoiding aliasing and for structure re-use
+% optimization, whereas here we are concerned with the liveness
+% of the variable itself, for the purposes of minimizing stack
+% slot usage and for register re-use.
 
 %-----------------------------------------------------------------------------%
 
+:- module liveness.
+
 :- interface.
+
 :- import_module hlds, llds.
 
 :- pred detect_liveness(module_info, module_info).
 :- mode detect_liveness(in, out) is det.
+
+:- pred detect_liveness_proc(proc_info, module_info, proc_info).
+:- mode detect_liveness_proc(di, in, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -58,36 +63,46 @@ detect_liveness_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	),
 	detect_liveness_in_preds(PredIds, ModuleInfo1, ModuleInfo).
 
-:- pred detect_liveness_in_procs(list(proc_id), pred_id, module_info,
-					module_info).
+:- pred detect_liveness_in_procs(list(proc_id), pred_id,
+	module_info, module_info).
 :- mode detect_liveness_in_procs(in, in, in, out) is det.
 
 detect_liveness_in_procs([], _PredId, ModuleInfo, ModuleInfo).
-detect_liveness_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
-					ModuleInfo) :-
+detect_liveness_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
+	detect_liveness_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
+	detect_liveness_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+:- pred detect_liveness_in_proc(proc_id, pred_id, module_info, module_info).
+:- mode detect_liveness_in_proc(in, in, in, out) is det.
+
+detect_liveness_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-		% To process each ProcInfo, we get the goal,
-		% initialize the instmap based on the modes of the head vars,
-		% and pass these to `detect_liveness_in_goal'.
-	proc_info_goal(ProcInfo0, Goal0),
+	detect_liveness_proc(ProcInfo0, ModuleInfo0, ProcInfo),
 
-	detect_initial_liveness(ProcInfo0, ModuleInfo0, Liveness0),
-	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo0, Goal1),
-
-	detect_initial_deadness(ProcInfo0, ModuleInfo0, Deadness0),
-	detect_deadness_in_goal(Goal1, Deadness0, ModuleInfo0, Goal),
-
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	detect_liveness_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
+
+	% To process each ProcInfo, we get the goal,
+	% initialize the instmap based on the modes of the head vars,
+	% and pass these to `detect_liveness_in_goal'.
+
+detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+
+	detect_initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal1),
+
+	detect_initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
+	detect_deadness_in_goal(Goal1, Deadness0, ModuleInfo, Goal),
+
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

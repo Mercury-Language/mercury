@@ -230,6 +230,11 @@
 	list(instruction)).
 :- mode opt_util__remove_both_incr_decr_sp(di, uo) is det.
 
+	% Find out what rvals, if any, are needed to access an lval.
+
+:- pred opt_util__lval_access_rvals(lval, list(rval)).
+:- mode opt_util__lval_access_rvals(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1011,3 +1016,17 @@ opt_util__touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
 	bool__or(Touch1, Touch2, Touch).
 
 %-----------------------------------------------------------------------------%
+
+opt_util__lval_access_rvals(reg(_), []).
+opt_util__lval_access_rvals(stackvar(_), []).
+opt_util__lval_access_rvals(framevar(_), []).
+opt_util__lval_access_rvals(succip, []).
+opt_util__lval_access_rvals(maxfr, []).
+opt_util__lval_access_rvals(curfr, []).
+opt_util__lval_access_rvals(redoip(Rval), [Rval]).
+opt_util__lval_access_rvals(hp, []).
+opt_util__lval_access_rvals(sp, []).
+opt_util__lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
+opt_util__lval_access_rvals(temp(_), []).
+opt_util__lval_access_rvals(lvar(_), _) :-
+	error("lvar detected in opt_util__lval_access_rvals").

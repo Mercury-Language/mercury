@@ -46,7 +46,7 @@
 :- implementation.
 :- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
 :- import_module globals, options, io, mercury_to_mercury, varset, int.
-:- import_module type_util, mode_util, inst_match, require.
+:- import_module type_util, mode_util, quantification, inst_match, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -253,12 +253,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap),
 	det_infer_goal_2(Goal0, InstMap0, MiscInfo, NonLocalVars, DeltaInstMap,
-		Goal, InternalDetism),
+		Goal1, InternalDetism),
 
 	% If a goal with possibly multiple solutions doesn't have any
 	% output variables, then we make it succeed at most once.
 	% By setting the InternalDetism different from the external Detism
 	% we tell the code generator to generate a commit after the goal.
+
 	determinism_components(InternalDetism, CanFail, InternalSolns),
 	(
 		InternalSolns = at_most_many,
@@ -269,12 +270,48 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		Detism = InternalDetism
 	),
 
-	% XXX if Detism = failure, we could replace the Goal with fail.
-	% We don't do this yet because we might optimize away calls to error.
+	(
+		Detism = semidet,
+		Goal1 = disj(Disjuncts)
+	->
+		det_disj_to_ite(Disjuncts, GoalInfo0, Goal2),
+		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
+			GoalPair3, _),
+		det_infer_goal(GoalPair3, InstMap0, MiscInfo,
+			Goal - GoalInfo1, _, NewDetism),
+		( Detism = NewDetism ->
+			true
+		;
+			error("transformation of semidet disj to ite changes its determinism")
+		)
+%	;
+%		It would nice to do this, but without further changes
+%		it screws up delta-instantiations and liveness.
+%
+%		Detism = failure
+%	->
+%		Goal = disj([]),
+%		GoalInfo1 = GoalInfo0
+	;
+		Goal = Goal1,
+		GoalInfo1 = GoalInfo0
+	),
 
-	goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
-		GoalInfo1),
-	goal_info_set_determinism(GoalInfo1, Detism, GoalInfo).
+	goal_info_set_internal_determinism(GoalInfo1, InternalDetism,
+		GoalInfo2),
+	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
+
+:- pred det_disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
+:- mode det_disj_to_ite(di, in, uo) is det.
+
+det_disj_to_ite([], _, disj([])).
+det_disj_to_ite([Disjunct | Disjuncts], GoalInfo,
+		if_then_else([], Cond, Then, Else)) :-
+	goal_info_init(InitGoalInfo),
+	Cond = Disjunct,
+	Then = conj([]) - InitGoalInfo,
+	Else = Rest - GoalInfo,
+	det_disj_to_ite(Disjuncts, GoalInfo, Rest).
 
 %-----------------------------------------------------------------------------%
 
@@ -302,8 +339,6 @@ det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Detism) :-
 				SingleGoal, _InstMap, Detism),
 		Goals = [SingleGoal]
 	;
-		% an empty disjunction is equivalent to `fail',
-		% but det_infer_disj will discover this fact.
 		det_infer_disj(Goals0, InstMap0, MiscInfo,
 			can_fail, at_most_zero, Goals, Detism)
 	).
@@ -410,6 +445,17 @@ det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _, Goal, Det) :-
 det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
 			some(Vars, Goal), Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
+
+:- pred det_find_at_most_many(list(hlds__goal)).
+:- mode det_find_at_most_many(in) is semidet.
+
+det_find_at_most_many([_Goal - GoalInfo | Goals]) :-
+	(
+		goal_info_get_determinism(GoalInfo, Detism),
+		determinism_components(Detism, _, at_most_many)
+	;
+		det_find_at_most_many(Goals)
+	).
 
 %-----------------------------------------------------------------------------%
 

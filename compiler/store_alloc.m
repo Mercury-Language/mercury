@@ -4,7 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module store_alloc.
 % Main author: conway.
 
 % Allocates the storage location for each variable
@@ -17,16 +16,23 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module store_alloc.
+
 :- interface.
+
 :- import_module hlds, llds.
 
 :- pred store_alloc(module_info, module_info).
 :- mode store_alloc(in, out) is det.
 
+:- pred store_alloc_in_proc(proc_info, module_info, proc_info).
+:- mode store_alloc_in_proc(di, in, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module list, map, set, std_util.
 :- import_module mode_util, int, term, require.
 
@@ -60,27 +66,30 @@ store_alloc_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 :- mode store_alloc_in_procs(in, in, in, out) is det.
 
 store_alloc_in_procs([], _PredId, ModuleInfo, ModuleInfo).
-store_alloc_in_procs([ProcId | ProcIds], PredId,
-						ModuleInfo0, ModuleInfo) :-
+store_alloc_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_follow_vars(ProcInfo0, Follow0),
-
-	initial_liveness(ProcInfo0, ModuleInfo0, Liveness0),
-	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo0,
-						Goal, _Liveness, _Follow),
-
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
+	store_alloc_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+
 	store_alloc_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_follow_vars(ProcInfo0, Follow0),
+
+	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
+		Goal, _Liveness, _Follow),
+
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

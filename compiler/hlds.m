@@ -10,8 +10,8 @@
 
 % This file contains the data types for the high-level data structure.
 % The file is arranged as follows: first all the data structures are
-% listed.  Most of these are private to this module, with access
-% predicates provided.  Those that are not are explicitly exported
+% listed. Most of these are private to this module, with access
+% predicates provided. Those that are not are explicitly exported
 % using a `:- export_type' directive.
 % Then for each data structure, we give the interface and then
 % the implementation for the access predicates for that data structure.
@@ -82,7 +82,7 @@
 				).
 
 :- type clause		--->	clause(
-					list(proc_id),  % modes for which
+					list(proc_id),	% modes for which
 							% this clause applies
 					hlds__goal,	% Body
 					term__context
@@ -99,7 +99,7 @@
 					hlds__goal,	% Body
 					term__context,	% The context of
 							% the :- mode decl,
-							% not the clause.	
+							% not the clause.
 					call_info,	% stack allocations
 					determinism,	% _inferred_ det'ism
 					code_model,	% selected code model
@@ -119,10 +119,10 @@
 
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
-:- type liveness_info   ==      set(var).	% The live variables
+:- type liveness_info	==	set(var).	% The live variables
 
-:- type liveness        --->    live
-                        ;       dead.
+:- type liveness	--->	live
+			;	dead.
 
 :- pred determinism_components(determinism, can_fail, soln_count).
 :- mode determinism_components(in, out, out) is det.
@@ -212,10 +212,14 @@ special_pred_info(compare, Type,
 
 :- type shape_table	==	pair(map(shape_id, pair(shape_num, shape)),int).
 
-:- type shape           --->    quad(shape_tag, shape_tag, shape_tag,
+:- type shape		--->	quad(shape_tag, shape_tag, shape_tag,
 					 shape_tag)
+<<<<<<< hlds.m
 			;	abstract(type, list(shape_num))
 			;	equivalent(shape_num)
+=======
+			;	abstract(type)
+>>>>>>> 1.148.4.1
 			;	polymorphic(type)
 			;	closure(type).
 
@@ -223,7 +227,7 @@ special_pred_info(compare, Type,
 
 :- type shape_tag	--->	constant
 			;	simple(list(pair(shape_num, shape_id)))
-			;       complicated(list(list(pair(shape_num, shape_id)))).
+			;	complicated(list(list(pair(shape_num, shape_id)))).
 
 %-----------------------------------------------------------------------------%
 
@@ -351,14 +355,13 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% currently just stored as cons(Name, Arity).
 				% But that causes problems for preds
 				% that are overloaded or have multiple
-				% modes, so eventually we'l need to
+				% modes, so eventually we will need to
 				% use `pred_const(PredId, ProcId)'.
 
 			;	address_const(pred_id, proc_id).
 				% used for constructing type_infos
 				% Note that a pred_const is for a closure
 				% whereas an address_const is just an address.
-
 
 %-----------------------------------------------------------------------------%
 
@@ -367,28 +370,27 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 					arg_mode	% mode of top functor
 				).
 
-:- type arg_mode	
-	--->	top_in
-	;	top_out
-	;	top_unused.
+:- type arg_mode	--->	top_in
+			;	top_out
+			;	top_unused.
 
 :- type arg_loc == int.
 
 %-----------------------------------------------------------------------------%
 
-	% Here's how goals are represented
+	% Here is how goals are represented
 
-:- type hlds__goal		== pair(hlds__goal_expr, hlds__goal_info).
+:- type hlds__goal	== pair(hlds__goal_expr, hlds__goal_info).
 
-:- type hlds__goal_expr    	--->	
+:- type hlds__goal_expr	--->
 				% A conjunction.
 				% Note: conjunctions must be fully flattened.
 				conj(hlds__goals)
 
 				% A predicate call.
 				% Initially only the sym_name and arguments
-				% are filled in.  Type analysis fills in the
-				% pred_id.  Mode analysis fills in the
+				% are filled in. Type analysis fills in the
+				% pred_id. Mode analysis fills in the
 				% proc_id and the is_builtin field.
 				% `follow_vars.m' fills in
 				% the follow_vars field.
@@ -403,7 +405,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 				% A unification.
 				% Initially only the terms and the context
-				% are know.  Mode analysis fills in the
+				% are known. Mode analysis fills in the
 				% missing information.
 			;	unify(term, term, unify_mode, unification,
 								unify_context)
@@ -440,16 +442,16 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type follow_vars	==	map(var, lval).
 
-:- type unification	--->	
+:- type unification	--->
 				% Y = f(X) where the top node of Y is output,
 				% written as Y := f(X).
 				construct(var, cons_id, list(var),
-								list(uni_mode))
+					list(uni_mode))
 
 				% Y = f(X) where the top node of Y is input,
 				% written Y == f(X).
 			;	deconstruct(var, cons_id, list(var),
-						list(uni_mode), can_fail)
+					list(uni_mode), can_fail)
 					% Var, Functor, ArgVars, ArgModes, Det
 
 				% Y = X where the top node of Y is output,
@@ -458,17 +460,17 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 				% Y = X where the type of X and Y is an atomic
 				% type and they are both input, written X == Y.
-			;	simple_test(var, var)	
+			;	simple_test(var, var)
 
 				% Y = X where the type of Y and X is not an
 				% atomic type, and where the top-level node
-				% of both Y and X is input.  May involve
-				% bi-directional data flow.  Implemented
-				% using out-of-line call to  a compiler
+				% of both Y and X is input. May involve
+				% bi-directional data flow. Implemented
+				% using out-of-line call to a compiler
 				% generated unification predicate for that
 				% type & mode.
 			;	complicated_unify(uni_mode,
-						can_fail, follow_vars).
+					can_fail, follow_vars).
 
 :- type unify_context	--->	unify_context(
 					unify_main_context,
@@ -483,7 +485,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type unify_sub_contexts ==	list(unify_sub_context).
 
-:- type hlds__goals		==	list(hlds__goal).
+:- type hlds__goals	==	list(hlds__goal).
 
 :- type hlds__goal_info
 	---> goal_info(
@@ -512,9 +514,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% in prog_io.m, and are defined there.
 
 :- type hlds__type_defn	--->	hlds__type_defn(
-						% names of type vars (empty 
+						% names of type vars (empty
 						% except for polymorphic types)
-					tvarset,	
+					tvarset,
 						% formal type parameters
 					list(type_param),
 						% the definition of the type
@@ -556,44 +558,42 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	;	address_constant(pred_id, proc_id)
 			% Procedure address constants
 			% (used for constructing type_infos).
-	;	simple_tag(tag_bits)	
+	;	simple_tag(tag_bits)
 			% This is for constants or functors which only
 			% require a simple (two-bit) tag.
-			% For constants we store a tagged zero, for functors 
+			% For constants we store a tagged zero, for functors
 			% we store a tagged pointer to the argument vector.
 	;	complicated_tag(tag_bits, int)
 			% This is for functors or constants which
-			% require more than just a two-bit tag.  In this case,
+			% require more than just a two-bit tag. In this case,
 			% we use both a primary and a secondary tag.
 			% The secondary tag is stored as the first word of
-			% the argument vector.  (If it's a constant, then
+			% the argument vector. (If it is a constant, then
 			% in this case there is an argument vector of size 1
 			% which just holds the secondary tag.)
 	;	complicated_constant_tag(tag_bits, int).
-			% This is for constants which require more than a 
-			% two-bit tag.  In this case, we use both a primary
+			% This is for constants which require more than a
+			% two-bit tag. In this case, we use both a primary
 			% and a secondary tag, but this time the secondary
 			% tag is stored in the rest of the main word rather
 			% than in the first word of the argument vector.
 
-:- type tag_bits
-	== int.		% actually only 2 (or maybe 3) bits
+:- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 
-:- type hlds__inst_defn
-	--->	hlds__inst_defn(
-			varset,
-			list(inst_param),
-			hlds__inst_body,
-			condition,
-			term__context
-		).
+:- type hlds__inst_defn	--->	hlds__inst_defn(
+					varset,
+					list(inst_param),
+					hlds__inst_body,
+					condition,
+					term__context
+				).
 
 :- type hlds__inst_body	--->	eqv_inst(inst)
 			;	abstract_inst.
 
 :- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
-					hlds__mode_body,
-					condition, term__context).
+					hlds__mode_body, condition,
+					term__context).
 
 :- type hlds__mode_body --->	eqv_mode(mode).
 
@@ -855,7 +855,7 @@ module_info_set_special_pred_map(ModuleInfo0, SpecialPredMap, ModuleInfo) :-
 module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K),
 	E = shape_info(_, AbsExports),
-	ModuleInfo = module(A, B, C, D, shape_info(Shapes, AbsExports), 
+	ModuleInfo = module(A, B, C, D, shape_info(Shapes, AbsExports),
 		F, G, H, I, J, K).
 
 module_info_set_shape_info(ModuleInfo0, Shape_Info, ModuleInfo) :-
@@ -908,7 +908,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, Preds0),
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo2),
-	
+
 	module_info_shapes(ModuleInfo2, (Shapes0 - N)),
 	map__optimize(Shapes0, Shapes),
 	module_info_set_shapes(ModuleInfo2, (Shapes - N), ModuleInfo3),
@@ -955,7 +955,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 	% Set the pred_id->pred_info map.
 	% NB You shouldn't modify the keys in this table, only
-	% the values.  If you want to add or delete pred_ids,
+
 	% use predicate_table_insert and predicate_table_remove_predid.
 
 :- pred predicate_table_set_preds(predicate_table, pred_table, predicate_table).
@@ -991,23 +991,23 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- mode predicate_table_search_name_arity(in, in, in, out) is semidet.
 
 	% Search the table for THE predicate matching this module,
-	% name, and arity.  (We currently don't allow overloading
+	% name, and arity. (We currently don't allow overloading
 	% of predicates with the same name/arity in the same module.)
 	% m_n_a is short for module, name, arity.
-	
+
 :- pred predicate_table_search_m_n_a(predicate_table, module_name, string,
 						arity, list(pred_id)).
 :- mode predicate_table_search_m_n_a(in, in, in, in, out) is semidet.
 
 	% Insert a new pred_info structure into the predicate_table
-	% and assign it a new pred_id.  You should check beforehand
+	% and assign it a new pred_id. You should check beforehand
 	% that the pred doesn't already occur in the table.
 
 :- pred predicate_table_insert(predicate_table, pred_info, pred_id,
 				predicate_table).
 :- mode predicate_table_insert(in, in, out, out) is det.
 
-	% Return an invalid pred_id.  Used to initialize the pred_id
+	% Return an invalid pred_id. Used to initialize the pred_id
 	% in call(...) goals before we do typechecking or when type-checking
 	% finds that there was no predicate which matched the call.
 
@@ -1031,7 +1031,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 		pred_name_index,	% map from pred name to pred_id
 		pred_name_arity_index,	% map from pred name & arity to pred_id
 		pred_module_name_arity_index
-					% map from pred module, name & arity 
+					% map from pred module, name & arity
 					% to pred_id
 	).
 
@@ -1154,7 +1154,6 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				N_Index, NA_Index, MNA_Index).
-
 
 :- pred predicate_table_next_pred_id(map(pred_id, pred_info), random__supply,
 					pred_id, random__supply).
@@ -1303,7 +1302,7 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 
 	% The symbol table for predicates.
 
-:- type pred_info	
+:- type pred_info
 	--->	predicate(
 			tvarset,	% names of type vars
 					% in the predicate's type decl
@@ -1343,14 +1342,14 @@ pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C,  _, E, F, G, H, I, J, K),
+	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K),
 	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K).
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
-	PredInfo0 = predicate(_, _, C,  D, E, F, G, H, I, J, K),
+	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K),
 	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K).
 
 pred_info_procedures(PredInfo, Procs) :-
@@ -1385,11 +1384,11 @@ pred_info_is_exported(PredInfo) :-
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K).
-	
+
 pred_info_set_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K).
-	
+
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet).
 
@@ -1498,12 +1497,12 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 
 :- implementation.
 
-	% Some parts of the procedure aren't known yet.  We initialize
+	% Some parts of the procedure aren't known yet. We initialize
 	% them to any old garbage which we will later throw away.
 
 	% If the source code doesn't specify any determinism annotation,
 	% inferred determinism gets initialized to `deterministic'.
-	% This is what `det_analysis.m' wants.  If it turns out
+	% This is what `det_analysis.m' wants. If it turns out
 	% that the procedure wasn't deterministic, then det_analysis.m
 	% provide the correct inferred determinism for it.
 
@@ -1573,7 +1572,7 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, Follow).
 
 % :- type proc_info	--->	procedure(
-% 				A	maybe(determinism),% _declared_ det'ism
+% 				A	maybe(determinism),% _declared_ detism
 % 				B	varset,		% variable names
 % 				C	map(var, type),	% variable types
 % 				D	list(var),	% head vars
@@ -1581,9 +1580,9 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 				F	hlds__goal,	% Body
 % 				G	term__context,	% The context of
 % 							% the :- mode decl,
-% 							% not the clause.	
+% 							% not the clause.
 % 				H	call_info,	% stack allocations
-% 				I	determinism,	% _inferred_ det'ism
+% 				I	determinism,	% _inferred_ detism
 % 				J	code_model,	% selected code model
 % 				K	list(arg_info),	% information about
 % 							% the arguments
@@ -1592,7 +1591,6 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 				L	liveness_info,	% the initial liveness
 % 				M	follow_vars	% initial followvars
 % 				).
-
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, _, _, E, _, G,
@@ -1923,7 +1921,7 @@ is_builtin__make_builtin(Int, Inl, Int - Inl).
 
 	% make_n_fresh_vars(N, VarSet0, Vars, VarSet):
 	%	`Vars' is a list of `N' fresh variables allocated from
-	%	`VarSet0'.  `VarSet' is the resulting varset.
+	%	`VarSet0'. `VarSet' is the resulting varset.
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(in, in, out, out) is det.

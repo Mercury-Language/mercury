@@ -106,13 +106,13 @@ vn__parentry_msg([Lval - Rvals | ParEntries]) -->
 	io__write_string("\n"),
 	vn__parentry_msg(ParEntries).
 
-vn__order_start_msg(Ctrlmap, Flushmap, Vn_tables) -->
+vn__order_start_msg(Ctrlmap, Flushmap, VnTables) -->
 	vn__order_msg_flag(Flag),
 	(
 		{ Flag = yes },
 		{ opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str) },
 		{ opt_debug__dump_flushmap(Flushmap, Flush_str) },
-		{ opt_debug__dump_tables(Vn_tables, Tables_str) },
+		{ opt_debug__dump_tables(VnTables, Tables_str) },
 		io__write_string("\n\n"),
 		io__write_string(Ctrl_str),
 		io__write_string(Flush_str),
@@ -272,12 +272,12 @@ vn__flush_also_msg(Vnlval) -->
 		{ Flag = no }
 	).
 
-vn__flush_end_msg(Instrs, Vn_tables) -->
+vn__flush_end_msg(Instrs, VnTables) -->
 	vn__flush_msg_flag(Flag),
 	(
 		{ Flag = yes },
 		{ opt_debug__dump_fullinstrs(Instrs, I_str) },
-		{ opt_debug__dump_useful_vns(Vn_tables, U_str) },
+		{ opt_debug__dump_useful_vns(VnTables, U_str) },
 		io__write_string("generated instrs:\n"),
 		io__write_string(I_str),
 		io__write_string("new use info\n"),

@@ -4,7 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module follow_vars.
 % Main author: conway.
 
 % This module traverses the goal for every procedure, filling in the
@@ -23,16 +22,23 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module follow_vars.
+
 :- interface.
+
 :- import_module hlds, llds.
 
 :- pred find_follow_vars(module_info, module_info).
 :- mode find_follow_vars(in, out) is det.
 
+:- pred find_follow_vars_in_proc(proc_info, module_info, proc_info).
+:- mode find_follow_vars_in_proc(di, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module list, map, set, std_util.
 :- import_module mode_util, term, require.
 :- import_module code_util, quantification, arg_info.
@@ -74,20 +80,24 @@ find_follow_vars_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_goal(ProcInfo0, Goal0),
-
-	find_final_follow_vars(ProcInfo0, FollowVars0),
-	find_follow_vars_in_goal(Goal0, ModuleInfo0,
-				FollowVars0, Goal, FollowVars),
-
-	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo),
+	find_follow_vars_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+
 	find_follow_vars_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+
+	find_final_follow_vars(ProcInfo0, FollowVars0),
+	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0,
+		Goal, FollowVars),
+
+	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

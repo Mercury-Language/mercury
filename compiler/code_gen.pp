@@ -10,9 +10,8 @@
 % Notes:
 %	code_gen forwards most of the actual construction of intruction
 %	sequences to code_info, and other modules. The generation of
-%	calls is done by call_gen, switches by switch_gen, if-then-else
-%	by ite_gen, unifications by unify_gen, and disjunctions by
-%	disj_gen.
+%	calls is done by call_gen, switches by switch_gen, if-then-elses
+%	by ite_gen, unifications by unify_gen, and disjunctions by disj_gen.
 %
 %	The general scheme for generating semideterministic code is
 %	to treat it as deterministic code, and have a fall-through
@@ -30,8 +29,13 @@
 
 		% Translate a HLDS structure into an LLDS
 
-:- pred generate_code(module_info, module_info, c_file, io__state, io__state).
+:- pred generate_code(module_info, module_info, list(c_procedure),
+						io__state, io__state).
 :- mode generate_code(in, out, out, di, uo) is det.
+
+:- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, 
+	shape_table, shape_table, c_procedure, io__state, io__state).
+:- mode generate_proc_code(in, in, in, in, di, uo, out, di, uo) is det.
 
 		% These predicates generate code for a goal
 
@@ -78,6 +82,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module char, string, list, varset, term, map, tree, require.
 :- import_module type_util, mode_util, std_util, int, set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
@@ -87,78 +92,14 @@
 %---------------------------------------------------------------------------%
 
 % For a set of high level data structures and associated data, given in
-% ModuleInfo, generate a corresponding c_file structure.
+% ModuleInfo, generate a list of c_procedure structures.
 
-generate_code(ModuleInfo0, ModuleInfo, c_file(Name, ModuleList)) -->
-	{ module_info_name(ModuleInfo0, Name) },
-		% construct the module-name string
-	{ string__append(Name, "_module", ModName) },
+generate_code(ModuleInfo0, ModuleInfo, Procedures) -->
 		% get a list of all the predicate ids
 		% for which we are going to generate code.
-	{ module_info_predids(ModuleInfo0, PredIDList) },
+	{ module_info_predids(ModuleInfo0, PredIds) },
 		% now generate the code for each predicate
-	generate_pred_list_code(ModuleInfo0, ModuleInfo, PredIDList,
-			Procedures),
-		% split the code up into bite-size chunks for the C compiler
-	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	( { ProcsPerFunc = 0 } ->
-		% ProcsPerFunc = 0 really means infinity -
-		% we store all the procs in a single function.
-		{ ModuleList = [c_module(ModName, Procedures)] }
-	;
-		{ code_gen__split_into_chunks(Procedures, ProcsPerFunc,
-			ChunkList) },
-		{ code_gen__combine_chunks(ChunkList, ModName, ModuleList) }
-	).
-
-:- pred code_gen__split_into_chunks(list(T), int, list(list(T))).
-:- mode code_gen__split_into_chunks(in, in, out) is det.
-
-code_gen__split_into_chunks(List, ChunkSize, ListOfSmallLists) :-
-	code_gen__split_into_chunks_2(List, ChunkSize, [], ChunkSize,
-				ListOfSmallLists).
-
-:- pred code_gen__split_into_chunks_2(list(T), int, list(T), int,
-					list(list(T))).
-:- mode code_gen__split_into_chunks_2(in, in, in, in, out) is det.
-
-code_gen__split_into_chunks_2([], _ChunkSize, List0, _N, Lists) :-
-	( List0 = [] ->
-		Lists = []
-	;
-		list__reverse(List0, List),
-		Lists = [List]
-	).
-code_gen__split_into_chunks_2([X|Xs], ChunkSize, List0, N, Lists) :-
-	( N > 1 ->
-		N1 is N - 1,
-		code_gen__split_into_chunks_2(Xs, ChunkSize, [X | List0], N1,
-			Lists)
-	;
-		list__reverse([X | List0], List),
-		Lists = [List | Lists1],
-		code_gen__split_into_chunks_2(Xs, ChunkSize, [], ChunkSize,
-			Lists1)
-	).
-
-:- pred code_gen__combine_chunks(list(list(c_procedure)), string,
-				list(c_module)).
-:- mode code_gen__combine_chunks(in, in, out) is det.
-
-code_gen__combine_chunks(ChunkList, ModName, Modules) :-
-	code_gen__combine_chunks_2(ChunkList, ModName, 0, Modules).
-
-:- pred code_gen__combine_chunks_2(list(list(c_procedure)), string, int,
-				list(c_module)).
-:- mode code_gen__combine_chunks_2(in, in, in, out) is det.
-
-code_gen__combine_chunks_2([], _ModName, _N, []).
-code_gen__combine_chunks_2([Chunk|Chunks], ModName, Num, [Module | Modules]) :-
-	string__int_to_string(Num, NumString),
-	string__append(ModName, NumString, ThisModuleName),
-	Module = c_module(ThisModuleName, Chunk),
-	Num1 is Num + 1,
-	code_gen__combine_chunks_2(Chunks, ModName, Num1, Modules).
+	generate_pred_list_code(ModuleInfo0, ModuleInfo, PredIds, Procedures).
 
 % Generate a list of c_procedure structures for each mode of each
 % predicate given in ModuleInfo
@@ -173,9 +114,7 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 	{ module_info_preds(ModuleInfo0, PredInfos) },
 		% get the pred_info structure for this predicate
 	{ map__lookup(PredInfos, PredId, PredInfo) },
-	(
-			% check to see if this predicate was imported.
-		{ pred_info_is_imported(PredInfo) }
+	( { pred_info_is_imported(PredInfo) }
 	->
 		{ Predicates0 = [] },
 		{ ModuleInfo1 = ModuleInfo0 } 
@@ -224,66 +163,37 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, Code) -->
 	),
 	{ pred_info_proc_ids(PredInfo, ProcIds) },
 		% generate all the procedures for this predicate
-	generate_proc_list_code(ModuleInfo0, ModuleInfo, PredId, 
-					PredInfo, ProcIds, Code).
+	{ module_info_shapes(ModuleInfo0, Shapes0) },
+	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
+		Shapes0, Shapes, [], Code),
+	{ module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) }.
 
 % For all the modes of predicate PredId, generate the appropriate
 % code (deterministic, semideterministic, or nondeterministic).
-% Currently this predicate does not use an accumulator. Perhaps it should.
 
-:- pred generate_proc_list_code(module_info, module_info, pred_id, pred_info,
-		list(proc_id), list(c_procedure), io__state, io__state).
-:- mode generate_proc_list_code(in, out, in, in, in, out, di, uo) is det.
+:- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
+	shape_table, shape_table, list(c_procedure), list(c_procedure),
+	io__state, io__state).
+:- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo) is det.
 
-generate_proc_list_code(ModuleInfo, ModuleInfo, _PredId, 
-					_PredInfo, [], []) --> [].
-generate_proc_list_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, 
-					[ProcId | ProcIds], Procedures) -->
+generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
+		Shapes, Shapes, Procs, Procs) --> [].
+generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
+		Shapes0, Shapes, Procs0, Procs) -->
 	{ pred_info_procedures(PredInfo, ProcInfos) },
 		% locate the proc_info structure for this mode of the predicate
 	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
 		% find out if the proc is deterministic/etc
+	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0,
+		Shapes0, Shapes1, Proc),
+	{ Procs1 = [Proc | Procs0] },
+	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
+		Shapes1, Shapes, Procs1, Procs).
+
+generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
+		Shapes0, Shapes, Proc) -->
+		% find out if the proc is deterministic/etc
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
-		% now generate the code for this.
-	generate_category_code(ModuleInfo0, ModuleInfo1, PredId, ProcId,
-		ProcInfo, CodeModel, Instr, SUsed),
-		% turn the code tree into a list
-	{ tree__flatten(Instr, InstrList) },
-		% now the code is a list of
-		% code-fragments(==list(instr)),
-		% so we need to do a level of
-		% unwinding to get a flat list.
-	{ list__condense(InstrList, Instructions0) },
-	(
-		{ SUsed = yes(SlotNum) }
-	->
-		{ code_gen__add_saved_succip(Instructions0,
-					SlotNum, Instructions) }
-	;
-		{ Instructions = Instructions0 }
-	),
-		% get the name and arity of this predicate
-	{ predicate_name(ModuleInfo1, PredId, Name) },
-	{ predicate_arity(ModuleInfo1, PredId, Arity) },
-		% construct a c_procedure structure
-		% will all the information
-	{ Procedure = c_procedure(Name, Arity, ProcId, Instructions) },
-		% and do the same thing for all
-		% the rest of the procedures
-		% for this predicate.
-	generate_proc_list_code(ModuleInfo1, ModuleInfo, PredId, 
-		PredInfo, ProcIds, Procedures0),
-	{ Procedures = [Procedure | Procedures0] }.
-
-% Generate code for the predicate (PredId,Mode).
-
-:- pred generate_category_code(module_info, module_info, pred_id, proc_id, 
-		proc_info, code_model, code_tree, maybe(int), io__state, 
-		io__state).
-:- mode generate_category_code(in, out, in, in, in, in, out, out, di, uo) is det.
-
-generate_category_code(ModuleInfo, ModuleInfoNew, PredId, ProcId,
-			ProcInfo, CodeModel, Instrs, SUsed) -->
 		% get the goal for this procedure
 	{ proc_info_goal(ProcInfo, Goal) },
 		% get the information about this procedure that we need.
@@ -300,14 +210,33 @@ generate_category_code(ModuleInfo, ModuleInfoNew, PredId, ProcId,
 	},
 	globals__io_get_globals(Globals),
 		% initialise the code_info structure 
-	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip,
-				Globals, PredId, ProcId, ProcInfo, CodeModel,
-				InitialInst, FollowVars, ModuleInfo,
-				CodeInfo0) },
+	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip, Globals,
+		PredId, ProcId, ProcInfo, CodeModel, InitialInst, FollowVars,
+		ModuleInfo, Shapes0, CodeInfo0) },
 		% generate code for the procedure
-	{ generate_category_code_2(CodeModel, Goal, Instrs, SUsed, CodeInfo0,
+	{ generate_category_code_2(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
 		CodeInfo) },
-	{ code_info__get_module_info(ModuleInfoNew, CodeInfo, _CodeInfo1) }.
+		% extract the new shape table
+	{ code_info__get_shapes(Shapes, CodeInfo, _CodeInfo1) },
+
+		% turn the code tree into a list
+	{ tree__flatten(CodeTree, FragmentList) },
+		% now the code is a list of code fragments (== list(instr)),
+		% so we need to do a level of unwinding to get a flat list.
+	{ list__condense(FragmentList, Instructions0) },
+	(
+		{ SUsed = yes(SlotNum) }
+	->
+		{ code_gen__add_saved_succip(Instructions0,
+			SlotNum, Instructions) }
+	;
+		{ Instructions = Instructions0 }
+	),
+		% get the name and arity of this predicate
+	{ predicate_name(ModuleInfo, PredId, Name) },
+	{ predicate_arity(ModuleInfo, PredId, Arity) },
+		% construct a c_procedure structure with all the information
+	{ Proc = c_procedure(Name, Arity, ProcId, Instructions) }.
 
 :- pred generate_category_code_2(code_model, hlds__goal, code_tree, maybe(int),
 				code_info, code_info).

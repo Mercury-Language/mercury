@@ -6,7 +6,7 @@
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
-#include	"io.h"
+#include	"io_rt.h"
 #include	"init.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */

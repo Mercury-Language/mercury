@@ -10,9 +10,7 @@
 #ifndef	TABLE_H
 #define	TABLE_H
 
-#ifndef		LIST_H
-#include	"list.h"
-#endif
+#include	"dlist.h"
 
 typedef	struct	s_table
 {

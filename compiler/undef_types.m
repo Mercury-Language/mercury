@@ -3,13 +3,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module undef_types.
-% Main author: fjh.
 
 % Check for any possible undefined types.
 % (XXX Should we add a definition for undefined types?)
+
+% Main author: fjh.
 
 %-----------------------------------------------------------------------------%
 
