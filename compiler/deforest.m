@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 University of Melbourne.
+% Copyright (C) 1999-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1209,7 +1209,8 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 		ModuleInfo, InstMapDelta) },
 	{ proc_info_interface_determinism(ProcInfo, Detism) },
 	{ set__list_to_set(Args, NonLocals) },
-	{ goal_info_init(NonLocals, InstMapDelta, Detism, GoalInfo) },
+	{ pred_info_get_purity(CalledPredInfo, Purity) },
+	{ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) },
 
 	{ pred_info_module(CalledPredInfo, PredModule) },
 	{ pred_info_name(CalledPredInfo, PredName) },
@@ -1261,7 +1262,8 @@ deforest__create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	goal_list_determinism(DeforestConj, Detism),
 	goal_list_instmap_delta(DeforestConj, InstMapDelta0),
 	instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, Detism, ConjInfo0),
+	goal_list_purity(DeforestConj, Purity),
+	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, ConjInfo0),
 
 	% Give the conjunction a context so that the generated predicate
 	% name points to the location of the first goal.
@@ -1661,7 +1663,10 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	{ goal_list_determinism([EarlierGoal | BetweenGoals], Detism0) },
 	{ goal_info_get_determinism(LaterInfo, Detism1) },
 	{ det_conjunction_detism(Detism0, Detism1, Detism) },
-	{ goal_info_init(NonLocals, Delta, Detism, GoalInfo) },
+	{ goal_list_purity([EarlierGoal | BetweenGoals], Purity0) },
+	{ infer_goal_info_purity(LaterInfo, Purity1) },
+	{ worst_purity(Purity0, Purity1, Purity) }, 
+	{ goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo) },
 	{ Goal2 = GoalExpr - GoalInfo },
 
 	pd_info_get_module_info(ModuleInfo),
@@ -1736,7 +1741,8 @@ deforest__append_goal(Goal0, BetweenGoals, GoalToAppend0,
 	{ goal_list_instmap_delta(Goals, Delta0) },
 	{ instmap_delta_restrict(Delta0, NonLocals, Delta) },
 	{ goal_list_determinism(Goals, Detism) },
-	{ goal_info_init(NonLocals, Delta, Detism, GoalInfo) }, 
+	{ goal_list_purity(Goals, Purity) },
+	{ goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo) }, 
 	{ Goal = conj(Goals) - GoalInfo }.
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,9 +47,9 @@
 
 :- import_module hlds__goal_util, hlds__hlds_pred, hlds__hlds_module.
 :- import_module hlds__hlds_data, hlds__passes_aux, hlds__goal_form.
+:- import_module check_hlds__purity.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__purity.
 :- import_module libs__options, libs__globals.
 
 :- import_module assoc_list, list, require, set, std_util.
@@ -80,7 +80,8 @@ constraint__propagate_goal(Goal0, Constraints, Goal) -->
 	{ goal_list_nonlocals(Goals, NonLocals) },
 	{ goal_list_instmap_delta(Goals, Delta) },
 	{ goal_list_determinism(Goals, ConjDetism) },
-	{ goal_info_init(NonLocals, Delta, ConjDetism, GoalInfo) },
+	{ goal_list_purity(Goals, Purity) },
+	{ goal_info_init(NonLocals, Delta, ConjDetism, Purity, GoalInfo) },
 	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 
 :- pred constraint__propagate_conj_sub_goal(hlds_goal, list(constraint),

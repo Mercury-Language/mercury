@@ -5,9 +5,10 @@ THIS_DIR = hard_coded/purity
 #-----------------------------------------------------------------------------#
 
 PROGS=	\
-	purity \
 	impure_func_t1 \
-	impure_func_t6 
+	impure_func_t6 \
+	purity \
+	purity_opt
 
 TESTS = $(PROGS)
 SUBDIRS=

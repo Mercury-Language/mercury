@@ -124,9 +124,9 @@
 :- module check_hlds__purity.
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_goal.
+:- import_module parse_tree__prog_data, hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module io, bool, list.
+:- import_module io, bool.
 
 % The purity type itself is defined in prog_data.m as follows:
 % :- type purity	--->	pure
@@ -177,27 +177,6 @@
 :- pred purity_name(purity, string).
 :- mode purity_name(in, out) is det.
 
-%  Update a goal info to reflect the specified purity
-:- pred add_goal_info_purity_feature(hlds_goal_info, purity, hlds_goal_info).
-:- mode add_goal_info_purity_feature(in, in, out) is det.
-
-%  Determine the purity of a goal from its hlds_goal_info.
-:- pred infer_goal_info_purity(hlds_goal_info, purity).
-:- mode infer_goal_info_purity(in, out) is det.
-
-%  Check if a hlds_goal_info is for a pure goal
-:- pred goal_info_is_pure(hlds_goal_info).
-:- mode goal_info_is_pure(in) is semidet.
-
-%  Check if a hlds_goal_info is for an impure goal.  Fails if the goal is
-%  semipure, so this isn't the same as \+ goal_info_is_pure.
-:- pred goal_info_is_impure(hlds_goal_info).
-:- mode goal_info_is_impure(in) is semidet.
-
-% Work out the purity of a list of goals. 
-:- pred goal_list_purity(list(hlds_goal), purity).
-:- mode goal_list_purity(in, out) is det.
-
 % Give an error message for unifications marked impure/semipure that are  
 % not function calls (e.g. impure X = 4)
 :- pred impure_unification_expr_error(prog_context, purity,
@@ -206,7 +185,7 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, parse_tree__prog_io_util.
+:- import_module hlds__hlds_data, hlds__hlds_goal, parse_tree__prog_io_util.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module ll_backend__code_util, parse_tree__prog_data.
 :- import_module check_hlds__unify_proc.
@@ -218,7 +197,7 @@
 :- import_module check_hlds__post_typecheck.
 
 :- import_module map, varset, term, string, require, std_util.
-:- import_module assoc_list, bool, int, set.
+:- import_module assoc_list, bool, int, list, set.
 
 %-----------------------------------------------------------------------------%
 %				Public Predicates
@@ -248,49 +227,8 @@ worst_purity((impure), pure, (impure)).
 worst_purity((impure), (semipure), (impure)).
 worst_purity((impure), (impure), (impure)).
 
-
 less_pure(P1, P2) :-
 	\+ worst_purity(P1, P2, P2).
-
-
-add_goal_info_purity_feature(GoalInfo0, pure, GoalInfo) :-
-	goal_info_remove_feature(GoalInfo0, (semipure), GoalInfo1),
-	goal_info_remove_feature(GoalInfo1, (impure), GoalInfo).
-add_goal_info_purity_feature(GoalInfo0, (semipure), GoalInfo) :-
-	goal_info_remove_feature(GoalInfo0, (impure), GoalInfo1),
-	goal_info_add_feature(GoalInfo1, (semipure), GoalInfo).
-add_goal_info_purity_feature(GoalInfo0, (impure), GoalInfo) :-
-	goal_info_remove_feature(GoalInfo0, (semipure), GoalInfo1),
-	goal_info_add_feature(GoalInfo1, (impure), GoalInfo).
-
-
-infer_goal_info_purity(GoalInfo, Purity) :-
-	(
-	    goal_info_has_feature(GoalInfo, (impure)) ->
-		Purity = (impure)
-	;
-	    goal_info_has_feature(GoalInfo, (semipure)) ->
-		Purity = (semipure)
-	;
-		Purity = pure
-	).
-
-
-goal_list_purity(Goals, Purity) :-
-	Purity = list__foldl(
-			(func(_ - GoalInfo, Purity0) = Purity1 :-
-				infer_goal_info_purity(GoalInfo, GoalPurity),
-		    		worst_purity(GoalPurity, Purity0, Purity1)
-			), Goals, pure).
-			
-goal_info_is_pure(GoalInfo) :-
-	\+ goal_info_has_feature(GoalInfo, (impure)),
-	\+ goal_info_has_feature(GoalInfo, (semipure)).
-	
-
-goal_info_is_impure(GoalInfo) :-
-	goal_info_has_feature(GoalInfo, (impure)).
-	
 
 % this works under the assumptions that all purity names but `pure' are prefix
 % operators, and that we never need `pure' indicators/declarations.

@@ -1646,7 +1646,7 @@ generate_unify(ConsId, Var, Goal) :-
 	instmap_delta_from_assoc_list([Var - ground(shared, none)],
 		InstMapDelta),
 	Determinism = det,
-	goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, Determinism, pure, GoalInfo),
 	Goal = unify(Var, functor(ConsId, no, []),
     		(free -> Ground) - (Ground -> Ground),
 		construct(Var, ConsId, [], [], construct_statically([]),
@@ -1661,7 +1661,7 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
 	NonLocals = set__list_to_set([Var | Args]),
 	instmap_delta_from_assoc_list([Var - Ground], InstMapDelta),
 	Determinism = det,
-	goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, Determinism, pure, GoalInfo),
 	ArgMode = ((free - Ground) -> (Ground - Ground)),
 	list__duplicate(Length, ArgMode, ArgModes),
 	Goal = unify(Var, functor(ConsId, no, Args),
@@ -1716,24 +1716,21 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
 	= hlds_goal_info.
 
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
-	goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo0),
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
 
 :- func impure_reachable_init_goal_info(set(prog_var), determinism)
 	= hlds_goal_info.
 
 impure_reachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
 	instmap_delta_init_reachable(InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo0),
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
 
 :- func impure_unreachable_init_goal_info(set(prog_var), determinism)
 	= hlds_goal_info.
 
 impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
 	instmap_delta_init_unreachable(InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, Determinism, GoalInfo0),
-	goal_info_add_feature(GoalInfo0, impure, GoalInfo).
+	goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
 
 :- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
 	= hlds_goal_info.
@@ -1748,6 +1745,6 @@ goal_info_add_nonlocals_make_impure(GoalInfo0, NewNonLocals) = GoalInfo :-
 
 fail_goal_info = GoalInfo :-
 	instmap_delta_init_unreachable(InstMapDelta),
-	goal_info_init(set__init, InstMapDelta, failure, GoalInfo).
+	goal_info_init(set__init, InstMapDelta, failure, pure, GoalInfo).
 
 %-----------------------------------------------------------------------------%

@@ -2388,9 +2388,9 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 
 		poly_info_get_varset(Info2, VarSet2),
 		poly_info_get_var_types(Info2, VarTypes2),
-		polymorphism__make_count_var(SuperClassIndex, VarSet2,
-			VarTypes2, IndexVar, IndexGoal, VarSet,
-			VarTypes),
+		make_int_const_construction(SuperClassIndex,
+			yes("SuperClassIndex"), IndexGoal, IndexVar,
+			VarTypes2, VarTypes, VarSet2, VarSet),
 		poly_info_set_varset_and_types(VarSet, VarTypes,
 			Info2, Info),
 
@@ -2474,7 +2474,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	set__list_to_set([BaseVar], NonLocals),
 	instmap_delta_from_assoc_list([BaseVar - ground(shared, none)],
 		InstmapDelta),
-	goal_info_init(NonLocals, InstmapDelta, det, BaseGoalInfo),
+	goal_info_init(NonLocals, InstmapDelta, det, pure, BaseGoalInfo),
 
 	BaseGoal = BaseUnify - BaseGoalInfo,
 
@@ -2799,9 +2799,9 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 	% type_ctor_info
 	( IsHigherOrderOrTuple = yes ->
 		list__length(ArgTypeInfoVars, PredArity),
-		polymorphism__make_count_var(PredArity,
-			VarSet0, VarTypes0, ArityVar, ArityGoal,
-			VarSet1, VarTypes1),
+		make_int_const_construction(PredArity, yes("PredArity"),
+			ArityGoal, ArityVar, VarTypes0, VarTypes1,
+			VarSet0, VarSet1),
 		polymorphism__init_type_info_var(Type,
 			[BaseVar, ArityVar | ArgTypeInfoVars], "type_info",
 			VarSet1, VarTypes1, Var, TypeInfoGoal,
@@ -2829,50 +2829,6 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		VarSet = VarSet0,
 		ExtraGoals = ExtraGoals0
 	).
-
-	% Create a unification `CountVar = <NumTypeArgs>'
-
-:- pred polymorphism__make_count_var(int, prog_varset, map(prog_var, type),
-	prog_var, hlds_goal, prog_varset, map(prog_var, type)).
-:- mode polymorphism__make_count_var(in, in, in, out, out, out, out) is det.
-
-polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
-		CountVar, CountGoal, VarSet, VarTypes) :-
-	varset__new_var(VarSet0, CountVar, VarSet1),
-	varset__name_var(VarSet1, CountVar, "TypeArity", VarSet),
-	construct_type(unqualified("int") - 0, [], IntType),
-	map__set(VarTypes0, CountVar, IntType, VarTypes),
-	polymorphism__init_with_int_constant(CountVar, NumTypeArgs, CountGoal).
-
-	% Create a construction unification `Var = <Num>'
-	% where Var is a freshly introduced variable and Num is an
-	% integer constant.
-
-:- pred polymorphism__init_with_int_constant(prog_var, int, hlds_goal).
-:- mode polymorphism__init_with_int_constant(in, in, out) is det.
-
-polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
-
-	CountConsId = int_const(Num),
-	RLExprnId = no,
-	CountUnification = construct(CountVar, CountConsId, [], [],
-		construct_dynamically, cell_is_shared, RLExprnId),
-
-	CountTerm = functor(CountConsId, no, []),
-	CountInst = bound(unique, [functor(int_const(Num), [])]),
-	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
-	CountUnifyContext = unify_context(explicit, []),
-		% XXX the UnifyContext is wrong
-	CountUnify = unify(CountVar, CountTerm, CountUnifyMode,
-		CountUnification, CountUnifyContext),
-
-	% create a goal_info for the unification
-
-	set__singleton_set(CountNonLocals, CountVar),
-	instmap_delta_from_assoc_list([CountVar - CountInst], InstmapDelta),
-	goal_info_init(CountNonLocals, InstmapDelta, det, CountGoalInfo),
-
-	CountUnifyGoal = CountUnify - CountGoalInfo.
 
 polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 			PredName, PredId, ProcId) :-
@@ -2974,7 +2930,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
+	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
 
 	TypeInfoGoal = Unify - GoalInfo.
 
@@ -3024,7 +2980,7 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 	set__list_to_set([TypeCtorInfoVar], NonLocals),
 	instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
 		InstmapDelta),
-	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
+	goal_info_init(NonLocals, InstmapDelta, det, pure, GoalInfo),
 
 	TypeCtorInfoGoal = Unify - GoalInfo.
 
@@ -3128,8 +3084,8 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		ModuleInfo, Goals, TypeInfoVar,
 		VarSet0, VarTypes0, VarSet, VarTypes) :-
 	
-	polymorphism__make_count_var(Index, VarSet0, VarTypes0, IndexVar,
-		IndexGoal, VarSet1, VarTypes1),
+	make_int_const_construction(Index, yes("TypeInfoIndex"),
+		IndexGoal, IndexVar, VarTypes0, VarTypes1, VarSet0, VarSet1),
 
 	polymorphism__new_type_info_var_raw(term__variable(TypeVar),
 		"type_info", typeinfo_prefix, VarSet1, VarTypes1,
@@ -3448,7 +3404,8 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 	set__list_to_set(HeadVars0, NonLocals),
 	instmap_delta_from_mode_list(HeadVars0, Modes0, ModuleInfo0,
 			InstmapDelta),
-	goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo),
+	pred_info_get_purity(PredInfo0, Purity),
+	goal_info_init(NonLocals, InstmapDelta, Detism, Purity, GoalInfo),
 	BodyGoal = BodyGoalExpr - GoalInfo,
 
 	proc_info_set_goal(ProcInfo0, BodyGoal, ProcInfo),

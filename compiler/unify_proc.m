@@ -1498,7 +1498,8 @@ unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
 		GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no,
 			PredName),
 		set__list_to_set(ArgVars, NonLocals),
-		goal_info_init(NonLocals, InstmapDelta, Detism, GoalInfo0),
+		goal_info_init(NonLocals, InstmapDelta,
+			Detism, pure, GoalInfo0),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo),
 		Goal = GoalExpr - GoalInfo
 	;
