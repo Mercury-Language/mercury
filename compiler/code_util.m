@@ -243,7 +243,7 @@ code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
+	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
 	module_info_name(ModuleInfo, ThisModule),
 	(
@@ -252,51 +252,61 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_type_id(Type, TypeId0, _)
+			type_to_type_id(Type, TypeId, _),
+			% All type_ids here should be module qualified,
+			% since builtin types are handled separately in
+			% polymorphism.m.
+			TypeId = qualified(TypeModule, TypeName) - Arity
 		->
-			TypeId = TypeId0
+			(
+				ThisModule \= TypeModule,
+				PredName = "__Unify__",
+				ProcId \= 0
+			->
+				DefiningModule = ThisModule
+			;
+				DefiningModule = TypeModule
+			),
+			ProcLabel = special_proc(DefiningModule, PredName,
+				TypeModule, TypeName, Arity, ProcId)
 		;
 			string__append_list(["code_util__make_proc_label:\n",
 				"cannot make label for special pred `",
 				PredName, "'"], ErrorMessage),
 			error(ErrorMessage)
-		),
-		TypeId = TypeName - Arity,
-		ProcLabel = special_proc(ThisModule, PredName, TypeName,
-				Arity, ProcId)
+		)
 	;
-		( 
-			pred_info_import_status(PredInfo, local),
-			ThisModule \= ModuleName
-		->	
-			% When generating code for a specialized version
-			% of a predicate from another module, use this
-			% module's name in the qualifier and add the other
-			% module's name to the front of the predicate name
-			% to avoid name conflicts.
-			string__append(ModuleName, "__", UnderScoresModule),
-			(
-				string__append(UnderScoresModule,
-					PredName1, PredName)
-			->
-				PredName2 = PredName1
-			;
-				PredName2 = PredName
-			)
-		;
-			PredName2 = PredName
+		(
+			% Work out which module supplies the code for
+			% the predicate.
+			ThisModule \= PredModule,
+			\+ pred_info_is_imported(PredInfo)
+		->
+			% This predicate is a specialized version of 
+			% a pred from a `.opt' file.
+			DefiningModule = ThisModule
+		;	
+			DefiningModule = PredModule
 		),
 		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 		pred_info_arity(PredInfo, Arity),
-		ProcLabel = proc(ModuleName, PredOrFunc,
-				PredName2, Arity, ProcId)
+		ProcLabel = proc(DefiningModule, PredOrFunc,
+			PredModule, PredName, Arity, ProcId)
 	).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	module_info_name(ModuleInfo, ModuleName),
-	TypeId = TypeName - Arity,
-	ProcLabel = special_proc(ModuleName, "__Unify__", TypeName, Arity,
-				UniModeNum).
+	( TypeId = qualified(TypeModule, TypeName) - Arity ->
+		( UniModeNum = 0 ->
+			Module = TypeModule
+		;
+			Module = ModuleName
+		),
+		ProcLabel = special_proc(Module, "__Unify__", TypeModule,
+			TypeName, Arity, UniModeNum)
+	;
+		error("code_util__make_uni_label: unqualified type_id")
+	).
 
 %-----------------------------------------------------------------------------%
 

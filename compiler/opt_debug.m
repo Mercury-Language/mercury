@@ -761,16 +761,24 @@ opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
 	opt_debug__dump_label_pairs(Labels, L_str),
 	string__append_list([" ", L1_str, "-", L2_str, L_str], Str).
 
-opt_debug__dump_proclabel(proc(Module, _PredOrFunc, Name, Arity, Mode), Str) :-
+opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
+		PredName, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
-	string__append_list([Module, "_", Name, "_", A_str, "_", M_str], Str).
-opt_debug__dump_proclabel(special_proc(Module, Pred, Type, Arity, Mode), Str) :-
+	( Module = PredModule ->
+		ExtraModule = ""
+	;
+		string__append(Module, "_", ExtraModule)
+	),
+	string__append_list([ExtraModule, Module, "_", PredName,
+		"_", A_str, "_", M_str], Str).
+opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
+		Type, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
-	llds_out__sym_name_mangle(Type, TypeStr),
-	string__append_list(
-		[Module, "_", Pred, "_", TypeStr, "_", A_str, "_", M_str], Str).
+	llds_out__maybe_qualify_name(TypeModule, Type, TypeName),
+	string__append_list([Module, "_", Pred, "_",
+		TypeName, "_", A_str, "_", M_str], Str).
 
 opt_debug__dump_bool(yes, "yes").
 opt_debug__dump_bool(no, "no").

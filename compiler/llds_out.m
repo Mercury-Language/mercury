@@ -59,12 +59,11 @@
 :- pred llds_out__name_mangle(string, string).
 :- mode llds_out__name_mangle(in, out) is det.
 
-	% Used to mangle the qualified name of a type.
 	% Produces a string of the form Module__Name, unless Module__
 	% is already a prefix of Name.
 
-:- pred llds_out__sym_name_mangle(sym_name, string).
-:- mode llds_out__sym_name_mangle(in, out) is det.
+:- pred llds_out__maybe_qualify_name(string, string, string).
+:- mode llds_out__maybe_qualify_name(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -825,7 +824,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments,
 
 output_instruction(Instr) -->
 	{ set__init(ContLabelSet) },
-	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", 0, 0))
+	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", "DEBUG", 0, 0))
 			- ContLabelSet },
 	output_instruction(Instr, ProfInfo).
 
@@ -2048,9 +2047,10 @@ output_proc_label(ProcLabel) -->
 	{ get_proc_label(ProcLabel, ProcLabelString) },
 	io__write_string(ProcLabelString).
 
-get_proc_label(proc(Module, PredOrFunc, Name, Arity, ModeNum0),
-		ProcLabelString) :-
-	get_label_name(Module, PredOrFunc, Name, Arity, LabelName),
+get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
+		PredName, Arity, ModeNum0), ProcLabelString) :-
+	get_label_name(DefiningModule, PredOrFunc, PredModule,
+		PredName, Arity, LabelName),
 	( PredOrFunc = function ->
 		OrigArity is Arity - 1
 	;
@@ -2064,40 +2064,34 @@ get_proc_label(proc(Module, PredOrFunc, Name, Arity, ModeNum0),
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
+get_proc_label(special_proc(Module, PredName, TypeModule, TypeName0, TypeArity,
 				ModeNum0), ProcLabelString) :-
-	get_label_name(Module, predicate, PredName, TypeArity, LabelName),
-	llds_out__sym_name_mangle(TypeName0, TypeName),
+	DummyArity = -1,	% not used by get_label_name.
+	get_label_name("", predicate, "", PredName, DummyArity, LabelName),
 	string__int_to_string(TypeArity, TypeArityString),
 	ModeNum is ModeNum0 mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
-	( 
-		ModeNum \= 0,	
-		PredName = "__Unify__",
-		TypeName0 = qualified(TypeModule, _),
-		Module \= TypeModule
-	->
-		% Avoid duplicate label names for unify preds for types
-		% from other modules. Compare and index preds and mode 0
-		% unify preds don't need special attention here because
-		% they are only generated in the same module as the type.
-		llds_out__name_mangle(Module, ExtraModule0),
-		string__append(ExtraModule0, "__", ExtraModule)
+	% Handle locally produced unification preds for imported types.
+	( Module \= TypeModule ->
+		string__append(Module, "__", ExtraModule)
 	;
 		ExtraModule = ""
 	),
-	string__append_list( [LabelName, "_", ExtraModule, TypeName, 
+	llds_out__maybe_qualify_name(TypeModule, TypeName0, TypeName1),
+	string__append(ExtraModule, TypeName1, TypeName2),
+	llds_out__name_mangle(TypeName2, TypeName),
+	string__append_list( [LabelName, "_", TypeName, 
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
-:- pred get_label_name(string, pred_or_func, string, int, string).
-:- mode get_label_name(in, in, in, in, out) is det.
+:- pred get_label_name(string, pred_or_func, string, string, int, string).
+:- mode get_label_name(in, in, in, in, in, out) is det.
 
-get_label_name(Module0, PredOrFunc, Name0, Arity, LabelName) :-
-	get_label_prefix(Prefix),
+get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
+		Name0, Arity, LabelName) :-
 	(
 		( 
-			Module0 = "mercury_builtin"
+			DeclaringModule = "mercury_builtin"
 		;
 			Name0 = "main",
 			Arity = 2
@@ -2109,18 +2103,27 @@ get_label_name(Module0, PredOrFunc, Name0, Arity, LabelName) :-
 		% to allow `mercury_builtin' labels to be qualified/
 		% overloaded.
 	->
-		llds_out__name_mangle(Name0, LabelName0)
+		LabelName0 = Name0
 	;
-		make_qualified_name(Module0, Name0, LabelName0)
+		llds_out__maybe_qualify_name(DeclaringModule, Name0,
+			LabelName0)
 	),
-	(
-		PredOrFunc = function,
-		string__append("fn__", LabelName0, LabelName1)
+	( DefiningModule \= DeclaringModule ->
+		string__append_list([DefiningModule, "__", LabelName0],
+			LabelName1)
 	;
-		PredOrFunc = predicate,
 		LabelName1 = LabelName0
 	),
-	string__append(Prefix, LabelName1, LabelName).
+	llds_out__name_mangle(LabelName1, LabelName2),
+	(
+		PredOrFunc = function,
+		string__append("fn__", LabelName2, LabelName3)
+	;
+		PredOrFunc = predicate,
+		LabelName3 = LabelName2
+	),
+	get_label_prefix(Prefix),
+	string__append(Prefix, LabelName3, LabelName).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
@@ -2794,31 +2797,13 @@ llds_out__convert_to_valid_c_identifier(String, Name) :-
 		string__append("f", Name0, Name)
 	).
 
-llds_out__sym_name_mangle(unqualified(Name0), Name) :-
-	llds_out__name_mangle(Name0, Name).
-llds_out__sym_name_mangle(qualified(Module, Name0), Name) :-
-	make_qualified_name(Module, Name0, Name).
-
-	% make_qualified_name(Module0, Name0, LabelName) 
-	%
-	% Given a qualified name, produce a label fragment.
-	% If Module0__ is a prefix of Name0, return the mangled
-	% form of Name0, otherwise mangle both names and
-	% return MangledModule0__MangledName0.
-:- pred make_qualified_name(module_name, string, string).
-:- mode make_qualified_name(in, in, out) is det.
-
-make_qualified_name(Module0, Name0, LabelName) :-
+llds_out__maybe_qualify_name(Module0, Name0, Name) :-
 	string__append(Module0, "__", UnderscoresModule),
-	( string__append(UnderscoresModule, Name1, Name0) ->
-		Name2 = Name1
+	( string__append(UnderscoresModule, _, Name0) ->
+		Name = Name0
 	;
-		Name2 = Name0
-	),
-	llds_out__name_mangle(Module0, Module),
-	llds_out__name_mangle(Name2, Name),
-	string__append_list([Module, "__", Name], LabelName).
-
+		string__append(UnderscoresModule, Name0, Name)
+	).
 
 	% A table used to convert Mercury functors into
 	% C identifiers.  Feel free to add any new translations you want.

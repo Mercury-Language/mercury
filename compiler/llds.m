@@ -464,12 +464,19 @@
 	;	do_semidet_closure
 	;	do_nondet_closure.
 
-	% A proc_label is a label used for the entry point to a procedure
+	% A proc_label is a label used for the entry point to a procedure.
+	% The defining module is the module that provides the code for the
+	% predicate, the declaring module contains the `:- pred' declaration.
+	% When these are different, as for specialised versions of predicates
+	% from `.opt' files, the defining module's name is added as a
+	% qualifier to the label.
 :- type proc_label
-	--->	proc(string, pred_or_func, string, int, int)
-		%	 module, predicate/function, name, arity, mode #
-	;	special_proc(string, string, sym_name, int, int).
-		%	module, pred name, type name, type arity, mode #
+	--->	proc(string, pred_or_func, string, string, int, int)
+			% defining module, predicate/function,
+			% declaring module, name, arity, mode #
+	;	special_proc(string, string, string, string, int, int).
+			% defining module, pred name, type module,
+			% type name, type arity, mode #
 
 	% A tag (used in mkword, create and field expressions
 	% and in incr_hp instructions) is a small integer.

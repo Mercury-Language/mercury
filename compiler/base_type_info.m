@@ -158,8 +158,8 @@ base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
 		Elim = yes(ProcsLength)
 	->
 		PredAddrArg = yes(const(code_addr_const(
-			imported(proc("mercury_builtin", predicate, "unused", 
-				0, 0))))),
+			imported(proc("mercury_builtin", predicate,
+				"mercury_builtin", "unused", 0, 0))))),
 		list__duplicate(ProcsLength, PredAddrArg, PredAddrArgs)
 	;
 		base_type_info__construct_pred_addrs2(Procs, ModuleInfo, 

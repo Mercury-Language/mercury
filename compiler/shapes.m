@@ -88,7 +88,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, llds, prog_data, type_util.
+:- import_module code_util, hlds_data, llds, prog_data, type_util.
 :- import_module int, assoc_list, map, std_util, require.
 
 :- type bit_number --->	bit_zero; bit_one; bit_two; bit_three.
@@ -184,8 +184,7 @@ shapes__do_abstract_exports(HLDS0, HLDS) :-
 			 Export_List2),
 	map__from_assoc_list(Export_List2, Abs_Exports2),
 
-	module_info_name(HLDS0, ModuleName),
-	shapes__create_special_preds(Export_List2, ModuleName, 
+	shapes__create_special_preds(Export_List2, HLDS0, 
 			SpecialPredShapes),
 
 	Shape_Info_2 = shape_info(Shapes2, Abs_Exports2, SpecialPredShapes),
@@ -202,28 +201,19 @@ shapes__do_abstract_exports(HLDS0, HLDS) :-
 	% The code to generate label names will have to be kept in sync
 	% with however they are actually created.
 
-	% Label = special_proc(ModuleName, "__Unify__", TypeName, Arity,
-	%	UniModeNum).
+	% Label = special_proc(ModuleName, "__Unify__",
+	%		TypeModule, TypeName, Arity, UniModeNum).
 :- pred shapes__create_special_preds(assoc_list(type_id, maybe_shape_num), 
-					string, map(label, shape_num)).
+					module_info, map(label, shape_num)).
 :- mode shapes__create_special_preds(in, in, out) is det.
 
-shapes__create_special_preds([], _ModuleName, SpecialPredShapes) :-
+shapes__create_special_preds([], _ModuleInfo, SpecialPredShapes) :-
 	map__init(SpecialPredShapes).
-shapes__create_special_preds([L | Ls], ModuleName, SpecialPredShapes) :-
-	shapes__create_special_preds(Ls, ModuleName, SpecialPredShapes0),
+shapes__create_special_preds([L | Ls], ModuleInfo, SpecialPredShapes) :-
+	shapes__create_special_preds(Ls, ModuleInfo, SpecialPredShapes0),
 	L = TypeId - MaybeShapeNum,
-	TypeId = TypeSymName - Arity,
-	(
-		TypeSymName = unqualified(_TypeName),
-		Label = local(special_proc(
-			ModuleName, "__Unify__", TypeSymName, Arity, 1))
-	;
-			% Don't think this will even happen...
-		TypeSymName = qualified(ModuleSpec, _TypeName),
-		Label = local(special_proc(
-			ModuleSpec, "__Unify__", TypeSymName, Arity, 1))
-	),
+	code_util__make_uni_label(ModuleInfo, TypeId, 1, UniLabel),
+	Label = local(UniLabel),
 	(
 		MaybeShapeNum = yes(ShapeNum)
 	->
