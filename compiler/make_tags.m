@@ -141,8 +141,8 @@ assign_simple_tags([Name - Args | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 	create_cons_id(Name, Args, ConsId),
 		% if we're about to run out of simple tags, start assigning
 		% complicated tags instead
-	( Val = Max, Rest \= [] ->
-		assign_complicated_tags([Name - Args | Rest], Max, 0,
+	( Val = MaxTag, Rest \= [] ->
+		assign_complicated_tags([Name - Args | Rest], MaxTag, 0,
 			CtorTags0, CtorTags)
 	;
 		Tag = simple_tag(Val),
