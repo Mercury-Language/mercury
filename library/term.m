@@ -485,7 +485,7 @@ term__relabel_variable(term_variable(Var0), OldVar, NewVar,
 
 term__relabel_variables([], _, _, []).
 term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
-	term_relabel_variable(Term0, OldVar, NewVar, Term),
+	term__relabel_variable(Term0, OldVar, NewVar, Term),
 	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
 
 %-----------------------------------------------------------------------------%
