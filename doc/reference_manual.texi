@@ -85,6 +85,7 @@ into another language, under the above conditions for modified versions.
 * Higher-order::      Mercury supports higher-order predicates and functions,
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
+* Type classes::      Constrained polymorphism
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Various compiler directives, used for the C interface
                       and to control optimization.
@@ -335,6 +336,8 @@ The allowed declarations are:
 :- func
 :- inst
 :- mode
+:- typeclass
+:- instance
 :- pragma
 :- module
 :- interface
@@ -783,7 +786,8 @@ before mode analysis is performed.
 @node Types
 @chapter Types
 
-The type system is based on polymorphic many-sorted logic.
+The type system is based on many-sorted logic, with polymorphism and
+type classes (@pxref{Type classes}).
 
 Certain special types are builtin, or are defined in the Mercury library:
 
@@ -2438,8 +2442,9 @@ Each module must start with a @code{module} declaration,
 specifying the name of the module. 
 An @code{interface} declaration specifies
 the start of the module's interface section:
-this section contains declarations for the types, data constructors,
-instantiation states, modes, functions and predicates exported by this module.
+this section contains declarations for the types, typeclasses, typeclass
+instances, data constructors, instantiation states, modes, functions and
+predicates exported by this module.
 Mercury provides support for abstract data types,
 since the definition of a type may be kept hidden,
 with only the type name being exported.  
@@ -2562,6 +2567,276 @@ readability and maintainability of our code, and so we recommend that
 you follow it in your code too.  (Eventually, these names will be converted
 to names of the form @code{module.name}; this will allow you to omit the
 prefix in places where it does not improve readability.)
+
+@node Type classes
+@chapter Type classes
+
+Mercury supports constrained polymorphism in the form of type classes.  
+Type classes allow the programmer to write predicates and functions which 
+operate on variables of any type (or set of types) for which a certain set
+of operations is defined.  
+
+@menu
+* Typeclass declarations::
+* Instance declarations::
+* Type class constraints on predicates and functions::
+* Type class constraints on typeclass declarations::
+* Type class constraints on instance declarations::
+@end menu
+
+@node Typeclass declarations
+@section Typeclass declarations
+
+A @samp{typeclass} declaration specifies a set of predicates and/or functions
+that must be defined on a type (or set of types) for it (them) to be
+considered to be a member of that type class.
+
+The @code{typeclass} declaration gives the name of the type class, the
+names of the type variables which are parameters to the type class, and the
+operations ("methods") which form the interface of the type class.
+
+For example
+
+:- typeclass point(T) where [
+	% coords(Point, X, Y):
+	%       X and Y are the cartesian coordinates of Point
+	pred coords(T, float, float),
+	mode coords(in, out, out) is det,
+
+	% translate(Point, X_Offset, Y_Offset) = NewPoint:
+	%       NewPoint is Point translated X_Offset units in the X direction
+	%       and Y_Offset units in the Y direction
+	func translate(T, float, float) = T
+].
+
+
+declares the typeclass @code{point}, which refers to points in two dimensional
+space. 
+
+@code{pred}, @code{func} and @code{mode} declarations are the only legal
+declarations inside a @code{typeclass} declaration.  The number of parameters 
+to the type class (e.g. @code{T}) is not limited.  For example, the following 
+is allowed:
+
+@example
+:- typeclass a(T1, T2) where [@dots{}].
+@end example
+
+The only restriction is that the parameters be distinct variables.
+
+@node Instance declarations
+@section Instance declarations
+
+Once the interface of the typeclass has been declared in the @code{typeclass}
+declaration, we can use an @code{instance} declaration to specify how a
+particular type satisfies the interface declared in the @code{typeclass}
+declaration.
+
+An @samp{instance} declaration gives a type for each parameter of the
+typeclass.  Each of these types must be either a type with no arguments, or 
+a polymorphic type whose arguments are all distinct type variables.  e.g. 
+@code{int}, @code{list(T)} and @code{map(K,V)} are allowed but
+@code{T}, @code{list(int)} and @code{map(T,T)} are not.
+
+A program may not contain more than one @code{instance} declaration for a
+particular type (or set of types, in the case of a multi-parameter
+typeclass).  These restrictions ensure that there are no overlapping instance
+declarations, ie. there is at most one instance declaration that may be 
+applied to any type (or set of types).
+
+For example:
+
+@example
+:- type coordinate
+	---> coordinate(
+		float,		% X coordinate
+		float		% Y coordinate
+	).
+
+:- instance point(coordinate) where [
+        pred(coords/3) is coordinate_coords,
+        func(translate/3) is coordinate_translate
+].
+
+
+:- pred coordinate_coords(coordinate, float, float).
+:- mode coordinate_coords(in, out, out) is det.
+
+coordinate_coords(coordinate(X, Y), X, Y).
+
+:- func coordinate_translate(coordinate, float, float) = coordinate.
+
+coordinate_translate(coordinate(X, Y), Dx, Dy) = coordinate(X + Dx, Y + Dy).
+@end example
+
+We have now made the @code{coordinate} type an instance of the @code{point}
+typeclass.  If we introduce a new type, @code{coloured_coordinate} which
+represents a point in two dimensional space with a colour associated with it, 
+it can also become an instance of the typeclass:
+
+@example
+:- type rgb
+	---> rgb(
+		int,
+		int,
+		int
+	).
+
+:- type coloured_coordinate
+	---> coloured_coordinate(
+		float,
+		float,
+		rgb
+	).
+
+:- instance point(coloured_coordinate) where [
+        pred(coords/3) is coloured_coordinate_coords,
+        func(translate/3) is coloured_coordinate_translate
+].
+
+
+:- pred coloured_coordinate_coords(coloured_coordinate, float, float).
+:- mode coloured_coordinate_coords(in, out, out) is det.
+
+coloured_coordinate_coords(coloured_coordinate(X, Y, _), X, Y).
+
+:- func coloured_coordinate_translate(coloured_coordinate, float, float) 
+	= coloured_coordinate.
+
+coloured_coordinate_translate(coloured_coordinate(X, Y, Colour), Dx, Dy) 
+	= coloured_coordinate(X + Dx, Y + Dy, Colour).
+@end example
+
+Further instances of the typeclass could be made, e.g. a type which represents
+the point using polar coordinates.
+
+@node Type class constraints on predicates and functions
+@section Type class constraints on predicates and functions
+
+Mercury allows a typeclass constraint to appear as part of a predicate or
+functions's type signature.  This constrains the values that can be taken
+by type variables in the signature to belong to particular typeclasses.
+
+A typeclass constraint is of the form:
+
+@example
+	<= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
+@end example
+
+where @var{Typeclass} is the name of a typeclass and @var{TypeVariable} is 
+a type variable that appears in the predicate's or function's type signature.
+
+For example
+
+@example
+:- pred distance(P1, P2, float) <= (point(P1), point(P2)).
+:- mode distance(in, in, out) is det.
+
+distance(A, B, Distance) :-
+	coords(A, Xa, Ya),
+	coords(B, Xb, Yb),
+	XDist = Xa - Xb,
+	YDist = Ya - Yb,
+	Distance = sqrt(XDist*XDist + YDist*YDist).
+@end example
+
+In the above example, the @code{distance} predicate is able to calculate the
+distance between any two points, regardless of their representation, as long
+as the @code{x_coord} and @code{y_coord} operations have been defined.  These
+constraints are checked at compile time.
+
+@node Type class constraints on typeclass declarations
+@section Type class constraints on typeclass declarations
+
+Type class constraints may also appear in @code{typeclass} declarations, 
+meaning that one typeclass is a ``superclass'' of another. 
+
+The variables that appear as arguments to the typeclasses in the constraints
+must also be arguments to the typeclass in question.
+
+For example, the following declares the @samp{ring} typeclass, which describes
+types with a particular set of numerical operations defined:
+
+@example
+:- typeclass ring(T) where [
+        func zero = (T::out) is det,                    % '+' identity
+        func one = (T::out) is det,                     % '*' identity
+        func plus(T::in, T::in) = (T::out) is det,      % '+'/2 (forward mode)
+        func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
+        func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
+        func inverse(T::in) = (T::out) is semidet       % multiplicative 
+							% inverse
+].
+@end example
+
+We can now add the following declaration:
+
+@example
+:- typeclass euclidean(T) <= ring(T) where [
+        func div(T::in, T::in) = (T::out) is det,
+        func mod(T::in, T::in) = (T::out) is det
+].
+@end example
+
+This introduces a new typeclass, @code{euclidean}, of which @code{ring} is a
+superclass.  The operations defined by the @code{euclidean} typeclass are
+@code{div}, @code{mod}, as well as all those defined by the @code{ring}
+typeclass.  Any type declared to be an instance of @code{euclidean} must also 
+be declared to be an instance of @code{ring}.
+
+Typeclass constraints on typeclass declarations gives rise to a superclass
+relation.  This relation must be acyclic.  That is, it is an error if a type 
+class is its own (direct or indirect) superclass.
+
+@node Type class constraints on instance declarations
+@section Type class constraints on instance declarations
+
+Typeclass constraints may also be placed upon instance declarations.  The
+variables that appear as arguments to the typeclasses in the constraints must
+all be type variables that appear in the types in the instance declarations.
+
+For example, consider the following declaration of a typeclass of types that 
+may be printed:
+
+@example
+:- typeclass portrayable(T) where [
+	pred portray(T::in, io__state::di, io__state::uo) is det
+].
+@end example
+
+The programmer could declare instances such as
+
+@example
+:- instance portrayable(int) where [
+	pred(portray/3) is io__write_int
+].
+
+:- instance portrayable(char) where [
+	pred(portray/3) is io__write_char
+].
+@end example
+
+However, when it comes to writing the instance declaration for a type such as
+@code{list(T)}, we want to be able print out the list elements using the
+@code{portray/3} for the particular type of the list elements.  This can be
+achieved by placing a typeclass constraint on the @code{instance} declaration,
+as in the following example:
+
+@example
+:- instance portrayable(list(T)) <= portrayable(T) where [
+	pred(portray/3) is portray_list
+].
+
+:- pred portray_list(list(T), io__state, io__state) <= portrayable(T).
+:- mode portray_list(in, di, uo) is det.
+
+portray_list([]) --> 
+	[].
+portray_list([X|Xs]) --> 
+	print(X),
+	io__write_char(' '),
+	portray_list(Xs).
+@end example
 
 @node Semantics
 @chapter Semantics
