@@ -5,7 +5,7 @@
    The GNU C Library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
-   License, or (at your MR_option) any later version.
+   License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -73,9 +73,9 @@ MR_getopt_long (argc, argv, MR_options, long_options, opt_index)
   return MR__getopt_internal (argc, argv, MR_options, long_options, opt_index, 0);
 }
 
-/* Like MR_getopt_long, but '-' as well as '--' can indicate a long MR_option.
-   If an MR_option that starts with '-' (not '--') doesn't match a long MR_option,
-   but does match a short MR_option, it is parsed as a short MR_option
+/* Like MR_getopt_long, but '-' as well as '--' can indicate a long option.
+   If an option that starts with '-' (not '--') doesn't match a long option,
+   but does match a short option, it is parsed as a short option
    instead.  */
 
 int

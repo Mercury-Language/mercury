@@ -1,6 +1,6 @@
 extern	char	*getenv(const char *);
 /* Getopt for GNU.
-   NOTE: MR_getopt is now part of the C library, so if you don't know what
+   NOTE: getopt is now part of the C library, so if you don't know what
    "Keep this file name-space clean" means, talk to roland@gnu.ai.mit.edu
    before changing it!
 
@@ -10,7 +10,7 @@ extern	char	*getenv(const char *);
    The GNU C Library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
-   License, or (at your MR_option) any later version.
+   License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,7 +22,7 @@ extern	char	*getenv(const char *);
    write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.  */
 
-/* This tells Alpha OSF/1 not to define a MR_getopt prototype in <stdio.h>.
+/* This tells Alpha OSF/1 not to define a getopt prototype in <stdio.h>.
    Ditto for AIX 3.2 and <stdlib.h>.  */
 #ifndef _NO_PROTO
 #define _NO_PROTO
@@ -65,7 +65,7 @@ extern	char	*getenv(const char *);
    to get __GNU_LIBRARY__ defined.  */
 #ifdef	__GNU_LIBRARY__
 /* Don't include stdlib.h for non-GNU C libraries because some of them
-   contain conflicting prototypes for MR_getopt.  */
+   contain conflicting prototypes for getopt.  */
 #include <stdlib.h>
 #include <unistd.h>
 #endif	/* GNU C library.  */
@@ -94,27 +94,27 @@ extern	char	*getenv(const char *);
 #endif
 #endif
 
-/* This version of `MR_getopt' appears to the caller like standard Unix `MR_getopt'
+/* This version of `MR_getopt' appears to the caller like standard Unix `getopt'
    but it behaves differently for the user, since it allows the user
-   to intersperse the MR_options with the other arguments.
+   to intersperse the options with the other arguments.
 
    As `MR_getopt' works, it permutes the elements of ARGV so that,
-   when it is done, all the MR_options precede everything else.  Thus
+   when it is done, all the options precede everything else.  Thus
    all application programs are extended to handle flexible argument order.
 
    Setting the environment variable POSIXLY_CORRECT disables permutation.
    Then the behavior is completely standard.
 
    GNU application programs can use a third alternative mode in which
-   they can distinguish the relative order of MR_options and other arguments.  */
+   they can distinguish the relative order of options and other arguments.  */
 
 #include "mercury_getopt.h"
 
 /* For communication from `MR_getopt' to the caller.
-   When `MR_getopt' finds an MR_option that takes an argument,
+   When `MR_getopt' finds an option that takes an argument,
    the argument value is returned here.
    Also, when `MR_ordering' is RETURN_IN_ORDER,
-   each non-MR_option ARGV-element is returned here.  */
+   each non-option ARGV-element is returned here.  */
 
 char *MR_optarg = NULL;
 
@@ -125,7 +125,7 @@ char *MR_optarg = NULL;
    On entry to `MR_getopt', zero means this is the first call; initialize.
 
    When `MR_getopt' returns -1, this is the index of the first of the
-   non-MR_option elements that the caller should itself scan.
+   non-option elements that the caller should itself scan.
 
    Otherwise, `MR_optind' communicates from one call to the next
    how much of ARGV has been scanned so far.  */
@@ -140,7 +140,7 @@ int MR_optind = 1;
 int MR____getopt_initialized = 0;
 
 /* The next char to be scanned in the MR_option-element
-   in which the last MR_option character we returned was found.
+   in which the last option character we returned was found.
    This allows us to pick up the scan where we left off.
 
    If this is zero, or a null string, it means resume the scan
@@ -149,42 +149,42 @@ int MR____getopt_initialized = 0;
 static char *MR_nextchar;
 
 /* Callers store zero here to inhibit the error message
-   for unrecognized MR_options.  */
+   for unrecognized options.  */
 
 int MR_opterr = 1;
 
-/* Set to an MR_option character which was unrecognized.
+/* Set to an option character which was unrecognized.
    This must be initialized on some systems to avoid linking in the
    system's own MR_getopt implementation.  */
 
 int MR_optopt = '?';
 
-/* Describe how to deal with MR_options that follow non-MR_option ARGV-elements.
+/* Describe how to deal with options that follow non-option ARGV-elements.
 
    If the caller did not specify anything,
    the default is REQUIRE_ORDER if the environment variable
    POSIXLY_CORRECT is defined, PERMUTE otherwise.
 
-   REQUIRE_ORDER means don't recognize them as MR_options;
-   stop MR_option processing when the first non-MR_option is seen.
+   REQUIRE_ORDER means don't recognize them as options;
+   stop option processing when the first non-option is seen.
    This is what Unix does.
    This mode of operation is selected by either setting the environment
    variable POSIXLY_CORRECT, or using `+' as the first character
-   of the list of MR_option characters.
+   of the list of option characters.
 
    PERMUTE is the default.  We permute the contents of ARGV as we scan,
-   so that eventually all the non-MR_options are at the end.  This allows MR_options
+   so that eventually all the non-options are at the end.  This allows options
    to be given in any order, even with programs that were not written to
    expect this.
 
-   RETURN_IN_ORDER is an MR_option available to programs that were written
-   to expect MR_options and other ARGV-elements in any order and that care about
-   the MR_ordering of the two.  We describe each non-MR_option ARGV-element
-   as if it were the argument of an MR_option with character code 1.
-   Using `-' as the first character of the list of MR_option characters
+   RETURN_IN_ORDER is an option available to programs that were written
+   to expect options and other ARGV-elements in any order and that care about
+   the ordering of the two.  We describe each non-option ARGV-element
+   as if it were the argument of an option with character code 1.
+   Using `-' as the first character of the list of option characters
    selects this mode of operation.
 
-   The special argument `--' forces an end of MR_option-scanning regardless
+   The special argument `--' forces an end of option-scanning regardless
    of the value of `MR_ordering'.  In the case of RETURN_IN_ORDER, only
    `--' can cause `MR_getopt' to return -1 with `MR_optind' != ARGC.  */
 
@@ -240,7 +240,7 @@ extern int strlen (const char *);
 
 /* Handle permutation of arguments.  */
 
-/* Describe the part of ARGV that contains non-MR_options that have
+/* Describe the part of ARGV that contains non-options that have
    been skipped.  `MR_first_nonopt' is the index in ARGV of the first of them;
    `MR_last_nonopt' is the index after the last of them.  */
 
@@ -289,12 +289,12 @@ text_set_element (__libc_subinit, store_args_and_env);
 
 /* Exchange two adjacent subsequences of ARGV.
    One subsequence is elements [MR_first_nonopt,MR_last_nonopt)
-   which contains all the non-MR_options that have been skipped so far.
+   which contains all the non-options that have been skipped so far.
    The other is elements [MR_last_nonopt,MR_optind), which contains all
-   the MR_options processed since those non-MR_options were skipped.
+   the options processed since those non-options were skipped.
 
    `MR_first_nonopt' and `MR_last_nonopt' are relocated so that they describe
-   the new indices of the non-MR_options in ARGV after they are moved.  */
+   the new indices of the non-options in ARGV after they are moved.  */
 
 #if defined (__STDC__) && __STDC__
 static void exchange (char **);
@@ -374,7 +374,7 @@ exchange (argv)
 	}
     }
 
-  /* Update records for the slots the non-MR_options now occupy.  */
+  /* Update records for the slots the non-options now occupy.  */
 
   MR_first_nonopt += (MR_optind - MR_last_nonopt);
   MR_last_nonopt = MR_optind;
@@ -391,9 +391,9 @@ MR__getopt_initialize (argc, argv, optstring)
      char *const *argv;
      const char *optstring;
 {
-  /* Start processing MR_options with ARGV-element 1 (since ARGV-element 0
+  /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
-     non-MR_option ARGV-elements is empty.  */
+     non-option ARGV-elements is empty.  */
 
   MR_first_nonopt = MR_last_nonopt = MR_optind;
 
@@ -401,7 +401,7 @@ MR__getopt_initialize (argc, argv, optstring)
 
   MR_posixly_correct = getenv ("POSIXLY_CORRECT");
 
-  /* Determine how to handle the MR_ordering of MR_options and nonoptions.  */
+  /* Determine how to handle the ordering of options and nonoptions.  */
 
   if (optstring[0] == '-')
     {
@@ -454,46 +454,46 @@ MR__getopt_initialize (argc, argv, optstring)
   return optstring;
 }
 
-/* Scan elements of ARGV (whose length is ARGC) for MR_option characters
+/* Scan elements of ARGV (whose length is ARGC) for option characters
    given in OPTSTRING.
 
    If an element of ARGV starts with '-', and is not exactly "-" or "--",
-   then it is an MR_option element.  The characters of this element
-   (aside from the initial '-') are MR_option characters.  If `MR_getopt'
-   is called repeatedly, it returns successively each of the MR_option characters
-   from each of the MR_option elements.
+   then it is an option element.  The characters of this element
+   (aside from the initial '-') are option characters.  If `MR_getopt'
+   is called repeatedly, it returns successively each of the option characters
+   from each of the option elements.
 
-   If `MR_getopt' finds another MR_option character, it returns that character,
+   If `MR_getopt' finds another option character, it returns that character,
    updating `MR_optind' and `MR_nextchar' so that the next call to `MR_getopt' can
-   resume the scan with the following MR_option character or ARGV-element.
+   resume the scan with the following option character or ARGV-element.
 
-   If there are no more MR_option characters, `MR_getopt' returns -1.
+   If there are no more option characters, `MR_getopt' returns -1.
    Then `MR_optind' is the index in ARGV of the first ARGV-element
-   that is not an MR_option.  (The ARGV-elements have been permuted
+   that is not an option.  (The ARGV-elements have been permuted
    so that those that are not MR_options now come last.)
 
-   OPTSTRING is a string containing the legitimate MR_option characters.
-   If an MR_option character is seen that is not listed in OPTSTRING,
+   OPTSTRING is a string containing the legitimate option characters.
+   If an option character is seen that is not listed in OPTSTRING,
    return '?' after printing an error message.  If you set `MR_opterr' to
    zero, the error message is suppressed but we still return '?'.
 
    If a char in OPTSTRING is followed by a colon, that means it wants an arg,
    so the following text in the same ARGV-element, or the text of the following
-   ARGV-element, is returned in `MR_optarg'.  Two colons mean an MR_option that
-   wants an MR_optional arg; if there is text in the current ARGV-element,
+   ARGV-element, is returned in `MR_optarg'.  Two colons mean an option that
+   wants an optional arg; if there is text in the current ARGV-element,
    it is returned in `MR_optarg', otherwise `MR_optarg' is set to zero.
 
    If OPTSTRING starts with `-' or `+', it requests different methods of
-   handling the non-MR_option ARGV-elements.
+   handling the non-option ARGV-elements.
    See the comments about RETURN_IN_ORDER and REQUIRE_ORDER, above.
 
-   Long-named MR_options begin with `--' instead of `-'.
+   Long-named options begin with `--' instead of `-'.
    Their names may be abbreviated as long as the abbreviation is unique
-   or is an exact match for some defined MR_option.  If they have an
-   argument, it follows the MR_option name in the same ARGV-element, separated
-   from the MR_option name by a `=', or else the in next ARGV-element.
-   When `MR_getopt' finds a long-named MR_option, it returns 0 if that MR_option's
-   `flag' field is nonzero, the value of the MR_option's `val' field
+   or is an exact match for some defined option.  If they have an
+   argument, it follows the option name in the same ARGV-element, separated
+   from the option name by a `=', or else the in next ARGV-element.
+   When `MR_getopt' finds a long-named option, it returns 0 if that option's
+   `flag' field is nonzero, the value of the option's `val' field
    if the `flag' field is zero.
 
    The elements of ARGV aren't really const, because we permute them.
@@ -503,12 +503,12 @@ MR__getopt_initialize (argc, argv, optstring)
    LONGOPTS is a vector of `struct MR_option' terminated by an
    element containing a name which is zero.
 
-   LONGIND returns the index in LONGOPT of the long-named MR_option found.
-   It is only valid when a long-named MR_option has been found by the most
+   LONGIND returns the index in LONGOPT of the long-named option found.
+   It is only valid when a long-named option has been found by the most
    recent call.
 
    If LONG_ONLY is nonzero, '-' as well as '--' can introduce
-   long-named MR_options.  */
+   long-named options.  */
 
 int
 MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
@@ -529,9 +529,9 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       MR____getopt_initialized = 1;
     }
 
-  /* Test whether ARGV[MR_optind] points to a non-MR_option argument.
-     Either it does not have MR_option syntax, or there is an environment flag
-     from the shell indicating it is not an MR_option.  The later information
+  /* Test whether ARGV[MR_optind] points to a non-option argument.
+     Either it does not have option syntax, or there is an environment flag
+     from the shell indicating it is not an option.  The later information
      is only used when the used in the GNU libc.  */
 #ifdef _LIBC
 #define NONOPTION_P (argv[MR_optind][0] != '-' || argv[MR_optind][1] == '\0'	      \
@@ -554,26 +554,26 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 
       if (MR_ordering == PERMUTE)
 	{
-	  /* If we have just processed some MR_options following some non-MR_options,
-	     exchange them so that the MR_options come first.  */
+	  /* If we have just processed some options following some non-options,
+	     exchange them so that the options come first.  */
 
 	  if (MR_first_nonopt != MR_last_nonopt && MR_last_nonopt != MR_optind)
 	    exchange ((char **) argv);
 	  else if (MR_last_nonopt != MR_optind)
 	    MR_first_nonopt = MR_optind;
 
-	  /* Skip any additional non-MR_options
-	     and extend the range of non-MR_options previously skipped.  */
+	  /* Skip any additional non-options
+	     and extend the range of non-options previously skipped.  */
 
 	  while (MR_optind < argc && NONOPTION_P)
 	    MR_optind++;
 	  MR_last_nonopt = MR_optind;
 	}
 
-      /* The special ARGV-element `--' means premature end of MR_options.
-	 Skip it like a null MR_option,
-	 then exchange with previous non-MR_options as if it were an MR_option,
-	 then skip everything else like a non-MR_option.  */
+      /* The special ARGV-element `--' means premature end of options.
+	 Skip it like a null option,
+	 then exchange with previous non-options as if it were an option,
+	 then skip everything else like a non-option.  */
 
       if (MR_optind != argc && !strcmp (argv[MR_optind], "--"))
 	{
@@ -589,18 +589,18 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	}
 
       /* If we have done all the ARGV-elements, stop the scan
-	 and back over any non-MR_options that we skipped and permuted.  */
+	 and back over any non-options that we skipped and permuted.  */
 
       if (MR_optind == argc)
 	{
-	  /* Set the next-arg-index to point at the non-MR_options
+	  /* Set the next-arg-index to point at the non-options
 	     that we previously skipped, so the caller will digest them.  */
 	  if (MR_first_nonopt != MR_last_nonopt)
 	    MR_optind = MR_first_nonopt;
 	  return -1;
 	}
 
-      /* If we have come to a non-MR_option and did not permute it,
+      /* If we have come to a non-option and did not permute it,
 	 either stop the scan or describe it to the caller and pass it by.  */
 
       if (NONOPTION_P)
@@ -611,25 +611,25 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	  return 1;
 	}
 
-      /* We have found another MR_option-ARGV-element.
+      /* We have found another option-ARGV-element.
 	 Skip the initial punctuation.  */
 
       MR_nextchar = (argv[MR_optind] + 1
 		  + (longopts != NULL && argv[MR_optind][1] == '-'));
     }
 
-  /* Decode the current MR_option-ARGV-element.  */
+  /* Decode the current option-ARGV-element.  */
 
-  /* Check whether the ARGV-element is a long MR_option.
+  /* Check whether the ARGV-element is a long option.
 
      If long_only and the ARGV-element has the form "-f", where f is
-     a valid short MR_option, don't consider it an abbreviated form of
-     a long MR_option that starts with f.  Otherwise there would be no
-     way to give the -f short MR_option.
+     a valid short option, don't consider it an abbreviated form of
+     a long option that starts with f.  Otherwise there would be no
+     way to give the -f short option.
 
-     On the other hand, if there's a long MR_option "fubar" and
+     On the other hand, if there's a long option "fubar" and
      the ARGV-element is "-fu", do consider that an abbreviation of
-     the long MR_option, just like "--fu", and not "-f" with arg "u".
+     the long option, just like "--fu", and not "-f" with arg "u".
 
      This distinction seems to be the most useful approach.  */
 
@@ -648,7 +648,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       for (nameend = MR_nextchar; *nameend && *nameend != '='; nameend++)
 	/* Do nothing.  */ ;
 
-      /* Test all long MR_options for either exact match
+      /* Test all long options for either exact match
 	 or abbreviated matches.  */
       for (p = longopts, MR_option_index = 0; p->name; p++, MR_option_index++)
 	if (!strncmp (p->name, MR_nextchar, nameend - MR_nextchar))
@@ -698,12 +698,12 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 		{
 		  if (MR_opterr) {
 		   if (argv[MR_optind - 1][1] == '-')
-		    /* --MR_option */
+		    /* --option */
 		    fprintf (stderr,
 		     _("%s: option `--%s' doesn't allow an argument\n"),
 		     argv[0], pfound->name);
 		   else
-		    /* +MR_option or -MR_option */
+		    /* +option or -option */
 		    fprintf (stderr,
 		     _("%s: option `%c%s' doesn't allow an argument\n"),
 		     argv[0], argv[MR_optind - 1][0], pfound->name);
@@ -741,21 +741,21 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	  return pfound->val;
 	}
 
-      /* Can't find it as a long MR_option.  If this is not MR_getopt_long_only,
-	 or the MR_option starts with '--' or is not a valid short
-	 MR_option, then it's an error.
-	 Otherwise interpret it as a short MR_option.  */
+      /* Can't find it as a long option.  If this is not MR_getopt_long_only,
+	 or the option starts with '--' or is not a valid short
+	 option, then it's an error.
+	 Otherwise interpret it as a short option.  */
       if (!long_only || argv[MR_optind][1] == '-'
 	  || my_index (optstring, *MR_nextchar) == NULL)
 	{
 	  if (MR_opterr)
 	    {
 	      if (argv[MR_optind][1] == '-')
-		/* --MR_option */
+		/* --option */
 		fprintf (stderr, _("%s: unrecognized option `--%s'\n"),
 			 argv[0], MR_nextchar);
 	      else
-		/* +MR_option or -MR_option */
+		/* +option or -option */
 		fprintf (stderr, _("%s: unrecognized option `%c%s'\n"),
 			 argv[0], argv[MR_optind][0], MR_nextchar);
 	    }
@@ -766,7 +766,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	}
     }
 
-  /* Look at and handle the next short MR_option-character.  */
+  /* Look at and handle the next short option-character.  */
 
   {
     char c = *MR_nextchar++;
@@ -836,7 +836,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	for (MR_nextchar = nameend = MR_optarg; *nameend && *nameend != '='; nameend++)
 	  /* Do nothing.  */ ;
 
-	/* Test all long MR_options for either exact match
+	/* Test all long options for either exact match
 	   or abbreviated matches.  */
 	for (p = longopts, MR_option_index = 0; p->name; p++, MR_option_index++)
 	  if (!strncmp (p->name, MR_nextchar, nameend - MR_nextchar))
@@ -919,7 +919,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       {
 	if (temp[2] == ':')
 	  {
-	    /* This is an MR_option that accepts an argument MR_optionally.  */
+	    /* This is an option that accepts an argument optionally.  */
 	    if (*MR_nextchar != '\0')
 	      {
 		MR_optarg = MR_nextchar;
@@ -931,7 +931,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	  }
 	else
 	  {
-	    /* This is an MR_option that requires an argument.  */
+	    /* This is an option that requires an argument.  */
 	    if (*MR_nextchar != '\0')
 	      {
 		MR_optarg = MR_nextchar;

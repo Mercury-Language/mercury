@@ -7,7 +7,7 @@
    The GNU C Library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
-   License, or (at your MR_option) any later version.
+   License, or (at your option) any later version.
 
    The GNU C Library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,10 +27,10 @@ extern "C" {
 #endif
 
 /* For communication from `MR_getopt' to the caller.
-   When `MR_getopt' finds an MR_option that takes an argument,
+   When `MR_getopt' finds an option that takes an argument,
    the argument value is returned here.
    Also, when `ordering' is RETURN_IN_ORDER,
-   each non-MR_option ARGV-element is returned here.  */
+   each non-option ARGV-element is returned here.  */
 
 extern char *MR_optarg;
 
@@ -41,7 +41,7 @@ extern char *MR_optarg;
    On entry to `MR_getopt', zero means this is the first call; initialize.
 
    When `MR_getopt' returns -1, this is the index of the first of the
-   non-MR_option elements that the caller should itself scan.
+   non-option elements that the caller should itself scan.
 
    Otherwise, `MR_optind' communicates from one call to the next
    how much of ARGV has been scanned so far.  */
@@ -49,33 +49,33 @@ extern char *MR_optarg;
 extern int MR_optind;
 
 /* Callers store zero here to inhibit the error message `MR_getopt' prints
-   for unrecognized MR_options.  */
+   for unrecognized options.  */
 
 extern int MR_opterr;
 
-/* Set to an MR_option character which was unrecognized.  */
+/* Set to an option character which was unrecognized.  */
 
 extern int MR_optopt;
 
-/* Describe the long-named MR_options requested by the application.
+/* Describe the long-named options requested by the application.
    The LONG_OPTIONS argument to MR_getopt_long or MR_getopt_long_only is a vector
    of `struct MR_option' terminated by an element containing a name which is
    zero.
 
    The field `has_arg' is:
-   MR_no_argument		(or 0) if the MR_option does not take an argument,
-   MR_required_argument	(or 1) if the MR_option requires an argument,
-   MR_optional_argument 	(or 2) if the MR_option takes an MR_optional argument.
+   MR_no_argument		(or 0) if the option does not take an argument,
+   MR_required_argument	(or 1) if the option requires an argument,
+   MR_optional_argument 	(or 2) if the option takes an optional argument.
 
    If the field `flag' is not NULL, it points to a variable that is set
-   to the value given in the field `val' when the MR_option is found, but
-   left unchanged if the MR_option is not found.
+   to the value given in the field `val' when the option is found, but
+   left unchanged if the option is not found.
 
-   To have a long-named MR_option do something other than set an `int' to
+   To have a long-named option do something other than set an `int' to
    a compiled-in constant, such as set a value from `MR_optarg', set the
-   MR_option's `flag' field to zero and its `val' field to a nonzero
-   value (the equivalent single-letter MR_option character, if there is
-   one).  For long MR_options that have a zero `flag' field, `MR_getopt'
+   option's `flag' field to zero and its `val' field to a nonzero
+   value (the equivalent single-letter option character, if there is
+   one).  For long options that have a zero `flag' field, `MR_getopt'
    returns the contents of the `val' field.  */
 
 struct MR_option
