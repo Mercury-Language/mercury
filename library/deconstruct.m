@@ -150,7 +150,7 @@
 :- mode det_arg(in, in(do_not_allow), in, out) is det.
 :- mode det_arg(in, in(canonicalize), in, out) is det.
 :- mode det_arg(in, in(include_details_cc), in, out) is cc_multi.
-:- mode det_arg(in, in, in, out) is cc_multi.
+:- mode det_arg(in, in, in, out) is det.
 
 	% det_named_arg(Data, NonCanon, Name, Argument)
 	%
