@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -86,7 +86,7 @@ reaching(SN, Max, Symbols, First, C, Ch0, Ch, Reaching0, Reaching) :-
 		Ch = Ch0,
 		Reaching = Reaching0
 	;
-		lookup(Symbols, SN, Symbol),
+		array__lookup(Symbols, SN, Symbol),
 		(
 			Symbol = terminal(_),
 			Ch = Ch0,
@@ -94,16 +94,16 @@ reaching(SN, Max, Symbols, First, C, Ch0, Ch, Reaching0, Reaching) :-
 		;
 			Symbol = nonterminal(A),
 			reaches(C, A, Ch0, Ch1, Reaching0, Reaching1),
-			( search(Reaching1, A, AR) ->
+			( map__search(Reaching1, A, AR) ->
 				set__to_sorted_list(AR, ARList),
-				foldl2(reaches(C), ARList, Ch1, Ch2,
+				list__foldl2(reaches(C), ARList, Ch1, Ch2,
 					Reaching1, Reaching2)
 			;
 				Ch2 = Ch1,
 				Reaching2 = Reaching1
 			),
-			lookup(First, A, FirstA),
-			( member(epsilon, FirstA) ->
+			map__lookup(First, A, FirstA),
+			( set__member(epsilon, FirstA) ->
 				reaching(SN + 1, Max, Symbols, First, C,
 					Ch2, Ch, Reaching2, Reaching)
 			;
@@ -117,19 +117,19 @@ reaching(SN, Max, Symbols, First, C, Ch0, Ch, Reaching0, Reaching) :-
 :- mode reaches(in, in, in, out, in, out) is det.
 
 reaches(C, A, Ch0, Ch, Reaching0, Reaching) :-
-	( search(Reaching0, C, As0) ->
-		( member(A, As0) ->
+	( map__search(Reaching0, C, As0) ->
+		( set__member(A, As0) ->
 			Ch = Ch0,
 			Reaching = Reaching0
 		;
 			Ch = yes,
 			As = As0 \/ { A },
-			set(Reaching0, C, As, Reaching)
+			map__set(Reaching0, C, As, Reaching)
 		)
 	;
 		Ch = yes,
 		As = { A },
-		set(Reaching0, C, As, Reaching)
+		map__set(Reaching0, C, As, Reaching)
 	).
 
 %------------------------------------------------------------------------------%
@@ -335,15 +335,15 @@ closure(Rules, First, Index, New0, I0, I) :-
 closure1([], _Rules, _First, _Index, I, I).
 closure1([AItem|AItems], Rules, First, Index, I0, I) :-
 	AItem = item(Ap, Ad, Asym),
-	lookup(Rules, Ap, rule(_, _, Asyms, _, _, _, _)),
+	map__lookup(Rules, Ap, rule(_, _, Asyms, _, _, _, _)),
 	array__max(Asyms, AMax),
 	( Ad =< AMax ->
-		lookup(Asyms, Ad, BSym),
+		array__lookup(Asyms, Ad, BSym),
 		( BSym = nonterminal(Bn) ->
 			Bf0 = first(First, Asyms, Ad + 1),
-			( member(epsilon, Bf0) ->
-				delete(Bf0, epsilon, Bf1),
-				insert(Bf1, Asym, Bf)
+			( set__member(epsilon, Bf0) ->
+				set__delete(Bf0, epsilon, Bf1),
+				set__insert(Bf1, Asym, Bf)
 				%Bf = Bf1 \/ { Asym }
 			;
 				Bf = Bf0
@@ -355,8 +355,8 @@ closure1([AItem|AItems], Rules, First, Index, I0, I) :-
 			    % sorted order. Thus we don't have to
 			    % sort the list to turn it into a set.
 			    % Reduces running time by > 10%
-			reverse(BfList0, BfList),
-			lookup(Index, Bn, Bps),
+			list__reverse(BfList0, BfList),
+			map__lookup(Index, Bn, Bps),
 			make_items(Bps, BfList, [], NList),
 			set__sorted_list_to_set(NList, N),
 			I1 = [N|I0]

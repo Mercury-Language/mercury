@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %
@@ -643,7 +643,7 @@ nonterminal_to_term(Name/Arity, Term) :-
 		io__state, io__state).
 :- mode write_parser(in, in, in, in, in, in, di, uo) is det.
 
-write_parser(Where, NT, Decl, TT, InAtom, OutAtom) -->
+write_parser(Where, NT, Decl, _TT, InAtom, OutAtom) -->
 	(
 		{ NT = StartName/StartArity }
 	;

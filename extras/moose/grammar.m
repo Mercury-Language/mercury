@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -224,13 +224,12 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
 	Nont0 = 1,
 	start_rule(Start, StartRule),
 	map__from_assoc_list([0 - StartRule], Rules0),
-	map__init(Xfs0),
 	map__init(ClauseIndex0),
 	map__init(First0),
 	map__init(Follow0),
 	Grammar0 = grammar(Rules0, AllClauses, XForms, Nont0, ClauseIndex0,
 		First0, Follow0),
-	foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
+	list.foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
 	compute_first0(Grammar1, Grammar2),
 	compute_follow0(Grammar2, Grammar3),
 	Grammar3 = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex3,
@@ -452,18 +451,18 @@ compute_first(_RuleNum, Rule, Stuff0, Stuff) :-
 
 compute_first(I, IMax, Elems, First, Set0, Set) :-
 	( I =< IMax ->
-		lookup(Elems, I, Elem),
+		array__lookup(Elems, I, Elem),
 		(
 				% If we get to a terminal, then we add it
 				% to the first set, and remove epsilon (if
 				% it was there in the first place), since
 				% this rule is certainly not nullable.
 			Elem = terminal(Id),
-			insert(Set0, Id, Set1),
-			difference(Set1, { epsilon }, Set)
+			set__insert(Set0, Id, Set1),
+			set__difference(Set1, { epsilon }, Set)
 		;
 			Elem = nonterminal(Id),
-			( search(First, Id, Set1) ->
+			( map__search(First, Id, Set1) ->
 					% If we know some information about
 					% the nonterminal, then add it to
 					% what we already know. If it is
@@ -471,12 +470,12 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 					% not nullable, and we're done. If
 					% it is nullable, then we look at
 					% the next literal in the body.
-				union(Set0, Set1, Set2),
-				( member(epsilon, Set1) ->
+				set__union(Set0, Set1, Set2),
+				( set__member(epsilon, Set1) ->
 					compute_first(I + 1, IMax, Elems, First,
 						Set2, Set)
 				;
-					difference(Set2, { epsilon }, Set)
+					set__difference(Set2, { epsilon }, Set)
 				)
 			;
 					% If we don't know anything about
@@ -634,12 +633,12 @@ compute_follow2(I, IMax, First, Elems, Stuff0, Stuff) :-
 
 compute_follow3(I, First, MyId, Elems, Stuff0, Stuff) :-
 	( I >= 0 ->
-		lookup(Elems, I, Elem),
+		array__lookup(Elems, I, Elem),
 		( Elem = nonterminal(Id) ->
 			get_follow(MyId, MyFollow, Stuff0, _),
 			add_follow(Id, MyFollow, Stuff0, Stuff1),
-			lookup(First, Id, IdFirst),
-			( member(epsilon, IdFirst) ->
+			map__lookup(First, Id, IdFirst),
+			( set__member(epsilon, IdFirst) ->
 				compute_follow3(I - 1, First, MyId, Elems,
 					Stuff1, Stuff)
 			;
@@ -689,16 +688,16 @@ add_follow(Id, IdFollow0, Stuff0, Stuff) :-
 first(First, Elems, I) = FirstI :-
 	array__max(Elems, Max),
 	( I =< Max ->
-		lookup(Elems, I, Elem),
+		array__lookup(Elems, I, Elem),
 		(
 			Elem = terminal(Id),
 			FirstI = { Id }
 		;
 			Elem = nonterminal(Id),
-			lookup(First, Id, FirstI0),
-			( member(epsilon, FirstI0) ->
+			map__lookup(First, Id, FirstI0),
+			( set__member(epsilon, FirstI0) ->
 				RestFirst = first(First, Elems, I+1),
-				union(FirstI0, RestFirst, FirstI)
+				set__union(FirstI0, RestFirst, FirstI)
 			;
 				FirstI = FirstI0
 			)

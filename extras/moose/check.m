@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -130,7 +130,7 @@ check_clauses0([], _Decls, Clauses, Clauses, []).
 check_clauses0([Clause|ClauseList], Decls, Clauses0, Clauses, Errors) :-
 	Clause = clause(Head, Prod, _, Context),
 	Id = nonterminal(Head),
-	( search(Clauses0, Id, ClauseList0) ->
+	( map__search(Clauses0, Id, ClauseList0) ->
 		append(ClauseList0, [Clause], ClauseList1)
 	;
 		ClauseList1 = [Clause]
@@ -141,10 +141,10 @@ check_clauses0([Clause|ClauseList], Decls, Clauses0, Clauses, Errors) :-
 	solutions((pred(NonTermId::out) is nondet :-
 			% XXX performance
 		nonterminals(Prod, NonTermIds),
-		member(NonTermId, NonTermIds),
+		list__member(NonTermId, NonTermIds),
 		not contains(Decls, NonTermId)
 	), UnDeclaredIds),
-	map((pred(UnDeclaredId::in, UnDeclaredError::out) is det :-
+	list__map((pred(UnDeclaredId::in, UnDeclaredError::out) is det :-
 		id(Id, CN, CA),
 		id(UnDeclaredId, NN, NA),
 		format("In production for %s/%d,", [s(CN), i(CA)], Msg0),
@@ -188,13 +188,13 @@ check_useless(Start, Clauses, Decls, Errors) :-
 :- mode useful(in, in, in, out) is det.
 
 useful(New0, Clauses, Useful0, Useful) :-
-	( empty(New0) ->
+	( set__empty(New0) ->
 		Useful = Useful0
 	;
 		solutions_set((pred(UId::out) is nondet :-
-			member(Id, New0),
-			search(Clauses, Id, ClauseList),
-			member(Clause, ClauseList),
+			set__member(Id, New0),
+			map__search(Clauses, Id, ClauseList),
+			list__member(Clause, ClauseList),
 			Clause = clause(_Head, Prod, _VarSet, _Context),
 			nonterminal(UId, Prod)
 		), NewSet),
@@ -244,12 +244,12 @@ check_inf_derivations(Clauses, Decls, Errors) :-
 
 finite(Inf0, Fin0, Clauses, Inf) :-
 	solutions_set((pred(NewFinId::out) is nondet :-
-		member(NewFinId, Inf0),
+		set__member(NewFinId, Inf0),
 			% search rather than lookup in case the nonterminal
 			% doesn't have any clauses. This may lead to
 			% spurious infinite derivations.
-		search(Clauses, NewFinId, ClauseList),
-		member(Clause, ClauseList),
+		map__search(Clauses, NewFinId, ClauseList),
+		list__member(Clause, ClauseList),
 		Clause = clause(_Head, Prod, _VarSet, _Context),
 		nonterminals(Prod, NonTerms),
 		(
@@ -257,12 +257,12 @@ finite(Inf0, Fin0, Clauses, Inf) :-
 		;
 			NonTerms = [_|_],
 			all [NId] (
-				member(NId, NonTerms) => member(NId, Fin0)
+				list__member(NId, NonTerms) => set__member(NId, Fin0)
 			)
 		)
 	), NewFinSet),
 	NewFin = NewFinSet - Fin0,
-	( empty(NewFin) ->
+	( set__empty(NewFin) ->
 		Inf = Inf0
 	;
 		Inf1 = Inf0 - NewFin,
