@@ -277,20 +277,35 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		mode_info_set_instmap(InstMap)
 	;
 		%
-		% Mark all the variables which are nondet-live at the
+		% If the disjunction creates a choice point (i.e. is model_non),
+		% then mark all the variables which are live at the
 		% start of the disjunction and whose inst is `unique'
-		% as instead being only `mostly_unique'.
+		% as instead being only `mostly_unique', since those variables
+		% may be needed again after we backtrack to that choice point
+		% and resume forward execution again.
+		%
+		% Note: for model_det or model_semi disjunctions,
+		% we may do some "shallow" backtracking from semidet
+		% disjuncts.  But we handle that seperately for each
+		% disjunct, in unique_modes__check_disj.
 		%
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		mode_info_add_live_vars(NonLocals),
-		make_all_nondet_live_vars_mostly_uniq,
-		mode_info_remove_live_vars(NonLocals),
+		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
+		% does this disjunction create a choice point?
+		( { CodeModel = model_non } ->
+			mode_info_add_live_vars(NonLocals),
+			make_all_nondet_live_vars_mostly_uniq,
+			mode_info_remove_live_vars(NonLocals)
+		;
+			[]
+		),
 
 		%
 		% Now just modecheck each disjunct in turn, and then
 		% merge the resulting instmaps.
 		%
-		unique_modes__check_disj(List0, List, InstMapList),
+		unique_modes__check_disj(List0, CodeModel, NonLocals,
+			List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "disj").
@@ -653,19 +668,45 @@ unique_modes__check_par_conj([Goal0 | Goals0], [Goal | Goals],
 	% the original instmap before processing the next one.
 	% Collect up a list of the resulting instmaps.
 
-:- pred unique_modes__check_disj(list(hlds_goal), list(hlds_goal),
-		list(instmap), mode_info, mode_info).
-:- mode unique_modes__check_disj(in, out, out, mode_info_di, mode_info_uo)
-		is det.
+:- pred unique_modes__check_disj(list(hlds_goal), code_model, set(prog_var),
+		list(hlds_goal), list(instmap), mode_info, mode_info).
+:- mode unique_modes__check_disj(in, in, in, out, out,
+		mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_disj([], [], []) --> [].
-unique_modes__check_disj([Goal0 | Goals0], [Goal | Goals],
-		[InstMap | InstMaps]) -->
+unique_modes__check_disj([], _, _, [], []) --> [].
+unique_modes__check_disj([Goal0 | Goals0], DisjCodeModel, DisjNonLocals,
+		[Goal | Goals], [InstMap | InstMaps]) -->
 	mode_info_dcg_get_instmap(InstMap0),
+	(
+		%
+		% If the disjunction was model_nondet, then we already marked
+		% all the non-locals as only being mostly-unique, so we
+		% don't need to do anything speical here...
+		%
+		{ DisjCodeModel \= model_non },
+
+		%
+		% ... but for model_semi or model_det disjunctions, if the
+		% _disjunct_ can fail, then we still might backtrack to another
+		% disjunct, so again in that case we need to mark all the
+		% non-locals as being only mostly-unique rather than unique.
+		%
+		{ Goal0 = _ - GoalInfo0 },
+		{ goal_info_get_determinism(GoalInfo0, Determinism) },
+		{ determinism_components(Determinism, CanFail, _) },
+		{ CanFail = can_fail }
+	->
+		mode_info_add_live_vars(DisjNonLocals),
+		make_all_nondet_live_vars_mostly_uniq,
+		mode_info_remove_live_vars(DisjNonLocals)
+	;
+		[]
+	),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),
-	unique_modes__check_disj(Goals0, Goals, InstMaps).
+	unique_modes__check_disj(Goals0, DisjCodeModel, DisjNonLocals,
+		Goals, InstMaps).
 
 %-----------------------------------------------------------------------------%
 
