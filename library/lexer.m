@@ -632,7 +632,6 @@ lexer__get_slash(Token, Context) -->
 		;
 			lexer__get_context(Context),
 			io__putback_char(Char),
-			lexer__get_context(Context),
 			{ Token = name("/") }
 		)
 	).
