@@ -20,7 +20,7 @@ main -->
 	% The purpose of list is to force the tracer to call the Mercury
 	% code to print a list of integers, when the input script asks
 	% for the outputs of data to be printed. In the past this was
-	% sufficed to cause part of the C stack to be overwritten.
+	% sufficient to cause part of the C stack to be overwritten.
 	% It also tests whether the values of A0 etc that the tracer prints
 	% are derived from the register contents produced by data,
 	% or from the register contents left there by the code that
