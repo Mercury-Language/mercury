@@ -436,10 +436,10 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
     } while (0)
 
 /* Allocate a univ on the heap */
-#define MR_new_univ_on_hp(univ, typeinfo, value)                   \
+#define MR_new_univ_on_hp(univ, typeinfo, value)                    \
     do {                                                            \
-        MR_tag_incr_hp_msg((univ), MR_UNIV_TAG,           \
-                        2, MR_PROC_LABEL, ""std_util:univ/0"");     \
+        MR_tag_incr_hp_msg((univ), MR_UNIV_TAG,           	    \
+                        2, MR_PROC_LABEL, "std_util:univ/0");       \
         MR_define_univ_fields((univ), (typeinfo), (value));         \
     } while (0)
 
