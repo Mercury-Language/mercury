@@ -1470,9 +1470,9 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, Args,
 			ModuleInfo, Unification).
 
-modecheck_unification(term__functor(F, As, _), term__variable(Y),
+modecheck_unification(term__functor(F, As, Context), term__variable(Y),
 		Modes, Unification, ModeInfo0, ModeInfo) :-
-	modecheck_unification(term__variable(Y), term__functor(F, As, _),
+	modecheck_unification(term__variable(Y), term__functor(F, As, Context),
 		Modes, Unification, ModeInfo0, ModeInfo).
 	
 modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
