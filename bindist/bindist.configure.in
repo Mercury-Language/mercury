@@ -256,7 +256,9 @@ AC_SUBST_FILE(CANONICAL_GRADE)
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
-AC_OUTPUT(Makefile scripts/mmc scripts/mercury.bat scripts/mprof scripts/mdprof
+AC_OUTPUT(Makefile
+scripts/parse_ml_options.sh-subr
+scripts/mmc scripts/mercury.bat scripts/mprof scripts/mdprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/c2init
 scripts/mkfifo_using_mknod scripts/Mmake.vars
