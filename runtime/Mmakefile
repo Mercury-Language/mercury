@@ -230,6 +230,7 @@ endif
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
+mercury_deconstruct.o:	mercury_ml_expand_body.h
 mercury_deep_copy.o:	mercury_deep_copy_body.h
 mercury_type_info.o:	mercury_make_type_info_body.h
 mercury_ho_call.o:	mercury_unify_compare_body.h
