@@ -15,6 +15,6 @@
 MPROF=${MERCURY_PROFILER="@LIBDIR@/bin/@FULLARCH@/mercury_profile"}
 
 case $# in
-	0) exec $MPROF
-	*) exec $MPROF "$@"
+	0) exec $MPROF ;;
+	*) exec $MPROF "$@" ;;
 esac
