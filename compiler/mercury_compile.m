@@ -387,11 +387,22 @@ main_2(no, OptionVariables, OptionArgs, Args, Link, !IO) :-
 			->
 				file_name_to_module_name(FirstModule,
 					MainModuleName),
-				compile_with_module_options(MainModuleName,
-					OptionVariables, OptionArgs,
-					compile_target_code__link_module_list(
-						ModulesToLink),
-					Succeeded, !IO),
+				globals__get_target(Globals, Target),
+				( Target = java ->
+					% For Java, at the "link" step we just
+					% generate a shell script; the actual
+					% linking will be done at runtime by
+					% the Java interpreter.
+					create_java_shell_script(
+						MainModuleName, Succeeded, !IO)
+				;
+					compile_with_module_options(
+						MainModuleName,
+						OptionVariables, OptionArgs,
+					 compile_target_code__link_module_list(
+							ModulesToLink),
+						Succeeded, !IO)
+				),
 				maybe_set_exit_status(Succeeded, !IO)
 			;
 				true
