@@ -8,6 +8,7 @@ include ../Mmake.common
 
 PROGS=	\
 	address_of_builtins \
+	agg \
 	bidirectional \
 	c_write_string \
 	cc_nondet_disj \
@@ -43,10 +44,6 @@ PROGS=	\
 	tim_qual1 \
 	write \
 	write_reg1
-
-# deep_copy_bug.exp and write.exp are broken; io__write doesn't write
-# equivalence types correctly, due to a bug in mercury_compare_type_info()
-# in library/std_util.m
 
 #-----------------------------------------------------------------------------#
 
