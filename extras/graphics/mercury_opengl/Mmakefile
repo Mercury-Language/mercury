@@ -1,41 +1,29 @@
+# To build the OpenGL binding, do the following:
+#
+# $ mmake depend
+# $ mmake
+#
+# After which you can install by ....
+#
+# $ mmake install
 
-MAIN_TARGET	= all
-
-MLOBJS-mtogl = togl.o 
-
-# Don't issue a warning because mercury_opengl doesn't export anything.
-MCFLAGS-mercury_opengl = --no-warn-nothing-exported
-
-# Specify the location of the `mercury_tcltk' package.
-MERCURY_TCLTK_DIR 	= ../mercury_tcltk
-
-# Specify the version of Tcl/Tk.
-TCLTK_VERSION = 8.0
+MAIN_TARGET = libmercury_opengl
 
 # Specify what libraries we need to link against for OpenGL on this system.
 # (The following works on Debian with mesa as the OpenGL implementation).
 GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXi -lXmu -lXt -lICE -lXext -lSM
 
-# Specify what libraries we need to link against for Tcl/Tk on this system.
-TCLTK_LIBS = -ltcl$(TCLTK_VERSION) -ltk$(TCLTK_VERSION) -ldl
+# Don't issue a warning because mercury_opengl doesn't export anything.
+MCFLAGS-mercury_opengl = --no-warn-nothing-exported
 
-# Tell mmake to use the `mercury_tcltk' library.
-VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
-MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
-MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
-          	  -L$(MERCURY_TCLTK_DIR) 
-MLLIBS 		= $(GL_LIBS) $(TCLTK_LIBS) $(EXTRA_MLLIBS)
-C2INITARGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+# This is necessary for a couple of predicatest that have not been
+# implemented completely.
+MCFLAGS-mogl = --no-warn-inferred-erroneous
 
-# We may need to tell mmake where tcl.h and tk.h are.
-# If we are using Tcl/Tk version 8.0 on Debian the include directory
-# we need is `/usr/include/tcl8.0/generic'.
-CFLAGS = -I/usr/include/tcl$(TCLTK_VERSION)
+MCFLAGS = --halt-at-warn --intermodule-optimization
 
-# We need to also access mtcltk.mh
-MGNUCFLAGS	= -I$(MERCURY_TCLTK_DIR)
+MLLIBS 	= $(GL_LIBS) $(EXTRA_MLLIBS)
 
-depend: mercury_opengl.depend mtogl.depend
+depend: mercury_opengl.depend
 
-all: libmtogl libmercury_opengl 
-
+install: libmercury_opengl.install

@@ -32,6 +32,9 @@ This directory contains the following modules.
 	other .c and .h - Internals of Tk.
 	files
 
+See the file Mmakefile for instructions on how to build the OpenGL binding.
+The file Mmakefile.mtogl contains instructions on how to build mtogl.
+
 See HOWTO for details on how to link the package in with your own
 Mercury programs.
 

@@ -1,0 +1,41 @@
+# To build mtogl, do the following
+# $ mmake -f Mmakefile.mtogl depend
+# $ mmake -f Mmakefile.mtogl 
+#
+# After which you can install by ...
+#
+# $ mmake -f Mmakefile.mtogl install
+
+MAIN_TARGET = libmtogl 
+
+MLOBJS-mtogl = togl.o 
+
+# Specify the location of the `mercury_tcltk' package.
+MERCURY_TCLTK_DIR 	= ../mercury_tcltk
+
+# Specify the version of Tcl/Tk.
+TCLTK_VERSION = 8.0
+
+# Specify what libraries we need to link against for Tcl/Tk on this system.
+TCLTK_LIBS = -ltcl$(TCLTK_VERSION) -ltk$(TCLTK_VERSION) -ldl
+
+# Tell mmake to use the `mercury_tcltk' library.
+VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
+MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
+          	  -L$(MERCURY_TCLTK_DIR) 
+MLLIBS 		= $(TCLTK_LIBS) $(EXTRA_MLLIBS)
+C2INITARGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+
+# We may need to tell mmake where tcl.h and tk.h are.
+# If we are using Tcl/Tk version 8.0 on Debian the include directory
+# we need is `/usr/include/tcl8.0/generic'.
+CFLAGS = -I/usr/include/tcl$(TCLTK_VERSION)
+
+# We need to also access mtcltk.mh
+MGNUCFLAGS	= -I$(MERCURY_TCLTK_DIR)
+
+depend: mtogl.depend
+
+install: libmtogl.install
+

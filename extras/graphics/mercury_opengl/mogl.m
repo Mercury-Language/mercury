@@ -4333,8 +4333,9 @@ server_attrib_group_to_bit(Flag) =
 	Mask = server_attrib_group_flags[Flag];
 ").
 
+:- pred push_attrib_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	push_attrib(Mask::in, IO0::di, IO::uo),
+	push_attrib_2(Mask::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
 	glPushAttrib((GLbitfield) Mask);
