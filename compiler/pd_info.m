@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,27 +19,25 @@
 
 :- type pd_info 
 	---> pd_info(
-		io__state,
-		module_info,
-		maybe(unfold_info),
-		goal_version_index,
-		version_index,
-		pd_arg_info,
-		int,			% version counter.
-		global_term_info,
-		set(pred_proc_id),
-		int,			% current depth
-		set(pred_proc_id),	% created versions
-		set(pair(pred_proc_id)),% pairs of procedures which when
-					% paired for deforestation produce
-					% little improvement
-		unit,
-		unit
+		io :: io__state,
+		module_info :: module_info,
+		maybe_unfold_info :: maybe(unfold_info),
+		goal_version_index :: goal_version_index,
+		versions :: version_index,
+		proc_arg_info :: pd_arg_info,
+		counter :: int,
+		global_term_info :: global_term_info,
+		parent_versions :: set(pred_proc_id),
+		depth :: int,
+		created_versions :: set(pred_proc_id),
+		useless_versions :: useless_versions
 	).
 
 		% map from list of called preds in the 
 		% conjunctions to the specialised versions.
 :- type goal_version_index == map(list(pred_proc_id), list(pred_proc_id)).
+
+:- type useless_versions == set(pair(pred_proc_id)).
 
 		% map from version id to the info about the version.
 :- type version_index == map(pred_proc_id, version_info).
@@ -93,7 +91,7 @@
 :- pred pd_info_get_created_versions(set(pred_proc_id), pd_info, pd_info).
 :- mode pd_info_get_created_versions(out, pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_get_useless_versions(set(pair(pred_proc_id)), pd_info, pd_info).
+:- pred pd_info_get_useless_versions(useless_versions, pd_info, pd_info).
 :- mode pd_info_get_useless_versions(out, pd_info_di, pd_info_uo) is det.
 
 :- pred pd_info_set_io_state(io__state, pd_info, pd_info).
@@ -129,7 +127,7 @@
 :- pred pd_info_set_created_versions(set(pred_proc_id), pd_info, pd_info).
 :- mode pd_info_set_created_versions(in, pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_set_useless_versions(set(pair(pred_proc_id)), pd_info, pd_info).
+:- pred pd_info_set_useless_versions(useless_versions, pd_info, pd_info).
 :- mode pd_info_set_useless_versions(in, pd_info_di, pd_info_uo) is det.
 
 :- pred pd_info_update_goal(hlds_goal, pd_info, pd_info).
@@ -173,7 +171,7 @@ pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
 	set__init(UselessVersions),
 	PdInfo = pd_info(IO, ModuleInfo, no, GoalVersionIndex, Versions, 
 		ProcArgInfos, 0, GlobalInfo, ParentVersions, 0, 
-		CreatedVersions, UselessVersions, unit, unit).
+		CreatedVersions, UselessVersions).
 
 pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo) -->
 	pd_info_get_module_info(ModuleInfo),
@@ -188,64 +186,39 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo) -->
 	pd_info_set_unfold_info(UnfoldInfo).
 
 pd_info_get_io_state(IO, PdInfo, PdInfo) :-
-	PdInfo = pd_info(IO0, _,_,_,_,_,_,_,_,_,_,_,_,_),
-	unsafe_promise_unique(IO0, IO).
-pd_info_get_module_info(ModuleInfo, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_, ModuleInfo, _,__,_,_,_,_,_,_,_,_,_,_).
+	unsafe_promise_unique(PdInfo ^ io, IO).
+pd_info_get_module_info(PdInfo ^ module_info, PdInfo, PdInfo).
 pd_info_get_unfold_info(UnfoldInfo, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_, MaybeUnfoldInfo, _,_,_,_,_,_,_,_,_,_,_),
+	MaybeUnfoldInfo = PdInfo ^ maybe_unfold_info,
 	(
 		MaybeUnfoldInfo = yes(UnfoldInfo)
 	;
 		MaybeUnfoldInfo = no,
 		error("pd_info_get_unfold_info: unfold_info not set.")
 	).
-pd_info_get_goal_version_index(Index, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,Index,_,_,_,_,_,_,_,_,_,_).
-pd_info_get_versions(Versions, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,Versions,_,_,_,_,_,_,_,_,_).
-pd_info_get_proc_arg_info(ProcArgInfo, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,ProcArgInfo,_,_,_,_,_,_,_,_).
-pd_info_get_counter(Counter, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,Counter,_,_,_,_,_,_,_).
-pd_info_get_global_term_info(TermInfo, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,_,TermInfo,_,_,_,_,_,_).
-pd_info_get_parent_versions(Parents, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,_,_,Parents,_,_,_,_,_).
-pd_info_get_depth(Depth, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,Depth,_,_,_,_).
-pd_info_get_created_versions(Versions, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,Versions,_,_,_).
-pd_info_get_useless_versions(Versions, PdInfo, PdInfo) :-
-	PdInfo = pd_info(_,_,_,_,_,_,_,_,_,_,_,Versions,_,_).
+pd_info_get_goal_version_index(PdInfo ^ goal_version_index, PdInfo, PdInfo).
+pd_info_get_versions(PdInfo ^ versions, PdInfo, PdInfo).
+pd_info_get_proc_arg_info(PdInfo ^ proc_arg_info, PdInfo, PdInfo).
+pd_info_get_counter(PdInfo ^ counter, PdInfo, PdInfo).
+pd_info_get_global_term_info(PdInfo ^ global_term_info, PdInfo, PdInfo).
+pd_info_get_parent_versions(PdInfo ^ parent_versions, PdInfo, PdInfo).
+pd_info_get_depth(PdInfo ^ depth, PdInfo, PdInfo).
+pd_info_get_created_versions(PdInfo ^ created_versions, PdInfo, PdInfo).
+pd_info_get_useless_versions(PdInfo ^ useless_versions, PdInfo, PdInfo).
 
-pd_info_set_io_state(IO0, pd_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N), 
-		pd_info(IO, B,C,D,E,F,G,H,I,J,K,L,M,N)) :-
-	unsafe_promise_unique(IO0, IO).
-pd_info_set_module_info(ModuleInfo, pd_info(A,_,C,D,E,F,G,H,I,J,K,L,M,N),
-		pd_info(A, ModuleInfo, C,D,E,F,G,H,I,J,K,L,M,N)).
-pd_info_set_unfold_info(UnfoldInfo, pd_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N),
-		pd_info(A,B, yes(UnfoldInfo), D,E,F,G,H,I,J,K,L,M,N)).
-pd_info_unset_unfold_info(pd_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N),
-		pd_info(A,B, no, D,E,F,G,H,I,J,K,L,M,N)).
-pd_info_set_goal_version_index(Index, pd_info(A,B,C,_,E,F,G,H,I,J,K,L,M,N),
-		pd_info(A,B,C,Index,E,F,G,H,I,J,K,L,M,N)).
-pd_info_set_versions(Versions, pd_info(A,B,C,D,_,F,G,H,I,J,K,L,M,N),
-		pd_info(A,B,C,D,Versions,F,G,H,I,J,K,L,M,N)).
-pd_info_set_proc_arg_info(ProcArgInfo, pd_info(A,B,C,D,E,_,G,H,I,J,K,L,M,N),
-		pd_info(A,B,C,D,E,ProcArgInfo,G,H,I,J,K,L,M,N)).
-pd_info_set_counter(Counter, pd_info(A,B,C,D,E,F,_,H,I,J,K,L,M,N),
-		pd_info(A,B,C,D,E,F,Counter,H,I,J,K,L,M,N)).
-pd_info_set_global_term_info(TermInfo, pd_info(A,B,C,D,E,F,G,_,I,J,K,L,M,N),
-		pd_info(A,B,C,D,E,F,G,TermInfo,I,J,K,L,M,N)).
-pd_info_set_parent_versions(Parents, pd_info(A,B,C,D,E,F,G,H,_,J,K,L,M,N),
-		pd_info(A,B,C,D,E,F,G,H,Parents,J,K,L,M,N)).
-pd_info_set_depth(Depth, pd_info(A,B,C,D,E,F,G,H,I,_,K,L,M,N),
-		pd_info(A,B,C,D,E,F,G,H,I,Depth,K,L,M,N)).
-pd_info_set_created_versions(Versions, pd_info(A,B,C,D,E,F,G,H,I,J,_,L,M,N),
-		pd_info(A,B,C,D,E,F,G,H,I,J,Versions,L,M,N)).
-pd_info_set_useless_versions(Versions, pd_info(A,B,C,D,E,F,G,H,I,J,K,_,M,N),
-		pd_info(A,B,C,D,E,F,G,H,I,J,K,Versions,M,N)).
+pd_info_set_io_state(IO) --> ^ io := IO.
+pd_info_set_module_info(ModuleInfo) --> ^ module_info := ModuleInfo.
+pd_info_set_unfold_info(UnfoldInfo) --> ^ maybe_unfold_info := yes(UnfoldInfo).
+pd_info_unset_unfold_info --> ^ maybe_unfold_info := no.
+pd_info_set_goal_version_index(Index) --> ^ goal_version_index := Index.
+pd_info_set_versions(Versions) --> ^ versions := Versions.
+pd_info_set_proc_arg_info(ProcArgInfo) --> ^ proc_arg_info := ProcArgInfo.
+pd_info_set_counter(Counter) --> ^ counter := Counter.
+pd_info_set_global_term_info(TermInfo) --> ^ global_term_info := TermInfo.
+pd_info_set_parent_versions(Parents) --> ^ parent_versions := Parents.
+pd_info_set_depth(Depth) --> ^ depth := Depth.
+pd_info_set_created_versions(Versions) --> ^ created_versions := Versions.
+pd_info_set_useless_versions(Versions) --> ^ useless_versions := Versions.
 
 pd_info_update_goal(_ - GoalInfo) -->
 	pd_info_get_instmap(InstMap0),
@@ -295,20 +268,25 @@ pd_info_foldl2(Pred, [H | T], Acc0, Acc) -->
 	% body for unfolding and deforestation opportunities.
 :- type unfold_info
 	--->	unfold_info(
-			proc_info,
-			instmap,
-			int,		% improvement in cost measured while
+			proc_info :: proc_info,
+			instmap :: instmap,
+			cost_delta :: int,
+					% improvement in cost measured while
 					% processing this procedure
-			local_term_info,% information used to prevent
+			local_term_info :: local_term_info,
+					% information used to prevent
 					% infinite unfolding within the 
 					% current procedure.
-			pred_info,
-			set(pred_proc_id),
-			pred_proc_id,	% current pred_proc_id
-			bool,		% has anything changed
-			int,		% increase in size measured while
+			pred_info :: pred_info,
+			parents :: set(pred_proc_id),
+			pred_proc_id :: pred_proc_id,
+					% current pred_proc_id
+			changed :: bool,% has anything changed
+			size_delta :: int,
+					% increase in size measured while
 					% processing this procedure
-			bool		% does determinism analysis
+			rerun_det :: bool	
+					% does determinism analysis
 					% need to be rerun.
 		).	
 
@@ -405,86 +383,66 @@ pd_info_foldl2(Pred, [H | T], Acc0, Acc) -->
 
 :- implementation.
 
-pd_info_get_proc_info(ProcInfo) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(ProcInfo, _,_,_,_,_,_,_,_,_) }.
-pd_info_get_instmap(InstMap) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_, InstMap, _,_,_,_,_,_,_,_) }.
-pd_info_get_cost_delta(CostDelta) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_, CostDelta, _,_,_,_,_,_,_) }.
-pd_info_get_local_term_info(TermInfo) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,TermInfo,_,_,_,_,_,_) }.
-pd_info_get_pred_info(PredInfo) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,PredInfo,_,_,_,_,_) }.
-pd_info_get_parents(Parents) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,_,Parents,_,_,_,_) }.
-pd_info_get_pred_proc_id(PredProcId) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,_,_,PredProcId,_,_,_) }.
-pd_info_get_changed(Changed) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,_,_,_,Changed,_,_) }.
-pd_info_get_size_delta(SizeDelta) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,_,_,_,_,SizeDelta,_) }.
-pd_info_get_rerun_det(Rerun) -->
-	pd_info_get_unfold_info(UnfoldInfo),
-	{ UnfoldInfo = unfold_info(_,_,_,_,_,_,_,_,_,Rerun) }.
+pd_info_get_proc_info(UnfoldInfo ^ proc_info) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_instmap(UnfoldInfo ^ instmap) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_cost_delta(UnfoldInfo ^ cost_delta) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_local_term_info(UnfoldInfo ^ local_term_info) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_pred_info(UnfoldInfo ^ pred_info) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_parents(UnfoldInfo ^ parents) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_pred_proc_id(UnfoldInfo ^ pred_proc_id) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_changed(UnfoldInfo ^ changed) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_size_delta(UnfoldInfo ^ size_delta) -->
+	pd_info_get_unfold_info(UnfoldInfo).
+pd_info_get_rerun_det(UnfoldInfo ^ rerun_det) -->
+	pd_info_get_unfold_info(UnfoldInfo).
 	
 pd_info_set_proc_info(ProcInfo) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(_,B,C,D,E,F,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(ProcInfo, B,C,D,E,F,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ proc_info := ProcInfo },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_instmap(InstMap) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,_,C,D,E,F,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(A, InstMap,C,D,E,F,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ instmap := InstMap },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_cost_delta(CostDelta) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,_,D,E,F,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,CostDelta,D,E,F,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ cost_delta := CostDelta },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_local_term_info(TermInfo) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,_,E,F,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,TermInfo,E,F,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ local_term_info := TermInfo },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_pred_info(PredInfo) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,_,F,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,PredInfo,F,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ pred_info := PredInfo },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_parents(Parents) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,E,_,G,H,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,E,Parents,G,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ parents := Parents },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_pred_proc_id(PredProcId) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,E,F,_,H,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,E,F,PredProcId,H,I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ pred_proc_id := PredProcId },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_changed(Changed) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,E,F,G,_,I,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,E,F,G, Changed, I,J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ changed := Changed },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_size_delta(SizeDelta) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,E,F,G,H,_,J) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,E,F,G,H, SizeDelta, J) },
+	{ UnfoldInfo = UnfoldInfo0 ^ size_delta := SizeDelta },
 	pd_info_set_unfold_info(UnfoldInfo).
 pd_info_set_rerun_det(Rerun) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
-	{ UnfoldInfo0 = unfold_info(A,B,C,D,E,F,G,H,I,_) },
-	{ UnfoldInfo = unfold_info(A,B,C,D,E,F,G,H,I, Rerun) },
+	{ UnfoldInfo = UnfoldInfo0 ^ rerun_det := Rerun },
 	pd_info_set_unfold_info(UnfoldInfo).
 
 pd_info_incr_cost_delta(Delta1) -->

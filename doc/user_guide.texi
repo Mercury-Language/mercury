@@ -4776,6 +4776,12 @@ predicates should be included in @samp{.opt} files.  Note that changing this
 between writing the @samp{.opt} file and compiling to C may cause link errors,
 and too high a value may result in reduced performance.
 
+@item --inline-vars-threshold @var{threshold}
+@findex --inline-vars-threshold
+Don't inline a call if it would result in a procedure
+containing more than @var{threshold} variables. Procedures
+containing large numbers of variables can cause
+slow compilation.
 
 @sp 1
 @item --no-common-struct
@@ -4938,6 +4944,27 @@ that have to be saved across calls.
 Enable deforestation. Deforestation is a program transformation whose aim
 is to avoid the construction of intermediate data structures and to avoid
 repeated traversals over data structures within a conjunction.
+
+@sp 1
+@item --deforestation-depth-limit
+@findex --deforestation-depth-limit
+Specify a depth limit to prevent infinite loops in the
+deforestation algorithm.
+A value of -1 specifies no depth limit. The default is 4.
+
+@sp 1
+@item --deforestation-vars-threshold
+@findex --deforestation-vars-threshold
+Specify a rough limit on the number of variables",
+in a procedure created by deforestation.",
+A value of -1 specifies no limit. The default is 200."
+
+@sp 1
+@item --deforestation-size-threshold
+@findex --deforestation-size-threshold
+Specify a rough limit on the size of a goal
+to be optimized by deforestation.
+A value of -1 specifies no limit. The default is 15.
 
 @end table
 

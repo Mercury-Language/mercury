@@ -7,9 +7,22 @@
 % Main author: stayl.
 %-----------------------------------------------------------------------------%
 %
-% Deforestation.
+% Deforestation attempts to remove multiple traversals over data structures,
+% and construction followed by immediate deconstruction of data structures.
+% It does this by combining the bodies of pairs of called procedures in
+% a conjunction where the top-level functor of one of the argument variables
+% of the first called procedure is known at the end of some of the branches
+% of the body of that procedure, and the second called procedure switches on
+% that variable.
 %
-% A start on the documentation for this is in $CVSROOT/papers/deforest.
+% The deforestation pass also inlines calls for which the top-level
+% goal in the called procedure is a switch and the functor of the
+% switched-on variable is known. This allows simplify.m to prune away
+% the failing branches.
+%  
+% For a more detailed description, see Simon Taylor's Honours thesis,
+% available from
+% <http://www.cs.mu.oz.au/research/mercury/information/papers/stayl_hons.ps.gz>
 %
 %-----------------------------------------------------------------------------%
 :- module deforest.
@@ -600,7 +613,18 @@ deforest__should_try_deforestation(DeforestInfo, ShouldTry) -->
 	pd_info_get_module_info(ModuleInfo),
 	pd_info_lookup_option(fully_strict, FullyStrictOp),
 	pd_info_get_pred_info(PredInfo),
+	pd_info_get_useless_versions(UselessVersions),
+	pd_info_lookup_option(deforestation_size_threshold, SizeLimitOpt),
 	( 
+		{ EarlierGoal = call(PredId1, ProcId1, _, _, _, _) - _ },
+		{ LaterGoal = call(PredId2, ProcId2, _, _, _, _) - _ },
+		{ set__member(proc(PredId1, ProcId1) - proc(PredId2, ProcId2),
+			UselessVersions) }
+	->
+		pd_debug__message("version tried before, not worthwhile\n", 
+			[]),
+		{ ShouldTry = no }
+	;
 		{ DepthLimitOpt = int(MaxDepth) },
 		{ MaxDepth \= -1 }, 	% no depth limit set
 		{ Depth0 >= MaxDepth }
@@ -610,6 +634,28 @@ deforest__should_try_deforestation(DeforestInfo, ShouldTry) -->
 		% is just a safety net.
 		pd_debug__message("\n\n*****Depth limit exceeded*****\n\n",
 			[]),
+		{ ShouldTry = no }
+	;
+		% Check whether either of the goals to be
+		% deforested is too large. XXX This is
+		% probably a bit too crude, especially for
+		% LaterGoal, which should be reduced in size
+		% in the specialized version (the specialized
+		% version will only include one branch of the
+		% top-level switch).
+		{ SizeLimitOpt = int(SizeLimit) },
+		{ SizeLimit \= -1 },
+		{ EarlierGoal = call(PredId, ProcId, _, _, _, _) - _
+		; LaterGoal = call(PredId, ProcId, _, _, _, _) - _
+		},
+		{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+			_, CalledProcInfo) },
+		{ proc_info_goal(CalledProcInfo, CalledGoal) },
+		{ goal_size(CalledGoal, CalledGoalSize) },
+		{ SizeLimit \= -1 },
+		{ CalledGoalSize > SizeLimit }
+	->
+		pd_debug__message("goal too large\n", []),
 		{ ShouldTry = no }
 	;
 		% Check whether either of the goals to be
@@ -1544,8 +1590,18 @@ deforest__call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal) -->
 	pd_info_get_local_term_info(LocalTermInfo0),
 
 	pd_info_get_pred_info(PredInfo),
+	pd_info_lookup_option(deforestation_size_threshold, SizeThresholdOpt),
 	{ pred_info_get_markers(PredInfo, CallerMarkers) },
 	( 
+		% Check for extra information to the call.
+		{ map__search(ProcArgInfos, proc(PredId, ProcId), 
+			ProcArgInfo) },
+		{ ProcArgInfo = pd_branch_info(_, LeftArgs, _) },
+		{ set__member(LeftArg, LeftArgs) },
+		{ list__index1_det(Args, LeftArg, Arg) },
+		{ instmap__lookup_var(InstMap, Arg, ArgInst) },
+		{ inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]) },
+
 		% We don't attempt to deforest predicates which are
 		% promised pure because the extra impurity propagated
 		% through the goal when such predicates are inlined
@@ -1555,13 +1611,16 @@ deforest__call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal) -->
 		{ InlinePromisedPure = no },
 		{ inlining__can_inline_proc(PredId, ProcId, BuiltinState,
 			InlinePromisedPure, CallerMarkers, ModuleInfo) },
-		{ map__search(ProcArgInfos, proc(PredId, ProcId), 
-			ProcArgInfo) },
-		{ ProcArgInfo = pd_branch_info(_, LeftArgs, _) },
-		{ set__member(LeftArg, LeftArgs) },
-		{ list__index1_det(Args, LeftArg, Arg) },
-		{ instmap__lookup_var(InstMap, Arg, ArgInst) },
-		{ inst_is_bound_to_functors(ModuleInfo, ArgInst, [_]) }
+
+		% Check the goal size.
+		{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
+			CalledProcInfo) },
+		{ proc_info_goal(CalledProcInfo, CalledGoal) },
+		{ goal_size(CalledGoal, CalledGoalSize) },
+		{ SizeThresholdOpt = int(SizeThreshold) },
+		{ SizeThreshold = -1
+		; CalledGoalSize < SizeThreshold
+		}
 	->
 		pd_debug__message(Context, 
 			"Found extra information for call to %s/%i\n", 

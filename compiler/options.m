@@ -359,6 +359,7 @@
 		;	deforestation_depth_limit
 		;	deforestation_cost_factor
 		;	deforestation_vars_threshold
+		;	deforestation_size_threshold
 		;	termination
 		;	check_termination
 		;	verbose_check_termination
@@ -761,6 +762,7 @@ option_defaults_2(optimization_option, [
 	deforestation_depth_limit	-	int(4),
 	deforestation_cost_factor	-	int(1000),
 	deforestation_vars_threshold 	-	int(200),
+	deforestation_size_threshold 	-	int(15),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -1175,6 +1177,7 @@ long_option("deforestation",		deforestation).
 long_option("deforestation-depth-limit",	deforestation_depth_limit).
 long_option("deforestation-cost-factor",	deforestation_cost_factor).
 long_option("deforestation-vars-threshold",	deforestation_vars_threshold).
+long_option("deforestation-size-threshold",	deforestation_size_threshold).
 long_option("enable-termination",	termination).
 long_option("enable-term",		termination).
 long_option("check-termination",	check_termination).
@@ -2429,6 +2432,11 @@ options_help_hlds_hlds_optimization -->
 		"\t`.opt' files. Note that changing this between writing",
 		"\tthe `.opt' file and compiling to C may cause link errors,",
 		"\tand too high a value may result in reduced performance.",
+		"--inline-vars-threshold <threshold>",
+		"\tDon't inline a call if it would result in a procedure",
+		"\tcontaining more than <threshold> variables. Procedures",
+		"\tcontaining large numbers of variables can cause",
+		"\tslow compilation.",
 		"--no-common-struct",
 		"\tDisable optimization of common term structures.",
 		"--no-common-goal",
@@ -2501,14 +2509,18 @@ options_help_hlds_hlds_optimization -->
 		"\ttransformation whose aim is to avoid the construction of",
 		"\tintermediate data structures and to avoid repeated traversals",
 		"\tover data structures within a conjunction.",
-		"--deforestation-depth-limit",
-		"\tSpecify a depth limit for the deforestation algorithm",
-		"\tin addition to the usual termination checks.",
+		"--deforestation-depth-limit <limit>",
+		"\tSpecify a depth limit to prevent infinite loops in the",
+		"\tdeforestation algorithm.",
 		"\tA value of -1 specifies no depth limit. The default is 4.",
-		"--deforestation-vars-threshold",
+		"--deforestation-vars-threshold <threshold>",
 		"\tSpecify a rough limit on the number of variables",
 		"\tin a procedure created by deforestation.",
-		"\tA value of -1 specifies no limit. The default is 200."
+		"\tA value of -1 specifies no limit. The default is 200.",
+		"--deforestation-size-threshold <threshold>",
+		"\tSpecify a rough limit on the size of a goal",
+		"\tto be optimized by deforestation.",
+		"\tA value of -1 specifies no limit. The default is 15."
 	]).
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
