@@ -521,8 +521,7 @@
 :- type foreign_language_type
 	--->	il(il_foreign_type)
 	;	c(c_foreign_type)
-	;	java(java_foreign_type)
-	.
+	;	java(java_foreign_type).
 
 :- type il_foreign_type
 	--->	il(
@@ -586,11 +585,11 @@
 	% For Aditi base relations, an index_spec specifies how the base
 	% relation is indexed.
 :- type index_spec
-	---> index_spec(
-		index_type,
-		list(int)	% which attributes are being indexed on
-				% (attribute numbers start at 1)
-	).
+	--->	index_spec(
+			index_type,
+			list(int)	% which attributes are being indexed on
+					% (attribute numbers start at 1)
+		).
 
 	% Hash indexes?
 :- type index_type
@@ -614,7 +613,7 @@
 				% above equation is true.
 
 :- type generic_termination_info(ErrorInfo)
-	---> 	cannot_loop	% This procedure definitely terminates for all
+	--->	cannot_loop	% This procedure definitely terminates for all
 				% possible inputs.
 	;	can_loop(ErrorInfo).
 				% This procedure might not terminate.
@@ -738,15 +737,20 @@
 	% (This invariant now applies to all types, but is
 	% especially important here.)
 :- type class_constraint
-	---> constraint(class_name, list(type)).
+	--->	constraint(
+			class_name,
+			list(type)
+		).
 
 :- type class_constraints
-	---> constraints(
-		univ_constraints	:: list(class_constraint),
-					% universally quantified constraints
-		exist_constraints	:: list(class_constraint)
-					% existentially quantified constraints
-	).
+	--->	constraints(
+			univ_constraints	:: list(class_constraint),
+						% universally quantified
+						% constraints
+			exist_constraints	:: list(class_constraint)
+						% existentially quantified
+						% constraints
+		).
 
 :- type class_name == sym_name.
 
@@ -765,46 +769,64 @@
 		% a predicate or function method.  Such declarations
 		% specify the type of the predicate or function,
 		% and may optionally also specify the mode and determinism.
-	--->	pred_or_func(tvarset, inst_varset, existq_tvars, pred_or_func,
-			sym_name, list(type_and_mode), maybe(type),
-			maybe(inst), maybe(determinism),
-			condition, purity, class_constraints, prog_context)
-		%       TypeVarNames, InstVarNames,
-		%	ExistentiallyQuantifiedTypeVars,
-		%	PredOrFunc, PredName, ArgTypes, WithType, Determinism,
-		%	Cond, Purity, ClassContext, Context
+	--->	pred_or_func(
+			tvarset,		% type variables
+			inst_varset,		% inst variables
+			existq_tvars,		% existentially quantified
+						% type variables
+			pred_or_func,
+			sym_name,		% name of the pred or func
+			list(type_and_mode),	% the arguments' types and
+						% modes
+			maybe(type),		% any `with_type` annotation
+			maybe(inst),		% any `with_inst` annotation
+			maybe(determinism),	% any determinism declaration
+			condition,		% any attached declaration
+			purity,			% any purity annotation
+			class_constraints,	% the typeclass constraints on
+						% the declaration
+			prog_context		% the declaration's context
+		)
 
 		% pred_or_func_mode(...) here represents a `mode ...'
 		% declaration in a type class body.  Such a declaration
 		% declares a mode for one of the type class methods.
-	; 	pred_or_func_mode(inst_varset, maybe(pred_or_func), sym_name,
-			list(mode), maybe(inst), maybe(determinism),
-			condition, prog_context)
-		%       InstVarNames, MaybePredOrFunc, PredName, ArgModes,
-		%	Determinism, WithInst, Cond
-		%	Context
-		%
-		% 	For mode declarations using `with_inst` we don't
-		%	know whether it's a predicate or function until
-		%	we've expanded the inst.
-	.
+	; 	pred_or_func_mode(
+			inst_varset,		% inst variables
+			maybe(pred_or_func),	% whether the method is a pred
+						% or a func; for declarations
+						% using `with_inst`, we don't
+						% know which until we've
+						% expanded the inst.
+			sym_name,		% the method name
+			list(mode),		% the arguments' modes
+			maybe(inst),		% any `with_inst` annotation
+			maybe(determinism),	% any determinism declaration
+			condition,		% any attached condition
+			prog_context		% the declaration's context
+		).
 
 :- type instance_method
-	--->	instance_method(pred_or_func, sym_name, instance_proc_def,
-			arity, prog_context).
-				% PredOrFunc, Method, Instance, Arity,
-				% Line number of declaration
+	--->	instance_method(
+			pred_or_func,
+			sym_name,		% method name
+			instance_proc_def,
+			arity,
+			prog_context		% context of the instance
+						% declaration
+		).
 
 :- type instance_proc_def
 		% defined using the `pred(...) is <Name>' syntax
-	--->	name(sym_name)
+	--->	name(
+			sym_name
+		)
 
 		% defined using clauses
 	;	clauses(
 			list(item)	% the items must be either
 					% pred_clause or func_clause items
-		)
-	.
+		).
 
 :- type instance_body
 	--->	abstract
@@ -897,16 +919,16 @@
 	--->	terminates
 			% The foreign code will terminate for all input.
 			% (assuming any input streams are finite).
-	
+
 	;	does_not_terminate
 			% The foreign code will not necessarily terminate for
-			% some (possibly all) input. 
-	
+			% some (possibly all) input.
+
 	;	depends_on_mercury_calls.
 			% The termination of the foreign code depends
 			% on whether the code makes calls back to Mercury
 			% (See termination.m for details).
-	
+
 :- type pragma_foreign_proc_extra_attribute
 	--->	max_stack_size(int).
 
@@ -1022,11 +1044,11 @@
 
 :- type constructor
 	--->	ctor(
-			cons_exist	:: existq_tvars,
-			cons_constraints :: list(class_constraint),
-					% existential constraints
-			cons_name	:: sym_name,
-			cons_args	:: list(constructor_arg)
+			cons_exist		:: existq_tvars,
+			cons_constraints	:: list(class_constraint),
+						% existential constraints
+			cons_name		:: sym_name,
+			cons_args		:: list(constructor_arg)
 		).
 
 :- type constructor_arg	==
@@ -1047,8 +1069,8 @@
 	% predicates are.
 :- type unify_compare
 	--->	unify_compare(
-			unify :: maybe(equality_pred),
-			compare :: maybe(comparison_pred)
+			unify		:: maybe(equality_pred),
+			compare		:: maybe(comparison_pred)
 		)
 	;	abstract_noncanonical_type.
 

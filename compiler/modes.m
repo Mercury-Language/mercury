@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1159,13 +1159,13 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	DeterminismKnown = no,
-	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
-		Mode, Args, ExtraGoals, !ModeInfo),
+	modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
+		Args0, Args, ExtraGoals, !ModeInfo),
 
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
 	mode_info_get_predid(!.ModeInfo, CallerPredId),
-	Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, Mode),
-	Call = call(PredId, Mode, Args, Builtin, Context, PredName),
+	Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
+	Call = call(PredId, ProcId, Args, Builtin, Context, PredName),
 	handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 		InstMap0, Goal, !ModeInfo, !IO),
 
@@ -1182,7 +1182,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 	(
 		GenericCall = higher_order(PredVar, _, PredOrFunc, _),
 		modecheck_higher_order_call(PredOrFunc, PredVar,
-			Args0, Modes, Det, Args, ExtraGoals, !ModeInfo),
+			Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
 		AllArgs0 = [PredVar | Args0],
 		AllArgs = [PredVar | Args]
 	;
@@ -1193,15 +1193,15 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 		error("modecheck_goal_expr: class_method_call")
 	;
 		GenericCall = unsafe_cast,
-		modecheck_builtin_cast(Args0, Modes0, Det, Args, ExtraGoals,
+		modecheck_builtin_cast(Modes0, Args0, Args, Det, ExtraGoals,
 			!ModeInfo),
 		Modes = Modes0,
 		AllArgs0 = Args0,
 		AllArgs = Args
 	;
 		GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId),
-		modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId,
-			Args0, Modes0, Det, Args, ExtraGoals, !ModeInfo),
+		modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId, Modes0,
+			Args0, Args, Det, ExtraGoals, !ModeInfo),
 		Modes = Modes0,
 		AllArgs0 = Args0,
 		AllArgs = Args
@@ -1248,8 +1248,8 @@ modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0,
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	DeterminismKnown = no,
 	mode_info_set_call_context(call(call(CallId)), !ModeInfo),
-	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
-		ProcId, Args, ExtraGoals, !ModeInfo),
+	modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
+		Args0, Args, ExtraGoals, !ModeInfo),
 
 	Pragma = foreign_proc(Attributes, PredId, ProcId, Args0, ArgNameMap,
 		OrigArgTypes, PragmaCode),

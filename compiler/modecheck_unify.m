@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -850,7 +850,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 		Unify = disj([])
 	;
 		Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification,
-				UnifyContext)
+			UnifyContext)
 	).
 
 %
@@ -959,7 +959,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 			set__init(WaitingVars),
 			mode_info_error(WaitingVars,
 				mode_error_unify_pred(X, error_at_var(Y),
-						Type, PredOrFunc),
+					Type, PredOrFunc),
 				!ModeInfo)
 		)
 	;
@@ -1128,7 +1128,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			% the initial and final inst are `bound([_])',
 			% then the unification must be deterministic.
 			mode_get_insts(ModuleInfo, ModeOfX,
-					InitialInst0, FinalInst0),
+				InitialInst0, FinalInst0),
 			inst_expand(ModuleInfo, InitialInst0, InitialInst),
 			inst_expand(ModuleInfo, FinalInst0, FinalInst),
 			InitialInst = bound(_, [_]),
@@ -1239,8 +1239,8 @@ ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
 %       and the initial insts of the functor arguments,
 %       compute the modes of the functor arguments
 
-:- pred get_mode_of_args(inst, list(inst), list(mode)).
-:- mode get_mode_of_args(in, in, out) is semidet.
+:- pred get_mode_of_args((inst)::in, list(inst)::in, list(mode)::out)
+	is semidet.
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
@@ -1259,16 +1259,15 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 get_mode_of_args(constrained_inst_vars(_, Inst), ArgInsts, ArgModes) :-
 	get_mode_of_args(Inst, ArgInsts, ArgModes).
 
-:- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
-:- mode get_mode_of_args_2(in, in, out) is semidet.
+:- pred get_mode_of_args_2(list(inst)::in, list(inst)::in, list(mode)::out)
+	is semidet.
 
 get_mode_of_args_2([], [], []).
 get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
 	Mode = (InstA -> InstB),
 	get_mode_of_args_2(InstsA, InstsB, Modes).
 
-:- pred mode_set_args(list(inst), inst, list(mode)).
-:- mode mode_set_args(in, in, out) is det.
+:- pred mode_set_args(list(inst)::in, (inst)::in, list(mode)::out) is det.
 
 mode_set_args([], _, []).
 mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-

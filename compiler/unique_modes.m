@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -598,8 +598,8 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 		%
 		mode_info_set_instmap(InstMap0, !ModeInfo),
 		proc_info_inferred_determinism(ProcInfo, Determinism),
-		modecheck_call_pred(PredId, ProcId0, ArgVars, yes(Determinism),
-			ProcId, NewArgVars, ExtraGoals, !ModeInfo),
+		modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
+			ArgVars, NewArgVars, ExtraGoals, !ModeInfo),
 		
 		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 			true

@@ -19,7 +19,7 @@
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, char, list, set, map, std_util.
+:- import_module bool, char, list, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -238,12 +238,10 @@
 	;	aditi_builtin(
 			aditi_builtin,
 			simple_call_id
-		)
-	.
+		).
 
 	% Get a description of a generic_call goal.
-:- pred hlds_goal__generic_call_id(generic_call, call_id).
-:- mode hlds_goal__generic_call_id(in, out) is det.
+:- pred hlds_goal__generic_call_id(generic_call::in, call_id::out) is det.
 
 	% Determine whether a generic_call is calling
 	% a predicate or a function
@@ -283,18 +281,21 @@
 	% builtins of the second sort, although we used to handle call/N
 	% that way.
 
-:- type builtin_state	--->	inline_builtin
-			;	out_of_line_builtin
-			;	not_builtin.
+:- type builtin_state
+	--->	inline_builtin
+	;	out_of_line_builtin
+	;	not_builtin.
 
 %-----------------------------------------------------------------------------%
 %
 % Information for switches
 %
 
-:- type case		--->	case(cons_id, hlds_goal).
-			%	functor to match with,
-			%	goal to execute if match succeeds.
+:- type case
+	--->	case(
+			cons_id,	% functor to match with,
+			hlds_goal 	% goal to execute if match succeeds.
+		).
 
 %-----------------------------------------------------------------------------%
 %
@@ -315,7 +316,7 @@
 					% polymorphism.m strips off
 					% the `new ' prefix from
 					% existentially typed constructions.
-					
+
 			rhs_args	:: list(prog_var)
 		)
 	;	lambda_goal(
@@ -378,7 +379,7 @@
 			construct_is_unique	:: cell_is_unique,
 					% Can the cell be allocated
 					% in shared data.
-			term_size_slot	:: maybe(term_size_value)
+			term_size_slot		:: maybe(term_size_value)
 					% The value `yes' tells the code
 					% generator to reserve an extra slot,
 					% at offset -1, to hold an integer
@@ -571,8 +572,7 @@
 		)
 	;	construct_dynamically		% Allocate a new term on the
 						% heap
-	;	reuse_cell(cell_to_reuse)	% Reuse an existing heap cell
-	.
+	;	reuse_cell(cell_to_reuse).	% Reuse an existing heap cell
 
 	% Information on how to construct an argument for
 	% a static construction unification.  Each such
@@ -605,8 +605,7 @@
 	% `cell_is_unique' is always a safe approximation.
 :- type cell_is_unique
 	--->	cell_is_unique
-	;	cell_is_shared
-	.
+	;	cell_is_shared.
 
 :- type unify_mode	==	pair(mode, mode).
 
@@ -630,16 +629,10 @@
 :- type hlds_goal_info.
 :- type hlds_goal_code_gen_info.
 
-:- pred goal_info_init(hlds_goal_info).
-:- mode goal_info_init(out) is det.
-
-:- pred goal_info_init(prog_context, hlds_goal_info).
-:- mode goal_info_init(in, out) is det.
-
-:- pred goal_info_init(set(prog_var), instmap_delta, determinism, purity,
-		hlds_goal_info).
-:- mode goal_info_init(in, in, in, in, out) is det.
-
+:- pred goal_info_init(hlds_goal_info::out) is det.
+:- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
+:- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
+	purity::in, hlds_goal_info::out) is det.
 :- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
 	purity::in, prog_context::in, hlds_goal_info::out) is det.
 
@@ -652,97 +645,63 @@
 % or in both the pre-death and pre-birth sets.
 
 	% see also goal_info_get_code_model in code_model.m
-:- pred goal_info_get_determinism(hlds_goal_info, determinism).
-:- mode goal_info_get_determinism(in, out) is det.
+:- pred goal_info_get_determinism(hlds_goal_info::in, determinism::out) is det.
+:- pred goal_info_get_instmap_delta(hlds_goal_info::in, instmap_delta::out)
+	is det.
+:- pred goal_info_get_context(hlds_goal_info::in, prog_context::out) is det.
+:- pred goal_info_get_nonlocals(hlds_goal_info::in, set(prog_var)::out) is det.
+:- pred goal_info_get_code_gen_nonlocals(hlds_goal_info::in,
+	set(prog_var)::out) is det.
+:- pred goal_info_get_features(hlds_goal_info::in, set(goal_feature)::out)
+	is det.
+:- pred goal_info_get_goal_path(hlds_goal_info::in, goal_path::out) is det.
+:- pred goal_info_get_code_gen_info(hlds_goal_info::in,
+	hlds_goal_code_gen_info::out) is det.
 
-:- pred goal_info_set_determinism(hlds_goal_info, determinism,
-	hlds_goal_info).
-:- mode goal_info_set_determinism(in, in, out) is det.
+:- pred goal_info_set_determinism(hlds_goal_info::in, determinism::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_instmap_delta(hlds_goal_info::in, instmap_delta::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_context(hlds_goal_info::in, prog_context::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_nonlocals(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_code_gen_nonlocals(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_features(hlds_goal_info::in, set(goal_feature)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_goal_path(hlds_goal_info::in, goal_path::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_code_gen_info(hlds_goal_info::in,
+	hlds_goal_code_gen_info::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_get_nonlocals(hlds_goal_info, set(prog_var)).
-:- mode goal_info_get_nonlocals(in, out) is det.
+:- pred goal_get_nonlocals(hlds_goal::in, set(prog_var)::out) is det.
 
-:- pred goal_info_get_code_gen_nonlocals(hlds_goal_info, set(prog_var)).
-:- mode goal_info_get_code_gen_nonlocals(in, out) is det.
+:- pred goal_info_add_feature(hlds_goal_info::in, goal_feature::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_remove_feature(hlds_goal_info::in, goal_feature::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
 
-:- pred goal_info_set_nonlocals(hlds_goal_info, set(prog_var), hlds_goal_info).
-:- mode goal_info_set_nonlocals(in, in, out) is det.
-
-:- pred goal_info_set_code_gen_nonlocals(hlds_goal_info,
-		set(prog_var), hlds_goal_info).
-:- mode goal_info_set_code_gen_nonlocals(in, in, out) is det.
-
-:- pred goal_info_get_features(hlds_goal_info, set(goal_feature)).
-:- mode goal_info_get_features(in, out) is det.
-
-:- pred goal_info_set_features(hlds_goal_info, set(goal_feature),
-					hlds_goal_info).
-:- mode goal_info_set_features(in, in, out) is det.
-
-:- pred goal_info_add_feature(hlds_goal_info, goal_feature, hlds_goal_info).
-:- mode goal_info_add_feature(in, in, out) is det.
-
-:- pred goal_info_remove_feature(hlds_goal_info, goal_feature,
-					hlds_goal_info).
-:- mode goal_info_remove_feature(in, in, out) is det.
-
-:- pred goal_info_has_feature(hlds_goal_info, goal_feature).
-:- mode goal_info_has_feature(in, in) is semidet.
-
-:- pred goal_info_get_instmap_delta(hlds_goal_info, instmap_delta).
-:- mode goal_info_get_instmap_delta(in, out) is det.
-
-:- pred goal_info_set_instmap_delta(hlds_goal_info, instmap_delta,
-				hlds_goal_info).
-:- mode goal_info_set_instmap_delta(in, in, out) is det.
-
-:- pred goal_info_get_context(hlds_goal_info, prog_context).
-:- mode goal_info_get_context(in, out) is det.
-
-:- pred goal_info_set_context(hlds_goal_info, prog_context, hlds_goal_info).
-:- mode goal_info_set_context(in, in, out) is det.
-
-:- pred goal_info_get_goal_path(hlds_goal_info, goal_path).
-:- mode goal_info_get_goal_path(in, out) is det.
-
-:- pred goal_info_set_goal_path(hlds_goal_info, goal_path, hlds_goal_info).
-:- mode goal_info_set_goal_path(in, in, out) is det.
-
-:- pred goal_info_get_code_gen_info(hlds_goal_info, hlds_goal_code_gen_info).
-:- mode goal_info_get_code_gen_info(in, out) is det.
-
-:- pred goal_info_set_code_gen_info(hlds_goal_info, hlds_goal_code_gen_info,
-	hlds_goal_info).
-:- mode goal_info_set_code_gen_info(in, in, out) is det.
-
-:- pred goal_get_nonlocals(hlds_goal, set(prog_var)).
-:- mode goal_get_nonlocals(in, out) is det.
-
-:- pred goal_add_feature(hlds_goal, goal_feature, hlds_goal).
-:- mode goal_add_feature(in, in, out) is det.
-
-:- pred goal_remove_feature(hlds_goal, goal_feature, hlds_goal).
-:- mode goal_remove_feature(in, in, out) is det.
-
-:- pred goal_has_feature(hlds_goal, goal_feature).
-:- mode goal_has_feature(in, in) is semidet.
+:- pred goal_add_feature(hlds_goal::in, goal_feature::in, hlds_goal::out)
+	is det.
+:- pred goal_remove_feature(hlds_goal::in, goal_feature::in, hlds_goal::out)
+	is det.
+:- pred goal_has_feature(hlds_goal::in, goal_feature::in) is semidet.
 
 %  Update a goal info to reflect the specified purity
-:- pred add_goal_info_purity_feature(hlds_goal_info, purity, hlds_goal_info).
-:- mode add_goal_info_purity_feature(in, in, out) is det.
+:- pred add_goal_info_purity_feature(hlds_goal_info::in, purity::in,
+	hlds_goal_info::out) is det.
 
-%  Determine the purity of a goal from its hlds_goal_info.
-:- pred infer_goal_info_purity(hlds_goal_info, purity).
-:- mode infer_goal_info_purity(in, out) is det.
+	% Determine the purity of a goal from its hlds_goal_info.
+:- pred infer_goal_info_purity(hlds_goal_info::in, purity::out) is det.
 
-%  Check if a hlds_goal_info is for a pure goal
-:- pred goal_info_is_pure(hlds_goal_info).
-:- mode goal_info_is_pure(in) is semidet.
+	% Check if a hlds_goal_info is for a pure goal.
+:- pred goal_info_is_pure(hlds_goal_info::in) is semidet.
 
-%  Check if a hlds_goal_info is for an impure goal.  Fails if the goal is
-%  semipure, so this isn't the same as \+ goal_info_is_pure.
-:- pred goal_info_is_impure(hlds_goal_info).
-:- mode goal_info_is_impure(in) is semidet.
+	% Check if a hlds_goal_info is for an impure goal. Fails if the goal
+	% is semipure, so this isn't the same as \+ goal_info_is_pure.
+:- pred goal_info_is_impure(hlds_goal_info::in) is semidet.
 
 :- type goal_feature
 	--->	constraint	% This is included if the goal is
@@ -832,121 +791,105 @@
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
 
-:- pred goal_to_conj_list(hlds_goal, list(hlds_goal)).
-:- mode goal_to_conj_list(in, out) is det.
+:- pred goal_to_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a goal to a list of parallel conjuncts.
 	% If the goal is a parallel conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
 
-:- pred goal_to_par_conj_list(hlds_goal, list(hlds_goal)).
-:- mode goal_to_par_conj_list(in, out) is det.
+:- pred goal_to_par_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts,
 	% otherwise return the goal as a singleton list.
 
-:- pred goal_to_disj_list(hlds_goal, list(hlds_goal)).
-:- mode goal_to_disj_list(in, out) is det.
+:- pred goal_to_disj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a list of conjuncts to a goal.
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the conjunction of the conjuncts,
 	% with the specified goal_info.
 
-:- pred conj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
-:- mode conj_list_to_goal(in, in, out) is det.
+:- pred conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
+	hlds_goal::out) is det.
 
 	% Convert a list of parallel conjuncts to a goal.
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the parallel conjunction of the conjuncts,
 	% with the specified goal_info.
 
-:- pred par_conj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
-:- mode par_conj_list_to_goal(in, in, out) is det.
+:- pred par_conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
+	hlds_goal::out) is det.
 
 	% Convert a list of disjuncts to a goal.
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the disjunction of the disjuncts,
 	% with the specified goal_info.
 
-:- pred disj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
-:- mode disj_list_to_goal(in, in, out) is det.
+:- pred disj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
+	hlds_goal::out) is det.
 
 	% Takes a goal and a list of goals, and conjoins them
 	% (with a potentially blank goal_info).
 
-:- pred conjoin_goal_and_goal_list(hlds_goal, list(hlds_goal),
-	hlds_goal).
-:- mode conjoin_goal_and_goal_list(in, in, out) is det.
+:- pred conjoin_goal_and_goal_list(hlds_goal::in, list(hlds_goal)::in,
+	hlds_goal::out) is det.
 
 	% Conjoin two goals (with a potentially blank goal_info).
 
-:- pred conjoin_goals(hlds_goal, hlds_goal, hlds_goal).
-:- mode conjoin_goals(in, in, out) is det.
+:- pred conjoin_goals(hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
 
 	% Negate a goal, eliminating double negations as we go.
 	%
-:- pred negate_goal(hlds_goal, hlds_goal_info, hlds_goal).
-:- mode negate_goal(in, in, out) is det.
+:- pred negate_goal(hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
 
 	% Return yes if goal(s) contain any foreign code
 :- func goal_has_foreign(hlds_goal) = bool.
-:- mode goal_has_foreign(in) = out is det.
 :- func goal_list_has_foreign(list(hlds_goal)) = bool.
-:- mode goal_list_has_foreign(in) = out is det.
 
 	% A goal is atomic iff it doesn't contain any sub-goals
 	% (except possibly goals inside lambda expressions --
 	% but lambda expressions will get transformed into separate
 	% predicates by the polymorphism.m pass).
 
-:- pred goal_is_atomic(hlds_goal_expr).
-:- mode goal_is_atomic(in) is semidet.
+:- pred goal_is_atomic(hlds_goal_expr::in) is semidet.
 
 	% Return the HLDS equivalent of `true'.
-:- pred true_goal(hlds_goal).
-:- mode true_goal(out) is det.
+:- pred true_goal(hlds_goal::out) is det.
 
-:- pred true_goal(prog_context, hlds_goal).
-:- mode true_goal(in, out) is det.
+:- pred true_goal(prog_context::in, hlds_goal::out) is det.
 
 	% Return the HLDS equivalent of `fail'.
-:- pred fail_goal(hlds_goal).
-:- mode fail_goal(out) is det.
+:- pred fail_goal(hlds_goal::out) is det.
 
-:- pred fail_goal(prog_context, hlds_goal).
-:- mode fail_goal(in, out) is det.
+:- pred fail_goal(prog_context::in, hlds_goal::out) is det.
 
-       % Return the union of all the nonlocals of a list of goals.
-:- pred goal_list_nonlocals(list(hlds_goal), set(prog_var)).
-:- mode goal_list_nonlocals(in, out) is det.
+	% Return the union of all the nonlocals of a list of goals.
+:- pred goal_list_nonlocals(list(hlds_goal)::in, set(prog_var)::out) is det.
 
-       % Compute the instmap_delta resulting from applying
-       % all the instmap_deltas of the given goals.
-:- pred goal_list_instmap_delta(list(hlds_goal), instmap_delta).
-:- mode goal_list_instmap_delta(in, out) is det.
+	% Compute the instmap_delta resulting from applying
+	% all the instmap_deltas of the given goals.
+:- pred goal_list_instmap_delta(list(hlds_goal)::in, instmap_delta::out)
+	is det.
 
-       % Compute the determinism of a list of goals.
-:- pred goal_list_determinism(list(hlds_goal), determinism).
-:- mode goal_list_determinism(in, out) is det.
+	% Compute the determinism of a list of goals.
+:- pred goal_list_determinism(list(hlds_goal)::in, determinism::out) is det.
 
-	% Compute the purity of a list of goals. 
-:- pred goal_list_purity(list(hlds_goal), purity).
-:- mode goal_list_purity(in, out) is det.
+	% Compute the purity of a list of goals.
+:- pred goal_list_purity(list(hlds_goal)::in, purity::out) is det.
 
 	% Change the contexts of the goal_infos of all the sub-goals
 	% of the given goal. This is used to ensure that error messages
 	% for automatically generated unification procedures have a useful
 	% context.
-:- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
-:- mode set_goal_contexts(in, in, out) is det.
+:- pred set_goal_contexts(prog_context::in, hlds_goal::in, hlds_goal::out)
+	is det.
 
 	% Create the hlds_goal for a unification, filling in all the as yet
 	% unknown slots with dummy values.
-:- pred create_atomic_unification(prog_var, unify_rhs, prog_context,
-			unify_main_context, unify_sub_contexts, hlds_goal).
-:- mode create_atomic_unification(in, in, in, in, in, out) is det.
+:- pred create_atomic_unification(prog_var::in, unify_rhs::in,
+	prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+	hlds_goal::out) is det.
 
 	%
 	% Produce a goal to construct a given constant.
@@ -956,72 +899,48 @@
 	% only if the variable being assigned to has no aliases.
 	%
 
-:- pred make_int_const_construction(prog_var, int, hlds_goal).
-:- mode make_int_const_construction(in, in, out) is det.
+:- pred make_int_const_construction(prog_var::in, int::in,
+	hlds_goal::out) is det.
+:- pred make_string_const_construction(prog_var::in, string::in,
+	hlds_goal::out) is det.
+:- pred make_float_const_construction(prog_var::in, float::in,
+	hlds_goal::out) is det.
+:- pred make_char_const_construction(prog_var::in, char::in,
+	hlds_goal::out) is det.
+:- pred make_const_construction(prog_var::in, cons_id::in,
+	hlds_goal::out) is det.
 
-:- pred make_string_const_construction(prog_var, string, hlds_goal).
-:- mode make_string_const_construction(in, in, out) is det.
+:- pred make_int_const_construction(int::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+:- pred make_string_const_construction(string::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+:- pred make_float_const_construction(float::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+:- pred make_char_const_construction(char::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+:- pred make_const_construction(cons_id::in, (type)::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
 
-:- pred make_float_const_construction(prog_var, float, hlds_goal).
-:- mode make_float_const_construction(in, in, out) is det.
-
-:- pred make_char_const_construction(prog_var, char, hlds_goal).
-:- mode make_char_const_construction(in, in, out) is det.
-
-:- pred make_const_construction(prog_var, cons_id, hlds_goal).
-:- mode make_const_construction(in, in, out) is det.
-
-:- pred make_int_const_construction(int, maybe(string), hlds_goal, prog_var,
-	map(prog_var, type), map(prog_var, type), prog_varset, prog_varset).
-:- mode make_int_const_construction(in, in, out, out, in, out, in, out) is det.
-
-:- pred make_string_const_construction(string, maybe(string),
-	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
-	prog_varset, prog_varset).
-:- mode make_string_const_construction(in, in, out, out, in, out, in, out)
-	is det.
-
-:- pred make_float_const_construction(float, maybe(string),
-	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
-	prog_varset, prog_varset).
-:- mode make_float_const_construction(in, in, out, out, in, out, in, out)
-	is det.
-
-:- pred make_char_const_construction(char, maybe(string), hlds_goal, prog_var,
-	map(prog_var, type), map(prog_var, type), prog_varset, prog_varset).
-:- mode make_char_const_construction(in, in, out, out, in, out, in, out)
-	is det.
-
-:- pred make_const_construction(cons_id, (type), maybe(string),
-	hlds_goal, prog_var, map(prog_var, type), map(prog_var, type),
-	prog_varset, prog_varset).
-:- mode make_const_construction(in, in, in, out, out, in, out, in, out) is det.
-
-:- pred make_int_const_construction(int, maybe(string), hlds_goal, prog_var,
-	proc_info, proc_info).
-:- mode make_int_const_construction(in, in, out, out, in, out) is det.
-
-:- pred make_string_const_construction(string, maybe(string),
-	hlds_goal, prog_var, proc_info, proc_info).
-:- mode make_string_const_construction(in, in, out, out, in, out) is det.
-
-:- pred make_float_const_construction(float, maybe(string),
-	hlds_goal, prog_var, proc_info, proc_info).
-:- mode make_float_const_construction(in, in, out, out, in, out) is det.
-
-:- pred make_char_const_construction(char, maybe(string), hlds_goal, prog_var,
-	proc_info, proc_info).
-:- mode make_char_const_construction(in, in, out, out, in, out) is det.
-
-:- pred make_const_construction(cons_id, (type), maybe(string), hlds_goal,
-	prog_var, proc_info, proc_info).
-:- mode make_const_construction(in, in, in, out, out, in, out) is det.
+:- pred make_int_const_construction(int::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred make_string_const_construction(string::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred make_float_const_construction(float::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred make_char_const_construction(char::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred make_const_construction(cons_id::in, (type)::in, maybe(string)::in,
+	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
 
 	% Given the variable info field from a pragma foreign_code, get all the
 	% variable names.
-:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode))),
-		list(string)).
-:- mode get_pragma_foreign_var_names(in, out) is det.
+:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode)))::in,
+	list(string)::out) is det.
 
 	%
 	% Produce a goal to construct or deconstruct a
@@ -1030,18 +949,17 @@
 	% determinism fields of the goal_info.
 	%
 
-:- pred construct_tuple(prog_var, list(prog_var), hlds_goal).
-:- mode construct_tuple(in, in, out) is det.
-
-:- pred deconstruct_tuple(prog_var, list(prog_var), hlds_goal).
-:- mode deconstruct_tuple(in, in, out) is det.
+:- pred construct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
+	is det.
+:- pred deconstruct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %
 % Stuff specific to Aditi.
 %
 
-	% Builtin Aditi operations. 
+	% Builtin Aditi operations.
 	% These are transformed into ordinary Mercury calls
 	% by aditi_builtin_ops.m before code generation.
 :- type aditi_builtin
@@ -1060,7 +978,7 @@
 		% Arguments:
 		%   the closure producing the tuples to insert/delete/modify
 		%   aditi__state::di, aditi__state::uo
-		% These operations all have two variants. 
+		% These operations all have two variants.
 		%
 		% A pretty syntax:
 		%
@@ -1090,19 +1008,16 @@
 			aditi_bulk_update,
 			pred_id,
 			aditi_builtin_syntax
-		)
-	.
+		).
 
 :- type aditi_tuple_update
 	--->	delete			% `aditi_delete'
-	;	insert			% `aditi_insert'
-	.
+	;	insert.			% `aditi_insert'
 
 :- type aditi_bulk_update
 	--->	bulk_delete		% `aditi_bulk_delete'
 	;	bulk_insert		% `aditi_bulk_insert'
-	;	bulk_modify		% `aditi_bulk_modify'
-	.
+	;	bulk_modify.		% `aditi_bulk_modify'
 
 	% Which syntax was used for an `aditi_delete' or `aditi_modify'
 	% call. The first syntax is prettier, the second is used
@@ -1112,12 +1027,11 @@
 :- type aditi_builtin_syntax
 	--->	pred_term		% e.g.
 					% aditi_bulk_insert(p(_, X) :- X = 1).
-	;	sym_name_and_closure	% e.g.
+	;	sym_name_and_closure.	% e.g.
 					% aditi_insert(p/2,
 					%    (pred(_::in, X::out) is nondet:-
 					%	X = 1)
 					%    )
-	.
 
 	% For lambda expressions built automatically for Aditi updates
 	% the modes of `aditi__state' arguments may need to be fixed
@@ -1126,8 +1040,7 @@
 	% arguments.
 :- type fix_aditi_state_modes
 	--->	modes_need_fixing
-	;	modes_are_ok
-	.
+	;	modes_are_ok.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1150,7 +1063,7 @@
 :- import_module parse_tree__prog_util.
 :- import_module assoc_list, require, string, term, varset.
 
-:- import_module require, string, term, varset.
+:- import_module map, require, string, term, varset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1184,15 +1097,15 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 
 	% NB. Don't forget to check goal_util__name_apart_goalinfo
 	% if this structure is modified.
-:- type hlds_goal_info
-	---> goal_info(
-		determinism :: determinism,
+:- type hlds_goal_info --->
+	goal_info(
+		determinism	:: determinism,
 				% the overall determinism of the goal
 				% (computed during determinism analysis)
 				% [because true determinism is undecidable,
 				% this may be a conservative approximation]
 
-		instmap_delta :: instmap_delta,
+		instmap_delta	:: instmap_delta,
 				% the change in insts over this goal
 				% (computed during mode analysis)
 				% [because true unreachability is undecidable,
@@ -1215,9 +1128,9 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 				% Normally the instmap_delta will list only
 				% the nonlocal variables of the goal.
 
-		context :: prog_context,
+		context		:: prog_context,
 
-		nonlocals :: set(prog_var),
+		nonlocals	:: set(prog_var),
 				% the non-local vars in the goal,
 				% i.e. the variables that occur both inside
 				% and outside of the goal.
@@ -1226,37 +1139,35 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 				% conservative approximation: it may be
 				% a superset of the real non-locals]
 
-		/*
-		code_gen_nonlocals :: maybe(set(prog_var)),
-				% the non-local vars in the goal,
-				% modified slightly for code generation.
-				% The difference between the code-gen nonlocals
-				% and the ordinary nonlocals is that arguments
-				% of a reconstruction which are taken from the
-				% reused cell are not considered to be
-				% `code_gen_nonlocals' of the goal.
-				% This avoids allocating stack slots and
-				% generating unnecessary field extraction
-				% instructions for those arguments.
-				% Mode information is still computed using
-				% the ordinary non-locals.
-				%
-				% If the field has value `no', the ordinary
-				% nonlocals are used instead. This will
-				% be the case if the procedure body does not
-				% contain any reconstructions.
-		*/
+% 		code_gen_nonlocals :: maybe(set(prog_var)),
+% 				% the non-local vars in the goal,
+% 				% modified slightly for code generation.
+% 				% The difference between the code-gen nonlocals
+% 				% and the ordinary nonlocals is that arguments
+% 				% of a reconstruction which are taken from the
+% 				% reused cell are not considered to be
+% 				% `code_gen_nonlocals' of the goal.
+% 				% This avoids allocating stack slots and
+% 				% generating unnecessary field extraction
+% 				% instructions for those arguments.
+% 				% Mode information is still computed using
+% 				% the ordinary non-locals.
+% 				%
+% 				% If the field has value `no', the ordinary
+% 				% nonlocals are used instead. This will
+% 				% be the case if the procedure body does not
+% 				% contain any reconstructions.
 
-		features :: set(goal_feature),
+		features	:: set(goal_feature),
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
 
-		goal_path :: goal_path,
+		goal_path	:: goal_path,
 				% The path to this goal from the root in
 				% reverse order.
 
-		code_gen_info :: hlds_goal_code_gen_info
+		code_gen_info	:: hlds_goal_code_gen_info
 	).
 
 :- pragma inline(goal_info_init/1).
@@ -1290,47 +1201,34 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
 		list_to_set(Features), [], no_code_gen_info).
 
 goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
-
 goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
-
 goal_info_get_context(GoalInfo, GoalInfo ^ context).
-
 goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
+goal_info_get_features(GoalInfo, GoalInfo ^ features).
+goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
+goal_info_get_code_gen_info(GoalInfo, GoalInfo ^ code_gen_info).
+
+goal_info_set_determinism(GoalInfo0, Determinism,
+		GoalInfo0 ^ determinism := Determinism).
+goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
+		GoalInfo0 ^ instmap_delta := InstMapDelta).
+goal_info_set_context(GoalInfo0, Context, GoalInfo0 ^ context := Context).
+goal_info_set_nonlocals(GoalInfo0, NonLocals,
+		GoalInfo0 ^ nonlocals := NonLocals).
+goal_info_set_features(GoalInfo0, Features, GoalInfo0 ^ features := Features).
+goal_info_set_goal_path(GoalInfo0, GoalPath,
+		GoalInfo0 ^ goal_path := GoalPath).
+goal_info_set_code_gen_info(GoalInfo0, CodeGenInfo,
+		GoalInfo0 ^ code_gen_info := CodeGenInfo).
 
 	% The code-gen non-locals are always the same as the
 	% non-locals when structure reuse is not being performed.
 goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals).
-
-goal_info_get_features(GoalInfo, GoalInfo ^ features).
-
-goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
-
-goal_info_get_code_gen_info(GoalInfo, GoalInfo ^ code_gen_info).
-
-goal_info_set_determinism(GoalInfo0, Determinism,
-		GoalInfo0 ^ determinism := Determinism).
-
-goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
-		GoalInfo0 ^ instmap_delta := InstMapDelta).
-
-goal_info_set_context(GoalInfo0, Context, GoalInfo0 ^ context := Context).
-
-goal_info_set_nonlocals(GoalInfo0, NonLocals,
-		GoalInfo0 ^ nonlocals := NonLocals).
-
 	% The code-gen non-locals are always the same as the
 	% non-locals when structure reuse is not being performed.
 goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
-
-goal_info_set_features(GoalInfo0, Features, GoalInfo0 ^ features := Features).
-
-goal_info_set_goal_path(GoalInfo0, GoalPath,
-		GoalInfo0 ^ goal_path := GoalPath).
-
-goal_info_set_code_gen_info(GoalInfo0, CodeGenInfo,
-		GoalInfo0 ^ code_gen_info := CodeGenInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1362,14 +1260,14 @@ infer_goal_info_purity(GoalInfo, Purity) :-
 	;
 		Purity = pure
 	).
-			
+
 goal_info_is_pure(GoalInfo) :-
 	\+ goal_info_has_feature(GoalInfo, (impure)),
 	\+ goal_info_has_feature(GoalInfo, (semipure)).
-	
+
 goal_info_is_impure(GoalInfo) :-
 	goal_info_has_feature(GoalInfo, (impure)).
-	
+
 %-----------------------------------------------------------------------------%
 
 goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
@@ -1549,8 +1447,7 @@ negate_goal(Goal, GoalInfo, NegatedGoal) :-
 		NegatedGoal = not(Goal) - GoalInfo
 	).
 
-:- pred all_negated(list(hlds_goal), list(hlds_goal)).
-:- mode all_negated(in, out) is semidet.
+:- pred all_negated(list(hlds_goal)::in, list(hlds_goal)::out) is semidet.
 
 all_negated([], []).
 all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
@@ -1561,8 +1458,10 @@ all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
 	list__append(Goals1, Goals2, Goals).
 
 %-----------------------------------------------------------------------------%
-% Returns yes if a goal (or subgoal contained within) contains any foreign
-% code
+
+	% Returns yes if a goal (or subgoal contained within) contains
+	% any foreign code.
+
 goal_has_foreign(Goal) = HasForeign :-
 	Goal = GoalExpr - _,
 	(
@@ -1590,15 +1489,15 @@ goal_has_foreign(Goal) = HasForeign :-
 		GoalExpr = some(_, _, Goal2),
 		HasForeign = goal_has_foreign(Goal2)
 	;
-		GoalExpr = if_then_else(_, Goal2, Goal3, Goal4),
-		HasForeign =
-		(	goal_has_foreign(Goal2) = yes
-		->	yes
-		;	goal_has_foreign(Goal3) = yes
-		->	yes
-		;	goal_has_foreign(Goal4) = yes
-		->	yes
-		;	no
+		GoalExpr = if_then_else(_, Cond, Then, Else),
+		( goal_has_foreign(Cond) = yes ->
+			HasForeign = yes
+		; goal_has_foreign(Then) = yes ->
+			HasForeign = yes
+		; goal_has_foreign(Else) = yes ->
+			HasForeign = yes
+		;
+			HasForeign = no
 		)
 	;
 		GoalExpr = foreign_proc(_, _, _, _, _, _, _),
@@ -1613,22 +1512,22 @@ goal_has_foreign(Goal) = HasForeign :-
 
 	% Return yes if the shorthand goal contains any foreign code
 :- func goal_has_foreign_shorthand(shorthand_goal_expr) = bool.
-:- mode goal_has_foreign_shorthand(in) = out is det.
 
 goal_has_foreign_shorthand(bi_implication(Goal2, Goal3)) = HasForeign :-
-	HasForeign =
-	(	goal_has_foreign(Goal2) = yes
-	->	yes
-	;	goal_has_foreign(Goal3) = yes
-	->	yes
-	;	no
+	( goal_has_foreign(Goal2) = yes ->
+		HasForeign = yes
+	; goal_has_foreign(Goal3) = yes ->
+		HasForeign = yes
+	;
+		HasForeign = no
 	).
 
 goal_list_has_foreign([]) = no.
 goal_list_has_foreign([X | Xs]) =
-	(	goal_has_foreign(X) = yes
-	->	yes
-	;	goal_list_has_foreign(Xs)
+	( goal_has_foreign(X) = yes ->
+		yes
+	;
+		goal_list_has_foreign(Xs)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1661,38 +1560,38 @@ fail_goal(Context, Goal - GoalInfo) :-
 %-----------------------------------------------------------------------------%
 
 goal_list_nonlocals(Goals, NonLocals) :-
-       UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
-                       Goal = _ - GoalInfo,
-                       goal_info_get_nonlocals(GoalInfo, Vars1),
-                       set__union(Vars0, Vars1, Vars)
-               ),
-       set__init(NonLocals0),
-       list__foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
+	UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
+			Goal = _ - GoalInfo,
+			goal_info_get_nonlocals(GoalInfo, Vars1),
+			set__union(Vars0, Vars1, Vars)
+		),
+	set__init(NonLocals0),
+	list__foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
-       ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
-                       Goal = _ - GoalInfo,
-                       goal_info_get_instmap_delta(GoalInfo, Delta1),
-                       instmap_delta_apply_instmap_delta(Delta0,
-                               Delta1, Delta)
-               ),
-       instmap_delta_init_reachable(InstMapDelta0),
-       list__foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
+	ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
+			Goal = _ - GoalInfo,
+			goal_info_get_instmap_delta(GoalInfo, Delta1),
+			instmap_delta_apply_instmap_delta(Delta0,
+				Delta1, Delta)
+		),
+	instmap_delta_init_reachable(InstMapDelta0),
+	list__foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
 
 goal_list_determinism(Goals, Determinism) :-
-       ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
-                       Goal = _ - GoalInfo,
-                       goal_info_get_determinism(GoalInfo, Det1),
-                       det_conjunction_detism(Det0, Det1, Det)
-               ),
-       list__foldl(ComputeDeterminism, Goals, det, Determinism).
+	ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
+			Goal = _ - GoalInfo,
+			goal_info_get_determinism(GoalInfo, Det1),
+			det_conjunction_detism(Det0, Det1, Det)
+		),
+	list__foldl(ComputeDeterminism, Goals, det, Determinism).
 
 goal_list_purity(Goals, Purity) :-
-	Purity = list__foldl(
-			(func(_ - GoalInfo, Purity0) = Purity1 :-
-				infer_goal_info_purity(GoalInfo, GoalPurity),
-		    		worst_purity(GoalPurity, Purity0) = Purity1
-			), Goals, pure).
+	ComputePurity = (func(_ - GoalInfo, Purity0) = Purity1 :-
+			infer_goal_info_purity(GoalInfo, GoalPurity),
+			worst_purity(GoalPurity, Purity0) = Purity1
+		),
+	Purity = list__foldl(ComputePurity, Goals, pure).
 
 %-----------------------------------------------------------------------------%
 
@@ -1700,8 +1599,8 @@ set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	set_goal_contexts_2(Context, Goal0, Goal).
 
-:- pred set_goal_contexts_2(prog_context, hlds_goal_expr, hlds_goal_expr).
-:- mode set_goal_contexts_2(in, in, out) is det.
+:- pred set_goal_contexts_2(prog_context::in, hlds_goal_expr::in,
+	hlds_goal_expr::out) is det.
 
 set_goal_contexts_2(Context, conj(Goals0), conj(Goals)) :-
 	list__map(set_goal_contexts(Context), Goals0, Goals).
@@ -1717,9 +1616,10 @@ set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0),
 set_goal_contexts_2(Context, switch(Var, CanFail, Cases0),
 		switch(Var, CanFail, Cases)) :-
 	list__map(
-	    (pred(case(ConsId, Goal0)::in, case(ConsId, Goal)::out) is det :-
-		set_goal_contexts(Context, Goal0, Goal)
-	    ), Cases0, Cases).
+		(pred(case(ConsId, Goal0)::in, case(ConsId, Goal)::out)
+				is det :-
+			set_goal_contexts(Context, Goal0, Goal)
+		), Cases0, Cases).
 set_goal_contexts_2(Context, some(Vars, CanRemove, Goal0),
 		some(Vars, CanRemove, Goal)) :-
 	set_goal_contexts(Context, Goal0, Goal).
@@ -1738,9 +1638,8 @@ set_goal_contexts_2(Context, shorthand(ShorthandGoal0),
 	set_goal_contexts_2_shorthand(Context, ShorthandGoal0,
 		ShorthandGoal).
 
-:- pred set_goal_contexts_2_shorthand(prog_context, shorthand_goal_expr,
-		shorthand_goal_expr).
-:- mode set_goal_contexts_2_shorthand(in, in, out) is det.
+:- pred set_goal_contexts_2_shorthand(prog_context::in,
+	shorthand_goal_expr::in, shorthand_goal_expr::out) is det.
 
 set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
@@ -1749,14 +1648,14 @@ set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 
 %-----------------------------------------------------------------------------%
 
-create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
+create_atomic_unification(LHS, RHS, Context, UnifyMainContext, UnifySubContext,
 		Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(UMode, can_fail, []),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(Context, GoalInfo),
-	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
+	Goal = unify(LHS, RHS, Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -1880,16 +1779,15 @@ get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
 :- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
 	list(string)::in, list(string)::out) is det.
 
-get_pragma_foreign_var_names_2([], Names, Names).
-get_pragma_foreign_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
+get_pragma_foreign_var_names_2([], !Names).
+get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
 	(
 		MaybeName = yes(Name - _),
-		Names1 = [Name | Names0]
+		!:Names = [Name | !.Names]
 	;
-		MaybeName = no,
-		Names1 = Names0
+		MaybeName = no
 	),
-	get_pragma_foreign_var_names_2(MaybeNames, Names1, Names).
+	get_pragma_foreign_var_names_2(MaybeNames, !Names).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,8 +33,7 @@
 	% Given a goal and an initial instmap, compute the final instmap that
 	% results from the initial instmap after execution of the goal.
 
-:- pred update_instmap(hlds_goal, instmap, instmap).
-:- mode update_instmap(in, in, out) is det.
+:- pred update_instmap(hlds_goal::in, instmap::in, instmap::out) is det.
 
 	% Given a list of cases, and a list of the possible cons_ids
 	% that the switch variable could be bound to, select out only
@@ -42,61 +41,43 @@
 	% We assume that the list of cases and the list of cons_ids
 	% are sorted, so that we can do this using a simple sorted merge.
 
-:- pred delete_unreachable_cases(list(case), list(cons_id),
-	list(case)).
-:- mode delete_unreachable_cases(in, in, out) is det.
+:- pred delete_unreachable_cases(list(case)::in, list(cons_id)::in,
+	list(case)::out) is det.
 
 	% Update the current substitution to account for the effects
 	% of the given unification.
 
-:- pred interpret_unify(prog_var, unify_rhs, prog_substitution,
-		prog_substitution).
-:- mode interpret_unify(in, in, in, out) is semidet.
+:- pred interpret_unify(prog_var::in, unify_rhs::in,
+	prog_substitution::in, prog_substitution::out) is semidet.
 
 	% Look up the determinism of a procedure.
 
-:- pred det_lookup_detism(det_info, pred_id, proc_id, determinism).
-:- mode det_lookup_detism(in, in, in, out) is det.
+:- pred det_lookup_detism(det_info::in, pred_id::in, proc_id::in,
+	determinism::out) is det.
 
-:- pred det_get_proc_info(det_info, proc_info).
-:- mode det_get_proc_info(in, out) is det.
+:- pred det_get_proc_info(det_info::in, proc_info::out) is det.
 
-:- pred det_lookup_var_type(module_info, proc_info, prog_var, hlds_type_defn).
-:- mode det_lookup_var_type(in, in, in, out) is semidet.
+:- pred det_lookup_var_type(module_info::in, proc_info::in, prog_var::in,
+	hlds_type_defn::out) is semidet.
 
-:- pred det_no_output_vars(set(prog_var), instmap, instmap_delta, det_info).
-:- mode det_no_output_vars(in, in, in, in) is semidet.
+:- pred det_no_output_vars(set(prog_var)::in, instmap::in, instmap_delta::in,
+	det_info::in) is semidet.
 
-:- pred det_info_init(module_info, vartypes, pred_id, proc_id, globals,
-		det_info).
-:- mode det_info_init(in, in, in, in, in, out) is det.
+:- pred det_info_init(module_info::in, vartypes::in, pred_id::in, proc_id::in,
+	globals::in, det_info::out) is det.
 
-:- pred det_info_get_module_info(det_info, module_info).
-:- mode det_info_get_module_info(in, out) is det.
+:- pred det_info_get_module_info(det_info::in, module_info::out) is det.
+:- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
+:- pred det_info_get_proc_id(det_info::in, proc_id::out) is det.
+:- pred det_info_get_reorder_conj(det_info::in, bool::out) is det.
+:- pred det_info_get_reorder_disj(det_info::in, bool::out) is det.
+:- pred det_info_get_fully_strict(det_info::in, bool::out) is det.
+:- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 
-:- pred det_info_get_pred_id(det_info, pred_id).
-:- mode det_info_get_pred_id(in, out) is det.
-
-:- pred det_info_get_proc_id(det_info, proc_id).
-:- mode det_info_get_proc_id(in, out) is det.
-
-:- pred det_info_get_reorder_conj(det_info, bool).
-:- mode det_info_get_reorder_conj(in, out) is det.
-
-:- pred det_info_get_reorder_disj(det_info, bool).
-:- mode det_info_get_reorder_disj(in, out) is det.
-
-:- pred det_info_get_fully_strict(det_info, bool).
-:- mode det_info_get_fully_strict(in, out) is det.
-
-:- pred det_info_set_module_info(det_info, module_info, det_info).
-:- mode det_info_set_module_info(in, in, out) is det.
-
-:- pred det_info_get_vartypes(det_info, vartypes).
-:- mode det_info_get_vartypes(in, out) is det.
-
-:- pred det_info_set_vartypes(det_info, vartypes, det_info).
-:- mode det_info_set_vartypes(in, in, out) is det.
+:- pred det_info_set_module_info(det_info::in, module_info::in, det_info::out)
+	is det.
+:- pred det_info_set_vartypes(det_info::in, vartypes::in, det_info::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -109,9 +90,9 @@
 
 :- import_module map, term, require, std_util.
 
-update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
+update_instmap(_Goal0 - GoalInfo0, !InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
-	instmap__apply_instmap_delta(InstMap0, DeltaInstMap, InstMap).
+	instmap__apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
 
 delete_unreachable_cases([], _, []).
 delete_unreachable_cases([_ | _], [], []).
@@ -126,19 +107,16 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
 		delete_unreachable_cases([Case | Cases0], ConsIds, Cases)
 	).
 
-interpret_unify(X, var(Y), Subst0, Subst) :-
-	term__unify(term__variable(X), term__variable(Y),
-		Subst0, Subst).
-interpret_unify(X, functor(ConsId, _, ArgVars), Subst0, Subst) :-
+interpret_unify(X, var(Y), !Subst) :-
+	term__unify(term__variable(X), term__variable(Y), !Subst).
+interpret_unify(X, functor(ConsId, _, ArgVars), !Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
-	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
-interpret_unify(_X, lambda_goal(_Purity, _POrF, _Method, _Fix, _NonLocals,
-			_Vars, _Modes, _Det, _Goal), Subst0, Subst) :-
+	term__unify(term__variable(X), RhsTerm, !Subst).
+interpret_unify(_X, lambda_goal(_, _, _, _, _, _, _, _, _), !Subst).
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just
 		% prevents us from optimizing them as well as we would like.
-	Subst = Subst0.
 
 det_lookup_detism(DetInfo, PredId, ModeId, Detism) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
@@ -169,20 +147,20 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, DetInfo^vartypes,
-		ModuleInfo).
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars,
+		DetInfo ^ vartypes, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- type det_info	
-	--->	det_info(
-		module_info :: module_info,
-		vartypes :: vartypes,
-		pred_id :: pred_id,	% the id of the proc
-		proc_id :: proc_id, 	% currently processed
-		reorder_conj :: bool,	% --reorder-conj
-		reorder_disj :: bool,	% --reorder-disj
-		fully_strict :: bool	% --fully-strict
+:- type det_info --->
+	det_info(
+		module_info	:: module_info,
+		vartypes	:: vartypes,
+		pred_id		:: pred_id,	% the id of the proc
+		proc_id		:: proc_id, 	% currently processed
+		reorder_conj	:: bool,	% --reorder-conj
+		reorder_disj	:: bool,	% --reorder-disj
+		fully_strict	:: bool		% --fully-strict
 	).
 
 det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo) :-
@@ -192,15 +170,13 @@ det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo) :-
 	DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
 		ReorderConj, ReorderDisj, FullyStrict).
 
-det_info_get_module_info(DetInfo, DetInfo^module_info).
-det_info_get_pred_id(DetInfo, DetInfo^pred_id).
-det_info_get_proc_id(DetInfo, DetInfo^proc_id).
-det_info_get_reorder_conj(DetInfo, DetInfo^reorder_conj).
-det_info_get_reorder_disj(DetInfo, DetInfo^reorder_disj).
-det_info_get_fully_strict(DetInfo, DetInfo^fully_strict).
-det_info_get_vartypes(DetInfo, DetInfo^vartypes).
+det_info_get_module_info(DI, DI ^ module_info).
+det_info_get_pred_id(DI, DI ^ pred_id).
+det_info_get_proc_id(DI, DI ^ proc_id).
+det_info_get_reorder_conj(DI, DI ^ reorder_conj).
+det_info_get_reorder_disj(DI, DI ^ reorder_disj).
+det_info_get_fully_strict(DI, DI ^ fully_strict).
+det_info_get_vartypes(DI, DI ^ vartypes).
 
-det_info_set_module_info(DetInfo, ModuleInfo,
-		DetInfo^module_info := ModuleInfo).
-det_info_set_vartypes(DetInfo, VarTypes,
-		DetInfo^vartypes := VarTypes).
+det_info_set_module_info(DI, ModuleInfo, DI ^ module_info := ModuleInfo).
+det_info_set_vartypes(DI, VarTypes, DI ^ vartypes := VarTypes).
