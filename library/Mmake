@@ -36,9 +36,6 @@ MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --compile-to-c
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(PROFFLAGS)
-C2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
-		MERCURY_MOD_LIB_MODS="$(SYS_CS)" \
-		MERCURY_MKINIT=../util/mkinit c2init
 
 #-----------------------------------------------------------------------------#
 
