@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -670,8 +670,6 @@ void sys_init_builtin_types_module(void) {
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_float_0, _float_);
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_pred_0, _pred_);
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_character_0, _character_);
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_string_0, _string_);
@@ -700,6 +698,7 @@ compare_error :-
 :- external(unsafe_promise_unique/2).
 :- pragma c_code("
 Define_extern_entry(mercury__unsafe_promise_unique_2_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unsafe_promise_unique_2_0);
 
 BEGIN_MODULE(unsafe_promise_unique_module)
 	init_entry(mercury__unsafe_promise_unique_2_0);

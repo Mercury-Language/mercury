@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -865,6 +865,11 @@ Define_extern_entry(do_interpreter);
 Declare_label(global_success);
 Declare_label(global_fail);
 Declare_label(all_done);
+
+MR_MAKE_STACK_LAYOUT_ENTRY(do_interpreter);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_success, do_interpreter);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(global_fail, do_interpreter);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(all_done, do_interpreter);
 
 BEGIN_MODULE(interpreter_module)
 	init_entry(do_interpreter);

@@ -3,7 +3,7 @@ INIT mercury_sys_init_type_info
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -157,4 +157,8 @@ void mercury_sys_init_type_info(void) {
 	mercury__builtin_unify_pred_module();
 	mercury__builtin_index_pred_module();
 	mercury__builtin_compare_pred_module();
+
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_pred_0, _pred_);
 }
+

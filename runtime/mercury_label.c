@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,20 +56,6 @@ insert_entry(const char *name, Code *addr, Word *entry_layout_info)
 	Label	*entry;
 
 	do_init_entries();
-
-
-#ifdef MR_USE_STACK_LAYOUTS
-	/* 
-	** The succip will be set to the address stored in the
-	** layout info. For some reason, this is different to
-	** the address passed to insert_entry.
-	** XXX This should be fixed.
-	*/
-	addr = entry_layout_info[0];
-#endif /* MR_USE_STACK_LAYOUTS */
-
-
-
 
 	entry = make(Label);
 	entry->e_name  = name;

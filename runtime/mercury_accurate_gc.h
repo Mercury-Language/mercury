@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -165,12 +165,10 @@ typedef struct {
 #ifdef MR_USE_STACK_LAYOUTS
  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)			\
  const struct mercury_data__stack_layout__##l##_struct {		\
-	Code * f1;							\
-	const Word * f2;						\
-	Integer f3;							\
-	const Word * f4;						\
+	const Word * f1;						\
+	Integer f2;							\
+	const Word * f3;						\
  } mercury_data__stack_layout__##l = {					\
-	ENTRY(l),							\
 	(const Word *) &mercury_data__stack_layout__##e,		\
 	(Integer) -1,		/* Unknown number of live values */	\
 	(const Word *) NULL	/* No list of live valeus */		\
@@ -195,15 +193,13 @@ typedef struct {
 ** and the reference to the entry for this label.
 */ 
 #ifdef MR_USE_STACK_LAYOUTS
- #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)				\
- const struct mercury_data__stack_layout__##l##_i##x##_struct {		\
-	Code * f1;							\
-	const Word * f2;						\
-	Integer f3;							\
-	const Word * f4;						\
- } mercury_data__stack_layout__##l##_i##x = {				\
-	ENTRY(l),							\
-	(const Word *) &mercury_data__stack_layout__##l,		\
+ #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
+ const struct mercury_data__stack_layout__##e##_i##x##_struct {		\
+	const Word * f1;						\
+	Integer f2;							\
+	const Word * f3;						\
+ } mercury_data__stack_layout__##e##_i##x = {				\
+	(const Word *) &mercury_data__stack_layout__##e,		\
 	(Integer) -1,		/* Unknown number of live values */	\
 	(const Word *) NULL	/* No list of live valeus */		\
  };
@@ -217,14 +213,12 @@ typedef struct {
 ** XXX ought to use a MR_Entry_Stack_Layout and MR_Cont_Stack_Layout
 ** struct to make it easier to access the fields.
 */
-#define MR_CONT_STACK_LAYOUT_GET_LABEL_ADDRESS(s)		\
-		((Code *) field(0, (s), 0))
 
 #define MR_ENTRY_STACK_LAYOUT_GET_LABEL_ADDRESS(s)		\
-		MR_CONT_STACK_LAYOUT_GET_LABEL_ADDRESS(s)
+		((Code *) field(0, (s), 0))
 
 #define MR_CONT_STACK_LAYOUT_GET_ENTRY_LAYOUT(s)		\
-		(field(0, (s), 1))
+		(field(0, (s), 0))
 
 #define MR_ENTRY_STACK_LAYOUT_GET_NUM_SLOTS(s)			\
 		(field(0, (s), 1))
