@@ -530,11 +530,11 @@ in its stack slot or in which the variable is not used at all.
 <p>
 
 When the code generator picks a random free register, it should try to avoid
-registers that are needed variables in the follow_vars map.
+registers that are needed for variables in the follow_vars map.
 
 <p>
 
-When a variable that is current in its stack slot is supposed to be put
+When a variable that is currently in its stack slot is supposed to be put
 in any currently free register for speed of future access, the code generator
 should refuse to use any virtual machine registers that are not real machine
 registers. Instead, it should keep the variable in its stack slot.
@@ -545,6 +545,6 @@ registers. Instead, it should keep the variable in its stack slot.
 <!-------------------------->
 <hr>
 <!-------------------------->
-Last update was $Date: 1997-04-03 05:17:01 $ by $Author: aet $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-09-29 06:10:54 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
