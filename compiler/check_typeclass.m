@@ -390,7 +390,7 @@ get_matching_instance_pred_ids(ModuleInfo, InstancePredName0, PredOrFunc,
 	in, out) is det.
 
 handle_instance_method_overloading(ClassVars, 
-		InstanceTypes0, InstanceConstraints, InstanceVarSet,
+		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstancePredName, InstancePredIds, InstancePredId, 
 		InstanceProcIds, Info0, Info) :-
 
@@ -401,20 +401,24 @@ handle_instance_method_overloading(ClassVars,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, PredTable),
 
+		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars,
 		RenameSubst),
-	term__apply_substitution_to_list(InstanceTypes0,
-		RenameSubst, InstanceTypes),
-	map__from_corresponding_lists(ClassVars,
-		InstanceTypes, TypeSubst),
-	term__apply_substitution_to_list(ArgTypes0,
-		TypeSubst, ArgTypes),
+	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
+		InstanceTypes),
+	apply_subst_to_constraints(RenameSubst, InstanceConstraints0,
+		InstanceConstraints),
+
+		% Work out what the type variables are bound to for this
+		% instance, and update the class types appropriately.
+	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
+	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes),
+	apply_subst_to_constraints(TypeSubst, ClassContext0, ClassContext1),
 
 		% Add the constraints from the instance declaration to the 
 		% constraints from the class method. This allows an instance
 		% method to have constraints on it which are part of the
 		% instance declaration as a whole.
-	apply_subst_to_constraints(RenameSubst, ClassContext0, ClassContext1),
 	list__append(InstanceConstraints, ClassContext1, ClassContext),
 
 	Info1 = instance_method_info(ModuleInfo, PredName, PredArity, 

@@ -493,8 +493,9 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				TypeCheckInfo4),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo4, TypeCheckInfo5),
-		typecheck_info_get_final_info(TypeCheckInfo5, TypeVarSet, 
-				InferredVarTypes0, InferredTypeConstraints,
+		typecheck_info_get_final_info(TypeCheckInfo5, Constraints,
+				TypeVarSet, InferredVarTypes0,
+				InferredTypeConstraints, RenamedOldConstraints,
 				ConstraintProofs),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
@@ -503,14 +504,14 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
 		pred_info_set_constraint_proofs(PredInfo2, ConstraintProofs,
 			PredInfo3),
+		map__apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
+		pred_info_set_arg_types(PredInfo3, TypeVarSet,
+				ArgTypes, PredInfo4),
 		( Inferring = no ->
-			PredInfo = PredInfo3,
+			pred_info_set_class_context(PredInfo4,
+				RenamedOldConstraints, PredInfo),
 			Changed = no
 		;
-			map__apply_to_list(HeadVars, InferredVarTypes,
-				ArgTypes),
-			pred_info_set_arg_types(PredInfo3, TypeVarSet,
-				ArgTypes, PredInfo4),
 			pred_info_get_class_context(PredInfo0,
 				OldTypeConstraints),
 			pred_info_set_class_context(PredInfo4,
@@ -2583,13 +2584,15 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_get_final_info(typecheck_info, tvarset, map(var, type),
-		list(class_constraint),
+:- pred typecheck_info_get_final_info(typecheck_info, list(class_constraint),
+		tvarset, map(var, type),
+		list(class_constraint), list(class_constraint),
 		map(class_constraint, constraint_proof)).
-:- mode typecheck_info_get_final_info(in, out, out, out, out) is det.
+:- mode typecheck_info_get_final_info(in, in, out, out, out, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes,
-		NewTypeConstraints, NewConstraintProofs) :-
+typecheck_info_get_final_info(TypeCheckInfo, OldConstraints, NewTypeVarSet,
+		NewVarTypes, NewTypeConstraints, RenamedOldConstraints,
+		NewConstraintProofs) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
 		type_assign_get_typevarset(TypeAssign, OldTypeVarSet),
@@ -2653,6 +2656,8 @@ typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes,
 		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes),
 		list__map(rename_class_constraint(TSubst), TypeConstraints,
 			NewTypeConstraints),
+		list__map(rename_class_constraint(TSubst), OldConstraints,
+			RenamedOldConstraints),
 		( map__is_empty(ConstraintProofs) ->
 			% optimize simple case
 			NewConstraintProofs = ConstraintProofs
