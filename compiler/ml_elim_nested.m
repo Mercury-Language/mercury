@@ -338,7 +338,8 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	EnvDecls = [EnvVarDecl, EnvPtrVarDecl].
 
 	% ml_insert_init_env:
-	%	If the definition is a nested function definition, then
+	%	If the definition is a nested function definition, and it's
+	%	body makes use of the environment pointer (`env_ptr'), then
 	%	insert code to declare and initialize the environment pointer.
 	%
 	% We transform code of the form
@@ -358,7 +359,8 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 ml_insert_init_env(ClassName, ModuleName, Defn0, Defn) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
-		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0))
+		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
+		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
 	->
 		%
 		% XXX we should really insert a type cast here,
@@ -408,7 +410,7 @@ ml_init_env(EnvClassName, EnvPtrVal, Context, ModuleName,
 	%
 	% generate the following statement:
 	%
-	%	env_ptr = &env;
+	%	env_ptr = <EnvPtrVal>;
 	%
 	EnvPtrVar = qual(ModuleName, "env_ptr"),
 	AssignEnvPtr = assign(var(EnvPtrVar), EnvPtrVal),

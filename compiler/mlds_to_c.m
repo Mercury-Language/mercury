@@ -7,6 +7,15 @@
 % mlds_to_c - Convert MLDS to C/C++ code.
 % Main author: fjh.
 
+% TODO:
+%	- RTTI (base_type_info, base_type_layout, base_type_functors,
+%		module_layout, proc_layout)
+%	- type classes (base_typeclass_info)
+%	- trail ops
+%	- foreign language interfacing and inline target code
+%	- packages, classes and inheritance
+%	  (currently we just generate all classes as structs)
+
 %-----------------------------------------------------------------------------%
 
 :- module mlds_to_c.
@@ -433,19 +442,31 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		mlds_indent(Context, Indent),
 		io__write_string("{\n"),
 
+		{ FuncInfo = func_info(Name, Signature) },
+
 		%
-		% We wrap the function body inside a `for(;;)' loop
+		% If the procedure body contains any optimizable tailcalls,
+		% we wrap the function body inside a `for(;;)' loop
 		% so that we can use `continue;' inside the function body
 		% to optimize tail recursive calls.
+		%
 		% XXX tail recursion optimization should be disable-able
 		%
-		mlds_indent(Context, Indent + 1),
-		io__write_string("for(;;)\n"),
-		mlds_indent(Context, Indent + 2),
-		io__write_string("{\n"),
+		(
+			{ statement_contains_statement(Body, Call) },
+			{ Call = mlds__statement(CallStmt, _) },
+			{ can_optimize_tailcall(FuncInfo, CallStmt) }
+		->
+			mlds_indent(Context, Indent + 1),
+			io__write_string("for(;;)\n"),
+			mlds_indent(Context, Indent + 2),
+			io__write_string("{\n"),
+			{ Indent2 = Indent + 2 }
+		;
+			{ Indent2 = Indent }
+		),
 
-		{ FuncInfo = func_info(Name, Signature) },
-		mlds_output_statement(Indent + 3, FuncInfo, Body),
+		mlds_output_statement(Indent2 + 1, FuncInfo, Body),
 
 		%
 		% Output a `return' statement to terminate the `for(;;)' loop.
@@ -456,20 +477,25 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		%
 		{ Signature = mlds__func_params(_Parameters, RetTypes) },
 		( { RetTypes = [] } ->
-			mlds_output_stmt(Indent + 3, FuncInfo, return([]),
+			mlds_output_stmt(Indent2 + 1, FuncInfo, return([]),
 				Context)
 		;
 			globals__io_lookup_bool_option(auto_comments, Comments),
 			( { Comments = yes } ->
-				mlds_indent(Context, Indent + 3),
+				mlds_indent(Context, Indent2 + 1),
 				io__write_string("/*NOTREACHED*/\n")
 			;
 				[]
 			)
 		),
 
-		mlds_indent(Context, Indent + 2),
-		io__write_string("}\n"), % end the `for(;;)'
+		( { Indent2 = Indent + 2 } ->
+			% end the `for(;;)'
+			mlds_indent(Context, Indent2),
+			io__write_string("}\n")
+		;
+			[]
+		),
 
 		mlds_indent(Context, Indent),
 		io__write_string("}\n")	% end the function
@@ -515,6 +541,40 @@ mlds_output_param(_Indent, qual(ModuleName, _FuncName), Name - Type) -->
 	io__write_char(' '),
 	mlds_output_fully_qualified_name(qual(ModuleName, Name),
 		mlds_output_name).
+
+:- pred mlds_output_func_type(func_params, io__state, io__state).
+:- mode mlds_output_func_type(in, di, uo) is det.
+
+mlds_output_func_type(Params) -->
+	{ Params = mlds__func_params(Parameters, RetTypes) },
+	( { RetTypes = [] } ->
+		io__write_string("void")
+	; { RetTypes = [RetType] } ->
+		mlds_output_type(RetType)
+	;
+		{ error("mlds_output_func_type: multiple return types") }
+	),
+	io__write_string(" (*)"),
+	mlds_output_param_types(Parameters).
+
+:- pred mlds_output_param_types(mlds__arguments, io__state, io__state).
+:- mode mlds_output_param_types(in, di, uo) is det.
+
+mlds_output_param_types(Parameters) -->
+	io__write_char('('),
+	( { Parameters = [] } ->
+		io__write_string("void")
+	;
+		io__write_list(Parameters, ", ", mlds_output_param_type)
+	),
+	io__write_char(')').
+
+:- pred mlds_output_param_type(pair(mlds__entity_name, mlds__type),
+		io__state, io__state).
+:- mode mlds_output_param_type(in, di, uo) is det.
+
+mlds_output_param_type(_Name - Type) -->
+	mlds_output_type(Type).
 
 %-----------------------------------------------------------------------------%
 %
@@ -632,6 +692,8 @@ mlds_output_type(mercury_type(Type)) -->
 		io__write_string("String")
 	; { Type = term__functor(term__atom("float"), [], _) } ->
 		io__write_string("Float")
+	; { Type = term__variable(_) } ->
+		io__write_string("MR_Box")
 	;
 		% XXX we ought to use pointers to struct types here,
 		% so that distinct Mercury types map to distinct C types
@@ -648,6 +710,14 @@ mlds_output_type(mlds__class_type(Name, Arity)) -->
 mlds_output_type(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
 	io__write_string(" *").
+mlds_output_type(mlds__func_type(FuncParams)) -->
+	% XXX C syntax sucks, there's no easy way of
+	% writing these types that will work in all
+	% situations.  Currently we rely on the MLDS code
+	% generator only using function types in certain situations.
+	mlds_output_func_type(FuncParams).
+mlds_output_type(mlds__generic_type) -->
+	io__write_string("MR_Box").
 mlds_output_type(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
 mlds_output_type(mlds__cont_type) -->
@@ -876,36 +946,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	%
 	{ CallerFuncInfo = func_info(Name, Params) },
 	(
-		%
-		% check if this call can be optimized as a tail call
-		%
-		{ IsTailCall = tail_call },
-
-		%
-		% check if the callee adddress is the same as
-		% the caller
-		%
-		{ FuncRval = const(code_addr_const(CodeAddr)) },
-		{	
-			CodeAddr = proc(QualifiedProcLabel),
-			MaybeSeqNum = no
-		;
-			CodeAddr = internal(QualifiedProcLabel, SeqNum),
-			MaybeSeqNum = yes(SeqNum)
-		},
-		{ QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId) },
-		% check that the module name matches
-		{ Name = qual(ModuleName, FuncName) },
-		% check that the PredLabel, ProcId, and MaybeSeqNum match
-		{ FuncName = function(PredLabel, ProcId, MaybeSeqNum, _) },
-
-		%
-		% In C++, `this' is a constant, so our usual technique
-		% of assigning the arguments won't work if it is a
-		% member function.  Thus we don't do this optimization
-		% if we're optimizing a member function call
-		%
-		{ MaybeObject = no }
+		{ can_optimize_tailcall(CallerFuncInfo, Call) }
 	->
 		mlds_indent(Indent),
 		io__write_string("{\n"),
@@ -916,6 +957,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 		;
 			[]
 		),
+		{ Name = qual(ModuleName, _) },
 		{ Params = mlds__func_params(FuncArgs, _RetTypes) },
 		mlds_output_assign_args(Indent + 1, ModuleName, Context,
 			FuncArgs, CallArgs),
@@ -1086,6 +1128,47 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 		mlds_output_statement(Indent + 1, FuncInfo, Handler)
 	).
 
+	% return `true' if the statement is a tail call which
+	% can be optimized into a jump back to the start of the
+	% function
+:- pred can_optimize_tailcall(func_info, mlds__stmt).
+:- mode can_optimize_tailcall(in, in) is semidet.
+can_optimize_tailcall(CallerFuncInfo, Call) :-
+	Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
+		_Results, IsTailCall),
+	CallerFuncInfo = func_info(Name, _Params),
+	%
+	% check if this call can be optimized as a tail call
+	%
+	IsTailCall = tail_call,
+
+	%
+	% check if the callee adddress is the same as
+	% the caller
+	%
+	FuncRval = const(code_addr_const(CodeAddr)),
+	(	
+		CodeAddr = proc(QualifiedProcLabel),
+		MaybeSeqNum = no
+	;
+		CodeAddr = internal(QualifiedProcLabel, SeqNum),
+		MaybeSeqNum = yes(SeqNum)
+	),
+	QualifiedProcLabel = qual(ModuleName, PredLabel - ProcId),
+	% check that the module name matches
+	Name = qual(ModuleName, FuncName),
+	% check that the PredLabel, ProcId, and MaybeSeqNum match
+	FuncName = function(PredLabel, ProcId, MaybeSeqNum, _),
+
+	%
+	% In C++, `this' is a constant, so our usual technique
+	% of assigning the arguments won't work if it is a
+	% member function.  Thus we don't do this optimization
+	% if we're optimizing a member function call
+	%
+	MaybeObject = no.
+
+
 	% Assign the specified list of rvals to the arguments.
 	% This is used as part of tail recursion optimization (see above).
 :- pred mlds_output_assign_args(indent, mlds_module_name, mlds__context,
@@ -1244,7 +1327,7 @@ mlds_output_init_args([_|_], [], _, _, _, _, _) -->
 mlds_output_init_args([], [_|_], _, _, _, _, _) -->
 	{ error("mlds_output_init_args: length mismatch") }.
 mlds_output_init_args([], [], _, _, _, _, _) --> [].
-mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], Context,
+mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 		ArgNum, Target, Tag, Indent) -->
 	mlds_indent(Context, Indent),
 	io__write_string("MR_field("),
@@ -1254,7 +1337,7 @@ mlds_output_init_args([Arg|Args], [_ArgType|ArgTypes], Context,
 	io__write_string(", "),
 	io__write_int(ArgNum),
 	io__write_string(") = "),
-	mlds_output_rval(Arg),
+	mlds_output_boxed_rval(ArgType, Arg),
 	io__write_string(";\n"),
 	mlds_output_init_args(Args, ArgTypes, Context,
 		ArgNum + 1, Target, Tag, Indent).
@@ -1394,10 +1477,61 @@ mlds_output_rval(mem_addr(Lval)) -->
 	io__write_string("&"),
 	mlds_output_lval(Lval).
 
-:- pred mlds_output_unop(unary_op, mlds__rval, io__state, io__state).
+:- pred mlds_output_unop(mlds__unary_op, mlds__rval, io__state, io__state).
 :- mode mlds_output_unop(in, in, di, uo) is det.
 	
-mlds_output_unop(UnaryOp, Exprn) -->
+mlds_output_unop(box(Type), Exprn) -->
+	mlds_output_boxed_rval(Type, Exprn).
+mlds_output_unop(unbox(Type), Exprn) -->
+	mlds_output_unboxed_rval(Type, Exprn).
+mlds_output_unop(std_unop(Unop), Exprn) -->
+	mlds_output_std_unop(Unop, Exprn).
+
+:- pred mlds_output_boxed_rval(mlds__type, mlds__rval, io__state, io__state).
+:- mode mlds_output_boxed_rval(in, in, di, uo) is det.
+	
+mlds_output_boxed_rval(Type, Exprn) -->
+	(
+		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
+				[], _))
+		; Type = mlds__float_type
+		}
+	->
+		io__write_string("MR_box_float("),
+		mlds_output_rval(Exprn),
+		io__write_string(")")
+	;
+		io__write_string("((MR_Box) ("),
+		mlds_output_rval(Exprn),
+		io__write_string("))")
+	).
+
+:- pred mlds_output_unboxed_rval(mlds__type, mlds__rval, io__state, io__state).
+:- mode mlds_output_unboxed_rval(in, in, di, uo) is det.
+	
+mlds_output_unboxed_rval(Type, Exprn) -->
+	(
+		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
+				[], _))
+		; Type = mlds__float_type
+		}
+	->
+		io__write_string("MR_unbox_float("),
+		mlds_output_rval(Exprn),
+		io__write_string(")")
+	;
+		io__write_string("(("),
+		mlds_output_type(Type),
+		io__write_string(") "),
+		mlds_output_rval(Exprn),
+		io__write_string(")")
+	).
+
+:- pred mlds_output_std_unop(builtin_ops__unary_op, mlds__rval,
+		io__state, io__state).
+:- mode mlds_output_std_unop(in, in, di, uo) is det.
+	
+mlds_output_std_unop(UnaryOp, Exprn) -->
 	{ c_util__unary_prefix_op(UnaryOp, UnaryOpString) },
 	io__write_string(UnaryOpString),
 	io__write_string("("),
@@ -1592,108 +1726,69 @@ mlds_indent(N) -->
 
 %-----------------------------------------------------------------------------%
 
-/*****
+:- pred statements_contains_statement(mlds__statements, mlds__statement).
+:- mode statements_contains_statement(in, out) is nondet.
 
-:- type base_data
-	--->	info
-	;	functors
-	;	layout.
+statements_contains_statement(Statements, SubStatement) :-
+	list__member(Statement, Statements),
+	statement_contains_statement(Statement, SubStatement).
 
-	% see runtime/mercury_trail.h
-:- type reset_trail_reason
-	--->	undo
-	;	commit
-	;	solve
-	;	exception
-	;	gc
-	.
+:- pred maybe_statement_contains_statement(maybe(mlds__statement), mlds__statement).
+:- mode maybe_statement_contains_statement(in, out) is nondet.
 
-:- type mlds__qualified_proc_label
-	==	mlds__fully_qualified_name(mlds__proc_label).
-:- type mlds__proc_label
-	==	pair(mlds__pred_label, proc_id).
+maybe_statement_contains_statement(no, _Statement) :- fail.
+maybe_statement_contains_statement(yes(Statement), SubStatement) :-
+	statement_contains_statement(Statement, SubStatement).
 
-:- type mlds__qualified_pred_label
-	==	mlds__fully_qualified_name(mlds__pred_label).
+:- pred statement_contains_statement(mlds__statement, mlds__statement).
+:- mode statement_contains_statement(in, out) is multi.
 
-:- type field_id == mlds__fully_qualified_name(field_name).
-:- type field_name == string.
+statement_contains_statement(Statement, Statement).
+statement_contains_statement(Statement, SubStatement) :-
+	Statement = mlds__statement(Stmt, _Context),
+	stmt_contains_statement(Stmt, SubStatement).
 
-:- type mlds__var == mlds__fully_qualified_name(mlds__var_name).
-:- type mlds__var_name == string.
+:- pred stmt_contains_statement(mlds__stmt, mlds__statement).
+:- mode stmt_contains_statement(in, out) is nondet.
 
-*****/
-
-/**************************
-% An mlds_module_name specifies the name of an mlds package or class.
-:- type mlds_module_name.
-
-% An mlds__package_name specifies the name of an mlds package.
-:- type mlds__package_name == mlds_module_name.
-
-% Given the name of a Mercury module, return the name of the corresponding
-% MLDS package.
-:- func mercury_module_name_to_mlds(mercury_module_name) = mlds__package_name.
-
-:- type mlds__qualified_entity_name
-	==	mlds__fully_qualified_name(mlds__entity_name).
-
-:- type mlds__class_kind
-	--->	mlds__class		% A generic class:
-					% can inherit other classes and
-					% interfaces
-					% (but most targets will only support
-					% single inheritence, so usually there
-					% will be at most one class).
-	;	mlds__package		% A class with only static members
-					% (can only inherit other packages).
-					% Unlike other kinds of classes,
-					% packages should not be used as types.
-	;	mlds__interface		% A class with no variable data members
-					% (can only inherit other interfaces)
-	;	mlds__struct		% A value class
-					% (can only inherit other structs).
-	;	mlds__enum		% A class with one integer member and
-					% a bunch of static consts
-					% (cannot inherit anything).
-	.
-
-:- type mlds__class
-	---> mlds__class(
-		mlds__class_kind,
-		mlds__imports,			% imports these classes (or
-						% modules, packages, ...)
-		list(mlds__class_id),		% inherits these base classes
-		list(mlds__interface_id),	% implements these interfaces
-		mlds__defns			% contains these members
-	).
-
-:- type mlds__type.
-:- type mercury_type == prog_data__type.
-
-:- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
-
-% Hmm... this is tentative.
-:- type mlds__class_id == mlds__type.
-:- type mlds__interface_id == mlds__type.
-
-%-----------------------------------------------------------------------------%
-
-	%
-	% C code required for the C interface.
-	% When compiling to a language other than C,
-	% this part still needs to be generated as C code
-	% and compiled with a C compiler.
-	%
-:- type mlds__foreign_code
-	---> mlds__foreign_code(
-		c_header_info,
-		list(user_c_code),
-		list(c_export)		% XXX we will need to modify
-					% export.m to handle different
-					% target languages
+stmt_contains_statement(Stmt, SubStatement) :-
+	(
+		Stmt = block(_Defns, Statements),
+		statements_contains_statement(Statements, SubStatement)
+	;
+		Stmt = while(_Rval, Statement, _Once),
+		statement_contains_statement(Statement, SubStatement)
+	;
+		Stmt = if_then_else(_Cond, Then, MaybeElse),
+		( statement_contains_statement(Then, SubStatement)
+		; maybe_statement_contains_statement(MaybeElse, SubStatement)
+		)
+	;
+		Stmt = label(_Label),
+		fail
+	;
+		Stmt = goto(_),
+		fail
+	;
+		Stmt = computed_goto(_Rval, _Labels),
+		fail
+	;
+		Stmt = call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+		fail
+	;
+		Stmt = return(_Rvals),
+		fail
+	;
+		Stmt = do_commit(_Ref),
+		fail
+	;
+		Stmt = try_commit(_Ref, Statement, Handler),
+		( statement_contains_statement(Statement, SubStatement)
+		; statement_contains_statement(Handler, SubStatement)
+		)
+	;
+		Stmt = atomic(_AtomicStmt),
+		fail
 	).
 
 %-----------------------------------------------------------------------------%
-
-**************************/

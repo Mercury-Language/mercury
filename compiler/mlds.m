@@ -481,12 +481,20 @@
 		% Currently these are used for handling output arguments.
 	;	mlds__ptr_type(mlds__type)
 
+		% Function types.
+	;	mlds__func_type(mlds__func_params)
+
+		% A generic type (e.g. `Word') that can hold any Mercury value.
+		% This is used for implementing polymorphism.
+	;	mlds__generic_type
+
 		% A generic pointer type (e.g. `void *' in C)
 		% that can be used to point to the environment
 		% (set of local variables) of the containing function.
-		% This is used for handling nondeterminism
+		% This is used for handling nondeterminism,
 		% if the target language doesn't supported
-		% nested functions.
+		% nested functions, and also for handling
+		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type.
 
 :- type mercury_type == prog_data__type.
@@ -970,12 +978,17 @@ XXX Full exception handling support is not yet implemented.
 
 	;	const(mlds__rval_const)
 
-	;	unop(unary_op, mlds__rval)
+	;	unop(mlds__unary_op, mlds__rval)
 
 	;	binop(binary_op, mlds__rval, mlds__rval)
 
 	;	mem_addr(mlds__lval).
 		% The address of a variable, etc.
+
+:- type mlds__unary_op
+	--->	box(mlds__type)
+	;	unbox(mlds__type)
+	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const
 	--->	true
@@ -983,10 +996,11 @@ XXX Full exception handling support is not yet implemented.
 	;	int_const(int)
 	;	float_const(float)
 	;	string_const(string)
+			% A multi_string_const is a string containing
+			% embedded NULs, whose real length is given
+			% by the integer, and not the location of the
+			% first null character.
 	;	multi_string_const(int, string)
-			% a string containing embedded NULLs,
-			% whose real length is given by the integer,
-			% and not the location of the first NULL
 	;	code_addr_const(mlds__code_addr)
 	;	data_addr_const(mlds__data_addr).
 
