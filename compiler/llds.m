@@ -196,12 +196,18 @@
 	;	decr_sp(int)
 			% Decrement the det stack pointer.
 
-	;	pragma_c(list(pragma_c_decl), list(pragma_c_input), string,
-			list(pragma_c_output)).
+	;	pragma_c(list(pragma_c_decl), list(pragma_c_input),
+			string, list(pragma_c_output)).
 			% The local variable decs, placing the inputs in the
 			% variables, the c code, and where to
 			% find the outputs for pragma(c_code, ... ) decs.
 
+%	;	frame_pragma_c(list(pragma_c_decl), list(pragma_c_input),
+%			string, list(pragma_c_output), list(label)).
+%			% The same as above, plus the list of labels to use
+%			% in LABEL_1 and DEFINE_LABEL_1 style macros.
+%			% For use in model_non pragma_c_codes, where it
+%			% should be preceded by a mkframe.
 
 	% pragma_c_decl holds the information needed for a variable
 	% declaration for a pragma_c instruction.
@@ -247,7 +253,8 @@
 
 	/* virtual machine registers */
 
-		reg(reg)	% one of the general-purpose virtual machine
+		reg(reg_type, int)
+				% one of the general-purpose virtual machine
 				% registers (either an int or float reg)
 	;	succip		% virtual machine register holding the
 				% return address for det/semidet code
@@ -259,7 +266,8 @@
 				% pointer
 	;	sp		% virtual machine register point to the
 				% top of det stack
-	;	temp(temp_reg)	% a local temporary register
+	;	temp(reg_type, int)
+				% a local temporary register
 				% These temporary registers are actually
 				% local variables declared in `block'
 				% instructions.  They may only be
@@ -414,12 +422,9 @@
 	;	float_le
 	;	float_ge.
 
-	% one of the general-purpose virtual machine registers
-:- type reg	
-	--->	r(int)		% integer regs
-	;	f(int).		% floating point regs
-
-:- type temp_reg == reg.
+:- type reg_type	
+	--->	r		% general-purpose (integer) regs
+	;	f.		% floating point regs
 
 :- type label
 	--->	local(proc_label, int)	% internal to procedure
@@ -497,20 +502,20 @@
 :- pred llds__binop_return_type(binary_op::in, llds_type::out) is det.
 
 	% given a register, figure out its type
-:- pred llds__register_type(reg::in, llds_type::out) is det.
+:- pred llds__register_type(reg_type::in, llds_type::out) is det.
 
 :- implementation.
 :- import_module require.
 
-llds__lval_type(reg(Reg), Type) :-
-	llds__register_type(Reg, Type).
+llds__lval_type(reg(RegType, _), Type) :-
+	llds__register_type(RegType, Type).
 llds__lval_type(succip, code_ptr).
 llds__lval_type(maxfr, data_ptr).
 llds__lval_type(curfr, data_ptr).
 llds__lval_type(hp, data_ptr).
 llds__lval_type(sp, data_ptr).
-llds__lval_type(temp(TempReg), Type) :-
-	llds__register_type(TempReg, Type).
+llds__lval_type(temp(RegType, _), Type) :-
+	llds__register_type(RegType, Type).
 llds__lval_type(stackvar(_), word).
 llds__lval_type(framevar(_), word).
 llds__lval_type(succip(_), code_ptr).
@@ -612,6 +617,5 @@ llds__binop_return_type(float_gt, bool).
 llds__binop_return_type(float_le, bool).
 llds__binop_return_type(float_ge, bool).
 
-llds__register_type(r(_), word).
-llds__register_type(f(_), float).
-
+llds__register_type(r, word).
+llds__register_type(f, float).

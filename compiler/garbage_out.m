@@ -370,28 +370,23 @@ garbage_out__write_liveval(framevar(X)) -->
 	io__write_string("framevar("),
 	io__write_int(X),
 	io__write_string(")").
-garbage_out__write_liveval(reg(X)) -->
+garbage_out__write_liveval(reg(Type, Num)) -->
 	(
-		{ X = r(Y) }
-	->
+		{ Type = r },
 		io__write_string("reg("),
-		io__write_int(Y)
+		io__write_int(Num)
 	;
-		{ X = f(Y) }
-	->
+		{ Type = f },
 		io__write_string("freg("),
-		io__write_int(Y)
-	;
-		{ error("garbage_out: Unexpected reg type, not f/1 or r/1") }
+		io__write_int(Num)
 	),
 	io__write_string(")").
 garbage_out__write_liveval(field(_,_,_)) -->
 	{ error("garbage_out: Unexpected 'field/3' lval") }.
 garbage_out__write_liveval(lvar(_)) -->
 	{ error("garbage_out: Unexpected 'lval/1' lval") }.
-garbage_out__write_liveval(temp(_)) -->
+garbage_out__write_liveval(temp(_, _)) -->
 	{ error("garbage_out: Unexpected 'temp/1' lval") }.
-
 
 %-----------------------------------------------------------------------------%
 % We no longer care what the shape_ids are, as we don't need them. When we

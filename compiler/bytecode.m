@@ -49,10 +49,10 @@
 					list(byte_var))
 			;	complex_deconstruct(byte_var, byte_cons_id,
 					list(pair(byte_var, byte_dir)))
-			;	place_arg(reg, byte_var)
+			;	place_arg(reg_type, int, byte_var)
 			;	call(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
-			;	pickup_arg(reg, byte_var)
+			;	pickup_arg(reg_type, int, byte_var)
 			;	builtin_binop(binary_op, byte_arg, byte_arg,
 					byte_var)
 			;	builtin_unop(unary_op, byte_arg, byte_var)
@@ -243,16 +243,16 @@ output_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 	{ list__length(VarDirs, Length) },
 	output_length(Length),
 	output_var_dirs(VarDirs).
-output_args(place_arg(Reg, Var)) -->
-	output_reg(Reg),
+output_args(place_arg(RegType, RegNum, Var)) -->
+	output_reg(RegType, RegNum),
 	output_var(Var).
 output_args(call(ModuleId, PredId, Arity, ProcId)) -->
 	output_module_id(ModuleId),
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
-output_args(pickup_arg(Reg, Var)) -->
-	output_reg(Reg),
+output_args(pickup_arg(RegType, RegNum, Var)) -->
+	output_reg(RegType, RegNum),
 	output_var(Var).
 output_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	output_binop(Binop),
@@ -340,16 +340,16 @@ debug_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 	{ list__length(VarDirs, Length) },
 	debug_length(Length),
 	debug_var_dirs(VarDirs).
-debug_args(place_arg(Reg, Var)) -->
-	debug_reg(Reg),
+debug_args(place_arg(RegType, RegNum, Var)) -->
+	debug_reg(RegType, RegNum),
 	debug_var(Var).
 debug_args(call(ModuleId, PredId, Arity, ProcId)) -->
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
-debug_args(pickup_arg(Reg, Var)) -->
-	debug_reg(Reg),
+debug_args(pickup_arg(RegType, RegNum, Var)) -->
+	debug_reg(RegType, RegNum),
 	debug_var(Var).
 debug_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	debug_binop(Binop),
@@ -421,20 +421,20 @@ debug_determinism(Detism) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_reg(reg, io__state, io__state).
-:- mode output_reg(in, di, uo) is det.
+:- pred output_reg(reg_type, int, io__state, io__state).
+:- mode output_reg(in, in, di, uo) is det.
 
-output_reg(r(N)) -->
+output_reg(r, N) -->
 	output_byte(N).
-output_reg(f(_)) -->
+output_reg(f, _) -->
 	{ error("we do not handle floating point registers yet") }.
 
-:- pred debug_reg(reg, io__state, io__state).
-:- mode debug_reg(in, di, uo) is det.
+:- pred debug_reg(reg_type, int, io__state, io__state).
+:- mode debug_reg(in, in, di, uo) is det.
 
-debug_reg(r(N)) -->
+debug_reg(r, N) -->
 	debug_int(N).
-debug_reg(f(_)) -->
+debug_reg(f, _) -->
 	{ error("we do not handle floating point registers yet") }.
 
 %---------------------------------------------------------------------------%
@@ -790,9 +790,9 @@ byte_code(test(_, _),				22).
 byte_code(construct(_, _, _),			23).
 byte_code(deconstruct(_, _, _),			24).
 byte_code(complex_deconstruct(_, _, _),		25).
-byte_code(place_arg(_, _),			26).
+byte_code(place_arg(_, _, _),			26).
 byte_code(call(_, _, _, _),			27).
-byte_code(pickup_arg(_, _),			28).
+byte_code(pickup_arg(_, _, _),			28).
 byte_code(builtin_binop(_, _, _, _),		29).
 byte_code(builtin_unop(_, _, _),		30).
 byte_code(builtin_bintest(_, _, _),		31).
@@ -829,9 +829,9 @@ byte_debug(test(_, _),				"test").
 byte_debug(construct(_, _, _),			"construct").
 byte_debug(deconstruct(_, _, _),		"deconstruct").
 byte_debug(complex_deconstruct(_, _, _),	"complex_deconstruct").
-byte_debug(place_arg(_, _),			"place_arg").
+byte_debug(place_arg(_, _, _),			"place_arg").
 byte_debug(call(_, _, _, _),			"call").
-byte_debug(pickup_arg(_, _),			"pickup_arg").
+byte_debug(pickup_arg(_, _, _),			"pickup_arg").
 byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
 byte_debug(builtin_bintest(_, _, _),		"builtin_bintest").

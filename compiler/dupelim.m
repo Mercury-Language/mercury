@@ -189,7 +189,7 @@ dupelim__replace_labels_instr(pragma_c(A,B,C,D), _, pragma_c(A,B,C,D)).
 % :- mode dupelim__replace_labels_lval(di, in, uo) is det.
 :- mode dupelim__replace_labels_lval(in, in, out) is det.
 
-dupelim__replace_labels_lval(reg(Reg), _, reg(Reg)).
+dupelim__replace_labels_lval(reg(RegType, RegNum), _, reg(RegType, RegNum)).
 dupelim__replace_labels_lval(stackvar(N), _, stackvar(N)).
 dupelim__replace_labels_lval(framevar(N), _, framevar(N)).
 dupelim__replace_labels_lval(succip, _, succip).
@@ -210,7 +210,7 @@ dupelim__replace_labels_lval(field(Tag, Base0, Offset0), Replmap,
 	dupelim__replace_labels_rval(Base0, Replmap, Base),
 	dupelim__replace_labels_rval(Offset0, Replmap, Offset).
 dupelim__replace_labels_lval(lvar(Var), _, lvar(Var)).
-dupelim__replace_labels_lval(temp(N), _, temp(N)).
+dupelim__replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
 
 :- pred dupelim__replace_labels_rval(rval, map(label, label), rval).
 % :- mode dupelim__replace_labels_rval(di, in, uo) is det.

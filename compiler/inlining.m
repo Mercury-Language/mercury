@@ -58,9 +58,9 @@
 	%	- arithmetic predicates where the as above, the cost of the
 	%	  call will often outweigh the cost of the arithmetic.
 	%
-	%	- pragma C code, where often the C operation is very small,
-	%	  inlining avoids a call and allows the C compiler to do a
-	%	  better job of optimizing it.
+	%	- det or semi pragma C code, where often the C operation is
+	%	  very small, inlining avoids a call and allows the C compiler
+	%	  to do a better job of optimizing it.
 	%
 	% The threshold on the size of simple goals (which covers both of the
 	% first two cases above), is to prevent the inlining of large goals
@@ -71,6 +71,9 @@
 	% the problem of inlining lots of calls and having a resulting
 	% procedure with so many variables that the back end of the compiler
 	% gets bogged down (for example in the pseudoknot benchmark).
+	%
+	% Due to the way in which we generate code for model_non pragma_c_code,
+	% procedures whose body is such a pragma_c_code must NOT be inlined.
 
 %-----------------------------------------------------------------------------%
 

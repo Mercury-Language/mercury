@@ -85,7 +85,7 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 	% recomputing the tag from scratch.
 
 	code_info__produce_variable_in_reg(Var, VarCode, VarRval),
-	code_info__acquire_reg(TagReg),
+	code_info__acquire_reg(r, TagReg),
 	code_info__release_reg(TagReg),
 	code_info__get_globals(Globals),
 	{
@@ -95,18 +95,16 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel, Code)
 		(
 			NumRealRegs = 0
 		;
-			(
-				TagReg = r(TagRegNo)
+			( TagReg = reg(r, TagRegNo) ->
+				TagRegNo =< NumRealRegs
 			;
-				TagReg = f(_),
-				error("float reg in tag switch")
-			),
-			TagRegNo =< NumRealRegs
+				error("improper reg in tag switch")
+			)
 		)
 	->
-		TagCode = node([assign(reg(TagReg), unop(tag, VarRval))
+		TagCode = node([assign(TagReg, unop(tag, VarRval))
 				- "compute tag to switch on"]),
-		TagRval = lval(reg(TagReg))
+		TagRval = lval(TagReg)
 	;
 		TagCode = empty,
 		TagRval = unop(tag, VarRval)
@@ -221,18 +219,18 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 			DenseSwitchSize) },
 		{ MaxSecondary < DenseSwitchSize }
 	->
-		code_info__acquire_reg(SecTagReg),
+		code_info__acquire_reg(r, SecTagReg),
 		code_info__release_reg(SecTagReg),
 		{ StagLoc = remote ->
-			SecTagCode = node([assign(reg(SecTagReg),
+			SecTagCode = node([assign(SecTagReg,
 				lval(field(Primary, Rval, const(int_const(0)))))
 				- "compute remote sec tag to switch on"])
 		;
-			SecTagCode = node([assign(reg(SecTagReg),
+			SecTagCode = node([assign(SecTagReg,
 				unop(unmkbody, Rval))
 				- "compute remote sec tag to switch on"])
 		},
-		{ SecTagRval = lval(reg(SecTagReg)) },
+		{ SecTagRval = lval(SecTagReg) },
 		(
 			{ list__length(GoalList, GoalCount) },
 			{ FullGoalCount is MaxSecondary + 1 },

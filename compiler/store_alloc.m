@@ -300,7 +300,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 		)
 	->
 		next_free_reg(N0, SeenLvals0, N1),
-		FinalLval = reg(r(N1)),
+		FinalLval = reg(r, N1),
 		map__set(StoreMap0, Var, FinalLval, StoreMap1)
 	;
 		N1 = N0,
@@ -324,8 +324,8 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0,
 		SeenLvals1 = SeenLvals0
 	;
 		next_free_reg(N0, SeenLvals0, N1),
-		map__set(StoreMap0, Var, reg(r(N1)), StoreMap1),
-		set__insert(SeenLvals0, reg(r(N1)), SeenLvals1)
+		map__set(StoreMap0, Var, reg(r, N1), StoreMap1),
+		set__insert(SeenLvals0, reg(r, N1), SeenLvals1)
 	),
 	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StoreMap1, StoreMap).
 
@@ -340,9 +340,8 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0,
 :- pred artificial_lval(lval).
 :- mode artificial_lval(in) is semidet.
 
-artificial_lval(reg(R)) :-
-	R = r(N),
-	N < 1.
+artificial_lval(reg(_Type, Num)) :-
+	Num < 1.
 
 %-----------------------------------------------------------------------------%
 
@@ -350,7 +349,7 @@ artificial_lval(reg(R)) :-
 :- mode next_free_reg(in, in, out) is det.
 
 next_free_reg(N0, Values, N) :-
-	( set__member(reg(r(N0)), Values) ->
+	( set__member(reg(r, N0), Values) ->
 		N1 is N0 + 1,
 		next_free_reg(N1, Values, N)
 	;

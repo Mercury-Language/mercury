@@ -93,11 +93,11 @@ vn_temploc__next_tempr(Templocs0, Templocs, Vnlval) :-
 		RQueue = Tail,
 		NextR = NextR0
 	;
-		Vnlval = vn_temp(r(NextR0)),
+		Vnlval = vn_temp(r, NextR0),
 		RQueue = RQueue0,
 		NextR is NextR0 + 1
 	),
-	( Vnlval = vn_temp(r(R)) ->
+	( Vnlval = vn_temp(r, R) ->
 		int__max(MaxR0, R, MaxR)
 	;
 		MaxR = MaxR0
@@ -111,11 +111,11 @@ vn_temploc__next_tempf(Templocs0, Templocs, Vnlval) :-
 		FQueue = Tail,
 		NextF = NextF0
 	;
-		Vnlval = vn_temp(f(NextF0)),
+		Vnlval = vn_temp(f, NextF0),
 		FQueue = FQueue0,
 		NextF is NextF0 + 1
 	),
-	( Vnlval = vn_temp(f(F)) ->
+	( Vnlval = vn_temp(f, F) ->
 		int__max(MaxF0, F, MaxF)
 	;
 		MaxF = MaxF0
@@ -133,10 +133,10 @@ vn_temploc__reuse_templocs([Vnlval | Vnlvals], Templocs0, Templocs) :-
 	Templocs0 = templocs(Live, RQueue0, FQueue0, MR, NR, MF, NF),
 	( set__member(Vnlval, Live) ->
 		Templocs1 = Templocs0
-	; ( Vnlval = vn_reg(r(_)) ; Vnlval = vn_temp(r(_)) ) ->
+	; ( Vnlval = vn_reg(r, _) ; Vnlval = vn_temp(r, _) ) ->
 		list__append(RQueue0, [Vnlval], RQueue1),
 		Templocs1 = templocs(Live, RQueue1, FQueue0, MR, NR, MF, NF)
-	; ( Vnlval = vn_reg(f(_)) ; Vnlval = vn_temp(f(_)) ) ->
+	; ( Vnlval = vn_reg(f, _) ; Vnlval = vn_temp(f, _) ) ->
 		list__append(FQueue0, [Vnlval], FQueue1),
 		Templocs1 = templocs(Live, RQueue0, FQueue1, MR, NR, MF, NF)
 	;
@@ -162,11 +162,11 @@ vn_temploc__find_free_r_regs(N, Max, Livevals, VnTables, Freeregs) :-
 		vn_temploc__find_free_r_regs(N1, Max, Livevals, VnTables,
 			Freeregs0),
 		(
-			set__member(vn_reg(r(N)), Livevals)
+			set__member(vn_reg(r, N), Livevals)
 		->
 			Freeregs = Freeregs0
 		;
-			Vnrval = vn_origlval(vn_reg(r(N))), 
+			Vnrval = vn_origlval(vn_reg(r, N)), 
 			vn_table__search_assigned_vn(Vnrval, Vn, VnTables)
 		->
 			(
@@ -175,10 +175,10 @@ vn_temploc__find_free_r_regs(N, Max, Livevals, VnTables, Freeregs) :-
 			->
 				Freeregs = Freeregs0
 			;
-				Freeregs = [vn_reg(r(N)) | Freeregs0]
+				Freeregs = [vn_reg(r, N) | Freeregs0]
 			)
 		;
-			Freeregs = [vn_reg(r(N)) | Freeregs0]
+			Freeregs = [vn_reg(r, N) | Freeregs0]
 		)
 	).
 
@@ -196,11 +196,11 @@ vn_temploc__find_free_f_regs(N, Max, Livevals, VnTables, Freeregs) :-
 		vn_temploc__find_free_f_regs(N1, Max, Livevals, VnTables,
 			Freeregs0),
 		(
-			set__member(vn_reg(f(N)), Livevals)
+			set__member(vn_reg(f, N), Livevals)
 		->
 			Freeregs = Freeregs0
 		;
-			Vnrval = vn_origlval(vn_reg(f(N))), 
+			Vnrval = vn_origlval(vn_reg(f, N)), 
 			vn_table__search_assigned_vn(Vnrval, Vn, VnTables)
 		->
 			(
@@ -209,10 +209,10 @@ vn_temploc__find_free_f_regs(N, Max, Livevals, VnTables, Freeregs) :-
 			->
 				Freeregs = Freeregs0
 			;
-				Freeregs = [vn_reg(f(N)) | Freeregs0]
+				Freeregs = [vn_reg(f, N) | Freeregs0]
 			)
 		;
-			Freeregs = [vn_reg(f(N)) | Freeregs0]
+			Freeregs = [vn_reg(f, N) | Freeregs0]
 		)
 	).
 
@@ -227,7 +227,7 @@ vn_temploc__get_n_r_temps(N, Max, Temps) :-
 	;
 		N1 is N + 1,
 		vn_temploc__get_n_r_temps(N1, Max, Temps0),
-		Temps = [vn_temp(r(N)) | Temps0]
+		Temps = [vn_temp(r, N) | Temps0]
 	).
 
 	% Return a list of the first N tempf locations.
@@ -241,5 +241,5 @@ vn_temploc__get_n_f_temps(N, Max, Temps) :-
 	;
 		N1 is N + 1,
 		vn_temploc__get_n_f_temps(N1, Max, Temps0),
-		Temps = [vn_temp(f(N)) | Temps0]
+		Temps = [vn_temp(f, N) | Temps0]
 	).

@@ -205,7 +205,7 @@ vn_verify__value(Vn, VnTables, Rval) :-
 :- pred vn_verify__subst_access_vns(vnlval, list(rval), lval).
 :- mode vn_verify__subst_access_vns(in, in, out) is semidet.
 
-vn_verify__subst_access_vns(vn_reg(R), [], reg(R)).
+vn_verify__subst_access_vns(vn_reg(T, N), [], reg(T, N)).
 vn_verify__subst_access_vns(vn_stackvar(N), [], stackvar(N)).
 vn_verify__subst_access_vns(vn_framevar(N), [], framevar(N)).
 vn_verify__subst_access_vns(vn_succip, [], succip).
@@ -218,7 +218,7 @@ vn_verify__subst_access_vns(vn_succip(_), [R], succip(R)).
 vn_verify__subst_access_vns(vn_hp, [], hp).
 vn_verify__subst_access_vns(vn_sp, [], sp).
 vn_verify__subst_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
-vn_verify__subst_access_vns(vn_temp(Reg), [], temp(Reg)).
+vn_verify__subst_access_vns(vn_temp(T, N), [], temp(T, N)).
 
 :- pred vn_verify__subst_sub_vns(vnrval, list(rval), vn_tables, rval).
 :- mode vn_verify__subst_sub_vns(in, in, in, out) is semidet.
@@ -370,7 +370,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 :- pred vn_verify__tags_lval(lval, set(rval)).
 :- mode vn_verify__tags_lval(in, in) is semidet.
 
-vn_verify__tags_lval(reg(_), _).
+vn_verify__tags_lval(reg(_, _), _).
 vn_verify__tags_lval(stackvar(_), _).
 vn_verify__tags_lval(framevar(_), _).
 vn_verify__tags_lval(succip, _).
@@ -392,7 +392,7 @@ vn_verify__tags_lval(field(_, Rval1, Rval2), NoDeref) :-
 	vn_verify__tags_rval(Rval2, NoDeref).
 vn_verify__tags_lval(lvar(_), _) :-
 	error("found lvar in vn_verify__tags_lval").
-vn_verify__tags_lval(temp(_), _).
+vn_verify__tags_lval(temp(_, _), _).
 
 :- pred vn_verify__tags_rval(rval, set(rval)).
 :- mode vn_verify__tags_rval(in, in) is semidet.

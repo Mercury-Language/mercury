@@ -57,7 +57,7 @@
 :- pred code_util__make_uni_label(module_info, type_id, int, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
-:- pred code_util__arg_loc_to_register(arg_loc, reg).
+:- pred code_util__arg_loc_to_register(arg_loc, lval).
 :- mode code_util__arg_loc_to_register(in, out) is det.
 
 	% Determine whether a goal might allocate some heap space,
@@ -275,7 +275,7 @@ code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 
 %-----------------------------------------------------------------------------%
 
-code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
+code_util__arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 

@@ -37,7 +37,7 @@
 
 :- import_module opt_util.
 
-vn_util__find_specials(vn_reg(_), []).
+vn_util__find_specials(vn_reg(_, _), []).
 vn_util__find_specials(vn_stackvar(_), []).
 vn_util__find_specials(vn_framevar(_), []).
 vn_util__find_specials(vn_succip, [vn_succip]).
@@ -50,7 +50,7 @@ vn_util__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn_util__find_specials(vn_hp, [vn_hp]).
 vn_util__find_specials(vn_sp, [vn_sp]).
 vn_util__find_specials(vn_field(_, _, _), []).
-vn_util__find_specials(vn_temp(_), []).
+vn_util__find_specials(vn_temp(_, _), []).
 
 vn_util__convert_to_vnlval_and_insert([], Liveset, Liveset).
 vn_util__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
@@ -677,7 +677,7 @@ vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 % If you to add to this list to fix a determinism error,
 % check vn_util__lval_to_vnlval above as well.
 
-vn_util__no_access_lval_to_vnlval(reg(Reg),		yes(vn_reg(Reg))).
+vn_util__no_access_lval_to_vnlval(reg(T, N),		yes(vn_reg(T, N))).
 vn_util__no_access_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
 vn_util__no_access_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
 vn_util__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
@@ -690,11 +690,11 @@ vn_util__no_access_lval_to_vnlval(succfr(_),		no).
 vn_util__no_access_lval_to_vnlval(hp,			yes(vn_hp)).
 vn_util__no_access_lval_to_vnlval(sp,			yes(vn_sp)).
 vn_util__no_access_lval_to_vnlval(field(_, _, _),	no).
-vn_util__no_access_lval_to_vnlval(temp(Reg),		yes(vn_temp(Reg))).
+vn_util__no_access_lval_to_vnlval(temp(T, N),		yes(vn_temp(T, N))).
 vn_util__no_access_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
 
-vn_util__no_access_vnlval_to_lval(vn_reg(Reg),		yes(reg(Reg))).
+vn_util__no_access_vnlval_to_lval(vn_reg(T, N),		yes(reg(T, N))).
 vn_util__no_access_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
 vn_util__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn_util__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
@@ -707,10 +707,10 @@ vn_util__no_access_vnlval_to_lval(vn_succip(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn_util__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
 vn_util__no_access_vnlval_to_lval(vn_field(_, _, _),	no).
-vn_util__no_access_vnlval_to_lval(vn_temp(Reg),		yes(temp(Reg))).
+vn_util__no_access_vnlval_to_lval(vn_temp(T, N),	yes(temp(T, N))).
 
 /* one of these preds should be eliminated XXX */
-vn_util__vnlval_access_vns(vn_reg(_), []).
+vn_util__vnlval_access_vns(vn_reg(_, _), []).
 vn_util__vnlval_access_vns(vn_stackvar(_), []).
 vn_util__vnlval_access_vns(vn_framevar(_), []).
 vn_util__vnlval_access_vns(vn_succip, []).
@@ -723,7 +723,7 @@ vn_util__vnlval_access_vns(vn_succip(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_hp, []).
 vn_util__vnlval_access_vns(vn_sp, []).
 vn_util__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn_util__vnlval_access_vns(vn_temp(_), []).
+vn_util__vnlval_access_vns(vn_temp(_, _), []).
 
 vn_util__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
 	vn_util__find_sub_vns_vnlval(Vnlval, SubVns).
@@ -733,7 +733,7 @@ vn_util__find_sub_vns(vn_create(_, _, _, _), []).
 vn_util__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
 vn_util__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
 
-vn_util__find_sub_vns_vnlval(vn_reg(_), []).
+vn_util__find_sub_vns_vnlval(vn_reg(_, _), []).
 vn_util__find_sub_vns_vnlval(vn_stackvar(_), []).
 vn_util__find_sub_vns_vnlval(vn_framevar(_), []).
 vn_util__find_sub_vns_vnlval(vn_succip, []).
@@ -746,7 +746,7 @@ vn_util__find_sub_vns_vnlval(vn_succip(Vn), [Vn]).
 vn_util__find_sub_vns_vnlval(vn_hp, []).
 vn_util__find_sub_vns_vnlval(vn_sp, []).
 vn_util__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn_util__find_sub_vns_vnlval(vn_temp(_), []).
+vn_util__find_sub_vns_vnlval(vn_temp(_, _), []).
 
 vn_util__is_const_expr(Vn, IsConst, VnTables) :-
 	vn_table__lookup_defn(Vn, Vnrval, "vn_util__is_const_expr", VnTables),
@@ -877,7 +877,7 @@ vn_util__choose_cheapest_loc_2([], Stack0, Heap0, BestLoc) :-
 		fail
 	).
 
-vn_util__classify_loc_cost(vn_reg(_), 0).
+vn_util__classify_loc_cost(vn_reg(_, _), 0).
 vn_util__classify_loc_cost(vn_stackvar(_), 1).
 vn_util__classify_loc_cost(vn_framevar(_), 1).
 vn_util__classify_loc_cost(vn_succip, 0).
@@ -890,7 +890,7 @@ vn_util__classify_loc_cost(vn_succip(_), 1).
 vn_util__classify_loc_cost(vn_hp, 0).
 vn_util__classify_loc_cost(vn_sp, 0).
 vn_util__classify_loc_cost(vn_field(_, _, _), 2).
-vn_util__classify_loc_cost(vn_temp(_), 0).
+vn_util__classify_loc_cost(vn_temp(_, _), 0).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -392,7 +392,7 @@ vn_flush__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 					vn_table__search_current_value(User,
 						UserVn, VnTables)
 				->
-					User = vn_reg(_),
+					User = vn_reg(_, _),
 					vn_table__lookup_uses(UserVn, [],
 						"vn_flush__find_cheap_users_2",
 						VnTables)
@@ -763,7 +763,7 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 		; 
 			vn_flush__find_cheap_users(UserVn, UserLocs, VnTables3),
 			vn_util__choose_cheapest_loc(UserLocs, UserLoc),
-			UserLoc = vn_reg(_)
+			UserLoc = vn_reg(_, _)
 		->
 			Vnlval = UserLoc,
 			vn_util__no_access_vnlval_to_lval(Vnlval, MaybeLval),
@@ -945,8 +945,8 @@ vn_flush__rec_find_ref_vns_list([Vn | Vns], SubVns, VnTables) :-
 vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Templocs0, Templocs, Params, AccessInstrs) :-
 	(
-		Vnlval = vn_reg(Reg),
-		Lval = reg(Reg),
+		Vnlval = vn_reg(Type, Num),
+		Lval = reg(Type, Num),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		AccessInstrs = []
@@ -1027,8 +1027,8 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Lval = field(Tag, Rval1, Rval2),
 		list__append(AccessInstrs1, AccessInstrs2, AccessInstrs)
 	;
-		Vnlval = vn_temp(Num),
-		Lval = temp(Num),
+		Vnlval = vn_temp(Type, Num),
+		Lval = temp(Type, Num),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		AccessInstrs = []
@@ -1077,11 +1077,16 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 				MaybePresumed),
 			(
 				MaybePresumed = yes(PresumedLval),
-				( list__member(PresumedLval, Forbidden) ->
+				(
+					list__member(PresumedLval, Forbidden)
+				->
 					vn_flush__choose_temp(OldVn,
 						VnTables0, Templocs0,
 						Templocs1, Chosen)
-				; RealUses = [_,_|_], \+ Presumed = vn_reg(_) ->
+				;
+					RealUses = [_,_|_],
+					\+ Presumed = vn_reg(_, _)
+				->
 					vn_flush__choose_temp(OldVn,
 						VnTables0, Templocs0,
 						Templocs1, Chosen)

@@ -340,7 +340,7 @@ code_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 		Mode = top_in
 	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - lval(reg(Reg)) | VarArgs0]
+		VarArgs = [V - lval(Reg) | VarArgs0]
 	;
 		VarArgs = VarArgs0
 	),
@@ -2059,7 +2059,7 @@ code_info__make_vars_forward_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
 		N1 = N0
 	;
 		code_info__find_unused_reg(N0, Exprn0, N1),
-		Lval = reg(r(N1))
+		Lval = reg(r, N1)
 	),
 	code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn1),
 	code_info__make_vars_forward_live_2(Vs, StackSlots, N1, Exprn1, Exprn).
@@ -2068,7 +2068,7 @@ code_info__make_vars_forward_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
 :- mode code_info__find_unused_reg(in, in, out) is det.
 
 code_info__find_unused_reg(N0, Exprn0, N) :-
-	( code_exprn__lval_in_use(reg(r(N0)), Exprn0, _) ->
+	( code_exprn__lval_in_use(reg(r, N0), Exprn0, _) ->
 		N1 is N0 + 1,
 		code_info__find_unused_reg(N1, Exprn0, N)
 	;
@@ -2332,16 +2332,19 @@ code_info__save_maxfr(MaxfrSlot, Code) -->
 	code_info).
 :- mode code_info__materialize_vars_in_rval(in, out, out, in, out) is det.
 
-:- pred code_info__lock_reg(reg, code_info, code_info).
+:- pred code_info__lock_reg(lval, code_info, code_info).
 :- mode code_info__lock_reg(in, in, out) is det.
 
-:- pred code_info__unlock_reg(reg, code_info, code_info).
+:- pred code_info__unlock_reg(lval, code_info, code_info).
 :- mode code_info__unlock_reg(in, in, out) is det.
 
-:- pred code_info__acquire_reg(reg, code_info, code_info).
-:- mode code_info__acquire_reg(out, in, out) is det.
+:- pred code_info__acquire_reg_for_var(var, lval, code_info, code_info).
+:- mode code_info__acquire_reg_for_var(in, out, in, out) is det.
 
-:- pred code_info__release_reg(reg, code_info, code_info).
+:- pred code_info__acquire_reg(reg_type, lval, code_info, code_info).
+:- mode code_info__acquire_reg(in, out, in, out) is det.
+
+:- pred code_info__release_reg(lval, code_info, code_info).
 :- mode code_info__release_reg(in, in, out) is det.
 
 :- pred code_info__clear_r1(code_tree, code_info, code_info).
@@ -2469,14 +2472,28 @@ code_info__unlock_reg(Reg) -->
 	{ code_exprn__unlock_reg(Reg, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-code_info__acquire_reg(Reg) -->
+code_info__acquire_reg_for_var(Var, Lval) -->
 	code_info__get_exprn_info(Exprn0),
-	{ code_exprn__acquire_reg(Reg, Exprn0, Exprn) },
+	code_info__get_follow_vars(Follow),
+	(
+		{ map__search(Follow, Var, PrefLval) },
+		{ PrefLval = reg(PrefRegType, PrefRegNum) }
+	->
+		{ code_exprn__acquire_reg_prefer_given(PrefRegType, PrefRegNum,
+			Lval, Exprn0, Exprn) }
+	;
+		{ code_exprn__acquire_reg(r, Lval, Exprn0, Exprn) }
+	),
 	code_info__set_exprn_info(Exprn).
 
-code_info__release_reg(Reg) -->
+code_info__acquire_reg(Type, Lval) -->
 	code_info__get_exprn_info(Exprn0),
-	{ code_exprn__release_reg(Reg, Exprn0, Exprn) },
+	{ code_exprn__acquire_reg(Type, Lval, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+code_info__release_reg(Lval) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__release_reg(Lval, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 code_info__clear_r1(Code) -->
@@ -2517,7 +2534,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 %---------------------------------------------------------------------------%
 
 code_info__setup_call([], _Direction, empty) --> [].
-code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
+code_info__setup_call([V - arg_info(Loc, Mode) | Rest], Direction, Code) -->
 	(
 		{
 			Mode = top_in,
@@ -2529,7 +2546,7 @@ code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
 	->
 		{ code_util__arg_loc_to_register(Loc, Reg) },
 		code_info__get_exprn_info(Exprn0),
-		{ code_exprn__place_var(V, reg(Reg), Code0, Exprn0, Exprn1) },
+		{ code_exprn__place_var(V, Reg, Code0, Exprn0, Exprn1) },
 			% We need to test that either the variable
 			% is live OR it occurs in the remaining arguments
 			% because of a bug in polymorphism.m which
@@ -2745,8 +2762,8 @@ code_info__get_shape_num(lval(succip(_)), succip).
 code_info__get_shape_num(lval(sp), sp).
 code_info__get_shape_num(lval(lvar(_)), unwanted).
 code_info__get_shape_num(lval(field(_, _, _)), unwanted).
-code_info__get_shape_num(lval(temp(_)), unwanted).
-code_info__get_shape_num(lval(reg(_)), unwanted).
+code_info__get_shape_num(lval(temp(_, _)), unwanted).
+code_info__get_shape_num(lval(reg(_, _)), unwanted).
 code_info__get_shape_num(lval(stackvar(_)), unwanted).
 code_info__get_shape_num(lval(framevar(_)), unwanted).
 code_info__get_shape_num(ticket, ticket).

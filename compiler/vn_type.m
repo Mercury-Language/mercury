@@ -18,7 +18,7 @@
 
 :- type vn == int.
 
-:- type vnlval		--->	vn_reg(reg)
+:- type vnlval		--->	vn_reg(reg_type, int)
 			;	vn_stackvar(int)
 			;	vn_framevar(int)
 			;	vn_succip
@@ -31,7 +31,7 @@
 			;	vn_hp
 			;	vn_sp
 			;	vn_field(tag, vn, vn)		% lval
-			;	vn_temp(reg).
+			;	vn_temp(reg_type, int).
 
 			% these lvals do not have vnlval parallels
 			%	lvar(var)
@@ -178,15 +178,15 @@ vn_type__vnrval_type(vn_unop(UnOp, _), Type) :-
 vn_type__vnrval_type(vn_binop(BinOp, _, _), Type) :-
 	llds__binop_return_type(BinOp, Type).
 
-vn_type__vnlval_type(vn_reg(Reg), Type) :-
-	llds__register_type(Reg, Type).
+vn_type__vnlval_type(vn_reg(RegType, _), Type) :-
+	llds__register_type(RegType, Type).
 vn_type__vnlval_type(vn_succip, code_ptr).
 vn_type__vnlval_type(vn_maxfr, data_ptr).
 vn_type__vnlval_type(vn_curfr, data_ptr).
 vn_type__vnlval_type(vn_hp, data_ptr).
 vn_type__vnlval_type(vn_sp, data_ptr).
-vn_type__vnlval_type(vn_temp(TempReg), Type) :-
-	llds__register_type(TempReg, Type).
+vn_type__vnlval_type(vn_temp(RegType, _), Type) :-
+	llds__register_type(RegType, Type).
 vn_type__vnlval_type(vn_stackvar(_), word).
 vn_type__vnlval_type(vn_framevar(_), word).
 vn_type__vnlval_type(vn_succip(_), code_ptr).

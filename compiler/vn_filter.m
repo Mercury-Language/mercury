@@ -33,7 +33,7 @@ vn_filter__block([Instr0 | Instrs0], Instrs) :-
 	(
 		Instr0 = Uinstr0 - _,
 		Uinstr0 = assign(Temp, Defn),
-		Temp = temp(_),
+		Temp = temp(_, _),
 		opt_util__lvals_in_rval(Defn, Deps),
 		vn_filter__can_substitute(Instrs0, Temp, Defn, Deps,
 			Instrs1)
@@ -260,7 +260,7 @@ vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _), _, _, _):-
 :- pred vn_filter__replace_in_lval(lval, lval, rval, lval).
 :- mode vn_filter__replace_in_lval(in, in, in, out) is det.
 
-vn_filter__replace_in_lval(reg(R), _, _, reg(R)).
+vn_filter__replace_in_lval(reg(T, N), _, _, reg(T, N)).
 vn_filter__replace_in_lval(stackvar(N), _, _, stackvar(N)).
 vn_filter__replace_in_lval(framevar(N), _, _, framevar(N)).
 vn_filter__replace_in_lval(succip, _, _, succip).
@@ -282,7 +282,7 @@ vn_filter__replace_in_lval(field(Tag, Rval1, Rval2), Temp, Defn,
 	vn_filter__replace_in_rval(Rval2, Temp, Defn, Rval4).
 vn_filter__replace_in_lval(lvar(_), _, _, _) :-
 	error("found lvar in vn_filter__replace_in_lval").
-vn_filter__replace_in_lval(temp(N), _, _, temp(N)).
+vn_filter__replace_in_lval(temp(T, N), _, _, temp(T, N)).
 
 :- pred vn_filter__replace_in_rval(rval, lval, rval, rval).
 :- mode vn_filter__replace_in_rval(in, in, in, out) is det.

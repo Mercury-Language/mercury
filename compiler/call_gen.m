@@ -170,7 +170,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__generate_failure(FailCode),
 	code_info__get_next_label(ContLab),
 	{ CodeD = tree(node([
-		if_val(lval(reg(r(1))), label(ContLab)) -
+		if_val(lval(reg(r, 1)), label(ContLab)) -
 			"Test for success"
 		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 
@@ -260,7 +260,7 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args]) -->
 		{ Mode = top_out }
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
-		code_info__set_var_location(Var, reg(Register))
+		code_info__set_var_location(Var, Register)
 	;
 		{ true }
 	),
@@ -514,7 +514,7 @@ call_gen__generate_call_livevals(OutArgs, InputArgs, Code) -->
 call_gen__insert_arg_livevals([], LiveVals, LiveVals).
 call_gen__insert_arg_livevals([L | As], LiveVals0, LiveVals) :-
 	code_util__arg_loc_to_register(L, R),
-	set__insert(LiveVals0, reg(R), LiveVals1),
+	set__insert(LiveVals0, R, LiveVals1),
 	call_gen__insert_arg_livevals(As, LiveVals1, LiveVals).
 
 %---------------------------------------------------------------------------%
@@ -571,7 +571,7 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, LiveVals0,
 		{ S_Number = 0 }
 	),
 	{ code_util__arg_loc_to_register(L, R) },
-	{ LiveVal = live_lvalue(reg(R), num(S_Number), TypeParams) },
+	{ LiveVal = live_lvalue(R, num(S_Number), TypeParams) },
 	call_gen__insert_arg_livelvals(As, GC_Method, [LiveVal | LiveVals0], 
 		LiveVals).
 
@@ -634,7 +634,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	call_gen__generate_immediate_args(InVars, 4, InLocs, ImmediateCode),
 	code_info__generate_stack_livevals(OutArgs, LiveVals0),
 	{ set__insert_list(LiveVals0,
-		[reg(r(1)), reg(r(2)), reg(r(3)) | InLocs], LiveVals) },
+		[reg(r, 1), reg(r, 2), reg(r, 3) | InLocs], LiveVals) },
 	(
 		{ CodeModel = model_semi }
 	->
@@ -647,20 +647,20 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	call_gen__generate_return_livevals(OutArgs, OutLocs, OutLiveVals),
 	code_info__produce_variable(PredVar, PredVarCode, PredRVal),
 	(
-		{ PredRVal = lval(reg(r(1))) }
+		{ PredRVal = lval(reg(r, 1)) }
 	->
 		{ CopyCode = empty }
 	;
 		{ CopyCode = node([
-			assign(reg(r(1)), PredRVal) - "Copy pred-term"
+			assign(reg(r, 1), PredRVal) - "Copy pred-term"
 		])}
 	),
 	{ list__length(InVars, NInVars) },
 	{ list__length(OutVars, NOutVars) },
 	{ SetupCode = tree(CopyCode, node([
-			assign(reg(r(2)), const(int_const(NInVars))) -
+			assign(reg(r, 2), const(int_const(NInVars))) -
 				"Assign number of immediate input arguments",
-			assign(reg(r(3)), const(int_const(NOutVars))) -
+			assign(reg(r, 3), const(int_const(NOutVars))) -
 				"Assign number of output arguments"
 		])
 	) },
@@ -678,7 +678,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab),
 		{ TestSuccessCode = node([
-			if_val(lval(reg(r(1))), label(ContLab)) -
+			if_val(lval(reg(r, 1)), label(ContLab)) -
 				"Test for success"
 		]) },
 		{ ContLabelCode = node([label(ContLab) - ""]) },
@@ -707,7 +707,7 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 
 call_gen__generate_immediate_args([], _N, [], empty) --> [].
 call_gen__generate_immediate_args([V | Vs], N0, [Lval | Lvals], Code) -->
-	{ Lval = reg(r(N0)) },
+	{ Lval = reg(r, N0) },
 	code_info__place_var(V, Lval, Code0),
 	{ N1 is N0 + 1 },
 	call_gen__generate_immediate_args(Vs, N1, Lvals, Code1),

@@ -354,10 +354,10 @@ middle_rec__find_unused_register(Instrs, UnusedReg) :-
 :- pred middle_rec__find_unused_register_2(list(int), int, lval).
 :- mode middle_rec__find_unused_register_2(in, in, out) is det.
 
-middle_rec__find_unused_register_2([], N, reg(r(N))).
+middle_rec__find_unused_register_2([], N, reg(r, N)).
 middle_rec__find_unused_register_2([H | T], N, Reg) :-
 	( N < H ->
-		Reg = reg(r(N))
+		Reg = reg(r, N)
 	;
 		N1 is N + 1,
 		middle_rec__find_unused_register_2(T, N1, Reg)
@@ -423,7 +423,7 @@ middle_rec__find_used_registers_lvals([Lval | Lvals], Used0, Used) :-
 :- mode middle_rec__find_used_registers_lval(in, di, uo) is det.
 
 middle_rec__find_used_registers_lval(Lval, Used0, Used) :-
-	( Lval = reg(r(N)) ->
+	( Lval = reg(r, N) ->
 		copy(N, N1),
 		set__insert(Used0, N1, Used)
 	; Lval = field(_, Rval, FieldNum) ->

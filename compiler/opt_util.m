@@ -534,7 +534,7 @@ opt_util__is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
 		Instrs5 = Instrs3
 	),
 	Instrs5 = [Instr5 | Instrs6],
-	Instr5 = assign(reg(r(1)), const(R1val)) - _,
+	Instr5 = assign(reg(r, 1), const(R1val)) - _,
 	(
 		R1val = true,
 		Success = yes
@@ -562,12 +562,12 @@ opt_util__is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 opt_util__is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	( Instr1 = if_val(lval(reg(r(1))), label(BranchLabel)) - _ ->
+	( Instr1 = if_val(lval(reg(r, 1)), label(BranchLabel)) - _ ->
 		map__search(Sdprocmap, BranchLabel, BetweenBranch),
 		opt_util__filter_out_r1(BetweenBranch, yes(true), Between),
 		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
 		opt_util__filter_out_r1(BetweenFall, yes(false), Between)
-	; Instr1 = if_val(unop(not, lval(reg(r(1)))), label(BranchLabel)) - _ ->
+	; Instr1 = if_val(unop(not, lval(reg(r, 1))), label(BranchLabel)) - _ ->
 		map__search(Sdprocmap, BranchLabel, BetweenBranch),
 		opt_util__filter_out_r1(BetweenBranch, yes(false), Between),
 		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
@@ -579,7 +579,7 @@ opt_util__is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 opt_util__filter_out_r1([], no, []).
 opt_util__filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
 	opt_util__filter_out_r1(Instrs0, Success0, Instrs1),
-	( Instr0 = assign(reg(r(1)), const(Success1)) - _ ->
+	( Instr0 = assign(reg(r, 1), const(Success1)) - _ ->
 		Instrs = Instrs1,
 		Success = yes(Success1)
 	;
@@ -647,7 +647,7 @@ opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 		Instrs = [Instr0 | Instrs0]
 	).
 
-opt_util__lval_refers_stackvars(reg(_), no).
+opt_util__lval_refers_stackvars(reg(_, _), no).
 opt_util__lval_refers_stackvars(stackvar(_), yes).
 opt_util__lval_refers_stackvars(framevar(_), yes).
 opt_util__lval_refers_stackvars(succip, no).
@@ -677,7 +677,7 @@ opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
 	bool__or(Refers1, Refers2, Refers).
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
-opt_util__lval_refers_stackvars(temp(_), no).
+opt_util__lval_refers_stackvars(temp(_, _), no).
 
 opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).
@@ -1224,13 +1224,13 @@ opt_util__count_temps_instr(pragma_c(_, _, _, _), R, R, F, F).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
 
 opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
-	( Lval = temp(Temp) ->
+	( Lval = temp(Type, N) ->
 		(
-			Temp = r(N),
+			Type = r,
 			int__max(R0, N, R),
 			F = F0
 		;
-			Temp = f(N),
+			Type = f,
 			int__max(F0, N, F),
 			R = R0
 		)
@@ -1331,7 +1331,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 :- pred opt_util__touches_nondet_ctrl_lval(lval, bool).
 :- mode opt_util__touches_nondet_ctrl_lval(in, out) is det.
 
-opt_util__touches_nondet_ctrl_lval(reg(_), no).
+opt_util__touches_nondet_ctrl_lval(reg(_, _), no).
 opt_util__touches_nondet_ctrl_lval(stackvar(_), no).
 opt_util__touches_nondet_ctrl_lval(framevar(_), no).
 opt_util__touches_nondet_ctrl_lval(succip, no).
@@ -1348,7 +1348,7 @@ opt_util__touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
 	bool__or(Touch1, Touch2, Touch).
 opt_util__touches_nondet_ctrl_lval(lvar(_), no).
-opt_util__touches_nondet_ctrl_lval(temp(_), no).
+opt_util__touches_nondet_ctrl_lval(temp(_, _), no).
 
 :- pred opt_util__touches_nondet_ctrl_rval(rval, bool).
 :- mode opt_util__touches_nondet_ctrl_rval(in, out) is det.
@@ -1369,7 +1369,7 @@ opt_util__touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
 
 %-----------------------------------------------------------------------------%
 
-opt_util__lval_access_rvals(reg(_), []).
+opt_util__lval_access_rvals(reg(_, _), []).
 opt_util__lval_access_rvals(stackvar(_), []).
 opt_util__lval_access_rvals(framevar(_), []).
 opt_util__lval_access_rvals(succip, []).
@@ -1382,7 +1382,7 @@ opt_util__lval_access_rvals(succfr(Rval), [Rval]).
 opt_util__lval_access_rvals(hp, []).
 opt_util__lval_access_rvals(sp, []).
 opt_util__lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
-opt_util__lval_access_rvals(temp(_), []).
+opt_util__lval_access_rvals(temp(_, _), []).
 opt_util__lval_access_rvals(lvar(_), _) :-
 	error("lvar detected in opt_util__lval_access_rvals").
 
@@ -1411,7 +1411,7 @@ opt_util__rval_free_of_lval(binop(_, Rval1, Rval2), Forbidden) :-
 
 %-----------------------------------------------------------------------------%
 
-opt_util__lvals_in_lval(reg(_), []).
+opt_util__lvals_in_lval(reg(_, _), []).
 opt_util__lvals_in_lval(stackvar(_), []).
 opt_util__lvals_in_lval(framevar(_), []).
 opt_util__lvals_in_lval(succip, []).
@@ -1432,7 +1432,7 @@ opt_util__lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
 	opt_util__lvals_in_rval(Rval2, Lvals2),
 	list__append(Lvals1, Lvals2, Lvals).
 opt_util__lvals_in_lval(lvar(_), []).
-opt_util__lvals_in_lval(temp(_), []).
+opt_util__lvals_in_lval(temp(_, _), []).
 
 opt_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	opt_util__lvals_in_lval(Lval, Lvals).

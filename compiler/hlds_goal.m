@@ -156,6 +156,28 @@
 					% in this way).
 		).
 
+%	;	frame_pragma_c_code(
+%			string,		% The C code to do the work
+%			c_is_recursive, % Does the C code recursively
+%					% invoke Mercury code?
+%			pred_id,	% The called predicate
+%			proc_id, 	% The mode of the predicate
+%			list(var),	% The (Mercury) argument variables
+%			list(maybe(string)),
+%					% C variable names for each of the
+%					% arguments. A no for a particular 
+%					% argument means that it is not used
+%					% by the C code.  (In particular, the
+%					% type_info variables introduced by
+%					% polymorphism.m might be represented
+%					% in this way).
+%			int,		% the number of framevars needed
+%					% by the hand-written C code (we may
+%					% need some more for saving the heap
+%					% pointer and/or tickets)
+%			int		% the number of labels needed
+%		).
+
 	% Given the variable name field from a pragma c_code, get all the
 	% variable names.
 :- pred get_pragma_c_var_names(list(maybe(string)), list(string)).

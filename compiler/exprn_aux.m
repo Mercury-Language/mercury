@@ -617,7 +617,7 @@ exprn_aux__rval_addrs(binop(_BinOp, Rval1, Rval2), CodeAddrs, DataAddrs) :-
 	% give an lval, return a list of the code and data addresses
 	% that are referenced by that lval
 
-exprn_aux__lval_addrs(reg(_Int), [], []).
+exprn_aux__lval_addrs(reg(_, _), [], []).
 exprn_aux__lval_addrs(stackvar(_Int), [], []).
 exprn_aux__lval_addrs(framevar(_Int), [], []).
 exprn_aux__lval_addrs(succip, [], []).
@@ -639,7 +639,7 @@ exprn_aux__lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
 	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
 	list__append(DataAddrs1, DataAddrs2, DataAddrs).
 exprn_aux__lval_addrs(lvar(_Var), [], []).
-exprn_aux__lval_addrs(temp(_Int), [], []).
+exprn_aux__lval_addrs(temp(_, _), [], []).
 
 	% give a list of rvals, return a list of the code and data addresses
 	% that are referenced by those rvals

@@ -348,12 +348,9 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	->
 		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
-		code_info__acquire_reg(LoopCounter),
-		code_info__acquire_reg(NumOldArgs),
-		code_info__acquire_reg(NewClosure),
-		{ NumOldArgsReg = reg(NumOldArgs) },
-		{ LoopCounterReg = reg(LoopCounter) },
-		{ NewClosureReg = reg(NewClosure) },
+		code_info__acquire_reg(r, LoopCounter),
+		code_info__acquire_reg(r, NumOldArgs),
+		code_info__acquire_reg(r, NewClosure),
 		{ Zero = const(int_const(0)) },
 		{ One = const(int_const(1)) },
 		{ list__length(CallArgs, NumNewArgs) },
@@ -364,39 +361,39 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		code_info__produce_variable(CallPred, Code1, OldClosure),
 		{ Code2 = node([
 			comment("build new closure from old closure") - "",
-			assign(NumOldArgsReg,
+			assign(NumOldArgs,
 				lval(field(0, OldClosure, Zero)))
 				- "get number of arguments",
-			incr_hp(NewClosureReg, no,
-				binop(+, lval(NumOldArgsReg),
+			incr_hp(NewClosure, no,
+				binop(+, lval(NumOldArgs),
 				NumNewArgsPlusTwo_Rval))
 				- "allocate new closure",
-			assign(field(0, lval(NewClosureReg), Zero),
-				binop(+, lval(NumOldArgsReg), NumNewArgs_Rval))
+			assign(field(0, lval(NewClosure), Zero),
+				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
 				- "set new number of arguments",
-			assign(LoopCounterReg, Zero)
+			assign(LoopCounter, Zero)
 				- "initialize loop counter",
 			label(LoopStart) - "start of loop",
-			assign(LoopCounterReg,
-				binop(+, lval(LoopCounterReg), One))
+			assign(LoopCounter,
+				binop(+, lval(LoopCounter), One))
 				- "increment loop counter",
-			assign(field(0, lval(NewClosureReg),
-					lval(LoopCounterReg)),
+			assign(field(0, lval(NewClosure),
+					lval(LoopCounter)),
 				lval(field(0, OldClosure,
-					lval(LoopCounterReg))))
+					lval(LoopCounter))))
 				- "copy old field",
-			if_val(binop(<=, lval(LoopCounterReg),
-				lval(NumOldArgsReg)), label(LoopStart))
+			if_val(binop(<=, lval(LoopCounter),
+				lval(NumOldArgs)), label(LoopStart))
 				- "repeat the loop?",
 			label(LoopEnd) - "end of loop"
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
-			LoopCounterReg, NewClosureReg, Code3),
+			LoopCounter, NewClosure, Code3),
 		code_info__release_reg(LoopCounter),
 		code_info__release_reg(NumOldArgs),
 		code_info__release_reg(NewClosure),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
-		{ Value = lval(NewClosureReg) }
+		{ Value = lval(NewClosure) }
 	;
 		{ Code = empty },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
@@ -417,21 +414,21 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 					out, in, out) is det.
 
 unify_gen__generate_extra_closure_args([], _, _, empty) --> [].
-unify_gen__generate_extra_closure_args([Var | Vars], LoopCounterReg,
-				NewClosureReg, Code) -->
+unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
+				NewClosure, Code) -->
 	code_info__produce_variable(Var, Code0, Value),
 	{ One = const(int_const(1)) },
 	{ Code1 = node([
-		assign(LoopCounterReg,
-			binop(+, lval(LoopCounterReg), One))
+		assign(LoopCounter,
+			binop(+, lval(LoopCounter), One))
 			- "increment argument counter",
-		assign(field(0, lval(NewClosureReg), lval(LoopCounterReg)),
+		assign(field(0, lval(NewClosure), lval(LoopCounter)),
 			Value)
 			- "set new argument field"
 	]) },
 	{ Code = tree(tree(Code0, Code1), Code2) },
-	unify_gen__generate_extra_closure_args(Vars, LoopCounterReg,
-		NewClosureReg, Code2).
+	unify_gen__generate_extra_closure_args(Vars, LoopCounter,
+		NewClosure, Code2).
 
 :- pred unify_gen__generate_pred_args(list(var), list(arg_info),
 					list(maybe(rval))).

@@ -70,7 +70,7 @@ find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 	(
 		Mode = top_out
 	->
-		map__set(Follow0, Var, reg(Reg), Follow1)
+		map__set(Follow0, Var, Reg, Follow1)
 	;
 		Follow0 = Follow1
 	),
@@ -235,7 +235,7 @@ find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 	(
 		Mode = top_in
 	->
-		map__set(Follow0, Var, reg(Reg), Follow1)
+		map__set(Follow0, Var, Reg, Follow1)
 	;
 		Follow0 = Follow1
 	),

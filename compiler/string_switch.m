@@ -34,10 +34,8 @@
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
-	code_info__acquire_reg(SlotR),
-	{ SlotReg = reg(SlotR) },
-	code_info__acquire_reg(StringR),
-	{ StringReg = reg(StringR) },
+	code_info__acquire_reg(r, SlotReg),
+	code_info__acquire_reg(r, StringReg),
 	code_info__get_next_label(LoopLabel),
 	code_info__get_next_label(FailLabel),
 	code_info__get_next_label(JumpLabel),
@@ -69,8 +67,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		% registers), and because that code is generated manually
 		% (below) so we don't need the reg info to be valid when
 		% we generated it.
-	code_info__release_reg(SlotR),
-	code_info__release_reg(StringR),
+	code_info__release_reg(SlotReg),
+	code_info__release_reg(StringReg),
 
 		% Generate the code for when the hash lookup fails.
 		% This must be done before gen_hash_slots, since

@@ -112,8 +112,8 @@
 :- pred opt_debug__dump_vnlvals(list(vnlval), string).
 :- mode opt_debug__dump_vnlvals(in, out) is det.
 
-:- pred opt_debug__dump_reg(reg, string).
-:- mode opt_debug__dump_reg(in, out) is det.
+:- pred opt_debug__dump_reg(reg_type, int, string).
+:- mode opt_debug__dump_reg(in, in, out) is det.
 
 :- pred opt_debug__dump_vnlval(vnlval, string).
 :- mode opt_debug__dump_vnlval(in, out) is det.
@@ -460,15 +460,15 @@ opt_debug__dump_vnlvals([Lval | Lvals], Str) :-
 	opt_debug__dump_vnlvals(Lvals, Tail_str),
 	string__append_list([" ", Lval_str, Tail_str], Str).
 
-opt_debug__dump_reg(r(N), Str) :-
+opt_debug__dump_reg(r, N, Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["r(", N_str, ")"], Str).
-opt_debug__dump_reg(f(N), Str) :-
+opt_debug__dump_reg(f, N, Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["f(", N_str, ")"], Str).
 
-opt_debug__dump_vnlval(vn_reg(R), Str) :-
-	opt_debug__dump_reg(R, R_str),
+opt_debug__dump_vnlval(vn_reg(Type, Num), Str) :-
+	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["vn_reg(", R_str, ")"], Str).
 opt_debug__dump_vnlval(vn_stackvar(N), Str) :-
 	string__int_to_string(N, N_str),
@@ -504,8 +504,8 @@ opt_debug__dump_vnlval(vn_field(T, N, F), Str) :-
 	string__int_to_string(F, F_str),
 	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
 		F_str, ")"], Str).
-opt_debug__dump_vnlval(vn_temp(R), Str) :-
-	opt_debug__dump_reg(R, R_str),
+opt_debug__dump_vnlval(vn_temp(Type, Num), Str) :-
+	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["vn_temp(", R_str, ")"], Str).
 
 opt_debug__dump_vnrval(vn_origlval(Vnlval), Str) :-
@@ -535,8 +535,8 @@ opt_debug__dump_vnrval(vn_binop(O, N1, N2), Str) :-
 	string__append_list(["vn_binop(", O_str, ", ", N1_str, ", ",
 		N2_str, ")"], Str).
 
-opt_debug__dump_lval(reg(R), Str) :-
-	opt_debug__dump_reg(R, R_str),
+opt_debug__dump_lval(reg(Type, Num), Str) :-
+	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["reg(", R_str, ")"], Str).
 opt_debug__dump_lval(stackvar(N), Str) :-
 	string__int_to_string(N, N_str),
@@ -574,8 +574,8 @@ opt_debug__dump_lval(field(T, N, F), Str) :-
 		F_str, ")"], Str).
 opt_debug__dump_lval(lvar(_), Str) :-
 	string__append_list(["lvar(_)"], Str).
-opt_debug__dump_lval(temp(R), Str) :-
-	opt_debug__dump_reg(R, R_str),
+opt_debug__dump_lval(temp(Type, Num), Str) :-
+	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["temp(", R_str, ")"], Str).
 
 opt_debug__dump_rval(lval(Lval), Str) :-

@@ -171,38 +171,38 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 
 vn_cost__lval_cost(Lval, Params, Cost) :-
 	(
-		Lval = reg(Reg),
+		Lval = reg(Type, Num),
 		(
-			Reg = r(RegRno),
+			Type = r,
 			vn_type__real_r_regs(Params, MaxRealRegRno),
-			( RegRno =< MaxRealRegRno ->
+			( Num =< MaxRealRegRno ->
 				Cost = 0
 			;
 				vn_type__costof_stackref(Params, Cost)
 			)
 		;
-			Reg = f(RegFno),
+			Type = f,
 			vn_type__real_f_regs(Params, MaxRealRegFno),
-			( RegFno =< MaxRealRegFno ->
+			( Num =< MaxRealRegFno ->
 				Cost = 0
 			;
 				vn_type__costof_stackref(Params, Cost)
 			)
 		)
 	;
-		Lval = temp(TempReg),
+		Lval = temp(Type, Num),
 		(
-			TempReg = r(TempRno),
+			Type = r,
 			vn_type__real_r_temps(Params, MaxRealTempRno),
-			( TempRno =< MaxRealTempRno ->
+			( Num =< MaxRealTempRno ->
 				Cost = 0
 			;
 				vn_type__costof_stackref(Params, Cost)
 			)
 		;
-			TempReg = f(TempFno),
+			Type = f,
 			vn_type__real_f_temps(Params, MaxRealTempFno),
-			( TempFno =< MaxRealTempFno ->
+			( Num =< MaxRealTempFno ->
 				Cost = 0
 			;
 				vn_type__costof_stackref(Params, Cost)

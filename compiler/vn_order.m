@@ -900,7 +900,7 @@ vn_order__find_regs([], Regs, []) :-
 	set__init(Regs).
 vn_order__find_regs([Node0 | Nodes0], Regs, Nodes) :-
 	vn_order__find_regs(Nodes0, Regs1, Nodes1),
-	( Node0 = node_lval(vn_reg(_)) ->
+	( Node0 = node_lval(vn_reg(_, _)) ->
 		set__insert(Regs1, Node0, Regs),
 		Nodes = Nodes1
 	;

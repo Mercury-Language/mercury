@@ -527,14 +527,14 @@ frameopt__delay_slot(Instrs0, Cond, Label, Livemap, DelaySlot, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [DelaySlot | Instrs],
 	DelaySlot = assign(Lval, Rval) - _,
-	Lval = reg(_),
+	Lval = reg(_, _),
 	(
-		Rval = lval(reg(_))
+		Rval = lval(reg(_, _))
 	;
-		Rval = binop(Binop, lval(reg(_)), lval(reg(_))),
+		Rval = binop(Binop, lval(reg(_, _)), lval(reg(_, _))),
 		frameopt__single_instruction_binop(Binop, yes)
 	;
-		Rval = unop(Unop, lval(reg(_))),
+		Rval = unop(Unop, lval(reg(_, _))),
 		frameopt__single_instruction_unop(Unop, yes)
 	),
 	map__lookup(Livemap, Label, Liveset),

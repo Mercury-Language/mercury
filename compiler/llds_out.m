@@ -1533,7 +1533,7 @@ output_lval_decls(field(_, Rval, FieldNum), FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet1),
 	output_rval_decls(FieldNum, FirstIndent, LaterIndent, N1, N,
 		DeclSet1, DeclSet).
-output_lval_decls(reg(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(reg(_, _), _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(stackvar(_), _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(framevar(_), _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(succip, _, _, N, N, DeclSet, DeclSet) --> [].
@@ -1558,7 +1558,7 @@ output_lval_decls(succip(Rval), FirstIndent, LaterIndent, N0, N,
 output_lval_decls(hp, _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(sp, _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(lvar(_), _, _, N, N, DeclSet, DeclSet) --> [].
-output_lval_decls(temp(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(temp(_, _), _, _, N, N, DeclSet, DeclSet) --> [].
 
 % output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
 % extern symbols, etc. that need to be declared before
@@ -2077,10 +2077,11 @@ get_label_name(Module0, PredOrFunc, Name0, Arity, LabelName) :-
 
 get_label_prefix("mercury__"). 
 
-:- pred output_reg(reg, io__state, io__state).
-:- mode output_reg(in, di, uo) is det.
+:- pred output_reg(reg_type, int, io__state, io__state).
+:- mode output_reg(in, in, di, uo) is det.
 
-output_reg(r(N)) -->
+	% this code ought to be harmonised with llds_out__reg_to_string
+output_reg(r, N) -->
 	( { N > 32 } ->
 		io__write_string("r("),
 		io__write_int(N),
@@ -2089,7 +2090,7 @@ output_reg(r(N)) -->
 		io__write_string("r"),
 		io__write_int(N)
 	).
-output_reg(f(_)) -->
+output_reg(f, _) -->
 	{ error("Floating point registers not implemented") }.
 
 :- pred output_tag(tag, io__state, io__state).
@@ -2438,8 +2439,8 @@ output_lval_as_word(Lval) -->
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.
 
-output_lval(reg(R)) -->
-	output_reg(R).
+output_lval(reg(Type, Num)) -->
+	output_reg(Type, Num).
 output_lval(stackvar(N)) -->
 	{ (N < 0) ->
 		error("stack var out of range")
@@ -2494,15 +2495,15 @@ output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string(")").
 output_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
-output_lval(temp(R)) -->
+output_lval(temp(Type, Num)) -->
 	(
-		{ R = r(N) },
+		{ Type = r },
 		io__write_string("tempr"),
-		io__write_int(N)
+		io__write_int(Num)
 	;
-		{ R = f(N) },
+		{ Type = f },
 		io__write_string("tempf"),
-		io__write_int(N)
+		io__write_int(Num)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2645,19 +2646,20 @@ llds_out__lval_to_string(stackvar(N), Description) :-
 	string__int_to_string(N, N_String),
 	string__append("stackvar(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
-llds_out__lval_to_string(reg(Reg), Description) :-
-	llds_out__reg_to_string(Reg, Reg_String),
+llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
+	llds_out__reg_to_string(RegType, RegNum, Reg_String),
 	string__append("reg(", Reg_String, Tmp),
 	string__append(Tmp, ")", Description).
 
-:- pred llds_out__reg_to_string(reg, string).
-:- mode llds_out__reg_to_string(in, out) is det.
+:- pred llds_out__reg_to_string(reg_type, int, string).
+:- mode llds_out__reg_to_string(in, in, out) is det.
 
-llds_out__reg_to_string(r(N), Description) :-
+	% this code ought to be harmonised with output_reg
+llds_out__reg_to_string(r, N, Description) :-
 	string__int_to_string(N, N_String),
 	string__append("r(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
-llds_out__reg_to_string(f(N), Description) :-
+llds_out__reg_to_string(f, N, Description) :-
 	string__int_to_string(N, N_String),
 	string__append("f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
