@@ -737,7 +737,7 @@ long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
 % long_option("stack-trace",		stack_trace).
-% long_option("require-tracing",		require_tracking).
+% long_option("require-tracing",	require_tracing).
 long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
@@ -949,6 +949,9 @@ special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(no), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
         map__set(OptionTable2, profile_memory, bool(yes), OptionTable).
+special_handler(debug, bool(Value), OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, stack_trace, bool(Value), OptionTable1),
+	map__set(OptionTable1, require_tracing, bool(Value), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
 	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),

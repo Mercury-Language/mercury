@@ -359,19 +359,12 @@ Changes to the Mercury implementation:
 
 * We've added some primitive debugging support.
 
-  The runtime system now includes a *very* rudimentary "four-port" debugger
-  (actually with seven ports).
-  To use this debugger, you need to compile the modules that
-  you wish to debug with the `--generate-trace' option enabled.
-
-  The debugger supports the following commands:
-	a: abort the current execution.
-	c: continue to end, not printing the trace.
-	d: continue to end, printing the trace.
-	n: go to the next trace event.
-	s: skip the current call, not printing trace.
-	p: print the values of the arguments for the current procedure call.
-	j: jump to end of current call, printing trace.
+  The runtime system now includes a rudimentary "four-port" style debugger
+  (actually with eight ports).
+  To use this debugger, you need to build your program with debugging
+  enabled, which is normally done using the `--debug' (or `-g') option,
+  and then run it using the `mdb' command, e.g. `mdb a.out'.
+  Type `h' at the `mtrace>' prompt for a list of the available commands.
 
   XXX We should document this in the Mercury User's Guide.
 

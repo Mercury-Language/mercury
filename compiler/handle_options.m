@@ -273,6 +273,23 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
+	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
+	% implies --use-trail.
+	%
+	% The reason for this is to avoid unnecessary proliferation in
+	% the number of different grades.  If you're using --debug,
+	% you've already taken a major performance hit, so you should
+	% be able to afford the minor performance hit caused by
+	% --use-trail.
+
+	globals__io_lookup_bool_option(stack_trace, StackTrace),
+	globals__io_lookup_bool_option(require_tracing, RequireTracing),
+	( { StackTrace = yes, RequireTracing = yes } ->
+		globals__io_set_option(use_trail, bool(yes))
+	;
+		[]
+	),
+
 	% Tracing requires 
 	% 	- disabling optimizations that would change 
 	% 	  the trace being generated

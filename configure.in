@@ -1412,6 +1412,9 @@ if test $enable_all_grades = yes; then
 	fi
 fi
 
+# add `.debug' (--debug) grades
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
+
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
