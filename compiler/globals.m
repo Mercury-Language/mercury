@@ -374,7 +374,9 @@ globals__io_set_option(Option, OptionData) -->
 	{ globals__get_options(Globals0, OptionTable0) },
 	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
 	{ globals__set_options(Globals0, OptionTable, Globals1) },
-	{ copy(Globals1, Globals) },	% XXX inefficient!!!
+		% XXX there is a bit of a design flaw with regard to
+		% uniqueness and io__set_globals
+	{ unsafe_promise_unique(Globals1, Globals) },
 	globals__io_set_globals(Globals).
 
 %-----------------------------------------------------------------------------%
