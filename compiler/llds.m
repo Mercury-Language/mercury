@@ -64,8 +64,10 @@
 
 :- type rval		--->	lval(lval)
 			;	var(var)
-			;	create(abstag, list(rval))
+			;	create(tag, list(rval))
 			;	mkword(tag, rval)
+			;	mkbody(rval)
+			;	body(rval)
 			;	iconst(int)		% integer constants
 			;	sconst(string)		% string constants
 			;       field(tag, rval, int)
@@ -102,10 +104,6 @@
 :- type unilabel	--->	unilabel(string, string, string).
 
 :- type tag		==	int.
-
-:- type abstag          --->    simple(tag)
-			;       unsimple(tag).
-
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(in, di, uo) is det.
@@ -413,6 +411,14 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(", "),
 	output_rval(Exprn),
 	io__write_string(")").
+output_rval(mkbody(Exprn)) -->
+	io__write_string("mkbody("),
+	output_rval(Exprn),
+	io__write_string(")").
+output_rval(body(Exprn)) -->
+	io__write_string("body("),
+	output_rval(Exprn),
+	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
 	io__write_string("field("),
 	io__write_int(Tag),
@@ -427,6 +433,8 @@ output_rval(true) -->
 	io__write_string("1").
 output_rval(false) -->
 	io__write_string("0").
+output_rval(create(_,_)) -->
+	{ error("Cannot output a create(_,_) expression in code") }.
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
 

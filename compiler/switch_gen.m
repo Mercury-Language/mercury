@@ -61,18 +61,6 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__get_next_label(ElseLab),
 	code_info__grab_code_info(CodeInfo),
-	code_info__cons_id_to_abstag(Var, Cons, Tag),
-	(
-		{ Tag = simple(TagNum0) }
-	->
-		{ TagNum = TagNum0 }
-	;
-		{ Tag = unsimple(TagNum1) }
-	->
-		{ TagNum = TagNum1 }
-	;
-		{ error("This can never happen") }
-	),
 	code_info__set_fall_through(ElseLab),
 	unify_gen__generate_tag_test(Var, Cons, TestCode),
 		% generate the case as a semi-deterministc goal
@@ -120,18 +108,6 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
 	code_info__get_next_label(ElseLab),
-	code_info__cons_id_to_abstag(Var, Cons, Tag),
-	(
-		{ Tag = simple(TagNum0) }
-	->
-		{ TagNum = TagNum0 }
-	;
-		{ Tag = unsimple(TagNum1) }
-	->
-		{ TagNum = TagNum1 }
-	;
-		{ error("This can never happen") }
-	),
 	code_info__get_fall_through(FallThrough),
 	code_info__set_fall_through(ElseLab),
 	unify_gen__generate_tag_test(Var, Cons, TestCode),

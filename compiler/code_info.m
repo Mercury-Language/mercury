@@ -166,10 +166,6 @@
 :- pred code_info__variable_register(var, lval, code_info, code_info).
 :- mode code_info__variable_register(in, out, in, out) is semidet.
 
-:- pred code_info__cons_id_to_abstag(var, cons_id, abstag,
-							code_info, code_info).
-:- mode code_info__cons_id_to_abstag(in, in, out, in, out) is det.
-
 :- pred code_info__cons_id_to_tag(var, cons_id, cons_tag,
 							code_info, code_info).
 :- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
@@ -557,34 +553,23 @@ code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
 	{ Code2 = tree(Code1, ThisCode) },
 	{ Code = tree(Code0, Code2) }.
 code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
-	{ list__length(Args, Arity) },
+	{ list__length(Args, Arity) }, % includes possible tag word
 	(
-		{ Tag = simple(TagNum0) }
-	->
-		{ TagNum = TagNum0 },
-		{ HInc = Arity },
-		{ Field = 0 }
-	;
-		{ Tag = unsimple(TagNum) },
-		{ HInc is Arity + 1 },
-		{ Field = 1 }
-	),
-	(
-		{ HInc > 0 }
+		{ Arity > 0 }
 	->
 		{ CodeA = node([
 			assign(TargetReg, lval(hp)) - "Get the heap memory",
-			incr_hp(HInc) - "Allocate heap space",
-			assign(TargetReg, mkword(TagNum, lval(TargetReg))) -
+			incr_hp(Arity) - "Allocate heap space",
+			assign(TargetReg, mkword(Tag, lval(TargetReg))) -
 							"Tag the pointer"
 		]) }
 	;
 		{ CodeA = node([
-			assign(TargetReg, mkword(TagNum, iconst(0))) -
+			assign(TargetReg, mkword(Tag, iconst(0))) -
 					"Assign a constant"
 		]) }
 	),
-	code_info__generate_cons_args(TargetReg, TagNum, Field, Args, CodeB),
+	code_info__generate_cons_args(TargetReg, Tag, 1, Args, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
@@ -977,14 +962,6 @@ code_info__reenter_lvals(Var, [L|Ls]) -->
 		{ true }
 	),
 	code_info__reenter_lvals(Var, Ls).
-
-%---------------------------------------------------------------------------%
-
-	% XXX cons_id_to_abstag is obsolete - all calls
-	% should be replaced by calls to cons_id_to_tag
-
-code_info__cons_id_to_abstag(_Var, _ConsId, AbsTag) -->
-	{ AbsTag = simple(3) }. % XXX stub
 
 %---------------------------------------------------------------------------%
 

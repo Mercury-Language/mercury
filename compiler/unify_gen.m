@@ -85,19 +85,32 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
         code_info__flush_variable(Var, VarCode),
 	code_info__get_variable_register(Var, Lval),
 	code_info__get_fall_through(Fail),
-	code_info__cons_id_to_abstag(Var, ConsId, Abstag),
+	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	(
-		{ Abstag = simple(TagNum0) }
+		{ Tag = string_constant(_String) }
+	->
+		{ error("String tests unimplemented") }
+	;
+		{ Tag = simple_tag(SimpleTag) }
 	->
 		{ TestCode = node([
-			if_tag(Lval, TagNum0, Fail) - "Test tag bits"
+			if_tag(Lval, SimpleTag, Fail) - "Test tag bits"
 		]) }
 	;
-		{ Abstag = unsimple(TagNum1) }
+		{ Tag = complicated_tag(Bits0, Num0) }
 	->
-			% XXX
 		{ TestCode = node([
-			if_tag(Lval, TagNum1, Fail) - "Test extended tag bits"
+			if_tag(Lval, Bits0, Fail) - "Test tag bits",
+			test(field(Bits0, lval(Lval), 1), iconst(Num0), Fail) -
+							"Test the tag word"
+		]) }
+	;
+		{ Tag = complicated_constant_tag(Bits1, Num1) }
+	->
+		{ TestCode = node([
+			if_tag(Lval, Bits1, Fail) - "Test tag bits",
+			test(body(lval(Lval)), mkbody(iconst(Num1)), Fail) -
+							"Test the tag word"
 		]) }
 	;
 		{ error("This should never happen") }
@@ -114,25 +127,47 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	% The current implementation generates the construction
 	% in an eager manner.
 
-unify_gen__generate_construction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
+unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
+	code_info__cons_id_to_tag(Var, Cons, Tag),
 	(
-		{ AbsTag = simple(TagNum0) }
+		{ Tag = string_constant(_String) }
 	->
-		{ TagNum = TagNum0 },
-		{ First = 0 }
+		{ error("String constructions unimplemented") }
 	;
-		{ AbsTag = unsimple(TagNum) },
-		{ First = 1 }
-	),
-	{ unify_gen__generate_cons_args(Args, RVals) },
-	code_info__cache_expression(Var, create(AbsTag, RVals)),
-	code_info__flush_variable(Var, CodeA),
-	code_info__get_variable_register(Var, Lval),
-	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
+		{ Tag = simple_tag(SimpleTag) }
+	->
+		{ unify_gen__generate_cons_args(Args, RVals) },
+		code_info__cache_expression(Var, create(SimpleTag, RVals)),
+		code_info__flush_variable(Var, CodeA),
+		code_info__get_variable_register(Var, Lval),
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 1, SimpleTag,
 							Fields, ArgVars) },
-	unify_gen__generate_det_unify_args(Fields, ArgVars, Modes, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
+		unify_gen__generate_det_unify_args(Fields, ArgVars,
+								Modes, CodeB),
+		{ Code = tree(CodeA, CodeB) }
+	;
+		{ Tag = complicated_tag(Bits0, Num0) }
+	->
+		{ unify_gen__generate_cons_args(Args, RVals0) },
+		{ RVals = [iconst(Num0)|RVals0] },
+		code_info__cache_expression(Var, create(Bits0, RVals)),
+		code_info__flush_variable(Var, CodeA),
+		code_info__get_variable_register(Var, Lval),
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 2,
+						Bits0, Fields, ArgVars) },
+		unify_gen__generate_det_unify_args(Fields, ArgVars,
+								Modes, CodeB),
+		{ Code = tree(CodeA, CodeB) }
+	;
+		{ Tag = complicated_constant_tag(Bits1, Num1) }
+	->
+			% XXX check
+		code_info__cache_expression(Var,
+				mkword(Bits1, mkbody(iconst(Num1)))),
+		{ Code = empty }
+	;
+		{ error("This should never happen") }
+	).
 
 :- pred unify_gen__generate_cons_args(list(var), list(rval)).
 :- mode unify_gen__generate_cons_args(in, out) is det.
@@ -172,23 +207,39 @@ unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 	% unifications are generate eagerly (they _must_ be), but
 	% assignment unifications are cached.
 
-unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
+unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
+	code_info__cons_id_to_tag(Var, Cons, Tag),
 	(
-		{ AbsTag = simple(TagNum0) }
+		{ Tag = string_constant(_String) }
 	->
-		{ TagNum = TagNum0 },
-		{ First = 0 }
+		{ error("String deconstructions unimplemented") }
 	;
-		{ AbsTag = unsimple(TagNum) },
-		{ First = 1 }
-	),
-	code_info__flush_variable(Var, CodeA),
-	code_info__get_variable_register(Var, Lval),
-	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
-							Fields, ArgVars) },
-	unify_gen__generate_det_unify_args(Fields, ArgVars, Modes, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
+		{ Tag = simple_tag(SimpleTag) }
+	->
+		code_info__flush_variable(Var, CodeA),
+		code_info__get_variable_register(Var, Lval),
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
+						SimpleTag, Fields, ArgVars) },
+		unify_gen__generate_det_unify_args(Fields, ArgVars,
+								Modes, CodeB),
+		{ Code = tree(CodeA, CodeB) }
+	;
+		{ Tag = complicated_tag(Bits0, _Num0) }
+	->
+		code_info__flush_variable(Var, CodeA),
+		code_info__get_variable_register(Var, Lval),
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 2,
+						Bits0, Fields, ArgVars) },
+		unify_gen__generate_det_unify_args(Fields, ArgVars,
+								Modes, CodeB),
+		{ Code = tree(CodeA, CodeB) }
+	;
+		{ Tag = complicated_constant_tag(_Bits1, _Num1) }
+	->
+		{ Code = empty } % if this is det, then nothing happens
+	;
+		{ error("This should never happen") }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -197,23 +248,9 @@ unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, Code) -->
 	% followed by a deterministic deconstruction.
 
 unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
-	(
-		{ AbsTag = simple(TagNum0) }
-	->
-		{ TagNum = TagNum0 },
-		{ First = 0 }
-	;
-		{ AbsTag = unsimple(TagNum) },
-		{ First = 1 }
-	),
-	code_info__flush_variable(Var, CodeA),
-	code_info__get_variable_register(Var, Lval),
-	unify_gen__generate_tag_test(Var, Tag, CodeB),
-	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
-							Fields, ArgVars) },
-	unify_gen__generate_semi_unify_args(Fields, ArgVars, Modes, CodeC),
-	{ Code = tree(CodeA, tree(CodeB, CodeC)) }.
+	unify_gen__generate_tag_test(Var, Tag, CodeA),
+	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 

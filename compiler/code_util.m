@@ -29,6 +29,9 @@
 :- mode atom_to_operator(in, out) is semidet.
 :- mode atom_to_operator(out, in) is det.
 
+:- pred is_to_op_and_vars(term, operator, var, var).
+:- mode is_to_op_and_vars(in, out, out, out) is semidet.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
@@ -67,5 +70,12 @@ atom_to_operator(">", (>)).
 atom_to_operator("<", (<)).
 atom_to_operator(">=", (>=)).
 atom_to_operator("=<", (<=)).
+
+%-----------------------------------------------------------------------------%
+
+is_to_op_and_vars(Is, Op, X, Y) :-
+	Is = term_functor(term_atom(OpStr), [term_variable(X),
+							term_variable(Y)], _),
+	atom_to_operator(OpStr, Op).
 
 %-----------------------------------------------------------------------------%
