@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -137,7 +137,7 @@ MR_Word *MR_has_forwarding_pointer;
 		(val2) = swap_tmp;	\
 	} while (0)
 
-#ifndef MR_CONSERVATIVE_GC
+#ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
 
 /*
 ** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
@@ -176,4 +176,4 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 	return result;
 }
 
-#endif	/* not MR_CONSERVATIVE_GC */
+#endif	/* MIGHT_RECLAIM_HP_ON_FAILURE */

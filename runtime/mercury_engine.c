@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -80,18 +80,19 @@ MR_init_engine(MercuryEngine *eng)
 			MR_default_handler);
 	eng->MR_eng_hp = eng->MR_eng_heap_zone->min;
 
-#ifdef	MR_NATIVE_GC
+  #ifdef MR_NATIVE_GC
 	eng->MR_eng_heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
 			MR_next_offset(), MR_heap_zone_size,
 			MR_default_handler);
 
-  #ifdef MR_DEBUG_AGC_PRINT_VARS
+    #ifdef MR_DEBUG_AGC_PRINT_VARS
 	eng->MR_eng_debug_heap_zone = MR_create_zone("debug_heap", 1,
 			MR_debug_heap_size, MR_next_offset(),
 			MR_debug_heap_zone_size, MR_default_handler);
-  #endif
-#endif
+    #endif
+  #endif /* MR_NATIVE_GC */
 
+  #ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
 	eng->MR_eng_solutions_heap_zone = MR_create_zone("solutions_heap", 1,
 			MR_solutions_heap_size, MR_next_offset(),
 			MR_solutions_heap_zone_size, MR_default_handler);
@@ -101,7 +102,8 @@ MR_init_engine(MercuryEngine *eng)
 			MR_global_heap_size, MR_next_offset(),
 			MR_global_heap_zone_size, MR_default_handler);
 	eng->MR_eng_global_hp = eng->MR_eng_global_heap_zone->min;
-#endif
+  #endif /* MR_MIGHT_RECLAIM_HP_ON_FAILURE */
+#endif /* !MR_CONSERVATIVE_GC */
 
 #ifdef	MR_THREAD_SAFE
 	eng->MR_eng_owner_thread = pthread_self();

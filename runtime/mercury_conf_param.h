@@ -450,6 +450,59 @@
 #endif
 
 /*
+** MR_MIGHT_RECLAIM_HP_ON_FAILURE should be set if the grade allows
+** the heap to be reset on failure.
+**
+** XXX In the long run it would be nice to allow heap reclamation on
+**     failure with accurate GC, but this requires liveness-accuracy,
+**     which is not yet implemented;
+**     see the comments in the TODO list in compiler/ml_elim_nested.m.
+*/
+#if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
+  #define MR_MIGHT_RECLAIM_HP_ON_FAILURE
+#endif
+
+/*
+** MR_RECLAIM_HP_ON_FAILURE should be set if C code in the
+** current translation unit should reclaim heap on failure of a
+** subgoal.  Note that this only affects heap reclamation in
+** C code, not in Mercury code; heap reclamation in Mercury code
+** is determined by mmc options (e.g. `--reclaim-hp-on-semidet-failure')
+** which affect the generated C code.
+**
+** This is defined separately from MR_MIGHT_RECLAIM_HP_ON_FAILURE
+** because in theory different translation units might be compiled
+** with different settings; it might be important to reclaim heap
+** in some translation units but not others.  But currently we
+** always reclaim heap on failure if we can.
+*/
+#ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
+  #define MR_RECLAIM_HP_ON_FAILURE
+#endif
+
+/* Some sanity checking */
+#ifdef MR_RECLAIM_HP_ON_FAILURE
+  #ifndef MR_MIGHT_RECLAIM_HP_ON_FAILURE
+    #error "MR_RECLAIM_HP_ON_FAILURE && ! MR_MIGHT_RECLAIM_HP_ON_FAILURE"
+  #endif
+  #ifdef MR_CONSERVATIVE_GC
+     /*
+     ** Heap reclamation on failure is not supported with conservative GC,
+     ** because the conservative collectors don't provide any way to do it.
+     */
+     #error "MR_RECLAIM_HP_ON_FAILURE and MR_CONSERVATIVE_GC both defined"
+  #endif
+  #ifdef MR_NATIVE_GC
+     /*
+     ** Heap reclamation on failure is not supported with accurate GC,
+     ** because it requires liveness accuracy, which is not yet implemented.
+     ** See the comments in the TODO list in compiler/ml_elim_nested.m.
+     */
+     #error "MR_RECLAIM_HP_ON_FAILURE and MR_NATIVE_GC both defined"
+  #endif
+#endif
+
+/*
 ** Static code addresses are available unless using gcc non-local gotos,
 ** without assembler labels.
 */

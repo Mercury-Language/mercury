@@ -826,7 +826,8 @@ maybe_pred(Pred, X, Y) :-
 		di, uo) is det. /* really cc_multi */
 
 /*
-** In order to implement any sort of code that requires terms to survive
+** If we're doing heap reclamation on failure, then
+** in order to implement any sort of code that requires terms to survive
 ** backtracking, we need to (deeply) copy them out of the heap and into some
 ** other area before backtracking.  The obvious thing to do then is just call
 ** the generator predicate, let it run to completion, and copy its result into
@@ -868,7 +869,8 @@ maybe_pred(Pred, X, Y) :-
 ** So we don't need to create our own exception handlers to here to
 ** cover that case.
 **
-** If we're using conservative GC, then all of the heap-swapping
+** If we're not doing heap reclamation on failure (as is currently the
+** case when using conservative GC), then all of the heap-swapping
 ** and copying operations are no-ops, so we get a "zero-copy" solution.
 */
 
@@ -1006,12 +1008,6 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 %
 :- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
 	is det.
-
-:- pragma foreign_decl("C", "
-#if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
-  #define MR_RECLAIM_HP_ON_FAILURE
-#endif
-").
 
 :- pragma foreign_proc("C", 
 	get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),

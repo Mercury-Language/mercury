@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2002 The University of Melbourne.
+** Copyright (C) 1994-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -287,8 +287,10 @@ typedef struct MR_mercury_engine_struct {
 	MR_Word		*MR_eng_exception;
 #ifndef	MR_CONSERVATIVE_GC
 	MR_MemoryZone	*MR_eng_heap_zone;
+  #ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
 	MR_MemoryZone	*MR_eng_solutions_heap_zone;
 	MR_MemoryZone	*MR_eng_global_heap_zone;
+  #endif
 #endif
 #ifdef	MR_NATIVE_GC
 	MR_MemoryZone	*MR_eng_heap_zone2;

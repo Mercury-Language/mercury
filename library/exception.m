@@ -1889,7 +1889,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 		MR_exception);
 	MR_discard_tickets_to(MR_EXCEPTION_STRUCT->MR_excp_ticket_counter);
 #endif
-#ifndef MR_CONSERVATIVE_GC
+#ifdef MR_RECLAIM_HP_ON_FAILURE
 	/*
 	** Reset the heap.  But we need to be careful to preserve the
 	** thrown exception object.

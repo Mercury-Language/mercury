@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000, 2002 The University of Melbourne.
+** Copyright (C) 1997-2000, 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,7 +11,7 @@
 
 #include "mercury_types.h"	/* for `MR_Word' */
 #include "mercury_type_info.h"	/* for `MR_TypeInfo' */
-#include "mercury_conf.h"	/* for `MR_CONSERVATIVE_GC' */
+#include "mercury_conf.h"	/* for `MR_MIGHT_RECLAIM_HP_ON_FAILURE' */
 
 /*
 ** MR_deep_copy:
@@ -110,7 +110,8 @@ extern MR_Word *MR_has_forwarding_pointer;
 **	Mercury execution has backtracked past the point at which the
 **	term was allocated.
 **
-**	Note that in conservative GC grades nothing needs to be done, and
+**	Note that if we're never going to reclaim heap on failure
+**	(e.g. in conservative GC grades) then nothing needs to be done, and
 **	hence the term is just returned.
 **
 **	When not using a conservative GC grade, MR_save_transient_hp()
@@ -136,7 +137,7 @@ extern MR_Word *MR_has_forwarding_pointer;
 **	"heap," but don't see how to.
 */
 
-#ifdef MR_CONSERVATIVE_GC
+#ifndef MR_MIGHT_RECLAIM_HP_ON_FAILURE
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
   extern	MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info,
