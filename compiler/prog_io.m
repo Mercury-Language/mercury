@@ -1256,18 +1256,25 @@ attribute_description(constraints(exist, _),
 		maybe1(item)).
 :- mode parse_promise(in, in, in, in, in, out) is semidet.
 parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
-		% get universally quantified variables
-	get_quant_vars(univ, ModuleName, Attributes, [], _, UnivVars0),
-	list__map(term__coerce_var, UnivVars0, UnivVars),
-	
 	varset__coerce(VarSet, ProgVarSet0),
-	parse_goal(Term, ProgVarSet0, PromiseGoal, ProgVarSet),
-	% XXX Re-enable this once the handling of quantification has
-	% been fixed (spurious unresolved polymorphism warnings
-	% are generated when compiling list.m).
-	_Result `with_type` maybe1(item) =
-		ok(promise(PromiseType, PromiseGoal, ProgVarSet, UnivVars)),
-	Result = ok(nothing(no)).
+	parse_goal(Term, ProgVarSet0, Goal0, ProgVarSet),
+	
+		% get universally quantified variables
+	( PromiseType = true ->
+		( Goal0 = all(UnivVars0, AllGoal) - _Context -> 
+			UnivVars0 = UnivVars,
+			Goal = AllGoal 
+		;
+			UnivVars = [],
+			Goal = Goal0
+		)
+	;
+		get_quant_vars(univ, ModuleName, Attributes, [], _, UnivVars0),
+		list__map(term__coerce_var, UnivVars0, UnivVars),
+		Goal0 = Goal
+	),
+	
+	Result = ok(promise(PromiseType, Goal, ProgVarSet, UnivVars)).
 
 %-----------------------------------------------------------------------------%
 
