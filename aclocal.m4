@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2003 The University of Melbourne.
+# Copyright (C) 1999,2001-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -277,6 +277,84 @@ AC_SUBST(MS_CSC)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_DOTNET_LIBRARY_VERSION)
 AC_SUBST(MS_VISUALCPP_DIR)
+])
+
+#-----------------------------------------------------------------------------#
+#
+# Java configuration
+#
+AC_DEFUN(MERCURY_CHECK_JAVA,
+[
+# jikes requires the usual Java SDK to run, so if we checked for javac first,
+# then that's what we'd get. If the user has jikes installed, then that
+# probably means that they want to use it, so we check for jikes before javac.
+AC_PATH_PROGS(JAVAC, jikes javac gcj)
+AC_PATH_PROG(JAVA_INTERPRETER, java)
+AC_PATH_PROG(JAR, jar)
+
+AC_CACHE_VAL(mercury_cv_java, [
+if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
+	AC_MSG_CHECKING(if the above Java SDK works and is sufficiently recent)
+	cat > conftest.java << EOF
+		// This program simply retrieves the constant
+		// specifying the version number of the Java SDK and
+		// checks it is at least 1.2, printing "Hello, world"
+		// if successful.
+		public class conftest {
+		    public static void main (String[[]] args) {
+			float	version;
+			String	strVer = System.getProperty(
+					"java.specification.version");
+
+			try {
+				version = Float.valueOf(strVer).floatValue();
+			}
+			catch (NumberFormatException e) {
+				System.out.println("ERROR: \"java." +
+						"specification.version\" " +
+						"constant has incorrect " +
+						"format.\nGot \"" + strVer +
+						"\", expected a number.");
+				version = 0f;
+			}
+
+			if (version >= 1.2f) {
+				System.out.println("Hello, world\n");
+			} else {
+				System.out.println("Nope, sorry.\n");
+			}
+		    }
+		}
+EOF
+	if
+		echo $JAVAC conftest.java >&AC_FD_CC 2>&1 &&
+		$JAVAC conftest.java >&AC_FD_CC 2>&1 &&
+		echo $JAVA_INTERPRETER conftest > conftest.out 2>&AC_FD_CC &&
+		$JAVA_INTERPRETER conftest > conftest.out 2>&AC_FD_CC &&
+		test "`tr -d '\015' < conftest.out`" = "Hello, world"
+	then
+		mercury_cv_java="yes"
+	else
+		mercury_cv_java="no"
+	fi
+	AC_MSG_RESULT($mercury_cv_java)
+else
+	if test "$JAVAC" = ""; then
+		JAVAC="javac"
+	fi
+	if test "$JAVA_INTERPRETER" = ""; then
+		JAVA_INTERPRETER="java"
+	fi
+	if test "$JAR" = ""; then
+		JAR="jar"
+	fi
+	mercury_cv_java="no"
+fi
+])
+
+AC_SUBST(JAVAC)
+AC_SUBST(JAVA_INTERPRETER)
+AC_SUBST(JAR)
 ])
 
 #-----------------------------------------------------------------------------#

@@ -700,6 +700,11 @@ AC_SUBST(MATH_LIB)
 MERCURY_CHECK_DOTNET
 
 #-----------------------------------------------------------------------------#
+# Java configuration
+#
+MERCURY_CHECK_JAVA
+
+#-----------------------------------------------------------------------------#
 mercury_check_for_functions () {
 
     for mercury_cv_func in "$@"
@@ -2439,6 +2444,10 @@ AC_ARG_ENABLE(dotnet-grades,
 [  --disable-dotnet-grades do not install the .NET grades],
 enable_dotnet_grades="$enableval",enable_dotnet_grades=yes)
 
+AC_ARG_ENABLE(java-grade,
+[  --disable-java-grade    do not install the Java grade],
+enable_java_grade="$enableval",enable_java_grade=yes)
+
 AC_ARG_ENABLE(libgrades,
 [  --enable-libgrades=...
                           install exactly the given versions of the library.
@@ -2457,6 +2466,7 @@ if test "$enable_most_grades" = no; then
 	enable_hlc_prof_grades=no
 	enable_par_grades=no
 	enable_dotnet_grades=no
+	enable_java_grade=no
 fi
 
 #-----------------------------------------------------------------------------#
@@ -2610,6 +2620,12 @@ fi
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
     LIBGRADES="$LIBGRADES il"
+fi
+
+# add Java back-end grade, if Java is installed
+if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
+then
+    LIBGRADES="$LIBGRADES java"
 fi
 
 # Allow the user to override the default list of library grades

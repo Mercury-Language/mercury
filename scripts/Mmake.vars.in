@@ -276,13 +276,22 @@ LIB_MS_CSCFLAGS	=
 
 # JAVAC is the command line java compiler;
 # it should generate .class files from .java files.
-JAVAC		= javac
+JAVAC		= @JAVAC@
 ALL_JAVACFLAGS	= $(JAVACFLAGS) $(EXTRA_JAVACFLAGS) $(TARGET_JAVACFLAGS) \
 		$(LIB_JAVACFLAGS)
 JAVACFLAGS	=
 EXTRA_JAVACFLAGS =
 # XXX Should we set LIB_JAVACFLAGS?
 LIB_JAVACFLAGS	= 
+
+# JAVA_INTERPRETER is the command line Java interpreter;
+# it should be able to run Java bytecode files.
+JAVA_INTERPRETER = @JAVA_INTERPRETER@
+
+# JAR is the command line Java archive tool;
+# it should generate .jar files.
+JAR		= @JAR@
+JAR_CREATE_FLAGS = cf
 
 #-----------------------------------------------------------------------------#
 #

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003 The University of Melbourne.
+# Copyright (C) 2003-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,7 +14,8 @@
 # Mercury.config.bootstrap.in should also be updated.
 #
 # Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
-# MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
+# MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL,
+# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER.
 
 # These settings won't override settings in the environment.
 MERCURY_STDLIB_DIR=@LIBDIR@
@@ -22,6 +23,8 @@ MERCURY_DEFAULT_OPT_LEVEL=-O2
 MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@
 MERCURY_C_COMPILER=@CC@
 MERCURY_MATH_LIB=@MATH_LIB@
+MERCURY_JAVA_COMPILER=@JAVAC@
+MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -34,6 +37,8 @@ DEFAULT_MCFLAGS=\
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
 		--cc "$(MERCURY_C_COMPILER)" \
+		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
+		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \

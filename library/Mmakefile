@@ -254,8 +254,9 @@ JARS = $(STD_LIB_NAME).jar $(STD_LIB_NAME).runtime.jar
 # any architecture-specific objects.
 .PHONY:	jars
 jars:	classes
-	jar cf $(STD_LIB_NAME).jar mercury/*.class
-	jar cf $(STD_LIB_NAME).runtime.jar mercury/runtime/*.class
+	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar mercury/*.class
+	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).runtime.jar \
+			mercury/runtime/*.class
 	-+cd mercury/runtime && mmake $(NATIVE_SO)
 	-cp mercury/runtime/$(NATIVE_SO) .
 
