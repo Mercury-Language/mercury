@@ -141,7 +141,8 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 					ProcInfo, PredInfo) :-
 	% grab the appropriate fields from the pred_info and proc_info
-	pred_info_arg_types(PredInfo0, TypeVarSet0, ArgTypes0),
+	pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes),
+	pred_info_typevarset(PredInfo0, TypeVarSet0),
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
@@ -150,16 +151,11 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	% insert extra head variables to hold the address of the
 	% equality predicate for each polymorphic type in the predicate's
 	% type declaration
-	term__vars_list(ArgTypes0, HeadTypeVars0),
+	term__vars_list(ArgTypes, HeadTypeVars0),
 	list__sort(HeadTypeVars0, HeadTypeVars), % remove duplicates
 	polymorphism__make_head_vars(HeadTypeVars, VarSet0, VarTypes0,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(HeadVars0, ExtraHeadVars, HeadVars),
-	%
-	%	We don't update the argtypes here, it's done in the next pass
-	% map__apply_to_list(ExtraHeadVars, VarTypes1, ExtraArgTypes),
-	% list__append(ArgTypes0, ExtraArgTypes, ArgTypes),
-	%
 	list__length(ExtraHeadVars, NumExtraVars),
 	list__duplicate(NumExtraVars, ground -> ground, ExtraModes),
 	list__append(ArgModes0, ExtraModes, ArgModes),
@@ -193,7 +189,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
 	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo),
-	pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes0, PredInfo).
+	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 	
 :- pred polymorphism__process_goal(hlds__goal, hlds__goal,
 					poly_info, poly_info).
@@ -267,9 +263,10 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 		% each merge takes O(size of PredTypeVarSet) = O(n) insertions,
 		% each insertion takes O(log(n)) for the search plus
 		% (in the worst case, if all the types are named "T")
-		% O(n*n) for the variable naming.
-		% So overall it's O(m * n^3).
-		% (m = number of predicates, n = predicate size)
+		% O((size of TypeVarSet0)^2) = O(p)
+		% So overall it's O(m * n * p^2) < o(s*2).
+		% (m = number of preds, n = args per pred, p = size of preds,
+		% s = total size of the module = m * p)
 	varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
 			TypeVarSet, PredArgTypes),
 	term__vars_list(PredArgTypes, PredTypeVars0),
