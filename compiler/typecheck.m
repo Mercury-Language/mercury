@@ -2761,6 +2761,8 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	write_functor_name(Functor, Arity),
 	io__write_string(".\n"),
 
+	% XXX we should print type pairs (one type from each side)
+	% only for the arguments in which the two types differ.
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_functor_name(Functor, Arity),
