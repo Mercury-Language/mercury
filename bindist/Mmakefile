@@ -55,6 +55,9 @@ binary_distribution: bindist.configure bindist.build_vars
 	(dir=`pwd` && cd $(INSTALL_INFO_DIR)/.. && \
 		tar -cf $$dir/$(MERCURY_VERSION)/info.tar info && \
 		gzip $$dir/$(MERCURY_VERSION)/info.tar)
+	(dir=`pwd` && cd $(INSTALL_MAN_DIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/man.tar man && \
+		gzip $$dir/$(MERCURY_VERSION)/man.tar)
 	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
 	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
 	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
