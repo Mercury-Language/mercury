@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -76,10 +76,20 @@
 ** that needs to access Mercury lists.
 */
 
+#ifdef MR_RESERVE_TAG
+
+#define	bTAG_NIL	1
+#define	bTAG_CONS	2
+#define	bTAG_VAR	0 	/* for Prolog-style variables */
+
+#else
+
 #define	bTAG_NIL	0
 #define	bTAG_CONS	1
 #define	bTAG_VAR	3 	/* for Prolog-style variables */
 				/* ... but currently not used */
+
+#endif
 
 #define	TAG_NIL		mktag(bTAG_NIL)
 #define	TAG_CONS	mktag(bTAG_CONS)

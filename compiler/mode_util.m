@@ -346,7 +346,8 @@ insts_to_arg_mode(InstTable, ModuleInfo, InstA, InstMapA, InstB, InstMapB,
 	(
 		% is this a no_tag type?
 		type_constructors(Type, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, FunctorName, Type)
+		module_info_globals(ModuleInfo, Globals),
+		type_is_no_tag_type(Constructors, Globals, FunctorName, Type)
 	->
 		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,

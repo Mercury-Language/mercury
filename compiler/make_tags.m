@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,7 +83,8 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		(
 			% assign single functor of arity one a `no_tag' tag
 			% (unless it is type_info/1 or we are reserving a tag)
-			type_is_no_tag_type(Ctors, SingleFunc, SingleArg),
+			type_is_no_tag_type(Ctors, Globals, SingleFunc,
+					SingleArg),
 			ReserveTag = no
 		->
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
@@ -106,15 +107,16 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 					CtorTags0, CtorTags)
 			)
 		;
-			max_num_tags(NumTagBits, MaxNumTags),
-			( ReserveTag = yes ->
-				MaxTag is MaxNumTags - 2
+			( ReserveTag = yes, \+ type_is_type_info(Ctors) ->
+				InitTag = 1
 			;
-				MaxTag is MaxNumTags - 1
+				InitTag = 0
 			),
+			max_num_tags(NumTagBits, MaxNumTags),
+			MaxTag is MaxNumTags - 1,
 			split_constructors(Ctors, Constants, Functors),
 			assign_constant_tags(Constants, CtorTags0,
-						CtorTags1, NextTag),
+						CtorTags1, InitTag, NextTag),
 			assign_simple_tags(Functors, NextTag, MaxTag,
 						CtorTags1, CtorTags)
 		)
@@ -134,8 +136,8 @@ assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	assign_enum_constants(Rest, Val1, CtorTags1, CtorTags).
 
 :- pred assign_constant_tags(list(constructor), cons_tag_values,
-				cons_tag_values, int).
-:- mode assign_constant_tags(in, in, out, out) is det.
+				cons_tag_values, int, int).
+:- mode assign_constant_tags(in, in, out, in, out) is det.
 
 	% If there's no constants, don't do anything.  Otherwise,
 	% allocate the first tag for the constants, and give
@@ -147,14 +149,14 @@ assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	% because deconstruction of the complicated_constant_tag
 	% is more efficient.
 
-assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
+assign_constant_tags(Constants, CtorTags0, CtorTags1, InitTag, NextTag) :-
 	( Constants = [] ->
-		NextTag = 0,
+		NextTag = InitTag,
 		CtorTags1 = CtorTags0
 	;
-		NextTag = 1,
+		NextTag is InitTag + 1,
 		assign_complicated_constant_tags(Constants,
-			0, 0, CtorTags0, CtorTags1)
+			InitTag, 0, CtorTags0, CtorTags1)
 	).
 
 :- pred assign_simple_tags(list(constructor), int, int, cons_tag_values,

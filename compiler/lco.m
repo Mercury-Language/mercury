@@ -338,7 +338,8 @@ goal_is_no_tag_construction(Module, Proc, Goal) :-
 	proc_info_vartypes(Proc, VarTypes),
 	map__search(VarTypes, Var, Type),
 	type_constructors(Type, Module, Constructors),
-	type_is_no_tag_type(Constructors, _FunctorName, _ArgType).
+	module_info_globals(Module, Globals),
+	type_is_no_tag_type(Constructors, Globals, _FunctorName, _ArgType).
 
 %-----------------------------------------------------------------------------%
 

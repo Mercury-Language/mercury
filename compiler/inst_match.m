@@ -1555,7 +1555,8 @@ inst_has_representation(Inst, InstMap, InstTable, Type, ModuleInfo) :-
 	(
 		% is this a no_tag type?
 		type_constructors(Type, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, FunctorName, ArgType)
+		module_info_globals(ModuleInfo, Globals),
+		type_is_no_tag_type(Constructors, Globals, FunctorName, ArgType)
 	->
 		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,

@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module globals, hlds_module, hlds_pred, hlds_data, prog_data.
 :- import_module term.
 :- import_module list, map.
 
@@ -117,9 +117,16 @@
 	% whose one constructor has only one argument,
 	% and which is not private_builtin:type_info/1),
 	% and if so, return its constructor symbol and argument type.
+	% Note that this should fail if we are reserving a tag.
 
-:- pred type_is_no_tag_type(list(constructor), sym_name, type).
-:- mode type_is_no_tag_type(in, out, out) is semidet.
+:- pred type_is_no_tag_type(list(constructor), globals, sym_name, type).
+:- mode type_is_no_tag_type(in, in, out, out) is semidet.
+
+	% Given a list of constructors for a type, check whether that
+	% type is a private_builtin:type_info/n or similar type.
+
+:- pred type_is_type_info(list(constructor)).
+:- mode type_is_type_info(in) is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -243,7 +250,7 @@
 
 :- implementation.
 :- import_module bool, require, std_util.
-:- import_module prog_io, prog_io_goal, prog_util.
+:- import_module prog_io, prog_io_goal, prog_util, options.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
 	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
@@ -440,15 +447,32 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	% would always be fully module-qualified at points where
 	% type_is_no_tag_type/3 is called.
 
-type_is_no_tag_type(Ctors, Ctor, Type) :-
+type_is_no_tag_type(Ctors, Globals, Ctor, Type) :-
+	globals__lookup_bool_option(Globals, reserve_tag, no),
+	type_is_single_ctor_single_arg(Ctors, Ctor, Type),
+	unqualify_name(Ctor, Name),
+	\+ name_is_type_info(Name).
+
+type_is_type_info(Ctors) :-
+	type_is_single_ctor_single_arg(Ctors, Ctor, _),
+	unqualify_name(Ctor, Name),
+	name_is_type_info(Name).
+
+:- pred name_is_type_info(string).
+:- mode name_is_type_info(in) is semidet.
+
+name_is_type_info("type_info").
+name_is_type_info("base_type_info").
+name_is_type_info("typeclass_info").
+name_is_type_info("base_typeclass_info").
+
+:- pred type_is_single_ctor_single_arg(list(constructor), sym_name, type).
+:- mode type_is_single_ctor_single_arg(in, out, out) is semidet.
+
+type_is_single_ctor_single_arg(Ctors, Ctor, Type) :-
 	Ctors = [SingleCtor],
 	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FieldName - Type]),
-	ExistQVars = [],
-	unqualify_name(Ctor, Name),
-	Name \= "type_info",
-	Name \= "base_type_info",
-	Name \= "typeclass_info",
-	Name \= "base_typeclass_info".
+	ExistQVars = [].
 
 %-----------------------------------------------------------------------------%
 
