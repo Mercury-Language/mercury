@@ -15,7 +15,7 @@ fi
 TERMCAP=/etc/termcap; export TERMCAP
 cp $1 .tmp
 
-/bin/rm $1.stage.*
+/bin/rm $1.stage.* > /dev/null 2>&1
 
 # get rid of everything before
 ed - .tmp > /dev/null << END
