@@ -4,7 +4,7 @@
 
 MAIN_TARGET=all
 
-depend: mercury_lib.depend
+depend: cpp_main.depend
 all: cpp_main
 
 #-----------------------------------------------------------------------------#
@@ -26,34 +26,25 @@ HACK=		-DMR_MACHDEPS_ALPHA_REGS_H \
 		-DMR_MACHDEPS_PA_REGS_H \
 		-DMR_MACHDEPS_RS6000_REGS_H
 
-# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
+# Pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb).
 CXXFLAGS=-g
 MGNUCFLAGS=-g
-MLFLAGS=-g
 
-# tell Mercury that this the Mercury stuff we're building is a library,
-# not a main program
-MLFLAGS=--no-main
+# Tell the Mercury linker that the Mercury stuff we're building should
+# not define the C function main().
+MLFLAGS=--no-main -g
 
-OBJECTS = cpp_main.o mercury_lib_init.o $(mercury_lib.os)
+# Tell the Mercury linker to link with main.o.
+MLOBJS=main.o
+
+MCFLAGS-cpp_main=--no-warn-nothing-exported
 
 #-----------------------------------------------------------------------------#
 
-cpp_main: $(OBJECTS)
-	$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o cpp_main $(OBJECTS) \
-		$(ALL_MLLIBS)
+main.o: mercury_lib.h
 
-cpp_main.o: mercury_lib.h
-
-# to make mercury_lib.h, just compile mercury_lib.m;
-# the Mercury compiler will create mercury_lib.h as a side-effect.
-mercury_lib.h: mercury_lib.o
-
-# make sure that `mmake clean' removes c_main.o
+# make sure that `mmake clean' removes main.o
 clean_local:
-	rm -f cpp_main.o mercury_lib.h
-
-realclean_local:
-	rm -f cpp_main
+	rm -f main.o mercury_lib.h
 
 #-----------------------------------------------------------------------------#
