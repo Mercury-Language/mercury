@@ -62,7 +62,8 @@
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
 :- import_module term, varset.
-:- import_module int, list, map, set, std_util, require, assoc_list, string.
+:- import_module assoc_list, bag, int, list, map.
+:- import_module require, set, std_util, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -264,7 +265,11 @@ unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
 	mode_checkpoint(enter, "par_conj"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_add_live_vars(NonLocals),
-	unique_modes__check_par_conj(List0, List, InstMapList),
+		% Build a multiset of the nonlocals of the conjuncts
+		% so that we can figure out which variables must be
+		% made shared at the start of the parallel conjunction.
+	{ make_par_conj_nonlocal_multiset(List0, NonLocalsBag) },
+	unique_modes__check_par_conj(List0, NonLocalsBag, List, InstMapList),
 	instmap__unify(NonLocals, InstMapList),
 	mode_info_remove_live_vars(NonLocals),
 	mode_checkpoint(exit, "par_conj").
@@ -642,25 +647,77 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__check_par_conj(list(hlds_goal), list(hlds_goal),
-		list(pair(instmap, set(prog_var))), mode_info, mode_info).
-:- mode unique_modes__check_par_conj(in, out, out,
+	% make_par_conj_nonlocal_multiset builds a multiset (bag) of all
+	% the nonlocals of the conjuncts.
+:- pred make_par_conj_nonlocal_multiset(list(hlds_goal), bag(prog_var)).
+:- mode make_par_conj_nonlocal_multiset(in, out) is det.
+
+make_par_conj_nonlocal_multiset([], Empty) :-
+	bag__init(Empty).
+make_par_conj_nonlocal_multiset([G|Gs], NonLocalsMultiSet) :-
+	make_par_conj_nonlocal_multiset(Gs, NonLocalsMultiSet0),
+	unique_modes__goal_get_nonlocals(G, NonLocals),
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	bag__from_list(NonLocalsList, NonLocalsMultiSet1),
+	bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
+
+	% To unique-modecheck a parallel conjunction, we find the variables
+	% that are nonlocal to more than one conjunct and make them shared,
+	% then we unique-modecheck the conjuncts.
+	%
+	% The variables that occur in more than one conjunct must be shared
+	% because otherwise it would be possible to make them become clobbered
+	% which would introduce an implicit dependency between the conjuncts
+	% which we do not allow.
+:- pred unique_modes__check_par_conj(list(hlds_goal), bag(prog_var),
+		list(hlds_goal), list(pair(instmap, set(prog_var))),
+		mode_info, mode_info).
+:- mode unique_modes__check_par_conj(in, in, out, out,
 		mode_info_di, mode_info_uo) is det.
+
+unique_modes__check_par_conj(Goals0, NonLocalVarsBag, Goals, Instmaps) -->
+	unique_modes__check_par_conj_0(NonLocalVarsBag),
+	unique_modes__check_par_conj_1(Goals0, Goals, Instmaps).
+
+		% Figure out which variables occur in more than one
+		% conjunct and make them shared.
+:- pred unique_modes__check_par_conj_0(bag(prog_var), mode_info, mode_info).
+:- mode unique_modes__check_par_conj_0(in, mode_info_di, mode_info_uo) is det.
+
+unique_modes__check_par_conj_0(NonLocalVarsBag, ModeInfo0, ModeInfo) :-
+	bag__to_assoc_list(NonLocalVarsBag, NonLocalVarsList),
+	list__filter_map((pred(Pair::in, Var::out) is semidet :-
+		Pair = Var - Multiplicity,
+		Multiplicity > 1
+	), NonLocalVarsList, SharedList),
+	mode_info_dcg_get_instmap(InstMap0, ModeInfo0, ModeInfo1),
+	instmap__lookup_vars(SharedList, InstMap0, VarInsts),
+	mode_info_get_module_info(ModeInfo1, ModuleInfo0),
+	make_shared_inst_list(VarInsts, ModuleInfo0,
+		SharedVarInsts, ModuleInfo1),
+	mode_info_set_module_info(ModeInfo1, ModuleInfo1, ModeInfo2),
+	instmap__set_vars(InstMap0, SharedList, SharedVarInsts, InstMap1),
+	mode_info_set_instmap(InstMap1, ModeInfo2, ModeInfo).
 
 	% Just process each conjunct in turn.
 	% Because we have already done modechecking, we know that
 	% there are no attempts to bind a variable in multiple
 	% parallel conjuncts, so we don't need to lock/unlock variables.
 
-unique_modes__check_par_conj([], [], []) --> [].
-unique_modes__check_par_conj([Goal0 | Goals0], [Goal | Goals],
+:- pred unique_modes__check_par_conj_1(list(hlds_goal), list(hlds_goal),
+		list(pair(instmap, set(prog_var))), mode_info, mode_info).
+:- mode unique_modes__check_par_conj_1(in, out, out,
+		mode_info_di, mode_info_uo) is det.
+
+unique_modes__check_par_conj_1([], [], []) --> [].
+unique_modes__check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
 		[InstMap - NonLocals|InstMaps]) -->
 	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),
-	unique_modes__check_par_conj(Goals0, Goals, InstMaps).
+	unique_modes__check_par_conj_1(Goals0, Goals, InstMaps).
 
 %-----------------------------------------------------------------------------%
 
