@@ -3539,13 +3539,17 @@ are as follows:
 
 @item @samp{may_call_mercury}/@samp{will_not_call_mercury}
 This attribute declares whether or not execution inside this C code may
-call back into Mercury or not.  If you specify @samp{will_not_call_mercury},
+call back into Mercury or not.  The default, in case neither is specified,
+is @samp{may_call_mercury}.  Specifying @samp{will_not_call_mercury}
+may allow the compiler to generate more efficient code.
+If you specify @samp{will_not_call_mercury},
 but the C code @emph{does} invoke Mercury code, then the behaviour is
 undefined.
 
 @item @samp{thread_safe}/@samp{not_thread_safe}
 This attribute declares whether or not it is safe for multiple threads
 to execute this C code concurrently.
+The default, in case neither is specified, is @samp{not_thread_safe}.
 If the C code is declared @samp{thread_safe}, then the Mercury implementation
 is permitted to execute the code concurrently from multiple threads without
 taking any special precautions.  If the C code is declared
@@ -3560,8 +3564,6 @@ C code that is not thread-safe has code inserted around it to obtain
 and release a mutex.  All non-thread-safe C code shares a single mutex.]
 @c XXX this can cause deadlocks if not_thread_safe C code calls
 @c     Mercury which calls C
-
-@c XXX document the default values
 
 @end table
 
