@@ -27,7 +27,21 @@
   #include "safe-ctype.h"
 #endif
 
-typedef	char		MR_bool;
+/*
+** The boolean type, MR_bool, with constants MR_TRUE and MR_FALSE.
+**
+** We use `int' rather than `char' for MR_bool, because GCC has problems
+** optimizing tail calls for functions that return types smaller than `int'.
+** In most cases, `int' is more efficient anyway.
+** The only exception is that in some cases it is more important to optimize
+** space rather than time; in those (rare) cases, you can use `MR_small_bool'
+** instead of `MR_bool'.
+*/
+typedef	int		MR_bool;
+typedef	char		MR_small_bool;
+
+#define	MR_TRUE		1
+#define	MR_FALSE	0
 
 #define	MR_max(a, b)	((a) > (b) ? (a) : (b))
 #define	MR_min(a, b)	((a) < (b) ? (a) : (b))
@@ -55,9 +69,6 @@ typedef	char		MR_bool;
 #define MR_strntest(s1, s2, n)	(strncmp(s1, s2, n))
 
 #define	MR_ungetchar(c)		ungetc(c, stdin)
-
-#define	MR_TRUE		1
-#define	MR_FALSE	0
 
 /*
 ** For speed, turn assertions off,

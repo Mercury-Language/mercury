@@ -3514,7 +3514,7 @@ gen_context(MLDS_Context) -->
 'MR_ConstString'	= gcc__string_type_node.
 	% XXX 'MR_Word' should perhaps be unsigned, to match the C back-end
 'MR_Word'		= gcc__intptr_type_node.
-'MR_bool'		= gcc__char_type_node.
+'MR_bool'		= gcc__integer_type_node. % i.e. typedef int MR_bool
 
 'MR_TypeInfo'		= gcc__ptr_type_node.
 'MR_PseudoTypeInfo'	= gcc__ptr_type_node.
