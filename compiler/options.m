@@ -514,6 +514,10 @@ options_help -->
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
 	io__write_string("\t\t value of <n> is one.  Increasing <n> can produce\n"),
 	io__write_string("\t\tslightly more efficient code, but makes compilation slower.\n"),
+	io__write_string("\t\tSetting <n> to the special value zero has the effect of\n"),
+	io__write_string("\t\tputting all the procedures in a single function,\n"),
+	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
+	io__write_string("\t\tseverely stress the C compiler.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 

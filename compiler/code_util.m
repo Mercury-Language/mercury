@@ -20,9 +20,6 @@
 :- import_module list, string.
 :- import_module hlds, llds.
 
-:- pred code_util__make_entry_label(module_info, pred_id, proc_id, code_addr).
-:- mode code_util__make_entry_label(in, in, in, out) is det.
-
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
@@ -76,23 +73,6 @@
 
 :- implementation.
 :- import_module type_util, list, map, require, std_util.
-
-%---------------------------------------------------------------------------%
-
-code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
-	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	(
-		pred_info_is_imported(PredInfo)
-	->
-		code_util__make_proc_label(ModuleInfo,
-						PredId, ProcId, ProcLabel),
-		PredAddress = imported(ProcLabel)
-	;
-		code_util__make_local_entry_label(ModuleInfo,
-							PredId, ProcId, Label),
-		PredAddress = label(Label)
-	).
 
 %---------------------------------------------------------------------------%
 

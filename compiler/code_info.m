@@ -52,6 +52,12 @@
 :- pred code_info__get_next_label_number(int, code_info, code_info).
 :- mode code_info__get_next_label_number(out, in, out) is det.
 
+		% Create a code address for which holds the address
+		% of the specified predicate.
+:- pred code_info__make_entry_label(module_info, pred_id, proc_id, code_addr,
+					code_info, code_info).
+:- mode code_info__make_entry_label(in, in, in, out, in, out) is det.
+
 		% Get the variables for the current procedure.
 :- pred code_info__get_varset(varset, code_info, code_info).
 :- mode code_info__get_varset(out, in, out) is det.
@@ -453,9 +459,6 @@ code_info__max_slot_2([L|Ls], Max0, Max) :-
 	code_info__max_slot_2(Ls, Max1, Max).
 
 %---------------------------------------------------------------------------%
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 code_info__get_next_label(Label, Cont0) -->
@@ -488,13 +491,38 @@ code_info__get_next_label_number(N) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
+	code_info__get_globals(Globals),
+	code_info__get_pred_id(CurPredId),
+	code_info__get_proc_id(CurProcId),
+	{
+	globals__lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	(
+		(	pred_info_is_imported(PredInfo)
+		;	ProcsPerFunc \= 0,
+			not (PredId = CurPredId, ProcId = CurProcId)
+		)
+	->
+		code_util__make_proc_label(ModuleInfo,
+						PredId, ProcId, ProcLabel),
+		PredAddress = imported(ProcLabel)
+	;
+		code_util__make_local_entry_label(ModuleInfo,
+							PredId, ProcId, Label),
+		PredAddress = label(Label)
+	)
+	}.
+
+%---------------------------------------------------------------------------%
+
 	% XXX We could use the sanity checking mechanism...
 code_info__clear_all_registers -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__clobber_regs([], Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

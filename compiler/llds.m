@@ -850,12 +850,22 @@ output_label_list_2([Label | Labels]) -->
 	io__write_string(")"),
 	output_label_list_2(Labels).
 
+% Note that the suffixes _l etc. are interpreted by mod2c,
+% which generates different code depending on the suffix.
 
 output_label(exported(ProcLabel)) -->
 	output_proc_label(ProcLabel).
 output_label(local(ProcLabel)) -->
 	output_proc_label(ProcLabel),
-	io__write_string("_l").		% l for "local".
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	( { ProcsPerFunc = 0 } ->
+		io__write_string("_l")		% l for "local".
+	;
+		% if we are splitting procs between functions, then
+		% every procedure could be referred to by a procedure
+		% in a different function, so don't make them local
+		[]
+	).
 output_label(local(ProcLabel, Num, _)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)

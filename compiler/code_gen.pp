@@ -89,8 +89,7 @@
 % For a set of high level data structures and associated data, given in
 % ModuleInfo, generate a corresponding c_file structure.
 
-generate_code(ModuleInfo0, ModuleInfo, 
-			c_file(Name, [c_module(ModName, Procedures)])) -->
+generate_code(ModuleInfo0, ModuleInfo, c_file(Name, ModuleList)) -->
 	{ module_info_name(ModuleInfo0, Name) },
 		% construct the module-name string
 	{ string__append(Name, "_module", ModName) },
@@ -99,7 +98,67 @@ generate_code(ModuleInfo0, ModuleInfo,
 	{ module_info_predids(ModuleInfo0, PredIDList) },
 		% now generate the code for each predicate
 	generate_pred_list_code(ModuleInfo0, ModuleInfo, PredIDList,
-			Procedures).
+			Procedures),
+		% split the code up into bite-size chunks for the C compiler
+	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	( { ProcsPerFunc = 0 } ->
+		% ProcsPerFunc = 0 really means infinity -
+		% we store all the procs in a single function.
+		{ ModuleList = [c_module(ModName, Procedures)] }
+	;
+		{ code_gen__split_into_chunks(Procedures, ProcsPerFunc,
+			ChunkList) },
+		{ code_gen__combine_chunks(ChunkList, ModName, ModuleList) }
+	).
+
+:- pred code_gen__split_into_chunks(list(T), int, list(list(T))).
+:- mode code_gen__split_into_chunks(in, in, out) is det.
+
+code_gen__split_into_chunks(List, ChunkSize, ListOfSmallLists) :-
+	code_gen__split_into_chunks_2(List, ChunkSize, [], ChunkSize,
+				ListOfSmallLists).
+
+:- pred code_gen__split_into_chunks_2(list(T), int, list(T), int,
+					list(list(T))).
+:- mode code_gen__split_into_chunks_2(in, in, in, in, out) is det.
+
+code_gen__split_into_chunks_2([], _ChunkSize, List0, _N, Lists) :-
+	( List0 = [] ->
+		Lists = []
+	;
+		list__reverse(List0, List),
+		Lists = [List]
+	).
+code_gen__split_into_chunks_2([X|Xs], ChunkSize, List0, N, Lists) :-
+	( N > 1 ->
+		N1 is N - 1,
+		code_gen__split_into_chunks_2(Xs, ChunkSize, [X | List0], N1,
+			Lists)
+	;
+		list__reverse([X | List0], List),
+		Lists = [List | Lists1],
+		code_gen__split_into_chunks_2(Xs, ChunkSize, [], ChunkSize,
+			Lists1)
+	).
+
+:- pred code_gen__combine_chunks(list(list(c_procedure)), string,
+				list(c_module)).
+:- mode code_gen__combine_chunks(in, in, out) is det.
+
+code_gen__combine_chunks(ChunkList, ModName, Modules) :-
+	code_gen__combine_chunks_2(ChunkList, ModName, 0, Modules).
+
+:- pred code_gen__combine_chunks_2(list(list(c_procedure)), string, int,
+				list(c_module)).
+:- mode code_gen__combine_chunks_2(in, in, in, out) is det.
+
+code_gen__combine_chunks_2([], _ModName, _N, []).
+code_gen__combine_chunks_2([Chunk|Chunks], ModName, Num, [Module | Modules]) :-
+	string__int_to_string(Num, NumString),
+	string__append(ModName, NumString, ThisModuleName),
+	Module = c_module(ThisModuleName, Chunk),
+	Num1 is Num + 1,
+	code_gen__combine_chunks_2(Chunks, ModName, Num1, Modules).
 
 % Generate a list of c_procedure structures for each mode of each
 % predicate given in ModuleInfo

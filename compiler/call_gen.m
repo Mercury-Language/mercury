@@ -75,11 +75,11 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
 	code_info__get_pred_id(CallerPredId),
 	code_info__get_proc_id(CallerProcId),
-	{ code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId, 
-		CallerAddress) },
+	code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId, 
+		CallerAddress),
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 					"branch to det procedure",
@@ -137,11 +137,11 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
         code_info__get_pred_id(CallerPredId),
         code_info__get_proc_id(CallerProcId),
-        { code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
-                CallerAddress) },
+        code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
+                CallerAddress),
         { CodeC1 = node([
                 call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 			"branch to semidet procedure",
@@ -171,11 +171,11 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
+	code_info__make_entry_label(ModuleInfo, PredId, ModeId, Address),
         code_info__get_pred_id(CallerPredId),
         code_info__get_proc_id(CallerProcId),
-        { code_util__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
-                CallerAddress) },
+        code_info__make_entry_label(ModuleInfo, CallerPredId, CallerProcId,
+                CallerAddress),
         { CodeC1 = node([
                 call(Address, label(ReturnLabel), CallerAddress, OutLiveVals) -
 			"branch to nondet procedure",
@@ -421,15 +421,25 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 						OutLiveVals),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
+		{ Address = imported(UniLabel) },
+	/************
+		% Currently we just conservatively assume the address
+		% of a unification predicate is imported.  For
+		% non-standard modes, we could do better, if
+		% procs_per_c_function is zero (meaning infinity),
+		% or if it is a recursive call.
+		% But the code below doesn't work if procs_per_c_function
+		% is non-zero and it's not a recursive call.
 		{ ModeNum = 0 ->
 			Address = imported(UniLabel)
 		;
 			Address = label(local(UniLabel))
 		},
+	**************/
 		code_info__get_pred_id(CallerPredId),
 		code_info__get_proc_id(CallerProcId),
-		{ code_util__make_entry_label(ModuleInfo, CallerPredId, 
-			CallerProcId, CallerAddress) },
+		code_info__make_entry_label(ModuleInfo, CallerPredId, 
+			CallerProcId, CallerAddress),
 		{ CodeC1 = node([
 			call(Address, label(ReturnLabel), CallerAddress,
 				 OutLiveVals) -
