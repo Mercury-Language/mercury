@@ -72,6 +72,12 @@ NEWS for Mercury release 0.7
   so if you want to take advantage of this, you must explicitly
   enable it as described in README.Linux.
 
+* We have added support for very large tables of facts.
+
+  See the documentation for `pragma fact_table' in the
+  "implementation-dependent pragmas" section of the Mercury
+  language reference manual.
+
 * We have fixed quite a few bugs.
 
   Mode inference now works a little bit better. 

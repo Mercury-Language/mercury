@@ -18,9 +18,6 @@ which are not yet completed:
 * We now allow programmers to give names to the arguments of constructor
   function symbols.  (Disabled, due to lack of a suitable operator.)
 
-* Support for big tables of facts.
-  (Only supports `string', `int', and `float'.  Not yet documented.)
-
 
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
