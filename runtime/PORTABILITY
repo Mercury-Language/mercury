@@ -8,7 +8,7 @@ bits by casting pointers to integers and back again.
 
 Various parts of the code are conditionalized to take advantage of
 GNU C's special features if they are available, and to use specific
-global registers variables on certain machines.
+registers for global register variables on certain machines.
 
 Otherwise this should be portable ANSI C :-)
 It isn't portable to older non-ansi C compilers, but if you don't

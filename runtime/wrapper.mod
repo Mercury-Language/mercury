@@ -491,7 +491,7 @@ global_success:
 	}
 #endif
 
-	redo();
+	goto all_done;
 
 global_fail:
 #ifndef	SPEED
@@ -502,25 +502,21 @@ global_fail:
 
 		if (detaildebug)
 			dumpnondstack();
-
-		maxfr = (Word *) pop();
-		succip = (Code *) pop();
-		hp = (Word *) pop();
-
-		if (detaildebug)
-		{
-			save_transient_registers();
-			printregs("after popping...");
-		}
 	}
-	else
 #endif
-	{
-		maxfr = (Word *) pop();
-		succip = (Code *) pop();
-		hp = (Word *) pop();
-	}
 
+all_done:
+	maxfr = (Word *) pop();
+	succip = (Code *) pop();
+	hp = (Word *) pop();
+
+#ifndef SPEED
+	if (finaldebug && detaildebug)
+	{
+		save_transient_registers();
+		printregs("after popping...");
+	}
+#endif
 	proceed();
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;

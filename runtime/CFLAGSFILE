@@ -29,3 +29,11 @@
 
 # Use this option if you want to include time profiling information.
 # -DPROFILE_TIME
+
+# Use this option with -DSPEED if you want minimal (relatively efficient)
+# debugging
+# -DDEBUG_GOTOS
+
+# Use this option with -DSPEED if don't want debugging, but you do want
+# to support the `-w' (entry point) command
+# -DDEBUG_LABELS
