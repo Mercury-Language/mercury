@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -33,15 +33,30 @@
 
 :- import_module io.
 
+:- include_module posix__closedir.
+:- include_module posix__dup.
+:- include_module posix__exec.
+:- include_module posix__fork.
 :- include_module posix__lseek.
+:- include_module posix__mkdir.
 :- include_module posix__open.
+:- include_module posix__opendir.
 :- include_module posix__read.
+:- include_module posix__readdir.
+:- include_module posix__rmdir.
 :- include_module posix__select.
 :- include_module posix__socket.
+:- include_module posix__wait.
 :- include_module posix__write.
 
 	% Generic file descriptors.
 :- type fd --->	fd(int).
+
+	% Directory streams.
+:- type dir ---> dir(c_pointer).
+
+	% Process identifiers.
+:- type pid ---> pid(int).
 
 :- type error
 	--->	e2BIG			/* Arg list too long */
