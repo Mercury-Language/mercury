@@ -1,4 +1,4 @@
 undef_mode.m:  1: Warning: interface for module `undef_mode' does not export anything.
-undef_mode.m:004: In mode declaration for predicate `undef_mode:x'/1:
+undef_mode.m:004: In mode declaration for predicate `undef_mode.x'/1:
 undef_mode.m:004:   error: undefined mode `foo'/0.
 For more information, try recompiling with `-E'.

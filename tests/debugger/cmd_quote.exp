@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred cmd_quote:main/2-0 (det) cmd_quote.m:7
+       1:      1  1 CALL pred cmd_quote.main/2-0 (det) cmd_quote.m:7
 mdb> echo on
 Command echo enabled.
 mdb> print \ foo

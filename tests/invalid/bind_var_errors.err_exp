@@ -13,11 +13,11 @@ bind_var_errors.m:048:   mode error: variable `Y' has instantiatedness `free',
 bind_var_errors.m:048:   expected instantiatedness for non-local variables
 bind_var_errors.m:048:   of lambda goals is `ground'.
 bind_var_errors.m:053: In clause for `share_var_in_lambda(di)':
-bind_var_errors.m:053:   in argument 1 of call to predicate `bind_var_errors:destroy/1':
+bind_var_errors.m:053:   in argument 1 of call to predicate `bind_var_errors.destroy/1':
 bind_var_errors.m:053:   mode error: variable `X' has instantiatedness `ground',
 bind_var_errors.m:053:   expected instantiatedness was `unique'.
 bind_var_errors.m:060: In clause for `clobber_var_in_lambda(di)':
-bind_var_errors.m:060:   in argument 1 of call to predicate `bind_var_errors:destroy/1':
+bind_var_errors.m:060:   in argument 1 of call to predicate `bind_var_errors.destroy/1':
 bind_var_errors.m:060:   unique-mode error: the called procedure would clobber
 bind_var_errors.m:060:   its argument, but variable `X' is still live.
 For more information, try recompiling with `-E'.

@@ -1,7 +1,7 @@
 typeclass_test_1.m:001: Warning: module should start with a `:- module' declaration.
 typeclass_test_1.m:014: Error: expected `pred(<Name> / <Arity>) is <InstanceName>': type_num is foo_type_num.
 typeclass_test_1.m:017: Syntax error at variable `_': operator or `.' expected.
-typeclass_test_1.m:007: In clause for predicate `typeclass_test_1:main/2':
+typeclass_test_1.m:007: In clause for predicate `typeclass_test_1.main/2':
 typeclass_test_1.m:007:   unsatisfiable typeclass constraint(s):
-typeclass_test_1.m:007:   `typeclass_test_1:numbered_type(int)'.
+typeclass_test_1.m:007:   `typeclass_test_1.numbered_type(int)'.
 For more information, try recompiling with `-E'.

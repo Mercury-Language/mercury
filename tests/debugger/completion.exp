@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred completion:main/2-0 (det) completion.m:13
+       1:      1  1 CALL pred completion.main/2-0 (det) completion.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -35,46 +35,46 @@ p --flat DCG_0
 mdb> 
 stack       stack_regs  
 stack --detailed 
-   0       1       1    1 pred completion:main/2-0 (det) (completion.m:13) (empty)
+   0       1       1    1 pred completion.main/2-0 (det) (completion.m:13) (empty)
 mdb> 
 proc_body   proc_stats  procedures  
-completion            completion:sub2       
-completion:sub1       completion:sub2:sub3  
-completion:sub1       completion:sub2       completion:sub2:sub3
-procedures completion:sub1
-List of procedures in module `completion:sub1'
-pred completion:sub1:zp/1-0 (det)
-func completion:sub1:z1/0-0 (det)
+completion            completion.sub2       
+completion.sub1       completion.sub2.sub3  
+completion.sub1       completion.sub2       completion.sub2.sub3
+procedures completion.sub1
+List of procedures in module `completion.sub1'
+pred completion.sub1.zp/1-0 (det)
+func completion.sub1.z1/0-0 (det)
 mdb> set --flat format pretty 
 mdb> unalias excp 
 Alias `excp' removed.
 mdb> b zabc3 
- 0: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
+ 0: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
 mdb> 
-func*completion:            func*completion:sub2:
-func*completion:sub1:       func*completion:sub2:sub3:
-func*completion:z   func*completion:zz  
-b func*completion:z
- 1: + stop  interface func completion:z/0-0 (det)
+func*completion.            func*completion.sub2.
+func*completion.sub1.       func*completion.sub2.sub3.
+func*completion.z   func*completion.zz  
+b func*completion.z
+ 1: + stop  interface func completion.z/0-0 (det)
 mdb> 
-completion:            completion:sub2:       
-completion:sub1:       completion:sub2:sub3:  
-completion:sub1:       completion:sub2:       completion:sub2:sub3:
-completion:sub1:z1  completion:sub1:zp  
-b completion:sub1:z1
- 2: + stop  interface func completion:sub1:z1/0-0 (det)
+completion.            completion.sub2.       
+completion.sub1.       completion.sub2.sub3.  
+completion.sub1.       completion.sub2.       completion.sub2.sub3.
+completion.sub1.z1  completion.sub1.zp  
+b completion.sub1.z1
+ 2: + stop  interface func completion.sub1.z1/0-0 (det)
 mdb> 
-completion:            completion:sub2:       
-completion:sub1:       completion:sub2:sub3:  
-completion:sub1:       completion:sub2:       completion:sub2:sub3:
-completion:sub2:       completion:sub2:sub3:  
-b completion:sub2:sub3:zabc3 
- 3: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
+completion.            completion.sub2.       
+completion.sub1.       completion.sub2.sub3.  
+completion.sub1.       completion.sub2.       completion.sub2.sub3.
+completion.sub2.       completion.sub2.sub3.  
+b completion.sub2.sub3.zabc3 
+ 3: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
 mdb> 
 2d                  2delete             2document_category
 2dd                 2disable            2down
 2dd_dd              2document           
 2delete 
- 2: E stop  interface func completion:sub1:z1/0-0 (det)
+ 2: E stop  interface func completion.sub1.z1/0-0 (det)
 mdb> c
 ok

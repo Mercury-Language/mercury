@@ -1,2 +1,2 @@
 :- module fold.
-:- pragma termination_info(fold:fold((builtin:in), (builtin:in), (builtin:out)), finite(0, [yes, no, no]), cannot_loop).
+:- pragma termination_info(fold.fold((builtin.in), (builtin.in), (builtin.out)), finite(0, [yes, no, no]), cannot_loop).

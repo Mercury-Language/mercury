@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred implied_instance:main/2-0 (det) implied_instance.m:25
+       1:      1  1 CALL pred implied_instance.main/2-0 (det) implied_instance.m:25
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,38 +7,38 @@ Contexts will not be printed.
 mdb> alias P print *
 P      =>    print *
 mdb> goto 2
-       2:      2  2 CALL pred implied_instance:p/2-0 (det)
+       2:      2  2 CALL pred implied_instance.p/2-0 (det)
 mdb> P
        HeadVar__1             	2
 mdb> 
-       3:      3  3 CALL pred implied_instance:ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
+       3:      3  3 CALL pred implied_instance.ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
 mdb> P
        HeadVar__1             	2
 mdb> break -e p
- 0: + stop      entry pred implied_instance:p/2-0 (det)
+ 0: + stop      entry pred implied_instance.p/2-0 (det)
 mdb> continue -a
-       4:      4  4 CALL pred implied_instance:copy_int/2-0 (det)
-       5:      4  4 EXIT pred implied_instance:copy_int/2-0 (det)
-       6:      3  3 EXIT pred implied_instance:ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
-       7:      2  2 EXIT pred implied_instance:p/2-0 (det)
-       8:      5  2 CALL pred implied_instance:p/2-0 (det)
+       4:      4  4 CALL pred implied_instance.copy_int/2-0 (det)
+       5:      4  4 EXIT pred implied_instance.copy_int/2-0 (det)
+       6:      3  3 EXIT pred implied_instance.ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
+       7:      2  2 EXIT pred implied_instance.p/2-0 (det)
+       8:      5  2 CALL pred implied_instance.p/2-0 (det)
 mdb> P
        HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> 
-       9:      6  3 CALL pred implied_instance:ClassMethod_for_implied_instance__sumable____list__list__arity1______implied_instance__p_2/2-0 (det)
+       9:      6  3 CALL pred implied_instance.ClassMethod_for_implied_instance__sumable____list__list__arity1______implied_instance__p_2/2-0 (det)
 mdb> P
        HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> 
-      10:      7  4 CALL pred implied_instance:sum_int_list/2-0 (det)
+      10:      7  4 CALL pred implied_instance.sum_int_list/2-0 (det)
 mdb> P
        HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> continue -a
-      11:      7  4 SWTC pred implied_instance:sum_int_list/2-0 (det) s2;
-      12:      8  5 CALL pred implied_instance:p/2-0 (det)
+      11:      7  4 SWTC pred implied_instance.sum_int_list/2-0 (det) s2;
+      12:      8  5 CALL pred implied_instance.p/2-0 (det)
 mdb> P
        HeadVar__1             	42
 mdb> 
-      13:      9  6 CALL pred implied_instance:ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
+      13:      9  6 CALL pred implied_instance.ClassMethod_for_implied_instance__sumable____int__arity0______implied_instance__p_2/2-0 (det)
 mdb> P
        HeadVar__1             	42
 mdb> continue -S

@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred backtrack:main/2-0 (det) backtrack.m:8
+       1:      1  1 CALL pred backtrack.main/2-0 (det) backtrack.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred backtrack:p/2-0 (det)
+ 0: + stop  interface pred backtrack.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+       2:      2  2 CALL pred backtrack.p/2-0 (det) backtrack.m:23 (backtrack.m:9)
 mdb> finish
-      17:      2  2 EXIT pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+      17:      2  2 EXIT pred backtrack.p/2-0 (det) backtrack.m:23 (backtrack.m:9)
 mdb> dd
 p(1, no)
 Valid? no
@@ -26,6 +26,6 @@ Complete? yes
 Found incorrect contour:
 p(1, no)
 Is this a bug? yes
-      17:      2  2 EXIT pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
+      17:      2  2 EXIT pred backtrack.p/2-0 (det) backtrack.m:23 (backtrack.m:9)
 mdb> continue
 no

@@ -46,7 +46,7 @@ argument 1 of functor poly_two was:3
 expand: functor poly_two arity 1 arguments [3]
 
 poly_three/3
-argument 3 of functor poly_three was:poly_one(9.11000000000000)
+argument 3 of functor poly_three was.poly_one(9.11000000000000)
 expand: functor poly_three arity 3 arguments [3.33000000000000, 4, poly_one(9.11000000000000)]
 
 poly_one/1

@@ -1,6 +1,6 @@
 X: value = 101
 X: type = int
 Y: value = [101]
-Y: type = list:list(int)
+Y: type = list.list(int)
 Z: value = 101
 Z: type = int

@@ -1,7 +1,7 @@
 typeclass_missing_mode_2.m:011: Error: no mode declaration for type class method
-typeclass_missing_mode_2.m:011:   predicate `typeclass_missing_mode_2:p/1'.
+typeclass_missing_mode_2.m:011:   predicate `typeclass_missing_mode_2.p/1'.
 typeclass_missing_mode_2.m:013: In instance declaration for
-typeclass_missing_mode_2.m:013:   `typeclass_missing_mode_2:c/1': incorrect
+typeclass_missing_mode_2.m:013:   `typeclass_missing_mode_2.c/1': incorrect
 typeclass_missing_mode_2.m:013:   method name(s): predicate
-typeclass_missing_mode_2.m:013:   `typeclass_missing_mode_2:p/1' .
+typeclass_missing_mode_2.m:013:   `typeclass_missing_mode_2.p/1' .
 For more information, try recompiling with `-E'.

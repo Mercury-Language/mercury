@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module class:char.
+:- module class.char.
 :- interface.
 :- import_module io.
 
@@ -22,13 +22,13 @@
 
 :- implementation.
 
-hello --> io__write_string("class:char:hello\n").
+hello --> io__write_string("class.char.hello\n").
 
-:- end_module class:char.
+:- end_module class.char.
 
 %-----------------------------------------------------------------------------%
 
-:- module class:int.
+:- module class.int.
 :- interface.
 :- import_module io.
 
@@ -38,30 +38,30 @@ hello --> io__write_string("class:char:hello\n").
 
 :- implementation.
 
-hello --> io__write_string("class:int:hello\n").
+hello --> io__write_string("class.int.hello\n").
 
-:- end_module class:int.
+:- end_module class.int.
 
 %-----------------------------------------------------------------------------%
 
 % now we're back in the parent module.
 
-:- import_module class:char.
-:- use_module class:int.
+:- import_module class.char.
+:- use_module class.int.
 :- import_module std_util, require.
 
-:- type t1 == class:char:foo.
-:- type t2 == char:foo.
+:- type t1 == class.char.foo.
+:- type t2 == char.foo.
 :- type t3 == foo.
-:- type t4 == class:int:foo.
-:- type t5 == int:foo.
+:- type t4 == class.int.foo.
+:- type t5 == int.foo.
 
 main -->
-	class:char:hello,
-	char:hello,
+	class.char.hello,
+	char.hello,
 	hello,
-	class:int:hello,
-	int:hello,
+	class.int.hello,
+	int.hello,
 
 	print("t1 = "), print(type_of(has_type_t1)), nl,
 	print("t2 = "), print(type_of(has_type_t2)), nl,
@@ -83,10 +83,10 @@ main -->
 :- func has_type_t4 = t4.
 :- func has_type_t5 = t5.
 
-has_type_t1 = class:char:bar.
-has_type_t2 = char:bar.
+has_type_t1 = class.char.bar.
+has_type_t2 = char.bar.
 has_type_t3 = bar.
-has_type_t4 = class:int:bar.
-has_type_t5 = int:bar.
+has_type_t4 = class.int.bar.
+has_type_t5 = int.bar.
 
 :- end_module class.

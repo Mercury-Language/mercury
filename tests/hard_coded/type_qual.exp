@@ -1,16 +1,16 @@
 ok(42)
-list:list(io:state)
-list:list(list:list(io:state))
+list.list(io.state)
+list.list(list.list(io.state))
 []
-list:list(int)
+list.list(int)
 []
-list:list(int)
-list:list(string)
+list.list(int)
+list.list(string)
 ["a", "b", "c"]
-list:list(string)
+list.list(string)
 []
-list:list(int)
+list.list(int)
 []
-list:list(string)
+list.list(string)
 []
 bi-implication succeeded

@@ -34,6 +34,7 @@ ORDINARY_PROGS=	\
 	deforest_cc_bug \
 	det_in_semidet_cntxt \
 	division_test \
+	dot_separator \
 	dupcall_types_bug \
 	dupcall_impurity \
 	elim_special_pred \

@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module sub_a:sub1.
+:- import_module sub_a.sub1.
 :- import_module sub_a.
 
 main -->

@@ -1,2 +1,2 @@
 :- module vangelder.
-:- pragma termination_info(vangelder:q((builtin:in), (builtin:in)), finite(0, [no, no]), can_loop).
+:- pragma termination_info(vangelder.q((builtin.in), (builtin.in)), finite(0, [no, no]), can_loop).

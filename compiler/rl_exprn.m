@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1567,7 +1567,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 	;
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
 		{ pred_info_arity(PredInfo, Arity) },
-		{ string__format("Sorry, not implemented in Aditi: %s:%s/%i",
+		{ string__format("Sorry, not implemented in Aditi: %s.%s/%i",
 			[s(PredModule), s(PredName), i(Arity)], Msg) },
 		{ error(Msg) }
 	).

@@ -1,2 +1,2 @@
 :- module pl3_5_6a.
-:- pragma termination_info(pl3_5_6a:p((builtin:out)), infinite, can_loop).
+:- pragma termination_info(pl3_5_6a.p((builtin.out)), infinite, can_loop).

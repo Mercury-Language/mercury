@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -346,6 +346,19 @@ term_io__write_term_3(Ops, term__functor(Functor, Args, _), Priority,
 				VarSet0, N0, VarSet1, N1),
 		( { OpName = "," } ->
 			io__write_string(", ")
+		; { OpName = "." } ->
+				% If the operator is '.'/2 then we must
+				% not put spaces around it (or at the
+				% very least, we should not put spaces
+				% afterwards which would make it appear
+				% as the end-of-term token.)  However,
+				% we do have to quote it if the right
+				% hand side can begin with a digit.
+				%
+			io__write_string(
+				if starts_with_digit(Arg2) then "'.'"
+							   else  "."
+			)
 		;
 			io__write_char(' '),
 			term_io__write_constant(Functor),
@@ -445,6 +458,27 @@ term_io__write_list_tail(Ops, Term, VarSet0, N0, VarSet, N) -->
 		io__write_string(" | "),
 		term_io__write_term_2(Ops, Term, VarSet0, N0, VarSet, N)
 	).
+
+	% Succeeds iff outputting the given term would start with a digit.
+	% (This is a safe, conservative approximation and is used to decide
+	% whether or not to quote infix '.'/2.)
+	%
+:- pred starts_with_digit(term(T)).
+:- mode starts_with_digit(in     ) is semidet.
+
+starts_with_digit(functor(integer(_), _, _)).
+
+starts_with_digit(functor(float(_), _, _)).
+
+starts_with_digit(functor(atom(Op), Args, _)) :-
+	(
+		Args = [Arg, _],
+		ops__lookup_infix_op(ops__init_mercury_op_table, Op, _, _, _)
+	;
+		Args = [Arg],
+		ops__lookup_postfix_op(ops__init_mercury_op_table, Op, _, _)
+	),
+	starts_with_digit(Arg).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred shallow:main/2-0 (det) shallow.m:8
+       1:      1  1 CALL pred shallow.main/2-0 (det) shallow.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break shallow__test
- 0: + stop  interface pred shallow:test/2-0 (det)
+ 0: + stop  interface pred shallow.test/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:9)
+       2:      2  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:9)
 mdb> finish
-      15:      2  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:9)
+      15:      2  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:9)
 mdb> dd
 test(p("t1", 5), 1)
 Valid? no
@@ -27,13 +27,13 @@ Valid? yes
 Found incorrect contour:
 p("t1", 5, 1)
 Is this a bug? yes
-      14:      3  3 EXIT pred shallow_2:p/3-0 (det) shallow_2.m:16 (shallow.m:29)
+      14:      3  3 EXIT pred shallow_2.p/3-0 (det) shallow_2.m:16 (shallow.m:29)
 mdb> continue
-      15:      2  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:9)
+      15:      2  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:9)
 mdb> continue
-      16:      6  2 CALL pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:10)
+      16:      6  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:10)
 mdb> finish
-      29:      6  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:10)
+      29:      6  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:10)
 mdb> dd
 test(p("t2", 37), -11)
 Valid? no
@@ -53,13 +53,13 @@ Valid? yes
 Found incorrect contour:
 p("t2", 37, -11)
 Is this a bug? yes
-      28:      7  3 EXIT pred shallow_2:p/3-0 (det) shallow_2.m:16 (shallow.m:29)
+      28:      7  3 EXIT pred shallow_2.p/3-0 (det) shallow_2.m:16 (shallow.m:29)
 mdb> continue
-      29:      6  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:10)
+      29:      6  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:10)
 mdb> continue
-      30:     10  2 CALL pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:11)
+      30:     10  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:11)
 mdb> finish
-      41:     10  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:11)
+      41:     10  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:11)
 mdb> dd
 test(q("t3", 2), 2)
 Valid? no
@@ -77,13 +77,13 @@ Complete? yes
 Found incorrect contour:
 q("t3", 2, 2)
 Is this a bug? yes
-      40:     11  3 EXIT pred shallow_2:q/3-0 (det) shallow_2.m:30 (shallow.m:29)
+      40:     11  3 EXIT pred shallow_2.q/3-0 (det) shallow_2.m:30 (shallow.m:29)
 mdb> continue
-      41:     10  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:11)
+      41:     10  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:11)
 mdb> continue
-      42:     13  2 CALL pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:12)
+      42:     13  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:12)
 mdb> finish
-      48:     13  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:12)
+      48:     13  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:12)
 mdb> dd
 test(q("t4", -1), 11)
 Valid? no
@@ -94,13 +94,13 @@ Valid? yes
 Found incorrect contour:
 q("t4", -1, 11)
 Is this a bug? yes
-      47:     14  3 EXIT pred shallow_2:q/3-0 (det) shallow_2.m:30 (shallow.m:29)
+      47:     14  3 EXIT pred shallow_2.q/3-0 (det) shallow_2.m:30 (shallow.m:29)
 mdb> continue
-      48:     13  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:12)
+      48:     13  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:12)
 mdb> continue
-      49:     16  2 CALL pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:13)
+      49:     16  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:13)
 mdb> finish
-      62:     16  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:13)
+      62:     16  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:13)
 mdb> dd
 test(r("t5", 3), 23)
 Valid? no
@@ -120,9 +120,9 @@ Valid? yes
 Found incorrect contour:
 r("t5", 3, 23)
 Is this a bug? yes
-      61:     17  3 EXIT pred shallow_2:r/3-0 (det) shallow_2.m:40 (shallow.m:29)
+      61:     17  3 EXIT pred shallow_2.r/3-0 (det) shallow_2.m:40 (shallow.m:29)
 mdb> continue
-      62:     16  2 EXIT pred shallow:test/2-0 (det) shallow.m:29 (shallow.m:13)
+      62:     16  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:13)
 mdb> continue
 1
 -11

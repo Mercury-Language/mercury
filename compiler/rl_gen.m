@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999,2002 University of Melbourne.
+% Copyright (C) 1998-1999,2002-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1513,7 +1513,7 @@ rl_gen__lower_scc_call(called_pred(CalledProc),
 	{ prog_out__sym_name_to_string(Module0, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
-	rl_info_write_message("Generating call to %s:%s/%i\n",
+	rl_info_write_message("Generating call to %s.%s/%i\n",
 		[s(Module), s(Name), i(Arity)]),
 	( 
 		{ hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) },

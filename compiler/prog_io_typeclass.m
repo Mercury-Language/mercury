@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 University of Melbourne.
+% Copyright (C) 1997-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -489,7 +489,9 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 				Type = term__functor(term__atom(Functor),
 						Args, _),
 				(
-					Functor = ":"
+					(	Functor = ":"
+					;	Functor = "."
+					)
 				->
 					Args = [_Module, Type1],
 						% Is the top level functor an

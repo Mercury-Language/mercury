@@ -1,8 +1,8 @@
 not_a_switch.m:009: In `not_a_switch(in, out)':
 not_a_switch.m:009:   error: determinism declaration not satisfied.
 not_a_switch.m:009:   Declared `det', inferred `nondet'.
-not_a_switch.m:015:   Unification of `A' and `std_util:yes(Int2)' can fail.
+not_a_switch.m:015:   Unification of `A' and `std_util.yes(Int2)' can fail.
 not_a_switch.m:016:   In argument 1 of clause head:
-not_a_switch.m:016:   unification of `HeadVar__1' and `std_util:no' can fail.
+not_a_switch.m:016:   unification of `HeadVar__1' and `std_util.no' can fail.
 not_a_switch.m:013:   Disjunction has multiple clauses with solutions.
 For more information, try recompiling with `-E'.

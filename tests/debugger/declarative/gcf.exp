@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred gcf:main/2-0 (cc_multi) gcf.m:8
+       1:      1  1 CALL pred gcf.main/2-0 (cc_multi) gcf.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break a
- 0: + stop  interface pred gcf:a/1-0 (nondet)
+ 0: + stop  interface pred gcf.a/1-0 (nondet)
 mdb> continue
-       3:      2  2 CALL pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+       3:      2  2 CALL pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
-      23:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      23:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> dd
 a(11)
 Valid? no
@@ -20,11 +20,11 @@ Valid? yes
 Found incorrect contour:
 a(11)
 Is this a bug? yes
-      23:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      23:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> continue
-      24:      2  2 REDO pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      24:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
-      30:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      30:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> dd
 a(12)
 Valid? no
@@ -35,11 +35,11 @@ Valid? yes
 Found incorrect contour:
 a(12)
 Is this a bug? yes
-      30:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      30:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> continue
-      31:      2  2 REDO pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      31:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
-      42:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      42:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> dd
 a(20)
 Valid? no
@@ -52,6 +52,6 @@ Valid? yes
 Found incorrect contour:
 a(20)
 Is this a bug? yes
-      42:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+      42:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> continue
 yes(20)

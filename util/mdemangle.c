@@ -602,15 +602,15 @@ demangle(const char *orig_name)
 	printf("<");
 	switch(category) {
 	case UNIFY:
-		printf("unification predicate for type '%s:%s'/%d mode %d",
+		printf("unification predicate for type '%s.%s'/%d mode %d",
 			module, start, arity, mode_num);
 		break;
 	case COMPARE:
-		printf("compare/3 predicate for type '%s:%s'/%d",
+		printf("compare/3 predicate for type '%s.%s'/%d",
 			module, start, arity);
 		break;
 	case INDEX:
-		printf("index/2 predicate for type '%s:%s'/%d",
+		printf("index/2 predicate for type '%s.%s'/%d",
 			module, start, arity);
 		break;
 	case LAMBDA:
@@ -633,7 +633,7 @@ demangle(const char *orig_name)
 			printf("%s '%s'/%d mode %d",
 				pred_or_func, start, arity, mode_num);
 		} else {
-			printf("%s '%s:%s'/%d mode %d",
+			printf("%s '%s.%s'/%d mode %d",
 				pred_or_func, module, start, arity, mode_num);
 		}
 	}
@@ -696,7 +696,7 @@ not_plain_mercury:
 	if (high_level) {
 		/*
 		** For MLDS, the module name gets duplicated (XXX why?)
-		** So here we must replace `foo:foo' with just `foo'.
+		** So here we must replace `foo.foo' with just `foo'.
 		*/
 		size_t half_len = strlen(module) / 2;
 		if (strncmp(module, module + half_len + 1, half_len) != 0) {
@@ -738,7 +738,7 @@ not_plain_mercury:
 			printf("<type_ctor_info for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type_ctor_info for type '%s:%s'/%d>",
+			printf("<type_ctor_info for type '%s.%s'/%d>",
 				module, start, arity);
 		}
 		break;
@@ -747,7 +747,7 @@ not_plain_mercury:
 			printf("<type_ctor_layout for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type_ctor_layout for type '%s:%s'/%d>",
+			printf("<type_ctor_layout for type '%s.%s'/%d>",
 				module, start, arity);
 		}
 		break;
@@ -756,7 +756,7 @@ not_plain_mercury:
 			printf("<type_ctor_functors for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type_ctor_functors for type '%s:%s'/%d>",
+			printf("<type_ctor_functors for type '%s.%s'/%d>",
 				module, start, arity);
 		}
 		break;

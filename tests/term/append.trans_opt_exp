@@ -1,2 +1,2 @@
 :- module append.
-:- pragma termination_info(append:app((builtin:out), (builtin:out), (builtin:in)), finite(0, [no, no, no, yes]), cannot_loop).
+:- pragma termination_info(append.app((builtin.out), (builtin.out), (builtin.in)), finite(0, [no, no, no, yes]), cannot_loop).

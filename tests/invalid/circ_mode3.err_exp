@@ -1,4 +1,4 @@
-circ_mode3.m:009: Error: circular equivalence mode `circ_mode3:circ/0'.
-circ_mode3.m:013: Error: circular equivalence modes `circ_mode3:circ1/0' and
-circ_mode3.m:013:   `circ_mode3:circ2/0'.
+circ_mode3.m:009: Error: circular equivalence mode `circ_mode3.circ/0'.
+circ_mode3.m:013: Error: circular equivalence modes `circ_mode3.circ1/0' and
+circ_mode3.m:013:   `circ_mode3.circ2/0'.
 For more information, try recompiling with `-E'.

@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred ho3:main/2-0 (det) ho3.m:8
+       1:      1  1 CALL pred ho3.main/2-0 (det) ho3.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred ho3:p/1-0 (semidet)
+ 0: + stop  interface pred ho3.p/1-0 (semidet)
 mdb> continue
-       3:      2  2 CALL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:10)
+       3:      2  2 CALL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
 mdb> finish
-      16:      2  2 FAIL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:10)
+      16:      2  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
 mdb> dd
 Call p(1)
 No solutions.
@@ -30,11 +30,11 @@ Complete? yes
 Found partially uncovered atom:
 p(1)
 Is this a bug? yes
-      16:      2  2 FAIL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:10)
+      16:      2  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
 mdb> continue
-      19:      6  2 CALL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:17)
+      19:      6  2 CALL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
 mdb> finish
-      32:      6  2 FAIL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:17)
+      32:      6  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
 mdb> dd
 Call p(2)
 No solutions.
@@ -48,7 +48,7 @@ Complete? yes
 Found partially uncovered atom:
 p(2)
 Is this a bug? yes
-      32:      6  2 FAIL pred ho3:p/1-0 (semidet) ho3.m:28 (ho3.m:17)
+      32:      6  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
 mdb> continue
 \+ p(1).
 \+ p(2).

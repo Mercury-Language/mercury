@@ -1,8 +1,8 @@
-      E1:     C1  1 CALL pred exception_cmd:main/2-0 (det) exception_cmd.m:12
+      E1:     C1  1 CALL pred exception_cmd.main/2-0 (det) exception_cmd.m:12
 mdb> echo on
 Command echo enabled.
 mdb> exception
-      E2:     C2  3 EXCP pred require:error/1-0 (erroneous)
+      E2:     C2  3 EXCP pred require.error/1-0 (erroneous)
 mdb> print *
        Message (arg 1)        	"oops"
 mdb> continue

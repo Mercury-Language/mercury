@@ -1,2 +1,2 @@
 :- module pl4_4_3.
-:- pragma termination_info(pl4_4_3:merge((builtin:in), (builtin:in), (builtin:out)), finite(0, [yes, yes, no]), cannot_loop).
+:- pragma termination_info(pl4_4_3:merge((builtin.in), (builtin.in), (builtin.out)), finite(0, [yes, yes, no]), cannot_loop).

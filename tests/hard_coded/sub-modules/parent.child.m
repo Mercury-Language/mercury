@@ -1,6 +1,6 @@
 % "Hello World" in Mercury, using nested modules.
 
-:- module parent:child.
+:- module parent.child.
 :- interface.
 :- import_module io.
 
@@ -10,4 +10,4 @@
 
 :- implementation.
 
-hello --> io__write_string("parent:child:hello\n").
+hello --> io__write_string("parent.child.hello\n").

@@ -116,9 +116,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 		main(!IO) :-
 			return_rtti_version(Version),
 			( Version >= 6 ->
-				print("Hello, world\n", !IO)
+				io.print("Hello, world\n", !IO)
 			;
-				print("Nope.\n", !IO)
+				io.print("Nope.\n", !IO)
 			).
 
 		:- pred return_rtti_version(int::out) is det.

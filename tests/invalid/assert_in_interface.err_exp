@@ -1,4 +1,4 @@
 assert_in_interface.m:005: In interface for module `assert_in_interface':
-assert_in_interface.m:005:   error: exported promise refers to predicate `list:last/2'
+assert_in_interface.m:005:   error: exported promise refers to predicate `list.last/2'
 assert_in_interface.m:005:   which is defined in the implementation of module `assert_in_interface'.
 For more information, try recompiling with `-E'.

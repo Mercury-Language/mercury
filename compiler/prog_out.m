@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,16 +50,14 @@
 	% sym_name_to_string(SymName, String):
 	%	convert a symbol name to a string,
 	%	with module qualifiers separated by
-	%	the standard Mercury module qualifier operator
-	%	(currently ":", but may eventually change to ".")
+	%	the standard Mercury module qualifier operator.
 :- pred prog_out__sym_name_to_string(sym_name, string).
 :- mode prog_out__sym_name_to_string(in, out) is det.
 
 	% sym_name_to_string(SymName, String):
 	%	convert a symbol name and arity to a "<Name>/<Arity>" string,
 	%	with module qualifiers separated by
-	%	the standard Mercury module qualifier operator
-	%	(currently ":", but may eventually change to ".")
+	%	the standard Mercury module qualifier operator.
 :- pred prog_out__sym_name_and_arity_to_string(sym_name_and_arity, string).
 :- mode prog_out__sym_name_and_arity_to_string(in, out) is det.
 
@@ -162,7 +160,7 @@ prog_out__context_to_string(Context, ContextMessage) :-
 
 prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
 	prog_out__write_module_spec(ModuleSpec),
-	io__write_string(":"),
+	io__write_string("."),
 	term_io__write_escaped_string(Name).
 prog_out__write_sym_name(unqualified(Name)) -->
 	term_io__write_escaped_string(Name).
@@ -178,7 +176,7 @@ prog_out__write_quoted_sym_name(SymName) -->
 	io__write_string("'").
 
 prog_out__sym_name_to_string(SymName, String) :-
-	prog_out__sym_name_to_string(SymName, ":", String).
+	prog_out__sym_name_to_string(SymName, ".", String).
 
 prog_out__sym_name_to_string(SymName, Separator, String) :-
 	prog_out__sym_name_to_string_2(SymName, Separator, Parts, []),

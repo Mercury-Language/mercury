@@ -6,28 +6,28 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module nested2:child.
+:- module nested2.child.
 :- interface.
 
 % module `io' is imported in nested2
 
 :- type t1 == foo.
-:- type t2 == nested2:foo.
+:- type t2 == nested2.foo.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
-:- end_module nested2:child.
+:- end_module nested2.child.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- module nested2:child.
+:- module nested2.child.
 :- implementation.
 :- import_module std_util.
 
 :- type t3 == foo.
-:- type t4 == nested2:foo.
+:- type t4 == nested2.foo.
 
 :- func has_type_t1 = t1.
 :- func has_type_t2 = t2.
@@ -35,12 +35,12 @@
 :- func has_type_t4 = t4.
 
 has_type_t1 = bar.
-has_type_t2 = nested2:bar.
+has_type_t2 = nested2.bar.
 has_type_t3 = baz(42).
-has_type_t4 = nested2:baz(42).
+has_type_t4 = nested2.baz(42).
 
 main -->
-	nested2:hello,
+	nested2.hello,
 	hello,
 
 	print("t1 = "), print(type_of(has_type_t1)), nl,
@@ -53,12 +53,12 @@ main -->
 	print("has_type_t3 = "), print(has_type_t3), nl,
 	print("has_type_t4 = "), print(has_type_t4), nl.
 
-:- end_module nested2:child.
+:- end_module nested2.child.
 
 :- type foo ---> bar ; baz(int).
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
-hello --> print("nested2:hello\n").
+hello --> print("nested2.hello\n").
 
 :- end_module nested2.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -445,7 +445,7 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 			PredOrFuncPart,
 			" `",
 			ModuleNameString,
-			":",
+			".",
 			PredName,
 			"/",
 			ArityPart,

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -49,7 +49,7 @@ typedef struct {
 
 			/*
 			** The word to complete, with `__'
-			** translated into ':'.
+			** translated into '.'.
 			*/
 	char		*MR_complete_name;
 	int		MR_complete_name_len;
@@ -332,15 +332,15 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	** There must be at least one character before the qualifier.
 	*/
 	while (end > str) {
-		if (*end == ':' || (*end == '_' && *(end + 1) == '_')) {
-			if (*end  == ':') {
+		if (*end == ':' || *end == '.' || (*end == '_' && *(end + 1) == '_')) {
+			if (*end  == ':' || *end == '.') {
 				spec->MR_proc_name = end + 1;
 			} else {
 				spec->MR_proc_name = end + 2;
 			}
 
 			/*
-			** Convert all occurences of '__' to ':'.
+			** Convert all occurences of '__' to '.'.
 			*/
 			*end = '\0';
 			MR_translate_double_underscores(str);
@@ -359,7 +359,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 }
 
 /*
-** Convert all occurrences of `__' to `:'.
+** Convert all occurrences of `__' to `.'.
 */
 static void
 MR_translate_double_underscores(char *start)
@@ -370,7 +370,7 @@ MR_translate_double_underscores(char *start)
 	str = start;
 	while (*str) {
 		if (*str == '_' && *(str + 1) == '_') {
-			*(str - double_underscores) = ':';
+			*(str - double_underscores) = '.';
 			double_underscores++;
 			str++;
 		} else {
@@ -565,7 +565,7 @@ MR_trace_breakpoint_completer(const char *word, size_t word_len)
 	MR_translate_double_underscores(data->MR_complete_name);
 	data->MR_complete_name_len = strlen(data->MR_complete_name);
 	data->MR_complete_name_is_qualified =
-			strchr(data->MR_complete_name, ':') != NULL;
+			strchr(data->MR_complete_name, '.') != NULL;
 	data->MR_complete_word_matches_module = 0;
 	data->MR_complete_current_module = -1;
 	data->MR_complete_current_proc= -1;
@@ -582,8 +582,8 @@ MR_trace_breakpoint_completer(const char *word, size_t word_len)
 	** and `bar', we want to return all the procedures in module
 	** `foo' as completions, as well as all procedures whose
 	** unqualified names begin with `f'. 
-	** Given word to complete `foo:' and modules `foo' and `foo:bar'
-	** we want to return `foo:bar:' and all the procedures in
+	** Given word to complete `foo.' and modules `foo' and `foo.bar'
+	** we want to return `foo.bar.' and all the procedures in
 	** module `foo' as completions. 
 	*/ 
 	MR_bsearch(MR_module_info_next, slot, found,
@@ -698,13 +698,13 @@ MR_trace_breakpoint_completer_init_module(MR_Proc_Completer_Data *data)
 	*/
 	if (MR_strneq(module_name, name, module_name_len)
 			&& name_len > module_name_len
-			&& name[module_name_len] == ':'
-			&& strchr(name + module_name_len + 1, ':') == NULL)
+			&& name[module_name_len] == '.'
+			&& strchr(name + module_name_len + 1, '.') == NULL)
 	{
 		/*
 		** The name to complete matches the module name completely.
 		** When searching for qualified completions skip past
-		** the module name and the trailing ':'.
+		** the module name and the trailing '.'.
 		*/
 		data->MR_complete_word_matches_module = module_name_len + 1;
 	} else if (data->MR_complete_current_module ==
@@ -818,7 +818,7 @@ MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
 		size += 5;
 	}
 	if (module != NULL) {
-		/* +1 for the ':' */
+		/* +1 for the '.' */
 		module_len = strlen(module);
 		size += module_len + 1;
 	}
@@ -836,7 +836,7 @@ MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
 	if (module != NULL) {
 		strcpy(completion + offset, module);
 		offset += module_len;
-		completion[offset] = ':';
+		completion[offset] = '.';
 		offset++;
 	}
 

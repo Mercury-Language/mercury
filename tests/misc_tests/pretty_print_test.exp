@@ -15,8 +15,8 @@
 	.
 :- type eq(T1, T2) == foobar.
 main(DCG_0, DCG_2) :-
-	io:write_int(type_num(42), DCG_0, DCG_1),
-	io:nl(DCG_1, DCG_2).
+	io.write_int(type_num(42), DCG_0, DCG_1),
+	io.nl(DCG_1, DCG_2).
 :- typeclass numbered_type(T) where [
 	func type_num(T) = int,
 	func type_num_2(T) = int,

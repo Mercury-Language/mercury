@@ -1,21 +1,21 @@
 typeclass_bogus_method.m:022: In instance declaration for
-typeclass_bogus_method.m:022:   `typeclass_bogus_method:tc1/1': incorrect
+typeclass_bogus_method.m:022:   `typeclass_bogus_method.tc1/1': incorrect
 typeclass_bogus_method.m:022:   method name(s): function
-typeclass_bogus_method.m:022:   `typeclass_bogus_method:bar/2' .
+typeclass_bogus_method.m:022:   `typeclass_bogus_method.bar/2' .
 typeclass_bogus_method.m:026: In instance declaration for
-typeclass_bogus_method.m:026:   `typeclass_bogus_method:tc2/1': incorrect
+typeclass_bogus_method.m:026:   `typeclass_bogus_method.tc2/1': incorrect
 typeclass_bogus_method.m:026:   method name(s): function
-typeclass_bogus_method.m:026:   `typeclass_bogus_method:baz/1' .
+typeclass_bogus_method.m:026:   `typeclass_bogus_method.baz/1' .
 typeclass_bogus_method.m:029: In instance declaration for
-typeclass_bogus_method.m:029:   `typeclass_bogus_method:tc3(int)': no
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc3(int)': no
 typeclass_bogus_method.m:029:   implementation for type class function method
-typeclass_bogus_method.m:029:   `typeclass_bogus_method:foo3/1'.
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.foo3/1'.
 typeclass_bogus_method.m:029: In instance declaration for
-typeclass_bogus_method.m:029:   `typeclass_bogus_method:tc3/1': incorrect
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.tc3/1': incorrect
 typeclass_bogus_method.m:029:   method name(s): function
-typeclass_bogus_method.m:029:   `typeclass_bogus_method:foo5/1' .
+typeclass_bogus_method.m:029:   `typeclass_bogus_method.foo5/1' .
 typeclass_bogus_method.m:033: In instance declaration for
-typeclass_bogus_method.m:033:   `typeclass_bogus_method:tc4/1': incorrect
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc4/1': incorrect
 typeclass_bogus_method.m:033:   method name(s): function
-typeclass_bogus_method.m:033:   `typeclass_bogus_method:foo5/1' .
+typeclass_bogus_method.m:033:   `typeclass_bogus_method.foo5/1' .
 For more information, try recompiling with `-E'.

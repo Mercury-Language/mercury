@@ -415,6 +415,7 @@ while ``xfy'' indicates a right-associative infix operator.
 
 Operator          Specifier Priority
 
+.                 yfx       10
 @@                 xfx       50
 ^                 xfy       99
 ^                 fx        100
@@ -439,7 +440,6 @@ rem               xfx       400
 \/                yfx       500
 aditi_bottom_up   fx        500
 aditi_top_down    fx        500
-.                 xfy       600
 :                 yfx       600
 :=                xfx       650
 =^                xfx       650
@@ -3848,6 +3848,8 @@ argument mode is @samp{in}.
 
 @node Modules
 @chapter Modules
+@c XXX At some point in the future, change the rest of the documentation
+@c     to use `.' as the module separator rather than `__'.
 
 @menu
 * The module system::
@@ -3910,18 +3912,19 @@ the implementation section.
 
 The names of predicates, functions, constructors, constructor fields,
 types, modes, insts, type classes,
-and (sub-)modules can be explicitly module qualified using the @samp{:}
-operator, e.g.@: @samp{module:name} or @samp{module:submodule:name}.
+and (sub-)modules can be explicitly module qualified using the @samp{.}
+operator, e.g.@: @samp{module.name} or @samp{module.submodule.name}.
 This is useful both for readability and for resolving name conflicts.
 Uses of entities imported using @code{use_module} declarations
 @emph{must} be explicitly module qualified.
 
-Currently we also support @samp{__} as an alternative module qualifier,
-so you can write @code{module__name} instead of @code{module:name}.
-We are considering changing the module qualifier from @samp{:}
-to @samp{.} in a future version, so that we can use @samp{:} as
-a type qualifier instead.  Hence for the time being we recommend
-that you use @samp{__} rather than @samp{:} as module qualifier.
+Currently we also support @samp{__} and @samp{:} as alternative
+module qualifiers,
+so you can write @code{module__name} or @code{module:name} instead
+of @code{module.name}.
+We intend to change the use of @samp{:} to being a type
+qualifier instead in a future version, its use as a module qualifier
+is therefore deprecated.
 
 Certain optimizations require information or source code for predicates
 defined in other modules to be as effective as possible.  At the moment,
@@ -4068,7 +4071,7 @@ of sub-modules.
 Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names is
-implementation-defined.  (For a module named @samp{foo:bar:baz},
+implementation-defined.  (For a module named @samp{foo.bar.baz},
 The University of Melbourne Mercury implementation requires the source
 to be located in a file named @file{foo.bar.baz.m}, @file{bar.baz.m},
 or @file{baz.m}.) 

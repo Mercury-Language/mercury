@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred browse_arg:main/2-0 (det) browse_arg.m:7
+       1:      1  1 CALL pred browse_arg.main/2-0 (det) browse_arg.m:7
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred browse_arg:p/2-0 (det)
+ 0: + stop  interface pred browse_arg.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred browse_arg:p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
 mdb> finish
-       3:      2  2 EXIT pred browse_arg:p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
 mdb> dd
 p(1, baz(1, bar))
 Valid? browse 2
@@ -22,6 +22,6 @@ Valid? no
 Found incorrect contour:
 p(1, baz(1, bar))
 Is this a bug? yes
-       3:      2  2 EXIT pred browse_arg:p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
 mdb> continue
 baz(1, bar)

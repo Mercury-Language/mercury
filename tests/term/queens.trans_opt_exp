@@ -1,2 +1,2 @@
 :- module queens.
-:- pragma termination_info(queens:queens((builtin:in), (builtin:out)), finite(0, [yes, no]), cannot_loop).
+:- pragma termination_info(queens.queens((builtin.in), (builtin.out)), finite(0, [yes, no]), cannot_loop).

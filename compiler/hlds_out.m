@@ -2350,7 +2350,7 @@ hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
 hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 		AppendVarnums) -->
 	mercury_output_bracketed_sym_name(ModuleName),
-	io__write_string(":"),
+	io__write_string("."),
 	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
 		next_to_graphic_token).
 
@@ -2362,7 +2362,7 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 hlds_out__write_qualified_functor_with_term_args(ModuleName, Functor,
 		ArgTerms, VarSet, AppendVarNums) -->
 	mercury_output_bracketed_sym_name(ModuleName),
-	io__write_string(":"),
+	io__write_string("."),
 	{ term__context_init(Context) },
 	mercury_output_term(term__functor(Functor, ArgTerms, Context), VarSet,
 		AppendVarNums, next_to_graphic_token).

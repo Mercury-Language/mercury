@@ -1,2 +1,2 @@
 :- module arit_exp.
-:- pragma termination_info(arit_exp:e((builtin:in)), finite(0, [no]), cannot_loop).
+:- pragma termination_info(arit_exp.e((builtin.in)), finite(0, [no]), cannot_loop).

@@ -1,2 +1,2 @@
 :- module sum.
-:- pragma termination_info(sum:sum((builtin:out), (builtin:out), (builtin:in)), finite(0, [no, no, yes]), cannot_loop).
+:- pragma termination_info(sum.sum((builtin.out), (builtin.out), (builtin.in)), finite(0, [no, no, yes]), cannot_loop).

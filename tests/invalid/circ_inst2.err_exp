@@ -1,6 +1,6 @@
-circ_inst2.m:010: Error: circular equivalence inst `circ_inst2:circ1/1'.
-circ_inst2.m:011: Error: circular equivalence inst `circ_inst2:circ2/1'.
-circ_inst2.m:013: Error: circular equivalence inst `circ_inst2:circ4/1'.
-circ_inst2.m:016: Error: circular equivalence insts `circ_inst2:left/1' and
-circ_inst2.m:016:   `circ_inst2:right/1'.
+circ_inst2.m:010: Error: circular equivalence inst `circ_inst2.circ1/1'.
+circ_inst2.m:011: Error: circular equivalence inst `circ_inst2.circ2/1'.
+circ_inst2.m:013: Error: circular equivalence inst `circ_inst2.circ4/1'.
+circ_inst2.m:016: Error: circular equivalence insts `circ_inst2.left/1' and
+circ_inst2.m:016:   `circ_inst2.right/1'.
 For more information, try recompiling with `-E'.

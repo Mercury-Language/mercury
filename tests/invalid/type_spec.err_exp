@@ -1,15 +1,15 @@
-type_spec.m:010: In `:- pragma type_spec' declaration for predicate `type_spec:type_spec1/1':
+type_spec.m:010: In `:- pragma type_spec' declaration for predicate `type_spec.type_spec1/1':
 type_spec.m:010:   error: variable `U' does not occur in the `:- pred' declaration.
 type_spec.m:011: Error: `:- pragma type_spec' declaration for
-type_spec.m:011:   `type_spec:type_spec1/1' specifies non-existent mode.
-type_spec.m:013: Error: `:- pragma type_spec' declaration for type_spec:type_spec1/2
+type_spec.m:011:   `type_spec.type_spec1/1' specifies non-existent mode.
+type_spec.m:013: Error: `:- pragma type_spec' declaration for type_spec.type_spec1/2
 type_spec.m:013:   without corresponding `pred' or `func' declaration.
-type_spec.m:024: In `:- pragma type_spec' declaration for predicate `type_spec:type_spec2/1':
+type_spec.m:024: In `:- pragma type_spec' declaration for predicate `type_spec.type_spec2/1':
 type_spec.m:024:   error: the substitution includes the existentially
 type_spec.m:024:   quantified type variable `U'.
-type_spec.m:026: In `:- pragma type_spec' declaration for predicate `type_spec:type_spec2/1':
+type_spec.m:026: In `:- pragma type_spec' declaration for predicate `type_spec.type_spec2/1':
 type_spec.m:026:   error: variable `U' occurs
 type_spec.m:026:   on both sides of the substitution.
-type_spec.m:028: In `:- pragma type_spec' declaration for predicate `type_spec:type_spec2/1':
+type_spec.m:028: In `:- pragma type_spec' declaration for predicate `type_spec.type_spec2/1':
 type_spec.m:028:   error: variable `U' has multiple replacement types.
 For more information, try recompiling with `-E'.

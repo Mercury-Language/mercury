@@ -13,4 +13,4 @@
 
 :- pred hello(io__state::di, io__state::uo) is det.
 
-hello --> print("parent2:hello\n").
+hello --> print("parent2.hello\n").

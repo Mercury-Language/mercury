@@ -1,2 +1,2 @@
-ambiguous_overloading.m:015: In clause for predicate `ambiguous_overloading:ambig_overload/1':
+ambiguous_overloading.m:015: In clause for predicate `ambiguous_overloading.ambig_overload/1':
 ambiguous_overloading.m:015:   warning: highly ambiguous overloading.

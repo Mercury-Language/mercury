@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred negation:main/2-0 (det) negation.m:13
+       1:      1  1 CALL pred negation.main/2-0 (det) negation.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred negation:p/2-0 (det)
+ 0: + stop  interface pred negation.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred negation:p/2-0 (det) negation.m:29 (negation.m:14)
+       2:      2  2 CALL pred negation.p/2-0 (det) negation.m:29 (negation.m:14)
 mdb> finish
-      23:      2  2 EXIT pred negation:p/2-0 (det) negation.m:29 (negation.m:14)
+      23:      2  2 EXIT pred negation.p/2-0 (det) negation.m:29 (negation.m:14)
 mdb> dd
 p(1, 42)
 Valid? no
@@ -27,6 +27,6 @@ Complete? yes
 Found incorrect contour:
 p(1, 42)
 Is this a bug? yes
-      23:      2  2 EXIT pred negation:p/2-0 (det) negation.m:29 (negation.m:14)
+      23:      2  2 EXIT pred negation.p/2-0 (det) negation.m:29 (negation.m:14)
 mdb> continue
 42

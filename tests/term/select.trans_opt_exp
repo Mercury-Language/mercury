@@ -1,2 +1,2 @@
 :- module select.
-:- pragma termination_info(select:select((builtin:out), (builtin:in), (builtin:out)), finite(-1, [no, no, yes, no]), cannot_loop).
+:- pragma termination_info(select.select((builtin.out), (builtin.in), (builtin.out)), finite(-1, [no, no, yes, no]), cannot_loop).

@@ -1,4 +1,4 @@
 typeclass_missing_det_3.m:  1: Warning: interface for module `typeclass_missing_det_3' does not export anything.
 typeclass_missing_det_3.m:013: Error: no determinism declaration for type class method
-typeclass_missing_det_3.m:013:   predicate `typeclass_missing_det_3:write/3'.
+typeclass_missing_det_3.m:013:   predicate `typeclass_missing_det_3.write/3'.
 For more information, try recompiling with `-E'.

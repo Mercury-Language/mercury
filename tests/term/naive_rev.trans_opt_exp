@@ -1,2 +1,2 @@
 :- module naive_rev.
-:- pragma termination_info(naive_rev:reverse((builtin:in), (builtin:out)), finite(0, [no, yes, no]), cannot_loop).
+:- pragma termination_info(naive_rev.reverse((builtin.in), (builtin.out)), finite(0, [no, yes, no]), cannot_loop).

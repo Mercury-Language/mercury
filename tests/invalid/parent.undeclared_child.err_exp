@@ -1,4 +1,4 @@
-parent.undeclared_child.m:004: Error in module `parent:undeclared_child':
+parent.undeclared_child.m:004: Error in module `parent.undeclared_child':
 parent.undeclared_child.m:004:   module `parent' has no `include_module'
 parent.undeclared_child.m:004:   declaration for module `undeclared_child'.
 For more information, try recompiling with `-E'.

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -949,7 +949,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
                 "for compiler generated procedures");
         }
 
-        fprintf(fp, "%s for %s:%s/%ld-%ld",
+        fprintf(fp, "%s for %s.%s/%ld-%ld",
             entry->MR_sle_comp.MR_comp_pred_name,
             entry->MR_sle_comp.MR_comp_type_module,
             entry->MR_sle_comp.MR_comp_type_name,
@@ -976,7 +976,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
             fprintf(fp, " ");
         }
 
-        fprintf(fp, "%s:%s/%ld-%ld",
+        fprintf(fp, "%s.%s/%ld-%ld",
             entry->MR_sle_user.MR_user_decl_module,
             entry->MR_sle_user.MR_user_name,
             (long) MR_sle_user_adjusted_arity(entry),

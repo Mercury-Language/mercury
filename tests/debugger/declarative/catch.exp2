@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred catch:main/2-0 (cc_multi) catch.m:8
+       1:      1  1 CALL pred catch.main/2-0 (cc_multi) catch.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred catch:p/2-0 (cc_multi)
+ 0: + stop  interface pred catch.p/2-0 (cc_multi)
 mdb> continue
-       2:      2  2 CALL pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+       2:      2  2 CALL pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> finish
-      11:      2  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+      11:      2  2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> dd
 p(1, exception(univ_cons("q: bad input")))
 Valid? no
@@ -17,12 +17,12 @@ Sorry, the diagnosis cannot continue because it requires support for
 the following: code that catches exceptions.
 The debugger is a work in progress, and this is not supported in the
 current version.
-      11:      2  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:9)
+      11:      2  2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> continue
 exception(univ_cons("q: bad input"))
-      16:      8  2 CALL pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+      16:      8  2 CALL pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> finish
-      23:      8  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+      23:      8  2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> dd
 p(2, succeeded(2))
 Valid? no
@@ -33,8 +33,8 @@ Valid? yes
 Found incorrect contour:
 try(q(2), succeeded(2))
 Is this a bug? yes
-      22:      9  3 EXIT pred exception:try/2-0 (cc_multi) exception.m:321 (catch.m:19)
+      22:      9  3 EXIT pred exception.try/2-0 (cc_multi) exception.m:321 (catch.m:19)
 mdb> continue
-      23:      8  2 EXIT pred catch:p/2-0 (cc_multi) catch.m:18 (catch.m:12)
+      23:      8  2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> continue
 succeeded(2)

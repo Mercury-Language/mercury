@@ -1,2 +1,2 @@
 :- module mergesort_t.
-:- pragma termination_info(mergesort_t:mergesort((builtin:in), (builtin:out)), infinite, can_loop).
+:- pragma termination_info(mergesort_t.mergesort((builtin.in), (builtin.out)), infinite, can_loop).

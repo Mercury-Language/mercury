@@ -1,2 +1,2 @@
 :- module my_list.
-:- pragma termination_info(my_list:list((builtin:in)), finite(0, [no, no]), cannot_loop).
+:- pragma termination_info(my_list.list((builtin.in)), finite(0, [no, no]), cannot_loop).

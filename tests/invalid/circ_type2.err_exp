@@ -1,9 +1,9 @@
-circ_type2.m:010: Error: circular equivalence type `circ_type2:circ1/1'.
-circ_type2.m:011: Error: circular equivalence type `circ_type2:circ2/1'.
-circ_type2.m:012: Error: circular equivalence type `circ_type2:circ3/1'.
-circ_type2.m:013: Error: circular equivalence type `circ_type2:circ4/1'.
-circ_type2.m:015: Error: circular equivalence type `circ_type2:left/1'.
-circ_type2.m:016: Error: circular equivalence type `circ_type2:right/1'.
-circ_type2.m:018: Error: circular equivalence type `circ_type2:circ_left/1'.
-circ_type2.m:019: Error: circular equivalence type `circ_type2:circ_right/1'.
+circ_type2.m:010: Error: circular equivalence type `circ_type2.circ1/1'.
+circ_type2.m:011: Error: circular equivalence type `circ_type2.circ2/1'.
+circ_type2.m:012: Error: circular equivalence type `circ_type2.circ3/1'.
+circ_type2.m:013: Error: circular equivalence type `circ_type2.circ4/1'.
+circ_type2.m:015: Error: circular equivalence type `circ_type2.left/1'.
+circ_type2.m:016: Error: circular equivalence type `circ_type2.right/1'.
+circ_type2.m:018: Error: circular equivalence type `circ_type2.circ_left/1'.
+circ_type2.m:019: Error: circular equivalence type `circ_type2.circ_right/1'.
 For more information, try recompiling with `-E'.

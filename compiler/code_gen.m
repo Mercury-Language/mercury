@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1352,7 +1352,11 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	string__int_to_string(Arity, ArityStr),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(ProcNum, ProcNumStr),
-	string__append_list([PredOrFuncString, " ", ModuleNameString, ":",
+		% XXX if ModuleNameString ends with [0-9] and/or
+		% FullPredName starts with [0-9] then ideally we
+		% should use "'.'" rather than just ".".
+		%
+	string__append_list([PredOrFuncString, " ", ModuleNameString, ".",
 		FullPredName, "/", ArityStr, "-", ProcNumStr], PushMsg).
 
 :- pred code_gen__find_arg_type_ctor_name((type)::in, string::out) is det.

@@ -7,16 +7,16 @@ Each symbol is followed by the correct decoding.
 <shared constant number 21 for module mercury_builtin>
 
 	a type ctor info
-<type_ctor_info for type 'mercury_builtin:list'/1>
-<type_ctor_info for type 'mercury_builtin:list'/1>
+<type_ctor_info for type 'mercury_builtin.list'/1>
+<type_ctor_info for type 'mercury_builtin.list'/1>
 
 	a type ctor layout
-<type_ctor_layout for type 'mercury_builtin:term__context'/0>
-<type_ctor_layout for type 'mercury_builtin:term__context'/0>
+<type_ctor_layout for type 'mercury_builtin.term__context'/0>
+<type_ctor_layout for type 'mercury_builtin.term__context'/0>
 
 	a type ctor functors
-<type_ctor_functors for type 'eliza:message'/0>
-<type_ctor_functors for type 'eliza:message'/0>
+<type_ctor_functors for type 'eliza.message'/0>
+<type_ctor_functors for type 'eliza.message'/0>
 
 	an unqualified type ctor info
 <type_ctor_info for type 'int'/0>
@@ -31,16 +31,16 @@ Each symbol is followed by the correct decoding.
 <predicate '!'/0 mode 0>
 
 	a compare predicate
-<compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
-<compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
+<compare/3 predicate for type 'mercury_builtin.comparison_result'/0>
+<compare/3 predicate for type 'mercury_builtin.comparison_result'/0>
 
 	an index predicate
-<index/2 predicate for type 'mercury_builtin:list'/1>
-<index/2 predicate for type 'mercury_builtin:list'/1>
+<index/2 predicate for type 'mercury_builtin.list'/1>
+<index/2 predicate for type 'mercury_builtin.list'/1>
 
 	a unify predicate
-<unification predicate for type 'mercury_builtin:term'/0 mode 0>
-<unification predicate for type 'mercury_builtin:term'/0 mode 0>
+<unification predicate for type 'mercury_builtin.term'/0 mode 0>
+<unification predicate for type 'mercury_builtin.term'/0 mode 0>
 
 	a normal predicate
 <predicate 'copy'/2 mode 1>
@@ -97,28 +97,28 @@ mercury_data_foo
 <deforestation procedure (#4) from 'collect_vars' in module 'lp' line 153>
 
 	procedure introduced by type specialization
-<function 'sparse_bitset:list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
-<function 'sparse_bitset:list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
+<function 'sparse_bitset.list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
+<function 'sparse_bitset.list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
 
 	type specialization and deforestion
 	XXX this needs to be fixed
-<predicate 'doubleapp_impl:DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
-<predicate 'doubleapp_impl:DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
+<predicate 'doubleapp_impl.DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
+<predicate 'doubleapp_impl.DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
 
 	A realistic test
 ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
 interpreter.o -lcfloat_lib 
 Undefined			first referenced
  symbol  			    in file
-<predicate 'tr_store:get_mutvar'/4 mode 0> interpreter.o
-<index/2 predicate for type 'store:mutvar'/2> interpreter.o
-<compare/3 predicate for type 'store:mutvar'/2> interpreter.o
-<predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
-<unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
-<predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
-<predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<type_ctor_info for type 'store:mutvar'/2> interpreter.o
+<predicate 'tr_store.get_mutvar'/4 mode 0> interpreter.o
+<index/2 predicate for type 'store.mutvar'/2> interpreter.o
+<compare/3 predicate for type 'store.mutvar'/2> interpreter.o
+<predicate 'std_util.unsorted_aggregate'/4 mode 5> interpreter.o
+<type_ctor_info for type 'store.some_store_type'/0> interpreter.o
+<unification predicate for type 'store.mutvar'/2 mode 0> interpreter.o
+<predicate 'tr_store.new_mutvar'/4 mode 0> interpreter.o
+<predicate 'tr_store.set_mutvar'/4 mode 0> interpreter.o
+<type_ctor_info for type 'store.mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 
@@ -127,15 +127,15 @@ ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
 interpreter.o -lcfloat_lib 
 Undefined			first referenced
  symbol  			    in file
-<predicate 'tr_store:get_mutvar'/4 mode 0> interpreter.o
-<index/2 predicate for type 'store:mutvar'/2> interpreter.o
-<compare/3 predicate for type 'store:mutvar'/2> interpreter.o
-<predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
-<unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
-<predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
-<predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<type_ctor_info for type 'store:mutvar'/2> interpreter.o
+<predicate 'tr_store.get_mutvar'/4 mode 0> interpreter.o
+<index/2 predicate for type 'store.mutvar'/2> interpreter.o
+<compare/3 predicate for type 'store.mutvar'/2> interpreter.o
+<predicate 'std_util.unsorted_aggregate'/4 mode 5> interpreter.o
+<type_ctor_info for type 'store.some_store_type'/0> interpreter.o
+<unification predicate for type 'store.mutvar'/2 mode 0> interpreter.o
+<predicate 'tr_store.new_mutvar'/4 mode 0> interpreter.o
+<predicate 'tr_store.set_mutvar'/4 mode 0> interpreter.o
+<type_ctor_info for type 'store.mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 

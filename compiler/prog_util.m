@@ -232,7 +232,7 @@ sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
 construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
 	construct_qualified_term(Module, [], Context, ModuleTerm),
 	UnqualifiedTerm = term__functor(term__atom(Name), Args, Context),
-	Term = term__functor(term__atom(":"),
+	Term = term__functor(term__atom("."),
 		[ModuleTerm, UnqualifiedTerm], Context).
 construct_qualified_term(unqualified(Name), Args, Context, Term) :-
 	Term = term__functor(term__atom(Name), Args, Context).

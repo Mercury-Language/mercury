@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1289,9 +1289,9 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
 
 expand_type_name(TypeCtorInfo, Wrap) = Name :-
 	( Wrap = yes ->
-		FmtStr = "<<%s:%s/%d>>"
+		FmtStr = "<<%s.%s/%d>>"
 	;
-		FmtStr = "%s:%s/%d"
+		FmtStr = "%s.%s/%d"
 	),
 	Name = string__format(FmtStr, [s(TypeCtorInfo ^ type_ctor_module_name),
 			s(TypeCtorInfo ^ type_ctor_name),

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -273,9 +273,9 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 
     len = 0;
     len += strlen(tci->MR_type_ctor_module_name);
-    len += 1;   /* : */
+    len += 1;   /* '.' */
     len += strlen(tci->MR_type_ctor_name);
-    len += 1;   /* / */
+    len += 1;   /* '/' */
     len += 4;   /* arity; we do not support arities above 1024 */
     if (wrap) {
         len += 4;   /* <<>> */
@@ -290,7 +290,7 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
     MR_allocate_aligned_string_msg(str, len, "MR_expand_type_name");
     MR_save_transient_hp();
 
-    sprintf(str, wrap? "<<%s:%s/%d>>" : "%s:%s/%d",
+    sprintf(str, wrap? "<<%s.%s/%d>>" : "%s.%s/%d",
         tci->MR_type_ctor_module_name,
         tci->MR_type_ctor_name,
         tci->MR_type_ctor_arity);

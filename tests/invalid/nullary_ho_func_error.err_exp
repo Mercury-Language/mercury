@@ -1,4 +1,4 @@
-nullary_ho_func_error.m:022: In clause for predicate `nullary_ho_func_error:main/2':
+nullary_ho_func_error.m:022: In clause for predicate `nullary_ho_func_error.main/2':
 nullary_ho_func_error.m:022:   in argument 1 of call to predicate `print/3':
 nullary_ho_func_error.m:022:   in argument 1 of functor `apply_nullary_func/1':
 nullary_ho_func_error.m:022:   type error in unification of argument

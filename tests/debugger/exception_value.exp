@@ -1,15 +1,15 @@
-      E1:     C1  1 CALL pred exception_value:main/2-0 (cc_multi) exception_value.m:12
+      E1:     C1  1 CALL pred exception_value.main/2-0 (cc_multi) exception_value.m:12
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred exception_value:p/1-0 (det)
+ 0: + stop  interface pred exception_value.p/1-0 (det)
 mdb> break q
- 1: + stop  interface pred exception_value:q/1-0 (det)
+ 1: + stop  interface pred exception_value.q/1-0 (det)
 mdb> continue
-      E2:     C2  3 CALL pred exception_value:p/1-0 (det) exception_value.m:30
+      E2:     C2  3 CALL pred exception_value.p/1-0 (det) exception_value.m:30
 mdb> finish
-      E3:     C2  3 EXCP pred exception_value:p/1-0 (det)
+      E3:     C2  3 EXCP pred exception_value.p/1-0 (det)
 mdb> print exception
 	"p exception"
 mdb> continue
@@ -17,9 +17,9 @@ mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
 exception(univ_cons("p exception"))
-      E4:     C3  3 CALL pred exception_value:q/1-0 (det) exception_value.m:35
+      E4:     C3  3 CALL pred exception_value.q/1-0 (det) exception_value.m:35
 mdb> finish
-      E5:     C3  3 EXCP pred exception_value:q/1-0 (det)
+      E5:     C3  3 EXCP pred exception_value.q/1-0 (det)
 mdb> browse exception
 browser> set depth 9
 browser> set size 99

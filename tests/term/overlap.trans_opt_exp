@@ -1,2 +1,2 @@
 :- module overlap.
-:- pragma termination_info(overlap:overlap((builtin:in), (builtin:in)), finite(0, [no, no, no]), cannot_loop).
+:- pragma termination_info(overlap.overlap((builtin.in), (builtin.in)), finite(0, [no, no, no]), cannot_loop).

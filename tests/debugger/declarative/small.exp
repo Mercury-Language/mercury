@@ -1,19 +1,19 @@
-       1:      1  1 CALL pred small:main/2-0 (det) small.m:7
+       1:      1  1 CALL pred small.main/2-0 (det) small.m:7
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred small:p/1-0 (det)
+ 0: + stop  interface pred small.p/1-0 (det)
 mdb> continue
-       2:      2  2 CALL pred small:p/1-0 (det) small.m:14 (small.m:8)
+       2:      2  2 CALL pred small.p/1-0 (det) small.m:14 (small.m:8)
 mdb> finish
-       3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
+       3:      2  2 EXIT pred small.p/1-0 (det) small.m:14 (small.m:8)
 mdb> dd
 p(42)
 Valid? no
 Found incorrect contour:
 p(42)
 Is this a bug? yes
-       3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
+       3:      2  2 EXIT pred small.p/1-0 (det) small.m:14 (small.m:8)
 mdb> continue
 42

@@ -1,44 +1,44 @@
-       1:      1  1 CALL pred multi_parameter:main/2-0 (det) multi_parameter.m:23
+       1:      1  1 CALL pred multi_parameter.main/2-0 (det) multi_parameter.m:23
 mdb> echo on
 Command echo enabled.
 mdb> context nextline
 Contexts will be printed on the next line.
 mdb> 
-       2:      2  2 CALL pred multi_parameter:foo/2-0 (det)
+       2:      2  2 CALL pred multi_parameter.foo/2-0 (det)
                          multi_parameter.m:32 (from multi_parameter.m:24)
 mdb> print *
        X (arg 1)              	'z'
 mdb> 
-       3:      3  3 CALL pred multi_parameter:a/2-0 (det)
+       3:      3  3 CALL pred multi_parameter.a/2-0 (det)
                          (from multi_parameter.m:32)
 mdb> print *
        HeadVar__1             	'z'
 mdb> 
-       4:      4  4 CALL pred multi_parameter:ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
+       4:      4  4 CALL pred multi_parameter.ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
                          multi_parameter.m:20
 mdb> print *
        HeadVar__1             	'z'
 mdb> 
-       5:      4  4 EXIT pred multi_parameter:ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
+       5:      4  4 EXIT pred multi_parameter.ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
                          multi_parameter.m:20
 mdb> print *
        HeadVar__1             	'z'
        HeadVar__2             	122
 mdb> 
-       6:      3  3 EXIT pred multi_parameter:a/2-0 (det)
+       6:      3  3 EXIT pred multi_parameter.a/2-0 (det)
                          (from multi_parameter.m:32)
 mdb> print *
        HeadVar__1             	'z'
        HeadVar__2             	122
 mdb> 
-       7:      2  2 EXIT pred multi_parameter:foo/2-0 (det)
+       7:      2  2 EXIT pred multi_parameter.foo/2-0 (det)
                          multi_parameter.m:32 (from multi_parameter.m:24)
 mdb> print *
        X (arg 1)              	'z'
        Y (arg 2)              	122
 mdb> 
 122
-       8:      1  1 EXIT pred multi_parameter:main/2-0 (det)
+       8:      1  1 EXIT pred multi_parameter.main/2-0 (det)
                          multi_parameter.m:23
 mdb> print *
        DCG_2 (arg 2)          	state('<<c_pointer>>')

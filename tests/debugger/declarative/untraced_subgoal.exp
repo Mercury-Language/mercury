@@ -1,28 +1,28 @@
-       1:      1  1 CALL pred untraced_subgoal:main/2-0 (det) untraced_subgoal.m:8
+       1:      1  1 CALL pred untraced_subgoal.main/2-0 (det) untraced_subgoal.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred untraced_subgoal:p/2-0 (nondet)
+ 0: + stop  interface pred untraced_subgoal.p/2-0 (nondet)
 mdb> continue
-       3:      2  2 CALL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       3:      2  2 CALL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> finish
-       5:      2  2 EXIT pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       5:      2  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> continue
-       6:      2  2 REDO pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       6:      2  2 REDO pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> finish
-       7:      2  2 EXIT pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       7:      2  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> dd
 p(1, 2)
 Valid? no
 Found incorrect contour:
 p(1, 2)
 Is this a bug? yes
-       7:      2  2 EXIT pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       7:      2  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> continue
-       8:      2  2 REDO pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       8:      2  2 REDO pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> finish
-       9:      2  2 FAIL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       9:      2  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> dd
 Call p(1, _)
 Solutions:
@@ -32,12 +32,12 @@ Complete? no
 Found partially uncovered atom:
 p(1, _)
 Is this a bug? yes
-       9:      2  2 FAIL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
+       9:      2  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:10)
 mdb> continue
 no
-      12:      3  2 CALL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      12:      3  2 CALL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> finish
-      29:      3  2 EXIT pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      29:      3  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> dd
 p(2, 2)
 Valid? no
@@ -57,11 +57,11 @@ Valid? yes
 Found incorrect contour:
 p(2, 2)
 Is this a bug? yes
-      29:      3  2 EXIT pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      29:      3  2 EXIT pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> continue
-      30:      3  2 REDO pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      30:      3  2 REDO pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> finish
-      31:      3  2 FAIL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      31:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> dd
 Call p(2, _)
 Solutions:
@@ -70,6 +70,6 @@ Complete? no
 Found partially uncovered atom:
 p(2, _)
 Is this a bug? yes
-      31:      3  2 FAIL pred untraced_subgoal:p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
+      31:      3  2 FAIL pred untraced_subgoal.p/2-0 (nondet) untraced_subgoal.m:28 (untraced_subgoal.m:18)
 mdb> continue
 no

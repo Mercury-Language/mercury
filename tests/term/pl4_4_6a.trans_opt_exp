@@ -1,2 +1,2 @@
 :- module pl4_4_6a.
-:- pragma termination_info(pl4_4_6a:perm((builtin:in), (builtin:out)), finite(0, [no, yes, no]), cannot_loop).
+:- pragma termination_info(pl4_4_6a.perm((builtin.in), (builtin.out)), finite(0, [no, yes, no]), cannot_loop).

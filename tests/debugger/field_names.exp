@@ -1,12 +1,12 @@
-       1:      1  1 CALL pred field_names:main/2-0 (det) field_names.m:51
+       1:      1  1 CALL pred field_names.main/2-0 (det) field_names.m:51
 mdb> echo on
 Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> step
-       2:      2  2 CALL pred field_names:make_t1f1/5-0 (det)
+       2:      2  2 CALL pred field_names.make_t1f1/5-0 (det)
 mdb> finish
-       3:      2  2 EXIT pred field_names:make_t1f1/5-0 (det)
+       3:      2  2 EXIT pred field_names.make_t1f1/5-0 (det)
 mdb> p 5
        HeadVar__5             	t1f1(41, 42, 43, 44)
 mdb> p 5^1x
@@ -52,9 +52,9 @@ browser> p
 44
 browser> quit
 mdb> step
-       4:      3  2 CALL pred field_names:make_t1f2/4-0 (det)
+       4:      3  2 CALL pred field_names.make_t1f2/4-0 (det)
 mdb> finish
-       5:      3  2 EXIT pred field_names:make_t1f2/4-0 (det)
+       5:      3  2 EXIT pred field_names.make_t1f2/4-0 (det)
 mdb> p 4
        HeadVar__4             	t1f2(51, 52, 53)
 mdb> p 4^1
@@ -84,9 +84,9 @@ browser> p
 53
 browser> quit
 mdb> step
-       6:      4  2 CALL pred field_names:make_t2/5-0 (det)
+       6:      4  2 CALL pred field_names.make_t2/5-0 (det)
 mdb> finish
-       7:      4  2 EXIT pred field_names:make_t2/5-0 (det)
+       7:      4  2 EXIT pred field_names.make_t2/5-0 (det)
 mdb> p 5
        HeadVar__5             	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 5^1
@@ -159,9 +159,9 @@ browser> p
 51
 browser> quit
 mdb> step
-       8:      5  2 CALL pred field_names:make_t3/4-0 (det)
+       8:      5  2 CALL pred field_names.make_t3/4-0 (det)
 mdb> finish
-       9:      5  2 EXIT pred field_names:make_t3/4-0 (det)
+       9:      5  2 EXIT pred field_names.make_t3/4-0 (det)
 mdb> p 4
        HeadVar__4             	t3f(t1f2(51, 52, 53), 72, "xyzzy", t1f1(41, 42, 43, 44))
 mdb> p 4^1
@@ -223,9 +223,9 @@ mdb: the path t1e does not exist.
 mdb> p 4^t3e^t1a
 mdb: the path t3e^t1a does not exist.
 mdb> step
-      10:      6  2 CALL pred field_names:make_t4/2-0 (det)
+      10:      6  2 CALL pred field_names.make_t4/2-0 (det)
 mdb> finish
-      11:      6  2 EXIT pred field_names:make_t4/2-0 (det)
+      11:      6  2 EXIT pred field_names.make_t4/2-0 (det)
 mdb> p 2
        A(2) (arg 2)           	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 2^1
@@ -277,9 +277,9 @@ mdb: the path t1f does not exist.
 mdb> p 2^t2c^t1g
        A(2) (arg 2)           	53
 mdb> step
-      12:      7  2 CALL pred field_names:make_t5/2-0 (det)
+      12:      7  2 CALL pred field_names.make_t5/2-0 (det)
 mdb> finish
-      13:      7  2 EXIT pred field_names:make_t5/2-0 (det)
+      13:      7  2 EXIT pred field_names.make_t5/2-0 (det)
 mdb> p 2
        HeadVar__2             	t5f(t1f1(41, 42, 43, 44))
 mdb> p 2/1
@@ -297,9 +297,9 @@ mdb> p 2/t5a/t1a
 mdb> p 2/t6a
 mdb: the path t6a does not exist.
 mdb> step
-      14:      8  2 CALL pred field_names:make_t6/2-0 (det)
+      14:      8  2 CALL pred field_names.make_t6/2-0 (det)
 mdb> finish
-      15:      8  2 EXIT pred field_names:make_t6/2-0 (det)
+      15:      8  2 EXIT pred field_names.make_t6/2-0 (det)
 mdb> p 2
        HeadVar__2             	t6f(0.900000000000000)
 mdb> p 2/1

@@ -1,2 +1,2 @@
 :- module dds3_14.
-:- pragma termination_info(dds3_14:sum((builtin:in), (builtin:in), (builtin:out)), infinite, cannot_loop).
+:- pragma termination_info(dds3_14:sum((builtin.in), (builtin.in), (builtin.out)), infinite, cannot_loop).

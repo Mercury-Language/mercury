@@ -1,3 +1,3 @@
 :- module pl1_1.
-:- pragma termination_info(pl1_1:append((builtin:in), (builtin:in), (builtin:out)), finite(0, [no, yes, yes, no]), cannot_loop).
-:- pragma termination_info(pl1_1:append((builtin:out), (builtin:out), (builtin:in)), finite(0, [no, no, no, yes]), cannot_loop).
+:- pragma termination_info(pl1_1:append((builtin.in), (builtin.in), (builtin.out)), finite(0, [no, yes, yes, no]), cannot_loop).
+:- pragma termination_info(pl1_1:append((builtin.out), (builtin.out), (builtin.in)), finite(0, [no, no, no, yes]), cannot_loop).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2916,7 +2916,7 @@ io__write_type_ctor_desc(TypeCtorDesc) -->
 	( { ModuleName = "builtin" } ->
 		io__format("%s/%d", [s(Name), i(Arity)])
 	;
-		io__format("%s:%s/%d", [s(ModuleName), s(Name), i(Arity)])
+		io__format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)])
 	).
 
 :- pred io__write_c_pointer(c_pointer, io__state, io__state).

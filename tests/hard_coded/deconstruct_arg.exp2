@@ -185,21 +185,21 @@ functor univ_cons arity 1 [["hi! I\'m a univ!"]]
 deconstruct limited deconstruct 3 of ["hi! I\'m a univ!"]
 functor univ_cons arity 1 [["hi! I\'m a univ!"]]
 
-std_util    functor: <<deconstruct_arg:set/1>>/0
+std_util    functor: <<deconstruct_arg.set/1>>/0
 deconstruct functor: set_rep/1
-std_util    argument 0 of '<<deconstruct_arg:set/1>>' doesn't exist
-deconstruct argument 0 of '<<deconstruct_arg:set/1>>' is [1, 2, 3, 3]
-std_util    argument 1 of '<<deconstruct_arg:set/1>>' doesn't exist
-deconstruct argument 1 of '<<deconstruct_arg:set/1>>' doesn't exist
-std_util    argument 2 of '<<deconstruct_arg:set/1>>' doesn't exist
-deconstruct argument 2 of '<<deconstruct_arg:set/1>>' doesn't exist
-std_util    deconstruct: functor <<deconstruct_arg:set/1>> arity 0
+std_util    argument 0 of '<<deconstruct_arg.set/1>>' doesn't exist
+deconstruct argument 0 of '<<deconstruct_arg.set/1>>' is [1, 2, 3, 3]
+std_util    argument 1 of '<<deconstruct_arg.set/1>>' doesn't exist
+deconstruct argument 1 of '<<deconstruct_arg.set/1>>' doesn't exist
+std_util    argument 2 of '<<deconstruct_arg.set/1>>' doesn't exist
+deconstruct argument 2 of '<<deconstruct_arg.set/1>>' doesn't exist
+std_util    deconstruct: functor <<deconstruct_arg.set/1>> arity 0
 []
 deconstruct deconstruct: functor set_rep arity 1
 [[1, 2, 3, 3]]
-std_util    limited deconstruct 3 of '<<deconstruct_arg:set/1>>'
-functor <<deconstruct_arg:set/1>> arity 0 []
-deconstruct limited deconstruct 3 of '<<deconstruct_arg:set/1>>'
+std_util    limited deconstruct 3 of '<<deconstruct_arg.set/1>>'
+functor <<deconstruct_arg.set/1>> arity 0 []
+deconstruct limited deconstruct 3 of '<<deconstruct_arg.set/1>>'
 functor set_rep arity 1 [[1, 2, 3, 3]]
 
 std_util    functor: <<predicate>>/0

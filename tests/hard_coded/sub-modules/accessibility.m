@@ -20,8 +20,8 @@
    since it already occurs in the containing module. */
 % :- import_module sub_a.
 
-:- import_module sub_a:sub1.
-:- type t3 == sub_a:sub1:t2.
+:- import_module sub_a.sub1.
+:- type t3 == sub_a.sub1.t2.
 :- end_module nested.
 
 main -->

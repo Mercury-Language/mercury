@@ -1,6 +1,6 @@
-partial_implied_mode.m:033: In clause for `'__Unify__'((unique(partial_implied_mode2:physic_quantity(ground, free, unique(partial_implied_mode2:absol(free, free)))) -> bound(partial_implied_mode2:physic_quantity(ground, ground, bound(partial_implied_mode2:absol(ground, ground))))), (ground -> bound(partial_implied_mode2:physic_quantity(ground, ground, bound(partial_implied_mode2:absol(ground, ground))))))':
-partial_implied_mode.m:033:   mode error in unification of `HeadVar__1' and `partial_implied_mode2:physic_quantity(V_9, V_4, V_10)'.
-partial_implied_mode.m:033:   Variable `HeadVar__1' has instantiatedness `unique(partial_implied_mode2:physic_quantity(ground, free, unique(partial_implied_mode2:absol(free, free))))',
-partial_implied_mode.m:033:   term `partial_implied_mode2:physic_quantity(V_9, V_4, V_10)'
-partial_implied_mode.m:033:   has instantiatedness `partial_implied_mode2:physic_quantity(free, ground, free)'.
+partial_implied_mode.m:033: In clause for `'__Unify__'((unique(partial_implied_mode2.physic_quantity(ground, free, unique(partial_implied_mode2.absol(free, free)))) -> bound(partial_implied_mode2.physic_quantity(ground, ground, bound(partial_implied_mode2.absol(ground, ground))))), (ground -> bound(partial_implied_mode2.physic_quantity(ground, ground, bound(partial_implied_mode2.absol(ground, ground))))))':
+partial_implied_mode.m:033:   mode error in unification of `HeadVar__1' and `partial_implied_mode2.physic_quantity(V_9, V_4, V_10)'.
+partial_implied_mode.m:033:   Variable `HeadVar__1' has instantiatedness `unique(partial_implied_mode2.physic_quantity(ground, free, unique(partial_implied_mode2.absol(free, free))))',
+partial_implied_mode.m:033:   term `partial_implied_mode2.physic_quantity(V_9, V_4, V_10)'
+partial_implied_mode.m:033:   has instantiatedness `partial_implied_mode2.physic_quantity(free, ground, free)'.
 For more information, try recompiling with `-E'.

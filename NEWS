@@ -67,7 +67,8 @@ Changes to the extras distribution:
 
 Changes to the Mercury compiler:
 
-* Nothing yet.
+* The Mercury compiler now uses `.' and not `:' as the module separator
+  in all output.
 
 Portability improvements:
 

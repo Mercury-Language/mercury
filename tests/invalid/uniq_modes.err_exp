@@ -1,5 +1,5 @@
 uniq_modes.m:012: In clause for `main(di, uo)':
-uniq_modes.m:012:   in argument 2 of call to predicate `io:write/3':
+uniq_modes.m:012:   in argument 2 of call to predicate `io.write/3':
 uniq_modes.m:012:   mode error: variable `In' has instantiatedness `mostly_unique',
 uniq_modes.m:012:   expected instantiatedness was `unique'.
 For more information, try recompiling with `-E'.

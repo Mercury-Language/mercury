@@ -1,2 +1,2 @@
 :- module money.
-:- pragma termination_info(money:solve((builtin:out)), finite(10, [no]), cannot_loop).
+:- pragma termination_info(money.solve((builtin.out)), finite(10, [no]), cannot_loop).

@@ -1,2 +1,2 @@
 :- module member.
-:- pragma termination_info(member:member((builtin:out), (builtin:in)), finite(-1, [no, no, yes]), cannot_loop).
+:- pragma termination_info(member.member((builtin.out), (builtin.in)), finite(-1, [no, no, yes]), cannot_loop).

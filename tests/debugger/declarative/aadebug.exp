@@ -1,13 +1,13 @@
-      E1:     C1  1 CALL pred aadebug:main/2-0 (det) aadebug.m:11
+      E1:     C1  1 CALL pred aadebug.main/2-0 (det) aadebug.m:11
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred aadebug:p/2-0 (nondet)
+ 0: + stop  interface pred aadebug.p/2-0 (nondet)
 mdb> continue
-      E2:     C2  2 CALL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E2:     C2  2 CALL pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      E3:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E3:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 p('a', 30)
 Valid? no
@@ -20,22 +20,22 @@ Valid? yes
 Found incorrect contour:
 p('a', 30)
 Is this a bug? yes
-      E3:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E3:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      E4:     C2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E4:     C2  2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      E5:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E5:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 p('a', 31)
 Valid? no
 Found incorrect contour:
 p('a', 31)
 Is this a bug? yes
-      E5:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E5:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      E6:     C2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E6:     C2  2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      E7:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E7:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 p('a', 32)
 Valid? no
@@ -50,11 +50,11 @@ Complete? yes
 Found incorrect contour:
 p('a', 32)
 Is this a bug? yes
-      E7:     C2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E7:     C2  2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
-      E8:     C2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E8:     C2  2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
-      E9:     C2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E9:     C2  2 FAIL pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
 Call p('a', _)
 Solutions:
@@ -70,6 +70,6 @@ Complete? yes
 Found partially uncovered atom:
 p('a', _)
 Is this a bug? yes
-      E9:     C2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
+      E9:     C2  2 FAIL pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
 no

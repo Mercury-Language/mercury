@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2002 The University of Melbourne.
+** Copyright (C) 1996-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -837,7 +837,7 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 					proc_id->MR_proc_comp.MR_comp_arity,
 					proc_id->MR_proc_comp.MR_comp_mode);
 			} else {
-				fprintf(fp, "  %s:%s/%d-%d\n  ",
+				fprintf(fp, "  %s.%s/%d-%d\n  ",
 					proc_id->MR_proc_user.
 						MR_user_decl_module,
 					proc_id->MR_proc_user.MR_user_name,

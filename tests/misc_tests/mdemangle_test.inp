@@ -8,15 +8,15 @@ mercury_data_mercury_builtin__common_21
 
 	a type ctor info
 mercury_data_mercury_builtin__type_ctor_info_list_1
-<type_ctor_info for type 'mercury_builtin:list'/1>
+<type_ctor_info for type 'mercury_builtin.list'/1>
 
 	a type ctor layout
 mercury_data_mercury_builtin__type_ctor_layout_term__context_0
-<type_ctor_layout for type 'mercury_builtin:term__context'/0>
+<type_ctor_layout for type 'mercury_builtin.term__context'/0>
 
 	a type ctor functors
 mercury_data_eliza__type_ctor_functors_message_0
-<type_ctor_functors for type 'eliza:message'/0>
+<type_ctor_functors for type 'eliza.message'/0>
 
 	an unqualified type ctor info
 mercury_data___type_ctor_info_int_0
@@ -32,15 +32,15 @@ _entry_mercury__f_cut_0_0
 
 	a compare predicate
 _entry_mercury____Compare___mercury_builtin__comparison_result_0_0
-<compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
+<compare/3 predicate for type 'mercury_builtin.comparison_result'/0>
 
 	an index predicate
 _entry_mercury____Index___mercury_builtin__list_1_0
-<index/2 predicate for type 'mercury_builtin:list'/1>
+<index/2 predicate for type 'mercury_builtin.list'/1>
 
 	a unify predicate
 _entry_mercury____Unify___mercury_builtin__term_0_0
-<unification predicate for type 'mercury_builtin:term'/0 mode 0>
+<unification predicate for type 'mercury_builtin.term'/0 mode 0>
 
 	a normal predicate
 _entry_mercury__copy_2_1
@@ -98,12 +98,12 @@ mercury__lp__DeforestationIn__pred__collect_vars__153__4_3_0
 
 	procedure introduced by type specialization
 mercury__fn__f_115_112_97_114_115_101_95_98_105_116_115_101_116_95_95_84_121_112_101_83_112_101_99_79_102_95_95_112_114_101_100_95_111_114_95_102_117_110_99_95_95_108_105_115_116_95_116_111_95_115_101_116_95_95_91_84_32_61_32_118_97_114_40_86_95_50_41_93_95_48_95_49_1_0
-<function 'sparse_bitset:list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
+<function 'sparse_bitset.list_to_set'/1 mode 0 (type specialized [T = var(V_2)])>
 
 	type specialization and deforestion
 	XXX this needs to be fixed
 mercury__f_100_111_117_98_108_101_97_112_112_95_105_109_112_108_95_95_68_101_102_111_114_101_115_116_97_116_105_111_110_73_110_95_95_112_114_101_100_95_95_84_121_112_101_83_112_101_99_79_102_95_95_112_114_101_100_95_111_114_95_102_117_110_99_95_95_100_111_117_98_108_101_95_97_112_112_95_95_91_84_32_61_32_105_110_116_93_95_95_50_49_95_95_48_95_95_117_97_48_5_0
-<predicate 'doubleapp_impl:DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
+<predicate 'doubleapp_impl.DeforestationIn__pred__TypeSpecOf__pred_or_func__double_app__[T = int]__21__0'/5 mode 0 (minus unused args [#0])>
 
 	A realistic test
 ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
@@ -127,15 +127,15 @@ ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
 interpreter.o -lcfloat_lib 
 Undefined			first referenced
  symbol  			    in file
-<predicate 'tr_store:get_mutvar'/4 mode 0> interpreter.o
-<index/2 predicate for type 'store:mutvar'/2> interpreter.o
-<compare/3 predicate for type 'store:mutvar'/2> interpreter.o
-<predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
-<unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
-<predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
-<predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<type_ctor_info for type 'store:mutvar'/2> interpreter.o
+<predicate 'tr_store.get_mutvar'/4 mode 0> interpreter.o
+<index/2 predicate for type 'store.mutvar'/2> interpreter.o
+<compare/3 predicate for type 'store.mutvar'/2> interpreter.o
+<predicate 'std_util.unsorted_aggregate'/4 mode 5> interpreter.o
+<type_ctor_info for type 'store.some_store_type'/0> interpreter.o
+<unification predicate for type 'store.mutvar'/2 mode 0> interpreter.o
+<predicate 'tr_store.new_mutvar'/4 mode 0> interpreter.o
+<predicate 'tr_store.set_mutvar'/4 mode 0> interpreter.o
+<type_ctor_info for type 'store.mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 

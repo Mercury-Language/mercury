@@ -1,19 +1,19 @@
-       1:      1  1 CALL pred comp_gen:main/2-0 (det) comp_gen.m:7
+       1:      1  1 CALL pred comp_gen.main/2-0 (det) comp_gen.m:7
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
- 0: + stop  interface pred comp_gen:p/2-0 (semidet)
+ 0: + stop  interface pred comp_gen.p/2-0 (semidet)
 mdb> continue
-       5:      3  2 CALL pred comp_gen:p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
+       5:      3  2 CALL pred comp_gen.p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
 mdb> step
-       6:      4  3 CALL __Unify__ for comp_gen:foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
+       6:      4  3 CALL __Unify__ for comp_gen.foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
 mdb> finish
-       7:      4  3 FAIL __Unify__ for comp_gen:foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
+       7:      4  3 FAIL __Unify__ for comp_gen.foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
 mdb> dd
 mdb: cannot start declarative debugging at compiler generated procedures.
 mdb> continue
-       8:      3  2 FAIL pred comp_gen:p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
+       8:      3  2 FAIL pred comp_gen.p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
 mdb> dd
 Call p(f(1), f(2))
 No solutions.
@@ -21,6 +21,6 @@ Complete? no
 Found partially uncovered atom:
 p(f(1), f(2))
 Is this a bug? yes
-       8:      3  2 FAIL pred comp_gen:p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
+       8:      3  2 FAIL pred comp_gen.p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
 mdb> continue
 no

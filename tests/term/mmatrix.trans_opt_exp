@@ -1,2 +1,2 @@
 :- module mmatrix.
-:- pragma termination_info(mmatrix:mmultiply((builtin:in), (builtin:in), (builtin:out)), infinite, cannot_loop).
+:- pragma termination_info(mmatrix.mmultiply((builtin.in), (builtin.in), (builtin.out)), infinite, cannot_loop).

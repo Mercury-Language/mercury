@@ -1,5 +1,5 @@
 mode_inf.m:009: In clause for `p(out, out)':
-mode_inf.m:009:   in call to predicate `mode_inf:q/2':
+mode_inf.m:009:   in call to predicate `mode_inf.q/2':
 mode_inf.m:009:   mode error: arguments `X, Y'
 mode_inf.m:009:   have insts `free, free',
 mode_inf.m:009:   which does not match any of the valid modes for

@@ -1,17 +1,17 @@
 missing_det_decls.m:005: Error: no determinism declaration for exported
-missing_det_decls.m:005:   predicate `missing_det_decls:exp1/0'.
+missing_det_decls.m:005:   predicate `missing_det_decls.exp1/0'.
 missing_det_decls.m:008: Error: no determinism declaration for exported
-missing_det_decls.m:008:   predicate `missing_det_decls:exp2/1'.
+missing_det_decls.m:008:   predicate `missing_det_decls.exp2/1'.
 missing_det_decls.m:013: Error: no determinism declaration for local
-missing_det_decls.m:013:   predicate `missing_det_decls:loc1/0'.
+missing_det_decls.m:013:   predicate `missing_det_decls.loc1/0'.
 missing_det_decls.m:016: Error: no determinism declaration for local
-missing_det_decls.m:016:   predicate `missing_det_decls:loc2/1'.
+missing_det_decls.m:016:   predicate `missing_det_decls.loc2/1'.
 missing_det_decls.m:004: Error: no clauses for
-missing_det_decls.m:004:   predicate `missing_det_decls:exp1/0'.
+missing_det_decls.m:004:   predicate `missing_det_decls.exp1/0'.
 missing_det_decls.m:007: Error: no clauses for
-missing_det_decls.m:007:   predicate `missing_det_decls:exp2/1'.
+missing_det_decls.m:007:   predicate `missing_det_decls.exp2/1'.
 missing_det_decls.m:012: Error: no clauses for
-missing_det_decls.m:012:   predicate `missing_det_decls:loc1/0'.
+missing_det_decls.m:012:   predicate `missing_det_decls.loc1/0'.
 missing_det_decls.m:015: Error: no clauses for
-missing_det_decls.m:015:   predicate `missing_det_decls:loc2/1'.
+missing_det_decls.m:015:   predicate `missing_det_decls.loc2/1'.
 For more information, try recompiling with `-E'.

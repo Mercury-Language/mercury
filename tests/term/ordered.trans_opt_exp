@@ -1,2 +1,2 @@
 :- module ordered.
-:- pragma termination_info(ordered:ordered((builtin:in)), finite(0, [no]), cannot_loop).
+:- pragma termination_info(ordered.ordered((builtin.in)), finite(0, [no]), cannot_loop).

@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred tabled_read:main/2-0 (det) tabled_read.m:17
+      E1:     C1  1 CALL pred tabled_read.main/2-0 (det) tabled_read.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -8,26 +8,26 @@ mdb> table_io allow
 mdb> table_io
 io tabling has not yet started
 mdb> break tabled_read__test
- 0: + stop  interface pred tabled_read:test/5-0 (det)
+ 0: + stop  interface pred tabled_read.test/5-0 (det)
 mdb> table_io start
 io tabling started
 mdb> continue
-      E2:     C2  3 CALL pred tabled_read:test/5-0 (det)
+      E2:     C2  3 CALL pred tabled_read.test/5-0 (det)
 mdb> finish -n
-      E3:     C2  3 EXIT pred tabled_read:test/5-0 (det)
+      E3:     C2  3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	123
        DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> retry -o -a
-      E2:     C2  3 CALL pred tabled_read:test/5-0 (det)
+      E2:     C2  3 CALL pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> finish -n
-      E3:     C2  3 EXIT pred tabled_read:test/5-0 (det)
+      E3:     C2  3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
@@ -38,18 +38,18 @@ io tabling stopped
 mdb> continue
 123
 456
-      E4:     C3  3 CALL pred tabled_read:test/5-0 (det)
+      E4:     C3  3 CALL pred tabled_read.test/5-0 (det)
 mdb> finish -n
-      E5:     C3  3 EXIT pred tabled_read:test/5-0 (det)
+      E5:     C3  3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	789
        DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> retry -f
-      E4:     C3  3 CALL pred tabled_read:test/5-0 (det)
+      E4:     C3  3 CALL pred tabled_read.test/5-0 (det)
 mdb> finish -n
-      E6:     C3  3 EXIT pred tabled_read:test/5-0 (det)
+      E6:     C3  3 EXIT pred tabled_read.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0

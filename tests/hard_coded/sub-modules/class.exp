@@ -1,13 +1,13 @@
-class:char:hello
-class:char:hello
-class:char:hello
-class:int:hello
-class:int:hello
-t1 = class:char:foo
-t2 = class:char:foo
-t3 = class:char:foo
-t4 = class:int:foo
-t5 = class:int:foo
+class.char.hello
+class.char.hello
+class.char.hello
+class.int.hello
+class.int.hello
+t1 = class.char.foo
+t2 = class.char.foo
+t3 = class.char.foo
+t4 = class.int.foo
+t5 = class.int.foo
 has_type_t1 = bar
 has_type_t2 = bar
 has_type_t3 = bar

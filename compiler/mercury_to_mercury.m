@@ -1567,7 +1567,7 @@ mercury_format_cons_id(type_ctor_info_const(Module, Type, Arity), _) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	{ string__int_to_string(Arity, ArityString) },
 	add_strings(["<type_ctor_info for ",
-		ModuleString, ":", Type, "/", ArityString, ">"]).
+		ModuleString, ".", Type, "/", ArityString, ">"]).
 mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
 		InstanceString), _) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
@@ -2171,12 +2171,15 @@ mercury_type_to_string(VarSet, term__variable(Var)) = String :-
 	varset__lookup_name(VarSet, Var, String).
 mercury_type_to_string(VarSet, term__functor(Functor, Args, _)) = String :-
 	(
-		Functor = term__atom(":"),
+		Functor = term__atom(FunctorName),
+		(	FunctorName = "."
+		;	FunctorName = ":"
+		),
 		Args = [Arg1, Arg2]
 	->
 		String1 = mercury_type_to_string(VarSet, Arg1),
 		String2 = mercury_type_to_string(VarSet, Arg2),
-		string__append_list([String1, ":", String2], String)
+		string__append_list([String1, ".", String2], String)
 	;
 		(
 			Functor = term__atom(String0)
@@ -2621,7 +2624,7 @@ mercury_output_call(Name, Term, VarSet, _Indent) -->
 		{ Name = qualified(ModuleName, PredName) },
 		mercury_output_bracketed_sym_name(ModuleName,
 			next_to_graphic_token),
-		io__write_string(":"),
+		io__write_string("."),
 		{ term__context_init(Context0) },
 		mercury_output_term(term__functor(term__atom(PredName),
 			Term, Context0), VarSet, no, next_to_graphic_token)
@@ -3365,10 +3368,10 @@ mercury_format_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 		{ mercury_infix_op(FunctorName) }
 	->
 		add_string("("),
-		( { FunctorName = ":" } ->
+		( { FunctorName = ":" ; FunctorName = "." } ->
 			mercury_format_term(Arg1, VarSet, AppendVarnums,
 				next_to_graphic_token),
-			add_string(":"),
+			add_string("."),
 			mercury_format_term(Arg2, VarSet, AppendVarnums,
 				next_to_graphic_token)
 		;
@@ -3578,7 +3581,7 @@ mercury_format_bracketed_sym_name(Name, NextToGraphicToken) -->
 		add_string("("),
 		mercury_format_bracketed_sym_name(ModuleName,
 			next_to_graphic_token),
-		add_string(":"),
+		add_string("."),
 		mercury_format_bracketed_atom(Name2, next_to_graphic_token),
 		add_string(")")
 	;
@@ -3600,7 +3603,7 @@ mercury_format_sym_name(Name, NextToGraphicToken) -->
 		{ Name = qualified(ModuleName, PredName) },
 		mercury_format_bracketed_sym_name(ModuleName,
 			next_to_graphic_token),
-		add_string(":"),
+		add_string("."),
 		mercury_format_quoted_atom(PredName, next_to_graphic_token)
 	;
 		{ Name = unqualified(PredName) },

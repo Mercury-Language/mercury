@@ -1,3 +1,3 @@
 Uncaught Mercury exception:
-Software Error: detected infinite recursion in pred tc_loop:tc/2
+Software Error: detected infinite recursion in pred tc_loop.tc/2
 Stack dump not available in this grade.

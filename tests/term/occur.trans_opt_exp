@@ -1,2 +1,2 @@
 :- module occur.
-:- pragma termination_info(occur:occurall((builtin:in), (builtin:in), (builtin:out)), infinite, cannot_loop).
+:- pragma termination_info(occur.occurall((builtin.in), (builtin.in), (builtin.out)), infinite, cannot_loop).

@@ -1,9 +1,9 @@
-impure_func_t5.m:018: In call to impure function `impure_func_t5:get_counter/1':
+impure_func_t5.m:018: In call to impure function `impure_func_t5.get_counter/1':
 impure_func_t5.m:018:   purity error: call must be in an explicit unification
 impure_func_t5.m:018:   which is preceded by `impure' indicator.
 impure_func_t5.m:019: In clause for `main(di, uo)':
-impure_func_t5.m:019:   mode error in unification of `Y' and `impure_func_t5:foo(X)'.
+impure_func_t5.m:019:   mode error in unification of `Y' and `impure_func_t5.foo(X)'.
 impure_func_t5.m:019:   Variable `Y' has instantiatedness `free',
-impure_func_t5.m:019:   term `impure_func_t5:foo(X)'
-impure_func_t5.m:019:   has instantiatedness `impure_func_t5:foo(free)'.
+impure_func_t5.m:019:   term `impure_func_t5.foo(X)'
+impure_func_t5.m:019:   has instantiatedness `impure_func_t5.foo(free)'.
 For more information, try recompiling with `-E'.

@@ -1,2 +1,2 @@
 :- module my_map.
-:- pragma termination_info(my_map:map((builtin:in), (builtin:out)), infinite, cannot_loop).
+:- pragma termination_info(my_map.map((builtin.in), (builtin.out)), infinite, cannot_loop).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,7 +100,7 @@ read_source_file_map(ModuleChars, Map0, Map) -->
 	(
 		{ ModuleCharsResult = ok(RevModuleChars) },
 		{ string__from_rev_char_list(RevModuleChars, ModuleStr) },
-		{ string_to_sym_name(ModuleStr, ":", ModuleName) },
+		{ string_to_sym_name(ModuleStr, ".", ModuleName) },
 		read_until_char('\n', [], FileNameCharsResult),
 		(
 			{ FileNameCharsResult = ok(FileNameChars) },
