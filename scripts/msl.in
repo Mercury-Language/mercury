@@ -17,7 +17,14 @@
 #	-v, --verbose
 #	-d, --debug
 #	-o, --output
-# Environment variables: MERCURY_SP_LIB_DIR, MERCURY_SP_LIB_OBJS
+# Environment variables: 
+#	MERCURY_SP_LIB_DIR 
+#		the name of the directory containing the object files
+#	MERCURY_SP_LIB_OBJS
+#		the names of the object files
+#	MERCURY_SP_OVERRIDING_LIB_OBJS 
+#		the names of the object files that contain definitions which
+#		should override others
 
 SPLIBDIR=${MERCURY_SP_LIB_DIR=@LIBDIR@/sicstus/@FULLARCH@}
 SP=${MERCURY_SICSTUS_PROLOG=$SPLIBDIR/library.sicstus.debug}
