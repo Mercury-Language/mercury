@@ -1261,7 +1261,7 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 	di, uo) is det.
 
 module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
-		Status, _Context, Module) -->
+		Status, Context, Module) -->
 	{ module_info_classes(Module0, Classes) },
 	{ module_info_instances(Module0, Instances0) },
 	{ list__length(Types, ClassArity) },
@@ -1277,8 +1277,16 @@ module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
 			Instances) },
 		{ module_info_set_instances(Module0, Instances, Module) }
 	;
-			% XXX give an error since the class has not been
-			% XXX defined
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		io__write_string("Error: typeclass `"),
+		prog_out__write_sym_name(Name),
+		io__write_char('/'),
+		io__write_int(ClassArity),
+		io__write_string("' not defined.\n"),
+		io__set_exit_status(1),
+		io__set_output_stream(OldStream, _),
 		{ Module = Module0 }
 	).
 

@@ -102,6 +102,15 @@
 :- pred parse_item(string, varset, term, maybe_item_and_context). 
 :- mode parse_item(in, in, in, out) is det.
 
+	% parse_decl(ModuleName, VarSet, Term, Result)
+	%
+	% parse Term as a declaration. If successful, Result is bound to the
+	% parsed item, otherwise it is bound to an appropriate error message.
+	% Qualify appropriate parts of the item, with ModuleName as the module
+	% name.
+:- pred parse_decl(string, varset, term, maybe_item_and_context).
+:- mode parse_decl(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -436,11 +445,10 @@ convert_item(error(M, T), error(M, T)).
 
 parse_item(ModuleName, VarSet, Term, Result) :-
  	( %%% some [Decl, DeclContext]
-		Term = term__functor(term__atom(":-"), [Decl], DeclContext)
+		Term = term__functor(term__atom(":-"), [Decl], _DeclContext)
 	->
 		% It's a declaration
-		parse_decl(ModuleName, VarSet, Decl, R),
-		add_context(R, DeclContext, Result)
+		parse_decl(ModuleName, VarSet, Decl, Result)
 	; %%% some [DCG_H, DCG_B, DCG_Context]
 		% It's a DCG clause
 		Term = term__functor(term__atom("-->"), [DCG_H, DCG_B],
@@ -503,18 +511,14 @@ process_func_clause(error(ErrMessage, Term), _, _, _, error(ErrMessage, Term)).
 
 %-----------------------------------------------------------------------------%
 
-	% parse a declaration
-
-:- pred parse_decl(string, varset, term, maybe1(item)).
-:- mode parse_decl(in, in, in, out) is det.
 parse_decl(ModuleName, VarSet, F, Result) :-
 	( 
-		F = term__functor(term__atom(Atom), As, _Context)
+		F = term__functor(term__atom(Atom), As, Context)
 	->
 		(
 			process_decl(ModuleName, VarSet, Atom, As, R)
 		->
-			Result = R
+			add_context(R, Context, Result)
 		;
 			Result = error("unrecognized declaration", F)
 		)

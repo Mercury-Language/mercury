@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 University of Melbourne.
+% Copyright (C) 1998 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,7 +151,7 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 		list__map(lambda([MethodTerm::in, Method::out] is det, 
 			(
 				% Turn the term into an item
-			parse_item(ModuleName, VarSet, MethodTerm, Item),
+			parse_decl(ModuleName, VarSet, MethodTerm, Item),
 				% Turn the item into a class_method
 			item_to_class_method(Item, MethodTerm, Method)
 			)),

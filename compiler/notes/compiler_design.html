@@ -313,12 +313,13 @@ in an HLDS goal.
 	check_typeclass.m checks that, each instance declaration, that the
 	types, modes and determinism of each predicate/function that is a
 	method of the class is correct (ie. that it matches the typeclass
-	declaration). In this pass, pred_ids and proc_ids are assigned to
-	the methods for each instance. In addition, while checking that the
-	superclasses of a class are satisfied by the instance declaration, a
-	set of constraint_proofs are built up for the superclass constraints.
-	These are used by polymorphism.m when generating the 
-	base_typeclass_info for the instance.
+	declaration). This pass is performed at the end of semantic analysis
+	because it needs mode and determinism information. In this pass,
+	pred_ids and proc_ids are assigned to the methods for each instance. In
+	addition, while checking that the superclasses of a class are satisfied
+	by the instance declaration, a set of constraint_proofs are built up 
+	for the superclass constraints. These are used by polymorphism.m when
+	generating the base_typeclass_info for the instance.
 
 <dt> simplification (simplify.m)
 
@@ -792,6 +793,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-01-02 00:11:10 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-01-07 06:09:44 $ by $Author: dgj $@cs.mu.oz.au. <br>
 </body>
 </html>
