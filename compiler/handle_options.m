@@ -388,6 +388,15 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	option_implies(errorcheck_only, smart_recompilation, bool(no)),
 	option_implies(typecheck_only, smart_recompilation, bool(no)),
 
+	% disable --line-numbers when building the `.int', `.opt', etc. files,
+	% since including line numbers in those would cause unnecessary
+	% recompilation
+	option_implies(make_private_interface,		line_numbers, bool(no)),
+	option_implies(make_interface,			line_numbers, bool(no)),
+	option_implies(make_short_interface,		line_numbers, bool(no)),
+	option_implies(make_optimization_interface,	line_numbers, bool(no)),
+	option_implies(make_transitive_opt_interface,	line_numbers, bool(no)),
+
 	% `--aditi-only' is only used by the Aditi query shell,
 	% for queries which should only be compiled once.
 	% recompilation_check.m currently doesn't check whether
