@@ -18,8 +18,7 @@
 #
 # The output goes in $batch.mercury_compile.$n.gz; the sizes of the versions
 # are put in $batch.sizes. If a bootcheck fails, the bootcheck output goes
-# in $batch.out.$n; the compiler will be thrown away unless the -f flag is
-# given.
+# in $batch.out.$n.
 #
 # The file $batch.checkpoint records which version is to be built next.
 # Reinvoking makebatch while this file exists will cause it to start from
@@ -31,7 +30,7 @@ jfactor=-j1
 runtests=""
 objects=""
 cfiles="false"
-failed="notwanted"
+compile_times=""
 
 while test $# -gt 0
 do
@@ -39,9 +38,6 @@ do
 
 	-c|--c-files)
 		cfiles="true" ;;
-
-	-f|--failed-compilers)
-		failed="wanted" ;;
 
 	-j|--jobs)
 		jfactor="-j$2" ; shift ;;
@@ -58,6 +54,9 @@ do
 
 	-t|--no-test-suite)
 		runtests="-t" ;;
+
+	--compile-times)
+		compile_times="--compile-times" ;;
 
 	-*)	echo "$0: unknown option \`$1'" 2>&1
 		echo $usage
@@ -155,10 +154,13 @@ do
 
 	cp Mmake.stage.params batch/$batch.params.$visn
 	echo starting bootcheck of version $visn
-	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects > batch/$batch.out.$visn 2>&1
+	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects $compile_times > batch/$batch.out.$visn 2>&1
 	then
 		echo bootcheck of version $visn succeeded
-		echo bootcheck succeeded > batch/$batch.out.$visn
+		if "$compile_times" = ""
+		then
+			echo bootcheck succeeded > batch/$batch.out.$visn
+		fi
 		mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
 		size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
 		/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
@@ -167,8 +169,7 @@ do
 	then
 		echo bootcheck of version $visn failed
 		exit 1
-	elif test "$failed" = "wanted"
-	then
+	else
 		if test -x stage2/compiler/mercury_compile
 		then
 			echo bootcheck of version $visn failed but produced compiler
@@ -179,8 +180,6 @@ do
 		else
 			echo bootcheck of version $visn failed and did not produce compiler
 		fi
-	else
-		echo bootcheck of version $visn failed
 	fi
 
 	if test "$objects" = "-k"
