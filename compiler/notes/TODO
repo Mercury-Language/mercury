@@ -11,13 +11,9 @@ followvars.nl
 code_gen.nl
 ----------
 
-- some semideterministic code generation (mostly done)
+- nondeterministic code generation - fix various problems
 
-- nondeterministic code generation
-
-- handle string equality, string constants, etc.
-
-- types with constants only (enumerations) should be handled as ints.
+- improve code generation (if_redo, etc.)
 
 typecheck.nl
 ------------
