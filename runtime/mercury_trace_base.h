@@ -110,6 +110,15 @@ extern	void	MR_insert_module_info_into_module_table(
 extern	void	MR_trace_write_label_exec_counts(FILE *fp);
 
 /*
+** MR_trace_write_label_exec_counts_to_file does the same job as
+** MR_trace_write_label_exec_counts, except that it also opens the file.
+** Its signature allows it to be registered with 
+** MR_register_exception_cleanup.
+*/
+
+extern	void	MR_trace_write_label_exec_counts_to_file(void *dummy);
+
+/*
 ** MR_trace_init() is called from mercury_runtime_init()
 ** when the debuggee programs begins, to perform any initialization
 ** that must be done before any traced Mercury code is executed.
@@ -519,5 +528,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 		MR_save_transient_registers();				\
 		MR_io_tabling_enabled = saved_io_enabled;		\
 	} while (0)
+
+#define	MERCURY_TRACE_COUNTS_FILE_NAME	".mercury_trace_counts"
 
 #endif /* MERCURY_TRACE_BASE_H */

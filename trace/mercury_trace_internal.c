@@ -615,8 +615,9 @@ static  MR_bool     MR_trace_options_save_to_file(MR_bool *xml,
                         const char *item);
 static  MR_bool     MR_trace_options_dice(char **pass_trace_counts_file,
                         char **fail_trace_count_file, char **sort_str, 
-                        int *number_of_lines, char **out_file, char ***words, 
-                        int *word_count, const char *cat, const char *item);
+                        int *number_of_lines, char **out_file, char **module,
+                        char ***words, int *word_count, const char *cat, 
+                        const char *item);
 static  void        MR_trace_usage(const char *cat, const char *item);
 static  void        MR_trace_do_noop(void);
 static  void        MR_mdb_print_proc_id_and_nl(void *data,
@@ -624,7 +625,7 @@ static  void        MR_mdb_print_proc_id_and_nl(void *data,
 static  int         MR_trace_var_print_list(MR_Spy_Print_List print_list);
 static  void        MR_trace_print_dice(char *pass_trace_counts_file,
                         char *fail_trace_counts_file, char *sort_str, 
-                        int number_of_lines, char *out_str);
+                        int number_of_lines, char *out_str, char *module);
 
 static  const MR_Proc_Layout *MR_find_single_matching_proc(MR_Proc_Spec *spec,
                         MR_bool verbose);
@@ -5901,6 +5902,7 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     char    *fail_trace_count_file;
     char    *sort_str = (char*)malloc(MR_MAX_DICE_SORT_STR_SIZE + 1); 
     char    *out_file = NULL;
+    char    *module = NULL;
     int     number_of_lines = MR_DEFAULT_DICE_LINES;
 
     pass_trace_counts_file = MR_dice_pass_trace_counts_file;
@@ -5908,8 +5910,8 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     strcpy(sort_str, "");
     
     if (! MR_trace_options_dice(&pass_trace_counts_file,
-        &fail_trace_count_file, &sort_str, &number_of_lines, &out_file, &words,
-            &word_count, "exp", "dice"))
+        &fail_trace_count_file, &sort_str, &number_of_lines, &out_file, 
+            &module, &words, &word_count, "exp", "dice"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
@@ -5925,7 +5927,7 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 "command.\n");
         } else {
             MR_trace_print_dice(pass_trace_counts_file, fail_trace_count_file,
-                sort_str, number_of_lines, out_file);
+                sort_str, number_of_lines, out_file, module);
         }
     } else {
         MR_trace_usage("exp", "dice");
@@ -5933,6 +5935,9 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
     free(out_file);
     free(sort_str);
+    if (module != NULL) {
+        free(module);
+    }
 
     return KEEP_INTERACTING;
 }
@@ -5940,13 +5945,14 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 static  void
 MR_trace_print_dice(char *pass_trace_counts_file, 
     char *fail_trace_count_file, char *sort_str, int number_of_lines, 
-    char* out_file)
+    char *out_file, char *module)
 {
     MR_String   dice;
     MR_String   problem;
     MR_String   aligned_pass_trace_counts_file;
     MR_String   aligned_fail_trace_count_file;
     MR_String   aligned_sort_str;
+    MR_String   aligned_module;
     FILE        *fp;
 
     MR_TRACE_USE_HP(
@@ -5955,12 +5961,17 @@ MR_trace_print_dice(char *pass_trace_counts_file,
         MR_make_aligned_string(aligned_fail_trace_count_file,
             (MR_String) fail_trace_count_file);
         MR_make_aligned_string(aligned_sort_str, (MR_String) sort_str);
+        if (module == NULL) {
+            MR_make_aligned_string(aligned_module, (MR_String) "");
+        } else {
+            MR_make_aligned_string(aligned_module, (MR_String) module);
+        }
     );
 
     MR_TRACE_CALL_MERCURY(
         MR_MDB_read_dice_to_string(aligned_pass_trace_counts_file, 
-            aligned_fail_trace_count_file, aligned_sort_str, number_of_lines, 
-                &dice, &problem);
+            aligned_fail_trace_count_file, aligned_sort_str, 
+            number_of_lines, aligned_module, &dice, &problem);
     );
     
     if (MR_streq(problem, "")) {
@@ -7013,18 +7024,20 @@ static struct MR_option MR_trace_dice_opts[] =
     { "sort",                   MR_required_argument,   NULL,   's' },
     { "top",                    MR_required_argument,   NULL,   'n' },
     { "output-to-file",         MR_required_argument,   NULL,   'o' },
+    { "module",                 MR_required_argument,   NULL,   'm' },
     { NULL,                     MR_no_argument,         NULL,   0   }
 };
 
 static MR_bool
-MR_trace_options_dice(char** pass_trace_counts_file, 
-    char** fail_trace_count_file, char** sort_str, int* n, char** out_file,
-    char ***words, int *word_count, const char *cat, const char *item)
+MR_trace_options_dice(char **pass_trace_counts_file, 
+    char **fail_trace_count_file, char **sort_str, int *n, char **out_file,
+    char **module, char ***words, int *word_count, const char *cat, 
+    const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "p:f:s:n:o:", 
+    while ((c = MR_getopt_long(*word_count, *words, "p:f:s:n:o:m:", 
         MR_trace_dice_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -7074,6 +7087,11 @@ MR_trace_options_dice(char** pass_trace_counts_file,
                 strcpy(*out_file, MR_optarg);
                 break;
              
+            case 'm':
+                *module = (char*)malloc(strlen(MR_optarg) + 1);
+                strcpy(*module, MR_optarg);
+                break;
+
             default:
                 MR_trace_usage(cat, item);
                 return MR_FALSE;

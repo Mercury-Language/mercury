@@ -204,6 +204,22 @@ static void
 MR_trace_write_quoted_atom(FILE *fp, const char *atom);
 
 void
+MR_trace_write_label_exec_counts_to_file(void *dummy)
+{
+    FILE	*fp;
+
+    fp = fopen(MERCURY_TRACE_COUNTS_FILE_NAME, "w");
+    if (fp != NULL) {
+        MR_do_init_modules_debugger();
+        MR_trace_write_label_exec_counts(fp);
+        (void) fclose(fp);
+    } else {
+        fprintf(stderr, "%s: %s\n",
+            MERCURY_TRACE_COUNTS_FILE_NAME, strerror(errno));
+    }
+}
+
+void
 MR_trace_write_label_exec_counts(FILE *fp)
 {
     const MR_Module_Layout      *module;

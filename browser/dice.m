@@ -51,7 +51,7 @@
 :- pred read_trace_counts_list(string::in, read_trace_counts_list_result::out,
 	io::di, io::uo) is det.
 
-	% read_dice_to_string(PassFiles, FailFile, SortStr, N, DiceStr, 
+	% read_dice_to_string(PassFiles, FailFile, SortStr, N, Module, DiceStr, 
 	% 	Problem, !IO).
 	% Read the trace_counts in the list of files in the file named
 	% PassFiles, interpreting them as passing slices; read the
@@ -61,13 +61,15 @@
 	% SortStr can be any combination of the letters "sSpPfP" and 
 	% indicates how the dice is to be sorted.  See the documentation
 	% for the `dice' command in the user guide for an explaination of the
-	% sort string.  If there was a problem reading the trace_counts then
-	% Problem will contain a string describing the problem encountered and
-	% DiceStr will be the empty string, otherwise Problem will be the
-	% empty string.
+	% sort string.  If Module is not the empty string then only labels
+	% from the named module will be included in the dice string, otherwise
+	% all modules will be included.  If there was a problem reading the
+	% trace_counts then Problem will contain a string describing the
+	% problem encountered and DiceStr will be the empty string, otherwise
+	% Problem will be the empty string.
 	%
 :- pred read_dice_to_string(string::in, string::in, string::in, int::in,
-	string::out, string::out, io::di, io::uo) is det.
+	string::in, string::out, string::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -198,10 +200,11 @@ read_trace_counts_list_stream(MainFileName, Stream, Result, !IO) :-
 		Result = ok([])
 	).
 
-:- pragma export(read_dice_to_string(in, in, in, in, out, out, di, uo), 
+:- pragma export(read_dice_to_string(in, in, in, in, in, out, out, di, uo), 
 	"MR_MDB_read_dice_to_string").
 
-read_dice_to_string(PassFiles, FailFile, SortStr, N, DiceStr, Problem, !IO) :-
+read_dice_to_string(PassFiles, FailFile, SortStr, N, Module, DiceStr, Problem, 
+		!IO) :-
 	(
 		sort_string_is_valid(SortStr)
 	->
@@ -219,8 +222,16 @@ read_dice_to_string(PassFiles, FailFile, SortStr, N, DiceStr, Problem, !IO) :-
 				merge_trace_counts(fail, FailTraceCounts, 
 					PassDice, Dice),
 				LabelCounts = dice_to_label_counts(Dice),
+				( Module \= "" ->
+					list.filter(label_count_is_for_module(
+						Module), LabelCounts,
+						FilteredLabelCounts)
+				;
+					FilteredLabelCounts = LabelCounts
+				),
 				list.sort(label_count_compare(SortStr), 
-					LabelCounts, SortedLabelCounts),
+					FilteredLabelCounts, 
+					SortedLabelCounts),
 				(
 					list.take(N, SortedLabelCounts, Taken)
 				->
@@ -252,6 +263,17 @@ read_dice_to_string(PassFiles, FailFile, SortStr, N, DiceStr, Problem, !IO) :-
 		Problem = "Invalid sort string",
 		DiceStr = ""
 	).
+
+:- pred label_count_is_for_module(string::in, label_count::in) is semidet.
+
+label_count_is_for_module(Module, 
+		label_count(proc(_, _, SymDeclModule, _, _, _), _, _)) :-
+	string_to_sym_name(Module, ".", SymModule),
+	is_submodule(SymDeclModule, SymModule).
+label_count_is_for_module(Module, label_count(
+		special_proc(_, _, SymTypeModule, _, _, _), _, _)) :-
+	string_to_sym_name(Module, ".", SymModule),
+	is_submodule(SymTypeModule, SymModule).
 
 	% Values of this type uniquely identify a label in the program
 	% and contain some statistics about the execution of the label.

@@ -132,6 +132,12 @@
 :- pred sym_name_to_string(sym_name::in, string::out) is det.
 :- func sym_name_to_string(sym_name) = string.
 
+	% is_submodule(SymName1, SymName2).
+	% True iff SymName1 is a submodule of SymName2.
+	% For example mod1.mod2.mod3 is a submodule of mod1.mod2.
+	%
+:- pred is_submodule(module_name::in, module_name::in) is semidet.
+
 	% insert_module_qualifier(ModuleName, SymName0, SymName):
 	%	prepend the specified ModuleName onto the module
 	%	qualifiers in SymName0, giving SymName.
@@ -187,7 +193,12 @@ sym_name_to_string(qualified(ModuleSym, Name), Separator,
 	sym_name_to_string(ModuleSym, Separator, ModuleName),
 	string__append_list([ModuleName, Separator, Name], QualName).
 
+is_submodule(SymName, SymName).
+is_submodule(qualified(SymNameA, _), SymNameB) :-
+	is_submodule(SymNameA, SymNameB).
+
 special_pred_name_arity(unify, "unify", 2).
 special_pred_name_arity(index, "index", 2).
 special_pred_name_arity(compare, "compare", 3).
 special_pred_name_arity(initialise, "initialise", 1).
+

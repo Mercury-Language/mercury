@@ -3391,7 +3391,7 @@ only in some experimental versions of the Mercury runtime system.
 Clears the histogram printed by @samp{histogram_exp},
 i.e.@: sets the counts for all depths to zero.
 @sp 1
-@item dice [-p@var{filename}] [-f@var{filename}] [-n@var{num}] [-s[pPfFsS]+] [-o @var{filename}]
+@item dice [-p@var{filename}] [-f@var{filename}] [-n@var{num}] [-s[pPfFsS]+] [-o @var{filename}] [-m @var{module}]
 @kindex dice (mdb command)
 Display a program dice on the screen.  
 @sp 1
@@ -3499,6 +3499,9 @@ If the @samp{-o} or @samp{--output-to-file} option is given then the output
 will be written to the specified file instead of being displayed on the
 screen.  Note that the file will be overwritten without warning if it 
 already exists.
+@sp 1
+The @samp{-m} or @samp{--module} option limits the output to the given module
+and its submodules, if any.
 @end table
 
 @sp 1

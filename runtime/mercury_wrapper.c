@@ -639,6 +639,12 @@ mercury_runtime_init(int argc, char **argv)
 		MR_register_module_layout =
 			MR_insert_module_info_into_module_table;
 		MR_selected_trace_func_ptr = MR_trace_count;
+		/*
+		** In case the program terminates with an exception,
+		** we still want the trace count to be written out.
+		*/
+		MR_register_exception_cleanup(
+			MR_trace_write_label_exec_counts_to_file, NULL);
 	}
 
 	/*
@@ -1965,8 +1971,6 @@ MR_END_MODULE
 
 /*---------------------------------------------------------------------------*/
 
-#define	MERCURY_TRACE_COUNTS_FILE_NAME	".mercury_trace_counts"
-
 int
 mercury_runtime_terminate(void)
 {
@@ -1994,18 +1998,7 @@ mercury_runtime_terminate(void)
 	MR_trace_final();
 
 	if (MR_trace_count_enabled) {
-		FILE	*fp;
-
-		fp = fopen(MERCURY_TRACE_COUNTS_FILE_NAME, "w");
-		if (fp != NULL) {
-			MR_do_init_modules_debugger();
-			MR_trace_write_label_exec_counts(fp);
-			(void) fclose(fp);
-		} else {
-			fprintf(stderr, "%s: %s\n",
-				MERCURY_TRACE_COUNTS_FILE_NAME,
-				strerror(errno));
-		}
+		MR_trace_write_label_exec_counts_to_file(NULL);
 	}
 
 #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \

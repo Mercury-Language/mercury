@@ -1,14 +1,14 @@
 register --quiet
 context none
 echo on
-dice -f dice.fail -p dice.passes
+dice -f dice.fail -p dice.passes -m dice
 set fail_trace_count dice.fail
 set pass_trace_counts dice.passes
-dice -sS
-dice -sSF
-dice -n 3 -s P
-dice -s Fp
-dice -sS -n 1
+dice -sS -m dice
+dice -sSF -m dice
+dice -n 3 -s P -m dice
+dice -s Fp -m dice
+dice -sS -n 1 --module dice
 break dice.m:74
 c
 quit -y
