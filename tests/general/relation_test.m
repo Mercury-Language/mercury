@@ -26,16 +26,18 @@ main -->
 	{ relation__tc(Rel, TC_Rel) },
 	{ relation__rtc(Rel, RTC_Rel) },
 	{ relation__compose(Rel, Rel2, ComposedRel) },
-	print("Rel = "), print_rel(Rel), nl,
-	print("tc of Rel = "), print_rel(TC_Rel), nl,
-	print("rtc of Rel = "), print_rel(RTC_Rel), nl,
-	print("Rel2 = "), print_rel(Rel2), nl,
-	print("composition of Rel1 and Rel2 = "), print_rel(ComposedRel), nl.
+	print("Rel ="), nl, print_rel(Rel), nl,
+	print("tc of Rel ="), nl, print_rel(TC_Rel), nl,
+	print("rtc of Rel ="), nl, print_rel(RTC_Rel), nl,
+	print("Rel2 ="), nl, print_rel(Rel2), nl,
+	print("composition of Rel1 and Rel2 ="), nl,
+			print_rel(ComposedRel), nl.
 
 :- pred print_rel(relation(T), state, state).
 :- mode print_rel(in, di, uo) is det.
 
 print_rel(Relation) -->
-	{ relation__to_assoc_list(Relation, AssocList) },
-	print(AssocList).
+	{ relation__to_assoc_list(Relation, AssocList0) },
+	{ list__sort(AssocList0, AssocList) },
+	write_list(AssocList, "\n", print), nl.
 

@@ -53,6 +53,7 @@ PROGS=		array_test \
 		petdr1 \
 		prune_switch \
 		relation_test \
+		rtc_bug \
 		semidet_map \
 		set_test \
 		string_format_test \

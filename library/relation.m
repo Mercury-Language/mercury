@@ -982,125 +982,77 @@ relation__detect_fake_reflexives(Rel, Rtc, [X | Xs], FakeRefl) :-
 
 %------------------------------------------------------------------------------%
 
-	% relation__rtc returns the reflexive transitive
-	% closure of a relation.  This uses the algorithm
-	% of Eve and Kurki-Suonio.  See:
+	% relation__rtc returns the reflexive transitive closure
+	% of a relation.
 	%
-	%	Eve and Kurki-Suonio, "On computing the
-	%	transitive closure of a relation", Acta
-	%	Informatica, 8, pp 303--314, 1977
-relation__rtc(Rel, Rtc) :-
-	relation__domain_sorted_list(Rel, DomList),
-	list__length(DomList, DomLen),
-	map__init(Map0),
-	relation__rtc_init_map(Map0, DomList, Map),
+	% Note: This is not the most efficient algorithm (in the sense
+	% of minimal number of arc insertions) possible.  However it
+	% "reasonably" efficient and, more importantly, is much easier
+	% to debug than some others.
+	%
+	% The algorithm is very simple, and is based on the
+	% observation that the RTC of any element in a clique is the
+	% same as the RTC of any other element in that clique.  So
+	% we visit each clique in reverse topological sorted order,
+	% compute the RTC for each element in the clique and then
+	% add the appropriate arcs.
+	%
+relation__rtc(Rel, RTC) :-
+	relation__dfs(Rel, Dfs),
+	set_bbbtree__init(Visit),
 
-	% Make a new relation using the same domain as the old one.
 	Rel   = relation(NextElement, ElMap, _, _),
 	map__init(FwdMap),
 	map__init(BwdMap),
-	RtcIn = relation(NextElement, ElMap, FwdMap, BwdMap),
+	RTC0 = relation(NextElement, ElMap, FwdMap, BwdMap),
 
-	Inf is (DomLen + 2) * 2,	% This is close enough to infinity.
-	relation__rtc_2(Inf, Rel, DomList, Map, RtcIn, Rtc).
+	relation__rtc_2(Dfs, Rel, Visit, RTC0, RTC).
 
-	% relation__rtc_init_map takes a domain Xs and creates a map
-	% Map such that:
-	%
-	%	all [X]
-	%	    (
-	%		list__member(X, Xs) =>
-	%		map__lookup(Map, X, 0)
-	%	    ).
-	%
-	% Question: Would an "array" type which allows an
-	% arbitrary domain (not just integers) be a better
-	% solution?  About the only differences between this
-	% and a "map" would be the ease of initialisation,
-	% and the semi-static nature of the domain.  (Arrays
-	% can be resized.)
-:- pred relation__rtc_init_map(map(relation_key, int), list(relation_key),
-		map(relation_key, int)).
-:- mode relation__rtc_init_map(in, in, out) is det.
-relation__rtc_init_map(Map, [], Map).
-relation__rtc_init_map(MapIn, [ X | Xs ], MapOut) :-
-	map__det_insert(MapIn, X, 0, Map1),
-	relation__rtc_init_map(Map1, Xs, MapOut).
+:- pred relation__rtc_2(list(relation_key), relation(T),
+	set_bbbtree(relation_key), relation(T), relation(T)).
+:- mode relation__rtc_2(in, in, in, in, out) is det.
 
-:- pred relation__rtc_2(int, relation(T), list(relation_key),
-		map(relation_key, int), relation(T), relation(T)).
-:- mode relation__rtc_2(in, in, in, in, in, out) is det.
-relation__rtc_2(_, _, [], _, Rtc, Rtc).
-relation__rtc_2(Inf, Rel, [ X | Xs ], Map, RtcIn, RtcOut) :-
-	( map__lookup(Map, X, 0) ->
-		stack__init(S0),
-		rtc(Inf, Rel, X, 1, S0, _S1, Map, Map1, RtcIn, Rtc1)
+relation__rtc_2([], _, _, RTC, RTC).
+relation__rtc_2([H | T], Rel, Visit0, RTC0, RTC) :-
+	( set_bbbtree__member(H, Visit0) ->
+		relation__rtc_2(T, Rel, Visit0, RTC0, RTC)
 	;
-		Map = Map1, RtcIn = Rtc1
-	),
-	relation__rtc_2(Inf, Rel, Xs, Map1, Rtc1, RtcOut).
-
-	% When the arity gets this big, it's probably worth
-	% considering making a state type...
-:- pred rtc(int, relation(T), relation_key, int, stack(relation_key),
-	stack(relation_key), map(relation_key, int), map(relation_key, int),
-	relation(T), relation(T)).
-:- mode rtc(in, in, in, in, in, out, in, out, in, out) is det.
-rtc(Inf, Rel, A, K, S0, S1, MapIn, MapOut, RtcIn, RtcOut) :-
-	K1 is K + 1,
-	stack__push(S0, A, S2),
-	map__set(MapIn, A, K, Map1),
-	relation__add(RtcIn, A, A, Rtc1),
-	relation__lookup_from(Rel, A, BsSet),
-	set__to_sorted_list(BsSet, BsList),
-	rtc_2(Inf, Rel, A, K1, BsList, S2, S3, Map1, Map2, Rtc1, Rtc2),
-	( map__lookup(Map2, A, K) ->
-	    rtc_3(Inf, A, Map2, Map3, S3, S4, Rtc2, Rtc3)
-	;
-	    Map2=Map3, S3=S4, Rtc2=Rtc3
-	),
-	Map3=MapOut, Rtc3=RtcOut, S1=S4.
-
-:- pred rtc_2(int, relation(T), relation_key, int, list(relation_key),
-	stack(relation_key), stack(relation_key), map(relation_key, int),
-	map(relation_key, int), relation(T), relation(T)).
-:- mode rtc_2(in, in, in, in, in, in, out, in, out, in, out) is det.
-rtc_2(_Inf, _Rel, _A, _K1, [], Stack, Stack, Map, Map, Rtc, Rtc).
-rtc_2(Inf, Rel, A, K1, [B | Bs], S0, S1, Map0, Map1, Rtc0, Rtc1) :-
-	( map__lookup(Map0, B, 0) ->
-	    rtc(Inf, Rel, B, K1, S0, S2, Map0, Map2, Rtc0, Rtc2)
-	;
-	    S0=S2, Map0=Map2, Rtc0=Rtc2
-	),
-	map__lookup(Map2, A, Na),
-	map__lookup(Map2, B, Nb),
-	( Na =< Nb ->
-	    Map2 = Map3
-	;
-	    map__set(Map2, A, Nb, Map3)
-	),
-	relation__lookup_from(Rtc2, B, RtcBSet),
-	set__to_sorted_list(RtcBSet, RtcB),
-	relation__append_to(A, RtcB, RtcA),
-	relation__add_assoc_list(Rtc2, RtcA, Rtc3),
-	rtc_2(Inf, Rel, A, K1, Bs, S2, S1, Map3, Map1, Rtc3, Rtc1).
-
-:- pred rtc_3(int, relation_key, map(relation_key, int), map(relation_key, int),
-		stack(relation_key), stack(relation_key), relation(T),
-		relation(T)).
-:- mode rtc_3(in, in, in, out, in, out, in, out) is det.
-rtc_3(Inf, A, MapIn, MapOut, S0, S1, RtcIn, RtcOut) :-
-	stack__pop_det(S0, B, S2),
-	( A = B ->
-	    MapIn=MapOut, S1=S2, RtcIn=RtcOut
-	;
-	    relation__lookup_from(RtcIn, A, RtcASet),
-	    set__to_sorted_list(RtcASet, RtcA),
-	    relation__append_to(B, RtcA, RtcB),
-	    relation__add_assoc_list(RtcIn, RtcB, Rtc1),
-	    map__set(MapIn, B, Inf, Map1),
-	    rtc_3(Inf, A, Map1, MapOut, S2, S1, Rtc1, RtcOut)
+		relation__dfs_3([H], Rel, Visit0, [], Visit, CliqueL0),
+		list__sort_and_remove_dups(CliqueL0, CliqueL),
+		list__foldl(lambda([K :: in, L0 :: in, L :: out] is det,
+			( relation__lookup_from(Rel, K, Followers0),
+			  set__to_sorted_list(Followers0, Followers),
+			  list__merge_and_remove_dups(Followers, L0, L)
+			)),
+			CliqueL, CliqueL, CliqueFollowers),
+		list__foldl(lambda([K :: in, L0 :: in, L :: out] is det,
+			( relation__lookup_from(RTC0, K, Followers0),
+			  set__to_sorted_list(Followers0, Followers),
+			  list__merge_and_remove_dups(Followers, L0, L)
+			)),
+			CliqueFollowers, CliqueL, NewFollowers),
+		relation__add_cartesian_product(CliqueL, NewFollowers,
+			RTC0, RTC1),
+		relation__rtc_2(T, Rel, Visit, RTC1, RTC)
 	).
+
+:- pred relation__add_cartesian_product(list(relation_key), list(relation_key),
+		relation(T), relation(T)).
+:- mode relation__add_cartesian_product(in, in, in, out) is det.
+
+relation__add_cartesian_product([], _, RTC, RTC).
+relation__add_cartesian_product([K1 | Ks1], Ks2, RTC0, RTC) :-
+	relation__add_cartesian_product_2(K1, Ks2, RTC0, RTC1),
+	relation__add_cartesian_product(Ks1, Ks2, RTC1, RTC).
+
+:- pred relation__add_cartesian_product_2(relation_key, list(relation_key),
+		relation(T), relation(T)).
+:- mode relation__add_cartesian_product_2(in, in, in, out) is det.
+
+relation__add_cartesian_product_2(_, [], RTC, RTC).
+relation__add_cartesian_product_2(K1, [K2 | Ks2], RTC0, RTC) :-
+	relation__add(RTC0, K1, K2, RTC1),
+	relation__add_cartesian_product_2(K1, Ks2, RTC1, RTC).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
