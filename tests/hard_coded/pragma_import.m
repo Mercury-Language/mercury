@@ -1,4 +1,4 @@
-:- module foo.
+:- module pragma_import.
 :- interface.
 :- import_module io.
 
