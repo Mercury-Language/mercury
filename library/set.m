@@ -8,10 +8,10 @@
 :- type set(T).
 
 :- pred set__init(set(T)).
-:- mode set__init(out).
+:- mode set__init(out) is det.
 
 :- pred set__equal(set(T), set(T)).
-:- mode set__equal(in, in).
+:- mode set__equal(in, in) is semidet.
 
 :- pred set__subset(set(T), set(T)).
 :- mode set__subset(in, in).
@@ -31,6 +31,7 @@
 :- mode set__insert(in, in, out) is det.
 
 :- pred set__delete(set(T), T, set(T)).
+:- mode set__delete(in, out, out) is nondet.
 :- mode set__delete(in, in, out) is semidet.
 
 :- pred set__union(set(T), set(T), set(T)).

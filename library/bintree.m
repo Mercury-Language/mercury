@@ -67,6 +67,9 @@
 :- pred bintree__depth(bintree(_K,_V), int).
 :- mode bintree__depth(in, out).
 
+:- pred bintree__branching_factor(bintree(_K,_V), int, int).
+:- mode bintree__branching_factor(in, out, out).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -344,5 +347,34 @@ bintree__depth(tree(_K, _V, Left, Right), Depth) :-
 	bintree__depth(Left, LeftDepth),
 	int__max(LeftDepth, RightDepth, SubDepth),
 	Depth is SubDepth + 1.
+
+bintree__branching_factor(empty, 0, 0).
+bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
+	(
+		L = empty
+	->
+		(
+			R = empty
+		->
+			Ones = 0,
+			Twos = 0
+		;
+			bintree__branching_factor(R, Ones0, Twos),
+			Ones is Ones0 + 1
+		)
+	;
+		(
+			R = empty
+		->
+			bintree__branching_factor(L, Ones0, Twos),
+			Ones is Ones0 + 1
+		;
+			bintree__branching_factor(L, Ones1, Twos1),
+			bintree__branching_factor(R, Ones2, Twos2),
+			Ones is Ones1 + Ones2,
+			Twos0 is Twos1 + Twos2,
+			Twos is Twos0 + 1
+		)
+	).
 
 %-----------------------------------------------------------------------------%
