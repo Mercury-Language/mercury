@@ -275,7 +275,7 @@ $(java_dates_subdir)%.java_date : %.m
 
 # When smart recompilation finds that a module does not need to be
 # recompiled, it only touches the `.il_date' file.
-$(os_subdir)%.il : $(il_dates_subdir)%.il_date
+$(ils_subdir)%.il : $(il_dates_subdir)%.il_date
 	@:
 
 $(il_dates_subdir)%.il_date : %.m
