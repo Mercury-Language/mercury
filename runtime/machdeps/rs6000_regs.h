@@ -19,16 +19,16 @@
 
 #define NUM_REAL_REGS 10
 
-register 	Word	mr0 __asm__("r14");
-register	Word	mr1 __asm__("r15");
-register	Word	mr2 __asm__("r16");
-register	Word	mr3 __asm__("r17");
-register	Word	mr4 __asm__("r18");
-register	Word	mr5 __asm__("r19");
-register	Word	mr6 __asm__("r20");
-register	Word	mr7 __asm__("r21");
-register	Word	mr8 __asm__("r22");
-register	Word	mr9 __asm__("r23");
+register 	Word	mr0 __asm__("r13");
+register	Word	mr1 __asm__("r14");
+register	Word	mr2 __asm__("r15");
+register	Word	mr3 __asm__("r16");
+register	Word	mr4 __asm__("r17");
+register	Word	mr5 __asm__("r18");
+register	Word	mr6 __asm__("r19");
+register	Word	mr7 __asm__("r20");
+register	Word	mr8 __asm__("r21");
+register	Word	mr9 __asm__("r22");
 
 #define save_registers()	(	\
 	fake_reg[0] = mr0,			\
