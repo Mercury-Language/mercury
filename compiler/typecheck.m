@@ -1268,7 +1268,10 @@ aditi_builtin_first_state_arg(aditi_call(_, _, _, _), _) = _ :-
 	error("aditi_builtin_first_state_arg: unexpected_aditi_call").
 aditi_builtin_first_state_arg(aditi_tuple_insert_delete(_, _),
 		_ - _/Arity) = Arity + 1.
-aditi_builtin_first_state_arg(aditi_insert_delete_modify(_, _, _), _) = 2.
+	% XXX removing the space between the 2 and the `.' will possibly
+	% cause lexing to fail as io__putback_char will be called twice
+	% in succession in lexer__get_int_dot.
+aditi_builtin_first_state_arg(aditi_insert_delete_modify(_, _, _), _) = 2 .
 
 %-----------------------------------------------------------------------------%
 
