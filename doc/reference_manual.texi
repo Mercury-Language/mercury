@@ -2515,10 +2515,10 @@ this section specifies the entities that are exported by this module.
 Mercury provides support for abstract data types, by allowing the
 definition of a type to be kept hidden, with the interface
 only exporting the type name.
-The interface section may contain definitions of types, typeclasses,
-typeclass instances, data constructors, instantiation states, and
-modes, and declarations for abstract data types, functions, predicates,
-and (sub-)modules.
+The interface section may contain definitions of types,
+typeclasses, data constructors, instantiation states, and
+modes, and declarations for abstract data types, abstract typeclass
+instances, functions, predicates, and (sub-)modules.
 The interface section may not contain definitions for functions or
 predicates (i.e. clauses), or definitions of (sub-)modules. 
 
@@ -2527,9 +2527,10 @@ the start of the module's implementation section.
 Any entities declared in this section are local to the module
 (and its sub-modules) and cannot be used by other modules.
 The implementation section must contain definitions
-for all abstract data types, functions, predicates, and
-sub-modules exported by the module,
-as well as for all local types, functions, predicates, and sub-modules.
+for all abstract data types, abstract instance declarations,
+functions, predicates, and sub-modules exported by the module,
+as well as for all local types, typeclass instances, functions,
+predicates, and sub-modules.
 The implementation section can be omitted if it is empty.
 
 The module may optionally end with a @samp{:- end_module @var{ModuleName}}
@@ -2796,6 +2797,7 @@ of operations is defined.
 @menu
 * Typeclass declarations::
 * Instance declarations::
+* Abstract instance declarations::
 * Type class constraints on predicates and functions::
 * Type class constraints on typeclass declarations::
 * Type class constraints on instance declarations::
@@ -2804,33 +2806,38 @@ of operations is defined.
 @node Typeclass declarations
 @section Typeclass declarations
 
-A @samp{typeclass} declaration specifies a set of predicates and/or functions
-that must be defined on a type (or set of types) for it (them) to be
-considered to be a member of that type class.
+A @dfn{type class} is a name for a set of types (or a set of sequences of
+types) for which certain predicates and/or functions, called the @dfn{methods}
+of that type class, are defined.
+A @samp{typeclass} declaration defines a new type class, and
+specifies the set of predicates and/or functions
+that must be defined on a type (or sequence of types) for it (them) to be
+considered to be an instance of that type class.
 
-The @code{typeclass} declaration gives the name of the type class, the
+The @code{typeclass} declaration gives the name of the type class that
+it is defining, the
 names of the type variables which are parameters to the type class, and the
-operations ("methods") which form the interface of the type class.
+operations (i.e. methods) which form the interface of the type class.
 
 For example,
 
 @example
 :- typeclass point(T) where [
-	% coords(Point, X, Y):
-	%       X and Y are the cartesian coordinates of Point
-	pred coords(T, float, float),
-	mode coords(in, out, out) is det,
+        % coords(Point, X, Y):
+        %       X and Y are the cartesian coordinates of Point
+        pred coords(T, float, float),
+        mode coords(in, out, out) is det,
 
-	% translate(Point, X_Offset, Y_Offset) = NewPoint:
-	%       NewPoint is Point translated X_Offset units in the X direction
-	%       and Y_Offset units in the Y direction
-	func translate(T, float, float) = T
+        % translate(Point, X_Offset, Y_Offset) = NewPoint:
+        %       NewPoint is Point translated X_Offset units in the X direction
+        %       and Y_Offset units in the Y direction
+        func translate(T, float, float) = T
 ].
 @end example
 
 @noindent
-declares the typeclass @code{point}, which refers to points in two dimensional
-space. 
+declares the typeclass @code{point}, which
+represents points in two dimensional space. 
 
 @code{pred}, @code{func} and @code{mode} declarations are the only legal
 declarations inside a @code{typeclass} declaration.  The number of parameters 
@@ -2849,16 +2856,25 @@ same name and arity in the same module.
 @node Instance declarations
 @section Instance declarations
 
-Once the interface of the typeclass has been declared in the @code{typeclass}
-declaration, we can use an @code{instance} declaration to specify how a
+Once the interface of the typeclass has been defined in the @code{typeclass}
+declaration, we can use an @code{instance} declaration to define how a
 particular type satisfies the interface declared in the @code{typeclass}
 declaration.
 
+An instance declaration has the form
+
+@example
+:- instance @var{classname}(@var{typename}(@var{typevar}, @dots{}), @dots{})
+        where [pred(@var{methodname}/@var{arity}) is @var{predname},
+               func(@var{methodname}/@var{arity}) is @var{funcname},
+               @dots{}].
+@end example
+
 An @samp{instance} declaration gives a type for each parameter of the
 typeclass.  Each of these types must be either a type with no arguments, or 
-a polymorphic type whose arguments are all distinct type variables.  e.g. 
-@code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed but
-@code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
+a polymorphic type whose arguments are all distinct type variables.
+For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
+but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
 The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
 A program may not contain more than one @code{instance} declaration for a
@@ -2867,14 +2883,35 @@ typeclass).  These restrictions ensure that there are no overlapping instance
 declarations, ie. there is at most one instance declaration that may be 
 applied to any type (or set of types).
 
-For example:
+Each entry in the @samp{where [@dots{}]} part of an @code{instance}
+declaration specifies a binding for one of the methods of the class.
+The @var{predname} or @var{funcname} must name a function or
+predicate of the specified arity whose type, modes, determinism, and
+purity are at least as permissive as the declared type, modes,
+determinism, and purity of the class method with the specified
+@var{methodname} and @var{arity}, after the types of the arguments
+in the instance declaration have substituted in place of the
+parameters in the typeclass declaration.
+Each @samp{instance} declaration
+must specify a binding for every method declared in the corresponding
+@samp{class} declaration. 
+
+Any call to a method must have arguments types (and in the case of functions,
+return type) which are constrained to be a member of that method's
+typeclass, or which match one of the instance declarations visible at
+the point of the call.  A method call will invoke the 
+predicate or function specified for that method in the
+instance declaration that matches the types of the arguments
+to the call.
+
+Here's an example of some code using an instance declaration:
 
 @example
 :- type coordinate
-	---> coordinate(
-		float,		% X coordinate
-		float		% Y coordinate
-	).
+        ---> coordinate(
+                float,           % X coordinate
+                float            % Y coordinate
+        ).
 
 :- instance point(coordinate) where [
         pred(coords/3) is coordinate_coords,
@@ -2899,18 +2936,18 @@ it can also become an instance of the typeclass:
 
 @example
 :- type rgb
-	---> rgb(
-		int,
-		int,
-		int
-	).
+        ---> rgb(
+                int,
+                int,
+                int
+        ).
 
 :- type coloured_coordinate
-	---> coloured_coordinate(
-		float,
-		float,
-		rgb
-	).
+        ---> coloured_coordinate(
+                float,
+                float,
+                rgb
+        ).
 
 :- instance point(coloured_coordinate) where [
         pred(coords/3) is coloured_coordinate_coords,
@@ -2924,14 +2961,62 @@ it can also become an instance of the typeclass:
 coloured_coordinate_coords(coloured_coordinate(X, Y, _), X, Y).
 
 :- func coloured_coordinate_translate(coloured_coordinate, float, float) 
-	= coloured_coordinate.
+        = coloured_coordinate.
 
 coloured_coordinate_translate(coloured_coordinate(X, Y, Colour), Dx, Dy) 
-	= coloured_coordinate(X + Dx, Y + Dy, Colour).
+        = coloured_coordinate(X + Dx, Y + Dy, Colour).
 @end example
+
+If we call @samp{translate/3} with the first argument having type
+@samp{coloured_coordinate}, this will invoke
+@samp{coloured_coordinate_translate}.
+Likewise, if we call @samp{translate/3} with the first argument having type
+@samp{coordinate}, this will invoke @samp{coordinate_translate}.
 
 Further instances of the typeclass could be made, e.g. a type which represents
 the point using polar coordinates.
+
+@node Abstract instance declarations
+@section Abstract instance declarations
+
+Abstract instance declarations are instance declarations whose
+implementations are hidden.  An abstract instance declaration has the
+same form as an instance declaration, but without the @samp{where
+[@dots{}]} part.  An abstract instance declaration declares that
+certain type(s) are an instance of a particular type class without
+defining how the type class methods are implemented for those type(s).
+Like abstract type declarations,
+abstract instance declarations are only useful in the interface
+section of a module.  Each abstract instance declaration must
+be accompanied by a corresponding non-abstract instance declaration
+that defines how the type class methods are implemented.
+
+Here's an example:
+
+@example
+:- module hashable.
+:- interface.
+:- import_module int, string.
+
+:- typeclass hashable(T) where [func hash(T) = int].
+:- instance hashable(int).
+:- instance hashable(string).
+
+:- implementation.
+
+:- instance hashable(int) where [func(hash/1) is hash_int].
+:- instance hashable(string) where [func(hash/1) is hash_string].
+
+:- func hash_int(int) = int.
+hash_int(X) = X.
+
+:- func hash_string(string) = int.
+hash_string(S) = H :-
+        % use the standard library predicate string__hash/2
+        string__hash(S, H).
+
+:- end_module hashable.
+@end example
 
 @node Type class constraints on predicates and functions
 @section Type class constraints on predicates and functions
@@ -2943,7 +3028,7 @@ by type variables in the signature to belong to particular typeclasses.
 A typeclass constraint is of the form:
 
 @example
-	<= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
+        <= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
 @end example
 
 where @var{Typeclass} is the name of a typeclass and @var{TypeVariable} is 
@@ -2956,11 +3041,11 @@ For example
 :- mode distance(in, in, out) is det.
 
 distance(A, B, Distance) :-
-	coords(A, Xa, Ya),
-	coords(B, Xb, Yb),
-	XDist = Xa - Xb,
-	YDist = Ya - Yb,
-	Distance = sqrt(XDist*XDist + YDist*YDist).
+        coords(A, Xa, Ya),
+        coords(B, Xb, Yb),
+        XDist = Xa - Xb,
+        YDist = Ya - Yb,
+        Distance = sqrt(XDist*XDist + YDist*YDist).
 @end example
 
 In the above example, the @code{distance} predicate is able to calculate the
@@ -3023,7 +3108,7 @@ may be printed:
 
 @example
 :- typeclass portrayable(T) where [
-	pred portray(T::in, io__state::di, io__state::uo) is det
+        pred portray(T::in, io__state::di, io__state::uo) is det
 ].
 @end example
 
@@ -3031,11 +3116,11 @@ The programmer could declare instances such as
 
 @example
 :- instance portrayable(int) where [
-	pred(portray/3) is io__write_int
+        pred(portray/3) is io__write_int
 ].
 
 :- instance portrayable(char) where [
-	pred(portray/3) is io__write_char
+        pred(portray/3) is io__write_char
 ].
 @end example
 
@@ -3047,18 +3132,18 @@ as in the following example:
 
 @example
 :- instance portrayable(list(T)) <= portrayable(T) where [
-	pred(portray/3) is portray_list
+        pred(portray/3) is portray_list
 ].
 
 :- pred portray_list(list(T), io__state, io__state) <= portrayable(T).
 :- mode portray_list(in, di, uo) is det.
 
 portray_list([]) --> 
-	[].
+        [].
 portray_list([X|Xs]) --> 
-	print(X),
-	io__write_char(' '),
-	portray_list(Xs).
+        print(X),
+        io__write_char(' '),
+        portray_list(Xs).
 @end example
 
 @node Semantics
@@ -3231,7 +3316,7 @@ There are several uses for @code{pragma} declarations:
                                         structures in Mercury code.
 * Memory management::                   Caveats about passing dynamically
                                         allocated memory to or from C.
-* Trailing::                   		Undoing side-effects on backtracking.
+* Trailing::                            Undoing side-effects on backtracking.
 @end menu
 
 The Mercury distribution includes a number of examples of the
@@ -3493,7 +3578,7 @@ keep track of the next alternative to return.
         first_code("
                 LOCALS->state = 0;
         "),
-	retry_code("
+        retry_code("
                 LOCALS->state++;
         "),
         common_code("
@@ -4508,14 +4593,14 @@ additional pragmas:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
-* Tabled evaluation::		Support for automatically recording previously
-				calculated results and detecting or avoiding
-				certain kinds of infinite loops.
-* Termination analysis::	Support for automatic proofs of termination.
+* Tabled evaluation::           Support for automatically recording previously
+                                calculated results and detecting or avoiding
+                                certain kinds of infinite loops.
+* Termination analysis::        Support for automatic proofs of termination.
 @ifset aditi
 * Aditi deductive database interface::
-				Support for bottom-up evaluation of Mercury
-				predicates.
+                                Support for bottom-up evaluation of Mercury
+                                predicates.
 @end ifset
 @end menu
 
@@ -4766,7 +4851,7 @@ rather than a tuple at a time as in the normal top-down execution of a
 Mercury program.
 
 @menu
-* Aditi glossary::		Glossary of Aditi terms
+* Aditi glossary::              Glossary of Aditi terms
 @end menu
 
 There are several restrictions on predicates to be evaluated using Aditi.
@@ -4858,7 +4943,7 @@ or ``guest'' if that is not set.
 @c eventually.
 @example
 :- pragma aditi_index(@var{Name}/@var{Arity},
-		@var{IndexType}, @var{Attributes}).
+                @var{IndexType}, @var{Attributes}).
 @end example
 
 The base relation has the given B-tree index. B-tree indexes allow efficient
@@ -4926,24 +5011,24 @@ programming language} @ref{[7]} and @file{extras/aditi/aditi.m} in the
 @chapter Bibliography
 
 @menu
-* [1]::		Spiers, Somogyi, and Sondergaard,
-		@cite{Termination Analysis for Mercury}.
-* [2]::		Groger and Plumer, @cite{Handling of mutual recursion in
-		automatic termination proofs for logic programs}.
-* [3]::		Spiers, @cite{Termination Analysis for logic programs}.
-* [4]::		Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
-		for Well-Founded Evaluation of Normal Logic Programs}.
-* [5]::		Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
+* [1]::         Spiers, Somogyi, and Sondergaard,
+                @cite{Termination Analysis for Mercury}.
+* [2]::        	Groger and Plumer, @cite{Handling of mutual recursion in
+                automatic termination proofs for logic programs}.
+* [3]::         Spiers, @cite{Termination Analysis for logic programs}.
+* [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
+                for Well-Founded Evaluation of Normal Logic Programs}.
+* [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
 @ifset aditi
-* [6]::		Kemp, Ramamohanarao and Somogyi,
-		@cite{Right-, left-, and multi-linear rule transformations
-		that maintain context information}.
-* [7]::		Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi
-		@cite{Database transactions in a purely declarative
-		logic programming language}.
-* [8]::		Ramakrishnan, Srivistava and Sudarshan,
-		@cite{Rule ordering in bottom-up fixpoint evaluation
-		of logic programs}.
+* [6]::         Kemp, Ramamohanarao and Somogyi,
+                @cite{Right-, left-, and multi-linear rule transformations
+                that maintain context information}.
+* [7]::         Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi
+                @cite{Database transactions in a purely declarative
+                logic programming language}.
+* [8]::         Ramakrishnan, Srivistava and Sudarshan,
+                @cite{Rule ordering in bottom-up fixpoint evaluation
+                of logic programs}.
 @end ifset
 @end menu
 

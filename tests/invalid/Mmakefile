@@ -54,6 +54,7 @@ SOURCES= \
 	typeclass_test_4.m \
 	typeclass_test_5.m \
 	typeclass_test_7.m \
+	typeclass_test_9.m \
 	types.m	\
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
@@ -67,6 +68,8 @@ SOURCES= \
 #	parent.undeclared_child.m (just not yet implemented)
 #	sub_b.m and sub_c.m (bug with dependencies & nested modules)
 #	freefree.m 	(need bromage's aliasing stuff)
+#	typeclass_test_8.m (minor formatting error in the output --
+#			the type class name should be in quotes)
 
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types
