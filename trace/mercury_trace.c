@@ -598,15 +598,16 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         }
 
         if (! succeeded) {
-            if (! MR_is_dummy_type(MR_var_pti(call_label, i))) {
+            if (! MR_is_io_state(MR_var_pti(call_label, i))) {
                 *problem = "Cannot perform retry because the "
                     "values of some input arguments are missing.";
                 goto report_problem;
             }
 
             /*
-            ** Since values of dummy types are not actually used,
-            ** we can leave arg_value containing garbage.
+            ** Since values of the I/O states type are not actually used,
+            ** we can leave arg_value containing garbage. The safety of
+            ** the retry is addressed by the code handling has_io_state below.
             */
         }
 
