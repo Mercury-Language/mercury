@@ -87,13 +87,13 @@ typedef Word ** AnswerBlock;
 #ifdef CONSERVATIVE_GC
 
   #define table_allocate(size)						\
-	GC_malloc(size)
+	GC_MALLOC(size)
 
   #define table_reallocate(pointer, size)				\
-	GC_realloc(pointer, size)
+	GC_REALLOC(pointer, size)
 
   #define table_free(pointer)						\
-	GC_free(pointer)
+	GC_FREE(pointer)
 
   #define MR_table_list_cons(h, t) list_cons((h),(t))
 

@@ -88,7 +88,7 @@
 		(void)0							\
 	)
 
-  #define MR_free_heap(ptr)	GC_free((ptr))
+  #define MR_free_heap(ptr)	GC_FREE((ptr))
 
 #else /* not CONSERVATIVE_GC */
 
