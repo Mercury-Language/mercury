@@ -3972,19 +3972,23 @@ T - type and typeclass information,
 U - unify and compare predicates.
 
 @sp 1
-@item @var{stage}
-@itemx --dump-mlds @var{stage}
+@item --dump-mlds @var{stage}
 @findex --dump-mlds
 Dump the MLDS (a C-like intermediate representation) after
-the specified stage number or stage name.  The raw form of the
-MLDS is dumped to
-@file{@var{module}.mlds_dump.@var{num}-@var{name}}.
-The MLDS is also converted to a C source file/header file pair,
+the specified stage number or stage name.
+The MLDS is converted to a C source file/header file pair,
 which is dumped to @file{@var{module}.c_dump.@var{num}-@var{name}}
 and @file{@var{module}.h_dump.@var{num}-@var{name}}.
 Stage numbers range from 1 to 99; not all stage numbers are valid.
 The special stage name @samp{all} causes the dumping of all stages.
 Multiple dump options accumulate.
+
+@sp 1
+@item --verbose-dump-mlds @var{stage}
+@findex --verbose-dump-mlds
+Dump the internal compiler representation of the MLDS,
+after the specified stage number or stage name, to
+@file{@var{module}.mlds_dump.@var{num}-@var{name}}.
 
 @ifset aditi
 @sp 1

@@ -4038,16 +4038,7 @@ join_module_list([Module | Modules], Extension, Terminator,
 mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	(
-		{
-			list__member(StageNum, DumpStages)
-		;
-			list__member(StageName, DumpStages)
-		;
-			list__member("all", DumpStages)
-		;
-			string__append("0", StrippedStageNum, StageNum),
-			list__member(StrippedStageNum, DumpStages)
-		}
+		{ should_dump_stage(StageNum, StageName, DumpStages) }
 	->
 		{ module_info_name(HLDS, ModuleName) },
 		module_name_to_file_name(ModuleName, ".hlds_dump", yes,
@@ -4058,6 +4049,19 @@ mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 		mercury_compile__dump_hlds(DumpFile, HLDS)
 	;
 		[]
+	).
+
+:- pred should_dump_stage(string::in, string::in, list(string)::in) is semidet.
+should_dump_stage(StageNum, StageName, DumpStages) :-
+	(
+		list__member(StageNum, DumpStages)
+	;
+		list__member(StageName, DumpStages)
+	;
+		list__member("all", DumpStages)
+	;
+		string__append("0", StrippedStageNum, StageNum),
+		list__member(StrippedStageNum, DumpStages)
 	).
 
 :- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).
@@ -4088,19 +4092,22 @@ mercury_compile__dump_hlds(DumpFile, HLDS) -->
 :- mode mercury_compile__maybe_dump_mlds(in, in, in, di, uo) is det.
 
 mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_accumulating_option(dump_mlds, DumpStages),
-	(
-		{
-			list__member(StageNum, DumpStages)
-		;
-			list__member(StageName, DumpStages)
-		;
-			list__member("all", DumpStages)
-		;
-			string__append("0", StrippedStageNum, StageNum),
-			list__member(StrippedStageNum, DumpStages)
-		}
-	->
+	globals__io_lookup_accumulating_option(verbose_dump_mlds,
+		VerboseDumpStages),
+	( { should_dump_stage(StageNum, StageName, DumpStages) } ->
+		maybe_write_string(Verbose, "% Dumping out MLDS as C...\n"),
+		maybe_flush_output(Verbose),
+		{ string__append_list(["_dump.", StageNum, "-", StageName],
+			DumpSuffix) },
+		mlds_to_c__output_mlds(MLDS, DumpSuffix),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		[]
+	),
+	( { should_dump_stage(StageNum, StageName, VerboseDumpStages) } ->
+		maybe_write_string(Verbose, "% Dumping out raw MLDS...\n"),
 		{ ModuleName = mlds__get_module_name(MLDS) },
 		module_name_to_file_name(ModuleName, ".mlds_dump", yes,
 			BaseFileName),
@@ -4108,10 +4115,7 @@ mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName) -->
 			[BaseFileName, ".", StageNum, "-", StageName],
 			DumpFile) },
 		mercury_compile__dump_mlds(DumpFile, MLDS),
-
-		{ string__append_list(["_dump.", StageNum, "-", StageName],
-			DumpSuffix) },
-		mlds_to_c__output_mlds(MLDS, DumpSuffix)
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		[]
 	).

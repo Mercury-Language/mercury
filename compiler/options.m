@@ -130,6 +130,7 @@
 		;	dump_hlds_alias
 		;	dump_hlds_options
 		;	dump_mlds
+		;	verbose_dump_mlds
 		;	generate_schemas
 		;	dump_rl
 		;	dump_rl_bytecode
@@ -633,6 +634,7 @@ option_defaults_2(aux_output_option, [
 	dump_hlds_alias		-	string(""),
 	dump_hlds_options	-	string(""),
 	dump_mlds		-	accumulating([]),
+	verbose_dump_mlds	-	accumulating([]),
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
 	sign_assembly		-	bool(no),
@@ -1130,6 +1132,8 @@ long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
 long_option("dump-mlds",		dump_mlds).
 long_option("mlds-dump",		dump_mlds).
+long_option("verbose-dump-mlds",	verbose_dump_mlds).
+long_option("verbose-mlds-dump",	verbose_dump_mlds).
 long_option("dump-rl",			dump_rl).
 long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("sign-assembly",		sign_assembly).
@@ -2143,12 +2147,15 @@ options_help_aux_output -->
 		"\tcorresponding letter occurs in the option argument",
 		"\t(see the Mercury User's Guide for details).",
 		"--dump-mlds <stage number or name>",
-		"\tDump the MLDS (medium level intermediate representation) after",
-		"\tthe specified stage to `<module>.mlds_dump.<num>-<name>',",
-		"\t`<module>.c_dump.<num>-<name>',",
+		"\tDump the MLDS (medium level intermediate representation)",
+		"\tafter the specified stage, as C code,",
+		"\tto`<module>.c_dump.<num>-<name>',",
 		"\tand `<module>.h_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
+		"--verbose-dump-mlds <stage number or name>",
+		"\tDump the internal compiler representation of the MLDS, after",
+		"\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'.",
 		"--dump-rl",
 		"\tOutput a human readable form of the compiler's internal",
 		"\trepresentation of the generated Aditi-RL code to",
