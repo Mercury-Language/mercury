@@ -681,6 +681,7 @@ A lambda expression is a compound term of one of the following forms
 @example
 lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
 pred(Var1::Mode1, Var2::Mode2, @dots{}) is Det :- Goal
+pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
 func(Var1::Mode1, Var2::Mode2, @dots{}) = (Var::Mode) is Det :- Goal
 func(Var1, Var2, @dots{}) = Var :- Goal
 @end example
@@ -688,13 +689,34 @@ func(Var1, Var2, @dots{}) = Var :- Goal
 @noindent
 where Var1, Var2, @dots{} are zero or more variables,
 Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
+DCGMode0 and DCGMode1 are modes (@pxref{Modes}),
 Det is a determinism (@pxref{Determinism}),
-and Goal is a goal (@pxref{Goals}). 
+Goal is a goal (@pxref{Goals}),
+and DCGGoal is a DCG Goal (@pxref{DCG-goals}). 
 The @samp{:- Goal} part is optional;
 if it is not specified, then @samp{:- true} is assumed.
 A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.
+The form of lambda expression using @samp{-->} as its top level functor
+is a syntactic abbreviation: an expression of the form
+
+@example
+pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
+@end example
+
+@noindent
+is equivalent to
+
+@example
+pred(Var1::Mode1, Var2::Mode2, @dots{},
+    DCGVar0::DCGMode0, DCGVar1::DCGMode1) is Det :- Goal
+@end example
+
+@noindent
+where DCGVar0 and DCGVar1 are fresh variables,
+and Goal is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
+where DCG-transform is the function specified in @pxref{DCG-goals}.
 @xref{Higher-order}.
 
 A higher-order function application is a compound term of one
@@ -2136,6 +2158,31 @@ Double = scalar_product(2)
 @noindent
 binds @samp{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
+
+For higher-order predicate expressions that thread an accumulator
+pair, we have syntax that allows you to use DCG notation in the
+goal of the expression.  For example,
+
+@example
+Pred = (pred(Strings::in, Num::out, di, uo) is det -->
+    io__write_string("The strings are: "),
+    @{ list__length(Strings, Num) @},
+    io__write_strings(Strings),
+    io__nl
+)
+@end example
+
+@noindent
+is equivalent to
+
+@example
+Pred = (pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
+    io__write_string("The strings are: ", IO0, IO1),
+    list__length(Strings, Num),
+    io__write_strings(Strings, IO1, IO2),
+    io__nl(IO2, IO)
+)
+@end example
 
 Higher-order function terms of zero arity can only be created using
 an explicit lambda expression; you have to use e.g. @samp{(func) = foo}

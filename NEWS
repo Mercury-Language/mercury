@@ -102,3 +102,7 @@ NEWS since Mercury release 0.7
   for providing the original version. 
 
 * We've added a new predicate to bag.m, bag__to_list/2.
+
+* We've introduced new syntax to allow higher-order predicate expressions
+  to use DCG notation.
+

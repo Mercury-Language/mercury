@@ -56,8 +56,8 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_io_util, prog_out, hlds_out.
-:- import_module module_qual, prog_util, globals, options.
+:- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
+:- import_module module_qual, prog_util, globals, options, hlds_out.
 :- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
@@ -2803,6 +2803,34 @@ unravel_unification(term__variable(X), Rhs,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ create_atomic_unification(X,
 			lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
+			Context, MainContext, SubContext, Goal) }
+	;
+	    {
+		% handle higher-order dcg pred expressions -
+		% same semantics as higher-order pred expressions,
+		% but has two extra arguments, and the goal is expanded
+		% as a DCG goal.
+		F = term__atom("-->"),
+		Args = [PredTerm, GoalTerm],
+		parse_dcg_pred_expression(PredTerm, Vars0, Modes0, Det)
+	    }
+	->
+		{ qual_info_get_mq_info(Info0, MQInfo0) },
+		module_qual__qualify_lambda_mode_list(Modes0, Modes, Context,
+			MQInfo0, MQInfo1),
+		{ qual_info_set_mq_info(Info0, MQInfo1, Info1) },
+		{ parse_dcg_pred_goal(GoalTerm, VarSet0, ParsedGoal,
+			DCG0, DCGn, VarSet1) },
+		{ make_fresh_arg_vars(Vars1, VarSet1, Vars, VarSet2) },
+		{ list__append(Vars0,
+			[term__variable(DCG0), term__variable(DCGn)], Vars1) },
+		{ map__init(Substitution) },
+		transform_goal(ParsedGoal, VarSet2, Substitution,
+			HLDS_Goal0, VarSet3, Info1, Info2),
+		insert_arg_unifications(Vars, Vars1, Context, head,
+			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+		{ create_atomic_unification(X,
+		lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	    {

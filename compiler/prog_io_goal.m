@@ -49,6 +49,17 @@
 :- pred parse_pred_expression(term, list(term), list(mode), determinism).
 :- mode parse_pred_expression(in, out, out, out) is semidet.
 
+	% parse_dcg_pred_expression/3 converts the first argument to a -->/2
+	% higher-order dcg pred expression into a list of variables, a list
+	% of their corresponding modes and the two dcg argument modes, and a
+	% determinism.
+	% This is a variant of the higher-order pred syntax:
+	%	`(pred(Var1::Mode1, ..., VarN::ModeN, DCG0Mode, DCGMode)
+	%		is Det --> Goal)'.
+	%
+:- pred parse_dcg_pred_expression(term, list(term), list(mode), determinism).
+:- mode parse_dcg_pred_expression(in, out, out, out) is semidet.
+
 	% parse_func_expression/3 converts the first argument to a :-/2
 	% higher-order func expression into a list of variables, a list
 	% of their corresponding modes, and a determinism.  The syntax
@@ -276,6 +287,13 @@ parse_pred_expression(PredTerm, Vars, Modes, Det) :-
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
 	parse_pred_expr_args(PredArgsList, Vars, Modes).
 
+parse_dcg_pred_expression(PredTerm, Vars, Modes, Det) :-
+	PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
+	DetTerm = term__functor(term__atom(DetString), [], _),
+	standard_det(DetString, Det),
+	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
+	parse_dcg_pred_expr_args(PredArgsList, Vars, Modes).
+
 parse_func_expression(FuncTerm, Vars, Modes, Det) :-
 	%
 	% parse a func expression with specified modes and determinism
@@ -316,6 +334,21 @@ parse_pred_expr_args([], [], []).
 parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 	parse_lambda_arg(Term, Arg, Mode),
 	parse_pred_expr_args(Terms, Args, Modes).
+
+	% parse_dcg_pred_expr_args is like parse_pred_expr_args except
+	% that the last two elements of the list are the modes of the
+	% two dcg arguments.
+:- pred parse_dcg_pred_expr_args(list(term), list(term), list(mode)).
+:- mode parse_dcg_pred_expr_args(in, out, out) is semidet.
+
+parse_dcg_pred_expr_args([DCGModeTerm0, DCGModeTerm1], [],
+		[DCGMode0, DCGMode1]) :-
+	convert_mode(DCGModeTerm0, DCGMode0),
+	convert_mode(DCGModeTerm1, DCGMode1).
+parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
+	Terms = [_, _|_],
+	parse_lambda_arg(Term, Arg, Mode),
+	parse_dcg_pred_expr_args(Terms, Args, Modes).
 
 %-----------------------------------------------------------------------------%
 
