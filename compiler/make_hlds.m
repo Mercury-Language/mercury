@@ -1372,7 +1372,7 @@ unspecified_det_warning(Name, Arity, Context) -->
 
 unspecified_det_error(Name, Arity, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("Error: no determinism declaration for exported pred"),
+	io__write_string("Error: no determinism declaration for exported pred\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
