@@ -477,7 +477,7 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 	io__write_string(")").
 
 hlds_out__write_goal_2(not(Vars, Goal), ModuleInfo, VarSet, Indent) -->
-	io__write_string("\+"),
+	io__write_string("\\+"),
 	hlds_out__write_some(Vars, VarSet),
 	io__write_string(" ("),
 	{ Indent1 is Indent + 1 },

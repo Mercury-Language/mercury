@@ -966,7 +966,7 @@ mercury_unary_prefix_op("sorted").
 mercury_unary_prefix_op("if").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("pure").
-mercury_unary_prefix_op("\+").
+mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("lib").
 mercury_unary_prefix_op("listing").
 mercury_unary_prefix_op("man").
