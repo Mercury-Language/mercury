@@ -2880,12 +2880,21 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		% in the inferred types, plus any existentially typed
 		% variables that will remain in the declaration.
 		%
+		% There may also be some types in the HeadTypeParams
+		% which do not occur in the type of any variable (e.g. this
+		% can happen in the case of code containing type errors).
+		% We'd better keep those, too, to avoid errors
+		% when we apply the TSubst to the HeadTypeParams.
+		% (XXX should we do the same for TypeConstraints and
+		% ConstraintProofs too?)
+		%
 		map__values(VarTypes, Types),
 		term__vars_list(Types, TypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
-		list__append(ExistQVarsToRemain, TypeVars0, TypeVars1),
+		list__condense([ExistQVarsToRemain, HeadTypeParams, TypeVars0],
+			TypeVars1),
 		list__sort_and_remove_dups(TypeVars1, TypeVars),
 		%
 		% Next, create a new typevarset with the same number of
