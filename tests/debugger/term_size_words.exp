@@ -1,4 +1,4 @@
-      E1:     C1  1 CALL pred term_size_words.main/2-0 (det) term_size_words.m:18
+      E1:     C1 CALL pred term_size_words.main/2-0 (det) term_size_words.m:18
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ Contexts will not be printed.
 mdb> break static
  0: + stop  interface pred term_size_words.static/3-0 (det)
 mdb> continue
-      E2:     C2  2 CALL pred term_size_words.static/3-0 (det)
+      E2:     C2 CALL pred term_size_words.static/3-0 (det)
 mdb> finish
-      E3:     C2  2 EXIT pred term_size_words.static/3-0 (det)
+      E3:     C2 EXIT pred term_size_words.static/3-0 (det)
 mdb> print *
        IntList (arg 1)        	[1, 2, 3]
        StringList (arg 2)     	["a", "bb", "ccc"]
@@ -21,9 +21,9 @@ Tree                      8
 mdb> break dynamic
  1: + stop  interface pred term_size_words.dynamic/6-0 (det)
 mdb> continue
-      E4:     C3  2 CALL pred term_size_words.dynamic/6-0 (det)
+      E4:     C3 CALL pred term_size_words.dynamic/6-0 (det)
 mdb> finish
-      E5:     C3  2 EXIT pred term_size_words.dynamic/6-0 (det)
+      E5:     C3 EXIT pred term_size_words.dynamic/6-0 (det)
 mdb> print *
        IntList (arg 1)        	[1, 2, 3]
        DoubleIntList (arg 2)  	[1, 2, 3, 1, 2, 3]
