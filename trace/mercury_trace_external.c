@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,7 +20,6 @@
 */
 
 #include "mercury_imp.h"
-#include "std_util.h"
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
@@ -32,11 +31,7 @@
 
 #include "mdb.debugger_interface.h"
 #include "mdb.collect_lib.h"
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.std_util.h"
-#else
-  #include "std_util.h"
-#endif
+#include "mercury.std_util.h"
 
 #include "mercury_deep_copy.h"
 

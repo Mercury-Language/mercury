@@ -27,7 +27,7 @@
 #include "mercury_trace_vars.h"
 #include "mercury_trace_readline.h"
 
-#include "std_util.h"
+#include "mercury.std_util.h"
 #include "mdb.browse.h"
 #include "mdb.program_representation.h"
 

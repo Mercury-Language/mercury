@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,6 @@
 
 #include "mercury_imp.h"
 #include "mercury_trace_declarative.h"
-#include "std_util.h"
 
 #ifdef MR_USE_DECLARATIVE_DEBUGGER
 
@@ -48,11 +47,7 @@
 
 #include "mdb.declarative_debugger.h"
 #include "mdb.declarative_execution.h"
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.std_util.h"
-#else
-  #include "std_util.h"
-#endif
+#include "mercury.std_util.h"
 
 #include <errno.h>
 
