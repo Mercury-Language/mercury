@@ -1,0 +1,18 @@
+echo on
+context none
+register --quiet
+break get_type_desc
+break get_type_ctor_desc
+continue
+finish
+print *
+continue
+finish
+print *
+continue
+finish
+print *
+continue
+finish
+print *
+continue -S

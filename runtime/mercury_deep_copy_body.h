@@ -514,12 +514,21 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_TYPEINFO:
+    case MR_TYPECTOR_REP_TYPEDESC:
         new_data = (MR_Word) copy_type_info((MR_TypeInfo *) data_ptr,
             lower_limit, upper_limit);
         break;
 
     case MR_TYPECTOR_REP_TYPECTORINFO:
-        /* type_ctor_infos are always static */
+        /* type_ctor_infos are always pointers to static data */
+        new_data = data;
+        break;
+
+    case MR_TYPECTOR_REP_TYPECTORDESC:
+        /*
+        ** type_ctor_descs are always either encoded integers,
+        ** or pointers to static data
+        */
         new_data = data;
         break;
 
@@ -529,7 +538,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_BASETYPECLASSINFO:
-        /* base_typeclass_infos are always static */
+        /* base_typeclass_infos are always pointers to static data */
         new_data = data;
         break;
 

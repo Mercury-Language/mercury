@@ -1,0 +1,43 @@
+       1:      1  1 CALL pred type_desc_test:main/2-0 (det) type_desc_test.m:21
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break get_type_desc
+ 0: + stop  interface func type_desc_test:get_type_desc/1-0 (det)
+mdb> break get_type_ctor_desc
+ 1: + stop  interface func type_desc_test:get_type_ctor_desc/1-0 (det)
+mdb> continue
+       3:      3  3 CALL func type_desc_test:get_type_desc/1-0 (det)
+mdb> finish
+       6:      3  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
+mdb> print *
+       HeadVar__1             	[1, 2]
+       HeadVar__2             	list:list(int)
+mdb> continue
+type_desc: list:list(int)
+      13:      8  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
+mdb> finish
+      16:      8  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
+mdb> print *
+       HeadVar__1             	list:list(int)
+       HeadVar__2             	list:list/1
+mdb> continue
+type_ctor_desc: list:list/1
+      25:     14  3 CALL func type_desc_test:get_type_desc/1-0 (det)
+mdb> finish
+      28:     14  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
+mdb> print *
+       HeadVar__1             	["one", "two", "three"]
+       HeadVar__2             	list:list(string)
+mdb> continue
+type_desc: list:list(string)
+      35:     19  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
+mdb> finish
+      38:     19  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
+mdb> print *
+       HeadVar__1             	list:list(string)
+       HeadVar__2             	list:list/1
+mdb> continue -S
+type_ctor_desc: list:list/1

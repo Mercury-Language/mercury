@@ -134,6 +134,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef struct mercury__array__array_1_s * MR_Array;
   typedef struct mercury__std_util__univ_0_s * MR_Univ;
   typedef struct mercury__type_desc__type_desc_0_s * MR_Type_Desc;
+  typedef struct mercury__type_desc__type_ctor_desc_0_s * MR_Type_Ctor_Desc;
   typedef struct mercury__private_builtin__type_info_1_s *
   	MR_Mercury_Type_Info;
   typedef struct mercury__private_builtin__type_ctor_info_1_s *
@@ -153,6 +154,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef MR_Word MR_Array;
   typedef MR_Word MR_Univ;
   typedef MR_Word MR_Type_Desc;
+  typedef MR_Word MR_Type_Ctor_Desc;
   typedef MR_Word MR_Mercury_Type_Info;
   typedef MR_Word MR_Mercury_Type_Ctor_Info;
   typedef MR_Word MR_Mercury_TypeClass_Info;
@@ -327,6 +329,7 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_tuple_0,
 	mercury__array__array__type_ctor_info_array_1,
 	mercury__std_util__std_util__type_ctor_info_univ_0,
+	mercury__type_desc__type_desc__type_ctor_info_type_ctor_desc_0,
 	mercury__type_desc__type_desc__type_ctor_info_type_desc_0,
 	mercury__private_builtin__private_builtin__type_ctor_info_type_ctor_info_1,
 	mercury__private_builtin__private_builtin__type_ctor_info_type_info_1,
@@ -561,6 +564,8 @@ MR_bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y);
 MR_bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
 MR_bool MR_CALL mercury__builtin____Unify____tuple_0_0(
 	MR_Mercury_Type_Info type_info, MR_Tuple x, MR_Tuple y); 
+MR_bool MR_CALL mercury__type_desc____Unify____type_ctor_desc_0_0(
+	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y); 
 MR_bool MR_CALL mercury__type_desc____Unify____type_desc_0_0(
 	MR_Type_Desc x, MR_Type_Desc y); 
 MR_bool MR_CALL mercury__private_builtin____Unify____type_ctor_info_1_0(
@@ -597,6 +602,9 @@ void MR_CALL mercury__builtin____Compare____pred_0_0(
 void MR_CALL mercury__builtin____Compare____tuple_0_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Tuple x, MR_Tuple y); 
+void MR_CALL mercury__type_desc____Compare____type_ctor_desc_0_0(
+	MR_Comparison_Result *result,
+	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y);
 void MR_CALL mercury__type_desc____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y);
 void MR_CALL mercury__private_builtin____Compare____type_ctor_info_1_0(

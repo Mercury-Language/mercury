@@ -45,7 +45,9 @@ public class TypeCtorRep {
 	public static final int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ = 32;
 	public static final int MR_TYPECTOR_REP_TYPECTORINFO = 33;
 	public static final int MR_TYPECTOR_REP_BASETYPECLASSINFO = 34;
-	public static final int MR_TYPECTOR_REP_UNKNOWN = 35;
+	public static final int MR_TYPECTOR_REP_TYPEDESC = 35;
+	public static final int MR_TYPECTOR_REP_TYPECTORDESC = 36;
+	public static final int MR_TYPECTOR_REP_UNKNOWN = 37;
 	
 	// Instance variable for TypeCtorRep objects.
 	

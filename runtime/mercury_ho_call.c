@@ -21,6 +21,7 @@ ENDINIT
 
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
+#include "mercury_type_desc.h"
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 
@@ -101,6 +102,14 @@ MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
 MR_proc_static_user_builtin_empty(typectorinfo_unify, 2, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(typectorinfo_compare, 3, 0,
+	"mercury_ho_call.c", 0, MR_TRUE);
+MR_proc_static_user_builtin_empty(typedesc_unify, 2, 0,
+	"mercury_ho_call.c", 0, MR_TRUE);
+MR_proc_static_user_builtin_empty(typedesc_compare, 3, 0,
+	"mercury_ho_call.c", 0, MR_TRUE);
+MR_proc_static_user_builtin_empty(typectordesc_unify, 2, 0,
+	"mercury_ho_call.c", 0, MR_TRUE);
+MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
 	"mercury_ho_call.c", 0, MR_TRUE);
 
 #endif
@@ -552,5 +561,13 @@ void mercury_sys_init_call_write_out_proc_statics(FILE *fp)
 		&MR_proc_static_user_builtin_name(typectorinfo_unify, 2, 0));
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
 		&MR_proc_static_user_builtin_name(typectorinfo_compare, 3, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(typedesc_unify, 2, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(typedesc_compare, 3, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(typectordesc_unify, 2, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(typectordesc_compare, 3, 0));
 }
 #endif

@@ -16,6 +16,7 @@
 
 #include "mercury.h"
 #include "mercury_type_info.h"	/* for MR_TYPECTOR_REP* */
+#include "mercury_type_desc.h"	/* for MR_TypeCtorDesc */
 #include "mercury_misc.h"	/* for MR_fatal_error() */
 #include "mercury_heap.h"	/* for MR_create[1-3]() prototypes */
 
@@ -89,6 +90,7 @@ static MR_UnifyFunc_0
 	mercury__private_builtin__do_unify__heap_pointer_0_0,
 	mercury__builtin__do_unify__func_0_0,
 	mercury__builtin__do_unify__pred_0_0,
+	mercury__type_desc__do_unify__type_ctor_desc_0_0,
 	mercury__type_desc__do_unify__type_desc_0_0;
 
 static MR_UnifyFunc_1
@@ -108,6 +110,7 @@ static MR_CompareFunc_0
 	mercury__private_builtin__do_compare__heap_pointer_0_0,
 	mercury__builtin__do_compare__func_0_0,
 	mercury__builtin__do_compare__pred_0_0,
+	mercury__type_desc__do_compare__type_ctor_desc_0_0,
 	mercury__type_desc__do_compare__type_desc_0_0;
 
 static MR_CompareFunc_1
@@ -127,16 +130,19 @@ static MR_CompareFunc_1
 */
 
 MR_define_type_ctor_info(builtin, int, 0, MR_TYPECTOR_REP_INT);
+MR_define_type_ctor_info(builtin, character, 0, MR_TYPECTOR_REP_CHAR);
 MR_define_type_ctor_info(builtin, string, 0, MR_TYPECTOR_REP_STRING);
 MR_define_type_ctor_info(builtin, float, 0, MR_TYPECTOR_REP_FLOAT);
-MR_define_type_ctor_info(builtin, character, 0, MR_TYPECTOR_REP_CHAR);
+MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_FUNC);
+MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
+MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
 MR_define_type_ctor_info(builtin, void, 0, MR_TYPECTOR_REP_VOID);
 MR_define_type_ctor_info(builtin, c_pointer, 0, MR_TYPECTOR_REP_C_POINTER);
 MR_define_type_ctor_info(private_builtin, heap_pointer, 0, MR_TYPECTOR_REP_HP);
-MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
-MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_FUNC);
-MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
-MR_define_type_ctor_info(type_desc, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
+MR_define_type_ctor_info(type_desc, type_ctor_desc,
+	0, MR_TYPECTOR_REP_TYPECTORDESC);
+MR_define_type_ctor_info(type_desc, type_desc,
+	0, MR_TYPECTOR_REP_TYPEDESC);
 MR_define_type_ctor_info(private_builtin, type_ctor_info, 1,
 	MR_TYPECTOR_REP_TYPECTORINFO);
 MR_define_type_ctor_info(private_builtin, type_info, 1,
@@ -422,13 +428,17 @@ mercury__builtin____Unify____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 MR_bool MR_CALL
+mercury__type_desc____Unify____type_ctor_desc_0_0(
+	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y)
+{
+	return MR_unify_type_ctor_desc((MR_TypeCtorDesc) x,
+		(MR_TypeCtorDesc) y);
+}
+
+MR_bool MR_CALL
 mercury__type_desc____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
 {
-	int             comp;
-
-	comp = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
-
-	return (comp == MR_COMPARE_EQUAL);
+	return MR_unify_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 MR_bool MR_CALL
@@ -436,7 +446,8 @@ mercury__private_builtin____Unify____type_ctor_info_1_0(
 	MR_Mercury_Type_Info type_info,
 	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y)
 {
-	SORRY("unify for type_ctor_info");
+	return MR_unify_type_ctor_info((MR_TypeCtorInfo) x,
+		(MR_TypeCtorInfo) y);
 }
 
 MR_bool MR_CALL
@@ -444,11 +455,7 @@ mercury__private_builtin____Unify____type_info_1_0(
 	MR_Mercury_Type_Info type_info,
 	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y)
 {
-	int             comp;
-
-	comp = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
-
-	return (comp == MR_COMPARE_EQUAL);
+	return MR_unify_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 MR_bool MR_CALL
@@ -577,13 +584,18 @@ mercury__builtin____Compare____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 void MR_CALL
+mercury__type_desc____Compare____type_ctor_desc_0_0(
+	MR_Comparison_Result *result, MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y)
+{
+	*result = MR_compare_type_ctor_desc((MR_TypeCtorDesc) x,
+		(MR_TypeCtorDesc) y);
+}
+
+void MR_CALL
 mercury__type_desc____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y)
 {
-	int             comp;
-
-	comp = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
-	*result = comp;
+	*result = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 void MR_CALL
@@ -591,7 +603,8 @@ mercury__private_builtin____Compare____type_ctor_info_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y)
 {
-	SORRY("compare for type_ctor_info");
+	*result = MR_compare_type_ctor_info((MR_TypeCtorInfo) x,
+		(MR_TypeCtorInfo) y);
 }
 
 void MR_CALL
@@ -599,10 +612,7 @@ mercury__private_builtin____Compare____type_info_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y)
 {
-	int             comp;
-
-	comp = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
-	*result = comp;
+	*result = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 void MR_CALL
@@ -693,6 +703,13 @@ mercury__builtin__do_unify__tuple_0_0(MR_Mercury_Type_Info type_info,
 {
 	return mercury__builtin____Unify____tuple_0_0(
 		type_info, (MR_Tuple) x, (MR_Tuple) y);
+}
+
+static MR_bool MR_CALL
+mercury__type_desc__do_unify__type_ctor_desc_0_0(MR_Box x, MR_Box y)
+{
+	return mercury__type_desc____Unify____type_ctor_desc_0_0(
+		(MR_Type_Ctor_Desc) x, (MR_Type_Ctor_Desc) y);
 }
 
 static MR_bool MR_CALL
@@ -818,6 +835,14 @@ mercury__builtin__do_compare__tuple_0_0(
 {
 	mercury__builtin____Compare____tuple_0_0(
 		type_info, result, (MR_Tuple) x, (MR_Tuple) y);
+}
+
+static void MR_CALL
+mercury__type_desc__do_compare__type_ctor_desc_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+	mercury__type_desc____Compare____type_ctor_desc_0_0(
+		result, (MR_Type_Ctor_Desc) x, (MR_Type_Ctor_Desc) y);
 }
 
 static void MR_CALL

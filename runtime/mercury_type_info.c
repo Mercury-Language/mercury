@@ -117,7 +117,8 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	MR_TypeCtorInfo	tci2;
 	MR_TypeInfo	*arg_vector_1;
 	MR_TypeInfo	*arg_vector_2;
-	int		num_arg_types;
+	int		num_arg_types_1;
+	int		num_arg_types_2;
 	int		i;
 	int		comp;
 
@@ -167,28 +168,26 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	*/
 
 	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
-		int	num_arg_types_2;
-
-		num_arg_types = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
+		num_arg_types_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
 		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti2);
 
 			/* Check arity */
-		if (num_arg_types < num_arg_types_2) {
+		if (num_arg_types_1 < num_arg_types_2) {
 			return MR_COMPARE_LESS;
-		} else if (num_arg_types > num_arg_types_2) {
+		} else if (num_arg_types_1 > num_arg_types_2) {
 			return MR_COMPARE_GREATER;
 		}
 
 		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti1);
 		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti2);
 	} else {
-		num_arg_types = tci1->MR_type_ctor_arity;
+		num_arg_types_1 = tci1->MR_type_ctor_arity;
 		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti1);
 		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti2);
 	}
 
 		/* compare the argument types */
-	for (i = 1; i <= num_arg_types; i++) {
+	for (i = 1; i <= num_arg_types_1; i++) {
 		comp = MR_compare_type_info(arg_vector_1[i], arg_vector_2[i]);
 		if (comp != MR_COMPARE_EQUAL)
 			return comp;
@@ -197,30 +196,163 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	return MR_COMPARE_EQUAL;
 }
 
+MR_bool
+MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
+{
+	MR_TypeCtorInfo	tci1;
+	MR_TypeCtorInfo	tci2;
+	MR_TypeInfo	*arg_vector_1;
+	MR_TypeInfo	*arg_vector_2;
+	int		num_arg_types_1;
+	int		num_arg_types_2;
+	int		i;
+	int		comp;
+
+	/* 
+	** Try to optimize a common case:
+	** If type_info addresses are equal, they must represent the
+	** same type.
+	*/
+
+	if (ti1 == ti2) {
+		return MR_TRUE;
+	}
+
+	/* 
+	** Otherwise, we need to expand equivalence types, if any.
+	*/
+
+	ti1 = MR_collapse_equivalences(ti1);
+	ti2 = MR_collapse_equivalences(ti2);
+
+	/* 
+	** Perhaps they are equal now...
+	*/
+
+	if (ti1 == ti2) {
+		return MR_TRUE;
+	}
+
+	/*
+	** Otherwise find the type_ctor_infos, and compare those.
+	*/
+
+	tci1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti1);
+	tci2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti2);
+
+	if (! MR_unify_type_ctor_info(tci1, tci2)) {
+		return MR_FALSE;
+	}
+
+	/*
+	** If the type_ctor_infos are equal, we don't need to compare
+	** the arity of the types - they must be the same - unless they are
+	** higher-order (which are all mapped to pred/0 or func/0) or tuples
+	** (which are all mapped to tuple/0), in which cases we must compare
+	** the arities before we can check the argument types.
+	*/
+
+	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
+		num_arg_types_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
+		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti2);
+
+			/* Check arity */
+		if (num_arg_types_1 != num_arg_types_2) {
+			return MR_FALSE;
+		}
+
+		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti2);
+	} else {
+		num_arg_types_1 = tci1->MR_type_ctor_arity;
+		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti2);
+	}
+
+		/* compare the argument types */
+	for (i = 1; i <= num_arg_types_1; i++) {
+		if (! MR_unify_type_info(arg_vector_1[i], arg_vector_2[i])) {
+			return MR_FALSE;
+		}
+	}
+
+	return MR_TRUE;
+}
+
 int
 MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
 {
 	int		i;
+	int		comp;
+	MR_ConstString	modulename1;
+	MR_ConstString	modulename2;
+	MR_ConstString	typename1;
+	MR_ConstString	typename2;
+	int		arity1;
+	int		arity2;
 
 	/*
-	** Note: this is an arbitrary ordering. It doesn't matter
-	** what the ordering is, just so long as it is consistent.
-	** For consistency, we are relying on the fact that type_ctor_infos
-	** are always statically allocated.
-	** ANSI C doesn't guarantee much about pointer comparisons,
-	** so it is possible that this might not do the right thing
-	** on some obscure systems.
+	** We are relying on the fact that type_ctor_infos are always
+	** statically allocated to ensure that two type_ctor_infos are
+	** for the same type iff their address is the same.
+	**
 	** The casts to (MR_Unsigned) here are in the hope of increasing
 	** the chance that this will work on a segmented architecture.
 	*/
 
-	if ((MR_Unsigned) tci1 < (MR_Unsigned) tci2) {
+	if ((MR_Unsigned) tci1 == (MR_Unsigned) tci2) {
+		return MR_COMPARE_EQUAL;
+	}
+
+	modulename1 = tci1->MR_type_ctor_module_name;
+	modulename2 = tci2->MR_type_ctor_module_name;
+
+	comp = strcmp(modulename1, modulename2);
+	if (comp < 0) {
 		return MR_COMPARE_LESS;
-	} else if ((MR_Unsigned) tci1 > (MR_Unsigned) tci2) {
+	} else if (comp > 0) {
 		return MR_COMPARE_GREATER;
 	}
 
-	return MR_COMPARE_EQUAL;
+	typename1 = tci1->MR_type_ctor_name;
+	typename2 = tci2->MR_type_ctor_name;
+	comp = strcmp(typename1, typename2);
+	if (comp < 0) {
+		return MR_COMPARE_LESS;
+	} else if (comp > 0) {
+		return MR_COMPARE_GREATER;
+	}
+
+	arity1 = tci1->MR_type_ctor_arity;
+	arity2 = tci2->MR_type_ctor_arity;
+	if (arity1 < arity2) {
+		return MR_COMPARE_LESS;
+	} else if (arity1 > arity2) {
+		return MR_COMPARE_GREATER;
+	}
+
+	MR_fatal_error("type_ctor_info match at distinct addresses");
+}
+
+MR_bool
+MR_unify_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
+{
+	int		i;
+
+	/*
+	** We are relying on the fact that type_ctor_infos are always
+	** statically allocated to ensure that two type_ctor_infos are
+	** for the same type iff their address is the same.
+	**
+	** The casts to (MR_Unsigned) here are in the hope of increasing
+	** the chance that this will work on a segmented architecture.
+	*/
+
+	if ((MR_Unsigned) tci1 == (MR_Unsigned) tci2) {
+		return MR_TRUE;
+	} else {
+		return MR_FALSE;
+	}
 }
 
 MR_TypeInfo

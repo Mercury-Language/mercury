@@ -112,6 +112,8 @@
 	;	reserved_addr_usereq
 	;	type_ctor_info
 	;	base_typeclass_info
+	;	type_desc
+	;	type_ctor_desc
 	;	unknown.
 
 	% We keep all the other types abstract.
@@ -759,6 +761,16 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 	;
 		TypeCtorRep = base_typeclass_info,
 		Functor = "some_base_typeclass_info", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = type_desc,
+		Functor = "some_type_desc", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = type_ctor_desc,
+		Functor = "some_type_ctor_desc", 
 		Arity = 0,
 		Arguments = []
 	;

@@ -24,7 +24,7 @@
 **
 ** Values of type `types:type_ctor_desc' are not guaranteed to be
 ** represented the same way as values of type `private_builtin:type_ctor_info'.
-** The representations *are* in fact identical for first order types, but they
+** The representations *are* in fact identical for fixed arity types, but they
 ** differ for higher order and tuple types. Instead of a type_ctor_desc
 ** being a structure containing a pointer to the type_ctor_info for pred/0
 ** or func/0 and an arity, we have a single small encoded integer. This
@@ -112,6 +112,10 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 		: (((MR_Unsigned) (T) % 4 == 1)				\
 			? (MR_address_of_type_ctor_info_for_func)	\
 			: (MR_address_of_type_ctor_info_for_tuple) ) )
+#define MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(T)				\
+	( MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)				\
+	  ? MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)			\
+	  : MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T))
 
 /*
 ** Create and return a MR_TypeCtorDesc that describes the same type as
@@ -155,5 +159,31 @@ extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
 
 extern	MR_TypeInfo	MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 				MR_Word arg_type_list);
+
+/* 
+** Compare two type_ctor_info structures, using an ordering based on the
+** module names, type names and arities of the types represented by tcd1/tcd2.
+** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** depending on whether tcd1 is greater than, equal to, or less than tcd2.
+** 
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern	int		MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
+				MR_TypeCtorDesc tcd2);
+
+/* 
+** Unify two type_ctor_info structures, using an ordering based on the
+** module names, type names and arities of the types represented by tcd1/tcd2.
+** Return MR_TRUE iff tcd1 and tcd2 represent the same type constructor,
+** and MR_FALSE otherwise.
+** 
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern	MR_bool		MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1,
+				MR_TypeCtorDesc tcd2);
 
 #endif	/* MERCURY_TYPE_DESC_H */

@@ -187,22 +187,38 @@ void sys_init_type_desc_module_write_out_proc_statics(FILE *);
 #ifndef MR_HIGHLEVEL_CODE
 
 #ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_empty(type_desc, __Unify__,   type_ctor_desc, 0, 0,
+	""type_desc.m"", 0, MR_TRUE);
+MR_proc_static_compiler_empty(type_desc, __Compare__, type_ctor_desc, 0, 0,
+	""type_desc.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(type_desc, __Unify__,   type_desc, 0, 0,
 	""type_desc.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(type_desc, __Compare__, type_desc, 0, 0,
 	""type_desc.m"", 0, MR_TRUE);
 #endif
 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0,
+	MR_TYPECTOR_REP_TYPECTORDESC);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0,
-	MR_TYPECTOR_REP_TYPEINFO);
+	MR_TYPECTOR_REP_TYPEDESC);
 
+MR_define_extern_entry(mercury____Unify___type_desc__type_ctor_desc_0_0);
+MR_define_extern_entry(mercury____Compare___type_desc__type_ctor_desc_0_0);
 MR_define_extern_entry(mercury____Unify___type_desc__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___type_desc__type_desc_0_0);
 
 MR_BEGIN_MODULE(type_desc_module)
+	MR_init_entry(mercury____Unify___type_desc__type_ctor_desc_0_0);
+	MR_init_entry(mercury____Compare___type_desc__type_ctor_desc_0_0);
 	MR_init_entry(mercury____Unify___type_desc__type_desc_0_0);
 	MR_init_entry(mercury____Compare___type_desc__type_desc_0_0);
 #ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury____Unify___type_desc__type_ctor_desc_0_0_i1);
+	MR_init_label(mercury____Unify___type_desc__type_ctor_desc_0_0_i2);
+	MR_init_label(mercury____Unify___type_desc__type_ctor_desc_0_0_i3);
+	MR_init_label(mercury____Unify___type_desc__type_ctor_desc_0_0_i4);
+	MR_init_label(mercury____Compare___type_desc__type_ctor_desc_0_0_i1);
+	MR_init_label(mercury____Compare___type_desc__type_ctor_desc_0_0_i2);
 	MR_init_label(mercury____Unify___type_desc__type_desc_0_0_i1);
 	MR_init_label(mercury____Unify___type_desc__type_desc_0_0_i2);
 	MR_init_label(mercury____Unify___type_desc__type_desc_0_0_i3);
@@ -211,6 +227,46 @@ MR_BEGIN_MODULE(type_desc_module)
 	MR_init_label(mercury____Compare___type_desc__type_desc_0_0_i2);
 #endif
 MR_BEGIN_CODE
+
+#define	proc_label	mercury____Unify___type_desc__type_ctor_desc_0_0
+#define	proc_static	MR_proc_static_compiler_name(type_desc, __Unify__, \
+				type_ctor_desc, 0, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_ctor_desc(	\
+					(MR_TypeCtorDesc) MR_r1,	\
+					(MR_TypeCtorDesc) MR_r2);	\
+				MR_restore_transient_registers();	\
+				MR_r1 = (comp == MR_COMPARE_EQUAL);	\
+			} while (0)
+
+#include ""mercury_hand_unify_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
+
+#define	proc_label	mercury____Compare___type_desc__type_ctor_desc_0_0
+#define	proc_static	MR_proc_static_compiler_name(type_desc, __Compare__, \
+				type_ctor_desc, 0, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_ctor_desc(	\
+					(MR_TypeCtorDesc) MR_r1,	\
+					(MR_TypeCtorDesc) MR_r2);	\
+				MR_restore_transient_registers();	\
+				MR_r1 = comp;				\
+			} while (0)
+
+#include ""mercury_hand_compare_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
 
 #define	proc_label	mercury____Unify___type_desc__type_desc_0_0
 #define	proc_static	MR_proc_static_compiler_name(type_desc, __Unify__, \
@@ -265,6 +321,9 @@ sys_init_type_desc_module_init(void)
 	type_desc_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_type_desc__type_ctor_info_type_ctor_desc_0,
+		type_desc__type_desc_0_0);
+	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_type_desc__type_ctor_info_type_desc_0,
 		type_desc__type_desc_0_0);
 #endif
@@ -275,6 +334,8 @@ sys_init_type_desc_module_init_type_tables(void)
 {
 #ifndef	MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
+		&mercury_data_type_desc__type_ctor_info_type_ctor_desc_0);
+	MR_register_type_ctor_info(
 		&mercury_data_type_desc__type_ctor_info_type_desc_0);
 #endif
 }
@@ -284,11 +345,17 @@ void
 sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
 {
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(type_desc, __Compare__, type_desc,
-			0, 0));
+		&MR_proc_static_compiler_name(type_desc, __Compare__,
+			type_ctor_desc, 0, 0));
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(type_desc, __Unify__, type_desc,
-			0, 0));
+		&MR_proc_static_compiler_name(type_desc, __Unify__,
+			type_ctor_desc, 0, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(type_desc, __Compare__,
+			type_desc, 0, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(type_desc, __Unify__,
+			type_desc, 0, 0));
 }
 #endif
 
@@ -296,8 +363,10 @@ sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
 
 :- pragma foreign_code("MC++", "
 
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_ctor_desc, 0, 
+	MR_TYPECTOR_REP_TYPECTORDESC)
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0, 
-	MR_TYPECTOR_REP_TYPEINFO)
+	MR_TYPECTOR_REP_TYPEDESC)
 
 static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
 	MR_Word res;
@@ -305,6 +374,50 @@ static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
 	mercury::type_desc::mercury_code::ML_call_rtti_compare_type_infos(
 		&res, t1, t2);
 	return System::Convert::ToInt32(res[0]);
+}
+
+static void
+__Compare____type_ctor_desc_0_0(
+	MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
+}
+
+static MR_bool
+__Unify____type_ctor_desc_0_0(MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+}
+
+static void
+special___Compare___type_ctor_desc_0_0(
+	MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
+}
+
+static MR_bool
+special___Unify___type_ctor_desc_0_0(MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+}
+
+static int
+do_unify__type_ctor_desc_0_0(MR_Box x, MR_Box y)
+{
+	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_ctor_desc_0_0(
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
+}
+
+static void
+do_compare__type_ctor_desc_0_0(
+	MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::type_desc__cpp_code::mercury_code::__Compare____type_ctor_desc_0_0(
+		result,
+		dynamic_cast<MR_Word>(x),
+		dynamic_cast<MR_Word>(y));
 }
 
 static void
@@ -360,10 +473,6 @@ do_compare__type_desc_0_0(
 	% Code for type manipulation.
 
 	% Prototypes and type definitions.
-
-	% A type_ctor_desc is not (quite) a subtype of type_desc,
-	% so we use a separate type for it.
-:- type type_ctor_desc ---> type_ctor_desc(c_pointer).
 
 :- pragma foreign_proc("C",
 	type_of(_Value::unused) = (TypeInfo::out),
@@ -561,19 +670,20 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
 	[will_not_call_mercury, thread_safe],
 "{
-	MR_TypeCtorDesc type_ctor_desc;
-	MR_TypeCtorInfo type_ctor_info;
-	MR_Word		    arg_type;
-	int		        list_length;
-	int		        arity;
+	MR_TypeCtorDesc	type_ctor_desc;
+	MR_TypeCtorInfo	type_ctor_info;
+	MR_Word		arg_type;
+	int		list_length;
+	int		arity;
 
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
 	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 	} else {
-        type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
-            type_ctor_desc);
+		type_ctor_info =
+			MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
+				type_ctor_desc);
 		arity = type_ctor_info->MR_type_ctor_arity;
 	}
 

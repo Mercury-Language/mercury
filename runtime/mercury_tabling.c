@@ -901,11 +901,16 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPEDESC:
             MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo) data);
             break;
 
         case MR_TYPECTOR_REP_TYPECTORINFO:
             MR_fatal_error("Attempt to table a type_ctor_info");
+            break;
+
+        case MR_TYPECTOR_REP_TYPECTORDESC:
+            MR_fatal_error("Attempt to table a type_ctor_desc");
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:

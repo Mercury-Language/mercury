@@ -467,7 +467,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** MR_CTOR_REP_NAMES below, in runtime/mercury_mcpp.{h,cpp}, in
 ** library/rtti_implementation.m (definitely the list of type_ctor_reps,
 ** maybe the bodies of predicates), in library/private_builtin.m,
-** and in java/TypeCtorRep.java.
+** in compiler/mlds_to_gcc.m, and in java/runtime/TypeCtorRep.java.
 **
 ** Additions to the end of this enum can be handled naturally,
 ** but changes in the meanings of already assigned values
@@ -510,6 +510,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPECTORINFO),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BASETYPECLASSINFO),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPEDESC),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPECTORDESC),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -1206,9 +1208,9 @@ struct MR_TypeCtorInfo_Struct {
 /*---------------------------------------------------------------------------*/
 
 /*
-** Compare two type_info structures, using an arbitrary ordering based on
-** the addresses of the type_ctor_infos, or in the case of higher order types,
-** the arity). Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** Compare two type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
 ** depending on whether ti1 is greater than, equal to, or less than ti2.
 **
 ** You need to wrap MR_{save/restore}_transient_hp() around
@@ -1218,9 +1220,21 @@ struct MR_TypeCtorInfo_Struct {
 extern  int     MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2);
 
 /*
-** Compare two type_ctor_info structures, using an arbitrary ordering based on
-** the addresses of the type_ctor_infos, or in the case of higher order types,
-** the arity). Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** Unify two type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_TRUE if ti1 represents the same type as ti2, and MR_FALSE
+** otherwise.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_bool MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2);
+
+/*
+** Compare two type_ctor_info structures, using an ordering based on the
+** module names, type names and arities of the types represented by tci1/tci2.
+** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
 ** depending on whether tci1 is greater than, equal to, or less than tci2.
 **
 ** You need to wrap MR_{save/restore}_transient_hp() around
@@ -1228,6 +1242,19 @@ extern  int     MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2);
 */
 
 extern  int     MR_compare_type_ctor_info(MR_TypeCtorInfo tci1,
+                    MR_TypeCtorInfo tci2);
+
+/*
+** Unify two type_ctor_info structures, using an ordering based on the
+** module names, type names and arities of the types represented by tci1/tci2.
+** Return MR_TRUE if tci1 represents the same type constructor as tci2, and
+** MR_FALSE otherwise.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_bool MR_unify_type_ctor_info(MR_TypeCtorInfo tci1,
                     MR_TypeCtorInfo tci2);
 
 /*

@@ -45,7 +45,8 @@ NONRETRY_PROGS = \
 	output_term_dep			\
 	polymorphic_output		\
 	resume_typeinfos		\
-	shallow
+	shallow				\
+	type_desc_test
 
 # The completion test requires mdb to use readline, even though
 # the input is not a terminal.
@@ -283,6 +284,10 @@ tabled_read.out: tabled_read tabled_read.inp tabled_read.data
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
 	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \
 		> tabled_read_decl.out 2>&1
+
+type_desc_test.out: type_desc_test type_desc_test.inp
+	$(MDB) ./type_desc_test < type_desc_test.inp \
+		> type_desc_test.out 2>&1
 
 # Note that interactive.out.orig depends on $(interactive.ints) because
 # interactive.inp contains interactive queries that require interactive.ints

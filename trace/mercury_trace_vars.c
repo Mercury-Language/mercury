@@ -188,8 +188,6 @@ MR_trace_always_ignored_type_ctors[] =
 #ifndef MR_HIGHLEVEL_CODE
 	/* we ignore these until the browser can handle their varying arity, */
 	/* or their definitions are updated. XXX */
-	&mercury_data_type_desc__type_ctor_info_type_desc_0,
-	&mercury_data_type_desc__type_ctor_info_type_ctor_desc_0,
 	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
 	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
 

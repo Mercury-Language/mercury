@@ -1,4 +1,7 @@
 /*
+** vim:ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -83,7 +86,7 @@ start_label:
 
         case MR_TYPECTOR_REP_RESERVED_ADDR:
             MR_fatal_error("sorry, not implemented: "
-		    	"MR_COMPARE_BY_RTTI for RESERVED_ADDR");
+                "MR_COMPARE_BY_RTTI for RESERVED_ADDR");
 
         case MR_TYPECTOR_REP_DU:
             {
@@ -238,9 +241,9 @@ start_label:
                                 y_data_value[locns[i].MR_exist_arg_num],
                                 locns[i].MR_exist_offset_in_tci);
                         }
-			MR_save_transient_registers();
+                        MR_save_transient_registers();
                         result = MR_compare_type_info(x_ti, y_ti);
-			MR_restore_transient_registers();
+                        MR_restore_transient_registers();
                         if (result != MR_COMPARE_EQUAL) {
   #ifdef  select_compare_code
                             return_answer(result);
@@ -257,29 +260,29 @@ start_label:
                     MR_TypeInfo arg_type_info;
 
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
-		        MR_save_transient_hp();
+                        MR_save_transient_hp();
                         arg_type_info = MR_create_type_info_maybe_existq(
                             MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                             functor_desc->MR_du_functor_arg_types[i],
                             x_data_value, functor_desc);
-		        MR_restore_transient_hp();
+                        MR_restore_transient_hp();
                     } else {
                         arg_type_info = (MR_TypeInfo)
                             functor_desc->MR_du_functor_arg_types[i];
                     }
   #ifdef  select_compare_code
-		    MR_save_transient_registers();
+                    MR_save_transient_registers();
                     result = MR_generic_compare(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
-		    MR_restore_transient_registers();
+                    MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
                     }
   #else
-		    MR_save_transient_registers();
+                    MR_save_transient_registers();
                     result = MR_generic_unify(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
-		    MR_restore_transient_registers();
+                    MR_restore_transient_registers();
                     if (! result) {
                         return_answer(MR_FALSE);
                     }
@@ -394,18 +397,18 @@ start_label:
                                             type_info)[i + 1];
 
 #ifdef  select_compare_code
-		    MR_save_transient_registers();
+                    MR_save_transient_registers();
                     result = MR_generic_compare(arg_type_info,
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
-		    MR_restore_transient_registers();
+                    MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
                     }
 #else
-		    MR_save_transient_registers();
+                    MR_save_transient_registers();
                     result = MR_generic_unify(arg_type_info,
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
-		    MR_restore_transient_registers();
+                    MR_restore_transient_registers();
                     if (! result) {
                         return_answer(MR_FALSE);
                     }
@@ -512,7 +515,7 @@ start_label:
             }
 
         case MR_TYPECTOR_REP_C_POINTER:
-#ifdef	select_compare_code
+#ifdef  select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
             compare_call_exit_code(c_pointer_compare);
   #endif
@@ -539,57 +542,130 @@ start_label:
 
         case MR_TYPECTOR_REP_TYPEINFO:
             {
+#ifdef  select_compare_code
                 int result;
 
                 MR_save_transient_registers();
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-#ifdef	select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 compare_call_exit_code(typeinfo_compare);
   #endif
                 return_answer(result);
 #else
+                MR_bool result;
+
+                MR_save_transient_registers();
+                result = MR_unify_type_info(
+                    (MR_TypeInfo) x, (MR_TypeInfo) y);
+                MR_restore_transient_registers();
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result == MR_COMPARE_EQUAL) {
+                if (result) {
                     unify_call_exit_code(typeinfo_unify);
-                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(typeinfo_unify);
-                    return_answer(MR_FALSE);
                 }
-  #else
-                return_answer(result == MR_COMPARE_EQUAL);
   #endif
+                return_answer(result);
+#endif
+            }
+
+        case MR_TYPECTOR_REP_TYPEDESC:
+            /*
+            ** Differs from the code for MR_TYPECTOR_REP_TYPEINFO
+            ** only in recording profiling information elsewhere.
+            */
+
+            {
+#ifdef  select_compare_code
+                int result;
+
+                MR_save_transient_registers();
+                result = MR_compare_type_info(
+                    (MR_TypeInfo) x, (MR_TypeInfo) y);
+                MR_restore_transient_registers();
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(typedesc_compare);
+  #endif
+                return_answer(result);
+#else
+                MR_bool result;
+
+                MR_save_transient_registers();
+                result = MR_unify_type_info(
+                    (MR_TypeInfo) x, (MR_TypeInfo) y);
+                MR_restore_transient_registers();
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (result) {
+                    unify_call_exit_code(typedesc_unify);
+                } else {
+                    unify_call_fail_code(typedesc_unify);
+                }
+  #endif
+                return_answer(result);
 #endif
             }
 
         case MR_TYPECTOR_REP_TYPECTORINFO:
             {
+#ifdef  select_compare_code
                 int result;
 
                 MR_save_transient_registers();
                 result = MR_compare_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-#ifdef	select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 compare_call_exit_code(typectorinfo_compare);
   #endif
                 return_answer(result);
 #else
+                MR_bool result;
+
+                MR_save_transient_registers();
+                result = MR_unify_type_ctor_info(
+                    (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
+                MR_restore_transient_registers();
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result == MR_COMPARE_EQUAL) {
+                if (result) {
                     unify_call_exit_code(typectorinfo_unify);
-                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(typectorinfo_unify);
-                    return_answer(MR_FALSE);
                 }
-  #else
-                return_answer(result == MR_COMPARE_EQUAL);
   #endif
+                return_answer(result);
+#endif
+            }
+
+        case MR_TYPECTOR_REP_TYPECTORDESC:
+            {
+#ifdef  select_compare_code
+                int result;
+
+                MR_save_transient_registers();
+                result = MR_compare_type_ctor_desc(
+                    (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
+                MR_restore_transient_registers();
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(typectordesc_compare);
+  #endif
+                return_answer(result);
+#else
+                MR_bool result;
+
+                MR_save_transient_registers();
+                result = MR_unify_type_ctor_desc(
+                    (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
+                MR_restore_transient_registers();
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (result == MR_COMPARE_EQUAL) {
+                    unify_call_exit_code(typectordesc_unify);
+                } else {
+                    unify_call_fail_code(typectordesc_unify);
+                }
+  #endif
+                return_answer(result);
 #endif
             }
 

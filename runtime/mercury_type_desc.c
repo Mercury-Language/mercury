@@ -132,3 +132,87 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 
 	return (MR_TypeInfo) new_type_info_arena;
 }
+
+int
+MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
+{
+	MR_TypeCtorInfo	tci1;
+	MR_TypeCtorInfo tci2;
+	int		arity1;
+	int		arity2;
+	int		result;
+
+	/*
+	** We use this algorithm to get comparison results that are
+	** consistent with MR_compare_type_ctor_info.
+	*/
+
+	tci1 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd1);
+	tci2 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd2);
+
+	result = MR_compare_type_ctor_info(tci1, tci2);
+	if (result != MR_COMPARE_EQUAL) {
+		return result;
+	}
+
+	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(tcd1)) {
+		/*
+		** We already know that the two type_ctor_descs refer to
+		** the same variable-arity type constructor, so they can
+		** differ only in the arity.
+		*/
+
+		arity1 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd1);
+		arity2 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd2);
+
+		if (arity1 < arity2) {
+			return MR_COMPARE_LESS;
+		} else if (arity1 > arity2) {
+			return MR_COMPARE_GREATER;
+		} else {
+			return MR_COMPARE_EQUAL;
+		}
+	} else {
+		return result;
+	}
+}
+
+MR_bool
+MR_unify_type_ctor_desc(MR_TypeCtorDesc tcd1, MR_TypeCtorDesc tcd2)
+{
+	MR_TypeCtorInfo	tci1;
+	MR_TypeCtorInfo tci2;
+	int		arity1;
+	int		arity2;
+
+	/*
+	** We use this algorithm to get comparison results that are
+	** consistent with MR_unify_type_ctor_info.
+	*/
+
+	tci1 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd1);
+	tci2 = MR_TYPECTOR_DESC_GET_TYPE_CTOR_INFO(tcd2);
+
+	if (! MR_unify_type_ctor_info(tci1, tci2)) {
+		return MR_FALSE;
+	}
+
+	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(tcd1)) {
+		/*
+		** We already know that the two type_ctor_descs refer to
+		** the same variable-arity type constructor, so they can
+		** differ only in the arity.
+		*/
+
+		arity1 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd1);
+		arity2 = MR_TYPECTOR_DESC_GET_VA_ARITY(tcd2);
+
+		if (arity1 == arity2) {
+			return MR_TRUE;
+		} else {
+			return MR_FALSE;
+		}
+	} else {
+		return MR_TRUE;
+	}
+}

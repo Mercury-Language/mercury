@@ -160,7 +160,9 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ	=32;
     static int MR_TYPECTOR_REP_TYPECTORINFO	        =33;
     static int MR_TYPECTOR_REP_BASETYPECLASSINFO        =34;
-    static int MR_TYPECTOR_REP_UNKNOWN		        =35;
+    static int MR_TYPECTOR_REP_TYPEDESC	        	=35;
+    static int MR_TYPECTOR_REP_TYPECTORDESC	        =36;
+    static int MR_TYPECTOR_REP_UNKNOWN		        =37;
 
     static int MR_SECTAG_NONE				= 0;
     static int MR_SECTAG_LOCAL				= 1;

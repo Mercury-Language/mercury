@@ -161,7 +161,9 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ_val	32
 #define MR_TYPECTOR_REP_TYPECTORINFO_val		33
 #define MR_TYPECTOR_REP_BASETYPECLASSINFO_val		34
-#define MR_TYPECTOR_REP_UNKNOWN_val			35
+#define MR_TYPECTOR_REP_TYPEDESC_val			35
+#define MR_TYPECTOR_REP_TYPECTORDESC_val		36
+#define MR_TYPECTOR_REP_UNKNOWN_val			37
 
 // XXX we should integrate this macro in with the version in 
 // mercury_typeinfo.h

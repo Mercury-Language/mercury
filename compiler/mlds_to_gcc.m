@@ -2145,6 +2145,7 @@ build_du_exist_info_type(MR_DuExistInfo) -->
 	% 	MR_TypeCtor and MR_Sectag_Locn enumerations in
 	% 	runtime/mercury_type_info.h.
 :- pred rtti_enum_const(string::in, int::out) is semidet.
+
 rtti_enum_const("MR_TYPECTOR_REP_ENUM", 0).
 rtti_enum_const("MR_TYPECTOR_REP_ENUM_USEREQ", 1).
 rtti_enum_const("MR_TYPECTOR_REP_DU", 2).
@@ -2180,7 +2181,9 @@ rtti_enum_const("MR_TYPECTOR_REP_RESERVED_ADDR", 31).
 rtti_enum_const("MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ", 32).
 rtti_enum_const("MR_TYPECTOR_REP_TYPECTORINFO", 33).
 rtti_enum_const("MR_TYPECTOR_REP_BASETYPECLASSINFO", 34).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 35).
+rtti_enum_const("MR_TYPECTOR_REP_TYPEDESC", 35).
+rtti_enum_const("MR_TYPECTOR_REP_TYPECTORDESC", 36).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 37).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).
