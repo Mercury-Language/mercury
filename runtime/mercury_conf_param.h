@@ -218,6 +218,27 @@
 ** 	the representation of lvals in the RTTI system.
 */
 
+#ifdef	MR_HIGHLEVEL_CODE
+  #ifdef MR_LOWLEVEL_DEBUG
+    #error "MR_HIGHLEVEL_CODE and MR_LOWLEVEL_DEBUG are not supported together"
+  #endif
+  #ifdef MR_DEBUG_DD_BACK_END
+    #error "MR_HIGHLEVEL_CODE and MR_DEBUG_DD_BACK_END are not supported together"
+  #endif
+  #ifdef MR_DEBUG_GOTOS
+    #error "MR_HIGHLEVEL_CODE and MR_DEBUG_GOTOS are not supported together"
+  #endif
+  #ifdef MR_DEBUG_LABEL_NAMES
+    #error "MR_HIGHLEVEL_CODE and MR_DEBUG_LABEL_NAMES are not supported together"
+  #endif
+  #ifdef MR_LOWLEVEL_ADDR_DEBUG
+    #error "MR_HIGHLEVEL_CODE and MR_LOWLEVEL_ADDR_DEBUG are not supported together"
+  #endif
+  #ifdef MR_DEBUG_LVAL_REP
+    #error "MR_HIGHLEVEL_CODE and MR_DEBUG_LVAL_REP are not supported together"
+  #endif
+#endif
+
 #if MR_DEBUG_AGC_ALL
   #define MR_DEBUG_AGC_SCHEDULING
   #define MR_DEBUG_AGC_COLLECTION
