@@ -11,7 +11,7 @@
 %
 % Main author: petdr.
 %
-% Print's out the output.
+% Prints out the output.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,15 +54,15 @@ output__call_graph_headers -->
 	io__write_string("\tlisting.\n\n"),
 
 	io__write_string("%time\tthe percentage of the total running time of\n"),
-	io__write_string("\tthe program spent in this predicate and it's\n"),
+	io__write_string("\tthe program spent in this predicate and its\n"),
 	io__write_string("\tdescendents.\n\n"),
 
-	io__write_string("self\tthe number of second's spent actually executing\n"),
+	io__write_string("self\tthe number of seconds spent actually executing\n"),
 	io__write_string("\tthe predicate's own code.\n\n"),
 
 	io__write_string("descendents\n"),
-	io__write_string("\tthe number of second's spent executing the\n"),
-	io__write_string("\tdescendent's of the current predicate.\n\n"),
+	io__write_string("\tthe number of seconds spent executing the\n"),
+	io__write_string("\tdescendents of the current predicate.\n\n"),
 
 	io__write_string("called\tthe number of times the current predicate is\n"),
 	io__write_string("\tcalled (not counting self recursive calls).\n\n"),
@@ -161,7 +161,7 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 	
 
 % output_formatted_parent_list:
-%	Output's the parent list of the current predicate also look's for the
+%	Outputs the parent list of the current predicate also looks for the
 %	special case where the parent list is empty and hence the function
 %	spontaneously came into existance.
 %
@@ -193,7 +193,7 @@ output_formatted_parent_list_2([Parent | Parents], IndexMap, TotalCalls) -->
 	output_formatted_parent_list_2(Parents, IndexMap, TotalCalls).	
 
 % output_formatted_child_list:
-%	output's the child list of the current predicate.
+%	outputs the child list of the current predicate.
 %
 :- pred output_formatted_child_list(list(child), map(string, int),
 							io__state, io__state).

@@ -11,7 +11,7 @@
 % Main author: petdr.
 %
 % Notes:
-%	Process's the Prof.* and the *.prof files to produce an output very
+%	Processes the Prof.* and the *.prof files to produce an output very
 %	similar to 'gprof'
 %
 %	Based on the profiling scheme described in XXX
@@ -68,7 +68,7 @@ postprocess_options(ok(OptionTable), Args, no) -->
 	),
 
 
-	% Any empty list of argument's implies that we must build the call
+	% Any empty list of arguments implies that we must build the call
 	% graph from the dynamic information.
 	(
 		{ Args = [] }

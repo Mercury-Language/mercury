@@ -11,8 +11,8 @@
 
 % Main author: petdr.
 %
-% Declare the main data structure's for mercury__profile and their access
-% predicates, the actual type's are exported as well.  This is because some
+% Declare the main data structures for mercury__profile and their access
+% predicates, the actual types are exported as well.  This is because some
 % predicates need to access entire data structure.
 % XXX Should maybe changed at a later date.
 %
@@ -36,12 +36,12 @@
 			int,			% Hertz of the system clock
 			int,			% No. of clock ticks between 
 						% each prof signal.
-			int,			% Total count's of the profile
+			int,			% Total counts of the profile
 						% run
 			addrdecl,		% Map between label name and
 						% label addr used to find key
 						% to look up prof_node_map.
-			prof_node_map		% Map between label address's
+			prof_node_map		% Map between label addresses
 						% and all the relevant data 
 						% about that predicate
 		).
@@ -60,17 +60,17 @@
 			int, 			% self counts
 			float, 			% propogated counts
 			list(pred_info), 	% Parent pred and the number
-						% of time's it call's this
+						% of times it calls this
 						% predicate
 			list(pred_info),	% Child pred and the number of
-						% time's they are called from
+						% times they are called from
 						% this predicate.
-			int,			% total count of time's this 
+			int,			% total count of times this 
 						% predicate called.
 			int,			% Number of self recursive 
 						% calls of this routine
 			list(string)		% Alternative names for this
-						% predicate eg. Label's with
+						% predicate eg. Labels with
 						% different names but the same
 						% address.
 		).
@@ -184,7 +184,7 @@
 
 
 % get_prof_node:
-%  	Get's the prof_node given a label name.
+%  	Gets the prof_node given a label name.
 %
 get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
 	map__lookup(AddrMap, Pred, Key),

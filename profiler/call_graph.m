@@ -56,7 +56,7 @@ call_graph__main(Args, StaticCallGraph0, StaticCallGraph) -->
 
 
 % build_static_call_graph:
-% 	Build's the static call graph located in the *.prof files.
+% 	Builds the static call graph located in the *.prof files.
 %
 :- pred build_static_call_graph(list(string), relation(string), bool,
 					relation(string), io__state, io__state).
@@ -75,7 +75,7 @@ build_static_call_graph([File | Files], StaticCallGraph0, VeryVerbose,
 	
 		
 % process_prof_file:
-%	Put's all the Caller and Callee label pairs from File into the 
+%	Puts all the Caller and Callee label pairs from File into the 
 %	static call graph relation.
 %
 :- pred process_prof_file(string, relation(string), relation(string),

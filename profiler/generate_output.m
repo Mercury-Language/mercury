@@ -11,7 +11,7 @@
 %
 % Main author: petdr.
 %
-% Take's the prof structure and generate's the output.
+% Takes the prof structure and generates the output.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -33,8 +33,8 @@
 
 :- implementation.
 
-	% rbtree's are used because they allow duplicate values to be stored.
-	% This mean's that we can then convert to a sorted list of name's which
+	% rbtrees are used because they allow duplicate values to be stored.
+	% This means that we can then convert to a sorted list of names which
 	% can be used to lookup the output_prof map when we actually output.
 :- type	profiling --->
 	    	profiling(
@@ -90,7 +90,7 @@ process_prof_node_list([PN | PNs], Prof, VVerbose, OutputProf0, OutputProf) -->
 
 
 % process_prof_node:
-%	This is the main function.  It convert's the prof_node structure to the
+%	This is the main function.  It converts the prof_node structure to the
 %	output_prof structure.
 %
 :- pred process_prof_node(prof_node, prof, profiling, profiling). 
@@ -107,7 +107,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 				NameList		
 			),	
 	
-	% Node only need's to be processed if it has a parent or a child.
+	% Node only needs to be processed if it has a parent or a child.
 	(
 		ParentList = [],
 		ChildList = []
@@ -119,7 +119,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 		construct_name(NameList, Name0),
 		string__append(LabelName, Name0, Name),
 
-		% Calculate proportion of time in current predicate and it's
+		% Calculate proportion of time in current predicate and its
 		% descendents as a percentage.
 		int__to_float(Initial, InitialFloat),
 		builtin_float_plus(InitialFloat, Prop, CurrentCount),
@@ -138,7 +138,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 		builtin_float_times(InterA, ClockTicksFloat, Selftime),
 
 		% Calculate the descendant time, which is the time spent in the 
-		% current predicate and it's descendant's
+		% current predicate and its descendants
 		builtin_float_divide(CurrentCount, HertzFloat, InterB),
 		builtin_float_times(InterB, ClockTicksFloat, DescTime),
 
@@ -166,8 +166,8 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 
 
 % construct_name:
-%	When more then one predicate map's to the same address.  This predicate
-%	will build a string of all the different name's seperated by 'or's.
+%	When more then one predicate maps to the same address.  This predicate
+%	will build a string of all the different names seperated by 'or's.
 :- pred construct_name(list(string), string).
 :- mode construct_name(in, out) is det.
 
@@ -254,7 +254,7 @@ process_prof_node_children_2([pred_info(LabelName, Calls) | PNs], Prof,
 	builtin_float_times(InterA, ClockTicksFloat, Selftime),
 
 	% Calculate the descendant time, which is the time spent in the 
-	% current predicate and it's descendant's
+	% current predicate and its descendants
 	builtin_float_divide(CurrentCount, HertzFloat, InterB),
 	builtin_float_times(InterB, ClockTicksFloat, DescTime),
 
@@ -273,8 +273,8 @@ process_prof_node_children_2([pred_info(LabelName, Calls) | PNs], Prof,
 
 
 % assign_index_numbers:
-%	Reverse's the output list so that the predicate's which account for
-%	most of the time come first and then assign's index numbers.
+%	Reverses the output list so that the predicates which account for
+%	most of the time come first and then assigns index numbers.
 %
 :- pred assign_index_numbers(list(string), map(string, int), list(string)).
 :- mode assign_index_numbers(in, out, out) is det.

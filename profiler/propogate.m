@@ -11,7 +11,7 @@
 %
 % Main author: petdr.
 %
-% Propogate's the count's around the call_graph.
+% Propogates the counts around the call_graph.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
 
 
 % propogate_counts:
-%	Propogate's count's around the call_graph.  Starts from the end of the
+%	Propogates counts around the call_graph.  Starts from the end of the
 %	list, which is the leaves of the call graph.
 %
 propogate__counts([], Prof, Prof) --> [].
@@ -79,13 +79,13 @@ propogate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap,
 	{ map__lookup(AddrMap, Pred, Key),
 	map__lookup(ProfNodeMap0, Key, ProfNode0),
 
-	% Work out the number of count's to propogate.
+	% Work out the number of counts to propogate.
 	int__to_float(Calls, FloatCalls),
 	int__to_float(TotalCalls, FloatTotalCalls),
 	builtin_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 	builtin_float_times(Proportion, TotalCounts, ToPropCount),
 
-	% Add new count's to current propogated counts
+	% Add new counts to current propogated counts
 	prof_node_get_propogated_counts(ProfNode0, PropCount0),
 	builtin_float_plus(PropCount0, ToPropCount, PropCount),
 	prof_node_set_propogated_counts(PropCount, ProfNode0, ProfNode),
@@ -96,9 +96,9 @@ propogate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap,
 
 
 % build_parent_map:
-%	Build's a map which contains all the parent's of a clique, and the 
-%	total number of time's that parent is called.  Doesn't include the 
-%	clique members, and caller's which never call any of the member's of
+%	Builds a map which contains all the parents of a clique, and the 
+%	total number of times that parent is called.  Doesn't include the 
+%	clique members, and callers which never call any of the members of
 %	the clique.
 %
 :- pred build_parent_map(list(string), addrdecl, prof_node_map, 
@@ -128,9 +128,9 @@ build_parent_map_2([C | Cs], CliqueList, AddrMap, ProfNodeMap, ParentMap0,
 
 
 % add_to_parent_map:
-% 	Add's list of parent's to parent map.  Ignore's clique member's and
-%	repeat's and caller's which never call current predicate.
-%	Also return's the total number of time's predicate is called.
+% 	Adds list of parents to parent map.  Ignores clique members and
+%	repeats and callers which never call current predicate.
+%	Also returns the total number of times predicate is called.
 %
 :- pred add_to_parent_map(list(pred_info), list(string), map(string, int), 
 							map(string, int)).
@@ -164,7 +164,7 @@ add_to_parent_map([P | Ps], CliqueList, ParentMap0, ParentMap) :-
 
 
 % sum_counts:
-%	sum's the total number of count's in a clique list.
+%	sums the total number of counts in a clique list.
 %
 :- pred sum_counts(list(string), addrdecl, prof_node_map, float).
 :- mode sum_counts(in, in, in, out) is det.
@@ -181,7 +181,7 @@ sum_counts([Pred | Preds], AddrMap, ProfNodeMap, TotalCount) :-
 
 
 % sum_calls:
-%	sum's the total number of call's into the clique list.
+%	sums the total number of calls into the clique list.
 %
 :- pred sum_calls(map(string, int), int).
 :- mode sum_calls(in, out) is det.

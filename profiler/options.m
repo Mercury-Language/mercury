@@ -123,16 +123,16 @@ options_help -->
 	io__write_string("\t-d, --use-dynamic\n"),
 	io__write_string("\t\tBuild the call graph dynamically.\n"),
 	io__write_string("\t-C, --count-file\n"),
-	io__write_string("\t\tName of the count file. Usually `Prof.Counts'\n"),
+	io__write_string("\t\tName of the count file. Usually `Prof.Counts'.\n"),
 	io__write_string("\t-D, --declaration-file\n"),
-	io__write_string("\t\tName of the declaration file. Usually `Prof.Decl'\n"),
+	io__write_string("\t\tName of the declaration file. Usually `Prof.Decl'.\n"),
 	io__write_string("\t-P, --call-pair-file\n"),
-	io__write_string("\t\tName of the call-pair file. Usually `Prof.CallPair'\n"),
+	io__write_string("\t\tName of the call-pair file. Usually `Prof.CallPair'.\n"),
 
 
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
-	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
+	io__write_string("\t\tOutput progress messages at each stage.\n"),
 	io__write_string("\t-V, --very_verbose\n"),
 	io__write_string("\t\tOutput very verbose progress messages.\n").
 

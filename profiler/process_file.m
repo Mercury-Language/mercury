@@ -11,8 +11,8 @@
 %
 % Main author: petdr.
 %
-% Process's the file's that contain the label declarations, label counts and
-% the caller-callee pairs, also build's the dynamic call graph if the option
+% Processs the files that contain the label declarations, label counts and
+% the caller-callee pairs, also builds the dynamic call graph if the option
 % set.
 %
 %-----------------------------------------------------------------------------%
@@ -56,11 +56,11 @@ process_file__main(Prof, DynamicCallGraph) -->
 
 
 % process_addr_decl:
-%	Read's in the addrdecl.out file.
-%	Build's the addrdecl map which associate's label names(key) with 
-%	label address's.
-%	Also builds the prof_node_map which associate's label address's with
-%	the prof_node structure.  Initialises and insert's the label name into
+%	Reads in the addrdecl.out file.
+%	Builds the addrdecl map which associates label names(key) with 
+%	label addresses.
+%	Also builds the prof_node_map which associates label addresses with
+%	the prof_node structure.  Initialises and inserts the label name into
 %	the structure at the same time.
 %
 :- pred process_addr_decl(addrdecl, prof_node_map, io__state, io__state).
@@ -94,7 +94,7 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 		{ prof_node_init(LabelName, ProfNode) },
 		{ map__det_insert(AddrDecl0, LabelName, LabelAddr, AddrDecl1) },
 
-		% Label's with different name's but the same addresses.
+		% Labels with different names but the same addresses.
 		( 
 			{ map__insert(ProfNodeMap0, LabelAddr, ProfNode, 
 								ProfNodeMap1) }
@@ -120,8 +120,8 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 
 
 % process_addr:
-% 	Read's in the addr.out file and store's all the count's in the 
-% 	prof_node structure.  Also sum's the total count's at the same time.
+% 	Reads in the addr.out file and stores all the counts in the 
+% 	prof_node structure.  Also sums the total counts at the same time.
 %
 :- pred process_addr(prof_node_map, prof_node_map, int, int, int,
 							io__state, io__state).
@@ -173,8 +173,8 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 
 
 % process_addr_pair:
-%	Read's in the addrpair.out file and store's the data in the relevant
-%	list's of the prof_node structure.  Also calculate's the number of times
+%	Reads in the addrpair.out file and stores the data in the relevant
+%	lists of the prof_node structure.  Also calculates the number of times
 %	a predicate is called.
 %
 :- pred process_addr_pair(prof_node_map, relation(string), prof_node_map, 
@@ -219,7 +219,7 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 					CallerProfNode0, CallerProfNode) },
 		{map__set(ProfNodeMap0, CallerAddr, CallerProfNode, PNodeMap1)},
 
-		% Update the total call's field if not self recursive
+		% Update the total calls field if not self recursive
 		({
 			CalleeAddr \= CallerAddr
 		->
