@@ -4,6 +4,7 @@ static Word get_reg(int num);
 
 void mkcp_msg(void)
 {
+	restore_registers();
 	printf("\nnew choice point for procedure %s\n", cpprednm);
 	printf("new  cp: "); printcpstack(curcp);
 	printf("prev cp: "); printcpstack(cpprevcp);
@@ -16,6 +17,7 @@ void mkcp_msg(void)
 
 void mkreclaim_msg(void)
 {
+	restore_registers();
 	printf("\nnew reclaim point for procedure %s\n", cpprednm);
 	printf("new  cp: "); printcpstack(curcp);
 	printf("prev cp: "); printcpstack(recprevcp);
@@ -27,6 +29,7 @@ void mkreclaim_msg(void)
 
 void modcp_msg(void)
 {
+	restore_registers();
 	printf("\nmodifying choice point for procedure %s\n", cpprednm);
 	printf("redo ip: "); printlabel(cpredoip);
 	if (detaildebug)
@@ -35,6 +38,7 @@ void modcp_msg(void)
 
 void succeed_msg(void)
 {
+	restore_registers();
 	printf("\nsucceeding from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("succ cp: "); printcpstack(cpsucccp);
@@ -44,6 +48,7 @@ void succeed_msg(void)
 
 void fail_msg(void)
 {
+	restore_registers();
 	printf("\nfailing from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("fail cp: "); printcpstack(cpprevcp);
@@ -52,6 +57,7 @@ void fail_msg(void)
 
 void redo_msg(void)
 {
+	restore_registers();
 	printf("\nredo from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("redo cp: "); printcpstack(maxcp);
@@ -67,6 +73,7 @@ void call_msg(const Code *proc, const Code *succcont)
 
 void tailcall_msg(const Code *proc)
 {
+	restore_registers();
 	printf("\ntail calling "); printlabel(proc);
 	printf("continuation "); printlabel(succip);
 	printregs("registers at tailcall");
@@ -309,6 +316,8 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 	{ P_INT, P_INT, FNULL },
 /* OK_4 */
 	{ P_INT, P_INT, FNULL },
+/* DO_NOTHING_1 */
+	{ FNULL }
 };
 
 void printframe(const char *msg)
@@ -330,7 +339,9 @@ void printframe(const char *msg)
 
 void printregs(const char *msg)
 {
-	reg	int	i;
+	int	i;
+
+	restore_registers();
 
 	printf("\n%s\n", msg);
 
@@ -354,6 +365,7 @@ void printregs(const char *msg)
 
 static Word get_reg(int num)
 {
+	restore_registers();
  	switch(num) {
 		case 1: return r1;
 		case 2: return r2;
@@ -392,16 +404,17 @@ static Word get_reg(int num)
 	abort();
 }
 
-Word mklist(int start, int len)
+Word do_mklist(int start, int len)
 {
 	Word	curr;
 	int	i;
 
+	restore_registers();
 	curr = mkword(TAG_NIL, 0);
 	for (i = 1; i <= len; i++)
 	{
 		curr = mkword(TAG_CONS, create2(start + len - i, curr));
 	}
-
+	save_registers();
 	return curr;
 }

@@ -2,7 +2,10 @@
 # -g3 -O2 -DSPEED
 
 # Use these options for optimizing compiles with gcc
--g -O2 -fomit-frame-pointer -DSPEED
+# -g -O2 -fomit-frame-pointer -DSPEED
+
+# Use these options for debugging compiles
+-g 
 
 # Use this option only with gcc
 # Currently only supported for mips and sparc cpus.
@@ -12,3 +15,10 @@
 # If you enable this option, you must ensure that MOD2CFLAGSFILE contains -l.
 # If you disable this option, you must ensure that it doesn't contains -l.
 -DUSE_GCC_NONLOCAL_GOTOS
+
+# Enable this option if you want to measure the number of times
+# each register is used.  Note that the measurement includes
+# uses which occur inside debugging routines, so to get an accurate
+# count you need to disable all the debugging routines by compiling
+# with -DSPEED and not using any -d* flags.
+# -DMEASURE_REGISTER_USAGE -DSPEED

@@ -62,6 +62,7 @@ enum {
 	OK_2,
 	OK_3,
 	OK_4,
+	DO_NOTHING_1,
 
 	MAXENTRIES
 };
@@ -71,6 +72,9 @@ enum {
 
 #define	makeentry(e, n, a, i)					\
 			(					\
+				assert(e >= 0),			\
+				assert(e < MAXENTRIES), 	\
+				assert(e < STARTLABELS), 	\
 				entries[e].e_name  = n,		\
 				entries[e].e_addr  = a,		\
 				entries[e].e_input = i,		\
@@ -78,6 +82,8 @@ enum {
 			)
 
 #define	makelabel(n, a)	(					\
+				assert(cur_entry >= STARTLABELS), \
+				assert(cur_entry < MAXLABELS),	\
 				entries[cur_entry].e_name  = n,	\
 				entries[cur_entry].e_addr  = a,	\
 				entries[cur_entry].e_input = NULL, \
@@ -410,47 +416,47 @@ extern	Word	*cpstackmin;
 #else
 
 #define	debugcr1(val0, hp) \
-	IF (heapdebug, cr1_msg(val0, hp))
+	IF (heapdebug, (save_registers(), cr1_msg(val0, hp)))
 
 #define	debugcr2(val0, val1, hp) \
-	IF (heapdebug, cr2_msg(val0, val1, hp))
+	IF (heapdebug, (save_registers(), cr2_msg(val0, val1, hp)))
 
 #define	debugpush(val, sp) \
-	IF (stackdebug, push_msg(val, sp))
+	IF (stackdebug, (save_registers(), push_msg((val), (sp))))
 
 #define	debugpop(val, sp) \
-	IF (stackdebug, pop_msg(val, sp))
+	IF (stackdebug, (save_registers(), pop_msg(val, sp)))
 
-#define	debugregs(msg)	printregs(msg)
+#define	debugregs(msg)	(save_registers(), printregs(msg))
 
 #define	debugmkcp() \
-	IF (cpstackdebug, mkcp_msg())
+	IF (cpstackdebug, (save_registers(), mkcp_msg()))
 
-#define	debugframe(msg)	printframe(msg)
+#define	debugframe(msg)	(save_registers(), printframe(msg))
 
 #define	debugmkreclaim() \
-	IF (cpstackdebug, mkreclaim_msg())
+	IF (cpstackdebug, (save_registers(), mkreclaim_msg()))
 
 #define	debugmodcp() \
-	IF (cpstackdebug, modcp_msg())
+	IF (cpstackdebug, (save_registers(), modcp_msg()))
 
 #define	debugsucceed() \
-	IF (cpstackdebug, succeed_msg())
+	IF (cpstackdebug, (save_registers(), succeed_msg()))
 
 #define	debugfail() \
-	IF (cpstackdebug, fail_msg())
+	IF (cpstackdebug, (save_registers(), fail_msg()))
 
 #define	debugredo() \
-	IF (cpstackdebug, redo_msg())
+	IF (cpstackdebug, (save_registers(), redo_msg()))
 
 #define	debugcall(proc, succcont) \
-	IF (calldebug, call_msg(proc, succcont))
+	IF (calldebug, (save_registers(), call_msg(proc, succcont)))
 
 #define	debugtailcall(proc) \
-	IF (calldebug, tailcall_msg(proc))
+	IF (calldebug, (save_registers(), tailcall_msg(proc)))
 
 #define	debugproceed() \
-	IF (calldebug, proceed_msg())
+	IF (calldebug, (save_registers(), proceed_msg()))
 
 #define	debugmsg0(msg) \
 	printf(msg)
@@ -473,7 +479,24 @@ extern	int	r2val;
 extern	int	r3val;
 extern	int	repcounter;
 
-extern	Word	mklist(int start, int len);
+extern	Word	do_mklist(int start, int len);
+#ifdef __GNUC__
+#define mklist(start,len) \
+	({						\
+		Word tmp;				\
+		save_registers();			\
+		tmp = do_mklist(start,len);		\
+		restore_registers();			\
+		/* return */ tmp;			\
+	})
+#else
+	/*
+	** if it's not gcc, then we can't be using global register variables,
+	** so we don't need to worry about saving/restoring them
+	** (which would have been slightly tricky to do in a portable macro)
+	*/
+#define mklist(start,len) do_mklist(start,len)
+#endif
 
 /*
 ** For each entry point, a table function pointers which indicate
