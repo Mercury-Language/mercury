@@ -6868,11 +6868,11 @@ explicitly promised to be pure.
 
 Please note that the facilities described here are needed only very
 rarely.  The main intent is for implementing language primitives such as
-the all solutions predicates, or for implementing interfaces to C
-libraries using the C interface.  Any other use of @samp{impure} or
-@samp{semipure} probably indicates either a weakness in the Mercury
-standard library, or the programmer's lack of familiarity with the
-standard library.  Newcomers to Mercury are hence encouraged to
+the all solutions predicates, or for implementing interfaces to foreign
+language libraries using the foreign language interface.  Any other use of
+@samp{impure} or @samp{semipure} probably indicates either a weakness in
+the Mercury standard library, or the programmer's lack of familiarity
+with the standard library.  Newcomers to Mercury are hence encouraged to
 @strong{skip this section}.
 
 @menu
@@ -6897,27 +6897,32 @@ For pure procedures, the set of solutions depends only on the
 values of the input arguments.
 They do not interact with the ``real'' world (i.e., do any
 input/output) without taking an io__state (@pxref{Types}) as input and
-returning one as output, and do not make any changes to any data
+returning one as output, and do not change the value of any data
 structure that will not be undone on backtracking (unless the data
-structure would be unreachable on backtracking).  The behaviour of pure
-predicates is never affected by the invocation of pure predicates.
+structure would be unreachable on backtracking).  Note that equality
+axioms are important when considering the value of data structures.
+The declarative semantics of pure predicates is never affected by the
+invocation of other predicates.
 It is possible for the invocation of pure predicates to affect the
-behaviour of non-pure predicates and vice versa.
+operational behaviour of non-pure predicates and vice versa.
 
 By default, Mercury predicates and functions are pure.
-Without using the foreign function interface or calling other impure
-predicates and functions it is impossible to write impure code in Mercury.
+Without using the foreign language interface, writing mode-specific
+clauses or calling other impure predicates and functions it is
+impossible to write impure code in Mercury.
 
 @item semipure
 Semipure predicates are just like pure predicates, except that their
-behaviour may be affected by the invocation of impure predicates.  That
-is, they are sensitive to the state of the computation other than as
-reflected by their input arguments, though they do not affect the state
-themselves.
+declarative semantics may be affected by the invocation of impure
+predicates.  That is, they are sensitive to the state of the computation
+other than as reflected by their input arguments, though they do not
+affect the state themselves.
 
 @item impure
-Impure predicates may do almost anything, including changing the state of the
-computation.
+Impure predicates may perform I/O or modify hidden state,
+even if these side effects alter the operational semantics
+of other code.  However, impure predicates may not change
+the declarative semantics of pure code.
 They must be type-, mode-, determinism- and uniqueness correct. 
 
 @end table
@@ -7081,6 +7086,15 @@ using the @code{promise_pure} and @code{promise_semipure} pragmas:
 :- pragma promise_semipure(@var{Name}/@var{Arity}).
 @end example
 
+Programmers should be very careful about mixing code that is promised
+pure with impure predicates or functions that may manipulate the
+same hidden state (for example, the impure predicates used to implement 
+a predicate that is promised pure); the @samp{promise pure} declaration
+is supposed to promise that impure code cannot change the declarative
+semantics of pure code.  The module system can be used to minimize the
+possibility of making errors with such code, by keeping impure
+predicates or functions behind the interface where code is promised
+pure.
 
 @node Impurity Example
 @section An example using impurity
