@@ -143,10 +143,13 @@ RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 
 lib$(BROWSER_LIB_NAME).so : $(mdb.pic_os)
-	$(LINK_SHARED_OBJ) -o lib$(BROWSER_LIB_NAME).so \
-		$(mdb.pic_os)				\
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
+		-o lib$(BROWSER_LIB_NAME).so				\
+		$(mdb.pic_os)						\
 		$(RPATH_1)$(RPATH_2)					\
 		$(LDFLAGS) $(LDLIBS)					\
+		$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)		\
+		$(READLINE_LIBRARIES)					\
 		$(SHARED_LIBS)
 
 $(BROWSER_LIB_NAME).init: $(deps_subdir)mdb.dep mdb.init

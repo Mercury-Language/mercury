@@ -2251,13 +2251,28 @@ ERROR_UNDEFINED=""
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
 		case $ac_cv_prog_gcc in
-			yes)
-				AC_MSG_RESULT(yes)
-				EXT_FOR_SHARED_LIB=so
+		yes)
+			AC_MSG_RESULT(yes)
+			EXT_FOR_SHARED_LIB=so
+			AC_MSG_CHECKING(for ld-linux.so)
+			echo "int main(void) { return 0; }" > conftest.c
+			$CC -o conftest conftest.c
+			ld_linux=`ldd ./conftest | awk '/ld-linux/{print $1;}'`
+			case $ld_linux in /lib/ld-linux.so*)
+				AC_MSG_RESULT($ld_linux)
+				ERROR_UNDEFINED="-Wl,--no-undefined"
+				SHARED_LIBS="$SHARED_LIBS $ld_linux"
+				SHARED_LIBS_SH="$SHARED_LIBS_SH $ld_linux"
 				;;
 			*)
 				AC_MSG_RESULT(no)
 				;;
+			esac
+			rm -f conftest*
+			;;
+		*)
+			AC_MSG_RESULT(no)
+			;;
 		esac
 		;;
 	m68*-linux|m68*-linux-gnu)

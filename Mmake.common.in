@@ -80,6 +80,11 @@ LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 # ${SO_LOCATIONS_DIR} rather than $(SO_LOCATIONS_DIR).
 LINK_SHARED_OBJ_SH  	= @LINK_SHARED_OBJ_SH@
 
+# The following variables specify options to $LINK_SHARED_OBJ to
+# allow/disallow unresolved symbols when building shared libraries.
+ALLOW_UNDEFINED	= @ALLOW_UNDEFINED@
+ERROR_UNDEFINED	= @ERROR_UNDEFINED@
+
 # The following variables specify how to pass options to the # $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
 # runtime for shared libraries.
@@ -101,8 +106,6 @@ EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
 # Specify any extra libraries that must be linked in when linking shared
 # objects.
 SHARED_LIBS		= @SHARED_LIBS@
-
-# You should not need to modify anything below here
 
 #-----------------------------------------------------------------------------#
 
@@ -199,6 +202,13 @@ PERL=@PERL@
 # The linker option to use to link in the math library, if any.
 # Typically `-lm'.
 MATH_LIB=@MATH_LIB@
+
+# More libraries to link
+SOCKET_LIBRARY=@SOCKET_LIBRARY@
+NSL_LIBRARY=@NSL_LIBRARY@
+DL_LIBRARY=@DL_LIBRARY@
+READLINE_LIBRARIES=@READLINE_LIBRARIES@
+TERMCAP_LIBRARY=@TERMCAP_LIBRARY@
 
 # Extensions to use
 O=@OBJ_SUFFIX@

@@ -85,7 +85,9 @@ LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
 		    *.gc*)		echo "-lgc" ;;			\
 		  esac							\
-		`
+		` 							\
+		$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)		\
+		$(READLINE_LIBRARIES)
 THREADLIBS	= \
 		` case "$(GRADE)" in					\
 		    *.par*) echo "-lpthread" ;;				\
@@ -132,7 +134,8 @@ lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
 	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
 
 lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)	\
+	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
+		-o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)			\
 		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
