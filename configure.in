@@ -204,10 +204,10 @@ MERCURY_MSG("looking for a way to create temporary files...")
 AC_PATH_PROG(MKTEMP,mktemp)
 if test "$MKTEMP" != ""; then
 	# check that it really works
-	TMPFILE=`mktemp /tmp/configure.XXXXXX`
+	TMPFILE="`mktemp /tmp/configure.XXXXXX < /dev/null`"
 	case "$TMPFILE" in 
-		"") MKTEMP="" ;;
-		*) rm -f $TMPFILE ;;
+		/tmp/configure.*) rm -f $TMPFILE ;;
+		*) MKTEMP="" ;;
 	esac
 fi
 if test "$MKTEMP" = ""; then
