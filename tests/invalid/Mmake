@@ -15,6 +15,7 @@ SOURCES= \
 	errors1.m \
 	errors2.m \
 	external.m \
+	func_errors.m \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
 	inline_conflict.m \
