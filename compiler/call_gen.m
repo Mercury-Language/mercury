@@ -37,7 +37,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require.
+:- import_module prog_io, tree, list, map, std_util, require.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -86,7 +86,29 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	% On return we test the value in register r1 to see if the
 	% callee succeeded or failed. In the event of failure
 	% we branch to the fall-through for this procedure.
-call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
+call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
+	code_info__get_module_info(ModuleInfo),
+	{ module_info_preds(ModuleInfo, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ pred_info_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ proc_info_declared_determinism(ProcInfo, Determinism) },
+	( { Determinism = semidet } ->
+		call_gen__generate_semidet_call_2(PredId, ProcId, Arguments,
+			Code)
+	;
+		code_info__generate_pre_commit(PreCommit, FailLabel),
+		call_gen__generate_nondet_call(PredId, ProcId, Arguments,
+			CallCode),
+		code_info__generate_commit(FailLabel, Commit),
+		{ Code = tree(PreCommit, tree(CallCode, Commit)) }
+	).
+
+:- pred call_gen__generate_semidet_call_2(pred_id, proc_id, list(var),
+					code_tree, code_info, code_info).
+:- mode call_gen__generate_semidet_call_2(in, in, in, out, in, out) is det.
+
+call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	call_gen__save_variables(CodeA),

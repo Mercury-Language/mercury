@@ -291,6 +291,12 @@
 							code_info, code_info).
 :- mode code_info__generate_icond_branch(in, in, in, out, in, out) is det.
 
+:- pred code_info__generate_pre_commit(code_tree, label, code_info, code_info).
+:- mode code_info__generate_pre_commit(out, out, in, out) is det.
+
+:- pred code_info__generate_commit(label, code_tree, code_info, code_info).
+:- mode code_info__generate_commit(in, out, in, out) is det.
+
 :- pred code_info__get_continuation(maybe(label), code_info, code_info).
 :- mode code_info__get_continuation(out, in, out) is det.
 
@@ -391,7 +397,9 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 	code_info__init_variable_info(PredId, ProcId,
 					ModuleInfo, VariableInfo),
 	stack__init(Continue),
-	stack__init(StoreMap),
+	stack__init(StoreMapStack0),
+	map__init(StoreMap),
+	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
 	code_info__make_options(CMDOptions, Options),
 	code_info__max_slot(CallInfo, SlotCount),
 	C = code_info(
@@ -408,7 +416,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 		Continue,
 		ModuleInfo,
 		Liveness,
-		StoreMap,
+		StoreMapStack,
 		Category,
 		no,
 		0,
@@ -1460,7 +1468,7 @@ code_info__generate_forced_saves_2([Var|Vars], Code) -->
 		code_info__current_store_map(Store),
 		(
 			{ map__search(Store, Var, Lval) },
-			{ Lval = reg(Reg) }	% XXX semidet!
+			{ Lval = reg(Reg) }	
 		->
 			% if the target location is not free
 			% then we better swap the live value to
@@ -2038,13 +2046,16 @@ code_info__pop_lval(Lval, Code) -->
 code_info__generate_failure(Code) -->
 	code_info__get_category(Category),
 	(
+		code_info__failure_cont(Cont)
+	->
+		{ Code = node([ goto(Cont) -
+					"Branch to failure continuation" ]) }
+	;
 		{ Category = nondeterministic }
 	->
 		{ Code = node([ fail - "Fail" ]) }
 	;
-		code_info__get_failure_cont(Cont),
-		{ Code = node([ goto(Cont) -
-					"Branch to failure continuation" ]) }
+		{ error("missing failure continuation") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -2052,6 +2063,10 @@ code_info__generate_failure(Code) -->
 code_info__generate_test_and_fail(Rval, Code) -->
 	code_info__get_category(Category),
 	(
+		code_info__failure_cont(Cont)
+	->
+		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
+	;
 		{ Category = nondeterministic }
 	->
 		code_info__get_next_label(Success),
@@ -2061,8 +2076,7 @@ code_info__generate_test_and_fail(Rval, Code) -->
 			label(Success) - ""
 		]) }
 	;
-		code_info__get_failure_cont(Cont),
-		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
+		{ error("missing failure continuation") }
 	).
 
 
@@ -2081,6 +2095,35 @@ code_info__generate_icond_branch(Rval, YesLab, NoLab, Code) -->
 		if_not_val(Rval, NoLab) - "",
 		goto(YesLab) - ""
 	]) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_pre_commit(PreCommit, FailLabel) -->
+	code_info__get_next_label(FailLabel),
+	code_info__push_rval(lval(maxfr), SaveMaxfr),
+	code_info__push_rval(lval(curredoip), SaveRedoip),
+	{ SetRedoIp = node([
+		modframe(yes(FailLabel)) - "hijack the failure continuation"
+	]) },
+	{ PreCommit = tree(SaveMaxfr, tree(SaveRedoip, SetRedoIp)) }.
+
+code_info__generate_commit(FailLabel, Commit) -->
+	code_info__get_next_label(SuccLabel),
+	{ GotoSuccCode = node([
+		goto(SuccLabel) - "jump to success continuation",
+		label(FailLabel) - "failure continuation"
+	]) },
+	{ SuccLabelCode = node([
+		label(SuccLabel) - "success continuation"
+	]) },
+	code_info__pop_lval(curredoip, RestoreRedoIp),
+	code_info__pop_lval(maxfr, RestoreMaxfr),
+	code_info__generate_failure(Fail),
+	{ RestoreRegs = tree(RestoreRedoIp, RestoreMaxfr) },
+	{ FailCode = tree(RestoreRegs, Fail) },
+	{ SuccessCode = RestoreRegs },
+	{ Commit = tree(GotoSuccCode, tree(FailCode,
+		tree(SuccLabelCode, SuccessCode))) }.
 
 %---------------------------------------------------------------------------%
 

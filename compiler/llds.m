@@ -61,6 +61,8 @@
 			;	stackvar(int)	% det stack slots
 			;	framevar(int)	% nondet stack slots
 			;	succip
+			;	maxfr
+			;	curredoip
 			;	hp
 			;	sp
 			;	field(tag, lval, int)
@@ -186,6 +188,8 @@ output_c_procedure_list([P|Ps]) -->
 :- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
+	io__write_string("/*------------------------------------"),
+	io__write_string("-------------------------------------*/"),
 	io__write_string("/* code for predicate "),
 	io__write_string(Name),
 	io__write_string("/"),
@@ -522,6 +526,10 @@ output_lval(sp) -->
 	io__write_string("LVALUE_CAST(Word,sp)").
 output_lval(hp) -->
 	io__write_string("LVALUE_CAST(Word,hp)").
+output_lval(maxfr) -->
+	io__write_string("LVALUE_CAST(Word,maxfr)").
+output_lval(curredoip) -->
+	io__write_string("LVALUE_CAST(Word,curredoip)").
 output_lval(stackvar(N)) -->
 	{ (N < 0) ->
 		error("stack var out of range")
