@@ -91,6 +91,10 @@ case $FULLARCH in
 		# `gcc -s' is broken in gnu-win32
 		strip=false
 		;;
+	*-darwin*)
+		# `gcc -s' doesn't seem to do the right thing on Mac OS X
+		strip=false
+		;;
 	*)
 		strip=true
 		;;
