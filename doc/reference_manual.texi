@@ -1168,12 +1168,15 @@ they occur, unless they are quantified, either explicitly
 (@pxref{Goals}) or implicitly (@pxref{Implicit quantification}).
 
 The scope of type variables in a predicate or function's type
-declaration extends over any explicit type qualifications in the
-clauses for that predicate or function, so explicit type
-qualifications can refer to those type variables.
-The scope of any type variables in an explicit type qualification
-which do not occur in the predicate or function's type declaration
-is the clause in which they occur.
+declaration extends over any explicit type qualifications
+(@pxref{Explicit type qualification}) in the clauses for that
+predicate or function, and over @samp{pragma type_spec}
+(@pxref{Type specialization}) declarations for that predicate or
+function, so that explicit type qualifications and
+@samp{pragma type_spec} declarations can refer to those
+type variables. The scope of any type variables in an explicit
+type qualification which do not occur in the predicate or function's
+type declaration is the clause in which they occur.
 
 @node Implicit quantification
 @section Implicit quantification
