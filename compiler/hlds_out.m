@@ -531,7 +531,7 @@ hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 
 hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
-		io__write_string("("),
+		io__write_string("( % disjunction"),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
@@ -560,11 +560,11 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), _ModuleInfo, VarSet,
 :- mode hlds_out__write_unification(in, di, uo) is det.
 
 hlds_out__write_unification(assign(_, _)) -->
-	io__write_string(" := ").
+	io__write_string(" :=: ").
 hlds_out__write_unification(simple_test(_, _)) -->
 	io__write_string(" == ").
 hlds_out__write_unification(construct(_, _, _, _)) -->
-	io__write_string(" := ").
+	io__write_string(" :=: ").
 hlds_out__write_unification(deconstruct(_, _, _, _, _)) -->
 	io__write_string(" == ").
 hlds_out__write_unification(complicated_unify(_, _, _)) -->

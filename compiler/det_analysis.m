@@ -43,6 +43,7 @@
 :- implementation.
 :- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
 :- import_module globals, options, io, mercury_to_mercury, varset.
+:- import_module mode_util, inst_match.
 
 %-----------------------------------------------------------------------------%
 
@@ -212,8 +213,9 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
+	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
 	MiscInfo = misc_info(ModuleInfo0, PredId, PredMode),
-	det_infer_goal(Goal0, MiscInfo, Goal, Detism),
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism),
 
 		% Check whether the determinism of this procedure changed
 	(
@@ -366,13 +368,16 @@ report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
 	% It annotates the goal and all it's subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
 
-:- pred det_infer_goal(hlds__goal, misc_info, hlds__goal, category).
-:- mode det_infer_goal(in, in, out, out) is det.
+:- pred det_infer_goal(hlds__goal, instmap, misc_info,
+			hlds__goal, instmap, category).
+:- mode det_infer_goal(in, in, in, out, out, out) is det.
 
-det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
+det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
+		Goal - GoalInfo, InstMap, Category) :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
-	det_infer_goal_2(Goal0, MiscInfo, NonLocalVars, DeltaInstMap,
+	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap),
+	det_infer_goal_2(Goal0, InstMap0, MiscInfo, NonLocalVars, DeltaInstMap,
 		Goal, Category0),
 
 	% If a non-deterministic goal doesn't have any output variables,
@@ -380,7 +385,7 @@ det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 	% code generator to generate a commit after the goal).
 	(
 		Category0 = nondeterministic,
-		no_output_vars(NonLocalVars, DeltaInstMap, MiscInfo)
+		no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, MiscInfo)
 	->
 		Category1 = semideterministic
 	;
@@ -394,29 +399,30 @@ det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 
 	goal_info_set_determinism(GoalInfo0, Category, GoalInfo).
 
-:- pred det_infer_goal_2(hlds__goal_expr, misc_info, set(var), instmap_delta,
-				hlds__goal_expr, category).
-:- mode det_infer_goal_2(in, in, in, in, out, out) is det.
+:- pred det_infer_goal_2(hlds__goal_expr, instmap, misc_info, set(var),
+				instmap_delta, hlds__goal_expr, category).
+:- mode det_infer_goal_2(in, in, in, in, in, out, out) is det.
 
 	% the category of a conjunction is the worst case of the elements
 	% of that conjuction.
-det_infer_goal_2(conj(Goals0), MiscInfo, _, _, conj(Goals), D) :-
-	det_infer_conj(Goals0, MiscInfo, Goals, D).
+det_infer_goal_2(conj(Goals0), InstMap0, MiscInfo, _, _, conj(Goals), D) :-
+	det_infer_conj(Goals0, InstMap0, MiscInfo, Goals, D).
 
-det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
+det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Det) :-
 	( Goals0 = [] ->
 		% an empty disjunction is equivalent to `fail' and
 		% is hence semi-deterministic
 		Goals = [],
-		D = semideterministic
+		Det = semideterministic
 	; Goals0 = [SingleGoal0] ->
 		% a singleton disjunction is just equivalent to
 		% the goal itself
-		det_infer_goal(SingleGoal0, MiscInfo, SingleGoal, D),
+		det_infer_goal(SingleGoal0, InstMap0, MiscInfo,
+				SingleGoal, _InstMap, Det),
 		Goals = [SingleGoal]
 	;
-		D = nondeterministic,
-		det_infer_disj(Goals0, MiscInfo, Goals)
+		Det = nondeterministic,
+		det_infer_disj(Goals0, InstMap0, MiscInfo, Goals)
 	).
 
 	% the category of a switch is the worst of the category of each of
@@ -424,9 +430,9 @@ det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.nl and handled via the LocalDet field.
 
-det_infer_goal_2(switch(Var, LocalDet, Cases0), MiscInfo, _, _,
+det_infer_goal_2(switch(Var, LocalDet, Cases0), InstMap0, MiscInfo, _, _,
 		switch(Var, LocalDet, Cases), D) :-
-	det_infer_switch(Cases0, MiscInfo, Cases, D0),
+	det_infer_switch(Cases0, InstMap0, MiscInfo, Cases, D0),
 	max_category(D0, LocalDet, D).
 
 	% look up the category entry associated with the call.
@@ -441,23 +447,22 @@ det_infer_goal_2(switch(Var, LocalDet, Cases0), MiscInfo, _, _,
 	% this.
 
 det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name, Follow),
-							MiscInfo, _, _,
+						_, MiscInfo, _, _,
 		call(PredId, ModeId, Args, BuiltIn, Name, Follow), Category) :-
 	detism_lookup(MiscInfo, PredId, ModeId, Category).
-		% XXX need to handle calls to inferred modes!
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT, M, U, C), MiscInfo, _, _,
+det_infer_goal_2(unify(LT, RT, M, U, C), _, MiscInfo, _, _,
 		unify(LT, RT, M, U, C), D) :-
 	det_infer_unify(U, MiscInfo, D).
 
-det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
+det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 		_NonLocals, _DeltaInstMap,
 		Goal, D) :-
-	det_infer_goal(Cond0, MiscInfo, Cond, DCond),
-	det_infer_goal(Then0, MiscInfo, Then, DThen),
-	det_infer_goal(Else0, MiscInfo, Else, DElse),
+	det_infer_goal(Cond0, InstMap0, MiscInfo, Cond, InstMap1, DCond),
+	det_infer_goal(Then0, InstMap1, MiscInfo, Then, _, DThen),
+	det_infer_goal(Else0, InstMap0, MiscInfo, Else, _, DElse),
 	( DCond = deterministic ->
 		% optimize away the `else' part
 		% (We should actually convert this to a _sequential_
@@ -492,62 +497,69 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
 	% deterministic goal (which will always fail) here?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Vars, Goal0), MiscInfo, _, _, not(Vars, Goal), D) :-
-	det_infer_goal(Goal0, MiscInfo, Goal, _D1),
-	D = semideterministic.
+det_infer_goal_2(not(Vars, Goal0), InstMap0, MiscInfo, _, _,
+		not(Vars, Goal), Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, _Det1),
+	Det = semideterministic.
 
 	% explicit quantification isn't important, since we've already
 	% stored the _information about variable scope in the goal_info.
 
-det_infer_goal_2(some(Vars, Goal0), MiscInfo, _, _, some(Vars, Goal), D) :-
-	det_infer_goal(Goal0, MiscInfo, Goal, D).
+det_infer_goal_2(some(Vars, Goal0), InstMap0, MiscInfo, _, _,
+			some(Vars, Goal), Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det).
 
-:- pred no_output_vars(set(var), instmap_delta, misc_info).
-:- mode no_output_vars(in, in, in) is semidet.
+:- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
+:- mode no_output_vars(in, in, in, in) is semidet.
 
-no_output_vars(_, unreachable, _).
-no_output_vars(Vars, reachable(InstMapDelta), _MiscInfo) :-
+no_output_vars(_, _, unreachable, _).
+no_output_vars(Vars, InstMap0, reachable(InstMapDelta), MiscInfo) :-
 	set__to_sorted_list(Vars, VarList),
-	no_output_vars_2(VarList, InstMapDelta).
+	MiscInfo = misc_info(ModuleInfo, _, _),
+	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
 
-:- pred no_output_vars_2(list(var), instmapping).
-:- mode no_output_vars_2(in, in) is semidet.
+:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
+:- mode no_output_vars_2(in, in, in, in) is semidet.
 
-no_output_vars_2([], _).
-no_output_vars_2([Var | Vars], InstMapDelta) :-
-		% XXX this is a safe approximation, but it is not
-		% precise enough.  The instmap delta may contain the
-		% variable, but the variable may not be output, if
-		% the change is just an increase in information rather
-		% than an increase in instantiatedness.
-		% This means that we will consider some goals as nondet
-		% when they are really semidet.
-	\+ map__contains(InstMapDelta, Var),
-	no_output_vars_2(Vars, InstMapDelta).
+no_output_vars_2([], _, _, _).
+no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
+	( map__search(InstMapDelta, Var, Inst) ->
+		% The instmap delta contains the variable, but the variable may
+		% still not be output, if the change is just an increase in
+		% information rather than an increase in instantiatedness.
+		% We use `inst_matches_final' to check that the new inst
+		% has only added information, not bound anything.
+		instmap_lookup_var(InstMap0, Var, Inst0),
+		inst_matches_final(Inst, Inst0, ModuleInfo)
+	;
+		true
+	),
+	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
 
-:- pred det_infer_conj(list(hlds__goal), misc_info, list(hlds__goal), category).
-:- mode det_infer_conj(in, in, out, out) is det.
+:- pred det_infer_conj(list(hlds__goal), instmap, misc_info,
+			list(hlds__goal), category).
+:- mode det_infer_conj(in, in, in, out, out) is det.
 
-det_infer_conj(Goals0, MiscInfo, Goals, D) :-
-	det_infer_conj_2(Goals0, MiscInfo, deterministic, Goals, D).
+det_infer_conj(Goals0, InstMap0, MiscInfo, Goals, Det) :-
+	det_infer_conj_2(Goals0, InstMap0, MiscInfo, deterministic, Goals, Det).
 
-:- pred det_infer_conj_2(list(hlds__goal), misc_info,
+:- pred det_infer_conj_2(list(hlds__goal), instmap, misc_info,
 			category, list(hlds__goal), category).
-:- mode det_infer_conj_2(in, in, in, out, out) is det.
+:- mode det_infer_conj_2(in, in, in, in, out, out) is det.
 
-det_infer_conj_2([], _MiscInfo, D, [], D).
-det_infer_conj_2([Goal0|Goals0], MiscInfo, D0, [Goal|Goals], D) :-
-	det_infer_goal(Goal0, MiscInfo, Goal, D1),
-	max_category(D0, D1, D2),
-	det_infer_conj_2(Goals0, MiscInfo, D2, Goals, D).
+det_infer_conj_2([], _InstMap0, _MiscInfo, Det, [], Det).
+det_infer_conj_2([Goal0|Goals0], InstMap0, MiscInfo, Det0, [Goal|Goals], Det) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, InstMap1, Det1),
+	max_category(Det0, Det1, Det2),
+	det_infer_conj_2(Goals0, InstMap1, MiscInfo, Det2, Goals, Det).
 
-:- pred det_infer_disj(list(hlds__goal), misc_info, list(hlds__goal)).
-:- mode det_infer_disj(in, in, out) is det.
+:- pred det_infer_disj(list(hlds__goal), instmap, misc_info, list(hlds__goal)).
+:- mode det_infer_disj(in, in, in, out) is det.
 
-det_infer_disj([], _MiscInfo, []).
-det_infer_disj([Goal0|Goals0], MiscInfo, [Goal|Goals]) :-
-	det_infer_goal(Goal0, MiscInfo, Goal, _D),
-	det_infer_disj(Goals0, MiscInfo, Goals).
+det_infer_disj([], _InstMap0, _MiscInfo, []).
+det_infer_disj([Goal0|Goals0], InstMap0, MiscInfo, [Goal|Goals]) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, _Det),
+	det_infer_disj(Goals0, InstMap0, MiscInfo, Goals).
 
 :- pred det_infer_unify(unification, misc_info, category).
 :- mode det_infer_unify(in, in, out) is det.
@@ -572,26 +584,27 @@ det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
 
 det_infer_unify(complicated_unify(_, Det, _), _MiscInfo, Det).
 
-:- pred det_infer_switch(list(case), misc_info, list(case), category).
-:- mode det_infer_switch(in, in, out, out) is det.
+:- pred det_infer_switch(list(case), instmap, misc_info, list(case), category).
+:- mode det_infer_switch(in, in, in, out, out) is det.
 
-det_infer_switch(Cases0, MiscInfo, Cases, D) :-
-	det_infer_switch_2(Cases0, MiscInfo, Cases, deterministic, D).
+det_infer_switch(Cases0, InstMap0, MiscInfo, Cases, D) :-
+	det_infer_switch_2(Cases0, InstMap0, MiscInfo, Cases, deterministic, D).
 
-:- pred det_infer_switch_2(list(case), misc_info, list(case),
+:- pred det_infer_switch_2(list(case), instmap, misc_info, list(case),
 			category, category).
-:- mode det_infer_switch_2(in, in, out, in, out) is det.
+:- mode det_infer_switch_2(in, in, in, out, in, out) is det.
 
-det_infer_switch_2([], _MiscInfo, [], D, D).
-det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], D0, D) :-
-		% XXX we should update the instmap to reflect the
+det_infer_switch_2([], _InstMap0, _MiscInfo, [], D, D).
+det_infer_switch_2([Case0|Cases0], InstMap0, MiscInfo, [Case|Cases], D0, D) :-
+		% Technically, we should update the instmap to reflect the
 		% knowledge that the var is bound to this particular
-		% constructor
+		% constructor, but we wouldn't use that information here anyway,
+		% so we don't bother.
 	Case0 = case(ConsId, Goal0),
-	det_infer_goal(Goal0, MiscInfo, Goal, D1),
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, D1),
 	max_category(D0, D1, D2),
 	Case = case(ConsId, Goal),
-	det_infer_switch_2(Cases0, MiscInfo, Cases, D2, D).
+	det_infer_switch_2(Cases0, InstMap0, MiscInfo, Cases, D2, D).
 
 %-----------------------------------------------------------------------------%
 

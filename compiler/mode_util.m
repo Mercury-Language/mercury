@@ -107,6 +107,14 @@
 				list(mode)).
 :- mode propagate_type_info_mode_list(in, in, in, out) is det.
 
+	% Given corresponding lists of types and insts, produce a new
+	% list of insts which includes the information provided by the
+	% corresponding types.
+
+:- pred propagate_type_info_inst_list(list(type), module_info, list(inst),
+				list(inst)).
+:- mode propagate_type_info_inst_list(in, in, in, out) is det.
+
 	% Given a type and an inst, produce a new inst which includes
 	% the information provided by the type.
 
@@ -349,6 +357,18 @@ propagate_type_info_mode_list([], _, [_|_], []) :-
 	error("propagate_type_info_mode_list: length mismatch").
 propagate_type_info_mode_list([_|_], _, [], []) :-
 	error("propagate_type_info_mode_list: length mismatch").
+
+:- propagate_type_info_inst_list(A, B, _, _) when A and B.
+
+propagate_type_info_inst_list([], _, [], []).
+propagate_type_info_inst_list([Type | Types], ModuleInfo, [Inst0 | Insts0],
+		[Inst | Insts]) :-
+	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst),
+	propagate_type_info_inst_list(Types, ModuleInfo, Insts0, Insts).
+propagate_type_info_inst_list([], _, [_|_], []) :-
+	error("propagate_type_info_inst_list: length mismatch").
+propagate_type_info_inst_list([_|_], _, [], []) :-
+	error("propagate_type_info_inst_list: length mismatch").
 
 	% Given a type and a mode, produce a new mode which includes
 	% the information provided by the type.

@@ -125,6 +125,8 @@
 			;	fail	
 					% could use disj(goals) instead
 			;	not(vars,goal)
+					% means `not some vars goal'
+					% (the vars currently not used)
 			;	some(vars,goal)
 			;	all(vars,goal)
 			;	implies(goal,goal)
@@ -920,25 +922,6 @@ parse_dcg_goal_2("->", [A0,B0], _, VarSet0, N0, Var0,
 		Goal = if_then_else(SomeVars, A, B,
 			unify(term__variable(Var), term__variable(Var0)))
 	).
-
-	% Handle implication operators
-parse_dcg_goal_2("=>", [Goal0, Goal1], _, VarSet0, N0, Var0,
-		implies(Goal2, Goal3), VarSet, N, Var) :-
-	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
-	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
-
-parse_dcg_goal_2("<=", [Goal0, Goal1], _, VarSet0, N0, Var0,
-		implies(Goal3, Goal2), VarSet, N, Var) :-
-	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
-	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
-
-	% Handle equivalence
-parse_dcg_goal_2("<=>", [Goal0, Goal1], _, VarSet0, N0, Var0,
-		equivalent(Goal2, Goal3), VarSet, N, Var) :-
-	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal2, VarSet1, N1, Var1),
-	parse_dcg_goal(Goal1, VarSet1, N1, Var1, Goal3, VarSet, N, Var).
-
-
 
 	% If-then (NU-Prolog syntax).
 parse_dcg_goal_2("if", [

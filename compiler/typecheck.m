@@ -624,7 +624,8 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
 
 :- pred typecheck_var_has_type_list(list(var), list(type), int, type_info,
 					type_info).
-:- mode typecheck_var_has_type_list(in, in, in, in, out) is det.
+:- mode typecheck_var_has_type_list(in, in, in, type_info_di, type_info_uo)
+	is det.
 
 typecheck_var_has_type_list([], [_|_], _) -->
 	{ error("typecheck_var_has_type_list: length mismatch") }.
@@ -1034,7 +1035,8 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 
 :- pred typecheck_unify_var_functor(var, const, list(term), term__context,
 					type_info, type_info).
-:- mode typecheck_unify_var_functor(in, in, in, in, di, uo) is det.
+:- mode typecheck_unify_var_functor(in, in, in, in, type_info_di, type_info_uo)
+	is det.
 
 typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 	type_info_set_context(Context, TypeInfo9, TypeInfo0),
@@ -1123,7 +1125,8 @@ typecheck_unify_var_functor_2b([ConsDefn | ConsDefns], TypeInfo, TypeAssign0,
 
 :- pred typecheck_unify_var_functor_3a(cons_type_assign_set, var, list(term),
 				type_info, type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_3a(in, in, in, in, in, out) is det.
+:- mode typecheck_unify_var_functor_3a(in, in, in, type_info_ui, in, out)
+	is det.
 
 typecheck_unify_var_functor_3a([], _, _, _) --> [].
 typecheck_unify_var_functor_3a([TypeAssign - ConsTypes | ConsTypeAssigns],
@@ -1140,7 +1143,8 @@ typecheck_unify_var_functor_3a([TypeAssign - ConsTypes | ConsTypeAssigns],
 :- pred typecheck_unify_var_functor_3b(list(cons_type), type_assign,
 				var, list(term), type_info,
 				type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_3b(in, in, in, in, in, in, out) is det.
+:- mode typecheck_unify_var_functor_3b(in, in, in, in, type_info_ui, in, out)
+	is det.
 
 typecheck_unify_var_functor_3b([], _, _, _, _) --> [].
 typecheck_unify_var_functor_3b([ConsType | ConsTypes],
@@ -1984,7 +1988,7 @@ type_info_set_warned_about_overloading( type_info(A,B,C,D,E,F,G,H,I,J,K,_),
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_ctor_list(type_info, const, int, list(cons_type_info)).
-:- mode type_info_get_ctor_list(in, in, in, out) is det.
+:- mode type_info_get_ctor_list(type_info_ui, in, in, out) is det.
 
 type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
 	% Check if `Functor/Arity' has been defined as a constructor
@@ -2245,7 +2249,7 @@ report_error_unif_var_functor(TypeInfo, Var, ConsDefnList, Functor, Args,
 
 :- pred write_types_of_vars(list(var), varset, term__context, type_info,
 				type_assign_set, io__state, io__state).
-:- mode write_types_of_vars(in, in, in, in, in, di, uo) is det.
+:- mode write_types_of_vars(in, in, in, type_info_ui, in, di, uo) is det.
 
 write_types_of_vars([], _, _, _, _) -->
 	io__write_string(".\n").
@@ -2625,7 +2629,7 @@ write_context_and_pred_id(TypeInfo) -->
 
 :- pred report_ambiguity_error(type_info, type_assign, type_assign,
 				io__state, io__state).
-:- mode report_ambiguity_error(in, in, in, di, uo) is det.
+:- mode report_ambiguity_error(type_info_no_io, in, in, di, uo) is det.
 
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_type_info_context(TypeInfo),

@@ -234,8 +234,9 @@ partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	goal_to_conj_list(Goal0, ConjList0),
 	Goal0 = _ - GoalInfo,
 	map__init(Substitution),
-	find_bind_var(ConjList0, Var, Substitution,
-			Functor, ConjList), % may fail
+	find_bind_var(ConjList0, Substitution, Var,
+			ConjList, _NewSubstitution, MaybeFunctor),
+	MaybeFunctor = yes(Functor),
 	conj_list_to_goal(ConjList, GoalInfo, Goal),
 	( map__search(Cases0, Functor, DisjList0) ->
 		DisjList1 = [Goal | DisjList0]
@@ -245,45 +246,69 @@ partition_disj_2([Goal0 | Goals], Var, Cases0, Cases) :-
 	map__set(Cases0, Functor, DisjList1, Cases1),
 	partition_disj_2(Goals, Var, Cases1, Cases).
 
-
-	% find_bind_var(Goals0, Var, Subst, Functor, Goals):
+	% find_bind_var(Goals0, Subst0, Var, Goals, Subst, MaybeFunctor):
 	%	Searches through Goals0 looking for a deconstruction
-	%	unification with `Var'.  If successful, returns the
-	%	functor which `Var' gets unified with as `Functor',
+	%	unification with `Var'.  If found, sets `MaybeFunctor'
+	% 	to `yes(Functor', where Functor is the
+	%	functor which `Var' gets unified, and
 	%	sets `Goals' to be `Goals0' with that deconstruction
-	%	unification made deterministic.
+	%	unification made deterministic.  If not found, sets
+	%	`MaybeFunctor' to `no', and computes `Subst' as the
+	%	resulting substitution from interpreting through the goal.
 
-:- pred find_bind_var(list(hlds__goal), var, substitution, cons_id, 
-                       list(hlds__goal)).
-:- mode find_bind_var(in, in, in, out, out) is semidet.
+:- pred find_bind_var(list(hlds__goal), substitution, var, 
+                       list(hlds__goal), substitution, maybe(cons_id)).
+:- mode find_bind_var(in, in, in, out, out, out) is det.
 
-find_bind_var([Goal0 - GoalInfo | Goals0], Var, Substitution0,
-		Functor, [Goal - GoalInfo | Goals]) :-
-		% fail if the next goal is not a unification
-	( Goal0 = unify(A, B, C, UnifyInfo0, E) ->
+find_bind_var([], Substitution, _Var, [], Substitution, no).
+find_bind_var([Goal0 - GoalInfo | Goals0], Substitution0, Var, 
+		[Goal - GoalInfo | Goals], Substitution, MaybeFunctor) :-
+	( Goal0 = conj(SubGoals0) ->
+		find_bind_var(SubGoals0, Substitution0, Var,
+				SubGoals, Substitution1, MaybeFunctor1),
+		Goal = conj(SubGoals),
+		( MaybeFunctor1 = yes(_) ->
+			Goals = Goals0,
+			Substitution = Substitution1,
+			MaybeFunctor = MaybeFunctor1
+		;
+			find_bind_var(Goals0, Substitution0, Var,
+					Goals, Substitution, MaybeFunctor)
+		)
+	; Goal0 = unify(A, B, C, UnifyInfo0, E) ->
 			 % otherwise abstractly interpret the unification
-		term__unify(A, B, Substitution0, Substitution),
+		( term__unify(A, B, Substitution0, Substitution1) ->
+			Substitution2 = Substitution1
+		;
+			% the unification must fail - just ignore it
+			Substitution2 = Substitution0
+		),
 			% check whether the var was bound
-		term__apply_rec_substitution(term__variable(Var), Substitution,
+		term__apply_rec_substitution(term__variable(Var), Substitution2,
 			Term),
 		(
 			Term = term__functor(_Name, _Args, _Context),
-			UnifyInfo0 = deconstruct(Var1, Functor0, F, G, _Det)
+			UnifyInfo0 = deconstruct(Var1, Functor, F, G, _Det)
 		->
-			Functor = Functor0,
+			MaybeFunctor = yes(Functor),
 				% The deconstruction unification now becomes
 				% deterministic, since the test will get
 				% carried out in the switch.
-			UnifyInfo = deconstruct(Var1, Functor0, F, G,
+			UnifyInfo = deconstruct(Var1, Functor, F, G,
 					deterministic),
 			Goal = unify(A, B, C, UnifyInfo, E),
-			Goals = Goals0
+			Goals = Goals0,
+			Substitution = Substitution2
 		;
 			Goal = Goal0,
-			find_bind_var(Goals0, Var, Substitution, Functor, Goals)
+			find_bind_var(Goals0, Substitution2, Var,
+					Goals, Substitution, MaybeFunctor)
 		)
 	;
-		fail
+		Goal = Goal0,
+		Goals = Goals0,
+		Substitution = Substitution0,
+		MaybeFunctor = no
 	).
 
 	% check whether a switch handles all the possible

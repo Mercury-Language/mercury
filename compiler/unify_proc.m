@@ -151,10 +151,10 @@ unify_proc__lookup_num(Requests, TypeId, UniMode, Num) :-
 
 unify_proc__request_unify(UnifyId, Requests0, Requests) :-
 	unify_proc__get_req_map(Requests0, ReqMap0),
-	Requests0 = unify_requests(Num0, ReqMap0, _ReqQueue0),
 	( map__contains(ReqMap0, UnifyId) ->
 		Requests = Requests0
 	;
+		unify_proc__get_num(Requests0, Num0),
 		map__set(ReqMap0, UnifyId, Num0, ReqMap),
 		unify_proc__set_req_map(Requests0, ReqMap, Requests1),
 
@@ -200,6 +200,8 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 modecheck_generate_unification(_UnifyProcId, ModuleInfo, ModuleInfo).
 	% XXX stub only!!!
 /*
+modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) :-
+	module_info_get_unify_requests(ModuleInfo0, Requests0),
 	unify_proc__get_req_map(Requests0, ReqMap),
 	map__lookup(ReqMap, UnifyProcId, UnifyModeNum),
 	UnifyProcId = TypeId - UnifyMode,

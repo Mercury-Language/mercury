@@ -1370,8 +1370,13 @@ proc_info_set_follow_vars(ProcInfo0, L, ProcInfo) :-
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
-		% XXX propagate type info!
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
+/***********
+		% propagate type information into the modes
+	proc_info_var_types(ProcInfo, VarTypes),
+	propagate_type_info_inst_list(VarTypes, ModuleInfo, InitialInsts0,
+					InitialInsts),
+***********/
 	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
 
 proc_info_set_variables(ProcInfo0, Vars, ProcInfo) :-
