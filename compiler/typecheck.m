@@ -445,7 +445,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 			PredInfo4),
 
 		%
-		% Split the inferred type class constraints into those that
+		% Split the inferred type class constraints into those 
 		% that apply only to the head variables, and those that
 		% apply to type variables which occur only in the body.
 		%
@@ -4227,19 +4227,10 @@ find_first(Pred, [X|Xs], Result) :-
 :- mode check_satisfiability(in, in) is semidet.
 
 check_satisfiability(Constraints, HeadTypeParams) :-
-	% SICStus doesn't allow the following syntax
-	% all [C] list__member(C, Constraints) => (
-	% 	C = constraint(_ClassName, Types),
-	% 	term__contains_var_list(Types, TVar),
-	% 	not list__member(TVar, HeadTypeParams)
-	% ).
-	\+ (
-		list__member(C, Constraints),
-		\+ (
-			C = constraint(_ClassName, Types),
-			term__contains_var_list(Types, TVar),
-			\+ list__member(TVar, HeadTypeParams)
-		)
+	all [C] list__member(C, Constraints) => (
+		C = constraint(_ClassName, Types),
+		term__contains_var_list(Types, TVar),
+		not list__member(TVar, HeadTypeParams)
 	).
 
 %-----------------------------------------------------------------------------%
