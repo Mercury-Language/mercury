@@ -43,12 +43,14 @@
 			;	unilabel(unilabel)	% XXX fixme!
 			;	goto(label)
 			;	c_code(string)	% insert arbitrary C code
-			;	if_val(rval, label)
-					% if rval evaluates to TRUE
-					% then branch to label
+			;	if_val(rval, cond_instr)
 			;	incr_sp(int)
 			;	decr_sp(int)
 			;	incr_hp(int).
+
+:- type cond_instr	--->	goto(label)
+			;	fail
+			;	redo.
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
@@ -336,13 +338,12 @@ output_instruction(goto(Label)) -->
 	output_label(Label),
 	io__write_string(");").
 
-output_instruction(if_val(Rval, Label)) -->
+output_instruction(if_val(Rval, Cond_instr)) -->
 	io__write_string("\t"),
-	io__write_string("if( "),
+	io__write_string("if ("),
 	output_rval(Rval),
-	io__write_string(" ) \n\t\tGOTO_LABEL("),
-	output_label(Label),
-	io__write_string(");").
+	io__write_string(")\n"),
+	output_cond_instr(Cond_instr).
 
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
@@ -359,6 +360,18 @@ output_instruction(incr_hp(N)) -->
 	io__write_string("\t"),
 	io__write_string("incr_hp("),
 	io__write_int(N),
+	io__write_string(");").
+
+:- pred output_cond_instr(cond_instr, io__state, io__state).
+:- mode output_cond_instr(in, di, uo) is det.
+
+output_cond_instr(redo) -->
+	io__write_string("\t\tredo();").
+output_cond_instr(fail) -->
+	io__write_string("\t\tfail();").
+output_cond_instr(goto(Label)) -->
+	io__write_string("\t\tGOTO_LABEL("),
+	output_label(Label),
 	io__write_string(");").
 
 :- pred output_code_address(code_addr, io__state, io__state).

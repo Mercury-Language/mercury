@@ -145,7 +145,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__get_next_label(ContLab),
 	code_info__generate_failure(FailCode),
 	{ CodeD = tree(node([
-			if_val(lval(reg(r(1))), ContLab) - "Test for success"
+			if_val(lval(reg(r(1))), goto(ContLab)) - "Test for success"
 		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 
 	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
@@ -299,7 +299,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		code_info__get_next_label(ContLab),
 		code_info__generate_failure(FailCode),
 		{ CodeD = tree(node([
-			if_val(lval(reg(r(1))), ContLab) - "Test for success"
+			if_val(lval(reg(r(1))), goto(ContLab)) - "Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
 	;
 		{ CodeD = empty }

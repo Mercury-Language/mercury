@@ -2145,11 +2145,13 @@ code_info__generate_test_and_fail(Rval, Code) -->
 		code_info__failure_cont(Cont)
 	->
 		{ code_util__neg_rval(Rval, NegRval) },
-		{ Code = node([ if_val(NegRval, Cont) - "" ]) }
+		{ Code = node([ if_val(NegRval, goto(Cont)) - "" ]) }
 	;
+		% XXX the jump around the redo should be generated
+		% XXX as a reverse conditional redo
 		code_info__get_next_label(Success),
 		{ Code = node([
-			if_val(Rval, Success) - "",
+			if_val(Rval, goto(Success)) - "",
 			redo - "",
 			label(Success) - ""
 		]) }

@@ -10,7 +10,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module peephole.		
+:- module peephole.
 :- interface.
 :- import_module llds, options.
 
@@ -272,7 +272,7 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
 	%	call(Foo, &&ret);		tailcall(Foo)
 	%     ret:			=>    ret:
 	%	proceed				proceed
-	%	
+	%
 	% Note that we can't delete the `ret: proceed', since `ret'
 	% might be branched to from elsewhere. If it isn't, label
 	% elimination will get rid of it later.
@@ -314,34 +314,37 @@ peephole__opt_instr_2(goto(Label), _Comment, Instrs0, Instrs) :-
 	%	goto somewhere;		=>    skip:
 	%     skip:
 	%
-	% a conditional branch to the very next instruction
-	% can be deleted
-	%	if (x) goto next;	=>    next:
-	%     next:
-
-peephole__opt_instr_2(if_val(Rval, Target), _C1, Instrs0, Instrs) :-
-	( Instrs0 = [goto(Somewhere) - C2, label(Target) - C3 | Instrs1] ->
-		code_util__neg_rval(Rval, NotRval),
-		Instrs = [if_val(NotRval, Somewhere) - C2, label(Target) - C3
-				| Instrs1]
-	; Instrs0 = [label(Target) - _ | _] ->
-		Instrs = Instrs0
-	;
-		fail
-	).
-
-	% A conditional branch around a redo or fail can be replaced
-	% by an inverse conditional redo or fail
+	% a conditional branch around a redo or fail can be replaced
+	% by an inverse conditional redo or fail (this is better if
+	% the label can later be eliminated)
 	%
 	%	if (x) goto skip;		if (!x) redo;
 	%	redo;			=>    skip:
 	%     skip:
 	%
-	% This would require a change to the type of the second arg of if_val.
-	% 
-	% The two fragments generate the same assembly on our current machines.
-	% The transformation may be worthwhile on machines with conditionally
-	% executed instructions (Alpha?).
+	% a conditional branch to the very next instruction
+	% can be deleted
+	%	if (x) goto next;	=>    next:
+	%     next:
+
+peephole__opt_instr_2(if_val(Rval, goto(Target)), _C1, Instrs0, Instrs) :-
+	( Instrs0 = [goto(Somewhere) - C2, label(Target) - C3 | Instrs1] ->
+		code_util__neg_rval(Rval, NotRval),
+		Instrs = [if_val(NotRval, goto(Somewhere)) - C2,
+			label(Target) - C3 | Instrs1]
+	; Instrs0 = [redo - C2, label(Target) - C3 | Instrs1] ->
+		code_util__neg_rval(Rval, NotRval),
+		Instrs = [if_val(NotRval, redo) - C2,
+			label(Target) - C3 | Instrs1]
+	; Instrs0 = [fail - C2, label(Target) - C3 | Instrs1] ->
+		code_util__neg_rval(Rval, NotRval),
+		Instrs = [if_val(NotRval, fail) - C2,
+			label(Target) - C3 | Instrs1]
+	; Instrs0 = [label(Target) - _ | _] ->
+		Instrs = Instrs0
+	;
+		fail
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -382,7 +385,7 @@ peephole__label_elim_build_usemap([Instr - _Comment|Instructions],
 		bintree_set__insert(Usemap0, Label, Usemap2)
 	; Instr = goto(Label) ->
 		bintree_set__insert(Usemap0, Label, Usemap2)
-	; Instr = if_val(_, Label) ->
+	; Instr = if_val(_, goto(Label)) ->
 		bintree_set__insert(Usemap0, Label, Usemap2)
 	;
 		Usemap2 = Usemap0
@@ -421,7 +424,7 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		->
 			Instr = Instr0,
 			Fallthrough1 = yes
-		; 
+		;
 			peephole__eliminate(Instr0, yes(Fallthrough), Instr),
 			Fallthrough1 = Fallthrough
 		)

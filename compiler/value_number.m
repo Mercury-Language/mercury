@@ -11,7 +11,7 @@
 :- interface.
 :- import_module llds.
 
-:- pred value_number__optimize(c_file, c_file).
+:- pred value_number__optimize(list(instruction), list(instruction)).
 :- mode value_number__optimize(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -23,9 +23,6 @@
 
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
-
-:- pred value_number__optimize(list(instruction), list(instruction)).
-:- mode value_number__optimize(in, out) is det.
 
 value_number__optimize(Instructions, Instructions).
 
