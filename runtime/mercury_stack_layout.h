@@ -268,13 +268,13 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
 
 #define	MR_has_valid_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) >= 0)
+		(((slvs)->MR_slvs_var_count) >= 0)
 #define	MR_has_valid_var_info(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) > 0)
+		(((slvs)->MR_slvs_var_count) > 0)
 #define	MR_long_desc_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) >> MR_SHORT_COUNT_BITS)
+		(((slvs)->MR_slvs_var_count) >> MR_SHORT_COUNT_BITS)
 #define	MR_short_desc_var_count(slvs)					    \
-		(((Integer) ((slvs)->MR_slvs_var_count)) & MR_SHORT_COUNT_MASK)
+		(((slvs)->MR_slvs_var_count) & MR_SHORT_COUNT_MASK)
 #define	MR_all_desc_var_count(slvs)					    \
 		(MR_long_desc_var_count(slvs) + MR_short_desc_var_count(slvs))
 
@@ -538,7 +538,7 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Label mercury_data__layout__##label = {		\
 		&mercury_data__layout__##entry,				\
 		{							\
-			(void *) -1,	/* No info about live values */	\
+			-1,		/* No info about live values */	\
 			NULL,						\
 			NULL,						\
 			NULL						\
