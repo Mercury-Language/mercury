@@ -80,14 +80,14 @@ void redo_msg(void)
 	printf("redo ip: "); printlabel(bt_redoip(maxfr));
 }
 
-void call_msg(const Code *proc, const Code *succcont)
+void call_msg(/* const */ Code *proc, /* const */ Code *succcont)
 {
 	printf("\ncalling      "); printlabel(proc);
 	printf("continuation "); printlabel(succcont);
 	printregs("registers at call");
 }
 
-void tailcall_msg(const Code *proc)
+void tailcall_msg(/* const */ Code *proc)
 {
 	restore_transient_registers();
 
@@ -148,7 +148,7 @@ void pop_msg(Word val, const Word *addr)
 	printdetstack(addr);
 }
 
-void goto_msg(const Code *addr)
+void goto_msg(/* const */ Code *addr)
 {
 	printf("\ngoto ");
 	printlabel(addr);
@@ -286,7 +286,7 @@ void printlist(Word p)
 	fflush(stdout);
 }
 
-void printlabel(const Code *w)
+void printlabel(/* const */ Code *w)
 {
 	Label	*label;
 
