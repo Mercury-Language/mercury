@@ -1386,7 +1386,7 @@ io__check_err(Stream, Res) -->
 		Word next;
 		incr_hp_atomic(next, 
 		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word));
-		assert(buffer0 + oldSize = (Char *) next);
+		assert(buffer0 + OldSize = (Char *) next);
 	    	buffer = buffer0;
 	} else {
 		/* just have to alloc and copy */
