@@ -115,12 +115,7 @@ cd mercury || { false; exit 1; }
 # 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
 	echo 'MC = ../scripts/mc' > Mmake.params
-	echo 'MCFLAGS = -O2' >> Mmake.params
-
-	# work around a bug in gcc 2.7.2.1
-	case $HOST in
-		kryten)		echo 'EXTRA_CFLAGS = -O1' >> Mmake.params ;;
-	esac
+	echo 'MCFLAGS = -O5 --opt-space' >> Mmake.params
 # fi
 
 autoconf || { false; exit 1; }
@@ -240,7 +235,7 @@ case $HOST in murlibobo)
 	autoconf &&
 	mercury_cv_num_low_tag_bits=2 sh configure --prefix=$INSTALL_DIR &&
 	version=`mmake version` &&
-	mmake MMAKEFLAGS='MCFLAGS="-O2 --num-tag-bits 2" -j4' tar &&
+	mmake MMAKEFLAGS='MCFLAGS="-O5 --opt-space --num-tag-bits 2" -j4' tar &&
 	rm -f mercury-latest-unstable.tar.gz &&
 	mv mercury-$version.tar.gz mercury-latest-unstable.tar.gz
 	} || status=1
