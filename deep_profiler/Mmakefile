@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2002, 2004 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -24,7 +24,11 @@ ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
 else
 	MAIN_TARGET=nothing
 	MERCURY_MAIN_MODULES=
-	DEPEND=nothing
+	# When building the source .tar.gz distribution, we need to
+	# include the generated .c files for the deep profiler,
+	# even if deep profiling wasn't enabled on this host.
+	# That implies that we need to make the dependencies.
+	DEPEND=mdprof_cgi.depend mdprof_test.depend
 	INSTALL=nothing
 endif
 
