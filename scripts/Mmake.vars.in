@@ -212,7 +212,7 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_CL is the command line version of Microsoft Visual C++, which we
 # use to compile Managed C++ code in the .NET backend.
-FIX_PATH_FOR_CL	= cygpath -w
+FIX_PATH_FOR_CL	= @CYGPATH@
 MS_CL		= @MS_CL@
 MS_VISUALCPP_DIR = @MS_VISUALCPP_DIR@
 ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
@@ -259,7 +259,7 @@ MS_AL		= al
 # which have a different command-line interface. 
 # (What about Rotor?)
 
-FIX_PATH_FOR_CSC = cygpath -w
+FIX_PATH_FOR_CSC = @CYGPATH@
 MS_CSC		= csc
 ALL_MS_CSCFLAGS	= $(MS_CSCFLAGS) $(EXTRA_MS_CSCFLAGS) $(TARGET_MS_CSCFLAGS) \
 		$(LIB_MS_CSCFLAGS)

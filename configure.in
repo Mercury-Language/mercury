@@ -392,6 +392,8 @@ AC_EGREP_CPP(yes,
 ] AC_MSG_RESULT(yes), [ac_microsoft=no
 ] AC_MSG_RESULT(no))
 
+AC_CHECK_PROG(CYGPATH, cygpath, cygpath -w, echo)
+
 if test "$ac_microsoft" = "yes" ; then
 	# Use MS-style file names and command-line options
 	OBJ_SUFFIX="obj"
@@ -408,7 +410,10 @@ if test "$ac_microsoft" = "yes" ; then
 
 	USING_MICROSOFT_CL_COMPILER="yes"
 
-	FIX_PATH_FOR_CC="cygpath -w"
+	case "$CYGPATH" in "echo")
+		AC_MSG_WARN("cygpath required with Microsoft Visual C++") ;;
+	esac
+	FIX_PATH_FOR_CC="$CYGPATH"
 
 		# MS doesn't use a ranlib.
 	RANLIB="echo"
@@ -459,6 +464,7 @@ AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(FIX_PATH_FOR_CC)
+AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
