@@ -111,16 +111,17 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 	(
 		{ NumCases = Range }
 	->
-		{ NeedBitVecTest = cannot_fail }
+		{ NeedBitVecTest0 = cannot_fail }
 	;
-		{ NeedBitVecTest = can_fail }
+		{ NeedBitVecTest0 = can_fail }
 	),
 	( { CanFail0 = can_fail } ->
 		% For semidet switches, we normally need to check that
 		% the variable is in range before we index into the jump table.
 		% However, if the range of the type is sufficiently small,
 		% we can make the jump table large enough to hold all
-		% of the values for the type.
+		% of the values for the type, but then we will need to do the
+		% bitvector test.
 		code_info__variable_type(CaseVar, Type),
 		code_info__get_module_info(ModuleInfo),
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
@@ -130,15 +131,18 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 			{ DetDensity > ReqDensity }
 		->
 			{ NeedRangeCheck = cannot_fail },
+			{ NeedBitVecTest = can_fail },
 			{ FirstVal = 0 },
 			{ LastVal is TypeRange - 1 }
 		;
 			{ NeedRangeCheck = CanFail0 },
+			{ NeedBitVecTest = NeedBitVecTest0 },
 			{ FirstVal = FirstCaseVal },
 			{ LastVal = LastCaseVal }
 		)
 	;
 		{ NeedRangeCheck = CanFail0 },
+		{ NeedBitVecTest = NeedBitVecTest0 },
 		{ FirstVal = FirstCaseVal },
 		{ LastVal = LastCaseVal }
 	),
