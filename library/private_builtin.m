@@ -1124,20 +1124,20 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, ref, 1,
 	MR_TYPECTOR_REP_REFERENCE) 
 
 static int
-__Unify__private_builtin__ref_1_0(MR_Word x, MR_Word y)
+__Unify__private_builtin__ref_1_0(MR_Word type_info, MR_Word x, MR_Word y)
 {
 	return x == y;
 }
 
 static int
-do_unify__ref_1_0(MR_Box x, MR_Box y)
+do_unify__ref_1_0(MR_Word type_info, MR_Box x, MR_Box y)
 {
 	return x == y;
 }
 
 static void
 __Compare__private_builtin__ref_1_0(
-	MR_Word_Ref result, MR_Word x, MR_Word y)
+	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
 		""called compare/3 for type `private_builtin.ref'"");
@@ -1145,7 +1145,7 @@ __Compare__private_builtin__ref_1_0(
 
 static void
 do_compare__ref_1_0(
-	MR_Word_Ref result, MR_Box x, MR_Box y)
+	MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
 		""called compare/3 for type `private_builtin.ref'"");
