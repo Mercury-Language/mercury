@@ -402,7 +402,16 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_get_marker_list(PredInfo, Markers),
-		list__member(request(obsolete), Markers)
+		list__member(request(obsolete), Markers),
+		%
+		% Don't warn about directly recursive calls.
+		% (That would cause spurious warnings, particularly
+		% with builtin predicates, or preds defined using
+		% pragma c_code.)
+		%
+		simplify_info_get_det_info(Info0, DetInfo0),
+		det_info_get_pred_id(DetInfo0, ThisPredId),
+		PredId \= ThisPredId
 	->
 
 		goal_info_get_context(GoalInfo, Context1),
