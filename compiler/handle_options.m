@@ -268,6 +268,9 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
+	% currently --call-trace-struct does not work with --split-c-files
+	option_implies(split_c_files, call_trace_struct, bool(no)),
+
 	% Minimal model tabling is not compatible with trailing;
 	% see the comment in runtime/mercury_tabling.c.
 
