@@ -1,5 +1,12 @@
 % A very basic check of integer arithmetic.
 
+% Note: this test makes use of Mercury-specific features (specifically
+% the use of "`xor`" rather than "^" for the exclusive or operator,
+% and the use of the reverse modes of xor) so it really belongs in
+% the `tests/hard_coded' directory, rather than the `tests/general'
+% directory... but that distinction is pretty much obsolete now that we
+% don't support compiling things with Prolog.
+
 :- module arithmetic.
 :- interface.
 :- import_module io.
@@ -28,6 +35,8 @@ test(X, Y) -->
 		BitAnd is X /\ Y,
 		BitOr is X \/ Y,
 		BitXor is X `xor` Y,
+		X is BitXor2 `xor` Y,
+		Y is X `xor` BitXor3,
 		BitNeg is \ X
 	},
 	write_message("X: ", X),
@@ -42,6 +51,8 @@ test(X, Y) -->
 	write_message("X /\\ Y: ", BitAnd),
 	write_message("X \\/ Y: ", BitOr),
 	write_message("X `xor` Y: ", BitXor),
+	write_message("Z such that X = Z `xor` Y: ", BitXor2),
+	write_message("Z such that Y = X `xor` Z: ", BitXor3),
 	write_message("\\ X: ", BitNeg).
 
 :- pred write_message(string, int, io__state, io__state).

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1999 The University of Melbourne.
+# Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -13,6 +13,14 @@ include $(MERCURY_DIR)/Mmake.common
 MAIN_TARGET=mercury
 
 VPATH=.
+
+#-----------------------------------------------------------------------------#
+#
+# XXX The following is needed only for bootstrapping
+# the new modes of int__xor.
+#
+
+MCFLAGS-int = --no-halt-at-warn
 
 #-----------------------------------------------------------------------------#
 

@@ -485,6 +485,10 @@ code_util__translate_builtin_2("int", "builtin_bit_xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), var(X), var(Y)))).
+code_util__translate_builtin_2("int", "xor", 1, [X, Y, Z],
+	no, yes(Y - binop((^), var(X), var(Z)))).
+code_util__translate_builtin_2("int", "xor", 2, [X, Y, Z],
+	no, yes(X - binop((^), var(Y), var(Z)))).
 code_util__translate_builtin_2("int", "builtin_unary_plus", 0, [X, Y],
 	no, yes(Y - var(X))).
 code_util__translate_builtin_2("int", "+", 0, [X, Y],

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -722,6 +722,10 @@ ml_translate_builtin_2("int", "^", 0, [X, Y, Z],
 	no, yes(Z - binop((^), lval(X), lval(Y)))).
 ml_translate_builtin_2("int", "xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "xor", 1, [X, Y, Z],
+	no, yes(Y - binop((^), lval(X), lval(Z)))).
+ml_translate_builtin_2("int", "xor", 2, [X, Y, Z],
+	no, yes(X - binop((^), lval(Y), lval(Z)))).
 ml_translate_builtin_2("int", "builtin_unary_plus", 0, [X, Y],
 	no, yes(Y - lval(X))).
 ml_translate_builtin_2("int", "+", 0, [X, Y],

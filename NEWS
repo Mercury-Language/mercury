@@ -31,6 +31,8 @@ Changes to the standard library:
   Use `int__xor/2' and `integer__xor/2' instead.
   The operator `^' is now used for record syntax.
 
+* We've added reverse modes for `int__xor'.
+
 * There is a new predicate `random__permutation', for
   computing a random permutation of a list.
 

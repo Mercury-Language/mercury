@@ -151,6 +151,8 @@
 	% bitwise exclusive or (xor)
 :- func int__xor(int, int) = int.
 :- mode int__xor(in, in) = uo is det.
+:- mode int__xor(in, uo) = in is det.
+:- mode int__xor(uo, in) = in is det.
 
 	% bitwise complement
 :- func \ int = int.
