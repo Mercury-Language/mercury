@@ -81,6 +81,12 @@ static	int			MR_scroll_next = 0;
 
 static	bool			MR_echo_commands = FALSE;
 
+/*
+** We print confirmation of commands (e.g. new aliases) if this is TRUE.
+*/
+
+static	bool			MR_trace_internal_interacting = FALSE;
+
 typedef struct MR_Line_Struct {
 	char			*MR_line_contents;
 	struct MR_Line_Struct	*MR_line_next;
@@ -850,13 +856,22 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		if (word_count == 2) {
 			if (streq(words[1], "none")) {
 				MR_default_print_level = MR_PRINT_LEVEL_NONE;
-				printf("Default print level set to `none'.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Default print level set to "
+						"`none'.\n");
+				}
 			} else if (streq(words[1], "some")) {
 				MR_default_print_level = MR_PRINT_LEVEL_SOME;
-				printf("Default print level set to `some'.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Default print level set to "
+						"`some'.\n");
+				}
 			} else if (streq(words[1], "all")) {
 				MR_default_print_level = MR_PRINT_LEVEL_ALL;
-				printf("Default print level set to `all'.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Default print level set to "
+						"`all'.\n");
+				}
 			} else {
 				MR_trace_help_cat_item("parameter",
 					"printlevel");
@@ -887,14 +902,20 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		if (word_count == 2) {
 			if (streq(words[1], "off")) {
 				MR_scroll_control = FALSE;
-				printf("Scroll control disabled.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Scroll control disabled.\n");
+				}
 			} else if (streq(words[1], "on")) {
 				MR_scroll_control = TRUE;
-				printf("Scroll control enabled.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Scroll control enabled.\n");
+				}
 			} else if (MR_trace_is_number(words[1], &n)) {
 				MR_scroll_limit = n;
-				printf("Scroll window size set to %d.\n",
-					MR_scroll_limit);
+				if (MR_trace_internal_interacting) {
+					printf("Scroll window size set to "
+						"%d.\n", MR_scroll_limit);
+				}
 			} else {
 				MR_trace_help_cat_item("parameter", "scroll");
 			}
@@ -914,10 +935,14 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		if (word_count == 2) {
 			if (streq(words[1], "off")) {
 				MR_echo_commands = FALSE;
-				printf("Command echo disabled.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Command echo disabled.\n");
+				}
 			} else if (streq(words[1], "on")) {
 				MR_echo_commands = TRUE;
-				printf("Command echo enabled.\n");
+				if (MR_trace_internal_interacting) {
+					printf("Command echo enabled.\n");
+				}
 			} else {
 				MR_trace_help_cat_item("parameter", "echo");
 			}
@@ -940,7 +965,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			if (MR_trace_valid_command(words[2])) {
 				MR_trace_add_alias(words[1],
 					words+2, word_count-2);
-				MR_trace_print_alias(stdout, words[1]);
+				if (MR_trace_internal_interacting) {
+					MR_trace_print_alias(stdout, words[1]);
+				}
 			} else {
 				printf("%s is not a valid command.\n",
 					words[2]);
@@ -949,7 +976,10 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "unalias")) {
 		if (word_count == 2) {
 			if (MR_trace_remove_alias(words[1])) {
-				printf("Alias `%s' removed.\n", words[1]);
+				if (MR_trace_internal_interacting) {
+					printf("Alias `%s' removed.\n",
+						words[1]);
+				}
 			} else {
 				printf("Alias `%s' cannot be removed, "
 					"since it does not exist.\n",
@@ -1963,6 +1993,8 @@ MR_trace_source_from_open_file(FILE *fp)
 	while ((line = MR_trace_getline_raw(fp)) != NULL) {
 		MR_insert_line_at_tail(line);
 	}
+
+	MR_trace_internal_interacting = FALSE;
 }
 
 /*
@@ -1983,6 +2015,7 @@ MR_trace_getline(const char *prompt, FILE *fp)
 		return line;
 	}
 
+	MR_trace_internal_interacting = TRUE;
 	printf("%s", prompt);
 	fflush(stdout);
 
