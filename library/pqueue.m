@@ -7,7 +7,7 @@
 % file pqueue.m - implements a priority queue.
 % main author: conway.
 %
-% A qpueue is a priority queue DDT with the smallest element at the root.
+% A pqueue is a priority queue ADT with the smallest element at the root.
 % It takes keys and values to provide a dictionary type function, and
 % is not guarenteed to be stable. (XXX stability should be fixed.)
 %
@@ -36,7 +36,7 @@
 :- mode pqueue__remove(in, out, out, out) is semidet.
 
 	% Extract all the items from a priority queue by
-	% repeated removal, and place them in an associative
+	% repeated removal, and place them in an association
 	% list.
 :- pred pqueue__to_assoc_list(pqueue(K, V), assoc_list(K, V)).
 :- mode pqueue__to_assoc_list(in, out) is det.
