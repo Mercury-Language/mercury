@@ -38,6 +38,10 @@
 :- implementation.
 
 :- pragma c_header_code("
+#if defined(MR_HIGHLEVEL_CODE) && !defined(MR_THREAD_SAFE)
+  #error The spawn module requires either hlc.par.gc grade or a non-hlc grade.
+#endif
+
 	#include <stdio.h>
 ").
 

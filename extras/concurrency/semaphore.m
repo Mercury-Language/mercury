@@ -10,8 +10,8 @@
 % This module implements a simple semaphore data type for allowing
 % coroutines to synchronise with one another.
 %
-% Note if you are compiling in a hlc grade, the grade component must
-% contain a `.par'.
+% The operations in this module are no-ops in the hlc grades which don't
+% contain a .par component.
 %
 %---------------------------------------------------------------------------%
 :- module semaphore.
@@ -54,10 +54,6 @@
 :- type semaphore	== c_pointer.
 
 :- pragma c_header_code("
-#if defined(MR_HIGHLEVEL_CODE) && !defined(MR_THREAD_SAFE)
-  #error Semaphores only work in the hlc.par.* or non-hlc grades.
-#endif
-
 	#include <stdio.h>
 	#include ""mercury_context.h""
 	#include ""mercury_thread.h""
@@ -67,7 +63,9 @@
 #ifndef MR_HIGHLEVEL_CODE
 		MR_Context	*suspended;
 #else
+  #ifdef MR_THREAD_SAFE
 		MercuryCond	cond;
+  #endif 
 #endif
 #ifdef MR_THREAD_SAFE
 		MercuryLock	lock;
@@ -92,7 +90,9 @@
 #ifndef MR_HIGHLEVEL_CODE
 	sem->suspended = NULL;
 #else
+  #ifdef MR_THREAD_SAFE
 	pthread_cond_init(&(sem->cond), MR_COND_ATTR);
+  #endif
 #endif
 #ifdef MR_THREAD_SAFE
 	pthread_mutex_init(&(sem->lock), MR_MUTEX_ATTR);
@@ -119,10 +119,10 @@
 
 	sem = (ME_Semaphore *) obj;
 
-  #ifdef MR_HIGHLEVEL_CODE
-	pthread_cond_destroy(&(sem->cond));
-  #endif
   #ifdef MR_THREAD_SAFE
+    #ifdef MR_HIGHLEVEL_CODE
+	pthread_cond_destroy(&(sem->cond));
+    #endif
 	pthread_mutex_destroy(&(sem->lock));
   #endif
 
