@@ -480,7 +480,7 @@ install_split_library: scripts dep_library
 		mv -f *.$$ext Mercury/$${ext}s/*.$$ext $tmp_dir; \
 	done || true && \
 	{ mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O Mercury/os/*.$O \
-		*.$A *.so tmp_dir || true; }) && \
+		*.$A *.so tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
