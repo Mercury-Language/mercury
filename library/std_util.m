@@ -2105,6 +2105,10 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = (S == NULL);
 ").
 
+:- pragma foreign_proc("MC++", null(S::in), will_not_call_mercury, "
+    SUCCESS_INDICATOR = (S == NULL);
+").
+
 :- pred get_functor_2(type_desc::in, int::in, string::out, int::out,
 		list(type_desc)::out, list(string)::out) is semidet.
 
@@ -2163,6 +2167,13 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     }
     SUCCESS_INDICATOR = success;
 }
+").
+
+:- pragma foreign_proc("MC++", get_functor_2(_TypeDesc::in, _FunctorNumber::in,
+        _FunctorName::out, _Arity::out, _TypeInfoList::out, _ArgNameList::out),
+    will_not_call_mercury, "
+	mercury::runtime::Errors::SORRY(""foreign code for get_functor_2"");
+	SUCCESS_INDICATOR = FALSE;
 ").
 
 :- pragma foreign_proc("C", 
