@@ -80,6 +80,7 @@
 		;	line_numbers
 		;	mod_comments
 	% Code generation options
+		;	trad_passes
 		;	lazy_code
 		;	polymorphism
 		;	reclaim_heap_on_semidet_failure
@@ -121,7 +122,6 @@
 		;	grade
 		;	procs_per_c_function
 	% Miscellaneous Options
-		;	trad_passes
 		;	builtin_module
 		;	heap_space
 		;	search_directories
@@ -311,7 +311,7 @@ long_option("reclaim-heap-on-nondet-failure",
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
-long_option("compile-to-c",		compile_to_c).
+long_option("compile-to-c",		compile_to_c).	% obsolete, ignored
 long_option("compile",			compile).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
@@ -404,6 +404,7 @@ options_help -->
 	io__write_string("\t\tAs with -M, it disables type-checking, etc.\n"),
 	io__write_string("\t-m-, --no-modecheck\n"),
 	io__write_string("\t\tDon't invoke the mode analysis pass of the compiler.\n"),
+	io__write_string("\t\tJust check that the code is syntactically correct and type-correct.\n"),
 	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
 	io__write_string("\t\tDump the HLDS (intermediate representation) after\n"),
 	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
@@ -411,16 +412,14 @@ options_help -->
 	io__write_string("\t\tMultiple dump options accumulate.)\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
-	io__write_string("\t--no-trad-passes\n"),
-	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
 	io__write_string("\t-g, --generate-code\n"),
 	io__write_string("\t\tGenerate code in `<module>.c'.\n"),
 	io__write_string("\t-c, --compile\n"),
 	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
-	io__write_string("\t\tThis implies --generate-code.\n"),
+	io__write_string("\t\tThis option implies --generate-code.\n"),
 	io__write_string("\t--link\n"),
 	io__write_string("\t\tLink the named modules to produce an executable.\n"),
-	io__write_string("\t\tThis implies --compile.\n"),
+	io__write_string("\t\tThis option implies --compile.\n"),
 	io__write_string("\t--mod-comments\n"),
 	io__write_string("\t\tOutput comments in the .mod file\n"),
 	io__write_string("\t-l, --line-numbers\n"),
@@ -428,6 +427,8 @@ options_help -->
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 
 	io__write_string("\nCode generation options\n"),
+	io__write_string("\t--no-trad-passes\n"),
+	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
 	io__write_string("\t-p-, --no-polymorphism\n"),
 	io__write_string("\t\tDon't handle polymorphic types.\n"),
 	io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
@@ -534,11 +535,10 @@ options_help -->
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
-	io__write_string("\t--trad_passes\n"),
-	io__write_string("\t\tUse a traditional two-pass compilation scheme.\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),
 	io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),
-	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
+	io__write_string("\t\tThis option is now obsolete.  In the past it\n"),
+	io__write_string("\t\twas used to avoid NU-Prolog's\n"),
 	io__write_string("\t\t\t""Panic: growing stacks has required shifting the heap""\n"),
 	io__write_string("\t\tmessage.\n"),
 
