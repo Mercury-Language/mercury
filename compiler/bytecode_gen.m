@@ -161,6 +161,10 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			ArgTypes, ArgModes, Detism, ByteInfo0, Code),
 		ByteInfo = ByteInfo0
 	;
+			% XXX
+		GoalExpr = class_method_call(_, _, _, _, _, _),
+		error("sorry: bytecode not implemented yet for typeclasses")
+	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		( BuiltinState = not_builtin ->
 			goal_info_get_determinism(GoalInfo, Detism),
@@ -618,6 +622,11 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
 		ByteConsId = base_type_info_const(ModuleName, TypeName,
 			TypeArity)
+	;
+		ConsId = base_typeclass_info_const(ModuleName, ClassId,
+			Instance),
+		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
+			Instance)
 	).
 
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -639,6 +648,8 @@ bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
 	error("code_addr_constant cons tag for non-address_const cons id").
 bytecode_gen__map_cons_tag(base_type_info_constant(_, _, _), _) :-
 	error("base_type_info_constant cons tag for non-base_type_info_constant cons id").
+bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
+	error("base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
 
 %---------------------------------------------------------------------------%
 

@@ -165,6 +165,7 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	( { ProcIds = [] } ->
 		[]
 	;
@@ -172,7 +173,7 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		io__write_string("/****\n"),
 		{ pred_info_get_purity(PredInfo, Purity) },
 		mercury_output_pred_type(TVarSet, unqualified(PredName),
-			ArgTypes, no, Purity, Context),
+			ArgTypes, no, Purity, ClassContext, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,
@@ -628,6 +629,8 @@ c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 
 c_gen_goal_2(higher_order_call(_, _, _, _, _, _), _, _, _) -->
 	{ error("mercury_to_c: higher_order_call not implemented") }.
+c_gen_goal_2(class_method_call(_, _, _, _, _, _), _, _, _) -->
+	{ error("mercury_to_c: class_method_call not implemented") }.
 c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 					Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_module_info(CGenInfo0, ModuleInfo) },

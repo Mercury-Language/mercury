@@ -289,6 +289,9 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, _, LiveInfo,
 detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_liveness_in_goal_2").
 
+detect_liveness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("class method call in detect_liveness_in_goal_2").
+
 detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("call in detect_liveness_in_goal_2").
 
@@ -464,6 +467,9 @@ detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, LiveInfo,
 
 detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_deadness_in_goal_2").
+
+detect_deadness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _) :-
+	error("class-method-call in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("call in detect_deadness_in_goal_2").
@@ -659,6 +665,9 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 
 detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E,F), _, Liveness,
 		_, _, higher_order_call(A,B,C,D,E,F), Liveness).
+
+detect_resume_points_in_goal_2(class_method_call(A,B,C,D,E,F), _, Liveness, _,
+		_, class_method_call(A,B,C,D,E,F), Liveness).
 
 detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 		call(A,B,C,D,E,F), Liveness).

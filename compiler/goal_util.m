@@ -226,6 +226,15 @@ goal_util__name_apart_2(
 	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
 goal_util__name_apart_2(
+		class_method_call(TypeClassInfoVar0, Num, Args0, Types, Modes,
+			Det),
+		Must, Subn,
+		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
+			Det)) :-
+	goal_util__rename_var(TypeClassInfoVar0, Must, Subn, TypeClassInfoVar),
+	goal_util__rename_var_list(Args0, Must, Subn, Args).
+
+goal_util__name_apart_2(
 		call(PredId, ProcId, Args0, Builtin, Context, Sym),
 		Must, Subn,
 		call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
@@ -418,6 +427,10 @@ goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
+goal_util__goal_vars_2(class_method_call(PredVar, _, ArgVars, _, _, _),
+		Set0, Set) :-
+	set__insert_list(Set0, [PredVar | ArgVars], Set).
+
 goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
@@ -537,6 +550,7 @@ goal_expr_size(some(_, Goal), Size) :-
 	Size is Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
+goal_expr_size(class_method_call(_, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _, _, _, _), 1).
 

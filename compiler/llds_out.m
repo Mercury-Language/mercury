@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module llds.
+:- import_module llds, hlds_data.
 :- import_module io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
@@ -91,6 +91,11 @@
 
 :- pred llds_out__make_base_type_name(base_data, string, arity, string).
 :- mode llds_out__make_base_type_name(in, in, in, out) is det.
+
+	% Create a name for base_typeclass_info
+
+:- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
+:- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1826,6 +1831,9 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 need_code_addr_decls(do_det_closure, yes) --> [].
 need_code_addr_decls(do_semidet_closure, yes) --> [].
 need_code_addr_decls(do_nondet_closure, yes) --> [].
+need_code_addr_decls(do_det_class_method, yes) --> [].
+need_code_addr_decls(do_semidet_class_method, yes) --> [].
+need_code_addr_decls(do_nondet_class_method, yes) --> [].
 need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
@@ -1865,6 +1873,12 @@ output_code_addr_decls(do_semidet_closure) -->
 	io__write_string("Declare_entry(do_call_semidet_closure);\n").
 output_code_addr_decls(do_nondet_closure) -->
 	io__write_string("Declare_entry(do_call_nondet_closure);\n").
+output_code_addr_decls(do_det_class_method) -->
+	io__write_string("Declare_entry(do_call_det_class_method);\n").
+output_code_addr_decls(do_semidet_class_method) -->
+	io__write_string("Declare_entry(do_call_semidet_class_method);\n").
+output_code_addr_decls(do_nondet_class_method) -->
+	io__write_string("Declare_entry(do_call_nondet_class_method);\n").
 output_code_addr_decls(do_not_reached) -->
 	io__write_string("Declare_entry(do_not_reached);\n").
 
@@ -2028,6 +2042,18 @@ output_goto(do_nondet_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_nondet_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
+output_goto(do_det_class_method, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_call_det_class_method),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_semidet_class_method, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_call_semidet_class_method),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_nondet_class_method, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_call_nondet_class_method),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2099,6 +2125,12 @@ output_code_addr(do_semidet_closure) -->
 	io__write_string("ENTRY(do_call_semidet_closure)").
 output_code_addr(do_nondet_closure) -->
 	io__write_string("ENTRY(do_call_nondet_closure)").
+output_code_addr(do_det_class_method) -->
+	io__write_string("ENTRY(do_call_det_class_method)").
+output_code_addr(do_semidet_class_method) -->
+	io__write_string("ENTRY(do_call_semidet_class_method)").
+output_code_addr(do_nondet_class_method) -->
+	io__write_string("ENTRY(do_call_nondet_class_method)").
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 
@@ -2121,6 +2153,17 @@ output_data_addr(BaseName0, VarName) -->
 		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
 		io__write_string(BaseName),
 		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
+			Str) },
+		io__write_string("__"),
+		io__write_string(Str)
+	;
+			% We don't want to include the module name as part
+			% of the name if it is a base_typeclass_info, since
+			% we _want_ to cause a link error for overlapping
+			% instance decls, even if they are in a different 
+			% module
+		{ VarName = base_typeclass_info(ClassId, TypeNames) },
+		{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames, 
 			Str) },
 		io__write_string("__"),
 		io__write_string(Str)
@@ -3038,6 +3081,24 @@ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
         string__append_list(["base_type_", BaseString, "_", TypeName, "_", 
 		A_str], Str).
 
+
+%-----------------------------------------------------------------------------%
+
+llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
+		TypeNames0, Str) :-
+	(
+		ClassSym = unqualified(_),
+		error("llds_out__make_base_typeclass_info_name: unqualified name")
+	;
+		ClassSym = qualified(ModuleName, ClassName0),
+			% Mangle the class name in case it is an operator
+		llds_out__name_mangle(ClassName0, ClassName),
+		string__append_list([ModuleName, "__", ClassName], ClassString)
+	),
+	string__int_to_string(ClassArity, A_str),
+	llds_out__name_mangle(TypeNames0, TypeNames),
+	string__append_list(["base_typeclass_info_", ClassString, "_", A_str,
+		"__", TypeNames], Str).
 
 %-----------------------------------------------------------------------------%
 

@@ -116,6 +116,10 @@ Define_entry(do_call_det_closure);
 	call((Code *) field(0, closure, 1), LABEL(det_closure_return),
 		LABEL(do_call_det_closure));
 }
+	/* 
+	** This is used as a return label both by do_call_det_closure and
+	** do_call_det_class_method 
+	*/
 Define_label(det_closure_return);
 {
 	int	i, num_in_args, num_out_args;
@@ -188,6 +192,10 @@ Define_entry(do_call_semidet_closure);
 	call((Code *) field(0, closure, 1), LABEL(semidet_closure_return),
 		LABEL(do_call_semidet_closure));
 }
+	/* 
+	** This is used as a return label both by do_call_semidet_closure and
+	** do_call_semidet_class_method 
+	*/
 Define_label(semidet_closure_return);
 {
 	int	i, num_in_args, num_out_args;
@@ -245,6 +253,10 @@ Define_entry(do_call_nondet_closure);
 	call((Code *) field(0, closure, 1), LABEL(nondet_closure_return),
 		LABEL(do_call_nondet_closure));
 }
+	/* 
+	** This is used as a return label both by do_call_nondet_closure and
+	** do_call_nondet_class_method 
+	*/
 Define_label(nondet_closure_return);
 {
 	int	i, num_in_args, num_out_args;
@@ -264,6 +276,138 @@ Define_label(nondet_closure_return);
 #endif
 
 	succeed();
+}
+
+
+
+
+
+	/*
+	** r1: the typeclass_info
+	** r2: index of class method
+	** r3: number of immediate input arguments
+	** r4: number of output arguments
+	** r5+:input args
+	*/
+Define_entry(do_call_det_class_method);
+{
+	Code 	*destination;
+	int	i, num_in_args, num_arg_typeclass_infos;
+
+	destination = MR_typeclass_info_class_method(r1, r2);
+	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
+
+	num_in_args = r3; /* number of input args */
+
+	push(r4); /* The number of output args to unpack */
+	push(num_in_args); /* The number of input args */
+	push(succip);
+
+	save_registers();
+
+	if (num_arg_typeclass_infos < 4) {
+			/* copy to the left, from the left */
+		for (i = 1; i <= num_in_args; i++) {
+			virtual_reg(i+num_arg_typeclass_infos) =
+				virtual_reg(i+4);
+		}
+	} else if (num_arg_typeclass_infos > 4) {
+			/* copy to the right, from the right */
+		for (i = num_in_args; i > 0; i--) {
+			virtual_reg(i+num_arg_typeclass_infos) =
+				virtual_reg(i+4);
+		}
+	} /* else do nothing because num_arg_typeclass_infos == 4 */
+
+	for (i = num_arg_typeclass_infos; i > 0; i--) {
+		virtual_reg(i) = 
+			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
+	}
+
+	restore_registers();
+
+	call(destination, LABEL(det_closure_return),
+		LABEL(do_call_det_class_method));
+}
+
+Define_entry(do_call_semidet_class_method);
+{
+	Code 	*destination;
+	int	i, num_in_args, num_arg_typeclass_infos;
+
+	destination = MR_typeclass_info_class_method(r1, r2);
+	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
+
+	num_in_args = r3; /* number of input args */
+
+	push(r4); /* The number of output args to unpack */
+	push(num_in_args); /* The number of input args */
+	push(succip);
+
+	save_registers();
+
+	if (num_arg_typeclass_infos < 4) {
+			/* copy to the left, from the left */
+		for (i = 1; i <= num_in_args; i++) {
+			virtual_reg(i) = virtual_reg(i+4);
+		}
+	} else if (num_arg_typeclass_infos > 4) {
+			/* copy to the right, from the right */
+		for (i = num_in_args; i > 0; i--) {
+			virtual_reg(i+num_arg_typeclass_infos) =
+				virtual_reg(i+4);
+		}
+	} /* else do nothing because num_arg_typeclass_infos == 4 */
+
+	for (i = num_arg_typeclass_infos; i > 0; i--) {
+		virtual_reg(i) = 
+			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
+	}
+
+	restore_registers();
+
+	call(destination, LABEL(semidet_closure_return),
+		LABEL(do_call_semidet_class_method));
+}
+
+Define_entry(do_call_nondet_class_method);
+{
+	Code 	*destination;
+	int	i, num_in_args, num_arg_typeclass_infos;
+
+	destination = MR_typeclass_info_class_method(r1, r2);
+	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
+
+	num_in_args = r3; /* number of input args */
+
+	mkframe("do_call_nondet_class_method", 2, ENTRY(do_fail));
+	framevar(0) = r4;	   /* The number of output args to unpack */
+	framevar(1) = num_in_args; /* The number of input args */
+
+	save_registers();
+
+	if (num_arg_typeclass_infos < 4) {
+			/* copy to the left, from the left */
+		for (i = 1; i <= num_in_args; i++) {
+			virtual_reg(i) = virtual_reg(i+4);
+		}
+	} else if (num_arg_typeclass_infos > 4) {
+			/* copy to the right, from the right */
+		for (i = num_in_args; i > 0; i--) {
+			virtual_reg(i+num_arg_typeclass_infos) =
+				virtual_reg(i+4);
+		}
+	} /* else do nothing because num_arg_typeclass_infos == 4 */
+
+	for (i = num_arg_typeclass_infos; i > 0; i--) {
+		virtual_reg(i) = 
+			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
+	}
+
+	restore_registers();
+
+	call(destination, LABEL(nondet_closure_return),
+		LABEL(do_call_nondet_class_method));
 }
 
 /*

@@ -462,6 +462,16 @@ det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
 	det_diagnose_atomic_goal(Desired, Actual,
 		report_higher_order_call_context(Context), Context).
 
+	% There's probably no point in this code being here: we only
+	% insert class_method_calls by hand, so they're gauranteed to be right,
+	% and in any case, we insert them after determinism analysis.
+	% Nonetheless, it's probably safer to include the code.
+det_diagnose_goal_2(class_method_call(_, _, _, _, _, _), GoalInfo,
+		Desired, Actual, _, _MiscInfo, yes) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+	det_diagnose_atomic_goal(Desired, Actual,
+		report_higher_order_call_context(Context), Context).
+
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },

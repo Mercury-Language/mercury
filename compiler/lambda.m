@@ -28,6 +28,11 @@
 %
 %	:- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
 %	'__LambdaGoal__1'(X, Y) :- q(Y, X).
+%
+%
+%
+%	Note: Support for lambda expressions which involve class constraints
+%	      is not yet complete.
 
 %-----------------------------------------------------------------------------%
 
@@ -43,10 +48,11 @@
 
 :- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
 		determinism, set(var), hlds_goal, unification,
-		varset, map(var, type), tvarset, map(tvar, var), module_info,
-		unify_rhs, unification, module_info).
+		varset, map(var, type), list(class_constraint), tvarset,
+		map(tvar, type_info_locn), map(class_constraint, var),
+		module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in, in,
-		in, out, out, out) is det.
+		in, in, in, out, out, out) is det.
 
 	% Permute the list of variables so that inputs come before outputs.
 :- pred lambda__permute_argvars(list(var), list(mode), module_info,
@@ -67,8 +73,14 @@
 		lambda_info(
 			varset,			% from the proc_info
 			map(var, type),		% from the proc_info
+			list(class_constraint),	% from the pred_info
 			tvarset,		% from the proc_info
-			map(tvar, var),		% from the proc_info (typeinfos)
+			map(tvar, type_info_locn),	
+						% from the proc_info 
+						% (typeinfos)
+			map(class_constraint, var),
+						% from the proc_info
+						% (typeclass_infos)
 			pred_or_func,
 			string,			% pred/func name
 			module_info
@@ -120,26 +132,28 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	pred_info_name(PredInfo0, PredName),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
+	pred_info_get_class_context(PredInfo0, Constraints0),
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
+	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
 
 	% process the goal
-	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, TVarMap0, 
-		PredOrFunc, PredName,
-		ModuleInfo0),
+	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
+		TVarMap0, TCVarMap0, PredOrFunc, PredName, ModuleInfo0),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
-	Info = lambda_info(VarSet, VarTypes, TypeVarSet, TVarMap, 
-		_, _,
-		ModuleInfo),
+	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
+		TVarMap, TCVarMap, _, _, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo),
-	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
+	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4),
+	proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo),
+	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
+	pred_info_set_class_context(PredInfo1, Constraints, PredInfo).
 
 :- pred lambda__process_goal(hlds_goal, hlds_goal,
 					lambda_info, lambda_info).
@@ -190,6 +204,9 @@ lambda__process_goal_2(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 lambda__process_goal_2(higher_order_call(A,B,C,D,E,F), GoalInfo,
 			higher_order_call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
+lambda__process_goal_2(class_method_call(A,B,C,D,E,F), GoalInfo,
+			class_method_call(A,B,C,D,E,F) - GoalInfo) -->
+	[].
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
@@ -224,18 +241,18 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
-	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			POF, PredName, ModuleInfo0),
+	LambdaInfo0 = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
+			TVarMap, TCVarMap, POF, PredName, ModuleInfo0),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, ModuleInfo0, Functor,
+		Constraints, TVarSet, TVarMap, TCVarMap, ModuleInfo0, Functor,
 		Unification, ModuleInfo),
-	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			POF, PredName, ModuleInfo).
+	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
+			TVarMap, TCVarMap, POF, PredName, ModuleInfo).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, ModuleInfo0, Functor,
+		Constraints, TVarSet, TVarMap, TCVarMap, ModuleInfo0, Functor,
 		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
@@ -360,12 +377,12 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 
 		proc_info_create(VarSet, VarTypes, PermutedArgVars,
 			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, ProcInfo),
+			TVarMap, TCVarMap, ProcInfo),
 
 		init_markers(Markers),
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
 			true, LambdaContext, local, Markers, PredOrFunc,
-			ProcInfo, ProcId, PredInfo),
+			Constraints, ProcInfo, ProcId, PredInfo),
 
 		% save the new predicate in the predicate table
 

@@ -168,6 +168,9 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, ResumeVars0, ModuleInfo,
 store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _, _,
 		higher_order_call(A, B, C, D, E, F), Liveness).
 
+store_alloc_in_goal_2(class_method_call(A, B, C, D, E, F), Liveness, _, _,
+		class_method_call(A, B, C, D, E, F), Liveness).
+
 store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
 		call(A, B, C, D, E, F), Liveness).
 

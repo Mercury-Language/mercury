@@ -56,6 +56,16 @@
 			pred_or_func	% call/N (pred) or apply/N (func)
 		)
 
+	;	class_method_call(
+			var,		% the typeclass_info for the instance
+			int,		% the number of the method to call
+			list(var),	% the list of argument variables (other
+					% than this instance's typeclass_info)
+			list(type),	% the types of the argument variables
+			list(mode),	% the modes of the argument variables
+			determinism	% the determinism of the called pred
+		)
+
 		% Deterministic disjunctions are converted
 		% into switches by the switch detection pass.
 
@@ -907,6 +917,7 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 goal_is_atomic(conj([])).
 goal_is_atomic(disj([], _)).
 goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
+goal_is_atomic(class_method_call(_,_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_,_)).

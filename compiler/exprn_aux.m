@@ -150,6 +150,9 @@ exprn_aux__addr_is_constant(do_fail, _, no).
 exprn_aux__addr_is_constant(do_det_closure, _, no).
 exprn_aux__addr_is_constant(do_semidet_closure, _, no).
 exprn_aux__addr_is_constant(do_nondet_closure, _, no).
+exprn_aux__addr_is_constant(do_det_class_method, _, no).
+exprn_aux__addr_is_constant(do_semidet_class_method, _, no).
+exprn_aux__addr_is_constant(do_nondet_class_method, _, no).
 exprn_aux__addr_is_constant(do_not_reached, _, no).
 
 :- pred exprn_aux__label_is_constant(label, bool, bool, bool).

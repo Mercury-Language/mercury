@@ -774,6 +774,30 @@ typedef MR_TypeLayout_part1 MR_TypeLayout;
 
 /*
 ** definitions for accessing the representation of the
+** Mercury typeclass_info
+*/
+
+#define	MR_typeclass_info_instance_arity(tci) \
+	((Integer)(*(Word **)(tci))[0])
+#define	MR_typeclass_info_class_method(tci, n) \
+	((Code *)(*(Word **)tci)[(n)])
+#define	MR_typeclass_info_arg_typeclass_info(tci, n) \
+	(((Word *)(tci))[(n)])
+
+	/*
+	** The following have the same definitions. This is because 
+	** the call to MR_typeclass_info_type_info must already have the
+	** number of superclass_infos for the class added to it
+	*/
+#define	MR_typeclass_info_superclass_info(tci, n) \
+	(((Word *)(tci))[MR_typeclass_info_instance_arity(tci) + (n)])
+#define	MR_typeclass_info_type_info(tci, n) \
+	(((Word *)(tci))[MR_typeclass_info_instance_arity(tci) + (n)])
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** definitions for accessing the representation of the
 ** Mercury `array' type
 */
 

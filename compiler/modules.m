@@ -8,13 +8,13 @@
 % main author: fjh
 
 % This module contains all the code for handling module imports and exports,
-% for computing module dependencies, and for generate makefile fragments to
+% for computing module dependencies, and for generating makefile fragments to
 % record those dependencies.
 %
 %
 % The interface system works as follows:
 %
-% 1. a .int3 file is written, which contains all the types, insts
+% 1. a .int3 file is written, which contains all the types, typeclasses, insts
 % and modes defined in the interface. Equivalence types, insts and
 % modes are written in full, others are written in abstract form.
 % These are module qualified as far as possible given the information
@@ -1562,7 +1562,7 @@ get_interface_2([Item - Context | Rest], InInterface0,
 
 	% Given a module interface (well, a list of items), extract the
 	% short interface part of that module, i.e. the exported
-	% type/inst/mode declarations, but not the exported pred or
+	% type/typeclass/inst/mode declarations, but not the exported pred or
 	% constructor declarations.  If the module interface imports
 	% other modules, then the short interface only needs to include
 	% those import_module declarations only if the short interface
@@ -1626,6 +1626,7 @@ include_in_short_interface(type_defn(_, _, _)).
 include_in_short_interface(inst_defn(_, _, _)).
 include_in_short_interface(mode_defn(_, _, _)).
 include_in_short_interface(module_defn(_, _)).
+include_in_short_interface(typeclass(_, _, _, _, _)).
 
 :- pred make_abstract_type_defn(item, item).
 :- mode make_abstract_type_defn(in, out) is semidet.

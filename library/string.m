@@ -20,7 +20,7 @@
 :- import_module list, char.
 
 :- pred string__length(string, int).
-:- mode string__length(in, out) is det.
+:- mode string__length(in, uo) is det.
 	% Determine the length of a string.
 	% An empty string has length zero.
 
@@ -1647,7 +1647,7 @@ string__special_precision_and_width(-1).
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
 */
-:- pragma(c_code, string__length(Str::in, Length::out), "
+:- pragma(c_code, string__length(Str::in, Length::uo), "
 	Length = strlen(Str);
 ").
 

@@ -312,7 +312,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		varset,			% varset
 		map(var, type),		% variable types
 		tvarset,		% type variables
-		map(tvar, var),		% type_info varset, a mapping from 
+		map(tvar, type_info_locn),% type_info varset, a mapping from 
 					% type variables to variables
 					% where their type_info is
 					% stored.
@@ -520,6 +520,9 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 
 inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
 		higher_order_call(A, B, C, D, E, F) - GoalInfo) --> [].
+
+inlining__inlining_in_goal(class_method_call(A, B, C, D, E, F) - GoalInfo,
+		class_method_call(A, B, C, D, E, F) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].

@@ -295,6 +295,10 @@ traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 	{ Goal0 = higher_order_call(_,_,_,_,_,_) - _ }, 
 	maybe_specialize_higher_order_call(Goal0, Goal, PredProcId, Changed).
 
+		% XXX For now, we do not specialize class method calls
+traverse_goal(Goal, Goal, _, unchanged, 1) -->
+	{ Goal = class_method_call(_,_,_,_,_,_) - _ }.
+
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 	{ Goal0 = call(_,_,_,_,_,_) - _ }, 
@@ -841,9 +845,14 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	pred_info_context(PredInfo0, Context),
 	pred_info_get_markers(PredInfo0, MarkerList),
 	pred_info_get_goal_type(PredInfo0, GoalType),
+		% When we start specialising class method calls, this
+		% context will need to be updated. 
+		% cf.  remove_listof_higher_order_args.
+	pred_info_get_class_context(PredInfo0, ClassContext),
 	Name = qualified(PredModule, PredName),
 	varset__init(EmptyVarSet),
 	map__init(EmptyVarTypes),
+	map__init(EmptyProofs),
 	
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
@@ -851,7 +860,7 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 		EmptyVarTypes, [], []),
 	pred_info_init(PredModule, Name, Arity, Tvars,
 		Types, true, Context, ClausesInfo, local, MarkerList, GoalType,
-		PredOrFunc, PredInfo1),
+		PredOrFunc, ClassContext, EmptyProofs, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),
 	next_mode_id(Procs0, no, NewProcId),

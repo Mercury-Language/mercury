@@ -205,6 +205,8 @@ hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
 hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
+hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _), 
+	"<base_typeclass_info>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
 	(
@@ -231,6 +233,8 @@ hlds_out__write_cons_id(code_addr_const(_PredId, _ProcId)) -->
 	io__write_string("<code_addr>").
 hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
 	io__write_string("<base_type_info>").
+hlds_out__write_cons_id(base_typeclass_info_const(_, _, _)) -->
+	io__write_string("<base_typeclass_info>").
 
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
@@ -452,8 +456,9 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	mercury_output_pred_type(TVarSet, qualified(Module, PredName),
-				 ArgTypes, no, pure, Context),
+	{ pred_info_get_class_context(PredInfo, ClassContext) },
+	mercury_output_pred_type(TVarSet, qualified(Module, PredName), 
+				ArgTypes, no, pure, ClassContext, Context),
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
@@ -491,7 +496,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 
 	hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
 		ImportStatus, ProcTable),
-	io__write_string("\n").
+	io__write_string("\n"),
+	
+	io__write_string("\n% Class Table:\n"),
+	{ module_info_classes(ModuleInfo, ClassTable) },
+		% XXX fix this up.
+	io__print(ClassTable).
 
 :- pred hlds_out__write_marker_list(list(marker), io__state, io__state).
 :- mode hlds_out__write_marker_list(in, di, uo) is det.
@@ -509,6 +519,7 @@ hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(memo, "memo").
+hlds_out__marker_name(class_method, "class_method").
 hlds_out__marker_name((impure), "impure").
 hlds_out__marker_name((semipure), "semipure").
 hlds_out__marker_name(promised_pure, "promise_pure").
@@ -999,6 +1010,22 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 	io__write_string(Follow),
 	io__write_string("\n").
 
+hlds_out__write_goal_2(class_method_call(TCInfoVar, _, ArgVars, _, _, _),
+		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
+		% XXX we should print more info here too
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	hlds_out__write_indent(Indent),
+	( { string__contains_char(Verbose, 'l') } ->
+		io__write_string("% class method call"),
+		hlds_out__write_indent(Indent)
+	;
+		[]
+	),
+	hlds_out__write_functor(term__atom("class_method_call"),
+		[TCInfoVar|ArgVars], VarSet, AppendVarnums),
+	io__write_string(Follow),
+	io__write_string("\n").
+
 hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 			MaybeUnifyContext, PredName),
 		ModuleInfo, VarSet, AppendVarnums, Indent, Follow, TypeQual) -->
@@ -1370,6 +1397,19 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string(""", "),
 		io__write_int(Arity),
 		io__write_string(")")
+	;
+		{ ConsId = base_typeclass_info_const(Module,
+			class_id(Name, Arity), Instance) },
+		io__write_string("base_typeclass_info("""),
+		io__write_string(Module),
+		io__write_string(""", """),
+		io__write_string("class_id("),
+		prog_out__write_sym_name(Name),
+		io__write_string(", "),
+		io__write_int(Arity),
+		io__write_string("), "),
+		io__write_string(Instance),
+		io__write_string(")")
 	).
 
 hlds_out__write_var_modes([], [], _, _) --> [].
@@ -1583,8 +1623,8 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, AppendVarnums,
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, AppendVarnums,
 		VarTypes, TypeVarSet).
 
-:- pred hlds_out__write_typeinfo_varmap(int, bool, map(tvar, var), varset, 
-	tvarset, io__state, io__state).
+:- pred hlds_out__write_typeinfo_varmap(int, bool, map(tvar, type_info_locn),
+	varset, tvarset, io__state, io__state).
 :- mode hlds_out__write_typeinfo_varmap(in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap, VarSet,
@@ -1596,7 +1636,7 @@ hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap, VarSet,
 		TypeInfoMap, VarSet, TVarSet).
 
 :- pred hlds_out__write_typeinfo_varmap_2(list(tvar), int, bool, 
-	map(tvar, var), varset, tvarset, io__state, io__state).
+	map(tvar, type_info_locn), varset, tvarset, io__state, io__state).
 :- mode hlds_out__write_typeinfo_varmap_2(in, in, in, in, in, in, di, uo) 
 	is det.
 
@@ -1613,8 +1653,20 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarnums,
 	io__write_string(")"),
 
 	io__write_string(" -> "),
-	{ map__lookup(TypeInfoMap, TVar, Var) },
-	mercury_output_var(Var, VarSet, AppendVarnums),
+	{ map__lookup(TypeInfoMap, TVar, Locn) },
+	(
+		{ Locn = type_info(Var) },
+		io__write_string("type_info("),
+		mercury_output_var(Var, VarSet, AppendVarnums),
+		io__write_string(") ")
+	;
+		{ Locn = typeclass_info(Var, Index) },
+		io__write_string("typeclass_info("),
+		mercury_output_var(Var, VarSet, AppendVarnums),
+		io__write_string(", "),
+		io__write_int(Index),
+		io__write_string(") ")
+	),
 	io__write_string(" (number "),
 	{ term__var_to_int(Var, VarNum) },
 	io__write_int(VarNum),

@@ -607,6 +607,17 @@ termination_goal(higher_order_call(_, _, _, _, _, _),
 	Res = error(Context - horder_call),
 	Out = Out0.
 
+	% For now, we'll pretend that the class method call is a higher order
+	% call. In reality, we could probably analyse further than this, since
+	% we know that the method being called must come from one of the
+	% instance declarations, and we could potentially (globally) analyse
+	% these.
+termination_goal(class_method_call(_, _, _, _, _, _), 
+		GoalInfo, _Module, _UnifyInfo, _CallInfo, Res, Out0, Out) :-
+	goal_info_get_context(GoalInfo, Context),
+	Res = error(Context - horder_call),
+	Out = Out0.
+
 termination_goal(switch(_Var, _CanFail, Cases, _StoreMap),
 		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
 	termination_switch(Cases, Module, UnifyInfo, CallInfo, 

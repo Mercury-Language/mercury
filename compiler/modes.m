@@ -925,6 +925,12 @@ modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
 	modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0,
 		Goal).
 
+	% XXX This should be fixed one day, in case we decide to re-run
+	% modechecking or something like that.
+modecheck_goal_expr(class_method_call(_, _, _, _, _, _),
+		_GoalInfo0, _Goal) -->
+	{ error("modecheck_goal_expr: class method exists at modecheck time") }.
+
 modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "unify"),

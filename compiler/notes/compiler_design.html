@@ -97,9 +97,10 @@ stored in the io__state, using the type globals defined in globals.m.
 	definition is in prog_data.m, while the code to create it is in
 	prog_io.m and its submodules prog_io_dcg.m (which handles clauses
 	using Definite Clause Grammar notation), prog_io_goal.m (which handles
-	goals), prog_io_pragma.m (which handles pragma declarations) and
-	prog_io_util.m (which defines predicates and types needed by the other
-	prog_io*.m modules.  The data structure for insts is stored in
+	goals), prog_io_pragma.m (which handles pragma declarations),
+	prog_io_typeclass.m (which handles typeclass and instance declarations)
+	and prog_io_util.m (which defines predicates and types needed by the
+	other prog_io*.m modules.  The data structure for insts is stored in 
 	its own module, inst.m.
 	
 	<p>
@@ -125,8 +126,9 @@ stored in the io__state, using the type globals defined in globals.m.
 	<br>
  	Notes on module qualification:
 	<ul>
- 	<li> all types, insts and modes occuring in pred, func, type and
- 	  mode declarations are module qualified by module_qual.m.
+	<li> all types, typeclasses, insts and modes occuring in pred, func,
+	  type, typeclass and mode declarations are module qualified by
+	  module_qual.m.
  	<li> all types, insts and modes occuring in lambda expressions and
  	  explicit type qualifications are module qualified in
  	  make_hlds.m.
@@ -134,6 +136,8 @@ stored in the io__state, using the type globals defined in globals.m.
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
  	  are module qualified during mode analysis.
+ 	<li> predicate and function names in typeclass instance declarations
+	  are qualified in check_typeclass.m (after mode analysis).
 	</ul>
  
 
@@ -203,10 +207,12 @@ in an HLDS goal.
 	  pred_info.  However, typecheck.m doesn't figure out the pred_id
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
-	  later on in modes.m.  When it has finished, typecheck.m calls
-	  clause_to_proc.m to make duplicate copies of the clauses for
-	  each different mode of a predicate; all later stages work on
-	  procedures, not predicates.
+	  later on in modes.m.  Typeclass constraints are checked here, and
+	  any redundant constraints that are eliminated are recorded (as
+	  constraint_proofs) in the pred_info for future reference. When it has
+	  finished, typecheck.m calls clause_to_proc.m to make duplicate copies
+	  of the clauses for each different mode of a predicate; all later
+	  stages work on procedures, not predicates.
 	<li> type_util.m contains utility predicates dealing with types
 	  that are used in a variety of different places within the compiler
 	</ul>
@@ -301,6 +307,18 @@ in an HLDS goal.
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
 
+<dt> checking typeclass instances (check_typeclass.m)
+	<dd>
+	check_typeclass.m checks that, each instance declaration, that the
+	types, modes and determinism of each predicate/function that is a
+	method of the class is correct (ie. that it matches the typeclass
+	declaration). In this pass, pred_ids and proc_ids are assigned to
+	the methods for each instance. In addition, while checking that the
+	superclasses of a class are satisfied by the instance declaration, a
+	set of constraint_proofs are built up for the superclass constraints.
+	These are used by polymorphism.m when generating the 
+	base_typeclass_info for the instance.
+
 <dt> simplification (simplify.m)
 
 	<dd>
@@ -326,8 +344,9 @@ in an HLDS goal.
 The first two passes of this stage are code simplifications.
 
 <ul>
-<li> introduction of type_info arguments for polymorphic predicates and
-  transformation of complicated unifications into predicate calls
+<li> introduction of type_info arguments for polymorphic predicates, 
+  introduction of typeclass_info arguments for typeclass-constrained predicates
+  and transformation of complicated unifications into predicate calls
   (polymorphism.m)
 
 <li> removal of lambda expressions (lambda.m) <br>
@@ -623,6 +642,10 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
   creates base_type_functors structures that give information on 
   the functors of a given type. The base_type_layout and base_type_functors
   structures of each declared type constructor are added to the LLDS.
+<ul>
+<li> base_typeclass_info.m generates the base_typeclass_info structures that 
+  list the methods of a class for each instance declaration. These are added to
+  the LLDS.
 
 <li> stack_layout.m generates the stack_layout structures for
   accurate garbage collection. Tables are created from the data
@@ -741,6 +764,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-12-09 04:02:08 $ by $Author: pets $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-12-19 03:10:03 $ by $Author: dgj $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -424,6 +424,11 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Info = Info0
 	).
 
+	% XXX We ought to do duplicate call elimination for class 
+	% XXX method calls here.
+simplify__goal_2(Goal, GoalInfo, Goal, GoalInfo, Info, Info) :-
+	Goal = class_method_call(_, _, _, _, _, _).
+
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
 

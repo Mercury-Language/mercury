@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, tree, prog_data, (inst).
+:- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
 :- import_module assoc_list, bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -443,6 +443,9 @@
 	--->	common(int)
 	;	base_type(base_data, string, arity)
 			% base_data, type name, type arity
+	;	base_typeclass_info(class_id, string)
+			% class name & class arity, names and arities of the
+			% types
 	;	stack_layout(label).	
 			% stack_layout for a given label
 
@@ -528,6 +531,9 @@
 	;	do_det_closure
 	;	do_semidet_closure
 	;	do_nondet_closure
+	;	do_det_class_method
+	;	do_semidet_class_method
+	;	do_nondet_class_method
 	;	do_not_reached.		% we should never jump to this address
 
 	% A proc_label is a label used for the entry point to a procedure.

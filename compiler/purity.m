@@ -366,6 +366,11 @@ compute_expr_purity(HOCall, HOCall, GoalInfo, _, _, InClosure, pure,
 	{ HOCall = higher_order_call(_,_,_,_,_,_) },
 	error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors,
 				       InClosure, "higher order goal").
+compute_expr_purity(CMCall, CMCall, GoalInfo, _, _, InClosure, pure,
+		NumErrors0, NumErrors) -->
+	{ CMCall = class_method_call(_,_,_,_,_,_) },
+	error_if_body_purity_indicated(GoalInfo, NumErrors0, NumErrors,
+				       InClosure, "class method goal").
 compute_expr_purity(switch(Var,Canfail,Cases0,Storemap),
 		switch(Var,Canfail,Cases,Storemap), GoalInfo, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->

@@ -120,6 +120,10 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
+		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		Goal = GoalExpr0 - GoalInfo0,
+		ElimVars = ElimVars0
+	;
 		GoalExpr0 = call(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0

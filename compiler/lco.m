@@ -83,6 +83,9 @@ lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
 lco_in_goal_2(higher_order_call(A,B,C,D,E,F), _ModuleInfo,
 		higher_order_call(A,B,C,D,E,F)).
 
+lco_in_goal_2(class_method_call(A,B,C,D,E,F), _ModuleInfo,
+		class_method_call(A,B,C,D,E,F)).
+
 lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 
 lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).

@@ -644,6 +644,8 @@ code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
 code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
+code_util__cons_id_to_tag(base_typeclass_info_const(M,C,N), _, _,
+		base_typeclass_info_constant(M,C,N)).
 code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
@@ -771,6 +773,8 @@ code_util__count_recursive_calls_2(some(_, Goal), PredId, ProcId, Min, Max) :-
 code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 code_util__count_recursive_calls_2(higher_order_call(_, _,_, _, _, _), _, _,
 		0, 0).
+code_util__count_recursive_calls_2(class_method_call(_, _,_, _, _, _), _, _, 
+	0, 0).
 code_util__count_recursive_calls_2(pragma_c_code(_,_,_,_, _, _, _, _), _, _,
 		0, 0).
 code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),

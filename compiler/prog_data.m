@@ -18,8 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst), purity.
-:- import_module term_util, list, map, varset, term, std_util.
+:- import_module hlds_data, hlds_pred, (inst), purity, term_util.
+:- import_module list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,11 +52,13 @@
 	; 	module_defn(varset, module_defn)
 
 	; 	pred(varset, sym_name, list(type_and_mode),
-			maybe(determinism), condition, purity)
+			maybe(determinism), condition, purity,
+			list(class_constraint))
 		%     VarNames, PredName, ArgTypes, Deterministicness, Cond
 
 	; 	func(varset, sym_name, list(type_and_mode), type_and_mode,
-			maybe(determinism), condition, purity)
+			maybe(determinism), condition, purity,
+			list(class_constraint))
 		%       VarNames, PredName, ArgTypes, ReturnType,
 		%       Deterministicness, Cond
 
@@ -71,6 +73,16 @@
 		%       Deterministicness, Cond
 
 	;	pragma(pragma_type)
+
+	;	typeclass(list(class_constraint), class_name, list(var),
+			class_interface, varset)
+		%	Constraints, ClassName, ClassParams, 
+		%	ClassMethods, VarNames
+
+	;	instance(list(class_constraint), class_name, list(type),
+			instance_interface, varset)
+		%	DerivingClass, ClassName, Types, 
+		%	MethodInstances, VarNames
 
 	;	nothing.
 		% used for items that should be ignored (currently only
@@ -154,6 +166,51 @@
 
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
+
+:- type class_constraint	---> constraint(class_name, list(type)).
+
+:- type class_name == sym_name.
+
+:- type class_interface  == list(class_method).	
+
+:- type class_method	--->	pred(varset, sym_name, list(type_and_mode),
+					maybe(determinism), condition,
+					list(class_constraint), term__context)
+				%       VarNames, PredName, ArgTypes,
+				%	Determinism, Cond
+				%	ClassContext, Context
+
+			; 	func(varset, sym_name, list(type_and_mode),
+					type_and_mode,
+					maybe(determinism), condition,
+					list(class_constraint), term__context)
+				%       VarNames, PredName, ArgTypes,
+				%	ReturnType,
+				%	Determinism, Cond
+				%	ClassContext, Context
+
+			; 	pred_mode(varset, sym_name, list(mode),
+					maybe(determinism), condition,
+					term__context)
+				%       VarNames, PredName, ArgModes,
+				%	Determinism, Cond
+				%	Context
+
+			; 	func_mode(varset, sym_name, list(mode), mode,
+					maybe(determinism), condition,
+					term__context)
+				%       VarNames, PredName, ArgModes,
+				%	ReturnValueMode,
+				%	Determinism, Cond
+				%	Context
+			.
+
+:- type instance_method	--->	func_instance(sym_name, sym_name, arity)
+			;	pred_instance(sym_name, sym_name, arity)
+				% Method, Instance, Arity
+			.
+
+:- type instance_interface ==	list(instance_method).
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another

@@ -110,7 +110,10 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 		Queue1, Queue2, Needed1, Needed2),
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
-		Queue2, Queue, Needed2, Needed).
+		Queue2, Queue3, Needed2, Needed3),
+	module_info_instances(ModuleInfo, Instances),
+	dead_proc_elim__initialize_class_methods(Instances,
+		Queue3, Queue, Needed3, Needed).
 
 	% Add all normally exported procedures within the listed predicates
 	% to the queue and map.
@@ -197,6 +200,62 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 	),
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
 		Queue1, Queue, Needed1, Needed).
+
+:- pred dead_proc_elim__initialize_class_methods(instance_table, 
+	entity_queue, entity_queue, needed_map, needed_map).
+:- mode dead_proc_elim__initialize_class_methods(in, in, out, in, out) is det.
+
+dead_proc_elim__initialize_class_methods(Instances, Queue0, Queue, 
+		Needed0, Needed) :-
+	map__values(Instances, InstanceDefns0),
+	list__condense(InstanceDefns0, InstanceDefns),
+	list__foldl2(get_instance_pred_procs, InstanceDefns, Queue0, Queue,
+		Needed0, Needed).
+
+:- pred get_instance_pred_procs(hlds_instance_defn, entity_queue, entity_queue,
+	needed_map, needed_map).
+:- mode get_instance_pred_procs(in, in, out, in, out) is det.
+
+get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
+	Instance = hlds_instance_defn(ImportStatus, _, _, _, PredProcIds, _, _),
+	(
+			% We only need the instance declarations which were
+			% made in this module.
+		( ImportStatus = exported
+		; ImportStatus = abstract_exported 
+		; ImportStatus = pseudo_exported
+		; ImportStatus = local
+		)
+	->
+		get_instance_pred_procs2(PredProcIds, Queue0, Queue, 
+			Needed0, Needed)
+	;
+		Queue = Queue0,
+		Needed = Needed0
+	).
+
+:- pred get_instance_pred_procs2(maybe(list(hlds_class_proc)), 
+	entity_queue, entity_queue, needed_map, needed_map).
+:- mode get_instance_pred_procs2(in, in, out, in, out) is det.
+
+get_instance_pred_procs2(PredProcIds, Queue0, Queue, Needed0, Needed) :-
+	(
+			% This should never happen
+		PredProcIds = no,
+		Queue = Queue0,
+		Needed = Needed0
+	;
+		PredProcIds = yes(Ids),
+		AddHldsClassProc = lambda(
+			[PredProc::in, Q0::in, Q::out, N0::in, N::out] is det,
+			(
+				PredProc = hlds_class_proc(PredId, ProcId),
+				queue__put(Q0, proc(PredId, ProcId), Q),
+				map__set(N0, proc(PredId, ProcId), no, N)
+			)),
+		list__foldl2(AddHldsClassProc, Ids, Queue0, Queue, 
+			Needed0, Needed)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -371,6 +430,8 @@ dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else, _),
 	dead_proc_elim__examine_goal(Else, CurrProc, Queue2, Queue,
 		Needed2, Needed).
 dead_proc_elim__examine_expr(higher_order_call(_,_,_,_,_,_), _,
+		Queue, Queue, Needed, Needed).
+dead_proc_elim__examine_expr(class_method_call(_,_,_,_,_,_), _,
 		Queue, Queue, Needed, Needed).
 dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
@@ -693,6 +754,7 @@ pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 	)) },
 	list__foldl(ExamineCase, Cases).
 pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_,_) - _) --> [].
+pre_modecheck_examine_goal(class_method_call(_,_,_,_,_,_) - _) --> [].
 pre_modecheck_examine_goal(not(Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(some(_, Goal) - _) -->

@@ -651,7 +651,7 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
 	% Given a list of type variables, find the lvals where the
-	% corresponding type_infos are being stored.
+	% corresponding type_infos and typeclass_infos are being stored.
 :- pred code_info__find_type_infos(list(var), assoc_list(var, lval), 
 	code_info, code_info).
 :- mode code_info__find_type_infos(in, out, in, out) is det.
@@ -836,13 +836,13 @@ code_info__find_type_infos([], []) --> [].
 code_info__find_type_infos([TVar | TVars], [TVar - Lval | Lvals]) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	(
-		{ map__search(TypeInfoMap, TVar, Var0) }
+	{
+		map__search(TypeInfoMap, TVar, Locn)
 	->
-		{ Var = Var0 }
+		type_info_locn_var(Locn, Var)
 	;
-		{ error("cannot find var for type variable") }
-	),
+		error("cannot find var for type variable")
+	},
 	{ proc_info_stack_slots(ProcInfo, StackSlots) },
 	(
 		{ map__search(StackSlots, Var, Lval0) }

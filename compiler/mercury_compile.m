@@ -32,7 +32,8 @@
 :- import_module handle_options, prog_io, modules, module_qual, equiv_type.
 :- import_module make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module simplify, intermod, trans_opt, bytecode_gen, bytecode.
+:- import_module check_typeclass, simplify, intermod, trans_opt.
+:- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
 :- import_module lco, liveness, stratify.
@@ -569,7 +570,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS12 = HLDS5 }
+		{ HLDS13 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		!,
@@ -599,6 +600,11 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			Verbose, Stats, HLDS11), !,
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"), !,
 
+		maybe_write_string(Verbose, 
+			"% Mode and type checking typeclass instances...\n"),
+		check_typeclass__check_instance_decls(HLDS11, HLDS12,
+			FoundTypeclassError),
+
 		%
 		% work out whether we encountered any errors
 		%
@@ -608,6 +614,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			{ FoundDetError = no },
 			{ FoundUniqError = no },
 			{ FoundStratError = no },
+			{ FoundTypeclassError = no },
 			% Strictly speaking, we shouldn't need to check
 			% the exit status.  But the values returned for
 			% FoundModeError etc. aren't always correct.
@@ -619,18 +626,18 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			globals__io_lookup_bool_option(
 				make_optimization_interface, MakeOptInt),
 			{ Intermod = yes, MakeOptInt = no ->
-				intermod__adjust_pred_import_status(HLDS11,
-					HLDS12), !
+				intermod__adjust_pred_import_status(HLDS12,
+					HLDS13), !
 			;
-				HLDS12 = HLDS11
+				HLDS13 = HLDS12
 			}
 		;
 			{ FoundError = yes },
-			{ HLDS12 = HLDS11 }
+			{ HLDS13 = HLDS12 }
 		)
 	),
 
-	{ HLDS20 = HLDS12 },
+	{ HLDS20 = HLDS13 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,

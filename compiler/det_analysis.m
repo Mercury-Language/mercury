@@ -454,7 +454,31 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)],
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
+		% Code elsewhere relies on the assumption that
+		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
+		% so we need to enforce that here.
+		determinism_components(Det, CanFail, at_most_many)
+	;
+		Msgs = [],
+		Det = Det0
+	).
+
+det_infer_goal_2(class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
+		GoalInfo, _InstMap0, SolnContext,
+		_MiscInfo, _NonLocalVars, _DeltaInstMap,
+		class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
+		Det, Msgs) :-
+	determinism_components(Det0, CanFail, NumSolns),
+	(
+		NumSolns = at_most_many_cc,
+		SolnContext \= first_soln
+	->
+			% If called, this would give a slightly misleading
+			% error message. class_method_calls are introduced
+			% after det_analysis, though, so it doesn't really
+			% matter.
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
 		% Code elsewhere relies on the assumption that
 		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
 		% so we need to enforce that here.
@@ -972,7 +996,8 @@ determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
 	segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs).
 
 	% get_all_pred_procs takes a module_info and returns a list
-	% of all the procedures ids for that module.
+	% of all the procedures ids for that module (except class methods,
+	% which do not need to be checked since we generate the code ourselves).
 
 :- pred get_all_pred_procs(module_info, pred_proc_list).
 :- mode get_all_pred_procs(in, out) is det.
@@ -989,8 +1014,20 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
-	pred_info_non_imported_procids(Pred, ProcIds),
-	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
+	pred_info_get_markers(Pred, Markers),
+	(
+			% ignore class members, since their bodies are filled
+			% in after this pass, and the body is gauranteed to
+			% be determinism-correct. Determinism correctness of
+			% the methods in an instance declaration is checked
+			% separately in check_typeclass.m
+		check_marker(Markers, class_method)
+	->
+		PredProcs1 = PredProcs0
+	;
+		pred_info_non_imported_procids(Pred, ProcIds),
+		fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1)
+	),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
 :- pred fold_pred_modes(pred_id, list(proc_id), pred_proc_list, pred_proc_list).

@@ -235,6 +235,15 @@ first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes,
 		"higher order call may introduce a non-stratified loop",
 		Error, Module0, Module).
 
+	% XXX This is very conservative.
+first_order_check_goal(class_method_call(_Var, _Num, _Vars, _Types, _Modes, 
+	_Det), GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
+	Module0, Module) --> 
+	{ goal_info_get_context(GInfo, Context) },
+	emit_message(ThisPredProcId, Context,
+		"class method call may introduce a non-stratified loop",
+		Error, Module0, Module).
+
 :- pred first_order_check_goal_list(list(hlds_goal), bool, 
 	list(pred_proc_id), pred_proc_id, bool, module_info, 
 	module_info, io__state, io__state).
@@ -400,7 +409,22 @@ higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
 		emit_message(ThisPredProcId, Context, 
-			"higher order call may introduce a non-stratified loop", 
+			"higher order call may introduce a non-stratified loop",
+			Error, Module0, Module)		
+	;
+		{ Module = Module0 }
+	).
+
+higher_order_check_goal(class_method_call(_Var, _Num, _Vars, _Types, _Modes,
+		_Det), GoalInfo, Negated, _WholeScc, ThisPredProcId,
+		HighOrderLoops, Error, Module0, Module) -->
+	(
+		{ Negated = yes },
+		{ HighOrderLoops = yes }
+	->
+		{ goal_info_get_context(GoalInfo, Context) },
+		emit_message(ThisPredProcId, Context, 
+			"class method call may introduce a non-stratified loop",
 			Error, Module0, Module)		
 	;
 		{ Module = Module0 }
@@ -827,6 +851,11 @@ check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0, Calls,
 check_goal1(higher_order_call(_Var, _Vars, _Types, _Modes, _Det, _PredOrFUnc),
 		Calls, Calls, HasAT, HasAT, _, yes).
 
+	% record that the higher order call was made. Well... a class method
+	% call is pretty similar to a higher order call...
+check_goal1(class_method_call(_Var, _Num, _Vars, _Types, _Modes, _Det), Calls,
+		Calls, HasAT, HasAT, _, yes).
+
 check_goal1(conj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 check_goal1(disj(Goals, _Follow), Calls0, Calls, HasAT0, HasAT, CallsHO0, 
@@ -922,6 +951,9 @@ get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0,
 
 get_called_procs(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
 		_PredOrFunc), Calls, Calls).
+
+get_called_procs(class_method_call(_Var, _Num,_Vars, _Types, _Modes, _Det),
+	Calls, Calls).
 
 
 get_called_procs(conj(Goals), Calls0, Calls) :-

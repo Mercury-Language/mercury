@@ -137,10 +137,11 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	pred_info_name(PredInfo0, PredName),
 	pred_info_typevarset(PredInfo0, TVarSet),
 	pred_info_get_markers(PredInfo0, Markers),
+	pred_info_get_class_context(PredInfo0, ClassContext),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
@@ -153,6 +154,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 :- type dnf_info --->	dnf_info(
 				tvarset,
 				map(var, type),
+				list(class_constraint),
 				varset,
 				pred_markers
 			).
@@ -204,6 +206,11 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo
 	;
 		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
+		ModuleInfo = ModuleInfo0,
+		NewPredIds = NewPredIds0,
+		Goal = Goal0
+	;
+		GoalExpr0 = class_method_call(_, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -361,12 +368,15 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
+		% This ClassContext is a conservative approximation.
+		% We could get rid of some constraints on variables
+		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName,
-		TVarSet, VarTypes, VarSet, Markers, 
+		TVarSet, VarTypes, ClassContext, VarSet, Markers, 
 		ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
@@ -410,6 +420,7 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 
 dnf__is_atomic_expr(conj(_), no).
 dnf__is_atomic_expr(higher_order_call(_, _, _, _, _, _), yes).
+dnf__is_atomic_expr(class_method_call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(switch(_, _, _, _), no).
 dnf__is_atomic_expr(unify(_, _, _, _, _), yes).

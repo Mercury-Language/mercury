@@ -385,6 +385,9 @@ intermod__traverse_goal(
 intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
 			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
 
+intermod__traverse_goal(class_method_call(A,B,C,D,E,F) - Info,
+			class_method_call(A,B,C,D,E,F) - Info, yes) --> [].
+
 intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 		switch(A, B, Cases, D) - Info, DoWrite) -->
 	intermod__traverse_cases(Cases0, Cases, DoWrite).
@@ -850,16 +853,18 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	(
 		{ PredOrFunc = predicate },
 		mercury_output_pred_type(TVarSet, qualified(Module, Name),
-					ArgTypes, no, Purity, Context)
+					ArgTypes, no, Purity, ClassContext,
+					Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
 		mercury_output_func_type(TVarSet,
 			qualified(Module, Name), FuncArgTypes,
-			FuncRetType, no, Purity, Context)
+			FuncRetType, no, Purity, ClassContext, Context)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_procids(PredInfo, ProcIds) },

@@ -367,6 +367,26 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order call").
 
+unique_modes__check_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
+		Det), _GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "class method call"),
+		% Setting the context to `higher_order_call(...)' is a little
+		% white lie.  However, since there can't really be a unique 
+		% mode error in a class_method_call, this lie will never be
+		% used. There can't be an error because the class_method_call 
+		% is introduced by the compiler as the body of a class method.
+	mode_info_set_call_context(higher_order_call(predicate)),
+	{ determinism_components(Det, _, at_most_zero) ->
+		NeverSucceeds = yes
+	;
+		NeverSucceeds = no
+	},
+	{ determinism_to_code_model(Det, CodeModel) },
+	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
+	{ Goal = class_method_call(TCVar, Num, Args, Types, Modes, Det) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "class method call").
+
 unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
 		PredName), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),

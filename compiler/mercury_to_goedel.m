@@ -140,8 +140,9 @@ goedel_output_item(inst_defn(VarSet, InstDefn, _Cond), Context) -->
 goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
+	% XXX Should we ignore ClassContext, or give an error?
 goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond,
-		Purity), Context) -->
+		Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
 	(   { Purity = pure } ->
@@ -153,8 +154,9 @@ goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond,
 	),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
+	% XXX Should we ignore ClassContext, or give an error?
 goedel_output_item(func(VarSet, PredName, TypesAndModes, RetTypeAndMode, _Det,
-		_Cond, Purity), Context) -->
+		_Cond, Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
 	(   { Purity = pure } ->
@@ -194,6 +196,15 @@ goedel_output_item(pragma(_Pragma), _Context) -->
 			"warning: C header declarations not allowed. Ignoring\n").
 
 goedel_output_item(nothing, _) --> [].
+goedel_output_item(typeclass(_, _, _, _, _), _) -->
+	io__stderr_stream(Stderr),
+	io__write_string(Stderr, 
+			"warning: typeclass declarations not allowed. Ignoring\n").
+
+goedel_output_item(instance(_, _, _, _, _), _) -->
+	io__stderr_stream(Stderr),
+	io__write_string(Stderr, 
+			"warning: instance declarations not allowed. Ignoring\n").
 
 %-----------------------------------------------------------------------------%
 

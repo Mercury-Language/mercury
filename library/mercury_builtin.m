@@ -229,9 +229,35 @@
 	% they depend on the number of type parameters of the type represented
 	% by the type_info, and how many predicates we associate with each
 	% type.
+	%
+	% Note that, since these types look to the compiler as though they
+	% are candidates to become no_tag types, special code is required in
+	% type_util:type_is_no_tag_type/3.
 
 :- type type_info(T) ---> type_info(base_type_info(T) /*, ... */).
 :- type base_type_info(T) ---> base_type_info(int /*, ... */).
+
+	% Note that, since these types look to the compiler as though they
+	% are candidates to become no_tag types, special code is required in
+	% type_util:type_is_no_tag_type/3.
+
+:- type typeclass_info ---> typeclass_info(base_typeclass_info /*, ... */). 
+:- type base_typeclass_info ---> typeclass_info(int /*, ... */). 
+
+	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)  
+	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
+	% type_info in the typeclass_info
+	% 
+	% Note: Index must be equal to the number of the desired type_info 
+	% plus the number of superclasses for this class.
+:- pred type_info_from_typeclass_info(typeclass_info, int, type_info(T)).
+:- mode type_info_from_typeclass_info(in, in, out) is det.
+
+	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)  
+	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
+	% superclass of the class.
+:- pred superclass_from_typeclass_info(typeclass_info, int, typeclass_info).
+:- mode superclass_from_typeclass_info(in, in, out) is det.
 
 	% the builtin < operator on ints, used in the code generated
 	% for compare/3 preds
@@ -252,6 +278,19 @@
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
+
+:- pragma c_code(type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+	TypeInfo::out), will_not_call_mercury,
+" 
+	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+").
+
+:- pragma c_code(superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+	TypeClassInfo::out), will_not_call_mercury,
+" 
+	TypeClassInfo = 
+		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+").
 
 %-----------------------------------------------------------------------------%
 

@@ -486,6 +486,13 @@ proc_inequalities_goal(higher_order_call(_, _, _, _, _, _),
 		GoalInfo, _Module, _, _PPId, Error, Offs, Offs) :-
 	goal_info_get_context(GoalInfo, Context),
 	Error = error(Context - horder_call).
+	
+proc_inequalities_goal(class_method_call(_, _, _, _, _, _), 
+		GoalInfo, _Module, _, _PPId, Error, Offs, Offs) :-
+	goal_info_get_context(GoalInfo, Context),
+		% It would be better to use a new alternative
+		% `class_method_call' rather than than `horder_call' here.
+	Error = error(Context - horder_call).
 
 proc_inequalities_goal(switch(_SwitchVar, _CanFail, Cases, _StoreMap), GoalInfo,
 		Module, Info, PPId, Res, Offs0, Offs) :-

@@ -34,8 +34,15 @@
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
-			;	base_type_info_const(string, string, int).
+			;	base_type_info_const(string, string, int)
 				% module name, type name, type arity
+			;	base_typeclass_info_const(string, class_id,
+					string)
+				% name of module containing instance
+				% declaration, class name and arity, a string
+				% encoding the type names and arities of
+				% arguments to the instance declaration
+			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
@@ -112,6 +119,8 @@ cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
 cons_id_arity(base_type_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_type_info_const").
+cons_id_arity(base_typeclass_info_const(_, _, _), _) :-
+	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 
 make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
@@ -241,6 +250,14 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% the name of the module the type is defined in
 			% and the name of the type, while the integer is
 			% the arity.
+	;	base_typeclass_info_constant(string, class_id, string)
+			% This is how we refer to base_typeclass_info structures
+			% represented as global data. The first argument is the
+			% name of the module containing the instance declration,
+			% the second is the class name and arity, while the
+			% third is the string which uniquely identifies the
+			% instance declaration (it is made from the type of
+			% the arguments to the instance decl).
 	;	simple_tag(tag_bits)
 			% This is for constants or functors which only
 			% require a simple tag.  (A "simple" tag is one
@@ -674,5 +691,65 @@ determinism_to_code_model(cc_nondet,   model_semi).
 determinism_to_code_model(cc_multidet, model_det).
 determinism_to_code_model(erroneous,   model_det).
 determinism_to_code_model(failure,     model_semi).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- type class_table == map(class_id, hlds_class_defn).
+
+:- type class_id 	--->	class_id(sym_name, arity).
+
+	% Information about a single `typeclass' declaration
+:- type hlds_class_defn 
+	--->	hlds_class_defn(
+			list(class_constraint), % SuperClasses
+			list(var), 		% ClassVars 
+			hlds_class_interface, 	% Methods
+			varset,			% VarNames
+			term__context		% Location of declaration
+		).
+
+:- type hlds_class_interface	==	list(hlds_class_proc).	
+:- type hlds_class_proc
+	---> 	hlds_class_proc(
+			pred_id,
+			proc_id
+		).
+
+	% For each class, we keep track of a list of its instances, since there
+	% can be more than one instance of each class.
+:- type instance_table == map(class_id, list(hlds_instance_defn)).
+
+	% Information about a single `instance' declaration
+:- type hlds_instance_defn 
+	--->	hlds_instance_defn(
+			import_status,		% import status of the instance
+						% declaration
+			list(class_constraint), % Constraints
+			list(type), 		% ClassTypes 
+			instance_interface, 	% Methods
+			maybe(hlds_class_interface),
+						% After check_typeclass, we 
+						% will know the pred_ids and
+						% proc_ids of all the methods
+			varset,			% VarNames
+			map(class_constraint, constraint_proof)
+						% "Proofs" of how to build the
+						% typeclass_infos for the
+						% superclasses of this class,
+						% for this instance
+		).
+
+	% `Proof' of why a constraint is redundant
+:- type constraint_proof			
+			% Apply the following instance rule, the second 
+			% argument being the number of the instance decl.
+	--->	apply_instance(hlds_instance_defn, int)
+
+			% The constraint is redundant because of the following
+			% class's superclass declaration
+	;	superclass(class_constraint).
 
 %-----------------------------------------------------------------------------%

@@ -188,6 +188,7 @@ ops__op_table("import_sym", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_type", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("impure", before, fy, 800).	% Mercury extension
 ops__op_table("inst", before, fx, 1199).	% Mercury extension
+ops__op_table("instance", before, fx, 1199).	% Mercury extension
 ops__op_table("is", after, xfx, 701).		% ISO Prolog says prec 700
 ops__op_table("lambda", before, fxy, 950).	% Mercury extension
 ops__op_table("mod", after, xfx, 400).		% Standard ISO Prolog
@@ -203,6 +204,7 @@ ops__op_table("semipure", before, fy, 800).	% Mercury extension
 ops__op_table("some", before, fxy, 950).	% Mercury/NU-Prolog extension
 ops__op_table("then", after, xfx, 1150).	% Mercury/NU-Prolog extension
 ops__op_table("type", before, fx, 1180).	% Mercury extension
+ops__op_table("typeclass", before, fx, 1199).	% Mercury extension
 ops__op_table("use_adt", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("use_cons", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("use_module", before, fx, 1199).	% Mercury extension (NYI)

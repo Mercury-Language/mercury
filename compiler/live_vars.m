@@ -254,6 +254,44 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 		ResumeVars = ResumeVars0
 	).
 
+	% Code duplication. Ulch.
+build_live_sets_in_goal_2(class_method_call(_, _, ArgVars, Types, Modes, Det),
+		Liveness, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
+	% The variables which need to be saved onto the stack
+	% before the call are all the variables that are live
+	% after the call, except for the output arguments produced
+	% by the call, plus all the variables that may be needed
+	% at an enclosing resumption point.
+
+	% To figure out which variables are output, we use the arg_info;
+	% but it shouldn't matter which arg convention we're using,
+	% so we can just pass convention `simple' to make_arg_infos.
+
+	determinism_to_code_model(Det, CallModel),
+	make_arg_infos(simple, Types, Modes, CallModel, ModuleInfo, ArgInfos),
+	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
+	set__difference(Liveness, OutVars, InputLiveness),
+	set__union(InputLiveness, ResumeVars0, StackVars0),
+
+	% Might need to add more live variables with accurate GC.
+
+	maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo,
+		OutVars, StackVars0, StackVars),
+
+	set__insert(LiveSets0, StackVars, LiveSets),
+
+	% If this is a nondet call, then all the stack slots we need
+	% must be protected against reuse in following code.
+
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	( CodeModel = model_non ->
+		ResumeVars = StackVars		% includes ResumeVars0
+	;
+		ResumeVars = ResumeVars0
+	).
+
 build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,

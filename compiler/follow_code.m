@@ -110,6 +110,9 @@ move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Flags, R0, R) :-
 move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E,F),
 			higher_order_call(A,B,C,D,E,F), _, R, R).
 
+move_follow_code_in_goal_2(class_method_call(A,B,C,D,E,F),
+			class_method_call(A,B,C,D,E,F), _, R, R).
+
 move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).

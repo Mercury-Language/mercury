@@ -1126,6 +1126,13 @@ recompute_instmap_delta_2(_, higher_order_call(A, Vars, B, Modes, C, D), _,
 	{ instmap_delta_from_mode_list(Vars, Modes,
 		ModuleInfo, InstMapDelta) }.
 
+recompute_instmap_delta_2(_, class_method_call(A, B, Vars, C, Modes, D), _,
+		class_method_call(A, B, Vars, C, Modes, D),
+		_InstMap, InstMapDelta) -->
+	=(ModuleInfo),
+	{ instmap_delta_from_mode_list(Vars, Modes,
+		ModuleInfo, InstMapDelta) }.
+
 recompute_instmap_delta_2(_, call(PredId, ProcId, Args, D, E, F), _,
 		call(PredId, ProcId, Args, D, E, F), InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,

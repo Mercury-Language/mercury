@@ -56,6 +56,8 @@ fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), Path0,
 fill_expr_slots(call(A,B,C,D,E,F), _Path0, call(A,B,C,D,E,F)).
 fill_expr_slots(higher_order_call(A,B,C,D,E,F), _Path0,
 		higher_order_call(A,B,C,D,E,F)).
+fill_expr_slots(class_method_call(A,B,C,D,E,F), _Path0,
+		class_method_call(A,B,C,D,E,F)).
 fill_expr_slots(unify(A,B,C,D,E), _Path0, unify(A,B,C,D,E)).
 fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G,H), _Path0,
 		pragma_c_code(A,B,C,D,E,F,G,H)).

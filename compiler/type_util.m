@@ -135,6 +135,11 @@
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
 
+	% type_list_matches_exactly(TypesA, TypesB) succeeds iff TypesA and
+	% TypesB are exactly the same modulo variable renaming. 
+:- pred type_list_matches_exactly(list(type), list(type)).
+:- mode type_list_matches_exactly(in, in) is semidet.
+
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 
@@ -149,15 +154,31 @@
 						 map(var, type)).
 :- mode apply_rec_substitution_to_type_map(in, in, out) is det.
 
-	% Update a map from tvar to var, using the type substititon to
-	% rename tvars and a variable substition to rename vars.
+	% Update a map from tvar to type_info_locn, using the type substititon
+	% to rename tvars and a variable substition to rename vars.
 	%
 	% If tvar maps to a another type variable, we keep the new
 	% variable, if it maps to a type, we remove it from the map.
 
-:- pred apply_substitutions_to_var_map(map(tvar, var), tsubst, map(var, var), 
-		map(tvar, var)).
+:- pred apply_substitutions_to_var_map(map(tvar, type_info_locn), tsubst,
+	map(var, var), map(tvar, type_info_locn)).
 :- mode apply_substitutions_to_var_map(in, in, in, out) is det.
+
+:- pred apply_rec_subst_to_constraints(substitution, list(class_constraint),
+	list(class_constraint)).
+:- mode apply_rec_subst_to_constraints(in, in, out) is det.
+
+:- pred apply_rec_subst_to_constraint(substitution, class_constraint,
+	class_constraint).
+:- mode apply_rec_subst_to_constraint(in, in, out) is det.
+
+:- pred apply_subst_to_constraints(substitution, list(class_constraint),
+	list(class_constraint)).
+:- mode apply_subst_to_constraints(in, in, out) is det.
+
+:- pred apply_subst_to_constraint(substitution, class_constraint,
+	class_constraint).
+:- mode apply_subst_to_constraint(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -357,7 +378,11 @@ type_is_no_tag_type(Ctors, Ctor, Type) :-
 	Ctor \= qualified("mercury_builtin", "type_info"),
 	Ctor \= qualified("mercury_builtin", "base_type_info"),
 	Ctor \= unqualified("type_info"),
-	Ctor \= unqualified("base_type_info").
+	Ctor \= unqualified("base_type_info"),
+	Ctor \= qualified("mercury_builtin", "typeclass_info"),
+	Ctor \= qualified("mercury_builtin", "base_typeclass_info"),
+	Ctor \= unqualified("typeclass_info"),
+	Ctor \= unqualified("base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 
@@ -411,6 +436,14 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
+
+%-----------------------------------------------------------------------------%
+
+	% If this becomes a performance bottleneck, it can probably be coded
+	% more efficiently.
+type_list_matches_exactly(TypesA, TypesB) :-
+	type_list_subsumes(TypesA, TypesB, _),
+	type_list_subsumes(TypesB, TypesA, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -639,14 +672,16 @@ apply_substitutions_to_var_map(VarMap0, TSubst, Subst, VarMap) :-
 	).
 
 
-:- pred apply_substitutions_to_var_map_2(list(var)::in, map(tvar, var)::in,
-		tsubst::in, map(var, var)::in, map(tvar, var)::in, 
-		map(tvar, var)::out) is det.
+:- pred apply_substitutions_to_var_map_2(list(var)::in, map(tvar,
+		type_info_locn)::in, tsubst::in, map(var, var)::in, 
+		map(tvar, type_info_locn)::in, 
+		map(tvar, type_info_locn)::out) is det.
 
 apply_substitutions_to_var_map_2([], _VarMap0, _, _, NewVarMap, NewVarMap).
 apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TSubst, Subst, 
 		NewVarMap0, NewVarMap) :-
-	map__lookup(VarMap0, TVar, Var),
+	map__lookup(VarMap0, TVar, Locn),
+	type_info_locn_var(Locn, Var),
 
 		% find the new tvar, if there is one, otherwise just
 		% create the old var as a type variable.
@@ -662,16 +697,36 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TSubst, Subst,
 	;
 		NewVar = Var
 	),
+	type_info_locn_set_var(Locn, NewVar, NewLocn),
 
 		% if the tvar is still a variable, insert it into the
 		% map with the new var.
 	( type_util__var(NewTerm, NewTVar) ->
-		map__det_insert(NewVarMap0, NewTVar, NewVar, NewVarMap1)
+		map__det_insert(NewVarMap0, NewTVar, NewLocn, NewVarMap1)
 	;
 		NewVarMap1 = NewVarMap0
 	),
 	apply_substitutions_to_var_map_2(TVars, VarMap0, TSubst, Subst, 
 		NewVarMap1, NewVarMap).
+
+%-----------------------------------------------------------------------------%
+
+apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
+	list__map(apply_rec_subst_to_constraint(Subst), Constraints0,
+		Constraints).
+
+apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
+	Constraint0 = constraint(ClassName, Types0),
+	term__apply_rec_substitution_to_list(Types0, Subst, Types),
+	Constraint  = constraint(ClassName, Types).
+
+apply_subst_to_constraints(Subst, Constraints0, Constraints) :-
+	list__map(apply_subst_to_constraint(Subst), Constraints0, Constraints).
+
+apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
+	Constraint0 = constraint(ClassName, Types0),
+	term__apply_substitution_to_list(Types0, Subst, Types),
+	Constraint  = constraint(ClassName, Types).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

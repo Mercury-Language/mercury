@@ -202,6 +202,9 @@ unify_gen__generate_tag_rval_2(code_addr_constant(_, _), _Rval, _TestRval) :-
 unify_gen__generate_tag_rval_2(base_type_info_constant(_, _, _), _, _) :-
 	% This should never happen
 	error("Attempted base_type_info unification").
+unify_gen__generate_tag_rval_2(base_typeclass_info_constant(_, _, _), _, _) :-
+	% This should never happen
+	error("Attempted base_typeclass_info unification").
 unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
@@ -296,11 +299,21 @@ unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
 	( { Args = [] } ->
 		[]
 	;
-		{ error("unify_gen: address constant has args") }
+		{ error("unify_gen: type-info constant has args") }
 	),
 	{ Code = empty },
 	code_info__cache_expression(Var, const(data_addr_const(data_addr(
 		ModuleName, base_type(info, TypeName, TypeArity))))).
+unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
+		ClassId, Instance), Var, Args, _Modes, Code) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: typeclass-info constant has args") }
+	),
+	{ Code = empty },
+	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+		ModuleName, base_typeclass_info(ClassId, Instance))))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
 	( { Args = [] } ->
@@ -552,6 +565,9 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Code = empty }
 	;
 		{ Tag = base_type_info_constant(_, _, _) },
+		{ Code = empty }
+	;
+		{ Tag = base_typeclass_info_constant(_, _, _) },
 		{ Code = empty }
 	;
 		{ Tag = no_tag },

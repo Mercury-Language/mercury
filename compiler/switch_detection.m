@@ -166,6 +166,9 @@ detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0,
 detect_switches_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, _, _,
 		higher_order_call(A,B,C,D,E,F)).
 
+detect_switches_in_goal_2(class_method_call(A,B,C,D,E,F), _, _, _, _,
+		class_method_call(A,B,C,D,E,F)).
+
 detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _,
 		call(A,B,C,D,E,F)).
 

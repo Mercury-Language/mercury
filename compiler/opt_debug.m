@@ -687,6 +687,8 @@ opt_debug__dump_data_name(common(N), Str) :-
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
 	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
+opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
+	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
 opt_debug__dump_data_name(stack_layout(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["stack_layout(", LabelStr, ")"], Str).
@@ -738,6 +740,9 @@ opt_debug__dump_code_addr(do_fail, "do_fail").
 opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
 opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
 opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
+opt_debug__dump_code_addr(do_det_class_method, "do_det_class_method").
+opt_debug__dump_code_addr(do_semidet_class_method, "do_semidet_class_method").
+opt_debug__dump_code_addr(do_nondet_class_method, "do_nondet_class_method").
 opt_debug__dump_code_addr(do_not_reached, "do_not_reached").
 
 opt_debug__dump_code_addrs([], "").

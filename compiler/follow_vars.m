@@ -155,12 +155,30 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ArgsMethod, ModuleInfo,
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
 		Goal, FollowVars).
 
+	% XXX These follow-vars aren't correct since the desired positions for
+	% XXX the arguments are different from an ordinary call --- they are
+	% XXX as required by do_call_{det,semidet,nondet}_closure
 find_follow_vars_in_goal_2(
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
 		ArgsMethod, ModuleInfo, _FollowVars0,
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
+		FollowVars) :-
+	determinism_to_code_model(Det, CodeModel),
+	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
+		ArgInfo),
+	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
+
+	% XXX These follow-vars aren't correct since the desired positions for
+	% XXX the arguments are different from an ordinary call --- they are
+	% XXX as required by do_call_{det,semidet,nondet}_class_method
+find_follow_vars_in_goal_2(
+		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
+			Det),
+		ArgsMethod, ModuleInfo, _FollowVars0,
+		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
+			Det),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
 	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,

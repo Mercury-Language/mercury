@@ -291,7 +291,8 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
 	% is used if HeadVar1 is used.
 :- pred setup_typeinfo_deps(list(var)::in, map(var, type)::in, pred_proc_id::in,
-			map(tvar, var)::in, var_dep::in, var_dep::out) is det.
+			map(tvar, type_info_locn)::in, 
+			var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_deps([], _, _, _, VarDep, VarDep). 
 setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0, 
@@ -299,7 +300,11 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 	map__lookup(VarTypeMap, Var, Type),
 	type_util__vars(Type, TVars),
 	list__map(lambda([TVar::in, TypeInfoVar::out] is det, 
-		map__lookup(TVarMap, TVar, TypeInfoVar)), TVars, TypeInfoVars),
+		(
+			map__lookup(TVarMap, TVar, Locn),
+			type_info_locn_var(Locn, TypeInfoVar)
+		)), 
+		TVars, TypeInfoVars),
 	AddArgDependency = 
 		lambda([TVar::in, VarDepA::in, VarDepB::out] is det, (
 			add_arg_dep(VarDepA, TVar, PredProcId, Var, VarDepB)
@@ -432,6 +437,10 @@ traverse_goal(ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
 
 % we assume that higher-order predicate calls use all variables involved
 traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
+	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
+
+% we assume that class method calls use all variables involved
+traverse_goal(_, class_method_call(PredVar,_,Args,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
@@ -925,11 +934,13 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_goal_type(PredInfo0, GoalType),
+	pred_info_get_class_context(PredInfo0, ClassContext),
+	map__init(EmptyProofs),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
 		ArgTypes, true, Context, ClausesInfo, Status, Markers,
-		GoalType, PredOrFunc, PredInfo1),
+		GoalType, PredOrFunc, ClassContext, EmptyProofs, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 
@@ -1228,6 +1239,10 @@ fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = higher_order_call(_, _, _, _, _, _).
+
+fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
+	GoalExpr = class_method_call(_, _, _, _, _, _).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-

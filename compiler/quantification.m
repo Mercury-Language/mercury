@@ -297,6 +297,10 @@ implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
 		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
 	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
 
+implicitly_quantify_goal_2(class_method_call(TCVar, B, ArgVars, D, E, F), _,
+		class_method_call(TCVar, B, ArgVars, D, E, F)) -->
+	implicitly_quantify_atomic_goal([TCVar|ArgVars]).
+
 implicitly_quantify_goal_2(
 		unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
 		Context,
@@ -589,6 +593,10 @@ quantification__goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0,
 quantification__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
+
+quantification__goal_vars_2(class_method_call(TCVar, _, ArgVars, _, _, _),
+		Set0, LambdaSet, Set, LambdaSet) :-
+	set__insert_list(Set0, [TCVar | ArgVars], Set).
 
 quantification__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet,
 		Set, LambdaSet) :-

@@ -55,8 +55,8 @@
 
 :- interface.
 
-:- import_module prog_data.
-:- import_module list, io.
+:- import_module prog_data, prog_io_util.
+:- import_module list, io. 
 
 %-----------------------------------------------------------------------------%
 
@@ -93,12 +93,22 @@
 :- pred search_for_file(list(string), string, bool, io__state, io__state).
 :- mode search_for_file(in, in, out, di, uo) is det.
 
+	% parse_item(ModuleName, VarSet, Term, MaybeItem)
+	%
+	% parse Term. If successful, MaybeItem is bound to the parsed item,
+	% otherwise it is bound to an appropriate error message.
+	% Qualify appropriate parts of the item, with ModuleName as the
+	% module name.
+:- pred parse_item(string, varset, term, maybe_item_and_context). 
+:- mode parse_item(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
+:- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, globals, options, (inst).
 :- import_module purity.
 :- import_module bool, int, string, std_util, parser, term_io, dir, require.
@@ -415,9 +425,6 @@ process_read_term(ModuleName, term(VarSet, Term),
 convert_item(ok(Item, Context), ok(Item, Context)).
 convert_item(error(M, T), error(M, T)).
 
-:- pred parse_item(string, varset, term, maybe_item_and_context). 
-:- mode parse_item(in, in, in, out) is det.
-
 parse_item(ModuleName, VarSet, Term, Result) :-
  	( %%% some [Decl, DeclContext]
 		Term = term__functor(term__atom(":-"), [Decl], DeclContext)
@@ -521,6 +528,29 @@ process_decl(ModuleName, VarSet, "pred", [PredDecl], Result) :-
 
 process_decl(ModuleName, VarSet, "func", [FuncDecl], Result) :-
 	parse_type_decl_func(ModuleName, VarSet, FuncDecl, pure, Result).
+
+	% Because "<=" has a higher precedence than "pred" or "func", we
+	% we need to handle preds and funcs with class contexts specially.
+process_decl(ModuleName, VarSet, "<=", [Decl, ClassContext], Result) :-
+	(
+		Decl = term__functor(term__atom("pred"), [PredDecl], Context)
+	->
+		NewTerm = term__functor(term__atom("<="), 
+			[PredDecl, ClassContext], Context),
+		parse_type_decl_pred(ModuleName, VarSet, NewTerm, pure,
+			Result)
+	;
+		Decl = term__functor(term__atom("func"), [FuncDecl], Context)
+	->
+		NewTerm = term__functor(term__atom("<="), 
+			[FuncDecl, ClassContext], Context),
+		parse_type_decl_func(ModuleName, VarSet, NewTerm, pure,
+			Result)
+	;
+		Result = error(
+		"Class contexts only allowed on pred or func declarations", 
+		    Decl)
+	).
 
 process_decl(ModuleName, VarSet, "mode", [ModeDecl], Result) :-
 	parse_mode_decl(ModuleName, VarSet, ModeDecl, Result).
@@ -662,6 +692,12 @@ process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Result) :-
 
 process_decl(ModuleName, VarSet, "pragma", Pragma, Result):-
 	parse_pragma(ModuleName, VarSet, Pragma, Result).
+
+process_decl(ModuleName, VarSet, "typeclass", Args, Result):-
+	parse_typeclass(ModuleName, VarSet, Args, Result).
+
+process_decl(ModuleName, VarSet, "instance", Args, Result):-
+	parse_instance(ModuleName, VarSet, Args, Result).
 
 	%  XXX I'm not very happy with this.  I believe this should
 	%  recursively call process_decl in order to process the pred or func
@@ -1115,15 +1151,35 @@ convert_constructor(ModuleName, Term, Result) :-
 			purity, maybe1(item)).
 :- mode process_pred(in, in, in, in, in, in, out) is det.
 
-process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Purity, Result) :-
-	parse_qualified_term(ModuleName, PredType, PredType,
-		"`:- pred' declaration", R),
-	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Purity, Result).
+process_pred(ModuleName, VarSet, PredType0, Cond, MaybeDet, Purity, Result) :-
+	(
+		maybe_get_class_context(ModuleName, PredType0, PredType,
+			MaybeContext)
+	->
+		(
+			MaybeContext = ok(Constraints),
+			parse_qualified_term(ModuleName, PredType, PredType,
+				"`:- pred' declaration", R),
+			process_pred_2(R, PredType, VarSet, MaybeDet, Cond,
+				Purity, Constraints, Result)
+		;
+			MaybeContext = error(String, Term),
+			Result = error(String, Term)
+		)
+	;
+		parse_qualified_term(ModuleName, PredType0, PredType0,
+			"`:- pred' declaration", R),
+		process_pred_2(R, PredType0, VarSet, MaybeDet, Cond, Purity, 
+			[], Result)
+	).
 
 :- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
-			condition, purity, maybe1(item)).
-:- mode process_pred_2(in, in, in, in, in, in, out) is det.
-process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Purity, Result) :-
+			condition, purity, list(class_constraint), 
+			maybe1(item)).
+:- mode process_pred_2(in, in, in, in, in, in, in, out) is det.
+
+process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Purity,
+		ClassContext, Result) :-
 	(
 		convert_type_and_mode_list(As0, As)
 	->
@@ -1131,7 +1187,7 @@ process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Purity, Result) :-
 			verify_type_and_mode_list(As)
 		->
 			Result = ok(pred(VarSet, F, As, MaybeDet, Cond,
-					 Purity))
+				Purity, ClassContext))
 		;
 			Result = error("some but not all arguments have modes", PredType)
 		)
@@ -1139,7 +1195,24 @@ process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Purity, Result) :-
 		Result = error("syntax error in `:- pred' declaration",
 				PredType)
 	).
-process_pred_2(error(M, T), _, _, _, _, _, error(M, T)).
+process_pred_2(error(M, T), _, _, _, _, _, _, error(M, T)).
+
+%-----------------------------------------------------------------------------%
+	% We could probably get rid of some code duplication between here and
+	% prog_io_typeclass.m
+	% The last argument is `no' if no context was given, and yes(Result) if
+	% there was. Result is either bound to the correctly parsed context, or
+	% an appropriate error message (if a syntactically invalid class 
+	% context was given).
+
+:- pred maybe_get_class_context(string, term, term,
+	maybe1(list(class_constraint))).
+:- mode maybe_get_class_context(in, in, out, out) is semidet.
+
+maybe_get_class_context(ModuleName, PredType0, PredType, MaybeContext) :-
+	PredType0 = term__functor(term__atom("<="), 
+		[PredType, Constraints], _),
+	parse_class_constraints(ModuleName, Constraints, MaybeContext).
 
 %-----------------------------------------------------------------------------%
 
@@ -1175,7 +1248,30 @@ verify_type_and_mode_list_2([Head | Tail], First) :-
 			maybe(determinism), maybe1(item)).
 :- mode process_func(in, in, in, in, in, in, out) is det.
 
-process_func(ModuleName, VarSet, Term, Cond, Purity, MaybeDet, Result) :-
+process_func(ModuleName, VarSet, Term0, Cond, Purity, MaybeDet, Result) :-
+	(
+		maybe_get_class_context(ModuleName, Term0, Term,
+			MaybeContext)
+	->
+		(
+			MaybeContext = ok(Constraints),
+			process_unconstrained_func(ModuleName, VarSet, Term,
+				Cond, MaybeDet, Purity, Constraints, Result) 
+		;
+			MaybeContext = error(String, ErrorTerm),
+			Result = error(String, ErrorTerm)
+		)
+	;
+		process_unconstrained_func(ModuleName, VarSet, Term0, 
+			Cond, MaybeDet, Purity, [], Result) 
+	).
+
+:- pred process_unconstrained_func(string, varset, term, condition,
+	maybe(determinism), purity, list(class_constraint), maybe1(item)).
+:- mode process_unconstrained_func(in, in, in, in, in, in, in, out) is det.
+
+process_unconstrained_func(ModuleName, VarSet, Term, Cond, MaybeDet, 
+		Purity, Constraints, Result) :-
 	(
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
@@ -1183,16 +1279,19 @@ process_func(ModuleName, VarSet, Term, Cond, Purity, MaybeDet, Result) :-
 		parse_qualified_term(ModuleName, FuncTerm, Term,
 			"`:- func' declaration", R),
 		process_func_2(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
-				Cond, Purity, Result)
+				Cond, Purity, Constraints, Result)
 	;
 		Result = error("`=' expected in `:- func' declaration", Term)
 	).
 
+
 :- pred process_func_2(maybe_functor, term, term, varset, maybe(determinism),
-			condition, purity, maybe1(item)).
-:- mode process_func_2(in, in, in, in, in, in, in, out) is det.
+			condition, purity, list(class_constraint),
+			maybe1(item)).
+:- mode process_func_2(in, in, in, in, in, in, in, in, out) is det.
+
 process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
-		Purity, Result) :-
+		Purity, ClassContext, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( \+ verify_type_and_mode_list(As) ->
 			Result = error("some but not all arguments have modes",
@@ -1221,7 +1320,7 @@ process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 					FuncTerm)
 			;
 				Result = ok(func(VarSet, F, As, ReturnType,
-					MaybeDet, Cond, Purity))
+					MaybeDet, Cond, Purity, ClassContext))
 			)
 		;
 			Result = error(
@@ -1233,7 +1332,7 @@ process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 			"syntax error in arguments of `:- func' declaration",
 					FuncTerm)
 	).
-process_func_2(error(M, T), _, _, _, _, _, _, error(M, T)).
+process_func_2(error(M, T), _, _, _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 

@@ -692,6 +692,11 @@ code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
 		GoalInfo, Instr) -->
 	call_gen__generate_higher_order_call(model_det, PredVar, Args,
 		Types, Modes, Det, GoalInfo, Instr).
+code_gen__generate_det_goal_2(class_method_call(TCVar, Num, Args, Types,
+		Modes, Det),
+		GoalInfo, Instr) -->
+	call_gen__generate_class_method_call(model_det, TCVar, Num, Args,
+		Types, Modes, Det, GoalInfo, Instr).
 code_gen__generate_det_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		GoalInfo, Instr) -->
 	(
@@ -778,6 +783,10 @@ code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
 		Det, _PredOrFunc), GoalInfo, Code) -->
 	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
+		Types, Modes, Det, GoalInfo, Code).
+code_gen__generate_semi_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
+		Det), GoalInfo, Code) -->
+	call_gen__generate_class_method_call(model_semi, TCVar, Num, Args,
 		Types, Modes, Det, GoalInfo, Code).
 code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 							GoalInfo, Code) -->
@@ -979,6 +988,11 @@ code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
 		Det, _PredOrFunc),
 		GoalInfo, Code) -->
 	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
+		Modes, Det, GoalInfo, Code).
+code_gen__generate_non_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
+		Det),
+		GoalInfo, Code) -->
+	call_gen__generate_class_method_call(model_non, TCVar, Num, Args, Types,
 		Modes, Det, GoalInfo, Code).
 code_gen__generate_non_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 							GoalInfo, Code) -->
