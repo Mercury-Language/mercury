@@ -70,12 +70,13 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 
 	foldl2_maybe_stop_at_error(KeepGoing,
 		foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-		[IntermediateTargets, ObjTargets], _, Info4, Info5),
+		[IntermediateTargets, ObjTargets], BuildDepsSucceeded,
+		Info4, Info5),
 
 	linked_target_file_name(MainModuleName, FileType, OutputFileName),
 	get_file_timestamp([dir__this_directory], OutputFileName,
 		MaybeTimestamp, Info5, Info6),
-	check_dependencies(OutputFileName, MaybeTimestamp,
+	check_dependencies(OutputFileName, MaybeTimestamp, BuildDepsSucceeded,
 		ObjTargets, BuildDepsResult, Info6, Info7),
 
 	(
@@ -219,26 +220,37 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 	),
 
 	{ ObjectsToCheck = InitObjects ++ LinkObjects },
-	list__map_foldl2(get_file_timestamp([dir__this_directory]),
-		ObjectsToCheck, ExtraObjectTimestamps, Info1, Info2),
-	check_dependency_timestamps(OutputFileName, MaybeTimestamp,
-		ObjectsToCheck, io__write, ExtraObjectTimestamps,
-		ExtraObjectDepsResult),
 
-	{ DepsResult3 = ( DepsSuccess = yes -> DepsResult2 ; error ) },
-	{ DepsResult3 = error, DepsResult = DepsResult3
-	; DepsResult3 = out_of_date, DepsResult = DepsResult3
-	; DepsResult3 = up_to_date, DepsResult = ExtraObjectDepsResult
+	%
+	% Report errors if any of the extra objects aren't present.
+	%
+	list__map_foldl2(dependency_status,
+		list__map((func(F) = file(F, no)), ObjectsToCheck),
+		ExtraObjStatus, Info1, Info2),
+
+	{ DepsResult3 =
+	    ( list__member(error, ExtraObjStatus) -> error ; DepsResult2 ) },
+	{ BuildDepsSuccess = ( DepsResult3 \= error -> yes ; no ) },
+	list__map_foldl2(get_file_timestamp([dir__this_directory]),
+		ObjectsToCheck, ExtraObjectTimestamps, Info2, Info3),
+	check_dependency_timestamps(OutputFileName, MaybeTimestamp,
+		BuildDepsSuccess, ObjectsToCheck, io__write,
+		ExtraObjectTimestamps, ExtraObjectDepsResult),
+
+	{ DepsResult4 = ( DepsSuccess = yes -> DepsResult3 ; error ) },
+	{ DepsResult4 = error, DepsResult = DepsResult4
+	; DepsResult4 = out_of_date, DepsResult = DepsResult4
+	; DepsResult4 = up_to_date, DepsResult = ExtraObjectDepsResult
 	},
 	(
 		{ DepsResult = error },
 		file_error(OutputFileName),
 		{ Succeeded = no },
-		{ Info = Info2 }
+		{ Info = Info3 }
 	;
 		{ DepsResult = up_to_date },
 		{ Succeeded = yes },
-		{ Info = Info2 }
+		{ Info = Info3 }
 	;
 		{ DepsResult = out_of_date },
 		maybe_make_linked_target_message(OutputFileName),
@@ -264,7 +276,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			    { error(
 			    "build_linked_target: error in dependencies") }
 			)
-		    ), AllModulesList, ExtraForeignFiles, Info2, Info3),
+		    ), AllModulesList, ExtraForeignFiles, Info3, Info4),
 		{ ForeignObjects = list__map(
 			(func(foreign_code_file(_, _, ObjFile)) = ObjFile),
 			list__condense(ExtraForeignFiles)) },
@@ -310,12 +322,12 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		),
 
 		( { Succeeded = yes } ->
-			{ Info = Info3 ^ file_timestamps :=
-				map__delete(Info3 ^ file_timestamps,
+			{ Info = Info4 ^ file_timestamps :=
+				map__delete(Info4 ^ file_timestamps,
 					OutputFileName) }
 		;
 			file_error(OutputFileName),
-			{ Info = Info3 }
+			{ Info = Info4 }
 		)
 	),
 	globals__io_set_option(link_objects, accumulating(LinkObjects)).

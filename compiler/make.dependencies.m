@@ -67,14 +67,20 @@
 	;	error
 	.
 
+	% check_dependencies(TargetFileName, TargetFileTimestamp,
+	%	BuildDepsSucceeded, Dependencies, Result)
+	%
 	% Check that all the dependency targets are up-to-date. 
-:- pred check_dependencies(string::in, maybe_error(timestamp)::in,
+:- pred check_dependencies(file_name::in, maybe_error(timestamp)::in, bool::in,
 	list(dependency_file)::in, dependencies_result::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
+	% check_dependencies(TargetFileName, TargetFileTimestamp,
+	%	BuildDepsSucceeded, Dependencies, Result)
+	%
 	% Check that all the dependency files are up-to-date. 
-:- pred check_dependency_timestamps(string::in,
-	maybe_error(timestamp)::in, list(File)::in,
+:- pred check_dependency_timestamps(file_name::in, maybe_error(timestamp)::in,
+	bool::in, list(File)::in,
 	pred(File, io__state, io__state)::(pred(in, di, uo) is det),
 	list(maybe_error(timestamp))::in, dependencies_result::out,
 	io__state::di, io__state::uo) is det.
@@ -716,7 +722,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
 
 %-----------------------------------------------------------------------------%
 
-check_dependencies(TargetFileName, MaybeTimestamp,
+check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
 		DepFiles, DepsResult, Info0, Info) -->
 	list__map_foldl2(dependency_status, DepFiles,
 		DepStatusList, Info0, Info1),
@@ -755,12 +761,12 @@ check_dependencies(TargetFileName, MaybeTimestamp,
 			DepTimestamps, Info1, Info),
 
 		check_dependency_timestamps(TargetFileName, MaybeTimestamp,
-			DepFiles, write_dependency_file, DepTimestamps,
-			DepsResult)
+			BuildDepsSucceeded, DepFiles, write_dependency_file,
+			DepTimestamps, DepsResult)
 	).
 
-check_dependency_timestamps(TargetFileName, MaybeTimestamp, DepFiles,
-		WriteDepFile, DepTimestamps, DepsResult) -->
+check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
+		DepFiles, WriteDepFile, DepTimestamps, DepsResult) -->
     ( 
 	{ MaybeTimestamp = error(_) },
 	{ DepsResult = out_of_date },
@@ -778,7 +784,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, DepFiles,
 	    { MaybeDepTimestamp1 = error(_) }
 	->
 	    { DepsResult = error },
-	    debug_msg(
+	    { WriteMissingDeps =
 	        (pred(di, uo) is det -->
 		    { assoc_list__from_corresponding_lists(DepFiles,
 				DepTimestamps, DepTimestampAL) },
@@ -787,11 +793,30 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, DepFiles,
 				list__member(DepFile - error(_),
 					DepTimestampAL)
 			    ), ErrorDeps) },
+		    io__write_string("** dependencies for `"),
 		    io__write_string(TargetFileName),
-		    io__write_string(": failed dependencies: "),
-		    io__write_list(ErrorDeps, ",\n\t", WriteDepFile),
-		    io__nl
-		))
+		    io__write_string("' do not exist: "),
+		    io__write_list(ErrorDeps, ", ", WriteDepFile),
+		    io__nl,
+		    ( { BuildDepsSucceeded = yes } ->
+		    	io__write_string(
+			"** This indicates a bug in `mmc --make'.\n")
+		    ;
+		    	[]
+		    )
+		) },
+	    (
+	    	{ BuildDepsSucceeded = yes },
+		%
+		% Something has gone wrong -- building the target has
+		% succeeded, but there are some files missing.
+		% Report an error.
+		%
+	    	WriteMissingDeps
+	    ;
+	    	{ BuildDepsSucceeded = no },
+	    	debug_msg(WriteMissingDeps)
+	    )
 	;
 	    { Rebuild = yes }
 	->

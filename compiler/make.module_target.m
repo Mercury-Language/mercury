@@ -199,8 +199,8 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 			TouchedFileTimestamps, MaybeOldestTimestamp0) },
 
 		get_file_name(no, TargetFile, TargetFileName, Info4, Info5),
-		check_dependencies(TargetFileName,
-			MaybeOldestTimestamp, DepFilesToMake,
+		check_dependencies(TargetFileName, MaybeOldestTimestamp,
+			MakeDepsSuccess, DepFilesToMake,
 			DepsResult, Info5, Info)
 	).
 

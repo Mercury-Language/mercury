@@ -784,7 +784,7 @@ link_module_list(Modules, Succeeded) -->
 
 make_init_obj_file(ErrorStream,
 		ModuleName, ModuleNames, Result) -->
-	{ MustCompile = no },
+	globals__io_lookup_bool_option(rebuild, MustCompile),
 	make_init_obj_file(ErrorStream,
 		MustCompile, ModuleName, ModuleNames, Result).
 

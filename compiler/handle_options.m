@@ -443,6 +443,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% --no-mlds-optimize implies --no-optimize-tailcalls
 	option_neg_implies(optimize, optimize_tailcalls, bool(no)),
 
+	% --rebuild is just like --make but always rebuilds the files
+	% without checking timestamps.
+	option_implies(rebuild, make, bool(yes)),
+
 	% make.m controls generating object code and linking itself,
 	% so mercury_compile.m should only generate target code when
 	% given a module to process.
@@ -540,10 +544,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% processes the target code file itself, so this isn't a problem.
 	maybe_disable_smart_recompilation(Smart, target_code_only, no,
 		"`--no-target-code-only'"),
-
-	% --rebuild is just like --make but always rebuilds the files
-	% without checking timestamps.
-	option_implies(rebuild, make, bool(yes)),
 
 	option_implies(use_grade_subdirs, use_subdirs, bool(yes)),
 
