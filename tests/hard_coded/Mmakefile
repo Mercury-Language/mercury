@@ -50,6 +50,7 @@ PROGS=	\
 	ho_univ_to_type \
 	impossible_unify \
 	integer_test \
+	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \
 	name_mangling \
