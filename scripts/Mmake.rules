@@ -23,9 +23,8 @@ main_target: $(MAIN_TARGET)
 		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
-		.c .nu .$O .pic_o \
+		.c .$O .pic_o \
 		.i .s .pic_s \
-		.ql .pl \
 		.rlo \
 		.java .class \
 		.il .dll .exe .cpp .cs \
@@ -116,16 +115,6 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
 	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
 endif
-
-# The `.doit' files are helpful when using Prolog.
-
-%.doit : $(deps_subdir)%.dep $(deps_subdir)%.dv
-	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
-	grep '\.ms *=' | \
-	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
-		-e 's/\.m/,/g' \
-		-e 's/$$/ portray ]./' \
-		> $@
 
 #-----------------------------------------------------------------------------#
 #
@@ -438,7 +427,7 @@ endif # $(MMAKE_USE_MMC_MAKE) == yes
 # automatically generated `.d' files.
 #
 
-.PHONY: clean realclean clean_nu clean_sicstus clean_prof_files
+.PHONY: clean realclean clean_prof_files
 
 clean_prof_files:
 	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
