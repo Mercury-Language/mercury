@@ -19,8 +19,8 @@
 	% Build up a table showing the first instruction following each label.
 	% Then traverse the instruction list, short-circuiting jump sequences.
 
-:- pred jumpopt__main(list(instruction), bool, list(instruction), bool).
-:- mode jumpopt__main(in, in, out, out) is det.
+:- pred jumpopt__main(list(instruction), bool, bool, list(instruction), bool).
+:- mode jumpopt__main(in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -28,14 +28,14 @@
 
 :- import_module opt_util, std_util, map, string, require.
 
-jumpopt__main(Instrs0, Blockopt, Instrs, Mod) :-
+jumpopt__main(Instrs0, Blockopt, Final, Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
 	map__init(Sdprocmap0),
 	map__init(Succmap0),
 	map__init(Blockmap0),
-	jumpopt__build_maps(Instrs0, Blockopt, Instrmap0, Instrmap,
+	jumpopt__build_maps(Instrs0, Blockopt, Final, Instrmap0, Instrmap,
 		Blockmap0, Blockmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap),
 	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
@@ -55,16 +55,16 @@ jumpopt__main(Instrs0, Blockopt, Instrs, Mod) :-
 	% We also build up a map giving the livevals instruction at the label
 	% if any, and the first real instruction at the label.
 
-:- pred jumpopt__build_maps(list(instruction), bool, instrmap, instrmap,
+:- pred jumpopt__build_maps(list(instruction), bool, bool, instrmap, instrmap,
 	tailmap, tailmap, lvalmap, lvalmap,
 	tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
-:- mode jumpopt__build_maps(in, in, di, uo, di, uo, di, uo, di, uo, di, uo,
+:- mode jumpopt__build_maps(in, in, in, di, uo, di, uo, di, uo, di, uo, di, uo,
 	di, uo) is det.
 
-jumpopt__build_maps([], _,
+jumpopt__build_maps([], _, _,
 		Instrmap, Instrmap, Blockmap, Blockmap, Lvalmap, Lvalmap,
 		Procmap, Procmap, Sdprocmap, Sdprocmap, Succmap, Succmap).
-jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Instrmap0, Instrmap,
+jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Final, Instrmap0, Instrmap,
 		Blockmap0, Blockmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap) :-
 	Instr0 = Uinstr0 - _,
@@ -96,7 +96,9 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Instrmap0, Instrmap,
 		;
 			Succmap1 = Succmap0
 		),
-		( Blockopt = yes ->
+		% put the start of the procedure into Blockmap
+		% only after frameopt and value_number have had a shot at it
+		( Blockopt = yes, (Label = local(_, _, _) ; Final = yes) ->
 			opt_util__find_no_fallthrough(Instrs1, Block),
 			map__det_insert(Blockmap0, Label, Block, Blockmap1)
 		;
@@ -110,7 +112,7 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Instrmap0, Instrmap,
 		Sdprocmap1 = Sdprocmap0,
 		Succmap1 = Succmap0
 	),
-	jumpopt__build_maps(Instrs0, Blockopt, Instrmap1, Instrmap,
+	jumpopt__build_maps(Instrs0, Blockopt, Final, Instrmap1, Instrmap,
 		Blockmap1, Blockmap, Lvalmap1, Lvalmap,
 		Procmap1, Procmap, Sdprocmap1, Sdprocmap, Succmap1, Succmap).
 

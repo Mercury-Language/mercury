@@ -1518,6 +1518,7 @@ get_determinism(B, Body, Determinism) :-
 
 :- pred standard_det(string, determinism).
 :- mode standard_det(in, out) is semidet.
+
 standard_det("det", det).
 standard_det("nondet", nondet).
 standard_det("multi", multidet).

@@ -59,7 +59,7 @@ move_follow_code_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 	proc_info_headvars(ProcInfo0, HeadVars),
 
 	(
-		move_follow_code_in_goal(Goal0, ModuleInfo0, Goal1, no, Res),
+		move_follow_code_in_goal(Goal0, Goal1, no, Res),
 			% did the goal change?
 		Res = yes
 	->
@@ -82,96 +82,96 @@ move_follow_code_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_goal(hlds__goal, module_info, hlds__goal,
-								bool, bool).
-:- mode move_follow_code_in_goal(in, in, out, in, out) is det.
+:- pred move_follow_code_in_goal(hlds__goal, hlds__goal, bool, bool).
+:- mode move_follow_code_in_goal(in, out, in, out) is det.
 
-move_follow_code_in_goal(Goal0 - GoalInfo, ModuleInfo, Goal - GoalInfo, R0, R) :-
-	move_follow_code_in_goal_2(Goal0, ModuleInfo, Goal, R0, R).
+move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, R0, R) :-
+	move_follow_code_in_goal_2(Goal0, Goal, R0, R).
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_goal_2(hlds__goal_expr, module_info, hlds__goal_expr, bool, bool).
-:- mode move_follow_code_in_goal_2(in, in, out, in, out) is det.
+:- pred move_follow_code_in_goal_2(hlds__goal_expr, hlds__goal_expr, bool, bool).
+:- mode move_follow_code_in_goal_2(in, out, in, out) is det.
 
-move_follow_code_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals), R0, R) :-
-	move_follow_code_in_conj(Goals0, ModuleInfo, Goals, R0, R).
+move_follow_code_in_goal_2(conj(Goals0), conj(Goals), R0, R) :-
+	move_follow_code_in_conj(Goals0, Goals, R0, R).
 
-move_follow_code_in_goal_2(disj(Goals0), ModuleInfo, disj(Goals), R0, R) :-
-	move_follow_code_in_disj(Goals0, ModuleInfo, Goals, R0, R).
+move_follow_code_in_goal_2(disj(Goals0), disj(Goals), R0, R) :-
+	move_follow_code_in_disj(Goals0, Goals, R0, R).
 
-move_follow_code_in_goal_2(not(Goal0), ModuleInfo, not(Goal), R0, R) :-
-	move_follow_code_in_goal(Goal0, ModuleInfo, Goal, R0, R).
+move_follow_code_in_goal_2(not(Goal0), not(Goal), R0, R) :-
+	move_follow_code_in_goal(Goal0, Goal, R0, R).
 
-move_follow_code_in_goal_2(switch(Var, Det, Cases0), 
-					ModuleInfo, switch(Var, Det, Cases), R0, R) :-
-	move_follow_code_in_cases(Cases0, ModuleInfo, Cases, R0, R).
+move_follow_code_in_goal_2(switch(Var, Det, Cases0),
+				switch(Var, Det, Cases), R0, R) :-
+	move_follow_code_in_cases(Cases0, Cases, R0, R).
 
-move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), 
-			ModuleInfo, if_then_else(Vars, Cond, Then, Else), R0, R) :-
-	move_follow_code_in_goal(Cond0, ModuleInfo, Cond, R0, R1),
-	move_follow_code_in_goal(Then0, ModuleInfo, Then, R1, R2),
-	move_follow_code_in_goal(Else0, ModuleInfo, Else, R2, R).
+move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
+		if_then_else(Vars, Cond, Then, Else), R0, R) :-
+	move_follow_code_in_goal(Cond0, Cond, R0, R1),
+	move_follow_code_in_goal(Then0, Then, R1, R2),
+	move_follow_code_in_goal(Else0, Else, R2, R).
 
-move_follow_code_in_goal_2(some(Vars, Goal0), ModuleInfo, some(Vars, Goal), R0, R) :-
-	move_follow_code_in_goal(Goal0, ModuleInfo, Goal, R0, R).
+move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), R0, R) :-
+	move_follow_code_in_goal(Goal0, Goal, R0, R).
 
-move_follow_code_in_goal_2(call(A,B,C,D,E,F), _, call(A,B,C,D,E,F), R, R).
+move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), R, R).
 
-move_follow_code_in_goal_2(unify(A,B,C,D,E), _, unify(A,B,C,D,E), R, R).
+move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), R, R).
 
 %-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_in_disj(list(hlds__goal),
-					module_info, list(hlds__goal), bool, bool).
-:- mode move_follow_code_in_disj(in, in, out, in, out) is det.
+				list(hlds__goal), bool, bool).
+:- mode move_follow_code_in_disj(in, out, in, out) is det.
 
-move_follow_code_in_disj([], _ModuleInfo, [], R, R).
-move_follow_code_in_disj([Goal0|Goals0], ModuleInfo, [Goal|Goals], R0, R) :-
-	move_follow_code_in_goal(Goal0, ModuleInfo, Goal, R0, R1),
-	move_follow_code_in_disj(Goals0, ModuleInfo, Goals, R1, R).
-
-%-----------------------------------------------------------------------------%
-
-:- pred move_follow_code_in_cases(list(case), module_info, list(case), bool, bool).
-:- mode move_follow_code_in_cases(in, in, out, in, out) is det.
-
-move_follow_code_in_cases([], _ModuleInfo, [], R, R).
-move_follow_code_in_cases([case(Cons, Goal0)|Goals0], ModuleInfo,
-						[case(Cons, Goal)|Goals], R0, R) :-
-	move_follow_code_in_goal(Goal0, ModuleInfo, Goal, R0, R1),
-	move_follow_code_in_cases(Goals0, ModuleInfo, Goals, R1, R).
+move_follow_code_in_disj([], [], R, R).
+move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], R0, R) :-
+	move_follow_code_in_goal(Goal0, Goal, R0, R1),
+	move_follow_code_in_disj(Goals0, Goals, R1, R).
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_conj(list(hlds__goal), module_info,
-							list(hlds__goal), bool, bool).
-:- mode move_follow_code_in_conj(in, in, out, in, out) is det.
+:- pred move_follow_code_in_cases(list(case), list(case), bool, bool).
+:- mode move_follow_code_in_cases(in, out, in, out) is det.
+
+move_follow_code_in_cases([], [], R, R).
+move_follow_code_in_cases([case(Cons, Goal0)|Goals0], 
+					[case(Cons, Goal)|Goals], R0, R) :-
+	move_follow_code_in_goal(Goal0, Goal, R0, R1),
+	move_follow_code_in_cases(Goals0, Goals, R1, R).
+
+%-----------------------------------------------------------------------------%
+
+:- pred move_follow_code_in_conj(list(hlds__goal), list(hlds__goal), bool, bool).
+:- mode move_follow_code_in_conj(in, out, in, out) is det.
 
 	% find the first branched structure, and split the
 	% conj into those goals before and after it.
 
-move_follow_code_in_conj([], _ModuleInfo, [], R, R).
-move_follow_code_in_conj([Goal0 | Goals0], ModuleInfo, [Goal | Goals], R0, R) :-
-	move_follow_code_in_goal(Goal0, ModuleInfo, Goal1, R0, R1),
+move_follow_code_in_conj([], [], R, R).
+move_follow_code_in_conj([Goal0 | Goals0], [Goal | Goals], R0, R) :-
 	(
-		move_follow_code_is_branched(Goal1)
-	->
-		move_follow_code_select(Goals0, FollowGoals, RestGoals0),
+		move_follow_code_is_branched(Goal0, SwitchLike),
 		(
-			FollowGoals = []
-		->
-			Goal = Goal1,
-			R2 = R1
-		;
-			R2 = yes,
-			move_follow_code_move_goals(Goal1, FollowGoals, Goal)
+			SwitchLike = yes
+		% ;
+		% 	SwitchLike = no,
+		%	no_output_vars(Goal0)
 		),
-		move_follow_code_in_conj(RestGoals0, ModuleInfo, Goals, R2, R)
+		move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime),
+		FollowGoals \= []
+	->
+		R1 = yes,
+		RestGoals = RestGoalsPrime,
+		move_follow_code_move_goals(Goal0, FollowGoals, Goal1)
 	;
-		Goal = Goal1,
-		move_follow_code_in_conj(Goals0, ModuleInfo, Goals, R1, R)
-	).
+		R1 = R0,
+		Goal1 = Goal0,
+		RestGoals = Goals0
+	),
+	move_follow_code_in_goal(Goal1, Goal, R1, R2),
+	move_follow_code_in_conj(RestGoals, Goals, R2, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -186,6 +186,11 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 	->
 		move_follow_code_select(Goals, FollowGoals0, RestGoals),
 		FollowGoals = [Goal|FollowGoals0]
+%	;
+%		move_follow_code_is_call(Goal)
+%	->
+%		FollowGoals = [Goal],
+%		RestGoals = Goals
 	;
 		FollowGoals = [],
 		RestGoals = [Goal|Goals]
@@ -258,37 +263,28 @@ conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_is_branched(hlds__goal).
-:- mode move_follow_code_is_branched(in) is semidet.
+:- pred move_follow_code_is_branched(hlds__goal, bool).
+:- mode move_follow_code_is_branched(in, out) is semidet.
 
-move_follow_code_is_branched(Goal - _GoalInfo) :-
-	(
-		Goal = switch(_,_,_)
-	->
-		true
-	;
-		Goal = if_then_else(_,_,_,_)
-	->
-		true
-	;
-		Goal = disj(_)
-	).
+move_follow_code_is_branched(switch(_,_,_) - _GoalInfo, yes).
+move_follow_code_is_branched(if_then_else(_,_,_,_) - _GoalInfo, yes).
+move_follow_code_is_branched(disj(_) - _GoalInfo, no).
 
 %-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_is_builtin(hlds__goal).
 :- mode move_follow_code_is_builtin(in) is semidet.
 
-move_follow_code_is_builtin(Goal - _GoalInfo) :-
-	(
-		Goal = unify(_,_,_,Unification,_),
-		Unification \= complicated_unify(_, _, _)
-	->
-		true
-	;
-		Goal = call(_,_,_,Builtin, _, _),
-		is_builtin__is_inline(Builtin)
-	).
-		
+move_follow_code_is_builtin(unify(_,_,_,Unification,_) - _GoalInfo) :-
+	Unification \= complicated_unify(_, _, _).
+move_follow_code_is_builtin(call(_,_,_,Builtin, _, _) - _GoalInfo) :-
+	is_builtin__is_inline(Builtin).
+
+:- pred move_follow_code_is_call(hlds__goal).
+:- mode move_follow_code_is_call(in) is semidet.
+
+move_follow_code_is_call(call(_,_,_,Builtin, _, _) - _GoalInfo) :-
+	\+ is_builtin__is_inline(Builtin).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

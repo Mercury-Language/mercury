@@ -235,7 +235,8 @@
 
 	% See whether instructions until the next decr_sp (if any) refer to
 	% any stackvars or branch away. If not, return the instructions up to
-	% the decr_sp.
+	% the decr_sp. A restoration of succip from the bottom stack slot
+	% is allowed; this instruction is not returned in the output.
 
 :- pred opt_util__no_stackvars_til_decr_sp(list(instruction), int,
 	list(instruction), list(instruction)).
@@ -661,11 +662,21 @@ opt_util__no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
 		Between = [Instr0 | Between0]
 	;
 		Uinstr0 = assign(Lval, Rval),
-		opt_util__lval_refers_stackvars(Lval, no),
-		opt_util__rval_refers_stackvars(Rval, no),
-		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
-			Between0, Remain),
-		Between = [Instr0 | Between0]
+		(
+			Lval = succip,
+			Rval = lval(stackvar(FrameSize)),
+			opt_util__skip_comments(Instrs0, Instrs1),
+			Instrs1 = [decr_sp(FrameSize) - _ | Instrs2]
+		->
+			Between = [],
+			Remain = Instrs2
+		;
+			opt_util__lval_refers_stackvars(Lval, no),
+			opt_util__rval_refers_stackvars(Rval, no),
+			opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+				Between0, Remain),
+			Between = [Instr0 | Between0]
+		)
 	;
 		Uinstr0 = incr_hp(Lval, _, Rval),
 		opt_util__lval_refers_stackvars(Lval, no),

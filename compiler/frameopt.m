@@ -21,6 +21,18 @@
 :- pred frameopt__main(list(instruction), list(instruction), bool).
 :- mode frameopt__main(in, out, out) is det.
 
+	% Find out if succip is ever restored.
+
+:- pred frameopt__is_succip_restored(list(instruction)).
+:- mode frameopt__is_succip_restored(in) is semidet.
+
+	% Remove any saves of the succip. Should be called only if succip
+	% is never restored. Note that due to fulljump optimization, there
+	% may be several copies of the save.
+
+:- pred frameopt__dont_save_succip(list(instruction), list(instruction)).
+:- mode frameopt__dont_save_succip(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -39,8 +51,11 @@
 	% code. We do this in the hope that code branching to this label that
 	% would otherwise have to set up a stack frame just so that it can be
 	% destroyed can now branch to the parallel code sequence instead.
-	% At the end, we test whether the procedure ever restores succip;
-	% if not, we delete any speculative saves we introduced.
+
+	% At the end, after another round of the other optimizations (including
+	% peepholes that may eliminate decr_sp/incr_sp pairs) we test whether
+	% the procedure ever restores succip; if not, we delete any speculative
+	% saves we introduced.
 
 frameopt__main(Instrs0, Instrs, Mod) :-
 	opt_util__gather_comments(Instrs0, Comment1, Instrs1),
@@ -85,11 +100,8 @@ frameopt__main(Instrs0, Instrs, Mod) :-
 		( Instrs4 = Instrs0 ->
 			Instrs = Instrs0,
 			Mod = no
-		; frameopt__is_succip_restored(Instrs4) ->
-			Instrs = Instrs4,
-			Mod = yes
 		;
-			frameopt__dont_save_succip(Instrs4, Instrs),
+			Instrs = Instrs4,
 			Mod = yes
 		)
 	;
@@ -1218,23 +1230,12 @@ frameopt__insert_late_setups_list([SetupCode0 - Label | Inserts], OrigLabel,
 
 %-----------------------------------------------------------------------------%
 
-	% Find out if succip is ever restored.
-
-:- pred frameopt__is_succip_restored(list(instruction)).
-:- mode frameopt__is_succip_restored(in) is semidet.
-
 frameopt__is_succip_restored([Uinstr - _Comment | Instrs]) :-
 	(
 		Uinstr = assign(succip, lval(stackvar(_)))
 	;
 		frameopt__is_succip_restored(Instrs)
 	).
-
-	% Remove any saves of the succip. Should be called only if succip
-	% is never restored.
-
-:- pred frameopt__dont_save_succip(list(instruction), list(instruction)).
-:- mode frameopt__dont_save_succip(in, out) is det.
 
 frameopt__dont_save_succip([], []).
 frameopt__dont_save_succip([Instr0 | Instrs0], Instrs) :-

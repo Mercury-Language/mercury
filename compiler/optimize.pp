@@ -37,20 +37,20 @@ optimize__main([Proc0|Procs0], [Proc|Procs]) -->
 	optimize__proc(Proc0, Proc),
 	optimize__main(Procs0, Procs).
 
-optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
-		   c_procedure(Name, Arity, Mode, Instructions)) -->
+optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
+		   c_procedure(Name, Arity, Mode, Instrs)) -->
 	globals__io_lookup_int_option(optimize_repeat, AllRepeat),
 	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
 	{ NovnRepeat is AllRepeat - VnRepeat },
-	optimize__repeat(NovnRepeat, no,  Instructions0, Instructions1),
-	optimize__repeat(VnRepeat, yes, Instructions1, Instructions2),
-	optimize__nonrepeat(Instructions2, Instructions),
+	optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
+	optimize__repeat(VnRepeat, yes, Instrs1, Instrs2),
+	optimize__nonrepeat(Instrs2, Instrs),
 #if NU_PROLOG
-	{ putprop(opt, opt, Instructions) },
+	{ putprop(opt, opt, Instrs) },
 	{ fail }.
-optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
-		   c_procedure(Name, Arity, Mode, Instructions)) -->
-	{ getprop(opt, opt, Instructions, Ref) },
+optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
+		   c_procedure(Name, Arity, Mode, Instrs)) -->
+	{ getprop(opt, opt, Instrs, Ref) },
 	{ erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -63,32 +63,32 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
 	io__state, io__state).
 :- mode optimize__repeat(in, in, in, out, di, uo) is det.
 
-optimize__repeat(Iter0, DoVn, Instructions0, Instructions) -->
+optimize__repeat(Iter0, DoVn, Instrs0, Instrs) -->
 	(
 		{ Iter0 > 0 }
 	->
-		optimize__repeated(Instructions0, DoVn, Instructions1, Mod),
+		optimize__repeated(Instrs0, DoVn, no, Instrs1, Mod),
 		( { Mod = yes } ->
 			{ Iter1 is Iter0 - 1 },
-			optimize__repeat(Iter1, DoVn, Instructions1,
-				Instructions)
+			optimize__repeat(Iter1, DoVn, Instrs1,
+				Instrs)
 		;
-			{ Instructions = Instructions1 }
+			{ Instrs = Instrs1 }
 		)
 	;
-		{ Instructions = Instructions0 }
+		{ Instrs = Instrs0 }
 	).
 
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred optimize__repeated(list(instruction), bool, list(instruction), bool,
-	io__state, io__state).
-:- mode optimize__repeated(in, in, out, out, di, uo) is det.
+:- pred optimize__repeated(list(instruction), bool, bool,
+	list(instruction), bool, io__state, io__state).
+:- mode optimize__repeated(in, in, in, out, out, di, uo) is det.
 
-optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
+optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	{ opt_util__find_first_label(Instructions0, Label) },
+	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 
 	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
@@ -100,9 +100,9 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		value_number__main(Instructions0, Instructions1)
+		value_number__main(Instrs0, Instrs1)
 	;
-		{ Instructions1 = Instructions0 }
+		{ Instrs1 = Instrs0 }
 	),
 	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
 	globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt),
@@ -114,10 +114,10 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt__main(Instructions1, FullJumpopt, Instructions2,
-			Mod1) }
+		{ jumpopt__main(Instrs1, FullJumpopt, Final,
+			Instrs2, Mod1) }
 	;
-		{ Instructions2 = Instructions1 },
+		{ Instrs2 = Instrs1 },
 		{ Mod1 = no }
 	),
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
@@ -129,9 +129,9 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ peephole__main(Instructions2, Instructions3, Mod2) }
+		{ peephole__main(Instrs2, Instrs3, Mod2) }
 	;
-		{ Instructions3 = Instructions2 },
+		{ Instrs3 = Instrs2 },
 		{ Mod2 = no }
 	),
 	globals__io_lookup_bool_option(optimize_labels, LabelElim),
@@ -143,9 +143,9 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instructions3, Instructions4, Mod3) }
+		{ labelopt__main(Instrs3, Instrs4, Mod3) }
 	;
-		{ Instructions4 = Instructions3 },
+		{ Instrs4 = Instrs3 },
 		{ Mod3 = no }
 	),
 	globals__io_lookup_bool_option(optimize_dups, DupElim),
@@ -157,11 +157,11 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ dupelim__main(Instructions4, Instructions) }
+		{ dupelim__main(Instrs4, Instrs) }
 	;
-		{ Instructions = Instructions4 }
+		{ Instrs = Instrs4 }
 	),
-	{ Mod1 = no, Mod2 = no, Mod3 = no, Instructions = Instructions0 ->
+	{ Mod1 = no, Mod2 = no, Mod3 = no, Instrs = Instrs0 ->
 		Mod = no
 	;
 		Mod = yes
@@ -169,10 +169,10 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 #if NU_PROLOG
-	{ putprop(opt, opt, Instructions - Mod) },
+	{ putprop(opt, opt, Instrs - Mod) },
 	{ fail }.
-optimize__repeated(Instructions0, _, Instructions, Mod) -->
-	{ getprop(opt, opt, Instructions - Mod, Ref) },
+optimize__repeated(Instrs0, _, _, Instrs, Mod) -->
+	{ getprop(opt, opt, Instrs - Mod, Ref) },
 	{ erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -183,9 +183,9 @@ optimize__repeated(Instructions0, _, Instructions, Mod) -->
 	io__state, io__state).
 :- mode optimize__nonrepeat(in, out, di, uo) is det.
 
-optimize__nonrepeat(Instructions0, Instructions) -->
+optimize__nonrepeat(Instrs0, Instrs) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	{ opt_util__find_first_label(Instructions0, Label) },
+	{ opt_util__find_first_label(Instrs0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 
 	globals__io_lookup_bool_option(optimize_frames, FrameOpt),
@@ -197,9 +197,9 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instructions0, Instructions1, Mod1) }
+		{ frameopt__main(Instrs0, Instrs1, Mod1) }
 	;
-		{ Instructions1 = Instructions0 },
+		{ Instrs1 = Instrs0 },
 		{ Mod1 = no }
 	),
 	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
@@ -211,18 +211,24 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		;
 			[]
 		),
-		{ value_number__post_main(Instructions1, Instructions2) }
+		{ value_number__post_main(Instrs1, Instrs2) }
 	;
-		{ Instructions2 = Instructions1 }
+		{ Instrs2 = Instrs1 }
 	),
 	( { FrameOpt = yes ; ValueNumber = yes } ->
-		optimize__repeated(Instructions2, no, Instructions3, RepMod),
+		optimize__repeated(Instrs2, no, yes,
+			Instrs3, RepMod),
 		globals__io_lookup_bool_option(optimize_peep, Peephole),
 		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
-			{ peephole__main(Instructions3, Instructions, _) }
+			{ peephole__main(Instrs3, Instrs4, _) }
 		;
-			{ Instructions = Instructions3 }
+			{ Instrs4 = Instrs3 }
+		),
+		( { frameopt__is_succip_restored(Instrs4) } ->
+			{ Instrs = Instrs4 }
+		;
+			{ frameopt__dont_save_succip(Instrs4, Instrs) }
 		)
 	;
-		{ Instructions = Instructions2 }
+		{ Instrs = Instrs2 }
 	).

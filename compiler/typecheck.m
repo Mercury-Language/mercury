@@ -2559,11 +2559,14 @@ report_error_pred_num_args(TypeInfo, Name / Arity, Arities) -->
 	write_type_info_context(TypeInfo),
 	io__write_string("  error: wrong number of arguments ("),
 	io__write_int(Arity),
-	io__write_string(") in call to pred `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("'; should be "),
+	io__write_string("; should be "),
 	report_error_pred_num_right_args(Arities),
-	io__write_string(".\n").
+	io__write_string(")\n"),
+	{ type_info_get_context(TypeInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("  in call to pred `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("'.\n").
 
 :- pred report_error_pred_num_right_args(list(int), io__state, io__state).
 :- mode report_error_pred_num_right_args(in, di, uo) is det.

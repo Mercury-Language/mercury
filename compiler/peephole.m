@@ -372,10 +372,16 @@ peephole__match(modframe(Redoip), Comment,
 	).
 
 	% If a decr_sp follows an incr_sp of the same amount, with the code
-	% in between not referencing the stack, then the two cancel out.
+	% in between not referencing the stack, except possibly for a
+	% restoration of succip, then the two cancel out.
 	%
 	%	incr_sp N
 	%	<...>		=>	<...>
+	%	decr_sp N
+	%
+	%	incr_sp N
+	%	<...>		=>	<...>
+	%	succip = detstackvar(N)
 	%	decr_sp N
 
 peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
