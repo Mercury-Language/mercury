@@ -1482,6 +1482,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_is_address_taken(proc_info, is_address_taken).
 :- mode proc_info_is_address_taken(in, out) is det.
 
+:- pred proc_info_set_address_taken(proc_info, is_address_taken, proc_info).
+:- mode proc_info_set_address_taken(in, in, out) is det.
+
 :- pred proc_info_get_rl_exprn_id(proc_info, maybe(rl_exprn_id)).
 :- mode proc_info_get_rl_exprn_id(in, out) is det.
 
@@ -1960,6 +1963,12 @@ proc_info_set_maybe_arg_size_info(ProcInfo0, Q, ProcInfo) :-
 proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
 		P, Q, _, S, T, U),
+	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, T, U).
+
+proc_info_set_address_taken(ProcInfo0, T, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, _, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
 		P, Q, R, S, T, U).
 
