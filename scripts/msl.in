@@ -55,9 +55,6 @@ while : ; do
 	esac
 done
 
-if $debug; then
-	LIBRARY_OBJS="$LIBRARY_OBJS portray.ql"
-fi
 objlist=
 for obj in $LIBRARY_OBJS 'kludge for broken shells'; do
 	if [ "$obj" = 'kludge for broken shells' ]; then
