@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-MGNUCFLAGS=-g
+MGNUCFLAGS=-g $(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
 
 # override this with `mmake HAVE_NUPROLOG=yes'
 # if you want to rebuild the `.exp' files.
