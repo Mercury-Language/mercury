@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -431,7 +431,7 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
 	{ pred_info_get_promised_purity(PredInfo0, PromisedPurity) },
-  
+
 	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 	{ pred_info_procids(PredInfo0, ProcIds) },
 	{ clauses_info_clauses(ClausesInfo0, Clauses0) },
@@ -563,8 +563,9 @@ compute_purity(GoalType, [Clause0|Clauses0], [Clause|Clauses], ProcIds,
 	% If this clause doesn't apply to all modes of this procedure,
 	% i.e. the procedure has different clauses for different modes,
 	% then we must treat it as impure.
-	% XXX Currently `:- pragma foreign_proc' procedures are
-	% assumed to be pure. This will change.
+	% the default impurity of foreign_proc procedures is handled when
+	% processing the foreign_proc goal -- they are not counted as impure
+	% here simply because they have different clauses for different modes
 	{
 		( applies_to_all_modes(Clause0, ProcIds)
 		; GoalType = pragmas
@@ -774,22 +775,23 @@ compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
 	compute_goal_purity(Goale0, Goale, InClosure, Purity3),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
-compute_expr_purity(Ccode, Ccode, _, _, Purity) -->
-	{ Ccode = foreign_proc(Attributes, PredId, _,_,_,_,_) },
-	{ purity(Attributes, AttributesPurity) },
-
-	%
-	% If there were no purity attributes, the purity of the goal
-	% is the purity of the predicate.
-	% XXX Currently the default purity is `pure'. Eventually it
-	% should default to `impure', and require promises for any
-	% other purity levels, i.e. Purity = AttributesPurity.
-	%
+compute_expr_purity(ForeignProc0, ForeignProc, _, _, Purity) -->
+	{ ForeignProc0 = foreign_proc(_, _, _, _, _, _, _) },
+	{ Attributes = ForeignProc0 ^ foreign_attr },
+	{ PredId = ForeignProc0 ^ foreign_pred_id },
 	ModuleInfo =^ module_info,
-	{ AttributesPurity = (pure) ->
+	{ 
+		legacy_purity_behaviour(Attributes, yes)
+	->
+			% get the purity from the declaration, and set it 
+			% here so that it is correct for later use
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_get_purity(PredInfo, Purity)
+		pred_info_get_purity(PredInfo, Purity),
+		set_purity(Attributes, Purity, NewAttributes),
+		ForeignProc = ForeignProc0 ^ foreign_attr := NewAttributes
 	;
+		ForeignProc = ForeignProc0,
+		purity(Attributes, AttributesPurity),
 		Purity = AttributesPurity
 	}.
 

@@ -563,6 +563,9 @@
 :- pred purity(pragma_foreign_proc_attributes, purity).
 :- mode purity(in, out) is det.
 
+:- pred legacy_purity_behaviour(pragma_foreign_proc_attributes, bool).
+:- mode legacy_purity_behaviour(in, out) is det.
+
 :- pred set_thread_safe(pragma_foreign_proc_attributes, thread_safe,
 		pragma_foreign_proc_attributes).
 :- mode set_thread_safe(in, in, out) is det.
@@ -584,6 +587,10 @@
 :- pred set_purity(pragma_foreign_proc_attributes, purity,
 		pragma_foreign_proc_attributes).
 :- mode set_purity(in, in, out) is det.
+
+:- pred set_legacy_purity_behaviour(pragma_foreign_proc_attributes, bool,
+		pragma_foreign_proc_attributes).
+:- mode set_legacy_purity_behaviour(in, in, out) is det.
 
 :- pred add_extra_attribute(pragma_foreign_proc_attributes, 
 		pragma_foreign_proc_extra_attribute,
@@ -1035,19 +1042,18 @@
 			thread_safe		:: thread_safe,
 			tabled_for_io		:: tabled_for_io,
 			purity			:: purity,
+				% there is some special case behaviour for 
+				% pragma c_code and pragma import purity
+				% if legacy_purity_behaviour is `yes'
+			legacy_purity_behaviour	:: bool,
 			extra_attributes	:: 
 				list(pragma_foreign_proc_extra_attribute)
 		).
 
 
-	% XXX we define Purity as being "pure" by default, but we should
-	% change this to "impure" once the promise_pure syntax is available
-	% and all the uses of foreign_proc in the library have the appropriate
-	% promises on them.
 default_attributes(Language, 
 	attributes(Language, may_call_mercury, not_thread_safe, 
-		not_tabled_for_io, pure, [])).		% delete me and 
-%		not_tabled_for_io, impure, [])).	% uncomment me soon!
+		not_tabled_for_io, impure, no, [])).
 
 may_call_mercury(Attrs, Attrs ^ may_call_mercury).
 
@@ -1058,6 +1064,8 @@ foreign_language(Attrs, Attrs ^ foreign_language).
 tabled_for_io(Attrs, Attrs ^ tabled_for_io).
 
 purity(Attrs, Attrs ^ purity).
+
+legacy_purity_behaviour(Attrs, Attrs ^ legacy_purity_behaviour).
 
 set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1074,12 +1082,16 @@ set_tabled_for_io(Attrs0, TabledForIo, Attrs) :-
 set_purity(Attrs0, Purity, Attrs) :-
 	Attrs = Attrs0 ^ purity := Purity.
 
+set_legacy_purity_behaviour(Attrs0, Legacy, Attrs) :-
+	Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
+
+
 attributes_to_strings(Attrs, StringList) :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
 	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-			Purity,	ExtraAttributes),
+			Purity,	_LegacyBehaviour, ExtraAttributes),
 	(
 		MayCallMercury = may_call_mercury,
 		MayCallMercuryStr = "may_call_mercury"

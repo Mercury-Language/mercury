@@ -495,7 +495,9 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 			Pragma = "c_code"
 		->
 			% may_call_mercury is a conservative default.
-			default_attributes(ForeignLanguage, Attributes),
+			default_attributes(ForeignLanguage, Attributes0),
+			set_legacy_purity_behaviour(Attributes0, yes,
+				Attributes),
 			(
 			    CodeTerm = term__functor(term__string(Code), [],
 				Context)
@@ -581,7 +583,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 	        )
 	    ;
 		PragmaTerms = [PredAndModesTerm, FunctionTerm],
-		default_attributes(ForeignLanguage, Flags),
+		default_attributes(ForeignLanguage, Flags0),
+			% pragma import uses legacy purity behaviour
+		set_legacy_purity_behaviour(Flags0, yes, Flags),
 		FlagsResult = ok(Flags)
 	    )	
  	-> 
@@ -1069,9 +1073,10 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		MaybeAttributes) :-
 	default_attributes(ForeignLanguage, Attributes0),
 	( ( Pragma = "c_code" ; Pragma = "import" ) ->
-		set_purity(Attributes0, pure, Attributes1)
+		set_legacy_purity_behaviour(Attributes0, yes, Attributes1),
+		set_purity(Attributes1, pure, Attributes2)
 	;
-		Attributes1 = Attributes0
+		Attributes2 = Attributes0
 	),
 	ConflictingAttributes = [
 		may_call_mercury(will_not_call_mercury) - 
@@ -1097,7 +1102,7 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		;
 			list__foldl(
 				process_attribute,
-				AttrList, Attributes1, Attributes),
+				AttrList, Attributes2, Attributes),
 			MaybeAttributes = check_required_attributes(
 				ForeignLanguage, Attributes, Term)
 		)
