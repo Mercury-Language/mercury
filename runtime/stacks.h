@@ -109,14 +109,14 @@
 #endif
 
 
-#define	mkframe(prednm, n, redoip)				\
+#define	mkframe(prednm, numslots, redoip)				\
 			do {					\
 				reg	Word	*prevfr;	\
 				reg	Word	*succfr;	\
 								\
 				prevfr = maxfr;			\
 				succfr = curfr;			\
-				maxfr += (NONDET_FIXED_SIZE + n);\
+				maxfr += (NONDET_FIXED_SIZE + numslots);\
 				curfr = maxfr;			\
 				curredoip = redoip;		\
 				curprevfr = prevfr;		\
