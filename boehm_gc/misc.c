@@ -821,11 +821,9 @@ GC_warn_proc GC_current_warn_proc = GC_default_warn_proc;
 void GC_abort(msg)
 GC_CONST char * msg;
 {
+    GC_err_printf1("%s\n", msg);
 #   if defined(MSWIN32)
-      (void) MessageBoxA(NULL, msg, "Fatal error in gc", MB_ICONERROR|MB_OK);
       DebugBreak();
-#   else
-      GC_err_printf1("%s\n", msg);
 #   endif
     if (GETENV("GC_LOOP_ON_ABORT") != NULL) {
 	    /* In many cases it's easier to debug a running process.	*/
