@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,8 +40,7 @@
 	--->	(lambda)
 	;	deforestation
 	;	accumulator
-	;	type_spec(string)
-	.
+	;	type_spec(string).
 
 :- type data_category
 	--->	common
@@ -364,13 +363,13 @@ demangle_unused_args(UnusedArgs, ModeNum0, ModeNum) -->
 		m_remove_suffix("__ua")
 	->
 		{ UnusedArgs = yes(ModeNum0 - no) },
-		{ ModeNum is UA_ModeNum mod 10000 }
+		{ ModeNum = UA_ModeNum mod 10000 }
 	;
 		remove_trailing_int(UA_ModeNum),
 		m_remove_suffix("__uab")
 	->
 		{ UnusedArgs = yes(ModeNum0 - yes) },
-		{ ModeNum is UA_ModeNum mod 10000 }
+		{ ModeNum = UA_ModeNum mod 10000 }
 	;
 		{ UnusedArgs = no },
 		{ ModeNum = ModeNum0 }
@@ -706,7 +705,7 @@ demangle_class_args(Num, FormattedArgs) -->
 	remove_prefix("__"),
 	( { Num > 1 } ->
 		{ Sep = ", " },
-		{ Num1 is Num - 1 },
+		{ Num1 = Num - 1 },
 		demangle_class_args(Num1, Rest)
 	;
 		{ Sep = "" },
@@ -838,7 +837,7 @@ remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
 	->
 		string__left(String0, Index, Module),
 		string__length(String0, Len),
-		Index2 is Index + 2,
+		Index2 = Index + 2,
 		string__substring(String0, Index2, Len, String1),
 		(
 			remove_maybe_module_prefix(yes(SubModule),
@@ -865,7 +864,7 @@ remove_maybe_pred_name(MaybePredName, String0, String) :-
 	->
 		string__left(String0, Index, PredName),
 		string__length(String0, Len),
-		Index2 is Index + 2,
+		Index2 = Index + 2,
 		string__substring(String0, Index2, Len, String),
 		MaybePredName = yes(PredName)
 	;
@@ -947,7 +946,7 @@ format_maybe_module(yes(Module), Name, QualifiedName) :-
 remove_trailing_int(Int) -->
 	remove_trailing_digit(Digit),
 	( remove_trailing_int(Rest) ->
-		{ Int is Rest * 10 + Digit }
+		{ Int = Rest * 10 + Digit }
 	;
 		{ Int = Digit }
 	).
@@ -962,7 +961,7 @@ remove_trailing_digit(Digit, String0, String) :-
 :- mode string_last_char(in, out, out) is semidet.
 string_last_char(String0, Char, String) :-
 	string__length(String0, Len),
-	Len1 is Len - 1,
+	Len1 = Len - 1,
 	string__index(String0, Len1, Char),
 	string__left(String0, Len1, String).
 

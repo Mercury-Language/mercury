@@ -1,10 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % prof_info.m
@@ -47,148 +44,134 @@
 :- type pred_info.
 
 :- type prof_node_type 
-		--->	predicate
-		;	cycle.
-
+	--->	predicate
+	;	cycle.
 
 %-----------------------------------------------------------------------------%
 
+	% Get prof_node from via predicate name.
+	%
+:- pred get_prof_node(string::in, addrdecl::in, prof_node_map::in,
+	prof_node::out) is det.
 
-	% *** Get prof_node from via predicate name *** %
+:- pred update_prof_node(string::in, prof_node::in, addrdecl::in,
+	prof_node_map::in, prof_node_map::out) is det.
 
-:- pred get_prof_node(string, addrdecl, prof_node_map, prof_node).
-:- mode get_prof_node(in, in, in, out) is det.
+	% Initialise prof predicates.
+	%
+:- func prof_node_init(string) = prof_node.
 
-:- pred update_prof_node(string,prof_node,addrdecl,prof_node_map,prof_node_map).
-:- mode update_prof_node(in, in, in, in, out) is det.
+:- func prof_node_init_cycle(string, int, int, float, list(pred_info), int,
+		int) = prof_node.
 
+%-----------------------------------------------------------------------------%
+%
+% `prof' access predicates.
+%
 
-	% *** Initialise prof predicates *** %
+:- pred prof_get_entire(prof::in, float::out, string::out, int::out,
+	addrdecl::out, prof_node_map::out, cycle_map::out) is det.
 
-:- pred prof_node_init(string, prof_node).
-:- mode prof_node_init(in, out) is det.
+:- pred prof_get_addrdeclmap(prof::in, addrdecl::out) is det.
 
-:- pred prof_node_init_cycle(string, int, int, float, list(pred_info), int, 
-							int, prof_node).
-:- mode prof_node_init_cycle(in, in, in, in, in, in, in, out) is det.
+:- pred prof_get_profnodemap(prof::in, prof_node_map::out) is det.
 
+%-----------------------------------------------------------------------------%
+%
+% `prof' update predicates.
+% 
 
-	% *** Access prof predicates *** %
+:- pred prof_set_entire(float::in, string::in, int::in, addrdecl::in,
+	prof_node_map::in, cycle_map::in, prof::out) is det.
 
-:- pred prof_get_entire(prof,
-			float, string, int, addrdecl, prof_node_map, cycle_map).
-:- mode prof_get_entire(in, out, out, out, out, out, out) is det.
+:- pred prof_set_profnodemap(prof_node_map::in, prof::in, prof::out) is det.
 
-:- pred prof_get_addrdeclmap(prof, addrdecl).
-:- mode prof_get_addrdeclmap(in, out) is det.
+:- pred prof_set_cyclemap(cycle_map::in, prof::in, prof::out) is det.
 
-:- pred prof_get_profnodemap(prof, prof_node_map).
-:- mode prof_get_profnodemap(in, out) is det.
+%-----------------------------------------------------------------------------%
+%
+% *** Special prof_node predicates *** 
+%
 
-
-	% *** Update prof predicates *** %
-
-:- pred prof_set_entire(float, string, int, addrdecl, prof_node_map, cycle_map,
-			prof).
-:- mode prof_set_entire(in, in, in, in, in, in, out) is det.
-
-:- pred prof_set_profnodemap(prof_node_map, prof, prof).
-:- mode prof_set_profnodemap(in, in, out) is det.
-
-:- pred prof_set_cyclemap(cycle_map, prof, prof).
-:- mode prof_set_cyclemap(in, in, out) is det.
-
-
-	% *** Special prof_node predicates *** %
-
-:- pred prof_node_type(prof_node, prof_node_type).
-:- mode prof_node_type(in, out) is det.
+:- pred prof_node_type(prof_node::in, prof_node_type::out) is det.
 
 
-	% *** Access Predicate for prof_node *** %
+%-----------------------------------------------------------------------------%
+%
+% *** Access Predicate for prof_node ***
+%
 
-:- pred prof_node_get_entire_pred(prof_node, string, int, int, float,
-					list(pred_info), list(pred_info),
-					int, int, list(string)).
-:- mode prof_node_get_entire_pred(in, out, out, out, out, out, out, out, out, 
-								out) is det.
+:- pred prof_node_get_entire_pred(prof_node::in, string::out, int::out,
+	int::out, float::out, list(pred_info)::out, list(pred_info)::out,
+	int::out, int::out, list(string)::out) is det.
 
-:- pred prof_node_get_entire_cycle(prof_node, string, int, int, float,
-					list(pred_info), int, int).
-:- mode prof_node_get_entire_cycle(in,out,out,out,out,out,out,out) is det.
+:- pred prof_node_get_entire_cycle(prof_node::in, string::out, int::out,
+	int::out, float::out, list(pred_info)::out, int::out, int::out) is det.
 
-:- pred prof_node_get_pred_name(prof_node, string).
-:- mode prof_node_get_pred_name(in, out) is det.
+:- pred prof_node_get_pred_name(prof_node::in, string::out) is det.
 
-:- pred prof_node_get_cycle_number(prof_node, int).
-:- mode prof_node_get_cycle_number(in, out) is det.
+:- pred prof_node_get_cycle_number(prof_node::in, int::out) is det.
 
-:- pred prof_node_get_initial_counts(prof_node, int).
-:- mode prof_node_get_initial_counts(in, out) is det.
+:- pred prof_node_get_initial_counts(prof_node::in, int::out) is det.
 
-:- pred prof_node_get_propagated_counts(prof_node, float).
-:- mode prof_node_get_propagated_counts(in, out) is det.
+:- pred prof_node_get_propagated_counts(prof_node::in, float::out) is det.
 
-:- pred prof_node_get_parent_list(prof_node, list(pred_info)).
-:- mode prof_node_get_parent_list(in, out) is det.
+:- pred prof_node_get_parent_list(prof_node::in, list(pred_info)::out) is det.
 
-:- pred prof_node_get_child_list(prof_node, list(pred_info)).
-:- mode prof_node_get_child_list(in, out) is det.
+:- pred prof_node_get_child_list(prof_node::in, list(pred_info)::out) is det.
 
-:- pred prof_node_get_total_calls(prof_node, int).
-:- mode prof_node_get_total_calls(in, out) is det.
+:- pred prof_node_get_total_calls(prof_node::in, int::out) is det.
 
-:- pred prof_node_get_self_calls(prof_node, int).
-:- mode prof_node_get_self_calls(in, out) is det.
+:- pred prof_node_get_self_calls(prof_node::in, int::out) is det.
 
+%-----------------------------------------------------------------------------%
+%
+% *** Update prof_node predicates *** 
+%
 
-	% *** Update prof_node predicates *** %
+:- pred prof_node_set_cycle_num(int::in, prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_set_cycle_num(int, prof_node, prof_node).
-:- mode prof_node_set_cycle_num(in, in, out) is det.
+:- pred prof_node_set_initial_counts(int::in, prof_node::in, prof_node::out) 
+	is det.
 
-:- pred prof_node_set_initial_counts(int, prof_node, prof_node).
-:- mode prof_node_set_initial_counts(in, in, out) is det.
+:- pred prof_node_set_propagated_counts(float::in, prof_node::in,
+	prof_node::out) is det.
 
-:- pred prof_node_set_propagated_counts(float, prof_node, prof_node).
-:- mode prof_node_set_propagated_counts(in, in, out) is det.
+:- pred prof_node_concat_to_parent(string::in, int::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_concat_to_parent(string, int, prof_node, prof_node).
-:- mode prof_node_concat_to_parent(in, in, in, out) is det.
+:- pred prof_node_concat_to_child(string::in, int::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_concat_to_child(string, int, prof_node, prof_node).
-:- mode prof_node_concat_to_child(in, in, in, out) is det.
+:- pred prof_node_set_total_calls(int::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_set_total_calls(int, prof_node, prof_node).
-:- mode prof_node_set_total_calls(in, in, out) is det.
+:- pred prof_node_set_self_calls(int::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_set_self_calls(int, prof_node, prof_node).
-:- mode prof_node_set_self_calls(in, in, out) is det.
+:- pred prof_node_concat_to_name_list(string::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_concat_to_name_list(string, prof_node, prof_node).
-:- mode prof_node_concat_to_name_list(in, in, out) is det.
+:- pred prof_node_concat_to_member(string::in, int::in,
+	prof_node::in, prof_node::out) is det.
 
-:- pred prof_node_concat_to_member(string, int, prof_node, prof_node).
-:- mode prof_node_concat_to_member(in, in, in, out) is det.
+%-----------------------------------------------------------------------------%
+%
+% *** Init  predicates for pred_info *** 
+%
 
+:- pred pred_info_init(string::in, int::in, pred_info::out) is det.
 
-	% *** Init  predicates for pred_info *** %
+%-----------------------------------------------------------------------------%
+%
+% *** Access predicates for pred_info *** 
+%
 
-:- pred pred_info_init(string, int, pred_info).
-:- mode pred_info_init(in, in, out) is det.
+:- pred pred_info_get_entire(pred_info::in, string::out, int::out) is det.
 
+:- pred pred_info_get_pred_name(pred_info::in, string::out) is det.
 
-	% *** Access predicates for pred_info *** %
-
-:- pred pred_info_get_entire(pred_info, string, int).
-:- mode pred_info_get_entire(in, out, out) is det.
-
-:- pred pred_info_get_pred_name(pred_info, string).
-:- mode pred_info_get_pred_name(in, out) is det.
-
-:- pred pred_info_get_counts(pred_info, int).
-:- mode pred_info_get_counts(in, out) is det.
-
+:- pred pred_info_get_counts(pred_info::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -311,9 +294,9 @@ prof_set_cyclemap(CycleMap, prof(A, B, C, D, E, _),
 
 % *** Initialise predicates *** %
 
-prof_node_init(PredName, pred_node(PredName, 0, 0, 0.0, [], [], 0, 0, [])).
+prof_node_init(PredName) = pred_node(PredName, 0, 0, 0.0, [], [], 0, 0, []).
 
-prof_node_init_cycle(A, B, C, D, E, F, G, cycle_node(A, B, C, D, E, F, G)).
+prof_node_init_cycle(A, B, C, D, E, F, G) = cycle_node(A, B, C, D, E, F, G).
 
 
 %-----------------------------------------------------------------------------%
@@ -437,4 +420,6 @@ pred_info_get_pred_name(pred_info(Name, _), Name).
 pred_info_get_counts(pred_info(_, Count), Count).
 
 
+%-----------------------------------------------------------------------------%
+:- end_module prof_info.
 %-----------------------------------------------------------------------------%

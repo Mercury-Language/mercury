@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2000-2001 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,7 @@
 	% Miscellaneous Options
 		;	help.
 
-:- type option_table	==	option_table(option).
+:- type option_table == option_table(option).
 		
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -49,10 +49,10 @@
 
 % A couple of misc utilities
 
-:- pred maybe_write_string(bool::input, string::input,
-			io__state::di, io__state::uo) is det.
-:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+:- pred maybe_write_string(bool::input, string::input, io::di, io::uo) is det.
+:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -113,8 +113,7 @@ long_option("use-dynamic",		dynamic_cg).
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
 
-special_handler(profile, string(WhatToProfile), OptionTable0, Result)
-		:-
+special_handler(profile, string(WhatToProfile), OptionTable0, Result) :-
 	( valid_profile_option(WhatToProfile, CountFile) ->
 		map__set(OptionTable0, countfile, string(CountFile),
 			OptionTable),
@@ -133,6 +132,7 @@ special_handler(profile_time, _, OptionTable0, ok(OptionTable)) :-
 		OptionTable).
 
 :- pred valid_profile_option(string::in, string::out) is semidet.
+
 valid_profile_option("memory-words", "Prof.MemoryWords").
 valid_profile_option("memory-cells", "Prof.MemoryCells").
 valid_profile_option("time", "Prof.Counts").
@@ -173,7 +173,6 @@ options_help -->
 	io__write_string("\t\tName of the file which contains the call graph for\n"),
 	io__write_string("\t\tthe library modules.\n"),
 
-
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage.\n"),
@@ -188,6 +187,6 @@ maybe_write_string(no, _) --> [].
 maybe_flush_output(yes) --> io__flush_output.
 maybe_flush_output(no) --> [].
 
+%-----------------------------------------------------------------------------%
 :- end_module options.
-
 %-----------------------------------------------------------------------------%

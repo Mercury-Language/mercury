@@ -1,10 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % output_prof_info.m
@@ -25,12 +22,11 @@
 
 :- import_module float, int, list,  map, string.
 
-
 %-----------------------------------------------------------------------------%
 
 	% XXX Needs to be explained more clearly.
-:- type output --->
-		output(
+:- type output
+	---> output(
 			map(string, output_prof),	% Map which contains all
 							% the info which is 
 							% required to generate
@@ -41,10 +37,10 @@
 							% it is in the correct
 							% order for call.
 			list(string)			% same except for flat
-		).
+	).
 
-:- type output_prof --->
-		output_prof(
+:- type output_prof
+	---> output_prof(
 			string,			% predicate name
 			int,			% cycle number
 			float,			% %time in current predicate and
@@ -85,8 +81,8 @@
 			list(child)		% children of predicate
 		).
 
-:- type parent --->
-		parent(
+:- type parent
+	---> parent(
 			string,			% parent name
 			int,			% cycle number
 			float,			% the number of seconds of 
@@ -95,11 +91,11 @@
 						% this parent.
 			float,			% same as above for descendants
 			int			% calls to current predicate
-		).
+	).
 
 						
-:- type child --->
-		child(
+:- type child
+	---> child(
 			string,			% child name
 			int,			% cycle number
 			float,			% the number of seconds of 
@@ -109,7 +105,8 @@
 			float,			% same as above for descendants
 			int,			% number of times child called
 			int			% total calls of child
-		).
+	).
 
-
+%-----------------------------------------------------------------------------%
+:- end_module output_prof_info.
 %-----------------------------------------------------------------------------%

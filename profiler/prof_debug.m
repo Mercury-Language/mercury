@@ -1,10 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % prof_debug.m: Debuging predicates for the mercury profiler
@@ -18,20 +15,16 @@
 :- interface.
 :- import_module set, list, string, io, assoc_list.
 
-:- pred output_cliques(list(set(string)), io__state, io__state).
-:- mode output_cliques(in, di, uo) is det.
+:- pred output_cliques(list(set(string))::in, io::di, io::uo) is det.
 
-:- pred output_propagate_info(set(string), assoc_list(string, int), 
-							io__state, io__state).
-:- mode output_propagate_info(in, in, di, uo) is det.
+:- pred output_propagate_info(set(string)::in, assoc_list(string, int)::in,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module std_util.
-
-% :- import_module writeln.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,5 +74,6 @@ print_list([X | Xs]) -->
 	io__write_string("\n"),
 	print_list(Xs).
 
-
+%-----------------------------------------------------------------------------%
+:- end_module prof_debug.
 %-----------------------------------------------------------------------------%

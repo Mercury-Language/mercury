@@ -4,8 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module globals.
-
 % Main author: fjh.
 
 % This module exports the `globals' type and associated access predicates.
@@ -14,6 +12,8 @@
 % This global data is stored in the io.
 
 %-----------------------------------------------------------------------------%
+
+:- module globals.
 
 :- interface.
 :- import_module bool, list, options, getopt, io.
@@ -87,7 +87,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, std_util, require.
+:- import_module map, std_util, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -149,62 +149,62 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 	( OptionData = accumulating(Accumulating) ->
 		Value = Accumulating
 	;
-		error("globals__lookup_accumulating_option: invalid accumulating option")
+		error("globals__lookup_accumulating_option: " ++ 
+			"invalid accumulating option")
 	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options) -->
-	{ globals__init(Options, Globals) },
-	globals__io_set_globals(Globals).
+globals__io_init(Options, !IO) :-
+	globals__init(Options, Globals),
+	globals__io_set_globals(Globals, !IO).
 
-globals__io_get_globals(Globals) -->
-	io__get_globals(UnivGlobals),
-	{
-		univ_to_type(UnivGlobals, Globals0)
-	->
+globals__io_get_globals(Globals, !IO) :-
+	io__get_globals(UnivGlobals, !IO),
+	( univ_to_type(UnivGlobals, Globals0) ->
 		Globals = Globals0
 	;
-		error("globals__io_get_globals: univ_to_type failed")
-	}.
+		error("globals.io_get_globals: univ_to_type failed")
+	).
 
-globals__io_set_globals(Globals0) -->
-	{ unsafe_promise_unique(Globals0, Globals) },
-	{ type_to_univ(Globals, UnivGlobals) },
-	io__set_globals(UnivGlobals).
-
-%-----------------------------------------------------------------------------%
-
-globals__io_lookup_option(Option, OptionData) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_options(Globals, OptionTable) },
-	{ map__lookup(OptionTable, Option, OptionData) }.
-
-globals__io_set_option(Option, OptionData) -->
-	globals__io_get_globals(Globals0),
-	{ globals__get_options(Globals0, OptionTable0) },
-	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
-	{ globals__set_options(Globals0, OptionTable, Globals) },
-	globals__io_set_globals(Globals).
+globals__io_set_globals(Globals0, !IO) :-
+	unsafe_promise_unique(Globals0, Globals),
+	type_to_univ(Globals, UnivGlobals),
+	io__set_globals(UnivGlobals, !IO).
 
 %-----------------------------------------------------------------------------%
 
-globals__io_lookup_bool_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, Option, Value) }.
+globals__io_lookup_option(Option, OptionData, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__get_options(Globals, OptionTable),
+	map__lookup(OptionTable, Option, OptionData).
 
-globals__io_lookup_int_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_int_option(Globals, Option, Value) }.
-
-globals__io_lookup_string_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_string_option(Globals, Option, Value) }.
-
-globals__io_lookup_accumulating_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_accumulating_option(Globals, Option, Value) }.
+globals__io_set_option(Option, OptionData, !IO) :-
+	globals__io_get_globals(Globals0, !IO),
+	globals__get_options(Globals0, OptionTable0),
+	map__set(OptionTable0, Option, OptionData, OptionTable),
+	globals__set_options(Globals0, OptionTable, Globals),
+	globals__io_set_globals(Globals, !IO).
 
 %-----------------------------------------------------------------------------%
+
+globals__io_lookup_bool_option(Option, Value, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__lookup_bool_option(Globals, Option, Value).
+
+globals__io_lookup_int_option(Option, Value, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__lookup_int_option(Globals, Option, Value).
+
+globals__io_lookup_string_option(Option, Value, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__lookup_string_option(Globals, Option, Value).
+
+globals__io_lookup_accumulating_option(Option, Value, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__lookup_accumulating_option(Globals, Option, Value).
+
+%-----------------------------------------------------------------------------%
+:- end_module globals.
 %-----------------------------------------------------------------------------%
