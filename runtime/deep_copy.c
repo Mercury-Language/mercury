@@ -13,6 +13,18 @@
 
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
 
+#define incr_saved_hp(A,B)	do { 					\
+					restore_transient_registers();	\
+					incr_hp((A), (B));		\
+					save_transient_registers();	\
+				} while (0)
+
+#define incr_saved_hp_atomic(A,B) do { 					\
+					restore_transient_registers();	\
+					incr_hp_atomic((A), (B));	\
+					save_transient_registers();	\
+				} while (0)
+
 /*
 ** Prototypes.
 */
@@ -65,7 +77,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     case TYPELAYOUT_STRING_VALUE:
                         if (in_range(data_value)) {
-                            incr_hp_atomic(new_data, 
+                            incr_saved_hp_atomic(new_data, 
                                 (strlen((String) data_value) + sizeof(Word)) 
                                 / sizeof(Word));
                             strcpy((String) new_data, (String) data_value);
@@ -92,7 +104,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                             Word *new_data_ptr;
 
                                 /* allocate space for a univ */
-                            incr_hp(new_data, 2);
+                            incr_saved_hp(new_data, 2);
                             new_data_ptr = (Word *) new_data;
                             new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
                                 data_value[UNIV_OFFSET_FOR_TYPEINFO];
@@ -123,7 +135,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                         args = data_value[0];
 
                             /* create new closure */
-                        incr_hp(LVALUE_CAST(Word, new_closure), args + 2);
+                        incr_saved_hp(LVALUE_CAST(Word, new_closure), args + 2);
 
                             /* copy number of arguments */
                         new_closure[0] = args;
@@ -163,7 +175,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                 type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
 
                     /* allocate space for new args. */
-                incr_hp(new_data, arity);
+                incr_saved_hp(new_data, arity);
 
                     /* copy arguments */
                 for (i = 0; i < arity; i++) {
@@ -203,7 +215,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                 /* allocate space for new args, and 
                  * secondary tag 
                  */
-                incr_hp(new_data, arity + 1);
+                incr_saved_hp(new_data, arity + 1);
 
                     /* copy secondary tag */
                 field(0, new_data, 0) = secondary_tag;

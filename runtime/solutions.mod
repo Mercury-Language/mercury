@@ -210,9 +210,15 @@ mercury__std_util__builtin_solutions_2_0_i1:
 	/* set heap to solutions heap */
 	hp = (Word) solutions_heap_pointer;
 
+	/* to be safe, save the registers before the call */
+	save_transient_registers();
+
 	/* deep copy it to the solutions heap, up to the saved_hp */
 	r3 = deep_copy(r1, (Word *) type_info_fv, (Word *) saved_hp_fv, 
 		heap_zone->top);
+
+	/* restore the registers */
+	restore_transient_registers();
 
 	/* create a cons cell on the solutions heap */
 	list_fv = list_cons(r3, list_fv);
