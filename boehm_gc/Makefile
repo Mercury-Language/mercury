@@ -1,4 +1,13 @@
 #-----------------------------------------------------------------------------#
+# WARNING: This makefile is not safe for parallel makes.
+# This makefile should only be invoked with `-j1'.
+#
+# (The reason parallel makes break is because of the use of constructs like
+# `./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o)' to handle
+# OS-specific dependencies; this can lead to one process noticing
+# a partially build dyn_load.o and trying to use it before it is
+# completely built.)
+#-----------------------------------------------------------------------------#
 # I have modified this file.
 # I've added a different rule for the libgc.a target,
 # added the `include ../Mmake.common' line,

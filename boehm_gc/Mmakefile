@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 University of Melbourne. 
+# Copyright (C) 1995-2001 University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -32,9 +32,13 @@ MMAKEFLAGS=
 #	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
 #	needs the builtin rules. 
 #	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
+#
+#	We also need to explicitly pass `-j1' after MMAKEFLAGS,
+#	to avoid doing a parallel make, for reasons explained at the
+#	top of Makefile.
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) GRADE=$(GRADE) \
+	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) \
 		GC_GRADE=$(GC_GRADE) \
 		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
 		$(EXT_FOR_SHARED_LIB)
