@@ -776,6 +776,14 @@ transform_goal(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
 transform_goal(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
+	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
+
+transform_goal(all(Vars0, Goal0), VarSet0, Subst,
+		not(Vars, not([], Goal) - GoalInfo) - GoalInfo, VarSet) :-
+	substitute_vars(Vars0, Subst, Vars),
+	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
+	goal_info_init(GoalInfo).
+
 transform_goal(some(Vars0, Goal0), VarSet0, Subst,
 		some(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
@@ -791,7 +799,7 @@ transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 	goal_info_init(GoalInfo).
 
 transform_goal(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
-	transform_goal(if_then_else(Vars0, A0, B0, fail), Subst, VarSet0,
+	transform_goal(if_then_else(Vars0, A0, B0, true), Subst, VarSet0,
 		Goal, VarSet).
 
 transform_goal(not(Vars0, A0), VarSet0, Subst,
