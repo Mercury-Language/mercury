@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# The scripts cur_param and next_param allow their callers to cycle through
+# circular lists of parameters. Both scripts take two parameters, a directory
+# name and a counter name.
+#
+# The idea is that the user sets up the file $dir/list.$counter to contain
+# a list of parameters, one per line. Each time the user calls cur_param,
+# they get back as the output of the script the current parameter (initially
+# the first). Each time the user calls next_param, the scripts' notion of
+# the current parameter is set to the parameter on the next line of the file,
+# or, if there are none left, back to the parameter on the first line.
+# next_param has only this side-effect; it does not output anything.
+#
+# Both scripts exit with a non-zero status in case of internal error.
+
+usage="next_param dir counter"
+
+if test $# != 2
+then
+	echo $usage
+	exit 1
+fi
+
+dir=$1
+counter=$2
+
+if test ! -f $dir/next.$counter
+then
+	echo 0 > $dir/next.$counter
+fi
+
+if test -s $dir/list.$counter
+then
+	prev=`cat $dir/next.$counter`
+	next=`expr $prev + 1`
+	length=`wc -l $dir/list.$counter`
+	if test "$next" -gt "$length"
+	then
+		next=1
+	fi
+	echo "$next" > $dir/next.$counter
+else
+	echo "$dir/list.$counter doesn't exist or is empty"
+	exit 1
+fi
+
+exit 0

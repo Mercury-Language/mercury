@@ -27,9 +27,9 @@ DIR=/home/mercury/public/test_mercury/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
 case $ARCH in
 	alpha)
-		# due to bug in DEC loader, INSTALL_DIR should as short as
-		# possible, to avoid overflow of fixed length buffers for
-		# -rpath options. The above definition is too long.
+		# due to a bug in the DEC loader, INSTALL_DIR should be
+		# as short as possible, to avoid overflow of fixed length
+		# buffers for -rpath options. The above definition is too long.
 		INSTALL_DIR=/home/mercury/public/.a
 		;;
 esac
@@ -37,10 +37,10 @@ esac
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
 case $HOST in
-	kryten) 	PARALLEL=-j3 ;; # four CPUs
-	muse)		PARALLEL=-j2 ;; # four CPUs
-	mundook) 	PARALLEL=-j1 ;; # one CPU (or is it two?)
-	murlibobo)	PARALLEL=-j8 ;; # eight CPUs
+	kryten) 	PARALLEL=-j3 ;; # out of four CPUs
+	muse)		PARALLEL=-j2 ;; # out of four CPUs
+	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
+	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	mercury) 	PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
@@ -109,22 +109,69 @@ cvs checkout mercury tests || { false; exit 1; }
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
 cd mercury || { false; exit 1; }
-cat > Mmake.params << EOF
-MC=../scripts/mc
-MCFLAGS=-O2 --inline-threshold 10 --procs-per-c-function 10
-EOF
+
+if test -s mercury/tools/list.$HOST
+then
+	mercury/tools/expand_params `mercury/tools/cur_param mercury/tools $HOST` > Mmake.params
+else
+	echo 'MC = ../scripts/mc' > Mmake.params
+	echo 'MCFLAGS = -O5' >> Mmake.params
+fi
+
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
 mmake clean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
-tools/bootcheck $PARALLEL || { false; exit 1; }
+tools/bootcheck -r -t $PARALLEL || { false; exit 1; }
+cd .. || { false; exit 1; }
+
+: run the regression tests on the stage2 compiler
+MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
+export MERCURY_COMPILER
+case $HOST in
+	mundook|murlibobo)
+		GRADES="none none.gc
+			reg reg.gc
+			asm_fast asm_fast.gc
+			asm_fast.prof asm_fast.gc.prof
+			"
+		;;
+	kryten)
+		GRADES="none jump reg fast asm_jump asm_fast none.gc
+			jump.gc reg.gc fast.gc asm_jump.gc
+			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
+		;;
+	muse)
+		GRADES="reg.gc asm_fast asm_fast.gc
+			reg.gc.prof asm_fast.gc.prof"
+		;;
+	mercury)
+		GRADES="asm_fast.gc asm_fast \
+			asm_fast.gc.prof asm_fast.prof"
+		;;
+esac
+
+cd tests || { false; exit 1; }
+for grade in $GRADES
+do
+	runtests -f "-O5" -g "$grade" $PARALLEL || status=1
+	case $grade in
+		*.prof)	cd benchmarks
+			./poly
+			mprof -V > poly.$grade.mprof 2>&1 
+			cp -f Prof.CallPair poly.$grade.CallPair
+			cp -f Prof.Counts poly.$grade.Counts
+			cp -f Prof.Decl poly.$grade.Decl
+			cd ..
+			;;
+	esac
+done
+mmake realclean $PARALLEL || status=1
 cd .. || { false; exit 1; }
 
 : install the compiler
 cd mercury/stage2 || { false; exit 1; }
-MERCURY_COMPILER=`pwd`/compiler/mercury_compile
-export MERCURY_COMPILER
 case $ARCH in
 	sgi)
 		# see README.IRIX for an explanation of these contortions
@@ -134,7 +181,7 @@ case $ARCH in
 
 		# mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL
 		#
-		# the above line doesn't work, due to bug in gcc 2.6.3;
+		# the above line doesn't work, due to a bug in gcc 2.6.3;
 		# the following hack avoids the bug by compiling modules.o
 		# with -O1 rather than -O2
 		#
@@ -176,77 +223,25 @@ case $ARCH in
 		;;
 esac
 cd ../.. || status=1
-
-: run the regression tests on the installed compiler
-MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
-export MERCURY_COMPILER
-PATH="$INSTALL_DIR/bin:$PATH"
-export PATH
-DIRS="benchmarks general hard_coded valid"
-case $HOST in
-	mundook|murlibobo)
-		GRADES="none none.gc
-			reg reg.gc
-			asm_fast asm_fast.gc
-			asm_fast.prof asm_fast.gc.prof
-			"
-		;;
-	kryten)
-		GRADES="none jump reg fast asm_jump asm_fast none.gc
-			jump.gc reg.gc fast.gc asm_jump.gc
-			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
-		;;
-	muse)
-		GRADES="reg.gc asm_fast asm_fast.gc
-			reg.gc.prof asm_fast.gc.prof"
-		;;
-	mercury)
-		GRADES="asm_fast.gc asm_fast \
-			asm_fast.gc.prof asm_fast.prof"
-		# don't test the directories that require SICStus Prolog,
-		# because we don't have SICStus installed on
-		# mercury@cs.mu.oz.au.
-		DIRS="hard_coded valid"
-		;;
+case $HOST in murlibobo)
+	{ cd $DIR/mercury &&
+	mmake realclean MMAKEFLAGS=$PARALLEL &&
+	: > Mmake.params &&
+	rm -f so_locations &&
+	autoconf &&
+	mercury_cv_num_low_tag_bits=2 sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='MCFLAGS="-O5 --num-tag-bits 2" -j4' tar
+	} || status=1
+	;;
 esac
-for dir in $DIRS; do
-	cd tests/$dir
-	mmake realclean $PARALLEL || status=1
-	mmake depend $PARALLEL || status=1
-	for grade in $GRADES; do
-		mmake -k MCFLAGS="-O2" \
-			GRADE=$grade check $PARALLEL || status=1
-		case $dir in benchmarks)
-		    case $grade in
-			*.prof)	./poly
-				mprof -V > poly.$grade.mprof 2>&1 
-				cp -f Prof.CallPair poly.$grade.CallPair
-				cp -f Prof.Counts poly.$grade.Counts
-				cp -f Prof.Decl poly.$grade.Decl
-				;;
-		    esac ;;
-		esac
-		rm -f *.c *.o
-	done
-	mmake realclean $PARALLEL || status=1
-	cd ../..
-done
 
 case $status in
     0)
 	: if we get this far, then it worked.
 	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
-
-
-	case $HOST in murlibobo)
-		cd $DIR/mercury &&
-		mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; } &&
-		autoconf &&
-		mercury_cv_num_low_tag_bits=2 sh configure \
-			--prefix=$INSTALL_DIR &&
-		mmake MMAKEFLAGS='MCFLAGS="-O5 --num-tag-bits 2" -j4' tar
-		;;
-	esac
+	cd $DIR
+	version=`mmake version`
+	cp mercury-$version.tar.gz mercury-$version-stable.tar.gz 
 
 	true
 	exit 0
@@ -255,6 +250,7 @@ case $status in
 	: one or more tests failed
 	false
 	exit 1
+	;;
 esac
 
 #-----------------------------------------------------------------------------#

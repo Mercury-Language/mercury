@@ -21,10 +21,11 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-c] [-g] [-jN] batchname"
+usage="Usage: makebatch [-c] [-g] [-jN] [-t] batchname"
 needgrade=false
 needcflags=false
 jfactor=-j5
+runtests=""
 
 while test $# -gt 0
 do
@@ -42,6 +43,9 @@ do
 		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-t|--no-test-suite)
+		runtests="-t" ;;
 
 	-*)	echo "$0: unknown option \`$1'" 2>&1
 		echo $usage
@@ -102,7 +106,7 @@ do
 
 	cp Mmake.stage.params batch/$batch.params.$n
 	echo starting bootcheck of version $n
-	if tools/bootcheck -r $jfactor > batch/$batch.out.$n 2>&1
+	if tools/bootcheck -r $jfactor $runtests > batch/$batch.out.$n 2>&1
 	then
 		echo bootcheck of version $n succeeded
 		echo bootcheck succeeded > batch/$batch.out.$n

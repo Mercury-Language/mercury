@@ -1,0 +1,76 @@
+#!/bin/sh
+
+usage="$0 [grade g] [args {s,c}] [typeinfo {1,2,s,d}] [opt N] mcflags ..."
+
+GRADE="asm_fast.gc"
+MCFLAGS=""
+CFLAGS=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+
+	grade)
+		GRADE="$2"
+		shift
+		shift
+		;;
+
+	args)
+		if test "$2" = s
+		then
+			MCFLAGS="$MCFLAGS --args simple"
+		elif test "$2" = c
+		then
+			MCFLAGS="$MCFLAGS --args compact"
+			CFLAGS="$CFLAGS -DCOMPACT_ARGS"
+		else
+			echo $usage ; exit 1
+		fi
+		shift
+		shift
+		;;
+
+	typeinfo)
+		if test "$2" = 1
+		then
+			MCFLAGS="$MCFLAGS --type-info one-cell"
+			CFLAGS="$CFLAGS -DONE_CELL_TYPEINFO"
+		elif test "$2" = 2
+		then
+			MCFLAGS="$MCFLAGS --type-info one-or-two-cell"
+			CFLAGS="$CFLAGS -DONE_OR_TWO_CELL_TYPEINFO"
+		elif test "$2" = s
+		then
+			MCFLAGS="$MCFLAGS --type-info shared-one-or-two-cell"
+			CFLAGS="$CFLAGS -DSHARED_ONE_OR_TWO_CELL_TYPEINFO"
+		elif test "$2" = d
+		then
+			MCFLAGS="$MCFLAGS --type-info default"
+			CFLAGS="$CFLAGS -DDEFAULT_TYPEINFO"
+		else
+			echo $usage ; exit 1
+		fi
+		shift
+		shift
+		;;
+
+	opt)
+		MCFLAGS="$MCFLAGS -O$2"
+		shift
+		shift
+		;;
+
+	*)
+		MCFLAGS="$MCFLAGS $1"
+		shift
+		;;
+
+	esac
+done
+
+echo "MC = ../scripts/mc"
+echo "GRADE = $GRADE"
+echo "MCFLAGS = $MCFLAGS"
+echo "EXTRA_CFLAGS = $CFLAGS"
+echo "EXTRA_MLFLAGS = -g"
+exit 0

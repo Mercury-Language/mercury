@@ -15,6 +15,9 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
+	-t, --no-test-suite
+		By default, bootcheck will also run the test quite.
+		This option prevents that.
 	-2, --keep-stage-2
 		Don't rebuild the stage 2 directory from scratch after
 		building stage 1.  Instead use the existing stage 2 directory.
@@ -26,6 +29,7 @@ Options:
 jfactor=""
 mmake_opts="-k"
 outfile=""
+runtests=true
 copy_runtime=false
 keep_stage_2=false
 keep_stage_3=false
@@ -54,6 +58,9 @@ while [ $# -gt 0 ]; do
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
+
+	-t|--no-test-suite)
+		runtests=false ;;
 
 	-2|--keep-stage-2)
 		keep_stage_2=true ;;
@@ -97,7 +104,7 @@ fi
 
 root=`/bin/pwd`
 
-# the stage 1 compiler is copied to allow it to be worked on
+# the stage 1 compiler is copied to allow it to be worked on (slightly)
 # in parallel with the bootcheck itself.
 
 [ -d stage1 ] || mkdir stage1
@@ -108,12 +115,13 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage2/library
 export MERCURY_INT_DIR
 
-# We try to do the removal of the 
 [ -d stage2 ] || mkdir stage2
 if $keep_stage_2
 then
 	echo keeping existing stage2
 else
+	# We try to do the removal of the stage 2 directory in parallel
+	# since recursive rm's across NFS can be quite slow ...
 	/bin/rm -fr stage2/compiler &
 	/bin/rm -fr stage2/library &
 	wait
@@ -233,6 +241,8 @@ if $keep_stage_3
 then
 	echo keeping existing stage3
 else
+	# We try to do the removal of the stage 3 directory in parallel
+	# since recursive rm's across NFS can be quite slow ...
 	/bin/rm -fr stage3/compiler &
 	/bin/rm -fr stage3/library &
 	wait
@@ -306,7 +316,7 @@ else
 	exit 1
 fi
 
-exit_status=0
+diff_status=0
 
 exec 3>&1		# save stdout in fd 3
 if [ -n "$outfile" ]
@@ -316,17 +326,46 @@ fi
 
 for dir in library compiler; do
 	for file in stage2/$dir/*.c; do
-		diff -u $file stage3/$dir/`basename $file` ||
-			exit_status=1
+		diff -u $file stage3/$dir/`basename $file` || diff_status=1
 	done
 done
 
 exec >&3		# restore stdout from fd 3
-if [ $exit_status -ne 0 ]; then
+if [ $diff_status -ne 0 ]; then
 	echo "error - stage 2 and stage 3 differ!"
 else
 	echo "stage 2 and stage 3 compare ok"
 fi
 
+if $runtests
+then
+	echo "finishing stage3 at `date`"
+
+	if test -d ../tests
+	then
+		cd ../tests
+		runtests $jfactor
+		test_status=$?
+		cd $root
+	elif test -d tests
+	then
+		cd tests
+		runtests $jfactor
+		test_status=$?
+		cd $root
+	else
+		echo "cannot find test directory"
+		test_status=0
+	fi
+else
+	test_status=0
+fi
+
 echo "finishing at `date`"
-exit $exit_status
+
+if test "$diff_status" = 0 -a "$test_status" = 0
+then
+	exit 0
+else
+	exit 1
+fi
