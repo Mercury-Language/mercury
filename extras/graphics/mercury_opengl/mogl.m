@@ -680,7 +680,10 @@
 		;	blend				
 		;	dither				
 		;	index_logic_op		
-		;	color_logic_op.		
+		;	color_logic_op
+		;	auto_normal
+		;	texture_1d
+		;	texture_2d.
 
 :- pred enable(control_flag, io, io).
 :- mode enable(in, di, uo) is det.
@@ -2813,6 +2816,9 @@ control_flag_to_int_and_offset(blend, 16, 0).
 control_flag_to_int_and_offset(dither, 17, 0).
 control_flag_to_int_and_offset(index_logic_op, 18, 0).
 control_flag_to_int_and_offset(color_logic_op, 19, 0).
+control_flag_to_int_and_offset(auto_normal, 20, 0).
+control_flag_to_int_and_offset(texture_1d, 21, 0).
+control_flag_to_int_and_offset(texture_2d, 22, 0).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum control_flag_flags[];
@@ -2839,7 +2845,10 @@ control_flag_to_int_and_offset(color_logic_op, 19, 0).
 		GL_BLEND,
 		GL_DITHER,
 		GL_INDEX_LOGIC_OP,
-		GL_COLOR_LOGIC_OP
+		GL_COLOR_LOGIC_OP,
+		GL_AUTO_NORMAL,
+		GL_TEXTURE_1D,
+		GL_TEXTURE_2D
 	};
 ").
 
