@@ -209,12 +209,6 @@
 #define TYPELAYOUT_PREDICATE_VALUE	((Integer) 7)
 
 /* 
-** Number of defined builtins and reserved values.
-*/
-
-#define TYPELAYOUT_BUILTINS		19
-
-/* 
 ** Highest allowed type variable number
 ** (corresponds with argument number of type parameter).
 */
