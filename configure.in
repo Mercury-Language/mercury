@@ -2212,7 +2212,14 @@ AC_SUBST(DEFAULT_GRADE)
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 
+LIBGRADE_OPTS=
+for libgrade in $LIBGRADES
+do
+	LIBGRADE_OPTS="$LIBGRADE_OPTS --libgrade $libgrade"
+done
+
 AC_SUBST(LIBGRADES)
+AC_SUBST(LIBGRADE_OPTS)
 
 #-----------------------------------------------------------------------------#
 #

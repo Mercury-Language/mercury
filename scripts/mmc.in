@@ -49,6 +49,8 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS="\
 		--create-archive-command-flags \"@ARFLAGS@\" \
 		--ranlib-command \"@RANLIB@\" \
 		--fullarch \"@FULLARCH@\" \
+		--install-prefix \"@prefix@\" \
+		@LIBGRADE_OPTS@ \
 		--num-real-r-regs \"@NUM_REAL_R_REGS@\" \
 		--num-real-r-temps \"@NUM_REAL_R_TEMPS@\" \
 		--conf-low-tag-bits \"@LOW_TAG_BITS@\" \
