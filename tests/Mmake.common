@@ -136,7 +136,7 @@ clean_res:
 	rm -f *.res*
 
 clean_errors:
-	rm -f $(ERROR_OUTPUT_FILE)
+	rm -f $(ERROR_OUTPUT_FILE) FAILED_TESTS
 
 # Remove gzipped executables for tests which have failed.
 ifeq ($(TESTS),)
@@ -229,6 +229,7 @@ start_runtests_local:
 		rm -f *.date *.date3 *.opt *.optdate > /dev/null 2>&1; \
 		rm -f *.trans_opt *.trans_opt_date > /dev/null 2>&1; \
 	fi
+	@> FAILED_TESTS
 
 #
 # Run a single test, cleaning up if it succeeds, or producing
@@ -251,6 +252,7 @@ start_runtests_local:
 	if [ -f $*.failed ]; then \
 		echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
 			| tee -a $@; \
+		echo $* >> FAILED_TESTS; \
 	else \
 		{ mmake $$test.runtest 2>&1 || touch $*.failed; } \
 			| tee -a $@; \
@@ -261,6 +263,7 @@ start_runtests_local:
 			fi; \
 			echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
 				| tee -a $@; \
+			echo $* >> FAILED_TESTS; \
 		else \
 			rm -f $@; \
 			rm -f $$test.out* $$test.*res*; \
