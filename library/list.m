@@ -881,9 +881,9 @@ list__hosort(P, N, L0, L, Rest) :-
 		list__merge(P, L1, L2, L)
         ).
 
-list__merge(P, [], [], []).
-list__merge(P, [], [Y|Ys], [Y|Ys]).
-list__merge(P, [X|Xs], [], [X|Xs]).
+list__merge(_P, [], [], []).
+list__merge(_P, [], [Y|Ys], [Y|Ys]).
+list__merge(_P, [X|Xs], [], [X|Xs]).
 list__merge(P, [H1|T1], [H2|T2], L) :-
 	call(P, H1, H2, C),
 	(
