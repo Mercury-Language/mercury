@@ -46,7 +46,33 @@ map__init([]).
 :- pred map__search(map(K,V), K, V).
 :- mode map__search(input, input, output).
 map__search(Map, K, V) :-
-	member(K-V, Map).
+	assoc_list_member(K-V, Map).
+
+%-----------------------------------------------------------------------------%
+
+	% Search map for data.
+	% This could be just a different mode of map__search, but
+	% with some data structures that would require mode-dependant
+	% code, and we don't want to rely on that feature (at least
+	% until we've implemented it) so we can bootstrap.
+
+:- pred map__inverse_search(map(K,V), K, V).
+:- mode map__inverse_search(input, output, input).
+map__inverse_search(Map, K, V) :-
+	assoc_list_member(K-V, Map).
+
+%-----------------------------------------------------------------------------%
+
+	% This is just a version of member/2 with a complicated mode.
+	% The reason we don't just use member/2 is that we want to
+	% bootstrap this thing before we implement polymorphic modes.
+
+:- pred assoc_list_member(pair(K,V), list(pair(K,V))).
+:- mode assoc_list_member(bound(ground - free) -> ground, input).
+:- mode assoc_list_member(bound(free - ground) -> ground, input).
+assoc_list_member(X, [X|_]).
+assoc_list_member(X, [_|Xs]) :-
+	assoc_list_member(X, Xs).
 
 %-----------------------------------------------------------------------------%
 
@@ -93,13 +119,13 @@ map__set(Map0, K, V, Map) :-
 :- pred map__keys(map(K, V), list(K)).
 :- mode map__keys(input, output).
 map__keys(Map, KeyList) :-
-	findall(K, member(K-V, Map), KeyList).
+	findall(K, assoc_list_member(K - _, Map), KeyList).
 
 %-----------------------------------------------------------------------------%
 
 	% convert a map to an associate list
 
-:- pred map__to_assoc_list(map(K,V), list(map_pair(K,V))).
+:- pred map__to_assoc_list(map(K,V), list(map__pair(K,V))).
 :- mode map__to_assoc_list(input, output).
 map__to_assoc_list(M, M).
 
