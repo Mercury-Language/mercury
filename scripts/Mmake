@@ -1,0 +1,52 @@
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury scripts
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+SCRIPTS = mc mcn mcs mod2init mgnuc ml mint mnc mnl mnp mtags mod2c vpath_find \
+	  mercury_update_interface
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .sh
+.sh:
+	sed	-e "s^@LIBDIR@^$(INSTALL_LIBDIR)^g" \
+		-e "s^@FULLARCH@^$(FULLARCH)^g" \
+		$< > $@
+	chmod +x $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: $(SCRIPTS)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install
+install: install_mmake install_scripts
+
+.PHONY: install_mmake
+install_mmake: Mmake.vars Mmake.rules
+	mkdir -p $(INSTALL_LIBDIR)/mmake
+	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_scripts
+install_scripts: $(SCRIPTS)
+	mkdir -p $(INSTALL_BINDIR)
+	cp $(SCRIPTS) $(INSTALL_BINDIR) 
+
+#-----------------------------------------------------------------------------#
+
+clean_progs: clean_scripts
+	
+.PHONY: clean_scripts
+clean_scripts:
+	for file in *.sh; do rm -f `basename $$file .sh`; done
+
+#-----------------------------------------------------------------------------#
