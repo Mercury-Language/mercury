@@ -9,8 +9,8 @@
 % Stability: high.
 
 % This module provides a set ADT. 
-% The implementation represents sets using unordered lists.
-% This file just calls the equivalent predicates in set_unordlist.
+% The implementation represents sets using ordered lists.
+% This file just calls the equivalent predicates in set_ordlist.
 
 %--------------------------------------------------------------------------%
 
@@ -101,7 +101,7 @@
 	% except `X'.
 
 :- pred set__delete(set(T), T, set(T)).
-:- mode set__delete(di, in, uo) is det.
+% :- mode set__delete(di, in, uo) is det.
 :- mode set__delete(in, in, out) is det.
 
 	% `set__delete_list(Set0, Xs, Set)' is true iff `Set' is the relative
@@ -133,6 +133,11 @@
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
 	% `SetA' and `SetB'.  If the sets are known to be of different
 	% sizes, then for efficiency make `SetA' the larger of the two.
+	% (The current implementation, using sorted lists with duplicates
+	% removed is not sensitive to the ordering of the input arguments
+	% but other set implementations may be, so observing this convention
+	% will make it less likely that you will encounter problems if
+	% the implementation is changed.)
 
 :- pred set__union(set(T), set(T), set(T)).
 :- mode set__union(in, in, out) is det.
@@ -143,8 +148,15 @@
 :- pred set__power_union(set(set(T)), set(T)).
 :- mode set__power_union(in, out) is det.
 
-	% `set_intersect(SetA, SetB, Set)' is true iff `Set' is the
-	% intersection of `SetA' and `SetB'.
+	% `set__intersect(SetA, SetB, Set)' is true iff `Set' is the
+	% intersection of `SetA' and `SetB'. If the two sets are
+	% known to be unequal in size, then making SetA be the larger
+	% set will usually be more efficient.
+	% (The current implementation, using sorted lists with duplicates
+	% removed is not sensitive to the ordering of the input arguments
+	% but other set implementations may be, so observing this convention
+	% will make it less likely that you will encounter problems if
+	% the implementation is changed.)
 
 :- pred set__intersect(set(T), set(T), set(T)).
 :- mode set__intersect(in, in, out) is det.
@@ -166,78 +178,78 @@
 
 :- implementation.
 
-:- import_module set_unordlist.
+:- import_module set_ordlist, set_unordlist, require.
 
-:- type set(T)		  ==	  set_unordlist(T).
+:- type set(T)		  ==	  set_ordlist(T).
 
 set__list_to_set(List, Set) :-
-	set_unordlist__list_to_set(List, Set).
+	set_ordlist__list_to_set(List, Set).
 
 set__sorted_list_to_set(List, Set) :-
-	set_unordlist__sorted_list_to_set(List, Set).
+	set_ordlist__sorted_list_to_set(List, Set).
 
 set__to_sorted_list(Set, List) :-
-	set_unordlist__to_sorted_list(Set, List).
+	set_ordlist__to_sorted_list(Set, List).
 
 set__insert_list(Set0, List, Set) :-
-	set_unordlist__insert_list(Set0, List, Set).
+	set_ordlist__insert_list(Set0, List, Set).
 
 set__insert(Set0, X, Set) :-
-	set_unordlist__insert(Set0, X, Set).
+	set_ordlist__insert(Set0, X, Set).
 
 set__init(Set) :-
-	set_unordlist__init(Set).
+	set_ordlist__init(Set).
 
 set__singleton_set(Set, X) :-
-	set_unordlist__singleton_set(Set, X).
+	set_ordlist__singleton_set(Set, X).
 
 set__equal(SetA, SetB) :-
-	set_unordlist__equal(SetA, SetB).
+	set_ordlist__equal(SetA, SetB).
 
 set__empty(Set) :-
-	set_unordlist__empty(Set).
+	set_ordlist__empty(Set).
 
 set__subset(SetA, SetB) :-
-	set_unordlist__subset(SetA, SetB).
+	set_ordlist__subset(SetA, SetB).
 
 set__superset(SetA, SetB) :-
-	set_unordlist__superset(SetA, SetB).
+	set_ordlist__superset(SetA, SetB).
 
 set__member(X, Set) :-
-	set_unordlist__member(X, Set).
+	set_ordlist__member(X, Set).
 
 set__is_member(X, Set, Result) :-
-	set_unordlist__is_member(X, Set, Result).
+	set_ordlist__is_member(X, Set, Result).
 
 set__delete_list(Set0, List, Set) :-
-	set_unordlist__delete_list(Set0, List, Set).
+	set_ordlist__delete_list(Set0, List, Set).
 
 set__delete(Set0, X, Set) :-
-	set_unordlist__delete(Set0, X, Set).
+	set_ordlist__delete(Set0, X, Set).
 
 set__remove_list(Set0, List, Set) :-
-	set_unordlist__remove_list(Set0, List, Set).
+	set_ordlist__remove_list(Set0, List, Set).
 
 set__remove(Set0, X, Set) :-
-	set_unordlist__remove(Set0, X, Set).
+	set_ordlist__remove(Set0, X, Set).
 
 set__remove_least(Set0, X, Set) :-
-	set_unordlist__remove_least(Set0, X, Set).
+	set_ordlist__remove_least(Set0, X, Set).
 
 set__union(SetA, SetB, Set) :-
-	set_unordlist__union(SetA, SetB, Set).
+	set_ordlist__union(SetA, SetB, Set).
 
 set__power_union(Sets, Set) :-
-	set_unordlist__power_union(Sets, Set).
+	set_ordlist__power_union(Sets, Set).
 
 set__intersect(SetA, SetB, Set) :-
-	set_unordlist__intersect(SetA, SetB, Set).
+	set_ordlist__intersect(SetA, SetB, Set).
 
 set__power_intersect(Sets, Set) :-
-	set_unordlist__power_intersect(Sets, Set).
+	set_ordlist__power_intersect(Sets, Set).
 
 set__difference(SetA, SetB, Set) :-
-	set_unordlist__difference(SetA, SetB, Set).
+	set_ordlist__difference(SetA, SetB, Set).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
