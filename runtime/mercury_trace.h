@@ -36,10 +36,9 @@
 #define	MR_trace_reset_depth(d)	do { MR_trace_call_depth = (d); } while (0)
 
 /*
-** This enum should exactly match the definition of the `trace_port' type in
-** library/debugger_interface.
+** This enum should EXACTLY match the definition of the `trace_port_type' type
+** in library/debugger_interface.
 */
-
 typedef	enum {
 	MR_PORT_CALL,
 	MR_PORT_EXIT,
