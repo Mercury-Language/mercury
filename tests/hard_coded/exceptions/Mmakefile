@@ -12,6 +12,10 @@ MAIN_TARGET = check
 include ../../Mmake.common
 
 PROGS = test_exceptions.m test_uncaught_exception.m test_exceptions_func.m
+#
+# XXX the following tests are not enabled because we do not pass them yet:
+#	test_memo.m test_loop_check.m
+#       (those two tests test the combination of tabling and exceptions).
 
 depend: $(PROGS:.m=.depend)
 all: $(PROGS:.m=)
