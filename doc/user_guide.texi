@@ -535,7 +535,7 @@ Error messages are placed in @file{.err} files.
 
 @item @var{main-module}
 Compiles and links @var{main-module} using the Mercury compiler.
-Error messages are placed in @file{.err2} files.
+Error messages are placed in @file{.err} files.
 
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
@@ -564,7 +564,7 @@ Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.no}, @samp{.ql}, @samp{.err}, and @samp{.err2} files
+@samp{.no}, @samp{.ql}, and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
 
 @item @var{main-module}.change_clean
@@ -1082,6 +1082,29 @@ but do not attempt to link the named modules.
 @node Auxiliary output options
 @section Auxiliary output options
 @table @code
+@item --no-assume-gmake
+When generating @file{.dep} files, generate Makefile
+fragments that use only the features of standard make;
+do not assume the availability of GNU Make extensions.
+This makes these files significantly larger.
+
+@item --generate-bytecode
+@c Output a bytecode version of the module
+@c into the @file{@var{module}.bytecode} file,
+@c and a human-readable version of the bytecode
+@c into the @file{@var{module}.bytedebug} file.
+@c The bytecode is for an experimental debugger.
+Output a bytecode form of the module for use
+by an experimental debugger.
+
+@item --generate-prolog
+Convert the program to Prolog. Output to file @file{@var{module}.pl}
+or @file{@var{module}.nl} (depending the the dialect).
+
+@item --prolog-dialect @var{dialect}
+Target the named dialect if generating Prolog code.
+The @var{dialect} should be one of @samp{sicstus}, @samp{nu}.
+
 @item --auto-comments
 Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
@@ -1458,6 +1481,11 @@ generate less efficient code for polymorphic predicates.
 @item --no-optimize-higher-order
 Don't specialize calls to higher-order predicates where
 the higher-order arguments are known.
+
+@sp 1
+@item --optimize-constructor-last-call
+Enable the optimization of ``last'' calls that are followed by
+constructor application.
 
 @sp 1
 @item --optimize-dead-procs.
