@@ -19,7 +19,7 @@
  * not use it.  Clients that define their own object kinds with
  * debugging allocators will probably want to include this, however.
  * No attempt is made to keep the namespace clean.  This should not be
- * included from header filrd that are frequently included by clients.
+ * included from header files that are frequently included by clients.
  */
 
 #ifndef _DBG_MLC_H
@@ -32,26 +32,75 @@
 #   include "gc_backptr.h"
 # endif
 
+#ifndef HIDE_POINTER
+  /* Gc.h was previously included, and hence the I_HIDE_POINTERS	*/
+  /* definition had no effect.  Repeat the gc.h definitions here to	*/
+  /* get them anyway.							*/
+    typedef GC_word GC_hidden_pointer;
+#   define HIDE_POINTER(p) (~(GC_hidden_pointer)(p))
+#   define REVEAL_POINTER(p) ((GC_PTR)(HIDE_POINTER(p)))
+#endif /* HIDE_POINTER */
+
 # define START_FLAG ((word)0xfedcedcb)
 # define END_FLAG ((word)0xbcdecdef)
 	/* Stored both one past the end of user object, and one before	*/
 	/* the end of the object as seen by the allocator.		*/
 
+# if defined(KEEP_BACK_PTRS) || defined(PRINT_BLACK_LIST) \
+     || defined(MAKE_BACK_GRAPH)
+    /* Pointer "source"s that aren't real locations.	*/
+    /* Used in oh_back_ptr fields and as "source"	*/
+    /* argument to some marking functions.		*/
+#	define NOT_MARKED (ptr_t)(0)
+#	define MARKED_FOR_FINALIZATION (ptr_t)(2)
+	    /* Object was marked because it is finalizable.	*/
+#	define MARKED_FROM_REGISTER (ptr_t)(4)
+	    /* Object was marked from a rgister.  Hence the	*/
+	    /* source of the reference doesn't have an address.	*/
+# endif /* KEEP_BACK_PTRS || PRINT_BLACK_LIST */
 
 /* Object header */
 typedef struct {
-#   ifdef KEEP_BACK_PTRS
-	ptr_t oh_back_ptr;
-#	define MARKED_FOR_FINALIZATION (ptr_t)(-1)
-	    /* Object was marked because it is finalizable.	*/
-#	define MARKED_FROM_REGISTER (ptr_t)(-2)
-	    /* Object was marked from a rgister.  Hence the	*/
-	    /* source of the reference doesn't have an address.	*/
-#	ifdef ALIGN_DOUBLE
+#   if defined(KEEP_BACK_PTRS) || defined(MAKE_BACK_GRAPH)
+	/* We potentially keep two different kinds of back 	*/
+	/* pointers.  KEEP_BACK_PTRS stores a single back 	*/
+	/* pointer in each reachable object to allow reporting	*/
+	/* of why an object was retained.  MAKE_BACK_GRAPH	*/
+	/* builds a graph containing the inverse of all 	*/
+	/* "points-to" edges including those involving 		*/
+	/* objects that have just become unreachable. This	*/
+	/* allows detection of growing chains of unreachable	*/
+	/* objects.  It may be possible to eventually combine	*/
+	/* both, but for now we keep them separate.  Both	*/
+	/* kinds of back pointers are hidden using the 		*/
+	/* following macros.  In both cases, the plain version	*/
+	/* is constrained to have an least significant bit of 1,*/
+	/* to allow it to be distinguished from a free list 	*/
+	/* link.  This means the plain version must have an	*/
+	/* lsb of 0.						*/
+	/* Note that blocks dropped by black-listing will	*/
+	/* also have the lsb clear once debugging has		*/
+	/* started.						*/
+	/* We're careful never to overwrite a value with lsb 0.	*/
+#       if ALIGNMENT == 1
+	  /* Fudge back pointer to be even.  */
+#	  define HIDE_BACK_PTR(p) HIDE_POINTER(~1 & (GC_word)(p))
+#	else
+#	  define HIDE_BACK_PTR(p) HIDE_POINTER(p)
+#	endif
+	
+#       ifdef KEEP_BACK_PTRS
+	  GC_hidden_pointer oh_back_ptr;
+#	endif
+#	ifdef MAKE_BACK_GRAPH
+	  GC_hidden_pointer oh_bg_ptr;
+#	endif
+#	if defined(ALIGN_DOUBLE) && \
+	    (defined(KEEP_BACK_PTRS) != defined(MAKE_BACK_GRAPH))
 	  word oh_dummy;
 #	endif
 #   endif
-    char * oh_string;		/* object descriptor string	*/
+    GC_CONST char * oh_string;	/* object descriptor string	*/
     word oh_int;		/* object descriptor integers	*/
 #   ifdef NEED_CALLINFO
       struct callinfo oh_ci[NFRAMES];
@@ -64,14 +113,26 @@ typedef struct {
 /* The size of the above structure is assumed not to dealign things,	*/
 /* and to be a multiple of the word length.				*/
 
-#define DEBUG_BYTES (sizeof (oh) + sizeof (word))
+#ifdef SHORT_DBG_HDRS
+#   define DEBUG_BYTES (sizeof (oh))
+#   define UNCOLLECTABLE_DEBUG_BYTES DEBUG_BYTES
+#else
+    /* Add space for END_FLAG, but use any extra space that was already	*/
+    /* added to catch off-the-end pointers.				*/
+    /* For uncollectable objects, the extra byte is not added.		*/
+#   define UNCOLLECTABLE_DEBUG_BYTES (sizeof (oh) + sizeof (word))
+#   define DEBUG_BYTES (UNCOLLECTABLE_DEBUG_BYTES - EXTRA_BYTES)
+#endif
 #define USR_PTR_FROM_BASE(p) ((ptr_t)(p) + sizeof(oh))
 
-/* There is no reason to ever add a byte at the end explicitly, since we */
-/* already add a guard word.						 */
-#undef ROUNDED_UP_WORDS
-#define ROUNDED_UP_WORDS(n) BYTES_TO_WORDS((n) + WORDS_TO_BYTES(1) - 1)
+/* Round bytes to words without adding extra byte at end.	*/
+#define SIMPLE_ROUNDED_UP_WORDS(n) BYTES_TO_WORDS((n) + WORDS_TO_BYTES(1) - 1)
 
+/* ADD_CALL_CHAIN stores a (partial) call chain into an object	*/
+/* header.  It may be called with or without the allocation 	*/
+/* lock.							*/
+/* PRINT_CALL_CHAIN prints the call chain stored in an object	*/
+/* to stderr.  It requires that we do not hold the lock.	*/
 #ifdef SAVE_CALL_CHAIN
 #   define ADD_CALL_CHAIN(base, ra) GC_save_callers(((oh *)(base)) -> oh_ci)
 #   define PRINT_CALL_CHAIN(base) GC_print_callers(((oh *)(base)) -> oh_ci)
@@ -96,9 +157,16 @@ typedef struct {
 /* p is assumed to point to a legitimate object in our part	*/
 /* of the heap.							*/
 #ifdef SHORT_DBG_HDRS
-# define GC_has_debug_info(p) TRUE
+# define GC_has_other_debug_info(p) TRUE
 #else
-  GC_bool GC_has_debug_info(/* p */);
+  GC_bool GC_has_other_debug_info(/* p */);
+#endif
+
+#if defined(KEEP_BACK_PTRS) || defined(MAKE_BACK_GRAPH)
+# define GC_HAS_DEBUG_INFO(p) \
+	((*((word *)p) & 1) && GC_has_other_debug_info(p))
+#else
+# define GC_HAS_DEBUG_INFO(p) GC_has_other_debug_info(p)
 #endif
 
 /* Store debugging info into p.  Return displaced pointer. */

@@ -5,6 +5,8 @@
 # Primary targets:
 # gc.a - builds basic library
 # libgc.a - builds library for use with g++ "-fgc-keyword" extension
+#	    -fgc-keyword was never really available.  Historical
+#	    interest only.
 # c++ - adds C++ interface to library
 # cords - adds cords (heavyweight strings) to library
 # test - prints porting information, then builds basic version of gc.a,
@@ -62,10 +64,11 @@ CFLAGS= -O -I$(srcdir)/include -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIO
 #   code from the heap.  Currently this only affects the incremental
 #   collector on UNIX machines.  It may greatly improve its performance,
 #   since this may avoid some expensive cache synchronization.
-# -DOPERATOR_NEW_ARRAY declares that the C++ compiler supports the
-#   new syntax "operator new[]" for allocating and deleting arrays.
+# -DGC_NO_OPERATOR_NEW_ARRAY declares that the C++ compiler does not support
+#   the  new syntax "operator new[]" for allocating and deleting arrays.
 #   See gc_cpp.h for details.  No effect on the C part of the collector.
-#   This is defined implicitly in a few environments.
+#   This is defined implicitly in a few environments.  Must also be defined
+#   by clients that use gc_cpp.h.
 # -DREDIRECT_MALLOC=X causes malloc, realloc, and free to be defined
 #   as aliases for X, GC_realloc, and GC_free, respectively.
 #   Calloc is redefined in terms of the new malloc.  X should
@@ -149,7 +152,7 @@ CFLAGS= -O -I$(srcdir)/include -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIO
 #   currently probably works only with Linux.
 
 
-CXXFLAGS= $(CFLAGS) -DOPERATOR_NEW_ARRAY
+CXXFLAGS= $(CFLAGS) -DGC_OPERATOR_NEW_ARRAY
 AR= ar
 RANLIB= ranlib
 
@@ -162,8 +165,8 @@ CORD_SRCS=  cord/cordbscs.c cord/cordxtra.c cord/cordprnt.c cord/de.c cord/cordt
 
 CORD_OBJS=  cord/cordbscs.o cord/cordxtra.o cord/cordprnt.o
 
-SRCS= $(CSRCS) mips_sgi_mach_dep.s rs6000_mach_dep.s alpha_mach_dep.s \
-    sparc_mach_dep.s include/gc.h include/gc_typed.h \
+SRCS= $(CSRCS) mips_sgi_mach_dep.S rs6000_mach_dep.s alpha_mach_dep.S \
+    sparc_mach_dep.S include/gc.h include/gc_typed.h \
     include/private/gc_hdrs.h include/private/gc_priv.h \
     include/private/gcconfig.h include/private/gc_mark.h \
     include/gc_inl.h include/gc_inline.h gc.man \
@@ -182,7 +185,7 @@ OTHER_FILES= Makefile PCR-Makefile OS2_MAKEFILE NT_MAKEFILE BCC_MAKEFILE \
            SCoptions.amiga README.amiga README.win32 cord/README \
 	   README.rs6000 README.QUICK callprocs pc_excludes \
            barrett_diagram README.OS2 README.Mac MacProjects.sit.hqx \
-           MacOS.c EMX_MAKEFILE makefile.depend README.debugging \
+           MacOS.c EMX_MAKEFILE README.debugging \
            Mac_files/datastart.c Mac_files/dataend.c \
            Mac_files/MacOS_config.h Mac_files/MacOS_Test_config.h \
            add_gc_prefix.c README.solaris2 README.sgi README.hp README.uts \
@@ -281,16 +284,16 @@ liblinuxgc.so: $(OBJS) dyn_load.o
 	gcc -shared -o liblinuxgc.so $(OBJS) dyn_load.o -lo
 	ln liblinuxgc.so libgc.so
 
-mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.s $(srcdir)/mips_ultrix_mach_dep.s \
+mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.S $(srcdir)/mips_ultrix_mach_dep.s \
             $(srcdir)/rs6000_mach_dep.s $(srcdir)/powerpc_macosx_mach_dep.s $(UTILS)
 	rm -f mach_dep.o
-	./if_mach MIPS IRIX5 $(AS) -o mach_dep.o $(srcdir)/mips_sgi_mach_dep.s
+	./if_mach MIPS IRIX5 $(AS) -o mach_dep.o $(srcdir)/mips_sgi_mach_dep.S
 	./if_mach MIPS RISCOS $(AS) -o mach_dep.o $(srcdir)/mips_ultrix_mach_dep.s
 	./if_mach MIPS ULTRIX $(AS) -o mach_dep.o $(srcdir)/mips_ultrix_mach_dep.s
 	./if_mach RS6000 "" $(AS) -o mach_dep.o $(srcdir)/rs6000_mach_dep.s
 	./if_mach POWERPC MACOSX $(AS) -o mach_dep.o $(srcdir)/powerpc_macosx_mach_dep.s
-	./if_mach ALPHA "" $(AS) -o mach_dep.o $(srcdir)/alpha_mach_dep.s
-	./if_mach SPARC SUNOS5 $(AS) -o mach_dep.o $(srcdir)/sparc_mach_dep.s
+	./if_mach ALPHA "" $(AS) -o mach_dep.o $(srcdir)/alpha_mach_dep.S
+	./if_mach SPARC SUNOS5 $(AS) -o mach_dep.o $(srcdir)/sparc_mach_dep.S
 	./if_mach SPARC SUNOS4 $(AS) -o mach_dep.o $(srcdir)/sparc_sunos4_mach_dep.s
 	./if_not_there mach_dep.o $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 

@@ -43,6 +43,7 @@
  *   
  */  
 # ifdef THREADS
+   void GC_noop1 GC_PROTO((word));
 #  ifdef PCR_OBSOLETE	/* Faster, but broken with multiple lwp's	*/
 #    include  "th/PCR_Th.h"
 #    include  "th/PCR_ThCrSec.h"
@@ -75,7 +76,7 @@
 #    define LOCK() RT0u__inCritical++
 #    define UNLOCK() RT0u__inCritical--
 #  endif
-#  ifdef SOLARIS_THREADS
+#  ifdef GC_SOLARIS_THREADS
 #    include <thread.h>
 #    include <signal.h>
      extern mutex_t GC_allocate_ml;
@@ -144,15 +145,15 @@
 #    if defined(POWERPC)
         inline static int GC_test_and_set(volatile unsigned int *addr) {
           int oldval;
-          int temp = 1; // locked value
+          int temp = 1; /* locked value */
 
           __asm__ __volatile__(
-               "1:\tlwarx %0,0,%3\n"   // load and reserve
-               "\tcmpwi %0, 0\n"       // if load is
-               "\tbne 2f\n"            //   non-zero, return already set
-               "\tstwcx. %2,0,%1\n"    // else store conditional
-               "\tbne- 1b\n"           // retry if lost reservation
-               "2:\t\n"                // oldval is zero if we set
+               "1:\tlwarx %0,0,%3\n"   /* load and reserve               */
+               "\tcmpwi %0, 0\n"       /* if load is                     */
+               "\tbne 2f\n"            /*   non-zero, return already set */
+               "\tstwcx. %2,0,%1\n"    /* else store conditional         */
+               "\tbne- 1b\n"           /* retry if lost reservation      */
+               "2:\t\n"                /* oldval is zero if we set       */
               : "=&r"(oldval), "=p"(addr)
               : "r"(temp), "1"(addr)
               : "memory");
@@ -160,7 +161,7 @@
         }
 #       define GC_TEST_AND_SET_DEFINED
         inline static void GC_clear(volatile unsigned int *addr) {
-	  __asm__ __volatile__("eieio" ::: "memory");
+	  __asm__ __volatile__("eieio" : : : "memory");
           *(addr) = 0;
         }
 #       define GC_CLEAR_DEFINED
@@ -218,21 +219,33 @@
 #    define GC_TEST_AND_SET_DEFINED
 #  endif
 #  ifdef MIPS
-#    if __mips < 3 || !(defined (_ABIN32) || defined(_ABI64)) \
+#    ifdef LINUX
+#      include <sys/tas.h>
+#      define GC_test_and_set(addr) _test_and_set((int *) addr,1)
+#      define GC_TEST_AND_SET_DEFINED
+#    elif __mips < 3 || !(defined (_ABIN32) || defined(_ABI64)) \
 	|| !defined(_COMPILER_VERSION) || _COMPILER_VERSION < 700
-#        define GC_test_and_set(addr, v) test_and_set(addr,v)
+#	 ifdef __GNUC__
+#          define GC_test_and_set(addr) _test_and_set(addr,1)
+#	 else
+#          define GC_test_and_set(addr) test_and_set(addr,1)
+#	 endif
 #    else
-#	 define GC_test_and_set(addr, v) __test_and_set(addr,v)
+#	 define GC_test_and_set(addr) __test_and_set(addr,1)
 #	 define GC_clear(addr) __lock_release(addr);
 #	 define GC_CLEAR_DEFINED
 #    endif
 #    define GC_TEST_AND_SET_DEFINED
 #  endif /* MIPS */
-#  ifdef HP_PA
+#  if 0 /* defined(HP_PA) */
+     /* The official recommendation seems to be to not use ldcw from	*/
+     /* user mode.  Since multithreaded incremental collection doesn't	*/
+     /* work anyway on HP_PA, this shouldn't be a major loss.		*/
+
      /* "set" means 0 and "clear" means 1 here.		*/
 #    define GC_test_and_set(addr) !GC_test_and_clear(addr);
 #    define GC_TEST_AND_SET_DEFINED
-#    define GC_clear(addr) GC_noop1(addr); *(volatile unsigned int *)addr = 1;
+#    define GC_clear(addr) GC_noop1((word)(addr)); *(volatile unsigned int *)addr = 1;
 	/* The above needs a memory barrier! */
 #    define GC_CLEAR_DEFINED
 #  endif
@@ -246,15 +259,19 @@
 #    else
 	    /* The function call in the following should prevent the	*/
 	    /* compiler from moving assignments to below the UNLOCK.	*/
-#      define GC_clear(addr) GC_noop1(addr); *(volatile unsigned int *)addr = 0;
+#      define GC_clear(addr) GC_noop1((word)(addr)); \
+			     *((volatile unsigned int *)(addr)) = 0;
 #    endif
 #    define GC_CLEAR_DEFINED
 #  endif /* !GC_CLEAR_DEFINED */
 
-#  if defined(LINUX_THREADS) || defined(GC_OSF1_THREADS)
-#   define NO_THREAD (pthread_t)(-1)
-#   if defined(I386)|| defined(POWERPC) || defined(ALPHA) || defined(IA64) \
-    || defined(M68K) || defined(SPARC)
+#  if !defined(GC_TEST_AND_SET_DEFINED)
+#    define USE_PTHREAD_LOCKS
+#  endif
+
+#  if defined(GC_PTHREADS) && !defined(GC_SOLARIS_THREADS) \
+      && !defined(GC_IRIX_THREADS) && !defined(GC_WIN32_THREADS)
+#    define NO_THREAD (pthread_t)(-1)
 #    include <pthread.h>
 #    if defined(PARALLEL_MARK) 
       /* We need compare-and-swap to update mark bits, where it's	*/
@@ -265,22 +282,15 @@
       /* a lock.							*/
 #     if defined(GENERIC_COMPARE_AND_SWAP)
 	/* Probably not useful, except for debugging.	*/
+	/* We do use GENERIC_COMPARE_AND_SWAP on PA_RISC, but we 	*/
+	/* minimize its use.						*/
 	extern pthread_mutex_t GC_compare_and_swap_lock;
 
-	static GC_bool GC_compare_and_exchange(volatile GC_word *addr,
-					       GC_word old, GC_word new_val)
-	{
-	  GC_bool result;
-	  pthread_mutex_lock(&GC_compare_and_swap_lock);
-	  if (*addr == old) {
-	    *addr = new_val;
-	    result = TRUE;
-	  } else {
-	    result = FALSE;
-	  }
-	  pthread_mutex_unlock(&GC_compare_and_swap_lock);
-	  return result;
-	}
+	/* Note that if GC_word updates are not atomic, a concurrent 	*/
+	/* reader should acquire GC_compare_and_swap_lock.  On 		*/
+	/* currently supported platforms, such updates are atomic.	*/
+	extern GC_bool GC_compare_and_exchange(volatile GC_word *addr,
+					       GC_word old, GC_word new_val);
 #     endif /* GENERIC_COMPARE_AND_SWAP */
 #     if defined(I386)
 #      if !defined(GENERIC_COMPARE_AND_SWAP)
@@ -296,14 +306,14 @@
 	   return (GC_bool) result;
          }
 #      endif /* !GENERIC_COMPARE_AND_SWAP */
-       inline static void GC_memory_barrier()
+       inline static void GC_memory_write_barrier()
        {
 	 /* We believe the processor ensures at least processor	*/
 	 /* consistent ordering.  Thus a compiler barrier	*/
 	 /* should suffice.					*/
          __asm__ __volatile__("" : : : "memory");
        }
-#     endif
+#     endif /* I386 */
 #     if defined(IA64)
 #      if !defined(GENERIC_COMPARE_AND_SWAP)
          inline static GC_bool GC_compare_and_exchange(volatile GC_word *addr,
@@ -316,23 +326,34 @@
 	  return (oldval == old);
          }
 #      endif /* !GENERIC_COMPARE_AND_SWAP */
-       inline static void GC_memory_barrier()
-       {
-         __asm__ __volatile__("mf" : : : "memory");
-       }
+#      if 0
+	/* Shouldn't be needed; we use volatile stores instead. */
+        inline static void GC_memory_write_barrier()
+        {
+          __asm__ __volatile__("mf" : : : "memory");
+        }
+#      endif /* 0 */
 #     endif /* IA64 */
-      /* Returns the original value of *addr.	*/
-      inline static GC_word GC_atomic_add(volatile GC_word *addr, GC_word how_much)
-      {
-	GC_word old;
-	do {
-	  old = *addr;
-	} while (!GC_compare_and_exchange(addr, old, old+how_much));
-        return old;
-      }
+#     if !defined(GENERIC_COMPARE_AND_SWAP)
+        /* Returns the original value of *addr.	*/
+        inline static GC_word GC_atomic_add(volatile GC_word *addr,
+					    GC_word how_much)
+        {
+	  GC_word old;
+	  do {
+	    old = *addr;
+	  } while (!GC_compare_and_exchange(addr, old, old+how_much));
+          return old;
+        }
+#     else /* GENERIC_COMPARE_AND_SWAP */
+	/* So long as a GC_word can be atomically updated, it should	*/
+	/* be OK to read *addr without a lock.				*/
+	extern GC_word GC_atomic_add(volatile GC_word *addr, GC_word how_much);
+#     endif /* GENERIC_COMPARE_AND_SWAP */
+
 #    endif /* PARALLEL_MARK */
 
-#    ifndef THREAD_LOCAL_ALLOC
+#    if !defined(THREAD_LOCAL_ALLOC) && !defined(USE_PTHREAD_LOCKS)
       /* In the THREAD_LOCAL_ALLOC case, the allocation lock tends to	*/
       /* be held for long periods, if it is held at all.  Thus spinning	*/
       /* and sleeping for fixed periods are likely to result in 	*/
@@ -367,13 +388,11 @@
 #       define UNLOCK() { GC_allocate_lock = 0; \
                           msem_unlock(&GC_allocate_semaphore, 0); }
 #     endif /* 0 */
-#    else /* THREAD_LOCAL_ALLOC */
-#      define USE_PTHREAD_LOCKS
+#    else /* THREAD_LOCAL_ALLOC  || USE_PTHREAD_LOCKS */
+#      ifndef USE_PTHREAD_LOCKS
+#        define USE_PTHREAD_LOCKS
+#      endif
 #    endif /* THREAD_LOCAL_ALLOC */
-#   else /* LINUX_THREADS on hardware for which we don't know how	*/
-	 /* to do test and set.						*/
-#      define USE_PTHREAD_LOCKS
-#   endif /* ! known hardware */
 #   ifdef USE_PTHREAD_LOCKS
 #      include <pthread.h>
        extern pthread_mutex_t GC_allocate_ml;
@@ -401,15 +420,8 @@
 #   ifdef GC_ASSERTIONS
       extern pthread_t GC_mark_lock_holder;
 #   endif
-#  endif /* LINUX_THREADS || GC_OSF1_THREADS */
-#  if defined(HPUX_THREADS)
-#    include <pthread.h>
-     extern pthread_mutex_t GC_allocate_ml;
-#    define NO_THREAD (pthread_t)(-1)
-#    define LOCK() pthread_mutex_lock(&GC_allocate_ml)
-#    define UNLOCK() pthread_mutex_unlock(&GC_allocate_ml)
-#  endif
-#  if defined(IRIX_THREADS)
+#  endif /* GC_PTHREADS with linux_threads.c implementation */
+#  if defined(GC_IRIX_THREADS)
 #    include <pthread.h>
      /* This probably should never be included, but I can't test	*/
      /* on Irix anymore.						*/
@@ -427,7 +439,7 @@
 #    define NO_THREAD (pthread_t)(-1)
 #    define UNSET_LOCK_HOLDER() GC_lock_holder = NO_THREAD
 #    define I_HOLD_LOCK() (pthread_equal(GC_lock_holder, pthread_self()))
-#    define LOCK() { if (GC_test_and_set(&GC_allocate_lock, 1)) GC_lock(); }
+#    define LOCK() { if (GC_test_and_set(&GC_allocate_lock)) GC_lock(); }
 #    define UNLOCK() GC_clear(&GC_allocate_lock);
      extern VOLATILE GC_bool GC_collecting;
 #    define ENTER_GC() \
@@ -435,12 +447,19 @@
 		    GC_collecting = 1; \
 		}
 #    define EXIT_GC() GC_collecting = 0;
-#  endif /* IRIX_THREADS */
-#  ifdef WIN32_THREADS
-#    include <windows.h>
-     GC_API CRITICAL_SECTION GC_allocate_ml;
-#    define LOCK() EnterCriticalSection(&GC_allocate_ml);
-#    define UNLOCK() LeaveCriticalSection(&GC_allocate_ml);
+#  endif /* GC_IRIX_THREADS */
+#  if defined(GC_WIN32_THREADS)
+#    if defined(GC_PTHREADS)
+#      include <pthread.h>
+       extern pthread_mutex_t GC_allocate_ml;
+#      define LOCK()   pthread_mutex_lock(&GC_allocate_ml)
+#      define UNLOCK() pthread_mutex_unlock(&GC_allocate_ml)
+#    else
+#      include <windows.h>
+       GC_API CRITICAL_SECTION GC_allocate_ml;
+#      define LOCK() EnterCriticalSection(&GC_allocate_ml);
+#      define UNLOCK() LeaveCriticalSection(&GC_allocate_ml);
+#    endif
 #  endif
 #  ifndef SET_LOCK_HOLDER
 #      define SET_LOCK_HOLDER()

@@ -157,6 +157,24 @@ out:
     return op;
 }
 
+/* Allocate a composite object of size n bytes.  The caller guarantees  */
+/* that pointers past the first page are not relevant.  Caller holds    */
+/* allocation lock.                                                     */
+ptr_t GC_generic_malloc_inner_ignore_off_page(lb, k)
+register size_t lb;
+register int k;
+{
+    register word lw;
+    ptr_t op;
+
+    if (lb <= HBLKSIZE)
+        return(GC_generic_malloc_inner((word)lb, k));
+    lw = ROUNDED_UP_WORDS(lb);
+    op = (ptr_t)GC_alloc_large_and_clear(lw, k, IGNORE_OFF_PAGE);
+    GC_words_allocd += lw;
+    return op;
+}
+
 ptr_t GC_generic_malloc(lb, k)
 register word lb;
 register int k;
@@ -164,6 +182,7 @@ register int k;
     ptr_t result;
     DCL_LOCK_STATE;
 
+    if (GC_debugging_started) GC_print_all_smashed();
     GC_INVOKE_FINALIZERS();
     if (SMALL_OBJ(lb)) {
     	DISABLE_SIGNALS();
@@ -181,8 +200,19 @@ register int k;
 	DISABLE_SIGNALS();
 	LOCK();
 	result = (ptr_t)GC_alloc_large(lw, k, 0);
-	if (GC_debugging_started) {
+	if (0 != result) {
+	  if (GC_debugging_started) {
 	    BZERO(result, n_blocks * HBLKSIZE);
+	  } else {
+#           ifdef THREADS
+	      /* Clear any memory that might be used for GC descriptors */
+	      /* before we release the lock.			      */
+	        ((word *)result)[0] = 0;
+	        ((word *)result)[1] = 0;
+	        ((word *)result)[lw-1] = 0;
+	        ((word *)result)[lw-2] = 0;
+#	    endif
+	  }
 	}
 	GC_words_allocd += lw;
 	UNLOCK();
@@ -286,7 +316,7 @@ DCL_LOCK_STATE;
     /* It might help to manually inline the GC_malloc call here.	*/
     /* But any decent compiler should reduce the extra procedure call	*/
     /* to at most a jump instruction in this case.			*/
-#   if defined(I386) && defined(SOLARIS_THREADS)
+#   if defined(I386) && defined(GC_SOLARIS_THREADS)
       /*
        * Thread initialisation can call malloc before
        * we're ready for it.
@@ -295,7 +325,7 @@ DCL_LOCK_STATE;
        * inopportune times.
        */
       if (!GC_is_initialized) return sbrk(lb);
-#   endif /* I386 && SOLARIS_THREADS */
+#   endif /* I386 && GC_SOLARIS_THREADS */
     return((GC_PTR)REDIRECT_MALLOC(lb));
   }
 
@@ -308,126 +338,26 @@ DCL_LOCK_STATE;
   {
     return((GC_PTR)REDIRECT_MALLOC(n*lb));
   }
-# endif /* REDIRECT_MALLOC */
 
-GC_PTR GC_generic_or_special_malloc(lb,knd)
-word lb;
-int knd;
-{
-    switch(knd) {
-#     ifdef STUBBORN_ALLOC
-	case STUBBORN:
-	    return(GC_malloc_stubborn((size_t)lb));
-#     endif
-	case PTRFREE:
-	    return(GC_malloc_atomic((size_t)lb));
-	case NORMAL:
-	    return(GC_malloc((size_t)lb));
-	case UNCOLLECTABLE:
-	    return(GC_malloc_uncollectable((size_t)lb));
-#       ifdef ATOMIC_UNCOLLECTABLE
-	  case AUNCOLLECTABLE:
-	    return(GC_malloc_atomic_uncollectable((size_t)lb));
-#	endif /* ATOMIC_UNCOLLECTABLE */
-	default:
-	    return(GC_generic_malloc(lb,knd));
-    }
-}
-
-
-/* Change the size of the block pointed to by p to contain at least   */
-/* lb bytes.  The object may be (and quite likely will be) moved.     */
-/* The kind (e.g. atomic) is the same as that of the old.	      */
-/* Shrinking of large blocks is not implemented well.                 */
+#ifndef strdup
+# include <string.h>
 # ifdef __STDC__
-    GC_PTR GC_realloc(GC_PTR p, size_t lb)
+    char *strdup(const char *s)
 # else
-    GC_PTR GC_realloc(p,lb)
-    GC_PTR p;
-    size_t lb;
-# endif
-{
-register struct hblk * h;
-register hdr * hhdr;
-register word sz;	 /* Current size in bytes	*/
-register word orig_sz;	 /* Original sz in bytes	*/
-int obj_kind;
-
-    if (p == 0) return(GC_malloc(lb));	/* Required by ANSI */
-    h = HBLKPTR(p);
-    hhdr = HDR(h);
-    sz = hhdr -> hb_sz;
-    obj_kind = hhdr -> hb_obj_kind;
-    sz = WORDS_TO_BYTES(sz);
-    orig_sz = sz;
-
-    if (sz > MAXOBJBYTES) {
-	/* Round it up to the next whole heap block */
-	  register word descr;
-	  
-	  sz = (sz+HBLKSIZE-1) & (~HBLKMASK);
-	  hhdr -> hb_sz = BYTES_TO_WORDS(sz);
-	  descr = GC_obj_kinds[obj_kind].ok_descriptor;
-          if (GC_obj_kinds[obj_kind].ok_relocate_descr) descr += sz;
-          hhdr -> hb_descr = descr;
-	  if (IS_UNCOLLECTABLE(obj_kind)) GC_non_gc_bytes += (sz - orig_sz);
-	  /* Extra area is already cleared by GC_alloc_large_and_clear. */
-    }
-    if (ADD_SLOP(lb) <= sz) {
-	if (lb >= (sz >> 1)) {
-#	    ifdef STUBBORN_ALLOC
-	        if (obj_kind == STUBBORN) GC_change_stubborn(p);
-#	    endif
-	    if (orig_sz > lb) {
-	      /* Clear unneeded part of object to avoid bogus pointer */
-	      /* tracing.					      */
-	      /* Safe for stubborn objects.			      */
-	        BZERO(((ptr_t)p) + lb, orig_sz - lb);
-	    }
-	    return(p);
-	} else {
-	    /* shrink */
-	      GC_PTR result =
-	      		GC_generic_or_special_malloc((word)lb, obj_kind);
-
-	      if (result == 0) return(0);
-	          /* Could also return original object.  But this 	*/
-	          /* gives the client warning of imminent disaster.	*/
-	      BCOPY(p, result, lb);
-#	      ifndef IGNORE_FREE
-	        GC_free(p);
-#	      endif
-	      return(result);
-	}
-    } else {
-	/* grow */
-	  GC_PTR result =
-	  	GC_generic_or_special_malloc((word)lb, obj_kind);
-
-	  if (result == 0) return(0);
-	  BCOPY(p, result, sz);
-#	  ifndef IGNORE_FREE
-	    GC_free(p);
-#	  endif
-	  return(result);
-    }
-}
-
-# if defined(REDIRECT_MALLOC) || defined(REDIRECT_REALLOC)
-# ifdef __STDC__
-    GC_PTR realloc(GC_PTR p, size_t lb)
-# else
-    GC_PTR realloc(p,lb)
-    GC_PTR p;
-    size_t lb;
+    char *strdup(s)
+    char *s;
 # endif
   {
-#   ifdef REDIRECT_REALLOC
-      return(REDIRECT_REALLOC(p, lb));
-#   else
-      return(GC_realloc(p, lb));
-#   endif
+    size_t len = strlen(s) + 1;
+    char * result = ((char *)REDIRECT_MALLOC(len+1));
+    BCOPY(s, result, len+1);
+    return result;
   }
+#endif /* !defined(strdup) */
+ /* If strdup is macro defined, we assume that it actually calls malloc, */
+ /* and thus the right thing will happen even without overriding it.	 */
+ /* This seems to be true on most Linux systems.			 */
+
 # endif /* REDIRECT_MALLOC */
 
 /* Explicitly deallocate an object p.				*/
@@ -451,8 +381,11 @@ int obj_kind;
     h = HBLKPTR(p);
     hhdr = HDR(h);
 #   if defined(REDIRECT_MALLOC) && \
-	(defined(SOLARIS_THREADS) || defined(LINUX_THREADS))
-	/* We have to redirect malloc calls during initialization.	*/
+	(defined(GC_SOLARIS_THREADS) || defined(GC_LINUX_THREADS) \
+	 || defined(__MINGW32__)) /* Should this be MSWIN32 in general? */
+	/* For Solaris, we have to redirect malloc calls during		*/
+	/* initialization.  For the others, this seems to happen 	*/
+ 	/* implicitly.							*/
 	/* Don't try to deallocate that memory.				*/
 	if (0 == hhdr) return;
 #   endif
