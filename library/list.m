@@ -7,15 +7,14 @@
 % Module `list' - defines the list type, and various utility predicates
 % that operate on lists.
 %
-% Main author: fjh.
+% Authors: fjh, conway, trd, zs, philip, warwick, ...
 % Stability: medium to high.
 %
 %---------------------------------------------------------------------------%
 
 :- module list.
-:- import_module int.
-
 :- interface.
+:- import_module int.
 
 %-----------------------------------------------------------------------------%
 
@@ -49,7 +48,7 @@
 :- mode output_list_skel :: out_list_skel.
 :- mode list_skel_output :: list_skel_out.
 
-	% These modes are particularly useful for passing round lists
+	% These modes are particularly useful for passing around lists
 	% of higher order terms, since they have complicated insts
 	% which are not correctly approximated by "ground".
 :- mode list_skel_in(I) :: list_skel(I) -> list_skel(I).
@@ -70,7 +69,7 @@
 %	The following mode is semidet in the sense that it doesn't
 %	succeed more than once - but it does create a choice-point,
 %	which means it's inefficient and that the compiler can't deduce
-%	that it is semidet.  Use list__remove_prefix instead.
+%	that it is semidet.  Use list__remove_suffix instead.
 % :- mode list__append(out, in, in) is semidet.
 
 	% list__remove_suffix(List, Suffix, Prefix):
@@ -80,14 +79,14 @@
 :- mode list__remove_suffix(in, in, out) is semidet.
 
 	% list__merge(L1, L2, L):
-	%	L is the result of merging L1 and L2.
-	%	L1 and L2 must be sorted.
+	%	L is the result of merging the elements of L1 and L2,
+	%	in ascending order.  L1 and L2 must be sorted.
 :- pred list__merge(list(T), list(T), list(T)).
 :- mode list__merge(in, in, out) is det.
 
 	% list__merge_and_remove_dups(L1, L2, L):
-	%	L is the result of merging L1 and L2 and eliminating
-	%	any duplicates.
+	%	L is the result of merging the elements of L1 and L2,
+	%	in ascending order, and eliminating any duplicates.
 	%	L1 and L2 must be sorted and must each not contain any
 	%	duplicates.
 :- pred list__merge_and_remove_dups(list(T), list(T), list(T)).
@@ -125,7 +124,6 @@
 	%
 :- pred list__length(list(_T), int).
 :- mode list__length(in, out) is det.
-% :- mode list__length(in, in) is semidet.	% implied
 	% XXX The current mode checker can't handle this mode
 % :- mode list__length(input_list_skel, out) is det.
 
@@ -322,9 +320,6 @@
 % various list processing tasks. They implement pretty much standard
 % sorts of operations provided by standard libraries for functional languages.
 %
-% Most of this code was originally by philip, modified and reformatted
-% by conway.
-%
 %-----------------------------------------------------------------------------%
 
 	% list__map(T, L, M) uses the closure T
@@ -351,6 +346,31 @@
 :- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+	% list__foldl2(Pred, List, Start, End, Start2, End2) 
+	% calls Pred with each element of List (working left-to-right),
+	% 2 accumulators (with the initial values of Start and Start2),
+	% and returns the final values in End and End2.
+	% (Although no more expressive than list__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
+:- mode list__foldl2(pred(in, in, out, in, out) is det,
+		in, in, out, in, out) is det.
+:- mode list__foldl2(pred(in, in, out, di, uo) is det,
+		in, in, out, di, uo) is det.
+:- mode list__foldl2(pred(in, di, uo, di, uo) is det,
+		in, di, uo, di, uo) is det.
+
+	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
+	% with an accumulator (with the initial value of Start) on
+	% each element of InList (working left-to-right) to transform
+	% InList into OutList.  The final value of the acumulator is
+	% returned in End.
+:- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
+:- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo) is det.
+:- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out) is det.
+:- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
+                                                                is semidet.
 
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
@@ -380,40 +400,14 @@
 :- pred list__filter_map(pred(X, Y), list(X), list(Y), list(X)).
 :- mode list__filter_map(pred(in, out) is semidet, in, out, out) is det.
 
+%-----------------------------------------------------------------------------%
+
 	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
 	% list containing the same elements as Unsorted, where Sorted is
 	% a sorted list, with respect to the ordering defined by the predicate
 	% term Compare.
-	% (implementation due to Philip Dart)
 :- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
 :- mode list__sort(pred(in, in, out) is det, in, out) is det.
-
-	% list__foldl2(Pred, List, Start, End, Start2, End2) 
-	% calls Pred with each element of List (working left-to-right),
-	% 2 accumulators (with the initial values of Start and Start2),
-	% and returns the final values in End and End2.
-	% (Although no more expressive than list__foldl, this is often
-	% a more convenient format, and a little more efficient).
-:- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
-:- mode list__foldl2(pred(in, in, out, in, out) is det,
-		in, in, out, in, out) is det.
-:- mode list__foldl2(pred(in, in, out, di, uo) is det,
-		in, in, out, di, uo) is det.
-:- mode list__foldl2(pred(in, di, uo, di, uo) is det,
-		in, di, uo, di, uo) is det.
-
-	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
-	% with an accumulator (with the initial value of Start) on
-	% each element of InList (working left-to-right) to transform
-	% InList into OutList.  The final value of the acumulator is
-	% returned in End.
-:- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
-:- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo) is det.
-:- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out) is det.
-:- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
-                                                                is semidet.
-
-%-----------------------------------------------------------------------------%
 
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
 	% Sorted is a list containing the same elements as Unsorted, but with
@@ -427,7 +421,6 @@
 	% list containing the elements of As and Bs in the order implied
 	% by their sorted merge. The ordering of elements is defined by
 	% the higher order comparison predicate Compare.
-	% (implementation due to Philip Dart)
 :- pred list__merge(pred(X, X, comparison_result), list(X), list(X), list(X)).
 :- mode list__merge(pred(in, in, out) is det, in, in, out) is det.
 
@@ -631,7 +624,6 @@ list__length(L, N) :-
 
 :- pred list__length_2(list(T), int, int).
 :- mode list__length_2(in, in, out) is det.
-% :- mode list__length_2(in, in, in) is semidet. % implied
 
 list__length_2([], N, N).
 list__length_2([_ | L1], N0, N) :-
@@ -907,7 +899,7 @@ list__foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
 list__map_foldl(_, [],  []) -->
         [].
 list__map_foldl(P, [H0|T0], [H|T]) -->
-        P(H0, H),
+        call(P, H0, H),
         list__map_foldl(P, T0, T).
 
 list__foldr(_, [], Acc, Acc).
