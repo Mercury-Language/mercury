@@ -1,4 +1,5 @@
-#!/bin/sh -
+#!/bin/sh
+# Copyright (C) 1999 INRIA/INSA.
 # Fix the manual file
 
 ex $1 <<\EOF
@@ -17,8 +18,6 @@ w
 q
 EOF
 ex $1 <<\EOF
-#!/bin/sh
-# Copyright (C) 1999 INRIA/INSA.
 
 %s/\\==/$\\backslash$==/g
 w
