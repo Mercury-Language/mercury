@@ -432,7 +432,8 @@ mercury_check_for_functions () {
 
     for mercury_cv_func in "$@"
     do
-	mercury_cv_func_define=MR_HAVE_`echo $mercury_cv_func | tr a-z A-Z`
+	mercury_cv_func_define="MR_HAVE_`echo $mercury_cv_func | \
+		tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
 	AC_CHECK_FUNC($mercury_cv_func, [
 		AC_DEFINE_UNQUOTED($mercury_cv_func_define)
 	])
@@ -461,7 +462,7 @@ mercury_check_for_headers () {
     for mercury_cv_header in "$@"
     do
 	mercury_cv_header_define="MR_HAVE_`echo $mercury_cv_header | \
-						tr 'a-z./' 'A-Z__'`"
+		tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
 	AC_CHECK_HEADER($mercury_cv_header, [
 		AC_DEFINE_UNQUOTED($mercury_cv_header_define)
 		eval "$mercury_cv_header_define=1"
