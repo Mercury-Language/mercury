@@ -3875,7 +3875,8 @@ the assertion corresponding to a FAIL event,
 the declarative debugger prints the call atom, prefixed by @samp{Call},
 followed by each of the exit atoms
 (indented, and on multiple lines if need be),
-and prints the question @samp{Complete?} for the user to answer.
+and prints the question @samp{Complete?} (or @samp{Unsatisfiable?} if there
+are no solutions) for the user to answer.
 Note that the user is not required to provide any missing instance
 in the case that the answer is no.
 (A limitation of the current implementation is that
