@@ -218,19 +218,19 @@ detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
 detect_liveness_in_conj([], Liveness, _ModuleInfo, Liveness, []).
 detect_liveness_in_conj([Goal0|Goals0], Liveness0,
 					ModuleInfo, Liveness, [Goal|Goals]) :-
-	(
-		Goal0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
-	->
-		Goal = Goal0,
-		Goals = Goals0,
-		Liveness = Liveness0
-	;
+%	(
+%		Goal0 = _ - GoalInfo,
+%		goal_info_get_instmap_delta(GoalInfo, unreachable)
+%	->
+%		Goal = Goal0,
+%		Goals = Goals0,
+%		Liveness = Liveness0
+%	;
 		detect_liveness_in_goal(Goal0, Liveness0,
 						ModuleInfo, Liveness1, Goal),
 		detect_liveness_in_conj(Goals0, Liveness1,
-						ModuleInfo, Liveness, Goals)
-	).
+						ModuleInfo, Liveness, Goals).
+%	).
 
 %-----------------------------------------------------------------------------%
 
