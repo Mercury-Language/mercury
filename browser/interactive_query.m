@@ -407,6 +407,9 @@ write_import_list(Out, Imports) -->
 compile_file(Options, Succeeded) -->
 	%
 	% We use the following options:
+	%	--grade
+	%		make sure the grade of libmdb_query.so matches the
+	%		grade of the executable it will be linked against
 	%	--pic-reg
 	%		needed for shared libraries / dynamic linking
 	%	--infer-all
@@ -426,13 +429,13 @@ compile_file(Options, Succeeded) -->
 	%		symbols defined in the program
 	%
 	{ string__append_list([
-		"mmc --grade ", grade_option, " ",
-		"--infer-all --no-verbose-make ",
-		"--pic-reg ", "-O0 --no-c-optimize ",
+		"mmc --infer-all --no-verbose-make -O0 --no-c-optimize ",
 		"--no-warn-simple-code --no-warn-det-decls-too-lax ",
 		"--output-compile-error-lines 10000 ",
 		"--link-flags --allow-undefined ", Options,
-		" --compile-to-shared-lib ", query_module_name],
+		" --grade ", grade_option,
+		" --pic-reg --compile-to-shared-lib ",
+		query_module_name],
 		Command) },
 	invoke_system_command(Command, Succeeded).
 
