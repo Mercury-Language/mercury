@@ -2566,7 +2566,19 @@ gen_stmt(DefnInfo, Call, _) -->
 	build_rval(FuncRval, DefnInfo, GCC_FuncRval),
 	{
 		CallKind = no_return_call,
-		IsTailCall = yes
+		% XXX trying to optimize these leads to
+		% problems because we don't mark such calls
+		% with __attribute__((__noreturn__)) and so
+		% GCC thinks that they are not in a tail position.
+		% Marking them as with __attribute__((__noreturn__))
+		% doesn't help because GCC (3.3 beta) inhibits tail
+		% call optimization for such functions.
+		% Also, we can't insert a return statement (below)
+		% if the return type for the caller doesn't match
+		% that for the callee, but mlds_to_gcc.m currently doesn't
+		% pass down the signature of the caller to this point.
+		% So for now, treat these as if they were not tail calls.
+		IsTailCall = no
 	;
 		CallKind = tail_call,
 		IsTailCall = yes
@@ -2574,11 +2586,14 @@ gen_stmt(DefnInfo, Call, _) -->
 		CallKind = ordinary_call,
 		IsTailCall = no
 	},
-	% XXX GCC currently ignores the tail call boolean
 	gcc__build_call_expr(GCC_FuncRval, GCC_ArgList, IsTailCall, GCC_Call),
 	( { Results = [ResultLval] } ->
-		build_lval(ResultLval, DefnInfo, GCC_ResultExpr),
-		gcc__gen_assign(GCC_ResultExpr, GCC_Call)
+		( { IsTailCall = yes } ->
+			gcc__gen_return(GCC_Call)
+		;
+			build_lval(ResultLval, DefnInfo, GCC_ResultExpr),
+			gcc__gen_assign(GCC_ResultExpr, GCC_Call)
+		)
 	; { Results = [] } ->
 		gcc__gen_expr_stmt(GCC_Call)
 	;
