@@ -122,7 +122,9 @@ cs: $(mercury_compile.cs) mercury_compile_init.c
 
 clean:
 	for file in *.pp; do \
-		rm -f `basename $$file .pp`.m; \
+		if [ "$$file" != "*.pp" ]; then \
+			rm -f `basename $$file .pp`.m; \
+		fi \
 	done
 
 realclean:
