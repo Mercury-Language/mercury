@@ -31,11 +31,14 @@
 :- pred exprn_aux__substitute_rval_in_rval(rval, rval, rval, rval).
 :- mode exprn_aux__substitute_rval_in_rval(in, in, in, out) is det.
 
-:- pred exprn_aux__vars_in_rval(rval, list(var)).
-:- mode exprn_aux__vars_in_rval(in, out) is det.
-
 :- pred exprn_aux__substitute_vars_in_rval(assoc_list(var, rval), rval, rval).
 :- mode exprn_aux__substitute_vars_in_rval(in, in, out) is det.
+
+:- pred exprn_aux__substitute_rvals_in_rval(assoc_list(rval, rval), rval, rval).
+:- mode exprn_aux__substitute_rvals_in_rval(in, in, out) is det.
+
+:- pred exprn_aux__vars_in_rval(rval, list(var)).
+:- mode exprn_aux__vars_in_rval(in, out) is det.
 
 :- pred exprn_aux__simplify_rval(rval, rval).
 :- mode exprn_aux__simplify_rval(in, out) is det.
@@ -63,7 +66,7 @@
 %------------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, getopt, options.
+:- import_module int, require, getopt, options.
 
 exprn_aux__init_exprn_opts(Options, ExprnOpts) :-
 	getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
@@ -146,7 +149,7 @@ exprn_aux__lval_contains_lval(Lval0, Lval) :-
 :- pred exprn_aux__args_contain_lval(list(maybe(rval)), lval).
 :- mode exprn_aux__args_contain_lval(in, in) is semidet.
 
-exprn_aux__args_contain_lval([M|Ms], Lval) :-
+exprn_aux__args_contain_lval([M | Ms], Lval) :-
 	(
 		M = yes(Rval),
 		exprn_aux__rval_contains_lval(Rval, Lval)
@@ -199,7 +202,7 @@ exprn_aux__lval_contains_rval(field(_, Rval0, Rval1), Rval) :-
 :- pred exprn_aux__args_contain_rval(list(maybe(rval)), rval).
 :- mode exprn_aux__args_contain_rval(in, in) is semidet.
 
-exprn_aux__args_contain_rval([M|Ms], Rval) :-
+exprn_aux__args_contain_rval([M | Ms], Rval) :-
 	(
 		M = yes(Rval0),
 		exprn_aux__rval_contains_rval(Rval0, Rval)
@@ -248,7 +251,7 @@ exprn_aux__vars_in_lval(Lval, Vars) :-
 :- mode exprn_aux__vars_in_args(in, out) is det.
 
 exprn_aux__vars_in_args([], []).
-exprn_aux__vars_in_args([M|Ms], Vars) :-
+exprn_aux__vars_in_args([M | Ms], Vars) :-
 	exprn_aux__vars_in_args(Ms, Vars0),
 	(
 		M = yes(Rval)
@@ -322,7 +325,7 @@ exprn_aux__substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
 :- mode exprn_aux__substitute_lval_in_args(in, in, in, out) is det.
 
 exprn_aux__substitute_lval_in_args(_OldLval, _NewLval, [], []).
-exprn_aux__substitute_lval_in_args(OldLval, NewLval, [M0|Ms0], [M|Ms]) :-
+exprn_aux__substitute_lval_in_args(OldLval, NewLval, [M0 | Ms0], [M | Ms]) :-
 	(
 		M0 = yes(Rval0)
 	->
@@ -397,7 +400,7 @@ exprn_aux__substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
 :- mode exprn_aux__substitute_rval_in_args(in, in, in, out) is det.
 
 exprn_aux__substitute_rval_in_args(_OldRval, _NewRval, [], []).
-exprn_aux__substitute_rval_in_args(OldRval, NewRval, [M0|Ms0], [M|Ms]) :-
+exprn_aux__substitute_rval_in_args(OldRval, NewRval, [M0 | Ms0], [M | Ms]) :-
 	(
 		M0 = yes(Rval0)
 	->
@@ -412,9 +415,42 @@ exprn_aux__substitute_rval_in_args(OldRval, NewRval, [M0|Ms0], [M|Ms]) :-
 %------------------------------------------------------------------------------%
 
 exprn_aux__substitute_vars_in_rval([], Rval, Rval).
-exprn_aux__substitute_vars_in_rval([Var - Sub|Rest], Rval0, Rval) :-
+exprn_aux__substitute_vars_in_rval([Var - Sub | Rest], Rval0, Rval) :-
 	exprn_aux__substitute_rval_in_rval(var(Var), Sub, Rval0, Rval1),
 	exprn_aux__substitute_vars_in_rval(Rest, Rval1, Rval).
+
+% When we substitute a one set of rvals for another, we face the problem
+% that the substitution may not be idempotent. We finesse this problem by
+% substituting unique new rvals for the original rvals, and then substituting
+% the replacement rvals for these unique rvals. We guarantee the uniqueness
+% of these rvals by using framevars with negative numbers for them.
+
+exprn_aux__substitute_rvals_in_rval(RvalPairs, Rval0, Rval) :-
+	exprn_aux__substitute_rvals_in_rval_1(RvalPairs, 0,
+		RvalUniqPairs, UniqRvalPairs),
+	exprn_aux__substitute_rvals_in_rval_2(RvalUniqPairs, Rval0, Rval1),
+	exprn_aux__substitute_rvals_in_rval_2(UniqRvalPairs, Rval1, Rval).
+
+:- pred exprn_aux__substitute_rvals_in_rval_1(assoc_list(rval, rval), int,
+	assoc_list(rval, rval), assoc_list(rval, rval)).
+:- mode exprn_aux__substitute_rvals_in_rval_1(in, in, out, out) is det.
+
+exprn_aux__substitute_rvals_in_rval_1([], _, [], []).
+exprn_aux__substitute_rvals_in_rval_1([Rval1 - Rval2 | RvalPairList], N0,
+		[Rval1 - Uniq | RvalUniqList], [Uniq - Rval2 | UniqRvalList]) :-
+	N1 is N0 - 1,
+	Uniq = lval(framevar(N1)),
+	exprn_aux__substitute_rvals_in_rval_1(RvalPairList, N1,
+		RvalUniqList, UniqRvalList).
+
+:- pred exprn_aux__substitute_rvals_in_rval_2(assoc_list(rval, rval),
+	rval, rval).
+:- mode exprn_aux__substitute_rvals_in_rval_2(in, in, out) is det.
+
+exprn_aux__substitute_rvals_in_rval_2([], Rval, Rval).
+exprn_aux__substitute_rvals_in_rval_2([Left - Right | Rest], Rval0, Rval2) :-
+	exprn_aux__substitute_rval_in_rval(Left, Right, Rval0, Rval1),
+	exprn_aux__substitute_rvals_in_rval_2(Rest, Rval1, Rval2).
 
 %---------------------------------------------------------------------------%
 
@@ -470,7 +506,7 @@ exprn_aux__simplify_rval_2(Rval0, Rval) :-
 :- mode exprn_aux__simplify_args(in, out) is det.
 
 exprn_aux__simplify_args([], []).
-exprn_aux__simplify_args([MR0|Ms0], [MR|Ms]) :-
+exprn_aux__simplify_args([MR0 | Ms0], [MR | Ms]) :-
 	exprn_aux__simplify_args(Ms0, Ms),
 	(
 		MR0 = yes(Rval0),

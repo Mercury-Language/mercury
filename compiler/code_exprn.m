@@ -169,7 +169,7 @@ code_exprn__init_state(Initializations, Varset, Options, ExprnInfo) :-
 :- mode code_exprn__init_state_2(in, in, out, in, out) is det.
 
 code_exprn__init_state_2([], Vars, Vars, Regs, Regs).
-code_exprn__init_state_2([V - L|Rest], Vars0, Vars, Regs0, Regs) :-
+code_exprn__init_state_2([V - L | Rest], Vars0, Vars, Regs0, Regs) :-
 	(
 		map__search(Vars0, V, evaled(Vals0))
 	->
@@ -200,7 +200,7 @@ code_exprn__get_varlocs(ExprnInfo, Locations) :-
 :- mode code_exprn__repackage_locations(in, in, out) is det.
 
 code_exprn__repackage_locations([], Loc, Loc).
-code_exprn__repackage_locations([V - Locs|Rest], Loc0, Loc) :-
+code_exprn__repackage_locations([V - Locs | Rest], Loc0, Loc) :-
 	(
 		Locs = cached(Rval),
 		set__singleton_set(Rvals, Rval)
@@ -229,7 +229,7 @@ code_exprn__clobber_regs(CriticalVars) -->
 :- mode code_exprn__clobber_regs_2(in, in, in, in, out) is det.
 
 code_exprn__clobber_regs_2([], _Critical, _OldVars, Vars, Vars).
-code_exprn__clobber_regs_2([V - Stat|Rest], Critical, OldVars, Vars0, Vars) :-
+code_exprn__clobber_regs_2([V - Stat | Rest], Critical, OldVars, Vars0, Vars) :-
 	(
 		Stat = cached(Exprn),
 		(
@@ -325,7 +325,7 @@ code_exprn__lval_depends_on_reg(field(_Tag, Rval0, Rval1), Vars) :-
 
 code_exprn__args_depend_on_reg([], _Vars) :-
 	fail.
-code_exprn__args_depend_on_reg([Arg|Args], Vars) :-
+code_exprn__args_depend_on_reg([Arg | Args], Vars) :-
 	(
 		Arg = yes(Rval),
 		code_exprn__rval_depends_on_reg(Rval, Vars)
@@ -347,25 +347,25 @@ code_exprn__filter_out_reg_depending(Rvals0, Vars, Rvals) :-
 :- mode code_exprn__filter_out_reg_depending_2(in, in, out) is det.
 
 code_exprn__filter_out_reg_depending_2([], _Vars, []).
-code_exprn__filter_out_reg_depending_2([Rval0|Rvals0], Vars, Rvals) :-
+code_exprn__filter_out_reg_depending_2([Rval0 | Rvals0], Vars, Rvals) :-
 	code_exprn__filter_out_reg_depending_2(Rvals0, Vars, Rvals1),
 	(
 		code_exprn__rval_depends_on_reg(Rval0, Vars)
 	->
 		Rvals = Rvals1
 	;
-		Rvals = [Rval0|Rvals1]
+		Rvals = [Rval0 | Rvals1]
 	).
 
 %------------------------------------------------------------------------------%
 
 code_exprn__set_var_location(Var, Lval) -->
-	code_exprn__get_vars(Vars0),
 	(
-		{ code_exprn__lval_in_use(Lval, Vars0) }
+		code_exprn__lval_in_use(Lval)
 	->
 		{ error("code_exprn__set_var_location: location already in use") }
 	;
+		code_exprn__get_vars(Vars0),
 		{ set__singleton_set(Locs, lval(Lval)) },
 		{ map__set(Vars0, Var, evaled(Locs), Vars) },
 		code_exprn__set_vars(Vars),
@@ -383,19 +383,90 @@ code_exprn__maybe_set_var_location(Var, Lval) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__lval_in_use(lval, var_map).
-:- mode code_exprn__lval_in_use(in, in) is semidet.
+:- pred code_exprn__lval_in_use(lval, exprn_info, exprn_info).
+:- mode code_exprn__lval_in_use(in, in, out) is semidet.
 
-code_exprn__lval_in_use(Lval, Vars) :-
-	map__values(Vars, StatList),
-	list__member(Stat, StatList),
+code_exprn__lval_in_use(Lval) -->
+	code_exprn__lval_in_use_except(Lval, no).
+
+:- pred code_exprn__lval_in_use_except(lval, maybe(var),
+	exprn_info, exprn_info).
+:- mode code_exprn__lval_in_use_except(in, in, in, out) is semidet.
+
+code_exprn__lval_in_use_except(Lval, MaybeVar) -->
+	code_exprn__get_vars(Vars),
+	{ map__to_assoc_list(Vars, VarStatList) },
+	{ code_exprn__lval_in_use_2(Lval, MaybeVar, VarStatList) }.
+
+	% The auxiliary predicate is needed to allow Mercury to recognize
+	% that the subcomputation has no outputs without using existential
+	% quantification, whose syntax SICStus doesn't like.
+
+:- pred code_exprn__lval_in_use_2(lval, maybe(var), assoc_list(var, var_stat)).
+:- mode code_exprn__lval_in_use_2(in, in, in) is semidet.
+
+code_exprn__lval_in_use_2(Lval, MaybeVar, VarStatList) :-
+	list__member(VarStat, VarStatList),
+	VarStat = Var - Stat,
 	(
-		Stat = cached(Rval0),
-		exprn_aux__rval_contains_lval(Rval0, Lval)
+		MaybeVar = no
+	;
+		MaybeVar = yes(ExceptionVar),
+		\+ Var = ExceptionVar
+	),
+	(
+		Stat = cached(Rval),
+		exprn_aux__rval_contains_lval(Rval, Lval)
 	;
 		Stat = evaled(Rvals),
-		set__member(Rval1, Rvals),
-		exprn_aux__rval_contains_lval(Rval1, Lval)
+		set__member(Rval, Rvals),
+		exprn_aux__rval_contains_lval(Rval, Lval)
+	).
+
+%------------------------------------------------------------------------------%
+
+:- pred code_exprn__clear_lval_of_synonyms(lval, exprn_info, exprn_info).
+:- mode code_exprn__clear_lval_of_synonyms(in, in, out) is det.
+
+code_exprn__clear_lval_of_synonyms(Lval) -->
+	code_exprn__get_vars(Vars),
+	{ map__to_assoc_list(Vars, VarStatList) },
+	code_exprn__clear_lval_of_synonyms_1(VarStatList, Lval).
+
+:- pred code_exprn__clear_lval_of_synonyms_1(assoc_list(var, var_stat), lval,
+	exprn_info, exprn_info).
+:- mode code_exprn__clear_lval_of_synonyms_1(in, in, in, out) is det.
+
+code_exprn__clear_lval_of_synonyms_1([], _) --> [].
+code_exprn__clear_lval_of_synonyms_1([Var - Stat | VarStatList], Lval) -->
+	(
+		{ Stat = cached(_) }
+	;
+		{ Stat = evaled(Rvals0) },
+		{ set__to_sorted_list(Rvals0, RvalsList0) },
+		{ code_exprn__find_rvals_without_lval(RvalsList0, Lval,
+			RvalsList) },
+		( { RvalsList = [] } ->
+			[]
+		;
+			code_exprn__get_vars(Vars0),
+			{ set__sorted_list_to_set(RvalsList, Rvals) },
+			{ map__set(Vars0, Var, evaled(Rvals), Vars) },
+			code_exprn__set_vars(Vars)
+		)
+	),
+	code_exprn__clear_lval_of_synonyms_1(VarStatList, Lval).
+
+:- pred code_exprn__find_rvals_without_lval(list(rval), lval, list(rval)).
+:- mode code_exprn__find_rvals_without_lval(in, in, out) is det.
+
+code_exprn__find_rvals_without_lval([], _, []).
+code_exprn__find_rvals_without_lval([Rval0 | Rvals0], Lval, Rvals) :-
+	code_exprn__find_rvals_without_lval(Rvals0, Lval, Rvals1),
+	( exprn_aux__rval_contains_lval(Rval0, Lval) ->
+		Rvals = Rvals1
+	;
+		Rvals = [Rval0 | Rvals1]
 	).
 
 %------------------------------------------------------------------------------%
@@ -424,7 +495,7 @@ code_exprn__add_lval_reg_dependencies(Lval) -->
 :- mode code_exprn__add_rval_list_reg_dependencies(in, in, out) is det.
 
 code_exprn__add_rval_list_reg_dependencies([]) --> [].
-code_exprn__add_rval_list_reg_dependencies([R|Rs]) -->
+code_exprn__add_rval_list_reg_dependencies([R | Rs]) -->
 	code_exprn__add_rval_reg_dependencies(R),
 	code_exprn__add_rval_list_reg_dependencies(Rs).
 
@@ -450,7 +521,7 @@ code_exprn__add_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 :- mode code_exprn__add_arg_reg_dependencies(in, in, out) is det.
 
 code_exprn__add_arg_reg_dependencies([]) --> [].
-code_exprn__add_arg_reg_dependencies([M|Ms]) -->
+code_exprn__add_arg_reg_dependencies([M | Ms]) -->
 	(
 		{ M = yes(Rval) }
 	->
@@ -486,7 +557,7 @@ code_exprn__rem_lval_reg_dependencies(Lval) -->
 :- mode code_exprn__rem_rval_list_reg_dependencies(in, in, out) is det.
 
 code_exprn__rem_rval_list_reg_dependencies([]) --> [].
-code_exprn__rem_rval_list_reg_dependencies([R|Rs]) -->
+code_exprn__rem_rval_list_reg_dependencies([R | Rs]) -->
 	code_exprn__rem_rval_reg_dependencies(R),
 	code_exprn__rem_rval_list_reg_dependencies(Rs).
 
@@ -512,7 +583,7 @@ code_exprn__rem_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 :- mode code_exprn__rem_arg_reg_dependencies(in, in, out) is det.
 
 code_exprn__rem_arg_reg_dependencies([]) --> [].
-code_exprn__rem_arg_reg_dependencies([M|Ms]) -->
+code_exprn__rem_arg_reg_dependencies([M | Ms]) -->
 	(
 		{ M = yes(Rval) }
 	->
@@ -579,8 +650,8 @@ code_exprn__update_dependent_vars(Var, Rval) -->
 :- mode code_exprn__update_dependent_vars_2(in, in, in, out, in, out) is det.
 
 code_exprn__update_dependent_vars_2([], _Var, _Rval, []) --> [].
-code_exprn__update_dependent_vars_2([V - Stat0|Rest0], Var, Rval,
-							[V - Stat|Rest]) -->
+code_exprn__update_dependent_vars_2([V - Stat0 | Rest0], Var, Rval,
+							[V - Stat | Rest]) -->
 	(
 		{ Stat0 = cached(Exprn0) },
 		{ exprn_aux__rval_contains_rval(Exprn0, var(Var)) }
@@ -616,7 +687,7 @@ code_exprn__update_dependent_vars_2([V - Stat0|Rest0], Var, Rval,
 :- mode code_exprn__update_dependent_vars_3(in, in, in, out, in, out) is det.
 
 code_exprn__update_dependent_vars_3([], _Var, _Rval, []) --> [].
-code_exprn__update_dependent_vars_3([R0|Rs0], Var, Rval, [R|Rs]) -->
+code_exprn__update_dependent_vars_3([R0 | Rs0], Var, Rval, [R | Rs]) -->
 	(
 		{ exprn_aux__rval_contains_rval(R0, var(Var)) }
 	->
@@ -652,7 +723,7 @@ code_exprn__select_rval(Rs, Rval) :-
 	->
 		Rval = Rval2
 	;
-		Rs = [Rval3|_]
+		Rs = [Rval3 | _]
 	->
 		Rval = Rval3
 	;
@@ -662,7 +733,7 @@ code_exprn__select_rval(Rs, Rval) :-
 :- pred code_exprn__select_reg(list(rval), rval).
 :- mode code_exprn__select_reg(in, out) is semidet.
 
-code_exprn__select_reg([R|Rs], Rval) :-
+code_exprn__select_reg([R | Rs], Rval) :-
 	(
 		R = lval(reg(_))
 	->
@@ -674,7 +745,7 @@ code_exprn__select_reg([R|Rs], Rval) :-
 :- pred code_exprn__select_simple_const(list(rval), rval).
 :- mode code_exprn__select_simple_const(in, out) is semidet.
 
-code_exprn__select_simple_const([R|Rs], Rval) :-
+code_exprn__select_simple_const([R | Rs], Rval) :-
 	(
 		R = const(_)
 	->
@@ -686,7 +757,7 @@ code_exprn__select_simple_const([R|Rs], Rval) :-
 :- pred code_exprn__select_stackvar(list(rval), rval).
 :- mode code_exprn__select_stackvar(in, out) is semidet.
 
-code_exprn__select_stackvar([R|Rs], Rval) :-
+code_exprn__select_stackvar([R | Rs], Rval) :-
 	(
 		R = lval(C),
 		(
@@ -755,7 +826,7 @@ code_exprn__args_are_constant([Arg0 | Args0], Vars, ExprnOpts, [Arg | Args]) :-
 							exprn_opts, rval).
 :- mode code_exprn__member_expr_is_constant(in, in, in, out) is semidet.
 
-code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, ExprnOpts, Rval) :-
+code_exprn__member_expr_is_constant([Rval0 | Rvals0], Vars, ExprnOpts, Rval) :-
 	(
 		code_exprn__expr_is_constant(Rval0, Vars, ExprnOpts, Rval1)
 	->
@@ -790,21 +861,13 @@ code_exprn__cache_exprn(Var, Rval) -->
 %------------------------------------------------------------------------------%
 
 code_exprn__place_var(Var, Lval, Code) -->
-	code_exprn__get_vars(Vars0),
+	code_exprn__get_var_status(Var, Stat),
 	(
-		{ map__search(Vars0, Var, Stat) }
-	->
-		(
-			{ Stat = cached(Rval) },
-			code_exprn__place_cached(Rval, Var, Lval, Code)
-		;
-			{ Stat = evaled(Rvals) },
-			code_exprn__place_evaled(Rvals, Var, Lval, Code)
-		)
+		{ Stat = cached(Rval) },
+		code_exprn__place_cached(Rval, Var, Lval, Code)
 	;
-		code_exprn__get_var_name(Var, Name),
-		{ string__append_list(["variable ", Name, " not found"], Msg) },
-		{ error(Msg) }
+		{ Stat = evaled(Rvals) },
+		code_exprn__place_evaled(Rvals, Var, Lval, Code)
 	).
 
 :- pred code_exprn__place_cached(rval, var, lval, code_tree,
@@ -838,13 +901,15 @@ code_exprn__place_cached(Rval0, Var, Lval, Code) -->
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__expr_is_constant(Rval0, Vars0, ExprnOpts, Rval) }
 	->
-		code_exprn__place_expr(Lval, Var, Rval, yes, yes, Code)
+		code_exprn__place_exprn(yes(Lval), yes(Var), Rval, yes, yes,
+			_, Code)
 	;
-		code_exprn__place_expr(Lval, Var, Rval0, no, no, Code)
+		code_exprn__place_exprn(yes(Lval), yes(Var), Rval0, no, no,
+			_, Code)
 	).
 
 :- pred code_exprn__place_evaled(set(rval), var, lval, code_tree,
-						exprn_info, exprn_info).
+	exprn_info, exprn_info).
 :- mode code_exprn__place_evaled(in, in, in, out, in, out) is det.
 
 code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
@@ -868,149 +933,157 @@ code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
 			Rval0 = lval(framevar(_))
 		}
 	->
-		code_exprn__place_expr(Lval, Var, Rval0, yes, no, Code)
+		code_exprn__place_exprn(yes(Lval), yes(Var), Rval0, yes, no,
+			_, Code)
 	;
 		{ set__to_sorted_list(Rvals0, RvalList0) },
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__member_expr_is_constant(RvalList0,
 				Vars0, ExprnOpts, Rval0) }
 	->
-		code_exprn__place_expr(Lval, Var, Rval0, yes, yes, Code)
+		code_exprn__place_exprn(yes(Lval), yes(Var), Rval0, yes, yes,
+			_, Code)
 	;
 		{ set__to_sorted_list(Rvals0, RvalList) },
 		{ code_exprn__select_rval(RvalList, Rval) },
-		code_exprn__place_expr(Lval, Var, Rval, no, no, Code)
+		code_exprn__place_exprn(yes(Lval), yes(Var), Rval, no, no,
+			_, Code)
 	).
 
-:- pred code_exprn__place_expr(lval, var, rval, bool, bool, code_tree,
-						exprn_info, exprn_info).
-:- mode code_exprn__place_expr(in, in, in, in, in, out, in, out) is det.
+:- pred code_exprn__place_arg(rval, lval, code_tree, exprn_info, exprn_info).
+:- mode code_exprn__place_arg(in, out, out, in, out) is det.
 
-code_exprn__place_expr(Lval, Var, Rval0, StandAlone, IsConst, Code) -->
+code_exprn__place_arg(Rval0, Lval, Code) -->
+	code_exprn__get_vars(Vars0),
+	(
+			% if the variable already has its value stored,
+			% we don't need to generate any code
+		{ Rval0 = var(Var1) },
+		{ map__search(Vars0, Var1, Stat0) },
+		{ Stat0 = evaled(VarRvals) },
+		{ set__to_sorted_list(VarRvals, RvalList) },
+		{ code_exprn__select_rval(RvalList, BestVarRval) },
+		{ BestVarRval = lval(Lval0) }
+	->
+		{ Lval = Lval0 },
+		code_exprn__add_lval_reg_dependencies(Lval),
+		{ Code = empty }
+	;
+			% If the value of the variable is a constant or
+			% is built up by operations involving only constants,
+			% get the constant form and assign that
+		code_exprn__get_options(ExprnOpts),
+		{ code_exprn__expr_is_constant(Rval0, Vars0, ExprnOpts, Rval) }
+	->
+		code_exprn__place_exprn(no, no, Rval, yes, yes, Lval, Code)
+	;
+		code_exprn__place_exprn(no, no, Rval0, no, no, Lval, Code)
+	).
+
+:- pred code_exprn__place_exprn(maybe(lval), maybe(var), rval, bool, bool,
+	lval, code_tree, exprn_info, exprn_info).
+:- mode code_exprn__place_exprn(in, in, in, in, in, out, out, in, out) is det.
+
+code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
+		Lval, Code) -->
+%	(
+%		{ IsConst = no },
+%		{ Rval0 = create(_, MaybeSubRvals, _) },
+%		code_exprn__find_real_creates(MaybeSubRvals, CreateArgs)
+%	->
+%		% Look for SubRvals that are themselves creates.
+%		% We prefer to materialize these variables *before* we lock
+%		% Lval, as this allows the materialization code to use
+%		% the register(s) needed by Lval (if it is given).
+%
+%		code_exprn__produce_args(CreateArgs, CreateArgLocs, ArgCode),
+%		code_exprn__rem_rval_reg_dependencies(Rval0),
+%		{ exprn_aux__substitute_rvals_in_rval(CreateArgLocs,
+%			Rval0, Rval1) },
+%		code_exprn__add_rval_reg_dependencies(Rval1)
+%	;
+		{ Rval1 = Rval0 },
+		{ ArgCode = empty },
+		{ CreateArgLocs = [] },
+%	),
+		% If we are not required to put the result
+		% in any particular place, just pick a register.
+	( { MaybeLval = yes(Lval0) } ->
+		{ Lval = Lval0 },
 		% move stuff out of the way, and heed any changes
 		% this produces in the form of the expression
-	code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
-		% reserve the register
+		code_exprn__clear_lval(Lval, Rval1, Rval2, ClearCode)
+	;
+		code_exprn__get_spare_reg(Reg),
+		{ Lval = reg(Reg) },
+		{ Rval2 = Rval1 },
+		{ ClearCode = empty }
+	),
+		% reserve the target lval
 	code_exprn__add_lval_reg_dependencies(Lval),
-	code_exprn__get_var_name(Var, VarName),
+	code_exprn__maybe_get_var_name(MaybeVar, VarName),
 	( { IsConst = yes } ->
 		{ string__append("Assigning from ", VarName, Comment) },
-		{ ExprnCode = node([assign(Lval, Rval1) - Comment]) },
-		{ Rval = Rval1 }
+		{ ExprnCode = node([assign(Lval, Rval2) - Comment]) }
 	;
 		( { StandAlone = yes } ->
 			{ VarCode = empty },
-			{ Rval = Rval1 }
+			{ Rval = Rval2 }
 		;
-			{ exprn_aux__vars_in_rval(Rval1, VarList) },
+			{ exprn_aux__vars_in_rval(Rval2, VarList) },
 			code_exprn__produce_vars(VarList, VarLocList, VarCode),
-			code_exprn__rem_rval_reg_dependencies(Rval1),
+			code_exprn__rem_rval_reg_dependencies(Rval2),
 			{ exprn_aux__substitute_vars_in_rval(VarLocList,
-				Rval1, Rval) },
+				Rval2, Rval) },
 			code_exprn__add_rval_reg_dependencies(Rval),
-			code_exprn__set_evaled(Var, [Rval])
+			code_exprn__maybe_set_evaled(MaybeVar, [Rval])
 		),
 		code_exprn__construct_code(Lval, VarName, Rval, RealCode),
 		{ ExprnCode = tree(VarCode, RealCode) }
 	),
-	{ Code = tree(ClearCode, ExprnCode) },
-	code_exprn__add_evaled(Var, lval(Lval)).
+	code_exprn__release_arglocs(CreateArgLocs),
+	code_exprn__maybe_add_evaled(MaybeVar, lval(Lval)),
+	{ Code = tree(ArgCode, tree(ClearCode, ExprnCode)) }.
 
 %------------------------------------------------------------------------------%
 
-	% Move whatever is in Lval out of the way.
-	% It is possible that the value we want to put into Lval
-	% may need to refer to the value being moved out of Lval,
-	% e.g. as the base register of a field reference.
-	% To handle these correctly, we allow the caller to tell us
-	% the Rval0 that will go into Lval, and we adjust it as necessary
-	% before returning it as Rval.
+:- pred code_exprn__find_real_creates(list(maybe(rval)), list(rval),
+	exprn_info, exprn_info).
+:- mode code_exprn__find_real_creates(in, out, in, out) is det.
 
-:- pred code_exprn__clear_lval(lval, rval, rval,
-				code_tree, exprn_info, exprn_info).
-:- mode code_exprn__clear_lval(in, in, out, out, in, out) is det.
-
-code_exprn__clear_lval(Lval, Rval0, Rval, Code) -->
-	code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code),
+code_exprn__find_real_creates([], []) --> [].
+code_exprn__find_real_creates([MaybeRval | MaybeRvals], SubCreates) -->
+	code_exprn__find_real_creates(MaybeRvals, SubCreates1),
 	(
-		{ MaybeShuffle = yes(NewLval) }
+		{ MaybeRval = yes(Rval) },
+		code_exprn__rval_is_real_create(Rval)
 	->
-		{ exprn_aux__substitute_lval_in_rval(Lval, NewLval,
-			Rval0, Rval) }
+		{ SubCreates = [Rval | SubCreates1] }
 	;
-		{ Rval = Rval0 }
+		{ SubCreates = SubCreates1 }
 	).
 
-:- pred code_exprn__clear_lval_return_shuffle(lval, maybe(lval),
-				code_tree, exprn_info, exprn_info).
-:- mode code_exprn__clear_lval_return_shuffle(in, out, out, in, out) is det.
+:- pred code_exprn__rval_is_real_create(rval, exprn_info, exprn_info).
+:- mode code_exprn__rval_is_real_create(in, in, out) is semidet.
 
-code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code) -->
+code_exprn__rval_is_real_create(Rval) -->
 	(
+		{ Rval = create(_, _, _) },
 		code_exprn__get_vars(Vars0),
-		{ code_exprn__lval_in_use(Lval, Vars0) }
-	->
-		code_exprn__get_spare_reg(Reg),
-		{ map__to_assoc_list(Vars0, VarsList0) },
-		code_exprn__relocate_lval(VarsList0, Lval, reg(Reg), VarsList),
-		{ map__from_assoc_list(VarsList, Vars) },
-		code_exprn__set_vars(Vars),
-		{ MaybeShuffle = yes(reg(Reg)) },
-		{ Code = node([
-			assign(reg(Reg), lval(Lval)) -
-				"shuffle lval"
-		]) }
+		code_exprn__get_options(ExprnOpts),
+		{ \+ code_exprn__expr_is_constant(Rval, Vars0, ExprnOpts, _) }
 	;
-		{ MaybeShuffle = no },
-		{ Code = empty }
-	).
-
-:- pred code_exprn__relocate_lval(assoc_list(var, var_stat), lval, lval,
-			assoc_list(var, var_stat), exprn_info, exprn_info).
-:- mode code_exprn__relocate_lval(in, in, in, out, in, out) is det.
-
-code_exprn__relocate_lval([], _OldVal, _NewVal, []) --> [].
-code_exprn__relocate_lval([V - Stat0|Rest0], OldVal,
-				NewVal, [V - Stat|Rest]) -->
-	(
-		{ Stat0 = cached(Exprn0) },
+		{ Rval = var(Var) },
+		code_exprn__get_var_status(Var, Stat),
 		(
-			{ exprn_aux__rval_contains_lval(Exprn0, OldVal) }
-		->
-			code_exprn__rem_rval_reg_dependencies(Exprn0),
-			{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal,
-							Exprn0, Exprn) },
-			code_exprn__add_rval_reg_dependencies(Exprn),
-			{ Stat = cached(Exprn) }
+			{ Stat = cached(RealRval) }
 		;
-			{ Stat = Stat0 }
-		)
-	;
-		{ Stat0 = evaled(Rvals0) },
-		{ set__to_sorted_list(Rvals0, RvalsList0) },
-		code_exprn__relocate_lval_2(RvalsList0, OldVal,
-							NewVal, RvalsList),
-		{ set__sorted_list_to_set(RvalsList, Rvals) },
-		{ Stat = evaled(Rvals) }
-	),
-	code_exprn__relocate_lval(Rest0, OldVal, NewVal, Rest).
-
-:- pred code_exprn__relocate_lval_2(list(rval), lval, lval, list(rval),
-							exprn_info, exprn_info).
-:- mode code_exprn__relocate_lval_2(in, in, in, out, in, out) is det.
-
-code_exprn__relocate_lval_2([], _OldVal, _NewVal, []) --> [].
-code_exprn__relocate_lval_2([R0|Rs0], OldVal, NewVal, [R|Rs]) -->
-	(
-		{ exprn_aux__rval_contains_lval(R0, OldVal) }
-	->
-		code_exprn__rem_rval_reg_dependencies(R0),
-		{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal, R0, R) },
-		code_exprn__add_rval_reg_dependencies(R)
-	;
-		{ R = R0 }
-	),
-	code_exprn__relocate_lval_2(Rs0, OldVal, NewVal, Rs).
+			{ Stat = evaled(Rvals) },
+			{ set__to_sorted_list(Rvals, RvalList) },
+			{ code_exprn__select_rval(RvalList, RealRval) }
+		),
+		code_exprn__rval_is_real_create(RealRval)
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1050,9 +1123,7 @@ code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 		)
 	;
 		{ string__append("Assigning from ", VarName, Comment) },
-		{ Code = node([
-			assign(Lval, Rval) - Comment
-		]) }
+		{ Code = node([assign(Lval, Rval) - Comment]) }
 	).
 
 :- pred code_exprn__construct_cell(lval, string, tag, int, list(maybe(rval)),
@@ -1072,14 +1143,13 @@ code_exprn__construct_cell(Lval, VarName, Tag, Arity, Rvals, Code) -->
 :- mode code_exprn__construct_args(in, in, in, in, out, in, out) is det.
 
 code_exprn__construct_args([], _, _, _, empty) --> [].
-code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) -->
+code_exprn__construct_args([R | Rs], Tag, Lval, N0, Code) -->
 	(
 		{ R = yes(Rval) }
 	->
-		% XXX the "" is a bug
 		code_exprn__construct_code(
 			field(Tag, lval(Lval), const(int_const(N0))),
-			"", Rval, Code0)
+			"unknown argument", Rval, Code0)
 	;
 		{ Code0 = empty }
 	),
@@ -1089,32 +1159,15 @@ code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__set_evaled(var, list(rval), exprn_info, exprn_info).
-:- mode code_exprn__set_evaled(in, in, in, out) is det.
+:- pred code_exprn__produce_vars(list(var), assoc_list(var, rval), code_tree,
+						exprn_info, exprn_info).
+:- mode code_exprn__produce_vars(in, out, out, in, out) is det.
 
-code_exprn__set_evaled(Var, RvalList) -->
-	code_exprn__get_vars(Vars0),
-	{ set__list_to_set(RvalList, Rvals) },
-	{ Stat = evaled(Rvals) },
-	{ map__set(Vars0, Var, Stat, Vars) },
-	code_exprn__set_vars(Vars).
-
-:- pred code_exprn__add_evaled(var, rval, exprn_info, exprn_info).
-:- mode code_exprn__add_evaled(in, in, in, out) is det.
-
-code_exprn__add_evaled(Var, NewRval) -->
-	code_exprn__get_vars(Vars0),
-	{ map__lookup(Vars0, Var, Stat0) },
-	{
-		Stat0 = evaled(Rvals0),
-		set__insert(Rvals0, NewRval, Rvals)
-	;
-		Stat0 = cached(_),
-		set__singleton_set(Rvals, NewRval)
-	},
-	{ Stat = evaled(Rvals) },
-	{ map__set(Vars0, Var, Stat, Vars) },
-	code_exprn__set_vars(Vars).
+code_exprn__produce_vars([], [], empty) --> [].
+code_exprn__produce_vars([V | Vs], [V - R | Rest], Code) -->
+	code_exprn__produce_var(V, R, Code0),
+	code_exprn__produce_vars(Vs, Rest, Code1),
+	{ Code = tree(Code0, Code1) }.
 
 %------------------------------------------------------------------------------%
 
@@ -1125,10 +1178,14 @@ code_exprn__produce_var(Var, Rval, Code) -->
 		{ Stat0 = evaled(Rvals) },
 		\+ (
 			{ set__member(RvalX, Rvals) },
-			{ RvalX = binop(_, _, _) ;
-			  RvalX = unop(_, _) ;
-			  RvalX = create(_, _, _) ;
-			  RvalX = mkword(_, _)
+			{
+				RvalX = binop(_, _, _)
+			;
+				RvalX = unop(_, _)
+			;
+				RvalX = create(_, _, _)
+			;
+				RvalX = mkword(_, _)
 			}
 		)
 	->
@@ -1154,33 +1211,182 @@ code_exprn__produce_var_in_reg(Var, Rval, Code) -->
 	;
 		code_exprn__get_spare_reg(Reg),
 		{ Lval = reg(Reg) },
-		{ Rval = lval(Lval) },
 		code_exprn__place_var(Var, Lval, Code1),
+		{ Rval = lval(Lval) },
 		{ Code = tree(Code0, Code1) }
 	).
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__produce_vars(list(var), assoc_list(var, rval), code_tree,
-						exprn_info, exprn_info).
-:- mode code_exprn__produce_vars(in, out, out, in, out) is det.
+:- pred code_exprn__produce_args(list(rval), assoc_list(rval, rval),
+	code_tree, exprn_info, exprn_info).
+:- mode code_exprn__produce_args(in, out, out, in, out) is det.
 
-code_exprn__produce_vars([], [], empty) --> [].
-code_exprn__produce_vars([V|Vs], [V - R|Rest], Code) -->
-	code_exprn__produce_var(V, R, Code0),
-	code_exprn__produce_vars(Vs, Rest, Code1),
+code_exprn__produce_args([], [], empty) --> [].
+code_exprn__produce_args([Arg | Args], [Arg - Loc | ArgLocs], Code) -->
+	code_exprn__produce_arg(Arg, Loc, Code0),
+	code_exprn__produce_args(Args, ArgLocs, Code1),
 	{ Code = tree(Code0, Code1) }.
+
+:- pred code_exprn__produce_arg(rval, rval, code_tree, exprn_info, exprn_info).
+:- mode code_exprn__produce_arg(in, out, out, in, out) is det.
+
+code_exprn__produce_arg(Rval0, Rval, Code) -->
+	code_exprn__place_arg(Rval0, Lval, Code),
+	{ Rval = lval(Lval) }.
+
+:- pred code_exprn__release_arglocs(assoc_list(rval, rval),
+	exprn_info, exprn_info).
+:- mode code_exprn__release_arglocs(in, in, out) is det.
+
+code_exprn__release_arglocs([]) --> [].
+code_exprn__release_arglocs([_ - ArgLoc | ArgLocs]) -->
+	( { ArgLoc = lval(reg(Reg)) } ->
+		code_exprn__unlock_reg(Reg)
+	;
+		{ error("non-register subargument location in code_exprn") }
+	),
+	code_exprn__release_arglocs(ArgLocs).
 
 %------------------------------------------------------------------------------%
 
-code_exprn__acquire_reg(Reg) -->
-	code_exprn__get_spare_reg(Reg),
-	code_exprn__get_regs(Regs0),
-	{ bag__insert(Regs0, Reg, Regs) },
-	code_exprn__set_regs(Regs),
-	code_exprn__get_acquired(Acqu0),
-	{ set__insert(Acqu0, Reg, Acqu) },
-	code_exprn__set_acquired(Acqu).
+	% Move whatever is in Lval out of the way.
+	% It is possible that the value we want to put into Lval
+	% may need to refer to the value being moved out of Lval,
+	% e.g. as the base register of a field reference.
+	% To handle these correctly, we allow the caller to tell us
+	% the Rval0 that will go into Lval, and we adjust it as necessary
+	% before returning it as Rval.
+
+:- pred code_exprn__clear_lval(lval, rval, rval, code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__clear_lval(in, in, out, out, in, out) is det.
+
+code_exprn__clear_lval(Lval, Rval0, Rval, Code) -->
+	code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code),
+	(
+		{ MaybeShuffle = yes(NewLval) }
+	->
+		{ exprn_aux__substitute_lval_in_rval(Lval, NewLval,
+			Rval0, Rval) }
+	;
+		{ Rval = Rval0 }
+	).
+
+:- pred code_exprn__clear_lval_return_shuffle(lval, maybe(lval), code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__clear_lval_return_shuffle(in, out, out, in, out) is det.
+
+code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code) -->
+	(
+		code_exprn__lval_in_use(Lval)
+	->
+		code_exprn__get_spare_reg(Reg),
+		code_exprn__get_vars(Vars0),
+		{ map__to_assoc_list(Vars0, VarsList0) },
+		code_exprn__relocate_lval(VarsList0, Lval, reg(Reg), VarsList),
+		{ map__from_assoc_list(VarsList, Vars) },
+		code_exprn__set_vars(Vars),
+		{ MaybeShuffle = yes(reg(Reg)) },
+		{ Code = node([assign(reg(Reg), lval(Lval)) - "shuffle lval"]) }
+	;
+		{ MaybeShuffle = no },
+		{ Code = empty }
+	).
+
+:- pred code_exprn__relocate_lval(assoc_list(var, var_stat), lval, lval,
+			assoc_list(var, var_stat), exprn_info, exprn_info).
+:- mode code_exprn__relocate_lval(in, in, in, out, in, out) is det.
+
+code_exprn__relocate_lval([], _OldVal, _NewVal, []) --> [].
+code_exprn__relocate_lval([V - Stat0 | Rest0], OldVal,
+				NewVal, [V - Stat | Rest]) -->
+	(
+		{ Stat0 = cached(Exprn0) },
+		(
+			{ exprn_aux__rval_contains_lval(Exprn0, OldVal) }
+		->
+			code_exprn__rem_rval_reg_dependencies(Exprn0),
+			{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal,
+							Exprn0, Exprn) },
+			code_exprn__add_rval_reg_dependencies(Exprn),
+			{ Stat = cached(Exprn) }
+		;
+			{ Stat = Stat0 }
+		)
+	;
+		{ Stat0 = evaled(Rvals0) },
+		{ set__to_sorted_list(Rvals0, RvalsList0) },
+		code_exprn__relocate_lval_2(RvalsList0, OldVal,
+							NewVal, RvalsList),
+		{ set__sorted_list_to_set(RvalsList, Rvals) },
+		{ Stat = evaled(Rvals) }
+	),
+	code_exprn__relocate_lval(Rest0, OldVal, NewVal, Rest).
+
+:- pred code_exprn__relocate_lval_2(list(rval), lval, lval, list(rval),
+							exprn_info, exprn_info).
+:- mode code_exprn__relocate_lval_2(in, in, in, out, in, out) is det.
+
+code_exprn__relocate_lval_2([], _OldVal, _NewVal, []) --> [].
+code_exprn__relocate_lval_2([R0 | Rs0], OldVal, NewVal, [R | Rs]) -->
+	(
+		{ exprn_aux__rval_contains_lval(R0, OldVal) }
+	->
+		code_exprn__rem_rval_reg_dependencies(R0),
+		{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal, R0, R) },
+		code_exprn__add_rval_reg_dependencies(R)
+	;
+		{ R = R0 }
+	),
+	code_exprn__relocate_lval_2(Rs0, OldVal, NewVal, Rs).
+
+%------------------------------------------------------------------------------%
+
+:- pred code_exprn__get_var_status(var, var_stat, exprn_info, exprn_info).
+:- mode code_exprn__get_var_status(in, out, in, out) is det.
+
+code_exprn__get_var_status(Var, Stat) -->
+	code_exprn__get_vars(Vars0),
+	(
+		{ map__search(Vars0, Var, Stat0) }
+	->
+		{ Stat = Stat0 }
+	;
+		code_exprn__get_var_name(Var, Name),
+		{ string__append_list(["variable ", Name, " not found"], Msg) },
+		{ error(Msg) }
+	).
+
+:- pred code_exprn__maybe_set_evaled(maybe(var), list(rval),
+	exprn_info, exprn_info).
+:- mode code_exprn__maybe_set_evaled(in, in, in, out) is det.
+
+code_exprn__maybe_set_evaled(no, _) --> [].
+code_exprn__maybe_set_evaled(yes(Var), RvalList) -->
+	code_exprn__get_vars(Vars0),
+	{ set__list_to_set(RvalList, Rvals) },
+	{ Stat = evaled(Rvals) },
+	{ map__set(Vars0, Var, Stat, Vars) },
+	code_exprn__set_vars(Vars).
+
+:- pred code_exprn__maybe_add_evaled(maybe(var), rval, exprn_info, exprn_info).
+:- mode code_exprn__maybe_add_evaled(in, in, in, out) is det.
+
+code_exprn__maybe_add_evaled(no, _) --> [].
+code_exprn__maybe_add_evaled(yes(Var), NewRval) -->
+	code_exprn__get_vars(Vars0),
+	{ map__lookup(Vars0, Var, Stat0) },
+	{
+		Stat0 = evaled(Rvals0),
+		set__insert(Rvals0, NewRval, Rvals)
+	;
+		Stat0 = cached(_),
+		set__singleton_set(Rvals, NewRval)
+	},
+	{ Stat = evaled(Rvals) },
+	{ map__set(Vars0, Var, Stat, Vars) },
+	code_exprn__set_vars(Vars).
 
 %------------------------------------------------------------------------------%
 
@@ -1208,6 +1414,15 @@ code_exprn__get_spare_reg_2(N0, Regs, Reg) :-
 	).
 
 %------------------------------------------------------------------------------%
+
+code_exprn__acquire_reg(Reg) -->
+	code_exprn__get_spare_reg(Reg),
+	code_exprn__get_regs(Regs0),
+	{ bag__insert(Regs0, Reg, Regs) },
+	code_exprn__set_regs(Regs),
+	code_exprn__get_acquired(Acqu0),
+	{ set__insert(Acqu0, Reg, Acqu) },
+	code_exprn__set_acquired(Acqu).
 
 code_exprn__release_reg(Reg) -->
 	code_exprn__get_acquired(Acqu0),
@@ -1243,6 +1458,14 @@ code_exprn__unlock_reg(Reg) -->
 	code_exprn__set_regs(Regs).
 
 %------------------------------------------------------------------------------%
+
+:- pred code_exprn__maybe_get_var_name(maybe(var), string,
+	exprn_info, exprn_info).
+:- mode code_exprn__maybe_get_var_name(in, out, in, out) is det.
+
+code_exprn__maybe_get_var_name(no, "unknown variable") --> [].
+code_exprn__maybe_get_var_name(yes(Var), Name) -->
+	code_exprn__get_var_name(Var, Name).
 
 :- pred code_exprn__get_var_name(var, string, exprn_info, exprn_info).
 :- mode code_exprn__get_var_name(in, out, in, out) is det.
