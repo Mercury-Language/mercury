@@ -50,6 +50,10 @@ Configure with
 
 as described in the INSTALL file.
 
+Reportedly this sometimes results in permission errors, but
+apparently the errors go away if you run configure a second time.
+This is probably due to a bug in gnu-win32.
+
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
@@ -111,13 +115,13 @@ such problems, rename your `Mmake' file to `Mmakefile'.
 Index: Mmakefile
 ===================================================================
 RCS file: /home/staff/zs/imp/mercury/Mmakefile,v
-retrieving revision 1.1
-diff -u -r1.1 Mmakefile
---- Mmakefile	1997/02/13 21:38:04	1.1
-+++ Mmakefile	1997/04/10 17:46:56
-@@ -17,7 +17,9 @@
+retrieving revision 1.11
+diff -u -u -r1.11 Mmakefile
+--- Mmakefile	1997/10/11 15:26:54	1.11
++++ Mmakefile	1997/10/15 15:41:26
+@@ -15,7 +15,9 @@
  
- SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
+ SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler lp_solve
  
 -SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 +# The `/bin:' below is a work-around for a bug in gnu-win32 version b16,
@@ -126,7 +130,7 @@ diff -u -r1.1 Mmakefile
  		MMAKE_VPATH=. \
  		MMAKE_DIR=../scripts \
  		../scripts/mmake $(MMAKEFLAGS)
-@@ -162,7 +164,7 @@
+@@ -170,7 +172,7 @@
  	cd profiler && $(SUBDIR_MMAKE) depend
  	cd profiler && $(SUBDIR_MMAKE) ints cs tags
  	cd doc && $(SUBDIR_MMAKE) info html dvi
@@ -135,7 +139,7 @@ diff -u -r1.1 Mmakefile
  	# clean up
  	cd scripts && mmake realclean
  	cd util && mmake realclean
-@@ -181,9 +183,52 @@
+@@ -209,10 +211,60 @@
  #-----------------------------------------------------------------------------#
  
  .PHONY: install
@@ -143,13 +147,18 @@ diff -u -r1.1 Mmakefile
 +install: all preinstall_hack_for_win95 \
 +		install_scripts install_util install_runtime install_boehm_gc \
  		install_library install_compiler install_profiler install_doc \
+-		install_grades install_lp_solve
+-
 +		postinstall_hack_for_win95 \
- 		install_grades
-+
++		install_grades install_lp_solve \
++		postinstall_lp_solve_hack_for_win95
++ 
 +# `make touch_files' is a work-around for the broken gnu-win32 `tar'
 +# that loses all the file dates.
 +.PHONY: touch_files
 +touch_files:
++	find . | xargs touch
++	sleep 1
 +	touch library/*.date*
 +	touch library/*.optdate
 +	chmod +w library/*.dep
@@ -186,6 +195,11 @@ diff -u -r1.1 Mmakefile
 +	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
 +	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
 +	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
- 
++
++.PHONY: postinstall_lp_solve_hack_for_win95
++postinstall_lp_solve_hack_for_win95:
++	-cd $(INSTALL_BINDIR) && mv lp_solve lp_solve.exe
++ 
  .PHONY: install_scripts
  install_scripts: scripts
+ 	cd scripts && $(SUBDIR_MMAKE) install
