@@ -206,7 +206,7 @@ status=0
 
 case $HOST in
 	murlibobo)
-		CONFIG_OPTS="--enable-all-grades" ;;
+		CONFIG_OPTS="--enable-most-grades" ;;
 	kryten)		
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
@@ -219,7 +219,7 @@ case $HOST in
 	ender)
 		# Test out these options, to make sure they continue
 		# to work
-		CONFIG_OPTS="--enable-all-hlc-grades \
+		CONFIG_OPTS="--enable-hlc-prof-grades \
 			--enable-new-mercuryfile-struct" ;;
 	roy)
 		CONFIG_OPTS=""
