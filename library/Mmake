@@ -36,7 +36,7 @@ MCI	=	MERCURY_INT_DIR=. \
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --compile-to-c
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(PROFFLAGS)
+MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
 #-----------------------------------------------------------------------------#
 
