@@ -995,17 +995,20 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 		Msgs = Msgs0
 	).
 
-% return true iff there was a `where equality is <predname>' declaration
-% for the specified type.
+% Return true iff the principal type constructor of the given type
+% has user-defined equality.
+
 :- pred det_type_has_user_defined_equality_pred(det_info::in,
 		(type)::in) is semidet.
 det_type_has_user_defined_equality_pred(DetInfo, Type) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	type_has_user_defined_equality_pred(ModuleInfo, Type, _).
 
-% return yes iff the results of the specified unification might depend on
+% Return yes iff the results of the specified unification might depend on
 % the concrete representation of the abstract values involved.
+
 :- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
+
 det_infer_unify_examines_rep(assign(_, _), no).
 det_infer_unify_examines_rep(construct(_, _, _, _, _, _, _), no).
 det_infer_unify_examines_rep(deconstruct(_, _, _, _, _, _), yes).
@@ -1015,7 +1018,6 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% examine the representation...
 	% but we will catch those by reporting errors in the
 	% compiler-generated code for the complicated unification.
-
 
 	% Deconstruction unifications cannot fail if the type
 	% only has one constructor, or if the variable is known to be

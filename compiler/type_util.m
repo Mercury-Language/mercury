@@ -62,11 +62,18 @@
 :- pred type_ctor_is_tuple(type_ctor).
 :- mode type_ctor_is_tuple(in) is semidet.
 
-	% return true iff there was a `where equality is <predname>'
-	% declaration for the specified type, and return the name of
-	% the equality predicate and the context of the type declaration.
-:- pred type_has_user_defined_equality_pred(module_info,
-		(type), unify_compare).
+	% Succeed iff there was either a `where equality is <predname>' or a
+	% `where comparison is <predname>' declaration for the principal type
+	% constructor of the specified type, and return the ids of the declared
+	% unify and/or comparison predicates. Note that even if the type
+	% constructor has only a `where comparison is' clause, it effectively
+	% has user-defined equality, two values being equal only if the
+	% compare pred returns equal.
+	%
+	% If the type is a type variable and thus has no principal type
+	% constructor, fail.
+:- pred type_has_user_defined_equality_pred(module_info, (type),
+	unify_compare).
 :- mode type_has_user_defined_equality_pred(in, in, out) is semidet.
 
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
