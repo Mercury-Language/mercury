@@ -3224,7 +3224,7 @@ convert_binary_op(unsigned_le, _, _) :- unexpected(this_file, "unsigned_le").
 convert_binary_op(float_plus,	gcc__plus_expr,	     'MR_Float').
 convert_binary_op(float_minus,	gcc__minus_expr,     'MR_Float').
 convert_binary_op(float_times,	gcc__mult_expr,	     'MR_Float').
-convert_binary_op(float_divide,	gcc__trunc_div_expr, 'MR_Float').
+convert_binary_op(float_divide,	gcc__rdiv_expr,      'MR_Float').
 convert_binary_op(float_eq,	gcc__eq_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_ne,	gcc__ne_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_lt,	gcc__lt_expr,	     gcc__boolean_type_node).

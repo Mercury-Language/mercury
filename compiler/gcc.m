@@ -304,6 +304,7 @@
 :- func plus_expr  = gcc__op.		% +
 :- func minus_expr = gcc__op.		% *
 :- func mult_expr  = gcc__op.		% -
+:- func rdiv_expr = gcc__op.		% / (floating-point division)
 :- func trunc_div_expr = gcc__op.	% / (truncating integer division)
 :- func trunc_mod_expr = gcc__op.	% % (remainder after truncating
 					%    integer division)
@@ -921,6 +922,9 @@
 ").
 :- pragma c_code(mult_expr = (Code::out), [will_not_call_mercury], "
 	Code = MULT_EXPR;
+").
+:- pragma c_code(rdiv_expr = (Code::out), [will_not_call_mercury], "
+	Code = RDIV_EXPR;
 ").
 :- pragma c_code(trunc_div_expr = (Code::out), [will_not_call_mercury], "
 	Code = TRUNC_DIV_EXPR;
