@@ -1355,20 +1355,20 @@ AC_SUBST(NUM_REAL_R_TEMPS)
 AC_SUBST(HAVE_DELAY_SLOT)
 
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(whether the assembler barfs on .type)
-AC_CACHE_VAL(mercury_cv_barfs_on_asm_type_directive, [
+AC_MSG_CHECKING(whether the assembler does not handle .type)
+AC_CACHE_VAL(mercury_cv_cannot_grok_asm_type_directive, [
 	case "$host" in
 		*-sunos4.*)
-			mercury_cv_barfs_on_asm_type_directive=yes
+			mercury_cv_cannot_grok_asm_type_directive=yes
 			;;
 		*)
-			mercury_cv_barfs_on_asm_type_directive=no
+			mercury_cv_cannot_grok_asm_type_directive=no
 			;;
 	esac
 ])
-AC_MSG_RESULT($mercury_cv_barfs_on_asm_type_directive)
-if test $mercury_cv_barfs_on_asm_type_directive = "yes"; then
-	AC_DEFINE(MR_BARFS_ON_ASM_TYPE_DIRECTIVE)
+AC_MSG_RESULT($mercury_cv_cannot_grok_asm_type_directive)
+if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
+	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
 fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
