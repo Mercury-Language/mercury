@@ -28,7 +28,7 @@
 % This table will always contain the following information:
 %
 %	code address		(Code *) - address of entry
-% 	determinism		(Integer) actually, type MR_determinism
+% 	determinism		(Integer) actually, type MR_Determinism
 % 	number of stack slots	(Integer)
 % 	succip stack location	(Integer) actually, type MR_Live_Lval
 % 					(the location will be set to -1
@@ -479,9 +479,9 @@ stack_layout__construct_liveval_name(var_info(_, _, Name), MaybeRval) :-
 
 %---------------------------------------------------------------------------%
 
-	% The constants here should be kept in sync with constants in
-	% the runtime system:
-	% 	mercury_accurate_gc.h - contains macros to access these
+	% The constants and representations here should be kept in sync
+	% with constants in the runtime system:
+	% 	mercury_stack_layout.h - contains macros to access these
 	%			 	constants.
 
 	% Construct a representation of a live_value_type.

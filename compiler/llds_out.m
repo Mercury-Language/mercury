@@ -261,11 +261,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 
 		% Output initialization functions, bunched into groups
 		% of 40.
-	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
-	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
-	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
-	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
+	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
 	io__write_string("static void "),
 	output_bunch_name(ModuleName, 0),
 	io__write_string("(void)\n"),
@@ -283,11 +279,7 @@ output_c_module_init_list(ModuleName, Modules) -->
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
-	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
-	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
-	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
-	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
+	io__write_string("#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
 	io__write_string("\tif (!done) {\n"),
 	io__write_string("\t\tdone = TRUE;\n"),
