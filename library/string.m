@@ -1999,13 +1999,24 @@ string__unsafe_index(Str, Index, Char) :-
 	** register spilled' in grade asm_fast.gc.tr.debug
 	** if we write this inline.
 	*/
-	static void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch)
-	{
-		str[ind] = ch;
-	}
+	extern void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch);
 #else
 	#define MR_set_char(str, ind, ch) \\
 		((str)[ind] = (ch))
+#endif
+").
+
+:- pragma c_code("
+#ifdef MR_USE_GCC_GLOBAL_REGISTERS
+	/*
+	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden
+	** register spilled' in grade asm_fast.gc.tr.debug
+	** if we write this inline.
+	*/
+	void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch)
+	{
+		str[ind] = ch;
+	}
 #endif
 ").
 
