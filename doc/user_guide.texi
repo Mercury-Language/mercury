@@ -655,7 +655,7 @@ The executable that invokes the linker.
 @item MLFLAGS and EXTRA_MLFLAGS
 @vindex MLFLAGS
 @vindex EXTRA_MLFLAGS
-Options to pass to the linker.
+Options to pass to the linker and the c2init program.
 (Note that compilation model options should be
 specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
 
@@ -673,7 +673,10 @@ that you are building.
 @item C2INITFLAGS and EXTRA_C2INITFLAGS
 @vindex C2INITFLAGS
 @vindex EXTRA_C2INITFLAGS
-Options to pass to the c2init program.
+Options to pass to the linker and the c2init program.
+@code{C2INITFLAGS} and @code{EXTRA_C2INITFLAGS} are obsolete synonyms
+for @code{MLFLAGS} and @code{EXTRA_MLFLAGS} (@code{ml} and @code{c2init}
+take the same set of options).
 (Note that compilation model options and extra files to be processed by
 c2init should not be specified in @code{C2INITFLAGS} - they should be
 specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
@@ -682,8 +685,9 @@ specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
 @vindex C2INITARGS
 @vindex EXTRA_C2INITARGS
 Extra files to be processed by c2init.  These variables should not be
-used for specifying flags to c2init (that's what @code{C2INITFLAGS} is for)
-since they are also used to derive extra dependency information.
+used for specifying flags to c2init (those should be specified in
+@code{MLFLAGS}) since they are also used to derive extra dependency
+information.
 
 @item EXTRA_LIBRARIES
 @vindex EXTRA_LIBRARIES
@@ -1569,7 +1573,7 @@ some modules with @samp{--trace shallow} or @samp{--trace deep},
 then you must also pass the @samp{--trace} (or @samp{-t}) option
 to c2init and to the Mercury linker.
 If you're using Mmake, then you can do this by including @samp{--trace}
-in the @samp{C2INITFLAGS} and @samp{MLFLAGS} variables.
+in the @samp{MLFLAGS} variable.
 
 If you're using Mmake, then you can also set the compilation options
 for a single module named @var{Module} by setting the Mmake variable
@@ -1578,7 +1582,6 @@ for a single module named @var{Module} by setting the Mmake variable
 and everything else with no tracing, you could use the following:
 
 @example
-C2INITFLAGS = --trace
 MLFLAGS     = --trace
 MCFLAGS-foo = --trace deep
 MCFLAGS-bar = --trace shallow
@@ -4091,12 +4094,11 @@ The options below must be passed to @samp{mgnuc}, @samp{c2init}
 and @samp{ml} as well as to @samp{mmc}. 
 If you are using Mmake, then you should specify
 these options in the @samp{GRADEFLAGS} variable rather than specifying
-them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, @samp{C2INITFLAGS}
-and @samp{MLFLAGS}.
+them in @samp{MCFLAGS}, @samp{MGNUCFLAGS} and @samp{MLFLAGS}.
 @vindex GRADEFLAGS
 @vindex MCFLAGS
 @vindex MGNUCFLAGS
-@vindex C2INITFLAGS
+@vindex MLFLAGS
 
 @menu
 * Grades and grade components::                 Setting the compilation model
