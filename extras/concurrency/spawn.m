@@ -10,7 +10,7 @@
 % This module provides `spawn/3' which is the primitive for starting the
 % concurrent execution of a goal. The term `concurrent' here is refering
 % to threads, not parallel execution, though the latter is possible by
-% compiling in the grade asm_fast.gc.par.
+% compiling in one of the *.par grades (e.g. asm_fast.gc.par or hlc.gc.par).
 %
 %---------------------------------------------------------------------------%
 :- module spawn.
