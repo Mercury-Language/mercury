@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2004 The University of Melbourne.
+** Copyright (C) 2000-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -181,6 +181,19 @@ start_label:
                 int                     arity;
                 int                     i;
 
+  #ifdef MR_CHECK_DU_EQ
+    #ifdef  select_compare_code
+                if (x == y) {
+                    return_compare_answer(builtin, user_by_rtti, 0,
+                        MR_COMPARE_EQUAL);
+                }
+    #else
+                if (x == y) {
+                    return_unify_answer(builtin, user_by_rtti, 0, MR_TRUE);
+                }
+    #endif
+  #endif
+
   #ifdef  select_compare_code
 
   #define MR_find_du_functor_desc(data, data_value, functor_desc)             \
@@ -237,7 +250,7 @@ start_label:
                 y_ptag = MR_tag(y);
 
                 if (x_ptag != y_ptag) {
-                    return_unify_answer(user, MR_FALSE);
+                    return_unify_answer(builtin, user_by_rtti, 0, MR_FALSE);
                 }
 
                 ptaglayout = &MR_type_ctor_layout(type_ctor_info).
@@ -251,7 +264,8 @@ start_label:
                         y_sectag = MR_unmkbody(y_data_value);
 
                         if (x_sectag != y_sectag) {
-                            return_unify_answer(user, MR_FALSE);
+                            return_unify_answer(builtin, user_by_rtti, 0,
+                                MR_FALSE);
                         }
 
                         break;
@@ -261,7 +275,8 @@ start_label:
                         y_sectag = y_data_value[0];
 
                         if (x_sectag != y_sectag) {
-                            return_unify_answer(user, MR_FALSE);
+                            return_unify_answer(builtin, user_by_rtti, 0,
+                                MR_FALSE);
                         }
 
                         break;
@@ -407,6 +422,19 @@ start_label:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_STABLE_FOREIGN:
 
+  #ifdef MR_CHECK_DU_EQ
+    #ifdef  select_compare_code
+            if (x == y) {
+                return_compare_answer(builtin, user_by_rtti, 0,
+                    MR_COMPARE_EQUAL);
+            }
+    #else
+            if (x == y) {
+                return_unify_answer(builtin, user_by_rtti, 0, MR_TRUE);
+            }
+    #endif
+  #endif
+
             /*
             ** We call the type-specific compare routine as
             ** `CompPred(...ArgTypeInfos..., Result, X, Y)' is det.
@@ -475,8 +503,8 @@ start_label:
                     MR_TypeInfo arg_type_info;
 
                     /* type_infos are counted from one */
-                    arg_type_info = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(
-                                            type_info)[i + 1];
+                    arg_type_info =
+                        MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
 
 #ifdef  select_compare_code
                     MR_save_transient_registers();
