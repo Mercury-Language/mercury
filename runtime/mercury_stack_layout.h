@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -304,6 +304,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
 	int			MR_sle_maybe_from_full;
+	int			MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
@@ -335,14 +336,34 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** For the procedure identification, we always use the same module name
 ** for the defining and declaring modules, since procedures whose code
 ** is hand-written as C modules cannot be inlined in other Mercury modules.
+**
+** Due to the possibility that code addresses are not static, any use of
+** the MR_MAKE_PROC_LAYOUT macro has to be accompanied by a call to the
+** MR_INIT_PROC_LAYOUT_ADDR macro in the initialization code of the C module
+** that defines the entry. (The cast in the body of MR_INIT_PROC_LAYOUT_ADDR
+** is needed because compiler-generated layout structures have their own
+** compiler-generated type.)
 */ 
 
 #define	MR_ENTRY_NO_SLOT_COUNT		-1
 
+#ifdef	MR_STATIC_CODE_ADDRESSES
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		STATIC(entry)
+ #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
+#else
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((Code *) NULL)
+ #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
+		do {							\
+			((MR_Stack_Layout_Entry *) &			\
+			mercury_data__layout__##entry)			\
+				->MR_sle_code_addr = ENTRY(entry);	\
+		} while (0)
+#endif
+
 #define MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn,		\
 		pf, module, name, arity, mode) 				\
 	MR_Stack_Layout_Entry mercury_data__layout__##entry = {		\
-		STATIC(entry),						\
+		MR_MAKE_PROC_LAYOUT_ADDR(entry),			\
 		detism,							\
 		slots,							\
 		succip_locn,						\
@@ -361,11 +382,18 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** In procedures compiled with execution tracing, three items are stored
 ** in stack slots with fixed numbers. They are:
 **
-**	the event number of the call event,
+**	the event number of the last event before the call event,
 **	the call number, and
 **	the call depth.
 **
-** The following macros will access them. They can be used whenever
+** Note that the first slot does not store the number of the call event
+** itself, but rather the number of the call event minus one. The reason
+** for this is that (a) incrementing the number stored in this slot would
+** increase executable size, and (b) if the procedure is shallow traced,
+** MR_trace may not be called for the call event, so we cannot shift the
+** burden of initializing fields to the MR_trace of the call event either.
+**
+** The following macros will access the fixed slots. They can be used whenever
 ** MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
 ** depends on the determinism of the procedure.
 **

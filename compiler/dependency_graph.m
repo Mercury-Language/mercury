@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,6 +40,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module mode_util, globals, options, code_util.
 :- import_module llds, llds_out, mercury_to_mercury.
+:- import_module term, varset.
 :- import_module int, bool, term, require, string.
 :- import_module list, map, set, std_util.
 :- import_module varset, relation.
@@ -278,7 +279,7 @@ dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
 dependency_graph__add_arcs_in_cases([], _Caller, DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
+dependency_graph__add_arcs_in_cases([case(Cons, _, Goal) | Goals], Caller,
 						DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cons(Cons, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph1, DepGraph2),
@@ -377,21 +378,21 @@ dependency_graph__write_dependency_graph_3([S | Ss], Node, DepGraph,
 						CPredInfo, CProcInfo) },
 	{ pred_info_name(PPredInfo, PName) },
 	{ proc_info_declared_determinism(PProcInfo, PDet) },
-	{ proc_info_argmodes(PProcInfo, PModes) },
+	{ proc_info_argmodes(PProcInfo, argument_modes(PIKT, PModes)) },
 	{ proc_info_context(PProcInfo, PContext) },
 
 	{ pred_info_name(CPredInfo, CName) },
 	{ proc_info_declared_determinism(CProcInfo, CDet) },
-	{ proc_info_argmodes(CProcInfo, CModes) },
+	{ proc_info_argmodes(CProcInfo, argument_modes(CIKT, CModes)) },
 	{ proc_info_context(CProcInfo, CContext) },
 
 	{ varset__init(ModeVarSet) },
 
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
-						PModes, PDet, PContext),
+				PModes, PDet, PContext, PIKT),
 	io__write_string(" -> "),
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
-						CModes, CDet, CContext),
+				CModes, CDet, CContext, CIKT),
 	io__write_string(".\n"),
 
 	dependency_graph__write_dependency_graph_3(Ss, Node, DepGraph, 
@@ -421,13 +422,13 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
 						PredInfo, ProcInfo) },
 	{ pred_info_name(PredInfo, Name) },
 	{ proc_info_declared_determinism(ProcInfo, Det) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(IKT, Modes)) },
 	{ proc_info_context(ProcInfo, Context) },	
 	{ varset__init(ModeVarSet) },
 
 	io__write_string("% "),
 	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
-						Modes, Det, Context),
+			Modes, Det, Context, IKT),
 	io__write_string("\n"),
 	dependency_graph__write_clique(Rest, ModuleInfo).
 

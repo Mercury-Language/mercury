@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,6 +68,7 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
+		;	debug_inst_keys
 		;	debug_det
 		;	debug_opt
 		;	debug_vn	% vn = value numbering
@@ -94,6 +95,7 @@
 		;	trace_return
 		;	trace_redo
 		;	trace_optimized
+		;	trace_decl
 		;	stack_trace_higher_order
 		;	generate_bytecode
 		;	generate_prolog
@@ -357,6 +359,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
+	debug_inst_keys		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0),
@@ -387,6 +390,7 @@ option_defaults_2(aux_output_option, [
 	trace_return		-	bool(yes),
 	trace_redo		-	bool(yes),
 	trace_optimized		-	bool(no),
+	trace_decl		-	bool(no),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
@@ -682,6 +686,7 @@ long_option("verbose-error-messages",	verbose_errors).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("debug-inst-keys",		debug_inst_keys).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
@@ -727,6 +732,7 @@ long_option("trace-return",		trace_return).
 long_option("trace-redo",		trace_redo).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("trace-decl",		trace_decl).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
@@ -1160,7 +1166,7 @@ opt_level(2, _, [
 	inline_simple		-	bool(yes),
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
-	common_struct		-	bool(yes),
+	common_struct		-	bool(no),	% YYY
 /****
 % XXX optimize_duplicate_calls is broken --
 % it doesn't take type information into account.
@@ -1179,8 +1185,8 @@ opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	optimize_higher_order	-	bool(yes),
-	deforestation		-	bool(yes),
+	%optimize_higher_order	-	bool(yes), % YYY
+	%deforestation		-	bool(yes), % YYY
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
@@ -1408,7 +1414,8 @@ options_help_aux_output -->
 		"--trace {minimum, shallow, deep, default}",
 		"\tGenerate code that includes the specified level", 
 		"\tof execution tracing.",
-		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
 		"--no-trace-internal",
 		"\tDo not generate code for internal events even if the trace",
 		"\tlevel is deep.",
@@ -1420,6 +1427,10 @@ options_help_aux_output -->
 		"\tDo not generate code to trace REDO events.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+% --trace-decl is commented out in the absence of runtime support
+%		"--trace-decl",
+%		"\tMake the generated tracing code include support for an",
+%		"\texperimental declarative debugger.",
 		"--stack-trace-higher-order",
 		"\tEnable stack traces through predicates and functions with",
 		"\thigher-order arguments, even if stack tracing is not",

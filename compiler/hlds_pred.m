@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,14 +14,13 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module purity, globals.
-:- import_module term_util.
+:- import_module purity, globals, term_util.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
-:- import_module code_aux, goal_util, make_hlds, prog_util.
-:- import_module mode_util, type_util, options.
+:- import_module make_hlds, prog_util, mode_util, type_util.
+:- import_module options, goal_util, code_aux.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -90,12 +89,14 @@
 	% guaranteed to be the same, and the clauses are only kept so that
 	% the optimized goal can be compared with the original in HLDS dumps.
 :- type clauses_info	--->	clauses_info(
-					varset,		% variable names
-					map(var, type), % variable types from
+					prog_varset,	% variable names
+					map(prog_var, type),
+						% variable types from
 						% explicit qualifications
-					map(var, type), % variable types
+					map(prog_var, type),
+						% variable types
 						% inferred by typecheck.m.
-					list(var),	% head vars
+					list(prog_var),	% head vars
 					list(clause)
 				).
 
@@ -106,7 +107,7 @@
 							% it applies to all
 							% clauses)
 					hlds_goal,	% Body
-					term__context
+					prog_context
 				).
 
 	% The type of goals that have been given for a pred.
@@ -128,20 +129,35 @@
 	% used by code generation.  This is *not* the same thing as the notion
 	% of liveness used by mode analysis!  See compiler/notes/glossary.html.
 
-:- type liveness_info	==	set(var).	% The live variables
+:- type liveness_info	==	set(prog_var).	% The live variables
 
 :- type liveness	--->	live
 			;	dead.
 
+	% Info about an argument of a procedure.
 :- type arg_info	--->	arg_info(
-					arg_loc,	% stored location
-					arg_mode	% mode of top functor
+					arg_loc,
+					arg_mode
 				).
 
-:- type arg_mode	--->	top_in
-			;	top_out
-			;	top_unused.
+	% Mode and calling convention (pass-by-value/reference) of top functor.
+:- type arg_mode	--->	top_in		% input value
+			;	top_out		% output value
+			;	top_unused	% unused
+			;	ref_out		% output reference
+			;	ref_in.		% input reference
 
+	% arg_mode_is_input(ArgMode) is true iff ArgMode passes something
+	% into the procedure (either a value or a reference).
+:- pred arg_mode_is_input(arg_mode).
+:- mode arg_mode_is_input(in) is semidet.
+
+	% arg_mode_is_output(ArgMode) is true iff ArgMode passes something
+	% out of the procedure (either a value or a reference).
+:- pred arg_mode_is_output(arg_mode).
+:- mode arg_mode_is_output(in) is semidet.
+
+	% Stored location of argument.
 :- type arg_loc		==	int.
 
 	% The type `import_status' describes whether an entity (a predicate,
@@ -274,11 +290,11 @@
 	.
 
 :- type type_info_locn	
-	--->	type_info(var)
+	--->	type_info(prog_var)
 				% It is a normal type_info, i.e. the type
 				% is not constrained.
 
-	;	typeclass_info(var, int).
+	;	typeclass_info(prog_var, int).
 				% The type_info is packed inside a
 				% typeclass_info. If the int is N, it is
 				% the Nth type_info inside the typeclass_info,
@@ -296,39 +312,40 @@
 	% 	Var is the variable corresponding to the TypeInfoLocn. Note 
 	% 	that this does *not* mean that Var is a type_info; it may be
 	% 	a typeclass_info in which the type_info is nested.
-:- pred type_info_locn_var(type_info_locn::in, var::out) is det.
+:- pred type_info_locn_var(type_info_locn::in, prog_var::out) is det.
 
-:- pred type_info_locn_set_var(type_info_locn::in, var::in, 
+:- pred type_info_locn_set_var(type_info_locn::in, prog_var::in, 
 		type_info_locn::out) is det.
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, ExtraArgs, InstMap,
 	% 	PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
-	%	VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId)
+	%	VarSet, Markers, InstTable, ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
 	% call the created predicate. ExtraArgs is the list of extra
 	% type_infos and typeclass_infos required by --typeinfo-liveness
 	% which were added to the front of the argument list.
-:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var), list(var),
-		instmap, string, tvarset, map(var, type),
+	% This must only be called after polymorphism.m.
+:- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
+		list(prog_var), instmap, string, tvarset, map(prog_var, type),
 		class_constraints, map(tvar, type_info_locn),
-		map(class_constraint, var), varset, pred_markers, 
-		module_info, module_info, pred_proc_id).
+		map(class_constraint, prog_var), prog_varset, pred_markers,
+		inst_table, module_info, module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in,
-		in, in, in, in, in, in, out, out) is det.
+		in, in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, existq_tvars,
-	list(type), condition, term__context, clauses_info, import_status,
+	list(type), condition, prog_context, clauses_info, import_status,
 	pred_markers, goal_type, pred_or_func, class_constraints, 
 	map(class_constraint, constraint_proof), pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, out) is det.
 
 :- pred pred_info_create(module_name, sym_name, tvarset, existq_tvars,
-	list(type), condition, term__context, import_status, pred_markers,
+	list(type), condition, prog_context, import_status, pred_markers,
 	pred_or_func, class_constraints, proc_info, proc_id, pred_info).
 :- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in,
 	out, out) is det.
@@ -403,7 +420,7 @@
 :- pred pred_info_set_procedures(pred_info, proc_table, pred_info).
 :- mode pred_info_set_procedures(in, in, out) is det.
 
-:- pred pred_info_context(pred_info, term__context).
+:- pred pred_info_context(pred_info, prog_context).
 :- mode pred_info_context(in, out) is det.
 
 :- pred pred_info_import_status(pred_info::in, import_status::out) is det.
@@ -530,6 +547,34 @@ pred_id_to_int(PredId, PredId).
 
 proc_id_to_int(ProcId, ProcId).
 
+arg_mode_is_input(ArgMode) :-
+	arg_mode_is_input_2(ArgMode, yes).
+
+	% Allow determinism checker to remind us of any new functor
+	% that are added to the arg_mode type.
+:- pred arg_mode_is_input_2(arg_mode, bool).
+:- mode arg_mode_is_input_2(in, out) is det.
+
+arg_mode_is_input_2(top_in, yes).
+arg_mode_is_input_2(ref_in, yes).
+arg_mode_is_input_2(top_out, no).
+arg_mode_is_input_2(ref_out, no).
+arg_mode_is_input_2(top_unused, no).
+
+arg_mode_is_output(ArgMode) :-
+	arg_mode_is_output_2(ArgMode, yes).
+
+	% Allow determinism checker to remind us of any new functor
+	% that are added to the arg_mode type.
+:- pred arg_mode_is_output_2(arg_mode, bool).
+:- mode arg_mode_is_output_2(in, out) is det.
+
+arg_mode_is_output_2(top_out, yes).
+arg_mode_is_output_2(ref_out, yes).
+arg_mode_is_output_2(top_in, no).
+arg_mode_is_output_2(ref_in, no).
+arg_mode_is_output_2(top_unused, no).
+
 hlds_pred__in_in_unification_proc_id(0).
 
 invalid_pred_id(-1).
@@ -575,7 +620,8 @@ status_defined_in_this_module(local,			yes).
 
 			proc_table,
 
-			term__context,	% the location (line #)
+			prog_context,
+					% the location (line #)
 					% of the :- pred decl.
 
 			module_name,	% module in which pred occurs
@@ -917,6 +963,7 @@ type_info_locn_set_var(type_info(_), Var, type_info(Var)).
 type_info_locn_set_var(typeclass_info(_, Num), Var, typeclass_info(Var, Num)).
 
 %-----------------------------------------------------------------------------%
+
 :- type pred_markers == list(marker).
 
 init_markers([]).
@@ -932,7 +979,8 @@ markers_to_marker_list(Markers, Markers).
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, Markers, ModuleInfo0, ModuleInfo, PredProcId) :-
+		VarSet0, Markers, InstTable, ModuleInfo0, ModuleInfo,
+		PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -965,6 +1013,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
+	Modes = argument_modes(InstTable, ArgModes),	% YYY
 
 		% Remove unneeded variables from the vartypes and varset.
 	goal_util__goal_vars(Goal0, GoalVars0), 
@@ -982,8 +1031,8 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
 	globals__get_args_method(Globals, ArgsMethod),
 
-	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes,
-		Detism, Goal0, Context, TVarMap, TCVarMap, ArgsMethod,
+	proc_info_create(VarSet, VarTypes, ArgVars, Modes, Detism,
+		Goal0, Context, TVarMap, TCVarMap, ArgsMethod, InstTable,
 		ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
@@ -1001,7 +1050,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	Goal = GoalExpr - GoalInfo,
 	PredProcId = proc(PredId, ProcId).
 
-:- pred compute_arg_types_modes(list(var)::in, map(var, type)::in,
+:- pred compute_arg_types_modes(list(prog_var)::in, map(prog_var, type)::in,
 	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
 
 compute_arg_types_modes([], _, _, _, [], []).
@@ -1021,26 +1070,29 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- interface.
 
-:- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
-	maybe(list(is_live)), maybe(determinism), term__context, 
-	args_method, proc_info).
+:- pred proc_info_init(arity, list(type), argument_modes,
+	maybe(argument_modes), maybe(list(is_live)), maybe(determinism),
+	prog_context, args_method, proc_info).
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
-:- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
-	list(mode), maybe(list(is_live)), hlds_goal, term__context,
-	stack_slots, determinism, bool, list(arg_info), liveness_info,
-	map(tvar, type_info_locn), map(class_constraint, var), 
-	maybe(arg_size_info), maybe(termination_info), args_method, proc_info).
+:- pred proc_info_set(maybe(determinism), prog_varset, map(prog_var, type),
+	list(prog_var), argument_modes, maybe(list(is_live)), hlds_goal,
+	prog_context, stack_slots, determinism, bool, list(arg_info),
+	liveness_info, map(tvar, type_info_locn),
+	map(class_constraint, prog_var), maybe(arg_size_info),
+	maybe(termination_info), args_method, inst_table, proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
-	in, in, in, in, out) is det.
+	in, in, in, in, in, out) is det.
 
-:- pred proc_info_create(varset, map(var, type), list(var), list(mode),
-	determinism, hlds_goal, term__context, map(tvar, type_info_locn),
-	map(class_constraint, var), args_method, proc_info).
-:- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, out) is det.
+:- pred proc_info_create(prog_varset, map(prog_var, type), list(prog_var),
+	argument_modes, determinism, hlds_goal, term__context,
+	map(tvar, type_info_locn), map(class_constraint, prog_var),
+	args_method, inst_table, proc_info).
+:- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, in,
+	out) is det.
 
-:- pred proc_info_set_body(proc_info, varset, map(var, type), list(var),
-	hlds_goal, proc_info).
+:- pred proc_info_set_body(proc_info, prog_varset, map(prog_var, type),
+		list(prog_var), hlds_goal, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, out) is det.
 
 :- pred proc_info_declared_determinism(proc_info, maybe(determinism)).
@@ -1062,28 +1114,28 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_never_succeeds(proc_info, bool).
 :- mode proc_info_never_succeeds(in, out) is det.
 
-:- pred proc_info_varset(proc_info, varset).
+:- pred proc_info_varset(proc_info, prog_varset).
 :- mode proc_info_varset(in, out) is det.
 
-:- pred proc_info_set_varset(proc_info, varset, proc_info).
+:- pred proc_info_set_varset(proc_info, prog_varset, proc_info).
 :- mode proc_info_set_varset(in, in, out) is det.
 
-:- pred proc_info_vartypes(proc_info, map(var, type)).
+:- pred proc_info_vartypes(proc_info, map(prog_var, type)).
 :- mode proc_info_vartypes(in, out) is det.
 
-:- pred proc_info_set_vartypes(proc_info, map(var, type), proc_info).
+:- pred proc_info_set_vartypes(proc_info, map(prog_var, type), proc_info).
 :- mode proc_info_set_vartypes(in, in, out) is det.
 
-:- pred proc_info_headvars(proc_info, list(var)).
+:- pred proc_info_headvars(proc_info, list(prog_var)).
 :- mode proc_info_headvars(in, out) is det.
 
-:- pred proc_info_set_headvars(proc_info, list(var), proc_info).
+:- pred proc_info_set_headvars(proc_info, list(prog_var), proc_info).
 :- mode proc_info_set_headvars(in, in, out) is det.
 
-:- pred proc_info_argmodes(proc_info, list(mode)).
+:- pred proc_info_argmodes(proc_info, argument_modes).
 :- mode proc_info_argmodes(in, out) is det.
 
-:- pred proc_info_set_argmodes(proc_info, list(mode), proc_info).
+:- pred proc_info_set_argmodes(proc_info, argument_modes, proc_info).
 :- mode proc_info_set_argmodes(in, in, out) is det.
 
 :- pred proc_info_arglives(proc_info, module_info, list(is_live)).
@@ -1099,7 +1151,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_goal(proc_info, hlds_goal).
 :- mode proc_info_goal(in, out) is det.
 
-:- pred proc_info_context(proc_info, term__context).
+:- pred proc_info_context(proc_info, prog_context).
 :- mode proc_info_context(in, out) is det.
 
 :- pred proc_info_stack_slots(proc_info, stack_slots).
@@ -1163,17 +1215,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_eval_method(proc_info, eval_method, proc_info).
 :- mode proc_info_set_eval_method(in, in, out) is det.
 
-:- pred proc_info_typeclass_info_varmap(proc_info, map(class_constraint, var)).
+:- pred proc_info_typeclass_info_varmap(proc_info,
+		map(class_constraint, prog_var)).
 :- mode proc_info_typeclass_info_varmap(in, out) is det.
 
 :- pred proc_info_set_typeclass_info_varmap(proc_info, 
-	map(class_constraint, var), proc_info).
+	map(class_constraint, prog_var), proc_info).
 :- mode proc_info_set_typeclass_info_varmap(in, in, out) is det.
 
-:- pred proc_info_maybe_declared_argmodes(proc_info, maybe(list(mode))).
+:- pred proc_info_maybe_declared_argmodes(proc_info, maybe(argument_modes)).
 :- mode proc_info_maybe_declared_argmodes(in, out) is det.
 
-:- pred proc_info_declared_argmodes(proc_info, list(mode)).
+:- pred proc_info_declared_argmodes(proc_info, argument_modes).
 :- mode proc_info_declared_argmodes(in, out) is det.
 
 :- pred proc_info_args_method(proc_info, args_method).
@@ -1181,6 +1234,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- pred proc_info_set_args_method(proc_info, args_method, proc_info).
 :- mode proc_info_set_args_method(in, in, out) is det.
+
+:- pred proc_info_inst_table(proc_info, inst_table).
+:- mode proc_info_inst_table(in, out) is det.
+
+:- pred proc_info_set_inst_table(proc_info, inst_table, proc_info).
+:- mode proc_info_set_inst_table(in, in, out) is det.
 
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
@@ -1190,19 +1249,20 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% for accurate garbage collection - live variables need to have 
 	% their typeinfos stay live too.
 
-:- pred proc_info_get_typeinfo_vars_setwise(proc_info, set(var), set(var)).
+:- pred proc_info_get_typeinfo_vars_setwise(proc_info, set(prog_var),
+		set(prog_var)).
 :- mode proc_info_get_typeinfo_vars_setwise(in, in, out) is det.
 
 :- pred proc_info_ensure_unique_names(proc_info, proc_info).
 :- mode proc_info_ensure_unique_names(in, out) is det.
 
 	% Create a new variable of the given type to the procedure.
-:- pred proc_info_create_var_from_type(proc_info, type, var, proc_info).
+:- pred proc_info_create_var_from_type(proc_info, type, prog_var, proc_info).
 :- mode proc_info_create_var_from_type(in, in, out, out) is det.
 
 	% Create a new variable for each element of the list of types.
 :- pred proc_info_create_vars_from_types(proc_info, 
-		list(type), list(var), proc_info).
+		list(type), list(prog_var), proc_info).
 :- mode proc_info_create_vars_from_types(in, in, out, out) is det.
 
 :- implementation.
@@ -1212,15 +1272,16 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 			maybe(determinism),
 					% _declared_ determinism
 					% or `no' if there was no detism decl
-			varset,		% variable names
-			map(var, type),	% variable types
-			list(var),	% head vars
-			list(mode), 	% modes of args
+			prog_varset,		% variable names
+			map(prog_var, type),	% variable types
+			list(prog_var),	% head vars
+			argument_modes, % modes of args
 			maybe(list(is_live)),
 					% liveness (in the mode analysis sense)
 					% of the arguments
 			hlds_goal,	% Body
-			term__context,	% The context of the `:- mode' decl
+			prog_context,
+					% The context of the `:- mode' decl
 					% (or the context of the first clause,
 					% if there was no mode declaration).
 			stack_slots,	% stack allocations
@@ -1241,7 +1302,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 			map(tvar, type_info_locn),	
 					% typeinfo vars for
 					% type parameters
-			map(class_constraint, var),
+			map(class_constraint, prog_var),
 					% typeclass_info vars for class
 					% constraints
 			eval_method,	% how should the proc be evaluated	
@@ -1254,9 +1315,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% The termination properties of the
 					% procedure. Set by termination
 					% analysis.
-			maybe(list(mode)),
+			maybe(argument_modes),
 					% declared modes of arguments.
-			args_method
+			args_method,
 					% The args_method to be used for
 					% the procedure. Usually this will
 					% be set to the value of the --args
@@ -1265,6 +1326,8 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% `compact' for procedures it creates
 					% which must be directly callable by
 					% a higher_order_call goal.
+			inst_table
+					% the inst_table for this proc
 		).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1288,39 +1351,41 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
 	map__init(TVarsMap),
+	inst_table_init(InstTable),
 	map__init(TCVarsMap),
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
 		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
 		ArgInfo, InitialLiveness, TVarsMap, TCVarsMap, eval_normal,
-		no, no, DeclaredModes, ArgsMethod
+		no, no, DeclaredModes, ArgsMethod, InstTable
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap,
-		ArgSizes, Termination, ArgsMethod, ProcInfo) :-
+		ArgSizes, Termination, ArgsMethod, InstTable, ProcInfo) :-
 	ProcInfo = procedure(
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, eval_normal, 
-		ArgSizes, Termination, no, ArgsMethod).
+		ArgSizes, Termination, no, ArgsMethod, InstTable).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
-		Context, TVarMap, TCVarsMap, ArgsMethod, ProcInfo) :-
+		Context, TVarMap, TCVarsMap, ArgsMethod, InstTable,
+		ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
 		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
 		Liveness, TVarMap, TCVarsMap, eval_normal, no, no, no, 
-			ArgsMethod).
+			ArgsMethod, InstTable).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, _, _, E, F, _,
-		H, I, J, K, L, M, N, O, P, Q, R, S, T),
+		H, I, J, K, L, M, N, O, P, Q, R, S, T, U),
 	ProcInfo = procedure(A, VarSet, VarTypes, HeadVars, E, F, Goal,
-		H, I, J, K, L, M, N, O, P, Q, R, S, T).
+		H, I, J, K, L, M, N, O, P, Q, R, S, T, U).
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
 	proc_info_declared_determinism(ProcInfo, MaybeDeterminism),
@@ -1357,13 +1422,14 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 	( MaybeArgLives = yes(ArgLives0) ->
 		ArgLives = ArgLives0
 	;
-		proc_info_argmodes(ProcInfo, Modes),
-		get_arg_lives(Modes, ModuleInfo, ArgLives)
+		proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
+		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+		get_arg_lives(Modes, InstMap, InstTable, ModuleInfo, ArgLives)
 	).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)),
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
 	assoc_list__from_corresponding_lists(HeadVars, InitialInsts, InstAL),
 	instmap__from_assoc_list(InstAL, InstMap).
@@ -1378,83 +1444,87 @@ proc_info_declared_argmodes(ProcInfo, ArgModes) :-
 
 proc_info_declared_determinism(ProcInfo, A) :-
 	ProcInfo = procedure(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-    		_, _, _, _).
+    		_, _, _, _, _).
 
 proc_info_varset(ProcInfo, B) :-
 	ProcInfo = procedure(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_vartypes(ProcInfo, C) :-
 	ProcInfo = procedure(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_headvars(ProcInfo, D) :-
 	ProcInfo = procedure(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_argmodes(ProcInfo, E) :-
 	ProcInfo = procedure(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_maybe_arglives(ProcInfo, F) :-
 	ProcInfo = procedure(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_goal(ProcInfo, G) :-
 	ProcInfo = procedure(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_context(ProcInfo, H) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_stack_slots(ProcInfo, I) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_inferred_determinism(ProcInfo, J) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_can_process(ProcInfo, K) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_arg_info(ProcInfo, L) :- 
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_liveness_info(ProcInfo, M) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _,
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_typeinfo_varmap(ProcInfo, N) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_typeclass_info_varmap(ProcInfo, O) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_eval_method(ProcInfo, P) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, 
-		_, _, _, _).
+		_, _, _, _, _).
 
 proc_info_get_maybe_arg_size_info(ProcInfo, Q) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		Q, _, _, _).
+		Q, _, _, _, _).
 
 proc_info_get_maybe_termination_info(ProcInfo, R) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, R, _, _).
+		_, R, _, _, _).
 
 proc_info_maybe_declared_argmodes(ProcInfo, S) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, S, _).
+		_, _, S, _, _).
 
 proc_info_args_method(ProcInfo, T) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, T).
+		_, _, _, T, _).
+
+proc_info_inst_table(ProcInfo, U) :-
+    ProcInfo = procedure(_, _, _, _, _, _, _, _, _,
+    		_, _, _, _, _, _, _, _, _, _, _, U).
 
 % :- type proc_info
 % 	--->	procedure(
@@ -1463,13 +1533,14 @@ proc_info_args_method(ProcInfo, T) :-
 % 					% or `no' if there was no detism decl
 % B			varset,		% variable names
 % C 			map(var, type),	% variable types
-% D			list(var),	% head vars
-% E			list(mode), 	% modes of args
+% D			list(prog_var),	% head vars
+% E			argument_modes,	% modes of args
 % F			maybe(list(is_live)),
 % 					% liveness (in the mode analysis sense)
 % 					% of the arguments
 % G			hlds_goal,	% Body
-% H			term__context,	% The context of the `:- mode' decl
+% H			prog_context,
+%					% The context of the `:- mode' decl
 % 					% (or the context of the first clause,
 % 					% if there was no mode declaration).
 % I			stack_slots,	% stack allocations
@@ -1505,7 +1576,7 @@ proc_info_args_method(ProcInfo, T) :-
 % 					% The termination properties of the
 % 					% procedure. Set by termination
 % 					% analysis.
-% S			maybe(list(mode))
+% S			maybe(argument_modes),
 % 					% declared modes of arguments.
 % T			args_method
 % 					% The args_method to be used for
@@ -1516,109 +1587,117 @@ proc_info_args_method(ProcInfo, T) :-
 %					% `compact' for procedures it creates
 %					% which must be directly callable by
 %					% a higher_order_call goal.	
+% U			inst_table
+%					% the inst_table for this proc
 %		).
 
 proc_info_set_varset(ProcInfo0, B, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_vartypes(ProcInfo0, C, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_headvars(ProcInfo0, D, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_argmodes(ProcInfo0, E, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_maybe_arglives(ProcInfo0, F, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_goal(ProcInfo0, G, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_stack_slots(ProcInfo0, I, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_inferred_determinism(ProcInfo0, J, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_can_process(ProcInfo0, K, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_arg_info(ProcInfo0, L, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_liveness_info(ProcInfo0, M, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_typeinfo_varmap(ProcInfo0, N, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_typeclass_info_varmap(ProcInfo0, O, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, 
-		P, Q, R, S, T),
+		P, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_eval_method(ProcInfo0, P, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		_, Q, R, S, T),
+		_, Q, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_maybe_arg_size_info(ProcInfo0, Q, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, _, R, S, T),
+		P, _, R, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, _, S, T),
+		P, Q, _, S, T, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
 
 proc_info_set_args_method(ProcInfo0, T, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, _),
+		P, Q, R, S, _, U),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T).
+		P, Q, R, S, T, U).
+
+proc_info_set_inst_table(ProcInfo0, U, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
+		P, Q, R, S, T, _),
+	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
+		P, Q, R, S, T, U).
 
 proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
@@ -1627,7 +1706,8 @@ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 
 	% auxiliary predicate - traverses variables and builds a list of
 	% variables that store typeinfos for these variables. 
-:- pred proc_info_get_typeinfo_vars_2(proc_info, list(var), list(var)).
+:- pred proc_info_get_typeinfo_vars_2(proc_info, list(prog_var),
+		list(prog_var)).
 :- mode proc_info_get_typeinfo_vars_2(in, in, out) is det.
 
 proc_info_get_typeinfo_vars_2(_, [], []).
@@ -1703,7 +1783,7 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 	%	"<Name>3", and so on, where <Name> is the value of `Name'.
 	%	`VarSet' is the resulting varset.
 
-:- pred make_n_fresh_vars(string, int, varset, list(var), varset).
+:- pred make_n_fresh_vars(string, int, varset(T), list(var(T)), varset(T)).
 :- mode make_n_fresh_vars(in, in, in, out, out) is det.
 
 	% given the list of predicate arguments for a predicate that
@@ -1717,7 +1797,8 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 make_n_fresh_vars(BaseName, N, VarSet0, Vars, VarSet) :-
 	make_n_fresh_vars_2(BaseName, 0, N, VarSet0, Vars, VarSet).
 
-:- pred make_n_fresh_vars_2(string, int, int, varset, list(var), varset).
+:- pred make_n_fresh_vars_2(string, int, int, varset(T), list(var(T)),
+		varset(T)).
 :- mode make_n_fresh_vars_2(in, in, in, in, out, out) is det.
 
 make_n_fresh_vars_2(BaseName, N, Max, VarSet0, Vars, VarSet) :-

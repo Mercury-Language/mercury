@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -89,10 +89,12 @@ maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, MaybeProcId) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
+		inst_table_init(InstTable),
+		ArgumentModes = argument_modes(InstTable, PredArgModes),
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_args_method(Globals, ArgsMethod),
-		add_new_proc(PredInfo0, PredArity, PredArgModes, 
-			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
+		add_new_proc(PredInfo0, PredArity, ArgumentModes, 
+			yes(ArgumentModes), MaybePredArgLives, yes(Determinism),
 			Context, ArgsMethod, PredInfo, ProcId),
 		MaybeProcId = yes(ProcId)
 	;

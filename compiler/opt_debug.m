@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -706,9 +706,12 @@ opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
 	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
-opt_debug__dump_data_name(stack_layout(Label), Str) :-
+opt_debug__dump_data_name(proc_layout(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
-	string__append_list(["stack_layout(", LabelStr, ")"], Str).
+	string__append_list(["proc_layout(", LabelStr, ")"], Str).
+opt_debug__dump_data_name(internal_layout(Label), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["internal_layout(", LabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

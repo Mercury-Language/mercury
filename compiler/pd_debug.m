@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 
 :- interface.
 
-:- import_module pd_info, hlds_goal, hlds_pred.
+:- import_module pd_info, hlds_goal, hlds_pred, prog_data.
 :- import_module list, string.
 
 :- pred pd_debug__do_io(pred(io__state, io__state)::pred(di, uo) is det,
@@ -33,7 +33,7 @@
 :- pred pd_debug__message(string::in, list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
-:- pred pd_debug__message(term__context::in, string::in, 
+:- pred pd_debug__message(prog_context::in, string::in, 
 		list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
@@ -126,10 +126,12 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	{ module_info_pred_proc_info(ModuleInfo, 
 		PredId, ProcId, _, ProcInfo) },
 	{ proc_info_varset(ProcInfo, VarSet) },
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ instmap__restrict(InstMap, NonLocals, InstMap1) },
-	hlds_out__write_instmap(InstMap1, VarSet, yes, 1),
+	hlds_out__write_instmap(InstMap1, VarSet, yes, 1, InstTable),
 	io__nl,
-	hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, no, 1, ""),
+	hlds_out__write_goal(Goal - GoalInfo, InstMap, InstTable, ModuleInfo,
+		VarSet, no, 1, ""),
 	io__nl,
 	io__write_string("Parents: "),
 	{ set__to_sorted_list(Parents, ParentsList) },
@@ -138,8 +140,10 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	io__nl,
 	( { WriteUnfoldedGoal = yes } ->
 		{ proc_info_goal(ProcInfo, ProcGoal) },
+		{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
+			ProcInstMap) },
 		io__write_string("Unfolded goal\n"),
-		hlds_out__write_goal(ProcGoal, 
+		hlds_out__write_goal(ProcGoal, ProcInstMap, InstTable,
 			ModuleInfo, VarSet, no, 1, ""),
 		io__nl
 	;
@@ -151,8 +155,10 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 pd_debug__write_instmap -->
 	pd_info_get_instmap(InstMap),
 	pd_info_get_proc_info(ProcInfo),
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ proc_info_varset(ProcInfo, VarSet) },
-	pd_debug__do_io(hlds_out__write_instmap(InstMap, VarSet, yes, 1)).
+	pd_debug__do_io(hlds_out__write_instmap(InstMap, VarSet, yes, 1,
+		InstTable)).
 
 %-----------------------------------------------------------------------------%
 
@@ -179,14 +185,16 @@ pd_debug__output_goal(Msg, Goal - GoalInfo) -->
 		pd_info_get_instmap(InstMap),
 		pd_info_get_io_state(IO0),
 		pd_info_get_module_info(ModuleInfo),
+		{ proc_info_inst_table(ProcInfo, InstTable) },
 		{
 		io__write_string(Msg, IO0, IO1),
 		goal_util__goal_vars(Goal - GoalInfo, Vars),
 		instmap__restrict(InstMap, Vars, InstMap1),
-		hlds_out__write_instmap(InstMap1, VarSet, yes, 1, IO1, IO2),
+		hlds_out__write_instmap(InstMap1, VarSet, yes, 1, InstTable,
+			IO1, IO2),
 		io__nl(IO2, IO3),
-		hlds_out__write_goal(Goal - GoalInfo, ModuleInfo,
-			VarSet, yes, 1, "", IO3, IO4),
+		hlds_out__write_goal(Goal - GoalInfo, InstMap, InstTable,
+			ModuleInfo, VarSet, yes, 1, "", IO3, IO4),
 		io__nl(IO4, IO5),
 		io__flush_output(IO5, IO)
 		},

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,45 +26,50 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, prog_data.
-:- import_module bool, list, set, map, varset, term.
+:- import_module hlds_goal, hlds_pred, prog_data, term.
+:- import_module bool, list, set, map.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
-:- pred goal_util__rename_vars_in_goals(list(hlds_goal), bool, map(var, var),
-	list(hlds_goal)).
+:- pred goal_util__rename_vars_in_goals(list(hlds_goal), bool,
+		map(prog_var, prog_var), list(hlds_goal)).
 :- mode goal_util__rename_vars_in_goals(in, in, in, out) is det.
 
-:- pred goal_util__rename_vars_in_goal(hlds_goal, map(var, var), hlds_goal).
+:- pred goal_util__rename_vars_in_goal(hlds_goal, map(prog_var, prog_var),
+		hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, out) is det.
 
 :- pred goal_util__must_rename_vars_in_goal(hlds_goal,
-					map(var, var), hlds_goal).
+		map(prog_var, prog_var), hlds_goal).
 :- mode goal_util__must_rename_vars_in_goal(in, in, out) is det.
 
-:- pred goal_util__rename_var_list(list(var), bool, map(var, var), list(var)).
+:- pred goal_util__rename_var_list(list(var(T)), bool,
+		map(var(T), var(T)), list(var(T))).
 :- mode goal_util__rename_var_list(in, in, in, out) is det.
 
 	% goal_util__create_variables(OldVariables, OldVarset, InitialVarTypes,
 	%	InitialSubstitution, OldVarTypes, OldVarNames,  NewVarset,
 	%	NewVarTypes, NewSubstitution)
-:- pred goal_util__create_variables(list(var),
-			varset, map(var, type), map(var, var),
-			map(var, type),
-			varset, varset, map(var, type), map(var, var)).
+:- pred goal_util__create_variables(list(prog_var),
+			prog_varset, map(prog_var, type),
+			map(prog_var, prog_var),
+			map(prog_var, type),
+			prog_varset, prog_varset, map(prog_var, type),
+			map(prog_var, prog_var)).
 :- mode goal_util__create_variables(in, in, in, in, in, in, out, out, out)
 		is det.
 
 	% Return all the variables in the goal.
 	% Unlike quantification:goal_vars, this predicate returns
 	% even the explicitly quantified variables.
-:- pred goal_util__goal_vars(hlds_goal, set(var)).
+:- pred goal_util__goal_vars(hlds_goal, set(prog_var)).
 :- mode goal_util__goal_vars(in, out) is det.
 
 	% Return all the variables in the list of goals.
 	% Unlike quantification:goal_vars, this predicate returns
 	% even the explicitly quantified variables.
-:- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
+:- pred goal_util__goals_goal_vars(list(hlds_goal), set(prog_var),
+		set(prog_var)).
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
 
 	%
@@ -88,8 +93,8 @@
 	% type variable.
 	%
 :- pred goal_util__extra_nonlocal_typeinfos(map(tvar, type_info_locn),
-		map(class_constraint, var), map(var, type), existq_tvars,
-		set(var), set(var)).
+		map(class_constraint, prog_var), map(prog_var, type),
+		existq_tvars, set(prog_var), set(prog_var)).
 :- mode goal_util__extra_nonlocal_typeinfos(in, in, in, in, in, out) is det.
 
 	% See whether the goal is a branched structure.
@@ -119,7 +124,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_util, code_aux, instmap.
+:- import_module hlds_data, mode_util, code_aux, instmap, varset.
 :- import_module int, std_util, assoc_list, require, string.
 
 %-----------------------------------------------------------------------------%
@@ -157,8 +162,8 @@ goal_util__create_variables([V | Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__init_subn(assoc_list(var, var),
-	map(var, var), map(var, var)).
+:- pred goal_util__init_subn(assoc_list(prog_var, prog_var),
+	map(prog_var, prog_var), map(prog_var, prog_var)).
 :- mode goal_util__init_subn(in, in, out) is det.
 
 goal_util__init_subn([], Subn, Subn).
@@ -168,8 +173,8 @@ goal_util__init_subn([A - H | Vs], Subn0, Subn) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__rename_var_pair_list(assoc_list(var, T), bool,
-	map(var, var), list(pair(var, T))).
+:- pred goal_util__rename_var_pair_list(assoc_list(prog_var, T), bool,
+	map(prog_var, prog_var), list(pair(prog_var, T))).
 :- mode goal_util__rename_var_pair_list(in, in, in, out) is det.
 
 goal_util__rename_var_pair_list([], _Must, _Subn, []).
@@ -182,7 +187,8 @@ goal_util__rename_var_list([V | Vs], Must, Subn, [N | Ns]) :-
 	goal_util__rename_var(V, Must, Subn, N),
 	goal_util__rename_var_list(Vs, Must, Subn, Ns).
 
-:- pred goal_util__rename_var(var, bool, map(var, var), var).
+:- pred goal_util__rename_var(var(V), bool, map(var(V), var(V)),
+		var(V)).
 :- mode goal_util__rename_var(in, in, in, out) is det.
 
 goal_util__rename_var(V, Must, Subn, N) :-
@@ -219,7 +225,7 @@ goal_util__rename_vars_in_goals([Goal0 | Goals0], Must, Subn, [Goal | Goals]) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal),
 	goal_util__rename_vars_in_goals(Goals0, Must, Subn, Goals).
 
-:- pred goal_util__rename_vars_in_goal(hlds_goal, bool, map(var, var),
+:- pred goal_util__rename_vars_in_goal(hlds_goal, bool, map(prog_var, prog_var),
 		hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, in, out) is det.
 
@@ -230,7 +236,7 @@ goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo)
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_2(hlds_goal_expr, bool, map(var, var),
+:- pred goal_util__name_apart_2(hlds_goal_expr, bool, map(prog_var, prog_var),
 		hlds_goal_expr).
 :- mode goal_util__name_apart_2(in, in, in, out) is det.
 
@@ -303,8 +309,8 @@ goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,E,F,G), Must, Subn,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_list(list(hlds_goal), bool, map(var, var),
-							list(hlds_goal)).
+:- pred goal_util__name_apart_list(list(hlds_goal), bool,
+		map(prog_var, prog_var), list(hlds_goal)).
 :- mode goal_util__name_apart_list(in, in, in, out) is det.
 
 goal_util__name_apart_list([], _Must, _Subn, []).
@@ -314,40 +320,21 @@ goal_util__name_apart_list([G0 | Gs0], Must, Subn, [G | Gs]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_cases(list(case), bool, map(var, var),
+:- pred goal_util__name_apart_cases(list(case), bool, map(prog_var, prog_var),
 		list(case)).
 :- mode goal_util__name_apart_cases(in, in, in, out) is det.
 
 goal_util__name_apart_cases([], _Must, _Subn, []).
-goal_util__name_apart_cases([case(Cons, G0) | Gs0], Must, Subn,
-		[case(Cons, G) | Gs]) :-
+goal_util__name_apart_cases([case(Cons, IMDelta0, G0) | Gs0], Must, Subn,
+		[case(Cons, IMDelta, G) | Gs]) :-
+	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
 	goal_util__rename_vars_in_goal(G0, Must, Subn, G),
 	goal_util__name_apart_cases(Gs0, Must, Subn, Gs).
 
 %-----------------------------------------------------------------------------%
 
-	% These predicates probably belong in term.m.
-
-:- pred goal_util__rename_args(list(term), bool, map(var, var), list(term)).
-:- mode goal_util__rename_args(in, in, in, out) is det.
-
-goal_util__rename_args([], _Must, _Subn, []).
-goal_util__rename_args([T0 | Ts0], Must, Subn, [T | Ts]) :-
-	goal_util__rename_term(T0, Must, Subn, T),
-	goal_util__rename_args(Ts0, Must, Subn, Ts).
-
-:- pred goal_util__rename_term(term, bool, map(var, var), term).
-:- mode goal_util__rename_term(in, in, in, out) is det.
-
-goal_util__rename_term(term__variable(V), Must, Subn, term__variable(N)) :-
-	goal_util__rename_var(V, Must, Subn, N).
-goal_util__rename_term(term__functor(Cons, Terms0, Cont), Must, Subn,
-				term__functor(Cons, Terms, Cont)) :-
-	goal_util__rename_args(Terms0, Must, Subn, Terms).
-
-%-----------------------------------------------------------------------------%
-
-:- pred goal_util__rename_unify_rhs(unify_rhs, bool, map(var, var), unify_rhs).
+:- pred goal_util__rename_unify_rhs(unify_rhs, bool, map(prog_var, prog_var),
+		unify_rhs).
 :- mode goal_util__rename_unify_rhs(in, in, in, out) is det.
 
 goal_util__rename_unify_rhs(var(Var0), Must, Subn, var(Var)) :-
@@ -356,14 +343,18 @@ goal_util__rename_unify_rhs(functor(Functor, ArgVars0), Must, Subn,
 			functor(Functor, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
-	    lambda_goal(PredOrFunc, NonLocals0, Vars0, Modes, Det, Goal0),
+	    lambda_goal(PredOrFunc, NonLocals0, Vars0, Modes, Det, IMDelta0,
+	    			Goal0),
 	    Must, Subn, 
-	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal)) :-
+	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, IMDelta,
+	    		Goal)) :-
+	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
-:- pred goal_util__rename_unify(unification, bool, map(var, var), unification).
+:- pred goal_util__rename_unify(unification, bool, map(prog_var, prog_var),
+		unification).
 :- mode goal_util__rename_unify(in, in, in, out) is det.
 
 goal_util__rename_unify(construct(Var0, ConsId, Vars0, Modes), Must, Subn,
@@ -385,8 +376,8 @@ goal_util__rename_unify(complicated_unify(Modes, Cat), _Must, _Subn,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__rename_var_maps(map(var, T), bool,
-				map(var, var), map(var, T)).
+:- pred goal_util__rename_var_maps(map(prog_var, T), bool,
+				map(prog_var, prog_var), map(prog_var, T)).
 :- mode goal_util__rename_var_maps(in, in, in, out) is det.
 
 goal_util__rename_var_maps(Map0, Must, Subn, Map) :-
@@ -394,8 +385,8 @@ goal_util__rename_var_maps(Map0, Must, Subn, Map) :-
 	goal_util__rename_var_maps_2(AssocList0, Must, Subn, AssocList),
 	map__from_assoc_list(AssocList, Map).
 
-:- pred goal_util__rename_var_maps_2(assoc_list(var, T),
-				bool, map(var, var), assoc_list(var, T)).
+:- pred goal_util__rename_var_maps_2(assoc_list(var(V), T),
+		bool, map(var(V), var(V)), assoc_list(var(V), T)).
 :- mode goal_util__rename_var_maps_2(in, in, in, out) is det.
 
 goal_util__rename_var_maps_2([], _Must, _Subn, []).
@@ -406,7 +397,7 @@ goal_util__rename_var_maps_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
 %-----------------------------------------------------------------------------%
 
 :- pred goal_util__name_apart_goalinfo(hlds_goal_info,
-					bool, map(var, var), hlds_goal_info).
+		bool, map(prog_var, prog_var), hlds_goal_info).
 :- mode goal_util__name_apart_goalinfo(in, in, in, out) is det.
 
 goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
@@ -447,7 +438,8 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_set(set(var), bool, map(var, var), set(var)).
+:- pred goal_util__name_apart_set(set(prog_var), bool, map(prog_var, prog_var),
+		set(prog_var)).
 :- mode goal_util__name_apart_set(in, in, in, out) is det.
 
 goal_util__name_apart_set(Vars0, Must, Subn, Vars) :-
@@ -461,7 +453,7 @@ goal_util__goal_vars(Goal - _GoalInfo, Set) :-
 	set__init(Set0),
 	goal_util__goal_vars_2(Goal, Set0, Set).
 
-:- pred goal_util__goal_vars_2(hlds_goal_expr, set(var), set(var)).
+:- pred goal_util__goal_vars_2(hlds_goal_expr, set(prog_var), set(prog_var)).
 :- mode goal_util__goal_vars_2(in, in, out) is det.
 
 goal_util__goal_vars_2(unify(Var, RHS, _, _, _), Set0, Set) :-
@@ -514,15 +506,15 @@ goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
 	goal_util__goals_goal_vars(Goals, Set1, Set).
 
-:- pred goal_util__cases_goal_vars(list(case), set(var), set(var)).
+:- pred goal_util__cases_goal_vars(list(case), set(prog_var), set(prog_var)).
 :- mode goal_util__cases_goal_vars(in, in, out) is det.
 
 goal_util__cases_goal_vars([], Set, Set).
-goal_util__cases_goal_vars([case(_, Goal - _) | Cases], Set0, Set) :-
+goal_util__cases_goal_vars([case(_, _, Goal - _) | Cases], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
 	goal_util__cases_goal_vars(Cases, Set1, Set).
 
-:- pred goal_util__rhs_goal_vars(unify_rhs, set(var), set(var)).
+:- pred goal_util__rhs_goal_vars(unify_rhs, set(prog_var), set(prog_var)).
 :- mode goal_util__rhs_goal_vars(in, in, out) is det.
 
 goal_util__rhs_goal_vars(var(X), Set0, Set) :-
@@ -530,7 +522,8 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(
-		lambda_goal(_POrF, NonLocals, LambdaVars, _M, _D, Goal - _), 
+		lambda_goal(_POrF, NonLocals, LambdaVars, _M, _D, _IMDelta,
+				Goal - _), 
 		Set0, Set) :-
 	set__insert_list(Set0, NonLocals, Set1),
 	set__insert_list(Set1, LambdaVars, Set2),
@@ -593,7 +586,7 @@ goals_size([Goal | Goals], Size) :-
 :- mode cases_size(in, out) is det.
 
 cases_size([], 0).
-cases_size([case(_, Goal) | Cases], Size) :-
+cases_size([case(_, _, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
 	cases_size(Cases, Size2),
 	Size is Size1 + Size2.
@@ -647,7 +640,7 @@ goals_calls([Goal | Goals], PredProcId) :-
 :- pred cases_calls(list(case), pred_proc_id).
 :- mode cases_calls(in, in) is semidet.
 
-cases_calls([case(_, Goal) | Cases], PredProcId) :-
+cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 	(
 		goal_calls(Goal, PredProcId)
 	;
@@ -695,7 +688,7 @@ goals_calls_pred_id([Goal | Goals], PredId) :-
 :- pred cases_calls_pred_id(list(case), pred_id).
 :- mode cases_calls_pred_id(in, in) is semidet.
 
-cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
+cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
 	(
 		goal_calls_pred_id(Goal, PredId)
 	;

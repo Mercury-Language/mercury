@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 
 :- import_module hlds_goal, hlds_module, hlds_pred, det_report, det_util.
 :- import_module common, instmap, globals.
-:- import_module io, bool, list, map, term, varset.
+:- import_module io, bool, list, map.
 
 :- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
 	pred_info, pred_info, int, int, io__state, io__state).
@@ -70,9 +70,10 @@
 :- implementation.
 
 :- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
-:- import_module hlds_module, hlds_data, (inst), inst_match.
+:- import_module hlds_module, hlds_data, (inst), inst_match, varset.
 :- import_module options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity, pd_cost.
+:- import_module unify_proc, mode_info.
 :- import_module set, require, std_util, int.
 
 %-----------------------------------------------------------------------------%
@@ -152,23 +153,32 @@ simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		ProcInfo0, ProcInfo, Msgs, State0, State) :-
 
-	globals__io_get_globals(Globals, State0, State),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
+	globals__io_get_globals(Globals, State0, State1),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_goal(ProcInfo0, Goal0),
-
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	det_info_init(ModuleInfo0, PredId, ProcId, InstTable0, Globals,
+		DetInfo0),
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
 		VarSet0, VarTypes0, Info0),
+	proc_info_goal(ProcInfo0, Goal0),
 	simplify__process_goal(Goal0, Goal, Info0, Info),
-	
+
 	simplify_info_get_varset(Info, VarSet),
 	simplify_info_get_var_types(Info, VarTypes),
+	simplify_info_get_inst_table(Info, InstTable),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
-	simplify_info_get_module_info(Info, ModuleInfo),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo),
+
+	simplify_info_get_module_info(Info, ModuleInfo1),
+	module_info_preds(ModuleInfo1, OldPredTable0),
+	modecheck_queued_procs(check_unique_modes(may_change_called_proc),
+		OldPredTable0, ModuleInfo1, _OldPredTable, ModuleInfo,
+		_Changed, State1, State),
+
 	simplify_info_get_msgs(Info, Msgs).
 
 simplify__process_goal(Goal0, Goal, Info0, Info) :-
@@ -192,8 +202,8 @@ simplify__process_goal(Goal0, Goal, Info0, Info) :-
 			Simplifications2),
 		simplify_info_reinit(Simplifications2, InstMap0, Info2, Info3)
 	;
-		Info3 = Info0,
-		Goal1 = Goal0
+		Goal1 = Goal0,
+		Info3 = Info0
 	),
 		% On the second pass do excess assignment elimination and
 		% some cleaning up after the common structure pass.
@@ -217,21 +227,22 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		simplify_info_set_varset(Info1, VarSet, Info2),
 		simplify_info_set_var_types(Info2, VarTypes, Info3),
 
-		% Always recompute instmap_deltas for atomic goals - this
-		% is safer in the case where unused variables should no
-		% longer be included in the instmap_delta for a goal.
-		% In the alias branch this is necessary anyway.
-		RecomputeAtomic = yes,
-
 		simplify_info_get_module_info(Info3, ModuleInfo3),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			InstMap0, ModuleInfo3, ModuleInfo4),
-		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
+		simplify_info_get_inst_table(Info3, InstTable0),
+		simplify_info_get_det_info(Info3, DetInfo0),
+		det_get_proc_info(DetInfo0, ProcInfo),
+		proc_info_headvars(ProcInfo, ArgVars),
+		proc_info_arglives(ProcInfo, ModuleInfo3, ArgLives),
+		recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal2,
+			Goal3, InstMap0, InstTable0, InstTable, _, ModuleInfo3,
+			ModuleInfo4),
+		simplify_info_set_module_info(Info3, ModuleInfo4, Info4),
+		simplify_info_set_inst_table(Info4, InstTable, Info5)
 	;
 		Goal3 = Goal1,
-		Info4 = Info1
+		Info5 = Info1
 	),
-	( simplify_info_rerun_det(Info4) ->
+	( simplify_info_rerun_det(Info5) ->
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_determinism(GoalInfo0, Det),
 		det_get_soln_context(Det, SolnContext),
@@ -239,25 +250,25 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		% det_infer_goal looks up the proc_info in the module_info
 		% for the vartypes, so we'd better stick them back in the
 		% module_info.
-		simplify_info_get_module_info(Info4, ModuleInfo5),
-		simplify_info_get_varset(Info4, VarSet4),
-		simplify_info_get_var_types(Info4, VarTypes4),
-		simplify_info_get_det_info(Info4, DetInfo4),
+		simplify_info_get_module_info(Info5, ModuleInfo5),
+		simplify_info_get_varset(Info5, VarSet4),
+		simplify_info_get_var_types(Info5, VarTypes4),
+		simplify_info_get_det_info(Info5, DetInfo4),
 		det_info_get_pred_id(DetInfo4, PredId),
 		det_info_get_proc_id(DetInfo4, ProcId),
 		module_info_pred_proc_info(ModuleInfo5, PredId, ProcId,
-			PredInfo, ProcInfo0),
-		proc_info_set_vartypes(ProcInfo0, VarTypes4, ProcInfo1),
-		proc_info_set_varset(ProcInfo1, VarSet4, ProcInfo),
+			PredInfo, PredProcInfo0),
+		proc_info_set_vartypes(PredProcInfo0, VarTypes4, PredProcInfo1),
+		proc_info_set_varset(PredProcInfo1, VarSet4, PredProcInfo),
 		module_info_set_pred_proc_info(ModuleInfo5, PredId, ProcId,
-			PredInfo, ProcInfo, ModuleInfo6),
-		simplify_info_set_module_info(Info4, ModuleInfo6, Info),
+			PredInfo, PredProcInfo, ModuleInfo6),
+		simplify_info_set_module_info(Info5, ModuleInfo6, Info),
 
 		simplify_info_get_det_info(Info, DetInfo),
 		det_infer_goal(Goal3, InstMap0, SolnContext,
 			DetInfo, Goal, _, _)
 	;
-		Info = Info4,
+		Info = Info5,
 		Goal = Goal3
 	).
 
@@ -307,6 +318,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism),
 	simplify_info_get_det_info(Info0, DetInfo),
+	simplify_info_get_instmap(Info0, InstMap0),
 	simplify_info_get_module_info(Info0, ModuleInfo),
 	(
 		%
@@ -353,11 +365,12 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		
 		determinism_components(Detism, cannot_fail, MaxSoln),
 		MaxSoln \= at_most_zero,
-		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
 		goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 		simplify_info_get_instmap(Info0, InstMap0),
-		det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta,
-			DetInfo),
+		simplify_info_get_inst_table(Info0, InstTable),
+		instmap__no_output_vars(InstMap0, InstMapDelta0, NonLocalVars,
+		                InstTable, ModuleInfo),
 		% ensure goal is pure or semipure
 		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
@@ -382,9 +395,11 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	simplify_info_maybe_clear_structs(before, Goal1, Info2, Info3),
 	Goal1 = GoalExpr1 - GoalInfo1,
 	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info3, Info4),
-	simplify_info_maybe_clear_structs(after, Goal - GoalInfo2,
-		Info4, Info5),
-	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info5, Info).
+	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info4, Info5),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	simplify_info_set_instmap(Info5, InstMap, Info6),
+	simplify_info_maybe_clear_structs(after, Goal - GoalInfo2, Info6, Info).
 
 :- pred simplify__enforce_invariant(hlds_goal_info, hlds_goal_info,
 		simplify_info, simplify_info).
@@ -497,13 +512,52 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		simplify__maybe_wrap_goal(GoalInfo0, GoalInfo1,
 			Goal1, Goal, GoalInfo, Info1, Info)
 	;
-		Goal = disj(Disjuncts, SM),
-		simplify_info_get_module_info(Info1, ModuleInfo1),
-		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
-			NewDelta, ModuleInfo1, ModuleInfo2),
-		simplify_info_set_module_info(Info1, ModuleInfo2, Info),
-		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+		(
+	/****
+	XXX This optimization is not correct, see comment below
+	    at the definition of fixup_disj
+			goal_info_get_determinism(GoalInfo, Detism),
+			determinism_components(Detism, _CanFail, MaxSoln),
+			MaxSoln \= at_most_many
+		->
+			goal_info_get_instmap_delta(GoalInfo, DeltaInstMap),
+			goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+			simplify_info_get_inst_table(Info0, InstTable0),
+			simplify_info_get_module_info(Info0, ModuleInfo0),
+			(
+				instmap__no_output_vars(InstMap0, DeltaInstMap,
+					NonLocalVars, InstTable0, ModuleInfo0),
+			->
+				OutputVars = no
+			;
+				OutputVars = yes
+			),
+			simplify__fixup_disj(Disjuncts, Detism, OutputVars,
+				GoalInfo, SM, InstMap0, DetInfo, Goal,
+				MsgsA, Msgs)
+		;
+	****/
+			Goal = disj(Disjuncts, SM),
+			simplify_info_get_module_info(Info1, ModuleInfo1),
+			simplify_info_get_inst_table(Info1, InstTable1),
+			goal_info_get_nonlocals(GoalInfo0, NonLocals),
+
+			instmap__merge(NonLocals, InstMaps, InstMap0,
+				NewInstMap, ModuleInfo1, InstTable1,
+				ModuleInfo2, InstTable2, MergeErrors),
+			( MergeErrors \= [] ->
+				error("simplify: merge error in disj")
+			;
+				compute_instmap_delta(InstMap0, NewInstMap,
+					NewDelta)
+			),
+
+			simplify_info_set_module_info(Info1, ModuleInfo2,
+				Info2),
+			simplify_info_set_inst_table(Info2, InstTable2, Info),
+			goal_info_set_instmap_delta(GoalInfo0, NewDelta,
+				GoalInfo)
+		)
 	).
 
 simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
@@ -511,7 +565,11 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 	simplify_info_get_instmap(Info0, InstMap0),
 	simplify_info_get_module_info(Info0, ModuleInfo0),
 	instmap__lookup_var(InstMap0, Var, VarInst),
-	( inst_is_bound_to_functors(ModuleInfo0, VarInst, Functors) ->
+	simplify_info_get_inst_table(Info0, InstTable),
+	(
+		inst_is_bound_to_functors(VarInst, InstMap0, InstTable,
+				ModuleInfo0, Functors)
+	->
 		functors_to_cons_ids(Functors, ConsIds0),
 		list__sort(ConsIds0, ConsIds),
 		delete_unreachable_cases(Cases0, ConsIds, Cases1),
@@ -528,7 +586,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		simplify_info_incr_cost_delta(Info1, CostDelta, Info),
 		goal_info_get_context(GoalInfo0, Context),
 		fail_goal(Context, Goal - GoalInfo)
-	; Cases = [case(ConsId, SingleGoal)] ->
+	; Cases = [case(ConsId, CaseIMD, SingleGoal)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
 		cons_id_arity(ConsId, Arity),
@@ -548,35 +606,42 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 			goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 			set__insert(NonLocals0, Var, NonLocals),
 			goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
-			simplify_info_get_instmap(Info2, InstMap),
-			instmap_delta_bind_var_to_functor(Var, ConsId, 	
-				InstMap, InstMapDelta0, InstMapDelta, 
-				ModuleInfo0, ModuleInfo),
-			simplify_info_set_module_info(Info2, 
-				ModuleInfo, Info3),	
+			instmap_delta_apply_instmap_delta(InstMapDelta0,
+				CaseIMD, InstMapDelta),
 			goal_info_get_determinism(GoalInfo0, CaseDetism),
 			det_conjunction_detism(semidet, CaseDetism, Detism),
 			goal_info_init(NonLocals, InstMapDelta, Detism, 
 				CombinedGoalInfo),
 
-			simplify_info_set_requantify(Info3, Info4),
+			simplify_info_set_requantify(Info2, Info3),
 			Goal = conj(GoalList),
 			GoalInfo = CombinedGoalInfo
 		;
 			% The var can only be bound to this cons_id, so
 			% a test is unnecessary.
 			SingleGoal = Goal - GoalInfo,
-			Info4 = Info1
+			Info3 = Info1
 		),
 		pd_cost__eliminate_switch(CostDelta),
-		simplify_info_incr_cost_delta(Info4, CostDelta, Info)
+		simplify_info_incr_cost_delta(Info3, CostDelta, Info)
 	;
 		Goal = switch(Var, SwitchCanFail, Cases, SM),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
+		simplify_info_get_inst_table(Info1, InstTable1),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
-			NewDelta, ModuleInfo1, ModuleInfo2),
-		simplify_info_set_module_info(Info1, ModuleInfo2, Info),
+
+		instmap__merge(NonLocals, InstMaps, InstMap0, NewInstMap,
+			ModuleInfo1, InstTable1, ModuleInfo2, InstTable2,
+			MergeErrors),
+		( MergeErrors \= [] ->
+			error("simplify: merge error in switch")
+		;
+			compute_instmap_delta(InstMap0, NewInstMap, NewDelta)
+		),
+
+		simplify_info_set_module_info(Info1, ModuleInfo2, Info2),
+		simplify_info_set_inst_table(Info2, InstTable2, Info3),
+		simplify_info_set_instmap(Info3, NewInstMap, Info),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
 	).
 
@@ -670,10 +735,12 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
 			_PredInfo1, ProcInfo1),
 		proc_info_headvars(ProcInfo1, HeadVars),
-		proc_info_argmodes(ProcInfo1, ArgModes),
+		proc_info_argmodes(ProcInfo1, argument_modes(ArgInstTable, ArgModes)),
+		proc_info_get_initial_instmap(ProcInfo1, ModuleInfo1,
+				ProcInstMap),
 		simplify_info_get_common_info(Info1, CommonInfo1),
 		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
-			CommonInfo1, ModuleInfo1),
+			CommonInfo1, ProcInstMap, ArgInstTable, ModuleInfo1),
 
 		% 
 		% Don't count procs using minimal evaluation as they 
@@ -751,14 +818,12 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Info = Info0
 	;
 		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
-			Modes, LambdaDeclaredDet, LambdaGoal0)
+			Modes, LambdaDeclaredDet, IMDelta, LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
 		simplify_info_get_common_info(Info1, Common1),
-		simplify_info_get_module_info(Info1, ModuleInfo),
 		simplify_info_get_instmap(Info1, InstMap1),
-		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-			InstMap1, InstMap2),
+		instmap__apply_instmap_delta(InstMap1, IMDelta, InstMap2),
 		simplify_info_set_instmap(Info1, InstMap2, Info2),
 
 		% Don't attempt to pass structs into lambda_goals,
@@ -772,7 +837,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		simplify_info_set_common_info(Info4, Common1, Info5),
 		simplify_info_set_instmap(Info5, InstMap1, Info6),
 		RT = lambda_goal(PredOrFunc, NonLocals, Vars, Modes, 
-			LambdaDeclaredDet, LambdaGoal),
+			LambdaDeclaredDet, IMDelta, LambdaGoal),
 		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
@@ -880,23 +945,27 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		simplify__goal(Cond0, Cond, Info0, Info1),
 		simplify_info_update_instmap(Info1, Cond, Info2),
 		simplify__goal(Then0, Then, Info2, Info3),
+		simplify_info_get_instmap(Info3, CondThenMap),
 		simplify_info_post_branch_update(Info0, Info3, Info4),
 		simplify__goal(Else0, Else, Info4, Info5),
+		simplify_info_get_instmap(Info5, ElseMap),
 		simplify_info_post_branch_update(Info0, Info5, Info6),
-		Cond = _ - CondInfo,
-		goal_info_get_instmap_delta(CondInfo, CondDelta),
-		Then = _ - ThenInfo,
-		goal_info_get_instmap_delta(ThenInfo, ThenDelta),
-		instmap_delta_apply_instmap_delta(CondDelta, ThenDelta,
-			CondThenDelta),
-		Else = _ - ElseInfo,
-		goal_info_get_instmap_delta(ElseInfo, ElseDelta),
-                goal_info_get_nonlocals(GoalInfo0, NonLocals),
+
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		simplify_info_get_module_info(Info6, ModuleInfo0),
-		merge_instmap_deltas(InstMap0, NonLocals,
-			[CondThenDelta, ElseDelta], NewDelta,
-			ModuleInfo0, ModuleInfo1),
-		simplify_info_set_module_info(Info6, ModuleInfo1, Info),
+		simplify_info_get_inst_table(Info6, InstTable0),
+
+		instmap__merge(NonLocals, [CondThenMap, ElseMap], InstMap0,
+			NewInstMap, ModuleInfo0, InstTable0, ModuleInfo1,
+			InstTable1, MergeErrors),
+		( MergeErrors \= [] ->
+			error("simplify: merge error in ite")
+		;
+			compute_instmap_delta(InstMap0, NewInstMap, NewDelta)
+		),
+
+		simplify_info_set_inst_table(Info6, InstTable1, Info7),
+		simplify_info_set_module_info(Info7, ModuleInfo1, Info),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo1),
 		IfThenElse = if_then_else(Vars, Cond, Then, Else, SM),
 		%
@@ -910,6 +979,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			IfThenElseNumSolns),
 		(
 			simplify_do_once(Info),
+			Cond = _ - CondInfo,
 			goal_info_get_determinism(CondInfo, CondDetism),
 			determinism_components(CondDetism, _, at_most_many),
 			IfThenElseNumSolns \= at_most_many
@@ -1008,26 +1078,26 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	% in HeadVars.  HeadVars, Modes, and Args should all be lists of
 	% the same length.
 
-:- pred simplify__input_args_are_equiv(list(var), list(var), list(mode),
-	common_info, module_info).
-:- mode simplify__input_args_are_equiv(in, in, in, in, in) is semidet.
+:- pred simplify__input_args_are_equiv(list(prog_var), list(prog_var),
+	list(mode), common_info, instmap, inst_table, module_info).
+:- mode simplify__input_args_are_equiv(in, in, in, in, in, in, in) is semidet.
 
-simplify__input_args_are_equiv([], [], _, _, _).
+simplify__input_args_are_equiv([], [], _, _, _, _, _).
 simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
-		CommonInfo, ModuleInfo1) :-
-	( mode_is_input(ModuleInfo1, Mode) ->
+		CommonInfo, InstMap, InstTable, ModuleInfo) :-
+	( mode_is_input(InstMap, InstTable, ModuleInfo, Mode) ->
 		common__vars_are_equivalent(Arg, HeadVar, CommonInfo)
 	;
 		true
 	),
 	simplify__input_args_are_equiv(Args, HeadVars, Modes,
-			CommonInfo, ModuleInfo1).
+			CommonInfo, InstMap, InstTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
 	% replace nested `some's with a single `some',
-:- pred simplify__nested_somes(list(var)::in, hlds_goal::in,
-		list(var)::out, hlds_goal::out) is det.
+:- pred simplify__nested_somes(list(prog_var)::in, hlds_goal::in,
+		list(prog_var)::out, hlds_goal::out) is det.
 
 simplify__nested_somes(Vars0, Goal0, Vars, Goal) :-
 	( Goal0 = some(Vars1, Goal1) - _ ->
@@ -1175,7 +1245,7 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals0, RevGoals, GoalNeeded, Info0, Info) :-
 	(
 		simplify_do_excess_assigns(Info0),
-		Goal0 = unify(_, _, _, Unif, _) - _,
+		Goal0 = unify(_, _, LMode - RMode, Unif, _) - _,
 		goal_info_get_nonlocals(ConjInfo, NonLocals),
 		Unif = assign(LeftVar, RightVar),
 		( \+ set__member(LeftVar, NonLocals) ->
@@ -1184,7 +1254,19 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 			LocalVar = RightVar, ReplacementVar = LeftVar
 		;
 			fail
-		)
+		),
+
+		% If one of the variables is free(alias) before the call
+		% then we can't remove the assignment.
+		simplify_info_get_module_info(Info0, ModuleInfo),
+		simplify_info_get_inst_table(Info0, InstTable),
+		simplify_info_get_instmap(Info0, InstMapBefore),
+		LMode = LInitInst - _,
+		\+ inst_is_free_alias(LInitInst, InstMapBefore, InstTable,
+				ModuleInfo),
+		RMode = RInitInst - _,
+		\+ inst_is_free_alias(RInitInst, InstMapBefore, InstTable,
+				ModuleInfo)
 	->
 		GoalNeeded = no,
 		map__init(Subn0),
@@ -1205,8 +1287,8 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__switch(var, list(case), list(case), list(case), 
-		list(instmap_delta), list(instmap_delta), can_fail, can_fail,
+:- pred simplify__switch(prog_var, list(case), list(case), list(case), 
+		list(instmap), list(instmap), can_fail, can_fail,
 		simplify_info, simplify_info, simplify_info).
 :- mode simplify__switch(in, in, in, out, in, out, in, out,
 		in, in, out) is det.
@@ -1217,23 +1299,18 @@ simplify__switch(_, [], RevCases, Cases, InstMaps, InstMaps,
 simplify__switch(Var, [Case0 | Cases0], RevCases0, Cases, InstMaps0, InstMaps, 
 		CanFail0, CanFail, Info0, Info1, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
-	Case0 = case(ConsId, Goal0),
-	simplify_info_get_module_info(Info1, ModuleInfo0),
-	instmap__bind_var_to_functor(Var, ConsId,
-		InstMap0, InstMap1, ModuleInfo0, ModuleInfo1),
-	simplify_info_set_module_info(Info1, ModuleInfo1, Info2),
-	simplify_info_set_instmap(Info2, InstMap1, Info3),
-	simplify__goal(Goal0, Goal, Info3, Info4),
+	Case0 = case(ConsId, IMDelta, Goal0),
+	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
+	simplify_info_set_instmap(Info1, InstMap1, Info2),
+	simplify__goal(Goal0, Goal, Info2, Info3),
 
 		% Remove failing branches. 
 	( Goal = disj([], _) - _ ->
 		RevCases = RevCases0,
 		InstMaps1 = InstMaps0,
-		CanFail1 = can_fail,
-		Info5 = Info4
+		CanFail1 = can_fail
 	;
-		Case = case(ConsId, Goal),
-		Goal = _ - GoalInfo,
+		Case = case(ConsId, IMDelta, Goal),
 
 		%
 		% Make sure the switched on variable appears in the
@@ -1243,25 +1320,27 @@ simplify__switch(Var, [Case0 | Cases0], RevCases0, Cases, InstMaps0, InstMaps,
 		% this branch's instmap_delta, the inst before the goal
 		% would be used, resulting in a mode error.
 		%
-		goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
-		simplify_info_get_module_info(Info4, ModuleInfo5),
-		instmap_delta_bind_var_to_functor(Var, ConsId,
-			InstMap0, InstMapDelta0, InstMapDelta, 
-			ModuleInfo5, ModuleInfo),
-		simplify_info_set_module_info(Info4, ModuleInfo, Info5),
+		% YYY Should be unnecessary now.  Test this anyway.
+		%
 
-		InstMaps1 = [InstMapDelta | InstMaps0],
+		% Goal = _ - GoalInfo,
+		% goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
+		% instmap_delta_apply_instmap_delta(InstMapDelta0, IMDelta,
+		% 	InstMapDelta),
+
+		simplify_info_get_instmap(Info3, InstMap),
+		InstMaps1 = [InstMap | InstMaps0],
 		RevCases = [Case | RevCases0],
 		CanFail1 = CanFail0
 	),
 
-	simplify_info_post_branch_update(Info0, Info5, Info6),
+	simplify_info_post_branch_update(Info0, Info3, Info4),
 	simplify__switch(Var, Cases0, RevCases, Cases, InstMaps1, InstMaps,
-		CanFail1, CanFail, Info0, Info6, Info).
+		CanFail1, CanFail, Info0, Info4, Info).
 
 	% Create a semidet unification at the start of a singleton case
 	% in a can_fail switch.
-:- pred simplify__create_test_unification(var::in, cons_id::in, int::in,
+:- pred simplify__create_test_unification(prog_var::in, cons_id::in, int::in,
 		hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 
 simplify__create_test_unification(Var, ConsId, ConsArity,
@@ -1280,7 +1359,8 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	simplify_info_get_instmap(Info, InstMap),
 	instmap__lookup_var(InstMap, Var, Inst0),
 	(
-		inst_expand(ModuleInfo, Inst0, Inst1),
+		simplify_info_get_inst_table(Info, InstTable),
+		inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst1),
 		get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
 	->
 		ArgInsts = ArgInsts1
@@ -1289,10 +1369,11 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	),
 	InstToUniMode =
 		lambda([ArgInst::in, ArgUniMode::out] is det, (
-			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+			ArgUniMode = ((ArgInst - free(unique)) -> 
+				(ArgInst - ArgInst))
 		)),
 	list__map(InstToUniMode, ArgInsts, UniModes),
-	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
+	UniMode = (Inst0 - Inst0) - (Inst0 - Inst0),
 	UnifyContext = unify_context(explicit, []),
 	Unification = deconstruct(Var, ConsId,
 		ArgVars, UniModes, can_fail),
@@ -1308,7 +1389,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 %-----------------------------------------------------------------------------%
 
 :- pred simplify__disj(list(hlds_goal), list(hlds_goal), list(hlds_goal), 
-	list(instmap_delta), list(instmap_delta), 
+	list(instmap), list(instmap), 
 	simplify_info, simplify_info, simplify_info).
 :- mode simplify__disj(in, in, out, in, out, in, in, out) is det.
 
@@ -1360,15 +1441,15 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 			PostBranchInstMaps1 = PostBranchInstMaps0
 		;			
 			RevGoals1 = [Goal | RevGoals0],
-			goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+			simplify_info_get_instmap(Info3, InstMap),
 			PostBranchInstMaps1 = 
-				[InstMapDelta | PostBranchInstMaps0]
+				[InstMap | PostBranchInstMaps0]
 		)
 	;
 		Info3 = Info2,
 		RevGoals1 = [Goal | RevGoals0],
-		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-		PostBranchInstMaps1 = [InstMapDelta | PostBranchInstMaps0]
+		simplify_info_get_instmap(Info3, InstMap),
+		PostBranchInstMaps1 = [InstMap | PostBranchInstMaps0]
 	),
 
 	simplify_info_post_branch_update(Info0, Info3, Info4),
@@ -1459,8 +1540,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
 		set__union(CondNonLocals, RestNonLocals, NonLocals),
 		goal_info_set_nonlocals(GoalInfo, NonLocals, NewGoalInfo0),
 
-		goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
-		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 		goal_info_set_instmap_delta(NewGoalInfo0, InstMapDelta,
 			NewGoalInfo1),
 
@@ -1499,8 +1579,8 @@ simplify__contains_multisoln_goal(Goals) :-
 			set(simplification),
 			common_info,	% Info about common subexpressions.
 			instmap,
-			varset,
-			map(var, type),
+			prog_varset,
+			map(prog_var, type),
 			bool,		% Does the goal need requantification.
 			bool,		% Do we need to recompute
 					% instmap_deltas for atomic goals
@@ -1508,8 +1588,9 @@ simplify__contains_multisoln_goal(Goals) :-
 					% be rerun.
 			int,		% Measure of the improvement in
 					% the goal from simplification.
-			int		% Count of the number of lambdas
+			int,		% Count of the number of lambdas
 					% which enclose the current goal.
+			unit
 		).
 
 simplify_info_init(DetInfo, Simplifications0, InstMap,
@@ -1518,7 +1599,7 @@ simplify_info_init(DetInfo, Simplifications0, InstMap,
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
-			InstMap, VarSet, VarTypes, no, no, no, 0, 0). 
+		InstMap, VarSet, VarTypes, no, no, no, 0, 0, unit).
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
@@ -1526,19 +1607,18 @@ simplify_info_init(DetInfo, Simplifications0, InstMap,
 
 simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 	Info0 = simplify_info(DetInfo, Msgs, _, _, _,
-		VarSet, VarTypes, _, _, _, CostDelta, _),
+		VarSet, VarTypes, _, _, _, CostDelta, _, InstTable),
 	common_info_init(Common),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, Common, InstMap0,
-		VarSet, VarTypes, no, no, no, CostDelta, 0).
+		VarSet, VarTypes, no, no, no, CostDelta, 0, InstTable).
 
 	% exported for common.m
 :- interface.
-
-:- import_module prog_data.
 :- import_module set.
+:- import_module prog_data, det_util, instmap, hlds_data.
 
 :- pred simplify_info_init(det_info, list(simplification), instmap,
-		varset, map(var, type), simplify_info).
+		prog_varset, map(prog_var, type), simplify_info).
 :- mode simplify_info_init(in, in, in, in, in, out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
@@ -1548,9 +1628,9 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 		set(simplification)::out) is det.
 :- pred simplify_info_get_common_info(simplify_info::in,
 		common_info::out) is det.
-:- pred simplify_info_get_varset(simplify_info::in, varset::out) is det.
+:- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
 :- pred simplify_info_get_var_types(simplify_info::in,
-		map(var, type)::out) is det.
+		map(prog_var, type)::out) is det.
 :- pred simplify_info_requantify(simplify_info::in) is semidet.
 :- pred simplify_info_recompute_atomic(simplify_info::in) is semidet.
 :- pred simplify_info_rerun_det(simplify_info::in) is semidet.
@@ -1558,25 +1638,32 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 
 :- pred simplify_info_get_module_info(simplify_info::in,
 		module_info::out) is det.
+:- pred simplify_info_get_inst_table(simplify_info::in,
+		inst_table::out) is det.
 
 :- implementation.
 
-simplify_info_get_det_info(simplify_info(Det, _,_,_,_,_,_,_,_,_,_,_), Det). 
-simplify_info_get_msgs(simplify_info(_, Msgs, _,_,_,_,_,_,_,_,_,_), Msgs).
-simplify_info_get_simplifications(simplify_info(_,_,Simplify,_,_,_,_,_,_,_,_,_),
-	Simplify). 
-simplify_info_get_common_info(simplify_info(_,_,_,Common, _,_,_,_,_,_,_,_),
+simplify_info_get_det_info(simplify_info(Det, _,_,_,_,_,_,_,_,_,_,_,_), Det). 
+simplify_info_get_msgs(simplify_info(_, Msgs, _,_,_,_,_,_,_,_,_,_,_), Msgs).
+simplify_info_get_simplifications(
+		simplify_info(_,_,Simplify,_,_,_,_,_,_,_,_,_,_), Simplify). 
+simplify_info_get_common_info(simplify_info(_,_,_,Common, _,_,_,_,_,_,_,_,_),
 	Common).
-simplify_info_get_instmap(simplify_info(_,_,_,_, InstMap,_,_,_,_,_,_,_),
+simplify_info_get_instmap(simplify_info(_,_,_,_, InstMap,_,_,_,_,_,_,_,_),
 	InstMap). 
-simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_,_,_), VarSet).
-simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_,_,_),
+simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_,_,_,_),
+	VarSet).
+simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_,_,_,_),
 	VarTypes). 
-simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_,_,_)).
-simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_,_,_)).
-simplify_info_rerun_det(simplify_info(_,_,_,_,_,_,_,_,_, yes,_,_)).
-simplify_info_get_cost_delta(simplify_info(_,_,_,_,_,_,_,_,_,_,CostDelta, _),
+simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_,_,_,_)).
+simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_,_,_,_)).
+simplify_info_rerun_det(simplify_info(_,_,_,_,_,_,_,_,_, yes,_,_,_)).
+simplify_info_get_cost_delta(simplify_info(_,_,_,_,_,_,_,_,_,_,CostDelta, _,_),
 	CostDelta).
+
+simplify_info_get_inst_table(Info, InstTable) :-
+	simplify_info_get_det_info(Info, DetInfo),
+	det_info_get_inst_table(DetInfo, InstTable).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
 	simplify_info_get_det_info(Info, DetInfo),
@@ -1594,13 +1681,13 @@ simplify_info_get_module_info(Info, ModuleInfo) :-
 		instmap::in, simplify_info::out) is det.
 :- pred simplify_info_set_common_info(simplify_info::in, common_info::in,
 		simplify_info::out) is det.
-:- pred simplify_info_set_varset(simplify_info::in, varset::in,
+:- pred simplify_info_set_varset(simplify_info::in, prog_varset::in,
 		simplify_info::out) is det.
-:- pred simplify_info_set_var_types(simplify_info::in, map(var, type)::in,
+:- pred simplify_info_set_var_types(simplify_info::in, map(prog_var, type)::in,
 		simplify_info::out) is det.
 :- pred simplify_info_set_requantify(simplify_info::in,
 		simplify_info::out) is det.
-:- pred simplify_info_set_recompute_atomic(simplify_info::in,
+:- pred simplify_info_set_rerun_simplify(simplify_info::in,
 		simplify_info::out) is det.
 :- pred simplify_info_set_rerun_det(simplify_info::in,
 		simplify_info::out) is det.
@@ -1622,38 +1709,50 @@ simplify_info_get_module_info(Info, ModuleInfo) :-
 :- pred simplify_info_set_module_info(simplify_info::in,
 		module_info::in, simplify_info::out) is det.
 
+:- pred simplify_info_set_inst_table(simplify_info::in,
+		inst_table::in, simplify_info::out) is det.
+
 :- implementation.
 
-simplify_info_set_det_info(simplify_info(_, B, C, D, E, F, G, H, I, J, K, L),
-		Det, simplify_info(Det, B, C, D, E, F, G, H, I, J, K, L)).
-simplify_info_set_msgs(simplify_info(A, _, C, D, E, F, G, H, I, J, K, L), Msgs,
-		simplify_info(A, Msgs, C, D, E, F, G, H, I, J, K, L)). 
+simplify_info_set_det_info(
+		simplify_info(_,   B, C, D, E, F, G, H, I, J, K, L, M),
+		Det,
+		simplify_info(Det, B, C, D, E, F, G, H, I, J, K, L, M)).
+simplify_info_set_msgs(simplify_info(A, _, C, D, E, F, G, H, I, J, K, L, M),
+		Msgs, simplify_info(A, Msgs, C, D, E, F, G, H, I, J, K, L, M)). 
 simplify_info_set_simplifications(
-		simplify_info(A, B, _, D, E, F, G, H, I, J, K, L),
-		Simp, simplify_info(A, B, Simp, D, E, F, G, H, I, J, K, L)).
-simplify_info_set_instmap(simplify_info(A, B, C, D, _, F, G, H, I, J, K, L), 
+		simplify_info(A, B, _, D, E, F, G, H, I, J, K, L, M),
+		Simp, simplify_info(A, B, Simp, D, E, F, G, H, I, J, K, L, M)).
+simplify_info_set_instmap(simplify_info(A, B, C, D, _, F, G, H, I, J, K, L, M), 
 		InstMap, 
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L)). 
-simplify_info_set_common_info(simplify_info(A, B, C, _, E, F, G, H, I, J, K, L),
+		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L, M)). 
+simplify_info_set_common_info(
+		simplify_info(A, B, C, _,      E, F, G, H, I, J, K, L, M),
 		Common, 
-		simplify_info(A, B, C, Common, E, F, G, H, I, J, K, L)). 
-simplify_info_set_varset(simplify_info(A, B, C, D, E, _, G, H, I, J, K, L), 
+		simplify_info(A, B, C, Common, E, F, G, H, I, J, K, L, M)). 
+simplify_info_set_varset(simplify_info(A, B, C, D, E, _, G, H, I, J, K, L, M), 
 		VarSet, 
-		simplify_info(A, B, C, D, E, VarSet, G, H, I, J, K, L)). 
-simplify_info_set_var_types(simplify_info(A, B, C, D, E, F, _, H, I, J, K, L),
-		VarTypes, simplify_info(A, B, C, D, E, F, VarTypes, H,I,J,K,L)).
-simplify_info_set_requantify(simplify_info(A, B, C, D, E, F, G, _, I, J, K, L),
-		simplify_info(A, B, C, D, E, F, G, yes, I, J, K, L)). 
-simplify_info_set_recompute_atomic(simplify_info(A, B, C, D, E, F, G,H,_,J,K,L),
-		simplify_info(A, B, C, D, E, F, G, H, yes, J, K, L)). 
-simplify_info_set_rerun_det(simplify_info(A, B, C, D, E, F, G,H,I,_,K,L),
-		simplify_info(A, B, C, D, E, F, G, H, I, yes, K, L)). 
-simplify_info_set_cost_delta(simplify_info(A, B, C, D, E, F, G, H, I, J, _, L),
-		Delta, simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L)). 
+		simplify_info(A, B, C, D, E, VarSet, G, H, I, J, K, L, M)). 
+simplify_info_set_var_types(
+		simplify_info(A, B, C, D, E, F, _, H, I, J, K, L, M),
+		VarTypes,
+		simplify_info(A, B, C, D, E, F, VarTypes, H,I,J,K,L,M)).
+simplify_info_set_requantify(
+		simplify_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
+		simplify_info(A, B, C, D, E, F, G, yes, I, J, K, L, M)). 
+simplify_info_set_rerun_simplify(
+		simplify_info(A, B, C, D, E, F, G,H,_,J,K,L, M),
+		simplify_info(A, B, C, D, E, F, G, H, yes, J, K, L, M)). 
+simplify_info_set_rerun_det(
+		simplify_info(A, B, C, D, E, F, G,H,I,_,K,L, M),
+		simplify_info(A, B, C, D, E, F, G, H, I, yes, K, L, M)). 
+simplify_info_set_cost_delta(
+		simplify_info(A, B, C, D, E, F, G, H, I, J, _, L, M), Delta,
+		simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L, M)). 
 
 simplify_info_incr_cost_delta(
-		simplify_info(A, B, C, D, E, F,G,H,I,J, Delta0, L),
-		Incr, simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L)) :-
+		simplify_info(A, B, C, D, E, F, G, H, I, J, Delta0, L, M), Incr,
+		simplify_info(A, B, C, D, E, F, G, H, I, J, Delta, L, M)) :-
 	Delta is Delta0 + Incr.
 
 simplify_info_add_msg(Info0, Msg, Info) :-
@@ -1669,12 +1768,14 @@ simplify_info_do_add_msg(Info0, Msg, Info) :-
 	simplify_info_set_msgs(Info0, Msgs, Info).
 
 simplify_info_enter_lambda(
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount0),
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount)) :-
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount0, L, M),
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount, L, M))
+		:-
 	LambdaCount is LambdaCount0 + 1.
 simplify_info_leave_lambda(
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount0),
-		simplify_info(A, B, C, D, E, F, G, H, I, J, K, LambdaCount)) :-
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount0, L, M),
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount, L, M))
+		:-
 	LambdaCount1 is LambdaCount0 - 1,
 	(
 		LambdaCount1 >= 0
@@ -1684,12 +1785,17 @@ simplify_info_leave_lambda(
 		error("simplify_info_leave_lambda: Left too many lambdas")
 	).
 simplify_info_inside_lambda(
-		simplify_info(_,_,_,_,_,_,_,_,_,_,_,LambdaCount)) :-
+		simplify_info(_,_,_,_,_,_,_,_,_,_,_,LambdaCount,_)) :-
 	LambdaCount > 0.
 
 simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 	simplify_info_get_det_info(Info0, DetInfo0),
 	det_info_set_module_info(DetInfo0, ModuleInfo, DetInfo),
+	simplify_info_set_det_info(Info0, DetInfo, Info).
+
+simplify_info_set_inst_table(Info0, InstTable, Info) :-
+	simplify_info_get_det_info(Info0, DetInfo0),
+	det_info_set_inst_table(DetInfo0, InstTable, DetInfo),
 	simplify_info_set_det_info(Info0, DetInfo, Info).
 
 :- interface.
@@ -1734,8 +1840,9 @@ simplify_do_more_common(Info) :-
 		simplify_info::out) is det.
 
 simplify_info_update_instmap(
-		simplify_info(A, B, C, D, InstMap0, F, G, H, I, J, K, L), Goal,
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L)) :-
+		simplify_info(A, B, C, D, InstMap0, F, G, H, I, J, K, L, M),
+		Goal,
+		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K, L, M)) :-
 	update_instmap(Goal, InstMap0, InstMap).
 
 :- type before_after

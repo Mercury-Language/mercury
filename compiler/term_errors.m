@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,9 +16,9 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_module, hlds_pred, prog_data.
 
-:- import_module io, bag, std_util, list, assoc_list, term.
+:- import_module io, bag, std_util, list, assoc_list.
 
 :- type termination_error
 	--->	pragma_c_code
@@ -62,7 +62,7 @@
 			% info is set to infinite.
 			% Valid in both passes.
 
-	;	not_subset(pred_proc_id, bag(var), bag(var))
+	;	not_subset(pred_proc_id, bag(prog_var), bag(prog_var))
 			% not_subset(Proc, SupplierVariables, InHeadVariables)
 			% This error occurs when the bag of active variables
 			% is not a subset of the input head variables.
@@ -74,7 +74,7 @@
 			% context has infinite weight.
 			% Valid error only in pass 2.
 
-	;	cycle(pred_proc_id, assoc_list(pred_proc_id, term__context))
+	;	cycle(pred_proc_id, assoc_list(pred_proc_id, prog_context))
 			% cycle(StartPPId, CallSites)
 			% In the cycle of calls starting at StartPPId and
 			% going through the named call sites may be an
@@ -110,7 +110,7 @@
 	;	does_not_term_pragma(pred_id).
 			% The given procedure has a does_not_terminate pragma.
 
-:- type term_errors__error == pair(term__context, termination_error).
+:- type term_errors__error == pair(prog_context, termination_error).
 
 :- pred term_errors__report_term_errors(list(pred_proc_id)::in,
 	list(term_errors__error)::in, module_info::in,
@@ -129,9 +129,10 @@
 :- implementation.
 
 :- import_module hlds_out, prog_out, passes_aux, error_util.
+:- import_module term, varset.
 :- import_module mercury_to_mercury, term_util, options, globals.
 
-:- import_module bool, int, string, map, bag, require, varset.
+:- import_module bool, int, string, map, bag, require.
 
 indirect_error(horder_call).
 indirect_error(pragma_c_code).
@@ -436,7 +437,7 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 
 %----------------------------------------------------------------------------%
 
-:- pred term_errors_var_bag_description(bag(var)::in, varset::in,
+:- pred term_errors_var_bag_description(bag(prog_var)::in, prog_varset::in,
 	list(string)::out) is det.
 
 term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
@@ -444,8 +445,8 @@ term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
 	term_errors_var_bag_description_2(HeadVarCountList, Varset, yes,
 		Pieces).
 
-:- pred term_errors_var_bag_description_2(assoc_list(var, int)::in, varset::in,
-	bool::in, list(string)::out) is det.
+:- pred term_errors_var_bag_description_2(assoc_list(prog_var, int)::in,
+		prog_varset::in, bool::in, list(string)::out) is det.
 
 term_errors_var_bag_description_2([], _, _, ["{}"]).
 term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
@@ -520,7 +521,7 @@ term_errors__describe_one_proc_name(proc(PredId, ProcId), Module, Piece) :-
 		], Piece).
 
 :- pred term_errors__describe_several_proc_names(list(pred_proc_id)::in,
-	module_info::in, term__context::in, list(string)::out) is det.
+	module_info::in, prog_context::in, list(string)::out) is det.
 
 term_errors__describe_several_proc_names([], _, _, []).
 term_errors__describe_several_proc_names([PPId | PPIds], Module,
@@ -540,7 +541,7 @@ term_errors__describe_several_proc_names([PPId | PPIds], Module,
 	).
 
 :- pred term_errors__describe_one_call_site(pair(pred_proc_id,
-	term__context)::in, module_info::in, string::out) is det.
+	prog_context)::in, module_info::in, string::out) is det.
 
 term_errors__describe_one_call_site(PPId - Context, Module, Piece) :-
 	term_errors__describe_one_proc_name(PPId, Module, ProcName),
@@ -556,7 +557,7 @@ term_errors__describe_one_call_site(PPId - Context, Module, Piece) :-
 		], Piece).
 
 :- pred term_errors__describe_several_call_sites(assoc_list(pred_proc_id,
-	term__context)::in, module_info::in, list(string)::out) is det.
+	prog_context)::in, module_info::in, list(string)::out) is det.
 
 term_errors__describe_several_call_sites([], _, []).
 term_errors__describe_several_call_sites([Site | Sites], Module, Pieces) :-

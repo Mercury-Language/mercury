@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Module: transform_llds
-% 
+%
 % Main authors: petdr
-% 
+%
 % This module does source to source transformations of the llds data
 % structure.  This is sometimes necessary to avoid limits in some
 % compilers.
@@ -15,7 +15,7 @@
 % This module currently transforms computed gotos into a binary search
 % down to smaller computed gotos.  This avoids a limitation in the lcc
 % compiler.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_llds.
@@ -38,7 +38,7 @@ transform_llds(LLDS0, LLDS) -->
 	globals__io_lookup_int_option(max_jump_table_size, Size),
 	(
 		{ Size = 0 }
-	->	
+	->
 		{ LLDS = LLDS0 }
 	;
 		transform_c_file(LLDS0, LLDS)
@@ -49,14 +49,14 @@ transform_llds(LLDS0, LLDS) -->
 :- pred transform_c_file(c_file, c_file, io__state, io__state).
 :- mode transform_c_file(in, out, di, uo) is det.
 
-transform_c_file(c_file(ModuleName, HeaderInfo, Modules0),
-		c_file(ModuleName, HeaderInfo, Modules)) -->
+transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, Modules0),
+		c_file(ModuleName, HeaderInfo, A, B, C, Modules)) -->
 	transform_c_module_list(Modules0, Modules).
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_module_list(list(c_module), list(c_module),
-		io__state, io__state).
+:- pred transform_c_module_list(list(comp_gen_c_module),
+	list(comp_gen_c_module), io__state, io__state).
 :- mode transform_c_module_list(in, out, di, uo) is det.
 
 transform_c_module_list([], []) --> [].
@@ -66,16 +66,13 @@ transform_c_module_list([M0 | M0s], [M | Ms]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_c_module(c_module, c_module, io__state, io__state).
+:- pred transform_c_module(comp_gen_c_module, comp_gen_c_module,
+	io__state, io__state).
 :- mode transform_c_module(in, out, di, uo) is det.
 
-transform_c_module(c_module(Name, Procedures0), c_module(Name, Procedures)) -->
+transform_c_module(comp_gen_c_module(Name, Procedures0),
+		comp_gen_c_module(Name, Procedures)) -->
 	transform_c_procedure_list(Procedures0, Procedures).
-transform_c_module(c_data(Name, DataName, Exported, Rvals, PredProcIds),
-		c_data(Name, DataName, Exported, Rvals, PredProcIds)) --> [].
-transform_c_module(c_code(Code, Context), c_code(Code, Context)) --> [].
-transform_c_module(c_export(Exports), c_export(Exports)) --> [].
-	
 
 %-----------------------------------------------------------------------------%
 
@@ -84,7 +81,7 @@ transform_c_module(c_export(Exports), c_export(Exports)) --> [].
 :- mode transform_c_procedure_list(in, out, di, uo) is det.
 
 transform_c_procedure_list([], []) --> [].
-transform_c_procedure_list([P0 | P0s], [P | Ps]) --> 
+transform_c_procedure_list([P0 | P0s], [P | Ps]) -->
 	transform_c_procedure(P0, P),
 	transform_c_procedure_list(P0s, Ps).
 
@@ -108,20 +105,20 @@ transform_instructions(Instrs0, Instrs) -->
 	{ max_label_int(Instrs0, 0, N) },
 	transform_instructions_2(Instrs0, ProcLabel, N, Instrs).
 
-:- pred transform_instructions_2(list(instruction), proc_label, int, 
+:- pred transform_instructions_2(list(instruction), proc_label, int,
 		list(instruction), io__state, io__state).
 :- mode transform_instructions_2(in, in, in, out, di, uo) is det.
 
 transform_instructions_2([], _, _, []) --> [].
-transform_instructions_2([Instr0 | Instrs0], ProcLabel, N0, Instrs) --> 
+transform_instructions_2([Instr0 | Instrs0], ProcLabel, N0, Instrs) -->
 	transform_instruction(Instr0, ProcLabel, N0, InstrsA, N),
 	transform_instructions_2(Instrs0, ProcLabel, N, InstrsB),
 	{ list__append(InstrsA, InstrsB, Instrs) }.
-	
+
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_instruction(instruction, proc_label, int, 
+:- pred transform_instruction(instruction, proc_label, int,
 		list(instruction), int, io__state, io__state).
 :- mode transform_instruction(in, in, in, out, out, di, uo) is det.
 
@@ -148,7 +145,7 @@ transform_instruction(Instr0, ProcLabel, N0, Instrs, N) -->
 	% instructions, Is, to do a binary search down to a jump_table
 	% whose size is sufficiently small.
 	%
-:- pred split_computed_goto(instruction, int, int, proc_label, int, 
+:- pred split_computed_goto(instruction, int, int, proc_label, int,
 		list(instruction), int, io__state, io__state).
 :- mode split_computed_goto(in, in, in, in, in, out, out, di, uo) is det.
 
@@ -182,9 +179,9 @@ split_computed_goto(Instr0, MaxSize, Length, ProcLabel, N0, Instrs, N) -->
 		{ ThenInstr = computed_goto(Rval, Start) - "Then section" },
 		{ ElseInstr = computed_goto(Index, End) - "Else section" },
 
-		split_computed_goto(ThenInstr, MaxSize, Mid, ProcLabel, N2, 
+		split_computed_goto(ThenInstr, MaxSize, Mid, ProcLabel, N2,
 				ThenInstrs, N3),
-		split_computed_goto(ElseInstr, MaxSize, Length - Mid, 
+		split_computed_goto(ElseInstr, MaxSize, Length - Mid,
 				ProcLabel, N3, ElseInstrs, N),
 
 		{ list__append(ThenInstrs, [ElseLabel | ElseInstrs], InstrsA) },

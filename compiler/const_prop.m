@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,10 +16,10 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_goal, hlds_pred, instmap.
-:- import_module list, term.
+:- import_module hlds_module, hlds_goal, hlds_pred, prog_data, instmap.
+:- import_module list.
 
-:- pred evaluate_builtin(pred_id, proc_id, list(var), hlds_goal_info,
+:- pred evaluate_builtin(pred_id, proc_id, list(prog_var), hlds_goal_info,
 		hlds_goal_expr, hlds_goal_info, instmap,
 		module_info, module_info).
 :- mode evaluate_builtin(in, in, in, in, out, out, in, in, out) is semidet.
@@ -33,7 +33,7 @@
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
 :- import_module bool, list, int, float, map, require.
-:- import_module (inst), hlds_out, std_util, term, varset.
+:- import_module (inst), hlds_out, std_util.
 
 %------------------------------------------------------------------------------%
 
@@ -50,9 +50,9 @@ evaluate_builtin(PredId, ProcId, Args, GoalInfo0, Goal, GoalInfo,
 	evaluate_builtin_2(ModuleName, PredName, ProcInt, ArgInsts, GoalInfo0,
 		Goal, GoalInfo, ModuleInfo0, ModuleInfo).
 
-:- pred evaluate_builtin_2(module_name, string, int, list(pair(var, (inst))),
-		hlds_goal_info, hlds_goal_expr, hlds_goal_info,
-		module_info, module_info).
+:- pred evaluate_builtin_2(module_name, string, int,
+		list(pair(prog_var, (inst))), hlds_goal_info, hlds_goal_expr,
+		hlds_goal_info, module_info, module_info).
 :- mode evaluate_builtin_2(in, in, in, in, in, out, out, in, out) is semidet.
 
 	% Module_info is not actually used at the moment.
@@ -67,20 +67,22 @@ evaluate_builtin_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo,
 		evaluate_builtin_bi(Mod, Pred, ModeNum, X, Y, W, Cons)
 	->
 		make_construction(W, Cons, Goal),
-		goal_info_get_instmap_delta(GoalInfo0, Delta0),
+		% goal_info_get_instmap_delta(GoalInfo0, Delta0),
 		W = Var - _WInst,
-		instmap_delta_set(Delta0, Var,
-			bound(unique, [functor(Cons, [])]), Delta),
+		instmap_delta_from_assoc_list(
+			[Var - bound(unique, [functor(Cons, [])])],
+			Delta),
 		goal_info_set_instmap_delta(GoalInfo0, Delta, GoalInfo)
 	;
 		Args = [X, Y, Z],
 		evaluate_builtin_tri(Mod, Pred, ModeNum, X, Y, Z, W, Cons)
 	->
 		make_construction(W, Cons, Goal),
-		goal_info_get_instmap_delta(GoalInfo0, Delta0),
+		% goal_info_get_instmap_delta(GoalInfo0, Delta0),
 		W = Var - _WInst,
-		instmap_delta_set(Delta0, Var,
-			bound(unique, [functor(Cons, [])]), Delta),
+		instmap_delta_from_assoc_list(
+			[Var - bound(unique, [functor(Cons, [])])],
+			Delta),
 		goal_info_set_instmap_delta(GoalInfo0, Delta, GoalInfo)
 	;
 		evaluate_builtin_test(Mod, Pred, ModeNum, Args, Result)
@@ -93,8 +95,8 @@ evaluate_builtin_2(Module, Pred, ModeNum, Args, GoalInfo0, Goal, GoalInfo,
 %------------------------------------------------------------------------------%
 
 :- pred evaluate_builtin_bi(string, string, int,
-		pair(var, (inst)), pair(var, (inst)), 
-		pair(var, (inst)), cons_id).
+		pair(prog_var, (inst)), pair(prog_var, (inst)), 
+		pair(prog_var, (inst)), cons_id).
 :- mode evaluate_builtin_bi(in, in, in, in, in, out, out) is semidet.
 
 	% Integer arithmetic
@@ -124,8 +126,8 @@ evaluate_builtin_bi("float", "-", 0, X, Z, Z, int_const(ZVal)) :-
 %------------------------------------------------------------------------------%
 
 :- pred evaluate_builtin_tri(string, string, int,
-		pair(var, (inst)), pair(var, (inst)), pair(var, (inst)), 
-		pair(var, (inst)), cons_id).
+		pair(prog_var, (inst)), pair(prog_var, (inst)),
+		pair(prog_var, (inst)), pair(prog_var, (inst)), cons_id).
 :- mode evaluate_builtin_tri(in, in, in, in, in, in, out, out) is semidet.
 
 	%
@@ -283,7 +285,8 @@ evaluate_builtin_tri("float", "//", 2, X, Y, Z, Y, float_const(YVal)) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred evaluate_builtin_test(string, string, int, list(pair(var, inst)), bool).
+:- pred evaluate_builtin_test(string, string, int,
+		list(pair(prog_var, inst)), bool).
 :- mode evaluate_builtin_test(in, in, in, in, out) is semidet.
 
 	% Integer comparisons
@@ -366,13 +369,13 @@ evaluate_builtin_test("float", ">=", 0, Args, Result) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred make_construction(pair(var, inst), cons_id, hlds_goal_expr).
+:- pred make_construction(pair(prog_var, inst), cons_id, hlds_goal_expr).
 :- mode make_construction(in, in, out) is det.
 
 make_construction(Var - VarInst, ConsId, Goal) :-
 	RHS = functor(ConsId, []),
 	CInst = bound(unique, [functor(ConsId, [])]),
-	Mode =  (VarInst -> CInst) - (CInst -> CInst),
+	Mode =  (VarInst - CInst) - (CInst - CInst),
 	Unification = construct(Var, ConsId, [], []),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context).

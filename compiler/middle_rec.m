@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,11 +25,11 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, prog_out.
+:- import_module hlds_module, hlds_data, prog_data, prog_out.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
-:- import_module string, term.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -37,8 +37,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], SM),
-		Case1 = case(ConsId1, Goal1),
-		Case2 = case(ConsId2, Goal2),
+		Case1 = case(ConsId1, _, Goal1),
+		Case2 = case(ConsId2, _, Goal2),
 		(
 			code_aux__contains_only_builtins(Goal1),
 			code_aux__contains_simple_recursive_call(Goal2,
@@ -87,7 +87,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_ite(list(var), hlds_goal, hlds_goal,
+:- pred middle_rec__generate_ite(list(prog_var), hlds_goal, hlds_goal,
 	hlds_goal, ite_rec, store_map, hlds_goal_info,
 	code_tree, code_info, code_info).
 :- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
@@ -103,7 +103,7 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_switch(var, cons_id, hlds_goal, hlds_goal,
+:- pred middle_rec__generate_switch(prog_var, cons_id, hlds_goal, hlds_goal,
 	store_map, hlds_goal_info, code_tree, code_info, code_info).
 :- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
 	is semidet.

@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -48,7 +48,7 @@ into another language, under the above conditions for modified versions.
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1997 The University of Melbourne.
+Copyright @copyright{} 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -224,9 +224,10 @@ in Mercury becomes
 :- mode write_total(in, di, uo) is det.
 
 write_total(Total, IO0, IO) :-
-    io__write_string("The total is ", IO0, IO1),
-    io__write_int(Total, IO1, IO2),
-    io__write_string(".\n", IO2, IO).
+    print("The total is ", IO0, IO1),
+    print(Total, IO1, IO2),
+    print('.', IO2, IO3),
+    nl(IO3, IO).
 @end example
 
 Definite Clause Grammars (DCGs) are convenient syntactic sugar
@@ -235,9 +236,10 @@ The above clause can also be written
 
 @example
 write_total(Total) -->
-    io__write_string("The total is "),
-    io__write_int(Total),
-    io__write_string(".\n").
+    print("The total is "),
+    print(Total),
+    print('.'),
+    nl.
 @end example
 
 In DCGs, any calls (including unifications)
@@ -245,21 +247,15 @@ that do not need the extra DCG arguments
 are escaped in the usual way by surrounding them in curly braces
 (@code{ @{ @} }).
 
-The library predicate @samp{io__write_string} writes only strings, 
-and the library predicate @samp{io__write_int} writes only integers,
-and you must work out yourself which should be called when.
-At the moment there is no predicate
-that can print a value of an arbitrary type.
-However, in the next release of the Mercury implementation
-we will implement a polymorphic @samp{io__write} predicate,
-so that you can write the above code as
+Note that in Mercury you normally use strings (@code{"..."})
+rather than atoms (@code{'...'}) for messages like @code{"The total is"}.
+(It's possible to use atoms, but you have to declare each
+such atom before-hand, so its more convenient to use strings.)
+However, for strings and characters, @samp{write} prints out the quotes;
+to avoid this, you need to use @samp{print} instead of @samp{write}.
 
-@example
-write_total(Total) -->
-    io__write("The total is "),
-    io__write(Total),
-    io__write(".\n").
-@end example
+Both @samp{write} and @samp{print} are defined in the @samp{io}
+module in the Mercury standard library.
 
 One of the important consequences of our model for input and output
 is that predicates that can fail may not do input or output.
@@ -568,12 +564,16 @@ factorial(N, F) :-
 @node All-solutions
 @chapter All-solutions predicates.
 
-Unlike Prolog, which has a variety of subtly different all-solutions
-predicates (findall/3, bagof/3, setof/3, not to mention NU-Prolog's
-solutions/3), Mercury has a single all-solutions predicate called
-solutions/2.  To avoid the variable scoping problems of the Prolog
+Prolog's various different all-solutions predicates (findall/3, bagof/3,
+and setof/3) all have semantic problems.
+Mercury's has a different set of all-solutions predicates (solutions/2,
+solutions_set/2, and unsorted_solutions/2 -- all defined in the library
+module @samp{std_util}) that
+address the problems of the Prolog versions.
+To avoid the variable scoping problems of the Prolog
 versions, rather than taking both a goal to execute and an aliased
-term holding the resulting value to collect, Mercury's solutions/2 takes
+term holding the resulting value to collect, Mercury's all-solutions
+predicates take
 as input a single higher-order predicate term.  The Mercury equivalent to
 
 @example

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data, llds.
-:- import_module list, assoc_list, set, std_util, term.
+:- import_module list, assoc_list, set, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -110,8 +110,8 @@
 	% Each to be assigned rval is guaranteed to be either in a form
 	% acceptable for a test rval, or in the form of a variable.
 
-:- pred code_util__translate_builtin(module_name, string, proc_id, list(var),
-	maybe(rval), maybe(pair(var, rval))).
+:- pred code_util__translate_builtin(module_name, string, proc_id,
+	list(prog_var), maybe(rval), maybe(pair(prog_var, rval))).
 :- mode code_util__translate_builtin(in, in, in, in, out, out) is semidet.
 
 	% Find out how a function symbol (constructor) is represented
@@ -149,7 +149,7 @@
 
 	% Return the set of locations occupied by output arguments.
 
-:- pred code_util__output_args(assoc_list(var, arg_info), set(lval)).
+:- pred code_util__output_args(assoc_list(prog_var, arg_info), set(lval)).
 :- mode code_util__output_args(in, out) is det.
 
 	% These predicates return the set of lvals referenced in an rval
@@ -166,8 +166,8 @@
 
 :- implementation.
 
-:- import_module prog_data, type_util, special_pred.
-:- import_module bool, char, int, string, set, map, term, varset.
+:- import_module prog_data, type_util, term, varset, special_pred.
+:- import_module bool, char, int, string, set, map.
 :- import_module require, std_util, assoc_list.
 
 %---------------------------------------------------------------------------%
@@ -366,8 +366,8 @@ code_util__translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
 	code_util__translate_builtin_2(ModuleName, PredName, ProcInt, Args,
 		BinOp, AsgOp).
 
-:- pred code_util__translate_builtin_2(string, string, int, list(var),
-	maybe(rval), maybe(pair(var, rval))).
+:- pred code_util__translate_builtin_2(string, string, int, list(prog_var),
+	maybe(rval), maybe(pair(prog_var, rval))).
 :- mode code_util__translate_builtin_2(in, in, in, in, out, out) is semidet.
 
 code_util__translate_builtin_2("private_builtin", "unsafe_type_cast", 0,
@@ -590,7 +590,7 @@ code_util__goal_may_allocate_heap_2(if_then_else(_Vars, A, B, C, _)) :-
 :- pred code_util__cases_may_allocate_heap(list(case)).
 :- mode code_util__cases_may_allocate_heap(in) is semidet.
 
-code_util__cases_may_allocate_heap([case(_, Goal) | _]) :-
+code_util__cases_may_allocate_heap([case(_, _, Goal) | _]) :-
 	code_util__goal_may_allocate_heap(Goal).
 code_util__cases_may_allocate_heap([_ | Cases]) :-
 	code_util__cases_may_allocate_heap(Cases).
@@ -735,7 +735,7 @@ code_util__cannot_stack_flush_goals([Goal | Goals]) :-
 :- mode code_util__cannot_stack_flush_cases(in) is semidet.
 
 code_util__cannot_stack_flush_cases([]).
-code_util__cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
+code_util__cannot_stack_flush_cases([case(_, _, Goal) | Cases]) :-
 	code_util__cannot_stack_flush(Goal),
 	code_util__cannot_stack_flush_cases(Cases).
 
@@ -869,8 +869,8 @@ code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
 
 code_util__count_recursive_calls_cases([], _, _, _, _) :-
 	error("empty cases in code_util__count_recursive_calls_cases").
-code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
-		Min, Max) :-
+code_util__count_recursive_calls_cases([case(_, _, Goal) | Cases],
+		PredId, ProcId, Min, Max) :-
 	( Cases = [] ->
 		code_util__count_recursive_calls(Goal, PredId, ProcId,
 			Min, Max)

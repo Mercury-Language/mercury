@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,8 @@
 
 :- interface.
 
-:- import_module io, list, term.
+:- import_module prog_data.
+:- import_module io, list.
 
 	% Given a context, a starting indentation level and a list of words,
 	% print an error message that looks like this:
@@ -47,14 +48,14 @@
 				% white space may be rearranged and line
 				% breaks may be inserted.
 
-:- pred write_error_pieces(term__context::in, int::in,
+:- pred write_error_pieces(prog_context::in, int::in,
 	list(format_component)::in, io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-:- import_module prog_out.
+:- import_module prog_out, term.
 :- import_module char.
-:- import_module io, list, term, char, string, int.
+:- import_module io, list, char, string, int.
 
 write_error_pieces(Context, Indent, Components) -->
 	{
@@ -82,7 +83,7 @@ write_error_pieces(Context, Indent, Components) -->
 	},
 	write_lines(Lines, Context, Indent).
 
-:- pred write_lines(list(list(string))::in, term__context::in, int::in,
+:- pred write_lines(list(list(string))::in, prog_context::in, int::in,
 	io__state::di, io__state::uo) is det.
 
 write_lines([], _, _) --> [].
@@ -94,7 +95,7 @@ write_lines([Line | Lines], Context, Indent) -->
 	{ Indent2 is Indent + 2 },
 	write_nonfirst_lines(Lines, Context, Indent2).
 
-:- pred write_nonfirst_lines(list(list(string))::in, term__context::in, int::in,
+:- pred write_nonfirst_lines(list(list(string))::in, prog_context::in, int::in,
 	io__state::di, io__state::uo) is det.
 
 write_nonfirst_lines([], _, _) --> [].

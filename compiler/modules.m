@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -481,6 +481,7 @@
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, intermod, module_qual.
+:- import_module term, varset.
 
 :- import_module string, set, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
@@ -3530,7 +3531,7 @@ add_submodule(ModuleName - ModuleItemList, SubModules0, SubModules) :-
 								SubModules)
 	).
 
-:- pred report_error_implementation_in_interface(module_name, term__context,
+:- pred report_error_implementation_in_interface(module_name, prog_context,
 		io__state, io__state).
 :- mode report_error_implementation_in_interface(in, in, di, uo) is det.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, mode_errors.
-:- import_module list, term.
+:- import_module hlds_goal, prog_data, mode_errors.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,14 +62,14 @@
 	% from "delayed" to "pending".
 	% (This predicate just calls delay_info__bind_var in a loop.)
 	%
-:- pred delay_info__bind_var_list(list(var), delay_info, delay_info).
+:- pred delay_info__bind_var_list(list(prog_var), delay_info, delay_info).
 :- mode delay_info__bind_var_list(in, in, out) is det.
 
 	% Mark a variable as having been bound.
 	% This may allow a previously delayed goal to change status
 	% from "delayed" to "pending".
 	%
-:- pred delay_info__bind_var(delay_info, var, delay_info).
+:- pred delay_info__bind_var(delay_info, prog_var, delay_info).
 :- mode delay_info__bind_var(in, in, out) is det.
 
 	% Mark all variables as having been bound.
@@ -128,9 +128,9 @@
 					% next available sequence number.
 		).
 
-:- type waiting_goals_table == map(var, waiting_goals).
+:- type waiting_goals_table == map(prog_var, waiting_goals).
 	% Used to store the collection of goals waiting on a variable.
-:- type waiting_goals == map(goal_num, list(var)).
+:- type waiting_goals == map(goal_num, list(prog_var)).
 	% For each goal, we store all the variables that it is waiting on.
 
 :- type pending_goals_table == map(depth_num, list(seq_num)).
@@ -172,7 +172,7 @@ delay_info__check_invariant_x(DelayInfo) :-
 	% For every variable which goals are waiting on, check the
 	% consistency of all the goals waiting on that var.
 
-:- pred waiting_goals_check_invariant(list(var), waiting_goals_table).
+:- pred waiting_goals_check_invariant(list(prog_var), waiting_goals_table).
 :- mode waiting_goals_check_invariant(in, in) is semidet.
 
 waiting_goals_check_invariant([], _).
@@ -203,8 +203,8 @@ waiting_goal_check_invariant([GoalNum | GoalNums], WaitingGoals,
 	% and the set of vars which it is waiting on in that entry
 	% should be the same as in all its other entries.
 
-:- pred waiting_goal_vars_check_invariant(list(var), goal_num, set(var),
-					waiting_goals_table).
+:- pred waiting_goal_vars_check_invariant(list(prog_var), goal_num,
+		set(prog_var), waiting_goals_table).
 :- mode waiting_goal_vars_check_invariant(in, in, in, in) is semidet.
 
 waiting_goal_vars_check_invariant([], _, _, _).
@@ -290,7 +290,7 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
 
 delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	delay_info__check_invariant(DelayInfo0),
-	Error = mode_error_info(Vars, _, _, _),
+	Error = mode_error_info(Vars, _, _, _, _),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 
@@ -322,8 +322,8 @@ delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	% AllVars must be the list of all the variables which the goal is
 	% waiting on.
 
-:- pred add_waiting_vars(list(var), goal_num, list(var), waiting_goals_table,
-				waiting_goals_table).
+:- pred add_waiting_vars(list(prog_var), goal_num, list(prog_var),
+		waiting_goals_table, waiting_goals_table).
 :- mode add_waiting_vars(in, in, in, in, out) is det.
 
 add_waiting_vars([], _, _, WaitingGoalsTable, WaitingGoalsTable).
@@ -387,7 +387,7 @@ delay_info__bind_var(DelayInfo0, Var, DelayInfo) :-
 	% (depth of nested conjunction and sequence number within conjunction),
 	% to the collection of pending goals.
 
-:- pred add_pending_goals(list(goal_num), map(goal_num, list(var)),
+:- pred add_pending_goals(list(goal_num), map(goal_num, list(prog_var)),
 			pending_goals_table, pending_goals_table,
 			waiting_goals_table, waiting_goals_table).
 :- mode add_pending_goals(in, in, in, out, in, out) is det.
@@ -423,7 +423,7 @@ add_pending_goals([Depth - SeqNum | Rest], WaitingVarsTable,
 
 	% Remove all references to a goal from the waiting goals table.
 
-:- pred delete_waiting_vars(list(var), goal_num,
+:- pred delete_waiting_vars(list(prog_var), goal_num,
 				waiting_goals_table, waiting_goals_table).
 :- mode delete_waiting_vars(in, in, in, out) is det.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
 
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data.
 :- import_module hlds_module, type_util, mode_util, prog_data, passes_aux.
-:- import_module prog_out, globals, options.
+:- import_module prog_out, globals, options, (inst), instmap.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
 
@@ -237,7 +237,7 @@ first_order_check_goal_list([Goal - GoalInfo|Goals], Negated, WholeScc,
 first_order_check_case_list([], _, _, _, _, Module, Module) --> [].
 first_order_check_case_list([Case|Goals], Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module) -->
-	{ Case = case(_ConsId, Goal - GoalInfo) },
+	{ Case = case(_ConsId, _IMDelta, Goal - GoalInfo) },
 	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, Error, Module0, Module1),
 	first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
@@ -414,7 +414,7 @@ higher_order_check_goal_list([Goal - GoalInfo|Goals], Negated, WholeScc,
 higher_order_check_case_list([], _, _, _, _, _, Module, Module) --> [].
 higher_order_check_case_list([Case|Goals], Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module) -->
-	{ Case = case(_ConsId, Goal - GoalInfo) },
+	{ Case = case(_ConsId, _IMDelta, Goal - GoalInfo) },
 	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module1),
 	higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
@@ -672,12 +672,14 @@ process_procs([], _, _, _, _, ProcCalls, ProcCalls, HOInfo, HOInfo,
 process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 		ProcCalls, HOInfo0, HOInfo, CallsHO0, CallsHO) :- 
 	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(IT, ArgModes)),
 	proc_info_goal(ProcInfo, Goal - _GoalInfo),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	PredProcId = proc(PredId, ProcId),
 	check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
 	map__det_insert(ProcCalls0, PredProcId, Calls, ProcCalls1),
-	higherorder_in_out(ArgTypes, ArgModes, Module, HOInOut),
+	higherorder_in_out(ArgTypes, ArgModes, IT, Module, ProcInstMap,
+			HOInOut),
 	map__det_insert(HOInfo0, PredProcId, info(HaveAT, HOInOut), 
 		HOInfo1),
 	(
@@ -692,11 +694,13 @@ process_procs([ProcId|Procs], Module, PredId, ArgTypes, ProcTable, ProcCalls0,
 	
 	% determine if a given set of modes and types indicates that
 	% higher order values can be passed into and/or out of a proc
-:- pred higherorder_in_out(list(type), list(mode), module_info, ho_in_out). 
-:- mode higherorder_in_out(in, in, in, out) is det.
+:- pred higherorder_in_out(list(type), list(mode), inst_table, module_info,
+		instmap, ho_in_out). 
+:- mode higherorder_in_out(in, in, in, in, in, out) is det.
 
-higherorder_in_out(Types, Modes, Module, HOInOut) :-
-	higherorder_in_out1(Types, Modes, Module, no, HOIn, no, HOOut),
+higherorder_in_out(Types, Modes, IT, Module, InstMap, HOInOut) :-
+	higherorder_in_out1(Types, Modes, IT, Module, InstMap,
+				no, HOIn, no, HOOut),
 	bool_2_ho_in_out(HOIn, HOOut, HOInOut).
 
 :- pred bool_2_ho_in_out(bool, bool, ho_in_out).
@@ -707,17 +711,17 @@ bool_2_ho_in_out(no, yes, ho_out).
 bool_2_ho_in_out(yes, yes, ho_in_out).
 bool_2_ho_in_out(no, no, ho_none).
 	
-:- pred higherorder_in_out1(list(type), list(mode), module_info, bool, bool,
-	bool, bool).
-:- mode higherorder_in_out1(in, in, in, in, out, in, out) is det.
+:- pred higherorder_in_out1(list(type), list(mode), inst_table,
+		module_info, instmap, bool, bool, bool, bool).
+:- mode higherorder_in_out1(in, in, in, in, in, in, out, in, out) is det.
 
-higherorder_in_out1([], [], _Module, HOIn, HOIn, HOOut, HOOut).
-higherorder_in_out1([], [_|_], _, _, _, _, _) :-
+higherorder_in_out1([], [], _IT, _Module, _IM, HOIn, HOIn, HOOut, HOOut).
+higherorder_in_out1([], [_|_], _, _, _, _, _, _, _) :-
 	error("higherorder_in_out1: lists were different lengths").
-higherorder_in_out1([_|_], [], _, _, _, _, _) :-
+higherorder_in_out1([_|_], [], _, _, _, _, _, _, _) :-
 	error("higherorder_in_out1: lists were different lengths").
-higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn, 	
-		HOOut0, HOOut) :-
+higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, InstMap,
+		HOIn0, HOIn, 	HOOut0, HOOut) :-
 	(
 		% XXX : will have to use a more general check for higher
 		% order constants in parameters user could hide higher
@@ -725,12 +729,12 @@ higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn,
 		type_is_higher_order(Type, _, _)
 	->	
 		(
-			mode_is_input(Module, Mode) 
+			mode_is_input(InstMap, IT, Module, Mode) 
 		->	
 			HOIn1 = yes,
 			HOOut1 = HOOut0
 		;	
-			mode_is_output(Module, Mode)
+			mode_is_output(InstMap, IT, Module, Mode)
 		->
 			HOOut1 = yes,
 			HOIn1 = HOIn0
@@ -742,7 +746,8 @@ higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn,
 		HOIn1 = HOIn0,
 		HOOut1 = HOOut0
 	),
-	higherorder_in_out1(Types, Modes, Module, HOIn1, HOIn, HOOut1, HOOut).
+	higherorder_in_out1(Types, Modes, IT, Module, InstMap,
+			HOIn1, HOIn, HOOut1, HOOut).
 	
 	% return the set of all procs called in and all addresses
 	% taken, in a given goal
@@ -767,8 +772,8 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, 
-				_Modes, _Determinism, Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, _Modes,
+				_Determinism, _IMDelta, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)
@@ -853,7 +858,7 @@ check_goal_list([Goal - _GoalInfo|Goals], Calls0, Calls, HasAT0, HasAT,
 check_case_list([], Calls, Calls, HasAT, HasAT, CallsHO, CallsHO). 
 check_case_list([Case|Goals], Calls0, Calls, HasAT0, HasAT, CallsHO0, 
 		CallsHO) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
+	Case = case(_ConsId, _IMDelta, Goal - _GoalInfo),
 	check_goal1(Goal, Calls0, Calls1, HasAT0, HasAT1, CallsHO0, CallsHO1),
 	check_case_list(Goals, Calls1, Calls, HasAT1, HasAT, CallsHO1, CallsHO).
 
@@ -871,8 +876,8 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, 
-				_Modes, _Determinism, Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, _Modes,
+				_Determinism, _IMDelta, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, Calls0, Calls)
 	;
@@ -941,14 +946,14 @@ check_goal_list([Goal - _GoalInfo|Goals], Calls0, Calls) :-
 
 check_case_list([], Calls, Calls). 
 check_case_list([Case|Goals], Calls0, Calls) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
+	Case = case(_ConsId, _IMDelta, Goal - _GoalInfo),
 	get_called_procs(Goal, Calls0, Calls1), 
 	check_case_list(Goals, Calls1, Calls).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred emit_message(pred_proc_id, term__context, string, bool, 
+:- pred emit_message(pred_proc_id, prog_context, string, bool, 
 		module_info, module_info, io__state, io__state).
 :- mode emit_message(in, in, in, in, in, out, di, uo) is det.
 

@@ -94,6 +94,15 @@ Changes to the Mercury standard library:
   See the "benchmarking" chapter of the Mercury Library Reference Manual
   for details.
 
+* The types `term', `var', `var_supply' and `varset' are now polymorphic.
+  This allows one to distinguish between terms, etc. denoting different kinds
+  of things by giving them different types. The new coercion predicates
+  listed below allow one to coerce terms, etc between types.
+
+  The monomorphic versions of these have been retained as equivalences
+  to the polymorphic ones with the type variable instantiated to a dummy
+  type `generic'.
+
 * Miscellaneous new predicates.
 
   The Mercury standard library now includes the following new predicates:
@@ -118,6 +127,10 @@ Changes to the Mercury standard library:
 	  set__count/2
 	  set_ordlist__count/2
 	  store__new_cyclic_mutvar/4
+	  term__coerce/2
+	  term__coerce_var/2
+	  term__coerce_var_supply/2
+	  varset__coerce/2
 	  varset__select/3
 
   In addition, there are four new system constants added to the float
@@ -159,7 +172,7 @@ Changes to the Mercury implementation:
 * The compiler can now perform type specialization.
 
   Type specialization removes the overhead of polymorphic code, including
-  code which uses typeclasses. The disadvantage is increased code size.
+  code which uses type classes. The disadvantage is increased code size.
   Currently we do not perform inter-module type specialization.
   Type specialization is enabled by using the `--type-specialization' option.
 
@@ -182,7 +195,6 @@ Changes to the Mercury implementation:
   `--intermodule-optimization' enabled and you must also
   define the C macro ML_OMIT_ARRAY_BOUNDS_CHECKS (e.g. by using
   `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile). 
-  [XXX we also need to fix problems with intermodule inlining heuristics.]
 
 * Domain checking for higher mathematical operations can now be disabled.
 
@@ -280,7 +292,7 @@ Changes to the Mercury implementation:
 
 * We've made the MERCURY_OPTIONS environment variable somewhat easier to use.
 
-* Mtags is now able to produce tags for typeclass declarations.  It is
+* Mtags is now able to produce tags for type class declarations.  It is
   also able to produce tags files in the extended format supported by
   recent versions of Vim and Elvis.  Do `mtags --help' for more
   information.

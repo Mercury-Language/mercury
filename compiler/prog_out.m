@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,18 +19,18 @@
 
 :- interface.
 :- import_module prog_data.
-:- import_module list, io, term.
+:- import_module list, io.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
 :- mode prog_out__write_messages(in, di, uo) is det.
 
-:- pred prog_out__write_context(term__context, io__state, io__state).
+:- pred prog_out__write_context(prog_context, io__state, io__state).
 :- mode prog_out__write_context(in, di, uo) is det.
 
 	% XXX This pred should be deleted, and all uses replaced with
 	% XXX error_util:write_error_pieces, once zs has committed that
 	% XXX error_util.m.
-:- pred prog_out__write_strings_with_context(term__context, list(string),
+:- pred prog_out__write_strings_with_context(prog_context, list(string),
 	io__state, io__state).
 :- mode prog_out__write_strings_with_context(in, in, di, uo) is det.
 
@@ -61,7 +61,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, string, varset, std_util, term_io, int.
+:- import_module term, varset, term_io.
+:- import_module require, string, std_util, term, term_io, varset, int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,8 +80,10 @@ prog_out__write_messages([Message | Messages]) -->
 
 prog_out__write_message(Msg - Term) -->
 	(
-		{ Term = term__functor(_Functor, _Args, Context) }
+		{ Term = term__functor(_Functor, _Args, Context0) }
 	->
+		{ Context0 = term__context(File, Line) },
+		{ Context = term__context(File, Line) },
 		prog_out__write_context(Context)
 	;
 		[]
@@ -92,7 +95,8 @@ prog_out__write_message(Msg - Term) -->
 		io__write_string(".\n")
 	;
 		io__write_string(": "),
-		{ varset__init(VarSet) }, % XXX variable names in error messages
+		{ varset__init(VarSet) },
+			% XXX variable names in error messages
 		term_io__write_term_nl(VarSet, Term)
 	).
 
@@ -105,7 +109,7 @@ prog_out__write_message(Msg - Term) -->
 prog_out__write_context(Context) -->
 	prog_out__write_context_2(Context, _).
 
-:- pred prog_out__write_context_2(term__context, int, io__state, io__state).
+:- pred prog_out__write_context_2(prog_context, int, io__state, io__state).
 :- mode prog_out__write_context_2(in, out, di, uo) is det.
 
 prog_out__write_context_2(Context, Length) -->
@@ -125,7 +129,7 @@ prog_out__write_context_2(Context, Length) -->
 prog_out__write_strings_with_context(Context, Strings) -->
 	prog_out__write_strings_with_context_2(Context, Strings, 0).
 
-:- pred prog_out__write_strings_with_context_2(term__context, list(string), int,
+:- pred prog_out__write_strings_with_context_2(prog_context, list(string), int,
 	io__state, io__state).
 :- mode prog_out__write_strings_with_context_2(in, in, in, di, uo) is det.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
 :- implementation.
 
 :- import_module term_traversal, term_errors, hlds_goal, hlds_data.
-:- import_module mode_util, type_util, lp.
+:- import_module mode_util, type_util, lp, prog_data.
 
 :- import_module int, float, char, string, bool, set, bag, map.
 :- import_module term, varset, require.
@@ -194,19 +194,23 @@ find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
 	pred_info_context(PredInfo, Context),
 	proc_info_headvars(ProcInfo, Args),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_inst_table(ProcInfo, InstTable),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	proc_info_goal(ProcInfo, Goal),
 	map__init(EmptyMap),
 	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-	init_traversal_params(Module, FunctorInfo, PPId, Context, VarTypes,
-		OutputSupplierMap0, EmptyMap, MaxErrors, MaxPaths, Params),
+	init_traversal_params(Module, InstTable, FunctorInfo, PPId, Context,
+		VarTypes, OutputSupplierMap0, EmptyMap, MaxErrors, MaxPaths,
+		Params),
 
-	partition_call_args(Module, ArgModes, Args, InVars, OutVars),
+	partition_call_args(Module, ProcInstMap, ArgInstTable, ArgModes, Args,
+			InVars, OutVars),
 	Path0 = path_info(PPId, no, 0, [], OutVars),
 	set__singleton_set(PathSet0, Path0),
 	Info0 = ok(PathSet0, []),
-	traverse_goal(Goal, Params, Info0, Info),
+	traverse_goal(Goal, ProcInstMap, _, Params, Info0, Info),
 
 	(
 		Info = ok(Paths, TermErrors),
@@ -230,8 +234,8 @@ find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 		Result = error(Errors)
 	).
 
-:- pred update_output_suppliers(list(var)::in, bag(var)::in,
-	list(bool)::in, list(bool)::out) is det.
+:- pred update_output_suppliers(list(prog_var)::in, bag(prog_var)::in,
+		list(bool)::in, list(bool)::out) is det.
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-

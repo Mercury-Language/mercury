@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,10 +45,10 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, code_info, llds.
-:- import_module list, term.
+:- import_module prog_data, hlds_goal, hlds_data, code_info, llds.
+:- import_module list.
 
-:- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
+:- pred switch_gen__generate_switch(code_model, prog_var, can_fail, list(case),
 	store_map, hlds_goal_info, code_tree, code_info, code_info).
 :- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
 	is det.
@@ -159,7 +159,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 	% being switched on is an atomic type, a string, or
 	% something more complicated.
 
-:- pred switch_gen__determine_category(var, switch_category,
+:- pred switch_gen__determine_category(prog_var, switch_category,
 	code_info, code_info).
 :- mode switch_gen__determine_category(in, out, in, out) is det.
 
@@ -183,13 +183,13 @@ switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 %---------------------------------------------------------------------------%
 
-:- pred switch_gen__lookup_tags(list(case), var, cases_list,
+:- pred switch_gen__lookup_tags(list(case), prog_var, cases_list,
 				code_info, code_info).
 :- mode switch_gen__lookup_tags(in, in, out, in, out) is det.
 
 switch_gen__lookup_tags([], _, []) --> [].
 switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, Goal) },
+	{ Case = case(ConsId, _IMDelta, Goal) },
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ switch_gen__priority(Tag, Priority) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
@@ -243,9 +243,9 @@ switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
 	% and put that one first. This minimizes the number of pipeline
 	% breaks caused by taken branches.
 
-:- pred switch_gen__generate_all_cases(list(extended_case), var, code_model,
-	can_fail, store_map, label, branch_end, branch_end, code_tree,
-	code_info, code_info).
+:- pred switch_gen__generate_all_cases(list(extended_case), prog_var,
+	code_model, can_fail, store_map, label, branch_end, branch_end,
+	code_tree, code_info, code_info).
 :- mode switch_gen__generate_all_cases(in, in, in, in, in, in, in, out, out,
 	in, out) is det.
 
@@ -285,7 +285,7 @@ switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, StoreMap,
 		StoreMap, EndLabel, MaybeEnd0, MaybeEnd, CasesCode),
 	{ Code = tree(VarCode, CasesCode) }.
 
-:- pred switch_gen__generate_cases(list(extended_case), var, code_model,
+:- pred switch_gen__generate_cases(list(extended_case), prog_var, code_model,
 	can_fail, store_map, label, branch_end, branch_end, code_tree,
 	code_info, code_info).
 :- mode switch_gen__generate_cases(in, in, in, in, in, in, in, out, out,

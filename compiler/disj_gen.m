@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,7 +27,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, code_util, trace, options, globals.
+:- import_module prog_data, hlds_data, code_gen, code_util, trace.
+:- import_module options, globals.
 :- import_module bool, set, tree, map, std_util, term, require.
 
 disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
@@ -53,7 +54,7 @@ disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_real_disj(code_model::in, set(var)::in,
+:- pred disj_gen__generate_real_disj(code_model::in, set(prog_var)::in,
 	list(hlds_goal)::in, store_map::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 

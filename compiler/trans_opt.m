@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,12 +162,12 @@ trans_opt__write_procs([ProcId | ProcIds], PredId, PredInfo) -->
 	{ SymName = qualified(ModuleName, PredName) },
 	{ proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize) },
 	{ proc_info_get_maybe_termination_info(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, ModeList) },
+	{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 
 	% All predicates to write procedure items into the .trans_opt file
 	% should go here.
 	termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Context, ArgSize, Termination),
+		ArgModes, Context, ArgSize, Termination),
 	
 	trans_opt__write_procs(ProcIds, PredId, PredInfo).
 

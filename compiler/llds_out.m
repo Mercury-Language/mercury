@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,12 +125,12 @@
 
 :- implementation.
 
-:- import_module globals, options.
+:- import_module globals, options, varset, term.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 
-:- import_module int, list, char, string, std_util, term, varset.
-:- import_module map, set, bintree_set, assoc_list, require.
+:- import_module int, list, char, string, map, std_util.
+:- import_module set, bintree_set, assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -167,43 +167,81 @@ decl_set_is_member(DeclId, DeclSet) :-
 output_llds(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
-		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
+		{ C_File = c_file(ModuleName, C_HeaderInfo,
+			UserCCodes, Exports, Datas, Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
-		output_split_c_file_init(ModuleName, C_Modules,
+		output_split_c_file_init(ModuleName, Modules, Datas,
 			StackLayoutLabels),
-		output_split_c_file_list(C_Modules, 1, ModuleName,
-			C_HeaderInfo, StackLayoutLabels)
+		output_split_user_c_codes(UserCCodes, ModuleName,
+			C_HeaderInfo, StackLayoutLabels, 1, Num1),
+		output_split_c_exports(Exports, ModuleName,
+			C_HeaderInfo, StackLayoutLabels, Num1, Num2),
+		output_split_comp_gen_c_datas(Datas, ModuleName,
+			C_HeaderInfo, StackLayoutLabels, Num2, Num3),
+		output_split_comp_gen_c_modules(Modules, ModuleName,
+			C_HeaderInfo, StackLayoutLabels, Num3, _Num)
 	;
 		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
 
-:- pred make_directory(string, io__state, io__state).
-:- mode make_directory(in, di, uo) is det.
+:- pred output_split_user_c_codes(list(user_c_code)::in,
+	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
 
-make_directory(DirName) -->
-	{ string__format("[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)],
-		Command) },
-	io__call_system(Command, _Result).
+output_split_user_c_codes([], _, _, _, Num, Num) --> [].
+output_split_user_c_codes([UserCCode | UserCCodes], ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num0, Num) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines, [UserCCode], [], [], []) },
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	{ Num1 is Num0 + 1 },
+	output_split_user_c_codes(UserCCodes, ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num1, Num).
 
-:- pred output_split_c_file_list(list(c_module), int, module_name,
-	list(c_header_code), set_bbbtree(label), io__state, io__state).
-:- mode output_split_c_file_list(in, in, in, in, in, di, uo) is det.
+:- pred output_split_c_exports(list(c_export)::in,
+	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
 
-output_split_c_file_list([], _, _, _, _) --> [].
-output_split_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines,
-		StackLayoutLabels) -->
-	output_single_c_file(c_file(ModuleName, C_HeaderLines, [Module]),
-		yes(Num), StackLayoutLabels),
-	{ Num1 is Num + 1 },
-	output_split_c_file_list(Modules, Num1, ModuleName, C_HeaderLines,
-		StackLayoutLabels).
+output_split_c_exports([], _, _, _, Num, Num) --> [].
+output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num0, Num) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], []) },
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	{ Num1 is Num0 + 1 },
+	output_split_c_exports(Exports, ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num1, Num).
 
-:- pred output_split_c_file_init(module_name, list(c_module),
-	set_bbbtree(label), io__state, io__state).
-:- mode output_split_c_file_init(in, in, in, di, uo) is det.
+:- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
+	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
 
-output_split_c_file_init(ModuleName, C_Modules, StackLayoutLabels) -->
+output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
+output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num0, Num) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [Data], []) },
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	{ Num1 is Num0 + 1 },
+	output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num1, Num).
+
+:- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
+	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	int::in, int::out, io__state::di, io__state::uo) is det.
+
+output_split_comp_gen_c_modules([], _, _, _, Num, Num) --> [].
+output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num0, Num) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Module]) },
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	{ Num1 is Num0 + 1 },
+	output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
+		StackLayoutLabels, Num1, Num).
+
+:- pred output_split_c_file_init(module_name, list(comp_gen_c_module),
+	list(comp_gen_c_data), set_bbbtree(label), io__state, io__state).
+:- mode output_split_c_file_init(in, in, in, in, di, uo) is det.
+
+output_split_c_file_init(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
@@ -227,7 +265,7 @@ output_split_c_file_init(ModuleName, C_Modules, StackLayoutLabels) -->
 		io__write_string("*/\n\n"),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
-		output_c_module_init_list(ModuleName, C_Modules,
+		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
 		io__told
 	;
@@ -244,11 +282,6 @@ output_split_c_file_init(ModuleName, C_Modules, StackLayoutLabels) -->
 :- mode output_c_file_mercury_headers(di, uo) is det.
 
 output_c_file_mercury_headers -->
-		% The next two lines are only until MR_USE_REDOFR is default.
-		% The #undef avoids a warning if the invocation of mgnuc
-		% also supplies a definition on the command line.
-	io__write_string("#undef MR_USE_REDOFR\n"),
-	io__write_string("#define MR_USE_REDOFR\n"),
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel \= none } ->
 		io__write_string("#include ""mercury_imp.h""\n"),
@@ -261,8 +294,9 @@ output_c_file_mercury_headers -->
 	io__state, io__state).
 :- mode output_single_c_file(in, in, in, di, uo) is det.
 
-output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
-		StackLayoutLabels) -->
+output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
+	{ CFile = c_file(ModuleName, C_HeaderLines,
+		UserCCode, Exports, Datas, Modules) },
 	( { SplitFiles = yes(Num) } ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
@@ -293,18 +327,26 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 			io__write_string("*/\n\n")
 		),
 		output_c_file_mercury_headers,
+
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
+
 		{ gather_c_file_labels(Modules, Labels) },
 		{ decl_set_init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
-		output_c_data_def_list(Modules, DeclSet1, DeclSet),
-		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
+		output_c_data_def_list(Datas, DeclSet1, DeclSet2),
+
+		output_comp_gen_c_data_list(Datas, DeclSet2, DeclSet3),
+		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
+			DeclSet3, _DeclSet),
+		output_user_c_code_list(UserCCode),
+		output_exported_c_functions(Exports),
+
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
 			io__write_string("\n"),
-			output_c_module_init_list(ModuleName, Modules,
+			output_c_module_init_list(ModuleName, Modules, Datas,
 				StackLayoutLabels)
 		),
 		io__told
@@ -318,12 +360,15 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 		io__set_exit_status(1)
 	).
 
-:- pred output_c_module_init_list(module_name, list(c_module),
-	set_bbbtree(label), io__state, io__state).
-:- mode output_c_module_init_list(in, in, in, di, uo) is det.
+:- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
+	list(comp_gen_c_data)::in, set_bbbtree(label)::in,
+	io__state::di, io__state::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, StackLayoutLabels) -->
-	{ divide_modules_on_init_status(Modules, StackLayoutLabels,
+output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
+	{ MustInit = lambda([Module::in] is semidet, (
+		module_defines_label_with_layout(Module, StackLayoutLabels)
+	)) },
+	{ list__filter(MustInit, Modules,
 		AlwaysInitModules, MaybeInitModules) },
 	{ list__chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches) },
 	{ list__chunk(MaybeInitModules, 40, MaybeInitModuleBunches) },
@@ -365,7 +410,7 @@ output_c_module_init_list(ModuleName, Modules, StackLayoutLabels) -->
 		io__write_string("#endif\n\n")
 	),
 
-	output_c_data_init_list(Modules),
+	output_c_data_init_list(Datas),
 	io__write_string("\t}\n"),
 	io__write_string("}\n\n"),
 	io__write_string(
@@ -373,59 +418,21 @@ output_c_module_init_list(ModuleName, Modules, StackLayoutLabels) -->
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
-	% Divide_modules_on_init_status checks every module in its input list.
-	% If the module does not have compiler-generated code in it, it
-	% ignores the module. If it does, it will include the module in
-	% one of its output lists. If the module defines a label that has
-	% a stack layout structure, it will go into the always-init list,
-	% otherwise it will go into the maybe-init list.
+:- pred module_defines_label_with_layout(comp_gen_c_module::in,
+	set_bbbtree(label)::in) is semidet.
 
-:- pred divide_modules_on_init_status(list(c_module), set_bbbtree(label),
-	list(c_module), list(c_module)).
-:- mode divide_modules_on_init_status(in, in, out, out) is det.
+module_defines_label_with_layout(Module, StackLayoutLabels) :-
+		% Checking whether the set is empty or not
+		% allows us to avoid calling gather_c_module_labels.
+	\+ set_bbbtree__empty(StackLayoutLabels),
+	Module = comp_gen_c_module(_, Procedures),
+	gather_c_module_labels(Procedures, Labels),
+	list__member(Label, Labels),
+	set_bbbtree__member(Label, StackLayoutLabels).
 
-divide_modules_on_init_status([], _, [], []).
-divide_modules_on_init_status([Module | Modules], StackLayoutLabels,
-		AlwaysInit, MaybeInit) :-
-	(
-		Module = c_data(_, _, _, _, _),
-		divide_modules_on_init_status(Modules, StackLayoutLabels,
-			AlwaysInit, MaybeInit)
-	;
-		Module = c_export(_),
-		divide_modules_on_init_status(Modules, StackLayoutLabels,
-			AlwaysInit, MaybeInit)
-	;
-		Module = c_code(_, _),
-		divide_modules_on_init_status(Modules, StackLayoutLabels,
-			AlwaysInit, MaybeInit)
-	;
-		Module = c_module(_, Procedures),
-		divide_modules_on_init_status(Modules, StackLayoutLabels,
-			AlwaysInit1, MaybeInit1),
-		( set_bbbtree__empty(StackLayoutLabels) ->
-			% Checking whether the set is empty or not
-			% allows us to avoid calling gather_c_module_labels.
-			AlwaysInit = AlwaysInit1,
-			MaybeInit = [Module | MaybeInit1]
-		;
-			gather_c_module_labels(Procedures, Labels),
-			(
-				list__member(Label, Labels),
-				set_bbbtree__member(Label, StackLayoutLabels)
-			->
-				AlwaysInit = [Module | AlwaysInit1],
-				MaybeInit = MaybeInit1
-			;
-				AlwaysInit = AlwaysInit1,
-				MaybeInit = [Module | MaybeInit1]
-			)
-		)
-	).
-
-:- pred output_init_bunch_defs(list(list(c_module)), module_name, string, int,
-	bool, io__state, io__state).
-:- mode output_init_bunch_defs(in, in, in, in, in, di, uo) is det.
+:- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
+	module_name::in, string::in, int::in, bool::in,
+	io__state::di, io__state::uo) is det.
 
 output_init_bunch_defs([], _, _, _, _) --> [].
 output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
@@ -440,35 +447,29 @@ output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
 	output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq,
 		SplitFiles).
 
-:- pred output_init_bunch_def(list(c_module), module_name, bool,
-	io__state, io__state).
-:- mode output_init_bunch_def(in, in, in, di, uo) is det.
+:- pred output_init_bunch_def(list(comp_gen_c_module)::in, module_name::in,
+	bool::in, io__state::di, io__state::uo) is det.
 
 output_init_bunch_def([], _, _) --> [].
 output_init_bunch_def([Module | Modules], ModuleName, SplitFiles) -->
-	( { Module = c_module(C_ModuleName, _) } ->
-		( { SplitFiles = yes } ->
-			io__write_string("\t{ extern ModuleFunc "),
-			io__write_string(C_ModuleName),
-			io__write_string(";\n"),
-			io__write_string("\t  "),
-			io__write_string(C_ModuleName),
-			io__write_string("(); }\n")
-		;
-			io__write_string("\t"),
-			io__write_string(C_ModuleName),
-			io__write_string("();\n")
-		),
-		output_init_bunch_def(Modules, ModuleName, SplitFiles)
+	{ Module = comp_gen_c_module(C_ModuleName, _) },
+	( { SplitFiles = yes } ->
+		io__write_string("\t{ extern ModuleFunc "),
+		io__write_string(C_ModuleName),
+		io__write_string(";\n"),
+		io__write_string("\t  "),
+		io__write_string(C_ModuleName),
+		io__write_string("(); }\n")
 	;
-		% divide_modules_on_init_status should have filtered out
-		% whatever kind of module we just got.
-		{ error("unexpected type of c_module in output_init_bunch") }
-	).
+		io__write_string("\t"),
+		io__write_string(C_ModuleName),
+		io__write_string("();\n")
+	),
+	output_init_bunch_def(Modules, ModuleName, SplitFiles).
 
-:- pred output_init_bunch_calls(list(list(c_module)), module_name, string, int,
-	io__state, io__state).
-:- mode output_init_bunch_calls(in, in, in, in, di, uo) is det.
+:- pred output_init_bunch_calls(list(list(comp_gen_c_module))::in,
+	module_name::in, string::in, int::in, io__state::di, io__state::uo)
+	is det.
 
 output_init_bunch_calls([], _, _, _) --> [].
 output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
@@ -481,18 +482,13 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	% Output MR_INIT_BASE_TYPE_INFO(BaseTypeInfo, TypeId);
 	% for each base_type_info defined in this module.
 
-:- pred output_c_data_init_list(list(c_module), io__state, io__state).
-:- mode output_c_data_init_list(in, di, uo) is det.
+:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
 
 output_c_data_init_list([]) --> [].
-output_c_data_init_list([c_export(_) | Ms]) -->
-	output_c_data_init_list(Ms).
-output_c_data_init_list([c_code(_, _) | Ms]) -->
-	output_c_data_init_list(Ms).
-output_c_data_init_list([c_module(_, _) | Ms]) -->
-	output_c_data_init_list(Ms).
-output_c_data_init_list([c_data(ModuleName, DataName, _, _, _) | Ms])  -->
+output_c_data_init_list([Data | Datas]) -->
 	(
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _) },
 		{ DataName = base_type(info, TypeName, Arity) }
 	->
 		io__write_string("\t\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
@@ -515,7 +511,7 @@ output_c_data_init_list([c_data(ModuleName, DataName, _, _, _) | Ms])  -->
 	;
 		[]
 	),
-	output_c_data_init_list(Ms).
+	output_c_data_init_list(Datas).
 
 :- pred output_init_name(module_name, io__state, io__state).
 :- mode output_init_name(in, di, uo) is det.
@@ -547,8 +543,8 @@ output_bunch_name(ModuleName, InitStatus, Number) -->
 	% data definition to appear before any use of the type in
 	% forward declarations of static constants.
 	%
-:- pred output_c_data_def_list(list(c_module), decl_set, decl_set, 
-		io__state, io__state).
+:- pred output_c_data_def_list(list(comp_gen_c_data), decl_set, decl_set, 
+	io__state, io__state).
 :- mode output_c_data_def_list(in, in, out, di, uo) is det.
 
 output_c_data_def_list([], DeclSet, DeclSet) --> [].
@@ -556,14 +552,12 @@ output_c_data_def_list([M | Ms], DeclSet0, DeclSet) -->
 	output_c_data_def(M, DeclSet0, DeclSet1),
 	output_c_data_def_list(Ms, DeclSet1, DeclSet).
 
-:- pred output_c_data_def(c_module, decl_set, decl_set, io__state, io__state).
+:- pred output_c_data_def(comp_gen_c_data, decl_set, decl_set,
+	io__state, io__state).
 :- mode output_c_data_def(in, in, out, di, uo) is det.
 
-output_c_data_def(c_module(_, _), DeclSet, DeclSet) --> [].
-output_c_data_def(c_code(_, _), DeclSet, DeclSet) --> [].
-output_c_data_def(c_export(_), DeclSet, DeclSet) --> [].
-output_c_data_def(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
-		_Refs), DeclSet0, DeclSet) -->
+output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
+		ArgVals, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 
@@ -594,21 +588,23 @@ output_c_data_def(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 			yes, yes, no, "", "", 0, _),
 	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
 
-:- pred output_c_module_list(list(c_module), set_bbbtree(label), decl_set,
-	io__state, io__state).
-:- mode output_c_module_list(in, in, in, di, uo) is det.
+:- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
+	set_bbbtree(label)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_c_module_list([], _, _) --> [].
-output_c_module_list([M | Ms], StackLayoutLabels, DeclSet0) -->
-	output_c_module(M, StackLayoutLabels, DeclSet0, DeclSet),
-	output_c_module_list(Ms, StackLayoutLabels, DeclSet).
-
-:- pred output_c_module(c_module, set_bbbtree(label), decl_set, decl_set,
-	io__state, io__state).
-:- mode output_c_module(in, in, in, out, di, uo) is det.
-
-output_c_module(c_module(ModuleName, Procedures), StackLayoutLabels,
+output_comp_gen_c_module_list([], _, DeclSet, DeclSet) --> [].
+output_comp_gen_c_module_list([Module | Modules], StackLayoutLabels,
 		DeclSet0, DeclSet) -->
+	output_comp_gen_c_module(Module, StackLayoutLabels,
+		DeclSet0, DeclSet1),
+	output_comp_gen_c_module_list(Modules, StackLayoutLabels,
+		DeclSet1, DeclSet).
+
+:- pred output_comp_gen_c_module(comp_gen_c_module::in, set_bbbtree(label)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_comp_gen_c_module(comp_gen_c_module(ModuleName, Procedures),
+		StackLayoutLabels, DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
 	io__write_string("\n"),
@@ -624,8 +620,19 @@ output_c_module(c_module(ModuleName, Procedures), StackLayoutLabels,
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
 
-output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
-		_Refs), _, DeclSet0, DeclSet) -->
+:- pred output_comp_gen_c_data_list(list(comp_gen_c_data)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_comp_gen_c_data_list([], DeclSet, DeclSet) --> [].
+output_comp_gen_c_data_list([Data | Datas], DeclSet0, DeclSet) -->
+	output_comp_gen_c_data(Data, DeclSet0, DeclSet1),
+	output_comp_gen_c_data_list(Datas, DeclSet1, DeclSet).
+
+:- pred output_comp_gen_c_data(comp_gen_c_data::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName,
+		ExportedFromModule, ArgVals, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
@@ -662,7 +669,18 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 		yes, "", "", 0, _),
 	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
 
-output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
+:- pred output_user_c_code_list(list(user_c_code)::in,
+	io__state::di, io__state::uo) is det.
+
+output_user_c_code_list([]) --> [].
+output_user_c_code_list([UserCCode | UserCCodes]) -->
+	output_user_c_code(UserCCode),
+	output_user_c_code_list(UserCCodes).
+
+:- pred output_user_c_code(user_c_code::in, io__state::di, io__state::uo)
+	is det.
+
+output_user_c_code(user_c_code(C_Code, Context)) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -676,27 +694,21 @@ output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
 	io__write_string("\n"),
 	output_reset_line_num.
 
-output_c_module(c_export(PragmaExports), _, DeclSet, DeclSet) -->
-	output_exported_c_functions(PragmaExports).
-
 	% output_c_header_include_lines reverses the list of c header lines
 	% and passes them to output_c_header_include_lines_2 which outputs them.
-	% The list must be reversed since they are inserted in reverse order
-:- pred output_c_header_include_lines(list(c_header_code),
-					io__state, io__state).
-:- mode output_c_header_include_lines(in, di, uo) is det.
+	% The list must be reversed since they are inserted in reverse order.
+:- pred output_c_header_include_lines(list(c_header_code)::in,
+	io__state::di, io__state::uo) is det.
 
 output_c_header_include_lines(Headers) -->
 	{ list__reverse(Headers, RevHeaders) },
 	output_c_header_include_lines_2(RevHeaders).
 
-:- pred output_c_header_include_lines_2(list(c_header_code),
-					io__state, io__state).
-:- mode output_c_header_include_lines_2(in, di, uo) is det.
+:- pred output_c_header_include_lines_2(list(c_header_code)::in,
+	io__state::di, io__state::uo) is det.
 
-output_c_header_include_lines_2([]) --> 
-	[].
-output_c_header_include_lines_2([Code - Context|Hs]) -->
+output_c_header_include_lines_2([]) --> [].
+output_c_header_include_lines_2([Code - Context | Hs]) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -773,43 +785,54 @@ output_c_label_init_list([Label | Labels], StackLayoutLabels) -->
 :- mode output_c_label_init(in, in, di, uo) is det.
 
 output_c_label_init(Label, StackLayoutLabels) -->
+	{ set_bbbtree__member(Label, StackLayoutLabels) ->
+		SuffixOpen = "_sl(",
+		( label_is_proc_entry(Label, yes) ->
+			% Labels whose stack layouts are proc layouts may need
+			% to have the code address in that layout initialized
+			% at run time (if code addresses are not static).
+			InitProcLayout = yes
+		;
+			% Labels whose stack layouts are internal layouts
+			% do not have code addresses in their layouts.
+			InitProcLayout = no
+		)
+	;
+		SuffixOpen = "(",
+		% This label has no stack layout to initialize.
+		InitProcLayout = no
+	},
 	(
 		{ Label = exported(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_entry_sl(")
-		;
-			io__write_string("\tinit_entry(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		{ TabInitMacro = "\tinit_entry" }
 	;
 		{ Label = local(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_entry_sl(")
-		;
-			io__write_string("\tinit_entry(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		{ TabInitMacro = "\tinit_entry" }
 	;
 		{ Label = c_local(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_local_sl(")
-		;
-			io__write_string("\tinit_local(")
-		),
+		{ TabInitMacro = "\tinit_local" }
+	;
+		{ Label = local(_, _) },
+		{ TabInitMacro = "\tinit_label" }
+	),
+	io__write_string(TabInitMacro),
+	io__write_string(SuffixOpen),
+	output_label(Label),
+	io__write_string(");\n"),
+	( { InitProcLayout = yes } ->
+		io__write_string("\tMR_INIT_PROC_LAYOUT_ADDR("),
 		output_label(Label),
 		io__write_string(");\n")
 	;
-		{ Label = local(_, _) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_label_sl(")
-		;
-			io__write_string("\tinit_label(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		[]
 	).
+
+:- pred label_is_proc_entry(label::in, bool::out) is det.
+
+label_is_proc_entry(local(_, _), no).
+label_is_proc_entry(c_local(_), yes).
+label_is_proc_entry(local(_), yes).
+label_is_proc_entry(exported(_), yes).
 
 :- pred output_c_procedure_list_decls(list(c_procedure), decl_set, decl_set,
 	io__state, io__state).
@@ -821,7 +844,7 @@ output_c_procedure_list_decls([Proc | Procs], DeclSet0, DeclSet) -->
 	output_c_procedure_list_decls(Procs, DeclSet1, DeclSet).
 
 :- pred output_c_procedure_list(list(c_procedure), bool, bool,
-				io__state, io__state).
+			io__state, io__state).
 :- mode output_c_procedure_list(in, in, in, di, uo) is det.
 
 output_c_procedure_list([], _, _) --> [].
@@ -1169,8 +1192,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 	pair(label, bintree_set(label)), io__state, io__state).
 :- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
 
-output_instruction_and_comment(Instr, Comment, PrintComments,
-		ProfInfo) -->
+output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
 	(
 		{ PrintComments = no },
 		( { Instr = comment(_) ; Instr = livevals(_) } ->
@@ -1465,7 +1487,7 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
 	io__write_string(C_Code).
 
-:- pred output_set_line_num(term__context, io__state, io__state).
+:- pred output_set_line_num(prog_context, io__state, io__state).
 :- mode output_set_line_num(in, di, uo) is det.
 
 output_set_line_num(Context) -->
@@ -1518,7 +1540,7 @@ output_pragma_decls([D|Decls]) -->
 	(
 		{ D = pragma_c_arg_decl(Type, VarName) },
 		% Apart from special cases, the local variables are Words
-		{ export__term_to_type_string(Type, VarType) },
+		{ export__type_to_type_string(Type, VarType) },
 		io__write_string("\t"),
 		io__write_string(VarType),
 		io__write_string("\t"),
@@ -1664,7 +1686,7 @@ output_gc_livevals_2([LiveInfo | LiveInfos]) -->
 	io__write_string("\n"),
 	output_gc_livevals_2(LiveInfos).
 
-:- pred output_gc_livevals_params(assoc_list(var, set(layout_locn)),
+:- pred output_gc_livevals_params(assoc_list(tvar, set(layout_locn)),
 	io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.
 
@@ -1716,17 +1738,21 @@ output_live_value_type(redofr) --> io__write_string("MR_redofr").
 output_live_value_type(redoip) --> io__write_string("MR_redoip").
 output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(Var, Name, Type, Inst)) --> 
+output_live_value_type(var(Var, Name, Type, QualifiedInst)) --> 
 	io__write_string("var("),
 	{ term__var_to_int(Var, VarInt) },
 	io__write_int(VarInt),
 	io__write_string(", "),
 	io__write_string(Name),
 	io__write_string(", "),
-	{ varset__init(NewVarset) },
-	mercury_output_term(Type, NewVarset, no),
+		% XXX Fake type varset
+	{ varset__init(NewTVarset) },
+	mercury_output_term(Type, NewTVarset, no),
 	io__write_string(", "),
-	mercury_output_inst(Inst, NewVarset),
+	{ QualifiedInst = qualified_inst(InstTable, Inst) },
+		% XXX Fake inst varset
+	{ varset__init(NewIVarset) },
+	mercury_output_inst(expand_silently, Inst, NewIVarset, InstTable),
 	io__write_string(")").
 
 :- pred output_temp_decls(int, string, io__state, io__state).
@@ -2034,11 +2060,13 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 		globals__io_get_globals(Globals),
 		{ globals__have_static_code_addresses(Globals, StaticCode) },
 		(
-				% Don't make decls of base_type_infos `const' 
-				% if we don't have static code addresses.
+				% Don't make the structure `const' 
+				% if the structure will eventually include
+				% code addresses but we don't have static code
+				% addresses.
 			{ StaticCode = no },
-			{ DeclId = data_addr(
-					data_addr(_, base_type(info, _, _))) }
+			{ DeclId = data_addr(data_addr(_, DataName)) },
+			{ data_name_would_include_code_address(DataName, yes) }
 		->
 			[]
 		;
@@ -2078,6 +2106,23 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 		io__write_string(";\n")
 	).
 
+	% Return true if a data structure of the given type will eventually
+	% include code addresses. Note that we can't just test the data
+	% structure itself, since in the absence of code addresses the earlier
+	% passes will have replaced any code addresses with dummy values
+	% that will have to be overridden with the real code address at
+	% initialization time.
+
+:- pred data_name_would_include_code_address(data_name, bool).
+:- mode data_name_would_include_code_address(in, out) is det.
+
+data_name_would_include_code_address(common(_), no).
+data_name_would_include_code_address(base_type(info, _, _), yes).
+data_name_would_include_code_address(base_type(layout, _, _), no).
+data_name_would_include_code_address(base_type(functors, _, _), no).
+data_name_would_include_code_address(base_typeclass_info(_, _), yes).
+data_name_would_include_code_address(proc_layout(_), yes).
+data_name_would_include_code_address(internal_layout(_), no).
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -2435,12 +2480,13 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 :- type linkage ---> extern ; static.
 
 :- pred linkage(data_name::in, linkage::out) is det.
-linkage(base_typeclass_info(_, _), extern).
+linkage(common(_),                 static).
 linkage(base_type(info, _, _),     extern).
 linkage(base_type(layout, _, _),   static).
 linkage(base_type(functors, _, _), static).
-linkage(common(_),                 static).
-linkage(stack_layout(_),           static).
+linkage(base_typeclass_info(_, _), extern).
+linkage(proc_layout(_),            static).
+linkage(internal_layout(_),        static).
 
 %-----------------------------------------------------------------------------%
 
@@ -2693,7 +2739,12 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string(Str)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
-		{ VarName = stack_layout(Label) },
+		{ VarName = proc_layout(Label) },
+		io__write_string("_layout__"),
+		output_label(Label)
+	;
+		% Keep this code in sync with make_stack_layout_name/3.
+		{ VarName = internal_layout(Label) },
 		io__write_string("_layout__"),
 		output_label(Label)
 	).
@@ -3391,9 +3442,9 @@ output_lval(temp(Type, Num)) -->
 		io__write_int(Num)
 	).
 output_lval(mem_ref(Rval)) -->
-	io__write_string("XXX("),
+	io__write_string("(*(Word *)("),
 	output_rval(Rval),
-	io__write_string(")").
+	io__write_string("))").
 
 %-----------------------------------------------------------------------------%
 
@@ -3648,39 +3699,37 @@ llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_c_file_labels(list(c_module), list(label)).
-:- mode gather_c_file_labels(in, out) is det.
+:- pred gather_c_file_labels(list(comp_gen_c_module)::in, list(label)::out)
+	is det.
 
 gather_c_file_labels(Modules, Labels) :-
 	gather_labels_from_c_modules(Modules, [], Labels1),
 	list__reverse(Labels1, Labels).
 
-:- pred gather_c_module_labels(list(c_procedure), list(label)).
-:- mode gather_c_module_labels(in, out) is det.
+:- pred gather_c_module_labels(list(c_procedure)::in, list(label)::out) is det.
 
 gather_c_module_labels(Procs, Labels) :-
 	gather_labels_from_c_procs(Procs, [], Labels1),
 	list__reverse(Labels1, Labels).
 
-:- pred gather_labels_from_c_modules(list(c_module), list(label), list(label)).
-:- mode gather_labels_from_c_modules(in, in, out) is det.
+%-----------------------------------------------------------------------------%
+
+:- pred gather_labels_from_c_modules(list(comp_gen_c_module)::in,
+	list(label)::in, list(label)::out) is det.
 
 gather_labels_from_c_modules([], Labels, Labels).
 gather_labels_from_c_modules([Module | Modules], Labels0, Labels) :-
 	gather_labels_from_c_module(Module, Labels0, Labels1),
 	gather_labels_from_c_modules(Modules, Labels1, Labels).
 
-:- pred gather_labels_from_c_module(c_module, list(label), list(label)).
-:- mode gather_labels_from_c_module(in, in, out) is det.
+:- pred gather_labels_from_c_module(comp_gen_c_module::in,
+	list(label)::in, list(label)::out) is det.
 
-gather_labels_from_c_module(c_module(_, Procs), Labels0, Labels) :-
+gather_labels_from_c_module(comp_gen_c_module(_, Procs), Labels0, Labels) :-
 	gather_labels_from_c_procs(Procs, Labels0, Labels).
-gather_labels_from_c_module(c_data(_, _, _, _, _), Labels, Labels).
-gather_labels_from_c_module(c_code(_, _), Labels, Labels).
-gather_labels_from_c_module(c_export(_), Labels, Labels).
 
-:- pred gather_labels_from_c_procs(list(c_procedure), list(label), list(label)).
-:- mode gather_labels_from_c_procs(in, in, out) is det.
+:- pred gather_labels_from_c_procs(list(c_procedure)::in,
+	list(label)::in, list(label)::out) is det.
 
 gather_labels_from_c_procs([], Labels, Labels).
 gather_labels_from_c_procs([c_procedure(_, _, _, Instrs) | Procs],
@@ -3688,8 +3737,8 @@ gather_labels_from_c_procs([c_procedure(_, _, _, Instrs) | Procs],
 	gather_labels_from_instrs(Instrs, Labels0, Labels1),
 	gather_labels_from_c_procs(Procs, Labels1, Labels).
 
-:- pred gather_labels_from_instrs(list(instruction), list(label), list(label)).
-:- mode gather_labels_from_instrs(in, in, out) is det.
+:- pred gather_labels_from_instrs(list(instruction)::in,
+	list(label)::in, list(label)::out) is det.
 
 gather_labels_from_instrs([], Labels, Labels).
 gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
@@ -3699,5 +3748,14 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 		Labels1 = Labels0
 	),
 	gather_labels_from_instrs(Instrs, Labels1, Labels).
+
+%-----------------------------------------------------------------------------%
+
+:- pred make_directory(string::in, io__state::di, io__state::uo) is det.
+
+make_directory(DirName) -->
+	{ string__format("[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)],
+		Command) },
+	io__call_system(Command, _Result).
 
 %-----------------------------------------------------------------------------%

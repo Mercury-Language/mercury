@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,6 +105,12 @@
 
 :- pred det_disjunction_canfail(can_fail, can_fail, can_fail).
 :- mode det_disjunction_canfail(in, in, out) is det.
+
+:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
+:- mode det_conjunction_maxsoln(in, in, out) is det.
+
+:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
+:- mode det_conjunction_canfail(in, in, out) is det.
 
 :- pred det_switch_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_switch_maxsoln(in, in, out) is det.
@@ -256,7 +262,9 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo),
+	proc_info_inst_table(Proc0, InstTable0),
+	det_info_init(ModuleInfo0, PredId, ProcId, InstTable0, Globals,
+		DetInfo),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs),
 
@@ -383,7 +391,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred det_infer_goal_2(hlds_goal_expr, hlds_goal_info, instmap,
-	soln_context, det_info, set(var), instmap_delta,
+	soln_context, det_info, set(prog_var), instmap_delta,
 	hlds_goal_expr, determinism, list(det_msg)).
 :- mode det_infer_goal_2(in, in, in, in, in, in, in, out, out, out) is det.
 
@@ -540,7 +548,7 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
 		RT0 = lambda_goal(PredOrFunc, NonLocalVars, Vars,
-			Modes, LambdaDeclaredDet, Goal0)
+			Modes, LambdaDeclaredDet, InstMapDelta, Goal0)
 	->
 		(
 			determinism_components(LambdaDeclaredDet, _,
@@ -550,16 +558,14 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		;	
 			LambdaSolnContext = all_solns
 		),
-		det_info_get_module_info(DetInfo, ModuleInfo),
-		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-			InstMap0, InstMap1),
+		instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 		det_infer_goal(Goal0, InstMap1, LambdaSolnContext, DetInfo,
 				Goal, LambdaInferredDet, Msgs1),
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs3),
 		RT = lambda_goal(PredOrFunc, NonLocalVars, Vars,
-			Modes, LambdaDeclaredDet, Goal)
+			Modes, LambdaDeclaredDet, InstMapDelta, Goal)
 	;
 		RT = RT0,
 		Msgs3 = []
@@ -809,10 +815,10 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 	% knowledge that the var is bound to this particular
 	% constructor, but we wouldn't use that information here anyway,
 	% so we don't bother.
-	Case0 = case(ConsId, Goal0),
+	Case0 = case(ConsId, IMDelta, Goal0),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs1),
-	Case = case(ConsId, Goal),
+	Case = case(ConsId, IMDelta, Goal),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail2),
 	det_switch_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
@@ -862,7 +868,7 @@ det_find_matching_non_cc_mode_2([ProcId1 - ProcInfo | Rest],
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_check_for_noncanonical_type(var, bool, can_fail, soln_context,
+:- pred det_check_for_noncanonical_type(prog_var, bool, can_fail, soln_context,
 		hlds_goal_info, cc_unify_context, det_info, list(det_msg),
 		soln_count, list(det_msg)).
 :- mode det_check_for_noncanonical_type(in, in, in, in,
@@ -908,7 +914,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 % return true iff there was a `where equality is <predname>' declaration
 % for the specified type.
 :- pred det_type_has_user_defined_equality_pred(det_info::in, (type)::in,
-		term__context::out) is semidet.
+		prog_context::out) is semidet.
 det_type_has_user_defined_equality_pred(DetInfo, Type, TypeContext) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_types(ModuleInfo, TypeTable),
@@ -1000,9 +1006,6 @@ det_par_conjunction_detism(DetismA, DetismB, Detism) :-
 % pruning, but that the goal occurs in a single-solution
 % context, so only the first solution will be returned.
 
-:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
-:- mode det_conjunction_maxsoln(in, in, out) is det.
-
 det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
@@ -1025,9 +1028,6 @@ det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
-:- mode det_conjunction_canfail(in, in, out) is det.
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
 det_conjunction_canfail(can_fail,    cannot_fail, can_fail).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,52 +20,128 @@
 
 :- interface.
 
-:- import_module parse.
-:- import_module io, std_util, list.
+:- import_module io.
+
+	% an abstract data type that holds persistent browser settings,
+	% e.g. the maximum print depth
+:- type browser_state.
+
+	% initialize the browser state with default values
+:- pred browse__init_state(browser_state, io__state, io__state).
+:- mode browse__init_state(out, di, uo) is det.
 
 	% The interactive term browser.
-:- pred browse__browse(univ, io__state, io__state).
-:- mode browse__browse(in, di, uo) is det.
+:- pred browse__browse(T, browser_state, browser_state, io__state, io__state).
+:- mode browse__browse(in, in, out, di, uo) is det.
 
-:- pred browse__portray_root(browser_state, string).
-:- mode browse__portray_root(in, out) is det.
-
-:- type browser_state
-	--->	browser_state(
-			univ,	% term to browse (as univ)
-			int,	% depth of tree
-			int,	% max nodes printed
-			list(dir),	% root rel `present working directory'
-			portray_format,	% format for ls.
-			int,	% X clipping for verbose display
-			int	% Y clipping for verbose display
-		).
+	% The non-interactive term browser.
+:- pred browse__print(T, browser_state, io__state, io__state).
+:- mode browse__print(in, in, di, uo) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse, util, frame, string, list, parser, require,
-	std_util, int, char.
+:- import_module parse, util, frame.
+:- import_module string, list, parser, require, std_util, int, char.
 
-:- pragma export(browse__browse(in, di, uo), "ML_browse").
+%---------------------------------------------------------------------------%
+%
+% We export these predicates to C for use by the tracer:
+% they are used in trace/mercury_trace_browser.c.
+%
 
+:- pragma export(browse__init_state(out, di, uo), "ML_BROWSE_init_state").
+:- pragma export(browse__browse(in, in, out, di, uo), "ML_BROWSE_browse").
+:- pragma export(browse__print(in, in, di, uo), "ML_BROWSE_print").
+:- pragma export(browse__browser_state_type(out),
+					"ML_BROWSE_browser_state_type").
 
-browse__browse(Univ) -->
-	{ default_state(Univ, State) },
+%---------------------------------------------------------------------------%
+
+browse__init_state(State) -->
+	{ default_state(State) }.
+
+% return the type_info for a browser_state type
+:- pred browse__browser_state_type(type_info).
+:- mode browse__browser_state_type(out) is det.
+
+browse__browser_state_type(Type) :-
+	default_state(State),
+	Type = type_of(State).
+
+%---------------------------------------------------------------------------%
+%
+% Non-interactive display
+%
+
+browse__print(Term, State0) -->
+	{ set_term(Term, State0, State) },
+	browse__print(State).
+
+:- pred browse__print(browser_state, io__state, io__state).
+:- mode browse__print(in, di, uo) is det.
+
+browse__print(State) -->
+	%
+	% io__write handles the special cases such as lists,
+	% operators, etc. better, so we prefer to use it if we
+	% can.  However, io__write doesn't have a depth or size limit,
+	% so we need to check the size first; if the term is small
+	% enough, we use io__write (actually io__write_univ), otherwise
+	% we use portray_fmt(..., flat).
+	%
+	{ get_term(State, Univ) },
+	{ term_size(Univ, Size) },
+	{ max_print_size(MaxSize) },
+	( { Size =< MaxSize } ->
+		io__write_univ(Univ),
+		io__nl
+	;
+		portray_fmt(State, flat)
+	).
+
+	% The maximum estimated size for which we use `io__write'.
+:- pred max_print_size(int::out) is det.
+max_print_size(60).
+
+	% Estimate the total term size, in characters.
+	% We count the number of characters in the functor,
+	% plus two characters for each argument: "(" and ")"
+	% for the first, and ", " for each of the rest,
+	% plus the sizes of the arguments themselves.
+	% This is only approximate since it doesn't take into
+	% account all the special cases such as operators.
+:- pred term_size(univ::in, int::out) is det.
+term_size(Univ, TotalSize) :-
+	deconstruct(Univ, Functor, Arity, Args),
+	string__length(Functor, FunctorSize),
+	list__map(term_size, Args, ArgSizes),
+	AddSizes = (pred(X::in, Y::in, Z::out) is det :- Z = X + Y),
+	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
+	TotalSize = TotalArgsSize + FunctorSize.
+
+%---------------------------------------------------------------------------%
+%
+% Interactive display
+%
+
+browse__browse(Object, State0, State) -->
+	{ type_to_univ(Object, Univ) },
+	{ set_term(Univ, State0, State1) },
 	% startup_message,
-	browse_2(State).
+	browse_main_loop(State1, State).
 
-:- pred browse_2(browser_state, io__state, io__state).
-:- mode browse_2(in, di, uo) is det.
-browse_2(State) -->
+:- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
+:- mode browse_main_loop(in, out, di, uo) is det.
+browse_main_loop(State0, State) -->
 	prompt,
 	parse__read_command(Command),
 	( { Command = quit } ->
 		% io__write_string("quitting...\n")
-		{ true }
+		{ State = State0 }
 	;
-		run_command(Command, State, NewState),
-		browse_2(NewState)
+		run_command(Command, State0, State1),
+		browse_main_loop(State1, State)
 	).
 
 :- pred startup_message(io__state::di, io__state::uo) is det.
@@ -83,7 +159,7 @@ prompt -->
 :- mode run_command(in, in, out, di, uo) is det.
 run_command(Command, State, NewState) -->
 	( { Command = unknown } ->
-		io__write_string("error: unknown command or syntax error.\nType \"help\" for help.\n"),
+		io__write_string("Error: unknown command or syntax error.\nType \"help\" for help.\n"),
 		{ NewState = State }
 	; { Command = help } ->
 		help,
@@ -125,7 +201,7 @@ run_command(Command, State, NewState) -->
 			{ NewState = State }
 		)
 	; { Command = print } ->
-		portray_fmt(State, flat),
+		browse__print(State),
 		{ NewState = State }
 	; { Command = pwd } ->
 		{ get_dirs(State, Path) },
@@ -163,6 +239,9 @@ SICStus Prolog style commands are:\n\
 	).
 
 %---------------------------------------------------------------------------%
+%
+% Various pretty-print routines
+%
 
 :- pred portray(browser_state, io__state, io__state).
 :- mode portray(in, di, uo) is det.
@@ -251,86 +330,9 @@ portray_pretty(State) -->
 	io__nl.
 
 %---------------------------------------------------------------------------%
-	% Non-interactive display
-
-	% Display from the root term.
-	% This avoid errors due to dereferencing non-existent subterms.
-browse__portray_root(State, Str) :-
-	get_fmt(State, Fmt),
-	set_path(root_rel([]), State, NewState),
-	(
-		Fmt = flat,
-		portray_flat_string(NewState, Str)
-	;
-		Fmt = pretty,
-		portray_pretty_string(NewState, Str)
-	;
-		Fmt = verbose,
-		portray_verbose_string(NewState, Str)
-	).
-
-:- pred portray_string(browser_state, string).
-:- mode portray_string(in, out) is det.
-portray_string(State, Str) :-
-	get_fmt(State, Fmt),
-	(
-		Fmt = flat,
-		portray_flat_string(State, Str)
-	;
-		Fmt = pretty,
-		portray_pretty_string(State, Str)
-	;
-		Fmt = verbose,
-		portray_verbose_string(State, Str)
-	).
-
-
-:- pred portray_flat_string(browser_state, string).
-:- mode portray_flat_string(in, out) is det.
-portray_flat_string(State, Str) :-
-	get_term(State, Univ),
-	get_size(State, MaxSize),
-	get_depth(State, MaxDepth),
-	get_dirs(State, Dir),
-	( deref_subterm(Univ, Dir, SubUniv) ->
-		term_to_string(SubUniv, MaxSize, MaxDepth, Str)
-	;
-		error("error: no such subterm")
-	).
-	
-	% XXX: return maybe(string) instead?
-:- pred portray_pretty_string(browser_state, string).
-:- mode portray_pretty_string(in, out) is det.
-portray_pretty_string(State, Str) :-
-	get_term(State, Univ),
-	get_size(State, MaxSize),
-	get_depth(State, MaxDepth),
-	get_dirs(State, Dir),
-	( deref_subterm(Univ, Dir, SubUniv) ->
-		term_to_string_pretty(SubUniv, MaxSize, MaxDepth, Str)
-	;
-		error("error: no such subterm")
-	).
-	
-:- pred portray_verbose_string(browser_state, string).
-:- mode portray_verbose_string(in, out) is det.
-portray_verbose_string(State, Str) :-
-	get_term(State, Univ),
-	get_size(State, MaxSize),
-	get_depth(State, MaxDepth),
-	get_dirs(State, Dir),
-	get_clipx(State, X),
-	get_clipy(State, Y),
-	( deref_subterm(Univ, Dir, SubUniv) ->
-		term_to_string_verbose(SubUniv, MaxSize, MaxDepth,
-			X, Y, Str)
-	;
-		error("error: no such subterm")
-	).
-	
-
-%---------------------------------------------------------------------------%
-	% Single-line representation of a term.
+%
+% Single-line representation of a term.
+%
 
 :- pred term_to_string(univ, int, int, string).
 :- mode term_to_string(in, in, in, out) is det.
@@ -413,9 +415,11 @@ term_compress(Univ, Str) :-
 	
 
 %---------------------------------------------------------------------------%
-	% Simple indented view of a term. This isn't really
-	% pretty printing since parentheses and commas are omitted.
-	% XXX: Should do proper pretty printing?
+%
+% Simple indented view of a term. This isn't really
+% pretty printing since parentheses and commas are omitted.
+% XXX: Should do proper pretty printing?
+%
 
 :- pred term_to_string_pretty(univ, int, int, string).
 :- mode term_to_string_pretty(in, in, in, out) is det.
@@ -500,8 +504,10 @@ unlines([Line | Lines], Str) :-
 
 
 %---------------------------------------------------------------------------%
-	% Verbose printing. Tree layout with numbered branches.
-	% Numbering makes it easier to change to subterms.
+%
+% Verbose printing. Tree layout with numbered branches.
+% Numbering makes it easier to change to subterms.
+%
 
 :- pred term_to_string_verbose(univ, int, int, int, int, string).
 :- mode term_to_string_verbose(in, in, in, in, in, out) is det.
@@ -568,7 +574,9 @@ term_to_string_verbose_list([Univ1, Univ2 | Univs], ArgNum, MaxSize, CurSize,
 	frame__vglue(TopFrame, RestTreesFrame, Frame).
 
 %---------------------------------------------------------------------------%
-	% Miscellaneous path handling
+%
+% Miscellaneous path handling
+%
 
 :- pred write_path(list(dir), io__state, io__state).
 :- mode write_path(in, di, uo) is det.
@@ -644,13 +652,34 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 	).
 
 %---------------------------------------------------------------------------%
+%
+% The definition of the browser_state type and its access routines.
+%
+
+:- type browser_state
+	--->	browser_state(
+			univ,	% term to browse (as univ)
+			int,	% depth of tree
+			int,	% max nodes printed
+			list(dir),	% root rel `present working directory'
+			portray_format,	% format for ls.
+			int,	% X clipping for verbose display
+			int	% Y clipping for verbose display
+		).
+
 	% access predicates
 
-:- pred default_state(univ, browser_state).
-:- mode default_state(in, out) is det.
-default_state(Univ, State) :-
-	State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25),
-	default_depth(DefaultDepth).
+:- pred default_state(browser_state).
+:- mode default_state(out) is det.
+default_state(State) :-
+	% We need to supply an object to initialize the state,
+	% but this object won't be used, since the first call
+	% to browse__browse will overwrite it.  So we just supply
+	% a dummy object -- it doesn't matter what its type or value is.
+	DummyObject = "",
+	type_to_univ(DummyObject, Univ),
+	default_depth(DefaultDepth),
+	State = browser_state(Univ, 3, DefaultDepth, [], verbose, 79, 25).
 
 :- pred get_term(browser_state, univ).
 :- mode get_term(in, out) is det.
@@ -733,13 +762,24 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
 set_fmt(NewFmt, browser_state(Univ, Depth, Size, Path, _OldFmt, X, Y),
 	browser_state(Univ, Depth, Size, Path, NewFmt, X, Y)).
 
-:- pred set_term(univ, browser_state, browser_state).
+:- pred set_term(T, browser_state, browser_state).
 :- mode set_term(in, in, out) is det.
-set_term(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y),
+set_term(Term, State0, State) :-
+	type_to_univ(Term, Univ),
+	set_univ(Univ, State0, State1),
+	% Display from the root term.
+	% This avoid errors due to dereferencing non-existent subterms.
+	set_path(root_rel([]), State1, State).
+
+:- pred set_univ(univ, browser_state, browser_state).
+:- mode set_univ(in, in, out) is det.
+set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y),
 	browser_state(NewUniv, Dep, Siz, Path, Fmt, X, Y)).
 
 %---------------------------------------------------------------------------%
-	% display predicates.
+%
+% Display predicates.
+%
 
 :- pred show_settings(browser_state, io__state, io__state).
 :- mode show_settings(in, di, uo) is det.

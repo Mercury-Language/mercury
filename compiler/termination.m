@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
 
 :- interface.
 
-:- import_module io, bool, std_util, list.
+:- import_module io, bool, std_util.
 :- import_module prog_data, hlds_module, hlds_pred, term_util.
 
 	% Perform termination analysis on the module.
@@ -69,7 +69,7 @@
 	% such annotations can be part of .opt and .trans_opt files.
 
 :- pred termination__write_pragma_termination_info(pred_or_func::in,
-	sym_name::in, list(mode)::in, term__context::in,
+	sym_name::in, argument_modes::in, prog_context::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
 	io__state::di, io__state::uo) is det.
 
@@ -78,14 +78,14 @@
 :- implementation.
 
 :- import_module term_pass1, term_pass2, term_errors.
-:- import_module inst_match, passes_aux, options, globals.
+:- import_module instmap, inst_match, passes_aux, options, globals.
 :- import_module hlds_data, hlds_goal, dependency_graph.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
-:- import_module mercury_to_mercury, varset, type_util, special_pred.
+:- import_module mercury_to_mercury, type_util, special_pred.
 :- import_module modules.
 
-:- import_module map, int, char, string, relation.
-:- import_module require, bag, set, term.
+:- import_module map, int, char, string, relation, list.
+:- import_module require, bag, set, term, varset.
 
 %----------------------------------------------------------------------------%
 
@@ -504,7 +504,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId,
 		ProcTable1, ProcTable).
 
 :- pred special_pred_id_to_termination(special_pred_id::in, 
-	list(var)::in, arg_size_info::out, termination_info::out) is det.
+	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
 
 special_pred_id_to_termination(compare, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no, no], OutList),
@@ -559,25 +559,31 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 
 all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
 	pred_info_arg_types(PredInfo, TypeList),
-	proc_info_argmodes(ProcInfo, ModeList),
-	all_args_input_or_zero_size_2(TypeList, ModeList, Module). 
+	proc_info_argmodes(ProcInfo, argument_modes(ModeInstTable, ModeList)),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
+	all_args_input_or_zero_size_2(TypeList, ModeList, ProcInstMap,
+		ModeInstTable, Module). 
 
-:- pred all_args_input_or_zero_size_2(list(type), list(mode), module_info).
-:- mode all_args_input_or_zero_size_2(in, in, in) is semidet.
+:- pred all_args_input_or_zero_size_2(list(type), list(mode), instmap,
+		inst_table, module_info).
+:- mode all_args_input_or_zero_size_2(in, in, in, in, in) is semidet.
 
-all_args_input_or_zero_size_2([], [], _).
-all_args_input_or_zero_size_2([], [_|_], _) :- 
+all_args_input_or_zero_size_2([], [], _, _, _).
+all_args_input_or_zero_size_2([], [_|_], _, _, _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables.").
-all_args_input_or_zero_size_2([_|_], [], _) :- 
+all_args_input_or_zero_size_2([_|_], [], _, _, _) :- 
 	error("all_args_input_or_zero_size_2: Unmatched variables").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], Module) :-
-	( mode_is_input(Module, Mode) ->
+all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], InstMap, InstTable,
+		Module) :-
+	( mode_is_input(InstMap, InstTable, Module, Mode) ->
 		% The variable is an input variables, so its size is
 		% irrelevant.
-		all_args_input_or_zero_size_2(Types, Modes, Module)
+		all_args_input_or_zero_size_2(Types, Modes, InstMap,
+				InstTable, Module)
 	;
 		zero_size_type(Type, Module),
-		all_args_input_or_zero_size_2(Types, Modes, Module)
+		all_args_input_or_zero_size_2(Types, Modes, InstMap,
+				InstTable, Module)
 	).
 
 %----------------------------------------------------------------------------%
@@ -707,7 +713,7 @@ termination__make_opt_int_preds([ PredId | PredIds ], Module) -->
 	termination__make_opt_int_preds(PredIds, Module).
 
 :- pred termination__make_opt_int_procs(pred_id, list(proc_id), proc_table,
-	pred_or_func, sym_name, term__context, io__state, io__state).
+	pred_or_func, sym_name, prog_context, io__state, io__state).
 :- mode termination__make_opt_int_procs(in, in, in, in, in, in, di, uo) is det.
 
 termination__make_opt_int_procs(_PredId, [], _, _, _, _) --> [].
@@ -716,9 +722,9 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
 	{ proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize) },
 	{ proc_info_get_maybe_termination_info(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, ModeList) },
+	{ proc_info_declared_argmodes(ProcInfo, Modes) },
 	termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Context, ArgSize, Termination),
+		Modes, Context, ArgSize, Termination),
 	termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
 		PredOrFunc, SymName, Context).
 
@@ -729,18 +735,19 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 % it can parse the resulting pragma termination_info declarations.
 
 termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Context, MaybeArgSize, MaybeTermination) -->
+		Modes, Context, MaybeArgSize, MaybeTermination) -->
+	{ Modes = argument_modes(InstTable, ModeList) },
 	io__write_string(":- pragma termination_info("),
 	{ varset__init(InitVarSet) },
 	( 
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_subdecl(InitVarSet, SymName, 
-			ModeList, no, Context)
+			ModeList, no, Context, InstTable)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ModeList, FuncModeList, RetMode) },
 		mercury_output_func_mode_subdecl(InitVarSet, SymName, 
-			FuncModeList, RetMode, no, Context)
+			FuncModeList, RetMode, no, Context, InstTable)
 	),
 	io__write_string(", "),
 	termination__write_maybe_arg_size_info(MaybeArgSize, no),

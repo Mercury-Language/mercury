@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -202,7 +202,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% execution tracing.
 	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, OutsideResumePoint, MaybeFromFullSlot,
+		ModuleInfo, CellCount0, OutsideResumePoint, TraceSlotInfo,
 		CodeInfo0),
 
 		% Generate code for the procedure.
@@ -235,7 +235,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
 			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			MaybeTraceCallLabel, MaybeFromFullSlot,
+			MaybeTraceCallLabel, TraceSlotInfo,
 			ForceProcId, LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
@@ -786,8 +786,10 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 :- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
 	code_model::in, code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(unify(_, _, _, Uni, _), _, CodeModel, Code) -->
-	unify_gen__generate_unification(CodeModel, Uni, Code).
+code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code)
+		-->
+	{ goal_info_get_instmap_delta(GoalInfo, IMD) },
+	unify_gen__generate_unification(CodeModel, Uni, IMD, Code).
 code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
 	code_gen__generate_goals(Goals, CodeModel, Code).
 code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->
@@ -827,8 +829,9 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 code_gen__generate_goal_2(pragma_c_code(Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
+	{ ArgNames = pragma_c_code_arg_info(_InstTable, Names) },
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
+		PredId, ModeId, Args, Names, OrigArgTypes, GoalInfo,
 		PragmaCode, Instr).
 
 %---------------------------------------------------------------------------%
@@ -855,8 +858,8 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info)::in,
-	arg_mode::in, list(var)::out, list(lval)::out) is det.
+:- pred code_gen__select_args_with_mode(assoc_list(prog_var, arg_info)::in,
+	arg_mode::in, list(prog_var)::out, list(lval)::out) is det.
 
 code_gen__select_args_with_mode([], _, [], []).
 code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 	;	solve_equal.
 
 :- pred special_pred_info(special_pred_id, type, string, list(type),
-			list(mode), determinism).
+			argument_modes, determinism).
 :- mode special_pred_info(in, in, out, out, out, out) is det.
 
 	% special_pred_name_arity(SpecialPredType, GenericPredName,
@@ -78,15 +78,26 @@ special_pred_name_arity(solve_equal, "solve_equal", "__SolveEqual__", 2).
 	% mode num for special procs is always 0 (the first mode)
 special_pred_mode_num(_, 0).
 
-special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In], semidet) :-
+special_pred_info(SpecialPredId, Type, Name, Types, Modes, Det) :-
+	special_pred_info_2(SpecialPredId, Type, Name, Types, ArgModes, Det),
+	inst_table_init(ArgInstTable),
+	Modes = argument_modes(ArgInstTable, ArgModes).
+
+:- pred special_pred_info_2(special_pred_id, type, string, list(type),
+			list(mode), determinism).
+:- mode special_pred_info_2(in, in, out, out, out, out) is det.
+
+special_pred_info_2(unify, Type, "__Unify__", [Type, Type], [In, In],
+			semidet) :-
 	in_mode(In).
 
-special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
+special_pred_info_2(index, Type, "__Index__", [Type, IntType], [In, Out],
+			det) :-
 	construct_type(unqualified("int") - 0, [], IntType),
 	in_mode(In),
 	out_mode(Out).
 
-special_pred_info(compare, Type,
+special_pred_info_2(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
 	mercury_public_builtin_module(PublicBuiltin),
 	construct_type(qualified(PublicBuiltin, "comparison_result") - 0,
@@ -94,7 +105,7 @@ special_pred_info(compare, Type,
 	in_mode(In),
 	uo_mode(Uo).
 
-special_pred_info(solve_equal, Type,
+special_pred_info_2(solve_equal, Type,
 		"__SolveEqual__", [Type, Type], [Any, Any], semidet) :-
 	in_any_mode(Any).
 

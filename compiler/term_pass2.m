@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------
@@ -25,8 +25,8 @@
 
 :- implementation.
 
-:- import_module term_traversal, term_errors.
-:- import_module hlds_goal, prog_data, type_util, mode_util.
+:- import_module term_traversal, term_errors, instmap.
+:- import_module hlds_data, hlds_goal, prog_data, type_util, mode_util.
 
 :- import_module std_util, bool, int, assoc_list.
 :- import_module set, bag, map, term, require.
@@ -43,7 +43,7 @@
 	==	map(pred_proc_id,		% The max noninfinite weight
 						% call from this proc
 			map(pred_proc_id,	% to this proc
-				pair(term__context, int))).
+				pair(prog_context, int))).
 						% is at this context and with
 						% this weight.
 
@@ -102,8 +102,10 @@ init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, ArgModes),
-	partition_call_args(Module, ArgModes, HeadVars, InArgs, _OutVars),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
+	partition_call_args(Module, ProcInstMap, ArgInstTable, ArgModes,
+			HeadVars, InArgs, _OutVars),
 	MapIsInput = lambda([HeadVar::in, Bool::out] is det,
 	(
 		( bag__contains(InArgs, HeadVar) ->
@@ -195,9 +197,10 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap) :-
 	TrialPPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
-		Module, TrialPPIdRecSuppliers),
+		ProcInstMap, ArgInstTable, Module, TrialPPIdRecSuppliers),
 	map__init(RecSupplierMap0),
 	map__det_insert(RecSupplierMap0, TrialPPId, TrialPPIdRecSuppliers,
 		RecSupplierMap1),
@@ -205,12 +208,14 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap1, RecSupplierMap).
 
 :- pred init_rec_input_suppliers_add_single_arg(list(mode)::in, int::in,
-	module_info::in, list(bool)::out) is semidet.
+	instmap::in, inst_table::in, module_info::in, list(bool)::out)
+	is semidet.
 
-init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
-		BoolList) :-
+init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, InstMap,
+		ArgInstTable,
+		Module, BoolList) :-
 	(
-		mode_is_input(Module, Mode),
+		mode_is_input(InstMap, ArgInstTable, Module, Mode),
 		ArgNum = 1
 	->
 		MapToNo = lambda([_Mode::in, Bool::out] is det,
@@ -221,11 +226,11 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
 		BoolList = [yes | BoolList1]
 	;
 		(
-			mode_is_output(Module, Mode)
+			mode_is_output(InstMap, ArgInstTable, Module, Mode)
 		->
 			NextArgNum = ArgNum
 		;
-			mode_is_input(Module, Mode),
+			mode_is_input(InstMap, ArgInstTable, Module, Mode),
 			ArgNum > 1
 		->
 			NextArgNum is ArgNum - 1
@@ -234,7 +239,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
 		)
 	->
 		init_rec_input_suppliers_add_single_arg(Modes, NextArgNum,
-			Module, BoolList1),
+			InstMap, ArgInstTable, Module, BoolList1),
 		BoolList = [no | BoolList1]
 	;
 		fail
@@ -350,15 +355,18 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
 	pred_info_context(PredInfo, Context),
+	proc_info_inst_table(ProcInfo, InstTable),
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_get_initial_instmap(ProcInfo, Module, ProcInstMap),
 	map__init(EmptyMap),
 	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-	init_traversal_params(Module, FunctorInfo, PPId, Context, VarTypes,
-		EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
+	init_traversal_params(Module, InstTable, FunctorInfo, PPId, Context,
+		VarTypes, EmptyMap, RecSupplierMap, MaxErrors, MaxPaths,
+		Params),
 	set__init(PathSet0),
 	Info0 = ok(PathSet0, []),
-	traverse_goal(Goal, Params, Info0, Info),
+	traverse_goal(Goal, ProcInstMap, _, Params, Info0, Info),
 	(
 		Info = ok(Paths, CanLoop),
 		require(unify(CanLoop, []),
@@ -387,9 +395,9 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 
 %-----------------------------------------------------------------------------
 
-:- pred update_rec_input_suppliers(list(var)::in, bag(var)::in,
+:- pred update_rec_input_suppliers(list(prog_var)::in, bag(prog_var)::in,
 	fixpoint_dir::in, list(bool)::in, list(bool)::out,
-	bag(var)::in, bag(var)::out) is det.
+	bag(prog_var)::in, bag(prog_var)::out) is det.
 
 update_rec_input_suppliers([], _, _, [], [], RecBag, RecBag).
 update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
@@ -441,7 +449,7 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 % details of the call into the list of "infinite" calls.
 
 :- pred add_call_arcs(list(path_info)::in,
-	bag(var)::in, call_weight_info::in, call_weight_info::out) is det.
+	bag(prog_var)::in, call_weight_info::in, call_weight_info::out) is det.
 
 add_call_arcs([], _RecInputSuppliers, CallInfo, CallInfo).
 add_call_arcs([Path | Paths], RecInputSuppliers, CallInfo0, CallInfo) :-
@@ -533,8 +541,8 @@ zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
 		PPId, Context, 0, [], CallWeights, Cycles).
 
 :- pred zero_or_positive_weight_cycles_from_neighbours(assoc_list(pred_proc_id,
-	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
-	int::in, assoc_list(pred_proc_id, term__context)::in,
+	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
+	int::in, assoc_list(pred_proc_id, prog_context)::in,
 	call_weight_graph::in, list(term_errors__error)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbours([], _, _, _, _, _, []).
@@ -548,8 +556,8 @@ zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
 	list__append(Cycles1, Cycles2, Cycles).
 
 :- pred zero_or_positive_weight_cycles_from_neighbour(pair(pred_proc_id,
-	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
-	int::in, assoc_list(pred_proc_id, term__context)::in,
+	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
+	int::in, assoc_list(pred_proc_id, prog_context)::in,
 	call_weight_graph::in, list(term_errors__error)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),

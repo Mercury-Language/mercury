@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1030,6 +1030,11 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(di, di, uo) is det.
 
+% For use by browser/browse.m:
+
+:- pred io__write_univ(univ, io__state, io__state).
+:- mode io__write_univ(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1787,12 +1792,11 @@ io__write(Stream, X) -->
 	io__write(X),
 	io__set_output_stream(OrigStream, _Stream).
 
+%-----------------------------------------------------------------------------%
+
 io__write(Term) -->
 	{ type_to_univ(Term, Univ) },
 	io__write_univ(Univ).
-
-:- pred io__write_univ(univ, io__state, io__state).
-:- mode io__write_univ(in, di, uo) is det.
 
 io__write_univ(Univ) -->
 	{ ops__max_priority(MaxPriority) },
@@ -1806,6 +1810,7 @@ io__write_univ(Univ, Priority) -->
 	% we need to special-case the builtin types:
 	%	int, char, float, string
 	%	type_info, univ, c_pointer, array
+	%	and private_builtin:type_info
 	%
 	( { univ_to_type(Univ, String) } ->
 		term_io__quote_string(String)
@@ -1816,64 +1821,69 @@ io__write_univ(Univ, Priority) -->
 	; { univ_to_type(Univ, Float) } ->
 		io__write_float(Float)
 	; { univ_to_type(Univ, TypeInfo) } ->
-		io__write_string(type_name(TypeInfo))
+		io__write_type_info(TypeInfo)
 	; { univ_to_type(Univ, OrigUniv) } ->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
-	; { type_ctor_name(type_ctor(univ_type(Univ))) = "type_info" },
-	  { type_ctor_module_name(type_ctor(univ_type(Univ))) =
-			"private_builtin" } ->
-	  	% XXX This is a hack (see the comment for array below).
-		{ TypeInfo = unsafe_cast(univ_value_as_type_any(Univ)) },
-		io__write_string(type_name(TypeInfo))
-	; { type_ctor_name(type_ctor(univ_type(Univ))) = "array" },
-	  { type_ctor_module_name(type_ctor(univ_type(Univ))) = "array" } ->
-		%
-		% Note that we can't use univ_to_type above, because we
-		% want to match on a non-ground type `array(T)'
-		% (matching against `array(void)' isn't much use).
-		% Instead, we explicitly check the type name.
-		% That makes it tricky to get the value, so
-		% we can't use io__write_array below... instead we
-		% use the following, which is a bit of a hack.
-		%
-		{ term__univ_to_term(Univ, Term) },
-		{ varset__init(VarSet) },
-		term_io__write_term(VarSet, Term)
 	;
+		%
+		% Check if the type is array:array/1.
+		% We can't just use univ_to_type here since 
+		% array:array/1 is a polymorphic type.
+		%
+		% The calls to type_ctor_name and type_ctor_module_name
+		% are not really necessary -- we could use univ_to_type
+		% in the condition instead of det_univ_to_type in the body.
+		% However, this way of doing things is probably more efficient
+		% in the common case when the thing being printed is
+		% *not* of type array:array/1.
+		%
+		% The ordering of the tests here (arity, then name, then
+		% module name, rather than the reverse) is also chosen
+		% for efficiency, to find failure cheaply in the common cases,
+		% rather than for readability.
+		%
+		{ type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes) },
+		{ ArgTypes = [ElemType] },
+		{ type_ctor_name(TypeCtor) = "array" },
+		{ type_ctor_module_name(TypeCtor) = "array" }
+	->
+		%
+		% Now that we know the element type, we can
+		% constrain the type of the variable `Array'
+		% so that we can use det_univ_to_type.
+		%
+		{ has_type(Elem, ElemType) },
+		{ same_array_elem_type(Array, Elem) },
+		{ det_univ_to_type(Univ, Array) },
+		io__write_array(Array)
+	; 
+		%
+		% Check if the type is private_builtin:type_info/1.
+		% See the comments above for array:array/1.
+		%
+		{ type_ctor_and_args(univ_type(Univ), TypeCtor, ArgTypes) },
+		{ ArgTypes = [ElemType] },
+		{ type_ctor_name(TypeCtor) = "type_info" },
+		{ type_ctor_module_name(TypeCtor) = "private_builtin" }
+	->
+		{ has_type(Elem, ElemType) },
+		{ same_private_builtin_type(PrivateBuiltinTypeInfo, Elem) },
+		{ det_univ_to_type(Univ, PrivateBuiltinTypeInfo) },
+		io__write_private_builtin_type_info(PrivateBuiltinTypeInfo)
+	; 
 		io__write_ordinary_term(Univ, Priority)
 	).
 
-	% XXX These two functions and the type definition 
-	% are just temporary, they are used for the
-	% horrible hack above.
+:- pred same_array_elem_type(array(T), T).
+:- mode same_array_elem_type(unused, unused) is det.
+same_array_elem_type(_, _).
 
-:- func unsafe_cast(T1::in) = (T2::out) is det.
-:- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out),
-	[will_not_call_mercury, thread_safe], "
-	VarOut = VarIn;
-").
+:- pred same_private_builtin_type(private_builtin__type_info(T), T).
+:- mode same_private_builtin_type(unused, unused) is det.
+same_private_builtin_type(_, _).
 
-:- type any == c_pointer.
-
-:- func univ_value_as_type_any(univ) = any.
-:- pragma c_code(univ_value_as_type_any(Univ::in) = (Val::out),
-	[will_not_call_mercury, thread_safe], "
-	Val = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
-").
-
-
-:- pred io__write_univ_as_univ(univ, io__state, io__state).
-:- mode io__write_univ_as_univ(in, di, uo) is det.
-
-io__write_univ_as_univ(Univ) -->
-	io__write_string("univ("),
-	io__write_univ(Univ),
-	% XXX what is the right TYPE_QUAL_OP to use here?
-	io__write_string(" : "),
-	io__write_string(type_name(univ_type(Univ))),
-	io__write_string(")").
 
 :- pred io__write_ordinary_term(univ, ops__priority, io__state, io__state).
 :- mode io__write_ordinary_term(in, in, di, uo) is det.
@@ -2027,6 +2037,32 @@ io__write_term_args([X|Xs]) -->
 	io__write_univ(X),
 	io__write_term_args(Xs).
 
+%-----------------------------------------------------------------------------%
+
+:- pred io__write_type_info(type_info, io__state, io__state).
+:- mode io__write_type_info(in, di, uo) is det.
+
+io__write_type_info(TypeInfo) -->
+	io__write_string(type_name(TypeInfo)).
+
+:- pred io__write_univ_as_univ(univ, io__state, io__state).
+:- mode io__write_univ_as_univ(in, di, uo) is det.
+
+io__write_univ_as_univ(Univ) -->
+	io__write_string("univ("),
+	io__write_univ(Univ),
+	% XXX what is the right TYPE_QUAL_OP to use here?
+	io__write_string(" : "),
+	io__write_string(type_name(univ_type(Univ))),
+	io__write_string(")").
+
+:- pred io__write_c_pointer(c_pointer, io__state, io__state).
+:- mode io__write_c_pointer(in, di, uo) is det.
+
+io__write_c_pointer(_C_Pointer) -->
+	% XXX what should we do here?
+	io__write_string("'<<c_pointer>>'").
+
 :- pred io__write_array(array(T), io__state, io__state).
 :- mode io__write_array(in, di, uo) is det.
 
@@ -2036,12 +2072,18 @@ io__write_array(Array) -->
 	io__write(List),
 	io__write_string(")").
 
-:- pred io__write_c_pointer(c_pointer, io__state, io__state).
-:- mode io__write_c_pointer(in, di, uo) is det.
+:- pred io__write_private_builtin_type_info(private_builtin__type_info(T)::in,
+		io__state::di, io__state::uo) is det.
+io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
+	{ TypeInfo = unsafe_cast(PrivateBuiltinTypeInfo) },
+	io__write_type_info(TypeInfo).
 
-io__write_c_pointer(_C_Pointer) -->
-	% XXX what should we do here?
-	io__write_string("'<<c_pointer>>'").
+:- func unsafe_cast(T1::in) = (T2::out) is det.
+:- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out),
+	[will_not_call_mercury, thread_safe],
+"
+	VarOut = VarIn;
+").
 
 %-----------------------------------------------------------------------------%
 

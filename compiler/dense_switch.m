@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,6 @@
 
 :- import_module llds, prog_data, switch_gen, code_info, type_util.
 :- import_module hlds_data, hlds_goal.
-:- import_module term.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
@@ -26,14 +25,14 @@
 	% (we may convert locally semidet switches into locally det
 	% switches by adding extra cases whose body is just `fail').
 
-:- pred dense_switch__is_dense_switch(var, cases_list, can_fail, int,
+:- pred dense_switch__is_dense_switch(prog_var, cases_list, can_fail, int,
 	int, int, can_fail, code_info, code_info).
 :- mode dense_switch__is_dense_switch(in, in, in, in, out, out, out, in, out)
 	is semidet.
 
 	% Generate code for a switch using a dense jump table.
 
-:- pred dense_switch__generate(cases_list, int, int, var, code_model,
+:- pred dense_switch__generate(cases_list, int, int, prog_var, code_model,
 	can_fail, store_map, label, branch_end, branch_end, code_tree,
 	code_info, code_info).
 :- mode dense_switch__generate(in, in, in, in, in, in, in, in,

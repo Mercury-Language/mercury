@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,8 +42,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, goal_util.
-:- import_module varset, list, bool, map, set, std_util, term.
+:- import_module hlds_goal, goal_util, prog_data, varset, term.
+:- import_module list, bool, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,8 +79,8 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 % and the notation `<Foo> [X/Y]' means <Foo> with all
 % occurrences of `X' replaced with `Y'.
 
-:- pred excess_assignments_in_goal(hlds_goal, list(var),
-				   hlds_goal, list(var)).
+:- pred excess_assignments_in_goal(hlds_goal, list(prog_var),
+				   hlds_goal, list(prog_var)).
 :- mode excess_assignments_in_goal(in, in, out, out) is det.
 
 excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
@@ -157,7 +157,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	% parallel conjunction (par_conj/2).
 
 :- pred excess_assignments_in_conj(list(hlds_goal), list(hlds_goal),
-	list(var), set(var), list(hlds_goal), list(var)).
+	list(prog_var), set(prog_var), list(hlds_goal), list(prog_var)).
 :- mode excess_assignments_in_conj(in, in, in, in, out, out) is det.
 
 excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars) :-
@@ -190,8 +190,8 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred excess_assignments_in_disj(list(hlds_goal), list(var),
-	list(hlds_goal), list(var)).
+:- pred excess_assignments_in_disj(list(hlds_goal), list(prog_var),
+	list(hlds_goal), list(prog_var)).
 :- mode excess_assignments_in_disj(in, in, out, out) is det.
 
 excess_assignments_in_disj([], ElimVars, [], ElimVars).
@@ -200,13 +200,13 @@ excess_assignments_in_disj([Goal0 | Goals0], ElimVars0,
 	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
 	excess_assignments_in_disj(Goals0, ElimVars1, Goals, ElimVars).
 
-:- pred excess_assignments_in_switch(list(case), list(var),
-				     list(case), list(var)).
+:- pred excess_assignments_in_switch(list(case), list(prog_var),
+				     list(case), list(prog_var)).
 :- mode excess_assignments_in_switch(in, in, out, out) is det.
 
 excess_assignments_in_switch([], ElimVars, [], ElimVars).
-excess_assignments_in_switch([case(Cons, Goal0) | Cases0], ElimVars0,
-		[case(Cons, Goal) | Cases], ElimVars) :-
+excess_assignments_in_switch([case(Cons, IMDelta, Goal0) | Cases0], ElimVars0,
+		[case(Cons, IMDelta, Goal) | Cases], ElimVars) :-
 	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
 	excess_assignments_in_switch(Cases0, ElimVars1, Cases, ElimVars).
 

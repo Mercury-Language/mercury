@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,8 +15,8 @@
 
 :- interface.
 
-:- import_module code_info, hlds_module, hlds_goal.
-:- import_module bool, varset.
+:- import_module code_info, hlds_module, hlds_goal, prog_data.
+:- import_module bool.
 
 	% code_aux__contains_only_builtins(G) is true if G is a leaf procedure,
 	% i.e. control does not leave G to call another procedure, even if
@@ -45,15 +45,15 @@
 :- pred code_aux__contains_simple_recursive_call(hlds_goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
-:- pred code_aux__explain_stack_slots(stack_slots, varset, string).
+:- pred code_aux__explain_stack_slots(stack_slots, prog_varset, string).
 :- mode code_aux__explain_stack_slots(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, llds, llds_out, type_util, term_util.
-:- import_module string, set, term, std_util, assoc_list, require.
+:- import_module hlds_pred, llds, llds_out, varset, type_util, term_util.
+:- import_module string, set, std_util, assoc_list, require.
 :- import_module list, map.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
@@ -94,7 +94,7 @@ code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
 :- mode code_aux__contains_only_builtins_cases(in) is semidet.
 
 code_aux__contains_only_builtins_cases([]).
-code_aux__contains_only_builtins_cases([case(_ConsId, Goal)|Cases]) :-
+code_aux__contains_only_builtins_cases([case(_ConsId, _IMDelta, Goal)|Cases]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_cases(Cases).
 
@@ -128,7 +128,7 @@ code_aux__goal_cannot_loop_2(ModuleInfo, disj(Goals, _)) :-
 code_aux__goal_cannot_loop_2(ModuleInfo, switch(_Var, _Category, Cases, _)) :-
 	\+  (
 		list__member(Case, Cases),
-		Case = case(_, Goal),
+		Case = case(_, _, Goal),
 		\+ code_aux__goal_cannot_loop(ModuleInfo, Goal)
 	).
 code_aux__goal_cannot_loop_2(ModuleInfo, not(Goal)) :-
@@ -233,8 +233,8 @@ code_aux__explain_stack_slots(StackSlots, VarSet, Explanation) :-
 	string__append("\nStack slot assignments (if any):\n", Explanation1,
 		Explanation).
 
-:- pred code_aux__explain_stack_slots_2(assoc_list(var, lval), varset, string,
-				string).
+:- pred code_aux__explain_stack_slots_2(assoc_list(prog_var, lval), prog_varset,
+		string, string).
 :- mode code_aux__explain_stack_slots_2(in, in, in, out) is det.
 
 code_aux__explain_stack_slots_2([], _, String, String).

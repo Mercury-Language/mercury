@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,14 +32,15 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
 :- import_module continuation_info, prog_data, hlds_data, globals.
 
-:- import_module bool, set, varset, list, map, term, std_util, assoc_list.
+:- import_module bool, set, list, map, std_util, assoc_list.
 
 :- implementation.
 
-:- import_module code_util, code_exprn, prog_out.
+:- import_module code_util, code_exprn, prog_out, inst_match.
 :- import_module arg_info, type_util, mode_util, options.
+:- import_module term, varset.
 
-:- import_module set, varset, stack.
+:- import_module set, stack.
 :- import_module string, require, char, bimap, tree, int.
 
 %---------------------------------------------------------------------------%
@@ -62,11 +63,11 @@
 :- type code_info.
 
 		% Create a new code_info structure. Also return the
-		% outermost resumption point, and the number of stack slot
-		% (if any) that contains the from_full tracing flag.
-:- pred code_info__init(varset, set(var), stack_slots, bool, globals,
+		% outermost resumption point, and info about the non-fixed
+		% stack slots used for tracing purposes.
+:- pred code_info__init(prog_varset, set(prog_var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int, resume_point_info, maybe(int), code_info).
+	int, resume_point_info, trace_slot_info, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
 	out, out, out) is det.
 
@@ -91,7 +92,7 @@
 :- mode code_info__get_proc_info(out, in, out) is det.
 
 		% Get the variables for the current procedure.
-:- pred code_info__get_varset(varset, code_info, code_info).
+:- pred code_info__get_varset(prog_varset, code_info, code_info).
 :- mode code_info__get_varset(out, in, out) is det.
 
 :- pred code_info__get_maybe_trace_info(maybe(trace_info),
@@ -99,11 +100,11 @@
 :- mode code_info__get_maybe_trace_info(out, in, out) is det.
 
 		% Get the set of currently forward-live variables.
-:- pred code_info__get_forward_live_vars(set(var), code_info, code_info).
+:- pred code_info__get_forward_live_vars(set(prog_var), code_info, code_info).
 :- mode code_info__get_forward_live_vars(out, in, out) is det.
 
 		% Set the set of currently forward-live variables.
-:- pred code_info__set_forward_live_vars(set(var), code_info, code_info).
+:- pred code_info__set_forward_live_vars(set(prog_var), code_info, code_info).
 :- mode code_info__set_forward_live_vars(in, in, out) is det.
 
 		% Get the table mapping variables to the current
@@ -141,10 +142,10 @@
 	code_info, code_info).
 :- mode code_info__set_maybe_trace_info(in, in, out) is det.
 
-:- pred code_info__get_zombies(set(var), code_info, code_info).
+:- pred code_info__get_zombies(set(prog_var), code_info, code_info).
 :- mode code_info__get_zombies(out, in, out) is det.
 
-:- pred code_info__set_zombies(set(var), code_info, code_info).
+:- pred code_info__set_zombies(set(prog_var), code_info, code_info).
 :- mode code_info__set_zombies(in, in, out) is det.
 
 :- pred code_info__get_exprn_info(exprn_info, code_info, code_info).
@@ -221,7 +222,7 @@
 		pred_id,	% The id of the current predicate.
 		proc_id,	% The id of the current procedure.
 		proc_info,	% The proc_info for the this procedure.
-		varset,		% The variables in this procedure.
+		prog_varset,	% The variables in this procedure.
 		int,		% The number of stack slots allocated.
 				% for storing variables.
 				% (Some extra stack slots are used
@@ -233,10 +234,10 @@
 				% switched on.
 
 		% LOCATION DEPENDENT fields
-		set(var),	% Variables that are forward live
+		set(prog_var),	% Variables that are forward live
 				% after this goal.
  		instmap,	% Current insts of the live variables.
-		set(var),	% Zombie variables; variables that are not
+		set(prog_var),	% Zombie variables; variables that are not
 				% forward live but which are protected by
 				% an enclosing resume point.
 		exprn_info,	% A map storing the information about
@@ -279,7 +280,7 @@
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, Instmap, FollowVars, ModuleInfo,
-		CellCount, ResumePoint, MaybeFromFullSlot, CodeInfo) :-
+		CellCount, ResumePoint, TraceSlotInfo, CodeInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -331,25 +332,25 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		TempContentMap
 	),
 	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
-		MaybeFailVars, MaybeFromFullSlot, CodeInfo0, CodeInfo1),
+		MaybeFailVars, TraceSlotInfo, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
 :- pred code_info__init_maybe_trace_info(globals, module_info, proc_info,
-	maybe(set(var)), maybe(int), code_info, code_info).
+	maybe(set(prog_var)), trace_slot_info, code_info, code_info).
 :- mode code_info__init_maybe_trace_info(in, in, in, out, out, in, out) is det.
 
 code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
-		MaybeFailVars, MaybeFromFullSlot) -->
+		MaybeFailVars, TraceSlotInfo) -->
 	{ globals__get_trace_level(Globals, TraceLevel) },
 	( { TraceLevel \= none } ->
-		trace__setup(Globals, MaybeFromFullSlot, TraceInfo),
+		trace__setup(Globals, TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo)),
 		{ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) },
 		{ MaybeFailVars = yes(FailVars) }
 	;
 		{ MaybeFailVars = no },
-		{ MaybeFromFullSlot = no }
+		{ TraceSlotInfo = trace_slot_info(no, no) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -521,6 +522,10 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 
 :- interface.
 
+		% Get the inst_table of this proc.
+:- pred code_info__get_inst_table(inst_table, code_info, code_info).
+:- mode code_info__get_inst_table(out, in, out) is det.
+
 		% Get the hlds mapping from variables to stack slots
 :- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
 :- mode code_info__get_stack_slots(out, in, out) is det.
@@ -548,7 +553,7 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 :- mode code_info__post_goal_update(in, in, out) is det.
 
 	% Find out the type of the given variable.
-:- pred code_info__variable_type(var, type, code_info, code_info).
+:- pred code_info__variable_type(prog_var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
 
 :- pred code_info__lookup_type_defn(type, hlds_type_defn,
@@ -564,7 +569,8 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
 	% of that constructor.
-:- pred code_info__cons_id_to_tag(var, cons_id, cons_tag, code_info, code_info).
+:- pred code_info__cons_id_to_tag(prog_var, cons_id, cons_tag,
+		code_info, code_info).
 :- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
 
 	% Get the code model of the current procedure.
@@ -572,7 +578,7 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 :- mode code_info__get_proc_model(out, in, out) is det.
 
 	% Get the list of the head variables of the current procedure.
-:- pred code_info__get_headvars(list(var), code_info, code_info).
+:- pred code_info__get_headvars(list(prog_var), code_info, code_info).
 :- mode code_info__get_headvars(out, in, out) is det.
 
 	% Get the call argument information for the current procedure
@@ -586,10 +592,11 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 
 	% Get the set of variables currently needed by the resume
 	% points of enclosing goals.
-:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
+:- pred code_info__current_resume_point_vars(set(prog_var),
+		code_info, code_info).
 :- mode code_info__current_resume_point_vars(out, in, out) is det.
 
-:- pred code_info__variable_to_string(var, string, code_info, code_info).
+:- pred code_info__variable_to_string(prog_var, string, code_info, code_info).
 :- mode code_info__variable_to_string(in, out, in, out) is det.
 
 	% Create a code address which holds the address of the specified
@@ -635,6 +642,15 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 
 :- implementation.
 
+
+%-----------------------------------------------------------------------------%
+
+code_info__get_inst_table(InstTable, CI, CI) :-
+	code_info__get_proc_info(ProcInfo, CI, _),
+	proc_info_inst_table(ProcInfo, InstTable).
+
+%-----------------------------------------------------------------------------%
+
 code_info__get_stack_slots(StackSlots, CI, CI) :-
 	code_info__get_exprn_info(ExprnInfo, CI, _),
 	code_exprn__get_stack_slots(StackSlots, ExprnInfo, _).
@@ -647,6 +663,10 @@ code_info__set_follow_vars(FollowVars, CI0, CI) :-
 	code_info__get_exprn_info(ExprnInfo0, CI0, _),
 	code_exprn__set_follow_vars(FollowVars, ExprnInfo0, ExprnInfo),
 	code_info__set_exprn_info(ExprnInfo, CI0, CI).
+
+:- pred code_info__get_active_temps_data(assoc_list(lval, slot_contents),
+	code_info, code_info).
+:- mode code_info__get_active_temps_data(out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -694,7 +714,8 @@ code_info__post_goal_update(GoalInfo) -->
 	code_info__make_vars_forward_dead(PostDeaths),
 	{ goal_info_get_post_births(GoalInfo, PostBirths) },
 	code_info__add_forward_live_vars(PostBirths),
-	code_info__make_vars_forward_live(PostBirths),
+	{ goal_info_get_refs(GoalInfo, Refs) },
+	code_info__make_vars_forward_live(PostBirths, Refs),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__get_instmap(InstMap0),
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
@@ -742,7 +763,8 @@ code_info__find_typeinfos_for_tvars(TypeVars, TypeInfoDataMap) -->
 			)),
 			solutions_set(ConvertRval, Locns)
 		;
-			varset__lookup_name(VarSet, TypeInfoVar, VarString),
+			varset__lookup_name(VarSet, TypeInfoVar,
+				VarString),
 			string__format("%s: %s %s",
 				[s("code_info__find_typeinfos_for_tvars"),
 				s("can't find lval for type_info var"),
@@ -846,6 +868,12 @@ code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
+
+code_info__get_active_temps_data(Temps) -->
+	code_info__get_temps_in_use(TempsInUse),
+	code_info__get_temp_content_map(TempContentMap),
+	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
+	{ map__to_assoc_list(TempsInUseContentMap, Temps) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -982,17 +1010,17 @@ code_info__after_all_branches(StoreMap, MaybeEnd, CI0, CI) :-
 
 code_info__remake_with_store_map(StoreMap) -->
 	{ map__to_assoc_list(StoreMap, VarLvals) },
-	{ code_info__fixup_lvallist(VarLvals, VarRvals) },
+	{ list__map(code_info__fixup_lval, VarLvals, VarRvals) },
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__reinit_state(VarRvals, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-:- pred code_info__fixup_lvallist(assoc_list(var, lval), assoc_list(var, rval)).
-:- mode code_info__fixup_lvallist(in, out) is det.
+:- pred code_info__fixup_lval(pair(prog_var, store_info),
+		pair(prog_var, val_or_ref)).
+:- mode code_info__fixup_lval(in, out) is det.
 
-code_info__fixup_lvallist([], []).
-code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
-	code_info__fixup_lvallist(Ls, Rs).
+code_info__fixup_lval(V - store_info(val, L), V - value(lval(L))).
+code_info__fixup_lval(V - store_info(ref, L), V - reference(L)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1062,7 +1090,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 
 :- type simple_neg_info.
 
-:- pred code_info__enter_simple_neg(set(var)::in, hlds_goal_info::in, 
+:- pred code_info__enter_simple_neg(set(prog_var)::in, hlds_goal_info::in, 
 	simple_neg_info::out, code_info::in, code_info::out) is det.
 
 :- pred code_info__leave_simple_neg(hlds_goal_info::in, simple_neg_info::in,
@@ -1151,7 +1179,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 
 	% Materialize the given variables into registers or stack slots.
 
-:- pred code_info__produce_vars(set(var)::in, resume_map::out,
+:- pred code_info__produce_vars(set(prog_var)::in, resume_map::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
 	% Put the variables needed in enclosing failure continuations
@@ -1162,7 +1190,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 
 	% Set up the resume_point_info structure.
 
-:- pred code_info__make_resume_point(set(var)::in, resume_locs::in,
+:- pred code_info__make_resume_point(set(prog_var)::in, resume_locs::in,
 	resume_map::in, resume_point_info::out, code_info::in, code_info::out)
 	is det.
 
@@ -1174,7 +1202,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	% List the variables that need to be preserved for the given
 	% resume point.
 
-:- pred code_info__resume_point_vars(resume_point_info::in, list(var)::out)
+:- pred code_info__resume_point_vars(resume_point_info::in, list(prog_var)::out)
 	is det.
 
 	% See whether the given resume point includes a code address
@@ -1222,7 +1250,7 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	% A resume map maps the variables that will be needed at a resumption
 	% point to the locations in which they will be.
 
-:- type resume_map		==	map(var, set(rval)).
+:- type resume_map		==	map(prog_var, set(val_or_ref)).
 
 :- type resume_point_known	--->	resume_point_known
 				;	resume_point_unknown.
@@ -1571,13 +1599,13 @@ code_info__leave_simple_neg(GoalInfo, FailInfo) -->
 	code_info__post_goal_update(GoalInfo),
 	code_info__set_fail_info(FailInfo).
 
-:- pred code_info__make_fake_resume_map(list(var)::in,
-	map(var, set(rval))::in, map(var, set(rval))::out) is det.
+:- pred code_info__make_fake_resume_map(list(prog_var)::in,
+	resume_map::in, resume_map::out) is det.
 
 code_info__make_fake_resume_map([], ResumeMap, ResumeMap).
 code_info__make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
 		% a visibly fake location
-	set__singleton_set(Locns, lval(reg(r, -1))),
+	set__singleton_set(Locns, value(lval(reg(r, -1)))),
 	map__det_insert(ResumeMap0, Var, Locns, ResumeMap1),
 	code_info__make_fake_resume_map(Vars, ResumeMap1, ResumeMap).
 
@@ -2062,9 +2090,23 @@ code_info__pick_matching_resume_addr(ResumeMaps, Addr) -->
 		)
 	}.
 
-:- pred code_info__match_resume_loc(resume_map::in, resume_map::in) is semidet.
+:- pred code_info__match_resume_loc(resume_map::in,
+		map(prog_var, set(rval))::in) is semidet.
 
-code_info__match_resume_loc(Map, Locations0) :-
+code_info__match_resume_loc(Map0, Locations0) :-
+	% Convert resume_map to map(var, set(rval)), removing all reference()'s.
+	map__to_assoc_list(Map0, AL0),
+	Filter = lambda([V::in, R::out] is semidet, (
+		       V = Variable - VVals,
+		       set__to_sorted_list(VVals, Vs),
+		       list__filter_map(code_exprn__value_to_rval, Vs, Rs),
+		       Rs \= [],
+		       set__sorted_list_to_set(Rs, RvalsSet),
+		       R = Variable - RvalsSet
+	       )),
+	list__filter_map(Filter, AL0, AL),
+	map__from_assoc_list(AL, Map),
+
 	map__keys(Map, KeyList),
 	set__list_to_set(KeyList, Keys),
 	map__select(Locations0, Keys, Locations),
@@ -2111,17 +2153,21 @@ code_info__produce_vars(Vars, Map, Code) -->
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__produce_vars_2(VarList, Map, Code).
 
-:- pred code_info__produce_vars_2(list(var)::in,
-	map(var, set(rval))::out,
+:- pred code_info__produce_vars_2(list(prog_var)::in, resume_map::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
 code_info__produce_vars_2([], Map, empty) -->
 	{ map__init(Map) }.
 code_info__produce_vars_2([V | Vs], Map, Code) -->
 	code_info__produce_vars_2(Vs, Map0, Code0),
-	code_info__produce_variable_in_reg_or_stack(V, Code1, Rval),
-	{ set__singleton_set(Rvals, Rval) },
-	{ map__set(Map0, V, Rvals, Map) },
+	( code_info__var_is_free_alias(V) ->
+		code_info__produce_reference_in_reg_or_stack(V, Code1, Lval),
+		{ set__singleton_set(ValRefs, reference(Lval)) }
+	;
+		code_info__produce_variable_in_reg_or_stack(V, Code1, Rval),
+		{ set__singleton_set(ValRefs, value(Rval)) }
+	),
+	{ map__set(Map0, V, ValRefs, Map) },
 	{ Code = tree(Code0, Code1) }.
 
 code_info__flush_resume_vars_to_stack(Code) -->
@@ -2134,7 +2180,7 @@ code_info__flush_resume_vars_to_stack(Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__init_fail_info(code_model::in, maybe(set(var))::in,
+:- pred code_info__init_fail_info(code_model::in, maybe(set(prog_var))::in,
 	resume_point_info::out, code_info::in, code_info::out) is det.
 
 code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
@@ -2167,7 +2213,7 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 		code_info__get_stack_slots(StackSlots),
 		{ map__select(StackSlots, FailVars, StackMap0) },
 		{ map__to_assoc_list(StackMap0, StackList0) },
-		{ code_info__make_singleton_sets(StackList0, StackList) },
+		code_info__make_singleton_sets(StackList0, StackList),
 		{ map__from_assoc_list(StackList, StackMap) }
 	;
 		{ map__init(StackMap) }
@@ -2195,7 +2241,7 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint) -->
 		{ ResumeLocs = stack_only },
 		{ map__select(StackSlots, ResumeVars, StackMap0) },
 		{ map__to_assoc_list(StackMap0, StackList0) },
-		{ code_info__make_singleton_sets(StackList0, StackList) },
+		code_info__make_singleton_sets(StackList0, StackList),
 		{ map__from_assoc_list(StackList, StackMap) },
 		code_info__get_next_label(StackLabel),
 		{ StackAddr = label(StackLabel) },
@@ -2204,7 +2250,7 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint) -->
 		{ ResumeLocs = orig_and_stack },
 		{ map__select(StackSlots, ResumeVars, StackMap0) },
 		{ map__to_assoc_list(StackMap0, StackList0) },
-		{ code_info__make_singleton_sets(StackList0, StackList) },
+		code_info__make_singleton_sets(StackList0, StackList),
 		{ map__from_assoc_list(StackList, StackMap) },
 		code_info__get_next_label(OrigLabel),
 		{ OrigAddr = label(OrigLabel) },
@@ -2216,7 +2262,7 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint) -->
 		{ ResumeLocs = stack_and_orig },
 		{ map__select(StackSlots, ResumeVars, StackMap0) },
 		{ map__to_assoc_list(StackMap0, StackList0) },
-		{ code_info__make_singleton_sets(StackList0, StackList) },
+		code_info__make_singleton_sets(StackList0, StackList),
 		{ map__from_assoc_list(StackList, StackMap) },
 		code_info__get_next_label(StackLabel),
 		{ StackAddr = label(StackLabel) },
@@ -2226,12 +2272,18 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint) -->
 			OrigMap, OrigAddr) }
 	).
 
-:- pred code_info__make_singleton_sets(assoc_list(var, lval)::in,
-	assoc_list(var, set(rval))::out) is det.
+:- pred code_info__make_singleton_sets(assoc_list(prog_var, lval)::in,
+	assoc_list(prog_var, set(val_or_ref))::out,
+	code_info::in, code_info::out) is det.
 
-code_info__make_singleton_sets([], []).
-code_info__make_singleton_sets([V - L | Rest0], [V - Rs | Rest]) :-
-	set__singleton_set(Rs, lval(L)),
+code_info__make_singleton_sets([], []) --> [].
+code_info__make_singleton_sets([V - L | Rest0], [V - Rs | Rest]) -->
+	( code_info__var_is_free_alias(V) ->
+		{ VVal = reference(L) }
+	;
+		{ VVal = value(lval(L)) }
+	),
+	{ set__singleton_set(Rs, VVal) },
 	code_info__make_singleton_sets(Rest0, Rest).
 
 %---------------------------------------------------------------------------%
@@ -2326,8 +2378,9 @@ extract_label_from_code_addr(CodeAddr, Label) :-
 		error("extract_label_from_code_addr: non-label!")
 	).
 
-:- pred code_info__place_resume_vars(assoc_list(var, set(rval))::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+:- pred code_info__place_resume_vars(assoc_list(prog_var,
+		set(val_or_ref))::in, code_tree::out,
+		code_info::in, code_info::out) is det.
 
 code_info__place_resume_vars([], empty) --> [].
 code_info__place_resume_vars([Var - TargetSet | Rest], Code) -->
@@ -2336,13 +2389,15 @@ code_info__place_resume_vars([Var - TargetSet | Rest], Code) -->
 	{ Code = tree(FirstCode, RestCode) },
 	code_info__place_resume_vars(Rest, RestCode).
 
-:- pred code_info__place_resume_var(var::in, list(rval)::in, code_tree::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__place_resume_var(prog_var::in, list(val_or_ref)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 code_info__place_resume_var(_Var, [], empty) --> [].
 code_info__place_resume_var(Var, [Target | Targets], Code) -->
-	( { Target = lval(TargetLval) } ->
+	( { Target = value(lval(TargetLval)) } ->
 		code_info__place_var(Var, TargetLval, FirstCode)
+	; { Target = reference(RefLval) } ->
+		code_info__place_var_reference(Var, RefLval, FirstCode)
 	;
 		{ error("code_info__place_resume_var: not lval") }
 	),
@@ -2363,8 +2418,8 @@ code_info__set_var_locations(Map) -->
 	{ code_exprn__reinit_state(List, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-:- pred code_info__flatten_varlval_list(assoc_list(var, set(rval))::in,
-	assoc_list(var, rval)::out) is det.
+:- pred code_info__flatten_varlval_list(assoc_list(prog_var,
+	set(val_or_ref))::in, assoc_list(prog_var, val_or_ref)::out) is det.
 
 code_info__flatten_varlval_list([], []).
 code_info__flatten_varlval_list([V - Rvals | Rest0], All) :-
@@ -2373,8 +2428,8 @@ code_info__flatten_varlval_list([V - Rvals | Rest0], All) :-
 	code_info__flatten_varlval_list_2(RvalList, V, Rest1),
 	list__append(Rest1, Rest, All).
 
-:- pred code_info__flatten_varlval_list_2(list(rval)::in, var::in,
-	assoc_list(var, rval)::out) is det.
+:- pred code_info__flatten_varlval_list_2(list(val_or_ref)::in, prog_var::in,
+	assoc_list(prog_var, val_or_ref)::out) is det.
 
 code_info__flatten_varlval_list_2([], _V, []).
 code_info__flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
@@ -2479,33 +2534,34 @@ code_info__clone_resume_point(ResumePoint0, ResumePoint) -->
 
 :- interface.
 
-:- pred code_info__get_known_variables(list(var), code_info, code_info).
+:- pred code_info__get_known_variables(list(prog_var), code_info, code_info).
 :- mode code_info__get_known_variables(out, in, out) is det.
 
-:- pred code_info__variable_is_forward_live(var, code_info, code_info).
+:- pred code_info__variable_is_forward_live(prog_var, code_info, code_info).
 :- mode code_info__variable_is_forward_live(in, in, out) is semidet.
 
-:- pred code_info__make_vars_forward_dead(set(var), code_info, code_info).
+:- pred code_info__make_vars_forward_dead(set(prog_var), code_info, code_info).
 :- mode code_info__make_vars_forward_dead(in, in, out) is det.
 
-:- pred code_info__pickup_zombies(set(var), code_info, code_info).
+:- pred code_info__pickup_zombies(set(prog_var), code_info, code_info).
 :- mode code_info__pickup_zombies(out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pred code_info__add_forward_live_vars(set(var), code_info, code_info).
+:- pred code_info__add_forward_live_vars(set(prog_var), code_info, code_info).
 :- mode code_info__add_forward_live_vars(in, in, out) is det.
 
-:- pred code_info__rem_forward_live_vars(set(var), code_info, code_info).
+:- pred code_info__rem_forward_live_vars(set(prog_var), code_info, code_info).
 :- mode code_info__rem_forward_live_vars(in, in, out) is det.
 
 	% Make these variables appear magically live.
 	% We don't care where they are put.
 
-:- pred code_info__make_vars_forward_live(set(var), code_info, code_info).
-:- mode code_info__make_vars_forward_live(in, in, out) is det.
+:- pred code_info__make_vars_forward_live(set(prog_var), set(prog_var),
+		code_info, code_info).
+:- mode code_info__make_vars_forward_live(in, in, in, out) is det.
 
 code_info__get_known_variables(VarList) -->
 	code_info__get_forward_live_vars(ForwardLiveVars),
@@ -2527,29 +2583,34 @@ code_info__rem_forward_live_vars(Deaths) -->
 	{ set__difference(Liveness0, Deaths, Liveness) },
 	code_info__set_forward_live_vars(Liveness).
 
-code_info__make_vars_forward_live(Vars) -->
+code_info__make_vars_forward_live(Vars, RefVars) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_exprn_info(Exprn0),
 	{ set__to_sorted_list(Vars, VarList) },
-	{ code_info__make_vars_forward_live_2(VarList, StackSlots, 1,
+	{ code_info__make_vars_forward_live_2(VarList, RefVars, StackSlots, 1,
 		Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-:- pred code_info__make_vars_forward_live_2(list(var), stack_slots, int,
-	exprn_info, exprn_info).
-:- mode code_info__make_vars_forward_live_2(in, in, in, in, out) is det.
+:- pred code_info__make_vars_forward_live_2(list(prog_var), set(prog_var),
+	stack_slots, int, exprn_info, exprn_info).
+:- mode code_info__make_vars_forward_live_2(in, in, in, in, in, out) is det.
 
-code_info__make_vars_forward_live_2([], _, _, Exprn, Exprn).
-code_info__make_vars_forward_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
-	( map__search(StackSlots, V, Lval0) ->
+code_info__make_vars_forward_live_2([], _, _, _, Exprn, Exprn).
+code_info__make_vars_forward_live_2([V | Vs], RefVars, StackSlots, N0) -->
+	=(Exprn0),
+	{ map__search(StackSlots, V, Lval0) ->
 		Lval = Lval0,
 		N1 = N0
 	;
 		code_info__find_unused_reg(N0, Exprn0, N1),
 		Lval = reg(r, N1)
+	},
+	( { set__member(V, RefVars)} ->
+		code_exprn__set_var_reference_location(V, Lval)
+	;
+		code_exprn__maybe_set_var_location(V, Lval)
 	),
-	code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn1),
-	code_info__make_vars_forward_live_2(Vs, StackSlots, N1, Exprn1, Exprn).
+	code_info__make_vars_forward_live_2(Vs, RefVars, StackSlots, N1).
 
 :- pred code_info__find_unused_reg(int, exprn_info, int).
 :- mode code_info__find_unused_reg(in, in, out) is det.
@@ -2572,7 +2633,8 @@ code_info__make_vars_forward_dead(Vars0) -->
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__make_vars_forward_dead_2(VarList).
 
-:- pred code_info__make_vars_forward_dead_2(list(var), code_info, code_info).
+:- pred code_info__make_vars_forward_dead_2(list(prog_var),
+		code_info, code_info).
 :- mode code_info__make_vars_forward_dead_2(in, in, out) is det.
 
 code_info__make_vars_forward_dead_2([]) --> [].
@@ -2795,27 +2857,41 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 
 :- interface.
 
-:- pred code_info__variable_locations(map(var, set(rval)),
+:- pred code_info__variable_locations(map(prog_var, set(rval)),
 	code_info, code_info).
 :- mode code_info__variable_locations(out, in, out) is det.
 
-:- pred code_info__set_var_location(var, lval, code_info, code_info).
+:- pred code_info__set_var_location(prog_var, lval, code_info, code_info).
 :- mode code_info__set_var_location(in, in, in, out) is det.
 
-:- pred code_info__cache_expression(var, rval, code_info, code_info).
+:- pred code_info__set_var_reference_location(prog_var, lval, code_info,
+		code_info).
+:- mode code_info__set_var_reference_location(in, in, in, out) is det.
+
+:- pred code_info__cache_expression(prog_var, rval, code_info, code_info).
 :- mode code_info__cache_expression(in, in, in, out) is det.
 
-:- pred code_info__place_var(var, lval, code_tree, code_info, code_info).
+:- pred code_info__place_var(prog_var, lval, code_tree, code_info, code_info).
 :- mode code_info__place_var(in, in, out, in, out) is det.
 
-:- pred code_info__produce_variable(var, code_tree, rval, code_info, code_info).
+:- pred code_info__place_var_reference(prog_var, lval, code_tree,
+	code_info, code_info).
+:- mode code_info__place_var_reference(in, in, out, in, out) is det.
+
+:- pred code_info__produce_variable(prog_var, code_tree, rval, code_info,
+		code_info).
 :- mode code_info__produce_variable(in, out, out, in, out) is det.
 
-:- pred code_info__produce_variable_in_reg(var, code_tree, rval,
+:- pred code_info__produce_variable_in_references(prog_var, code_tree,
+	code_info, code_info).
+:- mode code_info__produce_variable_in_references(in, out,
+	in, out) is det.
+
+:- pred code_info__produce_variable_in_reg(prog_var, code_tree, rval,
 	code_info, code_info).
 :- mode code_info__produce_variable_in_reg(in, out, out, in, out) is det.
 
-:- pred code_info__produce_variable_in_reg_or_stack(var, code_tree, rval,
+:- pred code_info__produce_variable_in_reg_or_stack(prog_var, code_tree, rval,
 	code_info, code_info).
 :- mode code_info__produce_variable_in_reg_or_stack(in, out, out, in, out)
 	is det.
@@ -2830,7 +2906,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__unlock_reg(lval, code_info, code_info).
 :- mode code_info__unlock_reg(in, in, out) is det.
 
-:- pred code_info__acquire_reg_for_var(var, lval, code_info, code_info).
+:- pred code_info__acquire_reg_for_var(prog_var, lval, code_info, code_info).
 :- mode code_info__acquire_reg_for_var(in, out, in, out) is det.
 
 :- pred code_info__acquire_reg(reg_type, lval, code_info, code_info).
@@ -2848,31 +2924,47 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 	% (i.e. in the caller), or to setup the output arguments in the
 	% predicate epilog (i.e. in the callee).
 
-:- pred code_info__setup_call(assoc_list(var, arg_info),
+:- pred code_info__setup_call(assoc_list(prog_var, arg_info),
 	call_direction, code_tree, code_info, code_info).
 :- mode code_info__setup_call(in, in, out, in, out) is det.
 
 :- pred code_info__clear_all_registers(code_info, code_info).
 :- mode code_info__clear_all_registers(in, out) is det.
 
-:- pred code_info__save_variable_on_stack(var, code_tree,
+:- pred code_info__save_variable_on_stack(prog_var, code_tree,
 	code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
 
-:- pred code_info__save_variables_on_stack(list(var), code_tree,
+:- pred code_info__save_variables_on_stack(list(prog_var), code_tree,
 	code_info, code_info).
 :- mode code_info__save_variables_on_stack(in, out, in, out) is det.
 
+:- pred code_info__save_reference_on_stack(prog_var, code_tree,
+	code_info, code_info).
+:- mode code_info__save_reference_on_stack(in, out, in, out) is det.
+
+:- pred code_info__var_is_free_alias(prog_var, code_info, code_info).
+:- mode code_info__var_is_free_alias(in, in, out) is semidet.
+
 :- pred code_info__max_reg_in_use(int, code_info, code_info).
 :- mode code_info__max_reg_in_use(out, in, out) is det.
+
+:- pred code_info__stack_slots_to_store_map(stack_slots, store_map,
+	code_info, code_info).
+:- mode code_info__stack_slots_to_store_map(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pred code_info__place_vars(assoc_list(var, set(rval)), code_tree,
+:- pred code_info__place_vars(assoc_list(prog_var, set(val_or_ref)), code_tree,
 	code_info, code_info).
 :- mode code_info__place_vars(in, out, in, out) is det.
+
+:- pred code_info__produce_reference_in_reg_or_stack(prog_var, code_tree, lval,
+	code_info, code_info).
+:- mode code_info__produce_reference_in_reg_or_stack(in, out, out, in, out)
+	is det.
 
 code_info__variable_locations(Locations) -->
 	code_info__get_exprn_info(Exprn),
@@ -2881,6 +2973,11 @@ code_info__variable_locations(Locations) -->
 code_info__set_var_location(Var, Lval) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__set_var_location(Var, Lval, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+code_info__set_var_reference_location(Var, Lval) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__set_var_reference_location(Var, Lval, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 code_info__cache_expression(Var, Rval) -->
@@ -2896,7 +2993,8 @@ code_info__place_var(Var, Lval, Code) -->
 code_info__place_vars([], empty) --> [].
 code_info__place_vars([V - Rs | RestList], Code) -->
 	(
-		{ set__to_sorted_list(Rs, RList) },
+		{ set__to_sorted_list(Rs, VList) },
+		{ list__filter_map(code_exprn__value_to_rval, VList, RList) },
 		{ code_info__lval_in_rval_list(L, RList) }
 	->
 		code_info__place_var(V, L, ThisCode)
@@ -2905,6 +3003,11 @@ code_info__place_vars([V - Rs | RestList], Code) -->
 	),
 	code_info__place_vars(RestList, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
+
+code_info__place_var_reference(Var, Lval, Code) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__place_var_reference(Var, Lval, Code, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
 
 :- pred code_info__lval_in_rval_list(lval, list(rval)).
 :- mode code_info__lval_in_rval_list(out, in) is semidet.
@@ -2921,6 +3024,11 @@ code_info__produce_variable(Var, Code, Rval) -->
 	{ code_exprn__produce_var(Var, Rval, Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
+code_info__produce_variable_in_references(Var, Code) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__place_var_in_references(Var, Code, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
 code_info__produce_variable_in_reg(Var, Code, Rval) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__produce_var_in_reg(Var, Rval, Code, Exprn0, Exprn) },
@@ -2929,6 +3037,12 @@ code_info__produce_variable_in_reg(Var, Code, Rval) -->
 code_info__produce_variable_in_reg_or_stack(Var, Code, Rval) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code,
+		Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+code_info__produce_reference_in_reg_or_stack(Var, Code, Lval) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__produce_ref_in_reg_or_stack(Var, Lval, Code,
 		Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
@@ -2952,7 +3066,7 @@ code_info__acquire_reg_for_var(Var, Lval) -->
 	code_info__get_exprn_info(Exprn0),
 	code_info__get_follow_vars(Follow),
 	(
-		{ map__search(Follow, Var, PrefLval) },
+		{ map__search(Follow, Var, store_info(_, PrefLval)) },
 		{ PrefLval = reg(PrefRegType, PrefRegNum) }
 	->
 		{ code_exprn__acquire_reg_prefer_given(PrefRegType, PrefRegNum,
@@ -2983,16 +3097,23 @@ code_info__setup_call([], _Direction, empty) --> [].
 code_info__setup_call([V - arg_info(Loc, Mode) | Rest], Direction, Code) -->
 	(
 		{
-			Mode = top_in,
+			arg_mode_is_input(Mode),
 			Direction = caller
 		;
-			Mode = top_out,
+			arg_mode_is_output(Mode),
 			Direction = callee
 		}
 	->
 		{ code_util__arg_loc_to_register(Loc, Reg) },
 		code_info__get_exprn_info(Exprn0),
-		{ code_exprn__place_var(V, Reg, Code0, Exprn0, Exprn1) },
+		( { Mode = ref_in ; Mode = ref_out } ->
+			% (ref_in and caller) or (ref_out and callee)
+			{ code_exprn__place_var_reference(V, Reg, Code0, Exprn0,
+				Exprn1) }
+		;
+			% (top_in and caller) or (top_out and callee)
+			{ code_exprn__place_var(V, Reg, Code0, Exprn0, Exprn1) }
+		),
 			% We need to test that either the variable
 			% is live OR it occurs in the remaining arguments
 			% because of a bug in polymorphism.m which
@@ -3059,6 +3180,19 @@ code_info__save_variables_on_stack([Var | Vars], Code) -->
 	code_info__save_variables_on_stack(Vars, RestCode),
 	{ Code = tree(FirstCode, RestCode) }.
 
+code_info__save_reference_on_stack(Var, Code) -->
+	code_info__get_variable_slot(Var, Slot),
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__place_var_reference(Var, Slot, Code, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+code_info__var_is_free_alias(Var) -->
+	code_info__get_instmap(InstMap),
+	code_info__get_inst_table(InstTable),
+	code_info__get_module_info(ModuleInfo),
+	{ instmap__lookup_var(InstMap, Var, Inst) },
+	{ inst_is_free_alias(Inst, InstMap, InstTable, ModuleInfo) }.
+
 code_info__max_reg_in_use(Max) -->
 	code_info__get_exprn_info(Exprn),
 	{ code_exprn__max_reg_in_use(Exprn, Max) }.
@@ -3066,125 +3200,144 @@ code_info__max_reg_in_use(Max) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-	% Submodule for dealing with information for garbage collection
-	% and value numbering.
+	% Submodule for dealing with the recording of variable liveness
+	% information around calls.
+	%
+	% Value numbering needs to know what locations are live before calls;
+	% the garbage collector and the debugger need to know what locations
+	% are live containing what types of values after calls.
 
 :- interface.
 
-:- pred code_info__generate_stack_livevals(set(var), set(lval),
-	code_info, code_info).
-:- mode code_info__generate_stack_livevals(in, out, in, out) is det.
+:- pred code_info__generate_call_stack_vn_livevals(set(prog_var)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__generate_stack_livelvals(set(var), instmap,
-	list(liveinfo), code_info, code_info).
-:- mode code_info__generate_stack_livelvals(in, in, out, in, out) is det.
+:- pred code_info__generate_call_vn_livevals(list(arg_loc)::in,
+	set(prog_var)::in, set(lval)::out, code_info::in, code_info::out)
+	is det.
+
+:- pred code_info__generate_return_live_lvalues(
+	assoc_list(prog_var, arg_loc)::in, instmap::in, list(liveinfo)::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__generate_stack_livevals(Args, LiveVals) -->
-	code_info__get_known_variables(LiveVars),
-	{ set__list_to_set(LiveVars, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
-	{ set__to_sorted_list(Vars, VarList) },
+code_info__generate_call_stack_vn_livevals(OutputArgs, LiveVals) -->
+	code_info__get_known_variables(KnownVarList),
+	{ set__list_to_set(KnownVarList, KnownVars) },
+	{ set__difference(KnownVars, OutputArgs, LiveVars) },
+	{ set__to_sorted_list(LiveVars, LiveVarList) },
 	{ set__init(LiveVals0) },
-	code_info__generate_var_livevals(VarList, LiveVals0, LiveVals1),
-	code_info__get_temps_in_use(TempsInUse),
-	code_info__get_temp_content_map(TempContentMap),
-	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
-	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
-	{ code_info__generate_temp_livevals(Temps, LiveVals1, LiveVals) }.
+	code_info__generate_stack_var_vn(LiveVarList, LiveVals0, LiveVals1),
 
-:- pred code_info__generate_var_livevals(list(var), set(lval), set(lval),
-	code_info, code_info).
-:- mode code_info__generate_var_livevals(in, in, out, in, out) is det.
+	code_info__get_active_temps_data(Temps),
+	{ code_info__generate_call_temp_vn(Temps, LiveVals1, LiveVals) }.
 
-code_info__generate_var_livevals([], Vals, Vals) --> [].
-code_info__generate_var_livevals([V | Vs], Vals0, Vals) -->
-	code_info__get_variable_slot(V, Slot),
-	{ set__insert(Vals0, Slot, Vals1) },
-	code_info__generate_var_livevals(Vs, Vals1, Vals).
+code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs, LiveVals) -->
+	code_info__generate_call_stack_vn_livevals(OutputArgs, StackLiveVals),
+	{ code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
+		LiveVals) }.
 
-:- pred code_info__generate_temp_livevals(assoc_list(lval, slot_contents),
-	set(lval), set(lval)).
-:- mode code_info__generate_temp_livevals(in, in, out) is det.
+:- pred code_info__generate_stack_var_vn(list(prog_var)::in, set(lval)::in,
+	set(lval)::out, code_info::in, code_info::out) is det.
 
-code_info__generate_temp_livevals([], Vals, Vals).
-code_info__generate_temp_livevals([Slot - _ | Slots], Vals0, Vals) :-
-	set__insert(Vals0, Slot, Vals1),
-	code_info__generate_temp_livevals(Slots, Vals1, Vals).
+code_info__generate_stack_var_vn([], Vals, Vals) --> [].
+code_info__generate_stack_var_vn([V | Vs], Vals0, Vals) -->
+	code_info__get_variable_slot(V, Lval),
+	{ set__insert(Vals0, Lval, Vals1) },
+	code_info__generate_stack_var_vn(Vs, Vals1, Vals).
+
+:- pred code_info__generate_call_temp_vn(assoc_list(lval, slot_contents)::in,
+	set(lval)::in, set(lval)::out) is det.
+
+code_info__generate_call_temp_vn([], Vals, Vals).
+code_info__generate_call_temp_vn([Lval - _ | Temps], Vals0, Vals) :-
+	set__insert(Vals0, Lval, Vals1),
+	code_info__generate_call_temp_vn(Temps, Vals1, Vals).
+
+:- pred code_info__generate_input_var_vn(list(arg_loc)::in,
+	set(lval)::in, set(lval)::out) is det.
+
+code_info__generate_input_var_vn([], Vals, Vals).
+code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], Vals0, Vals) :-
+	code_util__arg_loc_to_register(InputArgLoc, Lval),
+	set__insert(Vals0, Lval, Vals1),
+	code_info__generate_input_var_vn(InputArgLocs, Vals1, Vals).
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
-	code_info__get_known_variables(LiveVars),
-	{ set__list_to_set(LiveVars, Vars0) },
-	{ set__difference(Vars0, Args, Vars) },
-	{ set__to_sorted_list(Vars, VarList) },
-	{ set__init(LiveVals0) },
-	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
-	{ set__to_sorted_list(LiveVals1, LiveVals2) },
+code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
+		LiveLvalues) -->
+	code_info__get_known_variables(Vars),
 	code_info__get_globals(Globals),
 	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
-	code_info__livevals_to_livelvals(LiveVals2, WantReturnVarLayout, 
-		AfterCallInstMap, LiveVals3),
-	code_info__get_temps_in_use(TempsInUse),
-	code_info__get_temp_content_map(TempContentMap),
-	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
-	{ map__to_assoc_list(TempsInUseContentMap, Temps) },
-	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals) }.
+	code_info__get_inst_table(InstTable),
+	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals),
+	code_info__generate_var_live_lvalues(VarLvals, InstTable,
+		ReturnInstMap, WantReturnVarLayout, VarLiveLvalues),
 
-:- pred code_info__generate_var_livelvals(list(var),
-	set(pair(lval, var)), set(pair(lval, var)), code_info, code_info).
-:- mode code_info__generate_var_livelvals(in, in, out, in, out) is det.
+	code_info__get_active_temps_data(Temps),
+	{ code_info__generate_temp_live_lvalues(Temps, TempLiveLvalues) },
 
-code_info__generate_var_livelvals([], Vals, Vals) --> [].
-code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
-	code_info__get_variable_slot(V, Slot),
-	{ set__insert(Vals0, Slot - V, Vals1) },
-	code_info__generate_var_livelvals(Vs, Vals1, Vals).
+	{ list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues) }.
 
-:- pred code_info__generate_temp_livelvals(assoc_list(lval, slot_contents),
-	list(liveinfo), list(liveinfo)).
-:- mode code_info__generate_temp_livelvals(in, in, out) is det.
+:- pred code_info__find_return_var_lvals(list(prog_var)::in,
+	assoc_list(prog_var, arg_loc)::in, assoc_list(prog_var, lval)::out,
+	code_info::in, code_info::out) is det.
 
-code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
-code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(direct(Slot), LiveValueType, Empty) | LiveInfo1])
-		:-
+code_info__find_return_var_lvals([], _, []) --> [].
+code_info__find_return_var_lvals([Var | Vars], OutputArgLocs,
+		[Var - Lval | VarLvals]) -->
+	( { assoc_list__search(OutputArgLocs, Var, ArgLoc) } ->
+		% On return, output arguments are in their registers.
+		{ code_util__arg_loc_to_register(ArgLoc, Lval) }
+	;
+		% On return, other live variables are in their stack slots.
+		code_info__get_variable_slot(Var, Lval)
+	),
+	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals).
+
+:- pred code_info__generate_temp_live_lvalues(
+	assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.
+
+code_info__generate_temp_live_lvalues([], []).
+code_info__generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
+	Temp = Slot - Contents,
+	code_info__get_live_value_type(Contents, LiveLvalueType),
 	map__init(Empty),
-	code_info__get_live_value_type(StoredLval, LiveValueType),
-	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
+	Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
+	code_info__generate_temp_live_lvalues(Temps, Lives).
 
-:- pred code_info__livevals_to_livelvals(assoc_list(lval, var), bool,
-	instmap, list(liveinfo), code_info, code_info).
-:- mode code_info__livevals_to_livelvals(in, in, in, out, in, out) is det.
+:- pred code_info__generate_var_live_lvalues(assoc_list(prog_var, lval)::in,
+	inst_table::in, instmap::in, bool::in, list(liveinfo)::out,
+	code_info::in, code_info::out) is det.
 
-code_info__livevals_to_livelvals([], _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnVarLayout,
-		AfterCallInstMap, [LiveLval | Lives]) -->
-	code_info__get_varset(VarSet),
+code_info__generate_var_live_lvalues([], _, _, _, []) --> [].
+code_info__generate_var_live_lvalues([Var - Lval | VarLvals], InstTable,
+		InstMap, WantReturnVarLayout, [Live | Lives]) -->
 	(
 		{ WantReturnVarLayout = yes }
 	->
-		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+		code_info__get_varset(VarSet),
 		{ varset__lookup_name(VarSet, Var, Name) },
-
 		code_info__variable_type(Var, Type),
+		{ instmap__lookup_var(InstMap, Var, Inst) },
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(direct(Lval),
-			var(Var, Name, Type, Inst), TypeParams) }
+		{ QualInst = qualified_inst(InstTable, Inst) },
+		{ VarInfo = var(Var, Name, Type, QualInst) },
+		{ Live = live_lvalue(direct(Lval), VarInfo, TypeParams) }
 	;
 		{ map__init(Empty) },
-		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
+		{ Live = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
-	code_info__livevals_to_livelvals(Ls, WantReturnVarLayout,
-		AfterCallInstMap, Lives).
+	code_info__generate_var_live_lvalues(VarLvals, InstTable, InstMap,
+		WantReturnVarLayout, Lives).
 
-:- pred code_info__get_live_value_type(slot_contents, live_value_type).
-:- mode code_info__get_live_value_type(in, out) is det.
+:- pred code_info__get_live_value_type(slot_contents::in, live_value_type::out)
+	is det.
 
 code_info__get_live_value_type(lval(succip), succip).
 code_info__get_live_value_type(lval(hp), hp).
@@ -3272,7 +3425,7 @@ code_info__get_live_value_type(trace_data, unwanted).
 	% Return the lval of the stack slot in which the given variable
 	% is stored. Aborts if the variable does not have a stack slot
 	% an assigned to it.
-:- pred code_info__get_variable_slot(var, lval, code_info, code_info).
+:- pred code_info__get_variable_slot(prog_var, lval, code_info, code_info).
 :- mode code_info__get_variable_slot(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
@@ -3376,6 +3529,16 @@ code_info__stack_variable_reference(Num, mem_addr(Ref)) -->
 	;
 		{ Ref = stackvar_ref(Num) }
 	).
+
+%---------------------------------------------------------------------------%
+
+code_info__stack_slots_to_store_map(StackSlots, StoreMap, CodeInfo, CodeInfo) :-
+	map__map_values(lambda([Var::in, Lval::in, StoreInfo::out] is det,
+		( code_info__var_is_free_alias(Var, CodeInfo, _) ->
+			StoreInfo = store_info(ref, Lval)
+		;
+			StoreInfo = store_info(val, Lval)
+		)), StackSlots, StoreMap).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,11 +125,11 @@
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
 
-:- pred module_info_insts(module_info, inst_table).
-:- mode module_info_insts(in, out) is det.
+:- pred module_info_user_insts(module_info, user_inst_table).
+:- mode module_info_user_insts(in, out) is det.
 
-:- pred module_info_set_insts(module_info, inst_table, module_info).
-:- mode module_info_set_insts(in, in, out) is det.
+:- pred module_info_set_user_insts(module_info, user_inst_table, module_info).
+:- mode module_info_set_user_insts(in, in, out) is det.
 
 :- pred module_info_modes(module_info, mode_table).
 :- mode module_info_modes(in, out) is det.
@@ -467,7 +467,7 @@
 			special_pred_map,
 			continuation_info,
 			type_table,
-			inst_table,
+			user_inst_table,
 			mode_table,
 			cons_table,
 			class_table,
@@ -516,7 +516,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
 	map__init(Types),
-	inst_table_init(Insts),
+	user_inst_table_init(UserInsts),
 	mode_table_init(Modes),
 	continuation_info__init(ContinuationInfo),
 	map__init(Ctors),
@@ -529,7 +529,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
 		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
-		UnifyPredMap, ContinuationInfo, Types, Insts, Modes, Ctors,
+		UnifyPredMap, ContinuationInfo, Types, UserInsts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, 0).
 
 %-----------------------------------------------------------------------------%
@@ -672,7 +672,7 @@ module_sub_set_imported_module_specifiers(MI0, N, MI) :-
 % D			special_pred_map,
 % E			continuation_info,
 % F			type_table,
-% G			inst_table,
+% G			user_inst_table,
 % H			mode_table,
 % I			cons_table,
 % J			class_table,
@@ -706,7 +706,7 @@ module_info_get_continuation_info(MI0, E) :-
 module_info_types(MI0, F) :-
 	MI0 = module(_, _, _, _, _, F, _, _, _, _, _, _, _).
 
-module_info_insts(MI0, G) :-
+module_info_user_insts(MI0, G) :-
 	MI0 = module(_, _, _, _, _, _, G, _, _, _, _, _, _).
 
 module_info_modes(MI0, H) :-
@@ -755,7 +755,7 @@ module_info_set_types(MI0, F, MI) :-
 	MI0 = module(A, B, C, D, E, _, G, H, I, J, K, L, M),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
-module_info_set_insts(MI0, G, MI) :-
+module_info_set_user_insts(MI0, G, MI) :-
 	MI0 = module(A, B, C, D, E, F, _, H, I, J, K, L, M),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
@@ -976,8 +976,7 @@ module_info_typeids(MI, TypeIds) :-
 	map__keys(Types, TypeIds).
 
 module_info_instids(MI, InstIds) :-
-	module_info_insts(MI, InstTable),
-	inst_table_get_user_insts(InstTable, UserInstTable),
+	module_info_user_insts(MI, UserInstTable),
 	user_inst_table_get_inst_ids(UserInstTable, InstIds).
 
 module_info_modeids(MI, ModeIds) :-
@@ -1033,11 +1032,9 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	map__optimize(Types0, Types),
 	module_info_set_types(ModuleInfo3, Types, ModuleInfo4),
 
-	module_info_insts(ModuleInfo4, InstTable0),
-	inst_table_get_user_insts(InstTable0, Insts0),
+	module_info_user_insts(ModuleInfo4, Insts0),
 	user_inst_table_optimize(Insts0, Insts),
-	inst_table_set_user_insts(InstTable0, Insts, InstTable),
-	module_info_set_insts(ModuleInfo4, InstTable, ModuleInfo5),
+	module_info_set_user_insts(ModuleInfo4, Insts, ModuleInfo5),
 
 	module_info_modes(ModuleInfo5, Modes0),
 	mode_table_optimize(Modes0, Modes),

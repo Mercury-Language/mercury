@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,6 +77,14 @@
 	%	returns the type_info for the type stored in `Univ'.
 	%
 :- func univ_type(univ) = type_info.
+
+
+	% univ_value(Univ):
+	%	returns the value of the object stored in Univ.
+	%
+	% Warning: support for existential types is still experimental.
+	%
+:- some [T] func univ_value(univ) = T.
 
 %-----------------------------------------------------------------------------%
 
@@ -214,10 +222,20 @@
 	% get_functor/5 and construct/3 will fail if used upon a value
 	% of this type.)
 
-	% type_of(Data) returns a representation of the type of Data.
+	% The function type_of/1 returns a representation of the type
+	% of its argument.
 	%
 :- func type_of(T) = type_info.
 :- mode type_of(unused) = out is det.
+
+	% The predicate has_type/2 is basically an existentially typed
+	% inverse to the function type_of/1.  It constrains the type
+	% of the first argument to be the type represented by the
+	% second argument.
+	%
+	% Warning: support for existential types is still experimental.
+	%
+:- some [T] pred has_type(T::unused, type_info::in) is det.
 
 	% type_name(Type) returns the name of the specified type
 	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -500,6 +518,7 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 3);
 
 BEGIN_MODULE(builtin_aggregate_module)
 	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__std_util__builtin_aggregate_4_0);
 	init_entry(mercury__std_util__builtin_aggregate_4_1);
 	init_entry(mercury__std_util__builtin_aggregate_4_2);
 	init_entry(mercury__std_util__builtin_aggregate_4_3);
@@ -969,23 +988,10 @@ det_univ_to_type(Univ, X) :-
 		error(ErrorString)
 	).
 
-/****
-
-% univ_value/1 can't be implemented yet, due to the lack of support for
-% existential types in Mercury.
-
-	% univ_value(Univ):
-	%	returns the value of the object stored in Univ.
-:- some [T] (
-   func univ_value(univ) = T
-).
-
-:- pragma c_code(univ_value(Univ::uo) = (Value), will_not_call_mercury, "
+:- pragma c_code(univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
 	TypeInfo_for_T = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_Data);
+	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 ").
-
-****/
 
 :- pragma c_header_code("
 /*
@@ -1119,6 +1125,7 @@ BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Compare___std_util__univ_0_0);
 #else
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
 #endif
 #ifdef MR_USE_SOLVE_EQUAL
@@ -1343,14 +1350,9 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 	% small integers.  See runtime/type_info.h.
 :- type type_ctor_info == c_pointer.  
 
-:- pragma c_code(type_of(Value::unused) = (TypeInfo::out),
+:- pragma c_code(type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, " 
 {
-	/* 
-	** `Value' isn't used in this c_code, but the compiler
-	** gives a warning if you don't mention it.
-	*/ 
-
 	TypeInfo = TypeInfo_for_T;
 
 	/*
@@ -1366,6 +1368,10 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 #endif
 
 }
+").
+
+:- pragma c_code(has_type(_Arg::unused, TypeInfo::in), will_not_call_mercury, "
+	TypeInfo_for_T = TypeInfo;
 ").
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
@@ -2448,18 +2454,43 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 ((Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO], 
                 &((Word *) data_word)[UNIV_OFFSET_FOR_DATA], info);
             break;
+
         case MR_DATAREP_VOID:
-		    fatal_error(""ML_expand: cannot expand void types"");
-            break;
+	    /*
+	    ** There's no way to create values of type `void',
+	    ** so this should never happen.
+	    */
+	    fatal_error(""ML_expand: cannot expand void types"");
+
         case MR_DATAREP_ARRAY:
-		    fatal_error(""ML_expand: cannot expand array types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<array>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_TYPEINFO:
-		    fatal_error(""ML_expand: cannot expand typeinfo types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<typeinfo>>"");
+            }
+	    /* XXX should we return the arguments here? */
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_C_POINTER:
-		    fatal_error(""ML_expand: cannot expand c_pointer types"");
+            if (info->need_functor) {
+                make_aligned_string(info->functor, ""<<c_pointer>>"");
+            }
+            info->argument_vector = NULL;
+            info->type_info_vector = NULL;
+            info->arity = 0;
             break;
+
         case MR_DATAREP_UNKNOWN:    /* fallthru */
         default:
             fatal_error(""ML_expand: cannot expand -- unknown data type"");

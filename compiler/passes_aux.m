@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
 :- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
@@ -128,12 +128,12 @@ about unbound type variables.
 
 
 :- pred report_pred_proc_id(module_info, pred_id, proc_id, 
-		maybe(term__context), term__context, io__state, io__state).
+		maybe(prog_context), prog_context, io__state, io__state).
 :- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
 
 :- pred report_pred_name_mode(pred_or_func, string, list((mode)),
-				io__state, io__state).
-:- mode report_pred_name_mode(in, in, in, di, uo) is det.
+			inst_table, io__state, io__state).
+:- mode report_pred_name_mode(in, in, in, in, di, uo) is det.
 	
 %-----------------------------------------------------------------------------%
 
@@ -141,8 +141,8 @@ about unbound type variables.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
-:- import_module int, map, tree234, require.
 :- import_module varset.
+:- import_module int, map, tree234, require.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
@@ -395,7 +395,8 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
+	{ proc_info_argmodes(ProcInfo,
+		argument_modes(ArgInstTable, ArgModes0)) },
 
 	% We need to strip off the extra type_info arguments inserted at the
 	% front by polymorphism.m - we only want the last `PredArity' of them.
@@ -415,35 +416,35 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	),
 	prog_out__write_context(OutContext),
 	io__write_string("In `"),
-	report_pred_name_mode(PredOrFunc, PredName, ArgModes),
+	report_pred_name_mode(PredOrFunc, PredName, ArgModes, ArgInstTable),
 	io__write_string("':\n").
 
 
-report_pred_name_mode(predicate, PredName, ArgModes) -->
+report_pred_name_mode(predicate, PredName, ArgModes, InstTable) -->
 	io__write_string(PredName),
 	( { ArgModes \= [] } ->
 		{ varset__init(InstVarSet) },	% XXX inst var names
 		io__write_string("("),
 		{ strip_builtin_qualifiers_from_mode_list(ArgModes,
 								ArgModes1) },
-		mercury_output_mode_list(ArgModes1, InstVarSet),
+		mercury_output_mode_list(ArgModes1, InstVarSet, InstTable),
 		io__write_string(")")
 	;
 		[]
 	).
 
-report_pred_name_mode(function, FuncName, ArgModes) -->
+report_pred_name_mode(function, FuncName, ArgModes, InstTable) -->
 	{ varset__init(InstVarSet) },	% XXX inst var names
 	{ strip_builtin_qualifiers_from_mode_list(ArgModes, ArgModes1) },
 	{ pred_args_to_func_args(ArgModes1, FuncArgModes, FuncRetMode) },
 	io__write_string(FuncName),
 	( { FuncArgModes \= [] } ->
 		io__write_string("("),
-		mercury_output_mode_list(FuncArgModes, InstVarSet),
+		mercury_output_mode_list(FuncArgModes, InstVarSet, InstTable),
 		io__write_string(")")
 	;
 		[]
 	),
 	io__write_string(" = "),
-	mercury_output_mode(FuncRetMode, InstVarSet).
+	mercury_output_mode(FuncRetMode, InstVarSet, InstTable).
 %-----------------------------------------------------------------------------%

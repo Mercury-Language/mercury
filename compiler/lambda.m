@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,17 +70,18 @@
 :- interface. 
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module list, map, set, term, varset.
+:- import_module list, map, set.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
-		determinism, list(var), set(var), hlds_goal, unification,
-		varset, map(var, type), class_constraints, tvarset,
-		map(tvar, type_info_locn), map(class_constraint, var),
-		module_info, unify_rhs, unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
+:- pred lambda__transform_lambda(pred_or_func, string, list(prog_var),
+		list(mode), determinism, list(prog_var), set(prog_var),
+		hlds_goal, unification, prog_varset, map(prog_var, type),
+		class_constraints, tvarset, map(tvar, type_info_locn),
+		map(class_constraint, prog_var), inst_table, module_info,
+		unify_rhs, unification, module_info).
+:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in, in,
 		in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -88,26 +89,27 @@
 
 :- implementation.
 
-:- import_module make_hlds, globals, options.
+:- import_module make_hlds, globals, options, term, varset.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
-:- import_module bool, string, std_util, require.
+:- import_module bool, set, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(
-			varset,			% from the proc_info
-			map(var, type),		% from the proc_info
+			prog_varset,		% from the proc_info
+			map(prog_var, type),	% from the proc_info
 			class_constraints,	% from the pred_info
 			tvarset,		% from the proc_info
 			map(tvar, type_info_locn),	
 						% from the proc_info 
 						% (typeinfos)
-			map(class_constraint, var),
+			map(class_constraint, prog_var),
 						% from the proc_info
 						% (typeclass_infos)
 			pred_or_func,
 			string,			% pred/func name
-			module_info
+			module_info,
+			inst_table
 		).
 
 %-----------------------------------------------------------------------------%
@@ -161,14 +163,16 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
+	proc_info_inst_table(ProcInfo0, InstTable),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		TVarMap0, TCVarMap0, PredOrFunc, PredName, ModuleInfo0),
+		TVarMap0, TCVarMap0, PredOrFunc, PredName, ModuleInfo0,
+		InstTable),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
 	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, ModuleInfo),
+		TVarMap, TCVarMap, _, _, ModuleInfo, _),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
@@ -193,7 +197,7 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
 	( { Y = lambda_goal(PredOrFunc, NonLocalVars, Vars, 
-			Modes, Det, LambdaGoal0) } ->
+			Modes, Det, _IMDelta, LambdaGoal0) } ->
 		% for lambda expressions, we must convert the lambda expression
 		% into a new predicate
 		lambda__process_lambda(PredOrFunc, Vars, Modes, Det, 
@@ -255,38 +259,42 @@ lambda__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 :- mode lambda__process_cases(in, out, in, out) is det.
 
 lambda__process_cases([], []) --> [].
-lambda__process_cases([case(ConsId, Goal0) | Cases0],
-		[case(ConsId, Goal) | Cases]) -->
+lambda__process_cases([case(ConsId, IMDelta, Goal0) | Cases0],
+		[case(ConsId, IMDelta, Goal) | Cases]) -->
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
-:- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
-		list(var), hlds_goal, unification, unify_rhs, unification,
-		lambda_info, lambda_info).
+:- pred lambda__process_lambda(pred_or_func, list(prog_var), argument_modes,
+		determinism, list(prog_var), hlds_goal, unification, unify_rhs,
+		unification, lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, POF, PredName, ModuleInfo0),
+			TVarMap, TCVarMap, POF, PredName, ModuleInfo0,
+			InstTable),
 	% XXX existentially typed lambda expressions are not yet supported
 	% (see the documentation at top of this file)
 	ExistQVars = [],
+	Modes = argument_modes(_ArgInstTable, ArgModes),
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
 	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
 		ExistQVars, LambdaNonLocals, ExtraTypeInfos),
-	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
+	% YYY Bogus if ArgInstTable is non-empty.
+	lambda__transform_lambda(PredOrFunc, PredName, Vars, ArgModes, Det,
 		OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+		InstTable, ModuleInfo0, Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, POF, PredName, ModuleInfo).
+			TVarMap, TCVarMap, POF, PredName, ModuleInfo,
+			InstTable).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
-		OrigVars, ExtraTypeInfos, LambdaGoal, Unification0,
-		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
+		OrigVars, ExtraTypeInfos, LambdaGoal, Unification0, VarSet,
+		VarTypes, Constraints, TVarSet, TVarMap, TCVarMap, InstTable,
 		ModuleInfo0, Functor, Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
@@ -357,11 +365,15 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		; CodeModel = model_non, Call_CodeModel = model_det
 		),
 			% check that the curried arguments are all input
-		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
+		proc_info_argmodes(Call_ProcInfo,
+			argument_modes(Call_ArgInstTable, Call_ArgModes)),
+		proc_info_get_initial_instmap(Call_ProcInfo, ModuleInfo0,
+			Call_InstMap),
 		list__length(InitialVars, NumInitialVars),
 		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
-			\+ mode_is_input(ModuleInfo0, Mode)
+			\+ mode_is_input(Call_InstMap, Call_ArgInstTable,
+				ModuleInfo0, Mode)
 		)
 	->
 		ArgVars = InitialVars,
@@ -370,8 +382,8 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		PredName = PredName0,
 		ModuleInfo = ModuleInfo0,
 		NumArgVars = NumInitialVars,
-		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
-			ModuleInfo0, UniModes)
+		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes, 
+			ModuleInfo, UniModes)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
@@ -437,9 +449,11 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
+		ArgInstTable = InstTable,  % YYY Should optimise ArgInstTable
+		NewArgModes = argument_modes(ArgInstTable, AllArgModes),
 		proc_info_create(VarSet, VarTypes, AllArgVars,
-			AllArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, ArgsMethod, ProcInfo),
+			NewArgModes, Detism, LambdaGoal, LambdaContext,
+			TVarMap, TCVarMap, ArgsMethod, ArgInstTable, ProcInfo),
 
 		init_markers(Markers),
 		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,

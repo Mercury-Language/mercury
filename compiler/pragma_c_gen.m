@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,11 +23,11 @@
 
 :- import_module hlds_goal, hlds_pred, prog_data.
 :- import_module llds, code_info.
-:- import_module list, std_util, term.
+:- import_module list, std_util.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
 	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
-	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
+	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	hlds_goal_info::in, pragma_c_code_impl::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -300,8 +300,8 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
 	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
-	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
-	string::in, maybe(term__context)::in, code_tree::out,
+	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
+	string::in, maybe(prog_context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
@@ -495,11 +495,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 
 :- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
 	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
-	list(var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
-	string::in, maybe(term__context)::in,
-	string::in, maybe(term__context)::in,
-	string::in, maybe(term__context)::in, pragma_shared_code_treatment::in,
-	string::in, maybe(term__context)::in, code_tree::out,
+	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
+	string::in, maybe(prog_context)::in,
+	string::in, maybe(prog_context)::in,
+	string::in, maybe(prog_context)::in, pragma_shared_code_treatment::in,
+	string::in, maybe(prog_context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
@@ -813,7 +813,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 
 :- type c_arg
 	--->	c_arg(
-			var,
+			prog_var,
 			maybe(string),	% name
 			type,		% original type before
 					% inlining/specialization
@@ -823,7 +823,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			arg_info
 		).
 
-:- pred make_c_arg_list(list(var)::in, list(maybe(pair(string, mode)))::in,
+:- pred make_c_arg_list(list(prog_var)::in, list(maybe(pair(string, mode)))::in,
 		list(type)::in, list(arg_info)::in, list(c_arg)::out) is det.
 
 make_c_arg_list(Vars, ArgDatas, Types, ArgInfos, ArgList) :-
@@ -854,7 +854,7 @@ make_c_arg_list(Vars, ArgDatas, Types, ArgInfos, ArgList) :-
 		error("pragma_c_gen:make_c_arg_list - length mismatch")
 	).
 
-:- pred get_c_arg_list_vars(list(c_arg)::in, list(var)::out) is det.
+:- pred get_c_arg_list_vars(list(c_arg)::in, list(prog_var)::out) is det.
 
 get_c_arg_list_vars([], []).
 get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -230,7 +230,7 @@
 			""Software error: Domain error in call to `%s'\\n"",
 			where);
 		MR_trace_report(stderr);
-		MR_dump_stack(MR_succip, MR_sp, MR_curfr);
+		MR_dump_stack(MR_succip, MR_sp, MR_curfr, FALSE);
 		exit(1);
 	}
 

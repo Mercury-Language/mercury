@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, goal_util, mode_util.
+:- import_module hlds_data, goal_util, mode_util, prog_data.
 :- import_module globals, options, det_analysis, quantification.
 :- import_module bool, map, set, term, std_util, require.
 
@@ -57,17 +57,19 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, Goal2, Goal, InstMap0,
-			ModuleInfo0, ModuleInfo)
+		proc_info_inst_table(ProcInfo0, InstTable0),
+		proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+		recompute_instmap_delta(HeadVars, ArgLives, VarTypes,
+			Goal2, Goal, InstMap0, InstTable0, InstTable,
+			_, ModuleInfo0, ModuleInfo),
+		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
+		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
+		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
+		proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo)
 	;
-		Goal = Goal0,
-		Varset = Varset0,
-		VarTypes = VarTypes0,
-		ModuleInfo = ModuleInfo0
-	),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+		ModuleInfo = ModuleInfo0,
+		ProcInfo = ProcInfo0
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -148,8 +150,8 @@ move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], Flags, R0, R) :-
 :- mode move_follow_code_in_cases(in, out, in, in, out) is det.
 
 move_follow_code_in_cases([], [], _, R, R).
-move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
-		Flags, R0, R) :-
+move_follow_code_in_cases([case(Cons, IMDelta, Goal0)|Goals0],
+		[case(Cons, IMDelta, Goal)|Goals], Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R1),
 	move_follow_code_in_cases(Goals0, Goals, Flags, R1, R).
 
@@ -251,9 +253,9 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 
 move_follow_code_move_goals_cases([], _FollowGoals, []).
 move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
-	Case0 = case(Cons, Goal0),
+	Case0 = case(Cons, IMDelta, Goal0),
 	follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
-	Case = case(Cons, Goal),
+	Case = case(Cons, IMDelta, Goal),
 	move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases).
 
 %-----------------------------------------------------------------------------%
@@ -319,7 +321,7 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred move_prev_code(hlds_goal, hlds_goal, set(var),
+:- pred move_prev_code(hlds_goal, hlds_goal, set(prog_var),
 	list(hlds_goal), list(hlds_goal), bool, bool).
 % :- mode move_prev_code(di, uo, in, di, uo, in, out) is det.
 :- mode move_prev_code(in, out, in, in, out, in, out) is det.
@@ -357,7 +359,7 @@ move_prev_code(Goal, Goal, _, RevPrevGoals, RevPrevGoals, R, R).
 % 	hlds_goal).
 % :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
 
-:- pred move_prev_code_forbidden_vars(list(hlds_goal), set(var)).
+:- pred move_prev_code_forbidden_vars(list(hlds_goal), set(prog_var)).
 :- mode move_prev_code_forbidden_vars(in, out) is det.
 
 move_prev_code_forbidden_vars([], Empty) :-
@@ -369,11 +371,11 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 
 % 
 % :- pred move_prev_code_new_forbidden_vars(hlds_goal, hlds_goal,
-% 	set(var), set(var)).
+% 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_new_forbidden_vars(in, in, in, out) is det.
 % 
 % :- pred move_prev_code_vars_difference(hlds_goal, hlds_goal, hlds_goal,
-% 	set(var), set(var)).
+% 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_vars_difference(in, in, in, in, out) is det.
 % 
 % move_prev_code_vars_difference(Cond, First, Rest, ForbiddenVars, LocalVars) :-
@@ -387,7 +389,7 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 % 	set__difference(ThisBranchVars, RestVars, LocalVars0),
 % 	set__difference(LocalVars0, ForbiddenVars, LocalVars).
 % 
-% :- pred move_prev_code_can_pull_producer(set(var), list(hlds_goal),
+% :- pred move_prev_code_can_pull_producer(set(prog_var), list(hlds_goal),
 % 	list(hlds_goal), list(hlds_goal)).
 % :- mode move_prev_code_can_pull_producer(in, in, di, uo) is det.
 % 

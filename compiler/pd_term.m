@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,6 +36,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_module, hlds_pred, instmap, pd_info.
+:- import_module hlds_data.
 :- import_module list, std_util.
 
 	% pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
@@ -57,7 +58,7 @@
 
 	% Check whether a call can be unfolded without the
 	% unfolding process looping.
-:- pred pd_term__local_check(module_info::in, hlds_goal::in,
+:- pred pd_term__local_check(inst_table::in, module_info::in, hlds_goal::in,
 	instmap::in, local_term_info::in, local_term_info::out) is semidet.
 
 :- pred pd_term__global_term_info_init(global_term_info::out) is det.
@@ -81,7 +82,7 @@
 :- implementation.
 
 :- import_module hlds_pred, (inst), mode_util, prog_data, pd_util.
-:- import_module assoc_list, bool, int, map, require, set, term.
+:- import_module assoc_list, bool, int, map, require, set.
 
 :- type global_term_info
 	--->	global_term_info(
@@ -202,26 +203,27 @@ expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_term__local_check(ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
+pd_term__local_check(InstTable, ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
 	Goal1 = call(PredId, ProcId, Args, _, _, _) - _,
 	( map__search(Cover0, proc(PredId, ProcId), CoveringInstSizes0) ->
-		pd_term__do_local_check(ModuleInfo, InstMap, Args,
+		pd_term__do_local_check(InstTable, ModuleInfo, InstMap, Args,
 			CoveringInstSizes0, CoveringInstSizes),
 		map__set(Cover0, proc(PredId, ProcId),
 			CoveringInstSizes, Cover)
 	;
-		pd_term__initial_sizes(ModuleInfo, InstMap, 
+		pd_term__initial_sizes(InstTable, ModuleInfo, InstMap, 
 			Args, 1, ArgInstSizes),
 		map__set(Cover0, proc(PredId, ProcId), 
 			ArgInstSizes, Cover)
 	).
 
-:- pred pd_term__do_local_check(module_info::in, instmap::in, 
-		list(var)::in, assoc_list(int, int)::in, 
+:- pred pd_term__do_local_check(inst_table::in, module_info::in, instmap::in, 
+		list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out) is semidet.
 
-pd_term__do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
-	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args, 
+pd_term__do_local_check(InstTable, ModuleInfo, InstMap, Args, OldSizes,
+		NewSizes) :-
+	pd_term__get_matching_sizes(InstTable, ModuleInfo, InstMap, Args, 
 		OldSizes, NewSizes1, OldTotal, NewTotal),
 	( NewTotal < OldTotal ->
 		NewSizes = NewSizes1
@@ -240,32 +242,33 @@ pd_term__update_global_term_info(TermInfo0, ProcPair,
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_term__initial_sizes(module_info::in, instmap::in, list(var)::in,
-		int::in, assoc_list(int, int)::out) is det.
+:- pred pd_term__initial_sizes(inst_table::in, module_info::in, instmap::in,
+		list(prog_var)::in, int::in, assoc_list(int, int)::out) is det.
 
-pd_term__initial_sizes(_, _, [], _, []).
-pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo, 
+pd_term__initial_sizes(_, _, _, [], _, []).
+pd_term__initial_sizes(InstTable, ModuleInfo, InstMap, [Arg | Args], ArgNo, 
 		[ArgNo - Size | Sizes]) :-
 	NextArgNo is ArgNo + 1,
-	pd_term__initial_sizes(ModuleInfo, InstMap, Args, NextArgNo, Sizes),
+	pd_term__initial_sizes(InstTable, ModuleInfo, InstMap, Args, NextArgNo,
+		Sizes),
 	instmap__lookup_var(InstMap, Arg, ArgInst),
-	pd_util__inst_size(ModuleInfo, ArgInst, Size).
+	pd_util__inst_size(InstTable, ModuleInfo, ArgInst, Size).
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_term__get_matching_sizes(module_info::in, instmap::in, 
-		list(var)::in, assoc_list(int, int)::in, 
+:- pred pd_term__get_matching_sizes(inst_table::in, module_info::in,
+		instmap::in, list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out, int::out, int::out) is det.
 
-pd_term__get_matching_sizes(_, _, _, [], [], 0, 0).
-pd_term__get_matching_sizes(ModuleInfo, InstMap, Args, 
+pd_term__get_matching_sizes(_, _, _, _, [], [], 0, 0).
+pd_term__get_matching_sizes(InstTable, ModuleInfo, InstMap, Args, 
 		[ArgNo - OldSize | OldSizes], [ArgNo - NewSize | NewSizes], 
 		OldTotal, NewTotal) :-
-	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
+	pd_term__get_matching_sizes(InstTable, ModuleInfo, InstMap, Args,
 		OldSizes, NewSizes, OldTotal1, NewTotal1),
 	list__index1_det(Args, ArgNo, Arg),
 	instmap__lookup_var(InstMap, Arg, ArgInst),
-	pd_util__inst_size(ModuleInfo, ArgInst, NewSize),
+	pd_util__inst_size(InstTable, ModuleInfo, ArgInst, NewSize),
 	OldTotal = OldTotal1 + OldSize,
 	NewTotal = NewTotal1 + NewSize.
 	

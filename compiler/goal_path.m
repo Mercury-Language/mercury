@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 University of Melbourne.
+% Copyright (C) 1997-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,8 +86,8 @@ fill_disj_slots([Goal0 | Goals0], Path0, N0, [Goal | Goals]) :-
 	list(case)::out) is det.
 
 fill_switch_slots([], _, _, []).
-fill_switch_slots([case(A, Goal0) | Cases0], Path0, N0,
-		[case(A, Goal) | Cases]) :-
+fill_switch_slots([case(A, B, Goal0) | Cases0], Path0, N0,
+		[case(A, B, Goal) | Cases]) :-
 	N1 is N0 + 1,
 	fill_goal_slots(Goal0, [switch(N1) | Path0], Goal),
 	fill_switch_slots(Cases0, Path0, N1, Cases).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module mode_util, passes_aux, code_aux, prog_data, instmap.
 :- import_module delay_info, mode_info, inst_match, modes, mode_debug.
-:- import_module transform, options, globals.
+:- import_module transform, options, globals, varset, term.
 :- import_module mercury_to_mercury, hlds_out, dependency_graph.
 
 :- import_module bool, list, map, set, std_util, assoc_list, string.
@@ -94,7 +94,8 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_context(ProcInfo0, Context),
-	mode_info_init(IoState0, ModuleInfo0, PredId, ProcId,
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	mode_info_init(IoState0, ModuleInfo0, InstTable0, PredId, ProcId,
 			Context, VarSet1, InstMap0, check_modes, ModeInfo0),
 
 	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),
@@ -102,11 +103,13 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	mode_info_get_io_state(ModeInfo, IoState),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
+	mode_info_get_inst_table(ModeInfo, InstTable),
 	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
@@ -136,72 +139,83 @@ constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 					mode_info_di, mode_info_uo) is det.
 
 constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
-	mode_checkpoint(enter, "conj"),
+%	mode_checkpoint(enter, "conj"),
 	constraint__propagate_conj(Goals0, Goals),
-	mode_checkpoint(exit, "conj").
+%	mode_checkpoint(exit, "conj"),
+	[].
 
 constraint__propagate_goal_2(par_conj(_, _), par_conj(_, _)) -->
 	{ error("constraint__propagate_goal_2: par_conj not supported") }.
 
 constraint__propagate_goal_2(disj(Goals0, SM), disj(Goals, SM)) -->
-	mode_checkpoint(enter, "disj"),
+%	mode_checkpoint(enter, "disj"),
 	constraint__propagate_disj(Goals0, Goals),
-	mode_checkpoint(exit, "disj").
+%	mode_checkpoint(exit, "disj"),
+	[].
 
 constraint__propagate_goal_2(switch(Var, Det, Cases0, SM),
 				switch(Var, Det, Cases, SM)) -->
-	mode_checkpoint(enter, "switch"),
+%	mode_checkpoint(enter, "switch"),
 	constraint__propagate_cases(Cases0, Cases),
-	mode_checkpoint(exit, "switch").
+%	mode_checkpoint(exit, "switch"),
+	[].
 
 constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			if_then_else(Vars, Cond, Then, Else, SM)) -->
-	mode_checkpoint(enter, "if_then_else"),
+%	mode_checkpoint(enter, "if_then_else"),
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Cond0, Cond),
 %	mode_info_dcg_get_instmap(InstMap1),
 	constraint__propagate_goal(Then0, Then),
 	mode_info_set_instmap(InstMap0),
 	constraint__propagate_goal(Else0, Else),
-	mode_checkpoint(exit, "if_then_else").
+%	mode_checkpoint(exit, "if_then_else"),
+	[].
 
 constraint__propagate_goal_2(not(Goal0), not(Goal)) -->
-	mode_checkpoint(enter, "not"),
+%	mode_checkpoint(enter, "not"),
 	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "not").
+%	mode_checkpoint(exit, "not"),
+	[].
 
 constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
-	mode_checkpoint(enter, "some"),
+%	mode_checkpoint(enter, "some"),
 	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "some").
+%	mode_checkpoint(exit, "some"),
+	[].
 
 constraint__propagate_goal_2(
 		higher_order_call(A, B, C, D, E, F),
 		higher_order_call(A, B, C, D, E, F)) -->
-	mode_checkpoint(enter, "higher-order call"),
-	mode_checkpoint(exit, "higher-order call").
+%	mode_checkpoint(enter, "higher-order call"),
+%	mode_checkpoint(exit, "higher-order call").
+	[].
 
 constraint__propagate_goal_2(
 		class_method_call(A, B, C, D, E, F),
 		class_method_call(A, B, C, D, E, F)) -->
-	mode_checkpoint(enter, "class method call"),
-	mode_checkpoint(exit, "class method call").
+%	mode_checkpoint(enter, "class method call"),
+%	mode_checkpoint(exit, "class method call").
+	[].
 
 constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
-	mode_checkpoint(enter, "call"),
-	mode_checkpoint(exit, "call").
+%	mode_checkpoint(enter, "call"),
+%	mode_checkpoint(exit, "call"),
+	[].
 
 constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
-	mode_checkpoint(enter, "unify"),
-	mode_checkpoint(exit, "unify").
+%	mode_checkpoint(enter, "unify"),
+%	mode_checkpoint(exit, "unify"),
+	[].
 
 constraint__propagate_goal_2(
 		pragma_c_code(A, B, C, D, E, F, G), 
 		pragma_c_code(A, B, C, D, E, F, G)) -->
-	mode_checkpoint(enter, "pragma_c_code"),
-	mode_checkpoint(exit, "pragma_c_code").
+%	mode_checkpoint(enter, "pragma_c_code"),
+%	mode_checkpoint(exit, "pragma_c_code").
+	[].
 
 %-----------------------------------------------------------------------------%
 
@@ -225,8 +239,8 @@ constraint__propagate_disj([Goal0|Goals0], [Goal|Goals]) -->
 				mode_info_di, mode_info_uo) is det.
 
 constraint__propagate_cases([], []) --> [].
-constraint__propagate_cases([case(Cons, Goal0)|Goals0],
-			[case(Cons, Goal)|Goals]) -->
+constraint__propagate_cases([case(Cons, IMDelta, Goal0)|Goals0],
+			[case(Cons, IMDelta, Goal)|Goals]) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Goal0, Goal),
 	mode_info_set_instmap(InstMap0),
@@ -317,8 +331,10 @@ constraint__no_output_vars(GoalInfo, ModeInfo) :-
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	goal_info_get_nonlocals(GoalInfo, Vars),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_inst_table(ModeInfo, InstTable),
 	mode_info_get_instmap(ModeInfo, InstMap),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, InstTable,
+		ModuleInfo).
 
 	% constraint__determinism(Det) is true iff Det is
 	% a possible determinism of a constraint.  The
@@ -352,8 +368,10 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, Indent, "",
-				IOState1, IOState)
+		mode_info_get_inst_table(ModeInfo0, InstTable),
+		mode_info_get_instmap(ModeInfo0, InstMap),
+		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
+			VarSet, no, Indent, "", IOState1, IOState)
 	;
 		IOState = IOState1
 	),

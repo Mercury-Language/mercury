@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,7 +490,7 @@ usage -->
 	{ library__version(Version) },
  	io__write_strings(StdErr, [
 		"Mercury Compiler, version ", Version, "\n",
-		"Copyright (C) 1993-1998 The University of Melbourne\n",
+		"Copyright (C) 1993-1999 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",
 		"Use `mmc --help' for more information.\n"
 	]).
@@ -498,11 +498,11 @@ usage -->
 long_usage -->
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-1999 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
-	io__write_string("\t\tArguments ending in `.m' are assumed to be source file names.\n"),
-	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
+	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
+	io__write_string("\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.
 
@@ -751,3 +751,4 @@ convert_dump_alias("ALL", "abcdfgilmnprstuvCIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
+convert_dump_alias("paths", "cP").

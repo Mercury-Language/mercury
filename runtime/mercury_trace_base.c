@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,6 +24,7 @@ ENDINIT
 #include "mercury_misc.h"
 #include <stdio.h>
 #include <unistd.h>		/* for the write system call */
+#include <errno.h>
 
 /*
 ** Do we want to use the debugger within this process, or do want to use

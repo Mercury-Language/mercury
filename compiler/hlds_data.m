@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_pred, llds, prog_data, (inst).
-:- import_module bool, list, map, varset, term, std_util.
+:- import_module hlds_pred, llds, prog_data, (inst), term.
+:- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
-			term__context		% The location of this
+			prog_context		% The location of this
 						% ctor definition in the
 						% original source code
 		).
@@ -74,7 +74,7 @@
 	% term. Fails if the cons_id is a pred_const, code_addr_const or
 	% base_type_info_const.
 
-:- pred cons_id_and_args_to_term(cons_id, list(term), term).
+:- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
@@ -100,7 +100,7 @@
 
 :- implementation.
 
-:- import_module prog_util.
+:- import_module prog_util, varset.
 :- import_module require.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
@@ -128,7 +128,8 @@ cons_id_arity(base_type_info_const(_, _, _), _) :-
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 
-make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
+make_functor_cons_id(term__atom(Name), Arity,
+		cons(unqualified(Name), Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
@@ -175,7 +176,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- type hlds_type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset, list(type_param),
-	hlds_type_body, import_status, term__context, hlds_type_defn).
+	hlds_type_body, import_status, prog_context, hlds_type_defn).
 :- mode hlds_data__set_type_defn(in, in, in, in, in, out) is det.
 
 :- pred hlds_data__get_type_defn_tvarset(hlds_type_defn, tvarset).
@@ -190,7 +191,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- pred hlds_data__get_type_defn_status(hlds_type_defn, import_status).
 :- mode hlds_data__get_type_defn_status(in, out) is det.
 
-:- pred hlds_data__get_type_defn_context(hlds_type_defn, term__context).
+:- pred hlds_data__get_type_defn_context(hlds_type_defn, prog_context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
 
 :- pred hlds_data__set_type_defn_status(hlds_type_defn, import_status,
@@ -319,7 +320,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 %				% :- type sorted_list(T) == list(T)
 %				%	where sorted.
 
-			term__context		% The location of this type
+			prog_context		% The location of this type
 						% definition in the original
 						% source code
 		).
@@ -378,15 +379,15 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type hlds_inst_defn
 	--->	hlds_inst_defn(
-			varset,			% The names of the inst
+			inst_varset,		% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The inst parameters (if any).
 						% ([I] in the above example.)
-			hlds_inst_body,	% The definition of this inst.
+			hlds_inst_body,		% The definition of this inst.
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
-			term__context,		% The location in the source
+			prog_context,		% The location in the source
 						% code of this inst definition.
 
 			import_status		% So intermod.m can tell 
@@ -407,8 +408,16 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_init(inst_table).
 :- mode inst_table_init(out) is det.
 
-:- pred inst_table_get_user_insts(inst_table, user_inst_table).
-:- mode inst_table_get_user_insts(in, out) is det.
+:- pred inst_table_get_all_tables(inst_table, unify_inst_table,
+	merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, inst_key_table).
+:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out) is det.
+
+:- pred inst_table_set_all_tables(inst_table, unify_inst_table,
+	merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, inst_key_table,
+	inst_table).
+:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
 :- mode inst_table_get_unify_insts(in, out) is det.
@@ -428,8 +437,8 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
 :- mode inst_table_get_mostly_uniq_insts(in, out) is det.
 
-:- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
-:- mode inst_table_set_user_insts(in, in, out) is det.
+:- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
+:- mode inst_table_get_inst_key_table(in, out) is det.
 
 :- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
 :- mode inst_table_set_unify_insts(in, in, out) is det.
@@ -450,6 +459,12 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 					inst_table).
 :- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
 
+:- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
+:- mode inst_table_set_inst_key_table(in, in, out) is det.
+
+:- pred user_inst_table_init(user_inst_table).
+:- mode user_inst_table_init(out) is det.
+
 :- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
 :- mode user_inst_table_get_inst_defns(in, out) is det.
 
@@ -469,13 +484,14 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type inst_table
 	--->	inst_table(
-			user_inst_table,
+			unit,
 			unify_inst_table,
 			merge_inst_table,
 			ground_inst_table,
 			any_inst_table,
 			shared_inst_table,
-			mostly_uniq_inst_table
+			mostly_uniq_inst_table,
+			inst_key_table
 		).
 
 :- type user_inst_defns.
@@ -487,57 +503,73 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 				% qualifying the modes of lambda expressions.
 		).
 
-inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
-			AnyInsts, SharedInsts, NondetLiveInsts)) :-
-	map__init(UserInstDefns),
-	UserInsts = user_inst_table(UserInstDefns, []),
+inst_table_init(inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
+			AnyInsts, SharedInsts, NondetLiveInsts, InstKeys)) :-
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
 	map__init(GroundInsts),
-	map__init(SharedInsts),
 	map__init(AnyInsts),
-	map__init(NondetLiveInsts).
+	map__init(SharedInsts),
+	map__init(NondetLiveInsts),
+	inst_key_table_init(InstKeys).
 
-inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _, _), UserInsts).
+inst_table_get_all_tables(InstTable, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys) :-
+	InstTable = inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
 
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _),
+inst_table_set_all_tables(InstTable0, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys, InstTable) :-
+	InstTable0 = inst_table(A, _, _, _, _, _, _, _),
+	InstTable  = inst_table(A, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
+
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _),
 			UnifyInsts).
 
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _),
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _, _),
 			MergeInsts).
 
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _),
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _, _),
 			GroundInsts).
 
-inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _), AnyInsts).
+inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _, _), AnyInsts).
 
-inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _),
+inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _, _),
 			SharedInsts).
 
-inst_table_get_mostly_uniq_insts(inst_table(_, _, _, _, _, _, NondetLiveInsts),
+inst_table_get_mostly_uniq_insts(
+			inst_table(_, _, _, _, _, _, NondetLiveInsts, _),
 			NondetLiveInsts).
 
-inst_table_set_user_insts(inst_table(_, B, C, D, E, F, G), UserInsts,
-			inst_table(UserInsts, B, C, D, E, F, G)).
+inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, InstKeyTable),
+			InstKeyTable).
 
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F, G)).
+inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D, E, F, G, H)).
 
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F, G)).
+inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G, H), MergeInsts,
+			inst_table(A, B, MergeInsts, D, E, F, G, H)).
 
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F, G)).
+inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G, H), GroundInsts,
+			inst_table(A, B, C, GroundInsts, E, F, G, H)).
 
-inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G), AnyInsts,
-			inst_table(A, B, C, D, AnyInsts, F, G)).
+inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G, H), AnyInsts,
+			inst_table(A, B, C, D, AnyInsts, F, G, H)).
 
-inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G), SharedInsts,
-			inst_table(A, B, C, D, E, SharedInsts, G)).
+inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G, H), SharedInsts,
+			inst_table(A, B, C, D, E, SharedInsts, G, H)).
 
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _),
+inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H),
 			NondetLiveInsts,
-			inst_table(A, B, C, D, E, F, NondetLiveInsts)).
+			inst_table(A, B, C, D, E, F, NondetLiveInsts, H)).
+
+inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, _), InstKeys,
+			inst_table(A, B, C, D, E, F, G, InstKeys)).
+
+user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
+	map__init(InstDefns),
+	InstIds = [].
 
 user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
 
@@ -575,7 +607,7 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 
 :- type hlds_mode_defn
 	--->	hlds_mode_defn(
-			varset,			% The names of the inst
+			inst_varset,		% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The list of the inst
 						% parameters (if any).
@@ -585,7 +617,7 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
-			term__context,		% The location of this mode
+			prog_context,		% The location of this mode
 						% definition in the original
 						% source code.
 			import_status		% So intermod.m can tell 
@@ -715,10 +747,10 @@ determinism_to_code_model(failure,     model_semi).
 :- type hlds_class_defn 
 	--->	hlds_class_defn(
 			list(class_constraint), % SuperClasses
-			list(var), 		% ClassVars 
+			list(tvar),		% ClassVars 
 			hlds_class_interface, 	% Methods
-			varset,			% VarNames
-			term__context		% Location of declaration
+			tvarset,		% VarNames
+			prog_context		% Location of declaration
 		).
 
 :- type hlds_class_interface	==	list(hlds_class_proc).	
@@ -737,7 +769,7 @@ determinism_to_code_model(failure,     model_semi).
 	--->	hlds_instance_defn(
 			import_status,		% import status of the instance
 						% declaration
-			term__context,		% context of declaration
+			prog_context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
 			instance_interface, 	% Methods
@@ -745,7 +777,7 @@ determinism_to_code_model(failure,     model_semi).
 						% After check_typeclass, we 
 						% will know the pred_ids and
 						% proc_ids of all the methods
-			varset,			% VarNames
+			tvarset,		% VarNames
 			map(class_constraint, constraint_proof)
 						% "Proofs" of how to build the
 						% typeclass_infos for the
@@ -779,9 +811,9 @@ determinism_to_code_model(failure,     model_semi).
 
 :- type subclass_details 
 	--->	subclass_details(
-			list(var),		% variables of the superclass
+			list(tvar),		% variables of the superclass
 			class_id,		% name of the subclass
-			list(var),		% variables of the subclass
+			list(tvar),		% variables of the subclass
 			tvarset			% the names of these vars
 		).
 

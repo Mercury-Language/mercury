@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,7 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, term, set_bbbtree, varset.
+:- import_module library, getopt, set_bbbtree.
 
 	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
@@ -37,7 +37,7 @@
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module deforest, dnf, constraint, unused_args, dead_proc_elim.
-:- import_module lco, saved_vars, liveness.
+:- import_module lco, saved_vars, liveness, term, varset.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, transform_llds, llds_out.
@@ -962,16 +962,16 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_unused_args(HLDS40, Verbose, Stats, HLDS43), !,
 	mercury_compile__maybe_dump_hlds(HLDS43, "43", "unused_args"), !,
 
-	mercury_compile__maybe_dead_procs(HLDS43, Verbose, Stats, HLDS46), !,
-	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"), !,
+	mercury_compile__maybe_lco(HLDS43, Verbose, Stats, HLDS45), !,
+	mercury_compile__maybe_dump_hlds(HLDS45, "45", "lco"), !,
 
-	mercury_compile__maybe_lco(HLDS46, Verbose, Stats, HLDS47), !,
-	mercury_compile__maybe_dump_hlds(HLDS47, "47", "lco"), !,
+	mercury_compile__maybe_dead_procs(HLDS45, Verbose, Stats, HLDS46), !,
+	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"), !,
 
 	% map_args_to_regs affects the interface to a predicate,
 	% so it must be done in one phase immediately before code generation
 
-	mercury_compile__map_args_to_regs(HLDS47, Verbose, Stats, HLDS49), !,
+	mercury_compile__map_args_to_regs(HLDS46, Verbose, Stats, HLDS49), !,
 	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"), !,
 
 	{ HLDS50 = HLDS49 },
@@ -1679,7 +1679,7 @@ mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, "% Looking for LCO modulo constructor application ...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
-			update_proc_io(lco_modulo_constructors), HLDS0, HLDS),
+			update_module_io(lco_modulo_constructors), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1869,29 +1869,27 @@ get_c_interface_info(HLDS, C_InterfaceInfo) :-
 % The LLDS output pass
 
 :- pred mercury_compile__output_pass(module_info, list(c_procedure),
-		module_name, bool, io__state, io__state).
+	module_name, bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
+mercury_compile__output_pass(HLDS0, Procs0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS,
-		StackLayouts, StackLayoutLabels) },
-	{ list__append(StackLayouts, BaseTypeLayouts, StaticData0) },
-	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
-		StaticData, CommonData) },
-	{ list__append(BaseTypeInfos, StaticData, AllData) },
+		ProcLayouts, InternalLayouts, LayoutLabels) },
+	{ list__append(InternalLayouts, BaseTypeLayouts, StaticData0) },
+	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData) },
+	{ list__condense([BaseTypeInfos, ProcLayouts, StaticData], AllData) },
 
 	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
-	mercury_compile__chunk_llds(C_InterfaceInfo, LLDS1, AllData,
-		CommonData, LLDS2, NumChunks),
-	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabels,
+	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, AllData,
+		CFile, NumChunks),
+	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		Verbose, Stats),
 
-	{ C_InterfaceInfo = c_interface_info(_ModuleName,
-		_C_headerCode, _C_BodyCode, C_ExportDecls, _C_ExportDefns) },
+	{ C_InterfaceInfo = c_interface_info(_, _, _, C_ExportDecls, _) },
 	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
@@ -1904,34 +1902,38 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__chunk_llds(c_interface_info, list(c_procedure),
-	list(c_module), list(c_module), c_file, int, io__state, io__state).
-% :- mode mercury_compile__chunk_llds(in, di, di, uo, out, di, uo) is det.
-:- mode mercury_compile__chunk_llds(in, in, in, in, out, out, di, uo) is det.
+:- pred mercury_compile__construct_c_file(c_interface_info, list(c_procedure),
+	list(comp_gen_c_data), c_file, int, io__state, io__state).
+:- mode mercury_compile__construct_c_file(in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(C_InterfaceInfo, Procedures, BaseTypeData,
-		CommonDataModules,
-		c_file(ModuleName, C_HeaderCode, ModuleList), NumChunks) -->
-	{ C_InterfaceInfo = c_interface_info(ModuleName,
+mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, AllData, CFile,
+		ComponentCount) -->
+	{ C_InterfaceInfo = c_interface_info(ModuleSymName,
 		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
-	{ llds_out__sym_name_mangle(ModuleName, MangledModName) },
-	{ string__append(MangledModName, "_module", ModName) },
+	{ llds_out__sym_name_mangle(ModuleSymName, MangledModuleName) },
+	{ string__append(MangledModuleName, "_module", ModuleName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
 	{ get_c_body_code(C_BodyCode0, C_BodyCode) },
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
 		% we store all the procs in a single function.
-		{ ProcModules = [c_module(ModName, Procedures)] }
+		{ ChunkedModules = [comp_gen_c_module(ModuleName,
+			Procedures)] }
 	;
-		{ list__chunk(Procedures, ProcsPerFunc, ChunkList) },
-		{ mercury_compile__combine_chunks(ChunkList, ModName,
-			ProcModules) }
+		{ list__chunk(Procedures, ProcsPerFunc, ChunkedProcs) },
+		{ mercury_compile__combine_chunks(ChunkedProcs, ModuleName,
+			ChunkedModules) }
 	),
-	maybe_add_header_file_include(C_ExportDecls, ModuleName, C_HeaderCode0,
-		C_HeaderCode),
-	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
-		ProcModules, [c_export(C_ExportDefns)]], ModuleList) },
-	{ list__length(ModuleList, NumChunks) }.
+	maybe_add_header_file_include(C_ExportDecls, ModuleSymName,
+		C_HeaderCode0, C_HeaderCode),
+	{ CFile = c_file(ModuleSymName, C_HeaderCode,
+		C_BodyCode, C_ExportDefns, AllData, ChunkedModules) },
+	{ list__length(C_BodyCode, UserCCodeCount) },
+	{ list__length(C_ExportDefns, ExportCount) },
+	{ list__length(AllData, CompGenDataCount) },
+	{ list__length(ChunkedModules, CompGenCodeCount) },
+	{ ComponentCount is UserCCodeCount + ExportCount
+		+ CompGenDataCount + CompGenCodeCount }.
 
 :- pred maybe_add_header_file_include(c_export_decls, module_name,
 	c_header_info, c_header_info, io__state, io__state).
@@ -1967,33 +1969,33 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 		{ list__append(C_HeaderCode0, [Include], C_HeaderCode) }
 	).
 
-:- pred get_c_body_code(c_body_info, list(c_module)).
+:- pred get_c_body_code(c_body_info, list(user_c_code)).
 :- mode get_c_body_code(in, out) is det.
 
 get_c_body_code([], []).
 get_c_body_code([Code - Context | CodesAndContexts],
-			[c_code(Code, Context) | C_Modules]) :-
+		[user_c_code(Code, Context) | C_Modules]) :-
 	get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
-		list(c_module)).
+	list(comp_gen_c_module)).
 :- mode mercury_compile__combine_chunks(in, in, out) is det.
 
 mercury_compile__combine_chunks(ChunkList, ModName, Modules) :-
 	mercury_compile__combine_chunks_2(ChunkList, ModName, 0, Modules).
 
 :- pred mercury_compile__combine_chunks_2(list(list(c_procedure)),
-		string, int, list(c_module)).
+	string, int, list(comp_gen_c_module)).
 :- mode mercury_compile__combine_chunks_2(in, in, in, out) is det.
 
 mercury_compile__combine_chunks_2([], _ModName, _N, []).
-mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
+mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 		[Module | Modules]) :-
 	string__int_to_string(Num, NumString),
-	string__append(ModName, NumString, ThisModuleName),
-	Module = c_module(ThisModuleName, Chunk),
+	string__append(ModuleName, NumString, ThisModuleName),
+	Module = comp_gen_c_module(ThisModuleName, Chunk),
 	Num1 is Num + 1,
-	mercury_compile__combine_chunks_2(Chunks, ModName, Num1, Modules).
+	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name, c_file, set_bbbtree(label),
 	bool, bool, io__state, io__state).

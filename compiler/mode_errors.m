@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 
 :- import_module hlds_data, hlds_pred, hlds_module, hlds_goal.
 :- import_module prog_data, mode_info, (inst).
-:- import_module bool, set, assoc_list, term, list.
+:- import_module bool, set, assoc_list, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,11 +27,11 @@
 	---> disj
 	;    if_then_else.
 
-:- type merge_errors == assoc_list(var, list(inst)).
+:- type merge_errors == assoc_list(prog_var, list(inst)).
 
 :- type delayed_goal
 	--->	delayed_goal(
-			set(var),	% The vars it's waiting on
+			set(prog_var),	% The vars it's waiting on
 			mode_error_info,% The reason it can't be scheduled
 			hlds_goal	% The goal itself
 		).
@@ -45,21 +45,22 @@
 			% mutually exclusive bindings - ie the process
 			% of unifying the instmaps from the end of each
 			% branch failed.
-	;	mode_error_higher_order_pred_var(pred_or_func, var, inst, arity)
+	;	mode_error_higher_order_pred_var(pred_or_func, prog_var, inst,
+				arity)
 			% the predicate variable in a higher-order predicate
 			% or function call didn't have a higher-order
 			% predicate or function inst of the appropriate arity
-	;	mode_error_var_is_live(var)
+	;	mode_error_var_is_live(prog_var)
 			% call to a predicate which will clobber its argument,
 			% but the argument is still live
-	;	mode_error_var_has_inst(var, inst, inst)
+	;	mode_error_var_has_inst(prog_var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
-	;	mode_error_unify_pred(var, mode_error_unify_rhs, type,
+	;	mode_error_unify_pred(prog_var, mode_error_unify_rhs, type,
 				pred_or_func)
 			% an attempt was made to unify two higher-order
 			% predicate or function variables.
-	;	mode_error_implied_mode(var, inst, inst)
+	;	mode_error_implied_mode(prog_var, inst, inst)
 			% a call to a predicate with an overly
 			% instantiated variable would use an implied
 			% mode of the predicate.  XXX This is temporary - 
@@ -68,30 +69,31 @@
 	;	mode_error_no_mode_decl
 			% a call to a predicate for which there are
 			% no mode declarations
-	;	mode_error_no_matching_mode(list(var), list(inst))
+	;	mode_error_no_matching_mode(list(prog_var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
-	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
+	;	mode_error_bind_var(var_lock_reason, prog_var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context, or attempt to re-bind a variable
 			% in a parallel conjunct
-	;	mode_error_non_local_lambda_var(var, inst)
+	;	mode_error_non_local_lambda_var(prog_var, inst)
 			% attempt to pass a live non-ground var as a
 			% non-local variable to a lambda goal
-	;	mode_error_unify_var_var(var, var, inst, inst)
+	;	mode_error_unify_var_var(prog_var, prog_var, inst, inst)
 			% attempt to unify two free variables
-	;	mode_error_unify_var_functor(var, cons_id, list(var),
+	;	mode_error_unify_var_functor(prog_var, cons_id, list(prog_var),
 							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
-	;	mode_error_unify_var_lambda(var, inst, inst)
+	;	mode_error_unify_var_lambda(prog_var, inst, inst)
 			% some sort of error in
 			% attempt to unify a variable with lambda expression
 	;	mode_error_conj(list(delayed_goal), schedule_culprit)
 			% a conjunction contains one or more unscheduleable
 			% goals; schedule_culprit gives the reason why
 			% they couldn't be scheduled.
-	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
+	;	mode_error_final_inst(int, prog_var, inst, inst,
+				final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
 	.
@@ -109,18 +111,19 @@
 					% fit into the above two categories.
 
 :- type mode_error_unify_rhs
-	--->	error_at_var(var)
-	;	error_at_functor(cons_id, list(var))
-	;	error_at_lambda(list(var), list(mode)).
+	--->	error_at_var(prog_var)
+	;	error_at_functor(cons_id, list(prog_var))
+	;	error_at_lambda(list(prog_var), argument_modes).
 
 :- type mode_error_info
 	---> mode_error_info(
-		set(var),	% the variables which caused the error
+		set(prog_var),	% the variables which caused the error
 				% (we will attempt to reschedule the goal
 				% if the one of these variables becomes
 				% more instantiated)
 		mode_error,	% the nature of the error
-		term__context,	% where the error occurred
+		inst_table,	% The contemporary inst_table
+		prog_context,	% where the error occurred
 		mode_context	% where the error occurred
 	).
 
@@ -131,12 +134,6 @@
         %
 :- pred report_mode_errors(mode_info, mode_info).
 :- mode report_mode_errors(mode_info_di, mode_info_uo) is det.
-
-
-	% print an error message describing a mode error
-
-:- pred report_mode_error(mode_error, mode_info, io__state, io__state).
-:- mode report_mode_error(in, mode_info_no_io, di, uo) is det.
 
 	% report an error for a predicate with no mode declarations
 	% unless mode inference is enabled and the predicate is local.
@@ -173,61 +170,77 @@
 
 :- import_module hlds_out.
 :- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
-:- import_module options, globals.
-:- import_module int, map, io, term_io, varset.
+:- import_module options, globals, varset, term.
+:- import_module int, map, io, term_io.
 :- import_module std_util, require.
 
+	% print an error message describing a mode error
 	% just dispatch on the diffferent sorts of mode errors
 
-report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
-	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
-report_mode_error(mode_error_par_conj(ErrorList), ModeInfo) -->
-	report_mode_error_par_conj(ModeInfo, ErrorList).
+:- pred report_mode_error(mode_error, inst_table, mode_info,
+			io__state, io__state).
+:- mode report_mode_error(in, in, mode_info_no_io,
+			di, uo) is det.
+
+report_mode_error(mode_error_disj(MergeContext, ErrorList), InstTable,
+		ModeInfo) -->
+	report_mode_error_disj(InstTable, ModeInfo, MergeContext, ErrorList).
+ report_mode_error(mode_error_par_conj(ErrorList), InstTable, ModeInfo) -->
+ 	report_mode_error_par_conj(InstTable, ModeInfo, ErrorList).
 report_mode_error(mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
-		Arity), ModeInfo) -->
-	report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var,
-		Inst, Arity).
-report_mode_error(mode_error_var_is_live(Var), ModeInfo) -->
+		Arity), InstTable, ModeInfo) -->
+	report_mode_error_higher_order_pred_var(InstTable, ModeInfo, PredOrFunc,
+		Var, Inst, Arity).
+report_mode_error(mode_error_var_is_live(Var), _InstTable, ModeInfo) -->
 	report_mode_error_var_is_live(ModeInfo, Var).
-report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
-	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), InstTable,
+		ModeInfo) -->
+	report_mode_error_var_has_inst(InstTable, ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
+		InstTable, ModeInfo) -->
+	report_mode_error_unify_pred(InstTable, ModeInfo, Var, RHS, Type,
+		PredOrFunc).
+report_mode_error(mode_error_implied_mode(Var, InstA, InstB), InstTable,
 		ModeInfo) -->
-	report_mode_error_unify_pred(ModeInfo, Var, RHS, Type, PredOrFunc).
-report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
-	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
-report_mode_error(mode_error_no_mode_decl, ModeInfo) -->
+	report_mode_error_implied_mode(InstTable, ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_no_mode_decl, _InstTable, ModeInfo) -->
 	report_mode_error_no_mode_decl(ModeInfo).
-report_mode_error(mode_error_bind_var(Reason, Var, InstA, InstB), ModeInfo) -->
-	report_mode_error_bind_var(ModeInfo, Reason, Var, InstA, InstB).
-report_mode_error(mode_error_non_local_lambda_var(Var, Inst), ModeInfo) -->
-	report_mode_error_non_local_lambda_var(ModeInfo, Var, Inst).
+report_mode_error(mode_error_bind_var(Reason, Var, InstA, InstB), InstTable,
+		ModeInfo) -->
+	report_mode_error_bind_var(InstTable, ModeInfo,
+		Reason, Var, InstA, InstB).
+report_mode_error(mode_error_non_local_lambda_var(Var, Inst), InstTable,
+		ModeInfo) -->
+	report_mode_error_non_local_lambda_var(InstTable, ModeInfo, Var, Inst).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
-		ModeInfo) -->
-	report_mode_error_unify_var_var(ModeInfo, VarA, VarB, InstA, InstB).
+		InstTable, ModeInfo) -->
+	report_mode_error_unify_var_var(InstTable, ModeInfo, VarA, VarB,
+		InstA, InstB).
 report_mode_error(mode_error_unify_var_lambda(VarA, InstA, InstB),
-		ModeInfo) -->
-	report_mode_error_unify_var_lambda(ModeInfo, VarA, InstA, InstB).
+		InstTable, ModeInfo) -->
+	report_mode_error_unify_var_lambda(InstTable, ModeInfo, VarA,
+		InstA, InstB).
 report_mode_error(mode_error_unify_var_functor(Var, Name, Args, Inst,
-			ArgInsts), ModeInfo) -->
-	report_mode_error_unify_var_functor(ModeInfo, Var, Name, Args, Inst,
-			ArgInsts).
-report_mode_error(mode_error_conj(Errors, Culprit), ModeInfo) -->
-	report_mode_error_conj(ModeInfo, Errors, Culprit).
-report_mode_error(mode_error_no_matching_mode(Vars, Insts), ModeInfo) -->
-	report_mode_error_no_matching_mode(ModeInfo, Vars, Insts).
+			ArgInsts), InstTable, ModeInfo) -->
+	report_mode_error_unify_var_functor(InstTable, ModeInfo, Var, Name,
+			Args, Inst, ArgInsts).
+report_mode_error(mode_error_conj(Errors, Culprit), InstTable, ModeInfo) -->
+	report_mode_error_conj(InstTable, ModeInfo, Errors, Culprit).
+report_mode_error(mode_error_no_matching_mode(Vars, Insts), InstTable,
+			ModeInfo) -->
+	report_mode_error_no_matching_mode(InstTable, ModeInfo, Vars, Insts).
 report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
-		ModeInfo) -->
-	report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst,
-		Reason).
+		InstTable, ModeInfo) -->
+	report_mode_error_final_inst(InstTable, ModeInfo, ArgNum, Var,
+		VarInst, Inst, Reason).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_conj(mode_info, list(delayed_goal), schedule_culprit,
-				io__state, io__state).
-:- mode report_mode_error_conj(mode_info_no_io, in, in, di, uo) is det.
+:- pred report_mode_error_conj(inst_table, mode_info, list(delayed_goal),
+				schedule_culprit, io__state, io__state).
+:- mode report_mode_error_conj(in, mode_info_no_io, in, in, di, uo) is det.
 
-report_mode_error_conj(ModeInfo, Errors, Culprit) -->
+report_mode_error_conj(InstTable, ModeInfo, Errors, Culprit) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
@@ -245,19 +258,20 @@ report_mode_error_conj(ModeInfo, Errors, Culprit) -->
 		prog_out__write_context(Context),
 		io__write_string("  indicate possible causes of this error.\n"),
 		report_mode_error_conj_2(ImportantErrors, VarSet, Context,
-			ModeInfo),
-		report_mode_error_conj_2(OtherErrors, VarSet, Context, ModeInfo)
+			InstTable, ModeInfo),
+		report_mode_error_conj_2(OtherErrors, VarSet, Context,
+			InstTable, ModeInfo)
 	;
 		% in the normal case, only report the first error
 		{ ImportantErrors = [FirstImportantError | _] }
 	->
 		report_mode_error_conj_2([FirstImportantError], VarSet, Context,
-			ModeInfo)
+			InstTable, ModeInfo)
 	;
 		{ OtherErrors = [FirstOtherError | _] }
 	->
 		report_mode_error_conj_2([FirstOtherError], VarSet, Context,
-			ModeInfo)
+			InstTable, ModeInfo)
 	;
 		% There wasn't any error to report!  This can't happen.
 		{ error("report_mode_error_conj") }
@@ -291,8 +305,8 @@ report_mode_error_conj(ModeInfo, Errors, Culprit) -->
 
 find_important_errors([], [], []).
 find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
-	Error = delayed_goal(_, mode_error_info(_, ModeError, _, ModeContext),
-				_),
+	Error = delayed_goal(_,
+			mode_error_info(_, ModeError, _, _, ModeContext), _),
 	(
 		% an error is important unless it is a non-explicit unification,
 		% i.e. a head unification or a call argument unification
@@ -311,13 +325,14 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 	),
 	find_important_errors(Errors, ImportantErrors1, OtherErrors1).
 
-:- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
-				mode_info, io__state, io__state).
-:- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo) is det.
+:- pred report_mode_error_conj_2(list(delayed_goal), prog_varset, prog_context,
+				inst_table, mode_info, io__state, io__state).
+:- mode report_mode_error_conj_2(in, in, in, in, mode_info_no_io,
+				di, uo) is det.
 
-report_mode_error_conj_2([], _, _, _) --> [].
+report_mode_error_conj_2([], _, _, _, _) --> [].
 report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
-			VarSet, Context, ModeInfo) -->
+			VarSet, Context, InstTable, ModeInfo) -->
 	globals__io_lookup_bool_option(debug_modes, Debug),
 	( { Debug = yes } ->
 		prog_out__write_context(Context),
@@ -332,36 +347,39 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	( { VeryVerbose = yes } ->
 		io__write_string("\t\t"),
 		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".")
+		{ mode_info_get_instmap(ModeInfo, InstMap) }, 
+				% YYY is this the right instmap?
+		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
+			VarSet, no, 2, ".")
 	;
 		[]
 	),
-	{ Error = mode_error_info(_, ModeError, ErrorContext, ModeContext) },
+	{ Error = mode_error_info(_, ModeError, _, ErrorContext, ModeContext) },
 	{ mode_info_set_context(ErrorContext, ModeInfo, ModeInfo1) },
 	{ mode_info_set_mode_context(ModeContext, ModeInfo1, ModeInfo2) },
-	report_mode_error(ModeError, ModeInfo2),
-	report_mode_error_conj_2(Rest, VarSet, Context, ModeInfo2).
+	report_mode_error(ModeError, InstTable, ModeInfo2),
+	report_mode_error_conj_2(Rest, VarSet, Context, InstTable, ModeInfo2).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_disj(mode_info, merge_context, merge_errors,
-				io__state, io__state).
-:- mode report_mode_error_disj(mode_info_no_io, in, in, di, uo) is det.
+:- pred report_mode_error_disj(inst_table, mode_info, merge_context,
+				merge_errors, io__state, io__state).
+:- mode report_mode_error_disj(in, mode_info_no_io, in, in, di, uo) is det.
 
-report_mode_error_disj(ModeInfo, MergeContext, ErrorList) -->
+report_mode_error_disj(InstTable, ModeInfo, MergeContext, ErrorList) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode mismatch in "),
 	write_merge_context(MergeContext),
 	io__write_string(".\n"),
-	write_merge_error_list(ErrorList, ModeInfo).
+	write_merge_error_list(ErrorList, InstTable, ModeInfo).
 
-:- pred report_mode_error_par_conj(mode_info, merge_errors,
+:- pred report_mode_error_par_conj(inst_table, mode_info, merge_errors,
 				io__state, io__state).
-:- mode report_mode_error_par_conj(mode_info_no_io, in, di, uo) is det.
+:- mode report_mode_error_par_conj(in, mode_info_no_io, in, di, uo) is det.
 
-report_mode_error_par_conj(ModeInfo, ErrorList) -->
+report_mode_error_par_conj(InstTable, ModeInfo, ErrorList) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
@@ -372,13 +390,14 @@ report_mode_error_par_conj(ModeInfo, ErrorList) -->
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("              parallel conjunctions to fail.)\n"),
-	write_merge_error_list(ErrorList, ModeInfo).
+	write_merge_error_list(ErrorList, InstTable, ModeInfo).
 
-:- pred write_merge_error_list(merge_errors, mode_info, io__state, io__state).
-:- mode write_merge_error_list(in, mode_info_no_io, di, uo) is det.
+:- pred write_merge_error_list(merge_errors, inst_table, mode_info,
+				io__state, io__state).
+:- mode write_merge_error_list(in, in, mode_info_no_io, di, uo) is det.
 
-write_merge_error_list([], _) --> [].
-write_merge_error_list([Var - Insts | Errors], ModeInfo) -->
+write_merge_error_list([], _, _) --> [].
+write_merge_error_list([Var - Insts | Errors], InstTable, ModeInfo) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -386,9 +405,9 @@ write_merge_error_list([Var - Insts | Errors], ModeInfo) -->
 	io__write_string("  `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' :: "),
-	output_inst_list(Insts, InstVarSet),
+	output_inst_list(Insts, InstVarSet, InstTable),
 	io__write_string(".\n"),
-	write_merge_error_list(Errors, ModeInfo).
+	write_merge_error_list(Errors, InstTable, ModeInfo).
 
 :- pred write_merge_context(merge_context, io__state, io__state).
 :- mode write_merge_context(in, di, uo) is det.
@@ -400,11 +419,12 @@ write_merge_context(if_then_else) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_bind_var(mode_info, var_lock_reason, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_bind_var(mode_info_ui, in, in, in, in, di, uo) is det.
+:- pred report_mode_error_bind_var(inst_table, mode_info, var_lock_reason,
+				prog_var, inst, inst, io__state, io__state).
+:- mode report_mode_error_bind_var(in, mode_info_ui, in, in, in, in,
+				di, uo) is det.
 
-report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
+report_mode_error_bind_var(InstTable, ModeInfo, Reason, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -431,11 +451,11 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 	io__write_string("  Variable `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(VarInst, InstVarSet),
+	output_inst(VarInst, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  expected instantiatedness was `"),
-	output_inst(Inst, InstVarSet),
+	output_inst(Inst, InstVarSet, InstTable),
 	io__write_string("'.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
@@ -460,12 +480,12 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_non_local_lambda_var(mode_info, var, inst,
-					io__state, io__state).
-:- mode report_mode_error_non_local_lambda_var(mode_info_ui, in, in,
+:- pred report_mode_error_non_local_lambda_var(inst_table, mode_info, prog_var,
+		inst, io__state, io__state).
+:- mode report_mode_error_non_local_lambda_var(in, mode_info_ui, in, in,
 					di, uo) is det.
 
-report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
+report_mode_error_non_local_lambda_var(InstTable, ModeInfo, Var, VarInst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -474,7 +494,7 @@ report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
 	io__write_string("  mode error: variable `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(VarInst, InstVarSet),
+	output_inst(VarInst, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  expected instantiatedness for non-local variables\n"),
@@ -483,11 +503,12 @@ report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_no_matching_mode(mode_info, list(var), list(inst),
-					io__state, io__state).
-:- mode report_mode_error_no_matching_mode(mode_info_ui, in, in, di, uo) is det.
+:- pred report_mode_error_no_matching_mode(inst_table, mode_info,
+		list(prog_var), list(inst), io__state, io__state).
+:- mode report_mode_error_no_matching_mode(in, mode_info_ui, in, in,
+		di, uo) is det.
 
-report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
+report_mode_error_no_matching_mode(InstTable, ModeInfo, Vars, Insts) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -499,7 +520,7 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
 	io__write_string("  have insts `"),
-	output_inst_list(Insts, InstVarSet),
+	output_inst_list(Insts, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  which does not match any of the modes for "),
@@ -511,14 +532,13 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	),
 	io__write_string(".\n").
 
-:- pred report_mode_error_higher_order_pred_var(mode_info, pred_or_func, var,
-					inst, arity,
-					io__state, io__state).
-:- mode report_mode_error_higher_order_pred_var(mode_info_ui, in, in, in, in,
-					di, uo) is det.
+:- pred report_mode_error_higher_order_pred_var(inst_table, mode_info,
+		pred_or_func, prog_var, inst, arity, io__state, io__state).
+:- mode report_mode_error_higher_order_pred_var(in, mode_info_ui, in, in, in,
+		in, di, uo) is det.
 
-report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
-		Arity) -->
+report_mode_error_higher_order_pred_var(InstTable, ModeInfo, PredOrFunc, Var,
+		VarInst, Arity) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -527,7 +547,7 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 	io__write_string("  mode error: variable `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(VarInst, InstVarSet),
+	output_inst(VarInst, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	(	{ PredOrFunc = predicate },
@@ -540,7 +560,8 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 	),
 	io__write_string(").\n").
 
-:- pred report_mode_error_var_is_live(mode_info, var, io__state, io__state).
+:- pred report_mode_error_var_is_live(mode_info, prog_var,
+		io__state, io__state).
 :- mode report_mode_error_var_is_live(mode_info_ui, in, di, uo) is det.
 
 report_mode_error_var_is_live(ModeInfo, Var) -->
@@ -554,11 +575,12 @@ report_mode_error_var_is_live(ModeInfo, Var) -->
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' is still live.\n").
 
-:- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_var_has_inst(mode_info_ui, in, in, in, di, uo) is det.
+:- pred report_mode_error_var_has_inst(inst_table, mode_info, prog_var, inst,
+		inst, io__state, io__state).
+:- mode report_mode_error_var_has_inst(in, mode_info_ui, in, in, in,
+		di, uo) is det.
 
-report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
+report_mode_error_var_has_inst(InstTable, ModeInfo, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -567,18 +589,19 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("  mode error: variable `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(VarInst, InstVarSet),
+	output_inst(VarInst, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  expected instantiatedness was `"),
-	output_inst(Inst, InstVarSet),
+	output_inst(Inst, InstVarSet, InstTable),
 	io__write_string("'.\n").
 
-:- pred report_mode_error_implied_mode(mode_info, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_implied_mode(mode_info_ui, in, in, in, di, uo) is det.
+:- pred report_mode_error_implied_mode(inst_table, mode_info, prog_var, inst,
+		inst, io__state, io__state).
+:- mode report_mode_error_implied_mode(in, mode_info_ui, in, in, in,
+		di, uo) is det.
 
-report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
+report_mode_error_implied_mode(InstTable, ModeInfo, Var, VarInst, Inst) -->
 		% This "error" message is really a "sorry, not implemented"
 		% message.  We only print the message if we are actually
 		% going to generating code.
@@ -594,11 +617,11 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 		io__write_string("  Variable `"),
 		mercury_output_var(Var, VarSet, no),
 		io__write_string("' has instantiatedness `"),
-		output_inst(VarInst, InstVarSet),
+		output_inst(VarInst, InstVarSet, InstTable),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
 		io__write_string("  expected instantiatedness was `"),
-		output_inst(Inst, InstVarSet),
+		output_inst(Inst, InstVarSet, InstTable),
 		io__write_string("'.\n")
 	;
 		[]
@@ -613,15 +636,17 @@ report_mode_error_no_mode_decl(ModeInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  no mode declaration for called predicate.\n").
 
-:- pred report_mode_error_unify_pred(mode_info, var, mode_error_unify_rhs,
+:- pred report_mode_error_unify_pred(inst_table, mode_info, prog_var,
+					mode_error_unify_rhs,
 					type, pred_or_func,
 					io__state, io__state).
-:- mode report_mode_error_unify_pred(mode_info_ui, in, in, in, in,
+:- mode report_mode_error_unify_pred(in, mode_info_ui, in, in, in, in,
 					di, uo) is det.
 
-report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
+report_mode_error_unify_pred(_InstTable, ModeInfo, X, RHS, Type, PredOrFunc) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  In unification of `"),
@@ -634,9 +659,11 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 		{ RHS = error_at_functor(ConsId, ArgVars) },
 		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, no)
 	;
-		{ RHS = error_at_lambda(ArgVars, ArgModes) },
+		{ RHS = error_at_lambda(ArgVars,
+			argument_modes(ArgInstTable, ArgModes)) },
 		io__write_string("lambda(["),
-		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet, no),
+		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet, InstVarSet,
+			no, ArgInstTable),
 		io__write_string("] ... )")
 	),
 	io__write_string("':\n"),
@@ -667,12 +694,12 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_var(mode_info, var, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_unify_var_var(mode_info_ui, in, in, in, in, di, uo)
-	is det.
+:- pred report_mode_error_unify_var_var(inst_table, mode_info, prog_var,
+		prog_var, inst, inst, io__state, io__state).
+:- mode report_mode_error_unify_var_var(in, mode_info_ui, in, in, in, in,
+		di, uo) is det.
 
-report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
+report_mode_error_unify_var_var(InstTable, ModeInfo, X, Y, InstX, InstY) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -687,23 +714,23 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 	io__write_string("  Variable `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(InstX, InstVarSet),
+	output_inst(InstX, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  variable `"),
 	mercury_output_var(Y, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(InstY, InstVarSet),
+	output_inst(InstY, InstVarSet, InstTable),
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_lambda(mode_info, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_unify_var_lambda(mode_info_ui, in, in, in, di, uo)
-	is det.
+:- pred report_mode_error_unify_var_lambda(inst_table, mode_info,
+		prog_var, inst, inst, io__state, io__state).
+:- mode report_mode_error_unify_var_lambda(in, mode_info_ui, in, in, in,
+		di, uo) is det.
 
-report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY) -->
+report_mode_error_unify_var_lambda(InstTable, ModeInfo, X, InstX, InstY) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -716,22 +743,22 @@ report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY) -->
 	io__write_string("  Variable `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(InstX, InstVarSet),
+	output_inst(InstX, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  lambda expression has instantiatedness `"),
-	output_inst(InstY, InstVarSet),
+	output_inst(InstY, InstVarSet, InstTable),
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_functor(mode_info, var, cons_id, list(var),
-					inst, list(inst), io__state, io__state).
-:- mode report_mode_error_unify_var_functor(mode_info_ui, in, in, in, in, in,
-			di, uo) is det.
+:- pred report_mode_error_unify_var_functor(inst_table, mode_info, prog_var,
+	cons_id, list(prog_var), inst, list(inst), io__state, io__state).
+:- mode report_mode_error_unify_var_functor(in, mode_info_ui, in, in, in,
+	in, in, di, uo) is det.
 
-report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
-		-->
+report_mode_error_unify_var_functor(InstTable, ModeInfo, X, ConsId, Args,
+		InstX, ArgInsts) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -746,7 +773,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
 	io__write_string("  Variable `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("' has instantiatedness `"),
-	output_inst(InstX, InstVarSet),
+	output_inst(InstX, InstVarSet, InstTable),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
@@ -757,7 +784,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
 		io__write_string("  has instantiatedness `"),
 		mercury_output_cons_id(ConsId, does_not_need_brackets),
 		io__write_string("("),
-		output_inst_list(ArgInsts, InstVarSet),
+		output_inst_list(ArgInsts, InstVarSet, InstTable),
 		io__write_string(")")
 	;
 		io__write_string("' has instantiatedness `"),
@@ -780,7 +807,8 @@ mode_info_write_context(ModeInfo) -->
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
+	{ proc_info_declared_argmodes(ProcInfo,
+		argument_modes(InstTable, Modes0)) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	{ pred_info_name(PredInfo, Name0) },
 	{ Name = unqualified(Name0) },
@@ -790,19 +818,20 @@ mode_info_write_context(ModeInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("In clause for `"),
 	mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
-				MaybeDet, Context),
+				MaybeDet, Context, InstTable),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
 	write_mode_context(ModeContext, Context, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_final_inst(mode_info, int, var, inst, inst,
-				final_inst_error, io__state, io__state).
-:- mode report_mode_error_final_inst(mode_info_ui, in, in, in, in, in,
-				di, uo) is det.
+:- pred report_mode_error_final_inst(inst_table, mode_info, int, prog_var,
+			inst, inst, final_inst_error, io__state, io__state).
+:- mode report_mode_error_final_inst(in, mode_info_ui, in, in, in, in, in,
+			di, uo) is det.
 
-report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst, Reason) -->
+report_mode_error_final_inst(InstTable, ModeInfo, ArgNum, Var, VarInst, Inst,
+			Reason) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -824,12 +853,12 @@ report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst, Reason) -->
 	io__write_string("  Final instantiatedness of `"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' was `"),
-	output_inst(VarInst, InstVarSet),
+	output_inst(VarInst, InstVarSet, InstTable),
 	io__write_string("',\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  expected final instantiatedness was `"),
-	output_inst(Inst, InstVarSet),
+	output_inst(Inst, InstVarSet, InstTable),
 	io__write_string("'.\n").
 
 
@@ -841,7 +870,7 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, term__context, module_info,
+:- pred write_mode_context(mode_context, prog_context, module_info,
 				io__state, io__state).
 :- mode write_mode_context(in, in, in, di, uo) is det.
 
@@ -975,7 +1004,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, Modes0) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes0)) },
 	{ varset__init(VarSet) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	( { OutputDetism = yes } ->
@@ -989,11 +1018,11 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 	io__write_string("Inferred "),
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(VarSet, Name, Modes,
-				MaybeDet, Context)
+				MaybeDet, Context, InstTable)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
-				MaybeDet, Context)
+				MaybeDet, Context, InstTable)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1005,12 +1034,12 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 report_mode_errors(ModeInfo0, ModeInfo) :-
         mode_info_get_errors(ModeInfo0, Errors),
         ( Errors = [FirstError | _] ->	% XXX Why do we only report the first?
-                FirstError = mode_error_info(_, ModeError,
+                FirstError = mode_error_info(_, ModeError, InstTable,
                                                 Context, ModeContext),
                 mode_info_set_context(Context, ModeInfo0, ModeInfo1),
                 mode_info_set_mode_context(ModeContext, ModeInfo1, ModeInfo2),
                 mode_info_get_io_state(ModeInfo2, IOState0),
-                report_mode_error(ModeError, ModeInfo2,
+                report_mode_error(ModeError, InstTable, ModeInfo2,
                                 IOState0, IOState),
                 mode_info_set_io_state(ModeInfo2, IOState, ModeInfo)
         ;
@@ -1019,19 +1048,20 @@ report_mode_errors(ModeInfo0, ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_inst((inst), varset, io__state, io__state).
-:- mode output_inst(in, in, di, uo) is det.
+:- pred output_inst((inst), inst_varset, inst_table, io__state, io__state).
+:- mode output_inst(in, in, in, di, uo) is det.
 
-output_inst(Inst0, VarSet) -->
+output_inst(Inst0, VarSet, InstTable) -->
 	{ strip_builtin_qualifiers_from_inst(Inst0, Inst) },
-	mercury_output_inst(Inst, VarSet).
+	mercury_output_inst(expand_silently, Inst, VarSet, InstTable).	% YYY
 
-:- pred output_inst_list(list(inst), varset, io__state, io__state).
-:- mode output_inst_list(in, in, di, uo) is det.
+:- pred output_inst_list(list(inst), inst_varset, inst_table,
+		io__state, io__state).
+:- mode output_inst_list(in, in, in, di, uo) is det.
 
-output_inst_list(Insts0, VarSet) -->
+output_inst_list(Insts0, VarSet, InstTable) -->
 	{ strip_builtin_qualifiers_from_inst_list(Insts0, Insts) },
-	mercury_output_inst_list(Insts, VarSet).
+	mercury_output_inst_list(expand_silently, Insts, VarSet, InstTable).	% YYY
 
 %-----------------------------------------------------------------------------%
 
@@ -1084,14 +1114,15 @@ output_mode_decl(ProcId, PredInfo) -->
 	{ pred_info_name(PredInfo, Name0) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
+	{ proc_info_declared_argmodes(ProcInfo,
+		argument_modes(InstTable, Modes0)) },
 	{ proc_info_declared_determinism(ProcInfo, MaybeDet) },
 	{ proc_info_context(ProcInfo, Context) },
 	{ varset__init(InstVarSet) },
 	{ Name = unqualified(Name0) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
-				MaybeDet, Context).
+				MaybeDet, Context, InstTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

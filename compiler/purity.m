@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -422,8 +422,8 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 		pure, NumErrors0, NumErrors) -->
 	{ Unif0 = unify(A,RHS0,C,D,E) },
 	{ Unif  = unify(A,RHS,C,D,E) },
-	(   { RHS0 = lambda_goal(F, G, H, I, J, Goal0 - Info0) } ->
-		{ RHS = lambda_goal(F, G, H, I, J, Goal - Info0) },
+	(   { RHS0 = lambda_goal(F, G, H, I, J, K, Goal0 - Info0) } ->
+		{ RHS = lambda_goal(F, G, H, I, J, K, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
 				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,
@@ -503,9 +503,9 @@ compute_goals_purity([Goal0|Goals0], [Goal|Goals], PredInfo, ModuleInfo,
 
 compute_cases_purity([], [], _, _, _, Purity, Purity, NumErrors, NumErrors) -->
 	[].
-compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
-		PredInfo, ModuleInfo, InClosure, Purity0, Purity,
-		NumErrors0, NumErrors) -->
+compute_cases_purity([case(Ctor,IMDelta,Goal0)|Goals0],
+		[case(Ctor,IMDelta,Goal)|Goals], PredInfo, ModuleInfo,
+		InClosure, Purity0, Purity, NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity1, NumErrors0, NumErrors1),
 	{ worst_purity(Purity0, Purity1, Purity2) },
@@ -612,7 +612,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 
 
 :- pred error_missing_body_impurity_decl(module_info, pred_info, pred_id,
-				  context, purity, io__state, io__state).
+				  prog_context, purity, io__state, io__state).
 :- mode error_missing_body_impurity_decl(in, in, in, in, in, di, uo) is det.
 
 error_missing_body_impurity_decl(ModuleInfo, _, PredId, Context,
@@ -630,7 +630,7 @@ error_missing_body_impurity_decl(ModuleInfo, _, PredId, Context,
 
 
 :- pred warn_unnecessary_body_impurity_decl(module_info, pred_info, pred_id,
-	context, purity, purity, io__state, io__state).
+	prog_context, purity, purity, io__state, io__state).
 :- mode warn_unnecessary_body_impurity_decl(in, in, in, in, in, in, di, uo)
 	is det.
 

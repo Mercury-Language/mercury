@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -16,8 +16,7 @@ case $# in
 esac
 
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
-PATH="/home/mercury/public/mercury-0.5/$FULLARCH/bin:$PATH"
-PATH="/home/mercury/public/mercury-0.6/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-0.8/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
@@ -69,6 +68,12 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
 
+BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
+BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
+
+STABLE=$DIR/mercury-latest-stable
+UNSTABLE=$DIR/mercury-latest-unstable
+
 case $ARCH in
 	alpha)
 		# due to a bug in the DEC loader, INSTALL_DIR should be
@@ -77,6 +82,8 @@ case $ARCH in
 		INSTALL_DIR=/home/mercury/public/.a
 		;;
 esac
+
+PATH="$INSTALL_DIR/bin:$PATH"
 
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
@@ -198,6 +205,8 @@ mmake depend $PARALLEL || { false; exit 1; }
 mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
+version=`mmake version` || { false; exit 1; }
+fullarch=`mmake fullarch` || { false; exit 1; }
 tools/bootcheck -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
@@ -357,7 +366,6 @@ case $HOST in murlibobo)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	version=`mmake version` &&
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
 	rm -f mercury-latest-unstable/* &&
@@ -368,6 +376,9 @@ case $HOST in murlibobo)
 	mv mercury-tests-$version.tar.gz	\
 	    mercury-latest-unstable/mercury-tests-$version-unstable.tar.gz
 	} || status=1
+	# later parts of this script assume that we've already run configure,
+	# so we need to redo that
+	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
 	;;
 esac
 
@@ -449,9 +460,6 @@ cd ..
 
 : update the unstable release
 
-BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
-BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
-
 case $HOST in murlibobo)
 	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
@@ -464,19 +472,23 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-STABLE=mercury-latest-stable
-UNSTABLE=mercury-latest-unstable
-
 : build the binary distribution
+
+{
+	cd $DIR/mercury &&
+	mmake bindist &&
+	cd .. &&
+	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
+	rm -f $UNSTABLE/mercury-*.$fullarch.tar.gz &&
+	mv mercury/mercury-$version.$fullarch.tar.gz $UNSTABLE
+} || status=1
 
 case $status in
     0) {
-    	cd $DIR/mercury &&
-    	mmake bindist &&
-	cd .. &&
+    	cd $DIR &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
-	rm -f $STABLE/* &&
-	mv mercury/mercury-$version.*.tar.gz $STABLE
+	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
+	cp $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE
        } || status=1
     ;;
 esac

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -383,8 +383,8 @@ dead_proc_elim__examine_goals([Goal | Goals], CurrProc, Queue0, Queue,
 :- mode dead_proc_elim__examine_cases(in, in, in, out, in, out) is det.
 
 dead_proc_elim__examine_cases([], _CurrProc, Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_cases([case(_, Goal) | Cases], CurrProc, Queue0, Queue,
-		Needed0, Needed) :-
+dead_proc_elim__examine_cases([case(_, _, Goal) | Cases], CurrProc,
+		Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue1,
 		Needed0, Needed1),
 	dead_proc_elim__examine_cases(Cases, CurrProc, Queue1, Queue,
@@ -790,7 +790,7 @@ pre_modecheck_examine_goal(if_then_else(_, If, Then, Else, _) - _) -->
 	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
 pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 	{ ExamineCase = lambda([Case::in, Info0::in, Info::out] is det, (
-		Case = case(_, Goal),
+		Case = case(_, _, Goal),
 		pre_modecheck_examine_goal(Goal, Info0, Info)
 	)) },
 	list__foldl(ExamineCase, Cases).
@@ -816,7 +816,7 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
 	;
 		[]
 	).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, Goal)) -->
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, Goal)) -->
 	pre_modecheck_examine_goal(Goal).
 
 :- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 

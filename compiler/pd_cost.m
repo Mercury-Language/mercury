@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,7 @@
 :- implementation.
 
 :- import_module hlds_data, prog_data.
-:- import_module int, list, set, std_util, term.
+:- import_module int, list, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -111,7 +111,7 @@ pd_cost__goal(pragma_c_code(Attributes, _, _, Args, _, _, _) - _, Cost) :-
 	pd_cost__reg_assign(AssignCost),
 	Cost is Cost1 + Cost2 + AssignCost * InputArgs.
 
-:- pred pd_cost__unify(set(var)::in, unification::in, int::out) is det.
+:- pred pd_cost__unify(set(prog_var)::in, unification::in, int::out) is det.
 
 pd_cost__unify(_, assign(_, _), 0).
 
@@ -157,7 +157,7 @@ pd_cost__goals([Goal | Goals], Cost0, Cost) :-
 :- pred pd_cost__cases(list(case)::in, int::in, int::out) is det.
 
 pd_cost__cases([], Cost, Cost).
-pd_cost__cases([case(_, Goal) | Cases], Cost0, Cost) :-
+pd_cost__cases([case(_, _, Goal) | Cases], Cost0, Cost) :-
 	pd_cost__goal(Goal, Cost1),
 	Cost2 is Cost0 + Cost1,
 	pd_cost__cases(Cases, Cost2, Cost).

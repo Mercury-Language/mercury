@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,8 @@
 :- implementation.
 
 :- import_module code_gen, code_util, trace, options, globals, instmap.
-:- import_module bool, set, tree, list, map, std_util, term, require.
+:- import_module prog_data, term.
+:- import_module bool, set, tree, list, map, std_util, require.
 
 ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		-->
@@ -251,7 +252,7 @@ ite_gen__generate_negation(CodeModel, Goal0, Code) -->
 	% of the code for if-then-elses.
 
 :- pred generate_negation_general(code_model::in, hlds_goal::in,
-	set(var)::in, resume_locs::in, code_tree::out,
+	set(prog_var)::in, resume_locs::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->

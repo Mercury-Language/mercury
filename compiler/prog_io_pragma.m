@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,6 +23,7 @@
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, hlds_pred, term_util, term_errors.
+:- import_module hlds_data.
 :- import_module int, string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
@@ -151,10 +152,14 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    )
 	->
 	    ( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
-	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields, FieldsContext) ->
-	            ( parse_pragma_keyword("first_code", FirstTerm, First, FirstContext) ->
-	                ( parse_pragma_keyword("retry_code", LaterTerm, Later, LaterContext) ->
-	                    ( parse_pragma_keyword("shared_code", SharedTerm, Shared, SharedContext) ->
+	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
+			FieldsContext) ->
+	            ( parse_pragma_keyword("first_code", FirstTerm, First,
+		    		FirstContext) ->
+	                ( parse_pragma_keyword("retry_code", LaterTerm, Later,
+				LaterContext) ->
+	                    ( parse_pragma_keyword("shared_code", SharedTerm,
+			    		Shared, SharedContext) ->
 	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
@@ -162,7 +167,8 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 					Later, yes(LaterContext),
 					share, Shared, yes(SharedContext)),
 				    VarSet, Result)
-		            ; parse_pragma_keyword("duplicated_code", SharedTerm, Shared, SharedContext) ->
+		            ; parse_pragma_keyword("duplicated_code",
+			    		SharedTerm, Shared, SharedContext) ->
 	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
@@ -170,7 +176,8 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 					Later, yes(LaterContext),
 					duplicate, Shared, yes(SharedContext)),
 				    VarSet, Result)
-		            ; parse_pragma_keyword("common_code", SharedTerm, Shared, SharedContext) ->
+		            ; parse_pragma_keyword("common_code", SharedTerm,
+			    		Shared, SharedContext) ->
 	        	        parse_pragma_c_code(ModuleName, Flags,
 				    PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
@@ -204,8 +211,8 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		    ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "import", PragmaTerms,
-			ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
        (
 	    PragmaTerms = [PredAndModesTerm, FlagsTerm,
 			C_FunctionTerm]
@@ -232,8 +239,11 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 				parse_pragma_c_code_attributes_term(FlagsTerm,
 					Flags)
 			    ->
+			    	inst_table_init(InstTable),
+			    	ArgumentModes = argument_modes(InstTable,
+					Modes),
 			        Result = ok(pragma(import(FuncName, function,
-				    Modes, Flags, C_Function)))
+				    ArgumentModes, Flags, C_Function)))
 			    ;
 				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
 					FlagsTerm)
@@ -260,8 +270,11 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 				parse_pragma_c_code_attributes_term(FlagsTerm,
 					Flags)
 			    ->
+			    	inst_table_init(InstTable),
+			    	ArgumentModes = argument_modes(InstTable,
+					Modes),
 			        Result = ok(pragma(import(PredName, predicate,
-				    Modes, Flags, C_Function)))
+				    ArgumentModes, Flags, C_Function)))
 			    ;
 				Result = error("invalid second argument in `:- pragma import/3' declaration -- expecting C code attribute or list of attributes'",
 					FlagsTerm)
@@ -303,8 +316,11 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			    convert_mode(RetModeTerm, RetMode)
 			->
 			    list__append(ArgModes, [RetMode], Modes),
+			    inst_table_init(InstTable),
+			    ArgumentModes = argument_modes(InstTable,
+					Modes),
 			    Result = ok(pragma(import(FuncName, function,
-				    Modes, Attributes, C_Function)))
+				    ArgumentModes, Attributes, C_Function)))
 			;
 	   		    Result = error(
 "expected pragma import(FuncName(ModeList) = Mode, C_Function)",
@@ -323,8 +339,11 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			(
 		    	    convert_mode_list(ModeTerms, Modes)
 			->
+			    inst_table_init(InstTable),
+			    ArgumentModes = argument_modes(InstTable,
+					Modes),
 			    Result = ok(pragma(import(PredName, predicate,
-				    Modes, Attributes, C_Function)))
+				    ArgumentModes, Attributes, C_Function)))
 			;
 	   		    Result = error(
 	"expected pragma import(PredName(ModeList), C_Function)",
@@ -347,8 +366,8 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 		ErrorTerm)
        ).
 
-parse_pragma_type(_ModuleName, "export", PragmaTerms,
-			ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
        (
 	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
        ->
@@ -360,8 +379,9 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(FuncAndArgModesTerm, PredAndModesTerm,
-			"pragma export declaration", FuncAndArgModesResult),  
+		    parse_qualified_term(FuncAndArgModesTerm,
+		    	PredAndModesTerm, "pragma export declaration",
+			FuncAndArgModesResult),  
 		    (
 		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
 		        (
@@ -369,9 +389,12 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 			    convert_mode(RetModeTerm, RetMode)
 		        ->
 			    list__append(ArgModes, [RetMode], Modes),
+			    inst_table_init(InstTable),
+			    ArgumentModes = argument_modes(InstTable,
+					Modes),
 			    Result =
 			    ok(pragma(export(FuncName, function,
-				Modes, C_Function)))
+				ArgumentModes, C_Function)))
 		        ;
 	   		    Result = error(
 	"expected pragma export(FuncName(ModeList) = Mode, C_Function)",
@@ -389,9 +412,12 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		        (
 		    	    convert_mode_list(ModeTerms, Modes)
 		        ->
+			    inst_table_init(InstTable),
+			    ArgumentModes = argument_modes(InstTable,
+					Modes),
 			    Result = 
-			    ok(pragma(export(PredName, predicate, Modes,
-				C_Function)))
+			    ok(pragma(export(PredName, predicate,
+			    	ArgumentModes, C_Function)))
 		        ;
 	   		    Result = error(
 	"expected pragma export(PredName(ModeList), C_Function)",
@@ -414,35 +440,35 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		ErrorTerm)
        ).
 
-parse_pragma_type(ModuleName, "inline", PragmaTerms,
-				ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "inline", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "inline",
 		lambda([Name::in, Arity::in, Pragma::out] is det,
 			Pragma = inline(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
-parse_pragma_type(ModuleName, "no_inline", PragmaTerms,
-				ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "no_inline", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "no_inline",
 		lambda([Name::in, Arity::in, Pragma::out] is det,
 			Pragma = no_inline(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
-parse_pragma_type(ModuleName, "memo", PragmaTerms,
-			ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "memo", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_tabling_pragma(ModuleName, "memo", eval_memo, 
 		PragmaTerms, ErrorTerm, Result).
 parse_pragma_type(ModuleName, "loop_check", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
 	parse_tabling_pragma(ModuleName, "loop_check", eval_loop_check, 
 		PragmaTerms, ErrorTerm, Result).
-parse_pragma_type(ModuleName, "minimal_model", PragmaTerms,
-			ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "minimal_model", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_tabling_pragma(ModuleName, "minimal_model", eval_minimal, 
 		PragmaTerms, ErrorTerm, Result).
 
-parse_pragma_type(ModuleName, "obsolete", PragmaTerms,
-		ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "obsolete",
 		lambda([Name::in, Arity::in, Pragma::out] is det,
 			Pragma = obsolete(Name, Arity)),
@@ -450,8 +476,8 @@ parse_pragma_type(ModuleName, "obsolete", PragmaTerms,
 
 	% pragma unused_args should never appear in user programs,
 	% only in .opt files.
-parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
-			ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(_ModuleName, "unused_args", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	(
 		PragmaTerms = [
 			PredOrFuncTerm,
@@ -482,8 +508,8 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
 		Result = error("error in pragma unused_args", ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "fact_table", PragmaTerms, 
-		ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	(
 	    PragmaTerms = [PredAndArityTerm, FileNameTerm]
 	->
@@ -492,9 +518,9 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 			[PredNameTerm, ArityTerm], _)
 	    ->
 	    	(
-		    parse_implicitly_qualified_term(ModuleName, PredNameTerm,
-		            PredAndArityTerm, "pragma fact_table declaration",
-			    ok(PredName, [])),
+		    parse_implicitly_qualified_term(ModuleName,
+		    	    PredNameTerm, PredAndArityTerm,
+			    "pragma fact_table declaration", ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    (
@@ -525,8 +551,8 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 		ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "promise_pure", PragmaTerms,
-				ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "promise_pure",
 		lambda([Name::in, Arity::in, Pragma::out] is det,
 			Pragma = promise_pure(Name, Arity)),
@@ -597,8 +623,10 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 			[], _),
 		MaybeTerminationInfo = yes(cannot_loop)
 	    ),
+	    inst_table_init(InstTable),
+	    ArgumentModes = argument_modes(InstTable, ModeList),
 	    Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
-	    	ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
+	    	ArgumentModes, MaybeArgSizeInfo, MaybeTerminationInfo)))
 	;
 	    Result0 = error("unexpected variable in pragma termination_info",
 						ErrorTerm)
@@ -805,11 +833,13 @@ parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
 	    	PredOrFunc = function,
 	    	list__append(VarList0, FuncResultTerms, VarList)
 	    ),
-	    parse_pragma_c_code_varlist(VarSet, VarList, PragmaVars, Error),
+	    varset__coerce(VarSet, ProgVarSet),
+	    parse_pragma_c_code_varlist(VarSet, VarList, PragmaVars,
+	    	Error),
 	    (
 		Error = no,
 		Result = ok(pragma(c_code(Flags, PredName,
-		    PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
+		    PredOrFunc, PragmaVars, ProgVarSet, PragmaImpl)))
 	    ;
 		Error = yes(ErrorMessage),
 		Result = error(ErrorMessage, PredAndVarsTerm)
@@ -825,8 +855,8 @@ parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
 
 	% parse the variable list in the pragma c code declaration.
 	% The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
-:- pred parse_pragma_c_code_varlist(varset, list(term), list(pragma_var), 
-	maybe(string)).
+:- pred parse_pragma_c_code_varlist(varset, list(term),
+		list(pragma_var), maybe(string)).
 :- mode parse_pragma_c_code_varlist(in, in, out, out) is det.
 
 parse_pragma_c_code_varlist(_, [], [], no).
@@ -841,7 +871,8 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 			(
 				convert_mode(ModeTerm, Mode)
 			->
-				P = (pragma_var(Var, VarName, Mode)),
+				term__coerce_var(Var, ProgVar),
+				P = (pragma_var(ProgVar, VarName, Mode)),
 				parse_pragma_c_code_varlist(VarSet, 
 					Vars, PragmaVars0, Error),
 				PragmaVars = [P|PragmaVars0]
@@ -877,8 +908,8 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                 [PredNameTerm, ArityTerm], _)
         ->
             (
-                parse_implicitly_qualified_term(ModuleName, PredNameTerm, 
-                    PredAndModesTerm0, "", ok(PredName, [])),
+                parse_implicitly_qualified_term(ModuleName,
+			PredNameTerm, PredAndModesTerm0, "", ok(PredName, [])),
                 ArityTerm = term__functor(term__integer(Arity), [], _)
             ->
                 Result = ok(pragma(tabled(TablingType, PredName, Arity, 
@@ -932,8 +963,10 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                     ;
                        Arity = Arity0
                     ),
+                    inst_table_init(InstTable),
                     Result = ok(pragma(tabled(TablingType, PredName, Arity, 
-                        yes(PredOrFunc), yes(Modes))))
+                        yes(PredOrFunc), 
+                        yes(argument_modes(InstTable, Modes)))))
                 ;
                     string__append_list(["syntax error in pragma '", 
 		        PragmaName, "(...)' declaration"],ErrorMessage),

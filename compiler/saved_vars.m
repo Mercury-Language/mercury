@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,8 +37,8 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
-:- import_module mode_util, prog_data.
-:- import_module bool, list, set, map, std_util, term, varset.
+:- import_module mode_util, prog_data, term, varset.
+:- import_module bool, list, set, map, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,21 +55,24 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 
 	{ final_slot_info(Varset1, VarTypes1, SlotInfo) },
 	{ proc_info_headvars(ProcInfo0, HeadVars) },
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
 
-	% hlds_out__write_goal(Goal1, ModuleInfo, Varset1, 0, ""),
+	% hlds_out__write_goal(Goal1, InstTable0, ModuleInfo0, Varset1, no, 0, ""),
 
 	% recompute the nonlocals for each goal
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	{ recompute_instmap_delta(no, Goal2, Goal, InstMap0, 
-		ModuleInfo0, ModuleInfo) },
+	{ proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives) },
+	{ recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
+		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
 	{ proc_info_set_varset(ProcInfo1, Varset, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) }.
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
+	{ proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -147,7 +150,7 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 % several such unifications about which one should be closest to a following
 % goal that uses all the variables they define.
 
-:- pred saved_vars_in_conj(list(hlds_goal), set(var), slot_info,
+:- pred saved_vars_in_conj(list(hlds_goal), set(prog_var), slot_info,
 	list(hlds_goal), slot_info).
 :- mode saved_vars_in_conj(in, in, in, out, out) is det.
 
@@ -200,7 +203,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 %
 % The logic of this predicate must match the logic of saved_vars_delay_goal.
 
-:- pred can_push(var, hlds_goal).
+:- pred can_push(prog_var, hlds_goal).
 :- mode can_push(in, in) is semidet.
 
 can_push(Var, First) :-
@@ -239,7 +242,7 @@ can_push(Var, First) :-
 % If Var is exported from the conjunction, we include Construct at the end
 % of the conjunction to give it its value.
 
-:- pred saved_vars_delay_goal(list(hlds_goal), hlds_goal, var, bool,
+:- pred saved_vars_delay_goal(list(hlds_goal), hlds_goal, prog_var, bool,
 	slot_info, list(hlds_goal), slot_info).
 :- mode saved_vars_delay_goal(in, in, in, in, in, out, out) is det.
 
@@ -386,7 +389,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 % Push a non-renamed version of the given construction into the given goal.
 % Also traverse the goal looking for further opprtunities.
 
-:- pred push_into_goal(hlds_goal, hlds_goal, var, slot_info,
+:- pred push_into_goal(hlds_goal, hlds_goal, prog_var, slot_info,
 	hlds_goal, slot_info).
 :- mode push_into_goal(in, in, in, in, out, out) is det.
 
@@ -403,7 +406,7 @@ push_into_goal(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 % then this would have no effect, so we merely traverse the goal looking
 % for other opportunities.
 
-:- pred push_into_goal_rename(hlds_goal, hlds_goal, var, slot_info,
+:- pred push_into_goal_rename(hlds_goal, hlds_goal, prog_var, slot_info,
 	hlds_goal, slot_info).
 :- mode push_into_goal_rename(in, in, in, in, out, out) is det.
 
@@ -422,7 +425,7 @@ push_into_goal_rename(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 
 % Push renamed versions of the given construction into each of several goals.
 
-:- pred push_into_goals_rename(list(hlds_goal), hlds_goal, var, slot_info,
+:- pred push_into_goals_rename(list(hlds_goal), hlds_goal, prog_var, slot_info,
 	list(hlds_goal), slot_info).
 :- mode push_into_goals_rename(in, in, in, in, out, out) is det.
 
@@ -436,13 +439,13 @@ push_into_goals_rename([Goal0 | Goals0], Construct, Var, SlotInfo0,
 
 % Push renamed versions of the given construction into each of several cases.
 
-:- pred push_into_cases_rename(list(case), hlds_goal, var, slot_info,
+:- pred push_into_cases_rename(list(case), hlds_goal, prog_var, slot_info,
 	list(case), slot_info).
 :- mode push_into_cases_rename(in, in, in, in, out, out) is det.
 
 push_into_cases_rename([], _Construct, _Var, SlotInfo, [], SlotInfo).
-push_into_cases_rename([case(ConsId, Goal0) | Cases0], Construct, Var,
-		SlotInfo0, [case(ConsId, Goal) | Cases], SlotInfo) :-
+push_into_cases_rename([case(ConsId, IMDelta, Goal0) | Cases0], Construct, Var,
+		SlotInfo0, [case(ConsId, IMDelta, Goal) | Cases], SlotInfo) :-
 	push_into_goal_rename(Goal0, Construct, Var, SlotInfo0,
 		Goal, SlotInfo1),
 	push_into_cases_rename(Cases0, Construct, Var, SlotInfo1,
@@ -467,29 +470,30 @@ saved_vars_in_disj([Goal0 | Goals0], SlotInfo0, [Goal | Goals], SlotInfo) :-
 :- mode saved_vars_in_switch(in, in, out, out) is det.
 
 saved_vars_in_switch([], SlotInfo, [], SlotInfo).
-saved_vars_in_switch([case(Cons, Goal0) | Cases0], SlotInfo0,
-		[case(Cons, Goal) | Cases], SlotInfo) :-
+saved_vars_in_switch([case(Cons, IMDelta, Goal0) | Cases0], SlotInfo0,
+		[case(Cons, IMDelta, Goal) | Cases], SlotInfo) :-
 	saved_vars_in_goal(Goal0, SlotInfo0, Goal, SlotInfo1),
 	saved_vars_in_switch(Cases0, SlotInfo1, Cases, SlotInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- type slot_info	--->	slot_info(
-					varset,
-					map(var, type)
+					prog_varset,
+					map(prog_var, type)
 				).
 
-:- pred init_slot_info(varset, map(var, type), slot_info).
+:- pred init_slot_info(prog_varset, map(prog_var, type), slot_info).
 :- mode init_slot_info(in, in, out) is det.
 
 init_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
 
-:- pred final_slot_info(varset, map(var, type), slot_info).
+:- pred final_slot_info(prog_varset, map(prog_var, type), slot_info).
 :- mode final_slot_info(out, out, in) is det.
 
 final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
 
-:- pred rename_var(slot_info, var, var, map(var, var), slot_info).
+:- pred rename_var(slot_info, prog_var, prog_var, map(prog_var, prog_var),
+		slot_info).
 :- mode rename_var(in, in, out, out, out) is det.
 
 rename_var(SlotInfo0, Var, NewVar, Substitution, SlotInfo) :-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_data, prog_data.
-:- import_module list, term, map.
+:- import_module term.
+:- import_module list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,7 +82,7 @@
 :- pred construct_type(type_id, list(type), (type)).
 :- mode construct_type(in, in, out) is det.
 
-:- pred construct_type(type_id, list(type), term__context, (type)).
+:- pred construct_type(type_id, list(type), prog_context, (type)).
 :- mode construct_type(in, in, in, out) is det.
 
 	% Given a constant and an arity, return a type_id.
@@ -146,15 +147,16 @@
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 
-:- pred apply_substitution_to_type_map(map(var, type), tsubst, map(var, type)).
+:- pred apply_substitution_to_type_map(map(prog_var, type), tsubst,
+		map(prog_var, type)).
 :- mode apply_substitution_to_type_map(in, in, out) is det.
 
         % same thing as above, except for a recursive substitution
         % (i.e. we keep applying the substitution recursively until
         % there are no more changes).
 
-:- pred apply_rec_substitution_to_type_map(map(var, type), tsubst,
-						 map(var, type)).
+:- pred apply_rec_substitution_to_type_map(map(prog_var, type), tsubst,
+						 map(prog_var, type)).
 :- mode apply_rec_substitution_to_type_map(in, in, out) is det.
 
 	% Update a map from tvar to type_info_locn, using the type renaming
@@ -166,7 +168,7 @@
 	% variable, if it maps to a type, we remove it from the map.
 
 :- pred apply_substitutions_to_var_map(map(tvar, type_info_locn), tsubst,
-	map(tvar, type), map(var, var), map(tvar, type_info_locn)).
+	map(tvar, type), map(prog_var, prog_var), map(tvar, type_info_locn)).
 :- mode apply_substitutions_to_var_map(in, in, in, in, out) is det.
 
 	% Update a map from class_constraint to var, using the type renaming
@@ -174,53 +176,54 @@
 	% rename vars. The type renaming is applied before the type
 	% substitution.
 
-:- pred apply_substitutions_to_typeclass_var_map(map(class_constraint, var),
-	tsubst, map(tvar, type), map(var, var), map(class_constraint, var)).
+:- pred apply_substitutions_to_typeclass_var_map(
+		map(class_constraint, prog_var), tsubst, map(tvar, type),
+		map(prog_var, prog_var), map(class_constraint, prog_var)).
 :- mode apply_substitutions_to_typeclass_var_map(in, in, in, in, out) is det.
 
-:- pred apply_rec_subst_to_constraints(substitution, class_constraints,
+:- pred apply_rec_subst_to_constraints(tsubst, class_constraints,
 	class_constraints).
 :- mode apply_rec_subst_to_constraints(in, in, out) is det.
 
-:- pred apply_rec_subst_to_constraint_list(substitution, list(class_constraint),
-	list(class_constraint)).
+:- pred apply_rec_subst_to_constraint_list(tsubst,
+		list(class_constraint), list(class_constraint)).
 :- mode apply_rec_subst_to_constraint_list(in, in, out) is det.
 
-:- pred apply_rec_subst_to_constraint(substitution, class_constraint,
+:- pred apply_rec_subst_to_constraint(tsubst, class_constraint,
 	class_constraint).
 :- mode apply_rec_subst_to_constraint(in, in, out) is det.
 
-:- pred apply_subst_to_constraints(substitution, class_constraints,
+:- pred apply_subst_to_constraints(tsubst, class_constraints,
 	class_constraints).
 :- mode apply_subst_to_constraints(in, in, out) is det.
 
-:- pred apply_subst_to_constraint_list(substitution, list(class_constraint),
+:- pred apply_subst_to_constraint_list(tsubst, list(class_constraint),
 	list(class_constraint)).
 :- mode apply_subst_to_constraint_list(in, in, out) is det.
 
-:- pred apply_subst_to_constraint(substitution, class_constraint,
+:- pred apply_subst_to_constraint(tsubst, class_constraint,
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
 
-:- pred apply_subst_to_constraint_proofs(substitution, 
-	map(class_constraint, constraint_proof),
-	map(class_constraint, constraint_proof)).
+:- pred apply_subst_to_constraint_proofs(tsubst, 
+		map(class_constraint, constraint_proof),
+		map(class_constraint, constraint_proof)).
 :- mode apply_subst_to_constraint_proofs(in, in, out) is det.
 
-:- pred apply_rec_subst_to_constraint_proofs(substitution, 
+:- pred apply_rec_subst_to_constraint_proofs(tsubst, 
 	map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof)).
 :- mode apply_rec_subst_to_constraint_proofs(in, in, out) is det.
 
-:- pred apply_variable_renaming_to_constraints(map(var, var), 
+:- pred apply_variable_renaming_to_constraints(map(tvar, tvar), 
 	class_constraints, class_constraints).
 :- mode apply_variable_renaming_to_constraints(in, in, out) is det.
 
-:- pred apply_variable_renaming_to_constraint_list(map(var, var), 
+:- pred apply_variable_renaming_to_constraint_list(map(tvar, tvar), 
 	list(class_constraint), list(class_constraint)).
 :- mode apply_variable_renaming_to_constraint_list(in, in, out) is det.
 
-:- pred apply_variable_renaming_to_constraint(map(var, var), 
+:- pred apply_variable_renaming_to_constraint(map(tvar, tvar), 
 	class_constraint, class_constraint).
 :- mode apply_variable_renaming_to_constraint(in, in, out) is det.
 
@@ -229,11 +232,11 @@
 :- pred apply_partial_map_to_list(list(T), map(T, T), list(T)).
 :- mode apply_partial_map_to_list(in, in, out) is det.
 
-% strip out the term__context fields, replacing them with empty
-% term__contexts (as obtained by term__context_init/1)
+% strip out the prog_context fields, replacing them with empty
+% prog_context (as obtained by term__context_init/1)
 % in a type or list of types
-:- pred strip_term_contexts(list(term)::in, list(term)::out) is det.
-:- pred strip_term_context(term::in, term::out) is det.
+:- pred strip_prog_contexts(list(term(T))::in, list(term(T))::out) is det.
+:- pred strip_prog_context(term(T)::in, term(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -466,7 +469,7 @@ substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 		substitute_type_args_2(Constructors0, Subst, Constructors)
 	).
 
-:- pred substitute_type_args_2(list(constructor), substitution,
+:- pred substitute_type_args_2(list(constructor), tsubst,
 				list(constructor)).
 :- mode substitute_type_args_2(in, in, out) is det.
 
@@ -483,7 +486,7 @@ substitute_type_args_2([Ctor0| Ctors0], Subst, [Ctor | Ctors]) :-
 	substitute_type_args_3(Args0, Subst, Args),
 	substitute_type_args_2(Ctors0, Subst, Ctors).
 
-:- pred substitute_type_args_3(list(constructor_arg), substitution,
+:- pred substitute_type_args_3(list(constructor_arg), tsubst,
 				list(constructor_arg)).
 :- mode substitute_type_args_3(in, in, out) is det.
 
@@ -514,8 +517,8 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	% (the type variables that occur in the head of the clause),
 	% and because one day we might want to handle equivalent types.
 
-type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
-		Bindings) :-
+type_unify(term__variable(X), term__variable(Y), HeadTypeParams,
+		Bindings0, Bindings) :-
 	( list__member(Y, HeadTypeParams) ->
 		type_unify_head_type_param(X, Y, HeadTypeParams,
 			Bindings0, Bindings)
@@ -535,7 +538,8 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 			( SubstBindingOfX = term__variable(Y) ->
 				Bindings = Bindings0
 			;
-				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
+				\+ term__occurs(SubstBindingOfX, Y,
+					Bindings0),
 				map__det_insert(Bindings0, Y, SubstBindingOfX,
 					Bindings)
 			)
@@ -548,7 +552,8 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 			( SubstBindingOfY = term__variable(X) ->
 				Bindings = Bindings0
 			;
-				\+ term__occurs(SubstBindingOfY, X, Bindings0),
+				\+ term__occurs(SubstBindingOfY, X,
+					Bindings0),
 				map__det_insert(Bindings0, X, SubstBindingOfY,
 					Bindings)
 			)
@@ -558,8 +563,8 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 			( X = Y ->
 				Bindings = Bindings0
 			; 
-				map__det_insert(Bindings0, X, term__variable(Y),
-					Bindings)
+				map__det_insert(Bindings0, X,
+					term__variable(Y), Bindings)
 			)
 		)
 	).
@@ -569,12 +574,13 @@ type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->
-		type_unify(BindingOfX, term__functor(F, As, C), HeadTypeParams,
-			Bindings0, Bindings)
+		type_unify(BindingOfX, term__functor(F, As, C),
+			HeadTypeParams, Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__det_insert(Bindings0, X, term__functor(F, As, C), Bindings)
+		map__det_insert(Bindings0, X, term__functor(F, As, C),
+			Bindings)
 	).
 
 type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
@@ -582,12 +588,13 @@ type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
 	( 
 		map__search(Bindings0, X, BindingOfX)
 	->
-		type_unify(term__functor(F, As, C), BindingOfX, HeadTypeParams,
-			Bindings0, Bindings)
+		type_unify(term__functor(F, As, C), BindingOfX,
+			HeadTypeParams, Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__det_insert(Bindings0, X, term__functor(F, As, C), Bindings)
+		map__det_insert(Bindings0, X, term__functor(F, As, C),
+			Bindings)
 	).
 
 type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
@@ -615,13 +622,13 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 	;
 		replace_eqv_type(FX, ArityX, AsX, EqvType)
 	->
-		type_unify(EqvType, term__functor(FY, AsY, CY), HeadTypeParams,
-				Bindings0, Bindings)
+		type_unify(EqvType, term__functor(FY, AsY, CY),
+			HeadTypeParams, Bindings0, Bindings)
 	;
 		replace_eqv_type(FY, ArityY, AsY, EqvType)
 	->
-		type_unify(term__functor(FX, AsX, CX), EqvType, HeadTypeParams,
-				Bindings0, Bindings)
+		type_unify(term__functor(FX, AsX, CX), EqvType,
+			HeadTypeParams, Bindings0, Bindings)
 	;
 		fail
 	).
@@ -664,8 +671,8 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 			Bindings = Bindings0
 		;
 			\+ list__member(Var, HeadTypeParams),
-			map__det_insert(Bindings0, Var, term__variable(HeadVar),
-				Bindings)
+			map__det_insert(Bindings0, Var,
+				term__variable(HeadVar), Bindings)
 		)
 	).
 
@@ -686,8 +693,9 @@ apply_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
 			VarTypes)
 	).
 
-:- pred apply_substitution_to_type_map_2(list(var)::in, map(var, type)::in,
-				tsubst::in, map(var, type)::out) is det.
+:- pred apply_substitution_to_type_map_2(list(prog_var)::in,
+		map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out)
+		is det.
 
 apply_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
 apply_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
@@ -709,8 +717,9 @@ apply_rec_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
 			VarTypes)
 	).
 
-:- pred apply_rec_substitution_to_type_map_2(list(var)::in, map(var, type)::in,
-				tsubst::in, map(var, type)::out) is det.
+:- pred apply_rec_substitution_to_type_map_2(list(prog_var)::in,
+		map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out)
+		is det.
 
 apply_rec_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
 apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
@@ -738,9 +747,9 @@ apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
 	).
 
 
-:- pred apply_substitutions_to_var_map_2(list(var)::in, map(tvar,
+:- pred apply_substitutions_to_var_map_2(list(tvar)::in, map(tvar,
 		type_info_locn)::in, tsubst::in, map(tvar, type)::in,
-		map(var, var)::in, map(tvar, type_info_locn)::in, 
+		map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in, 
 		map(tvar, type_info_locn)::out) is det.
 
 apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, NewVarMap, NewVarMap).
@@ -800,8 +809,8 @@ apply_substitutions_to_typeclass_var_map(VarMap0,
 	map__from_assoc_list(VarAL, VarMap).
 
 :- pred apply_substitutions_to_typeclass_var_map_2(tsubst, map(tvar, type),
-		map(var, var), pair(class_constraint, var),
-		pair(class_constraint, var)).
+		map(prog_var, prog_var), pair(class_constraint, prog_var),
+		pair(class_constraint, prog_var)).
 :- mode apply_substitutions_to_typeclass_var_map_2(in, in,
 		in, in, out) is det.
 	
@@ -832,8 +841,8 @@ apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
 	term__apply_rec_substitution_to_list(Types0, Subst, Types1),
 	% we need to maintain the invariant that types in class constraints
-	% do not have any information in their term__context fields
-	strip_term_contexts(Types1, Types),
+	% do not have any information in their prog_context fields
+	strip_prog_contexts(Types1, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_constraints(Subst,
@@ -922,13 +931,14 @@ apply_partial_map_to_list([X|Xs], PartialMap, [Y|Ys]) :-
 
 %-----------------------------------------------------------------------------%
 
-strip_term_contexts(Terms, StrippedTerms) :-
-	list__map(strip_term_context, Terms, StrippedTerms).
+strip_prog_contexts(Terms, StrippedTerms) :-
+	list__map(strip_prog_context, Terms, StrippedTerms).
 	
-strip_term_context(term__variable(V), term__variable(V)).
-strip_term_context(term__functor(F, As0, _C0), term__functor(F, As, C)) :-
+strip_prog_context(term__variable(V), term__variable(V)).
+strip_prog_context(term__functor(F, As0, _C0),
+		term__functor(F, As, C)) :-
 	term__context_init(C),
-	strip_term_contexts(As0, As).
+	strip_prog_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

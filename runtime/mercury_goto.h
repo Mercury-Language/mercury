@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -41,9 +41,9 @@
 #define make_label_sl(n, a, l)		MR_insert_internal_label(n, a, \
 						MR_INTERNAL_LAYOUT(l))
 
-#define make_local_ai(n, a, l)		MR_insert_internal_label(n, a, NULL)
-#define make_local_sl(n, a, l)		MR_insert_internal_label(n, a, \
-						MR_INTERNAL_LAYOUT(l))
+#define make_local_ai(n, a, l)		MR_insert_entry_label(n, a, NULL)
+#define make_local_sl(n, a, l)		MR_insert_entry_label(n, a, \
+						MR_ENTRY_LAYOUT(l))
 
 #define make_entry_ai(n, a, l)		MR_insert_entry_label(n, a, NULL)
 #define make_entry_sl(n, a, l)		MR_insert_entry_label(n, a, \
