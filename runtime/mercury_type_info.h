@@ -98,23 +98,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-/* Forward declarations */
-
-typedef struct MR_TypeCtorInfo_Struct                   MR_TypeCtorInfo_Struct;
-typedef const struct MR_TypeCtorInfo_Struct             *MR_TypeCtorInfo;
-typedef       struct MR_TypeInfo_Almost_Struct          *MR_TypeInfo;
-typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
-typedef const void                                      *MR_ReservedAddr;
-typedef MR_TrieNode                                     *MR_TrieNodePtr;
-
-#ifdef  MR_HIGHLEVEL_CODE
-  typedef MR_Box                                        MR_BaseTypeclassInfo;
-#else
-  typedef MR_Code                                       *MR_BaseTypeclassInfo;
-#endif
-
-/*---------------------------------------------------------------------------*/
-
 /*
 ** The C structures of typeinfos and pseudotypeinfos are sort of lies,
 ** for two reasons. First, we want one C type that can describe both first
@@ -184,9 +167,8 @@ typedef MR_TrieNode                                     *MR_TrieNodePtr;
     }
 
 /*
-** Now define specific versions of these struct types,
-** which are used by the MR_TypeInfo and MR_PseudoTypeInfo
-** typedefs above.
+** Now define specific versions of these struct types, which are used by
+** the MR_TypeInfo and MR_PseudoTypeInfo typedefs in mercury_types.h.
 */
 
 MR_VAR_ARITY_TYPEINFO_STRUCT(MR_TypeInfo_Almost_Struct,

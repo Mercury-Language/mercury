@@ -156,12 +156,48 @@ typedef const MR_ArrayType	*MR_ConstArrayPtr;
 #endif
 
 /*
+** The MR_Box type is used for representing polymorphic types.
+** Currently this is only used in the MLDS C backend.
+**
+** Since it is used in some C code fragments, we define it as MR_Word
+** in the low-level backend.
+*/
+
+#ifdef MR_HIGHLEVEL_CODE
+  typedef void      *MR_Box;
+#else
+  typedef MR_Word   MR_Box;
+#endif
+
+/*
 ** These typedefs are forward declarations, used to avoid circular dependencies
 ** between header files.
 */
 
+typedef struct MR_TypeCtorInfo_Struct                   MR_TypeCtorInfo_Struct;
+typedef const struct MR_TypeCtorInfo_Struct             *MR_TypeCtorInfo;
+typedef       struct MR_TypeInfo_Almost_Struct          *MR_TypeInfo;
+typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
+typedef const void                                      *MR_ReservedAddr;
+
+#ifdef  MR_HIGHLEVEL_CODE
+  typedef MR_Box                                        MR_BaseTypeclassInfo;
+#else
+  typedef MR_Code                                       *MR_BaseTypeclassInfo;
+#endif
+
 typedef struct MR_Closure_Struct                MR_Closure;
 typedef const MR_Closure                        *MR_ClosurePtr;
+
+typedef struct MR_Closure_Id_Struct             MR_Closure_Id;
+typedef struct MR_User_Closure_Id_Struct        MR_User_Closure_Id;
+typedef struct MR_Compiler_Closure_Id_Struct    MR_Compiler_Closure_Id;
+
+typedef struct MR_Type_Param_Locns_Struct       MR_Type_Param_Locns;
+
+typedef struct MR_User_Proc_Id_Struct           MR_User_Proc_Id;
+typedef struct MR_Compiler_Proc_Id_Struct       MR_Compiler_Proc_Id;
+typedef union  MR_Proc_Id_Union                 MR_Proc_Id;
 
 typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;
 typedef struct MR_CallSiteDynamic_Struct        MR_CallSiteDynamic;
@@ -179,6 +215,7 @@ typedef struct MR_Label_Layout_Struct           MR_Label_Layout;
 
 typedef union MR_TableNode_Union                MR_TableNode;
 typedef MR_TableNode                            *MR_TrieNode;
+typedef MR_TrieNode                             *MR_TrieNodePtr;
 
 typedef struct MR_HashTable_Struct              MR_HashTable;
 typedef struct MR_Subgoal_Struct                MR_Subgoal;
@@ -200,21 +237,5 @@ typedef MR_PNegConsumerListNode                 *MR_PNegConsumerList;
 
 typedef struct MR_ConsumerDebug_Struct          MR_ConsumerDebug;
 typedef struct MR_SubgoalDebug_Struct           MR_SubgoalDebug;
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** The MR_Box type is used for representing polymorphic types.
-** Currently this is only used in the MLDS C backend.
-**
-** Since it is used in some C code fragments, we define it as MR_Word
-** in the low-level backend.
-*/
-
-#ifdef MR_HIGHLEVEL_CODE
-  typedef void      *MR_Box;
-#else
-  typedef MR_Word   MR_Box;
-#endif
 
 #endif /* not MERCURY_TYPES_H */

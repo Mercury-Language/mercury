@@ -328,10 +328,10 @@ typedef enum {
 ** are ground.
 */
 
-typedef	struct MR_Type_Param_Locns_Struct {
+struct MR_Type_Param_Locns_Struct {
 	MR_uint_least32_t		MR_tp_param_count;
 	MR_Long_Lval			MR_tp_param_locns[MR_VARIABLE_SIZED];
-} MR_Type_Param_Locns;
+};
 
 struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
@@ -551,28 +551,28 @@ typedef struct MR_Stack_Traversal_Struct {
 ** browser/dl.m and besides all the places that refer to the C types below.
 */
 
-typedef struct MR_User_Proc_Id_Struct {
+struct MR_User_Proc_Id_Struct {
 	MR_PredFunc		MR_user_pred_or_func;
 	MR_ConstString		MR_user_decl_module;
 	MR_ConstString		MR_user_def_module;
 	MR_ConstString		MR_user_name;
 	MR_int_least16_t	MR_user_arity;
 	MR_int_least16_t	MR_user_mode;
-} MR_User_Proc_Id;
+};
 
-typedef struct MR_Compiler_Proc_Id_Struct {
+struct MR_Compiler_Proc_Id_Struct {
 	MR_ConstString		MR_comp_type_name;
 	MR_ConstString		MR_comp_type_module;
 	MR_ConstString		MR_comp_def_module;
 	MR_ConstString		MR_comp_pred_name;
 	MR_int_least16_t	MR_comp_type_arity;
 	MR_int_least16_t	MR_comp_mode;
-} MR_Compiler_Proc_Id;
+};
 
-typedef union MR_Proc_Id_Union {
+union MR_Proc_Id_Union {
 	MR_User_Proc_Id		MR_proc_user;
 	MR_Compiler_Proc_Id	MR_proc_comp;
-} MR_Proc_Id;
+};
 
 #define	MR_PROC_LAYOUT_COMPILER_GENERATED(entry)			\
 	MR_PROC_ID_COMPILER_GENERATED(entry->MR_sle_proc_id)
@@ -1006,28 +1006,28 @@ struct MR_Module_Layout_Struct {
 ** MR_Proc_Id union through an inappropriate member.
 */
 
-typedef struct MR_Closure_Id_Struct {
+struct MR_Closure_Id_Struct {
 	MR_Proc_Id		MR_closure_proc_id;
 	MR_ConstString		MR_closure_module_name;
 	MR_ConstString		MR_closure_file_name;
 	MR_Integer		MR_closure_line_number;
 	MR_ConstString		MR_closure_goal_path;
-} MR_Closure_Id;
+};
 
-typedef struct MR_User_Closure_Id_Struct {
+struct MR_User_Closure_Id_Struct {
 	MR_User_Proc_Id		MR_user_closure_proc_id;
 	MR_ConstString		MR_user_closure_module_name;
 	MR_ConstString		MR_user_closure_file_name;
 	MR_Integer		MR_user_closure_line_number;
 	MR_ConstString		MR_user_closure_goal_path;
-} MR_User_Closure_Id;
+};
 
-typedef struct MR_Compiler_Closure_Id_Struct {
+struct MR_Compiler_Closure_Id_Struct {
 	MR_Compiler_Proc_Id	MR_comp_closure_proc_id;
 	MR_ConstString		MR_comp_closure_module_name;
 	MR_ConstString		MR_comp_closure_file_name;
 	MR_Integer		MR_comp_closure_line_number;
 	MR_ConstString		MR_comp_closure_goal_path;
-} MR_Compiler_Closure_Id;
+};
 
 #endif /* not MERCURY_STACK_LAYOUT_H */
