@@ -58,7 +58,7 @@ typedef enum { MR_STACK_DET, MR_STACK_NONDET } MR_Stack_Specifier;
 **
 ** The type MR_Lval_Type describes the different tag values.
 **
-** This data is generated in compiler/stack_layout.m must be kept
+** This data is generated in compiler/stack_layout.m, which must be kept
 ** in sync with the constants defined here.
 */
 
@@ -97,7 +97,7 @@ typedef enum {
 ** represent data variables, and are pointers to a 2 word cell, 
 ** containing a type_info and an instantiation represention.
 **
-** This data is generated in compiler/stack_layout.m must be kept
+** This data is generated in compiler/stack_layout.m, which must be kept
 ** in sync with the constants defined here.
 */
 
