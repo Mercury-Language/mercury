@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2001 The University of Melbourne.
+# Copyright (C) 1998-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -22,7 +22,8 @@ M_ENV		= MERCURY_ALL_C_INCL_DIRS="\
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
 		  "
-CFLAGS		= -g $(DLL_CFLAGS)
+CFLAGS		= -g $(DLL_CFLAGS) -DMR_NO_CONF_BACKWARDS_COMPAT \
+				-DMR_NO_BACKWARDS_COMPAT
 MGNUC		= $(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi
 

@@ -14,7 +14,9 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -g $(DLL_CFLAGS)
+CFLAGS		= -g $(DLL_CFLAGS) -DMR_NO_CONF_BACKWARDS_COMPAT \
+			-DMR_NO_BACKWARDS_COMPAT
+
 MGNUC		= MERCURY_ALL_C_INCL_DIRS=" \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
