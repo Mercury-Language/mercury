@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,15 @@ ENDINIT
 ** HLDS construct), and most of the functionality for doing generic
 ** unifications and comparisons (with the rest provided by the
 ** compiler-generated unify, index and compare predicates).
+*/
+
+/*
+** Note that the routines here don't need any special handling for
+** accurate GC, since they only do tail-calls (or equivalent);
+** their stack stack frames will never be live on the stack
+** when a garbage collection occurs (or if they are, will never
+** contain any live variables that might contain pointers to
+** the Mercury heap).
 */
 
 #include "mercury_imp.h"
