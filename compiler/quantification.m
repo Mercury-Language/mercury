@@ -725,7 +725,7 @@ quantification__warn_overlapping_scope(OverlapVars, Context) -->
 :- mode quantification__rename_apart(in, out, in, out, in, out) is det.
 
 quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
-	( { set__is_empty(RenameSet) } ->
+	( { set__empty(RenameSet) } ->
 		{ map__init(RenameMap) },
 		{ Goal = Goal0 }
 	;

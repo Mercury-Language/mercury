@@ -748,7 +748,7 @@ expression are considered to name a different variable than any
 variables with the same name that occur outside of the
 lambda expression.  For variables which occur in Result or Goal,
 but not in the arguments, the usual Mercury rules for implicit
-quantification apply (@pxref{Implicit Quantification}).
+quantification apply (@pxref{Implicit quantification}).
 
 The form of lambda expression using @samp{-->} as its top level functor
 is a syntactic abbreviation: an expression of the form

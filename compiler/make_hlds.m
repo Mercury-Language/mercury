@@ -4586,12 +4586,12 @@ build_lambda_expression(X, PredOrFunc, Args, Modes, Det, ParsedGoal, VarSet0,
 		QuantifiedArgs = Args
 	;
 		PredOrFunc = function,
-		pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm),
+		pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm)
 	},
 	{ term__vars_list(QuantifiedArgs, QuantifiedVars0) },
 	{ list__sort_and_remove_dups(QuantifiedVars0, QuantifiedVars) },
 
-	{ goal_info_init(GoalInfo0) }
+	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ HLDS_Goal = some(QuantifiedVars, HLDS_Goal1) - GoalInfo },
 
