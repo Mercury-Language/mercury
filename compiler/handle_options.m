@@ -226,9 +226,9 @@ postprocess_options(ok(OptionTable), Error) -->
     trace_level::in, trace_suppress_items::in, maybe(string)::out,
     io__state::di, io__state::uo) is det.
 
-postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
+postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress, Error) -->
-	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
+	{ unsafe_promise_unique(OptionTable0, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
@@ -717,6 +717,24 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 			{ User = "guest" }
 		),
 		globals__io_set_option(aditi_user, string(User))
+	;
+		[]
+	),
+
+	%
+	% Add the standard library directory.
+	%
+	globals__io_lookup_maybe_string_option(
+		mercury_standard_library_directory, MaybeStdLibDir),
+	( { MaybeStdLibDir = yes(StdLibDir) } ->
+		globals__io_get_globals(Globals2),
+		{ globals__get_options(Globals2, OptionTable2) },
+		{ globals__set_options(Globals2,
+			option_table_add_mercury_library_directory(
+				OptionTable2, StdLibDir),
+			Globals3) },
+		{ unsafe_promise_unique(Globals3, Globals4) },
+		globals__io_set_globals(Globals4)
 	;
 		[]
 	),

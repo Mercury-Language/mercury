@@ -5627,6 +5627,14 @@ options as needed.
 @cindex Libraries, linking with
 Link with the specified Mercury library.
 
+@item --mercury-standard-library-directory @var{directory}
+@findex --mercury-standard-library-directory
+Search @var{directory} for the Mercury standard library.
+
+@item --no-mercury-standard-library-directory
+@findex --no-mercury-standard-library-directory
+Don't use the Mercury standard library.
+
 @item --init-file-directory @var{directory}
 @findex --init-file-directory
 Append @var{directory} to the list of directories to

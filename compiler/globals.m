@@ -17,7 +17,7 @@
 
 :- interface.
 :- import_module options, trace_params, prog_data.
-:- import_module bool, getopt, list, io.
+:- import_module bool, getopt, list, io, std_util.
 
 :- type globals.
 
@@ -89,6 +89,8 @@
 :- pred globals__lookup_int_option(globals::in, option::in, int::out) is det.
 :- pred globals__lookup_string_option(globals::in, option::in, string::out)
 	is det.
+:- pred globals__lookup_maybe_string_option(globals::in, option::in,
+	maybe(string)::out) is det.
 :- pred globals__lookup_accumulating_option(globals::in, option::in,
 	list(string)::out) is det.
 
@@ -165,6 +167,9 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_string_option(option::in, string::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_lookup_maybe_string_option(option::in, maybe(string)::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
@@ -287,6 +292,15 @@ globals__lookup_int_option(Globals, Option, Value) :-
 		Value = Int
 	;
 		error("globals__lookup_int_option: invalid int option")
+	).
+
+globals__lookup_maybe_string_option(Globals, Option, Value) :-
+	globals__lookup_option(Globals, Option, OptionData),
+	( OptionData = maybe_string(MaybeString) ->
+		Value = MaybeString
+	;
+		error(
+		"globals__lookup_string_option: invalid maybe_string option")
 	).
 
 globals__lookup_accumulating_option(Globals, Option, Value) :-
@@ -439,6 +453,10 @@ globals__io_lookup_int_option(Option, Value) -->
 globals__io_lookup_string_option(Option, Value) -->
 	globals__io_get_globals(Globals),
 	{ globals__lookup_string_option(Globals, Option, Value) }.
+
+globals__io_lookup_maybe_string_option(Option, Value) -->
+	globals__io_get_globals(Globals),
+	{ globals__lookup_maybe_string_option(Globals, Option, Value) }.
 
 globals__io_lookup_accumulating_option(Option, Value) -->
 	globals__io_get_globals(Globals),

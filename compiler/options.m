@@ -43,6 +43,12 @@
 :- type option_table == option_table(option).
 :- type maybe_option_table == maybe_option_table(option).
 
+	% Add a directory to search for Mercury libraries. This
+	% adds `--search-directory', `--c-include-directory',
+	% `--library-directory' and `--init-file-directory' options.
+:- func option_table_add_mercury_library_directory(option_table,
+		string) = option_table.
+
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
@@ -472,6 +478,7 @@
 		;	mercury_library_directory_special
 		;	mercury_libraries
 		;	mercury_library_special
+		;	mercury_standard_library_directory
 		;	init_file_directories
 		;	init_files
 
@@ -933,6 +940,9 @@ option_defaults_2(link_option, [
 	mercury_library_directories -	accumulating([]),
 	mercury_library_special -	string_special,
 	mercury_libraries -		accumulating([]),
+					% The mmc script will set the default
+					% --mercury_standard_library_directory.
+	mercury_standard_library_directory - maybe_string(no),
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
 
@@ -1442,6 +1452,8 @@ long_option("mercury-library",		mercury_library_special).
 long_option("ml",			mercury_library_special).
 long_option("mercury-library-directory", mercury_library_directory_special).
 long_option("mld",			mercury_library_directory_special).
+long_option("mercury-standard-library-directory",
+					mercury_standard_library_directory).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
 long_option("shared-library-extension",	shared_library_extension).
@@ -1579,16 +1591,8 @@ special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
 	set_opt_level(N, OptionTable0, OptionTable).
 special_handler(mercury_library_directory_special, string(Dir),
 			OptionTable0, ok(OptionTable)) :-
-	% The link_library_directories for Mercury libraries are grade
-	% dependent, so they need to be handled in handle_options.m
-	% when we know the grade.
-	OptionTable =
-	    list__foldl(append_to_accumulating_option, [
-	    	search_directories - dir__make_path_name(Dir, "ints"),
-		c_include_directory - dir__make_path_name(Dir, "inc"),
-		init_file_directories - dir__make_path_name(Dir, "modules"),
-		mercury_library_directories - Dir
-		], OptionTable0).
+	OptionTable = option_table_add_mercury_library_directory(
+			OptionTable0, Dir).
 special_handler(mercury_library_special, string(Lib),
 			OptionTable0, ok(OptionTable)) :-
 	OptionTable =
@@ -1597,6 +1601,17 @@ special_handler(mercury_library_special, string(Lib),
 		mercury_libraries - Lib,
 		init_files - (Lib ++ ".init")
 		], OptionTable0).
+
+option_table_add_mercury_library_directory(OptionTable0, Dir) =
+	% The link_library_directories for Mercury libraries are grade
+	% dependent, so they need to be handled in handle_options.m
+	% when we know the grade.
+	list__foldl(append_to_accumulating_option, [
+	    	search_directories - dir__make_path_name(Dir, "ints"),
+		c_include_directory - dir__make_path_name(Dir, "inc"),
+		init_file_directories - dir__make_path_name(Dir, "modules"),
+		mercury_library_directories - Dir
+	], OptionTable0).
 	  
 :- func append_to_accumulating_option(pair(option, string),
 		option_table) = option_table.
@@ -3021,6 +3036,10 @@ options_help_link -->
 		"\t`--search-directory', `--library-directory',",
 		"\t`--init-file-directory' and `--c-include-directory'",
 		"\toptions as needed.",
+		"--mercury-standard-library-directory <directory>",
+		"\tSearch <directory> for the Mercury standard library.",
+		"--no-mercury-standard-library-directory",
+		"\tDon't use the Mercury standard library.",
 		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
 		"--init-file-directory <directory>",
