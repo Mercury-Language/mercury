@@ -1067,7 +1067,7 @@ mercury_output_func_decl(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 				MaybeDet, Context)
 	;
 		mercury_output_func_type(VarSet, FuncName, Types, RetType,
-				MaybeDet, Context),
+				MaybeDet, Context)
 	).
 
 mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
