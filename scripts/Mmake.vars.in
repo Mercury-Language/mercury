@@ -95,6 +95,10 @@ EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 # Set `RM_C' to `:' if you want to keep the intermediate `.c' files.
 RM_C		= rm
 
+# lists of targets that depend on $(MLOBJS) and $(MLPICOBJS)
+MLOBJS_DEPS = 
+MLPICOBJS_DEPS = 
+
 #-----------------------------------------------------------------------------#
 #
 # The following variables specify the names of the subdirectories used,
@@ -131,11 +135,13 @@ SUBDIR=
 nos_subdir=
 qls_subdir=
 deps_subdir=
+int0s_subdir=
 ints_subdir=
 int2s_subdir=
 int3s_subdir=
 opts_subdir=
 trans_opts_subdir=
+date0s_subdir=
 dates_subdir=
 date3s_subdir=
 optdates_subdir=

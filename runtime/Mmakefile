@@ -129,6 +129,12 @@ LIBMER_GLOBALS_H = libmer_globals.h
 
 include $(MERCURY_DIR)/Makefile.DLLs
 
+else
+
+LIBMER_DLL_H =
+LIBMER_GLOBALS_H =
+DLL_DEF_LIB =
+
 endif
 
 #-----------------------------------------------------------------------------#

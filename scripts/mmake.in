@@ -119,6 +119,7 @@ else
 		mmake=""
 	fi
 fi
+
 case $use_subdirs in
 	no)
 		deps="`echo *.dep`"
@@ -153,6 +154,17 @@ fi
 
 MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
 
+# Enable checking for undefined variables -- but not when making the
+# dependencies.
+case "$@" in
+	dep*|*.dep*)
+		MMAKE_MAKE_OPTS=""
+		;;
+	*)
+		MMAKE_MAKE_OPTS="--warn-undefined-variables"
+		;;
+esac
+
 if $verbose; then
 	echo MMAKE=$MMAKE
 	echo export MMAKE
@@ -165,7 +177,7 @@ if $verbose; then
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
 	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">" $tmp
-	echo ${MMAKE_MAKE} -f $tmp -r "$@"
+	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
 fi
 export MMAKE
 export MMAKE_MAKE_CMD
@@ -177,5 +189,5 @@ case $# in
 	# Note that we can't use `exec' here, because if we did that,
 	# that `trap' code which removes $tmp would never get executed.
 	0) ${MMAKE_MAKE} -f $tmp -r ;;
-	*) ${MMAKE_MAKE} -f $tmp -r "$@" ;;
+	*) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@" ;;
 esac
