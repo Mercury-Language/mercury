@@ -176,18 +176,18 @@ extern	Word	*cpstackmin;
    use gcc's expression statements here */
 
 #define create1(w1)	(					\
-				hp[0] = (Word) (w1),		\
-				debugcr1(hp[0], hp),		\
 				hp += 1,			\
+				hp[-1] = (Word) (w1),		\
+				debugcr1(hp[-1], hp),		\
 				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 1)	\
 			)
 
 #define create2(w1, w2)	(					\
-				hp[0] = (Word) (w1),		\
-				hp[1] = (Word) (w2),		\
-				debugcr2(hp[0], hp[1], hp),	\
 				hp += 2,			\
+				hp[-2] = (Word) (w1),		\
+				hp[-1] = (Word) (w2),		\
+				debugcr2(hp[-2], hp[-1], hp),	\
 				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 2)	\
 			)
@@ -553,6 +553,7 @@ extern	void	printregs(const char *);
 extern	void	printframe(const char *);
 extern	void	dumpframe(const Word *);
 extern	void	dumpcpstack(void);
+extern	int	whichlabel(char *name);
 
 extern 	void	init_engine(void);
 extern 	void	call_engine(Code *);

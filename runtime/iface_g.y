@@ -3,13 +3,23 @@
 **	Grammar for the interface to the Ptah interpeter
 */
 
+#ifndef	lint
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.1 1993-11-24 10:56:05 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.2 1993-12-01 05:55:35 zs Exp $";
+#endif
 
+#include	<ctype.h>
 #include	"imp.h"
+#include	"iface.h"
+#include	"list.h"
+#include	"access.h"
 
-extern	int	yylineno;
-extern	char	*yyfile;
+extern	Action	action;
+extern	char	*act_predname;
+extern	int	act_value;
+
+extern	int	yylex(void);
+extern	void	yyerror(const char *);
 %}
 
 %union
@@ -20,66 +30,80 @@ extern	char	*yyfile;
 	List	*Ulist;
 }
 
-%token		RESET
-%token		CALL
+%token		RESET HELP
+%token		CALL REDO
+%token		TAG BODY FIELD
 %token		SETREG GETREG SETMEM GETMEM
 %token		CREATE PUSH POP
-%token		TAG BODY FIELD
 %token		LPAREN RPAREN
 %token	<Uint>	NUM
 %token	<Ustr>	STR
 %token	<Ustr>	ID
+%token		GARBAGE
 
-%type	<Ucast>	expr
+%type	<Uword>	cmd
+%type	<Uword>	expr
 %type	<Ulist>	expr_l
 
-%start		cmd
+%start		line
 
 %%
 
 /**********************************************************************/
 /*		Entries						      */
 
-cmd	:	RESET
+line	:	RESET
 		{
-			reset();
+			action = Reset;
+		}
+	|	HELP
+		{
+			action = Help;
 		}
 	|	CALL ID
 		{
-			printf("call %s\n", $2);
+			action = Call;
+			act_predname = $2;
 		}
-	|	expr
+	|	REDO
 		{
-			printf("%x\n", $1);
+			action = Redo;
+		}
+	|	cmd
+		{
+			action = Print;
+			act_value = $1;
 		}
 	;
 
-expr	:	NUM
-		{	$$ = (Word) $1;		}
-	|	STR
-		{	$$ = (Word) $1;		}
-	|	TAG NUM expr
-		{	$$ = mkword($2, $3);	}
+cmd	:	TAG NUM expr
+		{	$$ = mkword($2, $3);		}
 	|	BODY NUM expr
-		{	$$ = body($2, $3);	}
+		{	$$ = body($2, $3);		}
 	|	FIELD NUM NUM expr
-		{	$$ = field($3, $2, $4);	}
+		{	$$ = field($3, $2, $4);		}
 	|	GETREG NUM
-		{	$$ = getreg($2);	}
+		{	$$ = get_reg($2);		}
 	|	GETMEM expr
-		{	$$ = getmem($2);	}
+		{	$$ = get_mem((Word *) $2);	}
 	|	SETREG NUM expr
-		{	$$ = setreg($2, $3);	}
+		{	$$ = set_reg($2, $3);		}
 	|	SETMEM expr expr
-		{	$$ = setmem($2, $3);	}
+		{	$$ = set_mem((Word *) $2, $3);	}
 	|	CREATE expr_l
-		{	$$ = create($2);	}
+		{	$$ = createn($2);		}
 	|	PUSH expr
-		{	$$ = push($2);		}
+		{	push($2); $$ = $2;		}
 	|	POP
-		{	$$ = pop();		}
-	|	LPAREN expr RPAREN
-		{	$$ = $2;		}
+		{	$$ = pop();			}
+	;
+
+expr	:	NUM
+		{	$$ = (Word) $1;			}
+	|	STR
+		{	$$ = (Word) $1; /* XXX */	}
+	|	LPAREN cmd RPAREN
+		{	$$ = $2;			}
 	;
 
 /* From here on, the grammar is JUNK				      */
@@ -94,27 +118,10 @@ expr_l	:	expr
 
 %%
 
-yyerror(s)
-char	*s;
+void
+yyerror(const char *s)
 {
-	extern	int	yyleng;
 	extern	char	yytext[];
-	char		buf[80];
 
-	if (yychar <= 0)
-	{
-		sprintf(buf, "premature EOF");
-		yylineno--;
-	}
-	or (yytext[0] == '\n' || yytext[0] == '\f')
-		sprintf(buf, "%s at end of line", s);
-	or (isprint(yytext[0]))
-		sprintf(buf, "%s at symbol %s", s, yytext);
-	else
-		sprintf(buf, "%s at \\%o", s, yytext[0]);
-	
-	if (cakedebug)
-		printf("%s, %d: %s, token %d\n", yyfile, yylineno, buf, yychar);
-	else
-		printf("%s, %d: %s\n", yyfile, yylineno, buf);
+	printf("%s at symbol %s", s, yytext);
 }

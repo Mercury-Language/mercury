@@ -4,31 +4,61 @@
 */
 
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.1 1993-11-25 05:22:37 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.2 1993-12-01 05:55:38 zs Exp $";
 
 #include	"imp.h"
 #include	"table.h"
 #include	"iface_g.h"
 
-struct	s_kwentry
+extern	char	*cmdline;
+extern	int	cmdlen;
+extern	int	cmdcur;
+
+#undef	YY_INPUT
+#define	YY_INPUT(buf,result,max_size)	\
+		{ 						\
+			reg	int	more;			\
+								\
+			more = cmdlen - cmdcur;			\
+			if (more > max_size)			\
+				more = max_size;		\
+								\
+			strncpy(buf, &cmdline[cmdcur], more);	\
+			if (more > 0)				\
+				result = more;			\
+			else					\
+				result = YY_NULL;		\
+		}
+
+typedef	struct	s_kwentry
 {
 	char	*kw_name;
 	int	kw_val;
 } Kwentry;
 
-static	Table	kwtable;
+extern	void	yykwinit(void);
+static	char	*new_name(const char *);
+
+static	Cast	name_key(Cast);
+static	bool	name_equal(Cast, Cast);
+static	Cast	kw_key(Cast);
+static	bool	kw_equal(Cast, Cast);
+static	Table	kw_tab =   { TABLESIZE, NULL, kw_key,   tab_hash, kw_equal   };
+static	Table	name_tab = { TABLESIZE, NULL, name_key, tab_hash, name_equal };
 
 #define	mkkwentry(name, val)	do {					\
-					reg	Kwentry	entry;		\
+					reg	Kwentry	*entry;		\
 									\
 					entry = make(Kwentry);		\
 					entry->kw_name = new_name(name);\
 					entry->kw_val  = val;		\
-					insert_table(kwtable, entry);	\
+					insert_table(kw_tab, entry);	\
 				} while (0)
-%}
 
-%start	edge middle
+extern	int	yylex(void);
+
+int	yylineno = 0;
+%}
 
 digit	[0-9]
 alpha	[a-zA-Z_]
@@ -40,46 +70,48 @@ alnum	[a-zA-Z_0-9]
 ")"			{	return RPAREN;		}
 
 "0x"{digit}+		{
-				sscanf(yytext, "%x", &yylval.Unum);
+				sscanf(&yytext[2], "%x", &yylval.Uint);
 				return NUM;
 			}
 
 {digit}+		{
-				sscanf(yytext, "%d", &yylval.Unum);
+				sscanf(yytext, "%d", &yylval.Uint);
 				return NUM;
 			}
 
 \"([^"]|\\\")*\"	{
 				/* strip off quotes */
 				yytext[yyleng-1] = '\0';
-				yylval.Ustr = new_name(yytext+1);
+				yylval.Ustr = new_name(&yytext[1]);
 				return STR;
 			}
 
 {alpha}{alnum}*		{
+				reg	Kwentry	*kwentry;
+
 				yylval.Ustr = new_name(yytext);
-				kwentry = lookup_table(keywords, yylval.Ustr);
-				if (kwentry != (Entry *) NULL)
+				kwentry = (Kwentry *) lookup_table(kw_tab, yylval.Ustr);
+				if (kwentry != (Kwentry *) NULL)
 					return kwentry->kw_val;
 				else
 					return ID;
 			}
 
-"\n"			{	return EOF;		}
+[ \t\n]			;
+
+.			{
+				return GARBAGE;
+			}
 
 %%
-
-int
-yywrap(void)
-{
-	return 1;
-}
 
 void
 yykwinit(void)
 {
-	init_table(kwtable);
+	init_table(name_tab);
+	init_table(kw_tab);
 	mkkwentry("reset", RESET);
+	mkkwentry("help", HELP);
 	mkkwentry("call", CALL);
 	mkkwentry("redo", REDO);
 	mkkwentry("tag", TAG);
@@ -92,4 +124,57 @@ yykwinit(void)
 	mkkwentry("create", CREATE);
 	mkkwentry("push", PUSH);
 	mkkwentry("pop", POP);
+}
+
+/*
+**	Save the given string in the name table if not already there;
+**	return its new address. This address is unique, so comparing
+**	two identifiers for equality can be done by comparing their
+**	addresses.
+*/
+
+static char *
+new_name(const char *str)
+{
+	reg	Cast	old;
+	reg	char	*copy;
+
+	if ((old = lookup_table(name_tab, str)) != (Cast) NULL)
+		return (char *) old;
+
+	copy = (char *) malloc(strlen(str) + 1);
+	if (copy == (char *) NULL)
+	{
+		fprintf(stderr, "ran out of malloc\n");
+		abort();
+	}
+
+	strcpy(copy, str);
+	insert_table(name_tab, copy);
+
+	return copy;
+}
+
+static Cast
+name_key(Cast entry)
+{
+	return entry;
+}
+
+static bool
+name_equal(Cast key1, Cast key2)
+{
+	return streq((char *) key1, (char *) key2);
+}
+
+static Cast
+kw_key(Cast entry)
+{
+	return (Cast) ((Kwentry *) entry)->kw_name;
+}
+
+static bool
+kw_equal(Cast key1, Cast key2)
+{
+	return streq((char *) key1, (char *) key2);
 }

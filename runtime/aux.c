@@ -1,6 +1,6 @@
 #include	"imp.h"
-
-static Word get_reg(int num);
+#include	"list.h"
+#include	"access.h"
 
 void mkcp_msg(void)
 {
@@ -248,6 +248,19 @@ void printlabel(const Code *w)
 	printf("label UNKNOWN (0x%p)\n", w);
 }
 
+int whichlabel(char *name)
+{
+	reg	int	i;
+	reg	bool	found;
+
+	found = FALSE;
+	for (i = 0; i < MAXLABELS; i++)
+		if (streq(optarg, entries[i].e_name))
+			return i;
+
+	return -1;
+}
+
 #define	FNULL	((PrintRegFunc *) 0)
 #define P_INT 	((PrintRegFunc *) printint)
 #define P_STR	((PrintRegFunc *) printstring)
@@ -368,58 +381,17 @@ void printregs(const char *msg)
 	printf("\n%s\n", msg);
 
 	printf("%-9s", "succip:");  printlabel(succip);
-	printf("%-9s", "curcp:");  printcpstack(curcp);
-	printf("%-9s", "maxcp:");  printcpstack(maxcp);
-	printf("%-9s", "childcp:");  printcpstack(maxcp);
-	printf("%-9s", "hp:");  printheap(hp);
-	printf("%-9s", "sp:");  printstack(sp);
+	printf("%-9s", "curcp:");   printcpstack(curcp);
+	printf("%-9s", "maxcp:");   printcpstack(maxcp);
+	printf("%-9s", "childcp:"); printcpstack(maxcp);
+	printf("%-9s", "hp:");      printheap(hp);
+	printf("%-9s", "sp:");      printstack(sp);
 
 	for (i = 0; i < 5; i++)
 	{
 		printf("r%d:      ", i + 1);
 		printlist(get_reg(i + 1));
 	}
-}
-
-static Word get_reg(int num)
-{
-	restore_registers();
- 	switch(num) {
-		case 1: return r1;
-		case 2: return r2;
-		case 3: return r3;
-		case 4: return r4;
-		case 5: return r5;
-		case 6: return r6;
-		case 7: return r7;
-		case 8: return r8;
-		case 9: return r9;
-		case 10: return r10;
-		case 11: return r11;
-		case 12: return r12;
-		case 13: return r13;
-		case 14: return r14;
-		case 15: return r15;
-		case 16: return r16;
-		case 17: return r17;
-		case 18: return r18;
-		case 19: return r19;
-		case 20: return r20;
-		case 21: return r21;
-		case 22: return r22;
-		case 23: return r23;
-		case 24: return r24;
-		case 25: return r25;
-		case 26: return r26;
-		case 27: return r27;
-		case 28: return r28;
-		case 29: return r29;
-		case 30: return r30;
-		case 31: return r31;
-		case 32: return r32;
-	}
-	/* NOTREACHED */
-	abort();
 }
 
 Word do_mklist(int start, int len)
@@ -435,4 +407,25 @@ Word do_mklist(int start, int len)
 	}
 	save_registers();
 	return curr;
+}
+
+void *
+newmem(int n)
+{
+	reg	void	*p;
+
+	p = malloc((unsigned) n);
+	if (p == (void *) NULL)
+	{
+		fprintf(stderr, "ran out of malloc\n");
+		abort();
+	}
+
+	return p;
+}
+
+void
+oldmem(void *p)
+{
+	free(p);
 }

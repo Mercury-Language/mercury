@@ -79,4 +79,13 @@
 #define	BELL		'\007'
 #define	ESC		'\033'
 
+typedef	void	*Cast;
+
+extern	void	*malloc(unsigned);
+extern	void	*realloc(void *, unsigned);
+extern	void	free(void *);
+
+extern	void	*newmem(int);
+extern	void	oldmem(void *);
+
 #endif /* STD_H */
