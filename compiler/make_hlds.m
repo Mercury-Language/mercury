@@ -1801,7 +1801,7 @@ check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId,
 
 :- pred do_add_pred_marker(string::in, sym_name::in, arity::in,
 	import_status::in, bool::in, term__context::in,
-	add_marker_pred_info::in(add_marker_pred_info), 
+	add_marker_pred_info::in(add_marker_pred_info),
 	module_info::in, module_info::out, list(pred_id)::out,
 	io__state::di, io__state::uo) is det.
 
@@ -2147,7 +2147,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		Status = Status1,
 		Body = Body0
 	),
-	hlds_data__set_type_defn(TVarSet, Args, Body, Status,
+	hlds_data__set_type_defn(TVarSet, Args, Body, Status, no,
 		NeedQual, Context, T),
 	(
 		MaybeOldDefn = no,
@@ -2190,6 +2190,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		hlds_data__get_type_defn_body(T2, Body_2),
 		hlds_data__get_type_defn_context(T2, OrigContext),
 		hlds_data__get_type_defn_status(T2, OrigStatus),
+		hlds_data__get_type_defn_in_exported_eqv(T2,
+			OrigInExportedEqv),
 		hlds_data__get_type_defn_need_qualifier(T2, OrigNeedQual),
 		Body_2 \= abstract_type(_)
 	->
@@ -2210,8 +2212,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 				true
 			;
 				hlds_data__set_type_defn(TVarSet_2, Params_2,
-					Body_2, Status, OrigNeedQual,
-					OrigContext, T3),
+					Body_2, Status, OrigInExportedEqv,
+					OrigNeedQual, OrigContext, T3),
 				map__det_update(Types0, TypeCtor, T3, Types),
 				module_info_set_types(Types, !Module)
 			)
@@ -2224,8 +2226,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 					Status1)
 			->
 				hlds_data__set_type_defn(TVarSet_2, Params_2,
-					NewBody, Status, NeedQual,
-					Context, T3),
+					NewBody, Status, OrigInExportedEqv,
+					NeedQual, Context, T3),
 				map__det_update(Types0, TypeCtor, T3, Types),
 				module_info_set_types(Types, !Module)
 			;
@@ -7396,7 +7398,7 @@ make_fresh_arg_vars(Args, Vars, !VarSet) :-
 	make_fresh_arg_vars_2(Args, [], Vars1, !VarSet),
 	list__reverse(Vars1, Vars).
 
-:- pred make_fresh_arg_vars_2(list(prog_term)::in, list(prog_var)::in, 
+:- pred make_fresh_arg_vars_2(list(prog_term)::in, list(prog_var)::in,
 	list(prog_var)::out, prog_varset::in,prog_varset::out) is det.
 
 make_fresh_arg_vars_2([], Vars, Vars, !VarSet).

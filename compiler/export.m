@@ -321,7 +321,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_import_status(PredInfo, Status),
 	(
-		( procedure_is_exported(PredInfo, ProcId)
+		( procedure_is_exported(Module, PredInfo, ProcId)
 		; status_defined_in_this_module(Status, no)
 		  % for --split-c-files, we need to treat
 		  % all procedures as if they were exported

@@ -678,7 +678,8 @@
 	% procedure_is_exported includes all modes of exported or
 	% exported_to_submodules predicates, plus the in-in mode
 	% for pseudo_exported unification predicates.
-:- pred procedure_is_exported(pred_info::in, proc_id::in) is semidet.
+:- pred procedure_is_exported(module_info::in, pred_info::in, proc_id::in)
+	is semidet.
 
 	% Set the import_status of the predicate to `imported'.
 	% This is used for `:- external(foo/2).' declarations.
@@ -1187,7 +1188,7 @@ pred_info_is_pseudo_exported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	ImportStatus = pseudo_exported.
 
-procedure_is_exported(PredInfo, ProcId) :-
+procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
 	(
 		pred_info_is_exported(PredInfo)
 	;
@@ -1201,11 +1202,33 @@ procedure_is_exported(PredInfo, ProcId) :-
 		pred_info_import_status(PredInfo, ImportStatus),
 		ImportStatus = external(ExternalImportStatus),
 		status_is_exported(ExternalImportStatus, yes)
+	;
+		pred_info_get_maybe_special_pred(PredInfo, yes(SpecialPred)),
+		SpecialPred = SpecialId - TypeCtor,
+		module_info_types(ModuleInfo, TypeTable),
+		% If the search fails, then TypeCtor must be a builtin type
+		% constructor, such as the tuple constructor.
+		map__search(TypeTable, TypeCtor, TypeDefn),
+		get_type_defn_in_exported_eqv(TypeDefn, yes),
+		(
+			SpecialId = unify,
+			% The other proc_ids are module-specific.
+			hlds_pred__in_in_unification_proc_id(ProcId)
+		;
+			SpecialId = compare
+			% The declared modes are all global, and we don't
+			% generate any modes for compare preds dynamically.
+		;
+			SpecialId = index,
+			% The index predicate is never called from anywhere
+			% except the compare predicate.
+			fail
+		)
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo = PredInfo0 ^ import_status :=
-			external(PredInfo0 ^ import_status).
+		external(PredInfo0 ^ import_status).
 
 pred_info_set_import_status(X, PredInfo, PredInfo ^ import_status := X).
 

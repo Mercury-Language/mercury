@@ -543,10 +543,10 @@
 		% abstract interfaces rather than hard-coding tests
 		% on the import_status.
 		%
-		is_imported			::	bool,
-		is_pseudo_imported		::	bool,
-		is_exported			::	bool,
-		maybe_special_pred		::	maybe(special_pred)
+		is_imported		::	bool,
+		is_pseudo_imported	::	bool,
+		is_exported		::	bool,
+		maybe_special_pred	::	maybe(special_pred)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -983,7 +983,8 @@ rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
-	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
+	IsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
+		-> yes ; no),
 	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
 	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
 			Name = varset__lookup_name(ProcVarSet, Var)

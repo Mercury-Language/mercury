@@ -1043,8 +1043,7 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
 	ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, _ModuleName),
 	MLDS_Context = mlds__make_context(Context),
 	DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
-	ml_gen_proc_defn(ModuleInfo, PredId, ProcId,
-		ProcDefnBody, ExtraDefns),
+	ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns),
 	ProcDefn = mlds__defn(Name, MLDS_Context, DeclFlags, ProcDefnBody),
 	!:Defns = list__append(ExtraDefns, [ProcDefn | !.Defns]),
 	ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
@@ -1098,7 +1097,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 
 ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	( procedure_is_exported(PredInfo, ProcId) ->
+	( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
 		Access = public
 	;
 		Access = private

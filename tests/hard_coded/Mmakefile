@@ -5,6 +5,7 @@ THIS_DIR = hard_coded
 #-----------------------------------------------------------------------------#
 
 ORDINARY_PROGS=	\
+	abstract_eqv \
 	address_of_builtins \
 	agg \
 	any_free_unify \

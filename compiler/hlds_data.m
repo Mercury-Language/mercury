@@ -272,7 +272,7 @@ make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
 :- type hlds_type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset::in, list(type_param)::in,
-	hlds_type_body::in, import_status::in, need_qualifier::in,
+	hlds_type_body::in, import_status::in, bool::in, need_qualifier::in,
 	prog_context::in, hlds_type_defn::out) is det.
 
 :- pred get_type_defn_tvarset(hlds_type_defn::in, tvarset::out) is det.
@@ -280,15 +280,18 @@ make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
 	is det.
 :- pred get_type_defn_body(hlds_type_defn::in, hlds_type_body::out) is det.
 :- pred get_type_defn_status(hlds_type_defn::in, import_status::out) is det.
+:- pred get_type_defn_in_exported_eqv(hlds_type_defn::in, bool::out) is det.
 :- pred get_type_defn_need_qualifier(hlds_type_defn::in, need_qualifier::out)
 	is det.
 :- pred get_type_defn_context(hlds_type_defn::in, prog_context::out) is det.
 
-:- pred set_type_defn_status(import_status::in,
-	hlds_type_defn::in, hlds_type_defn::out) is det.
 :- pred set_type_defn_body(hlds_type_body::in,
 	hlds_type_defn::in, hlds_type_defn::out) is det.
 :- pred set_type_defn_tvarset(tvarset::in,
+	hlds_type_defn::in, hlds_type_defn::out) is det.
+:- pred set_type_defn_status(import_status::in,
+	hlds_type_defn::in, hlds_type_defn::out) is det.
+:- pred set_type_defn_in_exported_eqv(bool::in,
 	hlds_type_defn::in, hlds_type_defn::out) is det.
 
 	% An `hlds_type_body' holds the body of a type definition:
@@ -535,17 +538,31 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 :- type hlds_type_defn --->
 	hlds_type_defn(
 		type_defn_tvarset	:: tvarset,
-					% Names of type vars (empty
-					% except for polymorphic types)
+					% Names of the type variables, if any.
 		type_defn_params	:: list(type_param),
-					% Formal type parameters
+					% Formal type parameters.
 		type_defn_body		:: hlds_type_body,
-					% The definition of the type
+					% The definition of the type.
 
 		type_defn_import_status	:: import_status,
-					% Is the type defined in this
-					% module, and if yes, is it
-					% exported
+					% Is the type defined in this module,
+					% and if yes, is it exported.
+
+		type_defn_in_exported_eqv :: bool,
+					% Does the type constructor appear
+					% on the right hand side of a type
+					% equivalence defining a type that
+					% is visible from outside this module?
+					% If yes, equiv_type_hlds may generate
+					% references to this type constructor's
+					% unify and compare preds from other
+					% modules even if the type is otherwise
+					% local to the module, so we can't make
+					% their implementations private to the
+					% module.
+					%
+					% Meaningful only after the
+					% equiv_type_hlds pass.
 
 		type_defn_need_qualifier :: need_qualifier,
 					% Do uses of the type and
@@ -567,22 +584,25 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 	).
 
 hlds_data__set_type_defn(Tvarset, Params, Body, Status,
-		NeedQual, Context, Defn) :-
-	Defn = hlds_type_defn(Tvarset, Params, Body,
-			Status, NeedQual, Context).
+		InExportedEqv, NeedQual, Context, Defn) :-
+	Defn = hlds_type_defn(Tvarset, Params, Body, Status, InExportedEqv,
+		NeedQual, Context).
 
-hlds_data__get_type_defn_tvarset(Defn, Defn ^ type_defn_tvarset).
-hlds_data__get_type_defn_tparams(Defn, Defn ^ type_defn_params).
-hlds_data__get_type_defn_body(Defn, Defn ^ type_defn_body).
-hlds_data__get_type_defn_status(Defn, Defn ^ type_defn_import_status).
-hlds_data__get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
-hlds_data__get_type_defn_context(Defn, Defn ^ type_defn_context).
+get_type_defn_tvarset(Defn, Defn ^ type_defn_tvarset).
+get_type_defn_tparams(Defn, Defn ^ type_defn_params).
+get_type_defn_body(Defn, Defn ^ type_defn_body).
+get_type_defn_status(Defn, Defn ^ type_defn_import_status).
+get_type_defn_in_exported_eqv(Defn, Defn ^ type_defn_in_exported_eqv).
+get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
+get_type_defn_context(Defn, Defn ^ type_defn_context).
 
-hlds_data__set_type_defn_body(Body, Defn, Defn ^ type_defn_body := Body).
-hlds_data__set_type_defn_tvarset(TVarSet, Defn,
+set_type_defn_body(Body, Defn, Defn ^ type_defn_body := Body).
+set_type_defn_tvarset(TVarSet, Defn,
 		Defn ^ type_defn_tvarset := TVarSet).
-hlds_data__set_type_defn_status(Status, Defn,
+set_type_defn_status(Status, Defn,
 		Defn ^ type_defn_import_status := Status).
+set_type_defn_in_exported_eqv(InExportedEqv, Defn,
+		Defn ^ type_defn_in_exported_eqv := InExportedEqv).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
