@@ -234,8 +234,8 @@ inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
 		% Should succeed if List contains all the constructors
 		% for the type.  Problem is we don't know what the type was :-(
 inst_matches_initial_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
-		_, _) :-
-	pred_inst_matches_initial(PredInstA, PredInstB),
+		ModuleInfo, _) :-
+	maybe_pred_inst_matches_initial(PredInstA, PredInstB, ModuleInfo),
 	unique_matches_initial(UniqA, UniqB).
 inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
@@ -250,15 +250,47 @@ inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 	inst_list_matches_initial(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_initial_3(not_reached, _, _, _).
 
-:- pred pred_inst_matches_initial(maybe(pred_inst_info), maybe(pred_inst_info)).
-:- mode pred_inst_matches_initial(in, in) is semidet.
+:- pred maybe_pred_inst_matches_initial(maybe(pred_inst_info),
+		maybe(pred_inst_info), module_info).
+:- mode maybe_pred_inst_matches_initial(in, in, in) is semidet.
 
-pred_inst_matches_initial(no, no).
-pred_inst_matches_initial(yes(_), no).
-pred_inst_matches_initial(yes(PredInstA), yes(PredInstB)) :-
-	PredInstA = PredInstB.
-	% We require higher-order pred insts to match exactly;
-	% this requirement may be too strict and hence may need to be relaxed.
+maybe_pred_inst_matches_initial(no, no, _).
+maybe_pred_inst_matches_initial(yes(_), no, _).
+maybe_pred_inst_matches_initial(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
+	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
+
+	% pred_inst_matches(PredInstA, PredInstB, ModuleInfo)
+	% 	Succeeds if PredInstA specifies a pred that can
+	%	be used wherever and whenever PredInstB could be used.
+	%	This is true if they both have the same PredOrFunc indicator
+	%	and the same determinism, and if the arguments match
+	%	using pred_inst_argmodes_match.
+	%
+:- pred pred_inst_matches(pred_inst_info, pred_inst_info, module_info).
+:- mode pred_inst_matches(in, in, in) is semidet.
+
+pred_inst_matches(pred_inst_info(PredOrFunc, ModesA, Det),
+		pred_inst_info(PredOrFunc, ModesB, Det), ModuleInfo) :-
+	pred_inst_argmodes_matches(ModesA, ModesB, ModuleInfo).
+
+	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo):
+	% succeeds if the initial insts of ModesB specify at least as
+	% much information as, and the same binding as, the initial
+	% insts of ModesA; and the final insts of ModesA specify at
+	% least as much information as, and the same binding as, the
+	% final insts of ModesB.
+	%
+:- pred pred_inst_argmodes_matches(list(mode), list(mode), module_info).
+:- mode pred_inst_argmodes_matches(in, in, in) is semidet.
+
+pred_inst_argmodes_matches([], [], _).
+pred_inst_argmodes_matches([ModeA|ModeAs], [ModeB|ModeBs],
+		ModuleInfo) :-
+	mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA),
+	mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
+	inst_matches_final(InitialB, InitialA, ModuleInfo),
+	inst_matches_final(FinalA, FinalB, ModuleInfo),
+	pred_inst_argmodes_matches(ModeAs, ModeBs, ModuleInfo).
 
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
@@ -424,8 +456,8 @@ inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
-		_, _) :-
-	pred_inst_matches_final(PredInstA, PredInstB),
+		ModuleInfo, _) :-
+	maybe_pred_inst_matches_final(PredInstA, PredInstB, ModuleInfo),
 	unique_matches_final(UniqA, UniqB).
 /* not yet:
 inst_matches_final_2(abstract_inst(_, _), any(shared), _, _).
@@ -435,15 +467,14 @@ inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_final_3(not_reached, _, _, _).
 
-:- pred pred_inst_matches_final(maybe(pred_inst_info), maybe(pred_inst_info)).
-:- mode pred_inst_matches_final(in, in) is semidet.
+:- pred maybe_pred_inst_matches_final(maybe(pred_inst_info),
+		maybe(pred_inst_info), module_info).
+:- mode maybe_pred_inst_matches_final(in, in, in) is semidet.
 
-pred_inst_matches_final(no, no).
-pred_inst_matches_final(yes(_), no).
-pred_inst_matches_final(yes(PredInstA), yes(PredInstB)) :-
-	PredInstA = PredInstB.
-	% We require higher-order pred insts to match exactly;
-	% this requirement may be too strict and hence may need to be relaxed.
+maybe_pred_inst_matches_final(no, no, _).
+maybe_pred_inst_matches_final(yes(_), no, _).
+maybe_pred_inst_matches_final(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
+	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
 
 :- pred inst_list_matches_final(list(inst), list(inst), module_info,
 				expansions).
@@ -526,22 +557,21 @@ inst_matches_binding_3(ground(_UniqA, _), bound(_UniqB, ListB), ModuleInfo,
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_binding `bound(...)'").
 inst_matches_binding_3(ground(_UniqA, PredInstA), ground(_UniqB, PredInstB),
-		_, _) :-
-	pred_inst_matches_binding(PredInstA, PredInstB).
+		ModuleInfo, _) :-
+	pred_inst_matches_binding(PredInstA, PredInstB, ModuleInfo).
 inst_matches_binding_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
 	inst_list_matches_binding(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_binding_3(not_reached, _, _, _).
 
-:- pred pred_inst_matches_binding(maybe(pred_inst_info), maybe(pred_inst_info)).
-:- mode pred_inst_matches_binding(in, in) is semidet.
+:- pred pred_inst_matches_binding(maybe(pred_inst_info), maybe(pred_inst_info),
+		module_info).
+:- mode pred_inst_matches_binding(in, in, in) is semidet.
 
-pred_inst_matches_binding(no, no).
-pred_inst_matches_binding(yes(_), no).
-pred_inst_matches_binding(yes(PredInstA), yes(PredInstB)) :-
-	PredInstA = PredInstB.
-	% We require higher-order pred insts to match exactly;
-	% this requirement may be too strict and hence may need to be relaxed.
+pred_inst_matches_binding(no, no, _).
+pred_inst_matches_binding(yes(_), no, _).
+pred_inst_matches_binding(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
+	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
 
 :- pred inst_list_matches_binding(list(inst), list(inst), module_info,
 				expansions).
@@ -691,18 +721,24 @@ inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 		ground(Uniq, no), ModuleInfo) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
-inst_merge_3(ground(UniqA, PredA), ground(UniqB, PredB), M,
-		ground(Uniq, Pred), M) :-
-	% for higher order pred insts,
-	% we require the pred_inst_info in each branch to
-	% be identical - this requirement may perhaps be more
-	% restrictive than it needs to be
+inst_merge_3(ground(UniqA, MaybePredA), ground(UniqB, MaybePredB), ModuleInfo,
+		ground(Uniq, MaybePred), ModuleInfo) :-
 	(
-		PredA = PredB
+		MaybePredA = yes(PredA),
+		MaybePredB = yes(PredB)
 	->
-		Pred = PredA
+		% if they specify matching pred insts, but one is more
+		% precise (specifies more info) than the other,
+		% then we want to choose the least precise one
+		( pred_inst_matches(PredA, PredB, ModuleInfo) ->
+			MaybePred = yes(PredB)
+		; pred_inst_matches(PredB, PredA, ModuleInfo) ->
+			MaybePred = yes(PredA)
+		;	
+			MaybePred = no
+		)
 	;	
-		Pred = no
+		MaybePred = no
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
@@ -990,15 +1026,19 @@ abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
 			BoundInsts, M).
 
 abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, MaybePredInstB), Real, M,
+				ground(UniqB, _MaybePredInstB), Real, M,
 				ground(Uniq, PredInst), semidet, M) :-
-	% this might be too restrictive
-	( MaybePredInstB = yes(PredInstB), PredInstA = PredInstB ->
-		PredInst = MaybePredInstB
-	;
-		PredInst = no
-	),
-	unify_uniq(dead, Real, UniqA, UniqB, Uniq).
+	% It is an error to unify higher-order preds,
+	% so if Real \= fake_unify, then we must fail.
+	Real = fake_unify,
+	% In theory we should choose take the union of the
+	% information specified by PredInstA and _MaybePredInstB.
+	% However, since our data representation provides no
+	% way of doing that, and since this will only happen
+	% for fake_unifys, for which it shouldn't make any difference,
+	% we just choose the information specified by PredInstA.
+	PredInst = yes(PredInstA),
+	unify_uniq(live, Real, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, Real, M0,
 				Inst, Det, M) :-
@@ -1081,14 +1121,10 @@ abstractly_unify_inst_3(dead, ground(UniqA, yes(_)), bound(UniqB, BoundInsts0),
 					BoundInsts, M).
 
 abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
-				ground(UniqB, MaybePredInstB), Real, M,
+				ground(UniqB, _MaybePredInstB), Real, M,
 				ground(Uniq, PredInst), det, M) :-
-	% this might be too restrictive
-	( MaybePredInstB = yes(PredInstB), PredInstA = PredInstB ->
-		PredInst = MaybePredInstB
-	;
-		PredInst = no
-	),
+	Real = fake_unify,
+	PredInst = yes(PredInstA),
 	unify_uniq(dead, Real, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(dead, ground(Uniq, no),	Inst0, Real, M0,
