@@ -113,7 +113,7 @@ call_back_to_mercury(Goal) -->
 	}
 
 	/*
-	** How do we ensure that the parent thread doesn't terminate until
+	** XXX How do we ensure that the parent thread doesn't terminate until
 	** the child thread has finished it's processing?
 	** By the use of mutvars, or leave it up to user?
 	*/
