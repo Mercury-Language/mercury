@@ -3548,7 +3548,7 @@ strchars(I, End, Str) =
 	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	SubString = Str.substring(Start, Start + Count + 1);
+	SubString = Str.substring(Start, Start + Count);
 ").
 
 /*
