@@ -337,7 +337,19 @@ main_2(no, Args) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		io__get_exit_status(ExitStatus),
+		%
+		% If we encountered any errors, but the user didn't enable the
+		% `-E' (`--verbose-errors') option, give them a hint.
+		%
+		( { ExitStatus \= 0 }, { VerboseErrors = no } ->
+			io__write_string(
+			  "For more information, try recompiling with `-E'.\n"
+			)
+		;
+			[]
+		),
 		(
 			{
 				GenerateDependencies = no,
