@@ -152,6 +152,22 @@ sub output_name {
 	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
 	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
 
+	# output a tag for the fully-qualified name
+	if (substr($name, 0, length($module)) ne $module) {
+		$name = "${module}__$name";
+	}
+	do output_single_name();
+
+	# strip off the leading module qualifiers one by one,
+	# and output a tag for each partially qualified
+	# or unqualified name
+	while ($name =~ /__/) {
+		$name =~ s/[^_]*(_[^_]+)*__//;
+		do output_single_name();
+	}
+}
+
+sub output_single_name() {
 	if (!$emacs && !$keep_dups && $seen{$name}) {
 	    if ($warnings &&
 		$file ne $prev_file{$name} &&
@@ -254,6 +270,12 @@ while ($#ARGV >= 0)
 	open(out, ">> TAGS") ||
 		die "mtags: error opening pipe: $!\n";
     }
+    
+    $module = $file;
+    $module =~ s/.*\///;	# delete the directory name, if any
+    $module =~ s/\.m$//;	# delete the trailing `.m'
+    $module =~ s/\./__/;	# replace `.' module qualifiers with `__'
+
     while ($_ = <srcfile>)
     {
 	# skip lines which are not declarations
