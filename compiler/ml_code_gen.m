@@ -14,8 +14,20 @@
 % very low-level code.  This code generator instead compiles to MLDS,
 % generating much higher-level code than the original code generator.
 
-% For nondeterministic predicates, we generate code using an explicit
-% continuation passing style.  Each nondeterministic predicate gets
+% One of the aims of the MLDS is to be able to generated human-readable
+% code in languages like C or Java.  This means that unlike the LLDS back-end,
+% we do not want to rely on macros or conditional compilation.  If the
+% final code is going to depend on the setting of some compilation option,
+% our philosophy is to reflect that change in the generated MLDS and C code
+% where possible, rather than generating C code which calls macros that do
+% different things in different grades.  This is important both for
+% readability of the generated code, and to make sure that we can easily
+% adapt the MLDS code generator to target languages like Java that don't
+% support macros or conditional compilation.
+
+% A big challenge in generating MLDS code is handling nondeterminism.
+% For nondeterministic procedures, we generate code using an explicit
+% continuation passing style.  Each nondeterministic procedures gets
 % translated into a function which takes an extra parameter which is a
 % function pointer that points to the success continuation.  On success,
 % the function calls its success continuation, and on failure it returns.
@@ -621,11 +633,11 @@
 %-----------------------------------------------------------------------------%
 
 
-% XXX This back-end is still not yet complete.
+% This back-end is still not yet 100% complete.
 %
 % Done:
 %	- function prototypes
-%	- code generation for det, semidet, and nondet predicates:
+%	- code generation for det, semidet, and nondet predicates/functions:
 %		- conjunctions
 %		- disjunctions
 %		- negation

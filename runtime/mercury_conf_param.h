@@ -252,6 +252,13 @@
 **			   (this also means the initialization code needs
 **			   to be run some time before the first use of the
 **			   label table).
+**
+** Note that for the MLDS back-end, the calls to MR_init_entry()
+** that insert the function addresses in the label table are only
+** output if the right compiler options are enabled.  So if you change
+** the condition of this `#ifdef', and you want your changes to apply
+** to the MLDS back-end too, you may also need to change the
+** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
 */
 
 #ifdef MR_INSERT_LABELS

@@ -82,6 +82,14 @@
   #define make_local(n, a, l)		/* nothing */
 #endif
 
+/*
+** Note that for the MLDS back-end, the calls to MR_init_entry(),
+** which eventually expand to make_entry(), are only output if
+** the right compiler options are enabled.  So if you change the
+** condition of this `#ifdef', and you want your changes to apply
+** to the MLDS back-end too, you may also need to change the
+** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
+*/
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
   #define make_entry(n, a, l)		make_entry_ai(n, a, l)
 #else

@@ -164,6 +164,22 @@ defn_is_type(Defn) :-
 	Defn = mlds__defn(Name, _Context, _Flags, _Body),
 	Name = type(_, _).
 
+:- pred defn_is_function(mlds__defn).
+:- mode defn_is_function(in) is semidet.
+
+defn_is_function(Defn) :-
+	Defn = mlds__defn(Name, _Context, _Flags, _Body),
+	Name = function(_, _, _, _).
+
+:- pred defn_is_type_ctor_info(mlds__defn).
+:- mode defn_is_type_ctor_info(in) is semidet.
+
+defn_is_type_ctor_info(Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = mlds__data(Type, _),
+	Type = mlds__rtti_type(RttiName),
+	RttiName = type_ctor_info.
+
 :- pred defn_is_commit_type_var(mlds__defn).
 :- mode defn_is_commit_type_var(in) is semidet.
 
@@ -237,13 +253,17 @@ mlds_output_src_file(Indent, MLDS) -->
 	{ list__filter(defn_is_type, PrivateDefns, PrivateTypeDefns,
 		PrivateNonTypeDefns) },
 	{ list__filter(defn_is_type, Defns, _TypeDefns, NonTypeDefns) },
+	{ list__filter(defn_is_function, NonTypeDefns, FuncDefns) },
+	{ list__filter(defn_is_type_ctor_info, NonTypeDefns,
+		TypeCtorInfoDefns) },
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	mlds_output_defns(Indent, MLDS_ModuleName, PrivateTypeDefns), io__nl,
 	mlds_output_decls(Indent, MLDS_ModuleName, PrivateNonTypeDefns), io__nl,
 
 	mlds_output_c_defns(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
-	mlds_output_init_fn_defns(MLDS_ModuleName, NonTypeDefns, Defns), io__nl,
+	mlds_output_init_fn_defns(MLDS_ModuleName, FuncDefns,
+		TypeCtorInfoDefns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
 :- pred mlds_output_hdr_start(indent, mercury_module_name,
@@ -345,28 +365,43 @@ mlds_output_init_fn_decls(ModuleName) -->
 :- pred mlds_output_init_fn_defns(mlds_module_name::in, mlds__defns::in,
 		mlds__defns::in, io__state::di, io__state::uo) is det.
 
-mlds_output_init_fn_defns(ModuleName, NonTypeDefns, Defns) -->
+mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 	output_init_fn_name(ModuleName, ""),
 	io__write_string("\n{\n"),
-	io__write_strings(["\tstatic int initialised = 0;\n",
-			"\tif (initialised) return;\n",
-			"\tinitialised = 1;\n\n"]),
-	mlds_output_init_main_fn(ModuleName, NonTypeDefns),
-	io__write_string("\n}\n"),
+	io_get_globals(Globals),
+	(
+		{ need_to_init_entries(Globals) },
+		{ FuncDefns \= [] }
+	->
+		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+				"\tif (initialised) return;\n",
+				"\tinitialised = TRUE;\n\n"]),
+		mlds_output_calls_to_init_entry(ModuleName, FuncDefns)
+	;
+		[]
+	),
+	io__write_string("}\n\n"),
 
 	output_init_fn_name(ModuleName, "_type_tables"),
 	io__write_string("\n{\n"),
-	io__write_strings(["\tstatic int initialised = 0;\n",
-			"\tif (initialised) return;\n",
-			"\tinitialised = 1;\n\n"]),
-	mlds_output_init_type_table_fn(ModuleName, Defns),
-	io__write_string("\n}\n"),
+	(
+		{ TypeCtorInfoDefns \= [] }
+	->
+		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+				"\tif (initialised) return;\n",
+				"\tinitialised = TRUE;\n\n"]),
+		mlds_output_calls_to_register_tci(ModuleName,
+			TypeCtorInfoDefns)
+	;
+		[]
+	),
+	io__write_string("}\n\n"),
 
 	output_init_fn_name(ModuleName, "_debugger"),
 	io__write_string("\n{\n"),
 	io__write_string(
 	    "\tMR_fatal_error(""debugger initialization in MLDS grade"");\n"),
-	io__write_string("\n}\n").
+	io__write_string("}\n").
 
 :- pred output_init_fn_name(mlds_module_name::in, string::in,
 		io__state::di, io__state::uo) is det.
@@ -391,43 +426,45 @@ output_init_fn_name(ModuleName, Suffix) -->
 	io__write_string(Suffix),
 	io__write_string("(void)").
 
-:- pred mlds_output_init_main_fn(mlds_module_name::in, mlds__defns::in,
+:- pred need_to_init_entries(globals::in) is semidet.
+need_to_init_entries(Globals) :-
+	% We only need to output calls to MR_init_entry() if profiling is
+	% enabled.  (It would be OK to output the calls regardless, since
+	% they will macro-expand to nothing if profiling is not enabled,
+	% but for readability of the generated code we prefer not to.)
+	( Option = profile_calls
+	; Option = profile_time
+	; Option = profile_memory
+	),
+	globals__lookup_bool_option(Globals, Option, yes).
+
+	% Generate calls to MR_init_entry() for the specified functions.
+	%
+:- pred mlds_output_calls_to_init_entry(mlds_module_name::in, mlds__defns::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_output_init_main_fn(_ModuleName, []) --> [].
-mlds_output_init_main_fn(ModuleName, [Defn | Defns]) --> 
-	{ Defn = mlds__defn(EntityName, _Context, _Flags, _EntityDefn) },
-	(
-		{ EntityName = mlds__function(_, _, _, _) }
-	->
-		{ QualName = qual(ModuleName, EntityName) },
-		io__write_string("\tMR_init_entry("),
-		mlds_output_fully_qualified_name(QualName),
-		io__write_string(");\n")
-	;
-		[]
-	),
-	mlds_output_init_main_fn(ModuleName, Defns).
+mlds_output_calls_to_init_entry(_ModuleName, []) --> [].
+mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) --> 
+	{ FuncDefn = mlds__defn(EntityName, _, _, _) },
+	io__write_string("\tMR_init_entry("),
+	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	io__write_string(");\n"),
+	mlds_output_calls_to_init_entry(ModuleName, FuncDefns).
 
-:- pred mlds_output_init_type_table_fn(mlds_module_name::in, mlds__defns::in,
+	% Generate calls to MR_register_type_ctor_info() for the specified
+	% type_ctor_infos.
+	%
+:- pred mlds_output_calls_to_register_tci(mlds_module_name::in, mlds__defns::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_output_init_type_table_fn(_ModuleName, []) --> [].
-mlds_output_init_type_table_fn(ModuleName, [Defn | Defns]) --> 
-	{ Defn = mlds__defn(EntityName, _Context, _Flags, EntityDefn) },
-	(
-		{ EntityDefn = mlds__data(Type, _) },
-		{ Type = mlds__rtti_type(RttiName) },
-		{ RttiName = type_ctor_info }
-	->
-		{ QualName = qual(ModuleName, EntityName) },
-		io__write_string("\tMR_register_type_ctor_info(&"),
-		mlds_output_fully_qualified_name(QualName),
-		io__write_string(");\n")
-	;
-		[]
-	),
-	mlds_output_init_type_table_fn(ModuleName, Defns).
+mlds_output_calls_to_register_tci(_ModuleName, []) --> [].
+mlds_output_calls_to_register_tci(ModuleName,
+		[TypeCtorInfoDefn | TypeCtorInfoDefns]) --> 
+	{ TypeCtorInfoDefn = mlds__defn(EntityName, _, _, _) },
+	io__write_string("\tMR_register_type_ctor_info(&"),
+	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
+	io__write_string(");\n"),
+	mlds_output_calls_to_register_tci(ModuleName, TypeCtorInfoDefns).
 
 %-----------------------------------------------------------------------------%
 %
