@@ -477,7 +477,7 @@ install_split_library: scripts dep_library
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
 	for ext in $(GRADE_SUBDIR_EXTS); do \
-		mv -f *.$$ext Mercury/$${ext}s/*.$$ext $tmp_dir; \
+		mv -f *.$$ext Mercury/$${ext}s/*.$$ext tmp_dir; \
 	done || true && \
 	{ mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O Mercury/os/*.$O \
 		*.$A *.so tmp_dir || true; } && \
