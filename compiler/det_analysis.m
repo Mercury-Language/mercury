@@ -109,16 +109,16 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
-	predinfo_modes(Pred, PredModes),
-	fold_pred_modes(PredId, PredModes, PredProcs0, PredProcs1),
+	predinfo_procids(Pred, ProcIds),
+	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
 :- pred fold_pred_modes(pred_id, list(proc_id), predproclist, predproclist).
 :- mode fold_pred_modes(input, input, input, output).
 
 fold_pred_modes(_PredId, [], PredProcs, PredProcs).
-fold_pred_modes(PredId, [PredMode|PredModes], PredProcs0, PredProcs) :-
-	fold_pred_modes(PredId, PredModes, [PredId - PredMode|PredProcs0],
+fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
+	fold_pred_modes(PredId, ProcIds, [PredId - ProcId|PredProcs0],
 		PredProcs).
 
 	% segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs)
@@ -199,7 +199,6 @@ global_analysis_single_pass(ModuleInfo0, [PredId - PredMode|PredProcs], State0,
 :- mode det_infer_proc(input, input, input, input, output, output).
 
 det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
-
 		% Get the procinfo structure for this procedure
 	moduleinfo_preds(ModuleInfo, Preds0),
 	map__lookup(Preds0, PredId, Pred0),
@@ -213,7 +212,6 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 	procinfo_goal(Proc0, Goal0),
 	MiscInfo = miscinfo(ModuleInfo0, PredId, PredMode),
 	make_inst_map(ModuleInfo0, Proc0, InstMap0),
-	Goal0 = HldsGoal0 - GoalInfo0,
 	det_infer_goal(Goal0, MiscInfo, Goal, InstMap0, _InstMap, Detism),
 
 		% Check whether the determinism of this procedure changed
@@ -401,12 +399,10 @@ det_infer_goal_2(unify(LT, RT, M, U, C), MiscInfo,
 	% extended to contain an annotation saying whether or not to
 	% generate code for a commit.
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), MiscInfo,
-		if_then_else(Vars, Cond, Then, Else),
-		InstMap0, D) :-
+		if_then_else(Vars, Cond, Then, Else), InstMap0, D) :-
 	det_infer_goal(Cond0, MiscInfo, Cond, InstMap0, InstMap1, DCond),
 	det_infer_goal(Then0, MiscInfo, Then, InstMap1, _InstMap2, DThen),
 	det_infer_goal(Else0, MiscInfo, Else, InstMap1, _InstMap3, DElse),
-	goalinfo_instmap(GoalInfo0, InstMap),
 	make_var_modes(InstMap0, InstMap1, ModeMap),
 	(if
 		no_output_vars(Vars, ModeMap, MiscInfo)
@@ -510,7 +506,7 @@ det_infer_switch(Cases0, MiscInfo, Cases, Cons, InstMap0, D1) :-
 :- mode det_infer_switch_2(input, input, output, input,
 			output, input, input, output).
 
-det_infer_switch_2([], _MiscInfo, [], Cons, Cons, InstMap0, D, D).
+det_infer_switch_2([], _MiscInfo, [], Cons, Cons, _InstMap0, D, D).
 det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
 		InstMap0, D0, D) :-
 	Case0 = case(ConsId, Vars, Goal0),
