@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,28 +225,33 @@ map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
-		KeyType = type_name(type_of(K)),
-		ValueType = type_name(type_of(V)),
-		functor(K, Functor, Arity),
-		( Arity = 0 ->
-			FunctorStr = Functor
-		;
-			string__int_to_string(Arity, ArityStr),
-			string__append_list([Functor, "/", ArityStr],
-				FunctorStr)
-		),
-		string__append_list(
-			["map__lookup: key not found\n",
-			"\tKey Type: ",
-			KeyType,
-			"\n\tKey Functor: ",
-			FunctorStr,
-			"\n\tValue Type: ",
-			ValueType
-			],
-			ErrorString),
-		error(ErrorString)
+		map__lookup_error(K, V)
 	).
+
+:- pred map__lookup_error(K, V).
+:- mode map__lookup_error(in, unused) is erroneous.
+map__lookup_error(K, V) :-
+	KeyType = type_name(type_of(K)),
+	ValueType = type_name(type_of(V)),
+	functor(K, Functor, Arity),
+	( Arity = 0 ->
+		FunctorStr = Functor
+	;
+		string__int_to_string(Arity, ArityStr),
+		string__append_list([Functor, "/", ArityStr],
+			FunctorStr)
+	),
+	string__append_list(
+		["map__lookup: key not found\n",
+		"\tKey Type: ",
+		KeyType,
+		"\n\tKey Functor: ",
+		FunctorStr,
+		"\n\tValue Type: ",
+		ValueType
+		],
+		ErrorString),
+	error(ErrorString).
 
 map__insert(Map0, K, V, Map) :-
 	tree234__insert(Map0, K, V, Map).
