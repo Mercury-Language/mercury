@@ -42,7 +42,7 @@ mdb> up 1
    2       4       3    2 pred queens:queen/2-0 (nondet) 
 Ancestor level set to 2.
 mdb> vars
-        0 HeadVar__1
+        1 HeadVar__1
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
