@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % pprint.m
 % Copyright (C) 2000-2002 Ralph Becket <rbeck@microsoft.com>
 % Wed Mar 22 17:44:32  2000
@@ -149,7 +149,7 @@
 %   Look!    cruel
 %   Look!    world
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module pprint.
 
@@ -366,12 +366,12 @@
 :- pred write(io__output_stream, int, T, io__state, io__state) <= doc(T).
 :- mode write(in, in, in, di, uo) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module array, map, exception.
+:- import_module array, map, sparse_bitset, enum, term, exception.
 
 :- type doc
     --->    'NIL'
@@ -394,11 +394,11 @@
 :- type map_pair(K, V)
     --->    map_pair(K, V).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 doc(X) = doc(int__max_int, X).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- instance doc(doc)       where [ doc(_, Doc)    = Doc            ].
 :- instance doc(string)    where [ doc(_, String) = text(String)   ].
@@ -406,11 +406,11 @@ doc(X) = doc(int__max_int, X).
 :- instance doc(float)     where [ doc(_, Float)  = poly(f(Float)) ].
 :- instance doc(char)      where [ doc(_, Char)   = poly(c(Char))  ].
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 Doc1 ++ Doc2 = doc(Doc1) `<>` doc(Doc2).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 nil                     = 'NIL'.
 X `<>` Y                = 'SEQ'(X, Y).
@@ -425,7 +425,7 @@ poly(c(C))              = text(string__format("%c", [c(C)])).
 poly(i(I))              = text(string__format("%d", [i(I)])).
 poly(f(F))              = text(string__format("%f", [f(F)])).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 to_string(W, X) = S :-
     layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
@@ -435,7 +435,7 @@ write(W, X)             --> layout_best(io__write_string, W, doc(X)).
 
 write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, doc(X)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This is a contraction of Wadler's pretty, layout and be
     % functions, adapted to work with a strict evaluation order.
@@ -500,7 +500,7 @@ lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
     K = K0 + string__length(T),
     P(T, S0, S).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Decide if a flattened doc will fit on the remainder of the line.
     %
@@ -524,7 +524,7 @@ ff('TEXT'(S),     R) = R - L :-
     L = string__length(S),
     R > L.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Lay out a doc in its flattened form.
     %
@@ -556,24 +556,24 @@ layout_flat(P, K0, K, 'TEXT'(T),     S0, S) :-
     K = K0 + string__length(T),
     P(T, S0, S).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func extend(string, int) = string.
 
 extend(I, J) = I ++ string__duplicate_char(' ', J).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 X `</>` Y               = X ++ line ++ Y.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 bracketed(L, R, D)      = L ++ D ++ R.
 parentheses(D)          = bracketed("(", ")", D).
 brackets(D)             = bracketed("[", "]", D).
 braces(D)               = bracketed("{", "}", D).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 separated(_,  _,   []) = nil.
 
@@ -582,7 +582,7 @@ separated(PP, Sep, [X | Xs]) =
                  else PP(X) ++ (Sep ++ separated(PP, Sep, Xs))
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed(_N, _Sep, []           ) =
     nil.
@@ -596,29 +596,35 @@ packed(N,  Sep,  [X1, X2 | Xs]) =
       else group(line ++ ellipsis)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed(Sep, Xs) = packed(int__max_int, Sep, Xs).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed_cs(N, Xs) = packed(N, ", ", Xs).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed_cs(Xs) = packed(", ", Xs).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed_cs_to_depth(Depth, Xs) =
     packed_cs(Depth, list__map(to_doc(Depth), Xs)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 packed_cs_univ_args(Depth, UnivArgs) =
     packed_cs(Depth, list__map(func(UA) = 'DOC'(Depth, UA), UnivArgs)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+word_wrapped(String) =
+    packed(space, list__map(func(Word) = text(Word),
+                            string__words(char__is_whitespace, String))).
+
+%-----------------------------------------------------------------------------%
 
 comma                   = text(",").
 semic                   = text(";").
@@ -636,18 +642,26 @@ semic_space_line        = "; " ++ line.
 colon_space_line        = ": " ++ line.
 ellipsis                = text("...").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 to_doc(X) = to_doc(int__max_int, X).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This may throw an exception or cause a runtime abort if the term
     % in question has user-defined equality.
     %
 to_doc(Depth, X) =
-    (
-      if      dynamic_cast_to_list(X, List)
+    ( if      dynamic_cast_to_var(X, Var)
+      then    var_to_doc(Depth, Var)
+
+      else if dynamic_cast_to_sparse_bitset_of_int(X, SparseBitsetInt)
+      then    sparse_bitset_to_doc(Depth, SparseBitsetInt)
+
+      else if dynamic_cast_to_sparse_bitset_of_var(X, SparseBitsetVar)
+      then    sparse_bitset_to_doc(Depth, SparseBitsetVar)
+
+      else if dynamic_cast_to_list(X, List)
       then    list_to_doc(Depth, List)
 
       else if dynamic_cast_to_array(X, Array)
@@ -662,14 +676,71 @@ to_doc(Depth, X) =
       else if dynamic_cast_to_map_pair(X, MapPair)
       then    map_pair_to_doc(Depth, MapPair)
 
-      else if Depth =< 0
-      then    out_of_depth_term_to_doc(X)
-
       else    generic_term_to_doc(Depth, X)
     ).
 
+%-----------------------------------------------------------------------------%
 
-%------------------------------------------------------------------------------%
+:- func generic_term_to_doc(int, T) = doc.
+
+generic_term_to_doc(Depth, X) = Doc :-
+    ( if Depth =< 0
+      then
+        functor(X, Name, Arity),
+        Doc =
+            ( if Arity = 0
+              then text(Name)
+              else Name ++ "/" ++ Arity
+            )
+      else
+        deconstruct(X, Name, Arity, UnivArgs),
+        Doc =
+            ( if Arity = 0
+              then  text(Name)
+              else  group(
+                        Name ++ parentheses(
+                            nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
+                        )
+                    )
+            )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- some [T2] pred dynamic_cast_to_var(T1, var(T2)).
+:-           mode dynamic_cast_to_var(in, out) is semidet.
+
+dynamic_cast_to_var(X, V) :-
+
+        % If X is a var then it has a type with one type argument.
+        %
+    [ArgTypeDesc] = type_args(type_of(X)),
+
+        % Convert ArgTypeDesc to a type variable ArgType.
+        %
+    (_ `with_type` ArgType) `has_type` ArgTypeDesc,
+
+        % Constrain the type of V to be var(ArgType) and do the
+        % cast.
+        %
+    dynamic_cast(X, V `with_type` var(ArgType)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred dynamic_cast_to_sparse_bitset_of_int(T1, sparse_bitset(int)).
+:- mode dynamic_cast_to_sparse_bitset_of_int(in, out) is semidet.
+
+dynamic_cast_to_sparse_bitset_of_int(X, A) :-
+        dynamic_cast(X, A `with_type` sparse_bitset(int)).
+
+:- some [T2]
+   pred dynamic_cast_to_sparse_bitset_of_var(T1, sparse_bitset(var(T2))).
+:- mode dynamic_cast_to_sparse_bitset_of_var(in, out) is semidet.
+
+dynamic_cast_to_sparse_bitset_of_var(X, A) :-
+        dynamic_cast(X, A `with_type` sparse_bitset(var)).
+
+%-----------------------------------------------------------------------------%
 
 :- some [T2] pred dynamic_cast_to_array(T1, array(T2)).
 :-           mode dynamic_cast_to_array(in, out) is semidet.
@@ -689,7 +760,7 @@ dynamic_cast_to_array(X, A) :-
         %
     dynamic_cast(X, A `with_type` array(ArgType)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- some [T2] pred dynamic_cast_to_list(T1, list(T2)).
 :-           mode dynamic_cast_to_list(in, out) is semidet.
@@ -709,7 +780,7 @@ dynamic_cast_to_list(X, L) :-
         %
     dynamic_cast(X, L `with_type` list(ArgType)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- some [T2, T3] pred dynamic_cast_to_map(T1, map(T2, T3)).
 :-               mode dynamic_cast_to_map(in, out) is semidet.
@@ -730,7 +801,7 @@ dynamic_cast_to_map(X, M) :-
         %
     dynamic_cast(X, M `with_type` map(KeyType, ValueType)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- some [T2, T3] pred dynamic_cast_to_map_pair(T1, map_pair(T2, T3)).
 :-               mode dynamic_cast_to_map_pair(in, out) is semidet.
@@ -751,7 +822,7 @@ dynamic_cast_to_map_pair(X, MP) :-
         %
     dynamic_cast(X, MP `with_type` map_pair(KeyType, ValueType)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred dynamic_cast_to_tuple(T, T).
 :- mode dynamic_cast_to_tuple(in, out) is semidet.
@@ -762,37 +833,32 @@ dynamic_cast_to_tuple(X, X) :-
         %
     functor(X, "{}", _Arity).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- func out_of_depth_term_to_doc(T) = doc.
+:- func var_to_doc(int, var(T)) = doc.
 
-out_of_depth_term_to_doc(X) = Doc :-
+var_to_doc(Depth, V) =
+    to_doc(Depth, to_int(V)).
 
-    functor(X, Name, Arity),
+%-----------------------------------------------------------------------------%
 
-    Doc = ( if Arity = 0 then text(Name)
-                         else Name ++ "/" ++ Arity
-    ).
+    % XXX Ideally we'd just walk the sparse bitset.  But that's an optimization
+    % for another day.
+    %
+:- func sparse_bitset_to_doc(int, sparse_bitset(T)) = doc <= enum(T).
 
-%------------------------------------------------------------------------------%
+sparse_bitset_to_doc(Depth, A) =
+    group("sparse_bitset" ++
+        parentheses(list_to_doc(Depth - 1, sparse_bitset__to_sorted_list(A)))).
 
-:- func generic_term_to_doc(int, T) = doc.
+%-----------------------------------------------------------------------------%
 
-generic_term_to_doc(Depth, X) = Doc :-
+:- func list_to_doc(int, list(T)) = doc.
 
-    deconstruct(X, Name, Arity, UnivArgs),
+list_to_doc(Depth, Xs) =
+    brackets(nest(1, packed_cs_to_depth(Depth - 1, Xs))).
 
-    Doc =
-        ( if    Arity = 0
-          then  text(Name)
-          else  group(
-                    Name ++ parentheses(
-                        nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
-                    )
-                )
-        ).
-
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % XXX Ideally we'd just walk the array.  But that's an optimization
     % for another day.
@@ -802,35 +868,7 @@ generic_term_to_doc(Depth, X) = Doc :-
 array_to_doc(Depth, A) =
     group("array" ++ parentheses(list_to_doc(Depth - 1, array__to_list(A)))).
 
-%------------------------------------------------------------------------------%
-
-:- func list_to_doc(int, list(T)) = doc.
-
-list_to_doc(Depth, Xs) =
-    brackets(nest(1, packed_cs_to_depth(Depth - 1, Xs))).
-
-%------------------------------------------------------------------------------%
-
-:- func map_to_doc(int, map(T1, T2)) = doc.
-
-map_to_doc(Depth, X) = Doc :-
-    KVs = list__map(mk_map_pair, map__to_assoc_list(X)),
-    Doc = group("map" ++ parentheses(list_to_doc(Depth - 1, KVs))).
-
-
-:- func mk_map_pair(pair(K, V)) = map_pair(K, V).
-
-mk_map_pair(K - V) = map_pair(K, V).
-
-%------------------------------------------------------------------------------%
-
-:- func map_pair_to_doc(int, map_pair(T1, T2)) = doc.
-
-map_pair_to_doc(Depth, map_pair(Key, Value)) =
-    to_doc(Depth - 1, Key) ++ text(" -> ") ++
-        group(nest(2, line ++ to_doc(Depth - 1, Value))).
-
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % This should only really be used if the item in question really
     % is a tuple.
@@ -841,10 +879,24 @@ tuple_to_doc(Depth, Tuple) = Doc :-
     deconstruct(Tuple, _Name, _Arity, UnivArgs),
     Doc = group(braces(nest(1, packed_cs_univ_args(Depth - 1, UnivArgs)))).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-word_wrapped(String) =
-    packed(space, list__map(func(Word) = text(Word),
-                            string__words(char__is_whitespace, String))).
+:- func map_to_doc(int, map(T1, T2)) = doc.
 
-%------------------------------------------------------------------------------%
+map_to_doc(Depth, X) = Doc :-
+    KVs = list__map(mk_map_pair, map__to_assoc_list(X)),
+    Doc = group("map" ++ parentheses(list_to_doc(Depth - 1, KVs))).
+
+:- func mk_map_pair(pair(K, V)) = map_pair(K, V).
+
+mk_map_pair(K - V) = map_pair(K, V).
+
+%-----------------------------------------------------------------------------%
+
+:- func map_pair_to_doc(int, map_pair(T1, T2)) = doc.
+
+map_pair_to_doc(Depth, map_pair(Key, Value)) =
+    to_doc(Depth - 1, Key) ++ text(" -> ") ++
+        group(nest(2, line ++ to_doc(Depth - 1, Value))).
+
+%-----------------------------------------------------------------------------%

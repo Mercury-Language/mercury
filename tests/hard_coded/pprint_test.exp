@@ -1,0 +1,11 @@
+1
+2
+[5, 6]
+["five", "six", "seven"]
+[1, 2]
+sparse_bitset([42])
+sparse_bitset([42, 84])
+map([41 -> 42])
+map([41 -> 42, 82 -> 83])
+array([1, 2, 3])
+{7, 8, "abc"}

@@ -100,6 +100,7 @@ ORDINARY_PROGS=	\
 	nondet_ctrl_vn \
 	nondet_copy_out \
 	nullary_ho_func \
+	pprint_test \
 	pragma_c_code \
 	pragma_export \
 	pragma_import \
