@@ -642,6 +642,23 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_stop_depth = stop_depth;
 			return STOP_INTERACTING;
 		}
+	} else if (streq(words[0], "excp")) {
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "excp"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			if (event_info->MR_trace_port != MR_PORT_EXCEPTION) {
+				cmd->MR_trace_cmd = MR_CMD_EXCP;
+				return STOP_INTERACTING;
+			} else {
+				MR_trace_do_noop();
+			}
+		} else {
+			MR_trace_usage("forward", "return");
+		}
 	} else if (streq(words[0], "return")) {
 		cmd->MR_trace_strict = TRUE;
 		cmd->MR_trace_print_level = MR_default_print_level;
@@ -2477,6 +2494,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "forward", "step" },
 	{ "forward", "goto" },
 	{ "forward", "finish" },
+	{ "forward", "excp" },
 	{ "forward", "return" },
 	{ "forward", "forward" },
 	{ "forward", "mindepth" },

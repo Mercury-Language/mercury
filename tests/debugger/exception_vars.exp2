@@ -1,9 +1,7 @@
        1:      1  1 CALL pred exception_vars:main/2-0 (det) exception_vars.m:12
 mdb> echo on
 Command echo enabled.
-mdb> goto 2
-       2:      2  2 CALL pred exception_vars:test/2-0 (det) exception_vars.m:19 (exception_vars.m:12)
-mdb> finish
+mdb> excp
        6:      2  2 EXCP pred exception_vars:test/2-0 (det) exception_vars.m:18 (exception_vars.m:12)
 mdb> print *
        HeadVar__1             	42

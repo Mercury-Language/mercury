@@ -1834,6 +1834,19 @@ the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
+@item excp [-NSans]
+Continues the program until execution reaches an exception event.
+Reports an error if the current event is already an exception event.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
 @item return [-NSans]
 Continues the program until the program finished returning,
 i.e. until it reaches a port other than EXIT.

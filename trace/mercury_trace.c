@@ -170,6 +170,15 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 				goto check_stop_print;
 			}
 
+		case MR_CMD_EXCP:
+			port = (MR_Trace_Port) layout->MR_sll_port;
+			if (port == MR_PORT_EXCEPTION) {
+				return MR_trace_event(&MR_trace_ctrl, TRUE,
+						layout, port, seqno, depth);
+			} else {
+				goto check_stop_print;
+			}
+
 		case MR_CMD_RETURN:
 			port = (MR_Trace_Port) layout->MR_sll_port;
 			if (port != MR_PORT_EXIT) {
