@@ -1,0 +1,237 @@
+#!/bin/sh
+
+# This script is used to run the nightly tests.
+# It is invoked from the `run_test' script.
+
+case $# in
+	3)	HOST=$1; ARCH=$2; FULLARCH=$3 ;;
+	*)	echo "Usage: $0 host arch fullarch" 1>&2; exit 1 ;;
+esac
+
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="/home/mercury/public/mercury-0.5/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/$HOST:$PATH"
+export PATH
+
+CVSROOT=/home/staff/zs/imp
+export CVSROOT
+
+#-----------------------------------------------------------------------------#
+
+# directories to use
+DIR=/home/mercury/public/test_mercury/test_dirs/$HOST
+INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
+case $ARCH in
+	alpha)
+		# due to bug in DEC loader, INSTALL_DIR should as short as
+		# possible, to avoid overflow of fixed length buffers for
+		# -rpath options. The above definition is too long.
+		INSTALL_DIR=/home/mercury/public/.a
+		;;
+esac
+
+# $PARALLEL: flag to pass to GNU make for parallel make
+PARALLEL=
+case $HOST in
+	kryten) 	PARALLEL=-j3 ;; # four CPUs
+	muse)		PARALLEL=-j2 ;; # four CPUs
+	mundook) 	PARALLEL=-j1 ;; # one CPU (or is it two?)
+	murlibobo)	PARALLEL=-j8 ;; # eight CPUs
+	mercury) 	PARALLEL= ;; 	# one CPU
+	*)		PARALLEL= ;;
+esac
+
+# version of the mercury compiler to use for bootstrapping
+BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+
+# df (disk free) command
+DF=df
+case $HOST in
+	kryten)		DF="df -k" ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+# check we've got a reasonable amount of free disk space -- no point
+# starting if we'll only run out of disk space.
+
+[ -d $DIR ] || mkdir -p $DIR
+FREE=`$DF $DIR | awk 'NR == 2 { print $4; }'`
+if [ "$FREE" -lt 10000 ]; then
+	echo "Insufficient disk space on $DIR" 1>&2
+	$DF $DIR
+	exit 1
+fi
+
+#-----------------------------------------------------------------------------#
+
+# to make sure we don't try to run two tests in parallel,
+# we use a lock file in the test directory
+
+lockfile=$DIR/lockfile
+if [ -f $lockfile ]; then
+	echo "Directory $DIR is locked:" 1>&2
+	cat $lockfile 1>&2
+	echo "Perhaps the previous test is still running?" 1>&2
+	echo "(Remove $lockfile manually if necessary.)" 1>&2
+	exit 1
+fi
+trap 'rm -f $lockfile; exit 1' 1 2 3 13 15
+trap 'exit_status=$?; rm -f $lockfile; exit $exit_status' 0
+echo $HOST > $lockfile
+
+#-----------------------------------------------------------------------------#
+
+status=0
+
+#-----------------------------------------------------------------------------#
+
+case $HOST in
+	murlibobo)	CONFIG_OPTS=--enable-all-grades ;;
+	kryten)		CONFIG_OPTS=--enable-all-grades ;;
+	*)		CONFIG_OPTS="" ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+set -x	# trace execution
+
+: checkout the sources and make sure the installation directory exists
+cd $DIR || { false; exit 1; }
+cvs checkout mercury tests || { false; exit 1; }
+[ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
+
+: bootstrap the compiler up to stage 3 and check the results match
+MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+export MERCURY_COMPILER
+cd mercury || { false; exit 1; }
+cat > Mmake.params << EOF
+MC=../scripts/mc
+MCFLAGS=-O2 --inline-threshold 10 --procs-per-c-function 10
+EOF
+autoconf || { false; exit 1; }
+rm -f config.cache
+./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
+mmake depend $PARALLEL || { false; exit 1; }
+mmake clean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+tools/bootcheck $PARALLEL || { false; exit 1; }
+cd .. || { false; exit 1; }
+
+: install the compiler
+cd mercury/stage2 || { false; exit 1; }
+MERCURY_COMPILER=`pwd`/compiler/mercury_compile
+export MERCURY_COMPILER
+case $ARCH in
+	sgi)
+		# see README.IRIX for an explanation of these contortions
+		
+		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
+			MMAKEFLAGS=$PARALLEL || status=1
+
+		# mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL
+		#
+		# the above line doesn't work, due to bug in gcc 2.6.3;
+		# the following hack avoids the bug by compiling modules.o
+		# with -O1 rather than -O2
+		#
+		cd library || status=1
+		
+		PATH=../scripts:../util:$PATH 
+		MMAKE_VPATH=. MMAKE_DIR=../scripts \
+		../scripts/mmake EXTRA_CFLAGS=-O1 int.dir/*.o || status=1
+
+		PATH=../scripts:../util:$PATH \
+		MMAKE_VPATH=. MMAKE_DIR=../scripts \
+		../scripts/mmake install_split_library || status=1
+
+		cd .. || status=1
+
+		: install the shared library grades
+		mmake install_grades LIBGRADES="reg.gc reg.gc.prof" \
+			MMAKEFLAGS="$PARALLEL EXT_FOR_SHARED_LIB=so" || status=1
+
+		: must reinstall a non-shared libgc.a and libgc_prof.a
+		cd boehm_gc || status=1
+		mmake install MMAKEFLAGS=$PARALLEL || status=1
+		mmake clean MMAKEFLAGS=$PARALLEL || status=1
+		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
+		 	MMAKEFLAGS=$PARALLEL || status=1
+		;;
+	*)
+		mmake install MMAKEFLAGS=$PARALLEL || status=1
+		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
+			|| status=1
+		;;
+esac
+cd ../.. || status=1
+
+: run the regression tests on the installed compiler
+MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
+export MERCURY_COMPILER
+PATH="$INSTALL_DIR/bin:$PATH"
+export PATH
+DIRS="benchmarks general hard_coded valid"
+case $HOST in
+	mundook|murlibobo)
+		GRADES="none none.gc
+			reg reg.gc
+			asm_fast asm_fast.gc
+			asm_fast.prof asm_fast.gc.prof
+			"
+		;;
+	kryten)
+		GRADES="none jump reg fast asm_jump asm_fast none.gc
+			jump.gc reg.gc fast.gc asm_jump.gc
+			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
+		;;
+	muse)
+		GRADES="reg.gc asm_fast asm_fast.gc
+			reg.gc.prof asm_fast.gc.prof"
+		;;
+	mercury)
+		GRADES="asm_fast.gc asm_fast \
+			asm_fast.gc.prof asm_fast.prof"
+		DIRS="hard_coded valid"
+		;;
+esac
+for dir in $DIRS; do
+	cd tests/$dir
+	mmake realclean $PARALLEL || status=1
+	mmake depend $PARALLEL || status=1
+	for grade in $GRADES; do
+		mmake -k MCFLAGS="-O2" \
+			GRADE=$grade check $PARALLEL || status=1
+		case $dir in benchmarks)
+		    case $grade in
+			*.prof)	./poly
+				mprof -V > poly.$grade.mprof 2>&1 
+				cp -f Prof.CallPair poly.$grade.CallPair
+				cp -f Prof.Counts poly.$grade.Counts
+				cp -f Prof.Decl poly.$grade.Decl
+				;;
+		    esac ;;
+		esac
+		rm -f *.c *.o
+	done
+	mmake realclean $PARALLEL || status=1
+	cd ../..
+done
+
+case $status in
+    0)
+	: if we get this far, then it worked.
+	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
+	true
+	exit 0
+	;;
+    *)
+	: one or more tests failed
+	false
+	exit 1
+esac
+
+#-----------------------------------------------------------------------------#
