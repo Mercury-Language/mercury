@@ -601,26 +601,8 @@ map__count(Map, Count) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX inefficient
-
 map__inverse_search(Map, V, K) :-
-	tree234__tree234_to_assoc_list(Map, AssocList),
-	assoc_list_member(K, V, AssocList).
-
-%-----------------------------------------------------------------------------%
-
-	% The code here is deliberately written using very simple
-	% modes.
-	% The reason we don't just use member/2 is that we want to
-	% bootstrap this thing ASAP.
-
-:- pred assoc_list_member(K, V, list(pair(K,V))).
-:- mode assoc_list_member(in, out, in) is nondet.
-:- mode assoc_list_member(out, in, in) is nondet.
-:- mode assoc_list_member(in, in, in) is semidet.
-assoc_list_member(K, V, [K - V | _]).
-assoc_list_member(K, V, [_ | Xs]) :-
-	assoc_list_member(K, V, Xs).
+	map__member(Map, V, K).
 
 %-----------------------------------------------------------------------------%
 
