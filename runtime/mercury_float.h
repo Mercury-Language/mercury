@@ -62,6 +62,8 @@
 
   /* unboxed float means we can assume sizeof(MR_Float) == sizeof(MR_Word) */
 
+  #define MR_make_hp_float_aligned() ((void)0)
+
   union MR_Float_Word {
 	MR_Float f;
 	MR_Word w;
