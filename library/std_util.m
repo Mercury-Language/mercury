@@ -495,15 +495,6 @@
 
 %-----------------------------------------------------------------------------%
 
-	% dynamic_cast(X, Y) succeeds with Y = X iff X has the same
-	% ground type as Y (so this may succeed if Y is of type
-	% list(int), say, but not if Y is of type list(T)).
-	%
-:- pred dynamic_cast(T1, T2).
-:- mode dynamic_cast(in, out) is semidet.
-
-%-----------------------------------------------------------------------------%
-
 	% functor, argument and deconstruct take any type (including univ),
 	% and return representation information for that type.
 	%
@@ -1005,7 +996,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	will_not_call_mercury,
 "
 #ifndef CONSERVATIVE_GC
-	MR_sol_hp = SolutionsHeapPtr;
+	MR_sol_hp = (MR_Word *) SolutionsHeapPtr;
 #endif
 ").
 
@@ -1182,6 +1173,11 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 	% The type `std_util:type_desc/0' happens to use much the same
 	% representation as `private_builtin:type_info/1'.
 
+	% We call the constructor for univs `univ_cons' to avoid ambiguity
+	% with the univ/1 function which returns a univ.
+:- type univ --->
+	some [T] univ_cons(T).
+
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 univ(X) = Univ :- type_to_univ(X, Univ).
@@ -1198,229 +1194,71 @@ det_univ_to_type(Univ, X) :-
 		error(ErrorString)
 	).
 
-:- pragma foreign_code("C", univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-    MR_TypeInfo typeinfo;
+univ_value(univ_cons(X)) = X.
 
-    MR_unravel_univ(Univ, typeinfo, Value);
-    TypeInfo_for_T = (MR_Word) typeinfo;
-").
+:- pragma promise_pure(type_to_univ/2).
+type_to_univ(T, Univ) :-
+	(
+		impure private_builtin__var(T),
+		Univ = univ_cons(T0),
+		private_builtin__typed_unify(T0, T)
+	;
+		impure private_builtin__var(Univ),
+		Univ0 = 'new univ_cons'(T),
+		unsafe_promise_unique(Univ0, Univ)
+	).
 
-:- pragma foreign_code("MC++", 
-	univ_value(_Univ::in) = (_Value::out), will_not_call_mercury,
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
+univ_type(Univ) = type_of(univ_value(Univ)).
 
+:- pred construct_univ(T, univ).
+:- mode construct_univ(in, out) is det.
+:- pragma export(construct_univ(in, out), "ML_construct_univ").
+
+construct_univ(X, Univ) :-
+	Univ = univ(X).
+
+:- some [T] pred unravel_univ(univ, T).
+:- mode unravel_univ(in, out) is det.
+:- pragma export(unravel_univ(in, out), "ML_unravel_univ").
+
+unravel_univ(Univ, X) :-
+	univ_value(Univ) = X.
 
 :- pragma foreign_decl("C", "
-/*
-**	`univ' is represented as a two word structure.
-**	One word contains the address of a type_info for the type.
-**	The other word contains the data.
-**	The offsets MR_UNIV_OFFSET_FOR_TYPEINFO and MR_UNIV_OFFSET_FOR_DATA
-**	are defined in runtime/mercury_type_info.h.
-*/
-
-#include ""mercury_type_info.h""
 #include ""mercury_heap.h""	/* for MR_incr_hp_msg() etc. */
 #include ""mercury_misc.h""	/* for MR_fatal_error() */
 #include ""mercury_string.h""	/* for MR_make_aligned_string() */
-
 ").
-
-% :- pred type_to_univ(T, univ).
-% :- mode type_to_univ(di, uo) is det.
-% :- mode type_to_univ(in, out) is det.
-% :- mode type_to_univ(out, in) is semidet.
-
-	% Forward mode - convert from type to univ.
-	% Allocate heap space, set the first field to contain the address
-	% of the type_info for this type, and then store the input argument
-	% in the second field.
-:- pragma foreign_code("C",
-	type_to_univ(Value::di, Univ::uo), will_not_call_mercury,
-"
-	MR_incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
-").
-:- pragma foreign_code("C", 
-	type_to_univ(Value::in, Univ::out), will_not_call_mercury,
-"
-	MR_incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-	MR_define_univ_fields(Univ, TypeInfo_for_T, Value);
-").
-
-	% Backward mode - convert from univ to type.
-	% We check that type_infos compare equal.
-	% The variable `TypeInfo_for_T' used in the C code
-	% is the compiler-introduced type-info variable.
-:- pragma foreign_code("C",
-	type_to_univ(Value::out, Univ::in), will_not_call_mercury, 
-"{
-	MR_Word	univ_type_info;
-	int	    comp;
-
-	univ_type_info = MR_field(MR_mktag(0), Univ,
-			MR_UNIV_OFFSET_FOR_TYPEINFO);
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) univ_type_info,
-		(MR_TypeInfo) TypeInfo_for_T);
-	MR_restore_transient_registers();
-	if (comp == MR_COMPARE_EQUAL) {
-		Value = MR_field(MR_mktag(0), Univ,
-				MR_UNIV_OFFSET_FOR_DATA);
-		SUCCESS_INDICATOR = TRUE;
-	} else {
-		SUCCESS_INDICATOR = FALSE;
-	}
-}").
-
-:- pragma foreign_code("C", univ_type(Univ::in) = (TypeInfo::out),
-		will_not_call_mercury, 
-"
-	TypeInfo = MR_field(MR_mktag(0), Univ, MR_UNIV_OFFSET_FOR_TYPEINFO);
-").
-
-:- pragma foreign_code("MC++",
-	type_to_univ(Value::di, Univ::uo), will_not_call_mercury,
-"
-        MR_untagged_newobj(Univ, 2);
-        MR_objset(Univ, 0, TypeInfo_for_T);
-        MR_objset(Univ, 1, Value);
-").
-:- pragma foreign_code("MC++", 
-	type_to_univ(Value::in, Univ::out), will_not_call_mercury,
-"
-        MR_untagged_newobj(Univ, 2);
-        MR_objset(Univ, 0, TypeInfo_for_T);
-        MR_objset(Univ, 1, Value);
-").
-
-	% Backward mode - convert from univ to type.
-	% We check that type_infos compare equal.
-	% The variable `TypeInfo_for_T' used in the C code
-	% is the compiler-introduced type-info variable.
-:- pragma foreign_code("MC++",
-	type_to_univ(Value::out, Univ::in), will_not_call_mercury, "
-{
-	MR_Word univ_type_info = Value->GetValue(0);
-	if (MR_compare_type_info(TypeInfo_for_T, univ_type_info)
-			== MR_COMPARE_EQUAL) {
-		MR_Box UnivValue = Univ->GetValue(1);
-		Value = UnivValue;
-		SUCCESS_INDICATOR = TRUE;
-        } else {
-		SUCCESS_INDICATOR = FALSE;
-	}
-}").
-
-:- pragma foreign_code("MC++", univ_type(Univ::in) = (TypeInfo::out),
-		will_not_call_mercury, 
-"
-        TypeInfo = Univ->GetValue(0);
-").
-
 
 :- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
-void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_unify_univ_module(void) { return; }
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
+void sys_init_unify_type_desc_module(void);
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_unify_type_desc_module(void)
+{
+	/* no initialization needed */
+}
+
 #else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
-	MR_TYPECTOR_REP_C_POINTER);
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, univ, 0,
-	MR_TYPECTOR_REP_UNIV);
+	MR_TYPECTOR_REP_TYPEINFO);
 
 MR_define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
 
-MR_BEGIN_MODULE(unify_univ_module)
-	MR_init_entry(mercury____Unify___std_util__univ_0_0);
-	MR_init_entry(mercury____Compare___std_util__univ_0_0);
+MR_BEGIN_MODULE(unify_type_desc_module)
 	MR_init_entry(mercury____Unify___std_util__type_desc_0_0);
 	MR_init_entry(mercury____Compare___std_util__type_desc_0_0);
 MR_BEGIN_CODE
-MR_define_entry(mercury____Unify___std_util__univ_0_0);
-{
-	/*
-	** Unification for univ.
-	*/
-
-	MR_Word	univ1, univ2;
-	MR_Word	typeinfo1, typeinfo2;
-	int	comp;
-
-	univ1 = r1;
-	univ2 = r2;
-
-	/* First check the type_infos compare equal */
-	typeinfo1 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_TYPEINFO);
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
-		(MR_TypeInfo) typeinfo2);
-	MR_restore_transient_registers();
-	if (comp != MR_COMPARE_EQUAL) {
-		r1 = FALSE;
-		MR_proceed();
-	}
-
-	/*
-	** Then invoke the generic unification predicate on the
-	** unwrapped args
-	*/
-	r1 = typeinfo1;
-	r2 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_DATA);
-	r3 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_DATA);
-	{
-		MR_declare_entry(mercury__unify_2_0);
-		MR_tailcall(MR_ENTRY(mercury__unify_2_0),
-			MR_LABEL(mercury____Unify___std_util__univ_0_0));
-	}
-}
-
-MR_define_entry(mercury____Compare___std_util__univ_0_0);
-{
-	/*
-	** Comparison for univ:
-	*/
-
-	MR_Word	univ1, univ2;
-	MR_Word	typeinfo1, typeinfo2;
-	int	comp;
-
-	univ1 = r1;
-	univ2 = r2;
-
-	/* First compare the type_infos */
-	typeinfo1 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_TYPEINFO);
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
-		(MR_TypeInfo) typeinfo2);
-	MR_restore_transient_registers();
-	if (comp != MR_COMPARE_EQUAL) {
-		r1 = comp;
-		MR_proceed();
-	}
-
-	/*
-	** If the types are the same, then invoke the generic compare/3
-	** predicate on the unwrapped args.
-	*/
-
-	r1 = typeinfo1;
-	r2 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_DATA);
-	r3 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_DATA);
-	{
-		MR_declare_entry(mercury__compare_3_0);
-		MR_tailcall(MR_ENTRY(mercury__compare_3_0),
-			MR_LABEL(mercury____Compare___std_util__univ_0_0));
-	}
-}
-
 MR_define_entry(mercury____Unify___std_util__type_desc_0_0);
 {
 	/*
@@ -1453,22 +1291,17 @@ MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_unify_univ_module
+INIT sys_init_unify_type_desc_module
 */
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_univ_module;
-void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_unify_univ_module(void) {
-	unify_univ_module();
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc unify_type_desc_module;
+void sys_init_unify_type_desc_module(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_unify_type_desc_module(void) {
+	unify_type_desc_module();
 
-	MR_INIT_TYPE_CTOR_INFO(
-		mercury_data_std_util__type_ctor_info_univ_0,
-		std_util__univ_0_0);
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_std_util__type_ctor_info_type_desc_0,
 		std_util__type_desc_0_0);
 
-	MR_register_type_ctor_info(
-		&mercury_data_std_util__type_ctor_info_univ_0);
 	MR_register_type_ctor_info(
 		&mercury_data_std_util__type_ctor_info_type_desc_0);
 }
@@ -1479,19 +1312,11 @@ void sys_init_unify_univ_module(void) {
 
 :- pragma foreign_code("MC++", "
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, univ, 0, MR_TYPECTOR_REP_UNIV)
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0, 
-        MR_TYPECTOR_REP_C_POINTER)
+        MR_TYPECTOR_REP_TYPEINFO)
 
 static int MR_compare_type_info(MR_TypeInfo x, MR_TypeInfo y) {
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	return 0;
-}
-
-static int
-__Unify____univ_0_0(MR_Word x, MR_Word y)
-{
-	mercury::runtime::Errors::SORRY(""unify for univ"");
 	return 0;
 }
 
@@ -1503,13 +1328,6 @@ __Unify____type_desc_0_0(MR_Word x, MR_Word y)
 }
 
 static void
-__Compare____univ_0_0(MR_Word_Ref result,
-MR_Word x, MR_Word y)
-{
-	mercury::runtime::Errors::SORRY(""compare for univ"");
-}
-
-static void
 __Compare____type_desc_0_0(
     MR_Word_Ref result, MR_Word x, MR_Word y)
 {
@@ -1517,27 +1335,9 @@ __Compare____type_desc_0_0(
 }
 
 static int
-do_unify__univ_0_0(MR_Box x, MR_Box y)
-{
-	return mercury::std_util__c_code::__Unify____univ_0_0(
-		dynamic_cast<MR_Word>(x),
-		dynamic_cast<MR_Word>(y));
-}
-
-static int
 do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
     return mercury::std_util__c_code::__Unify____type_desc_0_0(
-	    dynamic_cast<MR_Word>(x),
-	    dynamic_cast<MR_Word>(y));
-}
-
-static void
-do_compare__univ_0_0(MR_Word_Ref result,
-    MR_Box x, MR_Box y)
-{
-    mercury::std_util__c_code::__Compare____univ_0_0(
-	    result,
 	    dynamic_cast<MR_Word>(x),
 	    dynamic_cast<MR_Word>(y));
 }
@@ -2589,7 +2389,6 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_FLOAT:
     case MR_TYPECTOR_REP_STRING:
     case MR_TYPECTOR_REP_PRED:
-    case MR_TYPECTOR_REP_UNIV:
     case MR_TYPECTOR_REP_VOID:
     case MR_TYPECTOR_REP_C_POINTER:
     case MR_TYPECTOR_REP_TYPEINFO:
@@ -2908,7 +2707,6 @@ ML_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_FLOAT:
         case MR_TYPECTOR_REP_STRING:
         case MR_TYPECTOR_REP_PRED:
-        case MR_TYPECTOR_REP_UNIV:
         case MR_TYPECTOR_REP_VOID:
         case MR_TYPECTOR_REP_C_POINTER:
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -4182,9 +3980,3 @@ solutions_set(P) = S :- solutions_set(P, S).
 aggregate(P, F, Acc0) = Acc :-
 	aggregate(P, (pred(X::in, A0::in, A::out) is det :- A = F(X, A0)),
 		Acc0, Acc).
-
-dynamic_cast(T1, T2) :-
-	univ_to_type(univ(T1), T2).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
