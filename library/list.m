@@ -593,10 +593,10 @@ list__reverse_2([X|Xs], L0, L) :-
 %-----------------------------------------------------------------------------%
 
 list__sort(L0, L) :-
-	list__qsort(L0, [], L).
+	list__merge_sort(L0, L).
 
 list__sort_and_remove_dups(L0, L) :-
-	list__qsort(L0, [], L1),
+	list__merge_sort(L0, L1),
 	list__remove_adjacent_dups(L1, L).
 
 :- pred list__qsort(list(T), list(T), list(T)).
