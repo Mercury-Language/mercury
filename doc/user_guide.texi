@@ -1191,7 +1191,7 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--branch-delay-slot}}
+@item @code{--branch-delay-slot}
 (This option is not intended for general use.)
 Assume that branch instructions have a delay slot.
 
