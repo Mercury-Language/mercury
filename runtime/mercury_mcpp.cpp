@@ -14,11 +14,6 @@
 #using <mscorlib.dll>
 #using "mercury_il.dll"
 
-    // This line (somehow) stops the compiler from
-    // linking in the C library (and it will then complain about main being
-    // missing)
-extern "C" int _fltused=0;
-
 #include "mercury_mcpp.h"
 
 namespace mercury {

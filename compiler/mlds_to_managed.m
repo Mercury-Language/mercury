@@ -221,11 +221,6 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 		% "mercury::" namespace qualifiers.
 		"using namespace mercury;\n",
 
-		% XXX this supresses problems caused by
-		% references to float.  If you don't do this,
-		% you'll get link errors.  Revisit this when the
-		% .NET implementation has matured.
-		"extern ""C"" int _fltused=0;\n",
 		"\n"]),
 
 	globals__io_lookup_bool_option(sign_assembly, SignAssembly),
