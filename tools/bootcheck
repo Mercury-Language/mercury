@@ -245,8 +245,11 @@ then
 	cp $root/library/Mmake* .
 	ln -s $root/library/libmercury.init .
 	cd $root/stage2_sicstus
-	if test "$copy_runtime" = "true"
+	if "$copy_runtime"
 	then
+		# Remove symbolic link to the stage 1 runtime if it's present,
+		# which it can be with the -2 option.
+		rm runtime
 		mkdir runtime
 		cd runtime
 		ln -s $root/runtime/*.h .
