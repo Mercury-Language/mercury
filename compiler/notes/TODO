@@ -17,14 +17,6 @@ mode analysis
   "micro-unification" pieces when necessary.
   (When is it necessary?)
 
-general
--------
-
-- warn about non-underscore variables which occur only once in any given
-  branch, even if they occur in other branches. (this will involve moving
-  the checking until after the first occurence of implicit quantification
-  and renaming apart.)
-
 mercury_to_goedel.m
 -------------------
 
@@ -87,12 +79,18 @@ general
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
 
-- improve efficiency of the implicit quantification pass (currently O(N^2))
+- improve efficiency of the expansion of equivalence types (currently O(N^2))
 
 - improve efficiency of the module import handling (currently O(N^2))
 
 - more work on module system, separate compilation, and the multiple
-  specialization problem
+  specialization problem, in particular
+	- cross-module inlining
+	- specialization of calls to list__map and similar predicates
+	  that take higher-order predicates as arguments
+
+- reduce the overhead of higher-order predicate calls (avoid copying
+  the real registers into the fake_reg array and back)
 
 - deforestation
 
