@@ -56,9 +56,9 @@ library/$(deps_subdir)library.dep:
 	cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_browser
-dep_browser: browser/$(deps_subdir)browser.dep
+dep_browser: browser/$(deps_subdir)browser_library.dep
 
-browser/$(deps_subdir)browser.dep:
+browser/$(deps_subdir)browser_library.dep:
 	cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
