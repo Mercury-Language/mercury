@@ -249,7 +249,7 @@
 :- func alloc_func_decl = gcc__func_decl.	% GC_malloc()
 :- func strcmp_func_decl = gcc__func_decl.	% strcmp()
 :- func hash_string_func_decl = gcc__func_decl.	% MR_hash_string()
-:- func box_float_func_decl = gcc__func_decl.	% MR_box_float()
+:- func box_float_func_decl = gcc__func_decl.	% MR_asm_box_float()
 :- func setjmp_func_decl = gcc__func_decl.	% __builtin_setjmp()
 :- func longjmp_func_decl = gcc__func_decl.	% __builtin_longjmp()
 

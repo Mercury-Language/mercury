@@ -852,7 +852,7 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 
 #ifdef MR_AVOID_MACROS
 
-MR_Float *
+MR_Box
 MR_box_float(MR_Float f)
 {
 	MR_Float *ptr = (MR_Float *)
@@ -870,6 +870,21 @@ MR_unbox_float(MR_Box b)
 #endif /* MR_AVOID_MACROS */
 
 #endif /* __GNUC__ */
+
+/*
+** This is exactly the same as MR_box_float(), except that
+** it is unconditionally defined as an external function,
+** not as a macro, static function, or inline function.
+** It is used by the `--target asm' GCC back-end interface.
+*/
+MR_Box
+MR_asm_box_float(MR_Float f)
+{
+	MR_Float *ptr = (MR_Float *)
+		MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	*ptr = f;
+	return (MR_Box) ptr;
+}
 
 /*---------------------------------------------------------------------------*/
 

@@ -386,6 +386,13 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
   #define MR_unbox_float(ptr) (*(MR_Float *)ptr)
 #endif
 
+/*
+** Like MR_box_float, but always an external function, never a macro
+** or an inline function.  This is used by the `--target asm'
+** GCC back-end interface.
+*/
+MR_Box MR_asm_box_float(MR_Float f);
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Function declarations
