@@ -154,9 +154,9 @@ typedef Char *String;
 	{						\
 	   int len = 0;					\
 	   hash = 0;					\
-	   while(((char *)(s))[len]) {			\
+	   while(((const char *)(s))[len]) {		\
 		hash ^= (hash << 5);			\
-		hash ^= ((char *)(s))[len];		\
+		hash ^= ((const char *)(s))[len];	\
 		len++;					\
 	   }						\
 	   hash ^= len;					\
@@ -175,7 +175,7 @@ typedef Char *String;
 /* the actual definition of hash_string is in aux.c */
 /* it uses the macro below */
 
-extern	int	hash_string(const char *);
+extern	int	hash_string(Word);
 
 #define HASH_STRING_FUNC_BODY				\
 	   int hash;					\

@@ -396,7 +396,7 @@ void *checked_malloc(size_t n)
 **  Note that hash_string is actually defined in imp.h.
 */
 
-int hash_string(const char *s)
+int hash_string(Word s)
 {
 	HASH_STRING_FUNC_BODY
 }
