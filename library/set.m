@@ -244,24 +244,37 @@
 
 	% Support for higher order set processing.
 
+	% map(F, S) =
+	% 	list_to_set(list__map(F, to_sorted_list(S))).
+	%
 :- func set__map(func(T1) = T2, set(T1)) = set(T2).
 
+	% set__filter(P, S) =
+	% 	sorted_list_to_set(list__filter(P, to_sorted_list(S))).
+	%
 :- func set__filter(pred(T1), set(T1)) = set(T1).
 :- mode set__filter(pred(in) is semidet, in) = out is det.
 
+	% set__filter_map(PF, S) =
+	% 	list_to_set(list__filter_map(PF, to_sorted_list(S))).
+	%
 :- func set__filter_map(func(T1) = T2, set(T1)) = set(T2).
 :- mode set__filter_map(func(in) = out is semidet, in) = out is det.
+
+	% set__fold(F, S, A) =
+	% 	list__foldl(F, to_sorted_list(S), A).
+	%
+:- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
 
 :- pred set__fold(pred(T1, T2, T2), set(T1), T2, T2).
 :- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
 :- mode set__fold(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode set__fold(pred(in, in, out) is semidet, in, in, out) is semidet.
 
-:- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
-
 	% set__divide(Pred, Set, TruePart, FalsePart):
 	% TruePart consists of those elements of Set for which Pred succeeds;
 	% FalsePart consists of those elements of Set for which Pred fails.
+	%
 :- pred set__divide(pred(T1), set(T1), set(T1), set(T1)).
 :- mode set__divide(pred(in) is semidet, in, out, out) is det.
 
