@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -480,7 +480,7 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 		{ library__version(Version) },
 		io__write_strings(["/*\n** Automatically generated from `", 
 			SourceFileName,
-			".m' by the\n** Mercury compiler, version ", Version,
+			"' by the\n** Mercury compiler, version ", Version,
 			".  Do not edit.\n*/\n"]),
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
