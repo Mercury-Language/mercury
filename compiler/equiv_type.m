@@ -19,7 +19,7 @@
 	% equiv_type__expand_eqv_types(ModuleName, Items0, Items,
 	%	CircularTypes, EqvMap, MaybeRecompInfo0, MaybeRecompInfo).
 	%
-	% First it builds up a map from type_id to the equivalent type.
+	% First it builds up a map from type_ctor to the equivalent type.
 	% Then it traverses through the list of items, expanding all types. 
 	% This has the effect of eliminating all the equivalence types
 	% from the source code. Error messages are generated for any
@@ -37,7 +37,7 @@
 		in, out, di, uo) is det.
 
 	% Replace equivalence types in a given type, returning
-	% the type_ids of the equivalence types replaced.
+	% the type_ctors of the equivalence types replaced.
 :- pred equiv_type__replace_in_type(type, tvarset, eqv_map, type,
 		tvarset).
 :- mode equiv_type__replace_in_type(in, in, in, out, out) is det.
@@ -80,7 +80,7 @@ equiv_type__expand_eqv_types(ModuleName, Items0, Items, CircularTypes, EqvMap,
 	).
 
 :- type eqv_type_body ---> eqv_type_body(tvarset, list(type_param), type).
-:- type eqv_map == map(type_id, eqv_type_body).
+:- type eqv_map == map(type_ctor, eqv_type_body).
 
 :- pred equiv_type__build_eqv_map(list(item_and_context), eqv_map, eqv_map).
 :- mode equiv_type__build_eqv_map(in, in, out) is det.
@@ -143,12 +143,12 @@ equiv_type__replace_in_item(ModuleName,
 		ContainsCirc, Info0, Info) :-
 	list__length(TArgs, Arity),
 	equiv_type__maybe_record_used_equivalences(ModuleName, Name,
-		Info0, UsedTypeIds0),
+		Info0, UsedTypeCtors0),
 	equiv_type__replace_in_type_defn(Name - Arity, TypeDefn0,
 		VarSet0, EqvMap, TypeDefn, VarSet, ContainsCirc,
-		UsedTypeIds0, UsedTypeIds),
+		UsedTypeCtors0, UsedTypeCtors),
 	equiv_type__finish_recording_used_equivalences(
-		item_id(type_body, Name - Arity), UsedTypeIds, Info0, Info).
+		item_id(type_body, Name - Arity), UsedTypeCtors, Info0, Info).
 
 equiv_type__replace_in_item(ModuleName,
 		pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
@@ -161,16 +161,17 @@ equiv_type__replace_in_item(ModuleName,
 		no, Info0, Info) :-
 	list__length(TypesAndModes0, Arity),
 	equiv_type__maybe_record_used_equivalences(ModuleName, PredName,
-		Info0, UsedTypeIds0),
+		Info0, UsedTypeCtors0),
 	equiv_type__replace_in_class_constraints(ClassContext0, TypeVarSet0, 
-		EqvMap, ClassContext, TypeVarSet1, UsedTypeIds0, UsedTypeIds1),
+		EqvMap, ClassContext, TypeVarSet1,
+		UsedTypeCtors0, UsedTypeCtors1),
 	equiv_type__replace_in_tms(TypesAndModes0, TypeVarSet1, EqvMap, 
-		TypesAndModes, TypeVarSet, UsedTypeIds1, UsedTypeIds),
+		TypesAndModes, TypeVarSet, UsedTypeCtors1, UsedTypeCtors),
 	ItemType = pred_or_func_to_item_type(PredOrFunc),
 	adjust_func_arity(PredOrFunc, OrigArity, Arity),
 	equiv_type__finish_recording_used_equivalences(
 		item_id(ItemType, PredName - OrigArity),
-		UsedTypeIds, Info0, Info).
+		UsedTypeCtors, Info0, Info).
 
 equiv_type__replace_in_item(ModuleName,
 			typeclass(Constraints0, ClassName, Vars, 
@@ -181,22 +182,22 @@ equiv_type__replace_in_item(ModuleName,
 			no, Info0, Info) :-
 	list__length(Vars, Arity),
 	equiv_type__maybe_record_used_equivalences(ModuleName, ClassName,
-		Info0, UsedTypeIds0),
+		Info0, UsedTypeCtors0),
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
-		EqvMap, Constraints, VarSet, UsedTypeIds0, UsedTypeIds1),
+		EqvMap, Constraints, VarSet, UsedTypeCtors0, UsedTypeCtors1),
 	(
 		ClassInterface0 = abstract,
 		ClassInterface = abstract,
-		UsedTypeIds = UsedTypeIds1
+		UsedTypeCtors = UsedTypeCtors1
 	;
 		ClassInterface0 = concrete(Methods0),
 		equiv_type__replace_in_class_interface(Methods0,
-			EqvMap, Methods, UsedTypeIds1, UsedTypeIds),
+			EqvMap, Methods, UsedTypeCtors1, UsedTypeCtors),
 		ClassInterface = concrete(Methods)
 	),
 	equiv_type__finish_recording_used_equivalences(
 		item_id(typeclass, ClassName - Arity),
-		UsedTypeIds, Info0, Info).
+		UsedTypeCtors, Info0, Info).
 
 equiv_type__replace_in_item(ModuleName,
 			instance(Constraints0, ClassName, Ts0, 
@@ -206,50 +207,50 @@ equiv_type__replace_in_item(ModuleName,
 				InstanceBody, VarSet, ModName),
 			no, Info0, Info) :-
 	( (Info0 = no ; ModName = ModuleName) ->
-		UsedTypeIds0 = no
+		UsedTypeCtors0 = no
 	;	
-		UsedTypeIds0 = yes(ModuleName - set__init)
+		UsedTypeCtors0 = yes(ModuleName - set__init)
 	),
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
-		EqvMap, Constraints, VarSet1, UsedTypeIds0, UsedTypeIds1),
+		EqvMap, Constraints, VarSet1, UsedTypeCtors0, UsedTypeCtors1),
 	equiv_type__replace_in_type_list(Ts0, VarSet1, EqvMap, Ts, VarSet, _,
-		UsedTypeIds1, UsedTypeIds),
+		UsedTypeCtors1, UsedTypeCtors),
 	list__length(Ts0, Arity),
 	equiv_type__finish_recording_used_equivalences(
 		item_id(typeclass, ClassName - Arity),
-		UsedTypeIds, Info0, Info).
+		UsedTypeCtors, Info0, Info).
 
 equiv_type__replace_in_item(ModuleName,
 		pragma(type_spec(PredName, B, Arity, D, E,
-			Subst0, VarSet0, TypeIds0)),
+			Subst0, VarSet0, TypeCtors0)),
 		EqvMap,
 		pragma(type_spec(PredName, B, Arity, D, E,
-			Subst, VarSet, TypeIds)),
+			Subst, VarSet, TypeCtors)),
 		no, Info, Info) :-
 	( (Info = no ; PredName = qualified(ModuleName, _)) ->
-		UsedTypeIds0 = no
+		UsedTypeCtors0 = no
 	;	
-		UsedTypeIds0 = yes(ModuleName - TypeIds0)
+		UsedTypeCtors0 = yes(ModuleName - TypeCtors0)
 	),
 	equiv_type__replace_in_subst(Subst0, VarSet0, EqvMap, Subst, VarSet,
-		UsedTypeIds0, UsedTypeIds),
+		UsedTypeCtors0, UsedTypeCtors),
 	(
-		UsedTypeIds = no,
-		TypeIds = TypeIds0
+		UsedTypeCtors = no,
+		TypeCtors = TypeCtors0
 	;
-		UsedTypeIds = yes(_ - TypeIds)
+		UsedTypeCtors = yes(_ - TypeCtors)
 	).
 
-:- pred equiv_type__replace_in_type_defn(type_id, type_defn, tvarset,
+:- pred equiv_type__replace_in_type_defn(type_ctor, type_defn, tvarset,
 		eqv_map, type_defn, tvarset, bool,
 		equiv_type_info, equiv_type_info).
 :- mode equiv_type__replace_in_type_defn(in, in, in, in, out, out, out,
 		in, out) is semidet.
 
-equiv_type__replace_in_type_defn(TypeId, eqv_type(TBody0),
+equiv_type__replace_in_type_defn(TypeCtor, eqv_type(TBody0),
 		VarSet0, EqvMap, eqv_type(TBody),
 		VarSet, ContainsCirc, Info0, Info) :-
-	equiv_type__replace_in_type_2(TBody0, VarSet0, EqvMap, [TypeId],
+	equiv_type__replace_in_type_2(TBody0, VarSet0, EqvMap, [TypeCtor],
 		TBody, VarSet, ContainsCirc, Info0, Info).
 
 equiv_type__replace_in_type_defn(_, du_type(TBody0,
@@ -403,7 +404,7 @@ equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap,
 		Ts, VarSet, no, ContainsCirc, Info0, Info).
 
 :- pred equiv_type__replace_in_type_list_2(list(type), tvarset, eqv_map,
-		list(type_id), list(type), tvarset, bool, bool,
+		list(type_ctor), list(type), tvarset, bool, bool,
 		equiv_type_info, equiv_type_info).
 :- mode equiv_type__replace_in_type_list_2(in, in, in,
 		in, out, out, in, out, in, out) is det.
@@ -432,7 +433,7 @@ equiv_type__replace_in_ctor_arg_list(As0, VarSet0, EqvMap,
 		As, VarSet, no, ContainsCirc, Info0, Info).
 
 :- pred equiv_type__replace_in_ctor_arg_list_2(list(constructor_arg), tvarset,
-	eqv_map, list(type_id), list(constructor_arg), tvarset, bool, bool,
+	eqv_map, list(type_ctor), list(constructor_arg), tvarset, bool, bool,
 	equiv_type_info, equiv_type_info).
 :- mode equiv_type__replace_in_ctor_arg_list_2(in, in, in,
 	in, out, out, in, out, in, out) is det.
@@ -466,30 +467,31 @@ equiv_type__replace_in_type(Type0, VarSet0, EqvMap, Type, VarSet,
 	% Replace all equivalence types in a given type, detecting  
 	% any circularities.
 :- pred equiv_type__replace_in_type_2(type, tvarset, eqv_map,
-	list(type_id), type, tvarset, bool, equiv_type_info, equiv_type_info).
+	list(type_ctor), type, tvarset, bool,
+	equiv_type_info, equiv_type_info).
 :- mode equiv_type__replace_in_type_2(in, in, in, in, out, out, out,
 	in, out) is det.
 
 equiv_type__replace_in_type_2(term__variable(V), VarSet, _EqvMap,
 		_Seen, term__variable(V), VarSet, no, Info, Info).
-equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap, TypeIdsAlreadyExpanded,
+equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap, TypeCtorsAlreadyExpanded,
 		Type, VarSet, Circ, Info0, Info) :- 
 
 	Type0 = term__functor(_, _, _),
 	(
-		type_to_type_id(Type0, EqvTypeId, TArgs0)
+		type_to_ctor_and_args(Type0, EqvTypeCtor, TArgs0)
 	->
 		equiv_type__replace_in_type_list_2(TArgs0, VarSet0, EqvMap,
-			TypeIdsAlreadyExpanded, TArgs1, VarSet1, no, Circ0,
+			TypeCtorsAlreadyExpanded, TArgs1, VarSet1, no, Circ0,
 			Info0, Info1),
 
-		( list__member(EqvTypeId, TypeIdsAlreadyExpanded) ->
+		( list__member(EqvTypeCtor, TypeCtorsAlreadyExpanded) ->
 			Circ1 = yes
 		;
 			Circ1 = no
 		),
 		(	
-			map__search(EqvMap, EqvTypeId,
+			map__search(EqvMap, EqvTypeCtor,
 				eqv_type_body(EqvVarSet, Args0, Body0)),
 			%
 			% Don't merge in the variable names from the
@@ -508,18 +510,18 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap, TypeIdsAlreadyExpanded,
 			Circ0 = no,
 			Circ1 = no
 		->
-			map_maybe(equiv_type__record_used_type(EqvTypeId),
+			map_maybe(equiv_type__record_used_type(EqvTypeCtor),
 				Info1, Info2),
 			term__term_list_to_var_list(Args, ArgVars),
 			term__substitute_corresponding(ArgVars, TArgs1,
 							Body, Type1),
-			equiv_type__replace_in_type_2(Type1, VarSet2,
-				EqvMap, [EqvTypeId | TypeIdsAlreadyExpanded],
+			equiv_type__replace_in_type_2(Type1, VarSet2, EqvMap,
+				[EqvTypeCtor | TypeCtorsAlreadyExpanded],
 				Type, VarSet, Circ, Info2, Info)
 		;
 			VarSet = VarSet1,
 			Info = Info1,
-			construct_type(EqvTypeId, TArgs1, Type),
+			construct_type(EqvTypeCtor, TArgs1, Type),
 			bool__or(Circ0, Circ1, Circ)
 		)
 	;
@@ -529,17 +531,17 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap, TypeIdsAlreadyExpanded,
 		Circ = no
 	).
 
-:- pred equiv_type__record_used_type(type_id, pair(module_name, set(type_id)),
-		pair(module_name, set(type_id))).
+:- pred equiv_type__record_used_type(type_ctor,
+	pair(module_name, set(type_ctor)), pair(module_name, set(type_ctor))).
 :- mode equiv_type__record_used_type(in, in, out) is det.
 
-equiv_type__record_used_type(TypeId, UsedTypes0, UsedTypes) :-
+equiv_type__record_used_type(TypeCtor, UsedTypes0, UsedTypes) :-
 	UsedTypes0 = ModuleName - Types0,
-	( TypeId = qualified(ModuleName, _) - _ ->
+	( TypeCtor = qualified(ModuleName, _) - _ ->
 		% We don't need to record local types.
 		UsedTypes = UsedTypes0
 	;
-		UsedTypes = ModuleName - set__insert(Types0, TypeId)
+		UsedTypes = ModuleName - set__insert(Types0, TypeCtor)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -573,7 +575,7 @@ equiv_type__replace_in_tm(type_and_mode(Type0, Mode), VarSet0, EqvMap,
 
 %-----------------------------------------------------------------------------%
 
-:- type equiv_type_info == maybe(pair(module_name, set(type_id))).
+:- type equiv_type_info == maybe(pair(module_name, set(type_ctor))).
 
 :- pred equiv_type__maybe_record_used_equivalences(module_name, sym_name,
 		maybe(recompilation_info), equiv_type_info). 
@@ -596,9 +598,9 @@ equiv_type__finish_recording_used_equivalences(_, no, no, no).
 equiv_type__finish_recording_used_equivalences(_, no, yes(Info), yes(Info)).
 equiv_type__finish_recording_used_equivalences(_, yes(_), no, _) :-
 	error("equiv_type__finish_recording_used_equivalences").
-equiv_type__finish_recording_used_equivalences(Item, yes(_ - UsedTypeIds),
+equiv_type__finish_recording_used_equivalences(Item, yes(_ - UsedTypeCtors),
 		yes(Info0), yes(Info)) :-
-	recompilation__record_used_equivalence_types(Item, UsedTypeIds,
+	recompilation__record_used_equivalence_types(Item, UsedTypeCtors,
 		Info0, Info).
 
 %-----------------------------------------------------------------------------%

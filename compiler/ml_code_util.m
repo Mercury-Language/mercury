@@ -1423,16 +1423,16 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 	->
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_type_id(Type, TypeId, _),
-			% All type_ids other than tuples here should be
+			type_to_ctor_and_args(Type, TypeCtor, _),
+			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are handled
 			% separately in polymorphism.m.
 			(
-				TypeId = unqualified(TypeName) - TypeArity,
-				type_id_is_tuple(TypeId),
+				TypeCtor = unqualified(TypeName) - TypeArity,
+				type_ctor_is_tuple(TypeCtor),
 				mercury_public_builtin_module(TypeModule)
 			;
-				TypeId = qualified(TypeModule, TypeName)
+				TypeCtor = qualified(TypeModule, TypeName)
 						- TypeArity
 			)
 		->

@@ -1499,7 +1499,7 @@ XXX Full exception handling support is not yet implemented.
 	%
 	% Stuff for handling polymorphism/RTTI and type classes.
 	%
-	;	rtti(rtti_type_id, rtti_name)
+	;	rtti(rtti_type_ctor, rtti_name)
 	;	base_typeclass_info(
 			hlds_data__class_id,	% class name & class arity,
 			string			% a mangled string that encodes
@@ -1624,15 +1624,15 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 	( 
-		type_to_type_id(Type, TypeId, [ElemType]),
-		TypeId = qualified(unqualified("array"), "array") - 1
+		type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
+		TypeCtor = qualified(unqualified("array"), "array") - 1
 	->
 		MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
 		MLDSType = mlds__mercury_array_type(MLDSElemType)
 	;
-		type_to_type_id(Type, TypeId, _),
+		type_to_ctor_and_args(Type, TypeCtor, _),
 		module_info_types(ModuleInfo, Types),
-		map__search(Types, TypeId, TypeDefn),
+		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = foreign_type(IsBoxed, ForeignType, ForeignLocation)
 	->

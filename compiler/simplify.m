@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1258,15 +1258,15 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		{ Call = Call1 - GoalInfo },
 		{ ExtraGoals = [] }
 	;
-		{ type_to_type_id(Type, TypeIdPrime, TypeArgsPrime) ->
-			TypeId = TypeIdPrime,
+		{ type_to_ctor_and_args(Type, TypeCtorPrime, TypeArgsPrime) ->
+			TypeCtor = TypeCtorPrime,
 			TypeArgs = TypeArgsPrime
 		;
-			error("simplify: type_to_type_id failed")
+			error("simplify: type_to_ctor_and_args failed")
 		},
 		{ determinism_components(Det, CanFail, at_most_one) },
-		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det,
-			ProcId) },
+		{ unify_proc__lookup_mode_num(ModuleInfo, TypeCtor, UniMode,
+			Det, ProcId) },
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, special_preds,
 			SpecialPreds) },
@@ -1286,7 +1286,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 				% if possible.
 				%
 				special_pred_is_generated_lazily(ModuleInfo,
-					TypeId)
+					TypeCtor)
 			}
 		->
 			simplify__make_type_info_vars([Type], TypeInfoVars,
@@ -1307,7 +1307,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 
 			simplify__make_type_info_vars(TypeArgs,
 				TypeInfoVars, ExtraGoals),
-			{ simplify__call_specific_unify(TypeId, TypeInfoVars,
+			{ simplify__call_specific_unify(TypeCtor, TypeInfoVars,
 				XVar, YVar, ProcId, ModuleInfo, Context,
 				GoalInfo0, Call0, CallGoalInfo0) },
 			simplify__goal_2(Call0, CallGoalInfo0,
@@ -1348,17 +1348,17 @@ simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
 	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
 		SymName) - GoalInfo.
 
-:- pred simplify__call_specific_unify(type_id::in, list(prog_var)::in,
+:- pred simplify__call_specific_unify(type_ctor::in, list(prog_var)::in,
 	prog_var::in, prog_var::in, proc_id::in,
 	module_info::in, unify_context::in, hlds_goal_info::in,
 	hlds_goal_expr::out, hlds_goal_info::out) is det.
 
-simplify__call_specific_unify(TypeId, TypeInfoVars, XVar, YVar, ProcId,
+simplify__call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
 		ModuleInfo, Context, GoalInfo0, CallExpr, CallGoalInfo) :-
 	% create the new call goal
 	list__append(TypeInfoVars, [XVar, YVar], ArgVars),
 	module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-	map__lookup(SpecialPredMap, unify - TypeId, PredId),
+	map__lookup(SpecialPredMap, unify - TypeCtor, PredId),
 	SymName = unqualified("__Unify__"),
 	CallContext = call_unify_context(XVar, var(YVar), Context),
 	CallExpr = call(PredId, ProcId, ArgVars, not_builtin,

@@ -908,8 +908,8 @@ mlds_output_type_forward_decl(Indent, Type) -->
 			ClassType = Type
 		;
 			Type = mercury_type(MercuryType, user_type, _),
-			type_to_type_id(MercuryType, TypeId, _ArgsTypes),
-			ml_gen_type_name(TypeId, ClassName, ClassArity),
+			type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
+			ml_gen_type_name(TypeCtor, ClassName, ClassArity),
 			ClassType = mlds__class_type(ClassName, ClassArity,
 				mlds__class)
 		}
@@ -1576,8 +1576,8 @@ mlds_output_data_name(var(Name)) -->
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
-mlds_output_data_name(rtti(RttiTypeId, RttiName)) -->
-	{ rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName) },
+mlds_output_data_name(rtti(RttiTypeCtor, RttiName)) -->
+	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
 mlds_output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
         { llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
@@ -1749,8 +1749,8 @@ mlds_output_mercury_type_prefix(Type, TypeCategory) -->
 mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 	( { HighLevelData = yes } ->
-		( { type_to_type_id(Type, TypeId, _ArgsTypes) } ->
-			mlds_output_mercury_user_type_name(TypeId,
+		( { type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) } ->
+			mlds_output_mercury_user_type_name(TypeCtor,
 				TypeCategory)
 		;
 			{ error("mlds_output_mercury_user_type_prefix") }
@@ -1761,12 +1761,12 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
 		io__write_string("MR_Word")
 	).
 
-:- pred mlds_output_mercury_user_type_name(type_id, builtin_type,
+:- pred mlds_output_mercury_user_type_name(type_ctor, builtin_type,
 		io__state, io__state).
 :- mode mlds_output_mercury_user_type_name(in, in, di, uo) is det.
 
-mlds_output_mercury_user_type_name(TypeId, TypeCategory) -->
-	{ ml_gen_type_name(TypeId, ClassName, ClassArity) },
+mlds_output_mercury_user_type_name(TypeCtor, TypeCategory) -->
+	{ ml_gen_type_name(TypeCtor, ClassName, ClassArity) },
 	{ TypeCategory = enum_type ->
 		MLDS_Type = mlds__class_type(ClassName,
 			ClassArity, mlds__enum)

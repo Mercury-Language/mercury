@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,8 +127,8 @@ rl_key__remove_useless_info(ModuleInfo,
 		; TypeClass = enum_type
 		),
 		module_info_types(ModuleInfo, Types),
-		type_to_type_id(Type, TypeId, _),
-		map__search(Types, TypeId, TypeDefn),
+		type_to_ctor_and_args(Type, TypeCtor, _),
+		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = du_type(Ctors, _, _, _),
 		Ctors = [_]
@@ -1022,8 +1022,8 @@ rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 		ConsId2 = cons(_, _)
 	->	
 		module_info_types(ModuleInfo, Types),
-		type_to_type_id(Type, TypeId, _),
-		map__search(Types, TypeId, TypeDefn),
+		type_to_ctor_and_args(Type, TypeCtor, _),
+		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		% If there's a user defined equality pred we're in trouble.
 		Body = du_type(Ctors, _, _, no),

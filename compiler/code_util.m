@@ -76,7 +76,7 @@
 :- mode code_util__make_user_proc_label(in, in,
 	in, in, in, in, in, out) is det.
 
-:- pred code_util__make_uni_label(module_info, type_id, proc_id, proc_label).
+:- pred code_util__make_uni_label(module_info, type_ctor, proc_id, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
 :- pred code_util__extract_proc_label_from_code_addr(code_addr, proc_label).
@@ -292,19 +292,19 @@ code_util__make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	->
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
-			type_to_type_id(Type, TypeId, _),
-			% All type_ids other than tuples here should be
+			type_to_ctor_and_args(Type, TypeCtor, _),
+			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are
 			% handled separately in polymorphism.m.
 			(
-				TypeId = unqualified(TypeName) - _,
-				type_id_is_tuple(TypeId),
+				TypeCtor = unqualified(TypeName) - _,
+				type_ctor_is_tuple(TypeCtor),
 				mercury_public_builtin_module(TypeModule)
 			;
-				TypeId = qualified(TypeModule, TypeName) - _
+				TypeCtor = qualified(TypeModule, TypeName) - _
 			)
 		->
-			TypeId = _ - TypeArity,
+			TypeCtor = _ - TypeArity,
 			(
 				ThisModule \= TypeModule,
 				PredName = "__Unify__",
@@ -347,9 +347,9 @@ code_util__make_user_proc_label(ThisModule, PredIsImported,
 	ProcLabel = proc(DefiningModule, PredOrFunc,
 		PredModule, PredName, PredArity, ProcId).
 
-code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
+code_util__make_uni_label(ModuleInfo, TypeCtor, UniModeNum, ProcLabel) :-
 	module_info_name(ModuleInfo, ModuleName),
-	( TypeId = qualified(TypeModule, TypeName) - Arity ->
+	( TypeCtor = qualified(TypeModule, TypeName) - Arity ->
 		( hlds_pred__in_in_unification_proc_id(UniModeNum) ->
 			Module = TypeModule
 		;
@@ -358,7 +358,7 @@ code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 		ProcLabel = special_proc(Module, "__Unify__", TypeModule,
 			TypeName, Arity, UniModeNum)
 	;
-		error("code_util__make_uni_label: unqualified type_id")
+		error("code_util__make_uni_label: unqualified type_ctor")
 	).
 
 code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
@@ -712,18 +712,18 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	->
 		Tag = single_functor
 	;
-			% Use the type to determine the type_id
-		( type_to_type_id(Type, TypeId0, _) ->
-			TypeId = TypeId0
+			% Use the type to determine the type_ctor
+		( type_to_ctor_and_args(Type, TypeCtor0, _) ->
+			TypeCtor = TypeCtor0
 		;
 			% the type-checker should ensure that this never happens
 			error("code_util__cons_id_to_tag: invalid type")
 		),
 
-			% Given the type_id, lookup up the constructor tag
+			% Given the type_ctor, lookup up the constructor tag
 			% table for that type
 		module_info_types(ModuleInfo, TypeTable),
-		map__lookup(TypeTable, TypeId, TypeDefn),
+		map__lookup(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		(
 			TypeBody = du_type(_, ConsTable0, _, _)

@@ -707,7 +707,7 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
-	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
+	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, Typector);
 	% for each type_ctor_info defined in this module.
 
 :- pred output_c_data_init_list(list(comp_gen_c_data)::in,
@@ -3004,8 +3004,9 @@ output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, N0, N) -->
 		output_data_addr_storage_type_name(ModuleName, DataVarName, no,
 			LaterIndent)
 	;
-		{ DataAddr = rtti_addr(RttiTypeId, RttiVarName) },
-		output_rtti_addr_storage_type_name(RttiTypeId, RttiVarName, no)
+		{ DataAddr = rtti_addr(RttiTypector, RttiVarName) },
+		output_rtti_addr_storage_type_name(RttiTypector, RttiVarName,
+			no)
 	;
 		{ DataAddr = layout_addr(LayoutName) },
 		output_layout_name_storage_type_name(LayoutName, no)
@@ -3407,8 +3408,8 @@ output_data_addrs([DataAddr | DataAddrs]) -->
 
 output_data_addr(data_addr(ModuleName, DataName)) -->
 	output_data_addr(ModuleName, DataName).
-output_data_addr(rtti_addr(RttiTypeId, RttiName)) -->
-	output_rtti_addr(RttiTypeId, RttiName).
+output_data_addr(rtti_addr(RttiTypeCtor, RttiName)) -->
+	output_rtti_addr(RttiTypeCtor, RttiName).
 output_data_addr(layout_addr(LayoutName)) -->
 	output_layout_name(LayoutName).
 

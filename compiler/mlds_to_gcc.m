@@ -2062,7 +2062,7 @@ build_pseudo_type_info_type(type_var(_), _) -->
 	{ error("mlds_rtti_type: type_var") }.
 build_pseudo_type_info_type(type_ctor_info(_), GCC_Type) -->
 	build_rtti_type(type_ctor_info, no_size, GCC_Type).
-build_pseudo_type_info_type(type_info(_TypeId, ArgTypes), GCC_Type) -->
+build_pseudo_type_info_type(type_info(_TypeCtor, ArgTypes), GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
 	% typedef struct {
 	%     MR_TypeCtorInfo     MR_pti_type_ctor_info;
@@ -2077,7 +2077,7 @@ build_pseudo_type_info_type(type_info(_TypeId, ArgTypes), GCC_Type) -->
 		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
 		 MR_PseudoTypeInfoArray	- "MR_pti_first_order_arg_pseudo_typeinfos"],
 		GCC_Type).
-build_pseudo_type_info_type(higher_order_type_info(_TypeId, _Arity,
+build_pseudo_type_info_type(higher_order_type_info(_TypeCtor, _Arity,
 		ArgTypes), GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
 	% struct NAME {							\
@@ -2262,10 +2262,10 @@ build_data_name(var(Name)) = MangledName :-
 	llds_out__name_mangle(ml_var_name_to_string(Name), MangledName).
 build_data_name(common(Num)) =
 	string__format("common_%d", [i(Num)]).
-build_data_name(rtti(RttiTypeId0, RttiName0)) = RttiAddrName :-
-	RttiTypeId = fixup_rtti_type_id(RttiTypeId0),
+build_data_name(rtti(RttiTypeCtor0, RttiName0)) = RttiAddrName :-
+	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
 	RttiName = fixup_rtti_name(RttiName0),
-	rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName).
+	rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName).
 build_data_name(base_typeclass_info(ClassId, InstanceStr)) = Name :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
 		Name).
@@ -2288,36 +2288,36 @@ build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
 	% XXX sometimes earlier stages of the compiler forget to add
 	% the appropriate qualifiers for stuff in the `builtin' module;
 	% we fix that here.
-:- func fixup_rtti_type_id(rtti_type_id) = rtti_type_id.
-fixup_rtti_type_id(RttiTypeId0) = RttiTypeId :-
+:- func fixup_rtti_type_ctor(rtti_type_ctor) = rtti_type_ctor.
+fixup_rtti_type_ctor(RttiTypeCtor0) = RttiTypeCtor :-
 	(
-		RttiTypeId0 = rtti_type_id(ModuleName0, Name, Arity),
+		RttiTypeCtor0 = rtti_type_ctor(ModuleName0, Name, Arity),
 		ModuleName0 = unqualified("")
 	->
 		ModuleName = unqualified("builtin"),
-		RttiTypeId = rtti_type_id(ModuleName, Name, Arity)
+		RttiTypeCtor = rtti_type_ctor(ModuleName, Name, Arity)
 	;
-		RttiTypeId = RttiTypeId0
+		RttiTypeCtor = RttiTypeCtor0
 	).
 
 :- func fixup_rtti_name(rtti_name) = rtti_name.
-fixup_rtti_name(RttiTypeId0) = RttiTypeId :-
+fixup_rtti_name(RttiTypeCtor0) = RttiTypeCtor :-
 	(
-		RttiTypeId0 = pseudo_type_info(PseudoTypeInfo0)
+		RttiTypeCtor0 = pseudo_type_info(PseudoTypeInfo0)
 	->
-		RttiTypeId = pseudo_type_info(
+		RttiTypeCtor = pseudo_type_info(
 			fixup_pseudo_type_info(PseudoTypeInfo0))
 	;
-		RttiTypeId = RttiTypeId0
+		RttiTypeCtor = RttiTypeCtor0
 	).
 
 :- func fixup_pseudo_type_info(pseudo_type_info) = pseudo_type_info.
 fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 	(
-		PseudoTypeInfo0 = type_ctor_info(RttiTypeId0)
+		PseudoTypeInfo0 = type_ctor_info(RttiTypeCtor0)
 	->
 		PseudoTypeInfo = type_ctor_info(
-			fixup_rtti_type_id(RttiTypeId0))
+			fixup_rtti_type_ctor(RttiTypeCtor0))
 	;
 		PseudoTypeInfo = PseudoTypeInfo0
 	).

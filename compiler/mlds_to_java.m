@@ -1390,7 +1390,6 @@ output_func(Indent, Name, CtorData, Context, Signature, MaybeBody)
 		io__write_string("}\n")	% end the function
 	).
 
-
 :- pred output_func_decl(indent, qualified_entity_name, ctor_data,
 		mlds__context, func_params, io__state, io__state).
 :- mode output_func_decl(in, in, in, in, in, di, uo) is det.
@@ -1583,8 +1582,8 @@ output_mlds_var_name(var_name(Name, yes(Num))) -->
 % XXX Most of this code doesn't yet work/hasn't been implemented in the Java
 % backend.
 %
-output_data_name(rtti(RttiTypeId, RttiName)) -->
-	{ rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName) },
+output_data_name(rtti(RttiTypeCtor, RttiName)) -->
+	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
 output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
         { llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
@@ -1701,8 +1700,8 @@ output_mercury_type(Type, TypeCategory) -->
 :- mode output_mercury_user_type(in, in, di, uo) is det.
 
 output_mercury_user_type(Type, TypeCategory) -->
-	( { type_to_type_id(Type, TypeId, _ArgsTypes) } ->
-		{ ml_gen_type_name(TypeId, ClassName, ClassArity) },
+	( { type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) } ->
+		{ ml_gen_type_name(TypeCtor, ClassName, ClassArity) },
 		( { TypeCategory = enum_type } ->
 			{ MLDS_Type = mlds__class_type(ClassName,
 				ClassArity, mlds__enum) }

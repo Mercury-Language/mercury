@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,30 +81,30 @@ convert_pseudo(Pseudo, Rval, LldsType, C0, C) :-
 		LldsType = integer,
 		C = C0
 	;
-		Pseudo = type_ctor_info(RttiTypeId),
-		DataAddr = rtti_addr(RttiTypeId, pseudo_type_info(Pseudo)),
+		Pseudo = type_ctor_info(RttiTypeCtor),
+		DataAddr = rtti_addr(RttiTypeCtor, pseudo_type_info(Pseudo)),
 		Rval = const(data_addr_const(DataAddr)),
 		LldsType = data_ptr,
 		C = C0
 	;
-		Pseudo = type_info(RttiTypeId, Args),
-		convert_compound_pseudo(RttiTypeId, [], Args, Rval, LldsType,
+		Pseudo = type_info(RttiTypeCtor, Args),
+		convert_compound_pseudo(RttiTypeCtor, [], Args, Rval, LldsType,
 			C0, C)
 	;
-		Pseudo = higher_order_type_info(RttiTypeId, Arity, Args),
+		Pseudo = higher_order_type_info(RttiTypeCtor, Arity, Args),
 		ArityArg = yes(const(int_const(Arity))),
-		convert_compound_pseudo(RttiTypeId, [ArityArg], Args, Rval,
+		convert_compound_pseudo(RttiTypeCtor, [ArityArg], Args, Rval,
 			LldsType, C0, C)
 	).
 
-:- pred convert_compound_pseudo(rtti_type_id, list(maybe(rval)),
+:- pred convert_compound_pseudo(rtti_type_ctor, list(maybe(rval)),
 		list(pseudo_type_info), rval, llds_type, counter, counter).
 :- mode convert_compound_pseudo(in, in, in, out, out, in, out) is det.
 
-convert_compound_pseudo(RttiTypeId, ArgRvals0, Args,
+convert_compound_pseudo(RttiTypeCtor, ArgRvals0, Args,
 		Rval, LldsType, C0, C) :-
-	TypeCtorInfoPseudo = pseudo_type_info(type_ctor_info(RttiTypeId)),
-	TypeCtorInfoDataAddr = rtti_addr(RttiTypeId, TypeCtorInfoPseudo),
+	TypeCtorInfoPseudo = pseudo_type_info(type_ctor_info(RttiTypeCtor)),
+	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoPseudo),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
 	counter__allocate(CNum, C0, C1),

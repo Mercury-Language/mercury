@@ -407,9 +407,9 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 	ml_gen_type(VarType, MLDS_VarType),
 	{ ModuleName = fixup_builtin_module(ModuleName0) },
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
+	{ RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity) },
 	{ DataAddr = data_addr(MLDS_Module,
-		rtti(RttiTypeId, type_ctor_info)) },
+		rtti(RttiTypeCtor, type_ctor_info)) },
 	{ Rval = unop(cast(MLDS_VarType),
 			const(data_addr_const(DataAddr))) }.
 
@@ -476,11 +476,11 @@ ml_gen_constant(pred_closure_tag(_, _, _), _, _) -->
 ml_gen_reserved_address(_, null_pointer, MLDS_Type) = const(null(MLDS_Type)).
 ml_gen_reserved_address(_, small_pointer(Int), MLDS_Type) =
 		unop(cast(MLDS_Type), const(int_const(Int))).
-ml_gen_reserved_address(ModuleInfo, reserved_object(TypeId, QualCtorName,
+ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
 		CtorArity), _Type) = Rval :-
 	( QualCtorName = qualified(ModuleName, CtorName) ->
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-		TypeId = TypeName - TypeArity,
+		TypeCtor = TypeName - TypeArity,
 		unqualify_name(TypeName, UnqualTypeName),
 		MLDS_TypeName = mlds__append_class_qualifier(MLDS_ModuleName,
 			UnqualTypeName, TypeArity),
@@ -833,11 +833,16 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 			UsesBaseClass = no,
 			MaybeConsId = yes(ConsId),
 			ConsId = cons(CtorSymName, CtorArity),
-			( MLDS_Type = mlds__class_type(QualTypeName,
-				TypeArity, _)
-			; MLDS_Type = mercury_type(MercuryType, user_type, _),
-			  type_to_type_id(MercuryType, TypeId, _ArgsTypes),
-			  ml_gen_type_name(TypeId, QualTypeName, TypeArity)
+			(
+				MLDS_Type = mlds__class_type(QualTypeName,
+					TypeArity, _)
+			;
+				MLDS_Type = mercury_type(MercuryType,
+					user_type, _),
+				type_to_ctor_and_args(MercuryType, TypeCtor,
+					_ArgsTypes),
+				ml_gen_type_name(TypeCtor, QualTypeName,
+					TypeArity)
 			)
 		->
 			% If so, append the name of the derived class to
@@ -859,9 +864,9 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 			% declarating static constants we want just the
 			% class type, not the pointer type.
 			MLDS_Type = mercury_type(MercuryType, user_type, _),
-			type_to_type_id(MercuryType, TypeId, _ArgsTypes)
+			type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes)
 		->
-			ml_gen_type_name(TypeId, ClassName, ClassArity),
+			ml_gen_type_name(TypeCtor, ClassName, ClassArity),
 			ConstType = mlds__class_type(ClassName, ClassArity,
 				mlds__class)
 		;
@@ -950,9 +955,9 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
 		CtorId = cons(_, _),
 		\+ is_introduced_type_info_type(Type)
 	->
-			% Use the type to determine the type_id
-		( type_to_type_id(Type, TypeId0, _) ->
-			TypeId = TypeId0
+			% Use the type to determine the type_ctor
+		( type_to_ctor_and_args(Type, TypeCtor0, _) ->
+			TypeCtor = TypeCtor0
 		;
 			% the type-checker should ensure that this never
 			% happens: the type for a ctor_id should never
@@ -961,9 +966,9 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
 				"cons_id_to_arg_types: invalid type")
 		),
 
-		% Given the type_id, lookup up the constructor
+		% Given the type_ctor, lookup up the constructor
 		(
-			type_util__get_cons_defn(ModuleInfo, TypeId, CtorId,
+			type_util__get_cons_defn(ModuleInfo, TypeCtor, CtorId,
 				ConsDefn)
 		->
 			ConsDefn = hlds_cons_defn(_, _, ConsArgDefns, _, _),
@@ -1854,12 +1859,12 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 	FieldName = "data_tag",
 
 	% Figure out the type name and arity
-	( type_to_type_id(Type, TypeId0, _) ->
-		TypeId = TypeId0
+	( type_to_ctor_and_args(Type, TypeCtor0, _) ->
+		TypeCtor = TypeCtor0
 	;
 		error("ml_gen_hl_tag_field_id: invalid type")
 	),
-	ml_gen_type_name(TypeId, qual(MLDS_Module, TypeName), TypeArity),
+	ml_gen_type_name(TypeCtor, qual(MLDS_Module, TypeName), TypeArity),
 
 	% Figure out whether this type has constructors both
 	% with and without secondary tags.  If so, then the
@@ -1867,7 +1872,7 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 	% derived from the base class for this type,
 	% rather than in the base class itself.
 	module_info_types(ModuleInfo, TypeTable),
-	TypeDefn = map__lookup(TypeTable, TypeId),
+	TypeDefn = map__lookup(TypeTable, TypeCtor),
 	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
 	( TypeDefnBody = du_type(Ctors, TagValues, _, _) ->
 		(
@@ -1907,9 +1912,9 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 
 ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 	(
-		type_to_type_id(Type, TypeId, _)
+		type_to_ctor_and_args(Type, TypeCtor, _)
 	->
-		ml_gen_type_name(TypeId, QualTypeName, TypeArity),
+		ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
 		QualTypeName = qual(MLDS_Module, TypeName),
 		TypeQualifier = mlds__append_class_qualifier(
 			MLDS_Module, TypeName, TypeArity),

@@ -1885,7 +1885,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
 	Args = [TypeInfoVar | SpecialPredArgs],
 	map__search(PredVars, TypeInfoVar,
 		constant(_TypeInfoConsId, TypeInfoVarArgs)),
-	type_to_type_id(SpecialPredType, _ - TypeArity, _),
+	type_to_ctor_and_args(SpecialPredType, _ - TypeArity, _),
 	( TypeArity = 0 ->
 		TypeInfoArgs = []
 	;
@@ -2100,11 +2100,11 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, Info0, Info) :-
 	    ProcId = ProcId0,
 	    Info = Info0
 	;
-	    type_to_type_id(Type, TypeId, _),
-	    special_pred_is_generated_lazily(ModuleInfo, TypeId),
+	    type_to_ctor_and_args(Type, TypeCtor, _),
+	    special_pred_is_generated_lazily(ModuleInfo, TypeCtor),
 	    (
 		SpecialId = compare,
-		unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
+		unify_proc__add_lazily_generated_compare_pred_decl(TypeCtor,
 			PredId, ModuleInfo0, ModuleInfo),
 		hlds_pred__initial_proc_id(ProcId)
 	    ;
@@ -2126,7 +2126,7 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, Info0, Info) :-
 		% added. This case shouldn't come up unless an optimization
 		% does reordering which requires rescheduling a conjunction.
 		%
-		unify_proc__add_lazily_generated_unify_pred(TypeId,
+		unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 			PredId, ModuleInfo0, ModuleInfo),
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	    ),

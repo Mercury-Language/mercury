@@ -248,7 +248,7 @@ collect_mq_info_2(pred_or_func(_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(Pragma), Info0, Info) :-
 	( Pragma = foreign_type(_, Type, SymName) ->
-		( type_to_type_id(Type, _ - Arity0, _) ->
+		( type_to_ctor_and_args(Type, _ - Arity0, _) ->
 			Arity = Arity0
 		;
 			Arity = 0
@@ -840,23 +840,23 @@ qualify_type_list([Type0 | Types0], [Type | Types], Info0, Info) -->
 qualify_type(term__variable(Var), term__variable(Var), Info, Info) --> [].
 qualify_type(Type0, Type, Info0, Info) -->
 	{ Type0 = term__functor(_, _, _) },
-	( { type_to_type_id(Type0, TypeId0, Args0) } ->
-		( { is_builtin_atomic_type(TypeId0) } ->
-			{ TypeId = TypeId0 },
+	( { type_to_ctor_and_args(Type0, TypeCtor0, Args0) } ->
+		( { is_builtin_atomic_type(TypeCtor0) } ->
+			{ TypeCtor = TypeCtor0 },
 			{ Info1 = Info0 }
-		; { type_id_is_higher_order(TypeId0, _, _) } ->
-			{ TypeId = TypeId0 },
+		; { type_ctor_is_higher_order(TypeCtor0, _, _) } ->
+			{ TypeCtor = TypeCtor0 },
 			{ Info1 = Info0 }
-		; { type_id_is_tuple(TypeId0) } ->
-			{ TypeId = TypeId0 },
+		; { type_ctor_is_tuple(TypeCtor0) } ->
+			{ TypeCtor = TypeCtor0 },
 			{ Info1 = Info0 }
 		;
 			{ mq_info_get_types(Info0, Types) },
-			find_unique_match(TypeId0, TypeId, Types,
+			find_unique_match(TypeCtor0, TypeCtor, Types,
 						type_id, Info0, Info1)
 		),
 		qualify_type_list(Args0, Args, Info1, Info2),
-		{ construct_type(TypeId, Args, Type) }	
+		{ construct_type(TypeCtor, Args, Type) }	
 	;
 		{ mq_info_get_error_context(Info0, ErrorContext) },
 		report_invalid_type(Type0, ErrorContext),
@@ -1399,10 +1399,10 @@ report_invalid_type(Type, ErrorContext - Context) -->
 
 %-----------------------------------------------------------------------------%
 
-	% is_builtin_atomic_type(TypeId)
-	%	is true iff 'TypeId' is the type_id of a builtin atomic type
+	% is_builtin_atomic_type(TypeCtor)
+	%	is true iff 'TypeCtor' is the type_ctor of a builtin atomic type
 
-:- pred is_builtin_atomic_type(type_id).
+:- pred is_builtin_atomic_type(type_ctor).
 :- mode is_builtin_atomic_type(in) is semidet.
 
 is_builtin_atomic_type(unqualified("int") - 0).

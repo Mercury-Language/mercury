@@ -248,13 +248,13 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 			{ NameItem = Item },
 			{ BodyItem = Item }
 		),
-		{ TypeId = Name - list__length(Args) },
+		{ TypeCtor = Name - list__length(Args) },
 		GatheredItems0 =^ gathered_items,
 		{ recompilation_version__add_gathered_item(NameItem,
-			item_id((type), TypeId), ItemContext,
+			item_id((type), TypeCtor), ItemContext,
 			yes, GatheredItems0, GatheredItems1) },
 		{ recompilation_version__add_gathered_item(BodyItem,
-			item_id(type_body, TypeId), ItemContext,
+			item_id(type_body, TypeCtor), ItemContext,
 			yes, GatheredItems1, GatheredItems) },
 		^ gathered_items := GatheredItems
 	;

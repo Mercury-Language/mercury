@@ -816,10 +816,10 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _), Var, Context,
 	{ clauses_info_vartypes(ClausesInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
 	(
-		{ type_to_type_id(Type, TypeId, _) }
+		{ type_to_ctor_and_args(Type, TypeCtor, _) }
 	->
 		{ module_info_types(Module0, Types) },
-		{ map__lookup(Types, TypeId, TypeDefn) },
+		{ map__lookup(Types, TypeCtor, TypeDefn) },
 		{ hlds_data__get_type_defn_status(TypeDefn, TypeStatus) },
 		(
 			{ is_defined_in_implementation_section(TypeStatus,
@@ -831,7 +831,7 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _), Var, Context,
 			{ Module = Module0 }
 		)
 	;
-		{ error("assertion__in_interface_check_unify_rhs: type_to_type_id failed.") }
+		{ error("assertion__in_interface_check_unify_rhs: type_to_ctor_and_args failed.") }
 	).
 assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,Goal),
 		_Var, _Context, PredInfo, Module0, Module) -->

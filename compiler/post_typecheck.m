@@ -1186,8 +1186,8 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		VarSet = VarSet0,
 		(
 			ConsId0 = cons(Name0, Arity),
-			type_to_type_id(TypeOfX, TypeIdOfX, _),
-			TypeIdOfX = qualified(TypeModule, _) - _
+			type_to_ctor_and_args(TypeOfX, TypeCtorOfX, _),
+			TypeCtorOfX = qualified(TypeModule, _) - _
 		->
 			unqualify_name(Name0, Name),
 			ConsId = cons(qualified(TypeModule, Name), Arity)	
@@ -1207,18 +1207,18 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 :- mode find_matching_constructor(in, in, in, in, in) is semidet.
 
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
-	type_to_type_id(Type, TypeId, _),
+	type_to_ctor_and_args(Type, TypeCtor, _),
 	module_info_ctors(ModuleInfo, ConsTable),
 	map__search(ConsTable, ConsId, ConsDefns),
 	list__member(ConsDefn, ConsDefns),
 
 	% Overloading resolution ignores the class constraints.
 	ConsDefn = hlds_cons_defn(ConsExistQVars, _,
-			ConsArgs, ConsTypeId, _),
-	ConsTypeId = TypeId,
+			ConsArgs, ConsTypeCtor, _),
+	ConsTypeCtor = TypeCtor,
 
 	module_info_types(ModuleInfo, Types),
-	map__search(Types, TypeId, TypeDefn),
+	map__search(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
 
 	assoc_list__values(ConsArgs, ConsArgTypes),
@@ -1432,11 +1432,11 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
 	),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 	term__term_list_to_var_list(TypeParams, TypeDefnArgs),
-	( type_to_type_id(TermType, _, TypeArgs) ->
+	( type_to_ctor_and_args(TermType, _, TypeArgs) ->
 		map__from_corresponding_lists(TypeDefnArgs, TypeArgs, TSubst)
 	;
 		error(
-	"get_cons_id_arg_types_adding_existq_tvars: type_to_type_id failed")
+	"get_cons_id_arg_types_adding_existq_tvars: type_to_ctor_and_args failed")
 
 	),
 	term__apply_substitution_to_list(ArgTypes1, TSubst, ArgTypes).
@@ -1466,14 +1466,14 @@ split_list_at_index(Index, List, Before, At, After) :-
 
 get_constructor_containing_field(ModuleInfo, TermType, FieldName,
 		ConsId, FieldNumber) :-
-	( type_to_type_id(TermType, TermTypeId0, _) ->
-		TermTypeId = TermTypeId0
+	( type_to_ctor_and_args(TermType, TermTypeCtor0, _) ->
+		TermTypeCtor = TermTypeCtor0
 	;
 		error(
-		"get_constructor_containing_field: type_to_type_id failed")
+		"get_constructor_containing_field: type_to_ctor_and_args failed")
 	),
 	module_info_types(ModuleInfo, Types),
-	map__lookup(Types, TermTypeId, TermTypeDefn),
+	map__lookup(Types, TermTypeCtor, TermTypeDefn),
 	hlds_data__get_type_defn_body(TermTypeDefn, TermTypeBody),
 	( TermTypeBody = du_type(Ctors, _, _, _) ->
 		get_constructor_containing_field_2(Ctors, FieldName, ConsId,

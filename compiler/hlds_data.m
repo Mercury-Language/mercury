@@ -75,7 +75,7 @@
 			list(constructor_arg),	% The field names and types of
 						% the arguments of this functor
 						% (if any)
-			type_id,		% The result type, i.e. the
+			type_ctor,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
 			prog_context		% The location of this
@@ -91,7 +91,7 @@
 	---> hlds_ctor_field_defn(
 		prog_context,	% context of the field definition
 		import_status,
-		type_id,	% type containing the field
+		type_ctor,	% type containing the field
 		cons_id,	% constructor containing the field
 		int		% argument number (counting from 1)
 	).
@@ -143,14 +143,14 @@
 :- mode make_functor_cons_id(in, in, out) is det.
 
 	% Another way of making a cons_id from a functor.
-	% Given the name, argument types, and type_id of a functor,
+	% Given the name, argument types, and type_ctor of a functor,
 	% create a cons_id for that functor.
 
-:- pred make_cons_id(sym_name, list(constructor_arg), type_id, cons_id).
+:- pred make_cons_id(sym_name, list(constructor_arg), type_ctor, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
 
 	% Another way of making a cons_id from a functor.
-	% Given the name, argument types, and type_id of a functor,
+	% Given the name, argument types, and type_ctor of a functor,
 	% create a cons_id for that functor.
 	%
 	% Differs from make_cons_id in that (a) it requires the sym_name
@@ -217,7 +217,7 @@ make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
-make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
+make_cons_id(SymName0, Args, TypeCtor, cons(SymName, Arity)) :-
 	% Use the module qualifier on the SymName, if there is one,
 	% otherwise use the module qualifier on the Type, if there is one,
 	% otherwise leave it unqualified.
@@ -228,10 +228,10 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 	;
 		SymName0 = unqualified(ConsName),
 		(
-			TypeId = unqualified(_) - _,
+			TypeCtor = unqualified(_) - _,
 			SymName = SymName0
 		;
-			TypeId = qualified(TypeModule, _) - _,
+			TypeCtor = qualified(TypeModule, _) - _,
 			SymName = qualified(TypeModule, ConsName)
 		)
 	),
@@ -247,7 +247,7 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 	% The symbol table for types.
 
-:- type type_table	==	map(type_id, hlds_type_defn).
+:- type type_table	==	map(type_ctor, hlds_type_defn).
 
 	% This is how type, modes and constructors are represented.
 	% The parts that are not defined here (i.e. type_param, constructor,
@@ -432,7 +432,7 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	;	small_pointer(int)
 			% This is for constants which are represented as a
 			% small integer, cast to a pointer.
-	;	reserved_object(type_id, sym_name, arity).
+	;	reserved_object(type_ctor, sym_name, arity).
 			% This is for constants which are represented as the
 			% address of a specially reserved global variable.
 
@@ -453,7 +453,7 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 			(type)			% Argument type.
 		).
 
-:- type no_tag_type_table == map(type_id, no_tag_type).
+:- type no_tag_type_table == map(type_ctor, no_tag_type).
 
 
 	% Return the primary tag, if any, for a cons_tag.

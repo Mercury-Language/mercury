@@ -1124,11 +1124,9 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 	ModuleInfo = TableInfo0 ^ table_module_info,
 
 	( TypeCat = enum_type ->
-		(
-			type_to_type_id(Type, TypeId, _)
-		->
+		( type_to_ctor_and_args(Type, TypeCtor, _) ->
 			module_info_types(ModuleInfo, TypeDefnTable),
-			map__lookup(TypeDefnTable, TypeId, TypeDefn),
+			map__lookup(TypeDefnTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			(
 				TypeBody = du_type(Ctors, _, yes, no)

@@ -308,13 +308,13 @@ switch_util__type_range(char_type, _, _, MinChar, MaxChar) :-
 	char__min_char_value(MinChar),
 	char__max_char_value(MaxChar).
 switch_util__type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
-	( type_to_type_id(Type, TypeId0, _) ->
-		TypeId = TypeId0
+	( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
+		TypeCtor = TypeCtorPrime
 	;
 		error("dense_switch__type_range: invalid enum type?")
 	),
 	module_info_types(ModuleInfo, TypeTable),
-	map__lookup(TypeTable, TypeId, TypeDefn),
+	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	( TypeBody = du_type(_, ConsTable, _, _) ->
 		map__count(ConsTable, TypeRange),
@@ -329,13 +329,13 @@ switch_util__type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
 	% of the given variable.
 
 switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
-	( type_to_type_id(Type, TypeIdPrime, _) ->
-		TypeId = TypeIdPrime
+	( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
+		TypeCtor = TypeCtorPrime
 	;
 		error("unknown type in switch_util__get_ptag_counts")
 	),
 	module_info_types(ModuleInfo, TypeTable),
-	map__lookup(TypeTable, TypeId, TypeDefn),
+	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
 	( Body = du_type(_, ConsTable, _, _) ->
 		map__to_assoc_list(ConsTable, ConsList),

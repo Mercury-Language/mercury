@@ -387,8 +387,8 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 	;
 		{ error("unify_gen: type-info constant has args") }
 	),
-	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, _, _, empty) -->
@@ -1006,8 +1006,8 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 :- pred unify_gen__var_type_msg((type)::in, string::out) is det.
 
 unify_gen__var_type_msg(Type, Msg) :-
-	( type_to_type_id(Type, TypeId, _) ->
-		TypeId = TypeSym - TypeArity,
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
+		TypeCtor = TypeSym - TypeArity,
 		prog_out__sym_name_to_string(TypeSym, TypeSymStr),
 		string__int_to_string(TypeArity, TypeArityStr),
 		string__append_list([TypeSymStr, "/", TypeArityStr], Msg)

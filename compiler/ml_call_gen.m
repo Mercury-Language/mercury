@@ -790,13 +790,14 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 		% to the concrete instance.  Also when converting to 
 		% array(T) from array(X) we should cast to array(T).
 		%
-		{ type_to_type_id(SourceType, SourceTypeId, SourceTypeArgs) },
-		{ type_to_type_id(DestType, DestTypeId, DestTypeArgs) },
+		{ type_to_ctor_and_args(SourceType, SourceTypeCtor,
+			SourceTypeArgs) },
+		{ type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs) },
 		( 
-			{ type_id_is_array(SourceTypeId) },
+			{ type_ctor_is_array(SourceTypeCtor) },
 			{ SourceTypeArgs = [term__variable(_)] }
 		;
-			{ type_id_is_array(DestTypeId) },
+			{ type_ctor_is_array(DestTypeCtor) },
 			{ DestTypeArgs = [term__variable(_)] }
 		)
 	->

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -292,9 +292,9 @@ common__find_matching_cell_2([Struct | Structs], Var, ConsId, ArgVars,
 :- mode common__compatible_types(in, in) is semidet.
 
 common__compatible_types(Type1, Type2) :-
-	type_to_type_id(Type1, TypeId1, _),
-	type_to_type_id(Type2, TypeId2, _),
-	TypeId1 = TypeId2.
+	type_to_ctor_and_args(Type1, TypeCtor1, _),
+	type_to_ctor_and_args(Type2, TypeCtor2, _),
+	TypeCtor1 = TypeCtor2.
 
 %---------------------------------------------------------------------------%
 
@@ -684,9 +684,9 @@ common__generate_assign(ToVar, FromVar, UniMode,
 
 common__types_match_exactly(term__variable(Var), term__variable(Var)).
 common__types_match_exactly(Type1, Type2) :-
-	type_to_type_id(Type1, TypeId1, Args1),
-	type_to_type_id(Type2, TypeId2, Args2),
-	TypeId1 = TypeId2,
+	type_to_ctor_and_args(Type1, TypeCtor1, Args1),
+	type_to_ctor_and_args(Type2, TypeCtor2, Args2),
+	TypeCtor1 = TypeCtor2,
 	common__types_match_exactly_list(Args1, Args2).
 
 :- pred common__types_match_exactly_list(list(type), list(type)).

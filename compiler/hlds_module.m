@@ -57,7 +57,7 @@
 
 :- type type_ctor_gen_info
 	--->	type_ctor_gen_info(
-			type_id,
+			type_ctor,
 			module_name,	% module name
 			string,		% type name
 			int,		% type arity
@@ -422,7 +422,7 @@
 	pred_proc_id, pred_info, proc_info, module_info).
 :- mode module_info_set_pred_proc_info(in, in, in, in, out) is det.
 
-:- pred module_info_typeids(module_info, list(type_id)).
+:- pred module_info_typeids(module_info, list(type_ctor)).
 :- mode module_info_typeids(in, out) is det.
 
 :- pred module_info_instids(module_info, list(inst_id)).
@@ -805,9 +805,9 @@ module_info_set_pred_proc_info(MI0, PredId, ProcId, PredInfo0, ProcInfo, MI) :-
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 	module_info_set_pred_info(MI0, PredId, PredInfo, MI).
 
-module_info_typeids(MI, TypeIds) :-
+module_info_typeids(MI, TypeCtors) :-
 	module_info_types(MI, Types),
-	map__keys(Types, TypeIds).
+	map__keys(Types, TypeCtors).
 
 module_info_instids(MI, InstIds) :-
 	module_info_insts(MI, InstTable),

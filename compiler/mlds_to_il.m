@@ -1239,8 +1239,8 @@ mangle_dataname(var(MLDSVarName))
 	= mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int))
 	= string__format("common_%s", [i(Int)]).
-mangle_dataname(rtti(RttiTypeId, RttiName)) = MangledName :-
-	rtti__addr_to_string(RttiTypeId, RttiName, MangledName).
+mangle_dataname(rtti(RttiTypeCtor, RttiName)) = MangledName :-
+	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
 mangle_dataname(base_typeclass_info(ClassId, InstanceStr)) = MangledName :-
         llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
 		MangledName).
@@ -3030,13 +3030,13 @@ mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
 
 :- func mercury_type_to_highlevel_class_type(mercury_type) = ilds__type.
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
-	( type_to_type_id(MercuryType, TypeId, _Args) ->
-		ml_gen_type_name(TypeId, ClassName, Arity),
+	( type_to_ctor_and_args(MercuryType, TypeCtor, _Args) ->
+		ml_gen_type_name(TypeCtor, ClassName, Arity),
 		ILType = ilds__type([], class(
 			mlds_class_name_to_ilds_class_name(ClassName, Arity)
 			))
 	;
-		unexpected(this_file, "type_to_type_id failed")
+		unexpected(this_file, "type_to_ctor_and_args failed")
 	).
 
 :- func mlds_class_name_to_ilds_class_name(mlds__class, arity) =
@@ -3266,14 +3266,16 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 		SymName = qualified(qualified(unqualified("mercury"),
 			LibModuleName0), wrapper_class_name),
 		(
-			DataName = rtti(RttiTypeId, RttiName),
-			RttiTypeId = rtti_type_id(_, Name, Arity),
+			DataName = rtti(RttiTypeCtor, RttiName),
+			RttiTypeCtor = rtti_type_ctor(_, Name, Arity),
 
 			% Only the type_ctor_infos for the following
 			% RTTI names are defined in MC++.
-			( RttiName = type_ctor_info
-			; RttiName = pseudo_type_info(PseudoTypeInfo),
-				PseudoTypeInfo = type_ctor_info(RttiTypeId)
+			(
+				RttiName = type_ctor_info
+			;
+				RttiName = pseudo_type_info(PseudoTypeInfo),
+				PseudoTypeInfo = type_ctor_info(RttiTypeCtor)
 			),
 			( LibModuleName0 = "builtin",
 				( 
@@ -3326,8 +3328,8 @@ mangle_dataname(var(MLDSVarName), Name) :-
 	Name = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int), MangledName) :-
 	string__format("common_%s", [i(Int)], MangledName).
-mangle_dataname(rtti(RttiTypeId, RttiName), MangledName) :-
-	rtti__addr_to_string(RttiTypeId, RttiName, MangledName).
+mangle_dataname(rtti(RttiTypeCtor, RttiName), MangledName) :-
+	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
 mangle_dataname(base_typeclass_info(ClassId, InstanceStr), MangledName) :-
         llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
 		MangledName).

@@ -194,7 +194,7 @@
 			% foreign function name.
 	
 	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
-			maybe(list(mode)), type_subst, tvarset, set(type_id))
+			maybe(list(mode)), type_subst, tvarset, set(type_ctor))
 			% PredName, SpecializedPredName, Arity,
 			% PredOrFunc, Modes if a specific procedure was
 			% specified, type substitution (using the variable
@@ -770,9 +770,9 @@
 :- type type_param	==	term(tvar_type).
 
 	% Module qualified types are represented as ':'/2 terms.
-	% Use type_util:type_to_type_id to convert a type to a qualified
-	% type_id and a list of arguments.
-	% type_util:construct_type to construct a type from a type_id 
+	% Use type_util:type_to_ctor_and_args to convert a type to a qualified
+	% type_ctor and a list of arguments.
+	% type_util:construct_type to construct a type from a type_ctor 
 	% and a list of arguments.
 	%
 	% The `term__context's of the type terms must be empty (as
@@ -794,7 +794,7 @@
 					% used for sets of type variables
 :- type tsubst		==	map(tvar, type). % used for type substitutions
 
-:- type type_id		==	pair(sym_name, arity).
+:- type type_ctor	==	pair(sym_name, arity).
 
 	% existq_tvars is used to record the set of type variables which are
 	% existentially quantified

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,7 +337,7 @@ modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes) :-
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 	mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
 
-:- pred mode_to_arg_mode_2(module_info, mode, type, list(type_id), arg_mode).
+:- pred mode_to_arg_mode_2(module_info, mode, type, list(type_ctor), arg_mode).
 :- mode mode_to_arg_mode_2(in, in, in, in, out) is det.
 
 mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
@@ -353,8 +353,8 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
 		% is this a no_tag type?
 		type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
 		% avoid infinite recursion
-		type_to_type_id(Type, TypeId, _TypeArgs),
-		\+ list__member(TypeId, ContainingTypes)
+		type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
+		\+ list__member(TypeCtor, ContainingTypes)
 	->
 		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,
@@ -368,7 +368,7 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
 			FinalArgInst),
 		ModeOfArg = (InitialArgInst -> FinalArgInst),
 		mode_to_arg_mode_2(ModuleInfo, ModeOfArg, ArgType,
-			[TypeId | ContainingTypes], ArgMode)
+			[TypeCtor | ContainingTypes], ArgMode)
 	;
 		base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode)
 	).
@@ -875,10 +875,10 @@ propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 			BoundInst = functor(Functor, ArgInsts)
 		    ), BoundInsts0, BoundInsts)
 	;
-		type_to_type_id(Type, TypeId, TypeArgs),
-		TypeId = qualified(TypeModule, _) - _,
+		type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+		TypeCtor = qualified(TypeModule, _) - _,
 		module_info_types(ModuleInfo, TypeTable),
-		map__search(TypeTable, TypeId, TypeDefn),
+		map__search(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams0),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		TypeBody = du_type(Constructors, _, _, _)

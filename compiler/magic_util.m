@@ -617,7 +617,7 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 			- (FinalInst -> FinalInst)),
 		Test = unify(Var, var(OutputVar), UnifyMode,
 			Unification, unify_context(explicit, [])) - GoalInfo
-	; type_to_type_id(VarType, _TypeId, _ArgTypes) ->
+	; type_to_ctor_and_args(VarType, _TypeCtor, _ArgTypes) ->
 		% XXX for now we pretend that the unification is
 		% a simple test, since otherwise we would have to
 		% go through the rigmarole of creating type_info variables
@@ -635,7 +635,7 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 		%
 		module_info_get_special_pred_map(ModuleInfo,
 			SpecialPredMap),
-		map__lookup(SpecialPredMap, unify - TypeId, UniPredId),
+		map__lookup(SpecialPredMap, unify - TypeCtor, UniPredId),
 
 		% It had better be an in-in unification, since Aditi
 		% relations cannot have non-ground arguments. This is 
@@ -651,7 +651,7 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 		*/
 	;
 		error("magic_util__create_input_test_unifications: \
-			type_to_type_id failed")
+			type_to_ctor_and_args failed")
 	),
 	goal_info_get_nonlocals(CallInfo0, CallNonLocals0),
 	set__delete(CallNonLocals0, Var, CallNonLocals1),
@@ -1298,7 +1298,7 @@ magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 			Errors1, Errors)
 	).
 
-:- pred magic_util__traverse_type(bool::in, set(type_id)::in, (type)::in, 
+:- pred magic_util__traverse_type(bool::in, set(type_ctor)::in, (type)::in, 
 	set(argument_error)::in, set(argument_error)::out, 
 	magic_info::in, magic_info::out) is det.
 
@@ -1320,8 +1320,8 @@ magic_util__traverse_type(IsTopLevel, Parents, ArgType, Errors0, Errors) -->
 		)	
 	;
 		% The type is user-defined.
-		( { type_to_type_id(ArgType, TypeId, Args) } ->
-			magic_util__check_type_id(Parents, TypeId, 
+		( { type_to_ctor_and_args(ArgType, TypeCtor, Args) } ->
+			magic_util__check_type_ctor(Parents, TypeCtor, 
 				Errors0, Errors1),
 			list__foldl2(magic_util__traverse_type(no, Parents),
 				Args, Errors1, Errors)
@@ -1332,41 +1332,41 @@ magic_util__traverse_type(IsTopLevel, Parents, ArgType, Errors0, Errors) -->
 		)
 	).
 
-:- pred magic_util__check_type_id(set(type_id)::in, type_id::in, 
+:- pred magic_util__check_type_ctor(set(type_ctor)::in, type_ctor::in, 
 	set(argument_error)::in, set(argument_error)::out, 
 	magic_info::in, magic_info::out) is det.
 
-magic_util__check_type_id(Parents, TypeId, Errors0, Errors) -->
+magic_util__check_type_ctor(Parents, TypeCtor, Errors0, Errors) -->
 	magic_info_get_ok_types(OKTypes0),
 	magic_info_get_bad_types(BadTypes0),
-	( { set__member(TypeId, Parents) } ->
+	( { set__member(TypeCtor, Parents) } ->
 		{ Errors = Errors0 }
-	; { set__member(TypeId, OKTypes0) } ->
+	; { set__member(TypeCtor, OKTypes0) } ->
 		{ Errors = Errors0 }
-	; { map__search(BadTypes0, TypeId, TypeErrors) } ->
+	; { map__search(BadTypes0, TypeCtor, TypeErrors) } ->
 		{ set__union(Errors0, TypeErrors, Errors) }
 	;	
 		magic_info_get_module_info(ModuleInfo),
 		{ module_info_types(ModuleInfo, Types) },
-		{ map__lookup(Types, TypeId, TypeDefn) },
+		{ map__lookup(Types, TypeCtor, TypeDefn) },
 		{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 		{ set__init(NewErrors0) },
-		{ set__insert(Parents, TypeId, Parents1) },
+		{ set__insert(Parents, TypeCtor, Parents1) },
 		magic_util__check_type_defn(TypeBody, Parents1, 
 			NewErrors0, NewErrors),
 		( { set__empty(NewErrors) } ->
-			{ set__insert(OKTypes0, TypeId, OKTypes) },
+			{ set__insert(OKTypes0, TypeCtor, OKTypes) },
 			{ Errors = Errors0 },
 			magic_info_set_ok_types(OKTypes)
 		;
-			{ map__det_insert(BadTypes0, TypeId, 
+			{ map__det_insert(BadTypes0, TypeCtor, 
 				NewErrors, BadTypes) },
 			{ set__union(Errors0, NewErrors, Errors) },
 			magic_info_set_bad_types(BadTypes)
 		)
 	).
 
-:- pred magic_util__check_type_defn(hlds_type_body::in, set(type_id)::in,
+:- pred magic_util__check_type_defn(hlds_type_body::in, set(type_ctor)::in,
 		set(argument_error)::in, set(argument_error)::out, 
 		magic_info::in, magic_info::out) is det.
 
@@ -1380,7 +1380,7 @@ magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->
 magic_util__check_type_defn(foreign_type(_, _, _), _, _, _) -->
 	{ error("magic_util__check_type_defn: foreign_type") }.
 
-:- pred magic_util__check_ctor(set(type_id)::in, constructor::in, 
+:- pred magic_util__check_ctor(set(type_ctor)::in, constructor::in, 
 		set(argument_error)::in, set(argument_error)::out, 
 		magic_info::in, magic_info::out) is det.
 		
@@ -1459,9 +1459,9 @@ magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
 		magic_info::in, magic_info::out) is det.
 :- pred magic_info_get_errors(magic_errors::out,
 		magic_info::in, magic_info::out) is det.
-:- pred magic_info_get_ok_types(set(type_id)::out,
+:- pred magic_info_get_ok_types(set(type_ctor)::out,
 		magic_info::in, magic_info::out) is det.
-:- pred magic_info_get_bad_types(map(type_id, set(argument_error))::out,
+:- pred magic_info_get_bad_types(map(type_ctor, set(argument_error))::out,
 		magic_info::in, magic_info::out) is det.
 
 :- pred magic_info_set_module_info(module_info::in, magic_info::in,
@@ -1490,9 +1490,9 @@ magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
 		magic_info::in, magic_info::out) is det.
 :- pred magic_info_set_errors(magic_errors::in,
 		magic_info::in, magic_info::out) is det.
-:- pred magic_info_set_ok_types(set(type_id)::in,
+:- pred magic_info_set_ok_types(set(type_ctor)::in,
 		magic_info::in, magic_info::out) is det.
-:- pred magic_info_set_bad_types(map(type_id, set(argument_error))::in,
+:- pred magic_info_set_bad_types(map(type_ctor, set(argument_error))::in,
 		magic_info::in, magic_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1528,14 +1528,14 @@ magic_util__check_ctor(Parents, ctor(ExistQVars, _, _, CtorArgs),
 						% vars for which errors have
 						% been reported.
 			errors :: magic_errors,
-			ok_types :: set(type_id),	
-						% type_ids which are allowed
+			ok_types :: set(type_ctor),	
+						% type_ctors which are allowed
 						% as argument types of
 						% Aditi predicates. A type
 						% is ok if no part of it is
 						% higher-order or abstract.
-			bad_types :: map(type_id, set(argument_error))
-						% type_ids which are not ok
+			bad_types :: map(type_ctor, set(argument_error))
+						% type_ctors which are not ok
 						% as Aditi argument types.
 		).	
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2141,8 +2141,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 			CallUnifyContext = yes(call_unify_context(
 						Var, var(Var), UnifyContext)),
 			( 
-				type_to_type_id(VarType, TypeId, _TypeArgs),
-				TypeId = qualified(TypeModule, TypeName) -
+				type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
+				TypeCtor = qualified(TypeModule, TypeName) -
 						_TypeArity,
 				string__append(TypeName, "_init_any", PredName),
 				modes__build_call(TypeModule, PredName, [Var],

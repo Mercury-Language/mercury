@@ -577,8 +577,8 @@ non_foreign_type(Type) = mercury(Type).
 to_exported_type(ModuleInfo, Type) = ExportType :-
 	module_info_types(ModuleInfo, Types),
 	(
-		type_to_type_id(Type, TypeId, _),
-		map__search(Types, TypeId, TypeDefn)
+		type_to_ctor_and_args(Type, TypeCtor, _),
+		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		( Body = foreign_type(_, ForeignType, _) ->

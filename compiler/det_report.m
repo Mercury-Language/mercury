@@ -1216,10 +1216,10 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
 	io__write_string("unification for non-canonical type\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	( { type_to_type_id(Type, TypeId, _TypeArgs) } ->
-		hlds_out__write_type_id(TypeId)
+	( { type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) } ->
+		hlds_out__write_type_ctor(TypeCtor)
 	;
-		{ error("det_report_message: type_to_type_id failed") }
+		{ error("det_report_message: type_to_ctor_and_args failed") }
 	),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
@@ -1263,10 +1263,10 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
 	io__write_string("unification for non-canonical type\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	( { type_to_type_id(Type, TypeId, _TypeArgs) } ->
-		hlds_out__write_type_id(TypeId)
+	( { type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) } ->
+		hlds_out__write_type_ctor(TypeCtor)
 	;
-		{ error("det_report_message: type_to_type_id failed") }
+		{ error("det_report_message: type_to_ctor_and_args failed") }
 	),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),

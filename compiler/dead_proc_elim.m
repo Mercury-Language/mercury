@@ -176,7 +176,7 @@ dead_proc_elim__initialize_pragma_exports([PragmaProc | PragmaProcs],
 dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
-	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
+	TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
 		Arity, _Status, _HldsDefn, _Unify, _Compare),
 	(
 		% XXX: We'd like to do this, but there are problems.
@@ -330,7 +330,7 @@ dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
 dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 		[TypeCtorGenInfo | TypeCtorGenInfos], Refs) :-
 	(
-		TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName,
+		TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName,
 			TypeName, TypeArity, _Status, _HldsDefn,
 			MaybeUnify, MaybeCompare)
 	->
@@ -667,7 +667,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 		Needed, TypeCtorGenInfos) :-
 	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,	
 		TypeCtorGenInfos1),
-	TypeCtorGenInfo0 = type_ctor_gen_info(TypeId, ModuleName,
+	TypeCtorGenInfo0 = type_ctor_gen_info(TypeCtor, ModuleName,
 		TypeName, Arity, Status, HldsDefn,
 		_MaybeUnify, _MaybeCompare),
 	(
@@ -676,7 +676,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 	->
 		TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
 	;
-		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeId,
+		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeCtor,
 			ModuleName, TypeName, Arity, Status, HldsDefn,
 			no, no),
 		TypeCtorGenInfos = [NeuteredTypeCtorGenInfo |

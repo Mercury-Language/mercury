@@ -33,10 +33,10 @@
 :- pred ml_gen_types(module_info, mlds__defns, io__state, io__state).
 :- mode ml_gen_types(in, out, di, uo) is det.
 
-	% Given an HLDS type_id, generate the MLDS class name and arity
+	% Given an HLDS type_ctor, generate the MLDS class name and arity
 	% for the corresponding MLDS type.
 	%
-:- pred ml_gen_type_name(type_id, mlds__class, arity).
+:- pred ml_gen_type_name(type_ctor, mlds__class, arity).
 :- mode ml_gen_type_name(in, out, out) is det.
 
 	% Return the declaration flags appropriate for a type.
@@ -83,29 +83,29 @@ ml_gen_types(ModuleInfo, MLDS_TypeDefns) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 	( { HighLevelData = yes } ->
 		{ module_info_types(ModuleInfo, TypeTable) },
-		{ map__keys(TypeTable, TypeIds) },
+		{ map__keys(TypeTable, TypeCtors) },
 		{ list__foldl(ml_gen_type_defn(ModuleInfo, TypeTable),
-			TypeIds, [], MLDS_TypeDefns) }
+			TypeCtors, [], MLDS_TypeDefns) }
 	;
 		{ MLDS_TypeDefns = [] }
 	).
 
-:- pred ml_gen_type_defn(module_info, type_table, type_id,
+:- pred ml_gen_type_defn(module_info, type_table, type_ctor,
 		mlds__defns, mlds__defns).
 :- mode ml_gen_type_defn(in, in, in, in, out) is det.
 
-ml_gen_type_defn(ModuleInfo, TypeTable, TypeId, MLDS_Defns0, MLDS_Defns) :-
-	map__lookup(TypeTable, TypeId, TypeDefn),
+ml_gen_type_defn(ModuleInfo, TypeTable, TypeCtor, MLDS_Defns0, MLDS_Defns) :-
+	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_status(TypeDefn, Status),
 	( status_defined_in_this_module(Status, yes) ->
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-		ml_gen_type_2(TypeBody, ModuleInfo, TypeId, TypeDefn,
+		ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn,
 			MLDS_Defns0, MLDS_Defns)
 	;
 		MLDS_Defns = MLDS_Defns0
 	).
 
-:- pred ml_gen_type_2(hlds_type_body, module_info, type_id, hlds_type_defn,
+:- pred ml_gen_type_2(hlds_type_body, module_info, type_ctor, hlds_type_defn,
 		mlds__defns, mlds__defns).
 :- mode ml_gen_type_2(in, in, in, in, in, out) is det.
 
@@ -114,13 +114,13 @@ ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
 	% For a description of the problems with equivalence types,
 	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
 ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
-		ModuleInfo, TypeId, TypeDefn) -->
+		ModuleInfo, TypeCtor, TypeDefn) -->
 	{ ml_gen_equality_members(MaybeEqualityPred, MaybeEqualityMembers) },
 	( { IsEnum = yes } ->
-		ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
+		ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 			MaybeEqualityMembers)
 	;
-		ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn,
+		ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
 			Ctors, TagValues, MaybeEqualityMembers)
 	).
 	% XXX Fixme!  Same issues here as for eqv_type/1.
@@ -145,17 +145,17 @@ ml_gen_type_2(foreign_type(_, _, _), _, _, _) --> [].
 	% generator can treat it specially if need be (e.g. generating
 	% a C enum rather than a class).
 	%
-:- pred ml_gen_enum_type(type_id, hlds_type_defn, list(constructor),
+:- pred ml_gen_enum_type(type_ctor, hlds_type_defn, list(constructor),
 		cons_tag_values, mlds__defns, mlds__defns, mlds__defns).
 :- mode ml_gen_enum_type(in, in, in, in, in, in, out) is det.
 
-ml_gen_enum_type(TypeId, TypeDefn, Ctors, TagValues,
+ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 		MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
 	hlds_data__get_type_defn_context(TypeDefn, Context),
 	MLDS_Context = mlds__make_context(Context),
 
 	% generate the class name
-	ml_gen_type_name(TypeId, qual(_, MLDS_ClassName), MLDS_ClassArity),
+	ml_gen_type_name(TypeCtor, qual(_, MLDS_ClassName), MLDS_ClassArity),
 
 	% generate the class members
 	ValueMember = ml_gen_enum_value_member(Context),
@@ -296,23 +296,24 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%
 	%	};
 	%
+	%
 	% If there is only one constructor which is not represented
 	% as a reserved_object, then we don't generate a nested derived
 	% class for that constructor, instead we just allocate the fields
 	% in the base class.
 	%
-:- pred ml_gen_du_parent_type(module_info, type_id, hlds_type_defn,
+:- pred ml_gen_du_parent_type(module_info, type_ctor, hlds_type_defn,
 		list(constructor), cons_tag_values, mlds__defns,
 		mlds__defns, mlds__defns).
 :- mode ml_gen_du_parent_type(in, in, in, in, in, in, in, out) is det.
 
-ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
+ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 		MaybeEqualityMembers, MLDS_Defns0, MLDS_Defns) :-
 	hlds_data__get_type_defn_context(TypeDefn, Context),
 	MLDS_Context = mlds__make_context(Context),
 
 	% generate the class name
-	ml_gen_type_name(TypeId, QualBaseClassName, BaseClassArity),
+	ml_gen_type_name(TypeCtor, QualBaseClassName, BaseClassArity),
 	BaseClassId = mlds__class_type(QualBaseClassName, BaseClassArity,
 		mlds__class),
 	QualBaseClassName = qual(BaseClassModuleName, BaseClassName),

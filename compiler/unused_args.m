@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -932,13 +932,14 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 		(
 				% fix up special pred names
 			special_pred_get_type(Name0, ArgTypes0, Type),
-			type_to_type_id(Type, TypeId, _)
+			type_to_ctor_and_args(Type, TypeCtor, _)
 		->
-			type_util__type_id_module(ModuleInfo,
-				TypeId, TypeModule),
-			type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-			type_util__type_id_arity(ModuleInfo,
-				TypeId, TypeArity),
+			type_util__type_ctor_module(ModuleInfo,
+				TypeCtor, TypeModule),
+			type_util__type_ctor_name(ModuleInfo,
+				TypeCtor, TypeName),
+			type_util__type_ctor_arity(ModuleInfo,
+				TypeCtor, TypeArity),
 			string__int_to_string(TypeArity, TypeAr),
 			prog_out__sym_name_to_string(TypeModule,
 				TypeModuleString0),

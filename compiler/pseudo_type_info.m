@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 			% This represents a zero-arity type,
 			% i.e. a type constructor with no arguments.
 			%
-			rtti_type_id
+			rtti_type_ctor
 		)
 	;	type_info(
 			%
@@ -53,17 +53,17 @@
 			% i.e. a type constructor applied to some arguments.
 			% The argument list should not be empty.
 			%
-			rtti_type_id,
+			rtti_type_ctor,
 			list(pseudo_type_info)
 		)
 	;	higher_order_type_info(
 			%
 			% This represents a higher-order or tuple type.
-			% The rtti_type_id field will be pred/0,
+			% The rtti_type_ctor field will be pred/0,
 			% func/0 or tuple/0; the real arity is 
 			% given in the arity field.
 			%
-			rtti_type_id,
+			rtti_type_ctor,
 			arity,
 			list(pseudo_type_info)
 		)
@@ -82,14 +82,14 @@
 pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 		ExistQTvars, Pseudo) :-
 	(
-		type_to_type_id(Type, TypeId, TypeArgs0)
+		type_to_ctor_and_args(Type, TypeCtor, TypeArgs0)
 	->
 		(
 			% The argument to typeclass_info types is not
 			% a type - it encodes the class constraint.
 			% So we replace the argument with type `void'.
 			mercury_private_builtin_module(PrivateBuiltin),
-			TypeId = qualified(PrivateBuiltin, TName) - 1,
+			TypeCtor = qualified(PrivateBuiltin, TName) - 1,
 			( TName = "typeclass_info"
 			; TName = "base_typeclass_info"
 			)
@@ -119,24 +119,26 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 		->
 			TypeModule = unqualified(""),
 			Arity = 0,
-			RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
-			TypeId = _QualTypeName - RealArity,
+			RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+				Arity),
+			TypeCtor = _QualTypeName - RealArity,
 			pseudo_type_info__generate_args(TypeArgs,
 				NumUnivQTvars, ExistQTvars, PseudoArgs),
-			Pseudo = higher_order_type_info(RttiTypeId, RealArity,
+			Pseudo = higher_order_type_info(RttiTypeCtor, RealArity,
 				PseudoArgs)
 		;
-			TypeId = QualTypeName - Arity,
+			TypeCtor = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
 			sym_name_get_module_name(QualTypeName, unqualified(""),
 					TypeModule),
-			RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
+			RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+				Arity),
 			pseudo_type_info__generate_args(TypeArgs,
 				NumUnivQTvars, ExistQTvars, PseudoArgs),
 			( PseudoArgs = [] ->
-				Pseudo = type_ctor_info(RttiTypeId)
+				Pseudo = type_ctor_info(RttiTypeCtor)
 			;
-				Pseudo = type_info(RttiTypeId, PseudoArgs)
+				Pseudo = type_info(RttiTypeCtor, PseudoArgs)
 			)
 		)
 	;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -404,8 +404,8 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	%
 	(
 		ConsId0 = cons(Name0, OrigArity),
-		type_to_type_id(TypeOfX, TypeId, _),
-		TypeId = qualified(TypeModule, _) - _
+		type_to_ctor_and_args(TypeOfX, TypeCtor, _),
+		TypeCtor = qualified(TypeModule, _) - _
 	->
 		unqualify_name(Name0, UnqualName),
 		Name = qualified(TypeModule, UnqualName),
@@ -949,11 +949,11 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		% procedure that will be used to implement this complicated
 		% unification.
 		%
-		type_to_type_id(Type, TypeId, _)
+		type_to_ctor_and_args(Type, TypeCtor, _)
 	->
 		mode_info_get_context(ModeInfo3, Context),
 		mode_info_get_instvarset(ModeInfo3, InstVarSet),
-		unify_proc__request_unify(TypeId - UniMode, InstVarSet,
+		unify_proc__request_unify(TypeCtor - UniMode, InstVarSet,
 			Det, Context, ModuleInfo3, ModuleInfo),
 		mode_info_set_module_info(ModeInfo3, ModuleInfo,
 			ModeInfo)

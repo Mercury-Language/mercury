@@ -1144,40 +1144,40 @@ stack_layout__construct_table_io_decl_arg_pti_rval(ClosureArg,
 :- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
 
 stack_layout__represent_live_value_type(succip, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "succip", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "succip", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(hp, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "hp", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "hp", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(curfr, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "curfr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "curfr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(maxfr, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "maxfr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "maxfr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(redofr, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "redofr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "redofr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(redoip, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "redoip", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "redoip", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(trail_ptr, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "trail_ptr", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "trail_ptr", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(ticket, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "ticket", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "ticket", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
-	{ RttiTypeId = rtti_type_id(unqualified(""), "unwanted", 0) },
-	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
+	{ RttiTypeCtor = rtti_type_ctor(unqualified(""), "unwanted", 0) },
+	{ DataAddr = rtti_addr(RttiTypeCtor, type_ctor_info) },
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		-->

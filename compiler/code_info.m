@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -790,13 +790,13 @@ code_info__variable_type(Var, Type) -->
 
 code_info__lookup_type_defn(Type, TypeDefn) -->
 	code_info__get_module_info(ModuleInfo),
-	{ type_to_type_id(Type, TypeIdPrime, _) ->
-		TypeId = TypeIdPrime
+	{ type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
+		TypeCtor = TypeCtorPrime
 	;
 		error("unknown type in code_info__lookup_type_defn")
 	},
 	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
+	{ map__lookup(TypeTable, TypeCtor, TypeDefn) }.
 
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),

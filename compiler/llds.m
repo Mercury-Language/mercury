@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -888,7 +888,7 @@
 :- type data_addr
 	--->	data_addr(module_name, data_name)
 			% module name; which var
-	;	rtti_addr(rtti_type_id, rtti_name)
+	;	rtti_addr(rtti_type_ctor, rtti_name)
 			% type id; which var
 	;	layout_addr(layout_name).
 

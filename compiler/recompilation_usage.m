@@ -55,10 +55,10 @@
 					% predicate or function
 		)
 	;	constructor(
-			item_name	% type_id
+			item_name	% type_ctor
 		)
 	;	field(
-			item_name,	% type_id
+			item_name,	% type_ctor
 			item_name	% cons_id
 		)
 	.
@@ -796,8 +796,8 @@ recompilation_usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	MatchingConstructors =
 		list__map(
 			(func(ConsDefn) = Ctor :-
-				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _),	
-				Ctor = constructor(TypeId)
+				ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),	
+				Ctor = constructor(TypeCtor)
 			),
 			ConsDefns),
 
@@ -826,9 +826,9 @@ recompilation_usage__find_matching_functors(ModuleInfo, SymName, Arity,
 		MatchingFields = list__map(
 			(func(FieldDefn) = FieldCtor :-
 				FieldDefn = hlds_ctor_field_defn(_, _,
-						TypeId, ConsId, _),
+						TypeCtor, ConsId, _),
 				( ConsId = cons(ConsName, ConsArity) ->
-					FieldCtor = field(TypeId,
+					FieldCtor = field(TypeCtor,
 						ConsName - ConsArity)
 				;	
 					error(
@@ -880,10 +880,10 @@ recompilation_usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 	item_name::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__find_items_used_by_item((type), TypeId) -->
+recompilation_usage__find_items_used_by_item((type), TypeCtor) -->
 	ModuleInfo =^ module_info,
 	{ module_info_types(ModuleInfo, Types) },
-	{ map__lookup(Types, TypeId, TypeDefn) },
+	{ map__lookup(Types, TypeCtor, TypeDefn) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 	( { TypeBody = eqv_type(Type) } ->
 		% If we use an equivalence type we also use the
@@ -892,10 +892,10 @@ recompilation_usage__find_items_used_by_item((type), TypeId) -->
 	;
 		[]
 	).
-recompilation_usage__find_items_used_by_item(type_body, TypeId) -->
+recompilation_usage__find_items_used_by_item(type_body, TypeCtor) -->
 	ModuleInfo =^ module_info,
 	{ module_info_types(ModuleInfo, Types) },
-	{ map__lookup(Types, TypeId, TypeDefn) },
+	{ map__lookup(Types, TypeCtor, TypeDefn) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 	recompilation_usage__find_items_used_by_type_body(TypeBody).
 recompilation_usage__find_items_used_by_item((mode), ModeId) -->
@@ -1180,10 +1180,10 @@ recompilation_usage__find_items_used_by_functor(Name, _Arity,
 	recompilation_usage__find_items_used_by_pred(PredOrFunc,
 		Name - PredArity, PredId - PredModule).
 recompilation_usage__find_items_used_by_functor(_, _,
-		constructor(TypeId)) -->
-	recompilation_usage__maybe_record_item_to_process(type_body, TypeId).
-recompilation_usage__find_items_used_by_functor(_, _, field(TypeId, _)) -->
-	recompilation_usage__maybe_record_item_to_process(type_body, TypeId).
+		constructor(TypeCtor)) -->
+	recompilation_usage__maybe_record_item_to_process(type_body, TypeCtor).
+recompilation_usage__find_items_used_by_functor(_, _, field(TypeCtor, _)) -->
+	recompilation_usage__maybe_record_item_to_process(type_body, TypeCtor).
 
 :- pred recompilation_usage__find_items_used_by_simple_item_set(
 	item_type::in, simple_item_set::in,
@@ -1210,15 +1210,15 @@ recompilation_usage__find_items_used_by_types(Types) -->
 
 recompilation_usage__find_items_used_by_type(Type) -->
 	(
-		{ type_to_type_id(Type, TypeId, TypeArgs) }
+		{ type_to_ctor_and_args(Type, TypeCtor, TypeArgs) }
 	->
 		(
 			% Unqualified type-ids are builtin types.
-			{ TypeId = qualified(_, _) - _ },
-			\+ { type_id_is_higher_order(TypeId, _, _) }
+			{ TypeCtor = qualified(_, _) - _ },
+			\+ { type_ctor_is_higher_order(TypeCtor, _, _) }
 		->
 			recompilation_usage__maybe_record_item_to_process(
-				(type), TypeId)
+				(type), TypeCtor)
 		;
 			[]
 		),

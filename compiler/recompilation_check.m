@@ -1091,29 +1091,29 @@ check_for_pred_or_func_ambiguity(ItemType, Name, NeedQualifier,
 	% with functors used during the last compilation.
 	%
 :- pred check_type_defn_ambiguity_with_functor(need_qualifier::in,
-		type_id::in, type_defn::in, recompilation_check_info::in,
+		type_ctor::in, type_defn::in, recompilation_check_info::in,
 		recompilation_check_info::out) is det.
 
 check_type_defn_ambiguity_with_functor(_, _, abstract_type) --> [].
 check_type_defn_ambiguity_with_functor(_, _, eqv_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(NeedQualifier,
-			TypeId, du_type(Ctors, _)) -->
-	list__foldl(check_functor_ambiguities(NeedQualifier, TypeId),
+			TypeCtor, du_type(Ctors, _)) -->
+	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
 		Ctors).
 
-:- pred check_functor_ambiguities(need_qualifier::in, type_id::in,
+:- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
 		constructor::in, recompilation_check_info::in,
 		recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, TypeId,
+check_functor_ambiguities(NeedQualifier, TypeCtor,
 		ctor(_, _, Name, Args)) -->
-	{ ResolvedCtor = constructor(TypeId) },
+	{ ResolvedCtor = constructor(TypeCtor) },
 	{ Arity = list__length(Args) },
 	check_functor_ambiguities(NeedQualifier, Name, exact(Arity),
 		ResolvedCtor),
 	list__foldl(
 		check_field_ambiguities(NeedQualifier,
-			field(TypeId, Name - Arity)),
+			field(TypeCtor, Name - Arity)),
 		Args).
 
 :- pred check_field_ambiguities(need_qualifier::in, resolved_functor::in,

@@ -60,9 +60,9 @@
 type_ctor_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_types(ModuleInfo0, TypeTable),
-	map__keys(TypeTable, TypeIds),
-	type_ctor_info__gen_type_ctor_gen_infos(TypeIds, TypeTable, ModuleName,
-		ModuleInfo0, TypeCtorGenInfos),
+	map__keys(TypeTable, TypeCtors),
+	type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
+		ModuleName, ModuleInfo0, TypeCtorGenInfos),
 	module_info_set_type_ctor_gen_infos(ModuleInfo0, TypeCtorGenInfos,
 		ModuleInfo).
 
@@ -70,26 +70,26 @@ type_ctor_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
 	% find the types defined in this module, and return a type_ctor_gen_info
 	% for each.
 
-:- pred type_ctor_info__gen_type_ctor_gen_infos(list(type_id)::in,
+:- pred type_ctor_info__gen_type_ctor_gen_infos(list(type_ctor)::in,
 	type_table::in, module_name::in, module_info::in,
 	list(type_ctor_gen_info)::out) is det.
 
 type_ctor_info__gen_type_ctor_gen_infos([], _, _, _, []).
-type_ctor_info__gen_type_ctor_gen_infos([TypeId | TypeIds], TypeTable,
+type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 		ModuleName, ModuleInfo, TypeCtorGenInfos) :-
-	type_ctor_info__gen_type_ctor_gen_infos(TypeIds, TypeTable, ModuleName,
-		ModuleInfo, TypeCtorGenInfos1),
-	TypeId = SymName - TypeArity,
+	type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
+		ModuleName, ModuleInfo, TypeCtorGenInfos1),
+	TypeCtor = SymName - TypeArity,
 	(
 		SymName = qualified(TypeModuleName, TypeName),
 		( 
 			TypeModuleName = ModuleName,
-			map__lookup(TypeTable, TypeId, TypeDefn),
+			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody \= abstract_type,
-			\+ type_id_has_hand_defined_rtti(TypeId)
+			\+ type_ctor_has_hand_defined_rtti(TypeCtor)
 		->
-			type_ctor_info__gen_type_ctor_gen_info(TypeId,
+			type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
 				TypeName, TypeArity, TypeDefn,
 				ModuleName, ModuleInfo, TypeCtorGenInfo),
 			TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfos1]
@@ -103,11 +103,11 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeId | TypeIds], TypeTable,
 		error(Msg)
 	).
 
-:- pred type_ctor_info__gen_type_ctor_gen_info(type_id::in, string::in,
+:- pred type_ctor_info__gen_type_ctor_gen_info(type_ctor::in, string::in,
 	int::in, hlds_type_defn::in, module_name::in, module_info::in,
 	type_ctor_gen_info::out) is det.
 
-type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
+type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		ModuleName, ModuleInfo, TypeCtorGenInfo) :-
 	hlds_data__get_type_defn_status(TypeDefn, Status),
 	module_info_globals(ModuleInfo, Globals),
@@ -122,12 +122,12 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 			Body = du_type(_, _, _, yes(_UserDefinedEquality))
 		)
 	->
-		map__lookup(SpecMap, unify - TypeId, UnifyPredId),
+		map__lookup(SpecMap, unify - TypeCtor, UnifyPredId),
 		special_pred_mode_num(unify, UnifyProcInt),
 		proc_id_to_int(UnifyProcId, UnifyProcInt),
 		MaybeUnify = yes(proc(UnifyPredId, UnifyProcId)),
 
-		map__lookup(SpecMap, compare - TypeId, ComparePredId),
+		map__lookup(SpecMap, compare - TypeCtor, ComparePredId),
 		special_pred_mode_num(compare, CompareProcInt),
 		proc_id_to_int(CompareProcId, CompareProcInt),
 		MaybeCompare = yes(proc(ComparePredId, CompareProcId))
@@ -135,7 +135,7 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 		MaybeUnify = no,
 		MaybeCompare = no
 	),
-	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName, TypeName,
+	TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
 		TypeArity, Status, TypeDefn, MaybeUnify, MaybeCompare).
 
 %---------------------------------------------------------------------------%
@@ -172,7 +172,7 @@ type_ctor_info__construct_type_ctor_infos(
 
 type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		ModuleInfo, TypeCtorData, TypeCtorTables) :-
-	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
+	TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
 		TypeArity, _Status, HldsDefn, MaybeUnify, MaybeCompare),
 	type_ctor_info__make_proc_label(MaybeUnify,   ModuleInfo, Unify),
 	type_ctor_info__make_proc_label(MaybeCompare, ModuleInfo, Compare),
@@ -196,8 +196,8 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		TypeCtorTables = []
 	),
 	Version = type_ctor_info_rtti_version,
-	RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
-	TypeCtorData = type_ctor_info(RttiTypeId, Unify, Compare,
+	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
+	TypeCtorData = type_ctor_info(RttiTypeCtor, Unify, Compare,
 		TypeCtorRep, Version, NumPtags, NumFunctors,
 		MaybeFunctors, MaybeLayout).
 
@@ -288,12 +288,12 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		),
 		list__length(Ctors, NumFunctors),
 		globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
-		RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
+		RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
 		(
 			Enum = yes,
 			TypeCtorRep = enum(EqualityAxioms),
 			type_ctor_info__make_enum_tables(Ctors, ConsTagMap,
-				RttiTypeId, ReserveTag, TypeTables,
+				RttiTypeCtor, ReserveTag, TypeTables,
 				FunctorsInfo, LayoutInfo),
 			NumPtags = -1
 		;
@@ -309,7 +309,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				),
 				TypeCtorRep = notag(EqualityAxioms, Inst),
 				type_ctor_info__make_notag_tables(Name,
-					ArgType, MaybeArgName, RttiTypeId,
+					ArgType, MaybeArgName, RttiTypeCtor,
 					TypeTables, FunctorsInfo, LayoutInfo),
 				NumPtags = -1
 			;
@@ -318,7 +318,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				int__pow(2, NumTagBits, NumTags),
 				MaxPtag = NumTags - 1,
 				type_ctor_info__make_du_tables(Ctors,
-					ConsTagMap, MaxPtag, RttiTypeId,
+					ConsTagMap, MaxPtag, RttiTypeCtor,
 					EqualityAxioms, ModuleInfo,
 					TypeTables, NumPtags,
 					FunctorsInfo, LayoutInfo, TypeCtorRep)
@@ -367,19 +367,19 @@ make_pseudo_type_info_tables(HO_TypeInfo, Tables0, Tables) :-
 % Make the functor and layout tables for a notag type.
 
 :- pred type_ctor_info__make_notag_tables(sym_name::in, (type)::in,
-	maybe(string)::in, rtti_type_id::in, list(rtti_data)::out,
+	maybe(string)::in, rtti_type_ctor::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
-type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeId,
+type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeCtor,
 		TypeTables, FunctorsInfo, LayoutInfo) :-
 	unqualify_name(SymName, FunctorName),
-	RttiTypeId = rtti_type_id(_, _, UnivTvars),
+	RttiTypeCtor = rtti_type_ctor(_, _, UnivTvars),
 		% There can be no existentially typed args to the functor
 		% in a notag type.
 	ExistTvars = [],
 	make_pseudo_type_info_and_tables(ArgType, UnivTvars, ExistTvars,
 		RttiData, [], Tables0),
-	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData,
+	FunctorDesc = notag_functor_desc(RttiTypeCtor, FunctorName, RttiData,
 		MaybeArgName),
 	FunctorRttiName = notag_functor_desc,
 
@@ -395,10 +395,10 @@ type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeId,
 % Make the functor and layout tables for an enum type.
 
 :- pred type_ctor_info__make_enum_tables(list(constructor)::in,
-	cons_tag_values::in, rtti_type_id::in, bool::in, list(rtti_data)::out,
+	cons_tag_values::in, rtti_type_ctor::in, bool::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
-type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeId, ReserveTag,
+type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeCtor, ReserveTag,
 		TypeTables, FunctorInfo, LayoutInfo) :-
 	(
 		% If there are any existentially quantified type variables,
@@ -413,16 +413,16 @@ type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeId, ReserveTag,
 		InitTag = 0
 	),
 	type_ctor_info__make_enum_functor_tables(Ctors, InitTag, ConsTagMap,
-		RttiTypeId, FunctorDescs, OrdinalOrderRttiNames, SortInfo0),
+		RttiTypeCtor, FunctorDescs, OrdinalOrderRttiNames, SortInfo0),
 	list__sort(SortInfo0, SortInfo),
 	assoc_list__values(SortInfo, NameOrderedRttiNames),
 
-	NameOrderedTable = enum_name_ordered_table(RttiTypeId,
+	NameOrderedTable = enum_name_ordered_table(RttiTypeCtor,
 		NameOrderedRttiNames),
 	NameOrderedTableRttiName = enum_name_ordered_table,
 	FunctorInfo = enum_functors(NameOrderedTableRttiName),
 
-	ValueOrderedTable = enum_value_ordered_table(RttiTypeId,
+	ValueOrderedTable = enum_value_ordered_table(RttiTypeCtor,
 		OrdinalOrderRttiNames),
 	ValueOrderedTableRttiName = enum_value_ordered_table,
 	LayoutInfo = enum_layout(ValueOrderedTableRttiName),
@@ -438,13 +438,13 @@ type_ctor_info__make_enum_tables(Ctors, ConsTagMap, RttiTypeId, ReserveTag,
 % is constructed.
 
 :- pred type_ctor_info__make_enum_functor_tables(list(constructor)::in,
-	int::in, cons_tag_values::in, rtti_type_id::in,
+	int::in, cons_tag_values::in, rtti_type_ctor::in,
 	list(rtti_data)::out, list(rtti_name)::out,
 	name_sort_info::out) is det.
 
 type_ctor_info__make_enum_functor_tables([], _, _, _, [], [], []).
 type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
-		ConsTagMap, RttiTypeId,
+		ConsTagMap, RttiTypeCtor,
 		FunctorDescs, RttiNames, SortInfo) :-
 	Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
 	require(unify(ExistTvars, []),
@@ -459,11 +459,13 @@ type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
 	require(unify(ConsTag, int_constant(NextOrdinal0)),
 		"mismatch on constant assigned to functor in enum"),
 	unqualify_name(SymName, FunctorName),
-	FunctorDesc = enum_functor_desc(RttiTypeId, FunctorName, NextOrdinal0),
+	FunctorDesc =
+		enum_functor_desc(RttiTypeCtor, FunctorName, NextOrdinal0),
 	RttiName = enum_functor_desc(NextOrdinal0),
 	FunctorSortInfo = (FunctorName - 0) - RttiName,
 	type_ctor_info__make_enum_functor_tables(Functors, NextOrdinal0 + 1,
-		ConsTagMap, RttiTypeId, FunctorDescs1, RttiNames1, SortInfo1),
+		ConsTagMap, RttiTypeCtor, FunctorDescs1, RttiNames1,
+		SortInfo1),
 	FunctorDescs = [FunctorDesc | FunctorDescs1],
 	RttiNames = [RttiName | RttiNames1],
 	SortInfo = [FunctorSortInfo | SortInfo1].
@@ -480,12 +482,12 @@ type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
 % (including reserved_addr types).
 
 :- pred type_ctor_info__make_du_tables(list(constructor)::in,
-	cons_tag_values::in, int::in, rtti_type_id::in, equality_axioms::in,
+	cons_tag_values::in, int::in, rtti_type_ctor::in, equality_axioms::in,
 	module_info::in, list(rtti_data)::out, int::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out,
 	type_ctor_rep::out) is det.
 
-type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
+type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeCtor,
 		EqualityAxioms, ModuleInfo, TypeTables, NumPtags, 
 		FunctorInfo, LayoutInfo, TypeCtorRep) :-
 	module_info_globals(ModuleInfo, Globals),
@@ -499,19 +501,19 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 	map__init(TagMap0),
 	map__init(ReservedAddrMap0),
 	type_ctor_info__make_du_functor_tables(Ctors, InitTag, ConsTagMap,
-		RttiTypeId, ModuleInfo,
+		RttiTypeCtor, ModuleInfo,
 		FunctorDescs, SortInfo0, TagMap0, TagMap,
 		ReservedAddrMap0, ReservedAddrMap),
 	list__sort(SortInfo0, SortInfo),
 	assoc_list__values(SortInfo, NameOrderedRttiNames),
 
-	NameOrderedTable = du_name_ordered_table(RttiTypeId,
+	NameOrderedTable = du_name_ordered_table(RttiTypeCtor,
 		NameOrderedRttiNames),
 	NameOrderedTableRttiName = du_name_ordered_table,
 	FunctorInfo = du_functors(NameOrderedTableRttiName),
 
 	type_ctor_info__make_du_ptag_ordered_table(TagMap, InitTag, MaxPtag,
-		RttiTypeId, ValueOrderedTableRttiName, ValueOrderedTables,
+		RttiTypeCtor, ValueOrderedTableRttiName, ValueOrderedTables,
 		NumPtags),
 	DuLayoutInfo = du_layout(ValueOrderedTableRttiName),
 	list__append([NameOrderedTable | FunctorDescs], ValueOrderedTables,
@@ -521,7 +523,7 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 		LayoutInfo = DuLayoutInfo,
 		TypeCtorRep = du(EqualityAxioms)
 	;
-		type_ctor_info__make_reserved_addr_layout(RttiTypeId,
+		type_ctor_info__make_reserved_addr_layout(RttiTypeCtor,
 			ReservedAddrMap, ValueOrderedTableRttiName,
 			RALayoutRttiName, RALayoutTables),
 				% XXX does it matter what order they go in?
@@ -530,11 +532,11 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 		TypeCtorRep = reserved_addr(EqualityAxioms)
 	).
 
-:- pred type_ctor_info__make_reserved_addr_layout(rtti_type_id::in,
+:- pred type_ctor_info__make_reserved_addr_layout(rtti_type_ctor::in,
 		reserved_addr_map::in, rtti_name::in,
 		rtti_name::out, list(rtti_data)::out) is det.
 
-type_ctor_info__make_reserved_addr_layout(RttiTypeId, ReservedAddrMap,
+type_ctor_info__make_reserved_addr_layout(RttiTypeCtor, ReservedAddrMap,
 		DuTableRttiName, RALayoutRttiName, RALayoutTables) :-
 	%
 	% split the reserved addresses into numeric addresses (including null)
@@ -550,22 +552,22 @@ type_ctor_info__make_reserved_addr_layout(RttiTypeId, ReservedAddrMap,
 	% fill in the tables pointed to by the reserved_addr_table
 	%
 	SymbolicAddrList = assoc_list__keys(SymbolicAddrAssocList),
-	SymbolicAddrTable = reserved_addrs(RttiTypeId, SymbolicAddrList),
+	SymbolicAddrTable = reserved_addrs(RttiTypeCtor, SymbolicAddrList),
 	ReservedAddrFunctorDescTables =
 			assoc_list__values(ReservedAddrAssocList),
 	ReservedAddrFunctorDescs = list__map(
 		(func(RAFD) = Name :-
-			rtti_data_to_name(RAFD, _RttiTypeId, Name)),
+			rtti_data_to_name(RAFD, _RttiTypeCtor, Name)),
 		ReservedAddrFunctorDescTables),
 	ReservedAddrFunctorTable = reserved_addr_functors(
-			RttiTypeId, ReservedAddrFunctorDescs),
+			RttiTypeCtor, ReservedAddrFunctorDescs),
 	%
 	% fill in the reserved_addr_table,
 	% which describes the representation of this type
 	%
 	NumNumericReservedAddrs = list__length(NumericAddrAssocList),
 	NumSymbolicReservedAddrs = list__length(SymbolicAddrAssocList),
-	RALayoutTable = reserved_addr_table(RttiTypeId,
+	RALayoutTable = reserved_addr_table(RttiTypeCtor,
 		NumNumericReservedAddrs,
 		NumSymbolicReservedAddrs,
 		reserved_addrs,
@@ -594,7 +596,7 @@ type_ctor_info__make_reserved_addr_layout(RttiTypeId, ReservedAddrMap,
 		).
 
 :- pred type_ctor_info__make_du_functor_tables(list(constructor)::in,
-	int::in, cons_tag_values::in, rtti_type_id::in, module_info::in,
+	int::in, cons_tag_values::in, rtti_type_ctor::in, module_info::in,
 	list(rtti_data)::out, name_sort_info::out,
 	tag_map::in, tag_map::out,
 	reserved_addr_map::in, reserved_addr_map::out) is det.
@@ -602,7 +604,7 @@ type_ctor_info__make_reserved_addr_layout(RttiTypeId, ReservedAddrMap,
 type_ctor_info__make_du_functor_tables([], _, _, _, _,
 		[], [], TagMap, TagMap, RAMap, RAMap).
 type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
-		ConsTagMap, RttiTypeId, ModuleInfo,
+		ConsTagMap, RttiTypeCtor, ModuleInfo,
 		Tables, SortInfo, TagMap0, TagMap, RAMap0, RAMap) :-
 	Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
 	list__length(FunctorArgs, Arity),
@@ -617,7 +619,7 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 		RAMap1 = RAMap0
 	;
 		ConsRep = reserved_address(RA),
-		RAFunctorDesc = reserved_addr_functor_desc(RttiTypeId,
+		RAFunctorDesc = reserved_addr_functor_desc(RttiTypeCtor,
 			FunctorName, Ordinal, RA),
 		RAMap1 = map__det_insert(RAMap0, RA, RAFunctorDesc),
 		% These three fields are not really used for
@@ -628,7 +630,7 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 		Locn = sectag_none
 	),
 	type_ctor_info__generate_arg_info_tables(ModuleInfo,
-		RttiTypeId, Ordinal, FunctorArgs, ExistTvars,
+		RttiTypeCtor, Ordinal, FunctorArgs, ExistTvars,
 		MaybeArgNames,
 		ArgPseudoTypeInfoVector, FieldTables, ContainsVarBitVector),
 	( ExistTvars = [] ->
@@ -637,17 +639,17 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 	;
 		module_info_classes(ModuleInfo, ClassTable),
 		type_ctor_info__generate_type_info_locns(ExistTvars,
-			Constraints, ClassTable, RttiTypeId, Ordinal,
+			Constraints, ClassTable, RttiTypeCtor, Ordinal,
 			ExistInfo, ExistTables),
 		MaybeExistInfo = yes(ExistInfo)
 	),
 	list__append(FieldTables, ExistTables, SubTables),
-	FunctorDesc = du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
+	FunctorDesc = du_functor_desc(RttiTypeCtor, FunctorName, Ptag, Stag,
 		Locn, Ordinal, Arity, ContainsVarBitVector,
 		ArgPseudoTypeInfoVector, MaybeArgNames, MaybeExistInfo),
 	FunctorSortInfo = (FunctorName - Arity) - RttiName,
 	type_ctor_info__make_du_functor_tables(Functors, Ordinal + 1,
-		ConsTagMap, RttiTypeId, ModuleInfo,
+		ConsTagMap, RttiTypeCtor, ModuleInfo,
 		Tables1, SortInfo1, TagMap1, TagMap, RAMap1, RAMap),
 	list__append([FunctorDesc | SubTables], Tables1, Tables),
 	SortInfo = [FunctorSortInfo | SortInfo1].
@@ -697,15 +699,15 @@ type_ctor_info__process_cons_tag(ConsTag, RttiName, ConsRep,
 % Generate the tables that describe the arguments of a functor. 
 
 :- pred type_ctor_info__generate_arg_info_tables(module_info::in,
-	rtti_type_id::in, int::in, list(constructor_arg)::in, existq_tvars::in,
-	maybe(rtti_name)::out, maybe(rtti_name)::out, list(rtti_data)::out,
-	int::out) is det.
+	rtti_type_ctor::in, int::in, list(constructor_arg)::in,
+	existq_tvars::in, maybe(rtti_name)::out, maybe(rtti_name)::out,
+	list(rtti_data)::out, int::out) is det.
 
 type_ctor_info__generate_arg_info_tables(
-		ModuleInfo, RttiTypeId, Ordinal, Args, ExistTvars,
+		ModuleInfo, RttiTypeCtor, Ordinal, Args, ExistTvars,
 		MaybeFieldNamesRttiName, MaybeFieldTypesRttiName, Tables,
 		ContainsVarBitVector) :-
-	RttiTypeId = rtti_type_id(_TypeModule, _TypeName, TypeArity),
+	RttiTypeCtor = rtti_type_ctor(_TypeModule, _TypeName, TypeArity),
 	type_ctor_info__generate_arg_infos(Args, TypeArity, ExistTvars,
 		ModuleInfo, MaybeArgNames, PseudoTypeInfos,
 		0, 0, ContainsVarBitVector, [], Tables0),
@@ -715,7 +717,7 @@ type_ctor_info__generate_arg_info_tables(
 		Tables1 = Tables0
 	;
 		PseudoTypeInfos = [_|_],
-		FieldTypesTable = field_types(RttiTypeId, Ordinal,
+		FieldTypesTable = field_types(RttiTypeCtor, Ordinal,
 			PseudoTypeInfos),
 		FieldTypesRttiName = field_types(Ordinal),
 		MaybeFieldTypesRttiName = yes(FieldTypesRttiName),
@@ -729,7 +731,7 @@ type_ctor_info__generate_arg_info_tables(
 		Tables = Tables1
 	;
 		FieldNames = [_|_],
-		FieldNameTable = field_names(RttiTypeId, Ordinal,
+		FieldNameTable = field_names(RttiTypeCtor, Ordinal,
 			MaybeArgNames),
 		FieldNamesRttiName = field_names(Ordinal),
 		MaybeFieldNamesRttiName = yes(FieldNamesRttiName),
@@ -794,11 +796,11 @@ type_ctor_info__contains_var_bit_vector_size = 16.
 % of a functor.
 
 :- pred type_ctor_info__generate_type_info_locns(list(tvar)::in,
-	list(class_constraint)::in, class_table::in, rtti_type_id::in, int::in,
-	rtti_name::out, list(rtti_data)::out) is det.
+	list(class_constraint)::in, class_table::in, rtti_type_ctor::in,
+	int::in, rtti_name::out, list(rtti_data)::out) is det.
 
 type_ctor_info__generate_type_info_locns(ExistTvars, Constraints, ClassTable,
-		RttiTypeId, Ordinal, exist_info(Ordinal),
+		RttiTypeCtor, Ordinal, exist_info(Ordinal),
 		[ExistInfo, ExistLocns]) :-
 	list__map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
 		Constraints, ConstrainedTvars0),
@@ -819,12 +821,12 @@ type_ctor_info__generate_type_info_locns(ExistTvars, Constraints, ClassTable,
 		find_type_info_index(Constraints, ClassTable, TIsPlain),
 		ConstrainedTvars, LocnMap1, LocnMap),
 	list__length(Constraints, TCIs),
-	ExistInfo = exist_info(RttiTypeId, Ordinal,
+	ExistInfo = exist_info(RttiTypeCtor, Ordinal,
 		TIsPlain, TIsInTCIs, TCIs, exist_locns(Ordinal)),
 	list__map((pred(Tvar::in, Locn::out) is det :-
 		map__lookup(LocnMap, Tvar, Locn)),
 		ExistTvars, Locns),
-	ExistLocns = exist_locns(RttiTypeId, Ordinal, Locns).
+	ExistLocns = exist_locns(RttiTypeCtor, Ordinal, Locns).
 
 :- pred find_type_info_index(list(class_constraint)::in, class_table::in,
 	int::in, tvar::in, map(tvar, exist_typeinfo_locn)::in,
@@ -885,25 +887,25 @@ type_ctor_info__update_tag_info(Ptag, Stag, Locn, RttiName, TagMap0, TagMap)
 	).
 
 :- pred type_ctor_info__make_du_ptag_ordered_table(tag_map::in, 
-	int::in, int::in, rtti_type_id::in, 
+	int::in, int::in, rtti_type_ctor::in, 
 	rtti_name::out, list(rtti_data)::out, int::out) is det.
 
 type_ctor_info__make_du_ptag_ordered_table(TagMap, MinPtagValue, MaxPtagValue,
-		RttiTypeId, PtagOrderedRttiName, Tables, NumPtags) :-
+		RttiTypeCtor, PtagOrderedRttiName, Tables, NumPtags) :-
 	map__to_assoc_list(TagMap, TagList),
 	type_ctor_info__make_du_ptag_layouts(TagList, 
-		MinPtagValue, MaxPtagValue, RttiTypeId, 
+		MinPtagValue, MaxPtagValue, RttiTypeCtor, 
 		PtagLayouts, SubTables, NumPtags),
-	PtagOrderedTable = du_ptag_ordered_table(RttiTypeId, PtagLayouts),
+	PtagOrderedTable = du_ptag_ordered_table(RttiTypeCtor, PtagLayouts),
 	PtagOrderedRttiName = du_ptag_ordered_table,
 	Tables = [PtagOrderedTable | SubTables].
 
 :- pred type_ctor_info__make_du_ptag_layouts(tag_list::in, int::in, int::in,
-	rtti_type_id::in, list(du_ptag_layout)::out, list(rtti_data)::out,
+	rtti_type_ctor::in, list(du_ptag_layout)::out, list(rtti_data)::out,
 	int::out) is det.
 
 type_ctor_info__make_du_ptag_layouts(TagList0, CurPtag, MaxPtag,
-		RttiTypeId, PtagLayouts, Tables, NumPtags) :-
+		RttiTypeCtor, PtagLayouts, Tables, NumPtags) :-
 	(
 		TagList0 = [],
 		PtagLayouts = [],
@@ -919,13 +921,13 @@ type_ctor_info__make_du_ptag_layouts(TagList0, CurPtag, MaxPtag,
 		list__length(StagList, StagListLength),
 		type_ctor_info__make_du_stag_table(0, StagListLength - 1,
 			StagList, StagRttiNames),
-		StagOrderedTable = du_stag_ordered_table(RttiTypeId,
+		StagOrderedTable = du_stag_ordered_table(RttiTypeCtor,
 			Ptag, StagRttiNames),
 		StagOrderedAddr = du_stag_ordered_table(Ptag),
 		PtagLayout = du_ptag_layout(StagListLength, Locn,
 			StagOrderedAddr),
 		type_ctor_info__make_du_ptag_layouts(TagList,
-			CurPtag + 1, MaxPtag, RttiTypeId,
+			CurPtag + 1, MaxPtag, RttiTypeCtor,
 			PtagLayouts1, Tables1, NumPtags),
 		PtagLayouts = [PtagLayout | PtagLayouts1],
 		Tables = [StagOrderedTable | Tables1]

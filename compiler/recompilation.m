@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 University of Melbourne.
+% Copyright (C) 2001-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,7 +124,7 @@
 	% equivalence types, and at that point we don't know which imported
 	% items are going to be used by the compilation.
 :- pred recompilation__record_used_equivalence_types(item_id::in,
-	set(type_id)::in, recompilation_info::in,
+	set(type_ctor)::in, recompilation_info::in,
 	recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -384,8 +384,9 @@ recompilation__record_used_equivalence_types(Item, UsedTypes, Info0, Info) :-
 		;
 			set__init(Deps1)
 		),
-		UsedItems = list__map((func(TypeId) = item_id(type, TypeId)),
-				set__to_sorted_list(UsedTypes)),	
+		UsedItems = list__map(
+			(func(TypeCtor) = item_id(type, TypeCtor)),
+			set__to_sorted_list(UsedTypes)),	
 		set__insert_list(Deps1, UsedItems, Deps),
 		map__set(DepsMap0, Item, Deps, DepsMap),
 		Info = Info0 ^ dependencies := DepsMap

@@ -52,7 +52,7 @@
 
 :- type proc_requests.
 
-:- type unify_proc_id == pair(type_id, uni_mode).
+:- type unify_proc_id == pair(type_ctor, uni_mode).
 
 	% Initialize the proc_requests table.
 
@@ -73,7 +73,7 @@
 	maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,
 	module_info::in, proc_id::out, module_info::out) is det.
 
-% unify_proc__add_lazily_generated_unify_pred(TypeId,
+% unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 	%	UnifyPredId_for_Type, ModuleInfo0, ModuleInfo).
 	%
 	% For most imported unification procedures, we delay
@@ -82,14 +82,14 @@
 	% is a complicated unification involving the type.
 	% This predicate is exported for use by higher_order.m
 	% when it is specializing calls to unify/2.
-:- pred unify_proc__add_lazily_generated_unify_pred(type_id::in,
+:- pred unify_proc__add_lazily_generated_unify_pred(type_ctor::in,
 	pred_id::out, module_info::in, module_info::out) is det.
 	
-	% unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
+	% unify_proc__add_lazily_generated_compare_pred_decl(TypeCtor,
 	%	ComparePredId_for_Type, ModuleInfo0, ModuleInfo).
 	%
 	% Add declarations, but not clauses, for a compare or index predicate.
-:- pred unify_proc__add_lazily_generated_compare_pred_decl(type_id::in,
+:- pred unify_proc__add_lazily_generated_compare_pred_decl(type_ctor::in,
 	pred_id::out, module_info::in, module_info::out) is det.
 
 	% Do mode analysis of the queued procedures.
@@ -107,8 +107,8 @@
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
 
-:- pred unify_proc__lookup_mode_num(module_info::in, type_id::in, uni_mode::in,
-	determinism::in, proc_id::out) is det.
+:- pred unify_proc__lookup_mode_num(module_info::in, type_ctor::in,
+	uni_mode::in, determinism::in, proc_id::out) is det.
 
 	% Generate the clauses for one of the compiler-generated
 	% special predicates (compare/3, index/3, unify, etc.)
@@ -188,16 +188,15 @@ unify_proc__set_req_queue(proc_requests(A, _), ReqQueue,
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det, Num) :-
-	( unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Det, Num1) ->
+unify_proc__lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
+	( unify_proc__search_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num1) ->
 		Num = Num1
 	;
 		error("unify_proc.m: unify_proc__search_num failed")
 	).
 
-:- pred unify_proc__search_mode_num(module_info, type_id, uni_mode, determinism,
-					proc_id).
-:- mode unify_proc__search_mode_num(in, in, in, in, out) is semidet.
+:- pred unify_proc__search_mode_num(module_info::in, type_ctor::in,
+	uni_mode::in, determinism::in, proc_id::out) is semidet.
 
 	% Given the type, mode, and determinism of a unification, look up the
 	% mode number for the unification proc.
@@ -207,7 +206,8 @@ unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Det, Num) :-
 	% we assume that `ground' and `any' have the same representation.)
 	% For unreachable unifications, we also use mode zero.
 
-unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
+unify_proc__search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism,
+		ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
 	(
 		Determinism = semidet,
@@ -226,14 +226,14 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 	;
 		module_info_get_proc_requests(ModuleInfo, Requests),
 		unify_proc__get_unify_req_map(Requests, UnifyReqMap),
-		map__search(UnifyReqMap, TypeId - UniMode, ProcId)
+		map__search(UnifyReqMap, TypeCtor - UniMode, ProcId)
 	).
 
 %-----------------------------------------------------------------------------%
 
 unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		ModuleInfo0, ModuleInfo) :-
-	UnifyId = TypeId - UnifyMode,
+	UnifyId = TypeCtor - UnifyMode,
 
 	%
 	% Generating a unification procedure for a type uses its body.
@@ -241,7 +241,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 	module_info_get_maybe_recompilation_info(ModuleInfo0, MaybeRecompInfo0),
 	( MaybeRecompInfo0 = yes(RecompInfo0) ->
 		recompilation__record_used_item(type_body, 
-			TypeId, TypeId, RecompInfo0, RecompInfo),
+			TypeCtor, TypeCtor, RecompInfo0, RecompInfo),
 		module_info_set_maybe_recompilation_info(ModuleInfo0,
 			yes(RecompInfo), ModuleInfo1)
 	;
@@ -254,19 +254,19 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 	%
 	(
 		(
-			unify_proc__search_mode_num(ModuleInfo1, TypeId,
+			unify_proc__search_mode_num(ModuleInfo1, TypeCtor,
 				UnifyMode, Determinism, _)
 		; 
-			TypeId = TypeName - _TypeArity,
+			TypeCtor = TypeName - _TypeArity,
 			TypeName = qualified(TypeModuleName, _),
 			module_info_name(ModuleInfo1, ModuleName),
 			ModuleName = TypeModuleName,
 			module_info_types(ModuleInfo1, TypeTable),
-			map__search(TypeTable, TypeId, TypeDefn),
+			map__search(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody = abstract_type
 		; 
-			type_id_has_hand_defined_rtti(TypeId)
+			type_ctor_has_hand_defined_rtti(TypeCtor)
 		)
 	->
 		ModuleInfo = ModuleInfo1
@@ -276,14 +276,14 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		% that we are going to generate
 		%
 		module_info_get_special_pred_map(ModuleInfo1, SpecialPredMap),
-		( map__search(SpecialPredMap, unify - TypeId, PredId0) ->
+		( map__search(SpecialPredMap, unify - TypeCtor, PredId0) ->
 			PredId = PredId0,
 			ModuleInfo2 = ModuleInfo1
 		;
 			% We generate unification predicates for most
 			% imported types lazily, so add the declarations
 			% and clauses now.
-			unify_proc__add_lazily_generated_unify_pred(TypeId,
+			unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 				PredId, ModuleInfo1, ModuleInfo2)
 		),
 
@@ -293,7 +293,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 
 		% for polymorphic types, add extra modes for the type_infos
 		in_mode(InMode),
-		TypeId = _ - TypeArity,
+		TypeCtor = _ - TypeArity,
 		list__duplicate(TypeArity, InMode, TypeInfoModes),
 		list__append(TypeInfoModes, ArgModes0, ArgModes),
 
@@ -506,12 +506,12 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unify_proc__add_lazily_generated_unify_pred(TypeId,
+unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		PredId, ModuleInfo0, ModuleInfo) :-
 	(
-		type_id_is_tuple(TypeId) 
+		type_ctor_is_tuple(TypeCtor) 
 	->
-		TypeId = _ - TupleArity,
+		TypeCtor = _ - TupleArity,
 		
 		%
 		% Build a hlds_type_body for the tuple constructor, which will
@@ -539,16 +539,16 @@ unify_proc__add_lazily_generated_unify_pred(TypeId,
 		UnifyPred = no,
 		IsEnum = no,
 		TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred),
-		construct_type(TypeId, TupleArgTypes, Type),
+		construct_type(TypeCtor, TupleArgTypes, Type),
 
 		term__context_init(Context)
 	;
-		unify_proc__collect_type_defn(ModuleInfo0, TypeId,
+		unify_proc__collect_type_defn(ModuleInfo0, TypeCtor,
 			Type, TVarSet, TypeBody, Context)
 	),
 
 	% Call make_hlds.m to construct the unification predicate.
-	( can_generate_special_pred_clauses_for_type(TypeId, TypeBody) ->
+	( can_generate_special_pred_clauses_for_type(TypeCtor, TypeBody) ->
 		% If the unification predicate has another status it should
 		% already have been generated. 
 		UnifyPredStatus = pseudo_imported,
@@ -559,12 +559,12 @@ unify_proc__add_lazily_generated_unify_pred(TypeId,
 	),
 
 	unify_proc__add_lazily_generated_special_pred(unify, Item,
-		TVarSet, Type, TypeId, TypeBody, Context, UnifyPredStatus,
+		TVarSet, Type, TypeCtor, TypeBody, Context, UnifyPredStatus,
 		PredId, ModuleInfo0, ModuleInfo).
 
-unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
+unify_proc__add_lazily_generated_compare_pred_decl(TypeCtor,
 		PredId, ModuleInfo0, ModuleInfo) :-
-	unify_proc__collect_type_defn(ModuleInfo0, TypeId, Type,
+	unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 		TVarSet, TypeBody, Context),
 	
 	% If the compare predicate has another status it should
@@ -572,17 +572,17 @@ unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
 	ImportStatus = imported(implementation),
 
 	unify_proc__add_lazily_generated_special_pred(compare, declaration,
-		TVarSet, Type, TypeId, TypeBody, Context, ImportStatus,
+		TVarSet, Type, TypeCtor, TypeBody, Context, ImportStatus,
 		PredId, ModuleInfo0, ModuleInfo).
 
 :- pred unify_proc__add_lazily_generated_special_pred(special_pred_id,
-		unify_pred_item, tvarset, type, type_id, hlds_type_body,
+		unify_pred_item, tvarset, type, type_ctor, hlds_type_body,
 		context, import_status, pred_id, module_info, module_info).
 :- mode unify_proc__add_lazily_generated_special_pred(in, in, in, in, in, in,
 		in, in, out, in, out) is det.
 
 unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
-		TVarSet, Type, TypeId, TypeBody, Context, PredStatus,
+		TVarSet, Type, TypeCtor, TypeBody, Context, PredStatus,
 		PredId, ModuleInfo0, ModuleInfo) :-
 	%
 	% Add the declaration and maybe clauses.
@@ -590,17 +590,17 @@ unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
 	(
 		Item = clauses,
 		make_hlds__add_special_pred_for_real(SpecialId, ModuleInfo0,
-			TVarSet, Type, TypeId, TypeBody, Context,
+			TVarSet, Type, TypeCtor, TypeBody, Context,
 			PredStatus, ModuleInfo1)
 	;
 		Item = declaration,
 		make_hlds__add_special_pred_decl_for_real(SpecialId,
-			ModuleInfo0, TVarSet, Type, TypeId,
+			ModuleInfo0, TVarSet, Type, TypeCtor,
 			Context, PredStatus, ModuleInfo1)
 	),
 
 	module_info_get_special_pred_map(ModuleInfo1, SpecialPredMap),
-	map__lookup(SpecialPredMap, SpecialId - TypeId, PredId),
+	map__lookup(SpecialPredMap, SpecialId - TypeCtor, PredId),
 	module_info_pred_info(ModuleInfo1, PredId, PredInfo0),
 
 	%
@@ -640,13 +640,13 @@ unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
 	.
 
 :- pred unify_proc__collect_type_defn(module_info,
-		type_id, type, tvarset, hlds_type_body, prog_context).
+	type_ctor, type, tvarset, hlds_type_body, prog_context).
 :- mode unify_proc__collect_type_defn(in, in, out, out, out, out) is det.
 
-unify_proc__collect_type_defn(ModuleInfo0, TypeId, Type,
+unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 		TVarSet, TypeBody, Context) :-
 	module_info_types(ModuleInfo0, Types),
-	map__lookup(Types, TypeId, TypeDefn),
+	map__lookup(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -654,10 +654,10 @@ unify_proc__collect_type_defn(ModuleInfo0, TypeId, Type,
 	hlds_data__get_type_defn_context(TypeDefn, Context),
 
 	require(special_pred_is_generated_lazily(ModuleInfo0,
-		TypeId, TypeBody, TypeStatus),
+		TypeCtor, TypeBody, TypeStatus),
 		"unify_proc__add_lazily_generated_unify_pred"),
 
-	construct_type(TypeId, TypeParams, Type).
+	construct_type(TypeCtor, TypeParams, Type).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2618,10 +2618,10 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 			TypeArgs = TypeArgs0,
 			hlds_out__pred_or_func_to_str(PredOrFunc,
 				PredOrFuncStr),
-			TypeId = unqualified(PredOrFuncStr) - 0
+			TypeCtor = unqualified(PredOrFuncStr) - 0
 		; type_is_tuple(Type, TypeArgs1) ->
 			TypeArgs = TypeArgs1,
-			TypeId = unqualified("tuple") - 0
+			TypeCtor = unqualified("tuple") - 0
 		;
 			fail
 		)
@@ -2636,17 +2636,17 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 		% To allow univ_to_type to check the type_infos
 		% correctly, the actual arity of the pred is added to
 		% the type_info of higher-order types.
-		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
+		polymorphism__construct_type_info(Type, TypeCtor, TypeArgs,
 			yes, Context, Var, ExtraGoals, Info0, Info)
 	;
-		type_to_type_id(Type, TypeId, TypeArgs)
+		type_to_ctor_and_args(Type, TypeCtor, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a known value of the type variable.
 		% The transformation we perform is shown in the comment
 		% at the top of the module.
 
-		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
+		polymorphism__construct_type_info(Type, TypeCtor, TypeArgs,
 			no, Context, Var, ExtraGoals, Info0, Info)
 	;
 	%
@@ -2681,14 +2681,14 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 		error("polymorphism__make_var: unknown type")
 	).
 
-:- pred polymorphism__construct_type_info(type, type_id, list(type),
+:- pred polymorphism__construct_type_info(type, type_ctor, list(type),
 	bool, prog_context, prog_var, list(hlds_goal),
 	poly_info, poly_info).
 :- mode polymorphism__construct_type_info(in, in, in, in, in, out, out, 
 	in, out) is det.
 
-polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrderOrTuple, 
-		Context, Var, ExtraGoals, Info0, Info) :-
+polymorphism__construct_type_info(Type, TypeCtor, TypeArgs,
+		IsHigherOrderOrTuple, Context, Var, ExtraGoals, Info0, Info) :-
 
 	% Create the typeinfo vars for the arguments
 	polymorphism__make_type_info_vars(TypeArgs, Context,
@@ -2699,7 +2699,7 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrderOrTuple,
 	poly_info_get_module_info(Info1, ModuleInfo),
 
 	polymorphism__init_const_type_ctor_info_var(Type,
-		TypeId, ModuleInfo, VarSet1, VarTypes1, 
+		TypeCtor, ModuleInfo, VarSet1, VarTypes1, 
 		BaseVar, BaseGoal, VarSet2, VarTypes2),
 	polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
 		ArgTypeInfoGoals, Type, IsHigherOrderOrTuple,
@@ -2812,12 +2812,12 @@ polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 	classify_type(Type, ModuleInfo, TypeCategory),
 	( ( TypeCategory = user_type ; TypeCategory = enum_type ) ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-		( type_to_type_id(Type, TypeId, _TypeArgs) ->
-			map__search(SpecialPredMap, SpecialPredId - TypeId,
+		( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
+			map__search(SpecialPredMap, SpecialPredId - TypeCtor,
 				PredId)
 		;
 			error(
-		"polymorphism__get_special_proc: type_to_type_id failed")
+		"polymorphism__get_special_proc: type_to_ctor_and_args failed")
 		),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_module(PredInfo, Module),
@@ -2937,19 +2937,19 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	% statically allocated type_ctor_info cell for the type, allocated
 	% in the module that defines the type.
 
-:- pred polymorphism__init_const_type_ctor_info_var(type, type_id,
+:- pred polymorphism__init_const_type_ctor_info_var(type, type_ctor,
 	module_info, prog_varset, map(prog_var, type), prog_var, hlds_goal,
 	prog_varset, map(prog_var, type)).
 :- mode polymorphism__init_const_type_ctor_info_var(in, in, in, in, in,
 	out, out, out, out) is det.
 
-polymorphism__init_const_type_ctor_info_var(Type, TypeId,
+polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 		ModuleInfo, VarSet0, VarTypes0, TypeCtorInfoVar,
 		TypeCtorInfoGoal, VarSet, VarTypes) :-
 
-	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
-	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-	TypeId = _ - Arity,
+	type_util__type_ctor_module(ModuleInfo, TypeCtor, ModuleName),
+	type_util__type_ctor_name(ModuleInfo, TypeCtor, TypeName),
+	TypeCtor = _ - Arity,
 	ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
 	TypeInfoTerm = functor(ConsId, []),
 
@@ -3233,7 +3233,7 @@ polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
 
 	% `constraint/n' is not really a type - it is a representation of a
 	% class constraint about which a typeclass_info holds information.
-	% `type_util:type_to_type_id' treats it as a type variable.
+	% `type_util:type_to_ctor_and_args' treats it as a type variable.
 	construct_qualified_term(SymName, [], ClassNameTerm),
 	mercury_private_builtin_module(PrivateBuiltin),
 	construct_qualified_term(qualified(PrivateBuiltin, "constraint"),
@@ -3246,11 +3246,11 @@ polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
 
 polymorphism__typeclass_info_class_constraint(TypeClassInfoType, Constraint) :-
 	mercury_private_builtin_module(PrivateBuiltin),
-	type_to_type_id(TypeClassInfoType,
+	type_to_ctor_and_args(TypeClassInfoType,
 		qualified(PrivateBuiltin, "typeclass_info") - 1,
 		[ConstraintTerm]),
 
-	% type_to_type_id fails on `constraint/n', so we use
+	% type_to_ctor_and_args fails on `constraint/n', so we use
 	% `sym_name_and_args' instead.
 	mercury_private_builtin_module(PrivateBuiltin),
 	sym_name_and_args(ConstraintTerm,
@@ -3261,7 +3261,7 @@ polymorphism__typeclass_info_class_constraint(TypeClassInfoType, Constraint) :-
 
 polymorphism__type_info_type(TypeInfoType, Type) :-
 	mercury_private_builtin_module(PrivateBuiltin),
-	type_to_type_id(TypeInfoType,
+	type_to_ctor_and_args(TypeInfoType,
 		qualified(PrivateBuiltin, "type_info") - 1,
 		[Type]).
 

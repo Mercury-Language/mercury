@@ -102,7 +102,7 @@
 :- type unify_info	==	pair(map(prog_var, type), functor_info).
 
 :- type weight_info	--->	weight(int, list(bool)).
-:- type weight_table	==	map(pair(type_id, cons_id), weight_info).
+:- type weight_table	==	map(pair(type_ctor, cons_id), weight_info).
 
 :- pred find_weights(module_info::in, weight_table::out) is det.
 
@@ -110,7 +110,7 @@
 % of that functor whose sizes should be counted towards the size of the whole
 % term.
 
-:- pred functor_norm(functor_info::in, type_id::in, cons_id::in,
+:- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
 	module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
 	list(uni_mode)::in, list(uni_mode)::out) is det.
 
@@ -238,23 +238,24 @@ find_weights(ModuleInfo, Weights) :-
 	map__init(Weights0),
 	find_weights_for_type_list(TypeList, Weights0, Weights).
 
-:- pred find_weights_for_type_list(assoc_list(type_id, hlds_type_defn)::in,
+:- pred find_weights_for_type_list(assoc_list(type_ctor, hlds_type_defn)::in,
 	weight_table::in, weight_table::out) is det.
 
 find_weights_for_type_list([], Weights, Weights).
-find_weights_for_type_list([TypeId - TypeDefn | TypeList], Weights0, Weights) :-
-	find_weights_for_type(TypeId, TypeDefn, Weights0, Weights1),
+find_weights_for_type_list([TypeCtor - TypeDefn | TypeList],
+		Weights0, Weights) :-
+	find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights1),
 	find_weights_for_type_list(TypeList, Weights1, Weights).
 
-:- pred find_weights_for_type(type_id::in, hlds_type_defn::in,
+:- pred find_weights_for_type(type_ctor::in, hlds_type_defn::in,
 	weight_table::in, weight_table::out) is det.
 
-find_weights_for_type(TypeId, TypeDefn, Weights0, Weights) :-
+find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	(
 		TypeBody = du_type(Constructors, _, _, _),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-		find_weights_for_cons_list(Constructors, TypeId, TypeParams,
+		find_weights_for_cons_list(Constructors, TypeCtor, TypeParams,
 			Weights0, Weights)
 	;
 		% This type does not introduce any functors
@@ -272,26 +273,27 @@ find_weights_for_type(TypeId, TypeDefn, Weights0, Weights) :-
 	).
 
 :- pred find_weights_for_cons_list(list(constructor)::in,
-	type_id::in, list(type_param)::in,
+	type_ctor::in, list(type_param)::in,
 	weight_table::in, weight_table::out) is det.
 
 find_weights_for_cons_list([], _, _, Weights, Weights).
-find_weights_for_cons_list([Constructor | Constructors], TypeId, Params,
+find_weights_for_cons_list([Constructor | Constructors], TypeCtor, Params,
 		Weights0, Weights) :-
-	find_weights_for_cons(Constructor, TypeId, Params, Weights0, Weights1),
-	find_weights_for_cons_list(Constructors, TypeId, Params,
+	find_weights_for_cons(Constructor, TypeCtor, Params,
+		Weights0, Weights1),
+	find_weights_for_cons_list(Constructors, TypeCtor, Params,
 		Weights1, Weights).
 
 :- pred find_weights_for_cons(constructor::in,
-	type_id::in, list(type_param)::in,
+	type_ctor::in, list(type_param)::in,
 	weight_table::in, weight_table::out) is det.
 
-find_weights_for_cons(Ctor, TypeId, Params, Weights0, Weights) :-
+find_weights_for_cons(Ctor, TypeCtor, Params, Weights0, Weights) :-
 	% XXX should we do something about ExistQVars here?
  	Ctor = ctor(_ExistQVars, _Constraints, SymName, Args),
 	list__length(Args, Arity),
 	( Arity > 0 ->
-		find_and_count_nonrec_args(Args, TypeId, Params,
+		find_and_count_nonrec_args(Args, TypeCtor, Params,
 			NumNonRec, ArgInfos0),
 		( NumNonRec = 0 ->
 			Weight = 1,
@@ -305,7 +307,7 @@ find_weights_for_cons(Ctor, TypeId, Params, Weights0, Weights) :-
 		WeightInfo = weight(0, [])
 	),
 	ConsId = cons(SymName, Arity),
-	map__det_insert(Weights0, TypeId - ConsId, WeightInfo, Weights).
+	map__det_insert(Weights0, TypeCtor - ConsId, WeightInfo, Weights).
 
 :- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
 
@@ -315,7 +317,7 @@ find_weights_for_tuple(Arity, weight(Weight, ArgInfos)) :-
 	list__duplicate(Arity, yes, ArgInfos).
 
 :- pred find_and_count_nonrec_args(list(constructor_arg)::in,
-	type_id::in, list(type_param)::in,
+	type_ctor::in, list(type_param)::in,
 	int::out, list(bool)::out) is det.
 
 find_and_count_nonrec_args([], _, _, 0, []).
@@ -330,22 +332,22 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
 	).
 
 :- pred is_arg_recursive(constructor_arg::in,
-	type_id::in, list(type_param)::in) is semidet.
+	type_ctor::in, list(type_param)::in) is semidet.
 
-is_arg_recursive(Arg, Id, Params) :-
+is_arg_recursive(Arg, TypeCtor, Params) :-
 	Arg = _Name - ArgType,
-	type_to_type_id(ArgType, ArgTypeId, ArgTypeParams),
-	Id = ArgTypeId,
+	type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeParams),
+	TypeCtor = ArgTypeCtor,
 	list__perm(Params, ArgTypeParams).
 
-:- pred search_weight_table(weight_table::in, type_id::in, cons_id::in,
+:- pred search_weight_table(weight_table::in, type_ctor::in, cons_id::in,
 		weight_info::out) is semidet.
 
-search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) :-
-	( map__search(WeightMap, TypeId - ConsId, WeightInfo0) ->
+search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
+	( map__search(WeightMap, TypeCtor - ConsId, WeightInfo0) ->
 		WeightInfo = WeightInfo0
-	; type_id_is_tuple(TypeId) ->
-		TypeId = _ - Arity,
+	; type_ctor_is_tuple(TypeCtor) ->
+		TypeCtor = _ - Arity,
 		find_weights_for_tuple(Arity, WeightInfo)
 	;
 		fail
@@ -371,16 +373,16 @@ functor_norm(total, _, ConsId, _Module, Int, Args, Args, Modes, Modes) :-
 	;
 		Int = 0
 	).
-functor_norm(use_map(WeightMap), TypeId, ConsId, _Module, Int,
+functor_norm(use_map(WeightMap), TypeCtor, ConsId, _Module, Int,
 		Args, Args, Modes, Modes) :-
-	( search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) ->
+	( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, _)
 	;
 		Int = 0
 	).
-functor_norm(use_map_and_args(WeightMap), TypeId, ConsId, _Module, Int,
+functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _Module, Int,
 		Args0, Args, Modes0, Modes) :-
-	( search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) ->
+	( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, UseArgList),
 		(
 			functor_norm_filter_args(UseArgList, Args0, Args1,

@@ -162,7 +162,7 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			assoc_list(class_id, hlds_instance_defn),
 						% instances declarations
 						% to write
-			assoc_list(type_id, hlds_type_defn),
+			assoc_list(type_ctor, hlds_type_defn),
 						% type declarations
 						% to write
 			unit,
@@ -949,27 +949,27 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 			MethodArity, _, FieldName),
 		map__search(CtorFieldTable, FieldName, FieldDefns)
 	->
-		TypeIds0 = list__map(
-			(func(FieldDefn) = TypeId :-
+		TypeCtors0 = list__map(
+			(func(FieldDefn) = TypeCtor :-
 				FieldDefn = hlds_ctor_field_defn(_, _,
-						TypeId, _, _)
+						TypeCtor, _, _)
 			), FieldDefns)
 	;
-		TypeIds0 = []
+		TypeCtors0 = []
 	),
 	module_info_ctors(ModuleInfo, Ctors),
 	(
 		map__search(Ctors, cons(InstanceMethodName0, MethodArity),
 			MatchingConstructors)
 	->
-		TypeIds1 = list__map(
-			(func(ConsDefn) = TypeId :-
-				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+		TypeCtors1 = list__map(
+			(func(ConsDefn) = TypeCtor :-
+				ConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
 			), MatchingConstructors)
 	;
-		TypeIds1 = []
+		TypeCtors1 = []
 	),
-	TypeIds = list__append(TypeIds0, TypeIds1),
+	TypeCtors = list__append(TypeCtors0, TypeCtors1),
 
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
@@ -979,19 +979,19 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 			MethodCallTVarSet, MethodCallArgTypes,
 			PredId, InstanceMethodFuncName)
 	->
-		TypeIds = [],	
+		TypeCtors = [],	
 		MaybePredId = yes(PredId),
 		InstanceMethodName = InstanceMethodFuncName
 	;
-		TypeIds = [TheTypeId],
+		TypeCtors = [TheTypeCtor],
 		MaybePredId = no,
-		( TheTypeId = qualified(TypeModule, _) - _ ->
+		( TheTypeCtor = qualified(TypeModule, _) - _ ->
 			unqualify_name(InstanceMethodName0, UnqualMethodName),
 			InstanceMethodName =
 				qualified(TypeModule, UnqualMethodName)
 		;	
 			error(
-	"unqualified type_id in hlds_cons_defn or hlds_ctor_field_defn")
+	"unqualified type_ctor in hlds_cons_defn or hlds_ctor_field_defn")
 		)
 	).
 
@@ -1004,14 +1004,14 @@ intermod__gather_types -->
 	{ module_info_types(ModuleInfo, Types) },
 	map__foldl(intermod__gather_types_2, Types).
 
-:- pred intermod__gather_types_2(type_id::in,
+:- pred intermod__gather_types_2(type_ctor::in,
 	hlds_type_defn::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_types_2(TypeId, TypeDefn0, Info0, Info) :-
+intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 	intermod_info_get_module_info(ModuleInfo, Info0, Info1),
 	module_info_name(ModuleInfo, ModuleName),
 	(
-	    intermod__should_write_type(ModuleName, TypeId, TypeDefn0)
+	    intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0)
 	->
 	    (
 		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
@@ -1019,7 +1019,7 @@ intermod__gather_types_2(TypeId, TypeDefn0, Info0, Info) :-
 		MaybeUserEq0 = yes(UserEq0)
 	    ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
-		map__lookup(SpecialPreds, unify - TypeId, UnifyPredId),
+		map__lookup(SpecialPreds, unify - TypeCtor, UnifyPredId),
 		module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
 		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
 		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
@@ -1038,17 +1038,18 @@ intermod__gather_types_2(TypeId, TypeDefn0, Info0, Info) :-
 		TypeDefn = TypeDefn0
 	    ),
 	    intermod_info_get_types(Types0, Info2, Info3),
-	    intermod_info_set_types([TypeId - TypeDefn | Types0], Info3, Info)
+	    intermod_info_set_types([TypeCtor - TypeDefn | Types0],
+	        Info3, Info)
 	;
 	    Info = Info1
 	).
 
 :- pred intermod__should_write_type(module_name::in,
-		type_id::in, hlds_type_defn::in) is semidet.
+		type_ctor::in, hlds_type_defn::in) is semidet.
 
-intermod__should_write_type(ModuleName, TypeId, TypeDefn) :-
+intermod__should_write_type(ModuleName, TypeCtor, TypeDefn) :-
 	hlds_data__get_type_defn_status(TypeDefn, ImportStatus),
-	TypeId = Name - _Arity,
+	TypeCtor = Name - _Arity,
 	Name = qualified(ModuleName, _),
 	( ImportStatus = local
 	; ImportStatus = abstract_exported
@@ -1190,21 +1191,21 @@ intermod__write_modules([Module | Rest]) -->
 		intermod__write_modules(Rest)
 	).
 
-:- pred intermod__write_types(assoc_list(type_id, hlds_type_defn)::in,
+:- pred intermod__write_types(assoc_list(type_ctor, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
 
 intermod__write_types(Types) -->
 	list__foldl(intermod__write_type, Types).
 
-:- pred intermod__write_type(pair(type_id, hlds_type_defn)::in,
+:- pred intermod__write_type(pair(type_ctor, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
 
-intermod__write_type(TypeId - TypeDefn) -->
+intermod__write_type(TypeCtor - TypeDefn) -->
 	{ hlds_data__get_type_defn_tvarset(TypeDefn, VarSet) },
 	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
 	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
-	{ TypeId = Name - _Arity },
+	{ TypeCtor = Name - _Arity },
 	(
 		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
 		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
@@ -1766,7 +1767,7 @@ get_pragma_foreign_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 :- pred intermod_info_get_instances(
 			assoc_list(class_id, hlds_instance_defn)::out, 
 			intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_get_types(assoc_list(type_id, hlds_type_defn)::out, 
+:- pred intermod_info_get_types(assoc_list(type_ctor, hlds_type_defn)::out, 
 			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_get_insts(set(inst_id)::out, 
 %			intermod_info::in, intermod_info::out) is det.
@@ -1803,7 +1804,7 @@ intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
 :- pred intermod_info_set_instances(
 			assoc_list(class_id, hlds_instance_defn)::in, 
 			intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_set_types(assoc_list(type_id, hlds_type_defn)::in, 
+:- pred intermod_info_set_types(assoc_list(type_ctor, hlds_type_defn)::in, 
 			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_set_insts(set(inst_id)::in, 
 %			intermod_info::in, intermod_info::out) is det.
@@ -1893,29 +1894,29 @@ adjust_type_status(ModuleInfo0, ModuleInfo) :-
 	map__from_assoc_list(TypesAL, Types),
 	module_info_set_types(ModuleInfo1, Types, ModuleInfo).
 
-:- pred adjust_type_status_2(pair(type_id, hlds_type_defn)::in,
-		pair(type_id, hlds_type_defn)::out,
+:- pred adjust_type_status_2(pair(type_ctor, hlds_type_defn)::in,
+		pair(type_ctor, hlds_type_defn)::out,
 		module_info::in, module_info::out) is det.
 
-adjust_type_status_2(TypeId - TypeDefn0, TypeId - TypeDefn,
+adjust_type_status_2(TypeCtor - TypeDefn0, TypeCtor - TypeDefn,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_name(ModuleInfo0, ModuleName),
-	( intermod__should_write_type(ModuleName, TypeId, TypeDefn0) ->
+	( intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
 		hlds_data__set_type_defn_status(TypeDefn0, exported, TypeDefn),
-		fixup_special_preds(TypeId, ModuleInfo0, ModuleInfo)
+		fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo)
 	;
 		ModuleInfo = ModuleInfo0,
 		TypeDefn = TypeDefn0
 	).
 
-:- pred fixup_special_preds((type_id)::in,
+:- pred fixup_special_preds((type_ctor)::in,
 		module_info::in, module_info::out) is det.
 
-fixup_special_preds(TypeId, ModuleInfo0, ModuleInfo) :-
+fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
 	special_pred_list(SpecialPredList),
 	module_info_get_special_pred_map(ModuleInfo0, SpecPredMap),
 	list__filter_map((pred(SpecPredId::in, PredId::out) is semidet :-
-			map__search(SpecPredMap, SpecPredId - TypeId, PredId)
+			map__search(SpecPredMap, SpecPredId - TypeCtor, PredId)
 		), SpecialPredList, PredIds),
 	set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo).
 

@@ -314,7 +314,7 @@ ml_gen_pseudo_type_info(ModuleInfo, Pseudo, Rval, Type,
 			% for zero-arity types, we just generate a
 			% reference to the already-existing type_ctor_info
 			RttiName = type_ctor_info,
-			RttiTypeId0 = rtti_type_id(ModuleName0, _, _),
+			RttiTypeId0 = rtti_type_ctor(ModuleName0, _, _),
 			ModuleName = fixup_builtin_module(ModuleName0),
 			RttiTypeId = RttiTypeId0,
 			MLDS_Defns = MLDS_Defns0

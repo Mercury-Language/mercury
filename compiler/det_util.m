@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,9 +150,9 @@ det_get_proc_info(DetInfo, ProcInfo) :-
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__lookup(VarTypes, Var, Type),
-	( type_to_type_id(Type, TypeId, _) ->
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
 		module_info_types(ModuleInfo, TypeTable),
-		map__search(TypeTable, TypeId, TypeDefn)
+		map__search(TypeTable, TypeCtor, TypeDefn)
 	;
 		error("cannot lookup the type of a variable")
 	).

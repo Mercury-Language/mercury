@@ -41,8 +41,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred hlds_out__write_type_id(type_id, io__state, io__state).
-:- mode hlds_out__write_type_id(in, di, uo) is det.
+:- pred hlds_out__write_type_ctor(type_ctor, io__state, io__state).
+:- mode hlds_out__write_type_ctor(in, di, uo) is det.
 
 :- pred hlds_out__write_class_id(class_id, io__state, io__state).
 :- mode hlds_out__write_class_id(in, di, uo) is det.
@@ -276,7 +276,7 @@
 :- import_module require, getopt, std_util, term_io, varset.
 
 
-hlds_out__write_type_id(Name - Arity) -->
+hlds_out__write_type_ctor(Name - Arity) -->
 	prog_out__write_sym_name_and_arity(Name / Arity).
 
 hlds_out__write_class_id(class_id(Name, Arity)) -->
@@ -2613,12 +2613,12 @@ hlds_out__write_types(Indent, TypeTable) -->
 	{ map__to_assoc_list(TypeTable, TypeAL) },
 	hlds_out__write_types_2(Indent, TypeAL).
 
-:- pred hlds_out__write_types_2(int, assoc_list(type_id, hlds_type_defn),
+:- pred hlds_out__write_types_2(int, assoc_list(type_ctor, hlds_type_defn),
 	io__state, io__state).
 :- mode hlds_out__write_types_2(in, in, di, uo) is det.
 
 hlds_out__write_types_2(_Indent, []) --> [].
-hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
+hlds_out__write_types_2(Indent, [TypeCtor - TypeDefn | Types]) -->
 	{ hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet) },
 	{ hlds_data__get_type_defn_tparams(TypeDefn, TypeParams) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
@@ -2650,13 +2650,13 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 
 	hlds_out__write_indent(Indent),
 	io__write_string(":- type "),
-	hlds_out__write_type_name(TypeId),
+	hlds_out__write_type_name(TypeCtor),
 	hlds_out__write_type_params(TVarSet, TypeParams),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_type_body(Indent1, TVarSet, TypeBody),
 	hlds_out__write_types_2(Indent, Types).
 
-:- pred hlds_out__write_type_name(type_id, io__state, io__state).
+:- pred hlds_out__write_type_name(type_ctor, io__state, io__state).
 :- mode hlds_out__write_type_name(in, di, uo) is det.
 
 hlds_out__write_type_name(Name - _Arity) -->

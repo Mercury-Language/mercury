@@ -46,7 +46,7 @@
 :- mode add_new_proc(in, in, in, in, in, in, in, in, in, out, out) is det.
 
 	% add_special_pred_for_real(SpecialPredId, ModuleInfo0, TVarSet,
-	% 	Type, TypeId, TypeBody, TypeContext, TypeStatus, ModuleInfo).
+	% 	Type, TypeCtor, TypeBody, TypeContext, TypeStatus, ModuleInfo).
 	%
 	% Add declarations and clauses for a special predicate.
 	% This is used by unify_proc.m to add a unification predicate
@@ -54,19 +54,19 @@
 	% generated only when a unification procedure is requested
 	% during mode analysis.
 :- pred add_special_pred_for_real(special_pred_id,
-		module_info, tvarset, type, type_id, hlds_type_body,
+		module_info, tvarset, type, type_ctor, hlds_type_body,
 		prog_context, import_status, module_info).
 :- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
 
 	% add_special_pred_decl_for_real(SpecialPredId, ModuleInfo0, TVarSet,
-	% 	Type, TypeId, TypeContext, TypeStatus, ModuleInfo).
+	% 	Type, TypeCtor, TypeContext, TypeStatus, ModuleInfo).
 	%
 	% Add declarations for a special predicate.
 	% This is used by higher_order.m when specializing an in-in
 	% unification for an imported type for which unification procedures
 	% are generated lazily.	
 :- pred add_special_pred_decl_for_real(special_pred_id,
-		module_info, tvarset, type, type_id, prog_context,
+		module_info, tvarset, type, type_ctor, prog_context,
 		import_status, module_info).
 :- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
 
@@ -413,12 +413,12 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 				ForeignTypeName, ForeignTypeLocation) },
 		{ Cond = true },
 
-		{ TypeId = Name - 0 },
+		{ TypeCtor = Name - 0 },
 		{ module_info_types(Module0, Types) },
 		{ TypeStr = error_util__describe_sym_name_and_arity(
 				Name / 0) },
 		( 
-			{ map__search(Types, TypeId, OldDefn) }
+			{ map__search(Types, TypeCtor, OldDefn) }
 		->
 			{ hlds_data__get_type_defn_status(OldDefn, OldStatus) },
 			{ combine_status(OldStatus, ImportStatus, NewStatus) },
@@ -1855,8 +1855,8 @@ module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, Cond, Context,
 		item_status(Status0, NeedQual), Module) -->
 	globals__io_get_globals(Globals),
 	{ list__length(Args, Arity) },
-	{ TypeId = Name - Arity },
-	{ convert_type_defn(TypeDefn, TypeId, Globals, Body) },
+	{ TypeCtor = Name - Arity },
+	{ convert_type_defn(TypeDefn, TypeCtor, Globals, Body) },
 	module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, Cond,
 			Context, item_status(Status0, NeedQual), Module).
 
@@ -1871,7 +1871,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ list__length(Args, Arity) },
-	{ TypeId = Name - Arity },
+	{ TypeCtor = Name - Arity },
 	{ Body = abstract_type ->
 		make_status_abstract(Status0, Status1)
 	;
@@ -1880,7 +1880,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 	{ 
 		% the type is exported if *any* occurrence is exported,
 		% even a previous abstract occurrence
-		map__search(Types0, TypeId, OldDefn)
+		map__search(Types0, TypeCtor, OldDefn)
 	->
 		hlds_data__get_type_defn_status(OldDefn, OldStatus),
 		combine_status(Status1, OldStatus, Status),
@@ -1912,7 +1912,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			;
 				hlds_data__set_type_defn(TVarSet_2, Params_2,
 					Body_2, Status, OrigContext, T3),
-				map__det_update(Types0, TypeId, T3, Types),
+				map__det_update(Types0, TypeCtor, T3, Types),
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
@@ -1928,8 +1928,8 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				OrigContext)
 		)
 	;
-		{ map__set(Types0, TypeId, T, Types) },
-		{ construct_type(TypeId, Args, Type) },
+		{ map__set(Types0, TypeCtor, T, Types) },
+		{ construct_type(TypeCtor, Args, Type) },
 		(
 			{ Body = du_type(ConsList, _, _, _) }
 		->
@@ -1938,9 +1938,9 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				PQInfo) },
 			{ module_info_ctor_field_table(Module0,
 				CtorFields0) },
-			ctors_add(ConsList, TypeId, TVarSet, NeedQual, PQInfo,
-				Context, Status, CtorFields0, CtorFields,
-				Ctors0, Ctors),
+			ctors_add(ConsList, TypeCtor, TVarSet, NeedQual,
+				PQInfo, Context, Status,
+				CtorFields0, CtorFields, Ctors0, Ctors),
 			{ module_info_set_ctors(Module0, Ctors, Module1) },
 			{ module_info_set_ctor_field_table(Module1,
 				CtorFields, Module1a) },
@@ -1952,7 +1952,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 					Name, CtorArgType),
 				module_info_no_tag_types(Module1a,
 					NoTagTypes0),
-				map__set(NoTagTypes0, TypeId, NoTagType,
+				map__set(NoTagTypes0, TypeCtor, NoTagType,
 					NoTagTypes),
 				module_info_set_no_tag_types(Module1a,
 					NoTagTypes, Module2)
@@ -1962,7 +1962,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		;
 			{ Module2 = Module0 }
 		),
-		{ add_special_preds(Module2, TVarSet, Type, TypeId,
+		{ add_special_preds(Module2, TVarSet, Type, TypeCtor,
 			Body, Context, Status, Module3) },
 		{ module_info_set_types(Module3, Types, Module) },
 		(
@@ -2081,16 +2081,16 @@ combine_status_abstract_imported(Status2, Status) :-
 		Status = abstract_imported
 	).
 
-:- pred convert_type_defn(type_defn, type_id, globals, hlds_type_body).
+:- pred convert_type_defn(type_defn, type_ctor, globals, hlds_type_body).
 :- mode convert_type_defn(in, in, in, out) is det.
 
-convert_type_defn(du_type(Body, EqualityPred), TypeId, Globals,
+convert_type_defn(du_type(Body, EqualityPred), TypeCtor, Globals,
 		du_type(Body, CtorTags, IsEnum, EqualityPred)) :-
-	assign_constructor_tags(Body, TypeId, Globals, CtorTags, IsEnum).
+	assign_constructor_tags(Body, TypeCtor, Globals, CtorTags, IsEnum).
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type, _, _, abstract_type).
 
-:- pred ctors_add(list(constructor), type_id, tvarset, need_qualifier,
+:- pred ctors_add(list(constructor), type_ctor, tvarset, need_qualifier,
 		partial_qualifier_info, prog_context, import_status,
 		ctor_field_table, ctor_field_table,
 		cons_table, cons_table, io__state, io__state).
@@ -2098,12 +2098,12 @@ convert_type_defn(abstract_type, _, _, abstract_type).
 
 ctors_add([], _, _, _, _, _, _, FieldNameTable, FieldNameTable,
 		Ctors, Ctors) --> [].
-ctors_add([Ctor | Rest], TypeId, TVarSet, NeedQual, PQInfo, Context,
+ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 		ImportStatus, FieldNameTable0, FieldNameTable,
 		Ctors0, Ctors) -->
 	{ Ctor = ctor(ExistQVars, Constraints, Name, Args) },
-	{ make_cons_id(Name, Args, TypeId, QualifiedConsId) },
-	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeId,
+	{ make_cons_id(Name, Args, TypeCtor, QualifiedConsId) },
+	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
 				Context) },
 	%
 	% Insert the fully-qualified version of this cons_id into the
@@ -2120,7 +2120,7 @@ ctors_add([Ctor | Rest], TypeId, TVarSet, NeedQual, PQInfo, Context,
 	),
 	(
 		{ list__member(OtherConsDefn, QualifiedConsDefns1) },
-		{ OtherConsDefn = hlds_cons_defn(_, _, _, TypeId, _) }
+		{ OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _) }
 	->
 		% XXX we should record each error using module_info_incr_errors
 		io__stderr_stream(StdErr),
@@ -2129,7 +2129,7 @@ ctors_add([Ctor | Rest], TypeId, TVarSet, NeedQual, PQInfo, Context,
 		io__write_string("Error: constructor `"),
 		hlds_out__write_cons_id(QualifiedConsId),
 		io__write_string("' for type `"),
-		hlds_out__write_type_id(TypeId),
+		hlds_out__write_type_ctor(TypeCtor),
 		io__write_string("' multiply defined.\n"),
 		io__set_exit_status(1),
 		io__set_output_stream(OldStream, _),
@@ -2162,13 +2162,13 @@ ctors_add([Ctor | Rest], TypeId, TVarSet, NeedQual, PQInfo, Context,
 		{ FirstField = 1 },
 		
 		add_ctor_field_names(FieldNames, NeedQual, PartialQuals,
-			TypeId, QualifiedConsId, Context, ImportStatus,
+			TypeCtor, QualifiedConsId, Context, ImportStatus,
 			FirstField, FieldNameTable0, FieldNameTable1)
 	;
 		{ error("ctors_add: cons_id not qualified") }
 	),
 
-	ctors_add(Rest, TypeId, TVarSet, NeedQual, PQInfo, Context,
+	ctors_add(Rest, TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 		ImportStatus, FieldNameTable1, FieldNameTable, Ctors3, Ctors).
 
 :- pred add_ctor(string, int, hlds_cons_defn, module_name,
@@ -2180,7 +2180,7 @@ add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
 	multi_map__set(CtorsIn, ConsId, ConsDefn, CtorsOut).
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name)),
-		need_qualifier, list(module_name), type_id, cons_id,
+		need_qualifier, list(module_name), type_ctor, cons_id,
 		prog_context, import_status, int, ctor_field_table,
 		ctor_field_table, io__state, io__state).
 :- mode add_ctor_field_names(in, in, in, in, in, in, in, in,
@@ -2189,19 +2189,19 @@ add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
 add_ctor_field_names([], _, _, _, _, _, _, _,
 		FieldNameTable, FieldNameTable) --> [].
 add_ctor_field_names([MaybeFieldName | FieldNames], NeedQual,
-		PartialQuals, TypeId, ConsId, Context, ImportStatus,
+		PartialQuals, TypeCtor, ConsId, Context, ImportStatus,
 		FieldNumber, FieldNameTable0, FieldNameTable) -->
 	(
 		{ MaybeFieldName = yes(FieldName) },
 		{ FieldDefn = hlds_ctor_field_defn(Context, ImportStatus,
-			TypeId, ConsId, FieldNumber) },
+			TypeCtor, ConsId, FieldNumber) },
 		add_ctor_field_name(FieldName, FieldDefn, NeedQual,
 			PartialQuals, FieldNameTable0, FieldNameTable2)
 	;
 		{ MaybeFieldName = no },
 		{ FieldNameTable2 = FieldNameTable0 }
 	),
-	add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeId,
+	add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
 		ConsId, Context, ImportStatus, FieldNumber + 1,
 		FieldNameTable2, FieldNameTable).
 
@@ -3043,7 +3043,7 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_special_preds(module_info, tvarset, type, type_id, 
+:- pred add_special_preds(module_info, tvarset, type, type_ctor, 
 	hlds_type_body, prog_context, import_status, module_info).
 :- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
 
@@ -3082,17 +3082,17 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	% predicates to be defined only for the kinds of types which do not
 	% lead unify_proc__generate_index_clauses to abort.
 
-add_special_preds(Module0, TVarSet, Type, TypeId,
+add_special_preds(Module0, TVarSet, Type, TypeCtor,
 			Body, Context, Status, Module) :-
 	(
 		special_pred_is_generated_lazily(Module0,
-			TypeId, Body, Status)
+			TypeCtor, Body, Status)
 	->
 		Module = Module0
 	;
-		can_generate_special_pred_clauses_for_type(TypeId, Body)
+		can_generate_special_pred_clauses_for_type(TypeCtor, Body)
 	->
-		add_special_pred(unify, Module0, TVarSet, Type, TypeId,
+		add_special_pred(unify, Module0, TVarSet, Type, TypeCtor,
 			Body, Context, Status, Module1),
 		(
 			status_defined_in_this_module(Status, yes)
@@ -3113,53 +3113,53 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 				SpecialPredIds = [compare]
 			),
 			add_special_pred_list(SpecialPredIds,
-				Module1, TVarSet, Type, TypeId,
+				Module1, TVarSet, Type, TypeCtor,
 				Body, Context, Status, Module)
 		;
 			% Never add clauses for comparison predicates
 			% for imported types -- they will never be used.
 			module_info_get_special_pred_map(Module1,
 				SpecialPreds),
-			( map__contains(SpecialPreds, compare - TypeId) ->
+			( map__contains(SpecialPreds, compare - TypeCtor) ->
 				Module = Module1
 			;
 				add_special_pred_decl(compare, Module1,
-					TVarSet, Type, TypeId, Body,
+					TVarSet, Type, TypeCtor, Body,
 					Context, Status, Module)
 			)
 		)
 	;
 		SpecialPredIds = [unify, compare],
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
-			Type, TypeId, Body, Context, Status, Module)
+			Type, TypeCtor, Body, Context, Status, Module)
 	).
 
 :- pred add_special_pred_list(list(special_pred_id),
-			module_info, tvarset, type, type_id, hlds_type_body,
+			module_info, tvarset, type, type_ctor, hlds_type_body,
 			prog_context, import_status, module_info).
 :- mode add_special_pred_list(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_list([], Module, _, _, _, _, _, _, Module).
 add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
-		TVarSet, Type, TypeId, Body, Context, Status, Module) :-
+		TVarSet, Type, TypeCtor, Body, Context, Status, Module) :-
 	add_special_pred(SpecialPredId, Module0,
-		TVarSet, Type, TypeId, Body, Context, Status, Module1),
+		TVarSet, Type, TypeCtor, Body, Context, Status, Module1),
 	add_special_pred_list(SpecialPredIds, Module1,
-		TVarSet, Type, TypeId, Body, Context, Status, Module).
+		TVarSet, Type, TypeCtor, Body, Context, Status, Module).
 
 :- pred add_special_pred(special_pred_id,
-			module_info, tvarset, type, type_id, hlds_type_body,
+			module_info, tvarset, type, type_ctor, hlds_type_body,
 			prog_context, import_status, module_info).
 :- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
 
-add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
+add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeCtor, TypeBody,
 		Context, Status0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
 	(
 		GenSpecialPreds = yes,
 		add_special_pred_for_real(SpecialPredId, Module0, TVarSet,
-			Type, TypeId, TypeBody, Context, Status0, Module)
+			Type, TypeCtor, TypeBody, Context, Status0, Module)
 	;
 		GenSpecialPreds = no,
 		(
@@ -3167,7 +3167,7 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 			add_special_pred_unify_status(TypeBody, Status0,
 				Status),
 			add_special_pred_for_real(SpecialPredId, Module0,
-				TVarSet, Type, TypeId, TypeBody, Context,
+				TVarSet, Type, TypeCtor, TypeBody, Context,
 				Status, Module)
 		;
 			SpecialPredId = index,
@@ -3186,7 +3186,7 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 					% a good error message in Mercury code
 					% than in C code.
 				add_special_pred_for_real(SpecialPredId,
-					Module0, TVarSet, Type, TypeId,
+					Module0, TVarSet, Type, TypeCtor,
 					TypeBody, Context, Status0, Module)
 			;
 				Module = Module0
@@ -3195,19 +3195,19 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 	).
 
 add_special_pred_for_real(SpecialPredId,
-		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status0,
+		Module0, TVarSet, Type, TypeCtor, TypeBody, Context, Status0,
 		Module) :-
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
 	module_info_get_special_pred_map(Module0, SpecialPredMap0),
-	( map__contains(SpecialPredMap0, SpecialPredId - TypeId) ->
+	( map__contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
 		Module1 = Module0
 	;
 		add_special_pred_decl_for_real(SpecialPredId,
-			Module0, TVarSet, Type, TypeId, Context, Status,
+			Module0, TVarSet, Type, TypeCtor, Context, Status,
 			Module1)
 	),
 	module_info_get_special_pred_map(Module1, SpecialPredMap1),
-	map__lookup(SpecialPredMap1, SpecialPredId - TypeId, PredId),
+	map__lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
 	module_info_preds(Module1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	% if the type was imported, then the special preds for that
@@ -3242,40 +3242,40 @@ add_special_pred_for_real(SpecialPredId,
 	module_info_set_preds(Module1, Preds, Module).
 
 :- pred add_special_pred_decl_list(list(special_pred_id),
-			module_info, tvarset, type, type_id, hlds_type_body,
+			module_info, tvarset, type, type_ctor, hlds_type_body,
 			prog_context, import_status, module_info).
 :- mode add_special_pred_decl_list(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_decl_list([], Module, _, _, _, _, _, _, Module).
 add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
-		TVarSet, Type, TypeId, TypeBody, Context, Status, Module) :-
+		TVarSet, Type, TypeCtor, TypeBody, Context, Status, Module) :-
 	add_special_pred_decl(SpecialPredId, Module0,
-		TVarSet, Type, TypeId, TypeBody, Context, Status, Module1),
+		TVarSet, Type, TypeCtor, TypeBody, Context, Status, Module1),
 	add_special_pred_decl_list(SpecialPredIds, Module1,
-		TVarSet, Type, TypeId, TypeBody, Context, Status, Module).
+		TVarSet, Type, TypeCtor, TypeBody, Context, Status, Module).
 
 :- pred add_special_pred_decl(special_pred_id,
-		module_info, tvarset, type, type_id, hlds_type_body,
+		module_info, tvarset, type, type_ctor, hlds_type_body,
 		prog_context, import_status, module_info).
 :- mode add_special_pred_decl(in, in, in, in, in, in, in, in, out) is det.
 
-add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
-		Context, Status0, Module) :-
+add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
+		TypeBody, Context, Status0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
 	( GenSpecialPreds = yes ->
 		add_special_pred_decl_for_real(SpecialPredId, Module0,
-			TVarSet, Type, TypeId, Context, Status0, Module)
+			TVarSet, Type, TypeCtor, Context, Status0, Module)
 	; SpecialPredId = unify ->
 		add_special_pred_unify_status(TypeBody, Status0, Status),
 		add_special_pred_decl_for_real(SpecialPredId, Module0,
-			TVarSet, Type, TypeId, Context, Status, Module)
+			TVarSet, Type, TypeCtor, Context, Status, Module)
 	;
 		Module = Module0
 	).
 
 add_special_pred_decl_for_real(SpecialPredId,
-			Module0, TVarSet, Type, TypeId, Context, Status0,
+			Module0, TVarSet, Type, TypeCtor, Context, Status0,
 			Module) :-
 	module_info_name(Module0, ModuleName),
 	PredName = unqualified(Name),
@@ -3309,7 +3309,7 @@ add_special_pred_decl_for_real(SpecialPredId,
 	module_info_set_predicate_table(Module0, PredicateTable,
 		Module1),
 	module_info_get_special_pred_map(Module1, SpecialPredMap0),
-	map__set(SpecialPredMap0, SpecialPredId - TypeId, PredId,
+	map__set(SpecialPredMap0, SpecialPredId - TypeCtor, PredId,
 		SpecialPredMap),
 	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
 

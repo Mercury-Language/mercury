@@ -1272,7 +1272,7 @@ rl_exprn__functor_test(Var, ConsId, Fail, Code) -->
 
 rl_exprn__is_char_cons_id(ConsId, Type, Int) :-
 	ConsId = cons(unqualified(CharStr), 0),
-	type_to_type_id(Type, unqualified("character") - 0, _),
+	type_to_ctor_and_args(Type, unqualified("character") - 0, _),
 		% Convert characters to integers.
 	( string__to_char_list(CharStr, [Char]) ->
 		char__to_int(Char, Int)
@@ -1363,11 +1363,11 @@ rl_exprn__cons_id_to_rule_number(ConsId, Type, RuleNo) -->
 rl_exprn__cons_id_to_rule_number(ConsId, Type, ExprnTuple, RuleNo) -->
 	( 
 		{ ConsId = cons(ConsName, Arity) },
-		{ type_to_type_id(Type, TypeId, Args) }
+		{ type_to_ctor_and_args(Type, TypeCtor, Args) }
 	->
 		% These names should not be quoted, since they are not
 		% being parsed, just compared against other strings.
-		{ rl__mangle_type_name(TypeId, Args, MangledTypeName) },
+		{ rl__mangle_type_name(TypeCtor, Args, MangledTypeName) },
 		{ rl__mangle_ctor_name(ConsName, Arity, MangledConsName) },
 		{ Rule = rl_rule(MangledTypeName, MangledConsName, Arity) },
 		rl_exprn_info_lookup_rule(Rule - ExprnTuple, RuleNo)
@@ -2006,14 +2006,14 @@ rl_exprn__compare_bytecode(term(_), rl_EXP_term_cmp).
 :- pred rl_exprn__type_to_aditi_type((type)::in, aditi_type::out) is det.
 
 rl_exprn__type_to_aditi_type(Type, AditiType) :-
-	( type_to_type_id(Type, TypeId, _) ->
-		( TypeId = unqualified("int") - 0 ->
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
+		( TypeCtor = unqualified("int") - 0 ->
 			AditiType = int
-		; TypeId = unqualified("character") - 0 ->
+		; TypeCtor = unqualified("character") - 0 ->
 			AditiType = int
-		; TypeId = unqualified("string") - 0 ->
+		; TypeCtor = unqualified("string") - 0 ->
 			AditiType = string
-		; TypeId = unqualified("float") - 0 ->
+		; TypeCtor = unqualified("float") - 0 ->
 			AditiType = float
 		;
 			AditiType = term(Type)
