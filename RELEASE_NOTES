@@ -43,7 +43,7 @@ Here's what new in release 0.5:
 * There is now an `inline' pragma which you can use as a hint to the
   compiler to inline a particular predicate.
 
-* We've ported the system to ULTRIX (thanks to Gertjan van Noord
+* We've ported the system to HPUX (thanks to Gertjan van Noord
   and especially Eero Pajarre).
 
 * We now support shared libraries for IRIX 5.
@@ -83,11 +83,8 @@ The main features of Mercury are:
 	representing the old state of the world be the last reference
 	to the old state of the world, thus allowing it the state of
 	the world to be updated destructively.  The language also
-	requires that I/O take place only in parts of the program that
-	are guaranteed to succeed exactly once, so that backtracking
-	across the update will never be necessary.  The current
-	implementation does not check the latter condition, but a planned
-	future implementation will.
+	requires that I/O take place only in parts of the program where
+	backtracking will not be needed.
 
 	Mercury handles dynamic data structures not through Prolog's
 	assert/retract but by providing several abstract data types in
