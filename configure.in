@@ -245,7 +245,7 @@ AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
 if test "$HAVE_DLFCN_H" = 1; then
 	AC_DEFINE(HAVE_DLFCN_H)
 fi
-AC_CHECK_LIB(dl,dlopen,DL_LIBRARY="-ldl",DL_LIBRARY="")
+AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
 AC_SUBST(DL_LIBRARY)
 
 # temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
@@ -1814,13 +1814,12 @@ AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
-
 #-----------------------------------------------------------------------------#
 
 #
 # check whether we need -lsocket
 #
-AC_CHECK_LIB(socket,socket,SOCKET_LIBRARY=-lsocket,SOCKET_LIBRARY="")
+AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
 AC_SUBST(SOCKET_LIBRARY)
 
 #
@@ -2000,7 +1999,8 @@ fi
 # restore the previous value of LIBS
 #
 LIBS="$save_LIBS"
-
+#-----------------------------------------------------------------------------#
+MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml

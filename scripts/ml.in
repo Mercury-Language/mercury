@@ -65,6 +65,8 @@ Debugging options:
 		then you don't need to explicitly specify \`--trace'.
 		Note that \`--trace' is incompatible with \`--static'
 		on some platforms (e.g. sparc-sun-solaris2.6).
+	-r-, --no-readline
+		Don't link in the GPL'd GNU Readline Library.
 	-g, --c-debug, --no-strip
 		Do not strip C debugging information.
 
@@ -111,6 +113,9 @@ SOCKET_LIBRARY="@SOCKET_LIBRARY@"
 # Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
 DL_LIBRARY="@DL_LIBRARY@"
 
+# Likewise for -lreadline -l{termcap,curses,ncurses}
+READLINE_LIBRARIES="@READLINE_LIBRARIES@"
+
 # If you change these, you will also need to change Mmake.common.in,
 # scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
 # and tools/linear.
@@ -121,6 +126,7 @@ BROWSER_LIB_NAME=mer_browser
 
 verbose=false
 trace=false
+readline=true
 case $FULLARCH in
 	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
 		# `gcc -s' is broken in gnu-win32
@@ -160,6 +166,12 @@ while : ; do
 		;;
 	-t-|--no-trace)
 		trace=false
+		;;
+	-r|--readline)
+		readline=true
+		;;
+	-r-|--no-readline)
+		readline=false
 		;;
 	-g-|--no-c-debug|--strip)
 		strip=true
@@ -365,13 +377,19 @@ case "$GRADE" in
 		;;
 esac
 
+case $readline in
+	true)	;;
+	false)	READLINE_LIBRARIES=
+		;;
+esac
+
 case $trace in
 	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME \
-			$SOCKET_LIBRARY $DL_LIBRARY"
+			$SOCKET_LIBRARY $DL_LIBRARY $READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
 			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a \
-			$SOCKET_LIBRARY $DL_LIBRARY"
+			$SOCKET_LIBRARY $DL_LIBRARY $READLINE_LIBRARIES"
 		;;
 	false)	TRACE_LIBS=
 		TRACE_STATIC_LIBS=

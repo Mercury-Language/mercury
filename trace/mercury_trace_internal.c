@@ -20,10 +20,13 @@
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
+#include "mercury_trace_readline.h"
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
+
 #include "browse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,9 +38,6 @@
 
 /* The initial size of arrays of words. */
 #define	MR_INIT_WORD_COUNT	20
-
-/* The initial size of arrays of characters. */
-#define	MR_INIT_BUF_LEN		80
 
 /* The initial number of lines in documentation entries. */
 #define	MR_INIT_DOC_CHARS	800
@@ -202,9 +202,8 @@ static	void	MR_trace_expand_aliases(char ***words,
 			int *word_max, int *word_count);
 static	bool	MR_trace_source(const char *filename);
 static	void	MR_trace_source_from_open_file(FILE *fp);
-static	char	*MR_trace_getline(const char *prompt, FILE *fp);
+static	char	*MR_trace_getline(const char *prompt);
 static	char	*MR_trace_getline_queue(void);
-static	char	*MR_trace_getline_raw(FILE *fp);
 static	void	MR_insert_line_at_head(const char *line);
 static	void	MR_insert_line_at_tail(const char *line);
 
@@ -262,7 +261,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	jumpaddr = NULL;
 
 	do {
-		line = MR_trace_getline("mdb> ", MR_mdb_in);
+		line = MR_trace_getline("mdb> ");
 		res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
 				&ancestor_level, &jumpaddr);
 	} while (res == KEEP_INTERACTING);
@@ -1303,9 +1302,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			if (! confirmed) {
 				char	*line2;
 
-				line2 = MR_trace_getline(
-					"mdb: are you sure you want to quit? ",
-					MR_mdb_in);
+				line2 = MR_trace_getline("mdb: "
+					"are you sure you want to quit? ");
 				if (line2 == NULL) {
 					/* This means the user input EOF. */
 					confirmed = TRUE;
@@ -1930,7 +1928,7 @@ MR_trace_read_help_text(void)
 	int	i;
 
 	next_char_slot = 0;
-	while ((text = MR_trace_getline("cat> ", MR_mdb_in)) != NULL) {
+	while ((text = MR_trace_getline("cat> ")) != NULL) {
 		if (streq(text, "end")) {
 			free(text);
 			break;
@@ -2181,7 +2179,7 @@ MR_trace_source_from_open_file(FILE *fp)
 {
 	char	*line;
 
-	while ((line = MR_trace_getline_raw(fp)) != NULL) {
+	while ((line = MR_trace_readline_raw(fp)) != NULL) {
 		MR_insert_line_at_tail(line);
 	}
 
@@ -2190,14 +2188,15 @@ MR_trace_source_from_open_file(FILE *fp)
 
 /*
 ** If there any lines waiting in the queue, return the first of these.
-** If not, print the prompt, read a line from the given file, and return it
-** in a malloc'd buffer holding the line (without the final newline).
+** If not, print the prompt to MR_mdb_out, read a line from MR_mdb_in,
+** and return it in a malloc'd buffer holding the line (without the final
+** newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
 ** occurs on an empty line, return NULL.
 */
 
 static char *
-MR_trace_getline(const char *prompt, FILE *fp)
+MR_trace_getline(const char *prompt)
 {
 	char	*line;
 
@@ -2207,10 +2206,8 @@ MR_trace_getline(const char *prompt, FILE *fp)
 	}
 
 	MR_trace_internal_interacting = TRUE;
-	fprintf(MR_mdb_out, "%s", prompt);
-	fflush(MR_mdb_out);
 
-	return MR_trace_getline_raw(fp);
+	return MR_trace_readline(prompt, MR_mdb_in, MR_mdb_out);
 }
 
 /*
@@ -2234,40 +2231,6 @@ MR_trace_getline_queue(void)
 		free(old);
 		return contents;
 	} else {
-		return NULL;
-	}
-}
-
-/*
-**	Read a line from a file, and return a pointer to a malloc'd buffer
-**	holding the line (without the final newline). If EOF occurs on a
-**	nonempty line, treat the EOF as a newline; if EOF occurs on an empty
-**	line, return NULL.
-*/
-
-static char *
-MR_trace_getline_raw(FILE *fp)
-{
-	char	*contents;
-	int	content_max;
-	int	c;
-	int	i;
-
-	contents = NULL;
-	content_max = 0;
-
-	i = 0;
-	while ((c = getc(fp)) != EOF && c != '\n') {
-		MR_ensure_big_enough(i, content, char, MR_INIT_BUF_LEN);
-		contents[i++] = c;
-	}
-
-	if (c == '\n' || i > 0) {
-		MR_ensure_big_enough(i, content, char, MR_INIT_BUF_LEN);
-		contents[i] = '\0';
-		return contents;
-	} else {
-		free(contents);
 		return NULL;
 	}
 }
@@ -2321,7 +2284,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 	/* We try to leave one line for the prompt itself. */
 	if (MR_scroll_control && MR_scroll_next >= MR_scroll_limit - 1) {
 	try_again:
-		buf = MR_trace_getline("--more-- ", MR_mdb_in);
+		buf = MR_trace_getline("--more-- ");
 		if (buf != NULL) {
 			for (i = 0; buf[i] != '\0' && MR_isspace(buf[i]); i++)
 				;

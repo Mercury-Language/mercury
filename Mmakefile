@@ -174,7 +174,7 @@ tags_profiler:
 
 #-----------------------------------------------------------------------------#
 
-configure: configure.in
+configure: configure.in aclocal.m4
 	autoconf
 
 config.status: configure VERSION
