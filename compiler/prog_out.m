@@ -7,6 +7,11 @@
 	% This module defines some predicates which output various parts
 	% of the parse tree created by prog_io.
 
+	% WARNING - this module is mostly junk at the moment
+	% (the format of the output is pretty terrible,
+	% and it includes calls to write/1 in various places).
+	% Consider it as just a debugging aid.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -54,25 +59,26 @@ prog_out__write_item(clause(VarSet, SymName, Args, Body)) -->
 		prog_out__write_goal(Body, 1, ',', VarSet),
 		io__write_string(".\n")
 	).
-prog_out__write_item(module_defn(VarSet, ModuleDefn)) -->
+	% XXX these are basically just debugging stubs
+prog_out__write_item(module_defn(_VarSet, ModuleDefn)) -->
 	{ write(ModuleDefn), write('.'), nl }.
-prog_out__write_item(type_defn(VarSet, Defn, Condition)) -->
+prog_out__write_item(type_defn(_VarSet, Defn, _Condition)) -->
 	{ write(Defn), write('.'), nl }.
-prog_out__write_item(mode_defn(VarSet, Defn, Condition)) -->
+prog_out__write_item(mode_defn(_VarSet, Defn, _Condition)) -->
 	{ write(Defn), write('.'), nl }.
-prog_out__write_item(inst_defn(VarSet, Defn, Condition)) -->
+prog_out__write_item(inst_defn(_VarSet, Defn, _Condition)) -->
 	{ write(Defn), write('.'), nl }.
-prog_out__write_item(pred(VarSet, Name, Args, Condition)) -->
+prog_out__write_item(pred(VarSet, Name, Args, _Condition)) -->
 	io__write_string(":- pred "),
 	prog_out__write_sym_name(Name),
 	prog_out__write_pred_args(VarSet, Args),
 	io__write_string(".\n").
-prog_out__write_item(rule(VarSet, Name, Args, Condition)) -->
+prog_out__write_item(rule(VarSet, Name, Args, _Condition)) -->
 	io__write_string(":- rule "),
 	prog_out__write_sym_name(Name),
 	prog_out__write_pred_args(VarSet, Args),
 	io__write_string(".\n").
-prog_out__write_item(mode(VarSet, Name, Args, Condition)) -->
+prog_out__write_item(mode(_VarSet, Name, Args, _Condition)) -->
 	io__write_string(":- mode "),
 	prog_out__write_sym_name(Name),
 	{ write(Args), write('.'), nl }.
@@ -95,6 +101,8 @@ prog_out__write_module_spec(ModuleSpec) -->
 	% if there are no arguments, then don't write anything,
 	% otherwise enclose them in parentheses and separate them with commas.
 
+	% XXX need to think about operators & operator precedence
+
 prog_out__write_args(_, []) --> [].
 prog_out__write_args(VarSet, [X|Xs]) -->
 	io__write_string("("),
@@ -111,6 +119,7 @@ prog_out__write_args_2(VarSet, [X|Xs]) -->
 	% write out the type arguments to a :- pred declaration.
 	% if there are no arguments, then don't write anything,
 	% otherwise enclose them in parentheses and separate them with commas.
+	% XXX need to think about operators & operator precedence
 
 prog_out__write_pred_args(_, []) --> [].
 prog_out__write_pred_args(VarSet, [X|Xs]) -->
@@ -132,7 +141,7 @@ prog_out__write_pred_arg(VarSet, type_and_mode(Type, Mode)) -->
 	prog_out__write_mode(VarSet, Mode).
 
 
-prog_out__write_mode(VarSet, Mode) -->
+prog_out__write_mode(_VarSet, Mode) -->		% XXX
 	{ write(Mode), write('.'), nl }.
 
 /*
@@ -158,7 +167,7 @@ prog_out__writeDCGClause(Head, Body, VarSet) -->
 
 :- type context ---> '(' ; (';') ; (then) ; (else) ; ','.
 
-:- pred prog_out__write_goal(goal, int, context, varset, io__state, io_state).
+:- pred prog_out__write_goal(goal, int, context, varset, io__state, io__state).
 :- mode prog_out__write_goal(input, input, input, input, di, uo).
 
 prog_out__write_goal(fail, I0, T, _VarSet) -->
@@ -265,7 +274,7 @@ prog_out__write_goal((P ; Q), I, T, VarSet) -->
 		io__write_string(")")
 	).
 
-prog_out__write_goal(not(Vars, A), I, _, VarSet) -->
+prog_out__write_goal(not(_Vars, A), I, _, VarSet) -->	% XXX
 	io__write_string("not("),
 	prog_out__write_goal(A, I, '(', VarSet),
 	io__write_string(")").
@@ -277,10 +286,10 @@ prog_out__write_goal(call(X), I, T, VarSet) -->
 	{ Prec = 999 },
 	prog_out__qwrite(Prec, VarSet, X).
 
-prog_out__write_var_list(VarSet, Vars) -->
+prog_out__write_var_list(_VarSet, Vars) -->
 	{ write(Vars) }.	% XXX
 
-prog_out__write_some_vars(VarSet, Vars) -->
+prog_out__write_some_vars(_VarSet, Vars) -->
 	{ write('some '), write(Vars) }.	% XXX
 
 :- pred prog_out__beforelit(context, int, io__state, io__state).
@@ -316,7 +325,7 @@ prog_out__indent(N) -->
 		[]
 	).
 
-:- pred prog_out__qwrite(int, varset, term, io__stream, io__stream).
+:- pred prog_out__qwrite(int, varset, term, io__state, io__state).
 :- mode prog_out__qwrite(input, input, input, di, uo).
 
 	% XXX problems with precedence
