@@ -1291,6 +1291,10 @@ Perform value numbering on extended basic blocks.
 Disable stack frame optimizations.
 
 @sp 1
+@item --no-optimize-delay-slot
+Disable branch delay slot optimizations.
+
+@sp 1
 @item --optimize-repeat @var{n}
 Iterate most optimizations at most @var{n} times (default: 3).
 
@@ -1336,8 +1340,12 @@ Disable the middle recursion optimization.
 @item --no-inlining
 Disable the inlining of simple procedures.
 
-@c @item --common-struct
-@c Enable optimization of common term structures.
+@c @sp 1
+@c @item --no-specialize
+@c Disable the specialization of procedures.
+
+@item --no-common-struct
+Disable optimization of common term structures.
 
 @sp 1
 @item --no-common-goal
