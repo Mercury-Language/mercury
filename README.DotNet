@@ -2,17 +2,20 @@
 
 INTRODUCTION
 
-This release of Mercury contains an incomplete port to the Microsoft.NET
-Common Language Runtime (CLR).  This port is very new, so there are still
-many unimplemented features.  Currently (2002-10-28) it passes about half
-of the tests in the Mercury test suite.
+This release of Mercury contains an port to the Microsoft.NET Common
+Language Runtime (CLR).  The Mercury compiler will generate code
+in Microsoft's Intermediate Language (IL) that can be assembled into
+bytecode suitable for running in the .NET runtime system.
 
-The port is currently targetted at the Microsoft .NET SDK version 1.
+The port is mostly complete, but some parts of the Mercury standard
+library are not yet implemented (for a full list see the FAQ below).
+However, enough is implemented correctly to bootstrap the Mercury
+compiler, and to pass about 98% of the applicable tests in the Mercury
+test suite.
 
-The Mercury compiler will generate code in Microsoft's Intermediate
-Language (IL) that can be assembled into bytecode suitable for running
-in the .NET runtime system.  In addition, much (but not all) of the
-Mercury library has been ported to use the .NET Frameworks.
+The port is currently targetted at the Microsoft .NET Framework SDK version 1.
+
+PREREQUISITES
 
 In order to try this system you will need 
 
@@ -201,6 +204,14 @@ A. Some parts of the Mercury standard library implementation for .NET
    tried using other .NET CLR implementations.
 
 
+Q. Does it work with versions of the Microsoft .NET Framework SDK greater
+   than 1.0?
+
+A. We don't know, because we've only tried it with version 1.0.
+   If you have a later version, try it out yourself and let us know
+   whether it works!
+
+
 Q. How does it compare in efficiency with the usual Mercury implementation?
 
 A. Our paper "Compiling Mercury to the .NET Common Language Runtime",
@@ -210,22 +221,28 @@ A. Our paper "Compiling Mercury to the .NET Common Language Runtime",
 
 Q. What features are not yet implemented?
 
-A. The following standard library procedures are not yet implemented:
+A. The following standard library modules are completely unimplemented:
 
-	   - io__command_line_arguments
-	   - io__set_environment_variable
-	   - io__read_file_as_string
-	   - builtin__copy
+	benchmarking
+	store
+	time
 
-   The following are only partly implemented:
+   The standard library modules that provide RTTI are only partly implemented
+   (basically just enough to make io.print work):
 
-	   - string__format ignores most of the formatting flags
-	   - support for standard library routines that involve
-	     run-time type identification is very patchy
+	construct
+	deconstruct
 
-   In addition, there is a Mercury compiler bug which causes problems
-   for procedures with mode "unused" (a.k.a. "free>>free").
+   In addition, the following individual procedures from other modules
+   are still not yet implemented:
 
-   The lists above are probably incomplete.
+	io.binary_stream_offset/4
+	io.current_binary_input_stream/3
+	io.current_binary_output_stream/3
+	io.current_input_stream/3
+	io.current_output_stream/3
+	io.seek_binary_2/5
+	type_desc.make_type/2
+	type_desc.type_ctor/1
 
 -----------------------------------------------------------------------------
