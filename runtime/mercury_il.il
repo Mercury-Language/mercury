@@ -257,6 +257,7 @@ get_ftn_ptr_c_pointer_unify() {
 get_ftn_ptr_ref_compare() {
 	ldftn void ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_compare__ref_1_0(
+		class [mscorlib]System.Object[],
 		class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -266,6 +267,7 @@ get_ftn_ptr_ref_compare() {
 get_ftn_ptr_ref_unify() {
 	ldftn int32 ['mercury'] 'mercury'.'private_builtin__cpp_code'.'mercury_code'::
 	do_unify__ref_1_0(
+		class [mscorlib]System.Object[],
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
