@@ -1653,7 +1653,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 			clauses_info_add_pragma_c_code(Clauses0,
 				MayCallMercury, PredId, ProcId, VarSet,
 				PVars, ArgTypes, C_Code, Context, ExtraInfo,
-				Clauses, Goal, Info0, Info),
+				Clauses, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
@@ -1663,8 +1663,9 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 				PredicateTable) },
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
-			maybe_warn_singletons(VarSet,
-				PredOrFunc - PredName/Arity, Goal)
+			{ pragma_get_var_names(PVars, Names) },
+			maybe_warn_pragma_singletons(C_Code, Names,
+				Context, PredOrFunc - PredName/Arity)
 		;
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
 			io__stderr_stream(StdErr),
@@ -1996,6 +1997,19 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 
 %-----------------------------------------------------------------------------%
 
+:- pred maybe_warn_pragma_singletons(string, list(maybe(string)),
+		term__context, pred_or_func_call_id, io__state, io__state).
+:- mode maybe_warn_pragma_singletons(in, in, in, in, di, uo) is det.
+
+maybe_warn_pragma_singletons(C_Code, ArgNames, Context, CallId) -->
+	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
+	( { WarnSingletonVars = yes } ->
+		warn_singletons_in_pragma_c_code(C_Code, ArgNames,
+			Context, CallId)
+	;	
+		[]
+	).
+
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% a substring of the given c code. If not, it gives a warning
 :- pred warn_singletons_in_pragma_c_code(string, list(maybe(string)),
@@ -2005,8 +2019,11 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 warn_singletons_in_pragma_c_code(C_Code, ArgNames, 
 		Context, PredOrFunc - PredCallId) -->
 	{ c_code_to_name_list(C_Code, C_CodeList) },
-	{ warn_singletons_in_pragma_c_code_2(C_CodeList, ArgNames,
-		Context, SingletonVars) },
+	{ solutions(lambda([Name::out] is nondet, (
+			list__member(yes(Name), ArgNames),
+			\+ string__prefix(Name, "_"),
+			\+ list__member(Name, C_CodeList)
+		)), SingletonVars) },
 	( { SingletonVars = [] } ->
 		[]
 	;
@@ -2027,31 +2044,6 @@ warn_singletons_in_pragma_c_code(C_Code, ArgNames,
 			io__write_string("' do not occur in the C code.\n")
 		),
 		io__set_output_stream(OldStream, _)
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred warn_singletons_in_pragma_c_code_2(list(string), list(maybe(string)), 
-				term__context, list(string)).
-:- mode warn_singletons_in_pragma_c_code_2(in, in, in, out) is det.
-
-warn_singletons_in_pragma_c_code_2(_, [], _, []).
-warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args],
-		Context, SingletonVars) :-
-	warn_singletons_in_pragma_c_code_2(C_CodeList, Args,
-		 Context, SingletonVars0),
-	( Arg = yes(Name) ->
-		(
-			( string__prefix(Name, "_")
-			; list__member(Name, C_CodeList)
-			)
-		->
-			SingletonVars = SingletonVars0
-		;
-			SingletonVars = [Name|SingletonVars0]
-		)
-	;
-		SingletonVars = SingletonVars0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2258,14 +2250,14 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 :- pred clauses_info_add_pragma_c_code(clauses_info, may_call_mercury,
 	pred_id, proc_id, varset, list(pragma_var), list(type),
 	string, term__context,
-	maybe(pair(list(string))), clauses_info, hlds_goal,
+	maybe(pair(list(string))), clauses_info,
 	qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	out, out, in, out, di, uo) is det.
+	out, in, out, di, uo) is det.
 
 clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
 		PVarSet, PVars, OrigArgTypes, C_Code, Context, ExtraInfo,
-		ClausesInfo, HldsGoal, Info0, Info) -->
+		ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList),
