@@ -2784,17 +2784,14 @@ or function, then that mode of the predicate may not have determinism
 predicate or function, and there must be a @code{pragma c_code} declaration
 for every mode of the predicate or function.
 
-For example, the following piece of code gives a predicate, 
-@samp{c_write_string/3}, which has a similar effect to the Mercury library 
-predicate @samp{io__write_string/3}:
+For example, the following piece of code defines a Mercury function
+@samp{sin/1} which calls the C function @samp{sin()} of the same name.
 
 @example
-:- pred c_write_string(string, io__state, io__state).
-:- mode c_write_string(in, di, uo) is det.
-
-:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
-        may_call_mercury,
-        "puts(S); IO = IO0;").
+:- func sin(float) = float.
+:- pragma c_code(sin(X::in) = Sin::out),
+	may_call_mercury,
+	"Sin = sin(X);").
 @end example
 
 If the C code does not recursively invoke Mercury code,
@@ -2830,6 +2827,47 @@ Mercury implementation on entry to the C code.  If the procedure
 succeeds, the C code must set the values of all output arguments
 before returning.  If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
+
+Note that procedures implemented in C must still be ``pure'',
+unless declared otherwise (@pxref{Impurity}), and they must
+be type-correct and mode-correct.  (Determinism-correctness
+is also required, but it follows from the rules already stated
+above.)  They may perform destructive update on their
+arguments only if those arguments have an appropriate
+unique mode declaration.
+They may perform I/O only if their arguments
+include an @samp{io__state} pair (see the @samp{io} chapter
+of the Mercury Library Reference Manual).
+The Mercury implementation is allowed to assume that
+these rules are followed, and to optimize accordingly.
+If the C code is not type-correct, mode-correct,
+determinism-correct, and purity-correct with respect
+to its Mercury declaration, then the behaviour is
+undefined.
+
+For example, the following code defines a predicate
+@samp{c_write_string/3}, which has a similar effect to
+the Mercury library predicate @samp{io__write_string/3}:
+
+@example
+:- pred c_write_string(string, io__state, io__state).
+:- mode c_write_string(in, di, uo) is det.
+
+:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
+        may_call_mercury,
+        "puts(S); IO = IO0;").
+@end example
+
+@noindent
+In this example, the I/O is done via side effects inside the C code,
+but the Mercury interface includes @samp{io__state} arguments
+to ensure that the predicate has a proper declarative
+semantics.  If the @samp{io__state} arguments were
+left off, then the Mercury implementation might apply
+undesirable optimizations (e.g. reordering, duplicate
+call elimination, tabling, lazy evaluation...)
+to this procedure, which could effect the behaviour
+of the program in unpredictable ways.
 
 @node Including C headers
 @subsection Including C headers
