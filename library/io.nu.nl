@@ -385,14 +385,8 @@ io__get_line_number(Stream, LineNumber) -->
 	% used again.
 
 :- pred io__init_state(io__state).
-io__init_state(io__state(Names, PutBack, OpTable, Globals, current)) :-
-	map__init(PutBack),
-	ops__init_op_table(OpTable),
-	type_to_univ("<globals>", Globals),
-	map__init(Names0),
-	map__insert(Names0, user_input, "<standard input>", Names1),
-	map__insert(Names1, user_output, "<standard output>", Names2),
-	map__insert(Names2, user_error, "<standard error>", Names).
+io__init_state(IO_State) :-
+	io__init_state(current, IO_State).
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-

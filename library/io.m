@@ -391,6 +391,13 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(in, di, uo) is det.
 
+% For use by the Mercury runtime (io.mod):
+
+:- type io__external_state.
+
+:- pred io__init_state(io__external_state, io__state).
+:- mode io__init_state(di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -410,8 +417,6 @@
 :- type io__stream_names ==	map(io__stream, string).
 
 :- type io__stream_putback ==	map(io__stream, list(character)).
-
-:- type io__external_state.
 
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
@@ -735,6 +740,25 @@ io__report_stats -->
 %-----------------------------------------------------------------------------%
 
 % miscellaneous predicates
+
+io__init_state(ExternalState, IOState) :-
+	map__init(Names0),
+	map__init(PutBack),
+	ops__init_op_table(OpTable),
+	type_to_univ("<globals>", Globals),
+	IOState0 = io__state(Names0, PutBack, OpTable, Globals, ExternalState),
+	io__insert_std_stream_names(IOState0, IOState).
+
+:- pred io__insert_std_stream_names(io__state, io__state).
+:- mode io__insert_std_stream_names(di, uo) is det.
+
+io__insert_std_stream_names -->
+	io__stdin_stream(Stdin),
+	io__insert_stream_name(Stdin, "<standard input>"),
+	io__stdout_stream(Stdout),
+	io__insert_stream_name(Stdout, "<standard output>"),
+	io__stderr_stream(Stderr),
+	io__insert_stream_name(Stderr, "<standard error>").
 
 io__call_system(Command, Result) -->
 	io__call_system_code(Command, Status),
