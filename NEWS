@@ -222,11 +222,6 @@ Changes to the Mercury standard library:
 * The builtin predicates !/0 and !/2 from Mercury's Prolog heritage have been
   removed (`!' is now a prefix operator used in the state variable syntax).
 
-* io__close_input, io__close_output, io__close_binary_input and
-  io__close_binary_output now throw an exception rather than
-  silently ignoring attempts to close the stdin, stdout or stderr
-  streams.
-
 * We have added the type class `pprint__doc/1' and a new concatenation
   operator, `++/2', which should make it easier to construct doc values.
 * Performance bugs in `pprint__to_doc' have now been fixed.  Even
