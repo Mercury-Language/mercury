@@ -936,6 +936,40 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	"Warning: undiscriminated union types (`+') not implemented.\n"),
 			io__set_output_stream(OldStream, _)
 		;
+			% XXX we can't handle abstract exported
+			% polymorphic equivalence types with monomorphic
+			% bodies, because the compiler stuffs up the
+			% type_info handling -- the caller passes type_infos,
+			% but the callee expects no type_infos
+			{ Body = eqv_type(EqvType) },
+			{ Status = abstract_exported },
+			{ term__contains_var_list(Args, Var) },
+			{ \+ term__contains_var(EqvType, Var) }
+		->
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			io__write_string(
+	"Sorry, not implemented: polymorphic equivalence type,\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+	"  with monomorphic definition, exported as abstract type.\n"),
+			globals__io_lookup_bool_option(verbose_errors,
+				VerboseErrors),
+			( { VerboseErrors = yes } ->
+				io__write_strings([
+	"\tA quick work-around is just export the type as a concrete type,\n",
+	"\tby putting the type definition in the interface section.\n",
+	"\tA better work-around is to use a \"wrapper\" type, with just one\n",
+	"\tfunctor that has just one arg, instead of an equivalence type.\n",
+	"\t(There's no performance penalty for this -- the compiler will\n",
+	"\toptimize the wrapper away.)\n"])
+			;
+				[]
+			),
+			io__set_exit_status(1),
+			io__set_output_stream(OldStream, _)
+		;
 			[]
 		)
 	).
