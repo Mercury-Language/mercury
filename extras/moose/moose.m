@@ -276,7 +276,7 @@ write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom) -->
 		io__format("\tfunc %s(", [s(MethodName)]),
 		io__write_list(Types, ", ", term_io__write_term(VarSet)),
 		( { Types \= [] } -> io__write_string(", ") ; [] ),
-		io__format("T, T),\n", []),
+		io__write_string("T) = T,\n"),
 
 		io__format("\tmode %s(", [s(MethodName)]),
 		io__write_list(Types, ", ", WriteIn),
@@ -867,11 +867,12 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
 			{ search(Xfns, RNt, xform(_, XFormName)) },
 			{ Head = functor(_, HeadArgs, _) }
 		->
-			{ append(HeadArgs, [Ts0, Ts], Then1Args) },
-			{ Then1 = functor(atom(XFormName), Then1Args, Ctxt) }
+			{ append(HeadArgs, [Ts0], Then1Args) },
+			{ XFTerm = functor(atom(XFormName), Then1Args, Ctxt) }
 		;
-			{ Then1 = functor(atom("="), [Ts0, Ts], Ctxt) }
+			{ XFTerm = Ts0 }
 		),
+		{ Then1 = functor(atom("="), [Ts, XFTerm], Ctxt) },
 		{ Then = functor(atom(","), [Then0, Then1], Ctxt) },
 		{ BodyTerm = functor(atom(";"),[
 			functor(atom("->"), [
