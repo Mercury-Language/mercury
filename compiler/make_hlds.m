@@ -5974,9 +5974,9 @@ transform_goal_2(if_then_else(Vars0, StateVars0, A0, B0, C0), Context,
 	transform_goal(C0, VarSet3, Subst, C1, VarSet4, Info2, Info,
 		SInfo0, SInfoC),
 
-	{ goal_info_init(GoalInfo) },
+	{ goal_info_init(Context, GoalInfo) },
 
-	{ finish_if_then_else(Context, GoalInfo, B1, B, C1, C,
+	{ finish_if_then_else(Context, B1, B, C1, C,
 		SInfo0, SInfoA, SInfoB, SInfoC, SInfo, VarSet4, VarSet) }.
 
 transform_goal_2(if_then(Vars0, StateVars, A0, B0), Context, Subst, VarSet0,
@@ -9426,14 +9426,13 @@ del_locals(StateVars, MapBefore, Map) =
 	% We construct new mappings for the state variables and then
 	% add unifiers.
 	%
-:- pred finish_if_then_else(prog_context, hlds_goal_info,
-		hlds_goal, hlds_goal, hlds_goal, hlds_goal,
-		svar_info, svar_info, svar_info, svar_info, svar_info,
-		prog_varset, prog_varset).
-:- mode finish_if_then_else(in, in, in, out, in, out, in, in, in, in, out,
+:- pred finish_if_then_else(prog_context, hlds_goal, hlds_goal, hlds_goal,
+		hlds_goal, svar_info, svar_info, svar_info, svar_info,
+		svar_info, prog_varset, prog_varset).
+:- mode finish_if_then_else(in, in, out, in, out, in, in, in, in, out,
 		in, out) is det.
 
-finish_if_then_else(Context, GoalInfo, Then0, Then, Else0, Else,
+finish_if_then_else(Context, Then0, Then, Else0, Else,
 		SInfo0, SInfoC, SInfoT0, SInfoE, SInfo,
 		VarSet0, VarSet) :-
 
@@ -9444,6 +9443,7 @@ finish_if_then_else(Context, GoalInfo, Then0, Then, Else0, Else,
 		%
 	StateVars  = list__merge_and_remove_dups(map__keys(SInfoT0 ^ dot),
 						 map__keys(SInfoE  ^ dot)),
+	Then0 = _ - GoalInfo,
 	goal_to_conj_list(Then0, Thens0),
 	add_then_arm_specific_unifiers(Context, StateVars,
 		SInfo0, SInfoC, SInfoT0, SInfoT,
@@ -9459,9 +9459,9 @@ finish_if_then_else(Context, GoalInfo, Then0, Then, Else0, Else,
 		% Add unifiers to each arm to ensure they both construct
 		% the same final state variable mappings. 
 		%
-	Then       = add_disj_unifiers(Context, GoalInfo, SInfo, StateVars,
+	Then       = add_disj_unifiers(Context, SInfo, StateVars,
 				{Then1, SInfoT}),
-	Else       = add_disj_unifiers(Context, GoalInfo, SInfo, StateVars,
+	Else       = add_disj_unifiers(Context, SInfo, StateVars,
 				{Else0, SInfoE}).
 
 
@@ -9545,9 +9545,8 @@ finish_negation(SInfoBefore, SInfoNeg, SInfo) :-
 finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
 	SInfo      = reconciled_disj_svar_info(VarSet, DisjSInfos),
 	StateVars  = map__keys(SInfo ^ dot),
-	goal_info_init(Context, GoalInfo),
 	Disjs      = list__map(
-			add_disj_unifiers(Context, GoalInfo, SInfo, StateVars),
+			add_disj_unifiers(Context, SInfo, StateVars),
 			DisjSInfos).
 
 
@@ -9677,13 +9676,14 @@ reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
 	).
  
 
-:- func add_disj_unifiers(prog_context, hlds_goal_info, svar_info, svars,
+:- func add_disj_unifiers(prog_context, svar_info, svars,
 		hlds_goal_svar_info) = hlds_goal.
 
-add_disj_unifiers(Context, GoalInfo, SInfo, StateVars, {GoalX, SInfoX}) =
+add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) =
 		Goal :-
 	Unifiers = list__foldl(add_disj_unifier(Context, SInfo, SInfoX),
 			StateVars, []),
+	GoalX = _ - GoalInfo,
 	goal_to_conj_list(GoalX, GoalsX),
 	conj_list_to_goal(GoalsX ++ Unifiers, GoalInfo, Goal).
 
