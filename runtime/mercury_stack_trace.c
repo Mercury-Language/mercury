@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -382,7 +382,8 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	if (base_sp != NULL && base_curfr != NULL) {
 		bool print_details = FALSE;
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			Word maybe_from_full = entry->MR_sle_maybe_from_full;
+			Integer maybe_from_full =
+				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
 				** for procedures compiled with shallow
