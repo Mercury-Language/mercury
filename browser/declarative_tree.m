@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -895,9 +895,22 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		)
 	;
 		AtomicGoal = unify_assign_rep(ToVar, FromVar),
+		% We handle assigns the same as we handle unsafe casts.
 		( list__member(Var0, BoundVars) ->
 			decl_require(unify(Var0, ToVar),
 				"traverse_primitives", "bad assign"),
+			traverse_primitives(Prims, FromVar, TermPath0,
+				Store, ProcRep, Origin)
+		;
+			traverse_primitives(Prims, Var0, TermPath0,
+				Store, ProcRep, Origin)
+		)
+	;
+		AtomicGoal = unsafe_cast_rep(ToVar, FromVar),
+		% We handle unsafe casts the same as we handle assigns.
+		( list__member(Var0, BoundVars) ->
+			decl_require(unify(Var0, ToVar),
+				"traverse_primitives", "bad unsafe_cast"),
 			traverse_primitives(Prims, FromVar, TermPath0,
 				Store, ProcRep, Origin)
 		;

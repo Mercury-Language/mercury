@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,6 +97,10 @@
 			list(var_rep)
 		)
 	;	unify_assign_rep(
+			var_rep,		% target
+			var_rep			% source
+		)
+	;	unsafe_cast_rep(
 			var_rep,		% target
 			var_rep			% source
 		)
@@ -216,6 +220,7 @@ atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_assign_rep(_, _)) = no.
 atomic_goal_generates_event(unify_simple_test_rep(_, _)) = no.
+atomic_goal_generates_event(unsafe_cast_rep(_, _)) = no.
 atomic_goal_generates_event(pragma_foreign_code_rep(_)) = no.
 atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
 atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).

@@ -46,7 +46,8 @@ DECLARATIVE_PROGS=		\
 	solutions		\
 	special_term_dep	\
 	tabled_read_decl	\
-	throw
+	throw			\
+	unsafe_cast
 
 # The following should not be run in `debug' or `mm' grades.
 #
@@ -262,6 +263,9 @@ throw.out: throw throw.inp
 	$(MDB) ./throw < throw.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
 		sed -e '/EXCP/s/).*/)/' > throw.out 2>&1
+
+unsafe_cast.out: unsafe_cast unsafe_cast.inp
+	$(MDB) ./unsafe_cast < unsafe_cast.inp > unsafe_cast.out 2>&1
 
 untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \

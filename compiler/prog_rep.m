@@ -208,10 +208,12 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		AtomicGoalRep = method_call_rep(VarRep, MethodNum, ArgsRep)
 	;
 		GenericCall = unsafe_cast,
-		mercury_private_builtin_module(ModuleSymName),
-		prog_out__sym_name_to_string(ModuleSymName, ModuleName),
-		AtomicGoalRep = plain_call_rep(ModuleName,
-			"unsafe_type_cast", ArgsRep)
+		( ArgsRep = [InputArgRep, OutputArgRep] ->
+			AtomicGoalRep = unsafe_cast_rep(OutputArgRep,
+				InputArgRep)
+		;
+			error("represent_goal_expr: unsafe_cast arity != 2")
+		)
 	;
 		GenericCall = aditi_builtin(_, _),
 		error("Sorry, not yet implemented\n\
