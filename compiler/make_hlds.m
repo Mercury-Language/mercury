@@ -982,7 +982,7 @@ module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Processing clause for func `"),
-		{ list__length(Args, Arity) },
+		{ list__length(Args0, Arity) },
 		hlds_out__write_pred_call_id(FuncName/Arity),
 		io__write_string("'...\n")
 	;
