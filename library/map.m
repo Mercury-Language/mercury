@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -259,7 +259,7 @@ map__init(M) :-
 	tree234__init(M).
 
 map__is_empty(M) :-
-	tree234__init(M).
+	tree234__is_empty(M).
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +22,9 @@
 
 :- pred tree234__init(tree234(K, V)).
 :- mode tree234__init(uo) is det.
+
+:- pred tree234__is_empty(tree234(K, V)).
+:- mode tree234__is_empty(in) is semidet.
 
 :- pred tree234__member(tree234(K, V), K, V).
 :- mode tree234__member(in, out, out) is nondet.
@@ -148,6 +151,9 @@
 %------------------------------------------------------------------------------%
 
 tree234__init(empty).
+
+tree234__is_empty(Tree) :-
+	Tree = empty.
 
 %------------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997 The University of Melbourne.
+% Copyright (C) 1995, 1997, 2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -197,7 +197,7 @@ multi_map__init(M) :-
 	map__init(M).
 
 multi_map__is_empty(M) :-
-	map__init(M).
+	map__is_empty(M).
 
 multi_map__contains(MultiMap, Key) :-
 	map__search(MultiMap, Key, _).
