@@ -305,7 +305,7 @@
 :- pred neg_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_neg)) 
 	is det <= annotated_trace(S, R).
 
-:- inst trace_node_first_disj = bound(first_disj(ground, ground)).
+:- inst trace_node_first_disj ---> first_disj(ground, ground).
 
 :- pred first_disj_node_from_id(S::in, R::in, 
 	trace_node(R)::out(trace_node_first_disj)) is det 

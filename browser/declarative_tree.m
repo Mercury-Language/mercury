@@ -1622,10 +1622,10 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
 	SeqNo = CallNode ^ call_seq,
 	CallPreceding = CallNode ^ call_preceding.
 
-:- inst edt_return_node =
-		bound(	exit(ground, ground, ground, ground, ground, ground)
-		;	fail(ground, ground, ground, ground)
-		;	excp(ground, ground, ground, ground, ground)).
+:- inst edt_return_node
+	--->	exit(ground, ground, ground, ground, ground, ground)
+	;	fail(ground, ground, ground, ground)
+	;	excp(ground, ground, ground, ground, ground).
 
 :- pred det_edt_return_node_from_id(S::in, R::in,
 	trace_node(R)::out(edt_return_node)) is det <= annotated_trace(S, R).

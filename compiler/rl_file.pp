@@ -16,7 +16,7 @@
 :- import_module io.
 
 :- type byte_writer == (pred(int, io__state, io__state)).
-:- mode byte_writer :: (pred(in, di, uo) is det).
+:- mode byte_writer == (pred(in, di, uo) is det).
 
 	% Given a predicate to write a byte, write an RL file
 	% to the current binary output stream, returning the number
@@ -123,7 +123,7 @@
 :- type rl_state == pair(int, io__state).
 
 :- type writer == (pred(int, rl_state, rl_state)).
-:- mode writer :: (pred(in, di, uo) is det).
+:- mode writer == (pred(in, di, uo) is det).
 
 	% 
 	% Write the binary representation of the file to <module>.rlo.
