@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -465,9 +465,41 @@ rl_file__write_proc(Consts, Proc) -->
 	),
 	io__write_string("],\n\n\t"),
 	io__write_int(CodeLength),
-	io__write_string(",\t% code length\n\t[\n\t"),
-	io__write_list(Code, ",\n\t", io__write),
+	io__write_string(",\t% code length\n\t[\n"),
+	io__write_list(Code, ",\n", rl_file__write_instruction),
 	io__write_string("\n\t]\n)").
+
+:- pred rl_file__write_instruction(bytecode::in,
+		io__state::di, io__state::uo) is det.
+
+rl_file__write_instruction(Bytecode) -->
+	(
+		% Make the code easier to read by not indenting
+		% certain instructions.
+		{ Bytecode \= rl_PROC_materialise(_) },
+		{ Bytecode \= rl_PROC_bind_handle(_) },
+		{ Bytecode \= rl_PROC_bind_code(_) },
+		{ Bytecode \= rl_PROC_label(_) },
+		{ Bytecode \= rl_PROC_conditional_goto(_) },
+		{ Bytecode \= rl_PROC_conditional_goto_label(_) },
+		{ Bytecode \= rl_PROC_goto(_) },
+		{ Bytecode \= rl_PROC_goto_label(_) },
+		{ Bytecode \= rl_PROC_call(_) }
+	->
+		io__write_string("\t")
+	;
+		[]
+	),
+	io__write(Bytecode),
+	(
+		% Make it easier to pick out the end of a
+		% materialise instruction.
+		{ Bytecode = rl_PROC_var_list_nil }
+	->
+		io__write_string("\n\t")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
