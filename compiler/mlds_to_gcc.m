@@ -41,13 +41,11 @@
 %	- generate gcc trees rather than expanding as we go
 %
 %	Improve efficiency of generated code:
-%	- --static-ground-terms
 %	- improve code for switches with default_is_unreachable.
 %	  One way would be to implement computed_goto and cast_to_unsigned,
 %	  and change target_supports_computed_goto_2(asm) in ml_switch_gen.m
 %	  to `yes'.
 %	- fix variable scoping
-%	- fix declaration flags (const, etc.)
 %	- implement annotation in gcc tree to force tailcalls
 %
 %	Improve efficiency of compilation:
@@ -585,37 +583,34 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 :- mode gen_defn(in, in, in, out, di, uo) is det.
 
 gen_defn(ModuleName, Defn, GlobalInfo0, GlobalInfo) -->
-	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
-	% mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	gen_defn_body(qual(ModuleName, Name), Context,
-			DefnBody, GlobalInfo0, GlobalInfo).
+	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+	gen_defn_body(qual(ModuleName, Name), Context, Flags, DefnBody,
+		GlobalInfo0, GlobalInfo).
 
 :- pred build_local_defn(mlds__defn, func_info, mlds_module_name, gcc__var_decl,
 		io__state, io__state).
 :- mode build_local_defn(in, in, in, out, di, uo) is det.
 
 build_local_defn(Defn, FuncInfo, ModuleName, GCC_Defn) -->
-	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
-	% mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	build_local_defn_body(qual(ModuleName, Name), FuncInfo, Context, DefnBody,
-		GCC_Defn).
+	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+	build_local_defn_body(qual(ModuleName, Name), FuncInfo, Context, Flags,
+		DefnBody, GCC_Defn).
 
 :- pred build_field_defn(mlds__defn, mlds_module_name, global_info,
 		gcc__field_decl, io__state, io__state).
 :- mode build_field_defn(in, in, in, out, di, uo) is det.
 
 build_field_defn(Defn, ModuleName, GlobalInfo, GCC_Defn) -->
-	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
-	% mlds_output_decl_flags(Flags, definition, Name, DefnBody),
-	build_field_defn_body(qual(ModuleName, Name), Context, DefnBody,
+	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+	build_field_defn_body(qual(ModuleName, Name), Context, Flags, DefnBody,
 		GlobalInfo, GCC_Defn).
 
 :- pred gen_defn_body(mlds__qualified_entity_name,
-		mlds__context, mlds__entity_defn,
+		mlds__context, mlds__decl_flags, mlds__entity_defn,
 		global_info, global_info, io__state, io__state).
-:- mode gen_defn_body(in, in, in, in, out, di, uo) is det.
+:- mode gen_defn_body(in, in, in, in, in, out, di, uo) is det.
 
-gen_defn_body(Name, Context, DefnBody, GlobalInfo0, GlobalInfo) -->
+gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
 		% build_initializer expects a func_info,
@@ -631,6 +626,7 @@ gen_defn_body(Name, Context, DefnBody, GlobalInfo0, GlobalInfo) -->
 		build_initializer(Initializer, GCC_Type, FuncInfo, GCC_Initializer),
 		gcc__build_global_var_decl(GCC_Name, GCC_Type, GCC_Initializer,
 			GCC_Defn),
+		add_var_decl_flags(Flags, GCC_Defn),
 		%
 		% insert the definition in our symbol table
 		%
@@ -640,7 +636,7 @@ gen_defn_body(Name, Context, DefnBody, GlobalInfo0, GlobalInfo) -->
 	;
 		{ DefnBody = mlds__function(_MaybePredProcId, Signature,
 			MaybeBody) },
-		gen_func(Name, Context, Signature, MaybeBody,
+		gen_func(Name, Context, Flags, Signature, MaybeBody,
 			GlobalInfo0, GlobalInfo)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
@@ -649,14 +645,15 @@ gen_defn_body(Name, Context, DefnBody, GlobalInfo0, GlobalInfo) -->
 	).
 
 :- pred build_local_defn_body(mlds__qualified_entity_name, func_info,
-		mlds__context, mlds__entity_defn, gcc__var_decl,
-		io__state, io__state).
-:- mode build_local_defn_body(in, in, in, in, out, di, uo) is det.
+		mlds__context, mlds__decl_flags, mlds__entity_defn,
+		gcc__var_decl, io__state, io__state).
+:- mode build_local_defn_body(in, in, in, in, in, out, di, uo) is det.
 
-build_local_defn_body(Name, FuncInfo, _Context, DefnBody, GCC_Defn) -->
+build_local_defn_body(Name, FuncInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
-		build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn)
+		build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn),
+		add_var_decl_flags(Flags, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
 		% nested functions should get eliminated by ml_elim_nested,
@@ -673,16 +670,17 @@ build_local_defn_body(Name, FuncInfo, _Context, DefnBody, GCC_Defn) -->
 	).
 
 :- pred build_field_defn_body(mlds__qualified_entity_name,
-		mlds__context, mlds__entity_defn,
+		mlds__context, mlds__decl_flags, mlds__entity_defn,
 		global_info, gcc__field_decl,
 		io__state, io__state).
-:- mode build_field_defn_body(in, in, in, in, out, di, uo) is det.
+:- mode build_field_defn_body(in, in, in, in, in, out, di, uo) is det.
 
-build_field_defn_body(Name, _Context, DefnBody, GlobalInfo, GCC_Defn) -->
+build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
 		build_field_data_defn(Name, Type, Initializer, GlobalInfo,
-			GCC_Defn)
+			GCC_Defn),
+		add_field_decl_flags(Flags, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
 		{ unexpected(this_file, "function nested in type") }
@@ -690,6 +688,252 @@ build_field_defn_body(Name, _Context, DefnBody, GlobalInfo, GCC_Defn) -->
 		{ DefnBody = mlds__class(_) },
 		{ unexpected(this_file, "type nested in type") }
 	).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to handle declaration flags.
+%
+
+%
+% decl flags for variables
+%
+
+:- pred add_var_decl_flags(mlds__decl_flags, gcc__var_decl, io__state, io__state).
+:- mode add_var_decl_flags(in, in, di, uo) is det.
+
+add_var_decl_flags(Flags, GCC_Defn) -->
+	add_var_access_flag(		access(Flags),		GCC_Defn),
+	add_var_per_instance_flag(	per_instance(Flags),	GCC_Defn),
+	add_var_virtuality_flag(	virtuality(Flags),	GCC_Defn),
+	add_var_finality_flag(		finality(Flags),	GCC_Defn),
+	add_var_constness_flag(		constness(Flags),	GCC_Defn),
+	add_var_abstractness_flag(	abstractness(Flags),	GCC_Defn).
+
+:- pred add_var_access_flag(mlds__access, gcc__var_decl, io__state, io__state).
+:- mode add_var_access_flag(in, in, di, uo) is det.
+
+add_var_access_flag(public, GCC_Defn) -->
+	gcc__set_var_decl_public(GCC_Defn).
+add_var_access_flag(private, _GCC_Defn) -->
+	% this is the default
+	[].
+add_var_access_flag(protected, _GCC_Defn) -->
+	{ sorry(this_file, "`protected' access") }.
+add_var_access_flag(default, _GCC_Defn) -->
+	{ sorry(this_file, "`default' access") }.
+
+:- pred add_var_per_instance_flag(mlds__per_instance, gcc__var_decl,
+	io__state, io__state).
+:- mode add_var_per_instance_flag(in, in, di, uo) is det.
+
+add_var_per_instance_flag(per_instance, _GCC_Defn) -->
+	% this is the default
+	[].
+add_var_per_instance_flag(one_copy, GCC_Defn) -->
+	gcc__set_var_decl_static(GCC_Defn).
+
+:- pred add_var_virtuality_flag(mlds__virtuality, gcc__var_decl,
+	io__state, io__state).
+:- mode add_var_virtuality_flag(in, in, di, uo) is det.
+
+add_var_virtuality_flag(virtual, _GCC_Defn) -->
+	% `virtual' should only be used for methods,
+	% not for variables.
+	{ unexpected(this_file, "`virtual' variable") }.
+add_var_virtuality_flag(non_virtual, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_var_constness_flag(mlds__constness, gcc__var_decl,
+	io__state, io__state).
+:- mode add_var_constness_flag(in, in, di, uo) is det.
+
+add_var_constness_flag(const, GCC_Defn) -->
+	gcc__set_var_decl_readonly(GCC_Defn).
+add_var_constness_flag(modifiable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_var_finality_flag(mlds__finality, gcc__var_decl,
+	io__state, io__state).
+:- mode add_var_finality_flag(in, in, di, uo) is det.
+
+add_var_finality_flag(final, GCC_Defn) -->
+	gcc__set_var_decl_readonly(GCC_Defn).
+add_var_finality_flag(overridable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_var_abstractness_flag(mlds__abstractness, gcc__var_decl,
+	io__state, io__state).
+:- mode add_var_abstractness_flag(in, in, di, uo) is det.
+
+add_var_abstractness_flag(concrete, _GCC_Defn) -->
+	% this is the default
+	[].
+add_var_abstractness_flag(abstract, _GCC_Defn) -->
+	% `abstract' should only be used for fields or methods,
+	% not for variables.
+	{ unexpected(this_file, "`abstract' variable") }.
+
+%
+% decl flags for fields
+%
+
+:- pred add_field_decl_flags(mlds__decl_flags, gcc__field_decl, io__state, io__state).
+:- mode add_field_decl_flags(in, in, di, uo) is det.
+
+add_field_decl_flags(Flags, GCC_Defn) -->
+	add_field_access_flag(		access(Flags),		GCC_Defn),
+	add_field_per_instance_flag(	per_instance(Flags),	GCC_Defn),
+	add_field_virtuality_flag(	virtuality(Flags),	GCC_Defn),
+	add_field_finality_flag(	finality(Flags),	GCC_Defn),
+	add_field_constness_flag(	constness(Flags),	GCC_Defn),
+	add_field_abstractness_flag(	abstractness(Flags),	GCC_Defn).
+
+:- pred add_field_access_flag(mlds__access, gcc__field_decl, io__state, io__state).
+:- mode add_field_access_flag(in, in, di, uo) is det.
+
+add_field_access_flag(public, _GCC_Defn) -->
+	% this is the default
+	[].
+add_field_access_flag(private, _GCC_Defn) -->
+	{ sorry(this_file, "`private' field") }.
+add_field_access_flag(protected, _GCC_Defn) -->
+	{ sorry(this_file, "`protected' access") }.
+add_field_access_flag(default, _GCC_Defn) -->
+	{ sorry(this_file, "`default' access") }.
+
+:- pred add_field_per_instance_flag(mlds__per_instance, gcc__field_decl,
+	io__state, io__state).
+:- mode add_field_per_instance_flag(in, in, di, uo) is det.
+
+add_field_per_instance_flag(per_instance, _GCC_Defn) -->
+	% this is the default
+	[].
+add_field_per_instance_flag(one_copy, _GCC_Defn) -->
+	% Static fields should be hoisted out as global variables
+	{ unexpected(this_file, "`static' field") }.
+
+:- pred add_field_virtuality_flag(mlds__virtuality, gcc__field_decl,
+	io__state, io__state).
+:- mode add_field_virtuality_flag(in, in, di, uo) is det.
+
+add_field_virtuality_flag(virtual, _GCC_Defn) -->
+	{ sorry(this_file, "`virtual' field") }.
+add_field_virtuality_flag(non_virtual, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_field_constness_flag(mlds__constness, gcc__field_decl,
+	io__state, io__state).
+:- mode add_field_constness_flag(in, in, di, uo) is det.
+
+add_field_constness_flag(const, _GCC_Defn) -->
+	{ sorry(this_file, "`const' field") }.
+add_field_constness_flag(modifiable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_field_finality_flag(mlds__finality, gcc__field_decl,
+	io__state, io__state).
+:- mode add_field_finality_flag(in, in, di, uo) is det.
+
+add_field_finality_flag(final, _GCC_Defn) -->
+	{ sorry(this_file, "`final' field") }.
+add_field_finality_flag(overridable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_field_abstractness_flag(mlds__abstractness, gcc__field_decl,
+	io__state, io__state).
+:- mode add_field_abstractness_flag(in, in, di, uo) is det.
+
+add_field_abstractness_flag(concrete, _GCC_Defn) -->
+	% this is the default
+	[].
+add_field_abstractness_flag(abstract, _GCC_Defn) -->
+	{ sorry(this_file, "`abstract' field") }.
+
+%
+% decl flags for functions
+%
+
+:- pred add_func_decl_flags(mlds__decl_flags, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_decl_flags(in, in, di, uo) is det.
+
+add_func_decl_flags(Flags, GCC_Defn) -->
+	add_func_access_flag(		access(Flags),		GCC_Defn),
+	add_func_per_instance_flag(	per_instance(Flags),	GCC_Defn),
+	add_func_virtuality_flag(	virtuality(Flags),	GCC_Defn),
+	add_func_finality_flag(		finality(Flags),	GCC_Defn),
+	add_func_constness_flag(	constness(Flags),	GCC_Defn),
+	add_func_abstractness_flag(	abstractness(Flags),	GCC_Defn).
+
+:- pred add_func_access_flag(mlds__access, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_access_flag(in, in, di, uo) is det.
+
+add_func_access_flag(public, GCC_Defn) -->
+	gcc__set_func_decl_public(GCC_Defn).
+add_func_access_flag(private, _GCC_Defn) -->
+	% this is the default
+	[].
+add_func_access_flag(protected, _GCC_Defn) -->
+	{ sorry(this_file, "`protected' access") }.
+add_func_access_flag(default, _GCC_Defn) -->
+	{ sorry(this_file, "`default' access") }.
+
+:- pred add_func_per_instance_flag(mlds__per_instance, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_per_instance_flag(in, in, di, uo) is det.
+
+add_func_per_instance_flag(per_instance, _GCC_Defn) -->
+	% this is the default
+	[].
+add_func_per_instance_flag(one_copy, _GCC_Defn) -->
+	{ sorry(this_file, "`one_copy' function") }.
+
+:- pred add_func_virtuality_flag(mlds__virtuality, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_virtuality_flag(in, in, di, uo) is det.
+
+add_func_virtuality_flag(virtual, _GCC_Defn) -->
+	{ sorry(this_file, "`virtual' function") }.
+add_func_virtuality_flag(non_virtual, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_func_constness_flag(mlds__constness, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_constness_flag(in, in, di, uo) is det.
+
+add_func_constness_flag(const, _GCC_Defn) -->
+	{ sorry(this_file, "`const' function") }.
+add_func_constness_flag(modifiable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_func_finality_flag(mlds__finality, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_finality_flag(in, in, di, uo) is det.
+
+add_func_finality_flag(final, _GCC_Defn) -->
+	{ sorry(this_file, "`final' function") }.
+add_func_finality_flag(overridable, _GCC_Defn) -->
+	% this is the default
+	[].
+
+:- pred add_func_abstractness_flag(mlds__abstractness, gcc__func_decl,
+	io__state, io__state).
+:- mode add_func_abstractness_flag(in, in, di, uo) is det.
+
+add_func_abstractness_flag(abstract, _GCC_Defn) -->
+	{ sorry(this_file, "`abstract' function") }.
+add_func_abstractness_flag(concrete, _GCC_Defn) -->
+	% this is the default
+	[].
 
 %-----------------------------------------------------------------------------%
 %
@@ -997,11 +1241,12 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 %
 
 :- pred gen_func(qualified_entity_name, mlds__context,
-		func_params, maybe(statement),
+		mlds__decl_flags, func_params, maybe(statement),
 		global_info, global_info, io__state, io__state).
-:- mode gen_func(in, in, in, in, in, out, di, uo) is det.
+:- mode gen_func(in, in, in, in, in, in, out, di, uo) is det.
 
-gen_func(Name, Context, Signature, MaybeBody, GlobalInfo0, GlobalInfo) -->
+gen_func(Name, Context, Flags, Signature, MaybeBody,
+		GlobalInfo0, GlobalInfo) -->
 	{ GlobalInfo = GlobalInfo0 },
 	(
 		{ MaybeBody = no }
@@ -1009,6 +1254,7 @@ gen_func(Name, Context, Signature, MaybeBody, GlobalInfo0, GlobalInfo) -->
 		{ MaybeBody = yes(Body) },
 		make_func_decl_for_defn(Name, Signature, GlobalInfo0,
 			FuncDecl, SymbolTable),
+		add_func_decl_flags(Flags, FuncDecl),
 		build_label_table(Body, LabelTable),
 		{ FuncInfo = func_info(GlobalInfo,
 			Name, SymbolTable, LabelTable) },

@@ -152,6 +152,16 @@
 :- pred build_local_var_decl(var_name::in, gcc__type::in, gcc__var_decl::out,
 		io__state::di, io__state::uo) is det.
 
+	% mark a variable as being allocated in static storage
+:- pred set_var_decl_static(gcc__var_decl::in, io__state::di, io__state::uo) is det.
+
+	% mark a variable as being accessible from outside this
+	% translation unit
+:- pred set_var_decl_public(gcc__var_decl::in, io__state::di, io__state::uo) is det.
+
+	% mark a variable as read-only
+:- pred set_var_decl_readonly(gcc__var_decl::in, io__state::di, io__state::uo) is det.
+
 %
 % Stuff for function declarations
 %
@@ -189,6 +199,11 @@
 :- func box_float_func_decl = gcc__func_decl.	% MR_box_float()
 :- func setjmp_func_decl = gcc__func_decl.	% __builtin_setjmp()
 :- func longjmp_func_decl = gcc__func_decl.	% __builtin_longjmp()
+
+	% mark a function as being accessible from outside this
+	% translation unit
+:- pred set_func_decl_public(gcc__func_decl::in,
+		io__state::di, io__state::uo) is det.
 
 %
 % Stuff for type declarations
@@ -701,6 +716,24 @@
 	Decl = (MR_Word) merc_build_local_var_decl(Name, (tree) Type);
 ").
 
+:- pragma c_code(set_var_decl_public(Decl::in,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	TREE_PUBLIC((tree) Decl) = 1;
+").
+
+:- pragma c_code(set_var_decl_static(Decl::in,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	TREE_STATIC((tree) Decl) = 1;
+").
+
+:- pragma c_code(set_var_decl_readonly(Decl::in,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	TREE_READONLY((tree) Decl) = 1;
+").
+
 %
 % Stuff for function declarations
 %
@@ -766,6 +799,12 @@
 	[will_not_call_mercury],
 "
 	Decl = (MR_Word) merc_longjmp_function_node;
+").
+
+:- pragma c_code(set_func_decl_public(Decl::in,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	TREE_PUBLIC((tree) Decl) = 1;
 ").
 
 %
