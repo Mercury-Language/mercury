@@ -26,14 +26,10 @@ MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(LIBRARY_QLS) $(NU_LIBRARY_QLS)`
 
 MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
-MGNUCFLAGS =	-I $(MERCURY_DIR)/boehm_gc
+MGNUCFLAGS =	-I $(BOEHM_GC_DIR)
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
 		mod2init
-# ML and MLFLAGS should not be needed here, but just in case...
-# (we use -static to avoid problems with relative paths to shared libraries)
-ML	=	MERCURY_C_LIB_DIR=$(RUNTIME_DIR) ml
-MLFLAGS =	-- -static
 
 #-----------------------------------------------------------------------------#
 
@@ -106,7 +102,7 @@ libmercury.a : $(library.os)
 	$(RANLIB) libmercury.a
 
 libmercury.so : $(library.os)
-	$(MGNUC) $(MGNUCFLAGS) -- -shared -o libmercury.so $(library.os)
+	$(MGNUC) $(MGNUCFLAGS) -shared -o libmercury.so $(library.os)
 
 #-----------------------------------------------------------------------------#
 
