@@ -2837,7 +2837,7 @@ to differ as much as possible modulo this size.
 Enables execution tracing of the program,
 via the internal debugger if @var{debugger} is @samp{i}
 and via the external debugger if @var{debugger} is @samp{e}.
-(The mdb script works by including -Di in MERCURY_OPTIONS.)
+(The mdb script works by including @samp{-Di} in MERCURY_OPTIONS.)
 The external debugger is not yet available.
 
 @sp 1
