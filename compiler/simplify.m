@@ -577,9 +577,9 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Cond0 = _ - CondInfo0,
 
-	goal_info_get_determinism(CondInfo0, CondDetism),
-	determinism_components(CondDetism, CondCanFail, CondSolns),
-	( CondCanFail = cannot_fail ->
+	goal_info_get_determinism(CondInfo0, CondDetism0),
+	determinism_components(CondDetism0, CondCanFail0, CondSolns0),
+	( CondCanFail0 = cannot_fail ->
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
@@ -588,9 +588,9 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		goal_info_get_context(GoalInfo, Context),
 		simplify_info_add_msg(Info1, ite_cond_cannot_fail(Context),
 			Info)
-	; CondSolns = at_most_zero ->
+	; CondSolns0 = at_most_zero ->
 		% Optimize away the condition and the `then' part.
-		det_negation_det(CondDetism, MaybeNegDetism),
+		det_negation_det(CondDetism0, MaybeNegDetism),
 		( Cond0 = not(NegCond) - _ ->
 			Cond = NegCond
 		;
@@ -648,7 +648,30 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		goal_info_get_instmap_delta(ElseInfo, ElseDelta),
 		simplify_info_create_branch_info(Info0, Info6,
 			[ElseDelta, CondThenDelta], Info),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM),
+		IfThenElse = if_then_else(Vars, Cond, Then, Else, SM),
+		%
+		% If-then-elses that are det or semidet may nevertheless
+		% contain nondet or multidet conditions. If this happens, the
+		% if-then-else must be put inside a `some' to appease the code
+		% generator.
+		%
+		goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
+		determinism_components(IfThenElseDetism0, IfThenElseCanFail,
+			IfThenElseNumSolns),
+		(
+			simplify_do_once(Info),
+			goal_info_get_determinism(CondInfo, CondDetism),
+			determinism_components(CondDetism, _, at_most_many),
+			IfThenElseNumSolns \= at_most_many
+		->
+			determinism_components(InnerDetism, IfThenElseCanFail,
+				at_most_many),
+			goal_info_set_determinism(GoalInfo0, InnerDetism,
+				InnerInfo),
+			Goal = some([], IfThenElse - InnerInfo)
+		;
+			Goal = IfThenElse
+		),
 		GoalInfo = GoalInfo0
 	).
 
