@@ -39,9 +39,10 @@
 % arg_info.m so that it didn't depend on the LLDS.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__code_model.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__arg_info.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
@@ -50,7 +51,6 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__tree.
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__call_gen.	% XXX for arg passing convention
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.

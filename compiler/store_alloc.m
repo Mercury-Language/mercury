@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__trace_params.
-:- import_module ll_backend__arg_info.
+:- import_module ll_backend__code_util.
 :- import_module ll_backend__follow_vars.
 :- import_module ll_backend__liveness.
 :- import_module ll_backend__llds.
@@ -88,7 +88,7 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
 	;
 		set__init(ResumeVars0)
 	),
-	arg_info__build_input_arg_list(!.ProcInfo, InputArgLvals),
+	build_input_arg_list(!.ProcInfo, InputArgLvals),
 	LastLocns0 = initial_last_locns(InputArgLvals),
 	proc_info_stack_slots(!.ProcInfo, StackSlots),
 	StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),

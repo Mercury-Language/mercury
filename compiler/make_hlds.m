@@ -97,6 +97,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs__export.
 :- import_module backend_libs__foreign.
 :- import_module check_hlds__clause_to_proc.

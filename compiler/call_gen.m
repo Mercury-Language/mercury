@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__code_info.
@@ -61,6 +61,7 @@
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__type_util.
 :- import_module check_hlds__unify_proc.
+:- import_module hlds__arg_info.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
@@ -68,7 +69,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree. 
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
 

@@ -95,6 +95,7 @@
 :- implementation.
 
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
 :- import_module bool, int, std_util, require.

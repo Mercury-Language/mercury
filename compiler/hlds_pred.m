@@ -2693,7 +2693,9 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, hlds__special_pred.
+:- import_module backend_libs.
+:- import_module backend_libs__builtin_ops.
+:- import_module hlds__special_pred.
 
 pred_info_is_builtin(PredInfo) :-
 	ModuleName = pred_info_module(PredInfo),

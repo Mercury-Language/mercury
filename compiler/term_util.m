@@ -47,27 +47,11 @@
 %
 % where | | represents a semilinear norm.
 
-:- type arg_size_info
-	--->	finite(int, list(bool))
-				% The termination constant is a finite integer.
-				% The list of bool has a 1:1 correspondence
-				% with the input arguments of the procedure.
-				% It stores whether the argument contributes
-				% to the size of the output arguments.
+:- type arg_size_info ==
+	generic_arg_size_info(list(term_errors__error)).
 
-	;	infinite(list(term_errors__error)).
-				% There is no finite integer for which the
-				% above equation is true. The argument says
-				% why the analysis failed to find a finite
-				% constant.
-
-:- type termination_info
-	---> 	cannot_loop	% This procedure terminates for all
-				% possible inputs.
-
-	;	can_loop(list(term_errors__error)).
-				% The analysis could not prove that the
-				% procedure terminates.
+:- type termination_info ==
+	generic_termination_info(list(term_errors__error)).
 
 % The type `used_args' holds a mapping which specifies for each procedure
 % which of its arguments are used.
@@ -148,14 +132,14 @@
 
 %-----------------------------------------------------------------------------%
 
-% Convert a prog_data__pragma_termination_info into a
-% term_util__termination_info, by adding the appropriate context.
+	% Convert a prog_data__pragma_termination_info into a
+	% term_util__termination_info, by adding the appropriate context.
 
 :- pred add_context_to_termination_info(maybe(pragma_termination_info)::in,
 	prog_context::in, maybe(termination_info)::out) is det.
 
-% Convert a prog_data__pragma_arg_size_info into a
-% term_util__arg_size_info, by adding the appropriate context.
+	% Convert a prog_data__pragma_arg_size_info into a
+	% term_util__arg_size_info, by adding the appropriate context.
 
 :- pred add_context_to_arg_size_info(maybe(pragma_arg_size_info)::in,
 	prog_context::in, maybe(arg_size_info)::out) is det.
@@ -354,12 +338,12 @@ get_context_from_scc(SCC, Module, Context) :-
 
 add_context_to_termination_info(no, _, no).
 add_context_to_termination_info(yes(cannot_loop), _, yes(cannot_loop)).
-add_context_to_termination_info(yes(can_loop), Context,
+add_context_to_termination_info(yes(can_loop(_)), Context,
 		yes(can_loop([Context - imported_pred]))).
 
 add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
-add_context_to_arg_size_info(yes(infinite), Context,
+add_context_to_arg_size_info(yes(infinite(_)), Context,
 		yes(infinite([Context - imported_pred]))).
 
 %-----------------------------------------------------------------------------%

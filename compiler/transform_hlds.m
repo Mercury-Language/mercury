@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,8 +11,9 @@
 
 :- module transform_hlds.
 :- interface.
-:- import_module check_hlds. % is this needed?
-:- import_module hlds, parse_tree, libs.
+:- import_module hlds.
+:- import_module parse_tree.
+:- import_module libs.
 
 %-----------------------------------------------------------------------------%
 
@@ -64,8 +65,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module ll_backend. % XXX for code_util, code_aux
-:- import_module backend_libs. % XXX for rtti
+
+:- import_module check_hlds.
 
 :- end_module transform_hlds.
 

@@ -22,6 +22,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module backend_libs.
 :- import_module backend_libs__foreign.
 :- import_module check_hlds__unify_proc.
 :- import_module hlds__hlds_data.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,7 +162,6 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
-:- import_module ll_backend__code_aux.
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__dependency_graph.
 

@@ -89,19 +89,19 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 % HLDS modules
+:- import_module hlds__arg_info.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__inst_match.
 % LLDS back-end modules
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
 % Modules shared between different back-ends.
 :- import_module backend_libs__c_util.
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__export.
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__foreign.

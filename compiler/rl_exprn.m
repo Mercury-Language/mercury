@@ -131,6 +131,7 @@
 :- implementation.
 
 :- import_module aditi_backend__rl_out.
+:- import_module backend_libs.
 :- import_module backend_libs__builtin_ops.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.

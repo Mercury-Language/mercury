@@ -118,12 +118,12 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
 :- import_module check_hlds.
 :- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,8 +39,8 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.

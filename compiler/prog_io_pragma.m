@@ -28,8 +28,6 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
-:- import_module transform_hlds__term_errors.
-:- import_module transform_hlds__term_util.
 
 :- import_module int, map, string, std_util, bool, require, set.
 
@@ -1068,7 +1066,7 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		MaybeArgSizeInfo = no
 	;
 		ArgSizeTerm = term__functor(term__atom("infinite"), [], _),
-		MaybeArgSizeInfo = yes(infinite)
+		MaybeArgSizeInfo = yes(infinite(unit))
 	;
 		ArgSizeTerm = term__functor(term__atom("finite"),
 			[IntTerm, UsedArgsTerm], _),
@@ -1081,7 +1079,7 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		MaybeTerminationInfo = no
 	;
 		TerminationTerm = term__functor(term__atom("can_loop"), [], _),
-		MaybeTerminationInfo = yes(can_loop)
+		MaybeTerminationInfo = yes(can_loop(unit))
 	;
 		TerminationTerm = term__functor(term__atom("cannot_loop"),
 			[], _),
@@ -1697,4 +1695,3 @@ convert_type_spec_pair(Term, TypeSpec) :-
 	term__coerce_var(TypeVar0, TypeVar),
 	convert_type(SpecTypeTerm0, SpecType),
 	TypeSpec = TypeVar - SpecType.
-

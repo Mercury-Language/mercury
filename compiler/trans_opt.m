@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,7 +77,6 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.

@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module ll_backend__code_info.
@@ -46,13 +46,13 @@
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__arg_info.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_aux.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__continuation_info.

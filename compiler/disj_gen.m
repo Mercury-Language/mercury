@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
 :- import_module ll_backend__code_info.
 :- import_module ll_backend__llds.

@@ -249,10 +249,9 @@
 :- import_module hlds__hlds_llds.
 :- import_module hlds__instmap.
 :- import_module hlds__special_pred.
-:- import_module transform_hlds__term_errors.
-:- import_module transform_hlds__termination.
 
 % RL back-end modules (XXX should avoid using those here).
+:- import_module aditi_backend.
 :- import_module aditi_backend__rl.
 
 % LLDS back-end modules (XXX should avoid using those here).
@@ -262,6 +261,7 @@
 :- import_module ll_backend__llds_out.
 
 % Misc
+:- import_module backend_libs.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__rtti.
 :- import_module libs__globals.
@@ -3397,12 +3397,11 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	( string__contains_char(Verbose, 't') ->
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% Arg size properties: ", !IO),
-		termination__write_maybe_arg_size_info(MaybeArgSize, yes, !IO),
+		write_maybe_arg_size_info(MaybeArgSize, yes, !IO),
 		io__nl(!IO),
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% Termination properties: ", !IO),
-		termination__write_maybe_termination_info(MaybeTermination,
-			yes, !IO),
+		write_maybe_termination_info(MaybeTermination, yes, !IO),
 		io__nl(!IO)
 	;
 		true

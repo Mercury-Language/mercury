@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,6 +103,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
 :- import_module check_hlds__mode_util.

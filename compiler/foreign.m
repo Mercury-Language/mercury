@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % This module defines predicates for interfacing with foreign languages.
-% In particular, this module supports interfacing with with languages
+% In particular, this module supports interfacing with languages
 % other than the target of compilation.
 
 % Main authors: trd, dgj.
@@ -228,10 +228,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__name_mangle.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,12 +84,13 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__matching.
 :- import_module check_hlds__goal_path.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__arg_info.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
@@ -99,7 +100,6 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__call_gen.
 :- import_module ll_backend__live_vars.
 :- import_module ll_backend__liveness.

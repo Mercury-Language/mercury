@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,7 +24,7 @@
 :- import_module ll_backend.
 :- import_module ml_backend.
 
-% obsolete or incomplete back-ends
+% incomplete back-ends
 :- import_module bytecode_backend.
 
 % misc utilities
@@ -38,10 +38,11 @@
 %     Mercury compiler's .NET back-end, which assumes that main is defined
 %     in the program's top-level module.
 :- use_module io.
-:- use_module top_level.mercury_compile.
 :- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
+
+:- use_module top_level.mercury_compile.
 
 main --> top_level.mercury_compile.real_main.
 

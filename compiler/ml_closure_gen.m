@@ -78,11 +78,11 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_module.
 :- import_module libs__globals.
 :- import_module libs__options.

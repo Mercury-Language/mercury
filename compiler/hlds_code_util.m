@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,10 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
+:- import_module list.
+
 	% Are equivalence types fully expanded on this backend?
+
 :- pred are_equivalence_types_expanded(module_info::in) is semidet.
 
 	% Find out how a function symbol (constructor) is represented
@@ -28,13 +31,21 @@
 
 :- func cons_id_to_tag(cons_id, type, module_info) = cons_tag.
 
+	% Given a list of types, mangle the names so into a string which
+	% identifies them. The types must all have their top level functor
+	% bound, with any arguments free variables.
+
+:- pred make_instance_string(list(type)::in, string::out) is det.
+
 :- implementation.
 
 :- import_module check_hlds__type_util.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
 
-:- import_module bool, char, string, require, list, map, std_util, term.
+:- import_module bool, char, string, require, map, std_util, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,3 +115,27 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+	% Note that for historical reasons, builtin types
+	% are treated as being unqualified (`int') rather than
+	% being qualified (`builtin:int') at this point.
+
+make_instance_string(InstanceTypes, InstanceString) :-
+	list__map(type_to_string, InstanceTypes, InstanceStrings),
+	string__append_list(InstanceStrings, InstanceString).
+
+:- pred type_to_string((type)::in, string::out) is det.
+
+type_to_string(Type, String) :-
+	( sym_name_and_args(Type, TypeName, TypeArgs) ->
+		prog_out__sym_name_to_string(TypeName, "__", TypeNameString),
+		list__length(TypeArgs, TypeArity),
+		string__int_to_string(TypeArity, TypeArityString),
+		string__append_list(
+			[TypeNameString, "__arity", TypeArityString, "__"],
+			String)
+	;
+		error("type_to_string: invalid type")
+	).
+		
+%----------------------------------------------------------------------------%

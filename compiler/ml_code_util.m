@@ -15,14 +15,14 @@
 :- module ml_backend__ml_code_util.
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__rtti.
-:- import_module backend_libs__code_model.
-:- import_module ml_backend__mlds.
+:- import_module hlds__code_model.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module libs__globals.
+:- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, int, list, map, std_util.
 

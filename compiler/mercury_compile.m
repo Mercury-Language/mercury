@@ -88,7 +88,6 @@
 :- import_module ll_backend__follow_code.
 :- import_module ll_backend__liveness.
 :- import_module ll_backend__live_vars.
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__store_alloc.
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__optimize.
@@ -134,6 +133,7 @@
 :- import_module backend_libs__compile_target_code.
 :- import_module backend_libs__name_mangle.
 :- import_module check_hlds__goal_path.
+:- import_module hlds__arg_info.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_out.

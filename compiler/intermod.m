@@ -89,6 +89,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs__foreign.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
@@ -103,7 +104,6 @@
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__llds.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.

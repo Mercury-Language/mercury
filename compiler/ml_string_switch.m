@@ -19,8 +19,8 @@
 
 :- interface.
 
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__switch_util.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__mlds.

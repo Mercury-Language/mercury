@@ -242,7 +242,7 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model.
+:- import_module backend_libs.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__det_analysis.
 :- import_module check_hlds__inst_match.
@@ -251,6 +251,7 @@
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_error_util.
@@ -263,11 +264,8 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_aux.
-:- import_module ll_backend__code_util.
+:- import_module ll_backend.
 :- import_module ll_backend__continuation_info.
-:- import_module ll_backend__follow_code.
-:- import_module ll_backend__llds.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -190,6 +190,7 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module ll_backend.
 :- import_module ll_backend__saved_vars.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.

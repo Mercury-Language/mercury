@@ -58,11 +58,11 @@
 
 :- implementation.
 
-:- import_module backend_libs__base_typeclass_info.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__typecheck.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
@@ -778,8 +778,7 @@ make_introduced_pred_name(ClassId, MethodName, Arity,
 		% Perhaps we should include the arity in this mangled
 		% string?
 	string__int_to_string(Arity, ArityString),
-	base_typeclass_info__make_instance_string(InstanceTypes, 
-		InstanceString),
+	make_instance_string(InstanceTypes, InstanceString),
 	string__append_list(
 		[check_typeclass__introduced_pred_name_prefix,
 		ClassNameString, "____",

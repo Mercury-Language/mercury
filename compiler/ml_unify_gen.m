@@ -15,7 +15,7 @@
 :- module ml_backend__ml_unify_gen.
 :- interface.
 
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -185,6 +185,8 @@
 % HLDS modules
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
+:- import_module hlds__arg_info.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_form.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
@@ -195,12 +197,8 @@
 :- import_module hlds__quantification.
 
 % LLDS modules
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
-
-% Modules shared between different back-ends.
-:- import_module backend_libs__code_model.
 
 % Misc
 :- import_module libs__globals.

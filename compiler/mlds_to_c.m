@@ -65,12 +65,12 @@
 
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__c_util.
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_pred.	% for pred_proc_id.
+:- import_module hlds__code_model.
+:- import_module hlds__hlds_pred.		% for pred_proc_id.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.

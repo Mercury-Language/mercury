@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,13 +15,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__arg_info.
+:- module hlds__arg_info.
 :- interface. 
 
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
 :- import_module list, assoc_list, set.
@@ -39,11 +38,6 @@
 	% and its code model, return its argument passing interface.
 :- pred make_arg_infos(list(type)::in, list(mode)::in, code_model::in,
 	module_info::in, list(arg_info)::out) is det.
-
-	% Given a procedure that already has its arg_info field filled in,
-	% return a list giving its input variables and their initial locations.
-:- pred arg_info__build_input_arg_list(proc_info::in,
-	assoc_list(prog_var, lval)::out) is det.
 
 	% Divide the given list of arguments into those treated as inputs
 	% by the calling convention and those treated as outputs.
@@ -101,7 +95,6 @@
 :- implementation.
 
 :- import_module check_hlds__mode_util.
-:- import_module ll_backend__code_util.
 
 :- import_module std_util, map, int, require.
 
@@ -212,28 +205,6 @@ make_arg_infos_list([], [_|_], _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
 make_arg_infos_list([_|_], [], _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
-
-%---------------------------------------------------------------------------%
-
-arg_info__build_input_arg_list(ProcInfo, VarLvals) :-
-	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_arg_info(ProcInfo, ArgInfos),
-	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
-	arg_info__build_input_arg_list_2(VarArgInfos, VarLvals).
-
-:- pred arg_info__build_input_arg_list_2(assoc_list(prog_var, arg_info)::in,
-	assoc_list(prog_var, lval)::out) is det.
-
-arg_info__build_input_arg_list_2([], []).
-arg_info__build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
-	Arg = arg_info(Loc, Mode),
-	( Mode = top_in ->
-		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - Reg | VarArgs0]
-	;
-		VarArgs = VarArgs0
-	),
-	arg_info__build_input_arg_list_2(Rest0, VarArgs0).
 
 %---------------------------------------------------------------------------%
 

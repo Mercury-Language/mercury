@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,9 +83,6 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model. % XXX for some back-end dependent
-					   % optimizations
-
 % Parse tree modules
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
@@ -94,6 +91,7 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.

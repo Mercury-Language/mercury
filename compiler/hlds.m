@@ -10,15 +10,7 @@
 
 :- module hlds.
 :- interface.
-:- import_module backend_libs.   % XXX needed for rtti, foreign, etc.
-:- import_module check_hlds.     % needed for unify_proc__unify_proc_id,
-				 % etc.
-:- import_module libs.
-:- import_module ll_backend.     % XXX needed for `llds__lval',
-				 % which is used in various annotations
-				 % in the HLDS (stack_slots, follow_vars, etc.)
 :- import_module parse_tree.
-:- import_module transform_hlds. % needed for term_util, etc.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,6 +33,8 @@
 :- include_module hlds_out.
 
 % Miscellaneous utilities.
+:- include_module arg_info.
+:- include_module code_model.
 :- include_module goal_form.
 :- include_module goal_util.
 :- include_module hlds_code_util.
@@ -50,9 +44,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module aditi_backend.     % XXX for rl__get_entry_proc_name,
-				    % which is used by hlds_out.m to dump
-				    % aditi_call goals.
+
+:- import_module libs.
+:- import_module check_hlds.		% needed for unify_proc__unify_proc_id,
+					% etc.
+:- import_module transform_hlds.	% needed for mmc_analysis, term_util
+
 :- end_module hlds.
 
 %-----------------------------------------------------------------------------%

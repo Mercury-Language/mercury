@@ -17,10 +17,10 @@
 :- interface.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module libs__tree.
@@ -35,16 +35,16 @@
 % foreign_interface_info holds information used when generating
 % code that uses the foreign language interface.
 :- type foreign_interface_info
-	---> foreign_interface_info(
-		module_name,
-		% info about stuff imported from C:
-		foreign_decl_info,
-		foreign_import_module_info,
-		foreign_body_info,
-		% info about stuff exported to C:
-		foreign_export_decls,
-		foreign_export_defns
-	).
+	--->	foreign_interface_info(
+			module_name,
+			% info about stuff imported from C:
+			foreign_decl_info,
+			foreign_import_module_info,
+			foreign_body_info,
+			% info about stuff exported to C:
+			foreign_export_decls,
+			foreign_export_defns
+		).
 
 %-----------------------------------------------------------------------------%
 

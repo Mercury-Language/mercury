@@ -23,8 +23,9 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
 
-:- import_module list, std_util.
+:- import_module list, assoc_list, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -87,19 +88,24 @@
 :- pred code_util__lvals_in_lval(lval::in, list(lval)::out) is det.
 :- pred code_util__lvals_in_lvals(list(lval)::in, list(lval)::out) is det.
 
+	% Given a procedure that already has its arg_info field filled in,
+	% return a list giving its input variables and their initial locations.
+:- pred build_input_arg_list(proc_info::in,
+	assoc_list(prog_var, lval)::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__code_model.
+:- import_module hlds__code_model.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, char, int, string, set, map, term, varset.
-:- import_module require, std_util, assoc_list.
+:- import_module require, std_util.
 
 %---------------------------------------------------------------------------%
 
@@ -423,3 +429,23 @@ code_util__lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 
 %-----------------------------------------------------------------------------%
+
+build_input_arg_list(ProcInfo, VarLvals) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_arg_info(ProcInfo, ArgInfos),
+	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
+	build_input_arg_list_2(VarArgInfos, VarLvals).
+
+:- pred build_input_arg_list_2(assoc_list(prog_var, arg_info)::in,
+	assoc_list(prog_var, lval)::out) is det.
+
+build_input_arg_list_2([], []).
+build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
+	Arg = arg_info(Loc, Mode),
+	( Mode = top_in ->
+		code_util__arg_loc_to_register(Loc, Reg),
+		VarArgs = [V - Reg | VarArgs0]
+	;
+		VarArgs = VarArgs0
+	),
+	build_input_arg_list_2(Rest0, VarArgs0).

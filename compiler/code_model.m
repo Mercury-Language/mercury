@@ -1,10 +1,10 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003 The University of Melbourne.
+% Copyright (C) 2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__code_model.
+:- module hlds__code_model.
 
 % This module defines the `code_model' data type, and associated procedures.
 % The `code_model' type is a simplified version of the `determinism' type

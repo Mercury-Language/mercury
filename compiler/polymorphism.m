@@ -339,7 +339,6 @@
 
 :- implementation.
 
-:- import_module backend_libs__base_typeclass_info.
 :- import_module check_hlds__clause_to_proc.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
@@ -347,6 +346,7 @@
 :- import_module check_hlds__typecheck.
 :- import_module check_hlds__unify_proc.
 :- import_module hlds__goal_util.
+:- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
@@ -2339,8 +2339,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	map__lookup(InstanceTable, ClassId, InstanceList),
 	list__index1_det(InstanceList, InstanceNum, InstanceDefn),
 	InstanceModuleName = InstanceDefn ^ instance_module,
-	base_typeclass_info__make_instance_string(InstanceTypes,
-		InstanceString),
+	make_instance_string(InstanceTypes, InstanceString),
 	ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
 		InstanceNum, InstanceString),
 	BaseTypeClassInfoTerm = functor(ConsId, no, []),

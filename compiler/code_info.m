@@ -29,8 +29,8 @@
 
 :- interface.
 
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__proc_label.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
@@ -51,10 +51,10 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__arg_info.
 :- import_module hlds__hlds_code_util.
 :- import_module libs__options.
 :- import_module libs__tree.
-:- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__llds_out.
@@ -362,7 +362,7 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
-	arg_info__build_input_arg_list(ProcInfo, ArgList),
+	build_input_arg_list(ProcInfo, ArgList),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_stack_slots(ProcInfo, StackSlots),
 	globals__get_options(Globals, Options),

@@ -48,38 +48,18 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__term_util.
 
-:- import_module io, bool, std_util, list.
+:- import_module io.
 
 	% Perform termination analysis on the module.
 
 :- pred termination__pass(module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
-	% Write the given arg size info; verbose if the second arg is yes.
-
-:- pred termination__write_maybe_arg_size_info(maybe(arg_size_info)::in,
-	bool::in, io::di, io::uo) is det.
-
-	% Write the given termination info; verbose if the second arg is yes.
-
-:- pred termination__write_maybe_termination_info(maybe(termination_info)::in,
-	bool::in, io::di, io::uo) is det.
-
 	% Write out a termination_info pragma for the predicate if it
 	% is exported, it is not a builtin and it is not a predicate used
 	% to force type specialization.
 :- pred termination__write_pred_termination_info(module_info::in, pred_id::in,
-	io::di, io::uo) is det.
-
-	% This predicate outputs termination_info pragmas;
-	% such annotations can be part of .opt and .trans_opt files.
-
-:- pred termination__write_pragma_termination_info(pred_or_func::in,
-	sym_name::in, list(mode)::in, prog_context::in,
-	maybe(arg_size_info)::in, maybe(termination_info)::in,
 	io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
@@ -101,6 +81,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__dependency_graph.
@@ -108,7 +89,9 @@
 :- import_module transform_hlds__term_norm.
 :- import_module transform_hlds__term_pass1.
 :- import_module transform_hlds__term_pass2.
+:- import_module transform_hlds__term_util.
 
+:- import_module bool, std_util, list.
 :- import_module map, int, char, string, relation.
 :- import_module require, bag, set, term.
 :- import_module varset.
@@ -927,96 +910,10 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 	proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
 	proc_info_get_maybe_termination_info(ProcInfo, Termination),
 	proc_info_declared_argmodes(ProcInfo, ModeList),
-	termination__write_pragma_termination_info(PredOrFunc, SymName,
+	write_pragma_termination_info(PredOrFunc, SymName,
 		ModeList, Context, ArgSize, Termination, !IO),
 	termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
 		PredOrFunc, SymName, Context, !IO).
-
-%----------------------------------------------------------------------------%
-
-% These predicates are used to print out the termination_info pragmas.
-% If they are changed, then prog_io_pragma.m must also be changed so that
-% it can parse the resulting pragma termination_info declarations.
-
-termination__write_pragma_termination_info(PredOrFunc, SymName, ModeList,
-		Context, MaybeArgSize, MaybeTermination, !IO) :-
-	io__write_string(":- pragma termination_info(", !IO),
-	varset__init(InitVarSet),
-	( 
-		PredOrFunc = predicate,
-		mercury_output_pred_mode_subdecl(InitVarSet, SymName, 
-			ModeList, no, Context, !IO)
-	;
-		PredOrFunc = function,
-		pred_args_to_func_args(ModeList, FuncModeList, RetMode),
-		mercury_output_func_mode_subdecl(InitVarSet, SymName, 
-			FuncModeList, RetMode, no, Context, !IO)
-	),
-	io__write_string(", ", !IO),
-	termination__write_maybe_arg_size_info(MaybeArgSize, no, !IO),
-	io__write_string(", ", !IO),
-	termination__write_maybe_termination_info(MaybeTermination, no, !IO),
-	io__write_string(").\n", !IO).
-
-termination__write_maybe_arg_size_info(MaybeArgSizeInfo, Verbose, !IO) :-
-	( 	
-		MaybeArgSizeInfo = no,
-		io__write_string("not_set", !IO) 
-	;
-		MaybeArgSizeInfo = yes(infinite(Error)),
-		io__write_string("infinite", !IO),
-		( Verbose = yes ->
-			io__write_string("(", !IO),
-			io__write(Error, !IO),
-			io__write_string(")", !IO)
-		;
-			true	
-		)
-	;
-		MaybeArgSizeInfo = yes(finite(Const, UsedArgs)),
-		io__write_string("finite(", !IO),
-		io__write_int(Const, !IO),
-		io__write_string(", ", !IO),
-		termination__write_used_args(UsedArgs, !IO),
-		io__write_string(")", !IO)
-	).
-
-:- pred termination__write_used_args(list(bool)::in, io::di, io::uo) is det.
-
-termination__write_used_args([], !IO) :-
-	io__write_string("[]", !IO).
-termination__write_used_args([UsedArg | UsedArgs], !IO) :-
-	io__write_string("[", !IO),
-	io__write(UsedArg, !IO),
-	termination__write_used_args_2(UsedArgs, !IO),
-	io__write_string("]", !IO).
-
-:- pred termination__write_used_args_2(list(bool)::in, io::di, io::uo) is det.
-
-termination__write_used_args_2([], !IO).
-termination__write_used_args_2([ UsedArg | UsedArgs ], !IO) :-
-	io__write_string(", ", !IO),
-	io__write(UsedArg, !IO),
-	termination__write_used_args_2(UsedArgs, !IO).
-
-termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
-	( 	
-		MaybeTerminationInfo = no,
-		io__write_string("not_set", !IO) 
-	;
-		MaybeTerminationInfo = yes(cannot_loop),
-		io__write_string("cannot_loop", !IO)
-	;
-		MaybeTerminationInfo = yes(can_loop(Error)),
-		io__write_string("can_loop", !IO),
-		( Verbose = yes ->
-			io__write_string("(", !IO),
-			io__write(Error, !IO),
-			io__write_string(")", !IO)
-		;
-			true	
-		)
-	).
 
 %----------------------------------------------------------------------------%
 

@@ -602,21 +602,25 @@
 % See term_util.m.
 %
 
-:- type pragma_arg_size_info
+:- type generic_arg_size_info(ErrorInfo)
 	--->	finite(int, list(bool))
 				% The termination constant is a finite integer.
 				% The list of bool has a 1:1 correspondence
 				% with the input arguments of the procedure.
 				% It stores whether the argument contributes
 				% to the size of the output arguments.
-	;	infinite.
+	;	infinite(ErrorInfo).
 				% There is no finite integer for which the
 				% above equation is true.
 
-:- type pragma_termination_info
+:- type generic_termination_info(ErrorInfo)
 	---> 	cannot_loop	% This procedure definitely terminates for all
 				% possible inputs.
-	;	can_loop.	% This procedure might not terminate.
+	;	can_loop(ErrorInfo).
+				% This procedure might not terminate.
+
+:- type pragma_arg_size_info	== generic_arg_size_info(unit).
+:- type pragma_termination_info	== generic_termination_info(unit).
 
 %
 % Stuff for the `unused_args' pragma.
@@ -1351,8 +1355,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module check_hlds__purity.
 
 :- import_module string.
 

@@ -15,9 +15,9 @@
 :- interface.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__code_model.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
+:- import_module hlds__code_model.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__livemap.
 :- import_module ll_backend__llds.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002,2003 The University of Melbourne.
+% Copyright (C) 2002,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,18 +11,13 @@
 :- interface.
 
 :- import_module aditi_backend.		% XXX for rl_file, used in llds_out.
-:- import_module backend_libs.
-:- import_module check_hlds. 		% is this needed?
 :- import_module hlds.
-:- import_module libs.
 :- import_module parse_tree.
-:- import_module transform_hlds.	% is this needed?
 
 %-----------------------------------------------------------------------------%
 
 % Pre-passes to transform or annotate the HLDS
 :- include_module deep_profiling.	% transform
-:- include_module arg_info.		% annotate
 :- include_module saved_vars.		% transform
 :- include_module stack_opt.		% transform
 :- include_module follow_code.		% transform
@@ -86,13 +81,19 @@
    :- include_module basic_block.
    :- include_module opt_util.
    :- include_module opt_debug.
-                
+
 % The LLDS->C output phase.
 :- include_module transform_llds.
 :- include_module llds_out.
 :- include_module layout_out.
 :- include_module rtti_out.
-  
+
+:- implementation.
+
+:- import_module check_hlds. 		% needed for type_util, mode_util etc
+:- import_module backend_libs.
+:- import_module libs.
+
 :- end_module ll_backend.
 
 %-----------------------------------------------------------------------------%

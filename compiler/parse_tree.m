@@ -63,13 +63,6 @@
 :- implementation.
 
 :- import_module check_hlds.     % XXX for type_util.m
-:- import_module ll_backend.     % XXX for llds_out.m, which is used
-				     % by modules__append_to_init_list,
-				     % which creates the LLDS and RL
-				     % initialization code.
-:- import_module transform_hlds. % XXX for write_pragma_termination_info
-				     % in termination.m, which is used by
-				     % mercury_to_mercury.m
 :- end_module parse_tree.
 
 %-----------------------------------------------------------------------------%
