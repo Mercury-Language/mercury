@@ -682,7 +682,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
  * This circumvents a Solaris 2.X (X<=4) linker bug.
  */
 #if defined(sparc) || defined(__sparc)
-#   define GC_INIT() { extern end, etext; \
+#   define GC_INIT() { extern int end, etext; \
 		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
 #else
