@@ -3270,16 +3270,26 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	% this point, because that would result in loops
 	% with no call to MR_GC_check().
 	% So we explicitly disable that here.
+	% Also, we need to disable optimize_initializations,
+	% because ml_elim_nested doesn't correctly handle
+	% code containing initializations.
+	% The only optimization that ml_optimize will do on this
+	% pass is eliminating variables.
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
+		globals__io_lookup_bool_option(optimize_initializations,
+			OptimizeInitializations),
 		globals__io_set_option(optimize_tailcalls, bool(no)),
+		globals__io_set_option(optimize_initializations, bool(no)),
 
 		maybe_write_string(Verbose, "% Optimizing MLDS...\n"),
 		ml_optimize__optimize(MLDS20, MLDS25),
 		maybe_write_string(Verbose, "% done.\n"),
 
 		globals__io_set_option(optimize_tailcalls,
-			bool(OptimizeTailCalls))
+			bool(OptimizeTailCalls)),
+		globals__io_set_option(optimize_initializations,
+			bool(OptimizeInitializations))
 	;
 		{ MLDS25 = MLDS20 }
 	),

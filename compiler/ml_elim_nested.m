@@ -1650,6 +1650,10 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
 			% since this local variable is going to become
 			% a field, and fields can't have initializers.
 			( { Init0 = init_obj(Rval) } ->
+				% XXX Bug! Converting the initializer to an
+				% assignment doesn't work, because it doesn't
+				% handle the case when initializers in
+				% FollowingDefns reference this variable
 				{ Init1 = no_initializer },
 				{ DefnBody1 = mlds__data(Type, Init1,
 					MaybeGCTraceCode0) },
