@@ -1374,17 +1374,22 @@ and source-file directory for your debugger."
   (setq gud-menu-name "MDB")
   (setq gud-buffer-name-prefix "mdb")
   (setq gud-show-commands t)
-  (setq gud-redirect-io t)
+  ;; Setting gud-redirect-io is broken in recent versions of
+  ;; GNU Emacs (e.g. 20.4.1), since Emacs apparently now uses
+  ;; pipes rather than ttys.  So we don't enable this by
+  ;; default anymore.
+  ;; (setq gud-redirect-io t)
 
   (gud-common-init command-line 'gud-mdb-massage-args
 		   'gud-mdb-marker-filter 'gud-mdb-find-file)
 
   (gud-mdb-define-menu-entries)
   (gud-mdb-add-menu-entries)
-  (save-excursion
-    (set-buffer gud-prog-buffer)
-    (display-buffer gud-prog-buffer)
-    (gud-mdb-add-menu-entries))
+  (if gud-prog-buffer
+      (save-excursion
+        (set-buffer gud-prog-buffer)
+        (display-buffer gud-prog-buffer)
+        (gud-mdb-add-menu-entries)))
 
   (setq comint-prompt-regexp "^mdb> ")
   (setq paragraph-start comint-prompt-regexp)
@@ -1593,8 +1598,9 @@ comint mode, which see."
     (apply 'make-comint prog-buf-name program nil
 	   (funcall massage-args file args))
     (if gud-redirect-io
-	(setq gud-prog-buffer (concat "*" prog-buf-name "*"))
-	(set-buffer debugger-buf)))
+        (progn
+	  (setq gud-prog-buffer (concat "*" prog-buf-name "*"))
+	  (set-buffer debugger-buf))))
 
   ;; Since comint clobbered the mode, we don't set it until now.
   (gud-mode)
