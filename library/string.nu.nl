@@ -74,3 +74,10 @@ string__first_char(String0, Char, String) :-
 	char__to_int(Char, CharCode).
 
 %-----------------------------------------------------------------------------%
+
+string__contains_char(String, Char) :-
+	string__to_int_list(String, List),
+	char__to_int(Char, CharCode),
+	list__member(CharCode, List).
+
+%-----------------------------------------------------------------------------%

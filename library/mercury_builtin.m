@@ -442,12 +442,12 @@ builtin_compare_pred(Res, _Pred1, _Pred2) :-
 
 builtin_term_to_type_pred(_Term, Pred) :-
 	% suppress determinism warning
-	semidet_succeed,
 	( semidet_succeed ->
 		error("attempted conversion of a term to a higher-order predicate")
 	;
 		% the following is never executed
-		Pred = semidet_succeed
+		Pred = semidet_succeed,
+		semidet_succeed
 	).
 
 builtin_type_to_term_pred(_Pred, Term) :-
