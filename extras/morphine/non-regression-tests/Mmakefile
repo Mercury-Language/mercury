@@ -54,12 +54,17 @@ queens.out: queens.out.orig
 		grep -v 'host = ' | \
 		grep -v 'compiled traceable' | \
 		grep -v 'loading' | \
+		grep -v 'translating ' | \
 		grep -v 'is loaded' | \
+		grep -v 'is translated' | \
 		grep -v 'making scenario' | \
 		grep -v 'WARNING' | \
 		grep -v 'Compiling collect.m' | \
 		grep -v 'mmc --grade' | \
-		grep -v 'ml --grade' \
+		grep -v 'mmc --no-warn-det-decls-too-lax --grade' | \
+		grep -v 'ml --grade' | \
+		grep -v 'bin/generate_pred_cov' | \
+		grep -v 'bin/generate_call_site_cov' \
 			> queens.out 2>&1
 
 test_vars.out.orig: test_vars test_vars.in
