@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1075,19 +1075,32 @@ rl_out__generate_instr(goto(Label) - _, node([rl_PROC_goto_label(Label)])) -->
 rl_out__generate_instr(label(Label) - _, node([rl_PROC_label(LabelNo)])) -->
 	rl_out_info_add_label(Label, LabelNo).
 rl_out__generate_instr(ref(OutputRel, InputRel) - _, Code) -->
-	rl_out_info_get_relation_addr(InputRel, InputAddr),
-	rl_out_info_get_relation_addr(OutputRel, OutputAddr),
-	{ Code = node([rl_PROC_setrel(OutputAddr, InputAddr)]) }.
+	rl_out_info_get_relation_type(InputRel, InputType),
+	rl_out_info_get_relation_type(OutputRel, OutputType),
+	(
+		{ InputType = temporary(stream) },
+		{ OutputType = temporary(materialised) }
+	->
+		rl_out__generate_instr(
+			copy(output_rel(OutputRel, []), InputRel) - "",
+			Code)
+	;
+		rl_out_info_get_relation_addr(InputRel, InputAddr),
+		rl_out_info_get_relation_addr(OutputRel, OutputAddr),
+		{ Code = node([rl_PROC_setrel(OutputAddr, InputAddr)]) }
+	).
 rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	% Unfortunately there are internal Aditi reasons why copy
 	% must be done as a materialise of each tuple into the new
 	% relation rather than just as a copy of the files.
 	rl_out_info_get_relation_addr(InputRel, InputAddr),
-	{ OutputRel = output_rel(Output, _) },
+	{ OutputRel = output_rel(Output, Indexes) },
 	rl_out_info_get_relation_addr(Output, OutputAddr),
 	rl_out__generate_instr(init(OutputRel) - "", InitCode),
+	rl_out__add_indexes_to_rel(Output, Indexes, IndexCode),
 	{ Code = 
 		tree(InitCode,
+		tree(node(IndexCode),
 		node([
 			rl_PROC_materialise,
 			rl_PROC_stream,
@@ -1096,7 +1109,7 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 			rl_PROC_var_list_cons(OutputAddr, 0),
 			rl_PROC_var_list_nil
 		])
-	) }.
+	)) }.
 rl_out__generate_instr(make_unique(OutputRel, InputRel) - Comment,
 		Code) -->
 	% This should eventually do something like:
