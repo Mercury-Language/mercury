@@ -704,8 +704,7 @@ parser__add_var(VarName, Var,
 		VarSet = VarSet0,
 		Names = Names0
 	;
-		varset__new_var(VarSet0, Var, VarSet1),
-		varset__name_var(VarSet1, Var, VarName, VarSet),
+		varset__new_named_var(VarSet0, VarName, Var, VarSet),
 		map__det_insert(Names0, VarName, Var, Names)
 	).
 

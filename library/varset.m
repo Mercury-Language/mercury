@@ -44,6 +44,10 @@
 :- pred varset__new_var(varset, var, varset).
 :- mode varset__new_var(in, out, out) is det.
 
+	% create a new named variable
+:- pred varset__new_named_var(varset, string, var, varset).
+:- mode varset__new_named_var(in, in, out, out) is det.
+
 	% create multiple new variables
 :- pred varset__new_vars(varset, int, list(var), varset).
 :- mode varset__new_vars(in, in, out, out) is det.
@@ -174,6 +178,11 @@ varset__new_var(varset(MaxId0, Names, Vals), Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId).
 
+varset__new_named_var(varset(MaxId0, Names0, Vals), Name, Var,
+		varset(MaxId, Names, Vals)) :-
+	term__create_var(MaxId0, Var, MaxId),
+	varset__name_var_2(Names0, Var, Name, Names).
+
 varset__new_vars(Varset0, NumVars, NewVars, Varset) :-
 	varset__new_vars_2(Varset0, NumVars, [], NewVars, Varset).
 
@@ -238,14 +247,20 @@ varset__vars_2(N, Max, L0, L) :-
 	% the same name costs O(N*N) time and space.
 
 varset__name_var(VarSet0, Id, Name, VarSet) :-
+	VarSet0 = varset(MaxId, Names0, Vals),
+	varset__name_var_2(Names0, Id, Name, Names),
+	VarSet = varset(MaxId, Names, Vals).
+
+:- pred varset__name_var_2(map(var, string), var, string, map(var, string)).
+:- mode varset__name_var_2(in, in, in, out) is det.
+
+varset__name_var_2(Names0, Id, Name, Names) :-
 	( string__remove_suffix(Name, "'", _) ->
 		error("varset__name_var: name is already primed")
 	;
 		true
 	),
-	VarSet0 = varset(MaxId, Names0, Vals),
-	map__set(Names0, Id, Name, Names),
-	VarSet = varset(MaxId, Names, Vals).
+	map__set(Names0, Id, Name, Names).
 
 %-----------------------------------------------------------------------------%
 
