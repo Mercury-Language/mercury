@@ -1120,6 +1120,11 @@ Filename of the program to create the @file{*_init.c} file.
 @item MERCURY_DEFAULT_GRADE
 The default grade to use if no @samp{--grade} option is specified.
 
+@sp 1
+@item MERCURY_OPTIONS
+A list of flags to set runtime memory useage options and generate
+runtime debugging information.
+
 @end table
 
 @contents
