@@ -132,7 +132,7 @@ EOF
 		rm -f conftest*
 	else
 		rm -f conftest*
-		if test $enable_dotnet_grades = "yes"; then
+		if test "$enable_dotnet_grades" = "yes"; then
 			AC_MSG_ERROR(unable to determine version)
 			exit 1
 		else
