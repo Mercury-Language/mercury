@@ -10,7 +10,7 @@
 ** A Context is like a thread. It contains a detstack, a nondetstack, a trail,
 ** the various pointers that refer to them, a succip, and a thread-
 ** resumption continuation. Contexts are initally stored in a free-list.
-** When one is running, the Unix process that is executing it has a pointer
+** When one is running, the Posix thread that is executing it has a pointer
 ** to its context structure `this_context'. When a context suspends, it
 ** calls `save_context(context_ptr)' which copies the context from the
 ** various registers and global variables into the structure referred to
@@ -22,22 +22,18 @@
 ** become the first det stackframe in the new process. (XXX this will need
 ** fixing eventually to include the nondet frame as well.)
 **
-** Threads can migrate transparently between multiple Unix processes.
-** This is implicit since all the state of the thread is allocated in
-** shared memory, and all the heaps are also in shared memory.
+** Contexts can migrate transparently between multiple Posix threads.
 **
-** Each Unix process has its own heap and solutions heap (both allocated
+** Each Posix thread has its own heap and solutions heap (both allocated
 ** in shared memory). This makes GC harder, but enables heap allocation
-** to be done without locking.
+** to be done without locking which is very important for performance.
 ** Each context has a copy of the heap pointer that is taken when it is
-** switched out. If the Unix process' heap pointer is the same as the
+** switched out. If the Posix thread's heap pointer is the same as the
 ** copied one when the context is switched back in, then it is safe for
 ** the context to do heap reclamation on failure.
 **
-** If PARALLEL is not defined, then everything gets executed within a
-** single Unix process. No locking is required. No shared memory is
-** required. Since there is only one process, no signalling is needed
-** to wake suspended processes.
+** If MR_THREAD_SAFE is not defined, then everything gets executed within a
+** single Posix thread. No locking is required.
 */
 
 #ifndef MERCURY_CONTEXT_H
@@ -45,32 +41,19 @@
 
 #include "mercury_regs.h"		/* for hp. Must come before system headers. */
 
-#include <sys/types.h>		/* for pid_t */
+#include <stdio.h>
 
-#include "mercury_types.h"	/* for Word */
-#include "mercury_trail.h"	/* for MR_TrailEntry */
+#include "mercury_types.h"		/* for Word */
+#include "mercury_trail.h"		/* for MR_TrailEntry */
 #include "mercury_memory.h"		/* for MemoryZone */
-#include "mercury_spinlock.h"		/* for SpinLock */
+#include "mercury_thread.h"		/* for MercuryLock */
 #include "mercury_goto.h"		/* for GOTO() */
 
-/*
-** If we have parallelism switched on (PARALLEL is defined),
-** then we define how many processes should be used.
-** Ultimately this should be configurable through the
-** MERCURY_OPTIONS environment variable.
-*/
-#ifdef	PARALLEL
-extern unsigned numprocs;
+#ifdef	MR_THREAD_SAFE
+  #define MR_IF_THREAD_SAFE(x)	x
+#else
+  #define MR_IF_THREAD_SAFE(x)	((void) 0)
 #endif
-
-/*
-** The number of context structures initially allocated.
-** This allocation does not include the stacks that they
-** refer to - only the actual context structures.
-** At the moment if we need more than this number of contexts,
-** we just die. In the longer term, we need to allocate more.
-*/
-#define INITIAL_NUM_CONTEXTS	20
 
 /*
 ** The field names that correspond to virtual machine registers:
@@ -95,6 +78,15 @@ struct CONTEXT {
 		** a pointer to the code at which execution should resume when
 		** this context is next scheduled.
 		*/
+
+#ifdef	MR_THREAD_SAFE
+	MercuryThread	owner_thread;
+		/*
+		** The owner_thread field is used to ensure that when we
+		** enter a mercury engine from C, we return to the same
+		** engine. See the coments in mercury_engine.h
+		*/
+#endif
 
 	Code		*context_succip;
 		/* succip for this context */
@@ -137,63 +129,48 @@ struct CONTEXT {
 ** need to be reinitialized, but have space allocated to
 ** them. (see comments in mercury_memory.h about reset_zone())
 */
-extern	Context **free_context_list_ptr;
+extern	Context *free_context_list;
 
 /*
 ** the runqueue is a linked list of contexts that are
 ** runnable.
 */
-extern	Context **runqueue_ptr;
+
+extern		Context		*MR_runqueue;
+extern		Context		*MR_suspended_forks;
+#ifdef	MR_THREAD_SAFE
+  extern	MercuryLock	*MR_runqueue_lock;
+  extern	MercuryCond	*MR_runqueue_cond;
+#endif
+
 
 /*
-** this_context is a pointer to the currently executing
-** context. the fields of this_context are not necessarily
-** in sync with the real values, since *this_context only
-** gets updated when save_context() gets called.
+** Initializes a context structure.
 */
-extern	Context *this_context;
-
-/* a pointer to a word used for the spinlock on the runqueue */
-extern	SpinLock *runqueue_lock;
+void	init_context(Context *context);
 
 /*
-** a pointer to a word used for the spinlock on the free
-** context list
-*/
-extern	SpinLock *free_context_list_lock;
-
-/*
-** init_processes() forks new process (if necessary), and
-** initializes the data-structures for managing the interactions
-** between them.
-*/
-void	init_processes(void);
-
-/*
-** shutdown_processes() sends a signal to the other processes
-** to tell them to shut down.  (NOT YET IMPLEMENTED - STUB ONLY.)
-*/
-void	shutdown_processes(void);
-
-/*
-** init_process_context() creates a top-level context for
-** the original process, and allocates a heap and a solutions-
-** heap for each process.
-*/
-void	init_process_context(void);
-
-/*
-** new_context() allocates and initializes a new context
+** create_context() allocates and initializes a new context
 ** structure.
 */
-Context	*new_context(void);
+Context	*create_context(void);
 
 /*
-** delete_context(ptr) returns the context structure pointed
+** destroy_context(ptr) returns the context structure pointed
 ** to by ptr to the free list, and releases resources as
 ** necessary.
 */
-void	delete_context(Context *context);
+void	destroy_context(Context *context);
+
+/*
+** init_thread_stuff() initializes the lock structures for the runqueue.
+*/
+void	init_thread_stuff(void);
+
+/*
+** finialize_runqueue() finalizes the lock structures for the runqueue.
+*/
+void	finalize_runqueue(void);
 
 /*
 ** flounder() aborts with a runtime error message. It is called if
@@ -203,46 +180,83 @@ void	delete_context(Context *context);
 void	flounder(void);
 
 /*
-** procid[N] is the process id of the Nth process.
-** procid[my_procnum] == getpid() == my_procid.
+** schedule(Context *cptr):
 */
-extern	pid_t	*procid;
 
-/*
-** procwaiting[N] is true if the process procid[N] is
-** suspended because the runqueue was empty when it
-** called runnext().
-** Although we semantically want bools here, we use
-** words to ensure coherency. Since a bool may be
-** smaller than a word, storing a bool may be implemented
-** in a coherency-breaking manner.
-** (Assuming that Words can be read and written in a
-** coherent manner is sufficiently important in terms of
-** simplifying the synchronization mechanisms, that
-** we really need to do so -- or so says Tom, at least.
-** I remain unconvinced. -Fergus.)
-*/
-typedef Word		AtomicBool;
-extern	AtomicBool	*procwaiting;
-
-/*
-** my_procnum is the number of the current process.
-** my_procnum == 0 is the original parent process.
-*/
-extern	int	my_procnum;
-extern	pid_t	my_procid;
-
-/* do a context switch */
-Declare_entry(do_runnext);
-#define	runnext()	GOTO(ENTRY(do_runnext));
-
-/*
-** schedule(Context *cptr, Code *resume):
-*/
-#define schedule(cptr, resume)	do {				\
-		fatal_error("schedule not implemented");	\
+#ifdef	MR_THREAD_SAFE
+  #define schedule(cptr)	do {				\
+		MR_LOCK(MR_runqueue_lock, "schedule");		\
+		((Context *)cptr)->next = MR_runqueue;		\
+		MR_runqueue = (Context *) (cptr);		\
+		MR_SIGNAL(MR_runqueue_cond);			\
+		MR_UNLOCK(MR_runqueue_lock, "schedule");	\
 	} while(0)
 
+	/*
+	** runnext() tries to execute the first context on the
+	** runqueue. If the context was directly called from C
+	** it may only be executed in the thread that the C call
+	** originated in or should the context return to C the
+	** C stack will be wrong!
+	** If there are no contexts that the current thread can
+	** execute, then we suspend until another thread puts something
+	** into the runqueue. Currently, it is not possible for
+	** floundering to occur, so we haven't got a check for it.
+	*/
+  #define runnext()	do {					\
+		Context *rn_c, *rn_p;				\
+		unsigned x;					\
+		MercuryThread t;				\
+		x = MR_ENGINE(c_depth);				\
+		t = MR_ENGINE(owner_thread);			\
+		MR_LOCK(MR_runqueue_lock, "runnext i");		\
+		while (1) {					\
+			if (MR_exit_now == TRUE)		\
+				destroy_thread(MR_engine_base);	\
+			rn_c = MR_runqueue;			\
+			rn_p = NULL;				\
+			while (rn_c != NULL) {			\
+				if ( (x > 0 && rn_c->owner_thread == t) \
+				   ||	(rn_c->owner_thread == NULL)) \
+					break;			\
+				rn_p = rn_c;			\
+				rn_c = rn_c->next;		\
+			}					\
+			if (rn_c != NULL)			\
+				break;				\
+			MR_WAIT(MR_runqueue_cond, MR_runqueue_lock); \
+		}						\
+		MR_ENGINE(this_context) = rn_c;			\
+		if (rn_p == NULL)				\
+			MR_runqueue = rn_c->next;		\
+		else						\
+			rn_p->next = rn_c->next;		\
+		MR_UNLOCK(MR_runqueue_lock, "runnext");		\
+		load_context(MR_ENGINE(this_context));		\
+		GOTO(MR_ENGINE(this_context)->resume);		\
+	} while(0)
+#else
+  #define schedule(cptr)	do {				\
+		((Context *)cptr)->next = MR_runqueue;		\
+		MR_runqueue = (Context *) (cptr);		\
+	} while(0)
+
+  #define runnext()	do {					\
+		if (MR_runqueue == NULL) {			\
+			fatal_error("empty runqueue");		\
+		}						\
+		MR_ENGINE(this_context) = MR_runqueue;		\
+		MR_runqueue = MR_runqueue->next;		\
+		load_context(MR_ENGINE(this_context));		\
+		GOTO(MR_ENGINE(this_context)->resume);		\
+	} while(0)
+#endif
+
+#ifdef	MR_THREAD_SAFE
+  #define IF_MR_THREAD_SAFE(x)	x
+#else
+  #define IF_MR_THREAD_SAFE(x)
+#endif
 /*
 ** fork_new_context(Code *child, Code *parent, int numslots):
 ** create a new context to execute the code at `child', and
@@ -250,19 +264,23 @@ Declare_entry(do_runnext);
 ** The new context gets put on the runqueue, and the current
 ** context resumes at `parent'.
 */
-#define fork_new_context(child, parent, numslots) do {		\
-		Context	*fork_new_context_context;		\
-		int	fork_new_context_i;			\
-		fork_new_context_context = new_context();	\
-		for (fork_new_context_i = (numslots) ;		\
-				fork_new_context_i > 0 ;	\
-				fork_new_context_i--) {		\
-			*(fork_new_context_context->context_sp) = \
-				detstackvar(fork_new_context_i); \
-			fork_new_context_context->context_sp++;	\
-		}						\
-		fork_new_context_context->resume = (child);	\
-		schedule(fork_new_context_context, (parent));	\
+#define MR_fork_new_context(child, parent, numslots) do {		\
+		Context	*f_n_c_context;					\
+		int	fork_new_context_i;				\
+		f_n_c_context = create_context();			\
+		IF_MR_THREAD_SAFE(					\
+			f_n_c_context->owner_thread = NULL;		\
+		)							\
+		for (fork_new_context_i = (numslots) ;			\
+				fork_new_context_i > 0 ;		\
+				fork_new_context_i--) {			\
+			*(f_n_c_context->context_sp) = 			\
+				detstackvar(fork_new_context_i);	\
+			f_n_c_context->context_sp++;			\
+		}							\
+		f_n_c_context->resume = (child);			\
+		schedule(f_n_c_context);				\
+		GOTO(parent);						\
 	} while (0)
 
 #ifndef	CONSERVATIVE_GC
@@ -295,7 +313,7 @@ Declare_entry(do_runnext);
 ** furthest back that we can backtrack is the same as it was last time we
 ** were executing.
 */
-#define set_min_heap_reclamation_point(ctxt)	do {		\
+  #define set_min_heap_reclamation_point(ctxt)	do {		\
 		if (hp != (ctxt)->context_hp 			\
 			|| (ctxt)->context_hp == NULL)		\
 		{						\
@@ -308,32 +326,30 @@ Declare_entry(do_runnext);
 		}						\
 	} while (0)
 
-#define	save_hp_in_context(ctxt)	do {		\
+  #define	save_hp_in_context(ctxt)	do {		\
 		(ctxt)->context_hp = hp;		\
 		(ctxt)->min_hp_rec = MR_min_hp_rec;	\
 	} while (0)
 
 #else
 
-#define set_min_heap_reclamation_point(ctxt)	do { } while (0)
+  #define set_min_heap_reclamation_point(ctxt)	do { } while (0)
 
-#define	save_hp_in_context(ctxt)		do { } while (0)
+  #define save_hp_in_context(ctxt)		do { } while (0)
 
 #endif
 
 #ifdef MR_USE_TRAIL
-#define MR_IF_USE_TRAIL(x) x
+  #define MR_IF_USE_TRAIL(x) x
 #else
-#define MR_IF_USE_TRAIL(x)
+  #define MR_IF_USE_TRAIL(x)
 #endif
 
 #define	load_context(cptr)	do {					\
 		Context	*load_context_c;				\
 		load_context_c = (cptr);				\
 		MR_succip		= load_context_c->context_succip; \
-		detstack_zone	= load_context_c->detstack_zone;	\
-		MR_sp		= load_context_c->context_sp;		\
-		nondetstack_zone = load_context_c->nondetstack_zone;	\
+		MR_sp			= load_context_c->context_sp;	\
 		MR_maxfr		= load_context_c->context_maxfr; \
 		MR_curfr		= load_context_c->context_curfr; \
 	        MR_IF_USE_TRAIL(					\
@@ -342,16 +358,18 @@ Declare_entry(do_runnext);
 		    MR_ticket_counter =					\
 				load_context_c->context_ticket_counter;	\
 	    	)							\
-		set_min_heap_reclamation_point(load_context_c);	\
+		MR_ENGINE(context).detstack_zone =			\
+				load_context_c->detstack_zone;		\
+		MR_ENGINE(context).nondetstack_zone =			\
+				load_context_c->nondetstack_zone;	\
+		set_min_heap_reclamation_point(load_context_c);		\
 	} while (0)
 
 #define	save_context(cptr)	do {					\
 		Context	*save_context_c;				\
 		save_context_c = (cptr);				\
 		save_context_c->context_succip	= MR_succip;		\
-		save_context_c->detstack_zone	= detstack_zone;	\
 		save_context_c->context_sp	 = MR_sp;		\
-		save_context_c->nondetstack_zone = nondetstack_zone;	\
 		save_context_c->context_maxfr	= MR_maxfr;		\
 		save_context_c->context_curfr	= MR_curfr;		\
 		MR_IF_USE_TRAIL(					\
@@ -360,35 +378,61 @@ Declare_entry(do_runnext);
 		    save_context_c->context_ticket_counter =		\
 						MR_ticket_counter;	\
 		)							\
+		save_context_c->detstack_zone =				\
+				MR_ENGINE(context).detstack_zone;	\
+		save_context_c->nondetstack_zone =			\
+				MR_ENGINE(context).nondetstack_zone; \
 		save_hp_in_context(save_context_c);			\
 	} while (0)
 
-/*
-** The following two macros join_and_terminate and join_and_continue
-** both take a `sync_term' which has the following structure:
-**	sync_term[SYNC_TERM_LOCK] is a SpinLock
-**	sync_term[SYNC_TERM_COUNTER] is a counter for the number of
-**			processes that need to synchronize before the
-**			parent can proceed.
-**	sync_term[SYNC_TERM_PARENT] is either NULL or a pointer to the
-**			context of the parent process. If it is non-null
-**			then the last process to arrive (the one that
-**			decrements sync_term[SYNC_TERM_COUNTER] to 0)
-**			must wake the parent.
-** These terms are allocated and manipulated as normal Mercury terms by
-** generated Mercury code.
-*/
+typedef struct SYNCTERM SyncTerm;
+struct SYNCTERM {
+  #ifdef MR_THREAD_SAFE
+	MercuryLock	lock;
+  #endif
+	int		count;
+	Context		*parent;
+};
 
-#define	SYNC_TERM_LOCK		0
-#define	SYNC_TERM_COUNTER	1
-#define	SYNC_TERM_PARENT	2
-
-#define join_and_terminate(sync_term)	do {				\
-		fatal_error("join_and_terminate not implemented");	\
+#define MR_init_sync_term(sync_term, nbranches)	do {			\
+		SyncTerm *st = (SyncTerm *) sync_term;			\
+		MR_IF_THREAD_SAFE(					\
+			pthread_mutex_init(&(st->lock), MR_MUTEX_ATTR);	\
+		)							\
+		st->count = (nbranches);				\
+		st->parent = NULL;					\
 	} while (0)
 
-#define join_and_continue(sync_term, where_to)	do {			\
-		fatal_error("join_and_continue not implemented");	\
+#define MR_join_and_terminate(sync_term)	do {			\
+		SyncTerm *st = (SyncTerm *) sync_term;			\
+		MR_LOCK(&(st->lock), "terminate");			\
+		(st->count)--;						\
+		if (st->count == 0) {					\
+			assert(st->parent != NULL);			\
+			MR_UNLOCK(&(st->lock), "terminate i");		\
+			schedule(st->parent);				\
+		} else {						\
+			assert(st->count > 0);				\
+			MR_UNLOCK(&(st->lock), "terminate ii");		\
+		}							\
+		destroy_context(MR_ENGINE(this_context));		\
+		runnext();						\
+	} while (0)
+
+#define MR_join_and_continue(sync_term, where_to)	do {		\
+		SyncTerm *st = (SyncTerm *) sync_term;			\
+		MR_LOCK(&(st->lock), "continue");			\
+		(st->count)--;						\
+		if (st->count == 0) {					\
+			MR_UNLOCK(&(st->lock), "continue i");		\
+			GOTO((where_to));				\
+		}							\
+		assert(st->count > 0);					\
+		save_context(MR_ENGINE(this_context));			\
+		MR_ENGINE(this_context)->resume = (where_to);		\
+		st->parent = MR_ENGINE(this_context); 			\
+		MR_UNLOCK(&(st->lock), "continue ii");			\
+		runnext();						\
 	} while (0)
 
 #endif /* not MERCURY_CONTEXT_H */

@@ -148,6 +148,10 @@ first_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc,
 		ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
+first_order_check_goal(par_conj(Goals, _SM), _GoalInfo, Negated, WholeScc, 
+		ThisPredProcId, Error, Module0, Module) -->
+	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+		Error, Module0, Module).
 first_order_check_goal(disj(Goals, _Follow), _GoalInfo, Negated, 
 		WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
@@ -295,6 +299,10 @@ higher_order_check_scc([PredProcId|Remaining], WholeScc, HOInfo, Module0,
 	out, di, uo) is det.
 
 higher_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc, 
+		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
+	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+		HighOrderLoops, Error, Module0, Module).
+higher_order_check_goal(par_conj(Goals, _), _GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
@@ -802,6 +810,9 @@ check_goal1(class_method_call(_Var, _Num, _Vars, _Types, _Modes, _Det), Calls,
 
 check_goal1(conj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
+check_goal1(par_conj(Goals, _), Calls0, Calls, HasAT0, HasAT,
+		CallsHO0, CallsHO) :-
+	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 check_goal1(disj(Goals, _Follow), Calls0, Calls, HasAT0, HasAT, CallsHO0, 
 		CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
@@ -897,6 +908,8 @@ get_called_procs(class_method_call(_Var, _Num,_Vars, _Types, _Modes, _Det),
 	Calls, Calls).
 
 get_called_procs(conj(Goals), Calls0, Calls) :-
+	check_goal_list(Goals, Calls0, Calls).
+get_called_procs(par_conj(Goals, _), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
 get_called_procs(disj(Goals, _Follow), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).

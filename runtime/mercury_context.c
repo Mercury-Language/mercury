@@ -14,50 +14,63 @@ ENDINIT
 
 #include <stdio.h>
 #include <unistd.h>		/* for getpid() and fork() */
-#ifdef PARALLEL
-#include <signal.h>
+#ifdef MR_THREAD_SAFE
+  #include "mercury_thread.h"
 #endif
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"	/* for `memdebug' */
 
-Context	*this_context;
+Context		*MR_runqueue;
+#ifdef	MR_THREAD_SAFE
+  MercuryLock	*MR_runqueue_lock;
+  MercuryCond	*MR_runqueue_cond;
+#endif
+
+
 static Context	*free_context_list = NULL;
+#ifdef	MR_THREAD_SAFE
+  static	MercuryLock *free_context_list_lock;
+#endif
 
-void 
-init_process_context(void)
+void
+init_thread_stuff(void)
 {
-	init_heap();
+#ifdef	MR_THREAD_SAFE
 
-	this_context = new_context();
-		/* load the registers so we don't clobber hp */
-	restore_transient_registers();
-	load_context(this_context);
-	save_transient_registers();
+	MR_runqueue_lock = make(MercuryLock);
+	pthread_mutex_init(MR_runqueue_lock, MR_MUTEX_ATTR);
 
-	if (memdebug) debug_memory();
+	MR_runqueue_cond = make(MercuryCond);
+	pthread_cond_init(MR_runqueue_cond, MR_COND_ATTR);
+
+	free_context_list_lock = make(MercuryLock);
+	pthread_mutex_init(free_context_list_lock, MR_MUTEX_ATTR);
+
+	MR_KEY_CREATE(&MR_engine_base_key, NULL);
+
+#endif
 }
 
-Context *
-new_context(void)
+void
+finalize_runqueue(void)
 {
-	Context *c;
-
-	if (free_context_list == NULL) {
-		c = (Context *) make(Context);
-		c->detstack_zone = NULL;
-		c->nondetstack_zone = NULL;
-#ifdef MR_USE_TRAIL
-		c->trail_zone = NULL;
+#ifdef	MR_THREAD_SAFE
+	pthread_mutex_destroy(MR_runqueue_lock);
+	pthread_cond_destroy(MR_runqueue_cond);
+	pthread_mutex_destroy(free_context_list_lock);
 #endif
-	} else {
-		c = free_context_list;
-		free_context_list = c->next;
-	}
+}
 
+void 
+init_context(Context *c)
+{
 	c->next = NULL;
 	c->resume = NULL;
+#ifdef	MR_THREAD_SAFE
+	c->owner_thread = (MercuryThread) NULL;
+#endif
 	c->context_succip = ENTRY(do_not_reached);
 
 	if (c->detstack_zone != NULL) {
@@ -96,15 +109,40 @@ new_context(void)
 #endif
 
 	c->context_hp = NULL;
+}
+
+Context *
+create_context(void)
+{
+	Context *c;
+
+	MR_LOCK(free_context_list_lock, "create_context");
+	if (free_context_list == NULL) {
+		MR_UNLOCK(free_context_list_lock, "create_context i");
+		c = (Context *) make(Context);
+		c->detstack_zone = NULL;
+		c->nondetstack_zone = NULL;
+#ifdef MR_USE_TRAIL
+		c->trail_zone = NULL;
+#endif
+	} else {
+		c = free_context_list;
+		free_context_list = c->next;
+		MR_UNLOCK(free_context_list_lock, "create_context ii");
+	}
+
+	init_context(c);
 
 	return c;
 }
 
 void 
-delete_context(Context *c)
+destroy_context(Context *c)
 {
+	MR_LOCK(free_context_list_lock, "destroy_context");
 	c->next = free_context_list;
 	free_context_list = c;
+	MR_UNLOCK(free_context_list_lock, "destroy_context");
 }
 
 void 

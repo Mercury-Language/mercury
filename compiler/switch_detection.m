@@ -147,6 +147,11 @@ detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, conj(Goals)) :-
 	detect_switches_in_conj(Goals0, InstMap0, VarTypes, ModuleInfo, Goals).
 
+detect_switches_in_goal_2(par_conj(Goals0, SM), _GoalInfo, InstMap0,
+		VarTypes, ModuleInfo, par_conj(Goals, SM)) :-
+	detect_switches_in_par_conj(Goals0, InstMap0, VarTypes,
+		ModuleInfo, Goals).
+
 detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, not(Goal)) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal).
@@ -325,6 +330,17 @@ detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, ModuleInfo,
 	detect_switches_in_goal(Goal0, InstMap, VarTypes, ModuleInfo, Goal),
 	Case = case(Functor, Goal),
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
+
+:- pred detect_switches_in_par_conj(list(hlds_goal), instmap, map(var, type),
+	module_info, list(hlds_goal)).
+:- mode detect_switches_in_par_conj(in, in, in, in, out) is det.
+
+detect_switches_in_par_conj([], _InstMap, _VarTypes, _ModuleInfo, []).
+detect_switches_in_par_conj([Goal0 | Goals0], InstMap, VarTypes, ModuleInfo,
+		[Goal | Goals]) :-
+	detect_switches_in_goal(Goal0, InstMap, VarTypes, ModuleInfo, Goal),
+	detect_switches_in_par_conj(Goals0, InstMap, VarTypes,
+		ModuleInfo, Goals).
 
 :- pred detect_switches_in_conj(list(hlds_goal), instmap, map(var, type),
 	module_info, list(hlds_goal)).

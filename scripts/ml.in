@@ -317,18 +317,32 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
+case $thread_safe in
+	true)
+		case "$FULLARCH" in
+		*-osf*)		THREAD_LIBS="-lpthreads -lc_r" ;;
+		*-linux*)	THREAD_LIBS="-lpthread" ;;
+		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
+		*)		echo "$0: warning: don't know which" \
+					"library to use for pthreads" 1>&2
+				 THREAD_LIBS=""
+				 ;;
+		esac ;;
+	false)	THREAD_LIBS="" ;;
+esac
+
 case $make_shared_lib in
     true)
 	LINKER="$LINK_SHARED_OBJ"
 	RPATH_OPT="$SHLIB_RPATH_OPT"
 	RPATH_SEP="$SHLIB_RPATH_SEP"
-	STDLIBS="$SHARED_LIBS"
+	STDLIBS="$SHARED_LIBS $THREAD_LIBS"
 	;;
     false)
 	LINKER="$CC"
 	RPATH_OPT="$EXE_RPATH_OPT"
 	RPATH_SEP="$EXE_RPATH_SEP"
-	STDLIBS="-lm"
+	STDLIBS="-lm $THREAD_LIBS"
 	;;
 esac
 

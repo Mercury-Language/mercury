@@ -257,7 +257,7 @@
 			% Decrement the det stack pointer.
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
-				may_call_mercury, maybe(label), bool).
+				may_call_mercury, maybe(label), bool)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -286,6 +286,41 @@
 			% User-written shouldn't refer to stack slots,
 			% the question is whether the compiler-generated
 			% C code does.
+
+	;	init_sync_term(lval, int)
+			% Initialize a synchronization term.
+			% the first arguement contains the lvalue into
+			% which we will store the synchronization term,
+			% and the second argument indicates how many
+			% branches we expect to join at the end of the
+			% parallel conjunction.
+			% (See the documentation in par_conj_gen.m and
+			% runtime/context.{c,h} for further information about
+			% synchronisation terms.)
+
+	;	fork(label, label, int)
+			% Create a new context.
+			% fork(Child, Parent, NumSlots) creates a new thread
+			% which will start executing at Child. After spawning
+			% execution in the child, control branches to Parent.
+			% NumSlots is the number of stack slots that need to
+			% be copied to the child's stack (see comments in
+			% runtime/context.{h,c}).
+
+	;	join_and_terminate(lval)
+			% Signal that this thread of execution has finished in
+			% the current parallel conjunction, then terminate it.
+			% The synchronisation term is specified by the
+			% given lval. (See the documentation in par_conj_gen.m
+			% and runtime/context.{c,h} for further information
+			% about synchronisation terms.)
+
+	;	join_and_continue(lval, label)
+			% Signal that this thread of execution has finished
+			% in the current parallel conjunction, then branch to
+			% the given label. The synchronisation
+			% term is specified by the given lval.
+	.
 
 	% Procedures defined by nondet pragma C codes must have some way of
 	% preserving information after a success, so that when control

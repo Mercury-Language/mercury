@@ -673,6 +673,9 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeCheckInfo0,
 typecheck_goal_2(conj(List0), conj(List)) -->
 	checkpoint("conj"),
 	typecheck_goal_list(List0, List).
+typecheck_goal_2(par_conj(List0, SM), par_conj(List, SM)) -->
+	checkpoint("par_conj"),
+	typecheck_goal_list(List0, List).
 typecheck_goal_2(disj(List0, SM), disj(List, SM)) -->
 	checkpoint("disj"),
 	typecheck_goal_list(List0, List).

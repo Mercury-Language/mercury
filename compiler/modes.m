@@ -875,6 +875,33 @@ modecheck_goal_expr(conj(List0), _GoalInfo0, conj(List)) -->
 	),
 	mode_checkpoint(exit, "conj").
 
+	% To modecheck a parallel conjunction, we modecheck each
+	% conjunct independently (just like for disjunctions).
+	% To make sure that we don't try to bind a variable more than
+	% once (by binding it in more than one conjunct), we maintain a
+	% datastructure that keeps track of three things:
+	%	the set of variables that are nonlocal to the conjuncts
+	%	(which may be a superset of the nonlocals of the par_conj
+	%	as a whole);
+	%	the set of nonlocal variables that have been bound in the
+	%	current conjunct; and
+	%	the set of variables that were bound in previous conjuncts.
+	% When binding a variable, we check that it wasn't in the set of
+	% variables bound in other conjuncts, and we add it to the set of
+	% variables bound in this conjunct.
+	% At the end of the conjunct, we add the set of variables bound in
+	% this conjunct to the set of variables bound in previous conjuncts
+	% and set the set of variables bound in the current conjunct to
+	% empty.
+	% A stack of these structures is maintained to handle nested parallel
+	% conjunctions properly.
+modecheck_goal_expr(par_conj(List0, SM), GoalInfo0, par_conj(List, SM)) -->
+	mode_checkpoint(enter, "par_conj"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList),
+	instmap__unify(NonLocals, InstMapNonlocalList),
+	mode_checkpoint(exit, "par_conj").
+
 modecheck_goal_expr(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
@@ -1222,8 +1249,8 @@ modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
 
 		% Now see whether the goal was successfully scheduled.
 		% If we didn't manage to schedule the goal, then we
-		% restore the original instmap, delay_info & livevars here,
-		% and delay the goal.
+		% restore the original instmap, delay_info and livevars
+		% here, and delay the goal.
 	=(ModeInfo1),
 	{ mode_info_get_errors(ModeInfo1, Errors) },
 	(   { Errors = [ FirstErrorInfo | _] } ->
@@ -1398,6 +1425,58 @@ modecheck_case_list([Case0 | Cases0], Var,
 
 %-----------------------------------------------------------------------------%
 
+:- pred modecheck_par_conj_list(list(hlds_goal), list(hlds_goal),
+		set(var), list(pair(instmap, set(var))), mode_info, mode_info).
+:- mode modecheck_par_conj_list(in, out, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_par_conj_list([], [], _NonLocals, []) --> [].
+modecheck_par_conj_list([Goal0|Goals0], [Goal|Goals], NonLocals, 
+		[InstMap - GoalNonLocals|InstMaps]) -->
+	mode_info_dcg_get_instmap(InstMap0),
+	{ Goal0 = _ - GoalInfo },
+	{ goal_info_get_nonlocals(GoalInfo, GoalNonLocals) },
+	mode_info_get_parallel_vars(PVars0),
+	{ set__init(Bound0) },
+	mode_info_set_parallel_vars([NonLocals - Bound0|PVars0]),
+
+	modecheck_goal(Goal0, Goal),
+	mode_info_get_parallel_vars(PVars1),
+	(
+		{ PVars1 = [_ - Bound1|PVars2] },
+		(
+			{ PVars2 = [OuterNonLocals - OuterBound0|PVars3] },
+			{ set__intersect(OuterNonLocals, Bound1, Bound) },
+			{ set__union(OuterBound0, Bound, OuterBound) },
+			{ PVars = [OuterNonLocals - OuterBound|PVars3] },
+			mode_info_set_parallel_vars(PVars)
+		;
+			{ PVars2 = [] },
+			mode_info_set_parallel_vars(PVars2)
+		)
+	;
+		{ PVars1 = [] },
+		{ error("lost parallel vars") }
+	),
+	mode_info_dcg_get_instmap(InstMap),
+	mode_info_set_instmap(InstMap0),
+	mode_info_lock_vars(par_conj, Bound1),
+	modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMaps),
+	mode_info_unlock_vars(par_conj, Bound1).
+
+:- pred get_all_conjunct_nonlocals(list(hlds_goal), set(var), set(var)).
+:- mode get_all_conjunct_nonlocals(in, in, out) is det.
+
+get_all_conjunct_nonlocals([], NonLocals, NonLocals).
+get_all_conjunct_nonlocals([G|Gs], NonLocals0, NonLocals) :-
+	G = _ - GoalInfo,
+	goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
+	set__union(GoalNonLocals, NonLocals0, NonLocals1),
+	get_all_conjunct_nonlocals(Gs, NonLocals1, NonLocals).
+
+
+%-----------------------------------------------------------------------------%
+
 	% Given a list of variables and a list of expected livenesses,
 	% ensure the liveness of each variable satisfies the corresponding
 	% expected liveness.
@@ -1536,8 +1615,9 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
 
-modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
+modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_get_parallel_vars(PVars0, ModeInfo00, ModeInfo0),
 	( instmap__is_reachable(InstMap0) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
@@ -1560,7 +1640,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			inst_expand(ModuleInfo, Inst, not_reached)
 		->
 			instmap__init_unreachable(InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
+			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo3)
 		;
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
@@ -1568,7 +1648,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			inst_matches_initial(Inst0, Inst, ModuleInfo)
 		->
 			instmap__set(InstMap0, Var0, Inst, InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
+			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo3)
 		;
 			% We must have either added some information,
 			% lost some uniqueness, or bound part of the var.
@@ -1582,7 +1662,8 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
 			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo, ModeInfo2, ModeInfo)
+			mode_info_set_delay_info(DelayInfo,
+				ModeInfo2, ModeInfo3)
 		;
 			% We've bound part of the var.  If the var was locked,
 			% then we need to report an error.
@@ -1591,17 +1672,31 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
 				mode_error_bind_var(Reason0, Var0, Inst0, Inst),
-				ModeInfo1, ModeInfo
+				ModeInfo1, ModeInfo3
 			)
 		;
 			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
 			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo, ModeInfo2, ModeInfo)
+			mode_info_set_delay_info(DelayInfo,
+						ModeInfo2, ModeInfo3)
 		)
 	;
-		ModeInfo = ModeInfo0
+		ModeInfo3 = ModeInfo0
+	),
+	(
+		PVars0 = [],
+		ModeInfo = ModeInfo3
+	;
+		PVars0 = [NonLocals - Bound0|PVars1],
+		( set__member(Var0, NonLocals) ->
+			set__insert(Bound0, Var0, Bound),
+			PVars = [NonLocals - Bound|PVars1]
+		;
+			PVars = PVars0
+		),
+		mode_info_set_parallel_vars(PVars, ModeInfo3, ModeInfo)
 	).
 
 

@@ -606,9 +606,9 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 #define swap_heap_and_solutions_heap()				\
     do {							\
 	Word temp;						\
-	temp = (Word) heap_zone;				\
-	heap_zone = solutions_heap_zone;			\
-	LVALUE_CAST(Word, solutions_heap_zone) = temp;		\
+	temp = (Word) MR_ENGINE(heap_zone);			\
+	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);	\
+	LVALUE_CAST(Word, MR_ENGINE(solutions_heap_zone)) = temp;	\
 	temp = (Word) MR_hp;					\
 	MR_hp = MR_sol_hp;				\
 	LVALUE_CAST(Word, MR_sol_hp) = temp;		\
@@ -695,7 +695,8 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	*/
 	save_transient_registers();
 	copied_solution = deep_copy(r1, (Word *) element_type_info_fv,
-			(Word *) saved_hp_fv, solutions_heap_zone->top);
+			(Word *) saved_hp_fv,
+			MR_ENGINE(solutions_heap_zone)->top);
 	restore_transient_registers();
 
 	/* call the collector closure */
@@ -750,7 +751,8 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	save_transient_registers();
 	copied_collection = deep_copy(sofar_fv,
 		    (Word *) collection_type_info_fv,
-		    (Word *) saved_solhp_fv, solutions_heap_zone->top);
+		    (Word *) saved_solhp_fv,
+		    MR_ENGINE(solutions_heap_zone)->top);
 	restore_transient_registers();
 
 	builtin_aggregate_output = copied_collection;

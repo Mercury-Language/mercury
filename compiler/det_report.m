@@ -51,6 +51,8 @@
 		;	error_in_lambda(
 				determinism, determinism, % declared, inferred
 				hlds_goal, hlds_goal_info, pred_id, proc_id)
+		;	par_conj_not_det(determinism, pred_id, proc_id,
+				hlds_goal_info, list(hlds_goal))
 		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
 		.
 
@@ -441,6 +443,10 @@ det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
 		Diagnosed) -->
 	det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed).
 
+det_diagnose_goal_2(par_conj(Goals, _SM), _GoalInfo, Desired, _Actual,
+		Context, DetInfo, Diagnosed) -->
+	det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed).
+
 det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, Actual, SwitchContext,
 		DetInfo, Diagnosed) -->
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo, 0,
@@ -664,6 +670,12 @@ det_diagnose_atomic_goal(Desired, Actual, WriteContext, Context) -->
 		hlds_out__write_determinism(Actual),
 		io__write_string(".\n")
 	).
+
+	% det_diagnose_conj is used for both normal [sequential]
+	% conjunction and parallel conjunction.
+
+	% det_diagnose_conj is used for both normal [sequential]
+	% conjunction and parallel conjunction.
 
 :- pred det_diagnose_conj(list(hlds_goal), determinism,
 	list(switch_context), det_info, bool, io__state, io__state).
@@ -978,6 +990,7 @@ det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
 det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
 det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
+det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
 det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
 
 :- pred det_report_msg(det_msg, module_info, io__state, io__state).
@@ -1192,6 +1205,33 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	globals__io_get_globals(Globals),
 	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
 	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
+	io__set_exit_status(1).
+det_report_msg(par_conj_not_det(InferredDetism, PredId,
+			ProcId, GoalInfo, Goals), ModuleInfo) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	{ determinism_components(InferredDetism, CanFail, MaxSoln) },
+	(
+		{ CanFail \= cannot_fail }
+	->
+		io__write_string("Error: parallel conjunct may fail.\n")
+	;
+		{ MaxSoln = at_most_many }
+	->
+		prog_out__write_context(Context),
+		io__write_string("Error: parallel conjunct may have multiple solutions.\n")
+	;
+		{ error("strange determinism error for parallel conjunction") }
+	),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  The current implementation supports only single-solution\n"
+	),
+	prog_out__write_context(Context),
+	io__write_string("  non-failing parallel conjunctions.\n"),
+	globals__io_get_globals(Globals),
+	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
+	det_diagnose_conj(Goals, det, [], DetInfo, _),
 	io__set_exit_status(1).
 det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),
 		ModuleInfo) -->

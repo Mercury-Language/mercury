@@ -52,7 +52,6 @@ HDRS		=	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
 			mercury_signal.h	\
-			mercury_spinlock.h	\
 			mercury_std.h		\
 			mercury_stacks.h	\
 			mercury_stack_layout.h	\
@@ -65,6 +64,7 @@ HDRS		=	\
 			mercury_table_type_info.h\
 			mercury_tabling.h	\
 			mercury_tags.h		\
+			mercury_thread.h	\
 			mercury_timing.h	\
 			mercury_trace.h		\
 			mercury_trace_external.h \
@@ -109,9 +109,9 @@ CFILES		= 	mercury_context.c	\
 			mercury_prof_mem.c	\
 			mercury_regs.c		\
 			mercury_signal.c	\
-			mercury_spinlock.c	\
 			mercury_stack_trace.c	\
 			mercury_table.c		\
+			mercury_thread.c	\
 			mercury_table_any.c	\
 			mercury_table_enum.c	\
 			mercury_table_int_float_string.c\
@@ -133,6 +133,11 @@ LDLIBS		= \
 		` case "$(GRADE)" in 					\
 		    *.gc*.prof*) echo "-lgc_prof" ;;			\
 		    *.gc*)	echo "-lgc" ;;				\
+		  esac							\
+		`
+THREADLIBS	= \
+		` case "$(GRADE)" in					\
+		    *.par*) echo "-lpthread" ;;				\
 		  esac							\
 		`
 
@@ -177,7 +182,7 @@ libmer$(DLL_DEF_LIB).a: $(OBJS)
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
 		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
-		$(LDFLAGS) $(LDLIBS)					\
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
 runtime.init: $(CFILES)

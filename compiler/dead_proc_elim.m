@@ -415,6 +415,10 @@ dead_proc_elim__examine_expr(conj(Goals), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
 		Needed0, Needed).
+dead_proc_elim__examine_expr(par_conj(Goals, _SM), CurrProc, Queue0, Queue,
+		Needed0, Needed) :-
+	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
+		Needed0, Needed).
 dead_proc_elim__examine_expr(not(Goal), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
@@ -781,6 +785,8 @@ dead_pred_elim_process_clause(clause(_, Goal, _)) -->
 		dead_pred_info::in, dead_pred_info::out) is det.
 
 pre_modecheck_examine_goal(conj(Goals) - _) -->
+	list__foldl(pre_modecheck_examine_goal, Goals).
+pre_modecheck_examine_goal(par_conj(Goals, _) - _) -->
 	list__foldl(pre_modecheck_examine_goal, Goals).
 pre_modecheck_examine_goal(disj(Goals, _) - _) -->
 	list__foldl(pre_modecheck_examine_goal, Goals).

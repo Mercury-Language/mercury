@@ -180,6 +180,9 @@ lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 
 lambda__process_goal_2(conj(Goals0), GoalInfo, conj(Goals) - GoalInfo) -->
 	lambda__process_goal_list(Goals0, Goals).
+lambda__process_goal_2(par_conj(Goals0, SM), GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) -->
+	lambda__process_goal_list(Goals0, Goals).
 lambda__process_goal_2(disj(Goals0, SM), GoalInfo, disj(Goals, SM) - GoalInfo)
 		-->
 	lambda__process_goal_list(Goals0, Goals).

@@ -178,6 +178,9 @@ deforest__goal(conj(Goals0) - Info, conj(Goals) - Info) -->
 	deforest__conj(Goals2, NonLocals, [], Goals),
 	pd_info_set_instmap(InstMap0).
 
+	% XXX cannot deforest across parallel_conjunctions!
+deforest__goal(par_conj(Goals, SM) - Info, par_conj(Goals, SM) - Info) --> [].
+
 deforest__goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info) -->
 	deforest__disj(Goals0, Goals).
 

@@ -661,6 +661,7 @@ GC_API void (*GC_is_visible_print_proc)
 GC_PTR GC_malloc_many(size_t lb);
 #define GC_NEXT(p) (*(GC_PTR *)(p)) 	/* Retrieve the next element	*/
 					/* in returned list.		*/
+extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 #endif /* THREADS && !SRC_M3 */
 
 #if defined(SOLARIS_THREADS) || defined(IRIX_THREADS) || \

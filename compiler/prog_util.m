@@ -194,6 +194,10 @@ prog_util__rename_in_goal_expr((GoalA0, GoalB0), OldVar, NewVar,
 		(GoalA, GoalB)) :-
 	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
 	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
+prog_util__rename_in_goal_expr((GoalA0 & GoalB0), OldVar, NewVar,
+		(GoalA & GoalB)) :-
+	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
+	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
 prog_util__rename_in_goal_expr(true, _Var, _NewVar, true).
 prog_util__rename_in_goal_expr((GoalA0; GoalB0), OldVar, NewVar,
 		(GoalA; GoalB)) :-

@@ -46,7 +46,7 @@ MR_copy_regs_to_saved_regs(int max_mr_num)
 	save_registers();
 
 	for (i = 0; i <= max_mr_num; i++) {
-		MR_saved_regs[i] = fake_reg[i];
+		MR_saved_regs[i] = MR_fake_reg[i];
 	}
 }
 
@@ -63,7 +63,7 @@ MR_copy_saved_regs_to_regs(int max_mr_num)
 	int i;
 
 	for (i = 0; i <= max_mr_num; i++) {
-		fake_reg[i] = MR_saved_regs[i];
+		MR_fake_reg[i] = MR_saved_regs[i];
 	}
 
 	restore_registers();

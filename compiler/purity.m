@@ -372,6 +372,10 @@ compute_expr_purity(conj(Goals0), conj(Goals), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
+compute_expr_purity(par_conj(Goals0, SM), par_conj(Goals, SM), _, PredInfo,
+		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
+	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
+			     InClosure, pure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 		call(PredId,ProcId,Vars,BIState,UContext,Name), GoalInfo,
 		PredInfo, ModuleInfo, InClosure, ActualPurity,

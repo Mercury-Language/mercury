@@ -404,6 +404,10 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 traverse_goal(ModuleInfo, conj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
 
+% handle parallel conjunction
+traverse_goal(ModuleInfo, par_conj(Goals, _SM), UseInf0, UseInf) :-
+	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+
 % handle disjunction
 traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
@@ -1194,6 +1198,12 @@ fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 		conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) :-
+	fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, no,
+						Changed, Goals0, Goals).
+
+fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
+		par_conj(Goals0, SM) - GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) :-
 	fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, no,
 						Changed, Goals0, Goals).
 

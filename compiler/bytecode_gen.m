@@ -198,6 +198,9 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		GoalExpr = conj(GoalList),
 		bytecode_gen__conj(GoalList, ByteInfo0, ByteInfo, Code)
 	;
+		GoalExpr = par_conj(_GoalList, _SM),
+		error("sorry, bytecode_gen of parallel conj not implemented")
+	;
 		GoalExpr = disj(GoalList, _),
 		( GoalList = [] ->
 			Code = node([fail]),

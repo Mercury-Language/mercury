@@ -274,6 +274,13 @@ traverse_goal(conj(Goals0) - Info, conj(Goals) - Info,
 	traverse_conj(Goals0, Goals, PredProcId, unchanged, Changed,
 					0, GoalSize).
 
+traverse_goal(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info,
+			PredProcId, Changed, GoalSize) -->
+		% traverse_disj treats its list of goals as independent
+		% rather than specifically disjoint, so we can use it
+		% to process a list of independent parallel conjuncts.
+	traverse_disj(Goals0, Goals, PredProcId, Changed, GoalSize).
+
 traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 				PredProcId, Changed, GoalSize) -->
 	traverse_disj(Goals0, Goals, PredProcId, Changed, GoalSize).
@@ -345,6 +352,10 @@ traverse_conj([Goal0 | Goals0], [Goal | Goals],
 		% specialization information before the goal, then merge the
 		% results to give the specialization information after the
 		% disjunction.
+		%
+		% This code is used both for disjunction and parallel
+		% conjunction.
+
 :- pred traverse_disj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 		changed::out, int::out, higher_order_info::in,
 		higher_order_info::out) is det.

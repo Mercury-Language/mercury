@@ -902,6 +902,23 @@ opt_debug__dump_instr(incr_sp(Size, _), Str) :-
 opt_debug__dump_instr(decr_sp(Size), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["decr_sp(", S_str, ")"], Str).
+opt_debug__dump_instr(init_sync_term(Lval, N), Str) :-
+	opt_debug__dump_lval(Lval, L_str),
+	string__int_to_string(N, N_str),
+	string__append_list(["init_sync_term(", L_str, ", ", N_str, ")"], Str).
+opt_debug__dump_instr(fork(Child, Parent, Lval), Str) :-
+	opt_debug__dump_label(Child, ChildStr),
+	opt_debug__dump_label(Parent, ParentStr),
+	string__int_to_string(Lval, LvalStr),
+	string__append_list(["fork(", ChildStr, ", ", ParentStr, ", ",
+		LvalStr, ")"], Str).
+opt_debug__dump_instr(join_and_terminate(Lval), Str) :-
+	opt_debug__dump_lval(Lval, LvalStr),
+	string__append_list(["join_and_terminate(", LvalStr, ")"], Str).
+opt_debug__dump_instr(join_and_continue(Lval, Label), Str) :-
+	opt_debug__dump_lval(Lval, LvalStr),
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["join(", LvalStr, ", ", LabelStr, ")"], Str).
 % XXX  should probably give more info than this
 opt_debug__dump_instr(pragma_c(_, Comps, _, _, _), Str) :-
 	opt_debug__dump_components(Comps, C_str),

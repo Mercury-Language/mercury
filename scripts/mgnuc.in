@@ -67,7 +67,7 @@ AS=as
 
 case "$CC" in
     *gcc*)
-	ANSI_OPTS="-ansi"
+	ANSI_OPTS="" # --no-ansi to avoid syntax errors in Solaris pthread.h
 	CHECK_OPTS="
 	      -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
@@ -259,6 +259,11 @@ case $use_trail in
 	false)		TRAIL_OPTS="" ;;
 esac
 
+case $thread_safe in
+	true)		THREAD_OPTS="-DMR_THREAD_SAFE -DSOLARIS_THREADS -D_SOLARIS_PTHREADS -D_REENTRANT";;
+	false)		THREAD_OPTS="" ;;
+esac
+
 case $args_method in
 	simple)		ARG_OPTS="" ;;
 	compact)	ARG_OPTS="-DCOMPACT_ARGS" ;;
@@ -320,6 +325,13 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		# there's no easy way to supress them except by
 		# disabling the warning.
 		CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
+		;;
+	sparc-*)
+		# The solaris headers for pthreads are not ANSI :-(
+		case $thread_safe in true)
+			ANSI_OPTS=""
+			;;
+		esac
 		;;
 esac
 
@@ -388,7 +400,7 @@ ALL_CC_OPTS="$ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$GRADE_OPTS $GC_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
+		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS $THREAD_OPTS \
 		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
 
 case $verbose in true)

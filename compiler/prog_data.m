@@ -306,10 +306,12 @@
 % clause/4 defined above
 
 :- type goal		==	pair(goal_expr, term__context).
+
 :- type goal_expr	
 	--->	(goal,goal)
 	;	true	
 			% could use conj(goals) instead 
+	;	(goal &  goal)	% &/2 ie parallel-conj
 	;	{goal;goal}	% {...} quotes ';'/2.
 	;	fail	
 			% could use disj(goals) instead

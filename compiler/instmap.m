@@ -22,7 +22,7 @@
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
 :- import_module hlds_data.
 
-:- import_module map, bool, set, term, list, assoc_list.
+:- import_module map, bool, set, term, list, assoc_list, std_util.
 
 :- type instmap.
 :- type instmap_delta.
@@ -193,6 +193,18 @@
 		mode_info, mode_info).
 :- mode instmap__merge(in, in, in, mode_info_di, mode_info_uo) is det.
 
+	% instmap__unify(NonLocalVars, InstMapNonlocalvarPairss):
+	%       Unify the `InstMaps' in the list of pairs resulting
+	%	from different branches of a parallel conjunction and
+	%	update the instantiatedness of all the nonlocal variables.
+	%	The variable locking that is done when modechecking
+	%	the individual conjuncts ensures that variables have
+	%	at most one producer.
+	%
+:- pred instmap__unify(set(var), list(pair(instmap, set(var))),
+		mode_info, mode_info).
+:- mode instmap__unify(in, in, mode_info_di, mode_info_uo) is det.
+
 	% instmap__restrict takes an instmap and a set of vars and
 	% returns an instmap with its domain restricted to those
 	% vars.
@@ -222,8 +234,8 @@
 
 	% merge_instmap_delta(InitialInstMap, NonLocals,
 	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
-	% Merge the instmap_deltas of different branches of an ite, disj
-	% or switch.
+	% Merge the instmap_deltas of different branches of an if-then-else,
+	% disj or switch.
 :- pred merge_instmap_delta(instmap, set(var), instmap_delta, instmap_delta,
 		instmap_delta, module_info, module_info).
 :- mode merge_instmap_delta(in, in, in, in, out, in, out) is det.
@@ -236,6 +248,14 @@
 :- pred merge_instmap_deltas(instmap, set(var), list(instmap_delta),
 		instmap_delta, module_info, module_info).
 :- mode merge_instmap_deltas(in, in, in, out, in, out) is det.
+
+	% unify_instmap_delta(InitialInstMap, NonLocals,
+	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
+	% Unify the instmap_deltas of different branches of a parallel
+	% conjunction.
+:- pred unify_instmap_delta(instmap, set(var), instmap_delta, instmap_delta,
+		instmap_delta, module_info, module_info).
+:- mode unify_instmap_delta(in, in, in, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -653,6 +673,125 @@ merge_instmap_deltas(InstMap, NonLocals, MergedDelta0, [Delta|Deltas],
 		MergedDelta, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
+
+instmap__unify(NonLocals, InstMapList, ModeInfo0, ModeInfo) :-
+	(
+			% If any of the instmaps is unreachable, then
+			% the final instmap is unreachable.
+		list__member(unreachable - _, InstMapList)
+	->
+		mode_info_set_instmap(unreachable, ModeInfo0, ModeInfo)
+	;
+			% If there is only one instmap, then we just
+			% stick it in the mode_info.
+		InstMapList = [InstMap - _]
+	->
+		mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo)
+	;
+		InstMapList = [InstMap0 - _|InstMapList1],
+		InstMap0 = reachable(InstMapping0)
+	->
+			% having got the first instmapping, to use as
+			% an accumulator, all instmap__unify_2 which
+			% unifies each of the nonlocals from each instmap
+			% with the corresponding inst in the accumulator.
+		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+		set__to_sorted_list(NonLocals, NonLocalsList),
+		instmap__unify_2(NonLocalsList, InstMap0, InstMapList1,
+			ModuleInfo0, InstMapping0, ModuleInfo,
+			InstMapping, ErrorList),
+		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+			
+			% If there were any errors, then add the error
+			% to the list of possible errors in the mode_info.
+		( ErrorList = [FirstError | _] ->
+			FirstError = Var - _,
+			set__singleton_set(WaitingVars, Var),
+			mode_info_error(WaitingVars,
+				mode_error_par_conj(ErrorList),
+				ModeInfo1, ModeInfo2)
+		;
+			ModeInfo2 = ModeInfo1
+		),
+		mode_info_set_instmap(reachable(InstMapping),
+			ModeInfo2, ModeInfo)
+	;
+		ModeInfo = ModeInfo0
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% instmap__unify_2(Vars, InitialInstMap, InstMaps, ModuleInfo,
+	%		ErrorList):
+	%       Let `ErrorList' be the list of variables in `Vars' for
+	%       which there are two instmaps in `InstMaps' for which the insts
+	%       of the variable is incompatible.
+:- pred instmap__unify_2(list(var), instmap, list(pair(instmap, set(var))),
+		module_info, map(var, inst), module_info,
+		map(var, inst), merge_errors).
+:- mode instmap__unify_2(in, in, in, in, in, out, out, out) is det.
+
+instmap__unify_2([], _, _, ModuleInfo, InstMap, ModuleInfo, InstMap, []).
+instmap__unify_2([Var|Vars], InitialInstMap, InstMapList, ModuleInfo0, InstMap0,
+			ModuleInfo, InstMap, ErrorList) :-
+	instmap__unify_2(Vars, InitialInstMap, InstMapList, ModuleInfo0,
+			InstMap0, ModuleInfo1, InstMap1, ErrorList1),
+	instmap__lookup_var(InitialInstMap, Var, InitialVarInst),
+	instmap__unify_var(InstMapList, Var, [], Insts, InitialVarInst, Inst,
+		ModuleInfo1, ModuleInfo, no, Error),
+	( Error = yes ->
+		ErrorList = [Var - Insts | ErrorList1]
+	;
+		ErrorList = ErrorList1
+	),
+	map__set(InstMap1, Var, Inst, InstMap).
+
+	% instmap__unify_var(InstMaps, Var, InitialInstMap, ModuleInfo,
+	%		Insts, Error):
+	%       Let `Insts' be the list of the inst of `Var' in
+	%       each of the corresponding `InstMaps'.  Let `Error' be yes
+	%	iff there are two instmaps for which the inst of `Var'
+	%       is incompatible.
+
+:- pred instmap__unify_var(list(pair(instmap, set(var))), var,
+		list(inst), list(inst), inst, inst, module_info, module_info,
+		bool, bool).
+:- mode instmap__unify_var(in, in, in, out, in, out, in, out, in, out) is det.
+
+instmap__unify_var([], _, Insts, Insts, Inst, Inst, ModuleInfo, ModuleInfo,
+		Error, Error).
+instmap__unify_var([InstMap - Nonlocals| Rest], Var, InstList0, InstList,
+		Inst0, Inst, ModuleInfo0, ModuleInfo, Error0, Error) :-
+	(
+		set__member(Var, Nonlocals)
+	->
+		instmap__lookup_var(InstMap, Var, VarInst),
+		(
+			% We can ignore the determinism of the unification:
+			% if it isn't det, then there will be a mode error
+			% or a determinism error in one of the parallel
+			% conjuncts.
+
+			abstractly_unify_inst(live, Inst0, VarInst, fake_unify,
+				ModuleInfo0, Inst1, _Det, ModuleInfo1)
+		->
+			Inst2 = Inst1,
+			ModuleInfo2 = ModuleInfo1,
+			Error1 = Error0
+		;
+			Error1 = yes,
+			ModuleInfo2 = ModuleInfo0,
+			Inst2 = not_reached
+		)
+	;
+		VarInst = free,
+		Inst2 = Inst0,
+		Error1 = Error0,
+		ModuleInfo2 = ModuleInfo0
+	),
+	instmap__unify_var(Rest, Var, [VarInst | InstList0], InstList,
+		Inst2, Inst, ModuleInfo2, ModuleInfo, Error1, Error).
+
 %-----------------------------------------------------------------------------%
 
 	% Given two instmaps and a set of variables, compute an instmap delta
@@ -773,6 +912,78 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 		error(Msg)
 	),
 	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
+		InstMapping1, InstMapping, ModuleInfo1, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% Given two instmap deltas, unify them to produce a new instmap_delta.
+
+unify_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta) --> [].
+unify_instmap_delta(_, _, reachable(InstMapping), unreachable,
+				reachable(InstMapping)) --> [].
+unify_instmap_delta(InstMap, NonLocals, reachable(InstMappingA),
+		reachable(InstMappingB), reachable(InstMapping)) -->
+	unify_instmapping_delta(InstMap, NonLocals, InstMappingA,
+		InstMappingB, InstMapping).
+
+:- pred unify_instmapping_delta(instmap, set(var), instmapping, instmapping,
+		instmapping, module_info, module_info).
+:- mode unify_instmapping_delta(in, in, in, in, out, in, out) is det.
+
+unify_instmapping_delta(InstMap, NonLocals, InstMappingA,
+		InstMappingB, InstMapping) -->
+	{ map__keys(InstMappingA, VarsInA) },
+	{ map__keys(InstMappingB, VarsInB) },
+	{ set__sorted_list_to_set(VarsInA, SetofVarsInA) },
+	{ set__insert_list(SetofVarsInA, VarsInB, SetofVars0) },
+	{ set__intersect(SetofVars0, NonLocals, SetofVars) },
+	{ map__init(InstMapping0) },
+	{ set__to_sorted_list(SetofVars, ListofVars) },
+	unify_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
+		InstMappingB, InstMapping0, InstMapping).
+
+:- pred unify_instmapping_delta_2(list(var), instmap, instmapping, instmapping,
+			instmapping, instmapping, module_info, module_info).
+:- mode unify_instmapping_delta_2(in, in, in, in, in, out, in, out) is det.
+
+unify_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
+		ModInfo, ModInfo).
+unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
+			InstMapping0, InstMapping, ModuleInfo0, ModuleInfo) :-
+	( map__search(InstMappingA, Var, InstA) ->
+		( map__search(InstMappingB, Var, InstB) ->
+			(
+				% We can ignore the determinism of the
+				% unification: if it isn't det, then there
+				% will be a mode error or a determinism error
+				% in one of the parallel conjuncts.
+
+				abstractly_unify_inst(live, InstA, InstB,
+					fake_unify, ModuleInfo0, Inst, _Det,
+					ModuleInfoPrime)
+			->
+				ModuleInfo1 = ModuleInfoPrime,
+				map__det_insert(InstMapping0, Var, Inst,
+					InstMapping1)
+			;
+				error(
+				"unify_instmapping_delta_2: unexpected error")
+			)
+		;
+			ModuleInfo1 = ModuleInfo0,
+			map__det_insert(InstMapping0, Var, InstA, InstMapping1)
+		)
+	;
+		( map__search(InstMappingB, Var, InstB) ->
+			ModuleInfo1 = ModuleInfo0,
+			map__det_insert(InstMapping0, Var, InstB, InstMapping1)
+		;
+			ModuleInfo1 = ModuleInfo0,
+			InstMapping1 = InstMapping0
+		)
+	),
+	unify_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
 		InstMapping1, InstMapping, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%

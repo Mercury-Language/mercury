@@ -255,6 +255,13 @@ detect_liveness_in_goal_2(conj(Goals0), Liveness0, _, LiveInfo,
 		Liveness, conj(Goals)) :-
 	detect_liveness_in_conj(Goals0, Liveness0, LiveInfo, Liveness, Goals).
 
+detect_liveness_in_goal_2(par_conj(Goals0, SM), Liveness0, NonLocals, LiveInfo,
+		Liveness, par_conj(Goals, SM)) :-
+	set__init(Union0),
+	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
+		Union0, Union, Goals),
+	set__union(Liveness0, Union, Liveness).
+
 detect_liveness_in_goal_2(disj(Goals0, SM), Liveness0, NonLocals, LiveInfo,
 		Liveness, disj(Goals, SM)) :-
 	set__init(Union0),
@@ -381,6 +388,24 @@ detect_liveness_in_cases([case(Cons, Goal0) | Goals0], Liveness, NonLocals,
 	add_liveness_after_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
+
+:- pred detect_liveness_in_par_conj(list(hlds_goal), set(var), set(var),
+	live_info, set(var), set(var), list(hlds_goal)).
+:- mode detect_liveness_in_par_conj(in, in, in, in, in, out, out) is det.
+
+detect_liveness_in_par_conj([], _Liveness, _NonLocals, _LiveInfo,
+		Union, Union, []).
+detect_liveness_in_par_conj([Goal0 | Goals0], Liveness0, NonLocals, LiveInfo,
+		Union0, Union, [Goal | Goals]) :-
+	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness1, Goal1),
+	set__union(Union0, Liveness1, Union1),
+	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
+		Union1, Union, Goals),
+	set__intersect(Union, NonLocals, NonLocalUnion),
+	set__difference(NonLocalUnion, Liveness1, Residue),
+	add_liveness_after_goal(Goal1, Residue, Goal).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_goal(hlds_goal, set(var), live_info,
@@ -443,6 +468,14 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 		Deadness, conj(Goals)) :-
 	detect_deadness_in_conj(Goals0, Deadness0, LiveInfo,
 		Goals, Deadness).
+
+detect_deadness_in_goal_2(par_conj(Goals0, SM), GoalInfo, Deadness0, LiveInfo,
+		Deadness, par_conj(Goals, SM)) :-
+	set__init(Union0),
+	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	detect_deadness_in_par_conj(Goals0, Deadness0, NonLocals,
+		LiveInfo, Union0, Union, Goals),
+	set__union(Union, Deadness0, Deadness).
 
 detect_deadness_in_goal_2(disj(Goals0, SM), GoalInfo, Deadness0,
 		LiveInfo, Deadness, disj(Goals, SM)) :-
@@ -566,6 +599,24 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0], Deadness0,
 	add_deadness_before_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
+
+:- pred detect_deadness_in_par_conj(list(hlds_goal), set(var), set(var),
+	live_info, set(var), set(var), list(hlds_goal)).
+:- mode detect_deadness_in_par_conj(in, in, in, in, in, out, out) is det.
+
+detect_deadness_in_par_conj([], _Deadness, _NonLocals, _LiveInfo,
+		Union, Union, []).
+detect_deadness_in_par_conj([Goal0 | Goals0], Deadness, NonLocals, LiveInfo,
+		Union0, Union, [Goal | Goals]) :-
+	detect_deadness_in_goal(Goal0, Deadness, LiveInfo, Deadness1, Goal1),
+	set__union(Union0, Deadness1, Union1),
+	detect_deadness_in_par_conj(Goals0, Deadness, NonLocals, LiveInfo,
+		Union1, Union, Goals),
+	set__intersect(Union, NonLocals, NonLocalUnion),
+	set__difference(NonLocalUnion, Deadness1, Residue),
+	add_deadness_before_goal(Goal1, Residue, Goal).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred detect_resume_points_in_goal(hlds_goal, set(var), live_info, set(var),
@@ -596,6 +647,11 @@ detect_resume_points_in_goal_2(conj(Goals0), _, Liveness0, LiveInfo,
 		ResumeVars0, conj(Goals), Liveness) :-
 	detect_resume_points_in_conj(Goals0, Liveness0, LiveInfo, ResumeVars0,
 		Goals, Liveness).
+
+detect_resume_points_in_goal_2(par_conj(Goals0, SM), _, Liveness0, LiveInfo,
+		ResumeVars0, par_conj(Goals, SM), Liveness) :-
+	detect_resume_points_in_par_conj(Goals0, Liveness0, LiveInfo,
+		ResumeVars0, Goals, Liveness).
 
 detect_resume_points_in_goal_2(disj(Goals0, SM), GoalInfo, Liveness0, LiveInfo,
 		ResumeVars0, disj(Goals, SM), Liveness) :-
@@ -850,6 +906,18 @@ detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0], Liveness0,
 	;
 		Cases = Cases0
 	).
+
+:- pred detect_resume_points_in_par_conj(list(hlds_goal), set(var), live_info,
+	set(var), list(hlds_goal), set(var)).
+:- mode detect_resume_points_in_par_conj(in, in, in, in, out, out) is det.
+
+detect_resume_points_in_par_conj([], Liveness, _, _, [], Liveness).
+detect_resume_points_in_par_conj([Goal0 | Goals0], Liveness0, LiveInfo,
+		ResumeVars0, [Goal | Goals], LivenessFirst) :-
+	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
+		Goal, LivenessFirst),
+	detect_resume_points_in_par_conj(Goals0, Liveness0, LiveInfo,
+		ResumeVars0, Goals, _LivenessRest).
 
 :- pred require_equal(set(var), set(var), string, live_info).
 :- mode require_equal(in, in, in, in) is det.

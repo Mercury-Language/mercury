@@ -1678,6 +1678,16 @@ mercury_output_goal_2((A,B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	mercury_output_goal(B, VarSet, Indent).
 
+mercury_output_goal_2((A & B), VarSet, Indent) -->
+	io__write_string("("),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	mercury_output_goal(A, VarSet, Indent1),
+	mercury_output_par_conj(B, VarSet, Indent),
+	mercury_output_newline(Indent),
+	io__write_string(")").
+
+
 mercury_output_goal_2((A;B), VarSet, Indent) -->
 	io__write_string("("),
 	{ Indent1 is Indent + 1 },
@@ -1730,6 +1740,23 @@ mercury_output_disj(Goal, VarSet, Indent) -->
 	->
 		mercury_output_goal(A, VarSet, Indent1),
 		mercury_output_disj(B, VarSet, Indent)
+	;
+		mercury_output_goal(Goal, VarSet, Indent1)
+	).
+
+:- pred mercury_output_par_conj(goal, varset, int, io__state, io__state).
+:- mode mercury_output_par_conj(in, in, in, di, uo) is det.
+
+mercury_output_par_conj(Goal, VarSet, Indent) -->
+	mercury_output_newline(Indent),
+	io__write_string("&"),
+	{ Indent1 is Indent + 1 },
+	mercury_output_newline(Indent1),
+	(
+		{ Goal = (A & B) - _Context }
+	->
+		mercury_output_goal(A, VarSet, Indent1),
+		mercury_output_par_conj(B, VarSet, Indent)
 	;
 		mercury_output_goal(Goal, VarSet, Indent1)
 	).

@@ -114,6 +114,7 @@
 		;	gcc_global_registers
 		;	asm_labels
 		;	gc
+		;	parallel
 		;	profiling		% profile_time + profile_calls
 		;	time_profiling		% profile_time + profile_calls
 		;	memory_profiling	% profime_mem + profile_calls
@@ -141,6 +142,7 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
+		;	sync_term_size % in words
 		;	type_layout
 				% Stack layout information required to do
 				% a stack trace.
@@ -394,6 +396,7 @@ option_defaults_2(compilation_model_option, [
 	gcc_global_registers	-	bool(yes),
 	asm_labels		-	bool(yes),
 	gc			-	string("conservative"),
+	parallel		-	bool(no),
 	profiling		-	bool_special,
 	time_profiling		-	special,
 	memory_profiling	-	special,
@@ -421,6 +424,10 @@ option_defaults_2(compilation_model_option, [
 					% above default with a value determined
 					% at configuration time
 	args			-	string("compact"),
+	sync_term_size		-	int(8),
+					% 8 is the size on linux (at the time
+					% of writing) - will usually be over-
+					% ridden by a value from configure.
 	type_layout		-	bool(yes),
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
@@ -712,6 +719,7 @@ long_option("gcc-global-registers",	gcc_global_registers).
 long_option("asm-labels",		asm_labels).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
+long_option("parallel",			parallel).
 long_option("profiling",		profiling).
 long_option("time-profiling",		time_profiling).
 long_option("memory-profiling",		memory_profiling).

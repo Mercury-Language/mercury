@@ -605,6 +605,9 @@ c_gen_goal_2(not(Goal), Indent, CGenInfo0, CGenInfo) -->
 c_gen_goal_2(conj(Goals), Indent, CGenInfo0, CGenInfo) -->
 	c_gen_conj(Goals, Indent, CGenInfo0, CGenInfo).
 
+c_gen_goal_2(par_conj(_Goals, _SM), _Indent, _CGenInfo0, _CGenInfo) -->
+	{ error("sorry, c_gen of parallel conjunction not implemented") }.
+
 c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_code_model(CGenInfo0, CodeModel) },
 	( { CodeModel = model_non } ->

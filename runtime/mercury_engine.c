@@ -15,6 +15,7 @@ ENDINIT
 #include	<setjmp.h>
 
 #include	"mercury_engine.h"
+#include	"mercury_memory_zones.h"	/* for create_zone() */
 
 #include	"mercury_dummy.h"
 
@@ -36,7 +37,9 @@ static	void	call_engine_inner(Code *entry_point);
 
 bool	debugflag[MAXFLAG];
 
-jmp_buf *MR_engine_jmp_buf;
+#ifndef MR_THREAD_SAFE
+  MercuryEngine	MR_engine_base;
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -48,25 +51,70 @@ jmp_buf *MR_engine_jmp_buf;
 ** Next, init_engine() calls init_processes() which fork()s the right
 ** number of processes, and initializes the data structures for coordinating
 ** the interaction between multiple processes.
-** Then, init_engine() calls init_process_context() which initializes the
-** local context for this process including the heap and solutions heap.
-** If it is the original process, it allocates the initial context for main.
-**
-** Finally, if there are multiple processes, init_engine calls
-** call_engine(do_runnext) for all but the first one, which makes
-** them sleep until work becomes available.  The initial process
-** returns to the caller.
 */
 void 
-init_engine(void)
+init_engine(MercuryEngine *eng)
 {
 	init_memory();
+
+#ifndef	CONSERVATIVE_GC
+	eng->heap_zone = create_zone("heap", 1, heap_size, next_offset(),
+			heap_zone_size, default_handler);
+	eng->e_hp = eng->heap_zone->min;
+
+	eng->solutions_heap_zone = create_zone("solutions_heap", 1,
+			solutions_heap_size, next_offset(),
+			solutions_heap_zone_size, default_handler);
+	eng->e_sol_hp = eng->solutions_heap_zone->min;
+
+#endif
+#ifdef MR_LOWLEVEL_DEBUG
+	/*
+	** Create the dumpstack, used for debugging stack traces.
+	** Note that we can just make the dumpstack the same size as
+	** the detstack and we never have to worry about the dumpstack
+	** overflowing.
+	*/
+
+	dumpstack_zone = create_zone("dumpstack", 1, detstack_size,
+		next_offset(), detstack_zone_size, default_handler);
+#endif
+
+	eng->this_context = create_context();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	make_label("engine_done", LABEL(engine_done), engine_done);
 #endif
 
-	init_process_context();
+#ifdef	MR_THREAD_SAFE
+	eng->owner_thread = pthread_self();
+	eng->c_depth = 0;
+#endif
+
+}
+
+/*---------------------------------------------------------------------------*/
+
+void finalize_engine(MercuryEngine *eng)
+{
+	
+}
+
+/*---------------------------------------------------------------------------*/
+
+MercuryEngine
+*create_engine(void)
+{
+	MercuryEngine *eng;
+
+	eng = make(MercuryEngine);
+	init_engine(eng);
+	return eng;
+}
+
+void destroy_engine(MercuryEngine *eng)
+{
+	free(eng);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -117,25 +165,27 @@ call_engine(Code *entry_point)
 	jmp_buf		* volatile prev_jmp_buf;
 
 	/*
-	** Preserve the value of MR_engine_jmp_buf on the C stack.
+	** Preserve the value of MR_ENGINE(e_jmp_buf) on the C stack.
 	** This is so "C calls Mercury which calls C which calls Mercury" etc.
 	** will work.
 	*/
 
-	prev_jmp_buf = MR_engine_jmp_buf;
-	MR_engine_jmp_buf = &curr_jmp_buf;
+	restore_transient_registers();
+
+	prev_jmp_buf = MR_ENGINE(e_jmp_buf);
+	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
 
 	/*
 	** Mark this as the spot to return to.
 	** On return, restore the registers (since longjmp may clobber
-	** them), restore the saved value of MR_engine_jmp_buf, and then
+	** them), restore the saved value of MR_ENGINE(e_jmp_buf), and then
 	** exit.
 	*/
 
 	if (setjmp(curr_jmp_buf)) {
 		debugmsg0("...caught longjmp\n");
 		restore_registers();
-		MR_engine_jmp_buf = prev_jmp_buf;
+		MR_ENGINE(e_jmp_buf) = prev_jmp_buf;
 		return;
 	}
 
@@ -149,6 +199,9 @@ call_engine(Code *entry_point)
 void 
 call_engine_inner(Code *entry_point)
 {
+#ifdef	MR_THREAD_SAFE
+	MercuryThread saved_owner_thread;
+#endif
 	/*
 	** Allocate some space for local variables in other
 	** procedures. This is done because we may jump into the middle
@@ -203,12 +256,35 @@ call_engine_inner(Code *entry_point)
 	debugmsg1("in `call_engine', locals at %p\n", (void *)locals);
 
 	/*
+	** Increment the number of times we've entered this
+	** engine from C, and mark the current context as being
+	** owned by this thread.
+	*/
+#ifdef	MR_THREAD_SAFE
+	MR_ENGINE(c_depth)++;
+	saved_owner_thread = MR_ENGINE(this_context)->owner_thread;
+	MR_ENGINE(this_context)->owner_thread = MR_ENGINE(owner_thread);
+#endif
+
+	/*
 	** Now just call the entry point
 	*/
 
 	noprof_call(entry_point, LABEL(engine_done));
 
 Define_label(engine_done);
+	/*
+	** Decrement the number of times we've entered this
+	** engine from C and restore the owning thread in
+	** the current context.
+	*/
+#ifdef	MR_THREAD_SAFE
+	assert(MR_ENGINE(this_context)->owner_thread
+		== MR_ENGINE(owner_thread));
+	MR_ENGINE(c_depth)--;
+	MR_ENGINE(this_context)->owner_thread = saved_owner_thread;
+#endif
+
 	/*
 	** We need to ensure that there is at least one
 	** real function call in call_engine(), because
@@ -262,7 +338,7 @@ Define_label(engine_done);
 	*/
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*MR_engine_jmp_buf, 1);
+	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -291,7 +367,7 @@ engine_done(void)
 {
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*MR_engine_jmp_buf, 1);
+	longjmp(*(MR_ENGINE(e_jmp_buf), 1);
 }
 
 static Code *

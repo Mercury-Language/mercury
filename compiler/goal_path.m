@@ -40,6 +40,8 @@ fill_goal_slots(Expr0 - Info0, Path0, Expr - Info) :-
 
 fill_expr_slots(conj(Goals0), Path0, conj(Goals)) :-
 	fill_conj_slots(Goals0, Path0, 0, Goals).
+fill_expr_slots(par_conj(Goals0, SM), Path0, par_conj(Goals, SM)) :-
+	fill_conj_slots(Goals0, Path0, 0, Goals).
 fill_expr_slots(disj(Goals0, B), Path0, disj(Goals, B)) :-
 	fill_disj_slots(Goals0, Path0, 0, Goals).
 fill_expr_slots(switch(A, B, Cases0, D), Path0, switch(A, B, Cases, D)) :-

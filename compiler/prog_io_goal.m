@@ -136,6 +136,9 @@ parse_goal_2("->", [A0, B0], V0, if_then(Vars, A, B), V) :-
 parse_goal_2(",", [A0, B0], V0, (A, B), V) :-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
+parse_goal_2("&", [A0, B0], V0, (A & B), V) :-
+	parse_goal(A0, V0, A, V1),
+	parse_goal(B0, V1, B, V).
 parse_goal_2(";", [A0, B0], V0, R, V) :-
 	(
 		A0 = term__functor(term__atom("->"), [X0, Y0], _Context)

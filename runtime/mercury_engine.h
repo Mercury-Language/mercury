@@ -19,6 +19,8 @@
 #include "mercury_types.h"		/* for `Code *' */
 #include "mercury_goto.h"		/* for `Define_entry()' */
 #include "mercury_regs.h"		/* for NUM_REAL_REGS */
+#include "mercury_thread.h"		/* for pthread types */
+#include "mercury_context.h"		/* for MR_IF_USE_TRAIL */
 
 #define	PROGFLAG	0
 #define	GOTOFLAG	1
@@ -57,7 +59,7 @@
 
 typedef struct {
 		jmp_buf *mercury_env;	/* 
-					** used to save MR_engine_jmp_buf 
+					** used to save MR_ENGINE(e_jmp_buf )
 					*/
 		jmp_buf env;		/* 
 					** used by calls to setjmp and longjmp 
@@ -78,7 +80,7 @@ typedef struct {
 	/*
 	** MR_setjmp(MR_jmp_buf *env, longjmp_label)
 	**
-	** Save MR_engine_jmp_buf, save the Mercury state, call setjmp(env), 
+	** Save MR_ENGINE(e_jmp_buf), save the Mercury state, call setjmp(env), 
 	** then fall through.
 	**
 	** When setjmp returns via a call to longjmp, control will pass to
@@ -94,9 +96,9 @@ typedef struct {
 	*/
 #define MR_setjmp(setjmp_env, longjmp_label)				\
 	    do {							\
-		(setjmp_env)->mercury_env = MR_engine_jmp_buf;		\
+		(setjmp_env)->mercury_env = MR_ENGINE(e_jmp_buf);	\
 		save_regs_to_mem((setjmp_env)->regs);			\
-		(setjmp_env)->saved_succip = succip;			\
+		(setjmp_env)->saved_succip = MR_succip;			\
 		(setjmp_env)->saved_sp = sp;				\
 		(setjmp_env)->saved_curfr = curfr;			\
 		(setjmp_env)->saved_maxfr = maxfr;			\
@@ -105,9 +107,9 @@ typedef struct {
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_counter =	\
 				MR_ticket_counter);			\
 		if (setjmp((setjmp_env)->env)) {			\
-			MR_engine_jmp_buf = (setjmp_env)->mercury_env;	\
+			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
 			restore_regs_from_mem((setjmp_env)->regs);	\
-			succip = (setjmp_env)->saved_succip;		\
+			MR_succip = (setjmp_env)->saved_succip;		\
 			sp = (setjmp_env)->saved_sp;			\
 			curfr = (setjmp_env)->saved_curfr;		\
 			maxfr = (setjmp_env)->saved_maxfr;		\
@@ -126,15 +128,131 @@ typedef struct {
 	*/
 #define MR_longjmp(setjmp_env)	longjmp((setjmp_env)->env, 1)
 
-	/* 
-	** engine_jmp_buf should only be referred to in engine.c
-	** and the MR_setjmp and MR_longjmp macros defined above.
-	*/
-extern	jmp_buf *MR_engine_jmp_buf;
-
 extern	bool	debugflag[];
 
-extern	void	init_engine(void);
+typedef struct MR_MERCURY_ENGINE {
+	Word		fake_reg[MAX_FAKE_REG];
+		/* The fake reg vector for this engine. */
+#ifndef CONSERVATIVE_GC
+	Word		*e_hp;
+		/* The heap pointer for this engine */
+	Word		*e_sol_hp;
+		/* The solutions heap pointer for this engine */
+#endif
+	Context		*this_context;
+		/*
+		** this_context points to the context currently
+		** executing in this engine.
+		*/
+	Context		context;
+		/*
+		** context stores all the context information
+		** for the context executing in this engine.
+		*/
+#ifdef	MR_THREAD_SAFE
+	MercuryThread	owner_thread;
+	unsigned	c_depth;
+		/*
+		** These two fields are used to ensure that when a
+		** thread executing C code calls the Mercury engine
+		** associated with that thread, the Mercury code
+		** will finish in the same engine and return appropriately.
+		** Each time C calls Mercury in a thread, the c_depth
+		** is incremented, and the owner_thread field of the current
+		** context is set to the id of the thread. While the
+		** owner_thread is set, the context will not be scheduled
+		** for execution by any other thread. When the call to
+		** the Mercury engine finishes, c_depth is decremented and
+		** the owner_thread field of the current context is restored
+		** to its previous value.
+		*/
+#endif
+	jmp_buf		*e_jmp_buf;
+#ifndef	CONSERVATIVE_GC
+	MemoryZone	*heap_zone;
+	MemoryZone	*solutions_heap_zone;
+#endif
+#ifndef	SPEED
+	MemoryZone	*dumpstack_zone;
+	int		dumpindex;
+#endif
+} MercuryEngine;
+
+/*
+** MR_engine_base refers to the engine in which execution is taking place.
+** In the non-thread-safe situation, it is just a global variable.
+** In the thread-safe situation, MR_engine_base is either a global
+** register (if one is available), or a macro that accesses thread-local
+** storage.
+*/
+
+#ifdef	MR_THREAD_SAFE
+
+  extern MercuryThreadKey	MR_engine_base_key;
+
+  #define MR_thread_engine_base ((MercuryEngine *) \
+  			MR_GETSPECIFIC(MR_engine_base_key))
+
+  #if NUM_REAL_REGS > 0
+    #define	MR_ENGINE_BASE_REGISTER
+  	/*
+	** MR_engine_base is defined in machdeps/{arch}.h
+	*/
+  #else
+	#define	MR_engine_base	MR_thread_engine_base
+  #endif
+
+  #define MR_ENGINE(x)		(((MercuryEngine *)MR_engine_base)->x)
+  #define MR_get_engine()	MR_thread_engine_base
+
+  #ifndef	CONSERVATIVE_GC
+  #define IF_NOT_CONSERVATIVE_GC(x)	x
+  #else
+  #define IF_NOT_CONSERVATIVE_GC(x)
+  #endif
+
+  #define load_engine_regs(eng)	do {					\
+		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
+		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
+	} while (0)
+
+  #define save_engine_regs(eng)	do {					\
+		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
+		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
+	} while (0)
+
+#else 	/* !MR_THREAD_SAFE */
+
+  extern MercuryEngine	MR_engine_base;
+  #define MR_ENGINE(x)		(MR_engine_base.x)
+  #define MR_get_engine()	(&MR_engine_base)
+
+  #ifndef	CONSERVATIVE_GC
+  #define IF_NOT_CONSERVATIVE_GC(x)	x
+  #else
+  #define IF_NOT_CONSERVATIVE_GC(x)
+  #endif
+
+  #define load_engine_regs(eng)	do {					\
+		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
+		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
+	} while (0)
+
+  #define save_engine_regs(eng)	do {					\
+		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
+		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
+	} while (0)
+
+
+#endif	/* !MR_THREAD_SAFE */
+
+
+extern	MercuryEngine	*create_engine(void);
+extern	void		destroy_engine(MercuryEngine *engine);
+
+extern	void	init_engine(MercuryEngine *engine);
+extern	void	finalize_engine(MercuryEngine *engine);
+
 extern	void	call_engine(Code *entry_point);
 extern	void	terminate_engine(void);
 extern	void	dump_prev_locations(void);

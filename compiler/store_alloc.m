@@ -149,6 +149,11 @@ store_alloc_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, ModuleInfo,
 	store_alloc_in_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
 		StackSlotInfo, Goals, Liveness).
 
+store_alloc_in_goal_2(par_conj(Goals0, SM), Liveness0, ResumeVars0, ModuleInfo,
+		StackSlotInfo, par_conj(Goals, SM), Liveness) :-
+	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
+		StackSlotInfo, Goals, Liveness).
+
 store_alloc_in_goal_2(disj(Goals0, FV), Liveness0, ResumeVars0, ModuleInfo,
 		StackSlotInfo, disj(Goals, FV), Liveness) :-
 	store_alloc_in_disj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
@@ -225,6 +230,20 @@ store_alloc_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 		store_alloc_in_conj(Goals0, Liveness1, ResumeVars0, ModuleInfo,
 			StackSlotInfo, Goals, Liveness)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred store_alloc_in_par_conj(list(hlds_goal), liveness_info, set(var),
+	module_info, stack_slot_info, list(hlds_goal), liveness_info).
+:- mode store_alloc_in_par_conj(in, in, in, in, in, out, out) is det.
+
+store_alloc_in_par_conj([], Liveness, _, _, _, [], Liveness).
+store_alloc_in_par_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
+		StackSlotInfo, [Goal | Goals], Liveness) :-
+	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
+		StackSlotInfo, Goal, Liveness),
+	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
+		StackSlotInfo, Goals, _Liveness1).
 
 %-----------------------------------------------------------------------------%
 

@@ -153,10 +153,14 @@
 #undef	SIGACTION_FIELD
 
 /*
-** PARALLEL: defined iff we are configuring for parallel execution.
-** (This is work in progress... parallel execution is not yet supported.)
+** Configuration parameters for multithreaded execution support.
+**
+** MR_DIGITAL_UNIX_PTHREADS is used to distinguish places where
+** Digital Unix doesn't conform to the letter of the Posix standard
+** for Pthreads.
+**
 */
-#undef	PARALLEL
+#undef MR_DIGITAL_UNIX_PTHREADS
 
 /*
 ** The bytecode files represent floats in 64-bit IEEE format.

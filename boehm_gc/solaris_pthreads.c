@@ -16,7 +16,7 @@
  * Modified Peter C. for Solaris Posix Threads.
  */
 /* Boehm, September 14, 1994 4:44 pm PDT */
-/* $Id: solaris_pthreads.c,v 1.2 1998-05-20 19:03:08 fjh Exp $ */
+/* $Id: solaris_pthreads.c,v 1.3 1998-06-09 02:11:51 conway Exp $ */
 
 # if defined(_SOLARIS_PTHREADS)
 # include "gc_priv.h"
@@ -37,6 +37,9 @@
 # include <unistd.h>
 # include <errno.h>
 # include "solaris_threads.h"
+
+#include <stdio.h>
+#include <assert.h>
 
 #undef pthread_join
 #undef pthread_create
@@ -80,9 +83,12 @@ GC_pthread_create(pthread_t *new_thread,
     size_t stack_size;
     int    n;
     struct sched_param schedparam;
+    int err;
    
-    (void)pthread_attr_getstacksize(attr_in, &stack_size);
-    (void)pthread_attr_getstackaddr(attr_in, &stack);
+    err = pthread_attr_getstacksize(attr_in, &stack_size);
+    assert(err == 0);
+    err = pthread_attr_getstackaddr(attr_in, &stack);
+    assert(err == 0);
     (void)pthread_attr_init(&attr);
 
     LOCK();

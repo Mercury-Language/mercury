@@ -95,33 +95,33 @@
   #define tag_incr_hp_atomic(dest, tag, count) \
 	tag_incr_hp((dest), (tag), (count))
 
-  #define mark_hp(dest)						\
-	(							\
-		(dest) = (Word) MR_hp,				\
-		(void)0						\
-	)
+  #define mark_hp(dest)		((dest) = (Word) MR_hp)
 
   /*
   ** When restoring hp, we must make sure that we don't truncate the heap
   ** further than it is safe to. We can only truncate it as far as
-  ** min_heap_reclamation_point. See the comments in mercury_context.h next
-  ** to the set_min_heap_reclamation_point() macro.
+  ** min_heap_reclamation_point. See the comments in mercury_context.h next to
+  ** the set_min_heap_reclamation_point() macro.
   */
-  #define restore_hp(src)					\
-	(							\
-		LVALUE_CAST(Word, MR_hp) =			\
-			  ( 	(Word) MR_min_hp_rec < (src)	\
-			  ?	(src)				\
-			  :	(Word) MR_min_hp_rec		\
-			  ),					\
-		(void)0						\
-	)
+  #define	restore_hp(src)	(					\
+  			LVALUE_CAST(Word,MR_hp) = (src),		\
+  			(void)0						\
+  		)
 
-  #define hp_alloc(count)  incr_hp(hp, count)
+  /*
+  #define	restore_hp(src)	(					\
+  			LVALUE_CAST(Word,MR_hp) =			\
+  			  ( (Word) MR_min_hp_rec < (src) ?		\
+  			  (src) : (Word) MR_min_hp_rec ),		\
+  			(void)0						\
+  		)
+  */
+  
+  #define hp_alloc(count)  incr_hp(hp,count)
   #define hp_alloc_atomic(count) incr_hp_atomic(count)
-
-#endif /* not CONSERVATIVE_GC */
-
+  
+  #endif /* not CONSERVATIVE_GC */
+  
 #ifdef	PROFILE_MEMORY
   #define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
 	(								\

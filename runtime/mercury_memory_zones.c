@@ -44,8 +44,11 @@
   #include <sys/ucontext.h>
 #endif
 
-#include "mercury_imp.h"
 #include "mercury_trace.h"
+
+#ifdef MR_THREAD_SAFE
+  #include "mercury_thread.h"
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -94,18 +97,21 @@
 
 /*---------------------------------------------------------------------------*/
 
-Word	fake_reg[MAX_FAKE_REG];
 Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
 unsigned long	num_uses[MAX_RN];
 
 #define MAX_ZONES	16
 
-static MemoryZone *zone_table;
+static MemoryZone *zone_table = NULL;
 
-static MemoryZone *used_memory_zones;
-static MemoryZone *free_memory_zones;
+static MemoryZone *used_memory_zones = NULL;
+static MemoryZone *free_memory_zones = NULL;
+#ifdef	MR_THREAD_SAFE
+  static MercuryLock *free_memory_zones_lock;
+#endif
 
+static void		init_offsets(void);
 static MemoryZone	*get_zone(void);
 static void		unget_zone(MemoryZone *zone);
 
@@ -120,77 +126,40 @@ static void		unget_zone(MemoryZone *zone);
 #define	CACHE_SLICES	8
 
 static	size_t		*offset_vector;
-static	int		*offset_counter;
-static	SpinLock	*offset_lock;
+static	int		offset_counter;
 size_t	next_offset(void);
 
-void 
-init_memory_arena(void)
+void
+init_zones()
 {
-#ifdef	PARALLEL
-  #ifndef CONSERVATIVE_GC
-	if (numprocs > 1) {
-		fatal_error("shared memory not implemented");
-	}
-  #else
-	if (numprocs > 1) {
-		fatal_error("shared memory not implemented with conservative gc");
-	}
-  #endif
+
+#ifdef  MR_THREAD_SAFE
+	free_memory_zones_lock = make(MercuryLock);
+	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
 #endif
+
+	init_offsets();
 }
 
-void 
-init_zones(void)
+static void 
+init_offsets()
 {
 	int i;
 	size_t fake_reg_offset;
 
-	/*
-	** Allocate the MemoryZone table.
-	*/
-	zone_table = allocate_array(MemoryZone, MAX_ZONES);
-
-	/*
-	** Initialize the MemoryZone table.
-	*/
-	used_memory_zones = NULL;
-	free_memory_zones = zone_table;
-	for(i = 0; i < MAX_ZONES; i++) {
-		zone_table[i].name = "unused";
-		zone_table[i].id = i;
-		zone_table[i].bottom = NULL;
-		zone_table[i].top = NULL;
-		zone_table[i].min = NULL;
-#ifdef MR_LOWLEVEL_DEBUG
-		zone_table[i].max = NULL;
-#endif
-#ifdef HAVE_MPROTECT
-		zone_table[i].hardmax = NULL;
-#endif
-#ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-		zone_table[i].redzone = NULL;
-#endif
-		if (i+1 < MAX_ZONES) {
-			zone_table[i].next = &(zone_table[i+1]);
-		} else {
-			zone_table[i].next = NULL;
-		}
-	}
-
-	offset_counter = allocate_object(int);
-	*offset_counter = 0;
+	offset_counter = 0;
 
 	offset_vector = allocate_array(size_t, CACHE_SLICES - 1);
 
-	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
+	fake_reg_offset = (Unsigned) MR_fake_reg % pcache_size;
 
 	for (i = 0; i < CACHE_SLICES - 1; i++) {
 		offset_vector[i] =
-			(fake_reg_offset + pcache_size / CACHE_SLICES)
+			(fake_reg_offset + pcache_size * i / CACHE_SLICES)
 			% pcache_size;
 	}
-} /* end init_zones() */
+} /* end init_offsets() */
+
 
 MemoryZone *
 get_zone(void)
@@ -201,14 +170,17 @@ get_zone(void)
 	** unlink the first zone on the free-list,
 	** link it onto the used-list and return it.
 	*/
-	zone = free_memory_zones;
-	if (zone == NULL) {
-		fatal_error("no more memory zones");
+	MR_LOCK(free_memory_zones_lock, "get_zone");
+	if (free_memory_zones == NULL) {
+		zone = (MemoryZone *) make(MemoryZone);
+	} else {
+		zone = free_memory_zones;
+		free_memory_zones = free_memory_zones->next;
 	}
-	free_memory_zones = free_memory_zones->next;
 
 	zone->next = used_memory_zones;
 	used_memory_zones = zone;
+	MR_UNLOCK(free_memory_zones_lock, "get_zone");
 
 	return zone;
 }
@@ -222,6 +194,7 @@ unget_zone(MemoryZone *zone)
 	** Find the zone on the used list, and unlink it from
 	** the list, then link it onto the start of the free-list.
 	*/
+	MR_LOCK(free_memory_zones_lock, "unget_zone");
 	for(prev = NULL, tmp = used_memory_zones;
 		tmp && tmp != zone; prev = tmp, tmp = tmp->next) 
 	{
@@ -238,6 +211,7 @@ unget_zone(MemoryZone *zone)
 
 	zone->next = free_memory_zones;
 	free_memory_zones = zone;
+	MR_UNLOCK(free_memory_zones_lock, "unget_zone");
 }
 
 /*
@@ -255,13 +229,9 @@ next_offset(void)
 {
 	size_t offset;
 
-	get_lock(offset_lock);
+	offset = offset_vector[offset_counter];
 
-	offset = offset_vector[*offset_counter];
-
-	*offset_counter = (*offset_counter + 1) % (CACHE_SLICES - 1);
-
-	release_lock(offset_lock);
+	offset_counter = (offset_counter + 1) % CACHE_SLICES;
 
 	return offset;
 }
@@ -287,11 +257,6 @@ create_zone(const char *name, int id, size_t size,
 	total_size = size + unit;
 #endif
 
-#ifdef	PARALLEL
-	if (numprocs > 1) {
-		fatal_error("shared memory not supported yet");
-	}
-#endif
 	base = memalign(unit, total_size);
 	if (base == NULL) {
 		char buf[2560];
@@ -410,7 +375,7 @@ debug_memory(void)
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
-		(void *) fake_reg, (long) fake_reg & (unit-1));
+		(void *) MR_fake_reg, (long) MR_fake_reg & (unit-1));
 	fprintf(stderr, "\n");
 
 	for (zone = used_memory_zones; zone; zone = zone->next)

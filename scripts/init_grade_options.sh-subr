@@ -25,6 +25,7 @@ args_method=compact
 stack_trace=false
 require_tracing=false
 low_level_debug=false
+thread_safe=false
 
 case $# in
 	0) set - "--grade $DEFAULT_GRADE" ;;

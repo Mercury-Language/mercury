@@ -43,6 +43,9 @@
 pd_cost__goal(conj(Goals) - _, Cost) :-
 	pd_cost__goals(Goals, 0, Cost).
 
+pd_cost__goal(par_conj(Goals, _SM) - _, Cost) :-
+	pd_cost__goals(Goals, 0, Cost).
+
 pd_cost__goal(disj(Goals, _) - _, Cost) :-
 	pd_cost__goals(Goals, 0, Cost0),
 	pd_cost__stack_flush(Cost1),

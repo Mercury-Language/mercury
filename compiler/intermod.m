@@ -384,6 +384,10 @@ intermod__gather_abstract_exported_types -->
 intermod__traverse_goal(conj(Goals0) - Info, conj(Goals) - Info, DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
+intermod__traverse_goal(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info,
+		DoWrite) -->
+	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
+
 intermod__traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
 		DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).

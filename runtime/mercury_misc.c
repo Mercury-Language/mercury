@@ -463,7 +463,7 @@ resizemem(void *p, size_t size)
 	return p;
 }
 
-/* XXX will need to modify this to kill other processes if PARALLEL
+/* XXX will need to modify this to kill other threads if MR_THREAD_SAFE
  * (and cleanup resources, etc....)
  */
 void 
@@ -473,6 +473,13 @@ fatal_error(const char *message) {
 	exit(1);
 }
 
+	/* See header file for documentation on why we need this function */
+void
+MR_memcpy(char *dest, const char *src, size_t nbytes)
+{
+	while (nbytes-- > 0)
+		*dest++ = *src++;
+}
 
 /*
 **  Note that hash_string is actually defined as a macro in mercury_imp.h,
@@ -488,3 +495,4 @@ hash_string(Word s)
 {
 	HASH_STRING_FUNC_BODY
 }
+

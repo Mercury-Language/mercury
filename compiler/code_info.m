@@ -277,12 +277,6 @@
 					% switched on.
 	).
 
-:- type slot_contents 
-	--->	ticket			% a ticket (trail pointer)
-	;	ticket_counter		% a copy of the ticket counter
-	;	trace_data
-	;	lval(lval).
-
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
@@ -2979,6 +2973,7 @@ code_info__get_live_value_type(ticket, unwanted). % XXX we may need to
 					% modify this, if the GC is going
 					% to garbage-collect the trail.
 code_info__get_live_value_type(ticket_counter, unwanted).
+code_info__get_live_value_type(sync_term, unwanted).
 code_info__get_live_value_type(trace_data, unwanted).
 
 %---------------------------------------------------------------------------%
@@ -3016,6 +3011,15 @@ code_info__get_live_value_type(trace_data, unwanted).
 
 :- interface.
 
+:- type slot_contents 
+	--->	ticket			% a ticket (trail pointer)
+	;	ticket_counter		% a copy of the ticket counter
+	;	trace_data
+	;	sync_term		% a syncronization term used
+					% at the end of par_conjs.
+					% see par_conj_gen.m for details.
+	;	lval(lval).
+
 	% Returns the total stackslot count, but not including space for
 	% succip.
 :- pred code_info__get_total_stackslot_count(int, code_info, code_info).
@@ -3023,11 +3027,6 @@ code_info__get_live_value_type(trace_data, unwanted).
 
 :- pred code_info__get_trace_slot(lval, code_info, code_info).
 :- mode code_info__get_trace_slot(out, in, out) is det.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- implementation.
 
 :- pred code_info__acquire_temp_slot(slot_contents, lval,
 	code_info, code_info).
@@ -3039,11 +3038,19 @@ code_info__get_live_value_type(trace_data, unwanted).
 :- pred code_info__get_variable_slot(var, lval, code_info, code_info).
 :- mode code_info__get_variable_slot(in, out, in, out) is det.
 
-:- pred code_info__max_var_slot(stack_slots, int).
-:- mode code_info__max_var_slot(in, out) is det.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- implementation.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
+
+:- pred code_info__stack_variable_reference(int, rval, code_info, code_info).
+:- mode code_info__stack_variable_reference(in, out, in, out) is det.
+
+:- pred code_info__max_var_slot(stack_slots, int).
+:- mode code_info__max_var_slot(in, out) is det.
 
 code_info__get_trace_slot(StackVar) -->
 	code_info__acquire_temp_slot(trace_data, StackVar).
@@ -3119,6 +3126,15 @@ code_info__stack_variable(Num, Lval) -->
 		{ Lval = framevar(Num1) }
 	;
 		{ Lval = stackvar(Num) }	% stackvars start at one
+	).
+
+code_info__stack_variable_reference(Num, mem_addr(Ref)) -->
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		{ Num1 is Num - 1 },		% framevars start at zero
+		{ Ref = framevar_ref(Num1) }
+	;
+		{ Ref = stackvar_ref(Num) }	% stackvars start at one
 	).
 
 %---------------------------------------------------------------------------%

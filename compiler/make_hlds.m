@@ -2909,6 +2909,10 @@ warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
+warn_singletons_in_goal_2(par_conj(Goals, _SM), _GoalInfo, QuantVars, VarSet,
+		PredCallId, MI) -->
+	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
+
 warn_singletons_in_goal_2(disj(Goals, _), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
@@ -3552,6 +3556,12 @@ transform_goal_2((A0,B0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
 	get_conj(A0, Subst, L0, VarSet1, L, VarSet, Info1, Info),
 	{ goal_info_init(GoalInfo) },
 	{ conj_list_to_goal(L, GoalInfo, Goal) }.
+
+transform_goal_2((A0 & B0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
+	get_par_conj(B0, Subst, [], VarSet0, L0, VarSet1, Info0, Info1),
+	get_par_conj(A0, Subst, L0, VarSet1, L, VarSet, Info1, Info),
+	{ goal_info_init(GoalInfo) },
+	{ par_conj_list_to_goal(L, GoalInfo, Goal) }.
 
 transform_goal_2((A0;B0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
 	get_disj(B0, Subst, [], VarSet0, L0, VarSet1, Info0, Info1),
@@ -4249,6 +4259,29 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet, Info0, Info) -->
 						Info0, Info),
 		{ goal_to_conj_list(Goal1, ConjList) },
 		{ list__append(ConjList, Conj0, Conj) }
+	).
+
+% get_par_conj(Goal, ParConj0, Subst, ParConj) :
+% 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
+%	append ParConj0, and return the result in ParConj.
+
+:- pred get_par_conj(goal, substitution, list(hlds_goal), varset,
+	list(hlds_goal), varset, qual_info, qual_info, io__state, io__state).
+:- mode get_par_conj(in, in, in, in, out, out, in, out, di, uo) is det.
+
+get_par_conj(Goal, Subst, ParConj0, VarSet0, ParConj, VarSet, Info0, Info) -->
+	(
+		{ Goal = (A & B) - _Context }
+	->
+		get_par_conj(B, Subst, ParConj0, VarSet0, ParConj1, VarSet1,
+						Info0, Info1),
+		get_par_conj(A, Subst, ParConj1, VarSet1, ParConj, VarSet,
+						Info1, Info)
+	;
+		transform_goal(Goal, VarSet0, Subst, Goal1, VarSet,
+						Info0, Info),
+		{ goal_to_par_conj_list(Goal1, ParConjList) },
+		{ list__append(ParConjList, ParConj0, ParConj) }
 	).
 
 % get_disj(Goal, Subst, Disj0, Disj) :

@@ -91,6 +91,12 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 					Goals, ElimVars),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
+		GoalExpr0 = par_conj(Goals0, _SM),
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		excess_assignments_in_conj(Goals0, [], ElimVars0, NonLocals,
+					Goals, ElimVars),
+		par_conj_list_to_goal(Goals, GoalInfo0, Goal)
+	;
 		GoalExpr0 = disj(Goals0, SM),
 		excess_assignments_in_disj(Goals0, ElimVars0, Goals, ElimVars),
 		Goal = disj(Goals, SM) - GoalInfo0
@@ -146,6 +152,9 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	% If (say) V_4 and V_6 are nonlocal, then after the V_5 => V_4
 	% substitution has been made, the second assignment V_4 = V_6
 	% is left alone.
+	%
+	% This code is used for both sequential conjunction (conj/1) and
+	% parallel conjunction (par_conj/2).
 
 :- pred excess_assignments_in_conj(list(hlds_goal), list(hlds_goal),
 	list(var), set(var), list(hlds_goal), list(var)).

@@ -20,11 +20,19 @@
 
 #include "mercury_memory_zones.h"
 
-extern MemoryZone	*detstack_zone;
-extern MemoryZone	*nondetstack_zone;
-#ifndef CONSERVATIVE_GC
-extern MemoryZone	*heap_zone;
-extern MemoryZone	*solutions_heap_zone;
+#include <stdlib.h>		/* for size_t */
+
+#include "mercury_types.h"	/* for Word */
+#include "mercury_std.h"		/* for bool */
+
+
+/* these cannot be changed without lots of modifications elsewhere */
+#define MAX_REAL_REG 32		/* r1 .. r32 */
+#define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
+
+/* this can be changed at will, including by -D options to the C compiler */
+#ifndef MAX_VIRTUAL_REG
+#define MAX_VIRTUAL_REG	1024
 #endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
@@ -37,7 +45,7 @@ extern	int		dumpindex;
 ** alignment boundary.  `align' must be a power of 2.
 */
 
-#define round_up(amount, align) ((((amount) - 1) | ((align) - 1)) + 1)
+#define round_up(amount, align)	((((amount) - 1) | ((align) - 1)) + 1)
 
 /* 
 ** For these functions, see the comments in mercury_memory.c and 

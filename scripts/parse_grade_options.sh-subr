@@ -60,6 +60,9 @@
 		esac
 		;;
 
+	--parallel)
+		thread_safe=true ;;
+
 	-p|--profiling|--time-profiling)
 		profile_time=true
 		profile_calls=true
@@ -209,6 +212,14 @@
 				grade="` expr $grade : '\(.*\).gc' `"
 				;;
 			*)	gc_method=none
+				;;
+		esac
+
+		case "$grade" in
+			*.par)	thread_safe=true
+				grade="` expr $grade : '\(.*\).par' `"
+				;;
+			*)	thread_safe=false
 				;;
 		esac
 

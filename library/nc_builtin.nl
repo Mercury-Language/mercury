@@ -50,6 +50,8 @@
 :- op(1179, xfy, (--->)).
 :- op(1175, xfx, (::)).
 
+:- op(1025, xfy, (&)).
+
 :- op(950, fxy, (lambda)).
 
 :- $setOpField((pred), []).			% remove `pred' as an operator

@@ -227,6 +227,11 @@ goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo)
 goal_util__name_apart_2(conj(Goals0), Must, Subn, conj(Goals)) :-
 	goal_util__name_apart_list(Goals0, Must, Subn, Goals).
 
+goal_util__name_apart_2(par_conj(Goals0, SM0), Must, Subn,
+		par_conj(Goals, SM)) :-
+	goal_util__name_apart_list(Goals0, Must, Subn, Goals),
+	goal_util__rename_var_maps(SM0, Must, Subn, SM).
+
 goal_util__name_apart_2(disj(Goals0, SM0), Must, Subn, disj(Goals, SM)) :-
 	goal_util__name_apart_list(Goals0, Must, Subn, Goals),
 	goal_util__rename_var_maps(SM0, Must, Subn, SM).
@@ -467,6 +472,9 @@ goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 goal_util__goal_vars_2(conj(Goals), Set0, Set) :-
 	goal_util__goals_goal_vars(Goals, Set0, Set).
 
+goal_util__goal_vars_2(par_conj(Goals, _SM), Set0, Set) :-
+	goal_util__goals_goal_vars(Goals, Set0, Set).
+
 goal_util__goal_vars_2(disj(Goals, _), Set0, Set) :-
 	goal_util__goals_goal_vars(Goals, Set0, Set).
 
@@ -566,6 +574,9 @@ cases_size([case(_, Goal) | Cases], Size) :-
 
 goal_expr_size(conj(Goals), Size) :-
 	goals_size(Goals, Size).
+goal_expr_size(par_conj(Goals, _SM), Size) :-
+	goals_size(Goals, Size1),
+	Size is Size1 + 1.
 goal_expr_size(disj(Goals, _), Size) :-
 	goals_size(Goals, Size1),
 	Size is Size1 + 1.

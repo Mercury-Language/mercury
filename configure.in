@@ -778,6 +778,37 @@ AC_DEFINE_UNQUOTED(BYTES_PER_WORD, $mercury_cv_bytes_per_word)
 BYTES_PER_WORD=$mercury_cv_bytes_per_word
 AC_SUBST(BYTES_PER_WORD)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(the number of words in a synchronization term)
+AC_CACHE_VAL(mercury_cv_sync_term_size,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <pthread.h>
+	int main() {
+		struct {
+			pthread_mutex_t lock;
+			int		count;
+			void		*parent;
+		} x;
+		FILE *fp;
+
+		fp = fopen("conftest.syncsize", "w");
+		if (fp == NULL)
+			exit(1);
+		fprintf(fp, "%d\n", (sizeof(void *) - 1 + sizeof(x))/
+				sizeof(void *));
+
+		exit(0);
+	}],
+	[mercury_cv_sync_term_size=`cat conftest.syncsize`],
+	[mercury_cv_sync_term_size=0],
+	[mercury_cv_sync_term_size=0])
+)
+AC_MSG_RESULT($mercury_cv_sync_term_size)
+AC_DEFINE_UNQUOTED(SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
+BYTES_PER_WORD=$mercury_cv_sync_term_size
+AC_SUBST(SYNC_TERM_SIZE)
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of bits per word)
 AC_CACHE_VAL(mercury_cv_bits_per_word,
 	AC_TRY_RUN([
@@ -1158,10 +1189,9 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_TRY_RUN([
 	#define USE_GCC_NONLOCAL_GOTOS
 	#define USE_GCC_GLOBAL_REGISTERS
-	#include "mercury_regs.h"
-	#include "mercury_memory.h"
+	#include "mercury_engine.h"
 	changequote(<<,>>) 
-	Word fake_reg[MAX_FAKE_REG];
+	MercuryEngine MR_engine_base;
 	changequote([,]) 
 	main() {
 		mr0 = 20;
@@ -1219,10 +1249,9 @@ AC_MSG_CHECKING(whether we can use global registers without gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
 #define USE_GCC_GLOBAL_REGISTERS
-#include "mercury_regs.h"
-#include "mercury_memory.h"
+#include "mercury_engine.h"
 changequote(<<,>>) 
-Word fake_reg[MAX_FAKE_REG];
+MercuryEngine MR_engine_base;
 changequote([,]) 
 main() {
 	mr0 = 20;
@@ -1234,6 +1263,23 @@ main() {
 	[mercury_cv_gcc_model_reg=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
+#-----------------------------------------------------------------------------#
+
+# Figure out which flavour of pthreads to use, since none of the
+# implementations seem to be exactly the same
+case $host in
+	alpha-dec-osf*)
+		mercury_cv_use_digital_unix_threads=yes ;;
+
+	*)
+		mercury_cv_use_digital_unix_threads=no ;;
+esac
+
+if $mercury_cv_use_digital_unix_threads = yes
+then
+	AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
+fi
+
 #-----------------------------------------------------------------------------#
 
 #

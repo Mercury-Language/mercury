@@ -4,7 +4,12 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* mercury_misc.h - debugging messages, fatal_error(), and checked_malloc() */
+/*
+** mercury_misc.h -	debugging messages,
+**			fatal_error(),
+**			checked_malloc(),
+**			MR_memcpy
+*/
 
 #ifndef	MERCURY_MISC_H
 #define	MERCURY_MISC_H
@@ -62,5 +67,15 @@ extern	void	printlabel(/* const */ Code *w);
 	#define NO_RETURN
 #endif
 extern	void	fatal_error(const char *msg) NO_RETURN;
+
+/*
+** We use our own version of memcpy because gcc recognises calls to the
+** standard memcpy and generates inline code for them. Unfortunately this
+** causes it to abort because it tries to use a register that we're already
+** reserved.
+** XXX We should fix this eventually by using -fno-builtin since pragma
+** c_code may call the builtin functions.
+*/
+void MR_memcpy(char *dest, const char *src, size_t nbytes);
 
 #endif /* not MERCURY_MISC_H */

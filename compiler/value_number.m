@@ -1092,6 +1092,10 @@ value_number__boundary_instr(mark_ticket_stack(_), no).
 value_number__boundary_instr(discard_tickets_to(_), no).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
+value_number__boundary_instr(init_sync_term(_, _), no).
+value_number__boundary_instr(fork(_, _, _), yes).
+value_number__boundary_instr(join_and_terminate(_), yes).
+value_number__boundary_instr(join_and_continue(_, _), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%

@@ -111,6 +111,7 @@ MemoryZone *nondetstack_zone;
   MemoryZone *heap_zone;
   MemoryZone *solutions_heap_zone;
 #endif
+
 #ifdef	MR_LOWLEVEL_DEBUG
   MemoryZone *dumpstack_zone;
   int	dumpindex;
@@ -122,6 +123,12 @@ size_t		page_size;
 void 
 init_memory(void)
 {
+	static bool already_initialized = FALSE;
+
+	if (already_initialized != FALSE)
+		return;
+	already_initialized = TRUE;
+
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
 	** make sure they are multiples of the page and cache sizes.
@@ -184,45 +191,16 @@ init_memory(void)
 	}
 #endif
 
-	init_memory_arena();
+#ifdef	MR_THREAD_SAFE
+	free_memory_zones_lock = make(MercuryLock);
+	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
+#endif
+
 	init_zones();
 	setup_signals();
+
 	if (memdebug) debug_memory();
 } /* end init_memory() */
-
-void 
-init_heap(void)
-{
-#ifndef CONSERVATIVE_GC
-	heap_zone = create_zone("heap", 1, heap_size, next_offset(),
-			heap_zone_size, default_handler);
-
-	restore_transient_registers();
-	MR_hp = heap_zone->min;
-	save_transient_registers();
-
-	solutions_heap_zone = create_zone("solutions_heap", 1,
-			solutions_heap_size, next_offset(),
-			solutions_heap_zone_size, default_handler);
-	restore_transient_registers();
-	MR_sol_hp = solutions_heap_zone->min;
-	save_transient_registers();
-
-#endif
-
-#ifdef MR_LOWLEVEL_DEBUG
-	/*
-	** Create the dumpstack, used for debugging stack traces.
-	** Note that we can just make the dumpstack the same size as
-	** the detstack and we never have to worry about the dumpstack
-	** overflowing.
-	*/
-
-	dumpstack_zone = create_zone("dumpstack", 1, detstack_size,
-			next_offset(), detstack_zone_size, default_handler);
-#endif
-} /* end init_heap() */
-
 
 #ifdef	CONSERVATIVE_GC
 
@@ -230,12 +208,6 @@ void *
 allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
-
-  #ifdef	PARALLEL
-	if (numprocs > 1) {
-		fatal_error("shared memory not supported (yet)");
-	}
-  #endif
 
 	tmp = GC_MALLOC(numbytes);
 	
@@ -246,22 +218,12 @@ allocate_bytes(size_t numbytes)
 	return tmp;
 }
 
-#elif defined(PARALLEL)
-
-  #error "shared memory not implemented"
-
-#else /* not CONSERVATIVE_GC && not PARALLEL */
+#else /* not CONSERVATIVE_GC */
 
 void *
 allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
-
-  #ifdef	PARALLEL
-	if (numprocs > 1) {
-		fatal_error("shared memory not supported (yet)");
-	}
-  #endif
 
 	tmp = malloc(numbytes);
 	
@@ -278,23 +240,12 @@ void
 deallocate_memory(void *ptr)
 {
 #ifdef CONSERVATIVE_GC
-  #ifdef	PARALLEL
-	if (numprocs > 1) {
-		fatal_error("shared memory not supported");
-	}
-  #endif
 	GC_FREE(ptr);
 
 #else
-  #ifdef	PARALLEL
-	if (numprocs > 1) {
-		fatal_error("shared memory not supported");
-	}
-  #endif
 	free(ptr);
 #endif
 }
-
 
 		/* Note: checked_malloc()ed structures */
 		/* never contain pointers into GCed    */

@@ -723,8 +723,8 @@ llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 		llds_out__find_caller_label(Instrs, CallerLabel)
 	).
 
-	% Locate all the labels which are the continutation labels for calls
-	% or nondet disjunctions, and store them in ContLabelSet.
+	% Locate all the labels which are the continuation labels for calls,
+	% nondet disjunctions, forks or joins, and store them in ContLabelSet.
 
 :- pred llds_out__find_cont_labels(list(instruction),
 	bintree_set(label), bintree_set(label)).
@@ -741,11 +741,18 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		;
 			Instr = modframe(label(ContLabel))
 		;
+			Instr = join_and_continue(_, ContLabel)
+		;
 			Instr = assign(redoip(lval(maxfr)), 
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
 		bintree_set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
+	;
+		Instr = fork(Label1, Label2, _)
+	->
+		bintree_set__insert_list(ContLabelSet0, [Label1, Label2],
+			ContLabelSet1)
 	;
 		Instr = block(_, _, Block)
 	->
@@ -908,6 +915,16 @@ output_pragma_c_component_list_decls([Component | Components],
 		DeclSet0, DeclSet) -->
 	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
 	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
+output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
+	output_code_addr_decls(label(Child), "", "", 0, _, DeclSet0, DeclSet2),
+	output_code_addr_decls(label(Parent), "", "", 0, _, DeclSet2, DeclSet).
+output_instruction_decls(join_and_terminate(Lval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(join_and_continue(Lval, Label), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
+	output_code_addr_decls(label(Label), "", "", 0, _, DeclSet1, DeclSet).
 
 :- pred output_pragma_c_component_decls(pragma_c_component,
 	decl_set, decl_set, io__state, io__state).
@@ -1202,6 +1219,34 @@ output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
 	io__write_string("\n\t}\n").
+
+output_instruction(init_sync_term(Lval, N), _) -->
+	io__write_string("\tMR_init_sync_term("),
+	output_lval_as_word(Lval),
+	io__write_string(", "),
+	io__write_int(N),
+	io__write_string(");\n").
+
+output_instruction(fork(Child, Parent, Lval), _) -->
+	io__write_string("\tMR_fork_new_context("),
+	output_label_as_code_addr(Child),
+	io__write_string(", "),
+	output_label_as_code_addr(Parent),
+	io__write_string(", "),
+	io__write_int(Lval),
+	io__write_string(");\n").
+
+output_instruction(join_and_terminate(Lval), _) -->
+	io__write_string("\tMR_join_and_terminate("),
+	output_lval(Lval),
+	io__write_string(");\n").
+
+output_instruction(join_and_continue(Lval, Label), _) -->
+	io__write_string("\tMR_join_and_continue("),
+	output_lval(Lval),
+	io__write_string(", "),
+	output_label_as_code_addr(Label),
+	io__write_string(");\n").
 
 :- pred output_pragma_c_components(list(pragma_c_component),
 	io__state, io__state).
@@ -2262,7 +2307,7 @@ output_code_addr(imported(ProcLabel)) -->
 	output_proc_label(ProcLabel),
 	io__write_string(")").
 output_code_addr(succip) -->
-	io__write_string("succip").
+	io__write_string("MR_succip").
 output_code_addr(do_succeed(Last)) -->
 	(
 		{ Last = no },

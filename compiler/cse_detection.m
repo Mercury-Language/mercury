@@ -244,6 +244,10 @@ detect_cse_in_goal_2(conj(Goals0), _GoalInfo, InstMap, CseInfo0, CseInfo,
 		Redo, conj(Goals)) :-
 	detect_cse_in_conj(Goals0, InstMap, CseInfo0, CseInfo, Redo, Goals).
 
+detect_cse_in_goal_2(par_conj(Goals0, SM), _, InstMap, CseInfo0, CseInfo, Redo,
+		par_conj(Goals, SM)) :-
+	detect_cse_in_par_conj(Goals0, InstMap, CseInfo0, CseInfo, Redo, Goals).
+
 detect_cse_in_goal_2(disj(Goals0, SM), GoalInfo, InstMap, CseInfo0, CseInfo,
 		Redo, Goal) :-
 	( Goals0 = [] ->
@@ -288,6 +292,20 @@ detect_cse_in_conj([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo,
 	;
 		Goals = [Goal1 | Goals1]
 	),
+	bool__or(Redo1, Redo2, Redo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred detect_cse_in_par_conj(list(hlds_goal), instmap, cse_info, cse_info,
+	bool, list(hlds_goal)).
+:- mode detect_cse_in_par_conj(in, in, in, out, out, out) is det.
+
+detect_cse_in_par_conj([], _InstMap, CseInfo, CseInfo, no, []).
+detect_cse_in_par_conj([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo,
+		Redo, [Goal | Goals]) :-
+	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo1, Redo1, Goal),
+	detect_cse_in_par_conj(Goals0, InstMap0, CseInfo1, CseInfo,
+		Redo2, Goals),
 	bool__or(Redo1, Redo2, Redo).
 
 %-----------------------------------------------------------------------------%

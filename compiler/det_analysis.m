@@ -385,6 +385,23 @@ det_infer_goal_2(conj(Goals0), _, InstMap0, SolnContext, DetInfo, _, _,
 	det_infer_conj(Goals0, InstMap0, SolnContext, DetInfo,
 		Goals, Detism, Msgs).
 
+det_infer_goal_2(par_conj(Goals0, SM), GoalInfo, InstMap0, SolnContext,
+		DetInfo, _, _, par_conj(Goals, SM), Detism, Msgs) :-
+	det_infer_par_conj(Goals0, InstMap0, SolnContext, DetInfo,
+		Goals, Detism, Msgs0),
+	(
+		determinism_components(Detism, CanFail, Solns),
+		CanFail = cannot_fail,
+		Solns \= at_most_many
+	->
+		Msgs = Msgs0
+	;
+		det_info_get_pred_id(DetInfo, PredId),
+		det_info_get_proc_id(DetInfo, ProcId),
+		Msg = par_conj_not_det(Detism, PredId, ProcId, GoalInfo, Goals),
+		Msgs = [Msg|Msgs0]
+	).
+
 det_infer_goal_2(disj(Goals0, SM), _, InstMap0, SolnContext, DetInfo, _, _,
 		disj(Goals, SM), Detism, Msgs) :-
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo,
@@ -721,6 +738,27 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	% Finally combine the results computed above.
 	%
 	det_conjunction_detism(DetismA, DetismB, Detism),
+	list__append(MsgsA, MsgsB, Msgs).
+
+:- pred det_infer_par_conj(list(hlds_goal), instmap, soln_context, det_info,
+		list(hlds_goal), determinism, list(det_msg)).
+:- mode det_infer_par_conj(in, in, in, in, out, out, out) is det.
+
+det_infer_par_conj([], _InstMap0, _SolnContext, _DetInfo, [], det, []).
+det_infer_par_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, 
+		[Goal | Goals], Detism, Msgs) :-
+
+	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
+			Goal, DetismA, MsgsA),
+	determinism_components(DetismA, CanFailA, MaxSolnsA),
+	
+	det_infer_par_conj(Goals0, InstMap0, SolnContext, DetInfo,
+			Goals, DetismB, MsgsB),
+	determinism_components(DetismB, CanFailB, MaxSolnsB),
+
+	det_conjunction_maxsoln(MaxSolnsA, MaxSolnsB, MaxSolns),
+	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+	determinism_components(Detism, CanFail, MaxSolns),
 	list__append(MsgsA, MsgsB, Msgs).
 
 :- pred det_infer_disj(list(hlds_goal), instmap, soln_context, det_info,

@@ -31,11 +31,11 @@
 #define MR_PASTE2(p1,p2)	MR_PASTE2_2(p1,p2)
 #define MR_PASTE2_2(p1,p2)	p1##p2
 
-/* paste 11 macros together */
-#define MR_PASTE11(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11) \
-				MR_PASTE11_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11)
-#define MR_PASTE11_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11) \
-				p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11
+/* paste 12 macros together */
+#define MR_PASTE12(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
+			MR_PASTE12_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12)
+#define MR_PASTE12_2(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12) \
+			p1##p2##p3##p4##p5##p6##p7##p8##p9##p10##p11##p12
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -65,20 +65,25 @@
   #endif
 #endif
 
-#ifdef CONSERVATIVE_GC
-  #define MR_GRADE_PART_3	_gc
-#elif defined(NATIVE_GC)
-  #define MR_GRADE_PART_3	_agc
+#ifdef MR_THREAD_SAFE
+  #define MR_GRADE_PART_3	_par
 #else
   #define MR_GRADE_PART_3
+#endif
+#ifdef CONSERVATIVE_GC
+  #define MR_GRADE_PART_4	_gc
+#elif defined(NATIVE_GC)
+  #define MR_GRADE_PART_4	_agc
+#else
+  #define MR_GRADE_PART_4
 #endif
 
 #ifdef PROFILE_TIME
   #ifdef PROFILE_CALLS
     #ifdef PROFILE_MEMORY
-      #define MR_GRADE_PART_4	_profall
+      #define MR_GRADE_PART_5	_profall
     #else
-      #define MR_GRADE_PART_4	_prof
+      #define MR_GRADE_PART_5	_prof
     #endif
   #else
     #ifdef PROFILE_MEMORY
@@ -89,15 +94,15 @@
       #error "Invalid combination of profiling options"
     #else
       /* Currently useless, but... */
-      #define MR_GRADE_PART_4	_proftime
+      #define MR_GRADE_PART_5	_proftime
     #endif
   #endif
 #else
   #ifdef PROFILE_CALLS
     #ifdef PROFILE_MEMORY
-      #define MR_GRADE_PART_4	_memprof
+      #define MR_GRADE_PART_5	_memprof
     #else
-      #define MR_GRADE_PART_4	_profcalls
+      #define MR_GRADE_PART_5	_profcalls
     #endif
   #else
     #ifdef PROFILE_MEMORY
@@ -108,47 +113,47 @@
       */
       #error "Invalid combination of profiling options"
     #else
-      #define MR_GRADE_PART_4
+      #define MR_GRADE_PART_5
     #endif
   #endif
 #endif
 
 #ifdef MR_USE_TRAIL
-  #define MR_GRADE_PART_5	_tr
+  #define MR_GRADE_PART_6	_tr
 #else
-  #define MR_GRADE_PART_5
+  #define MR_GRADE_PART_6
 #endif
 
 #if TAGBITS == 0
-  #define MR_GRADE_PART_6	_notags
+  #define MR_GRADE_PART_7	_notags
 #elif defined(HIGHTAGS)
-  #define MR_GRADE_PART_6	MR_PASTE2(_hightags, TAGBITS)
+  #define MR_GRADE_PART_7	MR_PASTE2(_hightags, TAGBITS)
 #else
-  #define MR_GRADE_PART_6	MR_PASTE2(_tags, TAGBITS)
+  #define MR_GRADE_PART_7	MR_PASTE2(_tags, TAGBITS)
 #endif
 
 #ifdef BOXED_FLOAT
-  #define MR_GRADE_PART_7
+  #define MR_GRADE_PART_8
 #else				/* "ubf" stands for "unboxed float" */
-  #define MR_GRADE_PART_7	_ubf
+  #define MR_GRADE_PART_8	_ubf
 #endif
 
 #ifdef COMPACT_ARGS
-  #define MR_GRADE_PART_8	
+  #define MR_GRADE_PART_9	
 #else				/* "sa" stands for "simple args" */
-  #define MR_GRADE_PART_8	_sa
+  #define MR_GRADE_PART_9	_sa
 #endif
 
 #ifndef MR_DEBUG_NONDET_STACK
-  #define MR_GRADE_PART_9
+  #define MR_GRADE_PART_10
 #else
-  #define MR_GRADE_PART_9	_debugNDS
+  #define MR_GRADE_PART_10	_debugNDS
 #endif
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
-  #define MR_GRADE_PART_10	_picreg
+  #define MR_GRADE_PART_11	_picreg
 #else
-  #define MR_GRADE_PART_10
+  #define MR_GRADE_PART_11
 #endif
 
 /*
@@ -160,19 +165,19 @@
 */
 #if defined(MR_STACK_TRACE)
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_11	_debug
+    #define MR_GRADE_PART_12	_debug
   #else
-    #define MR_GRADE_PART_11	_strce
+    #define MR_GRADE_PART_12	_strce
   #endif
 #else
   #if defined(MR_REQUIRE_TRACING)
-    #define MR_GRADE_PART_11	_trace
+    #define MR_GRADE_PART_12	_trace
   #else
-    #define MR_GRADE_PART_11
+    #define MR_GRADE_PART_12
   #endif
 #endif
 
-#define MR_GRADE		MR_PASTE11(			\
+#define MR_GRADE		MR_PASTE12(			\
 					MR_GRADE_PART_1,	\
 					MR_GRADE_PART_2,	\
 					MR_GRADE_PART_3,	\
@@ -183,7 +188,8 @@
 					MR_GRADE_PART_8,	\
 					MR_GRADE_PART_9,	\
 					MR_GRADE_PART_10,	\
-					MR_GRADE_PART_11	\
+					MR_GRADE_PART_11,	\
+					MR_GRADE_PART_12	\
 				)
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)

@@ -144,7 +144,7 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
 	(
 /*******
 		% goal_is_atomic(Goal0)
-		fail
+		semidet_fail
 		% NB: `fail' is a conservative approximation
 		% We could do better, but `goal_is_atomic' is not
 		% quite right
@@ -178,6 +178,25 @@ build_live_sets_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, LiveSets0,
 		_, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets) :-
 	build_live_sets_in_conj(Goals0, Liveness0, ResumeVars0, LiveSets0,
 		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets).
+
+build_live_sets_in_goal_2(par_conj(Goals0, _SM), Liveness0, ResumeVars0,
+		LiveSets0, GoalInfo, ModuleInfo, ProcInfo, Liveness,
+		ResumeVars, LiveSets) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	set__union(NonLocals, Liveness0, LiveSet),
+		% We insert all the union of the live vars and the nonlocals.
+		% Since each parallel conjunct may be run on a different
+		% Mercury engine to the current engine, we must save all
+		% the variables that are live or nonlocal to the parallel
+		% conjunction. Nonlocal variables that are currently free, but
+		% are bound inside one of the conjuncts need a stackslot
+		% because they are passed out by reference to that stackslot.
+	set__insert(LiveSets0, LiveSet, LiveSets1),
+		% build_live_sets_in_disj treats its list of goals as a list
+		% of independent goals, so we can use it for parallel conj's
+		% too.
+	build_live_sets_in_disj(Goals0, Liveness0, ResumeVars0, LiveSets1,
+		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets).
 
 build_live_sets_in_goal_2(disj(Goals0, _), Liveness0, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets)
@@ -428,6 +447,9 @@ build_live_sets_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 	).
 
 %-----------------------------------------------------------------------------%
+
+	% build_live_sets_in_disj is used for both disjunctions and
+	% parallel conjunctions.
 
 :- pred build_live_sets_in_disj(list(hlds_goal), set(var), set(var),
 	set(set(var)), hlds_goal_info, module_info, proc_info,

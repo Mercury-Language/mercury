@@ -1110,6 +1110,12 @@ recompute_instmap_delta_2(Atomic, conj(Goals0), _, conj(Goals),
 	recompute_instmap_delta_conj(Atomic, Goals0, Goals,
 		InstMap, InstMapDelta).
 
+recompute_instmap_delta_2(Atomic, par_conj(Goals0, SM), GoalInfo,
+		par_conj(Goals, SM), InstMap, InstMapDelta) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
+		InstMap, NonLocals, InstMapDelta).
+
 recompute_instmap_delta_2(Atomic, disj(Goals0, SM), GoalInfo, disj(Goals, SM),
 		InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
@@ -1222,6 +1228,27 @@ recompute_instmap_delta_disj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
 		InstMap, NonLocals, InstMapDelta1),
 	merge_instmap_delta(InstMap, NonLocals, InstMapDelta0,
+		InstMapDelta1, InstMapDelta).
+
+:- pred recompute_instmap_delta_par_conj(bool, list(hlds_goal),
+		list(hlds_goal), instmap, set(var), instmap_delta,
+		module_info, module_info).
+:- mode recompute_instmap_delta_par_conj(in, in, out, in, in, out,
+		in, out) is det.
+
+recompute_instmap_delta_par_conj(_, [], [], _, _, InstMapDelta) -->
+	{ instmap_delta_init_unreachable(InstMapDelta) }.
+recompute_instmap_delta_par_conj(Atomic, [Goal0], [Goal],
+		InstMap, _, InstMapDelta) -->
+	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta).
+recompute_instmap_delta_par_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
+		InstMap, NonLocals, InstMapDelta) -->
+	{ Goals0 = [_|_] },
+	recompute_instmap_delta(Atomic, Goal0, Goal,
+		InstMap, InstMapDelta0),
+	recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
+		InstMap, NonLocals, InstMapDelta1),
+	unify_instmap_delta(InstMap, NonLocals, InstMapDelta0,
 		InstMapDelta1, InstMapDelta).
 
 %-----------------------------------------------------------------------------%

@@ -88,6 +88,13 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, R0, R) :-
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, R0, R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, R0, R).
 
+move_follow_code_in_goal_2(par_conj(Goals0, SM), par_conj(Goals, SM),
+		Flags, R0, R) :-
+		% move_follow_code_in_disj treats its list of goals as
+		% independent goals, so we can use it to process the
+		% independent parallel conjuncts.
+	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
+
 move_follow_code_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Flags, R0, R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
 
@@ -121,6 +128,9 @@ move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G),
 			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
 
 %-----------------------------------------------------------------------------%
+
+	% move_follow_code_in_disj is used both for disjunction and
+	% parallel conjunction.
 
 :- pred move_follow_code_in_disj(list(hlds_goal), list(hlds_goal),
 	pair(bool), bool, bool).

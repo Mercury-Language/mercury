@@ -29,6 +29,8 @@
   #define LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
 #endif
 
+#define MR_fake_reg	(MR_ENGINE(fake_reg))
+
 /*---------------------------------------------------------------------------*/
 /*
 ** The registers of the Mercury virtual machine are built up using
@@ -115,22 +117,33 @@
 /* The machdeps header defines mr0 .. mr36; now define mr(n) for n > 36 */
 
 #define mr(n) LVALUE_SEQ(MR_assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
-				(n) < MAX_FAKE_REG), \
-		fake_reg[n])
+				(n) < MAX_FAKE_REG),\
+		MR_fake_reg[n])
 
 /* 
 ** the save_registers() macro copies the physical machine registers
-** to their corresponding slots in the fake_reg array 
+** to their corresponding slots in the MR_fake_reg array 
 */
 
-#define save_registers() 	save_regs_to_mem(fake_reg)
+#define save_registers() 	save_regs_to_mem(MR_fake_reg)
 
 /* 
 ** the restore_registers() macro sets the physical machine registers
 ** to the values in their corresponding slots in the fake_reg array 
+** If we're using a register for the engine base, then we'd better
+** restore that from the thread specific data area, since the fake_reg
+** array is accessed via that register.
 */
 
-#define restore_registers() 	restore_regs_from_mem(fake_reg)
+#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
+#define	restore_registers()	do {				\
+		MR_engine_base = MR_thread_engine_base;		\
+		MR_fake_reg[0] = (Word) MR_engine_base;		\
+		restore_regs_from_mem(MR_fake_reg);		\
+	} while (0)
+#else
+#define restore_registers() 	restore_regs_from_mem(MR_fake_reg)
+#endif
 
 /* 
 ** the save_transient_registers() and restore_transient_registers()
@@ -140,8 +153,17 @@
 ** by sliding register windows on SPARCs).
 */
 
-#define save_transient_registers()    save_transient_regs_to_mem(fake_reg)
-#define restore_transient_registers() restore_transient_regs_from_mem(fake_reg)
+#define save_transient_registers()    save_transient_regs_to_mem(MR_fake_reg)
+#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
+#define restore_transient_registers()	do {				\
+		MR_engine_base = MR_thread_engine_base;			\
+		MR_fake_reg[0] = (Word) MR_engine_base;			\
+		restore_transient_regs_from_mem(MR_fake_reg);		\
+	} while (0)
+#else
+#define restore_transient_registers()	\
+		restore_transient_regs_from_mem(MR_fake_reg)
+#endif
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -172,21 +194,21 @@
 /* virtual_reg(n) accesses the underlying fake_reg for register n */
 /* similarly MR_virtual_foo access the underlying fake_reg slot for foo */
 
-#define virtual_reg(n) 			saved_reg(fake_reg, n)
-#define MR_virtual_succip 		MR_saved_succip(fake_reg)
-#define MR_virtual_hp 			MR_saved_hp(fake_reg)
-#define MR_virtual_sp 			MR_saved_sp(fake_reg)
-#define MR_virtual_curfr 		MR_saved_curfr(fake_reg)
-#define MR_virtual_maxfr 		MR_saved_maxfr(fake_reg)
-#define MR_virtual_sol_hp 		MR_saved_sol_hp(fake_reg)
-#define MR_virtual_min_hp_rec 		MR_saved_min_hp_rec(fake_reg)
-#define MR_virtual_min_sol_hp_rec 	MR_saved_min_sol_hp_rec(fake_reg)
+#define virtual_reg(n) 			saved_reg(MR_fake_reg, n)
+#define MR_virtual_succip 		MR_saved_succip(MR_fake_reg)
+#define MR_virtual_hp 			MR_saved_hp(MR_fake_reg)
+#define MR_virtual_sp 			MR_saved_sp(MR_fake_reg)
+#define MR_virtual_curfr 		MR_saved_curfr(MR_fake_reg)
+#define MR_virtual_maxfr 		MR_saved_maxfr(MR_fake_reg)
+#define MR_virtual_sol_hp 		MR_saved_sol_hp(MR_fake_reg)
+#define MR_virtual_min_hp_rec 		MR_saved_min_hp_rec(MR_fake_reg)
+#define MR_virtual_min_sol_hp_rec 	MR_saved_min_sol_hp_rec(MR_fake_reg)
 
 /*
 ** get_reg() and set_reg() provide a different way of addressing
 ** the registers; unlike virtual_reg(), you don't need to wrap them
 ** inside save_registers()/restore_regs() to copy the real regs to/from
-** the fake_reg, so they may perhaps be more efficient if you are just
+** the MR_fake_reg, so they may perhaps be more efficient if you are just
 ** getting or setting one or two registers?
 ** Currently they're buggy for n>32 and are not used except for debugging.
 */

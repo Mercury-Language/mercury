@@ -610,7 +610,9 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		% to speed up compilation. This must be done after
 		% typeclass instances have been checked, since that
 		% fills in which pred_ids are needed by instance decls.
-		{ dead_pred_elim(HLDS2, HLDS2a) }
+		{ dead_pred_elim(HLDS2, HLDS2a) },
+		mercury_compile__maybe_dump_hlds(HLDS2a, "02a",
+				"dead_pred_elim"), !
 	    ;
 		{ HLDS2a = HLDS2 }
 	    ),

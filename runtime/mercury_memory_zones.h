@@ -40,9 +40,6 @@
 #define MAX_FAKE_REG	(NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
 				/* mr0 .. mr36, mr(37) ... mr(1028) */
 
-/* reserve MAX_FAKE_REG virtual regs, numbered from 0 to MAX_FAKE_REG-1 */
-extern	Word	fake_reg[MAX_FAKE_REG];
-
 /* used to lookup the fake_reg for a given real reg */
 extern	Word	virtual_reg_map[MAX_REAL_REG];
 

@@ -346,6 +346,21 @@ simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo0, Info0, Info) :-
 		)
 	).
 
+simplify__goal_2(par_conj(Goals0, SM), GoalInfo, Goal, GoalInfo, Info0, Info) :-
+	(
+		Goals0 = []
+	->
+		Goal = conj([]),
+		Info = Info0
+	;
+		Goals0 = [Goal0]
+	->
+		simplify__goal(Goal0, Goal - _, Info0, Info)
+	;
+		simplify__par_conj(Goals0, Goals, Info0, Info0, Info),
+		Goal = par_conj(Goals, SM)
+	).
+
 simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
@@ -983,6 +998,18 @@ simplify__conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 	;
 		RevGoals = [Goal | RevGoals0]
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify__par_conj(list(hlds_goal), list(hlds_goal),
+		simplify_info, simplify_info, simplify_info).
+:- mode simplify__par_conj(in, out, in, in, out) is det.
+
+simplify__par_conj([], [], _, Info, Info).
+simplify__par_conj([Goal0 |Goals0], [Goal | Goals], Info0, Info1, Info) :-
+	simplify__goal(Goal0, Goal, Info1, Info2),
+	simplify_info_post_branch_update(Info0, Info2, Info3),
+	simplify__par_conj(Goals0, Goals, Info0, Info3, Info).
 
 %-----------------------------------------------------------------------------%
 

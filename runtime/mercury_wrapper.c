@@ -71,6 +71,8 @@ static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 
+unsigned	MR_num_threads = 1;
+
 /* timing */
 int		time_at_last_stat;
 int		time_at_start;
@@ -204,7 +206,7 @@ mercury_runtime_init(int argc, char **argv)
 	** Double-check that the garbage collector knows about
 	** global variables in shared libraries.
 	*/
-	GC_is_visible(fake_reg);
+	GC_is_visible(&MR_runqueue);
 
 	/* The following code is necessary to tell the conservative */
 	/* garbage collector that we are using tagged pointers */
@@ -243,7 +245,18 @@ mercury_runtime_init(int argc, char **argv)
 	(*address_of_mercury_init_io)();
 
 	/* start up the Mercury engine */
-	init_engine();
+#ifndef MR_THREAD_SAFE
+	init_thread((void *) 1);
+#else
+	{
+		int i;
+		init_thread_stuff();
+		init_thread((void *)1);
+		MR_exit_now = FALSE;
+		for (i = 1 ; i < MR_num_threads ; i++)
+			create_thread(0);
+	}
+#endif
 
 	/* initialize profiling */
 	if (MR_profiling) MR_prof_init();
@@ -262,6 +275,8 @@ mercury_runtime_init(int argc, char **argv)
 
 	/* initialize the Mercury library */
 	(*MR_library_initializer)();
+
+	save_context(&(MR_ENGINE(context)));
 
 	/*
 	** Now the real tracing starts; undo any updates to the trace state
@@ -575,12 +590,12 @@ process_options(int argc, char **argv)
 			MR_profiling = FALSE;
 			break;
 
-#ifdef	PARALLEL
+#ifdef	MR_THREAD_SAFE
 		case 'P':
-				if (sscanf(optarg, "%u", &numprocs) != 1)
+				if (sscanf(optarg, "%u", &MR_num_threads) != 1)
 					usage();
 				
-				if (numprocs < 1)
+				if (MR_num_threads < 1)
 					usage();
 
 				break;
@@ -997,6 +1012,11 @@ mercury_runtime_terminate(void)
 	MR_trace_final();
 
 	if (MR_profiling) MR_prof_finish();
+
+#ifdef	MR_THREAD_SAFE
+	MR_exit_now = TRUE;
+	pthread_cond_broadcast(MR_runqueue_cond);
+#endif
 
 	terminate_engine();
 

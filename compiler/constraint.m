@@ -140,6 +140,9 @@ constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
 	constraint__propagate_conj(Goals0, Goals),
 	mode_checkpoint(exit, "conj").
 
+constraint__propagate_goal_2(par_conj(_, _), par_conj(_, _)) -->
+	{ error("constraint__propagate_goal_2: par_conj not supported") }.
+
 constraint__propagate_goal_2(disj(Goals0, SM), disj(Goals, SM)) -->
 	mode_checkpoint(enter, "disj"),
 	constraint__propagate_disj(Goals0, Goals),

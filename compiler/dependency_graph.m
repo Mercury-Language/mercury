@@ -189,6 +189,10 @@ dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
+dependency_graph__add_arcs_in_goal_2(par_conj(Goals, _SM), Caller, 
+					DepGraph0, DepGraph) :-
+	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
+
 dependency_graph__add_arcs_in_goal_2(disj(Goals, _), Caller, 
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).

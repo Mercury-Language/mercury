@@ -139,6 +139,7 @@ void
 ML_report_stats(void)
 {
 	int			time_at_prev_stat;
+	MercuryEngine		*eng;
 #ifdef PROFILE_MEMORY
 	int			num_table_entries;
 	ML_memprof_report_entry	table[MEMORY_PROFILE_SIZE];
@@ -151,12 +152,16 @@ ML_report_stats(void)
 	time_at_prev_stat = time_at_last_stat;
 	time_at_last_stat = MR_get_user_cpu_miliseconds();
 
+	eng = MR_get_engine();
+
 	fprintf(stderr, 
 		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
 		(time_at_last_stat - time_at_start) / 1000.0,
-		((char *) sp - (char *) detstack_zone->min) / 1024.0,
-		((char *) maxfr - (char *) nondetstack_zone->min) / 1024.0
+		((char *) sp - (char *)
+			eng->context.detstack_zone->min) / 1024.0,
+		((char *) maxfr - (char *)
+			eng->context.nondetstack_zone->min) / 1024.0
 	);
 
 	/*
@@ -173,8 +178,8 @@ ML_report_stats(void)
 	);
 #else
 	fprintf(stderr, 
-		""Heap: %.3fk"",
-		((char *) hp - (char *) heap_zone->min) / 1024.0
+		""Heap: %.3fk]\\n"",
+		((char *) hp - (char *) eng->heap_zone->min) / 1024.0
 	);
 #endif
 

@@ -253,6 +253,16 @@ unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 	),
 	mode_checkpoint(exit, "conj").
 
+unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
+		par_conj(List, SM)) -->
+	mode_checkpoint(enter, "par_conj"),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_add_live_vars(NonLocals),
+	unique_modes__check_par_conj(List0, List, InstMapList),
+	instmap__unify(NonLocals, InstMapList),
+	mode_info_remove_live_vars(NonLocals),
+	mode_checkpoint(exit, "par_conj").
+
 unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->
@@ -566,6 +576,28 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 	mode_info_remove_live_vars(NonLocals),
 	unique_modes__check_goal(Goal0, Goal),
 	unique_modes__check_conj(Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
+
+:- pred unique_modes__check_par_conj(list(hlds_goal), list(hlds_goal),
+		list(pair(instmap, set(var))), mode_info, mode_info).
+:- mode unique_modes__check_par_conj(in, out, out,
+		mode_info_di, mode_info_uo) is det.
+
+	% Just process each conjunct in turn.
+	% Because we have already done modechecking, we know that
+	% there are no attempts to bind a variable in multiple
+	% parallel conjuncts, so we don't need to lock/unlock variables.
+
+unique_modes__check_par_conj([], [], []) --> [].
+unique_modes__check_par_conj([Goal0 | Goals0], [Goal | Goals],
+		[InstMap - NonLocals|InstMaps]) -->
+	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
+	mode_info_dcg_get_instmap(InstMap0),
+	unique_modes__check_goal(Goal0, Goal),
+	mode_info_dcg_get_instmap(InstMap),
+	mode_info_set_instmap(InstMap0),
+	unique_modes__check_par_conj(Goals0, Goals, InstMaps).
 
 %-----------------------------------------------------------------------------%
 

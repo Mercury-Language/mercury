@@ -693,6 +693,10 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
+possible_targets(init_sync_term(_, _), []).
+possible_targets(fork(Child, Parent, _), [Child, Parent]).
+possible_targets(join_and_terminate(_), []).
+possible_targets(join_and_continue(_, Label), [Label]).
 possible_targets(pragma_c(_, _, _, MaybeLabel, _), List) :-
 	(	
 		MaybeLabel = no,
@@ -1309,6 +1313,15 @@ substitute_labels_instr(mark_ticket_stack(Lval), _, mark_ticket_stack(Lval)).
 substitute_labels_instr(discard_tickets_to(Rval), _, discard_tickets_to(Rval)).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
+substitute_labels_instr(init_sync_term(T, N), _, init_sync_term(T, N)).
+substitute_labels_instr(fork(Child0, Parent0, Lval), LabelMap,
+		fork(Child, Parent, Lval)) :-
+	substitute_label(LabelMap, Child0, Child),
+	substitute_label(LabelMap, Parent0, Parent).
+substitute_labels_instr(join_and_terminate(Lval), _LabelMap, join_and_terminate(Lval)).
+substitute_labels_instr(join_and_continue(Lval, Label0), LabelMap,
+		join_and_continue(Lval, Label)) :-
+	substitute_label(LabelMap, Label0, Label).
 substitute_labels_instr(pragma_c(A, B, C, D, E), _, pragma_c(A, B, C, D, E)).
 
 :- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
@@ -1316,12 +1329,19 @@ substitute_labels_instr(pragma_c(A, B, C, D, E), _, pragma_c(A, B, C, D, E)).
 
 substitute_labels_list([], _, []).
 substitute_labels_list([Label0 | Labels0], LabelMap, [Label | Labels]) :-
-	( assoc_list__search(LabelMap, Label0, Label1) ->
+	substitute_label(LabelMap, Label0, Label),
+	substitute_labels_list(Labels0, LabelMap, Labels).
+
+:- pred substitute_label(assoc_list(label)::in, label::in, label::out) is det.
+
+substitute_label(LabelMap, Label0, Label) :-
+	(
+		assoc_list__search(LabelMap, Label0, Label1)
+	->
 		Label = Label1
 	;
 		Label = Label0
-	),
-	substitute_labels_list(Labels0, LabelMap, Labels).
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -773,6 +773,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 polymorphism__process_goal_expr(conj(Goals0), GoalInfo,
 		conj(Goals) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).
+polymorphism__process_goal_expr(par_conj(Goals0, SM), GoalInfo,
+		par_conj(Goals, SM) - GoalInfo) -->
+	polymorphism__process_goal_list(Goals0, Goals).
 polymorphism__process_goal_expr(disj(Goals0, SM), GoalInfo,
 		disj(Goals, SM) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).

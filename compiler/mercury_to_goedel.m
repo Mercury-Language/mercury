@@ -624,6 +624,14 @@ goedel_output_goal_2((A,B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	goedel_output_goal(B, VarSet, Indent).
 
+	% Goedel doesn't have parallel conjunction,
+	% but we can use sequential conjunction instead.
+goedel_output_goal_2((A & B), VarSet, Indent) -->
+	goedel_output_goal(A, VarSet, Indent),
+	io__write_string(" &"),
+	goedel_output_newline(Indent),
+	goedel_output_goal(B, VarSet, Indent).
+
 goedel_output_goal_2((A;B), VarSet, Indent) -->
 	io__write_string("("),
 	{ Indent1 is Indent + 1 },
