@@ -2602,6 +2602,16 @@ mercury_output_term(term__variable(Var), VarSet, AppendVarnums, _) -->
 mercury_output_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 		NextToGraphicToken) -->
 	(
+	    	{ Functor = term__atom("") },
+		{ Args = [F, X | Xs] }
+	->
+		mercury_output_term(F, VarSet, AppendVarnums,
+			NextToGraphicToken),
+		io__write_string("("),
+		mercury_output_term(X, VarSet, AppendVarnums),
+		mercury_output_remaining_terms(Xs, VarSet, AppendVarnums),
+		io__write_string(")")
+	;
 	    	{ Functor = term__atom(".") },
 		{ Args = [X, Xs] }
 	->
