@@ -49,6 +49,11 @@ extern	Word	*MR_materialize_typeinfos_base(
 			const MR_Stack_Layout_Vars *vars, Word *saved_regs,
 			Word *base_sp, Word *base_curfr);
 
+/*
+** Given a stack layout and the saved copy of the registers,
+** get the values of the live variables as a list of univs.
+** Any memory needed is allocated on the Mercury heap.
+*/
 extern	Word	MR_make_var_list(const MR_Stack_Layout_Label *layout,
 			Word *saved_regs);
 
@@ -98,6 +103,10 @@ extern	Word	MR_lookup_live_lval_base(MR_Live_Lval locn,
 ** do not suceed if the variable's name indicates that the value is likely
 ** to be too big. This is a temporary measure only, until we get a better
 ** term printer.
+**
+** All of these functions may need to allocate memory (to hold the
+** type_infos that they return); any memory that they allocate will
+** be allocated on the Mercury heap.
 */
 
 extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Var *var,
@@ -120,6 +129,8 @@ extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Var *var,
 /*
 ** MR_write_variable:
 **	Write a variable to stdout.
+**	This uses the fake_reg copies of the registers,
+**	and it may also clobber the real registers.
 */
 
 extern	void	MR_write_variable(Word type_info, Word value);

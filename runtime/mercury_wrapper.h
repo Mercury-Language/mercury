@@ -63,6 +63,7 @@ extern	void		(*address_of_init_gc)(void);
 /*
 ** Similarly, these are for the debugger interface; they're defined in
 ** browser/debugger_interface.m.
+** XXX These are obsolete; the browser can call the ML_ versions directly.
 */
 extern	void	(*MR_DI_output_current_vars)(Word, Word, Word);
 		/* output_current_vars/3 */
@@ -84,12 +85,14 @@ extern	void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 /*
 ** ML_type_name() is defined in library/std_util.m and used in
 ** trace/mercury_trace_external.c.
+** XXX This is obsolete; the tracer can call the ML_ version directly.
 */
 
 extern	String	(*MR_type_name)(Word);
 		/* normally ML_type_name (type_name/1) */ 
 
 /*
+** XXX This is obsolete too.
 ** This variable has been replaced by MR_io_print_to_*_stream,
 ** but the installed mkinit executable may still generate references to it.
 ** We must therefore keep it until all obsolete mkinit executables have
@@ -98,6 +101,12 @@ extern	String	(*MR_type_name)(Word);
 
 extern	Code	*MR_library_trace_browser;
 
+/*
+** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c), or
+** MR_trace_fake (runtime/mercury_trace_base.c),
+** depending on whether tracing was enabled when creating the _init.c
+** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
+*/
 extern	Code    *(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
 			MR_Trace_Port, Unsigned, Unsigned, const char *, int);
 
