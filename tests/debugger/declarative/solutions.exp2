@@ -28,5 +28,5 @@ Complete? yes
 Found incorrect contour:
 solutions(q(1), [1, 2, 3])
 Is this a bug? yes
-      16:      3  3 EXIT pred std_util:solutions/2-1 (det) std_util.m:1403 (solutions.m:16)
+      16:      3  3 EXIT pred std_util:solutions/2-1 (det) std_util.m:NNNN (solutions.m:16)
 mdb> quit -y

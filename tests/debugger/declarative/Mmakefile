@@ -220,8 +220,12 @@ shallow.out: shallow shallow.inp
 small.out: small small.inp
 	$(MDB) ./small < small.inp > small.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 solutions.out: solutions solutions.$(INP)
-	$(MDB) ./solutions < solutions.$(INP) > solutions.out 2>&1
+	$(MDB) ./solutions < solutions.$(INP) 2>&1 | \
+		sed -e 's/std_util.m:[0-9]*/std_util.m:NNNN/g' \
+		> solutions.out 2>&1
 
 special_term_dep.out: special_term_dep special_term_dep.inp
 	$(MDB_STD) ./special_term_dep < special_term_dep.inp \
