@@ -17,20 +17,20 @@ ${MERCURY_SICSTUS_COMPILER=@LIBDIR@/sicstus/@FULLARCH@/sicstus_compile}
 
 help=false
 compile_mode=fastcode
-unset target
+target=
 
 while true; do
-	case $1 in
+	case "$1" in
 		-h|--help)
 			help=true
 			break
 			;;
 		-o|--output)
-			target=$2
+			target="$2"
 			shift 2
 			;;
 		-m|--mode)
-			compile_mode=$2
+			compile_mode="$2"
 			shift 2
 			;;
 		--)
@@ -101,5 +101,8 @@ for file in "$@"; do
 	' $file > $tmp.pl
 	$sicstus_compile $compile_mode $tmp.pl
 	rm $tmp.pl 
-	mv $tmp.ql ${target="$rootname.ql"}
+	case "$target" in
+		"") mv $tmp.ql "$rootname.ql" ;;
+		*)  mv $tmp.ql "$target" ;;
+	esac
 done
