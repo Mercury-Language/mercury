@@ -125,8 +125,8 @@ format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 			int__pow(10, Precision, P),
 			int__to_float(P, Pe),
 			( 
-				builtin_float_gt(Ft, 0.0001),
-				builtin_float_gt(Pe, Ft)
+				Ft > 0.0001,
+				Pe > Ft
 			->
 				Conv_c_out = 'f'
 			;
@@ -142,8 +142,8 @@ format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 			int__pow(10, Precision, P),
 			int__to_float(P, Pe),
 			(
-				builtin_float_gt(Ft, 0.0001),
-				builtin_float_gt(Pe, Ft)
+				Ft > 0.0001,
+				Pe > Ft
 			->
 				Conv_c_out = 'f'
 			;
@@ -334,18 +334,18 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		Poly_t = f(F),
 		float_to_string(F, Fstring),
 		format_calc_prec(Fstring, Ostring, Precision),
-		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;	
 	Conv_c = 'e',
 		Poly_t = f(F),
 		format_calc_exp(F, Ostring, Precision, 0),
-		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conv_c = 'E' ,
 		Poly_t = f(F),
 		format_calc_exp(F, Otemp, Precision, 0),
 		to_upper(Otemp, Ostring),
-		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conv_c = 'p' ,
 		Poly_t = i(I),
@@ -400,19 +400,19 @@ format_int_precision(S, Ostring, Precision, Added_width) :-
 :- pred format_calc_exp(float, string, int, int).
 :- mode format_calc_exp(in, out, in, in) is det.
 format_calc_exp(F, Fstring, Precision, Exp) :-
-	( builtin_float_lt(F, 0.0) -> 	
-		builtin_float_minus( 0.0, F, Tf),
+	( F < 0.0 -> 	
+		Tf = 0.0 - F,
 		format_calc_exp( Tf, Tst, Precision, Exp),
 		first_char(Fstring, '-', Tst)
 	;
-		( builtin_float_lt(F, 1.0) ->
+		( F < 1.0 ->
 			Texp is Exp - 1,
-			builtin_float_times(F, 10.0, FF),
+			FF = F * 10.0,
 			format_calc_exp( FF, Fstring, Precision, Texp)
 		;
-		( builtin_float_ge(F, 10.0) ->
+		( F >= 10.0 ->
 			Texp is Exp + 1,
-			builtin_float_divide(F, 10.0, FF),
+			FF = F / 10.0,
 			format_calc_exp( FF, Fstring, Precision, Texp)
 		;
 			float_to_string(F, Fs),
@@ -730,8 +730,8 @@ format_int_from_char_list( [L|Ls], I) :-
 :- pred float_abs(float, float).
 :- mode float_abs(in, out) is det.
 float_abs(Fin, Fout) :-
-	( builtin_float_lt(Fin, 0.0) ->
-		builtin_float_minus(0.0, Fin, Fout)
+	( Fin < 0.0 ->
+		Fout = 0.0 - Fin
 	;
 		Fout = Fin
 	).

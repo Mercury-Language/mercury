@@ -52,7 +52,7 @@ use_list([P | Ps]) -->
 :- pred foo(mypred).
 :- mode foo(out(mypred)) is multi.
 
-foo(X) :- X = (pred(A::in, B::in, C::out) is det :- builtin_plus(A, B, C)).
-foo(X) :- X = (pred(A::in, B::in, C::out) is det :- builtin_times(A, B, C)).
-foo(X) :- X = (pred(A::in, B::in, C::out) is det :- builtin_minus(A, B, C)).
+foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
+foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A * B).
+foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A - B).
 

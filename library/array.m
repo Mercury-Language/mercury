@@ -91,6 +91,12 @@
 :- mode array_muo == out(mostly_uniq_array).
 :- mode array_mui == in(mostly_uniq_array).
 
+	% An `array__index_out_of_bounds' is the exception thrown
+	% on out-of-bounds array accesses. The string describes
+	% the predicate or function reporting the error.
+:- type array__index_out_of_bounds
+	---> array__index_out_of_bounds(string).
+
 %-----------------------------------------------------------------------------%
 
 	% array__make_empty_array(Array) creates an array of size zero
@@ -162,7 +168,7 @@
 %-----------------------------------------------------------------------------%
 
 	% array__lookup returns the Nth element of an array.
-	% It is an error if the index is out of bounds.
+	% Throws an exception if the index is out of bounds.
 :- pred array__lookup(array(T), int, T).
 :- mode array__lookup(array_ui, in, out) is det.
 :- mode array__lookup(in, in, out) is det.
@@ -179,7 +185,7 @@
 
 	% array__set sets the nth element of an array, and returns the
 	% resulting array (good opportunity for destructive update ;-).  
-	% It is an error if the index is out of bounds.
+	% Throws an exception if the index is out of bounds.
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
 
@@ -249,7 +255,7 @@
 
 	% array__shrink(Array0, Size, Array):
 	% The array is shrunk to make it fit the new size `Size'.
-	% It is an error if `Size' is larger than the size of `Array0'.
+	% Throws an exception if `Size' is larger than the size of `Array0'.
 :- pred array__shrink(array(T), int, array(T)).
 :- mode array__shrink(array_di, in, array_uo) is det.
 
@@ -382,7 +388,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int.
+:- import_module exception, int, require.
 
 /****
 lower bounds other than zero are not supported
@@ -693,18 +699,32 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred bounds_checks is semidet.
+:- pragma inline(bounds_checks/0).
+
+:- pragma foreign_proc("C", bounds_checks,
+		[will_not_call_mercury, thread_safe], "
+#ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
+	SUCCESS_INDICATOR = FALSE;
+#else
+	SUCCESS_INDICATOR = TRUE;
+#endif
+").		
+
+:- pragma foreign_proc("MC++", bounds_checks,
+		[thread_safe], "
+#if ML_OMIT_ARRAY_BOUNDS_CHECKS
+	SUCCESS_INDICATOR = FALSE;
+#else
+	SUCCESS_INDICATOR = TRUE;
+#endif
+").		
+
+%-----------------------------------------------------------------------------%
+
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h""		/* for MR_maybe_record_allocation() */
 #include ""mercury_library_types.h""	/* for MR_ArrayType */
-
-#ifdef	ML_ARRAY_THROW_EXCEPTIONS
-  #include ""exception.h"" 		/* for ML_throw_string */
-  /* shut up warnings about casting away const */
-  #define	ML_array_raise(s)	ML_throw_string((char *) (void *) s)
-#else
-  #include ""mercury_misc.h""		/* for MR_fatal_error() */
-  #define	ML_array_raise(s)	MR_fatal_error(s)
-#endif
 ").
 
 :- pragma foreign_decl("C", "
@@ -727,14 +747,19 @@ ML_make_array(MR_Integer size, MR_Word item)
 }
 ").
 
+array__init(Size, Item, Array) :-
+	( Size < 0 ->
+		error("array__init: negative size")
+	;
+		array__init_2(Size, Item, Array)
+	).	
+
+:- pred array__init_2(int, T, array(T)).
+:- mode array__init_2(in, in, array_uo) is det.
+
 :- pragma foreign_proc("C", 
-		array__init(Size::in, Item::in, Array::array_uo),
+		array__init_2(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if (Size < 0) {
-		ML_array_raise(""array__init: negative size"");
-	}
-#endif
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(Size, Item);
 ").
@@ -747,7 +772,7 @@ ML_make_array(MR_Integer size, MR_Word item)
 ").
 
 :- pragma foreign_proc("C#", 
-		array__init(Size::in, Item::in, Array::array_uo),
+		array__init_2(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	Array = System.Array.CreateInstance(Item.GetType(), Size);
 	for (int i = 0; i < Size; i++) {
@@ -865,38 +890,37 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
+array__lookup(Array, Index, Item) :-
+	( bounds_checks, \+ array__in_bounds(Array, Index) ->
+		throw(array__index_out_of_bounds("array__lookup"))
+	;
+		array__unsafe_lookup(Array, Index, Item)
+	).
+
+:- pred array__unsafe_lookup(array(T), int, T).
+:- mode array__unsafe_lookup(array_ui, in, out) is det.
+:- mode array__unsafe_lookup(in, in, out) is det.
+
 :- pragma foreign_proc("C",
-		array__lookup(Array::array_ui, Index::in, Item::out),
+		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
-#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
-		ML_array_raise(
-			""array__lookup: array index out of bounds"");
-	}
-#endif
 	Item = array->elements[Index];
 }").
 :- pragma foreign_proc("C",
-		array__lookup(Array::in, Index::in, Item::out),
+		array__unsafe_lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
-#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
-		ML_array_raise(
-			""array__lookup: array index out of bounds"");
-	}
-#endif
 	Item = array->elements[Index];
 }").
 
 :- pragma foreign_proc("C#",
-		array__lookup(Array::array_ui, Index::in, Item::out),
+		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	Item = Array.GetValue(Index);
 }").
 :- pragma foreign_proc("C#",
-		array__lookup(Array::in, Index::in, Item::out),
+		array__unsafe_lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	Item = Array.GetValue(Index);
 }").
@@ -904,23 +928,27 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
+array__set(Array0, Index, Item, Array) :-
+	( bounds_checks, \+ array__in_bounds(Array0, Index) ->
+		throw(array__index_out_of_bounds("array__set"))
+	;
+		array__unsafe_set(Array0, Index, Item, Array)
+	).
+
+:- pred array__unsafe_set(array(T), int, T, array(T)).
+:- mode array__unsafe_set(array_di, in, in, array_uo) is det.
+
 :- pragma foreign_proc("C",
-		array__set(Array0::array_di, Index::in,
+		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
-#ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
-		ML_array_raise(
-			""array__set: array index out of bounds"");
-	}
-#endif
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
 }").
 
 :- pragma foreign_proc("C#",
-		array__set(Array0::array_di, Index::in,
+		array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
 	Array0.SetValue(Item, Index);	/* destructive update! */
@@ -1000,10 +1028,6 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
-	if (old_array_size < array_size) {
-		ML_array_raise(
-			""array__shrink: can't shrink to a larger size"");
-	}
 
 	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
@@ -1021,15 +1045,25 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 }
 ").
 
+array__shrink(Array0, Size, Array) :-
+	( Size > array__size(Array0) ->
+		error("array__shrink: can't shrink to a larger size")
+	;
+		array__shrink_2(Array0, Size, Array)
+	).
+
+:- pred array__shrink_2(array(T), int, array(T)).
+:- mode array__shrink_2(array_di, in, array_uo) is det.
+
 :- pragma foreign_proc("C",
-		array__shrink(Array0::array_di, Size::in, Array::array_uo),
+		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
 :- pragma foreign_proc("C#",
-		array__shrink(_Array0::array_di, _Size::in, _Array::array_uo),
+		array__shrink_2(_Array0::array_di, _Size::in, _Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").

@@ -21,7 +21,7 @@ main -->
 	[],
 	{ Num_nr_1 = 9.9999 } ,
 %	{ builtin_float_times( 2.0, Num_nr_1, Num_nr_2) } ,
-	{ builtin_float_plus( Num_nr_1, Num_nr_1, Num_nr_2) } ,
+	{ Num_nr_2 = Num_nr_1 + Num_nr_1 } ,
 	[],
 	{ string__format("First %#x characters of fig% 0.1f in MG are\n`%.*s'.\n", [ i(Numba_0), f(1.4232), i(Numba_0), Mg_poly], String_0) } , 
 	{ string__format("First %#x characters of fig% 0.1f in MG are\n`%.*s'.\n", [ i(Numba_1), f(1.4232), i(Numba_1), Mg_poly], String_1) } , 

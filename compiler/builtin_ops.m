@@ -175,94 +175,42 @@ builtin_translation("private_builtin", "builtin_int_gt", 0, [X, Y],
 builtin_translation("private_builtin", "builtin_int_lt", 0, [X, Y],
 	test(binary((<), leaf(X), leaf(Y)))).
 
-builtin_translation("int", "builtin_plus", 0, [X, Y, Z],
-	assign(Z, binary((+), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_plus", 1, [X, Y, Z],
-	assign(X, binary((-), leaf(Z), leaf(Y)))).
-builtin_translation("int", "builtin_plus", 2, [X, Y, Z],
-	assign(Y, binary((-), leaf(Z), leaf(X)))).
 builtin_translation("int", "+", 0, [X, Y, Z],
 	assign(Z, binary((+), leaf(X), leaf(Y)))).
 builtin_translation("int", "+", 1, [X, Y, Z],
 	assign(X, binary((-), leaf(Z), leaf(Y)))).
 builtin_translation("int", "+", 2, [X, Y, Z],
 	assign(Y, binary((-), leaf(Z), leaf(X)))).
-builtin_translation("int", "builtin_minus", 0, [X, Y, Z],
-	assign(Z, binary((-), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_minus", 1, [X, Y, Z],
-	assign(X, binary((+), leaf(Y), leaf(Z)))).
-builtin_translation("int", "builtin_minus", 2, [X, Y, Z],
-	assign(Y, binary((-), leaf(X), leaf(Z)))).
 builtin_translation("int", "-", 0, [X, Y, Z],
 	assign(Z, binary((-), leaf(X), leaf(Y)))).
 builtin_translation("int", "-", 1, [X, Y, Z],
 	assign(X, binary((+), leaf(Y), leaf(Z)))).
 builtin_translation("int", "-", 2, [X, Y, Z],
 	assign(Y, binary((-), leaf(X), leaf(Z)))).
-builtin_translation("int", "builtin_times", 0, [X, Y, Z],
-	assign(Z, binary((*), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_times", 1, [X, Y, Z],
-	assign(X, binary((/), leaf(Z), leaf(Y)))).
-builtin_translation("int", "builtin_times", 2, [X, Y, Z],
-	assign(Y, binary((/), leaf(Z), leaf(X)))).
 builtin_translation("int", "*", 0, [X, Y, Z],
 	assign(Z, binary((*), leaf(X), leaf(Y)))).
-builtin_translation("int", "*", 1, [X, Y, Z],
-	assign(X, binary((/), leaf(Z), leaf(Y)))).
-builtin_translation("int", "*", 2, [X, Y, Z],
-	assign(Y, binary((/), leaf(Z), leaf(X)))).
-builtin_translation("int", "builtin_div", 0, [X, Y, Z],
+builtin_translation("int", "unchecked_quotient", 0, [X, Y, Z],
 	assign(Z, binary((/), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_div", 1, [X, Y, Z],
-	assign(X, binary((*), leaf(Y), leaf(Z)))).
-builtin_translation("int", "builtin_div", 2, [X, Y, Z],
-	assign(Y, binary((/), leaf(X), leaf(Z)))).
-builtin_translation("int", "//", 0, [X, Y, Z],
-	assign(Z, binary((/), leaf(X), leaf(Y)))).
-builtin_translation("int", "//", 1, [X, Y, Z],
-	assign(X, binary((*), leaf(Y), leaf(Z)))).
-builtin_translation("int", "//", 2, [X, Y, Z],
-	assign(Y, binary((/), leaf(X), leaf(Z)))).
-builtin_translation("int", "builtin_mod", 0, [X, Y, Z],
-	assign(Z, binary((mod), leaf(X), leaf(Y)))).
 builtin_translation("int", "rem", 0, [X, Y, Z],
 	assign(Z, binary((mod), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_left_shift", 0, [X, Y, Z],
-	assign(Z, binary((<<), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_left_shift", 0, [X, Y, Z],
 	assign(Z, binary((<<), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_right_shift", 0, [X, Y, Z],
-	assign(Z, binary((>>), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_right_shift", 0, [X, Y, Z],
 	assign(Z, binary((>>), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_bit_and", 0, [X, Y, Z],
-	assign(Z, binary((&), leaf(X), leaf(Y)))).
 builtin_translation("int", "/\\", 0, [X, Y, Z],
 	assign(Z, binary((&), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_bit_or", 0, [X, Y, Z],
-	assign(Z, binary(('|'), leaf(X), leaf(Y)))).
 builtin_translation("int", "\\/", 0, [X, Y, Z],
 	assign(Z, binary(('|'), leaf(X), leaf(Y)))).
-builtin_translation("int", "builtin_bit_xor", 0, [X, Y, Z],
-	assign(Z, binary((^), leaf(X), leaf(Y)))).
-builtin_translation("int", "^", 0, [X, Y, Z],
-	assign(Z, binary((^), leaf(X), leaf(Y)))).
 builtin_translation("int", "xor", 0, [X, Y, Z],
 	assign(Z, binary((^), leaf(X), leaf(Y)))).
 builtin_translation("int", "xor", 1, [X, Y, Z],
 	assign(Y, binary((^), leaf(X), leaf(Z)))).
 builtin_translation("int", "xor", 2, [X, Y, Z],
 	assign(X, binary((^), leaf(Y), leaf(Z)))).
-builtin_translation("int", "builtin_unary_plus", 0, [X, Y],
-	assign(Y, leaf(X))).
 builtin_translation("int", "+", 0, [X, Y],
 	assign(Y, leaf(X))).
-builtin_translation("int", "builtin_unary_minus", 0, [X, Y],
-	assign(Y, binary((-), int_const(0), leaf(X)))).
 builtin_translation("int", "-", 0, [X, Y],
 	assign(Y, binary((-), int_const(0), leaf(X)))).
-builtin_translation("int", "builtin_bit_neg", 0, [X, Y],
-	assign(Y, unary(bitwise_complement, leaf(X)))).
 builtin_translation("int", "\\", 0, [X, Y],
 	assign(Y, unary(bitwise_complement, leaf(X)))).
 builtin_translation("int", ">", 0, [X, Y],
@@ -274,72 +222,24 @@ builtin_translation("int", ">=", 0, [X, Y],
 builtin_translation("int", "=<", 0, [X, Y],
 	test(binary((<=), leaf(X), leaf(Y)))).
 
-builtin_translation("float", "builtin_float_plus", 0, [X, Y, Z],
-	assign(Z, binary(float_plus, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_plus", 1, [X, Y, Z],
-	assign(X, binary(float_minus, leaf(Z), leaf(Y)))).
-builtin_translation("float", "builtin_float_plus", 2, [X, Y, Z],
-	assign(Y, binary(float_minus, leaf(Z), leaf(X)))).
 builtin_translation("float", "+", 0, [X, Y, Z],
 	assign(Z, binary(float_plus, leaf(X), leaf(Y)))).
-builtin_translation("float", "+", 1, [X, Y, Z],
-	assign(X, binary(float_minus, leaf(Z), leaf(Y)))).
-builtin_translation("float", "+", 2, [X, Y, Z],
-	assign(Y, binary(float_minus, leaf(Z), leaf(X)))).
-builtin_translation("float", "builtin_float_minus", 0, [X, Y, Z],
-	assign(Z, binary(float_minus, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_minus", 1, [X, Y, Z],
-	assign(X, binary(float_plus, leaf(Y), leaf(Z)))).
-builtin_translation("float", "builtin_float_minus", 2, [X, Y, Z],
-	assign(Y, binary(float_minus, leaf(X), leaf(Z)))).
 builtin_translation("float", "-", 0, [X, Y, Z],
 	assign(Z, binary(float_minus, leaf(X), leaf(Y)))).
-builtin_translation("float", "-", 1, [X, Y, Z],
-	assign(X, binary(float_plus, leaf(Y), leaf(Z)))).
-builtin_translation("float", "-", 2, [X, Y, Z],
-	assign(Y, binary(float_minus, leaf(X), leaf(Z)))).
-builtin_translation("float", "builtin_float_times", 0, [X, Y, Z],
-	assign(Z, binary(float_times, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_times", 1, [X, Y, Z],
-	assign(X, binary(float_divide, leaf(Z), leaf(Y)))).
-builtin_translation("float", "builtin_float_times", 2, [X, Y, Z],
-	assign(Y, binary(float_divide, leaf(Z), leaf(X)))).
 builtin_translation("float", "*", 0, [X, Y, Z],
 	assign(Z, binary(float_times, leaf(X), leaf(Y)))).
-builtin_translation("float", "*", 1, [X, Y, Z],
-	assign(X, binary(float_divide, leaf(Z), leaf(Y)))).
-builtin_translation("float", "*", 2, [X, Y, Z],
-	assign(Y, binary(float_divide, leaf(Z), leaf(X)))).
-builtin_translation("float", "builtin_float_divide", 0, [X, Y, Z],
+builtin_translation("float", "unchecked_quotient", 0, [X, Y, Z],
 	assign(Z, binary(float_divide, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_divide", 1, [X, Y, Z],
-	assign(X, binary(float_times, leaf(Y), leaf(Z)))).
-builtin_translation("float", "builtin_float_divide", 2, [X, Y, Z],
-	assign(Y, binary(float_divide, leaf(X), leaf(Z)))).
-builtin_translation("float", "/", 0, [X, Y, Z],
-	assign(Z, binary(float_divide, leaf(X), leaf(Y)))).
-builtin_translation("float", "/", 1, [X, Y, Z],
-	assign(X, binary(float_times, leaf(Y), leaf(Z)))).
-builtin_translation("float", "/", 2, [X, Y, Z],
-	assign(Y, binary(float_divide, leaf(X), leaf(Z)))).
 builtin_translation("float", "+", 0, [X, Y],
 	assign(Y, leaf(X))).
 builtin_translation("float", "-", 0, [X, Y],
 	assign(Y, binary(float_minus, float_const(0.0), leaf(X)))).
-builtin_translation("float", "builtin_float_gt", 0, [X, Y],
-	test(binary(float_gt, leaf(X), leaf(Y)))).
 builtin_translation("float", ">", 0, [X, Y],
 	test(binary(float_gt, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_lt", 0, [X, Y],
-	test(binary(float_lt, leaf(X), leaf(Y)))).
 builtin_translation("float", "<", 0, [X, Y],
 	test(binary(float_lt, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_ge", 0, [X, Y],
-	test(binary(float_ge, leaf(X), leaf(Y)))).
 builtin_translation("float", ">=", 0, [X, Y],
 	test(binary(float_ge, leaf(X), leaf(Y)))).
-builtin_translation("float", "builtin_float_le", 0, [X, Y],
-	test(binary(float_le, leaf(X), leaf(Y)))).
 builtin_translation("float", "=<", 0, [X, Y],
 	test(binary(float_le, leaf(X), leaf(Y)))).
 

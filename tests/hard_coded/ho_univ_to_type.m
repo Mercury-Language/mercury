@@ -45,7 +45,7 @@ main -->
 :- pred foo(mypred).
 :- mode foo(out(mypred)) is det.
 
-foo(X) :- X = (pred(A::in, B::in, C::out) is det :- builtin_plus(A, B, C)).
+foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 
 % Some hacky pragma c_code to allow use to change an
 % inst from `ground' to `pred(in, in, out) is det'.

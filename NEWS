@@ -22,6 +22,14 @@ Changes to the Mercury language:
   Reference Manual.
 
 Changes to the Mercury standard library:
+* The predicates and functions in int.m, float, math.m and array.m now 
+  generate exceptions rather than program aborts on domain errors and
+  out-of-bounds array accesses.
+
+* We've removed the buggy reverse modes of the arithmetic functions in
+  float.m (because of rounding errors the functions aren't actually
+  reversible).
+ 
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
 
@@ -46,6 +54,11 @@ Changes to the Mercury standard library:
   representations of term components as strings.
 
 * We've made the outputs of the string concatenation primitives unique.
+
+* We've removed the long obsolete `int__builtin_*' and
+  `float__builtin_float_*' predicates, which were synonyms
+  for the arithmetic functions dating from when Mercury didn't
+  have functions.
 
 Changes to the Mercury implementation:
   

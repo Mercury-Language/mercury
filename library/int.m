@@ -64,14 +64,15 @@
 
 	% expontiation
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
-	% Y must not be negative.
+	% Throws a `math__domain_error' exception if Y is negative.
 :- func int__pow(int, int) = int.
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
 
 	% base 2 logarithm
 	% int__log2(X) = N is the least integer such that 2 to the
-	% power N is greater than or equal to X.  X must be positive.
+	% power N is greater than or equal to X.
+	% Throws a `math__domain_error' exception if X is not positive.
 :- func int__log2(int) = int.
 :- pred int__log2(int, int).
 :- mode int__log2(in, out) is det.
@@ -87,13 +88,6 @@
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
-/*
-% XXX need to change code_util.m before adding these modes
-:- mode in  * in  = in  is semidet.
-:- mode in  * in  = uo  is det.
-:- mode uo  * in  = in  is semidet.
-:- mode in  * uo  = in  is semidet.
-*/
 
 :- func int__times(int, int) = int.
 
@@ -106,16 +100,29 @@
 :- func int__minus(int, int) = int.
 
 	% flooring integer division
-	% truncates towards minus infinity, e.g. (-10) // 3 = (-4).
+	% Truncates towards minus infinity, e.g. (-10) // 3 = (-4).
+	%
+	% Throws a `math__domain_error' exception if the right operand
+	% is zero. See the comments at the top of math.m to find out how to
+	% disable domain checks.
 :- func div(int, int) = int.
 :- mode div(in, in) = uo is det.
 
 	% truncating integer division
-	% truncates towards zero, e.g. (-10) // 3 = (-3).
+	% Truncates towards zero, e.g. (-10) // 3 = (-3).
 	% `div' has nicer mathematical properties for negative operands,
 	% but `//' is typically more efficient.
+	%
+	% Throws a `math__domain_error' exception if the right operand
+	% is zero. See the comments at the top of math.m to find out how to
+	% disable domain checks.
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
+
+	% unchecked_quotient(X, Y) is the same as X // Y, but the
+	% behaviour is undefined if the right operand is zero.
+:- func unchecked_quotient(int, int) = int.
+:- mode unchecked_quotient(in, in)  = uo  is det.
 
 	% modulus
 	% X mod Y = X - (X div Y) * Y
@@ -251,70 +258,10 @@
 :- func int__rem_bits_per_int(int) = int.
 
 %-----------------------------------------------------------------------------%
-
-%
-% The following routines are builtins that the compiler knows about.
-% Don't use them; use the functions above.
-% These will go away in some future release.
-%
-
-:- pragma obsolete(builtin_plus/3).
-:- pred builtin_plus(int, int, int).
-:- mode builtin_plus(in, in, uo) is det.
-
-:- pragma obsolete(builtin_unary_plus/2).
-:- pred builtin_unary_plus(int, int).
-:- mode builtin_unary_plus(in, uo) is det.
-
-:- pragma obsolete(builtin_minus/3).
-:- pred builtin_minus(int, int, int).
-:- mode builtin_minus(in, in, uo) is det.
-
-:- pragma obsolete(builtin_unary_minus/2).
-:- pred builtin_unary_minus(int, int).
-:- mode builtin_unary_minus(in, uo) is det.
-
-:- pragma obsolete(builtin_times/3).
-:- pred builtin_times(int, int, int).
-:- mode builtin_times(in, in, uo) is det.
-
-:- pragma obsolete(builtin_div/3).
-:- pred builtin_div(int, int, int).
-:- mode builtin_div(in, in, uo) is det.
-
-:- pragma obsolete(builtin_mod/3).
-:- pred builtin_mod(int, int, int).
-:- mode builtin_mod(in, in, uo) is det.
-
-:- pragma obsolete(builtin_left_shift/3).
-:- pred builtin_left_shift(int, int, int).
-:- mode builtin_left_shift(in, in, uo) is det.
-
-:- pragma obsolete(builtin_right_shift/3).
-:- pred builtin_right_shift(int, int, int).
-:- mode builtin_right_shift(in, in, uo) is det.
-
-:- pragma obsolete(builtin_bit_or/3).
-:- pred builtin_bit_or(int, int, int).
-:- mode builtin_bit_or(in, in, uo) is det.
-
-:- pragma obsolete(builtin_bit_and/3).
-:- pred builtin_bit_and(int, int, int).
-:- mode builtin_bit_and(in, in, uo) is det.
-
-:- pragma obsolete(builtin_bit_xor/3).
-:- pred builtin_bit_xor(int, int, int).
-:- mode builtin_bit_xor(in, in, uo) is det.
-
-:- pragma obsolete(builtin_bit_neg/2).
-:- pred builtin_bit_neg(int, int).
-:- mode builtin_bit_neg(in, uo) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util.
+:- import_module exception, math, std_util.
 
 :- instance enum(int) where [
 	to_int(X) = X,
@@ -336,6 +283,51 @@ X div Y = Div :-
 	;
 		Div = Trunc - 1
 	).
+
+	% XXX This pragma declaration should be uncommented once the
+	% change to make `//'/2 a non-builtin is installed everywhere.
+%:- pragma inline('//'/2).
+X // Y = Div :-
+	( domain_checks, Y = 0 ->
+		throw(math__domain_error("int:'//'"))
+	;
+		Div = unchecked_quotient(X, Y)
+	).
+
+	% This code is included here rather than just calling
+	% the version in math.m because we currently don't do
+	% transitive inter-module inlining, so code which uses
+	% `//'/2 but doesn't import math.m couldn't have the
+	% domain check optimized away..
+:- pred domain_checks is semidet.
+:- pragma inline(domain_checks/0).
+
+:- pragma foreign_proc("C", domain_checks,
+		[will_not_call_mercury, thread_safe], "
+#ifdef ML_OMIT_MATH_DOMAIN_CHECKS
+	SUCCESS_INDICATOR = FALSE;
+#else
+	SUCCESS_INDICATOR = TRUE;
+#endif
+").
+
+:- pragma foreign_proc("MC++", domain_checks,
+		[thread_safe], "
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+	SUCCESS_INDICATOR = FALSE;
+#else
+	SUCCESS_INDICATOR = TRUE;
+#endif
+").
+
+	% XXX Remove this clause once the change to make unchecked_quotient
+	% a builtin is installed everywhere. (Note that this clause doesn't
+	% cause an infinite loop because the compiler will ignore the
+	% clause for `//'/2 or unchecked_quotient/2 depending on how far
+	% it is through the bootstrapping process. When compiling the
+	% stage 1 compiler, `//' is builtin. During stages 2 and 3,
+	% unchecked_quotient is builtin.
+unchecked_quotient(X, Y) = X // Y.
 
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
 floor_to_multiple_of_bits_per_int(X) = Floor :-
@@ -423,8 +415,8 @@ int__pow(Val, Exp) = Result :-
 	int__pow(Val, Exp, Result).
 
 int__pow(Val, Exp, Result) :-
-	( Exp < 0 ->
-		error("int__pow: negative exponent")
+	( domain_checks, Exp < 0 ->
+		throw(math__domain_error("int__pow"))
 	;
 		int__pow_2(Val, Exp, 1, Result)
 	).
@@ -445,10 +437,10 @@ int__log2(X) = N :-
 	int__log2(X, N).
 
 int__log2(X, N) :-
-	( X > 0 ->
-		int__log2_2(X, 0, N)
+	( domain_checks, X =< 0 ->
+		throw(math__domain_error("int__log2"))
 	;
-		error("int__log2: cannot take log of a non-positive number")
+		int__log2_2(X, 0, N)
 	).
 
 :- pred int__log2_2(int, int, int).

@@ -31,9 +31,6 @@
 :- func throw(T) = _.
 :- mode throw(in) = out is erroneous.
 
-:- pred throw_string(string).
-:- mode throw_string(in) is erroneous.
-
 % The following types are used by try/3 and try/5.
 
 :- type exception_result(T)
@@ -594,11 +591,6 @@ very_unsafe_perform_io(Goal, Result) :-
 wrap_exception(Exception, exception(Exception)).
 
 %-----------------------------------------------------------------------------%
-
-:- pragma export(throw_string(in), "ML_throw_string").
-
-throw_string(Msg) :-
-	throw(Msg).
 
 :- pred throw_impl(univ).
 :- mode throw_impl(in) is erroneous.

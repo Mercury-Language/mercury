@@ -33,10 +33,10 @@ main -->
 
 test(X, Y) -->
 	{
-		builtin_float_plus(X, Y, Plus),
-		builtin_float_times(X, Y, Times),
-		builtin_float_minus(X, Y, Minus),
-		builtin_float_divide(X, Y, Divide),
+		Plus = X + Y,
+		Times = X * Y,
+		Minus = X - Y,
+		Divide = X / Y,
 		% math__pow(X, Y, Pow)
 		true
 	},
