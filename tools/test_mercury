@@ -157,6 +157,11 @@ case $HOST in
 esac
 
 cd tests || { false; exit 1; }
+# rebuild the `.exp' files on kryten only
+case $HOST in
+	kryten) ./generate_exp ;;
+	*) ;;
+esac
 for grade in $GRADES
 do
 	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
