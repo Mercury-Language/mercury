@@ -819,11 +819,7 @@ option_defaults_2(optimization_option, [
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
 	local_constraint_propagation	-	bool(no),
-% XXX optimize_duplicate_calls is broken -- it ignores impurity.
-% It currently screws up builtin_aggregate, which leads to failures
-% of most test cases using solutions/2 (e.g. general/commit_bug)
-% in grade asm_fast. It should be reenabled when we have fixed that bug.
-%	optimize_duplicate_calls -	bool(no),
+	optimize_duplicate_calls -	bool(no),
 	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
 	optimize_saved_vars	-	bool(no),
@@ -1736,7 +1732,11 @@ opt_level(2, _, [
 	common_struct		-	bool(yes),
 	user_guided_type_specialization
 				-	bool(yes),
-	optimize_duplicate_calls -	bool(yes),
+% XXX optimize_duplicate_calls is broken -- it ignores impurity.
+% It currently screws up builtin_aggregate, which leads to failures
+% of most test cases using solutions/2 (e.g. general/commit_bug)
+% in grade asm_fast. It should be reenabled when we have fixed that bug.
+%	optimize_duplicate_calls -	bool(yes),
 	simple_neg		-	bool(yes),
 
 	optimize_rl		-	bool(yes),
