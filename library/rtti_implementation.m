@@ -1321,7 +1321,13 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 :- pragma foreign_proc("C#",
 	get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out),
 		[promise_pure], "
-	TypeInfo = (object[]) ((object[]) Term)[Index];
+	try {
+		TypeInfo = (object[]) ((object[]) Term)[Index];
+	} catch (System.InvalidCastException) {
+		// try high level data
+		TypeInfo = (object[])
+			Term.GetType().GetFields()[Index].GetValue(Term);
+	}
 ").
 
 :- func typeclass_info_type_info(type_info, int) = type_info.
