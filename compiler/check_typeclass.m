@@ -92,8 +92,21 @@ check_class_instance(SuperClasses, Vars, ClassInterface, ClassVarSet,
 		Errors0, Errors):-
 		
 		% check conformance of the instance interface
-	list__foldl2(check_instance_pred(Vars, ClassInterface, ModuleInfo), 
-		PredIds, InstanceDefn0, InstanceDefn1, Errors0, Errors1),
+	(
+		PredIds \= []
+	->
+		list__foldl2(check_instance_pred(Vars, ClassInterface,
+			ModuleInfo), PredIds, InstanceDefn0, InstanceDefn1,
+			Errors0, Errors1)
+	;
+		% there are no methods for this class
+		InstanceDefn0 = hlds_instance_defn(A, B, C, D, 
+				_MaybeInstancePredProcs, F, G),
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, 
+				yes([]), F, G),
+		Errors1 = Errors0
+	),
+
 
 		% check that the superclass constraints are satisfied for the
 		% types in this instance declaration
