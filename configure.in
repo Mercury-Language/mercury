@@ -666,20 +666,20 @@ case "$host" in
 #	the conservative garbage collector doesn't work with shared
 #	libraries on IRIX 5.
 #
-#	mips-sgi-irix5.*)
-#		LINK_SHARED_OBJ="ld -shared"
-#		PIC=
-#		PIC_O=o
-#		# shared libraries only work for reg.gc or none.gc
-#		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
-#			AC_MSG_RESULT(yes)
-#			SO=so
-#		else
-#			SO=a
-#			AC_MSG_RESULT(no)
-#			AC_MSG_RESULT(Read README.IRIX-5)
-#		fi
-#		;;
+	XXX-this-case-disabled-XXX-mips-sgi-irix5.*)
+		LINK_SHARED_OBJ="ld -shared"
+		PIC=
+		PIC_O=o
+		# shared libraries only work for reg.gc or none.gc
+		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
+			AC_MSG_RESULT(yes)
+			SO=so
+		else
+			SO=a
+			AC_MSG_RESULT(no)
+			AC_MSG_RESULT(Read README.IRIX-5)
+		fi
+		;;
 	*)
 		AC_MSG_RESULT(no)
 		LINK_SHARED_OBJ="$CC"
