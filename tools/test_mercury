@@ -254,6 +254,8 @@ export MERCURY_COMPILER
 case $HOST in murlibobo)
 	{ cd $DIR/mercury &&
 	mmake realclean MMAKEFLAGS=$PARALLEL &&
+	(cd $DIR/tests &&
+	mmake realclean MMAKEFLAGS=$PARALLEL) &&
 	: > Mmake.params &&
 	rm -f so_locations &&
 	autoconf &&
