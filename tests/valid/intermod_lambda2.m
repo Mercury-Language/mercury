@@ -21,12 +21,12 @@ sol(Generator, List) :-
 	Test = ((pred) is semidet),
 	TestFunc = ((func) = 1),
 	Cons = lambda([Elem::in, L0::in, L::out] is det, (
-			cons(Elem, L0, L)
+			intermod_lambda2__cons(Elem, L0, L)
 		)),
 	t(Test, TestFunc, Generator, Cons, [], List).
 
-:- pred cons(T::in, list(T)::in, list(T)::out) is det.
-cons(H, T, [H|T]).
+:- pred intermod_lambda2__cons(T::in, list(T)::in, list(T)::out) is det.
+intermod_lambda2__cons(H, T, [H|T]).
 
 :- pred t((pred), ((func) = int), pred(T), pred(T,T2,T2), T2, T2).
 :- mode t((pred) is semidet, ((func) = out is det),
