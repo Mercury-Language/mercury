@@ -1231,8 +1231,8 @@ Don't migrate builtin goals into branched goals.
 Don't optimize the assignment of registers in branched goals.
 
 @sp 1
-@item --args {old, compact}
-Use the pecified argument convention.
+@item --args @{old, compact@}
+Use the specified argument convention.
 
 @sp 1
 @item --no-reclaim-heap-on-nondet-failure
@@ -1412,7 +1412,6 @@ the higher-order arguments are known.
 
 @sp 1
 @item -O-, --no-c-optimize
-@end table
 
 @sp 1
 @item --opt-level @var{n}
