@@ -513,8 +513,12 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 				TransOptDepsSet) },
 			{ set__to_sorted_list(TransOptDepsSet, 
 				TransOptDateDeps) },
+			%
+			% note that maybe_read_dependency_file searches for
+			% this exact pattern
+			%
 			io__write_strings(DepStream,
-				[ModuleName, ".trans_opt_date : "]),
+				[ModuleName, ".trans_opt_date :"]),
 			write_dependencies_list(TransOptDateDeps, ".trans_opt", 
 				DepStream)
 		;
@@ -523,19 +527,19 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 
 		( { FactDeps \= [] } ->
 			io__write_strings(DepStream, 
-				["\n\n", ModuleName, ".fact_tables = "]),
+				["\n\n", ModuleName, ".fact_tables ="]),
 			write_dependencies_list(FactDeps, "", DepStream),
 			io__nl(DepStream),
 			globals__io_lookup_bool_option(assume_gmake,
 				AssumeGmake),
 			( { AssumeGmake = no } ->
 				io__write_strings(DepStream,
-					[ModuleName, ".fact_tables.os = "]),
+					[ModuleName, ".fact_tables.os ="]),
 				write_dependencies_list(FactDeps, ".o",
 					DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
-					ModuleName, ".fact_tables.cs = "]),
+					ModuleName, ".fact_tables.cs ="]),
 				write_dependencies_list(FactDeps, ".c",
 					DepStream),
 				io__nl(DepStream)
@@ -553,10 +557,9 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 			[]
 		),
 
-
 		io__write_strings(DepStream, ["\n\n",
-			ModuleName, ".trans_opt_date ",
 			ModuleName, ".optdate ",
+			ModuleName, ".trans_opt_date ",
 			ModuleName, ".c ",
 			ModuleName, ".err ",
 			ModuleName, ".o : ",
@@ -633,7 +636,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 
 		io__write_strings(DepStream, [
 			"\n\n",
-			ModuleName, ".dir/", ModuleName, "_000.o: ",
+			ModuleName, ".dir/", ModuleName, "_000.o : ",
 				ModuleName, ".m\n",
 			"\trm -rf ", ModuleName, ".dir\n",
 			"\t$(MCS) $(GRADEFLAGS) $(MCSFLAGS) ",
@@ -660,7 +663,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 		io__open_input(DependencyFileName, OpenResult),
 		( { OpenResult = ok(Stream) } ->
 			io__set_input_stream(Stream, OldStream),
-			{ string__append(ModuleName, ".trans_opt_date", 
+			{ string__append(ModuleName, ".trans_opt_date :", 
 				TransOptFileName0) },
 			{ string__to_char_list(TransOptFileName0, 
 				TransOptFileName) },
@@ -1229,7 +1232,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"clean: ", ModuleName, ".clean\n"
+		"clean : ", ModuleName, ".clean\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -1268,7 +1271,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"realclean: ", ModuleName, ".realclean\n"
+		"realclean : ", ModuleName, ".realclean\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -1299,11 +1302,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 			ModuleName, ".dep\n\n"
 	]),
 	io__write_strings(DepStream, [
-		"clean_nu: ", ModuleName, ".clean_nu\n",
+		"clean_nu : ", ModuleName, ".clean_nu\n",
 		ModuleName, ".clean_nu :\n",
 		"\t-rm -f $(", ModuleName, ".nos)\n\n",
 
-		"clean_sicstus: ", ModuleName, ".clean_sicstus\n",
+		"clean_sicstus : ", ModuleName, ".clean_sicstus\n",
 		ModuleName, ".clean_sicstus :\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n\n"
 	]).
