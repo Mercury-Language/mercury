@@ -2,33 +2,32 @@
 
 # Mmake.rules - rules for building Mercury programs
 
-#-----------------------------------------------------------------------------#
-
-default_target: main_target
+main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .m .nl .no .err .int .int2 .dep .depend .doit .ugly .hlds_dump \
-		.date .c .nu .o .mod .pp .s .garb .h
+.SUFFIXES: .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
+		.date .c .nu .o .mod .pp .s .garb .mod_h .ql
 
 .PRECIOUS: %.date
 
 # All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
 
-.pp.nl:
-	@-[ ! -f $@ ] || chmod +w $@
-	sed '/^#if *NU_PROLOG/,/^#endif/s/.*//' $< > $@
-	@-chmod -w $@
 .pp.m:
 	@-[ ! -f $@ ] || chmod +w $@
 	sed '/^#if *NU_PROLOG/,/^#endif/s/.*//' $< > $@
 	@-chmod -w $@
 
+.m.nl:
+	rm -f $@
+	ln -s $< $@
+
 .nl.no:
 	$(MNC) $(MNCFLAGS) -o $@ $<
-.m.no:
-	$(MNC) $(MNCFLAGS) -o $@ $<
+
+.nl.ql:
+	$(MSC) $(MSCFLAGS) -o $@ $<
 
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
@@ -36,9 +35,6 @@ default_target: main_target
 # the time-stamp doesn't get updated!
 # (Is that a bug in unix? In bash?)
 .nl.err:
-	$(MC) $(MCFLAGS) $< > $@ 2>&1
-	@touch $@
-.m.err:
 	$(MC) $(MCFLAGS) $< > $@ 2>&1
 	@touch $@
 
@@ -52,29 +48,14 @@ default_target: main_target
 
 .nl.date:
 	$(MC) --make-interface $(MCFLAGS) $(MCINTFLAGS) $<
-.m.date:
-	$(MC) --make-interface $(MCFLAGS) $(MCINTFLAGS) $<
 
 .nl.garb:
-	$(MCG) --garbage-collection accurate $(MCFLAGS) $<
-.m.garb:
 	$(MCG) --garbage-collection accurate $(MCFLAGS) $<
 
 .nl.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
-.m.ugly:
-	$(MC) --convert-to-mercury $(MCFLAGS) $<
-
-.nl.hlds_dump:
-	$(MC) --dump-hlds $(MCFLAGS) $<
-.m.hlds_dump:
-	$(MC) --dump-hlds $(MCFLAGS) $<
 
 .nl.depend:
-	@-[ ! -f $*.dep ] || chmod +w $*.dep
-	$(MC) --generate-dependencies $(MCFLAGS) $<
-	@-chmod -w $*.dep
-.m.depend:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MC) --generate-dependencies $(MCFLAGS) $<
 	@-chmod -w $*.dep
@@ -91,15 +72,11 @@ default_target: main_target
 .nl.mod:
 	rm -f $*.mod
 	$(MCG) -s $(GRADE) $(MCFLAGS) $< > $*.err2 2>&1
-.m.mod:
-	rm -f $*.mod
-	$(MCG) -s $(GRADE) $(MCFLAGS) $< > $*.err2 2>&1
-
 
 .mod.c:
 	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
 
-.mod.h:
+.mod.mod_h:
 	[ -f $< ] && $(MOD2H) -s$(GRADE) $(MOD2HFLAGS) $< > $@
 
 .c.o:
@@ -163,11 +140,11 @@ clean_hlds_dump:
 
 .PHONY: clean_c
 clean_c:
-	-rm -f *.c
+	$(CLEAN_C)
 
 .PHONY: clean_mod
 clean_mod:
-	-rm -f *.mod
+	$(CLEAN_MOD)
 
 .PHONY: clean_o
 clean_o:
@@ -178,7 +155,7 @@ clean_s:
 	-rm -f *.s
 
 .PHONY: realclean
-realclean: clean clean_deps clean_nu clean_saves clean_progs
+realclean: clean clean_deps clean_nu clean_progs clean_libs
 
 .PHONY: clean_deps
 clean_deps:
@@ -186,11 +163,7 @@ clean_deps:
 
 .PHONY: clean_nu
 clean_nu:
-	-rm -f *.nu
-
-.PHONY: clean_saves
-clean_saves:
-	-rm -f *.save
+	-rm -f *.nu *.save
 
 .PHONY: clean_progs
 clean_progs: clean_a_out
@@ -198,5 +171,9 @@ clean_progs: clean_a_out
 .PHONY: clean_a_out
 clean_a_out:
 	-rm -f a.out
+
+.PHONY: clean_libs
+clean_libs:
+	-rm -f *.a *.so
 
 #-----------------------------------------------------------------------------#
