@@ -105,7 +105,7 @@
 :- pred string__to_float(string, float).
 :- mode string__to_float(in, out) is semidet.
 %	Convert a string to an float. If the string is not
-%	a syntacatically correct float literal, string__to_float fails.
+%	a syntactically correct float literal, string__to_float fails.
 
 :- pred string__is_alpha(string).
 :- mode string__is_alpha(in) is semidet.

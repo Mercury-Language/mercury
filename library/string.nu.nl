@@ -21,23 +21,8 @@ string__to_int_list(S, S).
 %-----------------------------------------------------------------------------%
 
 string__to_float(String, Float) :-
-	% ensure that the string has a decimal point followed by at least
-	% one digit, by appending ".0" or "0" if necessary
-	(
-		append(_, [0'.|End], String)
-	->
-		( End = [] ->
-			string__append(String, "0", FloatString)
-		;
-			FloatString = String
-		)
-	;
-		string__append(String, ".0", FloatString)
-	),
-	% now invoke sread to parse the string as a term, and then check that
-	% it really was a float
-	sread(FloatString, Float),
-	float(Float).
+	tokenize(String, number, Num, ""),
+	Float is float(Num).
 
 string__float_to_string(Float, String) :-
 	sformat("~f", [Float], String).
