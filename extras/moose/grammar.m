@@ -50,8 +50,7 @@
 	;	( prod , prod )
 	;	{ prod ;  prod }
 	;	action(term)
-	;	[]	% epsilon
-	.
+	;	[].	% epsilon
 
 :- type name == string.
 :- type arity == int.
@@ -60,27 +59,23 @@
 	--->	epsilon	% epsilon isn't really a terminal, but it avoids the
 			% need for wrappers in the FIRST(alpha) situations.
 	;	(name / arity)
-	;	($)	% the special end-of-input symbol
-	;	(*)	% the dummy symbol used for lookahead computation.
-	.
+	;	($)		% the special end-of-input symbol
+	;	(*).	% the dummy symbol used for lookahead computation.
 
 :- type nonterminal
 	--->	start	% S' - the distinguished start symbol. Will always
 			% correspond to prodnum == 0.
-	;	(name / arity)
-	.
+	;	(name / arity).
 
 :- type symbol
 	--->	terminal(terminal)
-	;	nonterminal(nonterminal)
-	.
+	;	nonterminal(nonterminal).
 
 :- type symbols	== array(symbol).
 
 :- type bodyterm
 	--->	terminal(term)
-	;	nonterminal(term)
-	.
+	;	nonterminal(term).
 
 :- type rule_decls == map(nonterminal, rule_decl).
 
@@ -122,8 +117,7 @@
 :- type action
 	--->	accept
 	;	shift(int)
-	;	reduce(int)
-	.
+	;	reduce(int).
 
 :- type actiontable == (state -> terminal -> action).
 
@@ -185,7 +179,8 @@ term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
 	; Atom = atom("{}"), Args = [Goal] ->
 		Prod = action(Goal)
 	; Atom = atom("{}"), Args = [Goal | Goals] ->
-		foldl((pred(G::in, Left::in, (Left, action(G))::out) is det),
+		list__foldl(
+			(pred(G::in, Left::in, (Left, action(G))::out) is det),
 			Goals, action(Goal), Prod)
 	; Atom = atom("[]"), Args = [] ->
 		Prod = []
@@ -229,7 +224,7 @@ construct_grammar(Start, AllClauses, XForms, Grammar) :-
 	map__init(Follow0),
 	Grammar0 = grammar(Rules0, AllClauses, XForms, Nont0, ClauseIndex0,
 		First0, Follow0),
-	list.foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
+	list__foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
 	compute_first0(Grammar1, Grammar2),
 	compute_follow0(Grammar2, Grammar3),
 	Grammar3 = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex3,
@@ -256,9 +251,9 @@ start_rule(Id, Rule) :-
 	),
 	varset__init(VarSet0),
 	varset__new_vars(VarSet0, Arity, Vars, VarSet1),
-	foldl((pred(V::in, VS0::in, VS::out) is det :-
-		var_to_int(V, I),
-		format("V%d", [i(I)], N),
+	list__foldl((pred(V::in, VS0::in, VS::out) is det :-
+		term__var_to_int(V, I),
+		string__format("V%d", [i(I)], N),
 		varset__name_var(VS0, V, N, VS)
 	), Vars, VarSet1, VarSet),
 	term__var_list_to_term_list(Vars, Args),
@@ -274,24 +269,24 @@ start_rule(Id, Rule) :-
 		grammar, grammar).
 :- mode transform_clause_list(in, in, out) is det.
 
-transform_clause_list(Id - Clauses, Grammar0, Grammar) :-
-	foldl(transform_clause(Id), Clauses, Grammar0, Grammar).
+transform_clause_list(Id - Clauses, !Grammar) :-
+	list__foldl(transform_clause(Id), Clauses, !Grammar).
 
 :- pred transform_clause(nonterminal, clause, grammar, grammar).
 :- mode transform_clause(in, in, in, out) is det.
 
-transform_clause(Id, Clause, Grammar0, Grammar) :-
+transform_clause(Id, Clause, !Grammar) :-
 	Clause = clause(Head, Prod, Varset, Context),
 	solutions(transform_prod(Prod), Bodies),
-	foldl(add_rule(Id, Head, Varset, Context), Bodies, Grammar0, Grammar).
+	list__foldl(add_rule(Id, Head, Varset, Context), Bodies, !Grammar).
 
 :- pred add_rule(nonterminal, term, varset, context,
-		pair(list(bodyterm), list(term)), grammar, grammar).
+	pair(list(bodyterm), list(term)), grammar, grammar).
 :- mode add_rule(in, in, in, in, in, in, out) is det.
 
-add_rule(Id, Head, Varset, Context, BodyTerms - Actions, Grammar0, Grammar) :-
-	Grammar0 = grammar(Rules0, C, Xfs, Nont0, ClauseIndex0, F, L),
-	map((pred(BodyTerm::in, BodyId::out) is det :-
+add_rule(Id, Head, Varset, Context, BodyTerms - Actions, !Grammar) :-
+	!.Grammar = grammar(Rules0, C, Xfs, Nont0, ClauseIndex0, F, L),
+	list__map((pred(BodyTerm::in, BodyId::out) is det :-
 		(
 			BodyTerm = terminal(Term),
 			( Term = functor(atom(Name), Args, _) ->
@@ -322,7 +317,7 @@ add_rule(Id, Head, Varset, Context, BodyTerms - Actions, Grammar0, Grammar) :-
 		Prods = [Nont0]
 	),
 	map__set(ClauseIndex0, Id, Prods, ClauseIndex),
-	Grammar = grammar(Rules, C, Xfs, Nont, ClauseIndex, F, L).
+	!:Grammar = grammar(Rules, C, Xfs, Nont, ClauseIndex, F, L).
 
 :- pred transform_prod(prod, pair(list(bodyterm), list(term))).
 :- mode transform_prod(in, out) is multi.
@@ -391,7 +386,7 @@ compute_first(Rules, First) :-
 	until((pred(Stuff1::in, Stuff3::out) is det :-
 		Stuff1 = stuff(_, N1, R1, F1),
 		Stuff2 = stuff(no, N1, R1, F1),
-		foldl(compute_first, Rules, Stuff2, Stuff3)
+		map__foldl(compute_first, Rules, Stuff2, Stuff3)
 	),
 	(pred(StuffN::in) is semidet :-
 		StuffN = stuff(no, _, _, _)
@@ -491,9 +486,9 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 :- mode collect_terminals(in, out) is det.
 
 collect_terminals(Rules, Terminals) :-
-	foldl((pred(_RN::in, Rule::in, Ts0::in, Ts::out) is det :-
+	map__foldl((pred(_RN::in, Rule::in, Ts0::in, Ts::out) is det :-
 		Rule = rule(_Id, _Head, Elems, _, _, _, _),
-		foldl((pred(Elem::in, Ts1::in, Ts2::out) is det :-
+		Ts = array__foldl((func(Elem, Ts1) = Ts2 :-
 			(
 				Elem = terminal(Id),
 				Ts2 = [Id|Ts1]
@@ -501,7 +496,7 @@ collect_terminals(Rules, Terminals) :-
 				Elem = nonterminal(_Id_),
 				Ts2 = Ts1
 			)
-		), Elems, Ts0, Ts)
+		), Elems, Ts0)
 	), Rules, [], TerminalsList),
 	set__list_to_set(TerminalsList, Terminals).
 
@@ -509,32 +504,12 @@ collect_terminals(Rules, Terminals) :-
 :- mode collect_nonterminals(in, out) is det.
 
 collect_nonterminals(Rules, Nonterminals) :-
-	foldl((pred(_RN ::in, Rule::in, Ts0::in, Ts::out) is det :-
+	map__foldl((pred(_RN ::in, Rule::in, Ts0::in, Ts::out) is det :-
 		Rule = rule(Id, _Head, _Elems, _, _, _Varset, _Context),
 		Ts = [Id|Ts0]
 	), Rules, [], NonterminalsList),
 	set__list_to_set(NonterminalsList, Nonterminals0),
 	set__to_sorted_list(Nonterminals0, Nonterminals).
-
-	% YYY This probably belongs in array.m
-:- pred foldl(pred(T, U, U), array(T), U, U).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
-
-foldl(Closure, Array, Acc0, Acc) :-
-	array__max(Array, Max),
-	foldl(0, Max, Closure, Array, Acc0, Acc).
-
-:- pred foldl(int, int, pred(T, U, U), array(T), U, U).
-:- mode foldl(in, in, pred(in, in, out) is det, in, in, out) is det.
-
-foldl(I, IMax, Closure, Array, Acc0, Acc) :-
-	( I =< IMax ->
-		lookup(Array, I, Elem),
-		call(Closure, Elem, Acc0, Acc1),
-		foldl(I + 1, IMax, Closure, Array, Acc1, Acc)
-	;
-		Acc = Acc0
-	).
 
 	% YYY This probably belongs in the library somewhere.
 :- pred while(pred(T), pred(T, T), T, T).
@@ -712,6 +687,6 @@ first(First, Elems, I) = FirstI :-
 :- mode add_rule(in, in, in, out) is det.
 
 add_rule(Rules0, Num, Rule, Rules) :-
-	set(Rules0, Num, Rule, Rules).
+	map__set(Rules0, Num, Rule, Rules).
 
 %------------------------------------------------------------------------------%

@@ -25,59 +25,61 @@
 :- import_module array, bool, getopt, int, list, map, require.
 :- import_module set, std_util, string, term, term_io, varset.
 
-main -->
-	parse_options(MOptions, Args),
+main(!IO) :-
+	parse_options(MOptions, Args, !IO),
 	(
-		{ MOptions = ok(Options) },
-		{ lookup_bool_option(Options, help, Help) },
-		( { Help = yes } ->
-			help
+		MOptions = ok(Options),
+		lookup_bool_option(Options, help, Help),
+		( Help = yes ->
+			help(!IO)
 		;
-			main2(Options, Args)
+			main2(Options, Args, !IO)
 		)
 	;
-		{ MOptions = error(String) },
-		stderr_stream(StdErr),
-		write_string(StdErr, String),
-		nl(StdErr)
+		MOptions = error(String),
+		io__stderr_stream(StdErr, !IO),
+		io__write_string(StdErr, String, !IO),
+		nl(StdErr, !IO)
 	).
 
 :- pred main2(options::in, list(string)::in, io__state::di, io__state::uo).
-main2(_Options, []) -->
-	stderr_stream(StdErr),
-	write_string(StdErr, "no input files.\n"),
-	help.
-main2(Options, [Name0|Names]) -->
-	{ figure_out_names(Name0, InName, OutName) },
-	see(InName, Res0),
+
+main2(_Options, [], !IO) :-
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "no input files.\n", !IO),
+	help(!IO).
+main2(Options, [Name0 | Names], !IO) :-
+	figure_out_names(Name0, InName, OutName),
+	io__see(InName, Res0, !IO),
 	(
-		{ Res0 = ok },
-		tell(OutName, Res1),
+		Res0 = ok,
+		io__tell(OutName, Res1, !IO),
 		(
-			{ Res1 = ok },
-			process(Options),
-			told
+			Res1 = ok,
+			process(Options, !IO),
+			io__told(!IO)
 		;
-			{ Res1 = error(Err) },
-			{ error_message(Err, Msg) },
-			stderr_stream(StdErr),
-			write_string(StdErr, Msg),
-			nl(StdErr)
+			Res1 = error(Err),
+			io__error_message(Err, Msg),
+			io__stderr_stream(StdErr, !IO),
+			io__write_string(StdErr, Msg, !IO),
+			nl(StdErr, !IO)
 		)
 	;
-		{ Res0 = error(Err) },
-		{ error_message(Err, Msg) },
-		stderr_stream(StdErr),
-		write_string(StdErr, Msg),
-		nl(StdErr)
+		Res0 = error(Err),
+		io__error_message(Err, Msg),
+		io__stderr_stream(StdErr, !IO),
+		io__write_string(StdErr, Msg, !IO),
+		nl(StdErr, !IO)
 	),
-	( { Names = [_|_] } ->
-		main2(Options, Names)
+	( Names = [_|_] ->
+		main2(Options, Names, !IO)
 	;
-		[]
+		true	
 	).
 
 :- pred figure_out_names(string::in, string::out, string::out) is det.
+
 figure_out_names(Name0, InName, OutName) :-
 	( string__remove_suffix(Name0, ".moo", Name1) ->
 		Name = Name1
@@ -103,36 +105,39 @@ figure_out_names(Name0, InName, OutName) :-
 
 :- pred process(options::in, io__state::di, io__state::uo) is det.
 
-process(Options) -->
-	{ lookup_bool_option(Options, verbose, Verbse) },
-	( { Verbse = yes } -> report_stats ; [] ),
-	read_module(Result),
-	{ Result = module(Module, Errors) },
+process(Options, !IO) :-
+	lookup_bool_option(Options, verbose, Verbse),
+	( Verbse = yes -> report_stats(!IO) ; true ),
+	read_module(Result, !IO),
+	Result = module(Module, Errors),
 	(
-		{ Errors = [_|_] },
-		stderr_stream(StdErr),
-		foldl((pred(Err::in, di, uo) is det -->
-			{ Err = error(Msg, Line) },
-			format(StdErr, "%d: %s\n", [i(Line), s(Msg)])
-		), Errors)
+		Errors = [_|_],
+		io__stderr_stream(StdErr, !IO),
+		list__foldl((pred(Err::in, !.IO::di, !:IO::uo) is det :-
+			Err = error(Msg, Line),
+			io__format(StdErr, "%d: %s\n", [i(Line), s(Msg)], !IO)
+		), Errors, !IO)
 	;
-		{ Errors = [] },
-		{ get_moose_elements(Module, [], Remainder0, (implementation),
+		Errors = [],
+		get_moose_elements(Module, [], Remainder0, (implementation),
 			[], MParser, [], RuleDecls, [], ClauseList,
-			[], XFormList) },
+			[], XFormList),
 		(
-			{ MParser = [] },
-			stderr_stream(StdErr),
-			write_string(StdErr, "error: no parse/6 declaration.\n")
+			MParser = [],
+			io__stderr_stream(StdErr, !IO),
+			io__write_string(StdErr, 
+				"error: no parse/6 declaration.\n", !IO)
 		;
-			{ MParser = [Parser] },
-			{ reverse(Remainder0, Remainder) },
+			MParser = [Parser],
+			list__reverse(Remainder0, Remainder),
 			process_2(Options, Remainder, Parser,
-				RuleDecls, ClauseList, XFormList)
+				RuleDecls, ClauseList, XFormList, !IO)
 		;
-			{ MParser = [_,_|_] },
-			stderr_stream(StdErr),
-			write_string(StdErr, "error: more than one parse/4 declaration.\n")
+			MParser = [_,_|_],
+			io__stderr_stream(StdErr, !IO),
+			io__write_string(StdErr, 
+				"error: more than one parse/4 declaration.\n", 
+				!IO)
 		)
 	).
 
@@ -140,103 +145,107 @@ process(Options) -->
 		list(xform), io__state, io__state).
 :- mode process_2(in, in, in, in, in, in, di, uo) is det.
 
-process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
-	{ lookup_bool_option(Options, verbose, Verbse) },
-	( { Verbse = yes } -> report_stats ; [] ),
+process_2(Options, Module, Parser, Decls0, Clauses0, XFormList, !IO) :-
+	lookup_bool_option(Options, verbose, Verbse),
+	( Verbse = yes -> report_stats(!IO) ; true ),
 
-	{ check_rule_decls(Decls0, Decls, DeclErrors) },
-	foldl(write_error, DeclErrors),
+	check_rule_decls(Decls0, Decls, DeclErrors),
+	list__foldl(write_error, DeclErrors, !IO),
 
-	{ check_clauses(Clauses0, Decls, Clauses, ClauseErrors) },
-	foldl(write_error, ClauseErrors),
+	check_clauses(Clauses0, Decls, Clauses, ClauseErrors),
+	list__foldl(write_error, ClauseErrors, !IO),
 
-	{ Parser = parser(WhereAmI, StartId, EndTerm, TokenType, _Prefix,
-				InAtom, OutAtom) },
+	Parser = parser(WhereAmI, StartId, EndTerm, TokenType, _Prefix, InAtom, 
+		OutAtom),
 
-	{ check_useless(StartId, Clauses, Decls, UselessErrors) },
-	foldl(write_error, UselessErrors),
+	check_useless(StartId, Clauses, Decls, UselessErrors),
+	list__foldl(write_error, UselessErrors, !IO),
 
-	{ check_inf_derivations(Clauses, Decls, InfErrors) },
-	foldl(write_error, InfErrors),
+	check_inf_derivations(Clauses, Decls, InfErrors),
+	list__foldl(write_error, InfErrors, !IO),
 
 	(
-		{ DeclErrors = [] },
-		{ ClauseErrors = [] },
-		{ UselessErrors = [] },
-		{ InfErrors = [] }
+		DeclErrors = [],
+		ClauseErrors = [],
+		UselessErrors = [],
+		InfErrors = [] 
 	->
-		write_module(nolines, Module), nl,
-		{ lookup(Decls, StartId, StartDecl) },
+		write_module(nolines, Module, !IO), io__nl(!IO),
+		map__lookup(Decls, StartId, StartDecl),
 		write_parser(WhereAmI, StartId, StartDecl, TokenType,
-				InAtom, OutAtom),
+				InAtom, OutAtom, !IO),
 		write_action_type_class(WhereAmI, XFormList, Decls,
-					TokenType, InAtom, OutAtom),
+				TokenType, InAtom, OutAtom, !IO),
 
-		stderr_stream(StdErr),
-		write_string(StdErr, "constructing grammar...\n"),
+		io__stderr_stream(StdErr, !IO),
+		io__write_string(StdErr, "constructing grammar...\n", !IO),
 
-		{ map__init(Xfns0) },
-		{ foldl((pred(XForm::in, Xf0::in, Xf::out) is det :-
+		map__init(Xfns0),
+		list__foldl((pred(XForm::in, Xf0::in, Xf::out) is det :-
 			XForm = xform(XfNt, _),
 			map__det_insert(Xf0, XfNt, XForm, Xf)
-		), XFormList, Xfns0, XForms) },
+		), XFormList, Xfns0, XForms),
 
-		{ construct_grammar(StartId, Clauses, XForms, Grammar) },
-		{ Grammar = grammar(Rules, _, Xfns, _, Index, First, _Follow) },
-		{ reaching(Rules, First, Reaching) },
+		construct_grammar(StartId, Clauses, XForms, Grammar),
+		Grammar = grammar(Rules, _, Xfns, _, Index, First, _Follow),
+		reaching(Rules, First, Reaching),
 
-		write_string(StdErr, "constructing lr(0) items...\n"),
-		{ lr0items(Rules, Reaching, C, Gotos) },
-		write_string(StdErr, "determining lookaheads...\n"),
-		lookaheads(C, Gotos, Rules, First, Index, Lookaheads),
-		write_string(StdErr, "computing the action table...\n"),
-		{ shifts(C, Rules, First, Reaching, Shifts) },
-		{ actions(C, Rules, Lookaheads, Gotos, Shifts,
-			States, ActionTable, ActionErrs) },
-		foldl2((pred(Err::in, HasEs0::in, HasEs::out, di, uo) is det -->
+		io__write_string(StdErr, "constructing lr(0) items...\n", !IO),
+		lr0items(Rules, Reaching, C, Gotos),
+		io__write_string(StdErr, "determining lookaheads...\n", !IO),
+		lookaheads(C, Gotos, Rules, First, Index, Lookaheads, !IO),
+		io__write_string(StdErr, "computing the action table...\n", 
+			!IO),
+		shifts(C, Rules, First, Reaching, Shifts),
+		actions(C, Rules, Lookaheads, Gotos, Shifts, States, 
+			ActionTable, ActionErrs),
+		list__foldl2(
+			(pred(Err::in, HasEs0::in, HasEs::out, !.IO::di, 
+				!:IO::uo) is det :-
 			(
-				{ Err = warning(Warning) },
-				{ HasEs = HasEs0 },
+				Err = warning(Warning),
+				HasEs = HasEs0,
 				(
-					{ Warning = shiftreduce(_S, Rp) },
-					write_string(StdErr,
-				"shift reduce conflict involving:\n\t"),
-					write_rule(StdErr, Rp, Rules)
+					Warning = shiftreduce(_S, Rp),
+					io__write_string(StdErr,
+				"shift reduce conflict involving:\n\t", !IO),
+					write_rule(StdErr, Rp, Rules, !IO)
 				)
 			;
-				{ Err = error(Error) },
-				{ HasEs = yes },
+				Err = error(Error),
+				HasEs = yes,
 				(
-					{ Error = shiftshift(_, _) },
-					write_string(StdErr,
-						"shift shift error.\n")
+					Error = shiftshift(_, _),
+					io__write_string(StdErr, 
+						"shift shift error.\n", !IO)
 				;
-					{ Error = reducereduce(R0, R1) },
-					write_string(StdErr,
-				"reduce reduce conflict involving:\n\t"),
-					write_rule(StdErr, R0, Rules),
-					write_string(StdErr, "\t"),
-					write_rule(StdErr, R1, Rules)
+					Error = reducereduce(R0, R1),
+					io__write_string(StdErr, 
+					"reduce reduce conflict involving:\n\t",
+						!IO),
+					write_rule(StdErr, R0, Rules, !IO),
+					io__write_string(StdErr, "\t", !IO),
+					write_rule(StdErr, R1, Rules, !IO)
 				;
-					{ Error = misc(Ac1, Ac2) },
-					write_string(StdErr,
-				"misc conflict involving:\n\t"),
-					write(StdErr, Ac1), 
-					write_string(StdErr, "\n\t"),
-					write(StdErr, Ac2), 
-					write_string(StdErr, "\n")
+					Error = misc(Ac1, Ac2),
+					io__write_string(StdErr, 
+						"misc conflict involving:\n\t",
+						 !IO),
+					io__write(StdErr, Ac1, !IO), 
+					io__write_string(StdErr, "\n\t", !IO),
+					io__write(StdErr, Ac2, !IO), 
+					io__write_string(StdErr, "\n", !IO)
 				)
 			)
-		), ActionErrs, no, _HasErrors),
-		write_action_table(ActionTable, TokenType, EndTerm),
-		write_string(StdErr, "computing the goto table...\n"),
-		{ gotos(C, States, Gotos, GotoTable) },
-		write_goto_table(GotoTable, Decls),
-		write_reductions(Rules, ActionTable, TokenType,
-				InAtom, OutAtom, Xfns),
-		[]
+		), ActionErrs, no, _HasErrors, !IO),
+		write_action_table(ActionTable, TokenType, EndTerm, !IO),
+		io__write_string(StdErr, "computing the goto table...\n", !IO),
+		gotos(C, States, Gotos, GotoTable),
+		write_goto_table(GotoTable, Decls, !IO),
+		write_reductions(Rules, ActionTable, TokenType, InAtom, 
+			OutAtom, Xfns, !IO)
 	;
-		[]
+		true	
 	).
 
 %------------------------------------------------------------------------------%
@@ -245,11 +254,12 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 	string, string, string, io__state, io__state).
 :- mode write_action_type_class(in, in, in, in, in, in, di, uo) is det.
 
-write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom) -->
-	( { Where = (interface) } ->
-		write_string(":- interface.\n\n")
+write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom, 
+		!IO) :-		
+	( Where = (interface) ->
+		io__write_string(":- interface.\n\n", !IO)
 	;
-		[]
+		true	
 	),
 	io__format("\
 :- typeclass parser_state(T) where [
@@ -259,37 +269,36 @@ write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom) -->
 	mode unget_token(in, %s) = %s is det\
 ",
 		[s(TokenType), s(InAtom), s(OutAtom),
-		 s(TokenType), s(InAtom), s(OutAtom)]
+		 s(TokenType), s(InAtom), s(OutAtom)], !IO
 	),
-	( { not XForms = [] } ->
-		io__write_string(",\n")
+	( not XForms = [] ->
+		io__write_string(",\n", !IO)
 	;
-		[]
+		true	
 	),
-	{ WriteIn = (pred(_Anything::in, di, uo) is det -->
-		io__write_string("in"))
-	},
-	{ WriteXForm = (pred(XForm::in, di, uo) is det -->
-		{ XForm = xform(NT, MethodName) },
-		{ lookup(Decls, NT, RuleDecl) },
-		{ RuleDecl = rule(_NT, Types, VarSet, _Context) },
-		io__format("\tfunc %s(", [s(MethodName)]),
-		io__write_list(Types, ", ", term_io__write_term(VarSet)),
-		( { Types \= [] } -> io__write_string(", ") ; [] ),
-		io__write_string("T) = T,\n"),
+	WriteIn = (pred(_Anything::in, !.IO::di, !:IO::uo) is det :-
+		io__write_string("in", !IO)
+	),
+	WriteXForm = (pred(XForm::in, !.IO::di, !:IO::uo) is det :-
+		XForm = xform(NT, MethodName),
+		map__lookup(Decls, NT, RuleDecl),
+		RuleDecl = rule(_NT, Types, VarSet, _Context),
+		io__format("\tfunc %s(", [s(MethodName)], !IO),
+		io__write_list(Types, ", ", term_io__write_term(VarSet), !IO),
+		( Types \= [] -> io__write_string(", ", !IO) ; true ),
+		io__write_string("T) = T,\n", !IO),
 
-		io__format("\tmode %s(", [s(MethodName)]),
-		io__write_list(Types, ", ", WriteIn),
-		( { Types \= [] } -> io__write_string(", ") ; [] ),
-		io__format("%s) = %s is det", [s(InAtom), s(OutAtom)])
-		)
-	},
-	io__write_list(XForms, ",\n", WriteXForm),
-	io__write_string("\n].\n"),
-	( { Where = (interface) } ->
-		write_string(":- implementation.\n\n")
+		io__format("\tmode %s(", [s(MethodName)], !IO),
+		io__write_list(Types, ", ", WriteIn, !IO),
+		( Types \= [] -> io__write_string(", ", !IO) ; true ),
+		io__format("%s) = %s is det", [s(InAtom), s(OutAtom)], !IO)
+	),
+	io__write_list(XForms, ",\n", WriteXForm, !IO),
+	io__write_string("\n].\n", !IO),
+	( Where = (interface) ->
+		io__write_string(":- implementation.\n\n", !IO)
 	;
-		[]
+		true	
 	).
 
 %------------------------------------------------------------------------------%
@@ -297,32 +306,33 @@ write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom) -->
 :- pred write_rule(output_stream, int, rules, io__state, io__state).
 :- mode write_rule(in, in, in, di, uo) is det.
 
-write_rule(Stream, RN, Rules) -->
-	{ lookup(Rules, RN, Rule) },
-	write_int(Stream, RN), write_string(Stream, ": "),
-	{ Rule = rule(NT, _, Syms, _, _, _, _) },
-	write(Stream, NT),
-	write_string(Stream, " ->\t"),
-	write_syms(Stream, 0, 999, Syms),
-	write_string(Stream, "\n").
+write_rule(Stream, RN, Rules, !IO) :-
+	map__lookup(Rules, RN, Rule),
+	io__write_int(Stream, RN, !IO), 
+	io__write_string(Stream, ": ", !IO),
+	Rule = rule(NT, _, Syms, _, _, _, _),
+	io__write(Stream, NT, !IO),
+	io__write_string(Stream, " ->\t", !IO),
+	write_syms(Stream, 0, 999, Syms, !IO),
+	io__write_string(Stream, "\n", !IO).
 
 :- pred write_syms(output_stream, int, int, symbols, io__state, io__state).
 :- mode write_syms(in, in, in, in, di, uo) is det.
 
-write_syms(Stream, N, Dot, Syms) -->
-	( { N = Dot } ->
-		write_string(Stream, ". ")
+write_syms(Stream, N, Dot, Syms, !IO) :-
+	( N = Dot ->
+		io__write_string(Stream, ". ", !IO)
 	;
-		[]
+		true
 	),
-	{ array__max(Syms, Max) },
-	( { N =< Max } ->
-		{ lookup(Syms, N, Sym) },
-		write(Stream, Sym),
-		write_string(Stream, " "),
-		write_syms(Stream, N + 1, Dot, Syms)
+	array__max(Syms, Max),
+	( N =< Max ->
+		array__lookup(Syms, N, Sym),
+		io__write(Stream, Sym, !IO),
+		io__write_string(Stream, " ", !IO),
+		write_syms(Stream, N + 1, Dot, Syms, !IO)
 	;
-		[]
+		true	
 	).
 
 %------------------------------------------------------------------------------%
@@ -333,88 +343,54 @@ write_syms(Stream, N, Dot, Syms) -->
 :- mode get_moose_elements(in, in, out, in, in, out, in, out, in, out,
 		in, out) is det.
 
-get_moose_elements([], Remainder, Remainder, _WhereAmI, MParser, MParser,
-		RuleDecls, RuleDecls, Clauses, Clauses, Actions, Actions).
-get_moose_elements([Element|Elements], Remainder0, Remainder, WhereAmI0,
-		MParser0, MParser, RuleDecls0, RuleDecls, Clauses0, Clauses,
-		Actions0, Actions) :-
+get_moose_elements([], !Remainder, _, !MParser, !RuleDecls, !Clauses, !Actions).
+get_moose_elements([Element | Elements], !Remainder, !.WhereAmI, !MParser, 
+		!RuleDecls, !Clauses, !Actions) :-
 	(
 		Element = misc(ClauseTerm, ClauseVarSet),
 		term_to_clause(ClauseTerm, ClauseVarSet, _, Clause)
 	->
-		WhereAmI = WhereAmI0,
-		Remainder1 = Remainder0,
-		MParser1 = MParser0,
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = [Clause|Clauses0],
-		Actions1 = Actions0
+		list.append([Clause], !Clauses)
 	;
 		Element = misc(MiscTerm0, _),
 		interface_term(MiscTerm0)
 	->
-		WhereAmI = (interface),
-		Remainder1 = [Element|Remainder0],
-		MParser1 = MParser0,
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = Clauses0,
-		Actions1 = Actions0
+		!:WhereAmI = (interface),
+		list.append([Element], !Remainder)	
 	;
 		Element = misc(MiscTerm1, _),
 		implementation_term(MiscTerm1)
 	->
-		WhereAmI = (implementation),
-		Remainder1 = [Element|Remainder0],
-		MParser1 = MParser0,
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = Clauses0,
-		Actions1 = Actions0
+		!:WhereAmI = (implementation),
+		list.append([Element], !Remainder)
 	;
 		Element = misc(MiscTerm2, MiscVarSet2),
 		rule_term(MiscTerm2, MiscVarSet2, RuleDecl)
 	->
-		WhereAmI = WhereAmI0,
-		Remainder1 = Remainder0,
-		MParser1 = MParser0,
-		RuleDecls1 = [RuleDecl|RuleDecls0],
-		Clauses1 = Clauses0,
-		Actions1 = Actions0
+		list.append([RuleDecl], !RuleDecls)
 	;
 		Element = misc(MiscTerm3, MiscVarSet3),
-		parser_term(MiscTerm3, MiscVarSet3, WhereAmI0, Parser)
+		parser_term(MiscTerm3, MiscVarSet3, !.WhereAmI, Parser)
 	->
-		WhereAmI = WhereAmI0,
-		Remainder1 = Remainder0,
-		MParser1 = [Parser|MParser0],
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = Clauses0,
-		Actions1 = Actions0
+		list.append([Parser], !MParser)
 	;
 		Element = misc(MiscTerm4, _),
 		xform_term(MiscTerm4, XForm)
 	->
-		WhereAmI = WhereAmI0,
-		Remainder1 = Remainder0,
-		MParser1 = MParser0,
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = Clauses0,
-		Actions1 = [XForm|Actions0]
+		list.append([XForm], !Actions)
 	;
-		WhereAmI = WhereAmI0,
-		Remainder1 = [Element|Remainder0],
-		MParser1 = MParser0,
-		RuleDecls1 = RuleDecls0,
-		Clauses1 = Clauses0,
-		Actions1 = Actions0
+		list.append([Element], !Remainder)
 	),
-	get_moose_elements(Elements, Remainder1, Remainder, WhereAmI,
-		MParser1, MParser, RuleDecls1, RuleDecls, Clauses1, Clauses,
-		Actions1, Actions).
+	get_moose_elements(Elements, !Remainder, !.WhereAmI, !MParser, 
+		!RuleDecls, !Clauses, !Actions).
 
 :- pred interface_term(term::in) is semidet.
+
 interface_term(functor(atom(":-"), [functor(atom("interface"), [], _)], _)).
 
 :- pred implementation_term(term::in) is semidet.
-implementation_term(functor(atom(":-"),
+
+implementation_term(functor(atom(":-"), 
 	[functor(atom("implementation"), [], _)], _)).
 
 :- pred rule_term(term, varset, rule_decl).
@@ -431,8 +407,8 @@ rule_term(functor(atom(":-"), [functor(atom("rule"), [RuleTerm], _)], _),
 
 parser_term(functor(atom(":-"), [functor(atom("parse"), Args, _)], _),
 		_VarSet, WhereAmI, Decl) :-
-	Args = [StartIdTerm, TokTerm, EndTerm,
-			PrefixTerm, InAtomTerm, OutAtomTerm],
+	Args = [StartIdTerm, TokTerm, EndTerm, PrefixTerm, InAtomTerm, 
+		OutAtomTerm],
 	StartIdTerm = functor(atom("/"), [functor(atom(Name), [], _),
 		functor(integer(Arity), _, _)], _),
 	StartId = Name / Arity,
@@ -440,8 +416,8 @@ parser_term(functor(atom(":-"), [functor(atom("parse"), Args, _)], _),
 	PrefixTerm = functor(atom(PrefixAtom), [], _),
 	InAtomTerm = functor(atom(InAtom), [], _),
 	OutAtomTerm = functor(atom(OutAtom), [], _),
-	Decl = parser(WhereAmI, StartId, EndTerm, TokAtom,
-			PrefixAtom, InAtom, OutAtom).
+	Decl = parser(WhereAmI, StartId, EndTerm, TokAtom, PrefixAtom, InAtom, 
+		OutAtom).
 
 :- pred xform_term(term, xform).
 :- mode xform_term(in, out) is semidet.
@@ -463,9 +439,9 @@ xform_term(Term, XForm) :-
 :- pred help(io__state, io__state).
 :- mode help(di, uo) is det.
 
-help -->
-	stderr_stream(StdErr),
-	write_string(StdErr, "\
+help(!IO) :-
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "\
 usage: moose <options> file ...
 	-h|--help		help
 	-a|--dump-action	dump the action table
@@ -474,17 +450,17 @@ usage: moose <options> file ...
 	-a|--dump-goto		dump the goto table
 	-a|--dump-items		dump the item sets
 	-a|--dump-rules		dump the flattened rules
-"	).
+", !IO).
 
 %------------------------------------------------------------------------------%
 
 :- pred write_action_table(actiontable, string, term, io__state, io__state).
 :- mode write_action_table(in, in, in, di, uo) is det.
 
-write_action_table(Table, TT, End) -->
-	io__format(":- inst state_no --->\n\t\t", []),
-	io__write_list(map__keys(Table), "\n\t;\t", io__write_int),
-	io__format(".\n:- inst state_nos == list_skel(state_no).\n\n", []),
+write_action_table(Table, TT, End, !IO) :-
+	io__format(":- inst state_no --->\n\t\t", [], !IO),
+	io__write_list(map__keys(Table), "\n\t;\t", io__write_int, !IO),
+	io__format(".\n:- inst state_nos == list_skel(state_no).\n\n", [], !IO),
 	io__format("\
 :- type parsing_action
 	--->	shift
@@ -495,10 +471,11 @@ write_action_table(Table, TT, End) -->
 :- mode actions(in(state_no), in, out, out(state_no)) is semidet.
 
 ",
-		[s(TT)]
-	),
-	foldl((pred(State::in, StateActions::in, di,uo) is det -->
-		{ format("0x%x", [i(State)], SS) },
+		[s(TT)],
+	!IO),
+	map__foldl((pred(State::in, StateActions::in, !.IO::di, 
+			!:IO::uo) is det :-
+		string__format("0x%x", [i(State)], SS),
 		io__format("\
 actions(%s, Tok, Action, Value) :-
 	actions%s(Tok, Action, Value).
@@ -507,39 +484,39 @@ actions(%s, Tok, Action, Value) :-
 :- mode actions%s(in, out, out(state_no)) is semidet.
 
 ",
-			[s(SS), s(SS), s(SS), s(TT), s(SS)]
-		),
-		write_state_actions(SS, End, StateActions)
-	), Table).
+			[s(SS), s(SS), s(SS), s(TT), s(SS)],
+		!IO),
+		write_state_actions(SS, End, StateActions, !IO)
+	), Table, !IO).
 
 :- pred write_state_actions(string, term, (terminal -> action),
 		io__state, io__state).
 :- mode write_state_actions(in, in, in, di, uo) is det.
 
-write_state_actions(SS, End, StateActions) -->
-	{ format("actions%s", [s(SS)], Name) },
-	foldl((pred(Terminal::in, Action::in, di, uo) is det -->
-		{ terminal_to_term(Terminal, End, Token) },
-		{ context_init(Ctxt) },
-		{ Term = functor(atom(Name),
+write_state_actions(SS, End, StateActions, !IO) :-
+	string__format("actions%s", [s(SS)], Name),
+	map__foldl((pred(Terminal::in, Action::in, !.IO::di, !:IO::uo) is det :-
+		terminal_to_term(Terminal, End, Token),
+		term__context_init(Ctxt),
+		Term = functor(atom(Name),
 			[Token,
 			functor(atom(Kind), [], Ctxt),
-			functor(integer(Val), [], Ctxt)], Ctxt) },
+			functor(integer(Val), [], Ctxt)], Ctxt),
 		(
-			{ Action = shift(Val) },
-			{ Kind = "shift" }
+			Action = shift(Val),
+			Kind = "shift"
 		;
-			{ Action = reduce(Val) },
-			{ Kind = "reduce" }
+			Action = reduce(Val), 
+			Kind = "reduce"
 		;
-			{ Action = accept },
-			{ Kind = "accept" },
-			{ Val = 0 }
+			Action = accept,
+			Kind = "accept",
+			Val = 0
 		),
-		{ init(Varset) },
-		term_io__write_term_nl(Varset, Term)
-	), StateActions),
-	nl.
+		varset__init(Varset),
+		term_io__write_term_nl(Varset, Term, !IO)
+	), StateActions, !IO),
+	io__nl(!IO).
 
 :- pred terminal_to_term(terminal, term, term).
 :- mode terminal_to_term(in, in, out) is det.
@@ -547,10 +524,10 @@ write_state_actions(SS, End, StateActions) -->
 terminal_to_term(epsilon, _, _) :-
 	error("terminal_to_term: unexpected epsilon").
 terminal_to_term(Name/Arity, _, Term) :-
-	init(V0),
-	new_vars(V0, Arity, Vars, _),
-	context_init(Ctxt),
-	map((pred(Var::in, T::out) is det :-
+	varset__init(V0),
+	varset__new_vars(V0, Arity, Vars, _),
+	term__context_init(Ctxt),
+	list__map((pred(Var::in, T::out) is det :-
 		T = variable(Var)
 	), Vars, Args),
 	Term = functor(atom(Name), Args, Ctxt).
@@ -563,16 +540,16 @@ terminal_to_term((*), _, _) :-
 :- pred write_goto_table(gototable, rule_decls, io__state, io__state).
 :- mode write_goto_table(in, in, di, uo) is det.
 
-write_goto_table(Table, DeclTable) -->
-	{ values(DeclTable, Decls) },
-	write_nonterminal_type(Decls),
-	write_string("\
+write_goto_table(Table, DeclTable, !IO) :-
+	map__values(DeclTable, Decls),
+	write_nonterminal_type(Decls, !IO),
+	io__write_string("\
 :- pred gotos(int, nonterminal, int).
 :- mode gotos(in(state_no), in, out(state_no)) is semidet.
 
-"	),
-	foldl((pred(State::in, StateActions::in, di,uo) is det -->
-		{ format("0x%x", [i(State)], SS) },
+", !IO),
+	WriteGotos = (pred(State::in, Actions::in, !.IO::di, !:IO::uo) is det :-
+		string__format("0x%x", [i(State)], SS),
 		io__format("\
 gotos(%s, NT, NS) :-
 	gotos%s(NT, NS).
@@ -581,16 +558,16 @@ gotos(%s, NT, NS) :-
 :- mode gotos%s(in, out) is semidet.
 
 ",
-			[s(SS), s(SS), s(SS), s(SS)]
-		),
-		write_state_gotos(SS, StateActions)
-	), Table).
+			[s(SS), s(SS), s(SS), s(SS)], !IO),
+		write_state_gotos(SS, Actions, !IO)
+	),	
+	map__foldl(WriteGotos, Table, !IO).
 
 :- pred write_nonterminal_type(list(rule_decl), io__state, io__state).
 :- mode write_nonterminal_type(in, di, uo) is det.
 
-write_nonterminal_type(Ds) -->
-	{ map((pred(Decl::in, NTType::out) is det :-
+write_nonterminal_type(Ds, !IO) :-
+	list__map((pred(Decl::in, NTType::out) is det :-
 		Decl = rule(NT, Args, _VS, TC),
 		(
 			NT = start,
@@ -599,29 +576,29 @@ write_nonterminal_type(Ds) -->
 			NT = Name/_Arity
 		),
 		NTType = functor(atom(Name), Args, TC)
-	), Ds, NTTypes) },
-	{ context_init(Ctxt) },
-	{ init(Varset) },
-	{ Type = disj(functor(atom("nonterminal"), [], Ctxt), NTTypes) },
-	{ Element = type(Type, Varset) },
-	write_element(nolines, Element),
-	nl.
+	), Ds, NTTypes),
+	term__context_init(Ctxt),
+	varset__init(Varset),
+	Type = disj(functor(atom("nonterminal"), [], Ctxt), NTTypes),
+	Element = type(Type, Varset),
+	write_element(nolines, Element, !IO),
+	io__nl(!IO).
 
 :- pred write_state_gotos(string, (nonterminal -> grammar__state),
 		io__state, io__state).
 :- mode write_state_gotos(in, in, di, uo) is det.
 
-write_state_gotos(SS, StateActions) -->
-	{ format("gotos%s", [s(SS)], Name) },
-	foldl((pred(NT::in, NS::in, di, uo) is det -->
-		{ nonterminal_to_term(NT, Token) },
-		{ context_init(Ctxt) },
-		{ Term = functor(atom(Name),
-			[Token, functor(integer(NS), [], Ctxt)], Ctxt) },
-		{ init(Varset) },
-		term_io__write_term_nl(Varset, Term)
-	), StateActions),
-	nl.
+write_state_gotos(SS, StateActions, !IO) :-
+	string__format("gotos%s", [s(SS)], Name),
+	map__foldl((pred(NT::in, NS::in, !.IO::di, !:IO::uo) is det :-
+		nonterminal_to_term(NT, Token),
+		term__context_init(Ctxt),
+		Term = functor(atom(Name),
+			[Token, functor(integer(NS), [], Ctxt)], Ctxt),
+		varset__init(Varset),
+		term_io__write_term_nl(Varset, Term, !IO)
+	), StateActions, !IO),
+	io__nl(!IO).
 
 :- pred nonterminal_to_term(nonterminal, term).
 :- mode nonterminal_to_term(in, out) is det.
@@ -629,10 +606,10 @@ write_state_gotos(SS, StateActions) -->
 nonterminal_to_term(start, _) :-
 	error("nonterminal_to_term: unexpected start").
 nonterminal_to_term(Name/Arity, Term) :-
-	init(V0),
-	new_vars(V0, Arity, Vars, _),
-	context_init(Ctxt),
-	map((pred(Var::in, T::out) is det :-
+	varset__init(V0),
+	varset__new_vars(V0, Arity, Vars, _),
+	term__context_init(Ctxt),
+	list__map((pred(Var::in, T::out) is det :-
 		T = variable(Var)
 	), Vars, Args),
 	Term = functor(atom(Name), Args, Ctxt).
@@ -643,30 +620,30 @@ nonterminal_to_term(Name/Arity, Term) :-
 		io__state, io__state).
 :- mode write_parser(in, in, in, in, in, in, di, uo) is det.
 
-write_parser(Where, NT, Decl, _TT, InAtom, OutAtom) -->
+write_parser(Where, NT, Decl, _TT, InAtom, OutAtom, !IO) :-
 	(
-		{ NT = StartName/StartArity }
+		NT = StartName/StartArity
 	;
-		{ NT = start },
-		{ error("write_parser: start!") }
+		NT = start,
+		error("write_parser: start!")
 	),
-	{ Decl = rule(_, DeclArgs, DeclVarset, DeclCtxt) },
-	{ init(Varset0) },
-	{ mkstartargs(StartArity, [], StartArgs, Varset0, Varset) },
-	{ StartTerm = functor(atom(StartName), StartArgs, Ctxt) },
-	{ context_init(Ctxt) },
-	{ ParseResultType = type(disj(functor(atom("parse_result"), [], Ctxt),
-		[OkayType, ErrorType]), DeclVarset) },
-	{ OkayType = functor(atom(StartName), DeclArgs, DeclCtxt) },
-	{ ErrorType = functor(atom("error"), [
-		functor(atom("string"), [], Ctxt)], Ctxt) },
-	( { Where = (interface) } ->
-		write_string(":- interface.\n\n")
+	Decl = rule(_, DeclArgs, DeclVarset, DeclCtxt),
+	varset__init(Varset0),
+	mkstartargs(StartArity, [], StartArgs, Varset0, Varset),
+	StartTerm = functor(atom(StartName), StartArgs, Ctxt),
+	term__context_init(Ctxt),
+	ParseResultType = type(disj(functor(atom("parse_result"), [], Ctxt),
+		[OkayType, ErrorType]), DeclVarset),
+	OkayType = functor(atom(StartName), DeclArgs, DeclCtxt),
+	ErrorType = functor(atom("error"), [
+		functor(atom("string"), [], Ctxt)], Ctxt),
+	( Where = (interface) ->
+		io__write_string(":- interface.\n\n", !IO)
 	;
-		[]
+		true	
 	),
-	write_element(nolines, ParseResultType),
-	nl,
+	write_element(nolines, ParseResultType, !IO),
+	io__nl(!IO),
 	io__format("\
 :- import_module list.
 
@@ -674,12 +651,12 @@ write_parser(Where, NT, Decl, _TT, InAtom, OutAtom) -->
 :- mode parse(out, %s, %s) is det.
 
 ",
-		[s(InAtom), s(OutAtom)]
-	),
-	( { Where = (interface) } ->
-		write_string(":- implementation.\n\n")
+		[s(InAtom), s(OutAtom)],
+	!IO),
+	( Where = (interface) ->
+		io__write_string(":- implementation.\n\n", !IO)
 	;
-		[]
+		true	
 	),
 	io__format("\
 parse(Result, Toks0, Toks) :-
@@ -708,14 +685,14 @@ parse(Toks0, Toks, St0, Sy0, Res) :-
             ;
                 What = accept,
                     ( Sy0 = [n(",
-		[s(InAtom), s(OutAtom)]
-        ),
-        write_term(Varset, StartTerm),
-        write_string(")] ->
-                            Res = ("
-	),
-	write_term(Varset, StartTerm),
-	write_string("),
+		[s(InAtom), s(OutAtom)],
+        !IO),
+        term_io__write_term(Varset, StartTerm, !IO),
+        io__write_string(")] ->
+                            Res = (",
+	!IO),
+	term_io__write_term(Varset, StartTerm, !IO),
+	io__write_string("),
                             Toks = Toks1
                     ;
                             error(""parse: internal accept error"")
@@ -729,22 +706,21 @@ parse(Toks0, Toks, St0, Sy0, Res) :-
         St0 = [],
         error(""parse: state stack underflow"")
     ).
-"
-	).
+",
+	!IO).
 
 :- pred mkstartargs(int, list(term), list(term), varset, varset).
 :- mode mkstartargs(in, in, out, in, out) is det.
 
-mkstartargs(N, Ts0, Ts, VS0, VS) :-
+mkstartargs(N, !Terms, !Varset) :-
 	( N =< 0 ->
-		Ts = Ts0,
-		VS = VS0
+		true
 	;
-		format("V%d", [i(N)], VarName),
-		new_named_var(VS0, VarName, Var, VS1),
-		T = variable(Var),
-		Ts1 = [T|Ts0],
-		mkstartargs(N - 1, Ts1, Ts, VS1, VS)
+		string__format("V%d", [i(N)], VarName),
+		varset__new_named_var(!.Varset, VarName, Var, !:Varset),
+		Term = term__variable(Var),
+		list__append([Term], !Terms),
+		mkstartargs(N - 1, !Terms, !Varset)
 	).
 
 %------------------------------------------------------------------------------%
@@ -753,7 +729,7 @@ mkstartargs(N, Ts0, Ts, VS0, VS) :-
 		io__state, io__state).
 :- mode write_reductions(in, in, in, in, in, in, di, uo) is det.
 
-write_reductions(Rules, Table, TT, InAtom, OutAtom, Xfns) -->
+write_reductions(Rules, Table, TT, InAtom, OutAtom, Xfns, !IO) :-
 	io__format("\
 :- import_module require, std_util.
 
@@ -764,8 +740,8 @@ write_reductions(Rules, Table, TT, InAtom, OutAtom, Xfns) -->
 	;	t(%s).
 
 ",
-		[s(TT)]
-	),
+		[s(TT)],
+	!IO),
 	io__format("
 :- pred reduce(int, statestack, statestack,
 		symbolstack, symbolstack, P, P) <= parser_state(P).
@@ -789,8 +765,8 @@ reduce(RuleNum, States0, States, Symbols0, Symbols, Tokens0, Tokens) :-
 	).
 
 ",
-		[s(InAtom), s(OutAtom)]
-	),
+		[s(InAtom), s(OutAtom)],
+	!IO),
 	io__format("\
 :- pred reduce0(int, statestack, statestack,
 		symbolstack, symbolstack, P, P) <= parser_state(P).
@@ -798,21 +774,22 @@ reduce(RuleNum, States0, States, Symbols0, Symbols, Tokens0, Tokens) :-
 		in, out, %s, %s) is det.
 
 ",
-		[s(InAtom), s(OutAtom)]
-	),
-	foldl((pred(Rn::in, Rule::in, di, uo) is det -->
-		( { Rn = 0 } ->
+		[s(InAtom), s(OutAtom)],
+	!IO),
+	map__foldl((pred(Rn::in, Rule::in, !.IO::di, !:IO::uo) is det :-
+		( Rn = 0 ->
 
 		io__write_string("\
 reduce0(0x0, _, _, _, _, _, _) :-
 	reduce0_error(0x0).
 
-"		)
+",
+		!IO)
 
 		;
 
-		{ RedName = format("reduce0x%x", [i(Rn)]) },
-		{ RnS     = format("0x%x", [i(Rn)]) },
+		RedName = string__format("reduce0x%x", [i(Rn)]),
+		RnS     = string__format("0x%x", [i(Rn)]),
 		io__format("\
 reduce0(%s, S0, S, T0, T, U0, U) :-
 	%s(S0, S, T0, T, U0, U).
@@ -821,60 +798,60 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
 		P, P) <= parser_state(P).
 :- mode %s(in(state_nos), out(state_nos), in, out, %s, %s) is det.
 ",
-			[s(RnS), s(RedName), s(RedName), s(RedName),
-			 s(InAtom), s(OutAtom)]
-		),
-		{ Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C) },
-		{ new_named_var(Varset0, "M_St0", St0v, Varset1) },
-		{ St0 = variable(St0v) },
-		{ new_named_var(Varset1, "M_St1", St1v, Varset2) },
-		{ St1 = variable(St1v) },
-		{ new_named_var(Varset2, "M_Sy0", Sy0v, Varset3) },
-		{ Sy0 = variable(Sy0v) },
-		{ new_named_var(Varset3, "M_Sy1", Sy1v, Varset4) },
-		{ Sy1 = variable(Sy1v) },
-		{ new_named_var(Varset4, "M_RedRes", Resv, Varset5) },
-		{ Res = variable(Resv) },
-		{ ResS = functor(atom("n"), [variable(Resv)], Ctxt) },
-		{ new_named_var(Varset5, "M_D", Dv, Varset6) },
-		{ _D = variable(Dv) },
-		{ new_named_var(Varset6, "M_S", Sv, Varset7) },
-		{ _S = variable(Sv) },
-		{ new_named_var(Varset7, "M_St", Stv, Varset8) },
-		{ St = variable(Stv) },
-		{ new_named_var(Varset8, "M_Sy", Syv, Varset9) },
-		{ Sy = variable(Syv) },
-		{ new_named_var(Varset9, "M_Ts0", Ts0v, Varset10) },
-		{ Ts0 = variable(Ts0v) },
-		{ new_named_var(Varset10, "M_Ts", Tsv, Varset11) },
-		{ Ts = variable(Tsv) },
-		{ context_init(Ctxt) },
-		{ format("reduction 0x%x failed!", [i(Rn)], Err) },
-		{ mkstacks(Body, St1, Sts, Sy1, Sys, Varset11, Varset12) },
-		{ Cond = functor(atom(","), [
+			[s(RnS), s(RedName), s(RedName), s(RedName), 
+				s(InAtom), s(OutAtom)],
+			!IO),
+		Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C),
+		varset__new_named_var(Varset0, "M_St0", St0v, Varset1),
+		St0 = variable(St0v),
+		varset__new_named_var(Varset1, "M_St1", St1v, Varset2),
+		St1 = variable(St1v),
+		varset__new_named_var(Varset2, "M_Sy0", Sy0v, Varset3),
+		Sy0 = variable(Sy0v),
+		varset__new_named_var(Varset3, "M_Sy1", Sy1v, Varset4),
+		Sy1 = variable(Sy1v),
+		varset__new_named_var(Varset4, "M_RedRes", Resv, Varset5),
+		Res = variable(Resv),
+		ResS = functor(atom("n"), [variable(Resv)], Ctxt),
+		varset__new_named_var(Varset5, "M_D", Dv, Varset6),
+		_D = variable(Dv),
+		varset__new_named_var(Varset6, "M_S", Sv, Varset7),
+		_S = variable(Sv),
+		varset__new_named_var(Varset7, "M_St", Stv, Varset8),
+		St = variable(Stv),
+		varset__new_named_var(Varset8, "M_Sy", Syv, Varset9),
+		Sy = variable(Syv),
+		varset__new_named_var(Varset9, "M_Ts0", Ts0v, Varset10),
+		Ts0 = variable(Ts0v),
+		varset__new_named_var(Varset10, "M_Ts", Tsv, Varset11),
+		Ts = variable(Tsv),
+		term__context_init(Ctxt),
+		string__format("reduction 0x%x failed!", [i(Rn)], Err),
+		mkstacks(Body, St1, Sts, Sy1, Sys, Varset11, Varset12),
+		Cond = functor(atom(","), [
 			functor(atom("="), [St0, Sts], Ctxt),
 			functor(atom("="), [Sy0, Sys], Ctxt)
-		], Ctxt) },
-		{ Red = functor(atom("="), [Res, Head], Ctxt) },
-		{ append(Actions, [Red], AllActions0) },
-		{ reverse(AllActions0, AllActions) },
-		{ ConsStack = functor(atom(","), [
+		], Ctxt),
+		Red = functor(atom("="), [Res, Head], Ctxt),
+		list__append(Actions, [Red], AllActions0),
+		list__reverse(AllActions0, AllActions),
+		ConsStack = functor(atom(","), [
 			functor(atom("="), [Sy, functor(atom("[|]"),
 				[ResS, Sy1], Ctxt)], Ctxt),
-			functor(atom("="), [St, St1], Ctxt)], Ctxt) },
-		{ mkactions(AllActions, ConsStack, Then0) },
+			functor(atom("="), [St, St1], Ctxt)], Ctxt),
+		mkactions(AllActions, ConsStack, Then0),
 		(
-			{ search(Xfns, RNt, xform(_, XFormName)) },
-			{ Head = functor(_, HeadArgs, _) }
+			map__search(Xfns, RNt, xform(_, XFormName)),
+			Head = functor(_, HeadArgs, _)
 		->
-			{ append(HeadArgs, [Ts0], Then1Args) },
-			{ XFTerm = functor(atom(XFormName), Then1Args, Ctxt) }
+			list__append(HeadArgs, [Ts0], Then1Args),
+			XFTerm = functor(atom(XFormName), Then1Args, Ctxt)
 		;
-			{ XFTerm = Ts0 }
+			XFTerm = Ts0
 		),
-		{ Then1 = functor(atom("="), [Ts, XFTerm], Ctxt) },
-		{ Then = functor(atom(","), [Then0, Then1], Ctxt) },
-		{ BodyTerm = functor(atom(";"),[
+		Then1 = functor(atom("="), [Ts, XFTerm], Ctxt),
+		Then = functor(atom(","), [Then0, Then1], Ctxt),
+		BodyTerm = functor(atom(";"),[
 			functor(atom("->"), [
 				Cond,
 				Then
@@ -882,32 +859,33 @@ reduce0(%s, S0, S, T0, T, U0, U) :-
 			functor(atom("error"),
 				[functor(string(Err), [], Ctxt)],
 				Ctxt
-			)], Ctxt) },
-		( { term_to_goal(BodyTerm, Goal0) } ->
-			{ Goal = Goal0 }
+			)], Ctxt),
+		( term_to_goal(BodyTerm, Goal0) ->
+			Goal = Goal0
 		;
-			{ error("write_reductions: failed to convert goal") }
+			error("write_reductions: failed to convert goal")
 		),
-		{ Clause = clause(
-			functor(atom(RedName),  [St0, St, Sy0, Sy, Ts0, Ts], Ctxt),
-			Goal, Varset12) },
-		write_element(lines, Clause),
-		nl
+		Clause = clause(
+			functor(atom(RedName),  [St0, St, Sy0, Sy, Ts0, Ts], 
+				Ctxt), 
+			Goal, Varset12),
+		write_element(lines, Clause, !IO),
+		io__nl(!IO)
 		)
-	), Rules),
-	foldl((pred(State::in, _TerminalAction::in, di, uo) is det -->
-			( if not { Rules `contains` State } then
+	), Rules, !IO),
+	WriteReduceError = (pred(State::in, _::in, !.IO::di, !:IO::uo) is det :-
+		( if	not map__contains(Rules, State)
+		  then	
 				io__format("\
 reduce0(0x%x, _, _, _, _, _, _) :-
 	reduce0_error(0x%x).
 
-",
-					[i(State), i(State)]
-				)
-			)
-		),
-		Table
+", 
+				[i(State), i(State)], !IO)
+	  	  else	true
+		)
 	),
+	map__foldl(WriteReduceError, Table, !IO),
 	io__format("\
 :- pred reduce0_error(int).
 :- mode reduce0_error(in) is erroneous.
@@ -915,17 +893,15 @@ reduce0(0x%x, _, _, _, _, _, _) :-
 reduce0_error(State) :-
 	error(string__format(""reduce in state 0x%%x"", [i(State)])).
 
-",
-		[]
-	).
+", [], !IO).
 
 :- pred mkstacks(list(bodyterm), term, term, term, term, varset, varset).
 :- mode mkstacks(in, in, out, in, out, in, out) is det.
 
-mkstacks([], St, St, Sy, Sy, VS, VS).
-mkstacks([E0|Es], St0, St, Sy0, Sy, VS0, VS) :-
-	new_var(VS0, U, VS1),
-	context_init(Ctxt),
+mkstacks([], !St, !Sy, !VS).
+mkstacks([E0 | Es], !St, !Sy, !VS) :-
+	varset__new_var(!.VS, U, !:VS),
+	term__context_init(Ctxt),
 	(
 		E0 = terminal(ET),
 		E = functor(atom("t"), [ET], Ctxt)
@@ -933,18 +909,18 @@ mkstacks([E0|Es], St0, St, Sy0, Sy, VS0, VS) :-
 		E0 = nonterminal(EN),
 		E = functor(atom("n"), [EN], Ctxt)
 	),
-	Sy1 = functor(atom("[|]"), [E, Sy0], Ctxt),
-	St1 = functor(atom("[|]"), [variable(U), St0], Ctxt),
-	mkstacks(Es, St1, St, Sy1, Sy, VS1, VS).
+	!:Sy = functor(atom("[|]"), [E, !.Sy], Ctxt),
+	!:St = functor(atom("[|]"), [variable(U), !.St], Ctxt),
+	mkstacks(Es, !St, !Sy, !VS).
 
 :- pred mkactions(list(term), term, term).
 :- mode mkactions(in, in, out) is det.
 
-mkactions([], Term, Term).
-mkactions([E|Es], Term0, Term) :-
-	context_init(Ctxt),
-	Term1 = functor(atom(","), [E, Term0], Ctxt),
-	mkactions(Es, Term1, Term).
+mkactions([], !Term).
+mkactions([E | Es], !Term) :-
+	term__context_init(Ctxt),
+	!:Term = functor(atom(","), [E, !.Term], Ctxt),
+	mkactions(Es, !Term).
 
 %------------------------------------------------------------------------------%
 
@@ -952,7 +928,7 @@ mkactions([E|Es], Term0, Term) :-
 :- mode sub(in, in, out) is det.
 
 sub(Orig, Subs, Final) :-
-	foldl((pred(Sub::in, S0::in, S1::out) is det :-
+	list__foldl((pred(Sub::in, S0::in, S1::out) is det :-
 		Sub = From - To,
 		string__replace_all(S0, From, To, S1)
 	), Subs, Orig, Final).

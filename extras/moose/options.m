@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -35,10 +35,10 @@
 
 :- import_module bool, char, std_util.
 
-parse_options(MOpts, Args) -->
-	io__command_line_arguments(Args0),
-	{ OptionOpts = option_ops(short, long, defaults) },
-	{ getopt__process_options(OptionOpts, Args0, Args, MOpts) }.
+parse_options(MOpts, Args, !IO) :-
+	io__command_line_arguments(Args0, !IO),
+	OptionOpts = option_ops(short, long, defaults),
+	getopt__process_options(OptionOpts, Args0, Args, MOpts).
 
 :- pred short(char, option).
 :- mode short(in, out) is semidet.

@@ -28,23 +28,23 @@
 :- import_module grammar.
 :- import_module io, list, string, term.
 
-:- type check:error
+:- type check__error
 	--->	error(list(string), context).
 
-:- pred check_rule_decls(list(rule_decl), rule_decls, list(check:error)).
+:- pred check_rule_decls(list(rule_decl), rule_decls, list(check__error)).
 :- mode check_rule_decls(in, out, out) is det.
 
-:- pred check_clauses(list(clause), rule_decls, clauses, list(check:error)).
+:- pred check_clauses(list(clause), rule_decls, clauses, list(check__error)).
 :- mode check_clauses(in, in, out, out) is det.
 
-:- pred check_useless(nonterminal, clauses, rule_decls, list(check:error)).
+:- pred check_useless(nonterminal, clauses, rule_decls, list(check__error)).
 :- mode check_useless(in, in, in, out) is det.
 
-:- pred check_inf_derivations(clauses, rule_decls, list(check:error)).
+:- pred check_inf_derivations(clauses, rule_decls, list(check__error)).
 :- mode check_inf_derivations(in, in, out) is det.
 
 	% write an error message to stderr.
-:- pred write_error(check:error, io__state, io__state).
+:- pred write_error(check__error, io__state, io__state).
 :- mode write_error(in, di, uo) is det.
 
 :- implementation.
@@ -59,27 +59,27 @@ check_rule_decls(DeclList, Decls, Errors) :-
 	check_rule_decls(DeclList, Decls0, Decls, Errors).
 
 :- pred check_rule_decls(list(rule_decl), rule_decls, rule_decls,
-		list(check:error)).
+		list(check__error)).
 :- mode check_rule_decls(in, in, out, out) is det.
 
-check_rule_decls([], Decls, Decls, []).
-check_rule_decls([Decl|DeclList], Decls0, Decls, Errors) :-
+check_rule_decls([], !Decls, []).
+check_rule_decls([Decl | DeclList], !Decls, Errors) :-
 	Decl = rule(DeclId, _Args, _VarSet, DeclContext),
 		% Look to see if we already have a declaration for this rule.
-	( search(Decls0, DeclId, PrevDecl) ->
+	( map__search(!.Decls, DeclId, PrevDecl) ->
 		PrevDecl = rule(_, _, _, PrevDeclContext),
 		id(DeclId, Name, Arity),
-		format("The previous declaration for %s/%d is here.",
+		string__format("The previous declaration for %s/%d is here.",
 			[s(Name), i(Arity)], Msg0),
 		Err0 = error([Msg0], PrevDeclContext),
-		format("Duplicate declaration for %s/%d.",
+		string__format("Duplicate declaration for %s/%d.",
 			[s(Name), i(Arity)], Msg1),
 		Err1 = error([Msg1], DeclContext),
-		Errors = [Err0, Err1|Errors0],
-		check_rule_decls(DeclList, Decls0, Decls, Errors0)
+		Errors = [Err0, Err1 | Errors0],
+		check_rule_decls(DeclList, !Decls, Errors0)
 	;
-		set(Decls0, DeclId, Decl, Decls1),
-		check_rule_decls(DeclList, Decls1, Decls, Errors)
+		map__set(!.Decls, DeclId, Decl, !:Decls),
+		check_rule_decls(DeclList, !Decls, Errors)
 	).
 
 %------------------------------------------------------------------------------%
@@ -88,20 +88,20 @@ check_clauses(ClauseList, Decls, Clauses, Errors) :-
 	init(Clauses0),
 	check_clauses0(ClauseList, Decls, Clauses0, Clauses, Errors0),
 
-	keys(Decls, DeclIds),
+	map__keys(Decls, DeclIds),
 	set__sorted_list_to_set(DeclIds, DeclSet),
-	keys(Clauses, ClauseIds),
+	map__keys(Clauses, ClauseIds),
 	set__sorted_list_to_set(ClauseIds, ClauseSet),
 	NoDeclSet = ClauseSet - DeclSet,
 	NoClauseSet = DeclSet - ClauseSet,
 
 		% Productions that have no rule declaration.
 	set__to_sorted_list(NoDeclSet, NoDeclList),
-	map((pred(NoDeclId::in, NoDeclError::out) is det :-
-		lookup(Clauses, NoDeclId, List),
+	list__map((pred(NoDeclId::in, NoDeclError::out) is det :-
+		map__lookup(Clauses, NoDeclId, List),
 		( List = [clause(_, _, _, NoDeclContext)|_] ->
 			id(NoDeclId, NoDeclName, NoDeclArity),
-			format("No rule declaration for %s/%d.",
+			string__format("No rule declaration for %s/%d.",
 				[s(NoDeclName), i(NoDeclArity)], NoDeclMsg),
 			NoDeclError = error([NoDeclMsg], NoDeclContext)
 		;
@@ -111,31 +111,31 @@ check_clauses(ClauseList, Decls, Clauses, Errors) :-
 
 		% Rules that have no productions.
 	set__to_sorted_list(NoClauseSet, NoClauseList),
-	map((pred(NoClauseId::in, NoClauseError::out) is det :-
-		lookup(Decls, NoClauseId, Decl),
+	list__map((pred(NoClauseId::in, NoClauseError::out) is det :-
+		map__lookup(Decls, NoClauseId, Decl),
 		Decl = rule(_, _, _, NoClauseContext),
 		id(NoClauseId, NoClauseName, NoClauseArity),
-		format("No productions for %s/%d.",
+		string__format("No productions for %s/%d.",
 			[s(NoClauseName), i(NoClauseArity)], NoClauseMsg),
 		NoClauseError = error([NoClauseMsg], NoClauseContext)
 	), NoClauseList, Errors2),
 
-	condense([Errors0, Errors1, Errors2], Errors).
+	list__condense([Errors0, Errors1, Errors2], Errors).
 
 :- pred check_clauses0(list(clause), rule_decls, clauses, clauses,
-		list(check:error)).
+		list(check__error)).
 :- mode check_clauses0(in, in, in, out, out) is det.
 
-check_clauses0([], _Decls, Clauses, Clauses, []).
-check_clauses0([Clause|ClauseList], Decls, Clauses0, Clauses, Errors) :-
+check_clauses0([], _Decls, !Clauses, []).
+check_clauses0([Clause | ClauseList], Decls, !Clauses, Errors) :-
 	Clause = clause(Head, Prod, _, Context),
 	Id = nonterminal(Head),
-	( map__search(Clauses0, Id, ClauseList0) ->
-		append(ClauseList0, [Clause], ClauseList1)
+	( map__search(!.Clauses, Id, ClauseList0) ->
+		list__append(ClauseList0, [Clause], ClauseList1)
 	;
 		ClauseList1 = [Clause]
 	),
-	set(Clauses0, Id, ClauseList1, Clauses1),
+	map__set(!.Clauses, Id, ClauseList1, !:Clauses),
 
 		% Look for used nonterminals that are not declared.
 	solutions((pred(NonTermId::out) is nondet :-
@@ -147,19 +147,20 @@ check_clauses0([Clause|ClauseList], Decls, Clauses0, Clauses, Errors) :-
 	list__map((pred(UnDeclaredId::in, UnDeclaredError::out) is det :-
 		id(Id, CN, CA),
 		id(UnDeclaredId, NN, NA),
-		format("In production for %s/%d,", [s(CN), i(CA)], Msg0),
-		format("  the nonterminal %s/%d is undeclared.",
+		string__format("In production for %s/%d,", 
+			[s(CN), i(CA)], Msg0),
+		string__format("  the nonterminal %s/%d is undeclared.",
 			[s(NN), i(NA)], Msg1),
 		UnDeclaredError = error([Msg0, Msg1], Context)
 	), UnDeclaredIds, Errors0),
 	(
 		Errors0 = [],
-		check_clauses0(ClauseList, Decls, Clauses1, Clauses, Errors)
+		check_clauses0(ClauseList, Decls, !Clauses, Errors)
 	;
 			% Not tail recursive, so only do it if we have to.
 		Errors0 = [_|_],
-		check_clauses0(ClauseList, Decls, Clauses1, Clauses, Errors1),
-		append(Errors0, Errors1, Errors)
+		check_clauses0(ClauseList, Decls, !Clauses, Errors1),
+		list__append(Errors0, Errors1, Errors)
 	).
 
 %------------------------------------------------------------------------------%
@@ -171,14 +172,14 @@ check_useless(Start, Clauses, Decls, Errors) :-
 	set__sorted_list_to_set(AllIds, AllSet),
 	UselessSet = AllSet - UsefulSet,
 	set__to_sorted_list(UselessSet, UselessList),
-	filter_map((pred(UselessId::in, Error::out) is semidet :-
+	list__filter_map((pred(UselessId::in, Error::out) is semidet :-
 			% Use search rather than lookup in case
 			% it was an undeclared rule.
-		search(Decls, UselessId, Decl),
+		map__search(Decls, UselessId, Decl),
 		Decl = rule(_Id, _Args, _VarSet, Context),
 		UselessId = Name / Arity,
-		format("Grammar rule %s/%d is not used.", [s(Name), i(Arity)],
-			Msg),
+		string__format("Grammar rule %s/%d is not used.", 
+			[s(Name), i(Arity)], Msg),
 		Error = error([Msg], Context)
 	), UselessList, Errors).
 
@@ -187,9 +188,9 @@ check_useless(Start, Clauses, Decls, Errors) :-
 :- pred useful(set(nonterminal), clauses, set(nonterminal), set(nonterminal)).
 :- mode useful(in, in, in, out) is det.
 
-useful(New0, Clauses, Useful0, Useful) :-
+useful(New0, Clauses, !Useful) :-
 	( set__empty(New0) ->
-		Useful = Useful0
+		true
 	;
 		solutions_set((pred(UId::out) is nondet :-
 			set__member(Id, New0),
@@ -198,9 +199,9 @@ useful(New0, Clauses, Useful0, Useful) :-
 			Clause = clause(_Head, Prod, _VarSet, _Context),
 			nonterminal(UId, Prod)
 		), NewSet),
-		New1 = NewSet - Useful0,
-		Useful1 = New1 \/ Useful0,
-		useful(New1, Clauses, Useful1, Useful)
+		New1 = NewSet - !.Useful,
+		!:Useful = New1 \/ !.Useful,
+		useful(New1, Clauses, !Useful)
 	).
 
 :- pred nonterminal(nonterminal, prod).
@@ -225,16 +226,16 @@ nonterminal(NonTerminal, (A ; B)) :-
 check_inf_derivations(Clauses, Decls, Errors) :-
 	map__keys(Clauses, AllIds),
 	set__sorted_list_to_set(AllIds, InfSet0),
-	init(FinSet0),
+	set__init(FinSet0),
 	finite(InfSet0, FinSet0, Clauses, InfSet),
 	set__to_sorted_list(InfSet, InfList),
-	filter_map((pred(InfId::in, Error::out) is semidet :-
+	list__filter_map((pred(InfId::in, Error::out) is semidet :-
 			% Use search rather than lookup in case
 			% it was an undeclared rule.
-		search(Decls, InfId, Decl),
+		map__search(Decls, InfId, Decl),
 		Decl = rule(_Id, _Args, _VarSet, Context),
 		InfId = Name / Arity,
-		format("Rule %s/%d does not have any finite derivations.",
+		string__format("Rule %s/%d does not have any finite derivations.",
 			[s(Name), i(Arity)], Msg),
 		Error = error([Msg], Context)
 	), InfList, Errors).
@@ -242,9 +243,9 @@ check_inf_derivations(Clauses, Decls, Errors) :-
 :- pred finite(set(nonterminal), set(nonterminal), clauses, set(nonterminal)).
 :- mode finite(in, in, in, out) is det.
 
-finite(Inf0, Fin0, Clauses, Inf) :-
+finite(!.Inf, Fin0, Clauses, !:Inf) :-
 	solutions_set((pred(NewFinId::out) is nondet :-
-		set__member(NewFinId, Inf0),
+		set__member(NewFinId, !.Inf),
 			% search rather than lookup in case the nonterminal
 			% doesn't have any clauses. This may lead to
 			% spurious infinite derivations.
@@ -257,17 +258,18 @@ finite(Inf0, Fin0, Clauses, Inf) :-
 		;
 			NonTerms = [_|_],
 			all [NId] (
-				list__member(NId, NonTerms) => set__member(NId, Fin0)
+				list__member(NId, NonTerms) => 
+					set__member(NId, Fin0)
 			)
 		)
 	), NewFinSet),
 	NewFin = NewFinSet - Fin0,
 	( set__empty(NewFin) ->
-		Inf = Inf0
+		true
 	;
-		Inf1 = Inf0 - NewFin,
-		Fin1 = Fin0 \/ NewFin,
-		finite(Inf1, Fin1, Clauses, Inf)
+		!:Inf = !.Inf - NewFin,
+		Fin = Fin0 \/ NewFin,
+		finite(!.Inf, Fin, Clauses, !:Inf)
 	).
 
 :- pred nonterminals(prod, list(nonterminal)).
@@ -297,15 +299,15 @@ id(start, _, _) :-
 
 %------------------------------------------------------------------------------%
 
-write_error(error(MsgLines, Context)) -->
-	{ Context = context(File, Line) },
-	{ format("%s:%d: ", [s(File), i(Line)], ContextMsg) },
-	stderr_stream(StdErr),
-	foldl((pred(Msg::in, di, uo) is det -->
-		write_string(StdErr, ContextMsg),
-		write_string(StdErr, Msg),
-		nl(StdErr)
-	), MsgLines).
+write_error(error(MsgLines, Context), !IO) :-
+	Context = term__context(File, Line),
+	string__format("%s:%d: ", [s(File), i(Line)], ContextMsg),
+	io__stderr_stream(StdErr, !IO),
+	list__foldl((pred(Msg::in, !.IO::di, !:IO::uo) is det :-
+		io__write_string(StdErr, ContextMsg, !IO),
+		io__write_string(StdErr, Msg, !IO),
+		io__nl(StdErr, !IO)
+	), MsgLines, !IO).
 
 %------------------------------------------------------------------------------%
 

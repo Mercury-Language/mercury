@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module int, map, set, std_util.
+:- import_module map, set, std_util.
 
 :- type '' ---> ''.
 
@@ -26,9 +26,6 @@
 
 :- func (set(T) - set(T)) = set(T).
 
-:- pred between(int, int, int).
-:- mode between(in, in, out) is nondet.
-
 :- implementation.
 
 empty = Empty :-
@@ -41,12 +38,3 @@ A /\ B = C :- set__intersect(A, B, C).
 A \/ B = C :- set__union(A, B, C).
 
 A - B = C :- set__difference(A, B, C).
-
-between(Min, Max, Z) :-
-	Min =< Max,
-	(
-		Z = Min
-	;
-		between(Min + 1, Max, Z)
-	).
-

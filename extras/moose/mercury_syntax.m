@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -85,55 +85,54 @@
 
 %------------------------------------------------------------------------------%
 
-read_module(Result) -->
-	read_module([], [], Result0),
-	{ Result0 = module(Module0, Errors0) },
-	{ reverse(Module0, Module) },
-	{ reverse(Errors0, Errors) },
-	{ Result = module(Module, Errors) }.
+read_module(Result, !IO) :-
+	read_module([], [], Result0, !IO),
+	Result0 = module(Module0, Errors0),
+	list__reverse(Module0, Module),
+	list__reverse(Errors0, Errors),
+	Result = module(Module, Errors).
 
 :- type element_result
 	--->	element(element)
 	;	eof
-	;	error(string, int)
-	.
+	;	error(string, int).
 
 :- pred read_module(module, list(module_error), module_result,
 		io__state, io__state).
 :- mode read_module(in, in, out, di, uo) is det.
 
-read_module(Module0, Errors0, Result) -->
-	read_element(Result0),
+read_module(Module, Errors, Result, !IO) :-
+	read_element(Result0, !IO),
 	(
-		{ Result0 = eof },
-		{ Result = module(Module0, Errors0) }
+		Result0 = eof,
+		Result = module(Module, Errors)
 	;
-		{ Result0 = element(Element) },
-		read_module([Element|Module0], Errors0, Result)
+		Result0 = element(Element),
+		read_module([Element | Module], Errors, Result, !IO)
 	;
-		{ Result0 = error(Msg, Line) },
-		read_module(Module0, [error(Msg, Line)|Errors0], Result)
+		Result0 = error(Msg, Line),
+		read_module(Module, [error(Msg, Line) | Errors], Result, !IO)
 	).
 
 :- pred read_element(element_result, io__state, io__state).
 :- mode read_element(out, di, uo) is det.
 
-read_element(Result) -->
-	read_term(Result0),
+read_element(Result, !IO) :-
+	read_term(Result0, !IO),
 	(
-		{ Result0 = eof },
-		{ Result = eof }
+		Result0 = eof,
+		Result = eof
 	;
-		{ Result0 = error(Msg, Line) },
-		{ Result = error(Msg, Line) }
+		Result0 = error(Msg, Line),
+		Result = error(Msg, Line)
 	;
-		{ Result0 = term(VarSet, Term) },
-		( { classify(Term, VarSet, Element0) } ->
-			{ Element = Element0 }
+		Result0 = term(VarSet, Term),
+		( classify(Term, VarSet, Element0) ->
+			Element = Element0
 		;
-			{ Element = misc(Term, VarSet) }
+			Element = misc(Term, VarSet)
 		),
-		{ Result = element(Element) }
+		Result = element(Element)
 	).
 
 :- pred classify(term, varset, element).
@@ -186,102 +185,101 @@ classify(Term, VarSet, Element) :-
 
 %------------------------------------------------------------------------------%
 
-write_module(_Lines, []) --> [].
-write_module(Lines, [Element|Module]) -->
-	write_element(Lines, Element),
-	nl,
-	write_module(Lines, Module).
+write_module(_Lines, [], !IO).
+write_module(Lines, [Element | Module], !IO) :-
+	write_element(Lines, Element, !IO),
+	io__nl(!IO),
+	write_module(Lines, Module, !IO).
 
-write_element(Lines, pred(PredDecl, VarSet)) -->
-	{ cons_decl("pred", PredDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, pred(PredDecl, VarSet), !IO) :-
+	cons_decl("pred", PredDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, func(FuncDecl, VarSet)) -->
-	{ cons_decl("func", FuncDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, func(FuncDecl, VarSet), !IO) :-
+	cons_decl("func", FuncDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, type(TypeDecl, VarSet)) -->
+write_element(Lines, type(TypeDecl, VarSet), !IO) :-
 	(
-		{ TypeDecl = abstr(AbstrTerm) },
-		{ cons_decl("type", AbstrTerm, Term) },
-		write_term(Lines, 0, VarSet, Term)
+		TypeDecl = abstr(AbstrTerm),
+		cons_decl("type", AbstrTerm, Term),
+		write_term(Lines, 0, VarSet, Term, !IO)
 	;
-		{ TypeDecl = equiv(Head, Body) },
-		{ get_context(Head, Context) },
-		{ EqivTerm = functor(atom("=="), [Head, Body], Context) },
-		{ cons_decl("type", EqivTerm, Term) },
-		write_term(Lines, 0, VarSet, Term)
+		TypeDecl = equiv(Head, Body),
+		get_context(Head, Context),
+		EqivTerm = functor(atom("=="), [Head, Body], Context),
+		cons_decl("type", EqivTerm, Term),
+		write_term(Lines, 0, VarSet, Term, !IO)
 	;
-		{ TypeDecl = disj(Head, Body) },
-		{ get_context(Head, Context) },
-		{ cons_type_body(Body, BodyTerm) },
-		{ DeclTerm = functor(atom("--->"), [Head, BodyTerm], Context) },
-		{ cons_decl("type", DeclTerm, Term) },
-		write_term(Lines, 0, VarSet, Term)
+		TypeDecl = disj(Head, Body), 
+		get_context(Head, Context),
+		cons_type_body(Body, BodyTerm),
+		DeclTerm = functor(atom("--->"), [Head, BodyTerm], Context),
+		cons_decl("type", DeclTerm, Term),
+		write_term(Lines, 0, VarSet, Term, !IO)
 	),
-	dot_nl.
+	dot_nl(!IO).
 
-write_element(Lines, mode(ModeDecl, VarSet)) -->
-	{ cons_decl("mode", ModeDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, mode(ModeDecl, VarSet), !IO) :-
+	cons_decl("mode", ModeDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, inst(InstDecl, VarSet)) -->
-	{ cons_decl("inst", InstDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, inst(InstDecl, VarSet), !IO) :-
+	cons_decl("inst", InstDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, class(ClassDecl, VarSet)) -->
-	{ cons_decl("class", ClassDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, class(ClassDecl, VarSet), !IO) :-
+	cons_decl("class", ClassDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, instance(InstanceDecl, VarSet)) -->
-	{ cons_decl("instance", InstanceDecl, Term) },
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, instance(InstanceDecl, VarSet), !IO) :-
+	cons_decl("instance", InstanceDecl, Term),
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, misc(Term, VarSet)) -->
-	write_term(Lines, 0, VarSet, Term),
-	dot_nl.
+write_element(Lines, misc(Term, VarSet), !IO) :-
+	write_term(Lines, 0, VarSet, Term, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, clause(Head, Goal, VarSet)) -->
-	write_term(Lines, 0, VarSet, Head),
-	write_string(" :-\n"),
-	write_goal(Lines, 1, normal, Goal, VarSet),
-	dot_nl.
+write_element(Lines, clause(Head, Goal, VarSet), !IO) :-
+	write_term(Lines, 0, VarSet, Head, !IO),
+	io__write_string(" :-\n", !IO),
+	write_goal(Lines, 1, normal, Goal, VarSet, !IO),
+	dot_nl(!IO).
 
-write_element(Lines, dcg_clause(Head, Goal, VarSet)) -->
-	write_term(Lines, 0, VarSet, Head),
-	write_string(" -->\n"),
-	write_goal(Lines, 1, dcg, Goal, VarSet),
-	dot_nl.
+write_element(Lines, dcg_clause(Head, Goal, VarSet), !IO) :-
+	write_term(Lines, 0, VarSet, Head, !IO),
+	io__write_string(" -->\n", !IO),
+	write_goal(Lines, 1, dcg, Goal, VarSet, !IO),
+	dot_nl(!IO).
 
 %------------------------------------------------------------------------------%
 
 :- type goal_type
 	--->	normal
-	;	dcg
-	.
+	;	dcg.
 
 :- pred write_goal_term(lines, int, goal_type, term, varset,
 		io__state, io__state).
 :- mode write_goal_term(in, in, in, in, in, di, uo) is det.
 
-write_goal_term(Lines, Ind, Type, Term, VarSet) -->
-	( { term_to_conj(Term, Conjuncts) } ->
-		write_conjuncts(Lines, Ind, Type, Conjuncts, VarSet)
-	; { term_to_ite(Term, IfThens, Else) } ->
-		write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet)
-	; { term_to_disj(Term, Disjuncts) } ->
-		write_disjuncts(Lines, Ind, Type, Disjuncts, VarSet)
+write_goal_term(Lines, Ind, Type, Term, VarSet, !IO) :-
+	( term_to_conj(Term, Conjuncts) ->
+		write_conjuncts(Lines, Ind, Type, Conjuncts, VarSet, !IO)
+	; term_to_ite(Term, IfThens, Else) ->
+		write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet, !IO)
+	; term_to_disj(Term, Disjuncts) ->
+		write_disjuncts(Lines, Ind, Type, Disjuncts, VarSet, !IO)
 	;
 		% Too bad if it is a quantifier, { Goal }, etc.
 		% Also too bad if it contains a pred expression...
 		% You can add pretty things here...
-		write_term(Lines, Ind, VarSet, Term)
+		write_term(Lines, Ind, VarSet, Term, !IO)
 	).
 
 :- pred term_to_conj(term, list(term)).
@@ -323,24 +321,24 @@ term_to_ite(functor(atom(";"), [Head,Else0], _), [If - Then|Rest], Else) :-
 		io__state, io__state).
 :- mode write_conjuncts(in, in, in, in, in, di, uo) is det.
 
-write_conjuncts(_Lines, Ind, Type, [], _VarSet) -->
-	write_ind(Ind),
+write_conjuncts(_Lines, Ind, Type, [], _VarSet, !IO) :-
+	write_ind(Ind, !IO),
 	(
-		{ Type = normal },
-		write_string("true")
+		Type = normal,
+		io__write_string("true", !IO)
 	;
-		{ Type = dcg },
-		write_string("{ true }")
+		Type = dcg,
+		io__write_string("{ true }", !IO)
 	).
 
-write_conjuncts(Lines, Ind, Type, [Goal], VarSet) -->
-	write_goal_term(Lines, Ind, Type, Goal, VarSet).
+write_conjuncts(Lines, Ind, Type, [Goal], VarSet, !IO) :-
+	write_goal_term(Lines, Ind, Type, Goal, VarSet, !IO).
 
-write_conjuncts(Lines, Ind, Type, [Goal|Goals], VarSet) -->
-	{ Goals = [_|_] },
-	write_goal_term(Lines, Ind, Type, Goal, VarSet),
-	write_string(",\n"),
-	write_conjuncts(Lines, Ind, Type, Goals, VarSet).
+write_conjuncts(Lines, Ind, Type, [Goal | Goals], VarSet, !IO) :-
+	Goals = [_|_],
+	write_goal_term(Lines, Ind, Type, Goal, VarSet, !IO),
+	io__write_string(",\n", !IO),
+	write_conjuncts(Lines, Ind, Type, Goals, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -348,36 +346,36 @@ write_conjuncts(Lines, Ind, Type, [Goal|Goals], VarSet) -->
 		io__state, io__state).
 :- mode write_disjuncts(in, in, in, in, in, di, uo) is det.
 
-write_disjuncts(Lines, Ind, Type, Goals, VarSet) -->
-	write_ind(Ind),
-	write_string("(\n"),
-	write_disjuncts0(Lines, Ind, Type, Goals, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_disjuncts(Lines, Ind, Type, Goals, VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("(\n", !IO),
+	write_disjuncts0(Lines, Ind, Type, Goals, VarSet, !IO), io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
 :- pred write_disjuncts0(lines, int, goal_type, list(term), varset,
 		io__state, io__state).
 :- mode write_disjuncts0(in, in, in, in, in, di, uo) is det.
 
-write_disjuncts0(_Lines, Ind, Type, [], _VarSet) -->
-	write_ind(Ind),
+write_disjuncts0(_Lines, Ind, Type, [], _VarSet, !IO) :-
+	write_ind(Ind, !IO),
 	(
-		{ Type = normal },
-		write_string("fail")
+		Type = normal,
+		io__write_string("fail", !IO)
 	;
-		{ Type = dcg },
-		write_string("{ fail }")
+		Type = dcg,
+		io__write_string("{ fail }", !IO)
 	).
 
-write_disjuncts0(Lines, Ind, Type, [Goal], VarSet) -->
-	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet), nl.
+write_disjuncts0(Lines, Ind, Type, [Goal], VarSet, !IO) :-
+	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO).
 
-write_disjuncts0(Lines, Ind, Type, [Goal|Goals], VarSet) -->
-	{ Goals = [_|_] },
-	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet), nl,
-	write_ind(Ind),
-	write_string(";\n"),
-	write_disjuncts0(Lines, Ind, Type, Goals, VarSet).
+write_disjuncts0(Lines, Ind, Type, [Goal | Goals], VarSet, !IO) :-
+	Goals = [_|_],
+	write_goal_term(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_disjuncts0(Lines, Ind, Type, Goals, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -385,36 +383,41 @@ write_disjuncts0(Lines, Ind, Type, [Goal|Goals], VarSet) -->
 		io__state, io__state).
 :- mode write_ite_terms(in, in, in, in, in, in, di, uo) is det.
 
-write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet) -->
-	write_ind(Ind),
-	write_string("(\n"),
-	write_ite_terms0(Lines, Ind, Type, IfThens, VarSet),
-	write_ind(Ind),
-	write_string(";\n"),
-	write_goal_term(Lines, Ind + 1, Type, Else, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_ite_terms(Lines, Ind, Type, IfThens, Else, VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("(\n", !IO),
+	write_ite_terms0(Lines, Ind, Type, IfThens, VarSet, !IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_goal_term(Lines, Ind + 1, Type, Else, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
 :- pred write_ite_terms0(lines, int, goal_type, list(pair(term)), varset,
 		io__state, io__state).
 :- mode write_ite_terms0(in, in, in, in, in, di, uo) is det.
 
-write_ite_terms0(_Lines, _Ind, _Type, [], _VarSet) -->
-	{ error("no if-thens") }.
-write_ite_terms0(Lines, Ind, Type, [If - Then], VarSet) -->
-	write_goal_term(Lines, Ind + 1, Type, If, VarSet), nl,
-	write_ind(Ind),
-	write_string("->\n"),
-	write_goal_term(Lines, Ind + 1, Type, Then, VarSet), nl.
-write_ite_terms0(Lines, Ind, Type, [If - Then|Rest], VarSet) -->
-	{ Rest = [_|_] },
-	write_goal_term(Lines, Ind + 1, Type, If, VarSet), nl,
-	write_ind(Ind),
-	write_string("->\n"),
-	write_goal_term(Lines, Ind + 1, Type, Then, VarSet), nl,
-	write_ind(Ind),
-	write_string(";\n"),
-	write_ite_terms0(Lines, Ind, Type, Rest, VarSet).
+write_ite_terms0(_Lines, _Ind, _Type, [], _VarSet, !IO) :-
+	error("no if-thens").
+write_ite_terms0(Lines, Ind, Type, [If - Then], VarSet, !IO) :-
+	write_goal_term(Lines, Ind + 1, Type, If, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("->\n", !IO),
+	write_goal_term(Lines, Ind + 1, Type, Then, VarSet, !IO), 
+	io__nl(!IO).
+write_ite_terms0(Lines, Ind, Type, [If - Then | Rest], VarSet, !IO) :-
+	Rest = [_|_],
+	write_goal_term(Lines, Ind + 1, Type, If, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("->\n", !IO),
+	write_goal_term(Lines, Ind + 1, Type, Then, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_ite_terms0(Lines, Ind, Type, Rest, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -431,7 +434,7 @@ cons_decl(Atom, DeclTerm, Term) :-
 :- mode get_context(in, out) is det.
 
 get_context(variable(_), Context) :-
-	context_init(Context).
+	term__context_init(Context).
 get_context(functor(_, _, Context), Context).
 
 %------------------------------------------------------------------------------%
@@ -439,34 +442,34 @@ get_context(functor(_, _, Context), Context).
 :- pred write_ind(int, io__state, io__state).
 :- mode write_ind(in, di, uo) is det.
 
-write_ind(N) -->
-	( { N > 0 } ->
-		write_string("    "),
-		write_ind(N - 1)
+write_ind(N, !IO) :-
+	( N > 0 ->
+		io__write_string("    ", !IO),
+		write_ind(N - 1, !IO)
 	;
-		[]
+		true	
 	).
 
 :- pred dot_nl(io__state, io__state).
 :- mode dot_nl(di, uo) is det.
 
-dot_nl --> write_string(".\n").
+dot_nl(!IO) :- io__write_string(".\n", !IO).
 
 :- pred write_term(lines, int, varset, term, io__state, io__state).
 :- mode write_term(in, in, in, in, di, uo) is det.
 
-write_term(lines, Ind, VarSet, Term) -->
-	{ get_context(Term, context(File, Line)) },
-	( { File = "", Line = 0 } ->
-		[]
+write_term(lines, Ind, VarSet, Term, !IO) :-
+	get_context(Term, context(File, Line)),
+	( File = "", Line = 0 ->
+		true	
 	;
-		format("#%d\n", [i(Line)])
+		io__format("#%d\n", [i(Line)], !IO)
 	),
-	write_ind(Ind),
-	write_term(VarSet, Term).
-write_term(nolines, Ind, VarSet, Term) -->
-	write_ind(Ind),
-	write_term(VarSet, Term).
+	write_ind(Ind, !IO),
+	write_term(VarSet, Term, !IO).
+write_term(nolines, Ind, VarSet, Term, !IO) :-
+	write_ind(Ind, !IO),
+	write_term(VarSet, Term, !IO).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -577,92 +580,101 @@ term_to_goal0("<=>", [A, B], _, (GoalA <=> GoalB)) :-
 
 %------------------------------------------------------------------------------%
 
-write_goal(VarSet, Goal) -->
-	write_goal(nolines, 1, normal, Goal, VarSet).
+write_goal(VarSet, Goal, !IO) :-
+	write_goal(nolines, 1, normal, Goal, VarSet, !IO).
 
 :- pred write_goal(lines, int, goal_type, goal, varset, io__state, io__state).
 :- mode write_goal(in, in, in, in, in, di, uo) is det.
 
-write_goal(Lines, Ind, _GoalType, call(Term), VarSet) -->
-	write_term(Lines, Ind, VarSet, Term).
+write_goal(Lines, Ind, _GoalType, call(Term), VarSet, !IO) :-
+	write_term(Lines, Ind, VarSet, Term, !IO).
 
-write_goal(Lines, Ind, GoalType, =(LHS, RHS, Context), VarSet) -->
-	{ UnifyTerm = functor(atom("="), [LHS, RHS], Context) },
+write_goal(Lines, Ind, GoalType, =(LHS, RHS, Context), VarSet, !IO) :-
+	UnifyTerm = functor(atom("="), [LHS, RHS], Context),
 	(
-		{ GoalType = dcg },
-		{ Term = functor(atom("{}"), [UnifyTerm], Context) }
+		GoalType = dcg,
+		Term = functor(atom("{}"), [UnifyTerm], Context)
 	;
-		{ GoalType = normal },
-		{ Term = UnifyTerm }
+		GoalType = normal,
+		Term = UnifyTerm
 	),
-	write_term(Lines, Ind, VarSet, Term).
+	write_term(Lines, Ind, VarSet, Term, !IO).
 
-write_goal(Lines, Ind, GoalType, conj(Goals), VarSet) -->
-	write_conj(Lines, Ind, GoalType, Goals, VarSet).
+write_goal(Lines, Ind, GoalType, conj(Goals), VarSet, !IO) :-
+	write_conj(Lines, Ind, GoalType, Goals, VarSet, !IO).
 
-write_goal(Lines, Ind, GoalType, disj(Goals), VarSet) -->
-	write_disj(Lines, Ind, GoalType, Goals, VarSet).
+write_goal(Lines, Ind, GoalType, disj(Goals), VarSet, !IO) :-
+	write_disj(Lines, Ind, GoalType, Goals, VarSet, !IO).
 
-write_goal(Lines, Ind, GoalType, ite(If, Then, Else0), VarSet) -->
-	{ collect_ite(Else0, IfThens0, Else) },
-	write_ite(Lines, Ind, GoalType, [If - Then|IfThens0], Else, VarSet).
+write_goal(Lines, Ind, GoalType, ite(If, Then, Else0), VarSet, !IO) :-
+	collect_ite(Else0, IfThens0, Else),
+	write_ite(Lines, Ind, GoalType, [If - Then | IfThens0], Else, VarSet, !IO).
 
-write_goal(Lines, Ind, GoalType, not(Goal), VarSet) -->
-	write_ind(Ind),
-	write_string("not (\n"),
-	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_goal(Lines, Ind, GoalType, not(Goal), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("not (\n", !IO),
+	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
-write_goal(Lines, Ind, GoalType, exists(Vars, Goal), VarSet) -->
-	write_ind(Ind),
-	write_string("some ["),
-	write_vars(Vars, VarSet),
-	write_string("] (\n"),
-	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_goal(Lines, Ind, GoalType, exists(Vars, Goal), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("some [", !IO),
+	write_vars(Vars, VarSet, !IO),
+	io__write_string("] (\n", !IO),
+	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
-write_goal(Lines, Ind, GoalType, forall(Vars, Goal), VarSet) -->
-	write_ind(Ind),
-	write_string("all ["),
-	write_vars(Vars, VarSet),
-	write_string("] (\n"),
-	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_goal(Lines, Ind, GoalType, forall(Vars, Goal), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("all [", !IO),
+	write_vars(Vars, VarSet, !IO),
+	io__write_string("] (\n", !IO),
+	write_goal(Lines, Ind + 1, GoalType, Goal, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
 /*
-write_goal(Lines, Ind, GoalType, (A => B), VarSet) -->
-	write_ind(Ind),
-	write_string("((\n"),
-	write_goal(Lines, Ind, GoalType, A, VarSet), nl,
-	write_ind(Ind),
-	write_string(") => (\n"),
-	write_goal(Lines, Ind, GoalType, A, VarSet), nl,
-	write_ind(Ind),
-	write_string("))").
+write_goal(Lines, Ind, GoalType, (A => B), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("((\n", !IO),
+	write_goal(Lines, Ind, GoalType, A, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(") => (\n", !IO),
+	write_goal(Lines, Ind, GoalType, A, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("))", !IO).
 */
 
-write_goal(Lines, Ind, GoalType, (A <= B), VarSet) -->
-	write_ind(Ind),
-	write_string("((\n"),
-	write_goal(Lines, Ind, GoalType, A, VarSet), nl,
-	write_ind(Ind),
-	write_string(") <= (\n"),
-	write_goal(Lines, Ind, GoalType, B, VarSet), nl,
-	write_ind(Ind),
-	write_string("))").
+write_goal(Lines, Ind, GoalType, (A <= B), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("((\n", !IO),
+	write_goal(Lines, Ind, GoalType, A, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(") <= (\n", !IO),
+	write_goal(Lines, Ind, GoalType, B, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("))", !IO).
 
-write_goal(Lines, Ind, GoalType, (A <=> B), VarSet) -->
-	write_ind(Ind),
-	write_string("((\n"),
-	write_goal(Lines, Ind, GoalType, A, VarSet), nl,
-	write_ind(Ind),
-	write_string(") <=> (\n"),
-	write_goal(Lines, Ind, GoalType, B, VarSet), nl,
-	write_ind(Ind),
-	write_string("))").
+write_goal(Lines, Ind, GoalType, (A <=> B), VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("((\n", !IO),
+	write_goal(Lines, Ind, GoalType, A, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(") <=> (\n", !IO),
+	write_goal(Lines, Ind, GoalType, B, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("))", !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -670,24 +682,24 @@ write_goal(Lines, Ind, GoalType, (A <=> B), VarSet) -->
 		io__state, io__state).
 :- mode write_conj(in, in, in, in, in, di, uo) is det.
 
-write_conj(_Lines, Ind, Type, [], _VarSet) -->
-	write_ind(Ind),
+write_conj(_Lines, Ind, Type, [], _VarSet, !IO) :-
+	write_ind(Ind, !IO),
 	(
-		{ Type = normal },
-		write_string("true")
+		Type = normal,
+		io__write_string("true", !IO)
 	;
-		{ Type = dcg },
-		write_string("{ true }")
+		Type = dcg,
+		io__write_string("{ true }", !IO)
 	).
 
-write_conj(Lines, Ind, Type, [Goal], VarSet) -->
-	write_goal(Lines, Ind, Type, Goal, VarSet).
+write_conj(Lines, Ind, Type, [Goal], VarSet, !IO) :-
+	write_goal(Lines, Ind, Type, Goal, VarSet, !IO).
 
-write_conj(Lines, Ind, Type, [Goal|Goals], VarSet) -->
-	{ Goals = [_|_] },
-	write_goal(Lines, Ind, Type, Goal, VarSet),
-	write_string(",\n"),
-	write_conj(Lines, Ind, Type, Goals, VarSet).
+write_conj(Lines, Ind, Type, [Goal|Goals], VarSet, !IO) :-
+	Goals = [_|_],
+	write_goal(Lines, Ind, Type, Goal, VarSet, !IO),
+	io__write_string(",\n", !IO),
+	write_conj(Lines, Ind, Type, Goals, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -695,36 +707,36 @@ write_conj(Lines, Ind, Type, [Goal|Goals], VarSet) -->
 		io__state, io__state).
 :- mode write_disj(in, in, in, in, in, di, uo) is det.
 
-write_disj(Lines, Ind, Type, Goals, VarSet) -->
-	write_ind(Ind),
-	write_string("(\n"),
-	write_disj0(Lines, Ind, Type, Goals, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_disj(Lines, Ind, Type, Goals, VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("(\n", !IO),
+	write_disj0(Lines, Ind, Type, Goals, VarSet, !IO), io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
 :- pred write_disj0(lines, int, goal_type, list(goal), varset,
 		io__state, io__state).
 :- mode write_disj0(in, in, in, in, in, di, uo) is det.
 
-write_disj0(_Lines, Ind, Type, [], _VarSet) -->
-	write_ind(Ind + 1),
+write_disj0(_Lines, Ind, Type, [], _VarSet, !IO) :-
+	write_ind(Ind + 1, !IO),
 	(
-		{ Type = normal },
-		write_string("fail")
+		Type = normal,
+		io__write_string("fail", !IO)
 	;
-		{ Type = dcg },
-		write_string("{ fail }")
+		Type = dcg,
+		io__write_string("{ fail }", !IO)
 	).
 
-write_disj0(Lines, Ind, Type, [Goal], VarSet) -->
-	write_goal(Lines, Ind + 1, Type, Goal, VarSet), nl.
+write_disj0(Lines, Ind, Type, [Goal], VarSet, !IO) :-
+	write_goal(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO).
 
-write_disj0(Lines, Ind, Type, [Goal|Goals], VarSet) -->
-	{ Goals = [_|_] },
-	write_goal(Lines, Ind + 1, Type, Goal, VarSet), nl,
-	write_ind(Ind),
-	write_string(";\n"),
-	write_disj0(Lines, Ind, Type, Goals, VarSet).
+write_disj0(Lines, Ind, Type, [Goal | Goals], VarSet, !IO) :-
+	Goals = [_|_],
+	write_goal(Lines, Ind + 1, Type, Goal, VarSet, !IO), io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_disj0(Lines, Ind, Type, Goals, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
@@ -744,48 +756,53 @@ collect_ite(Goal0, IfThens, Else) :-
 		io__state, io__state).
 :- mode write_ite(in, in, in, in, in, in, di, uo) is det.
 
-write_ite(Lines, Ind, Type, IfThens, Else, VarSet) -->
-	write_ind(Ind),
-	write_string("(\n"),
-	write_ite0(Lines, Ind, Type, IfThens, VarSet),
-	write_ind(Ind),
-	write_string(";\n"),
-	write_goal(Lines, Ind + 1, Type, Else, VarSet), nl,
-	write_ind(Ind),
-	write_string(")").
+write_ite(Lines, Ind, Type, IfThens, Else, VarSet, !IO) :-
+	write_ind(Ind, !IO),
+	io__write_string("(\n", !IO),
+	write_ite0(Lines, Ind, Type, IfThens, VarSet, !IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_goal(Lines, Ind + 1, Type, Else, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(")", !IO).
 
 :- pred write_ite0(lines, int, goal_type, list(pair(goal)), varset,
 		io__state, io__state).
 :- mode write_ite0(in, in, in, in, in, di, uo) is det.
 
-write_ite0(_Lines, _Ind, _Type, [], _VarSet) -->
-	{ error("no if-thens") }.
-write_ite0(Lines, Ind, Type, [If - Then], VarSet) -->
-	write_goal(Lines, Ind + 1, Type, If, VarSet), nl,
-	write_ind(Ind),
-	write_string("->\n"),
-	write_goal(Lines, Ind + 1, Type, Then, VarSet), nl.
-write_ite0(Lines, Ind, Type, [If - Then|Rest], VarSet) -->
-	{ Rest = [_|_] },
-	write_goal(Lines, Ind + 1, Type, If, VarSet), nl,
-	write_ind(Ind),
-	write_string("->\n"),
-	write_goal(Lines, Ind + 1, Type, Then, VarSet), nl,
-	write_ind(Ind),
-	write_string(";\n"),
-	write_ite0(Lines, Ind, Type, Rest, VarSet).
+write_ite0(_Lines, _Ind, _Type, [], _VarSet, !IO) :-
+	error("no if-thens").
+write_ite0(Lines, Ind, Type, [If - Then], VarSet, !IO) :-
+	write_goal(Lines, Ind + 1, Type, If, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("->\n", !IO),
+	write_goal(Lines, Ind + 1, Type, Then, VarSet, !IO), 
+	io__nl(!IO).
+write_ite0(Lines, Ind, Type, [If - Then | Rest], VarSet, !IO) :-
+	Rest = [_|_],
+	write_goal(Lines, Ind + 1, Type, If, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string("->\n", !IO),
+	write_goal(Lines, Ind + 1, Type, Then, VarSet, !IO), 
+	io__nl(!IO),
+	write_ind(Ind, !IO),
+	io__write_string(";\n", !IO),
+	write_ite0(Lines, Ind, Type, Rest, VarSet, !IO).
 
 %------------------------------------------------------------------------------%
 
 :- pred write_vars(vars, varset, io__state, io__state).
 :- mode write_vars(in, in, di, uo) is det.
 
-write_vars([], _) --> [].
-write_vars([V], VarSet) -->
-	write_variable(V, VarSet).
-write_vars([V|Vs], VarSet) -->
-	{ Vs = [_|_] },
-	write_variable(V, VarSet),
-	write_string(", "),
-	write_vars(Vs, VarSet).
+write_vars([], _, !IO).
+write_vars([V], VarSet, !IO) :-
+	term_io__write_variable(V, VarSet, !IO).
+write_vars([V | Vs], VarSet, !IO) :-
+	Vs = [_|_],
+	term_io__write_variable(V, VarSet, !IO),
+	io__write_string(", ", !IO),
+	write_vars(Vs, VarSet, !IO).
 

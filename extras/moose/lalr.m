@@ -65,50 +65,44 @@ reaching(Productions, First, Reaching) :-
 :- pred reaching(list(prodnum), rules, first, bool, reaching, reaching).
 :- mode reaching(in, in, in, in, in, out) is det.
 
-reaching([], _Productions, _First, no, Reaching, Reaching).
-reaching([], Productions, First, yes, Reaching0, Reaching) :-
+reaching([], _Productions, _First, no, !Reaching).
+reaching([], Productions, First, yes, !Reaching) :-
 	prodnums(Productions, ProdNums),
-	reaching(ProdNums, Productions, First, no, Reaching0, Reaching).
-reaching([ProdNum|ProdNums], Productions, First, Ch0, Reaching0, Reaching) :-
-	lookup(Productions, ProdNum, Prod),
+	reaching(ProdNums, Productions, First, no, !Reaching).
+reaching([ProdNum|ProdNums], Productions, First, !.Change, !Reaching) :-
+	map__lookup(Productions, ProdNum, Prod),
 	Prod = rule(NonTerminal, _Head, Symbols, _, _, _V, _C),
 	array__max(Symbols, PMax),
-	reaching(0, PMax, Symbols, First, NonTerminal, Ch0, Ch1,
-		Reaching0, Reaching1),
-	reaching(ProdNums, Productions, First, Ch1, Reaching1, Reaching).
+	reaching_2(0, PMax, Symbols, First, NonTerminal, !Change, !Reaching),
+	reaching(ProdNums, Productions, First, !.Change, !Reaching).
 
-:- pred reaching(int, int, symbols, first, nonterminal, bool, bool,
+:- pred reaching_2(int, int, symbols, first, nonterminal, bool, bool,
 		reaching, reaching).
-:- mode reaching(in, in, in, in, in, in, out, in, out) is det.
+:- mode reaching_2(in, in, in, in, in, in, out, in, out) is det.
 
-reaching(SN, Max, Symbols, First, C, Ch0, Ch, Reaching0, Reaching) :-
+reaching_2(SN, Max, Symbols, First, C, !Change, !Reaching) :-
 	( SN > Max ->
-		Ch = Ch0,
-		Reaching = Reaching0
+		true
 	;
 		array__lookup(Symbols, SN, Symbol),
 		(
-			Symbol = terminal(_),
-			Ch = Ch0,
-			Reaching = Reaching0
+			Symbol = terminal(_)
 		;
 			Symbol = nonterminal(A),
-			reaches(C, A, Ch0, Ch1, Reaching0, Reaching1),
-			( map__search(Reaching1, A, AR) ->
+			reaches(C, A, !Change, !Reaching),
+			( map__search(!.Reaching, A, AR) ->
 				set__to_sorted_list(AR, ARList),
-				list__foldl2(reaches(C), ARList, Ch1, Ch2,
-					Reaching1, Reaching2)
+				list__foldl2(reaches(C), ARList, !Change, 
+					!Reaching)
 			;
-				Ch2 = Ch1,
-				Reaching2 = Reaching1
+				true
 			),
 			map__lookup(First, A, FirstA),
 			( set__member(epsilon, FirstA) ->
-				reaching(SN + 1, Max, Symbols, First, C,
-					Ch2, Ch, Reaching2, Reaching)
+				reaching_2(SN + 1, Max, Symbols, First, C, 
+					!Change, !Reaching)
 			;
-				Ch = Ch2,
-				Reaching2 = Reaching
+				true
 			)
 		)
 	).
@@ -116,20 +110,19 @@ reaching(SN, Max, Symbols, First, C, Ch0, Ch, Reaching0, Reaching) :-
 :- pred reaches(nonterminal, nonterminal, bool, bool, reaching, reaching).
 :- mode reaches(in, in, in, out, in, out) is det.
 
-reaches(C, A, Ch0, Ch, Reaching0, Reaching) :-
-	( map__search(Reaching0, C, As0) ->
+reaches(C, A, !Change, !Reaching) :-
+	( map__search(!.Reaching, C, As0) ->
 		( set__member(A, As0) ->
-			Ch = Ch0,
-			Reaching = Reaching0
+			true
 		;
-			Ch = yes,
+			!:Change = yes,
 			As = As0 \/ { A },
-			map__set(Reaching0, C, As, Reaching)
+			map__set(!.Reaching, C, As, !:Reaching)
 		)
 	;
-		Ch = yes,
+		!:Change = yes,
 		As = { A },
-		map__set(Reaching0, C, As, Reaching)
+		map__set(!.Reaching, C, As, !:Reaching)
 	).
 
 %------------------------------------------------------------------------------%
@@ -145,25 +138,24 @@ lr0items(Productions, Reaching, C, Gotos) :-
 		set(items), set(items)).
 :- mode lr0items1(in, in, in, in, out, in, out) is det.
 
-lr0items1(Pending0, Productions, Reaching, Gotos0, Gotos, C0, C) :-
-	( remove_least(Pending0, J, Pending1) ->
+lr0items1(Pending0, Productions, Reaching, !Gotos, !C) :-
+	( set__remove_least(Pending0, J, Pending1) ->
 		set__to_sorted_list(J, JList),
-		lr0items_1(JList, J, Productions, Reaching, Gotos0, Gotos1,
-			empty, NewSet),
+		lr0items_1(JList, J, Productions, Reaching, !Gotos, empty, 
+			NewSet),
 		set__to_sorted_list(NewSet, NewItems),
-		map((pred(Pair::in, J0::out) is det :-
+		list__map((pred(Pair::in, J0::out) is det :-
 			Pair = I0 - X,
-			lookup(Gotos1, I0, I0Gotos),
-			lookup(I0Gotos, X, J0)
+			map__lookup(!.Gotos, I0, I0Gotos),
+			map__lookup(I0Gotos, X, J0)
 		), NewItems, PendingList),
 		set__list_to_set(PendingList, NewPending0),
-		NewPending = NewPending0 - C0,
-		C1 = C0 \/ NewPending,
+		NewPending = NewPending0 - !.C,
+		!:C = !.C \/ NewPending,
 		Pending = Pending1 \/ NewPending,
-		lr0items1(Pending, Productions, Reaching, Gotos1, Gotos, C1, C)
+		lr0items1(Pending, Productions, Reaching, !Gotos, !C)
 	;
-		Gotos = Gotos0,
-		C = C0
+		true	
 	).
 
 :- type new == set(pair(items, symbol)).
@@ -171,101 +163,95 @@ lr0items1(Pending0, Productions, Reaching, Gotos0, Gotos, C0, C) :-
 :- pred lr0items_1(list(item), items, rules, reaching, gotos, gotos, new, new).
 :- mode lr0items_1(in, in, in, in, in, out, in, out) is det.
 
-lr0items_1([], _I, _Productions, _Reaching, Gotos, Gotos, New, New).
-lr0items_1([BItem|RestItems], I, Productions, Reaching, Gotos0, Gotos,
-		New0, New) :-
+lr0items_1([], _I, _Productions, _Reaching, !Gotos, !New).
+lr0items_1([BItem | RestItems], I, Productions, Reaching, !Gotos, !New) :-
 	BItem = item(BProdNum, BDot),
-	lookup(Productions, BProdNum, BProd),
+	map__lookup(Productions, BProdNum, BProd),
 	BProd = rule(_NonTerminal, _Head, BSyms, _, _, _V, _C),
 	array__max(BSyms, BMax),
 	(
 		BDot =< BMax
 	->
-		lookup(BSyms, BDot, X),
-		addgoto(I, X, item(BProdNum, BDot + 1), Gotos0, Gotos1,
-			New0, New1)
+		array__lookup(BSyms, BDot, X),
+		addgoto(I, X, item(BProdNum, BDot + 1), !Gotos, !New)
 	;
-		Gotos1 = Gotos0,
-		New1 = New0
+		true
 	),
 	(
 		BDot =< BMax,
 		lookup(BSyms, BDot, nonterminal(C))
 	->
-		( search(Reaching, C, As) ->
+		( map__search(Reaching, C, As) ->
 			set__to_sorted_list(As, AXList)
 		;
 			AXList = []
 		),
-		addAs([C|AXList], I, Productions, Gotos1, Gotos2, New1, New2)
+		addAs([C|AXList], I, Productions, !Gotos, !New)
 	;
-		Gotos2 = Gotos1,
-		New2 = New1
+		true
 	),
-	lr0items_1(RestItems, I, Productions, Reaching, Gotos2, Gotos,
-		New2, New).
+	lr0items_1(RestItems, I, Productions, Reaching, !Gotos, !New).
 
 :- pred addgoto(items, symbol, item, gotos, gotos, new, new).
 :- mode addgoto(in, in, in, in, out, in, out) is det.
 
-addgoto(I, X, NewItem, Gotos0, Gotos, New0, New) :-
-	( search(Gotos0, I, IGotos0) ->
+addgoto(I, X, NewItem, !Gotos, !New) :-
+	( map__search(!.Gotos, I, IGotos0) ->
 		IGotos1 = IGotos0
 	;
 		init(IGotos1)
 	),
-	( search(IGotos1, X, GotoIX0) ->
+	( map__search(IGotos1, X, GotoIX0) ->
 		GotoIX1 = GotoIX0
 	;
 		GotoIX1 = empty
 	),
 	GotoIX = GotoIX1 \/ { NewItem },
 	set(IGotos1, X, GotoIX, IGotos),
-	set(Gotos0, I, IGotos, Gotos),
+	set(!.Gotos, I, IGotos, !:Gotos),
 	( GotoIX \= GotoIX1 ->
-		New = New0 \/ { I - X }
+		!:New = !.New \/ { I - X }
 	;
-		New = New0
+		true
 	).
 
 :- pred addAs(list(nonterminal), items, rules, gotos, gotos, new, new).
 :- mode addAs(in, in, in, in, out, in, out) is det.
 
-addAs([], _I, _Productions, Gotos, Gotos, New, New).
-addAs([A|As], I, Productions, Gotos0, Gotos, New0, New) :-
+addAs([], _I, _Productions, !Gotos, !New).
+addAs([A|As], I, Productions, !Gotos, !New) :-
 	prodnums(Productions, ProdNums),
-	addAs_2(ProdNums, A, I, Productions, Gotos0, Gotos1, New0, New1),
-	addAs(As, I, Productions, Gotos1, Gotos, New1, New).
+	addAs_2(ProdNums, A, I, Productions, !Gotos, !New),
+	addAs(As, I, Productions, !Gotos, !New).
 
 :- pred addAs_2(list(prodnum), nonterminal, items, rules, gotos, gotos,
 		new, new).
 :- mode addAs_2(in, in, in, in, in, out, in, out) is det.
 
-addAs_2([], _A, _I, _Productions, Gotos, Gotos, New, New).
-addAs_2([Pn|Pns], A, I, Productions, Gotos0, Gotos, New0, New) :-
-	lookup(Productions, Pn, Prod),
+addAs_2([], _A, _I, _Productions, !Gotos, !New).
+addAs_2([Pn|Pns], A, I, Productions, !Gotos, !New) :-
+	map__lookup(Productions, Pn, Prod),
 	(
 		Prod = rule(A, _Head, Symbols, _, _, _V, _C),
 		array__max(Symbols, Max),
 		Max >= 0
 	->
-		lookup(Symbols, 0, X),
-		addgoto(I, X, item(Pn, 1), Gotos0, Gotos1, New0, New1)
+		array__lookup(Symbols, 0, X),
+		addgoto(I, X, item(Pn, 1), !Gotos, !New)
 	;
-		Gotos1 = Gotos0,
-		New1 = New0
+		true
 	),
-	addAs_2(Pns, A, I, Productions, Gotos1, Gotos, New1, New).
+	addAs_2(Pns, A, I, Productions, !Gotos, !New).
 
 %------------------------------------------------------------------------------%
 
-lookaheads(C, Gotos, Rules, First, Index, Lookaheads) -->
-	{ map__from_assoc_list([item(0, 0) - { ($) }], I0) },
-	{ map__from_assoc_list([{item(0, 0)} - I0], Lookaheads0) },
-	{ init(Propaheads0) },
-	{ set__to_sorted_list(C, CList) },
-	{ lookaheads(CList, Gotos, Rules, First, Index,
-		Lookaheads0 - Propaheads0, Lookaheads1 - Propaheads) },
+lookaheads(C, Gotos, Rules, First, Index, !:Lookaheads, !IO) :-
+	map__from_assoc_list([item(0, 0) - { ($) }], I0),
+	map__from_assoc_list([{item(0, 0)} - I0], !:Lookaheads),
+	map__init(Propaheads0),
+	set__to_sorted_list(C, CList),
+	lookaheads(CList, Gotos, Rules, First, Index,
+		!.Lookaheads - Propaheads0, !:Lookaheads - Propaheads),
 	%foldl((pred(_I::in, IPs::in, di, uo) is det -->
 	%	foldl((pred(Item::in, ItemsMap::in, di, uo) is det -->
 	%		write(Item), write_string(" :\n"),
@@ -277,27 +263,25 @@ lookaheads(C, Gotos, Rules, First, Index, Lookaheads) -->
 	%		), ItemsMap), nl
 	%	), IPs), nl
 	%), Propaheads),
-	stderr_stream(StdErr),
-	write_string(StdErr, "\tpropagating...\n"),
-	{ propagate(C, Propaheads, Lookaheads1, Lookaheads) }.
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "\tpropagating...\n", !IO),
+	propagate(C, Propaheads, !Lookaheads).
 
 :- pred lookaheads(list(items), gotos, rules, first, index, previews, previews).
 :- mode lookaheads(in, in, in, in, in, in, out) is det.
 
-lookaheads([], _Gotos, _Rules, _First, _Index, Lookaheads, Lookaheads).
-lookaheads([K|Ks], Gotos, Rules, First, Index, Lookaheads0, Lookaheads) :-
+lookaheads([], _Gotos, _Rules, _First, _Index, !Lookaheads).
+lookaheads([K | Ks], Gotos, Rules, First, Index, !Lookaheads) :-
 	set__to_sorted_list(K, KList),
-	lookaheads1(KList, K, Gotos, Rules, First, Index,
-		Lookaheads0, Lookaheads1),
-	lookaheads(Ks, Gotos, Rules, First, Index, Lookaheads1, Lookaheads).
+	lookaheads1(KList, K, Gotos, Rules, First, Index, !Lookaheads),
+	lookaheads(Ks, Gotos, Rules, First, Index, !Lookaheads).
 
 :- pred lookaheads1(list(item), items, gotos, rules, first, index,
 		previews, previews).
 :- mode lookaheads1(in, in, in, in, in, in, in, out) is det.
 
-lookaheads1([], _I, _Gotos, _Rules, _First, _Index, Lookaheads, Lookaheads).
-lookaheads1([BItem|BItems], I, Gotos, Rules, First, Index,
-		Lookaheads0, Lookaheads) :-
+lookaheads1([], _I, _Gotos, _Rules, _First, _Index, !Lookaheads).
+lookaheads1([BItem | BItems], I, Gotos, Rules, First, Index, !Lookaheads) :-
 	BItem = item(Bp, Bd),
 	BItem0 = item(Bp, Bd, (*)),
 	J0 = closure({ BItem0 }, Rules, First, Index),
@@ -305,35 +289,35 @@ lookaheads1([BItem|BItems], I, Gotos, Rules, First, Index,
 	    % Reverse the list so that in add_spontaneous, the 
 	    % set insertions are in reverse sorted order not
 	    % sorted order thereby taking to cost from O(n) to O(1).
-	reverse(JList0, JList),
-	lookaheads2(JList, BItem, I, Gotos, Rules, Lookaheads0, Lookaheads1),
-	lookaheads1(BItems, I, Gotos, Rules, First, Index,
-		Lookaheads1, Lookaheads).
+	list__reverse(JList0, JList),
+	lookaheads2(JList, BItem, I, Gotos, Rules, !Lookaheads),
+	lookaheads1(BItems, I, Gotos, Rules, First, Index, !Lookaheads).
 
 :- func closure(lr1items, rules, first, index) = lr1items.
+
 closure(I0, Rules, First, Index) = I :-
 	closure(Rules, First, Index, I0, I0, I).
 
 :- pred closure(rules, first, index, lr1items, lr1items, lr1items).
 :- mode closure(in, in, in, in, in, out) is det.
 
-closure(Rules, First, Index, New0, I0, I) :-
-	set__to_sorted_list(New0, NewList),
+closure(Rules, First, Index, !.New, I0, I) :-
+	set__to_sorted_list(!.New, NewList),
 	closure1(NewList, Rules, First, Index, [I0], Is),
 	do_union(Is, I1),
-	New = I1 - I0,
-	( empty(New) ->
+	!:New = I1 - I0,
+	( set__empty(!.New) ->
 		I = I1
 	;
-		closure(Rules, First, Index, New, I1, I)
+		closure(Rules, First, Index, !.New, I1, I)
 	).
 
 :- pred closure1(list(lr1item), rules, first, index,
 		list(lr1items), list(lr1items)).
 :- mode closure1(in, in, in, in, in, out) is det.
 
-closure1([], _Rules, _First, _Index, I, I).
-closure1([AItem|AItems], Rules, First, Index, I0, I) :-
+closure1([], _Rules, _First, _Index, !I).
+closure1([AItem | AItems], Rules, First, Index, !I) :-
 	AItem = item(Ap, Ad, Asym),
 	map__lookup(Rules, Ap, rule(_, _, Asyms, _, _, _, _)),
 	array__max(Asyms, AMax),
@@ -359,14 +343,14 @@ closure1([AItem|AItems], Rules, First, Index, I0, I) :-
 			map__lookup(Index, Bn, Bps),
 			make_items(Bps, BfList, [], NList),
 			set__sorted_list_to_set(NList, N),
-			I1 = [N|I0]
+			list__append([N], !I)
 		;
-			I1 = I0
+			true	
 		)
 	;
-		I1 = I0
+		true	
 	),
-	closure1(AItems, Rules, First, Index, I1, I).
+	closure1(AItems, Rules, First, Index, !I).
 
 	% create the union of a list of sets.
 	% The simple `foldl' way has O(n^2) cost, so we do a
@@ -401,176 +385,173 @@ do_union([I0, I1|Is0], Is1, I) :-
 		previews, previews).
 :- mode lookaheads2(in, in, in, in, in, in, out) is det.
 
-lookaheads2([], _B, _I, _Gotos, _Rules, Lookaheads, Lookaheads).
-lookaheads2([A|As], B, I, Gotos, Rules, Lookaheads0, Lookaheads) :-
+lookaheads2([], _B, _I, _Gotos, _Rules, !Lookaheads).
+lookaheads2([A | As], B, I, Gotos, Rules, !Lookaheads) :-
 	A = item(Ap, Ad, Alpha),
-	lookup(Rules, Ap, rule(_, _, ASyms, _, _, _, _)),
+	map__lookup(Rules, Ap, rule(_, _, ASyms, _, _, _, _)),
 	array__max(ASyms, AMax),
 	( Ad =< AMax ->
-		lookup(ASyms, Ad, X),
+		array__lookup(ASyms, Ad, X),
 		( Gix = goto(Gotos, I, X) ->
 			Ad1 = Ad + 1,
 			( Alpha = (*) ->
-				add_propagated(I, B, Gix, item(Ap, Ad1),
-					Lookaheads0, Lookaheads1)
+				add_propagated(I, B, Gix, item(Ap, Ad1), 
+					!Lookaheads)
 			;
-				add_spontaneous(Gix, item(Ap, Ad1), Alpha,
-					Lookaheads0, Lookaheads1)
+				add_spontaneous(Gix, item(Ap, Ad1), Alpha, 
+					!Lookaheads)
 			)
 		;
-			Lookaheads1 = Lookaheads0
+			true
 		)
 	;
-		Lookaheads1 = Lookaheads0
+		true
 	),
-	lookaheads2(As, B, I, Gotos, Rules, Lookaheads1, Lookaheads).
+	lookaheads2(As, B, I, Gotos, Rules, !Lookaheads).
 
 :- pred make_items(list(prodnum), list(terminal), list(lr1item), list(lr1item)).
 :- mode make_items(in, in, in, out) is det.
 
-make_items([], _, Items, Items).
-make_items([Bp|Bps], BfList, Items0, Items) :-
-	make_items1(Bp, BfList, Items0, Items1),
-	make_items(Bps, BfList, Items1, Items).
+make_items([], _, !Items).
+make_items([Bp | Bps], BfList, !Items) :-
+	make_items1(Bp, BfList, !Items),
+	make_items(Bps, BfList, !Items).
 
 :- pred make_items1(prodnum, list(terminal), list(lr1item), list(lr1item)).
 :- mode make_items1(in, in, in, out) is det.
 
-make_items1(_, [], Items, Items).
-make_items1(Bp, [Bt|Bts], Items0, Items) :-
-	Items1 = [item(Bp, 0, Bt)|Items0],
-	make_items1(Bp, Bts, Items1, Items).
+make_items1(_, [], !Items).
+make_items1(Bp, [Bt | Bts], !Items) :-
+	list__append([item(Bp, 0, Bt)], !Items),
+	make_items1(Bp, Bts, !Items).
 
 :- func goto(gotos, items, symbol) = items.
 :- mode (goto(in, in, in) = out) is semidet.
 
 goto(Gotos, I, X) = A :-
-	search(Gotos, I, IXs),
-	search(IXs, X, A).
+	map__search(Gotos, I, IXs),
+	map__search(IXs, X, A).
 
 :- pred add_propagated(items, item, items, item, previews, previews).
 :- mode add_propagated(in, in, in, in, in, out) is det.
 
 add_propagated(I, B, Ia, A, L - P0, L - P) :-
-	( search(P0, I, X0) ->
+	( map__search(P0, I, X0) ->
 		X1 = X0
 	;
-		init(X1)
+		map__init(X1)
 	),
-	( search(X1, B, Y0) ->
+	( map__search(X1, B, Y0) ->
 		Y1 = Y0
 	;
-		init(Y1)
+		map__init(Y1)
 	),
-	( search(Y1, Ia, As0) ->
+	( map__search(Y1, Ia, As0) ->
 		As1 = As0
 	;
 		As1 = empty
 	),
-	insert(As1, A, As),
-	set(Y1, Ia, As, Y),
-	set(X1, B, Y, X),
-	set(P0, I, X, P).
+	set__insert(As1, A, As),
+	map__set(Y1, Ia, As, Y),
+	map__set(X1, B, Y, X),
+	map__set(P0, I, X, P).
 
 :- pred add_spontaneous(items, item, terminal, previews, previews).
 :- mode add_spontaneous(in, in, in, in, out) is det.
 
 add_spontaneous(I, B, Alpha, L0 - P, L - P) :-
-	( search(L0, I, X0) ->
+	( map__search(L0, I, X0) ->
 		X1 = X0
 	;
-		init(X1)
+		map__init(X1)
 	),
-	( search(X1, B, As0) ->
+	( map__search(X1, B, As0) ->
 		As1 = As0
 	;
 		As1 = empty
 	),
-	insert(As1, Alpha, As),
-	set(X1, B, As, X),
-	set(L0, I, X, L).
+	set__insert(As1, Alpha, As),
+	map__set(X1, B, As, X),
+	map__set(L0, I, X, L).
 
 :- pred propagate(set(items), propaheads, lookaheads, lookaheads).
 :- mode propagate(in, in, in, out) is det.
 
-propagate(C, Props, Lookaheads0, Lookaheads) :-
+propagate(C, Props, !Lookaheads) :-
 	set__to_sorted_list(C, CList),
-	propagate(CList, Props, no, Change, Lookaheads0, Lookaheads1),
+	propagate(CList, Props, no, Change, !Lookaheads),
 	(
-		Change = no,
-		Lookaheads = Lookaheads1
+		Change = no
 	;
 		Change = yes,
-		propagate(C, Props, Lookaheads1, Lookaheads)
+		propagate(C, Props, !Lookaheads)
 	).
 
 :- pred propagate(list(items), propaheads, bool, bool, lookaheads, lookaheads).
 :- mode propagate(in, in, in, out, in, out) is det.
 
-propagate([], _Props, Ch, Ch, L, L).
-propagate([I|Is], Props, Ch0, Ch, L0, L) :-
+propagate([], _Props, !Change, !Lookaheads).
+propagate([I | Is], Props, !Change, !Lookaheads) :-
 	set__to_sorted_list(I, IList),
-	propagate1(IList, I, Props, Ch0, Ch1, L0, L1),
-	propagate(Is, Props, Ch1, Ch, L1, L).
+	propagate1(IList, I, Props, !Change, !Lookaheads),
+	propagate(Is, Props, !Change, !Lookaheads).
 
 :- pred propagate1(list(item), items, propaheads, bool, bool,
 		lookaheads, lookaheads).
 :- mode propagate1(in, in, in, in, out, in, out) is det.
 
-propagate1([], _I, _Props, Ch, Ch, L, L).
-propagate1([Item|Items], I, Props, Ch0, Ch, L0, L) :-
+propagate1([], _I, _Props, !Change, !Lookaheads).
+propagate1([Item | Items], I, Props, !Change, !Lookaheads) :-
 	(
-		search(L0, I, X),
-		search(X, Item, Ts),
-		search(Props, I, Y),
-		search(Y, Item, Ps)
+		map__search(!.Lookaheads, I, X),
+		map__search(X, Item, Ts),
+		map__search(Props, I, Y),
+		map__search(Y, Item, Ps)
 	->
-		keys(Ps, Pkeys),
-		propagate2(Pkeys, Ps, Ts, Ch0, Ch1, L0, L1)
+		map__keys(Ps, Pkeys),
+		propagate2(Pkeys, Ps, Ts, !Change, !Lookaheads)
 	;
-		Ch1 = Ch0,
-		L1 = L0
+		true
 	),
-	propagate1(Items, I, Props, Ch1, Ch, L1, L).
+	propagate1(Items, I, Props, !Change, !Lookaheads).
 
 :- pred propagate2(list(items), (items -> items), set(terminal), bool, bool,
 		lookaheads, lookaheads).
 :- mode propagate2(in, in, in, in, out, in, out) is det.
 
-propagate2([], _Ps, _Ts, Ch, Ch, L, L).
-propagate2([I|Pks], Ps, Ts, Ch0, Ch, L0, L) :-
-	lookup(Ps, I, Ips),
+propagate2([], _Ps, _Ts, !Change, !Lookaheads).
+propagate2([I|Pks], Ps, Ts, !Change, !Lookaheads) :-
+	map__lookup(Ps, I, Ips),
 	set__to_sorted_list(Ips, IPList),
-	propagate3(IPList, I, Ts, Ch0, Ch1, L0, L1),
-	propagate2(Pks, Ps, Ts, Ch1, Ch, L1, L).
+	propagate3(IPList, I, Ts, !Change, !Lookaheads),
+	propagate2(Pks, Ps, Ts, !Change, !Lookaheads).
 
 :- pred propagate3(list(item), items, set(terminal), bool, bool,
 		lookaheads, lookaheads).
 :- mode propagate3(in, in, in, in, out, in, out) is det.
 
-propagate3([], _I, _Ts, Ch, Ch, L, L).
-propagate3([Item|Items], I, Ts0, Ch0, Ch, L0, L) :-
-	( search(L0, I, X0) ->
+propagate3([], _I, _Ts, !Change, !Lookaheads).
+propagate3([Item | Items], I, Ts0, !Change, !Lookaheads) :-
+	( map__search(!.Lookaheads, I, X0) ->
 		X1 = X0
 	;
-		init(X1)
+		map__init(X1)
 	),
-	( search(X1, Item, Ts1) ->
+	( map__search(X1, Item, Ts1) ->
 		Ts2 = Ts1
 	;
 		Ts2 = empty
 	),
 	NewTs = Ts0 - Ts2,
-	( not empty(NewTs) ->
+	( not set__empty(NewTs) ->
 		Ts = Ts2 \/ NewTs,
-		set(X1, Item, Ts, X),
-		set(L0, I, X, L1),
-		Ch1 = yes
+		map__set(X1, Item, Ts, X),
+		map__set(!.Lookaheads, I, X, !:Lookaheads),
+		!:Change = yes
 	;
-		Ch1 = Ch0,
-		L1 = L0
+		true
 	),
-	propagate3(Items, I, Ts0, Ch1, Ch, L1, L).
+	propagate3(Items, I, Ts0, !Change, !Lookaheads).
 
 %------------------------------------------------------------------------------%
 
@@ -578,6 +559,6 @@ propagate3([Item|Items], I, Ts0, Ch0, Ch, L0, L) :-
 :- mode prodnums(in, out) is det.
 
 prodnums(Rules, ProdNums) :-
-	keys(Rules, ProdNums).
+	map__keys(Rules, ProdNums).
 
 %------------------------------------------------------------------------------%
