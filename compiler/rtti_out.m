@@ -26,7 +26,7 @@
 :- import_module backend_libs__rtti.
 :- import_module ll_backend__llds_out.
 
-:- import_module bool, io.
+:- import_module bool, list, io.
 
 	% Output a C expression holding the address of the C name of
 	% the specified rtti_data, preceded by the string in the first
@@ -38,6 +38,10 @@
 	% the specified rtti_data.
 :- pred output_addr_of_rtti_data(rtti_data::in, io__state::di, io__state::uo)
 	is det.
+
+	% Output a C declaration for the rtti_datas.
+:- pred output_rtti_data_decl_list(list(rtti_data)::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
 	% Output a C declaration for the rtti_data.
 :- pred output_rtti_data_decl(rtti_data::in, decl_set::in, decl_set::out,
@@ -67,6 +71,12 @@
 	% specified by the given rtti_id for use in a declaration or
 	% definition. The bool should be `yes' iff it is for a definition.
 :- pred output_rtti_id_storage_type_name(rtti_id::in, bool::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+	% Output the C storage class, C type, and C name of the rtti_data
+	% specified by the given rtti_id for use in a declaration or
+	% definition. The bool should be `yes' iff it is for a definition.
+:- pred output_rtti_id_storage_type_name_no_decl(rtti_id::in, bool::in,
 	io__state::di, io__state::uo) is det.
 
 :- implementation.
@@ -85,7 +95,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
-:- import_module int, string, list, assoc_list, map.
+:- import_module int, string, assoc_list, map, multi_map.
 :- import_module counter, require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -119,7 +129,7 @@ output_base_typeclass_info_defn(TCName, InstanceModuleName, InstanceString,
 	io__write_string("\n", !IO),
 	RttiId = tc_rtti_id(TCName,
 		base_typeclass_info(InstanceModuleName, InstanceString)),
-	output_rtti_id_storage_type_name(RttiId, yes, !IO),
+	output_rtti_id_storage_type_name(RttiId, yes, !DeclSet, !IO),
 	% XXX It would be nice to avoid generating redundant declarations
 	% of base_typeclass_infos, but currently we don't.
 	io__write_string(" = {\n\t(MR_Code *) ", !IO),
@@ -276,7 +286,7 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 		!DeclSet, !IO),
 	TCTypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data,
 		TCTypes),
-	TCInstanceTypesRttiId = tc_rtti_id(TCName, 
+	TCInstanceTypesRttiId = tc_rtti_id(TCName,
 		type_class_instance_tc_type_vector(TCTypes)),
 	output_generic_rtti_data_defn_start(TCInstanceTypesRttiId,
 		!DeclSet, !IO),
@@ -1231,6 +1241,111 @@ output_reserved_address(reserved_object(_, _, _), !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type data_group --->
+	data_group(
+		data_c_type	:: string,
+		data_is_array	:: bool,
+		data_linkage	:: linkage
+	).
+
+output_rtti_data_decl_list(RttiDatas, !DeclSet, !IO) :-
+	classify_rtti_datas_to_decl(RttiDatas, multi_map__init, GroupMap),
+	multi_map__to_assoc_list(GroupMap, GroupList),
+	list__foldl2(output_rtti_data_decl_group, GroupList, !DeclSet, !IO).
+
+:- pred classify_rtti_datas_to_decl(list(rtti_data)::in,
+	multi_map(data_group, rtti_id)::in,
+	multi_map(data_group, rtti_id)::out) is det.
+
+classify_rtti_datas_to_decl([], !GroupMap).
+classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
+	( RttiData = pseudo_type_info(type_var(_)) ->
+		% These just get represented as integers,
+		% so we don't need to declare them.
+		% Also rtti_data_to_name/3 does not handle this case.
+		true
+	;
+		rtti_data_to_id(RttiData, RttiId),
+		rtti_id_c_type(RttiId, CType, IsArray),
+		rtti_id_linkage(RttiId, Linkage),
+		Group = data_group(CType, IsArray, Linkage),
+		multi_map__set(!.GroupMap, Group, RttiId, !:GroupMap)
+	),
+	classify_rtti_datas_to_decl(RttiDatas, !GroupMap).
+
+:- pred output_rtti_data_decl_group(pair(data_group, list(rtti_id))::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_rtti_data_decl_group(Group - RttiIds, !DeclSet, !IO) :-
+	% ChunkSize should be as large as possible to reduce the size of the
+	% file being generated, but small enough not to overload the fixed
+	% limits of our target C compilers.
+	ChunkSize = 10,
+	% The process of creating the multi_map reverses the order of rtti_ids,
+	% we now undo this reversal.
+	list__chunk(list__reverse(RttiIds), ChunkSize, RttiIdChunks),
+	list__foldl2(output_rtti_data_decl_chunk(Group), RttiIdChunks,
+		!DeclSet, !IO).
+
+:- pred output_rtti_data_decl_chunk(data_group::in, list(rtti_id)::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_rtti_data_decl_chunk(Group, RttiIds, !DeclSet, !IO) :-
+	(
+		% Pick a representative RttiId. All the operations we perform
+		% on it below would have the same result regardless of which
+		% one we picked.
+		RttiIds = [RttiId | _]
+	;
+		RttiIds = [],
+		error("output_rtti_data_decl_group: empty list")
+	),
+	Group = data_group(CType, IsArray, Linkage),
+
+	io__nl(!IO),
+	output_rtti_type_decl(RttiId, !DeclSet, !IO),
+	globals__io_get_globals(Globals, !IO),
+	LinkageStr = c_data_linkage_string(Globals, Linkage, yes, no),
+	InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
+	c_data_const_string(Globals, InclCodeAddr, ConstStr),
+
+	io__write_string(LinkageStr, !IO),
+	io__write_string(ConstStr, !IO),
+	c_util__output_quoted_string(CType, !IO),
+	io__nl(!IO),
+
+	output_rtti_data_decl_chunk_entries(IsArray, RttiIds,
+		!DeclSet, !IO).
+
+:- pred output_rtti_data_decl_chunk_entries(bool::in, list(rtti_id)::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
+	error("output_rtti_data_decl_chunk_entries: empty list").
+output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
+		!DeclSet, !IO) :-
+	DataAddr = rtti_addr(RttiId),
+	decl_set_insert(data_addr(DataAddr), !DeclSet),
+	io__write_string("\t", !IO),
+	output_rtti_id(RttiId, !IO),
+	(
+		IsArray = yes,
+		io__write_string("[]", !IO)
+	;
+		IsArray = no
+	),
+	(
+		RttiIds = [_ | _],
+		io__write_string(",\n", !IO),
+		output_rtti_data_decl_chunk_entries(IsArray, RttiIds,
+			!DeclSet, !IO)
+	;
+		RttiIds = [],
+		io__write_string(";\n", !IO)
+	).
+
+%-----------------------------------------------------------------------------%
+
 output_rtti_data_decl(RttiData, !DeclSet, !IO) :-
 	( RttiData = pseudo_type_info(type_var(_)) ->
 		% These just get represented as integers,
@@ -1248,7 +1363,7 @@ output_rtti_data_decl(RttiData, !DeclSet, !IO) :-
 	io__state::di, io__state::uo) is det.
 
 output_generic_rtti_data_decl(RttiId, !DeclSet, !IO) :-
-	output_rtti_id_storage_type_name(RttiId, no, !IO),
+	output_rtti_id_storage_type_name(RttiId, no, !DeclSet, !IO),
 	io__write_string(";\n", !IO),
 	DataAddr = rtti_addr(RttiId),
 	decl_set_insert(data_addr(DataAddr), !DeclSet).
@@ -1258,12 +1373,17 @@ output_generic_rtti_data_decl(RttiId, !DeclSet, !IO) :-
 
 output_generic_rtti_data_defn_start(RttiId, !DeclSet, !IO) :-
 	io__write_string("\n", !IO),
-	output_rtti_id_storage_type_name(RttiId, yes, !IO),
+	output_rtti_id_storage_type_name(RttiId, yes, !DeclSet, !IO),
 	DataAddr = rtti_addr(RttiId),
 	decl_set_insert(data_addr(DataAddr), !DeclSet).
 
-output_rtti_id_storage_type_name(RttiId, BeingDefined, !IO) :-
-	output_rtti_type_decl(RttiId, !IO),
+output_rtti_id_storage_type_name_no_decl(RttiId, BeingDefined, !IO) :-
+	decl_set_init(DeclSet0),
+	output_rtti_id_storage_type_name(RttiId, BeingDefined, DeclSet0, _,
+		!IO).
+
+output_rtti_id_storage_type_name(RttiId, BeingDefined, !DeclSet, !IO) :-
+	output_rtti_type_decl(RttiId, !DeclSet, !IO),
 	rtti_id_linkage(RttiId, Linkage),
 	globals__io_get_globals(Globals, !IO),
 	LinkageStr = c_data_linkage_string(Globals, Linkage, yes,
@@ -1289,35 +1409,48 @@ output_rtti_id_storage_type_name(RttiId, BeingDefined, !IO) :-
 	% depending on what kind of type_info or pseudo_type_info it is,
 	% and also on its arity. We need to declare that C type here.
 
-:- pred output_rtti_type_decl(rtti_id::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_rtti_type_decl(rtti_id::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
-output_rtti_type_decl(RttiId, !IO) :-
+output_rtti_type_decl(RttiId, !DeclSet, !IO) :-
 	(
 		RttiId = ctor_rtti_id(_, RttiName),
 		rtti_type_ctor_template_arity(RttiName, Arity),
 		Arity > max_always_declared_arity_type_ctor
 	->
-		Template =
+		DeclId = type_info_like_struct(Arity),
+		( decl_set_is_member(DeclId, !.DeclSet) ->
+			true
+		;
+			Template =
 "#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
 #define MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
 MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
 #endif
 ",
-		io__format(Template, [i(Arity), i(Arity), i(Arity)], !IO)
+			io__format(Template, [i(Arity), i(Arity), i(Arity)],
+				!IO),
+			decl_set_insert(DeclId, !DeclSet)
+		)
 	;
 		RttiId = tc_rtti_id(_, TCRttiName),
 		rtti_type_class_constraint_template_arity(TCRttiName, Arity),
 		Arity > max_always_declared_arity_type_class_constraint
 	->
-		Template =
+		DeclId = typeclass_constraint_struct(Arity),
+		( decl_set_is_member(DeclId, !.DeclSet) ->
+			true
+		;
+			Template =
 "#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
 #define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
 MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
 #endif
 ",
-		io__format(Template, [i(Arity), i(Arity), i(Arity), i(Arity)],
-			!IO)
+			io__format(Template, [i(Arity), i(Arity), i(Arity),
+				i(Arity)], !IO),
+			decl_set_insert(DeclId, !DeclSet)
+		)
 	;
 		true
 	).
@@ -1419,7 +1552,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
-			output_rtti_id_storage_type_name(RttiId, no, !IO),
+			output_rtti_id_storage_type_name_no_decl(RttiId, no,
+				!IO),
 			io__write_string(";\n", !IO)
 		;
 			SplitFiles = no
@@ -1436,7 +1570,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
-			output_rtti_id_storage_type_name(RttiId, no, !IO),
+			output_rtti_id_storage_type_name_no_decl(RttiId, no,
+				!IO),
 			io__write_string(";\n", !IO)
 		;
 			SplitFiles = no
@@ -1452,7 +1587,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 		io__write_string("\t{\n\t", !IO),
 		(
 			SplitFiles = yes,
-			output_rtti_id_storage_type_name(RttiId, no, !IO),
+			output_rtti_id_storage_type_name_no_decl(RttiId, no,
+				!IO),
 			io__write_string(";\n", !IO)
 		;
 			SplitFiles = no

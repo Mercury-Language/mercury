@@ -514,10 +514,8 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
 	trace__stackref_to_string(EventNumLval, EventNumStr),
 	trace__stackref_to_string(CallNumLval, CallNumStr),
 	trace__stackref_to_string(CallDepthLval, CallDepthStr),
-	string__append_list([
-		"\t\t", EventNumStr, " = MR_trace_event_number;\n",
-		"\t\t", CallNumStr, " = MR_trace_incr_seq();\n",
-		"\t\t", CallDepthStr, " = MR_trace_incr_depth();\n"
+	string__append_list(["\t\tMR_trace_fill_std_slots(",
+		EventNumStr, ", ", CallNumStr, ", ", CallDepthStr, ");\n"
 	], FillThreeSlots),
 	(
 		MaybeIoSeqSlot = yes(IoSeqLval),
@@ -623,20 +621,18 @@ trace__prepare_for_call(CI, TraceCode) :-
 		MaybeFromFullSlot = TraceInfo ^ from_full_lval,
 		trace__call_depth_slot(CodeModel, CallDepthLval),
 		trace__stackref_to_string(CallDepthLval, CallDepthStr),
-		string__append_list([
-			"MR_trace_reset_depth(", CallDepthStr, ");\n"
-		], ResetDepthStmt),
 		(
 			MaybeFromFullSlot = yes(_),
-			ResetFromFullStmt = "MR_trace_from_full = MR_FALSE;\n"
+			MacroStr = "MR_trace_reset_depth_from_shallow"
 		;
 			MaybeFromFullSlot = no,
-			ResetFromFullStmt = "MR_trace_from_full = MR_TRUE;\n"
+			MacroStr = "MR_trace_reset_depth_from_full"
 		),
+		string__append_list([
+			MacroStr, "(", CallDepthStr, ");\n"
+		], ResetStmt),
 		TraceCode = node([
-			c_code(ResetFromFullStmt, live_lvals_info(set__init))
-				- "",
-			c_code(ResetDepthStmt, live_lvals_info(set__init))
+			c_code(ResetStmt, live_lvals_info(set__init))
 				- ""
 		])
 	;
@@ -829,16 +825,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
-	LabelStr = layout_out__make_label_layout_name(Label),
-	DeclStmt = "\t\tMR_Code *MR_jumpaddr;\n",
-	SaveStmt = "\t\tMR_save_transient_registers();\n",
-	RestoreStmt = "\t\tMR_restore_transient_registers();\n",
-	GotoStmt = "\t\tif (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);\n",
-	string__append_list([
-		"\t\tMR_jumpaddr = MR_trace(\n",
-		"\t\t\t(const MR_Label_Layout *)\n",
-		"\t\t\t&", LabelStr, ");\n"],
-		CallStmt),
+	LabelStr = llds_out__label_to_c_string(Label, no),
+	string__append_list(["\t\tMR_EVENT(", LabelStr, ")\n"], TraceStmt),
 	code_info__add_trace_layout_for_label(Label, Context, Port, HideEvent,
 		Path, LayoutLabelInfo, !CI),
 	(
@@ -860,8 +848,6 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 	;
 		true
 	),
-	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
-		GotoStmt], TraceStmt),
 	TraceCode =
 		node([
 			label(Label)

@@ -802,6 +802,11 @@
 :- func module_qualify_name_of_ctor_rtti_name(ctor_rtti_name) = bool.
 :- func module_qualify_name_of_tc_rtti_name(tc_rtti_name) = bool.
 
+	% If the given rtti_id is implemented as a single MR_TypeCtorInfo,
+	% return the identity of the type constructor.
+:- pred rtti_id_emits_type_ctor_info(rtti_id::in, rtti_type_ctor::out)
+	is semidet.
+
 :- implementation.
 
 :- import_module backend_libs__name_mangle.
@@ -1876,6 +1881,19 @@ module_qualify_name_of_tc_rtti_name(TCRttiName) =
 		no
 	;
 		yes
+	).
+
+rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-
+	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+	(
+		RttiName = type_ctor_info,
+		TypeCtor = RttiTypeCtor
+	;
+		RttiName = type_info(TypeInfo),
+		TypeInfo = plain_arity_zero_type_info(TypeCtor)
+	;
+		RttiName = pseudo_type_info(PseudoTypeInfo),
+		PseudoTypeInfo = plain_arity_zero_pseudo_type_info(TypeCtor)
 	).
 
 %-----------------------------------------------------------------------------%

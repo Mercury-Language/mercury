@@ -219,7 +219,7 @@ global_data_set_static_cell_info(StaticCellInfo, GlobalData0, GlobalData) :-
 			common_data	:: bool,
 			cell_counter	:: counter,	% next cell number
 			type_counter	:: counter,	% next type number
-			cells		:: map(int, comp_gen_c_data),
+			cells		:: map(int, common_data),
 			cell_group_map	:: map(cell_type, cell_type_group)
 					% map cell argument types and then cell
 					% contents to the id of the common cell
@@ -359,8 +359,8 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
 search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
 	DataAddr = data_addr(Info ^ module_name, DataName),
 	DataName = common(CellNum, _),
-	map__search(Info ^ cells, CellNum, CompGenCData),
-	CompGenCData = common_data(_, _, TypeAndValue),
+	map__search(Info ^ cells, CellNum, CommonData),
+	CommonData = common_data(_, _, TypeAndValue),
 	(
 		TypeAndValue = plain_type_and_value(_, ArgsTypes),
 		list__index0_det(ArgsTypes, Offset, Rval - _)
@@ -382,7 +382,12 @@ offset_into_group([Group | Groups], Offset, Rval) :-
 		offset_into_group(Groups, Offset - NumRvalsInGroup, Rval)
 	).
 
-get_static_cells(Info) = map__values(Info ^ cells).
+get_static_cells(Info) =
+	list__map(wrap_common_data, map__values(Info ^ cells)).
+
+:- func wrap_common_data(common_data) = comp_gen_c_data.
+
+wrap_common_data(CommonData) = common_data(CommonData).
 
 rval_type_as_arg(Rval, ExprnOpts, Type) :-
 	natural_type(ExprnOpts ^ unboxed_float, Rval, Type).

@@ -30,8 +30,8 @@
 
 :- pred output_proc_label(proc_label::in, io::di, io::uo) is det.
 
-	% Output a proc label. The boolean controls whether label_prefixs
-	% is added to it.
+	% Output a proc label. The boolean controls whether
+	% mercury_label_prefix is added to it.
 
 :- pred output_proc_label(proc_label::in, bool::in, io::di, io::uo) is det.
 
@@ -48,6 +48,11 @@
 	% into a C identifier.
 
 :- func sym_name_mangle(sym_name) = string.
+
+	% Succeed iff the given name or sym_name doesn't need mangling.
+
+:- pred name_doesnt_need_mangling(string::in) is semidet.
+:- pred sym_name_doesnt_need_mangling(sym_name::in) is semidet.
 
 	% Produces a string of the form Module__Name.
 
@@ -165,7 +170,7 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 		QualifiedMangledTypeName),
 
 	% join it all together
-	string__append_list( [LabelName, "_", FullyQualifiedMangledTypeName,
+	string__append_list([LabelName, "_", FullyQualifiedMangledTypeName,
 		"_", TypeArityString, "_", ModeNumString],
 		ProcLabelString).
 
@@ -179,33 +184,21 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 
 %
 % Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
+% require changes to extras/dynamic_linking/name_mangle.m, profiler/demangle.m
+% and util/mdemangle.c.
 %
 make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 		Name0, Arity, AddPrefix) = LabelName :-
 	DeclaringModuleName = sym_name_mangle(DeclaringModule),
 	DefiningModuleName = sym_name_mangle(DefiningModule),
-	(
-		(
-			Name0 = "main",
-			Arity = 2
-		;
-			string__prefix(Name0, "__")
-		)
-		% The conditions above define which labels are printed without
-		% module qualification.
-	->
+	( dont_module_qualify_name(Name0, Arity) ->
 		LabelName0 = Name0
 	;
 		LabelName0 = qualify_name(DeclaringModuleName, Name0)
 	),
-	(
-		% if this is a specialized version of a predicate
-		% defined in some other module, then it needs both
-		% module prefixes
-		DefiningModule \= DeclaringModule
-	->
+	% If this is a specialized version of a predicate defined
+	% in some other module, then it needs both module prefixes.
+	( DefiningModule \= DeclaringModule ->
 		string__append_list([DefiningModuleName, "__", LabelName0],
 			LabelName1)
 	;
@@ -219,12 +212,22 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 		PredOrFunc = predicate,
 		LabelName3 = LabelName2
 	),
-	(
-		AddPrefix = yes
-	->
+	( AddPrefix = yes ->
 		string__append(mercury_label_prefix, LabelName3, LabelName)
 	;
 		LabelName = LabelName3
+	).
+
+	% Define the conditions for which labels are printed
+	% without module qualification.
+:- pred dont_module_qualify_name(string::in, arity::in) is semidet.
+
+dont_module_qualify_name(Name, Arity) :-
+	(
+		Name = "main",
+		Arity = 2
+	;
+		string__prefix(Name, "__")
 	).
 
 %
@@ -232,18 +235,6 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 % require changes to extras/dynamic_linking/name_mangle.m,
 % profiler/demangle.m and util/mdemangle.c.
 %
-
-sym_name_mangle(unqualified(Name)) =
-	name_mangle(Name).
-sym_name_mangle(qualified(ModuleName, PlainName)) = MangledName :-
-	MangledModuleName = sym_name_mangle(ModuleName),
-	MangledPlainName = name_mangle(PlainName),
-	MangledName = qualify_name(MangledModuleName, MangledPlainName).
-
-	% Convert a Mercury predicate name into something that can form
-	% part of a C identifier.  This predicate is necessary because
-	% quoted names such as 'name with embedded spaces' are valid
-	% predicate names in Mercury.
 
 name_mangle(Name) = MangledName :-
 	( string__is_alnum_or_underscore(Name) ->
@@ -259,6 +250,28 @@ name_mangle(Name) = MangledName :-
 	;
 		MangledName = convert_to_valid_c_identifier(Name)
 	).
+
+sym_name_mangle(unqualified(Name)) =
+	name_mangle(Name).
+sym_name_mangle(qualified(ModuleName, PlainName)) = MangledName :-
+	MangledModuleName = sym_name_mangle(ModuleName),
+	MangledPlainName = name_mangle(PlainName),
+	MangledName = qualify_name(MangledModuleName, MangledPlainName).
+
+	% Convert a Mercury predicate name into something that can form
+	% part of a C identifier.  This predicate is necessary because
+	% quoted names such as 'name with embedded spaces' are valid
+	% predicate names in Mercury.
+
+name_doesnt_need_mangling(Name) :-
+	string__is_alnum_or_underscore(Name),
+	\+ string__append("f_", _Suffix, Name).
+
+sym_name_doesnt_need_mangling(unqualified(Name)) :-
+	name_doesnt_need_mangling(Name).
+sym_name_doesnt_need_mangling(qualified(ModuleName, PlainName)) :-
+	sym_name_doesnt_need_mangling(ModuleName),
+	name_doesnt_need_mangling(PlainName).
 
 :- func convert_to_valid_c_identifier(string) = string.
 
