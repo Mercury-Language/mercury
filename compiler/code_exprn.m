@@ -795,8 +795,8 @@ code_exprn__place_var(Var, Lval, Code) -->
 		{ map__search(Vars0, Var, Stat) }
 	->
 		(
-			{ Stat = cached(Exprn) },
-			code_exprn__place_cached(Exprn, Var, Lval, Code)
+			{ Stat = cached(Rval) },
+			code_exprn__place_cached(Rval, Var, Lval, Code)
 		;
 			{ Stat = evaled(Rvals) },
 			code_exprn__place_evaled(Rvals, Var, Lval, Code)
@@ -838,9 +838,9 @@ code_exprn__place_cached(Rval0, Var, Lval, Code) -->
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__expr_is_constant(Rval0, Vars0, ExprnOpts, Rval) }
 	->
-		code_exprn__clear_and_copy(Lval, Var, Rval, yes, Code)
+		code_exprn__place_expr(Lval, Var, Rval, yes, yes, Code)
 	;
-		code_exprn__place_expression(Rval0, Var, Lval, Code)
+		code_exprn__place_expr(Lval, Var, Rval0, no, no, Code)
 	).
 
 :- pred code_exprn__place_evaled(set(rval), var, lval, code_tree,
@@ -868,83 +868,70 @@ code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
 			Rval0 = lval(framevar(_))
 		}
 	->
-		code_exprn__clear_and_copy(Lval, Var, Rval0, no, Code)
+		code_exprn__place_expr(Lval, Var, Rval0, yes, no, Code)
 	;
 		{ set__to_sorted_list(Rvals0, RvalList0) },
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__member_expr_is_constant(RvalList0,
 				Vars0, ExprnOpts, Rval0) }
 	->
-		code_exprn__clear_and_copy(Lval, Var, Rval0, yes, Code)
+		code_exprn__place_expr(Lval, Var, Rval0, yes, yes, Code)
 	;
 		{ set__to_sorted_list(Rvals0, RvalList) },
 		{ code_exprn__select_rval(RvalList, Rval) },
-		code_exprn__place_expression(Rval, Var, Lval, Code)
+		code_exprn__place_expr(Lval, Var, Rval, no, no, Code)
 	).
 
-:- pred code_exprn__clear_and_copy(lval, var, rval, bool, code_tree,
+:- pred code_exprn__place_expr(lval, var, rval, bool, bool, code_tree,
 						exprn_info, exprn_info).
-:- mode code_exprn__clear_and_copy(in, in, in, in, out, in, out) is det.
+:- mode code_exprn__place_expr(in, in, in, in, in, out, in, out) is det.
 
-code_exprn__clear_and_copy(Lval, Var, Rval0, IsConst, Code) -->
-		% move stuff out of the way
-	code_exprn__clear_lval(Lval, Rval0, Rval, ClearCode),
+code_exprn__place_expr(Lval, Var, Rval0, StandAlone, IsConst, Code) -->
+		% move stuff out of the way, and heed any changes
+		% this produces in the form of the expression
+	code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
 		% reserve the register
 	code_exprn__add_lval_reg_dependencies(Lval),
 	code_exprn__get_var_name(Var, VarName),
 	( { IsConst = yes } ->
 		{ string__append("Assigning from ", VarName, Comment) },
 		{ ExprnCode = node([
-			assign(Lval, Rval) - Comment
-		]) }
+			assign(Lval, Rval1) - Comment
+		]) },
+		{ Rval = Rval1 }
 	;
-		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode)
+		( { StandAlone = yes } ->
+			{ VarCode = empty },
+			{ Rval = Rval1 }
+		;
+			{ exprn_aux__vars_in_rval(Rval1, VarList) },
+			code_exprn__produce_vars(VarList, VarLocList, VarCode),
+			code_exprn__rem_rval_reg_dependencies(Rval1),
+			{ exprn_aux__substitute_vars_in_rval(VarLocList,
+				Rval1, Rval) },
+			code_exprn__add_rval_reg_dependencies(Rval)
+		),
+		code_exprn__construct_code(Lval, VarName, Rval, RealCode),
+		{ ExprnCode = tree(VarCode, RealCode) }
 	),
 	{ Code = tree(ClearCode, ExprnCode) },
 	code_exprn__get_vars(Vars0),
 	{ map__lookup(Vars0, Var, Stat0) },
 	{ NewRval = lval(Lval) },
-	(
-		{ Stat0 = evaled(Rvals0) },
-		{ set__insert(Rvals0, NewRval, Rvals) }
+	{ StandAlone = yes ->
+		(
+			Stat0 = evaled(Rvals0),
+			set__insert(Rvals0, NewRval, Rvals)
+		;
+			Stat0 = cached(_),
+			set__singleton_set(Rvals, NewRval)
+		)
 	;
-		{ Stat0 = cached(_) },
-		{ set__singleton_set(Rvals, NewRval) }
-	),
+		set__list_to_set([Rval, NewRval], Rvals)
+	},
 	{ Stat = evaled(Rvals) },
 	{ map__set(Vars0, Var, Stat, Vars) },
 	code_exprn__set_vars(Vars).
-
-:- pred code_exprn__place_expression(rval, var, lval, code_tree,
-						exprn_info, exprn_info).
-:- mode code_exprn__place_expression(in, in, in, out, in, out) is det.
-
-code_exprn__place_expression(Exprn0, Var, Lval, Code) -->
-	(
-%		{ Rval = create(Tag, Rvals, _Label) }
-%	->
-%	;
-			% move stuff out of the way, and heed any changes
-			% this produces in the form of the expression
-		code_exprn__clear_lval(Lval, Exprn0, Exprn1, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
-		{ exprn_aux__vars_in_rval(Exprn1, VarList) },
-		code_exprn__produce_vars(VarList, VarLocList, Code0),
-		code_exprn__rem_rval_reg_dependencies(Exprn1),
-		{ exprn_aux__substitute_vars_in_rval(VarLocList,
-					Exprn1, Exprn) },
-		code_exprn__add_rval_reg_dependencies(Exprn),
-		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
-		{ Stat = evaled(Rvals) },
-		code_exprn__get_var_name(Var, VarName),
-		code_exprn__construct_code(Lval, VarName, Exprn, Code1),
-		code_exprn__get_vars(Vars1),
-		{ map__set(Vars1, Var, Stat, Vars) },
-		code_exprn__set_vars(Vars),
-		{ ExprnCode = tree(Code0, Code1) },
-		{ Code = tree(ClearCode, ExprnCode) }
-	).
 
 %------------------------------------------------------------------------------%
 

@@ -342,7 +342,7 @@ livemap__make_live([Rval | Rvals], Livevals0, Livevals) :-
 		livemap__make_live([Rval1, Rval2], Livevals0, Livevals1)
 	;
 		Rval = var(_),
-		error("var rval should not propagate to value_number")
+		error("var rval should not propagate to the optimizer")
 	),
 	livemap__make_live(Rvals, Livevals1, Livevals).
 
