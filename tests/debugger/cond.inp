@@ -1,0 +1,73 @@
+echo on
+context none
+break p
+condition X = yes(_)
+continue
+print
+delete *
+finish 1
+break p
+condition X = yes(3)
+continue
+print
+delete *
+finish 1
+break p
+condition -v Y = yes( 3)
+continue
+print
+delete *
+finish 1
+break p
+condition -v Y^1 != 3
+continue
+print
+delete *
+finish 1
+break q
+condition -v Y != "abc "
+continue
+print
+continue
+print
+delete *
+finish 1
+break q
+continue
+condition -v Z != "abc "
+finish 1
+delete *
+break r
+condition Y^1^2 = 1
+continue
+condition -p Y^1^2 = 1
+continue
+delete *
+finish 1
+break r
+condition -v Y^1^2 = 1
+continue
+print
+delete *
+finish 1
+break r
+condition -v Y^2 = 1
+continue
+print
+delete *
+finish 1
+break r
+condition X^4 = 1
+continue
+print
+delete *
+finish 1
+break r
+condition -v Y^1 = node(empty, 1, empty)
+continue
+print
+delete *
+finish 1
+break main
+continue
+quit -y
