@@ -1800,9 +1800,10 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
 		MaybeDet, Context, ArgsMethod, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
-	proc_info_init(Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
-		MaybeDet, Context, ArgsMethod, NewProc),
+	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, ArgsMethod, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
