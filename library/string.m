@@ -910,7 +910,7 @@ string__stringf_calc_prec(Istring, Ostring, Precision) :-
 	;
 		Prec is Precision),
 	(
-	find__index( Istring, '.', 1, Index)
+	string__find_index( Istring, '.', 1, Index)
 	->
 		Spa is Prec + Index + 1
 	;
@@ -936,9 +936,9 @@ string__stringf_calc_prec(Istring, Ostring, Precision) :-
 
 
 
-:- pred find__index( string, char, int, int).
-:- mode find__index( in, in, in, out) is semidet.
-find__index( A, Ch, Check, Ret) :-
+:- pred string__find_index( string, char, int, int).
+:- mode string__find_index( in, in, in, out) is semidet.
+string__find_index( A, Ch, Check, Ret) :-
 	string__length(A, Len),
 	Len < Check
 	->
@@ -949,7 +949,7 @@ find__index( A, Ch, Check, Ret) :-
 		Ret = Check
 	;
 		Check2 is Check + 1,
-		find__index( A, Ch, Check2, Ret)
+		string__find_index( A, Ch, Check2, Ret)
 	.
 
 
@@ -1050,9 +1050,9 @@ string__stringf_4( [A|As], Flags, Width, Precision, Mods) :-
 		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
 		  A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
 	->
-		string__ds_to_intchar([A|As], Bs, Numl1, Numl2, yes),
-		string__ds_int_from_char_list( Numl1, Width),
-		string__ds_int_from_char_list( Numl2, Precision),
+		string__stringf_to_intchar([A|As], Bs, Numl1, Numl2, yes),
+		string__stringf_int_from_char_list( Numl1, Width),
+		string__stringf_int_from_char_list( Numl2, Precision),
 		string__stringf_4( Bs, Flags, _, _, Mods)
 	;
 		( A = 'h' ; A = 'l' ; A = 'L' )
@@ -1092,45 +1092,45 @@ string__stringf_takewhile1( [A|As], Rem, Finf) :-
 		string__stringf_takewhile1(As, Rem, F),
 		Finf = [A|F].
 	
-:- pred string__ds_to_intchar(list(char), list(char), list(char), list(char), bool).
-:- mode string__ds_to_intchar(in, out, out, out, in) is det.
-%	string__ds_to_intchar( String in, out, Number1, Number2, seen '.' yet?)
+:- pred string__stringf_to_intchar(list(char), list(char), list(char), list(char), bool).
+:- mode string__stringf_to_intchar(in, out, out, out, in) is det.
+%	string__stringf_to_intchar( String in, out, Number1, Number2, seen '.' yet?)
 %		Takes in a char list and splits off the rational at the 
 %		start of the list.  This is split into 2 parts - an int and a
 %		fraction.
 %
-string__ds_to_intchar( [A|As], Bs, Int1, Int2, Bool) :-
+string__stringf_to_intchar( [A|As], Bs, Int1, Int2, Bool) :-
 	char__is_digit(A)
 	->
 	(	Bool = yes
 		->
-			string__ds_to_intchar( As, Bs, I1, Int2, yes),
+			string__stringf_to_intchar( As, Bs, I1, Int2, yes),
 			Int1 = [A|I1]
 		;
-			string__ds_to_intchar(As, Bs, Int1, I2, no),
+			string__stringf_to_intchar(As, Bs, Int1, I2, no),
 			Int2 = [A|I2]
 	)
 	;
 	(	A = ('.')
 		->
-			string__ds_to_intchar( As, Bs, Int1, Int2, no)
+			string__stringf_to_intchar( As, Bs, Int1, Int2, no)
 		;
 			Bs = [A|As],
 			Int1 = [],
 			Int2 = []
 	).
-string__ds_to_intchar( [], [], [], [], _).
+string__stringf_to_intchar( [], [], [], [], _).
 
 			
 			
 
 
-	:- pred string__ds_int_from_char_list( list(char), int).
-	:- mode string__ds_int_from_char_list( in, out) is det.
+	:- pred string__stringf_int_from_char_list( list(char), int).
+	:- mode string__stringf_int_from_char_list( in, out) is det.
 	%		Convert a char_list to an int
 %
-string__ds_int_from_char_list( [], 0).
-string__ds_int_from_char_list( [L|Ls], I) :-
+string__stringf_int_from_char_list( [], 0).
+string__stringf_int_from_char_list( [L|Ls], I) :-
 	string__from_char_list( [L|Ls], S),
 	string__to_int( S, I_hack)
 		->
