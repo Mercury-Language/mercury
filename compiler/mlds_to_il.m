@@ -253,15 +253,21 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 		% The declarations in this class.
 	MethodDecls = [AllocDoneField, CCtor | ClassDecls],
 
+	SimpleClassName = get_class_suffix(ClassName),
+	NamespaceName = get_class_namespace(ClassName),
+
 		% The class that corresponds to this MLDS module.
-	MainClass = [class([public], AssemblyName, extends_nothing,
+	MainClass = [class([public], SimpleClassName, extends_nothing,
 			implements([]), MethodDecls)],
+	MainNamespace = [namespace(NamespaceName, MainClass)],
 
 		% A namespace to contain all the other declarations that
-		% are created as a result of this MLDS code.
-	MainNamespace = [namespace([AssemblyName], OtherDecls)],
+		% are created as a result of this MLDS code (currently
+		% this is not much).
+	OtherNamespace = [namespace([AssemblyName], OtherDecls)],
 	ILAsm = list__condense(
-		[ExternAssemblies, ThisAssembly, MainClass, MainNamespace]).
+		[ExternAssemblies, ThisAssembly, MainNamespace,
+			OtherNamespace]).
 
 %-----------------------------------------------------------------------------
 
@@ -2183,17 +2189,19 @@ mlds_module_name_to_class_name(MldsModuleName) =
 		structured_name(AssemblyName, ClassName) :-
 	SymName = mlds_module_name_to_sym_name(MldsModuleName),
 	sym_name_to_class_name(SymName, ClassName),
-	( ClassName = [A0 | _] ->
-		AssemblyName = A0
+	( 
+		ClassName = ["mercury" | _]
+	->
+		AssemblyName = "mercury"
 	;
-		AssemblyName = ""
+		mlds_to_il__sym_name_to_string(SymName, AssemblyName)
 	).
 
 :- pred sym_name_to_class_name(sym_name, list(ilds__id)).
 :- mode sym_name_to_class_name(in, out) is det.
 sym_name_to_class_name(SymName, Ids) :-
 	sym_name_to_class_name_2(SymName, Ids0),
-	list__reverse(Ids0, Ids).
+	list__reverse(["mercury_code" | Ids0], Ids).
 
 :- pred sym_name_to_class_name_2(sym_name, list(ilds__id)).
 :- mode sym_name_to_class_name_2(in, out) is det.
@@ -2751,7 +2759,8 @@ runtime_initialization_instrs = [
 
 :- func runtime_init_module_name = ilds__class_name.
 runtime_init_module_name = 
-	structured_name("mercury", ["mercury", "private_builtin__c_code"]).
+	structured_name("mercury",
+		["mercury", "private_builtin__c_code", "mercury_code"]).
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").

@@ -340,6 +340,10 @@
 
 :- func get_class_namespace(ilds__class_name) = ilds__namespace_qual_name.
 
+	% Get the non-namespace portion of a class name.
+
+:- func get_class_suffix(ilds__class_name) = ilds__id.
+
 	% Add an extra identifier to the end of an IL class name, e.g.
 	% append Foo to [mercury]mercury.runtime to make
 	% [mercury]mercury.runtime.Foo
@@ -351,6 +355,16 @@
 
 :- import_module error_util.
 
+get_class_suffix(structured_name(_, FullName)) = SuffixName :-
+	( 
+		list__last(FullName, Last)
+	->
+		SuffixName = Last
+	;
+			% This class has no name whatsoever.
+		unexpected(this_file, "get_class_namespace: class has no name")
+	).
+
 get_class_namespace(structured_name(_, FullName)) = NamespaceName :-
 	( 
 		list__last(FullName, Last),
@@ -359,7 +373,7 @@ get_class_namespace(structured_name(_, FullName)) = NamespaceName :-
 		NamespaceName0 = NamespaceName
 	;
 			% This class has no name whatsoever.
-		unexpected(this_file, "get_class_namespace: list__drop failed")
+		unexpected(this_file, "get_class_namespace: class has no name")
 	).
 
 append_class_name(structured_name(Assembly, ClassName), ExtraClass) =

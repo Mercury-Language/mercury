@@ -318,11 +318,15 @@ ilasm__output_decl(class(Attrs, Id, Extends, Implements, Contents),
 	ilasm__write_list(Contents, "\n", output_classdecl, Info2, Info),
 	io__write_string("\n}").
 ilasm__output_decl(namespace(DottedName, Contents), Info0, Info) --> 
-	io__write_string(".namespace "),
-	output_dotted_name(DottedName),
-	io__write_string(" {\n"),
-	output(Contents, Info0, Info),
-	io__write_string("}\n").
+	( { DottedName \= [] } ->
+		io__write_string(".namespace "),
+		output_dotted_name(DottedName),
+		io__write_string(" {\n"),
+		output(Contents, Info0, Info),
+		io__write_string("}\n")
+	;
+		output(Contents, Info0, Info)
+	).
 ilasm__output_decl(method(MethodHead, MethodDecls), Info0, Info) --> 
 	io__write_string(".method "),
 	output_methodhead(MethodHead, Info0, Info1),

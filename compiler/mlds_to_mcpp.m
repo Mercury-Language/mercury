@@ -112,7 +112,12 @@ generate_mcplusplus_code(MLDS) -->
 		"extern ""C"" int _fltused=0;\n",
 		"\n"]),
 
-	{ Namespace = get_class_namespace(ClassName) },
+	{ Namespace0 = get_class_namespace(ClassName) },
+	{ list__reverse(Namespace0) = [Head | Tail] ->
+		Namespace = list__reverse([Head ++ "__c_code" | Tail])
+	;
+		Namespace = Namespace0
+	},
 
 	io__write_list(Namespace, "\n", 
 		(pred(N::in, di, uo) is det -->
@@ -123,7 +128,7 @@ generate_mcplusplus_code(MLDS) -->
 		ForeignCode),
 
 	io__write_strings([
-		"\n__gc public class ", ModuleNameStr, "__c_code\n",
+		"\n__gc public class mercury_code",
 		"{\n",
 		"public:\n"]),
 
