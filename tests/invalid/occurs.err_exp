@@ -10,4 +10,7 @@ occurs.m:018:   mode error in unification of `X' and `f(X)'.
 occurs.m:018:   Variable `X' has instantiatedness `unique(f(free))',
 occurs.m:018:   term `f(X)'
 occurs.m:018:   has instantiatedness `f(unique(f(free)))'.
+occurs.m:010: In `p2':
+occurs.m:010:   warning: determinism declaration could be tighter.
+occurs.m:010:   Declared `semidet', inferred `failure'.
 For more information, try recompiling with `-E'.
