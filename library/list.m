@@ -35,7 +35,7 @@
 :- mode list__append(in, in, out) is det.
 :- mode list__append(in, in, in) is semidet.	% implied
 :- mode list__append(in, out, in) is semidet.
-:- mode list__append(out, out, in) is nondet.
+:- mode list__append(out, out, in) is multidet.
 %	The following mode is semidet in the sense that it doesn't
 %	succeed more than once - but it does create a choice-point,
 %	which means it's inefficient and that the compiler can't deduce
