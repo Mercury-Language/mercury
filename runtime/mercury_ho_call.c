@@ -1088,7 +1088,8 @@ MR_make_closure(MR_Code *proc_addr)
 	closure->MR_closure_code = proc_addr;
 	closure->MR_closure_num_hidden_args = num_hidden_args;
 #ifdef MR_HIGHLEVEL_CODE
-	closure->MR_closure_hidden_args(1) = &MR_generic_closure_wrapper;
+	closure->MR_closure_hidden_args(1) =
+		(MR_Word) &MR_generic_closure_wrapper;
 #endif
 
 	MR_save_transient_hp();
