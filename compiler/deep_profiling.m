@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -696,7 +696,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 		generate_call(ModuleInfo, "semi_fail_port_code_sr", 3,
 			[TopCSD, MiddleCSD, ActivationPtr1], no, failure,
 			FailPortCode),
-		NewNonlocals = list_to_set([MiddleCSD, ActivationPtr1])
+		NewNonlocals = list_to_set([TopCSD, MiddleCSD, ActivationPtr1])
 	;
 		MaybeActivationPtr = no,
 		generate_call(ModuleInfo, "semi_call_port_code_ac", 3,
@@ -706,7 +706,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 			[TopCSD, MiddleCSD], [], ExitPortCode),
 		generate_call(ModuleInfo, "semi_fail_port_code_ac", 2,
 			[TopCSD, MiddleCSD], no, failure, FailPortCode),
-		NewNonlocals = list_to_set([MiddleCSD])
+		NewNonlocals = list_to_set([TopCSD, MiddleCSD])
 	),
 
 	ExitConjGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo0,
@@ -951,18 +951,26 @@ transform_goal(Path, not(Goal0) - Info0, not(Goal) - Info, AddedImpurity) -->
 	transform_goal([neg | Path], Goal0, Goal, AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, some(QVars, CR, Goal0) - Info0,
-		some(QVars, CR, Goal) - Info, AddedImpurity) -->
+transform_goal(Path, some(QVars, CanRemove, Goal0) - Info0,
+		some(QVars, CanRemove, Goal) - Info, AddedImpurity) -->
 	{ Goal0 = _ - InnerInfo },
 	{ goal_info_get_determinism(Info0, OuterDetism) },
 	{ goal_info_get_determinism(InnerInfo, InnerDetism) },
 	{ InnerDetism = OuterDetism ->
+		Info1 = Info0,
 		MaybeCut = no_cut
 	;
+		% Given a subgoal containing both nondet code and impure code, 
+		% determinism analysis will remove the `some' wrapped around
+		% that subgoal if it is allowed to. If we get here, then the
+		% subgoal inside the `some' contains nondet code, and the deep
+		% profiling transformation will make it impure as well.
+
+		goal_info_add_feature(Info0, keep_this_commit, Info1),
 		MaybeCut = cut
 	},
 	transform_goal([exist(MaybeCut) | Path], Goal0, Goal, AddedImpurity),
-	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
+	{ add_impurity_if_needed(AddedImpurity, Info1, Info) }.
 
 transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0, SM) - Info0,
 		if_then_else(IVars, Cond, Then, Else, SM) - Info,

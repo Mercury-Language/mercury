@@ -16,7 +16,7 @@ endif
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-PROGS=		\
+ORDINARY_PROGS=	\
 		arithmetic \
 		array_test \
 		commit_bug \
@@ -41,7 +41,6 @@ PROGS=		\
 		io_regression \
 		liveness \
 		liveness2 \
-		map_corresponding \
 		mode_inf \
 		mode_inf_bug \
 		mode_inference_reorder \
@@ -70,8 +69,17 @@ PROGS=		\
 		string_to_float \
 		univ \
 		unreachable \
-		unsafe_uniqueness \
+		unsafe_uniqueness
+
+EXCEPTION_PROGS = \
+		map_corresponding \
 		unused_arg_determinism
+
+ifneq "$(findstring profdeep,$(GRADE))" ""
+	PROGS = $(ORDINARY_PROGS)
+else
+	PROGS = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
+endif
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.

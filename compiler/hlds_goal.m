@@ -745,6 +745,16 @@
 				% the value of this variable in its stack slot
 				% as soon as it is generated; this marker
 				% tells the code generator when this happens.
+	;	keep_this_commit
+				% This feature should be attached only to goals
+				% that represent commits (i.e. some() goals in
+				% which the inner and outer determinisms
+				% differ). It tells determinism analysis that
+				% some other part of the compiler wants the
+				% commit to stay, even if the usual rules of
+				% determinism analysis say that the
+				% nondeterminism inside the some() should be
+				% exposed to the environment outside.
 	;	tailcall.	% This goal represents a tail call. This marker
 				% is used by deep profiling.
 

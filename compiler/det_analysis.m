@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -297,28 +297,44 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 
 	% If a pure or semipure goal has no output variables,
-	% then the goal is in single-solution context
+	% then the goal is in a single-solution context.
 
 	(
 		det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap,
 			DetInfo),
 		\+ goal_info_is_impure(GoalInfo0)
 	->
-		OutputVars = no,
+		AddPruning = yes,
 		SolnContext = first_soln
 	;
-		OutputVars = yes,
+		AddPruning = no,
 		SolnContext = SolnContext0
+	),
+
+	% Some other part of the compiler has determined that we need to keep
+	% the cut represented by this quantification. This can happen e.g.
+	% when deep profiling adds impure code to the goal inside the some;
+	% it doesn't want to change the behavior of the some, even though
+	% the addition of impurity would make the if-then-else treat it
+	% differently.
+
+	(
+		Goal0 = some(_, _, _),
+		goal_info_has_feature(GoalInfo0, keep_this_commit)
+	->
+		Prune = yes
+	;
+		Prune = AddPruning
 	),
 
 	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, SolnContext, DetInfo,
 		NonLocalVars, DeltaInstMap, Goal1, InternalDetism0, Msgs1),
 
 	determinism_components(InternalDetism0, InternalCanFail,
-				InternalSolns0),
+		InternalSolns0),
 	(
-		% if mode analysis notices that a goal cannot succeed,
-		% then determinism analysis should notice this too
+		% If mode analysis notices that a goal cannot succeed,
+		% then determinism analysis should notice this too.
 
 		instmap_delta_is_unreachable(DeltaInstMap)
 	->
@@ -328,20 +344,15 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	),
 
 	(
-		% If a pure or semipure goal with multiple solutions
-		% has no output variables,
-		% then it really it has only one solution
-		% (we will need to do pruning)
-
 		( InternalSolns = at_most_many
 		; InternalSolns = at_most_many_cc
 		),
-		OutputVars = no
+		Prune = yes
 	->
 		Solns = at_most_one
 	;
-		% If a goal with multiple solutions occurs in a single-solution
-		% context, then we will need to do pruning
+		% If a goal with multiple solutions occurs in a
+		% single-solution context, then we will need to do pruning.
 
 		InternalSolns = at_most_many,
 		SolnContext = first_soln
