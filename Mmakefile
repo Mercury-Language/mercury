@@ -453,7 +453,10 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs realclean_config
+realclean: realclean_subdirs realclean_local
+
+.PHONY: realclean_local
+realclean_local: realclean_config
 
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs

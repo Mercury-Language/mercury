@@ -107,10 +107,10 @@ uninstall:
 
 #-----------------------------------------------------------------------------#
 
-clean: 
+clean_local: 
 	rm -f *.o *.pic_o
 
-realclean: clean
+realclean_local:
 	-$(RM) mbi mdis depend.mk* libmbi.a libmbi.so \
 		mdb mdb.c mdb.d mdb_init.c
 

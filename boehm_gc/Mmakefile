@@ -37,7 +37,7 @@ submake: force
 .PHONY: force
 force:
 
-clean:
+clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(MMAKEFLAGS) clean
 	rm -f libgc.a libgc.so

@@ -90,7 +90,7 @@ uninstall:
 
 #-----------------------------------------------------------------------------#
 
-realclean: clean_scripts
+realclean_local: clean_scripts
 
 .PHONY: clean_scripts
 clean_scripts:

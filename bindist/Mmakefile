@@ -118,7 +118,7 @@ bindist.build_vars: bindist.build_vars.in
 
 #-----------------------------------------------------------------------------#
 
-realclean:
+realclean_local:
 	rm -f bindist.configure bindist.build_vars
 
 #-----------------------------------------------------------------------------#

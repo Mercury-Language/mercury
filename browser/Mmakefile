@@ -156,7 +156,7 @@ $(os_subdir)browser_library.pic_o \
 
 #-----------------------------------------------------------------------------#
 
-realclean:
+realclean_local:
 	rm -f lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).so \
 		$(BROWSER_LIB_NAME).init
 	rm -f tags

@@ -274,7 +274,7 @@ install_webpage: library-chapters.texi split_html ps  install_dirs
 
 #-----------------------------------------------------------------------------#
 
-clean: distclean clean_texi
+clean_local: distclean clean_texi
 
 .PHONY: distclean
 distclean:
@@ -284,7 +284,7 @@ distclean:
 clean_texi:
 	rm -f library-menu.texi library-chapters.texi
 
-realclean: realclean_texi realclean_manpages
+realclean_local: realclean_texi realclean_manpages
 
 .PHONY: realclean_texi
 realclean_texi:

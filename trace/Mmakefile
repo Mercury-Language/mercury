@@ -172,13 +172,13 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_o
+clean_local: clean_o
 
 .PHONY: clean_o
 clean_o:
 	rm -f $(OBJS) $(PIC_OBJS) 
 
-realclean:
+realclean_local:
 	rm -f lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).so
 
 #-----------------------------------------------------------------------------#

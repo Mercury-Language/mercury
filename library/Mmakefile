@@ -214,7 +214,7 @@ $(os_subdir)std_util.pic_o \
 
 #-----------------------------------------------------------------------------#
 
-realclean:
+realclean_local:
 	rm -f lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
 	rm -f tags
 

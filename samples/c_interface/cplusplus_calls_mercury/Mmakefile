@@ -51,7 +51,7 @@ cpp_main_int.o: cpp_main.h
 mercury_lib.h: mercury_lib.o
 
 # make sure that `mmake clean' removes cpp_main.o and mercury_lib.h
-clean:
+clean_local:
 	rm -f cpp_main.o mercury_lib.h
 
 #-----------------------------------------------------------------------------#

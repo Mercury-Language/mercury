@@ -177,14 +177,14 @@ cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 
-clean:
+clean_local:
 	for file in *.pp; do \
 		if [ "$$file" != "*.pp" ]; then \
 			rm -f `basename $$file .pp`.m; \
 		fi; \
 	done
 
-realclean:
+realclean_local:
 	rm -f tags mercury_compile.stats $(PP_DATE_FILES)
 
 #-----------------------------------------------------------------------------#

@@ -33,10 +33,10 @@ c_main.o: mercury_lib.h
 mercury_lib.h: mercury_lib.o
 
 # make sure that `mmake clean' removes c_main.o
-clean:
+clean_local:
 	rm -f c_main.o mercury_lib.h
 
-realclean:
+realclean_local:
 	rm -f c_main
 
 #-----------------------------------------------------------------------------#
