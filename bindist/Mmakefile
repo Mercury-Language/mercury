@@ -110,7 +110,7 @@ binary_distribution: bindist.configure bindist.build_vars
 	rm -rf $(MERCURY_VERSION)
 
 bindist.configure: bindist.configure.in ../aclocal.m4
-	autoconf -l.. bindist.configure.in > bindist.configure
+	autoconf -l .. bindist.configure.in > bindist.configure
 
 bindist.build_vars: bindist.build_vars.in
 	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \
