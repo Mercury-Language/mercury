@@ -7,7 +7,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module cgi, html, std_util, bool.
+:- import_module cgi, html, std_util, list, bool.
 
 :- func my_url = string.
 my_url = "http://hydra.cs.mu.oz.au/cgi-bin/mercury/form_test".
