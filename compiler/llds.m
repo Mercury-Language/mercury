@@ -73,8 +73,11 @@
 			;	and	% logical and
 			;	or	% logical or
 			;	eq	% ==
+			;	ne	% !=
 			;	(<)
-			;	(>).
+			;	(>)
+			;	(<=)
+			;	(>=).
 
 :- type reg		--->	r(int)		% integer regs
 			;	f(int).		% floating point regs
@@ -406,6 +409,8 @@ output_operator(/) -->
 	io__write_string("/").
 output_operator(eq) -->
 	io__write_string("==").
+output_operator(ne) -->
+	io__write_string("!=").
 output_operator(and) -->
 	io__write_string("&&").
 output_operator(or) -->
@@ -414,6 +419,10 @@ output_operator(<) -->
 	io__write_string("<").
 output_operator(>) -->
 	io__write_string(">").
+output_operator(<=) -->
+	io__write_string("<=").
+output_operator(>=) -->
+	io__write_string(">=").
 
 %-----------------------------------------------------------------------------%
 
