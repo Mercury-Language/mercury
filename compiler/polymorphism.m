@@ -883,7 +883,7 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 	var, varset, map(var, type), list(hlds__goal),
 	var, varset, map(var, type), list(hlds__goal)).
 :- mode polymorphism__maybe_init_second_cell(in, in, in, in, in, in, in,
-	out, out, out, out).
+	out, out, out, out) is det.
 
 polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		BaseVar, VarSet0, VarTypes0, ExtraGoals0,

@@ -349,7 +349,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 
 :- pred push_into_goal(hlds__goal, hlds__goal, var, slot_info,
 	hlds__goal, slot_info).
-:- mode push_into_goal(in, in, in, in, out, out).
+:- mode push_into_goal(in, in, in, in, out, out) is det.
 
 push_into_goal(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 	saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo1),
@@ -366,7 +366,7 @@ push_into_goal(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 
 :- pred push_into_goal_rename(hlds__goal, hlds__goal, var, slot_info,
 	hlds__goal, slot_info).
-:- mode push_into_goal_rename(in, in, in, in, out, out).
+:- mode push_into_goal_rename(in, in, in, in, out, out) is det.
 
 push_into_goal_rename(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 	Goal0 = _ - GoalInfo0,
@@ -385,7 +385,7 @@ push_into_goal_rename(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 
 :- pred push_into_goals_rename(list(hlds__goal), hlds__goal, var, slot_info,
 	list(hlds__goal), slot_info).
-:- mode push_into_goals_rename(in, in, in, in, out, out).
+:- mode push_into_goals_rename(in, in, in, in, out, out) is det.
 
 push_into_goals_rename([], _Construct, _Var, SlotInfo, [], SlotInfo).
 push_into_goals_rename([Goal0 | Goals0], Construct, Var, SlotInfo0,
@@ -399,7 +399,7 @@ push_into_goals_rename([Goal0 | Goals0], Construct, Var, SlotInfo0,
 
 :- pred push_into_cases_rename(list(case), hlds__goal, var, slot_info,
 	list(case), slot_info).
-:- mode push_into_cases_rename(in, in, in, in, out, out).
+:- mode push_into_cases_rename(in, in, in, in, out, out) is det.
 
 push_into_cases_rename([], _Construct, _Var, SlotInfo, [], SlotInfo).
 push_into_cases_rename([case(ConsId, Goal0) | Cases0], Construct, Var,
@@ -438,17 +438,17 @@ saved_vars_in_switch([case(Cons, Goal0) | Cases0], SlotInfo0,
 				).
 
 :- pred init_slot_info(varset, map(var, type), slot_info).
-:- mode init_slot_info(in, in, out).
+:- mode init_slot_info(in, in, out) is det.
 
 init_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
 
 :- pred final_slot_info(varset, map(var, type), slot_info).
-:- mode final_slot_info(out, out, in).
+:- mode final_slot_info(out, out, in) is det.
 
 final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
 
 :- pred rename_var(slot_info, var, var, map(var, var), slot_info).
-:- mode rename_var(in, in, out, out, out).
+:- mode rename_var(in, in, out, out, out) is det.
 
 rename_var(SlotInfo0, Var, NewVar, Substitution, SlotInfo) :-
 	SlotInfo0 = slot_info(Varset0, VarTypes0),

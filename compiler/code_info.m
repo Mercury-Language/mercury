@@ -2367,11 +2367,11 @@ code_info__variable_type(Var, Type) -->
 
 :- pred code_info__get_resume_point_stack(stack(set(var)),
 	code_info, code_info).
-:- mode code_info__get_resume_point_stack(out, in, out).
+:- mode code_info__get_resume_point_stack(out, in, out) is det.
 
 :- pred code_info__set_resume_point_stack(stack(set(var)),
 	code_info, code_info).
-:- mode code_info__set_resume_point_stack(in, in, out).
+:- mode code_info__set_resume_point_stack(in, in, out) is det.
 
 :- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)), 
 	code_info, code_info).
