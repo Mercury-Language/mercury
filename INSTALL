@@ -15,7 +15,11 @@
 # Step 3.  Check the permissions on the installed files.
 
 PATH=`pwd`/scripts:$PATH
-export PATH
+MMAKE_VARS=`pwd`/scripts/Mmake.vars
+MMAKE_RULES=`pwd`/scripts/Mmake.rules
+export PATH MMAKE_VARS MMAKE_RULES
+
 touch Mmake.params
 (cd scripts && make -f Mmake.makefile) &&
 mmake install # MMAKEFLAGS=-j3
+
