@@ -37,6 +37,7 @@ esac
 
 case $HOST in
 	kryten) 	mail="rsh munta /bin/mail" ;;
+	hydra)		mail=/usr/bin/main ;;
 	*)		mail=/bin/mail ;;
 esac
 
@@ -73,7 +74,7 @@ echo Subject: Mercury auto-test on $HOST
 echo
 logfile=$tm_dir/logs/test_mercury_$HOST.out
 
-if /bin/nice -5 sh /tmp/test_mercury$$ $HOST $ARCH $FULLARCH \
+if nice -5 sh /tmp/test_mercury$$ $HOST $ARCH $FULLARCH \
 		> $logfile 2>&1
 then
 	echo test passed
