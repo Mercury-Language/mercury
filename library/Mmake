@@ -20,8 +20,8 @@ MAIN_TARGET=mercury
 
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
 		$(SCRIPTS_DIR)/mnc
-MNL	=	MERCURY_LIB_DIR=. \
-	MERCURY_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+MNL	=	MERCURY_NU_LIB_DIR=. \
+	MERCURY_NU_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
 		$(SCRIPTS_DIR)/mnl
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
@@ -59,7 +59,7 @@ mercury : ints libmercury
 
 .PHONY: nuprolog
 nuprolog : ints library.nu $(library.nos) $(NU_LIBRARY_NOS) \
-			nc_builtin.nl np_builtin.nl
+			nc_builtin.nl
 
 .PHONY: sicstus
 sicstus : ints sicstus_compile library.sicstus library.sicstus.debug
@@ -131,6 +131,8 @@ library.sicstus.debug: error.ql
 
 sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) error.ql: sicstus_compile
 
+$(library.nos) $(NU_LIBRARY_NOS) error.no debug.no portray.no: nc_builtin.nl
+
 #-----------------------------------------------------------------------------#
 
 sicstus_compile: sp_builtin.pl
@@ -198,9 +200,9 @@ install_nuprolog: install_library_nu install_interpreter_nu
 
 .PHONY: install_library_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
-			error.no debug.no portray.no nc_builtin.nl np_builtin.nl
+			error.no debug.no portray.no nc_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
-	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
+	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
 		error.no debug.no portray.no` $(INSTALL_NU_ARCH_DIR)
