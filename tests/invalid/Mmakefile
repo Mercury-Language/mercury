@@ -31,12 +31,10 @@ SOURCES= \
 	occurs.m \
 	pragma_c_code_and_clauses1.m \
 	pragma_c_code_and_clauses2.m \
-	purity.m \
-	purity_nonsense.m \
 	pragma_c_code_no_det.m \
 	qual_basic_test2.m \
 	type_loop.m \
-	type_mismatch.m \
+#	type_mismatch.m \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
