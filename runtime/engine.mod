@@ -99,13 +99,15 @@ void call_engine(Code *entry_point)
 
 	/*
 	** Mark this as the spot to return to.
-	** On return, restore the saved value of engine_jmp_buf and then
+	** On return, restore the registers (since longjmp may clobber
+	** them), restore the saved value of engine_jmp_buf, and then
 	** exit.
 	*/
 
 	if (setjmp(curr_jmp_buf))
 	{
 		debugmsg0("...caught longjmp\n");
+		restore_registers();
 		engine_jmp_buf = prev_jmp_buf;
 		return;
 	}
@@ -173,13 +175,6 @@ void call_engine_inner(Code *entry_point)
 
 Define_label(engine_done);
 	/*
-	** Save any registers which will get clobbered by the normal
-	** C function call / return mechanism
-	*/
-
-	save_transient_registers();
-
-	/*
 	** We need to ensure that there is at least one
 	** real function call in call_engine(), because
 	** otherwise gcc thinks that it doesn't need to
@@ -225,7 +220,12 @@ Define_label(engine_done);
 	** stored on the top of the stack, past our dummy locals,
 	** where it may have been clobbered.
 	** Hence the only safe way to exit is with longjmp().
+	**
+	** Since longjmp() may clobber the registers, we need to
+	** save them first.
 	*/
+	save_registers();
+	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
 }}
 
@@ -239,7 +239,8 @@ void dump_prev_locations(void) {}
 **
 ** To keep the main dispatch loop tight, instead of returning a null
 ** pointer to indicate when we've finished executing, we just longjmp()
-** out.
+** out.  We need to save the registers before calling longjmp(),
+** since doing a longjmp() might clobber them.
 **
 ** With register windows, we need to restore the registers to
 ** their initialized values from their saved copies.
@@ -250,8 +251,7 @@ void dump_prev_locations(void) {}
 
 static Code *engine_done(void)
 {
-	save_transient_registers();
-
+	save_registers();
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
 }
