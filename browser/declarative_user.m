@@ -264,53 +264,59 @@ user_confirm_bug_help(User) -->
 
 get_command(Prompt, Command, User, User) -->
 	util__trace_getline(Prompt, Result, User ^ instr, User ^ outstr),
-	( { Result = ok(String) },
-		{ string__to_char_list(String, Line) },
+	(
+		{ Result = ok(String) },
+		{ Words = string__words(char__is_whitespace, String) },
 		{
-			command_chars(Line, Command0)
+			Words = [CmdWord | CmdArgs],
+			cmd_handler(CmdWord, CmdHandler),
+			CommandPrime = CmdHandler(CmdArgs)
 		->
-			Command = Command0
+			Command = CommandPrime
 		;
 			Command = illegal_command
 		}
-	; { Result = error(Error) },
+	;
+		{ Result = error(Error) },
 		{ io__error_message(Error, Msg) },
 		io__write_string(User ^ outstr, Msg),
 		io__nl(User ^ outstr),
 		{ Command = abort }
-	; { Result = eof },
+	;
+		{ Result = eof },
 		{ Command = abort }
 	).
 
-:- pred command_chars(list(char), user_command).
-:- mode command_chars(in, out) is semidet.
+:- pred cmd_handler(string, func(list(string)) = user_command).
+:- mode cmd_handler(in, out((func(in) = out is semidet))) is semidet.
 
-command_chars(['y' | _], yes).
-command_chars(['n' | _], no).
-command_chars(['i' | _], inadmissible).
-command_chars(['s' | _], skip).
-command_chars(['r' | _], restart).
-command_chars(['a' | _], abort).
-command_chars(['h' | _], help).
-command_chars(['?' | _], help).
-command_chars(['b' | Line0], browse(Arg)) :-
-	(
-		Line0 = ['r','o','w','s','e' | Line1]
-	->
-		Line2 = Line1
-	;
-		Line2 = Line0
-	),
-	list__takewhile(char__is_whitespace, Line2, _, ArgChars),
-	parse_integer(ArgChars, 0, Arg).
+cmd_handler("y",	one_word_cmd(yes)).
+cmd_handler("yes",	one_word_cmd(yes)).
+cmd_handler("n",	one_word_cmd(no)).
+cmd_handler("no",	one_word_cmd(no)).
+cmd_handler("in",	one_word_cmd(inadmissible)).
+cmd_handler("inadmissible", one_word_cmd(inadmissible)).
+cmd_handler("s",	one_word_cmd(skip)).
+cmd_handler("skip",	one_word_cmd(skip)).
+cmd_handler("r",	one_word_cmd(restart)).
+cmd_handler("restart",	one_word_cmd(restart)).
+cmd_handler("a",	one_word_cmd(abort)).
+cmd_handler("abort",	one_word_cmd(abort)).
+cmd_handler("?",	one_word_cmd(help)).
+cmd_handler("h",	one_word_cmd(help)).
+cmd_handler("help",	one_word_cmd(help)).
+cmd_handler("b",	browse_cmd).
+cmd_handler("browse",	browse_cmd).
 
-:- pred parse_integer(list(char), int, int).
-:- mode parse_integer(in, in, out) is semidet.
+:- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
+	is semidet.
 
-parse_integer([], N, N).
-parse_integer([D | Ds], N0, N) :-
-	char__digit_to_int(D, I),
-	parse_integer(Ds, N0 * 10 + I, N).
+one_word_cmd(Cmd, []) = Cmd.
+
+:- func browse_cmd(list(string)::in) = (user_command::out) is semidet.
+
+browse_cmd([Arg]) = browse(ArgNum) :-
+	string__to_int(Arg, ArgNum).
 
 %-----------------------------------------------------------------------------%
 
