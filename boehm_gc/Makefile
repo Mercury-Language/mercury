@@ -178,7 +178,7 @@ dyn_load_sunos53.o: dyn_load.c
 
 # shared library version of the collector
 libgc.so: $(OBJS) # dyn_load_sunos53.o
-	./if_mach ALPHA $(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load.o -lc
+	./if_mach ALPHA "" $(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load.o -lc
 	./if_not_there libgc.so \
 		$(MAKE) dyn_load_sunos54.o "&&" \
 		$(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load_sunos53.o -ldl
