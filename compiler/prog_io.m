@@ -535,7 +535,7 @@ parse_item(VarSet, Term, Result) :-
 		Term = term_functor(term_atom("-->"), [DCG_H, DCG_B],
 			DCG_Context)
 	->
-		parse_dcg_clause(VarSet, DCG_B, DCG_H, DCG_Context, Result)
+		parse_dcg_clause(VarSet, DCG_H, DCG_B, DCG_Context, Result)
 	;
 		% It's either a fact or a rule
 		( %%% some [H, B, TermContext]
@@ -671,11 +671,11 @@ parse_some_vars_goal(A0, Vars, A) :-
 			maybe_item_and_context).
 :- mode parse_dcg_clause(input, input, input, input, output).
 
-parse_dcg_clause(VarSet0, DCG_B, DCG_H, DCG_Context, Result) :-
+parse_dcg_clause(VarSet0, DCG_Head, DCG_Body, DCG_Context, Result) :-
 	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
-	parse_dcg_goal(DCG_B, VarSet1, N0, DCG_0_Var,
+	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
 			Body, VarSet, _N, DCG_Var),
-	parse_qualified_term(Head, "DCG clause head", HeadResult),
+	parse_qualified_term(DCG_Head, "DCG clause head", HeadResult),
 	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
 	add_context(R, DCG_Context, Result).
 
@@ -719,11 +719,17 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
 		( Term0 = term_functor(term_atom(Functor), Args0, Context) ->
-			append(Args0, [Var0, Var], Args),
+			append(Args0, [
+					term_variable(Var0),
+					term_variable(Var)
+				], Args),
 			Term = term_functor(term_atom(Functor), Args, Context)
 		;
-			Term = term_functor(term_atom("call"),
-					[Term, Var0, Var], Context)
+			Term = term_functor(term_atom("call"), [
+					Term,
+					term_variable(Var0),
+					term_variable(Var)
+				], Context)
 		),
 		Goal = call(Term)
 	).
@@ -731,6 +737,11 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 :- pred parse_dcg_goal_2(term, varset, int, var, goal, varset, int, var).
 :- mode parse_dcg_goal_2(input, input, input, input,
 			output, output, output, output) is semidet.
+
+	% Ordinary goal inside { curly braces }.
+parse_dcg_goal_2(term_functor(term_atom("{}"),[G],_), VarSet, N, Var,
+		Goal, VarSet, N, Var) :-
+	parse_goal(G, Goal).
 
 	% Empty list - just unify the input and output DCG args.
 parse_dcg_goal_2(term_functor(term_atom("[]"),[],_), VarSet0, N0, Var0,
