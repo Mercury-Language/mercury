@@ -87,9 +87,9 @@ Environment variables:
 while true; do
 	case "$1" in
 	-a|--aditi)
-		aditi_opt="-a"; shift;;	
+		aditi_opt="-a";;	
 	-a-|--no-aditi)
-		aditi_opt=""; shift;;	
+		aditi_opt="";;	
 	-c|--max-calls)
 		maxcalls="$2"; shift;;
 
