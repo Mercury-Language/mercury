@@ -61,6 +61,8 @@ move_follow_code_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 	proc_info_headvars(ProcInfo0, HeadVars),
 
 	move_follow_code_in_goal(Goal0, ModuleInfo0, Goal1),
+		% we need to fix up the goal_info by recalculating
+		% the nonlocal vars and the non-atomic instmap deltas.
 	implicitly_quantify_clause_body(HeadVars, Goal1, Goal2),
 	recompute_instmap_delta(Goal2, Goal),
 

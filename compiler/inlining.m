@@ -461,9 +461,11 @@ inlining__argument_unifications([Mode|ArgInfos],
 		mode_is_input(ModuleInfo, Mode)
 	->
 		Context = unify_context(explicit, []),
+			% XXX unify context is wrong
 		Unify = unify(term__variable(H), term__variable(V),
 				((free -> ground) - (ground -> ground)),
 				assign(H, V), Context),
+			% XXX bug! the mode is wrong
 		goal_info_init(GoalInfo0),
 		map__init(Inst0),
 		map__insert(Inst0, H, ground, Inst),

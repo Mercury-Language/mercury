@@ -1576,7 +1576,10 @@ code_info__get_variable(Var, VarLoc) -->
 	->
 		{ VarLoc = VarStat }
 	;
-		{ error("Variable not in register or on stack.") }
+		code_info__variable_to_string(Var, VarString),
+		{ string__append_list(["`", VarString,
+			"' not in register or on stack."], Message) },
+		{ error(Message) }
 	).
 
 %---------------------------------------------------------------------------%

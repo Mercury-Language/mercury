@@ -442,17 +442,21 @@ add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ Arity = 2 },
 	{ Cond = true },
 	{ ArgTypes = [Type, Type] },
+	{ clauses_info_init(Arity, ClausesInfo0) },
+	{ pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
+		Context, ClausesInfo0, Status, PredInfo0) },
+
 	{ ArgModes = [ground -> ground, ground -> ground] },
 	{ Det = unspecified },	% let determinism analysis infer it
-	{ unify_proc__generate_clause_info(Type, Ctors, ClausesInfo) },
-	{ pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
-		Context, ClausesInfo, Status, PredInfo0) },
-
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ next_mode_id(Procs0, Det, ModeId) },
 	{ proc_info_init(ArgModes, Det, Context, NewProc) },
 	{ map__set(Procs0, ModeId, NewProc, Procs) },
-	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
+	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo1) },
+
+	{ unify_proc__generate_clause_info(Type, Ctors, [ModeId],
+		ClausesInfo) },
+	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo) },
 
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
@@ -923,8 +927,9 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 			% either a variable, or something stupid like a number.
 			% In the first case, we want to transform it to a call
 			% to builtin:call/1, and in the latter case, we
+			% want to report an error.
 			% In either case, we transform it to a call to call/1.
-			% The latter case will will be caught by the
+			% The error in the latter case will be caught by the
 			% type-checker.
 			PredName = "call",
 			Args = [Goal1]
@@ -1336,7 +1341,7 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 
 unspecified_det_warning(Name, Arity, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("Warning: no determinism declaration for local pred"),
+	io__write_string("Warning: no determinism declaration for local pred\n"),
 	prog_out__write_context(Context),
 	io__write_string("  `"),
 	prog_out__write_sym_name(Name),

@@ -541,10 +541,25 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, Args, _, PredName, _Follow),
 	mercury_output_term(term__functor(term__atom(Name), Args, Context),
 				VarSet).
 
-hlds_out__write_goal_2(unify(A, B, _, _, _), _ModuleInfo, VarSet, _Indent) -->
+hlds_out__write_goal_2(unify(A, B, _, Unification, _), _ModuleInfo, VarSet,
+		_Indent) -->
 	mercury_output_term(A, VarSet),
-	io__write_string(" = "),
+	hlds_out__write_unification(Unification),
 	mercury_output_term(B, VarSet).
+
+:- pred hlds_out__write_unification(unification, io__state, io__state).
+:- mode hlds_out__write_unification(in, di, uo) is det.
+
+hlds_out__write_unification(assign(_, _)) -->
+	io__write_string(" := ").
+hlds_out__write_unification(simple_test(_, _)) -->
+	io__write_string(" == ").
+hlds_out__write_unification(construct(_, _, _, _)) -->
+	io__write_string(" := ").
+hlds_out__write_unification(deconstruct(_, _, _, _, _)) -->
+	io__write_string(" == ").
+hlds_out__write_unification(complicated_unify(_, _, _)) -->
+	io__write_string(" = ").
 
 :- pred hlds_out__write_conj(list(hlds__goal), module_info, varset, int,
 				io__state, io__state).
