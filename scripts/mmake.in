@@ -154,10 +154,13 @@ else
 			umask 022
 			mmake_tmpdir=/tmp/mmake$$
 			tmp=$mmake_tmpdir/mmake
-			if ! mkdir $mmake_tmpdir ; then
-				echo "Unable to create temporary makefile" 1>&2
-				exit 1
-			fi
+			mkdir $mmake_tmpdir
+			case $? in
+				0) ;;
+				*) echo "Unable to create temporary makefile" 1>&2
+				   exit 1
+				   ;;
+			esac
 			trap 'status=$?; rm -rf $mmake_tmpdir; exit $status' 0 1 2 3 13 15
 			umask $old_umask
 			;;
