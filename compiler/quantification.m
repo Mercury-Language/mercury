@@ -192,7 +192,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	% We need to keep the structure, though, so that mode
 	% analysis doesn't try to reorder through quantifiers.
 	% (Actually it would make sense to allow mode analysis
-	% to do that, but there reference manual says it doesn't,
+	% to do that, but the reference manual says it doesn't,
 	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
 	% an empty quantifier `some([], Goal)'.
 
