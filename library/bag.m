@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,24 +21,29 @@
 :- type bag(T).
 
 	% Create an empty bag.
+	%
 :- pred bag__init(bag(T)).
 :- mode bag__init(out) is det.
 
 	% Insert a particular value in a bag.
+	%
 :- pred bag__insert(bag(T), T, bag(T)).
 :- mode bag__insert(in, in, out) is det.
 
 	% Insert a list of values into a bag.
+	%
 :- pred bag__insert_list(bag(T), list(T), bag(T)).
 :- mode bag__insert_list(in, in, out) is det.
 
 	% Make a bag from a list.
+	%
 :- pred bag__from_list(list(T), bag(T)).
 :- mode bag__from_list(in, out) is det.
 
 	% Given a bag, produce a sorted list containing all the values in
 	% the bag.  Each value will appear in the list the same number of
 	% times that it appears in the bag.
+	%
 :- pred bag__to_list(bag(T), list(T)).
 :- mode bag__to_list(in, out) is det.
 
@@ -46,39 +51,68 @@
 	% the bag.  Each value will appear in the list once, with the
 	% associated integer giving the number of times that it appears
 	% in the bag.
+	%
 :- pred bag__to_assoc_list(bag(T), assoc_list(T, int)).
 :- mode bag__to_assoc_list(in, out) is det.
 
 	% Given a bag, produce a sorted list with no duplicates
 	% containing all the values in the bag.
+	%
 :- pred bag__to_list_without_duplicates(bag(T), list(T)).
 :- mode bag__to_list_without_duplicates(in, out) is det.
 
 	% Remove one occurrence of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
+	%
 :- pred bag__remove(bag(T), T, bag(T)).
 :- mode bag__remove(in, in, out) is semidet.
 
 	% Remove one occurrence of a particular value from a bag.
 	% Abort if the item does not exist in the bag.
+	%
 :- pred bag__det_remove(bag(T), T, bag(T)).
 :- mode bag__det_remove(in, in, out) is det.
 
+	% Remove a list of values from a bag.  Duplicates are removed
+	% from the bag the appropriate number of times.  Fail if any
+	% of the items in the list do not exist in the bag.
+	%
+	% This call is logically equivalent to:
+	%
+	%	bag__remove_list(Bag0, RemoveList, Bag) :-
+	%		bag__from_list(RemoveList, RemoveBag),
+	%		bag__is_subbag(RemoveBag, Bag0),
+	%		bag__subtract(Bag0, RemoveBag, Bag).
+	%
+:- pred bag__remove_list(bag(T), list(T), bag(T)).
+:- mode bag__remove_list(in, in, out) is semidet.
+
+	% Remove a list of values from a bag.  Duplicates are removed
+	% from the bag the appropriate number of times.  Abort if any
+	% of the items in the list do not exist in the bag.
+	%
+:- pred bag__det_remove_list(bag(T), list(T), bag(T)).
+:- mode bag__det_remove_list(in, in, out) is det.
+
 	% Delete one occurrence of a particular value from a bag.
 	% If the key is not present, leave the bag unchanged.
+	%
 :- pred bag__delete(bag(T), T, bag(T)).
 :- mode bag__delete(in, in, out) is det.
 
 	% Remove all occurrences of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
+	%
 :- pred bag__remove_all(bag(T), T, bag(T)).
 :- mode bag__remove_all(in, in, out) is semidet.
 
 	% Delete all occurrences of a particular value from a bag.
+	%
 :- pred bag__delete_all(bag(T), T, bag(T)).
 :- mode bag__delete_all(in, in, out) is det.
 
 	% Check whether a bag contains a particular value.
+	%
 :- pred bag__contains(bag(T), T).
 :- mode bag__contains(in, in) is semidet.
 
@@ -88,6 +122,7 @@
 	% If an element exists in SubBag, but not in Bag, then that
 	% element is not removed.
 	% e.g. bag__subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
+	%
 :- pred bag__subtract(bag(T), bag(T), bag(T)).
 :- mode bag__subtract(in, in, out) is det.
 
@@ -96,17 +131,20 @@
 	% If the two input bags are known to be unequal in size, then
 	% making the first bag the larger bag will usually be more
 	% efficient.
+	%
 :- pred bag__union(bag(T), bag(T), bag(T)).
 :- mode bag__union(in, in, out) is det.
 
 	% The third bag is the intersection of the first 2 bags.  Every
 	% element in the third bag exists in both of the first 2 bags.
 	% e.g. bag__intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
+	%
 :- pred bag__intersect(bag(T), bag(T), bag(T)).
 :- mode bag__intersect(in, in, out) is det.
 
 	% Fails if there is no intersection between the 2 bags.
 	% bag__intersect(A, B) :- bag__intersect(A, B, C), not bag__is_empty(C).
+	%
 :- pred bag__intersect(bag(T), bag(T)).
 :- mode bag__intersect(in, in) is semidet.
 
@@ -117,6 +155,7 @@
 	% If the two input bags are known to be unequal in size, then
 	% making the first bag the larger bag will usually be more
 	% efficient.
+	%
 :- pred bag__least_upper_bound(bag(T), bag(T), bag(T)).
 :- mode bag__least_upper_bound(in, in, out) is det.
 
@@ -126,14 +165,17 @@
 	% must be in bag B at least as many times.
 	% e.g. bag__is_subbag({1, 1, 2}, {1, 1, 2, 2, 3}).
 	% e.g. bag__is_subbag({1, 1, 2}, {1, 2, 3}) :- fail.
+	%
 :- pred bag__is_subbag(bag(T), bag(T)).
 :- mode bag__is_subbag(in, in) is semidet.
 
 	% Check whether a bag is empty.
+	%
 :- pred bag__is_empty(bag(T)).
 :- mode bag__is_empty(in) is semidet.
 
 	% Fails if the bag is empty.
+	%
 :- pred bag__remove_smallest(bag(T), T, bag(T)).
 :- mode bag__remove_smallest(in, out, out) is semidet.
 
@@ -143,6 +185,7 @@
 	% bag__subset_compare(=, {apple, orange}, {apple, orange}).
 	% bag__subset_compare(>, {apple, apple, orange}, {apple, orange}).
 	% bag__subset_compare(_, {apple, apple}, {orange, orange}) :- fail.
+	%
 :- pred bag__subset_compare(comparison_result, bag(T), bag(T)).
 :- mode bag__subset_compare(out, in, in) is semidet.
 
@@ -232,8 +275,21 @@ bag__det_remove(Bag0, Item, Bag) :-	% det
 	( bag__remove(Bag0, Item, Bag1) ->
 		Bag = Bag1
 	;
-		error("bag__det_remove: Missing item in bag."),
-		Bag = Bag0
+		error("bag__det_remove: Missing item in bag.")
+	).
+
+:- bag__remove_list(_, List, _) when List.
+
+bag__remove_list(Bag, [], Bag).
+bag__remove_list(Bag0, [X | Xs], Bag) :-
+	bag__remove(Bag0, X, Bag1),
+	bag__remove_list(Bag1, Xs, Bag).
+
+bag__det_remove_list(Bag0, List, Bag) :-
+	( bag__remove_list(Bag0, List, Bag1) ->
+		Bag = Bag1
+	;
+		error("bag__det_remove_list: Missing item in bag.")
 	).
 
 bag__remove_all(Bag0, Item, Bag) :- 	% semidet
@@ -350,6 +406,7 @@ bag__remove_smallest(Bag0, Item, Bag) :-
 	% bag__subset_compare(_, {apple, apple}, {orange, orange}) :- fail.
 	% :- pred bag__subset_compare(comparison_result, bag(T), bag(T)).
 	% :- mode bag__subset_compare(out, in, in) is semidet.
+	%
 bag__subset_compare(Res, A, B) :-
 	( map__remove_smallest(A, Key, AVal, A0) ->
 		( map__remove(B, Key, BVal, B0) ->

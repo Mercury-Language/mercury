@@ -288,8 +288,8 @@ Changes to the Mercury standard library:
   for details.
 
 * Miscellaneous new predicates: bag__least_upper_bound/3,
-  list__take_upto/3, set__count/2, set_ordlist__count/2,
-  and store__new_cyclic_mutvar/4.
+  bag__remove_list/3, bag__det_remove_list/3, list__take_upto/3,
+  set__count/2, set_ordlist__count/2, and store__new_cyclic_mutvar/4.
 
   See the Mercury Library Reference Manual for details.
 
