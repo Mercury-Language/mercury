@@ -87,13 +87,15 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 		(
 			% The argument to typeclass_info types is not
 			% a type - it encodes the class constraint.
+			% So we replace the argument with type `void'.
 			mercury_private_builtin_module(PrivateBuiltin),
-			TypeId = qualified(PrivateBuiltin, TName) - _,
+			TypeId = qualified(PrivateBuiltin, TName) - 1,
 			( TName = "typeclass_info"
 			; TName = "base_typeclass_info"
 			)
 		->
-			TypeArgs = []
+			construct_type(unqualified("void") - 0, [], ArgType),
+			TypeArgs = [ArgType]
 		;
 			TypeArgs = TypeArgs0
 		),
