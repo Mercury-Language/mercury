@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/local/bin/bash
 #
 # generate_index_html
 #
@@ -9,7 +9,15 @@
 # own path!
 #
 
+CURRENT_RELEASE=0.10.1
+BETA_RELEASE=0.10.2
+
+# We need bash's extended globbing for the case patterns
+# matching the release numbers.
+shopt -s extglob
+
 INDEX=index.html.$HOST
+handled_files=
 
 trap 'rm -f $INDEX; exit 1' 1 2 3 13 15
 
@@ -29,29 +37,207 @@ echo "</HEAD>" >> $INDEX
 echo "<BODY>" >> $INDEX
 echo "<H1>Directory listing</H1>" >> $INDEX
 echo "<hr>" >> $INDEX
+
+# link_to_file prefix filename description.
+#
+# Generate a line with the prefix followed by a link to the given file.
+# Record that the file has been handled.
+link_to_file () {
+	prefix=$1
+	this_file=$2
+	this_file_descr=$3
+	this_file_size=`ls -l $this_file | awk '{ print $5; }'`
+	this_file_sizekb=`expr $this_file_size / 1024`
+	handled_files="$this_file $handled_files"
+	echo "$prefix <a href=$this_file>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+}
+
+# link_to_file filename description
+#
+# Generate a link to a file if it exists.
+# This should be called within a `<ul>' element.
+link_to_existing_file () {
+	if [ -f $1 ]; then
+		link_to_file "<li> " $1 "$2"
+	fi
+}
+
+# handle_release release_file
+#
+# Given the name of a source or binary distribution file in a release,
+# generate an entry describing all the files in the release.
+handle_release () {
+	file=$1
+	if [ -f $file ]
+	then
+		case "$handled_files" in
+		*$file*)	;;
+		*)		do_handle_release $file ;;
+		esac
+	fi
+}
+
+do_handle_release () {
+	file=$1
+	date=`expr "$file" : '.*\([0-9]\{4\}-[0-9][0-9]-[0-9][0-9]\).*'`
+
+	case $file in
+	    *-rotd*-unstable*)
+		release_name="Unstable snapshot $date"
+		release_id="rotd-$date-unstable"
+		;;
+	    *-rotd*)
+		release_name="Stable snapshot $date"
+		release_id="rotd-$date"
+		;;
+	    *-*([0-9.])-beta*-unstable*)
+		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*-unstable.*"`
+		release_name="Unstable $version beta $date"
+		release_id="$version-beta-$date-unstable"
+		;;
+	    *-*([0-9.])-beta*)
+		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*"`
+		release_name="Stable $version beta $date"
+		release_id="$version-beta-$date"
+		;;
+	    *-*([0-9.])*)
+		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*"`
+		release_name="Release $version"
+		release_id="$version"
+		;;
+	    *)
+		# Unknown release, this will be put in the list of
+		# other files after all known releases.
+		return 0
+		;;
+	esac
+
+	echo "<li> $release_name" >> $INDEX
+	echo '<ul>' >> $INDEX
+	link_to_existing_file NEWS-$release_id "NEWS"
+	link_to_existing_file INSTALL-$release_id "Installation instructions"
+	link_to_existing_file mercury-compiler-$release_id.tar.gz \
+		"Source distribution"
+	link_to_existing_file mercury-compiler-$release_id-1.src.rpm \
+		"Source RPM"
+	link_to_existing_file mercury-compiler-$release_id-1.i386.rpm \
+		"RPM (x86)"
+	link_to_existing_file mercury_$release_id-1_i386.deb "Debian (x86)"
+	bindists=`echo mercury-$release_id.[a-z]*.tar.gz`
+	case "$bindists" in
+	    *'*'.tar.gz)
+		;;
+	    *)
+		echo "<li> Binary distributions" >> $INDEX
+		echo "<ul>" >> $INDEX
+		for bindist in $bindists
+		do
+			bindist_name=`echo $bindist | \
+			    sed -e"s/mercury-$release_id.\(.*\).tar.gz/\1/"`
+			link_to_file "<li> " $bindist $bindist_name	
+		done
+		echo "</ul>" >> $INDEX
+		;;
+	esac
+	link_to_existing_file mercury-extras-$release_id.tar.gz "Extras"
+	link_to_existing_file mercury-tests-$release_id.tar.gz "Test suite"
+	link_to_existing_file test-failures-$release_id "Test failures"
+	echo '</ul><p>' >> $INDEX
+}
+
 echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 
-for file in * 
+#
+# Directories.
+#
+for file in *
 do
-        #
-	# Don't include the README or any of the index files
-	#
-    case $file in
-        README|index.html*) 
-	    ;;
+	if [ -d $file ]
+	then
+		(cd $file && generate_index_html)
+		echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
+	fi
+done
 
-	*)  if [ -d $file ]
-            then
-    	        (cd $file && generate_index_html)
-                echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
-            else
-	        size=`ls -l $file | awk '{ print $5; }'`
-	        sizekb=`expr $size / 1024`
-                echo "$img_txt <a href=$file>$file</a> ($sizekb kilobytes)<br>" >> $INDEX
-            fi
-	    ;;
+
+echo "<p>" >> $INDEX
+echo "<ul>" >> $INDEX
+
+#
+# Handle releases. Note that handle_release checks for files
+# which have been handled before, so the cases below need not
+# be mutually exclusive.
+#
+
+#
+# Current release.
+#
+handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
+
+#
+# Stable beta for current release + bug fixes.
+# There may be an unstable beta, but there's no point using it.
+#
+for file in mercury-compiler-${BETA_RELEASE}-beta*.tar.gz \
+		mercury-${BETA_RELEASE}-beta*.tar.gz
+do
+	case $file in
+		*-unstable*) ;;
+		*)	handle_release $file ;;
+	esac
+done
+
+#
+# Stable release-of-the-day.
+#
+for file in mercury-compiler-rotd*.tar.gz mercury-rotd-*
+do
+	case $file in
+		*-unstable*) ;;
+		*)	handle_release $file ;;
+	esac
+done
+
+#
+# Unstable release-of-the-day
+#
+for file in mercury-compiler-rotd-*-unstable.tar.gz
+do
+	handle_release $file
+done
+
+#
+# Other assorted releases.
+#
+for file in mercury-compiler-* mercury-rotd-*
+do
+	handle_release $file
+done
+
+#
+# Other stuff.
+#
+for file in *
+do
+    case $file in
+		#
+		# Don't include the README or any of the index files
+		#
+	README|index.html*)
+		;;
+	*)
+		if [ ! -d $file ]
+		then
+			case $handled_files in
+				*$file*) ;;
+				*)	link_to_file "<li> " $file $file ;;
+			esac
+		fi
+    		;;
     esac
 done
+
+echo "</ul>" >> $INDEX
 
 echo "<hr>" >> $INDEX
 
