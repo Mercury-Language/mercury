@@ -161,7 +161,7 @@ case $ARCH in
 		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
 		 	MMAKEFLAGS=$PARALLEL || status=1
 		;;
-	sparc-sun-solaris*)
+	sparc*)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
 		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
 			|| status=1
