@@ -166,9 +166,9 @@ install_webpage: split_html ps
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
 	done
-	chmod a+r $(INSTALL_WEBPAGE_DIR)/*.ps.gz
+	-chmod a+r $(INSTALL_WEBPAGE_DIR)/*.ps.gz
 	cp *.html $(INSTALL_WEBPAGE_DIR)
-	chmod a+r $(INSTALL_WEBPAGE_DIR)/*.html
+	-chmod a+r $(INSTALL_WEBPAGE_DIR)/*.html
 
 #-----------------------------------------------------------------------------#
 
