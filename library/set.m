@@ -30,17 +30,19 @@
 :- pred set__sorted_list_to_set(list(T), set(T)).
 :- mode set__sorted_list_to_set(in, out) is det.
 
-	% `set__list_to_set(Set, List)' is true iff `List' is the list
+	% `set__to_sorted_list(Set, List)' is true iff `List' is the list
 	% of all the members of `Set', in sorted order.
 
 :- pred set__to_sorted_list(set(T), list(T)).
 :- mode set__to_sorted_list(in, out) is det.
 
 	% `set__init(Set)' is true iff `Set' is an empty set.
-	% `set__init(Set)' is true iff `Set' is an empty set.
 
 :- pred set__init(set(_T)).
 :- mode set__init(out) is det.
+
+	% `set__singleton_set(Set, Elem)' is true iff `Set' is the set
+	% containing just the single element `Elem'.
 
 :- pred set__singleton_set(set(T), T).
 :- mode set__singleton_set(in, out) is semidet.
