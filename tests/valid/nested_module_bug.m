@@ -12,14 +12,14 @@
 :- implementation.
 
 :- import_module list, parser.
-:- import_module nested_module_bug.parser.
+:- import_module nested_module_bug__parser.
 
 main --> 
 	{ parse_tokens("foo", [1,2], List) },
 	io__write(List),
 	io__nl.
 
-	:- module nested_module_bug.parser.
+	:- module nested_module_bug__parser.
 
 	:- interface.
 
@@ -30,5 +30,5 @@ main -->
 
 	parse_tokens(_, X, X).
 
-	:- end_module nested_module_bug.parser.
+	:- end_module nested_module_bug__parser.
 
