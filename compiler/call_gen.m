@@ -158,22 +158,22 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	% for a higher-order call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by do_call_<detism>_closure in
-	% runtime/call.mod, generate the call to do_call_<detism>_closure,
-	% and pick up the outputs from the locations that we know
-	% runtime/call.mod leaves them in.
+	% runtime/mercury_ho_call.c, generate the call to 
+	% do_call_<detism>_closure, and pick up the outputs from the 
+	% locations that we know runtime/mercury_ho_call.c leaves them in.
 	%
-	% lambda.m transforms the generated lambda predicates to
-	% make sure that all inputs come before all outputs, so that
-	% runtime/call.mod doesn't have trouble figuring out which registers
-	% the arguments go in.
+	% lambda.m ensures that procedures which are directly 
+	% higher-order-called use the compact argument convertion,
+	% so that runtime/mercury_ho_call.c doesn't have trouble 
+	% figuring out which registers the arguments go in.
 	%
 
 call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		Modes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
-	{ globals__get_args_method(Globals, ArgsMethod) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ arg_info__ho_call_args_method(Globals, ArgsMethod) },
 	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
 		ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
@@ -266,16 +266,22 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 	% for a class method call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by do_call_<detism>_class_method in
-	% runtime/call.mod, generate the call to do_call_<detism>_class_method,
-	% and pick up the outputs from the locations that we know
-	% runtime/call.mod leaves them in.
+	% runtime/mercury_ho_call.c, generate the call to 
+	% do_call_<detism>_class_method, and pick up the outputs from the 
+	% locations that we know runtime/mercury_ho_call.c leaves them in.
 	%
 call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		Types, Modes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, InnerCodeModel) },
 	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
+
 	{ globals__get_args_method(Globals, ArgsMethod) },
+	( { ArgsMethod = compact } ->
+		[]
+	;
+		{ error("Sorry, typeclasses with simple args_method not yet implemented") }
+	),
 	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel, ModuleInfo,
 		ArgInfo) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
@@ -283,23 +289,13 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 	call_gen__generate_class_method_call_2(InnerCodeModel, TCVar, 
 		MethodNum, InVars, OutVars, GoalInfo, Code).
 
-	% XXX This assumes compact args
 :- pred call_gen__generate_class_method_call_2(code_model, var, int, list(var),
 		list(var), hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_class_method_call_2(in, in, in, in, in, in, out, in,
 		out) is det.
 
-call_gen__generate_class_method_call_2(CodeModel, TCVar, Index, InVars, OutVars,
-		GoalInfo, Code) -->
-	code_info__get_globals(Globals),
-	{ globals__get_args_method(Globals, ArgsMethod) },
-	(
-		{ ArgsMethod = compact }
-	->
-		[]
-	;
-		{ error("Sorry, typeclasses with simple args_method not yet implemented") }
-	),
+call_gen__generate_class_method_call_2(CodeModel, TCVar, Index, 
+		InVars, OutVars, GoalInfo, Code) -->
 	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),

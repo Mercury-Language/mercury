@@ -1006,10 +1006,11 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, _ProcId0, Args0,
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
-			_Goal - GoalInfo), Vars) :-
+unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaNonLocals, LambdaVars, 
+			_Modes, _Det, _Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, LambdaVars, NonLocals),
+	set__delete_list(NonLocals0, LambdaVars, NonLocals1),
+	set__insert_list(NonLocals1, LambdaNonLocals, NonLocals),
 	set__to_sorted_list(NonLocals, Vars).
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).

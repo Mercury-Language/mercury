@@ -1263,17 +1263,16 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
 				ModuleInfo1)
 		->
 			ModuleInfo2 = ModuleInfo1,
-			Mode = (ArgInst0 -> UnifyInst),
-			recompute_instmap_delta_call_2(Args, InstMap,
-				Modes0, Modes, ModuleInfo2, ModuleInfo)
+			Mode = (ArgInst0 -> UnifyInst)
 		;
 			error("recompute_instmap_delta_call_2: unify_inst failed")
 		)
 	;
 		Mode = (not_reached -> not_reached),
-		Modes = [],
-		ModuleInfo = ModuleInfo0
-	).
+		ModuleInfo2 = ModuleInfo0
+	),
+	recompute_instmap_delta_call_2(Args, InstMap,
+		Modes0, Modes, ModuleInfo2, ModuleInfo).
 
 :- pred recompute_instmap_delta_unify(unification, unify_mode, unify_mode,
 	hlds_goal_info, instmap, instmap_delta, module_info, module_info).

@@ -499,8 +499,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		intermod_info::out) is det.
 
 intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
-intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,Goal0),
-		lambda_goal(A,B,Modes,D,Goal), DoWrite) -->
+intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,C,Modes,E,Goal0),
+		lambda_goal(A,B,C,Modes,E,Goal), DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite),
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_modes(ModuleInfo, ModeTable) },

@@ -352,10 +352,12 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Unification, _,
 	{ set__list_to_set(ArgVars, Vars) },
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
-		lambda_goal(PredOrFunc, LambdaVars0, Modes, Det, Goal0),
+		lambda_goal(PredOrFunc, LambdaNonLocals0,
+			LambdaVars0, Modes, Det, Goal0),
 		Unification0,
 		Context,
-		lambda_goal(PredOrFunc, LambdaVars, Modes, Det, Goal),
+		lambda_goal(PredOrFunc, LambdaNonLocals,
+			LambdaVars, Modes, Det, Goal),
 		Unification
 		) -->
 
@@ -400,6 +402,7 @@ implicitly_quantify_unify_rhs(
 	{ set__init(LambdaOutsideVars) },
 	quantification__set_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_goal(Goal1, Goal),
+
 	quantification__get_nonlocals(NonLocals0),
 		% lambda-quantified variables are local
 	{ set__delete_list(NonLocals0, LambdaVars, NonLocals) },
@@ -407,6 +410,19 @@ implicitly_quantify_unify_rhs(
 	quantification__set_outside(OutsideVars0),
 	quantification__set_lambda_outside(LambdaOutsideVars0),
 	quantification__set_nonlocals(NonLocals),
+
+	%
+	% Work out the list of non-local curried arguments to the lambda
+	% expression. This set must only ever decrease, since the first
+	% approximation that make_hlds uses includes all variables in the 
+	% lambda expression except the quantified variables.
+	%
+	{ Goal = _ - LambdaGoalInfo },
+	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals) },
+	{ IsNonLocal = lambda([V::in] is semidet, (
+			set__member(V, LambdaGoalNonLocals)
+		)) },
+	{ list__filter(IsNonLocal, LambdaNonLocals0, LambdaNonLocals) },
 
 	%
 	% For a unification that constructs a lambda expression,
@@ -660,8 +676,11 @@ quantification__unify_rhs_vars(var(X), Set0, LambdaSet, Set, LambdaSet) :-
 quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
-quantification__unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes,
-		_Detism, Goal), Set, LambdaSet0, Set, LambdaSet) :-
+quantification__unify_rhs_vars(
+		lambda_goal(_POrF, _NonLocals, LambdaVars, _M, _D, Goal), 
+		Set, LambdaSet0, Set, LambdaSet) :-
+	% Note that the NonLocals list is not counted, since all the 
+	% variables in that list must occur in the goal.
 	quantification__goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(LambdaSet0, GoalVars1, LambdaSet).

@@ -43,8 +43,8 @@
 
 :- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
 		maybe(list(is_live)), maybe(determinism),
-		term__context, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, in, in, out, out) is det.
+		term__context, args_method, pred_info, proc_id).
+:- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -408,7 +408,7 @@ add_item_decl_pass_2(func(_VarSet, FuncName, TypesAndModes, _RetTypeAndMode,
 			FuncName, Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ maybe_add_default_modes(PredIds, Preds0, Preds) },
+		{ maybe_add_default_modes(Module0, PredIds, Preds0, Preds) },
 		{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 		{ module_info_set_predicate_table(Module0, PredTable, Module) }
 	;
@@ -1398,7 +1398,8 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 				Func, FuncArity, [PredId])
 		->
 			module_info_pred_info(Module0, PredId, PredInfo0),
-			maybe_add_default_mode(PredInfo0, PredInfo, MaybeProc),
+			maybe_add_default_mode(Module0, PredInfo0, 
+				PredInfo, MaybeProc),
 			(
 				MaybeProc = no,
 				PredProcIds1 = PredProcIds0,
@@ -1683,8 +1684,10 @@ add_special_pred_decl(SpecialPredId,
 		Context, ClausesInfo0, Status, Markers, none, predicate, 
 		ClassContext, Proofs, PredInfo0),
 	ArgLives = no,
+	module_info_globals(Module0, Globals),
+	globals__get_args_method(Globals, ArgsMethod),
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
-		ArgLives, yes(Det), Context, PredInfo, _),
+		ArgLives, yes(Det), Context, ArgsMethod, PredInfo, _),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
 	predicate_table_insert(PredicateTable0, PredInfo, may_be_unqualified, 
@@ -1723,12 +1726,12 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 		Status = Status1
 	).
 
-add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes,
-		MaybeArgLives, MaybeDet, Context, PredInfo, ModeId) :-
+add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
+		MaybeDet, Context, ArgsMethod, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, MaybeDet, ModeId),
 	proc_info_init(Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
-		MaybeDet, Context, NewProc),
+		MaybeDet, Context, ArgsMethod, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -1803,8 +1806,9 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 
 		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
+	globals__io_get_args_method(ArgsMethod),
 	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-			MaybeDet, MContext, PredInfo, ProcId) },
+			MaybeDet, MContext, ArgsMethod, PredInfo, ProcId) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -1962,7 +1966,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{
 		pred_info_clauses_info(PredInfo1, Clauses0),
 		pred_info_typevarset(PredInfo1, TVarSet0),
-		maybe_add_default_mode(PredInfo1, PredInfo2, _),
+		maybe_add_default_mode(ModuleInfo0, PredInfo1, PredInfo2, _),
 		pred_info_procedures(PredInfo2, Procs),
 		map__keys(Procs, ModeIds)
 		},
@@ -2801,8 +2805,8 @@ warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
-				LambdaGoal),
+warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _NonLocals, LambdaVars, 
+				_Modes, _Det, LambdaGoal),
 			GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
@@ -3695,8 +3699,16 @@ unravel_unification(term__variable(X), RHS,
 				HLDS_Goal0, VarSet3, Info1, Info2),
 		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+
+			 % quantification will reduce this down to
+			 % the proper set of nonlocal arguments.
+		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
+		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
+		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
+
 		{ create_atomic_unification(X,
-			lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
+			lambda_goal(predicate, LambdaNonLocals, Vars, 
+				Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	    {
@@ -3723,8 +3735,16 @@ unravel_unification(term__variable(X), RHS,
 			HLDS_Goal0, VarSet3, Info1, Info2),
 		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+
+			 % quantification will reduce this down to
+			 % the proper set of nonlocal arguments.
+		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
+		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
+		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
+
 		{ create_atomic_unification(X,
-		lambda_goal(predicate, Vars, Modes, Det, HLDS_Goal),
+			lambda_goal(predicate, LambdaNonLocals, Vars, 
+				Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	    {
@@ -3754,8 +3774,16 @@ unravel_unification(term__variable(X), RHS,
 				HLDS_Goal0, VarSet3, Info1, Info2),
 		insert_arg_unifications(Vars, Vars1, Context, head, no,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+
+			 % quantification will reduce this down to
+			 % the proper set of nonlocal arguments.
+		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
+		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
+		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
+
 		{ create_atomic_unification(X,
-			lambda_goal(function, Vars, Modes, Det, HLDS_Goal),
+			lambda_goal(function, LambdaNonLocals, Vars, 
+				Modes, Det, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
 	        % handle if-then-else expressions

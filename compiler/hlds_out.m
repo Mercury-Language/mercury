@@ -1368,9 +1368,11 @@ hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), _, VarSet, AppendVarnums,
 	;
 		[]
 	).
-hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
+hlds_out__write_unify_rhs_3(
+		lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal),
 		ModuleInfo, VarSet, AppendVarnums, Indent, MaybeType, TypeQual)
 		-->
+	{ Indent1 is Indent + 1 },
 	(
 		{ PredOrFunc = predicate },
 		io__write_string("(pred("),
@@ -1378,7 +1380,6 @@ hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 		io__write_string(") is "),
 		mercury_output_det(Det),
 		io__write_string(" :-\n"),
-		{ Indent1 is Indent + 1 },
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent1, "", TypeQual),
 		hlds_out__write_indent(Indent),
@@ -1396,7 +1397,6 @@ hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 		io__write_string(") is "),
 		mercury_output_det(Det),
 		io__write_string(" :-\n"),
-		{ Indent1 is Indent + 1 },
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent1, "", TypeQual),
 		hlds_out__write_indent(Indent),
@@ -1405,6 +1405,19 @@ hlds_out__write_unify_rhs_3(lambda_goal(PredOrFunc, Vars, Modes, Det, Goal),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
 		io__write_string(" TYPE_QUAL_OP "),
 		mercury_output_term(Type, TVarSet, no)
+	;
+		[]
+	),
+        globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 'n') } ->
+		( { NonLocals \= [] } ->
+			hlds_out__write_indent(Indent1),
+			io__write_string("% lambda nonlocals: "),
+			mercury_output_vars(NonLocals, VarSet, AppendVarnums)
+		;
+			[]
+
+		)
 	;
 		[]
 	).
@@ -2083,6 +2096,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
 	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
+	{ proc_info_args_method(Proc, ArgsMethod) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -2116,6 +2130,10 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		VarTypes, TVarSet),
 	hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap,
 		VarSet, TVarSet),
+
+	io__write_string("% args method: "),
+	hlds_out__write_args_method(ArgsMethod),
+	io__nl,
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
@@ -2231,6 +2249,14 @@ hlds_out__write_code_model(model_semi) -->
 	io__write_string("model_semi").
 hlds_out__write_code_model(model_non) -->
 	io__write_string("model_non").
+
+:- pred hlds_out__write_args_method(args_method, io__state, io__state).
+:- mode hlds_out__write_args_method(in, di, uo) is det.
+
+hlds_out__write_args_method(simple) -->
+	io__write_string("simple").
+hlds_out__write_args_method(compact) -->
+	io__write_string("compact").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo) is det.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, prog_data, code_util.
-:- import_module mode_util, type_util, code_aux, hlds_out, tree.
+:- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module bool, string, int, map, term, require, std_util.
 
 :- type uni_val		--->	ref(var)
@@ -332,6 +332,16 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
+
+	% lambda.m adds wrapper procedures for procedures which don't
+	% use an args_method compatible with do_call_*_closure.
+	{ proc_info_args_method(ProcInfo, ArgsMethod) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	( { arg_info__args_method_is_ho_callable(Globals, ArgsMethod, yes) } ->
+		[]
+	;	
+		{ error("unify_gen__generate_construction_2: pred constant not callable") }
+	),
 %
 % We handle currying of a higher-order pred variable as a special case.
 % We recognize

@@ -229,8 +229,16 @@
 :- type unify_rhs
 	--->	var(var)
 	;	functor(cons_id, list(var))
-	;	lambda_goal(pred_or_func, list(var), list(mode), determinism,
-				hlds_goal).
+	;	lambda_goal(
+			pred_or_func, 
+			list(var),	% non-locals of the goal excluding
+					% the lambda quantified variables
+			list(var),	% lambda quantified variables
+			list(mode),	% modes of the lambda 
+					% quantified variables
+			determinism,
+			hlds_goal
+		).
 
 :- type unification
 		% A construction unification is a unification with a functor

@@ -562,8 +562,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
-		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			LambdaGoal0)
+		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
+			Modes, LambdaDeclaredDet, LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
 		simplify_info_get_common_info(Info1, Common1),
@@ -583,8 +583,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
 		simplify_info_set_common_info(Info4, Common1, Info5),
 		simplify_info_set_instmap(Info5, InstMap1, Info6),
-		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			LambdaGoal),
+		RT = lambda_goal(PredOrFunc, NonLocals, Vars, Modes, 
+			LambdaDeclaredDet, LambdaGoal),
 		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
@@ -884,7 +884,25 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 	    ->
 		Info = Info2,
 		simplify__conjoin_goal_and_rev_goal_list(Goal1,
-			RevGoals0, RevGoals),
+			RevGoals0, RevGoals1),
+
+		( (fail_goal(Goal1) ; Goals0 = []) ->
+			RevGoals = RevGoals1
+		;
+			% We insert an explicit failure at the end
+			% of the non-succeeding conjunction. This
+			% is necessary, since the unreachablility of
+			% the instmap could have been derived using
+			% inferred determinism information. Without the
+			% explicit fail goal, mode errors could result if mode
+			% analysis is rerun, since according to the language
+			% specification, mode analysis does not use inferred
+			% determinism information when deciding what can
+			% never succeed.
+			fail_goal(Fail),
+			simplify__conjoin_goal_and_rev_goal_list(Fail,
+				RevGoals1, RevGoals)	
+		),
 		list__reverse(RevGoals, Goals)
 	    ;
 		Goal1 = GoalExpr - _, 

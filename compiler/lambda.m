@@ -41,23 +41,18 @@
 :- interface. 
 
 :- import_module hlds_module, hlds_pred, prog_data.
-:- import_module list, set, map, term, varset.
+:- import_module list, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
 :- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
-		determinism, set(var), hlds_goal, unification,
+		determinism, list(var), hlds_goal, unification,
 		varset, map(var, type), list(class_constraint), tvarset,
 		map(tvar, type_info_locn), map(class_constraint, var),
 		module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in, in,
 		in, in, in, out, out, out) is det.
-
-	% Permute the list of variables so that inputs come before outputs.
-:- pred lambda__permute_argvars(list(Var), list(mode), module_info,
-			list(Var), list(mode)).
-:- mode lambda__permute_argvars(in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -65,9 +60,9 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, make_hlds.
-:- import_module prog_util, mode_util, inst_match, llds.
+:- import_module prog_util, mode_util, inst_match, llds, arg_info.
 
-:- import_module bool, string, std_util, require.
+:- import_module bool, set, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(
@@ -168,13 +163,13 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
-	( { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
+	( { Y = lambda_goal(PredOrFunc, NonLocalVars, Vars, 
+			Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must convert the lambda expression
 		% into a new predicate
-		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		lambda__process_lambda(PredOrFunc, Vars, Modes, Det, NonLocals0,
-				LambdaGoal0, Unification, Y1, Unification1),
+		lambda__process_lambda(PredOrFunc, Vars, Modes, Det, 
+			NonLocalVars, LambdaGoal0, 
+			Unification, Y1, Unification1),
 		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
 	;
 		% ordinary unifications are left unchanged
@@ -234,7 +229,7 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_cases(Cases0, Cases).
 
 :- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
-		set(var), hlds_goal, unification, unify_rhs, unification,
+		list(var), hlds_goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
@@ -251,14 +246,14 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 			TVarMap, TCVarMap, POF, PredName, ModuleInfo).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
-		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
+		OrigVars, LambdaGoal, Unification0, VarSet, VarTypes,
 		Constraints, TVarSet, TVarMap, TCVarMap, ModuleInfo0, Functor,
 		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
 	->
 		Var = Var0,
-		UniModes = UniModes0
+		UniModes1 = UniModes0
 	;
 		error("polymorphism__transform_lambda: weird unification")
 	),
@@ -280,6 +275,16 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 	( 
 		LambdaGoal = call(PredId0, ProcId0, CallVars,
 					_, _, PredName0) - _,
+		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
+			Call_ProcInfo),
+
+			% check that this procedure uses an args_method which 
+			% is always directly higher-order callable.
+		proc_info_args_method(Call_ProcInfo, Call_ArgsMethod),
+		module_info_globals(ModuleInfo0, Globals),
+		arg_info__args_method_is_ho_callable(Globals,
+			Call_ArgsMethod, yes),
+
 		list__remove_suffix(CallVars, Vars, InitialVars),
 	
 		% check that none of the variables that we're trying to
@@ -289,8 +294,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			list__member(InitialVar, Vars)
 		),
 
-		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
-			Call_ProcInfo),
 		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
 		determinism_to_code_model(Detism, CodeModel),
 			% Check that the code models are compatible.
@@ -304,28 +307,24 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
 		list__length(InitialVars, NumInitialVars),
-		list__split_list(NumInitialVars, Call_ArgModes,
-			CurriedArgModes, UncurriedArgModes),
+		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
 			\+ mode_is_input(ModuleInfo0, Mode)
-		),
-			% and that all the inputs precede the outputs
-		inputs_precede_outputs(UncurriedArgModes, ModuleInfo0)
+		)
 	->
 		ArgVars = InitialVars,
 		PredId = PredId0,
 		ProcId = ProcId0,
 		PredName = PredName0,
 		ModuleInfo = ModuleInfo0,
-		NumArgVars = NumInitialVars
+		NumArgVars = NumInitialVars,
+		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
+			ModuleInfo0, UniModes)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
 		% name, arity, arg types, determinism,
-		% context, status, etc. for the new predicate,
-		% and permute the arguments so that all inputs come before
-		% all outputs.  (When the predicate is called, the arguments
-		% will be similarly permuted, so they will match up.)
+		% context, status, etc. for the new predicate.
 
 		ArgVars = ArgVars1,
 		list__append(ArgVars, Vars, AllArgVars),
@@ -340,12 +339,12 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
-		lambda__uni_modes_to_modes(UniModes, OrigArgModes),
+		lambda__uni_modes_to_modes(UniModes1, OrigArgModes),
 
 		% We have to jump through hoops to work out the mode
 		% of the lambda predicate. For introduced
 		% type_info arguments, we use the mode "in".  For the original
-		% non-local vars, we use the modes from `UniModes'.
+		% non-local vars, we use the modes from `UniModes1'.
 		% For the lambda var arguments at the end,
 		% we use the mode in the lambda expression. 
 
@@ -355,29 +354,37 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		map__from_corresponding_lists(ArgVars, InModes,
 			ArgModesMap),
 
-		set__delete_list(OrigNonLocals0, Vars, OrigNonLocals),
-		set__to_sorted_list(OrigNonLocals, OrigArgVars),
-		map__from_corresponding_lists(OrigArgVars, OrigArgModes,
+		map__from_corresponding_lists(OrigVars, OrigArgModes,
 			OrigArgModesMap),
 		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
 		map__values(ArgModesMap1, ArgModes1),
 
-		list__append(ArgModes1, Modes, AllArgModes),
+		% Recompute the uni_modes. 
+		mode_util__modes_to_uni_modes(ArgModes1, ArgModes1, 
+			ModuleInfo1, UniModes),
 
-		% Even after we've done all that, we still need to
-		% permute the argument variables so that all the inputs
-		% come before all the outputs.
-		
-		lambda__permute_argvars(AllArgVars, AllArgModes, ModuleInfo1,
-			PermutedArgVars, PermutedArgModes),
-		map__apply_to_list(PermutedArgVars, VarTypes, ArgTypes),
+		list__append(ArgModes1, Modes, AllArgModes),
+		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
+
+		% Choose an args_method which is always directly callable
+		% from do_call_*_closure even if the inputs don't preceed
+		% the outputs in the declaration. mercury_ho_call.c requires
+		% that procedures which are directly higher-order-called use
+		% the compact args_method.
+		%
+		% Previously we permuted the argument variables so that
+		% inputs came before outputs, but that resulted in the
+		% HLDS not being type or mode correct which caused problems
+		% for some transformations and for rerunning mode analysis.
+		module_info_globals(ModuleInfo1, Globals),
+		arg_info__ho_call_args_method(Globals, ArgsMethod),
 
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
-		proc_info_create(VarSet, VarTypes, PermutedArgVars,
-			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, ProcInfo),
+		proc_info_create(VarSet, VarTypes, AllArgVars,
+			AllArgModes, Detism, LambdaGoal, LambdaContext,
+			TVarMap, TCVarMap, ArgsMethod, ProcInfo),
 
 		init_markers(Markers),
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
@@ -423,66 +430,6 @@ lambda__uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
 	UniMode = ((_Initial0 - Initial1) -> (_Final0 - _Final1)),
 	Mode = (Initial1 -> Initial1),
 	lambda__uni_modes_to_modes(UniModes, Modes).
-
-:- pred inputs_precede_outputs(list(mode), module_info).
-:- mode inputs_precede_outputs(in, in) is semidet.
-
-	% succeed iff all the inputs in the list of modes precede the outputs
-
-inputs_precede_outputs([], _).
-inputs_precede_outputs([Mode | Modes], ModuleInfo) :-
-	( mode_is_input(ModuleInfo, Mode) ->
-		inputs_precede_outputs(Modes, ModuleInfo)
-	;
-		% the following is an if-then-else rather than a 
-		% negation purely because the compiler got an internal
-		% error compiling it when it was a negation
-		(
-			list__member(OtherMode, Modes),
-			mode_is_input(ModuleInfo, OtherMode)
-		->
-			fail
-		;
-			true
-		)
-	).
-
-	% permute a list of variables and a corresponding list of their modes
-	% so that all the input variables precede all the output variables.
-
-lambda__permute_argvars(AllArgVars, AllArgModes, ModuleInfo,
-		PermutedArgVars, PermutedArgModes) :-
-	( split_argvars(AllArgVars, AllArgModes, ModuleInfo,
-		InArgVars, InArgModes, OutArgVars, OutArgModes) ->
-		list__append(InArgVars, OutArgVars, PermutedArgVars),
-		list__append(InArgModes, OutArgModes, PermutedArgModes)
-	;
-		error("lambda__permute_argvars: split_argvars failed")
-	).
-
-:- pred split_argvars(list(Var), list(mode), module_info,
-			list(Var), list(mode), list(Var), list(mode)).
-:- mode split_argvars(in, in, in, out, out, out, out) is semidet.
-
-	% split a list of variables and a corresponding list of their modes
-	% into the input vars/modes and the output vars/modes.
-
-split_argvars([], [], _, [], [], [], []).
-split_argvars([Var|Vars], [Mode|Modes], ModuleInfo,
-		InVars, InModes, OutVars, OutModes) :-
-	split_argvars(Vars, Modes, ModuleInfo,
-		InVars0, InModes0, OutVars0, OutModes0),
-	( mode_is_input(ModuleInfo, Mode) ->
-		InVars = [Var|InVars0],
-		InModes = [Mode|InModes0],
-		OutVars = OutVars0,
-		OutModes = OutModes0
-	;
-		InVars = InVars0,
-		InModes = InModes0,
-		OutVars = [Var|OutVars0],
-		OutModes = [Mode|OutModes0]
-	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2451,7 +2451,7 @@ delete_temporary_file(FileName) -->
 fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID, 
 		ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode) -->
 	fact_table_size(FactTableSize),
-	globals__io_get_args_method(ArgsMethod),
+	{ proc_info_args_method(ProcInfo, ArgsMethod) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ proc_info_interface_determinism(ProcInfo, Determinism) },
 	{ fact_table_mode_type(ArgModes, ModuleInfo, ModeType) },

@@ -704,16 +704,17 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		;
 			{ error("polymorphism: type_to_type_id failed") }
 		)
-	; { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
+	; 
+		{ Y = lambda_goal(PredOrFunc, ArgVars, Vars,
+			Modes, Det, LambdaGoal0) }
+	->
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
-		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
 		polymorphism__process_lambda(PredOrFunc, Vars, Modes,
-				Det, OrigNonLocals, LambdaGoal, Unification,
+				Det, ArgVars, LambdaGoal, Unification,
 				Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
@@ -956,7 +957,7 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
-		list(mode), determinism, set(var), hlds_goal, unification,
+		list(mode), determinism, list(var), hlds_goal, unification,
 		unify_rhs, unification, poly_info, poly_info).
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.

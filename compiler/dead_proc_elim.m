@@ -782,7 +782,7 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
 	;
 		[]
 	).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, Goal)) -->
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, Goal)) -->
 	pre_modecheck_examine_goal(Goal).
 
 :- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 

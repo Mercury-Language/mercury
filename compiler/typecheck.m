@@ -333,7 +333,8 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError,
 			% declarations are module qualified, unless undefined
 			% modes were found by an earlier pass.
 			% 
-			maybe_add_default_mode(PredInfo1, PredInfo2, _),
+			maybe_add_default_mode(ModuleInfo,
+				PredInfo1, PredInfo2, _),
 			copy_clauses_to_procs(PredInfo2, PredInfo3),
 			pred_info_arg_types(PredInfo3, _, ArgTypes),
 			pred_info_procedures(PredInfo3, Procs1),
@@ -1611,8 +1612,9 @@ typecheck_unification(X, var(Y), var(Y)) -->
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As),
 	perform_context_reduction.
-typecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
-			 lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)) -->
+typecheck_unification(X, 
+		lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal0),
+		lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal)) -->
  	typecheck_lambda_var_has_type(PredOrFunc, X, Vars),
 	typecheck_goal(Goal0, Goal).
 

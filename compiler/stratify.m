@@ -800,8 +800,8 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _Vars, _Modes, _Determinism,
-		                                Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, 
+				_Modes, _Determinism, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)
@@ -901,8 +901,8 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _Vars, _Modes, _Determinism,
-		                                Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, 
+				_Modes, _Determinism, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, Calls0, Calls)
 	;

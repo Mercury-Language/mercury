@@ -32,8 +32,8 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst).
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
-:- import_module type_util, options, prog_data, quantification, (lambda).
-:- import_module mercury_to_mercury, inst_match.
+:- import_module type_util, options, prog_data, quantification.
+:- import_module mercury_to_mercury.
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
 :- import_module std_util, string, varset, term.
@@ -81,7 +81,7 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 			% necessary in profiling grades, since otherwise
 			% the dependency graph isn't built before here). 
 		{ fixup_preds(PredProcs, NewPreds1, ModuleInfo3, ModuleInfo4) },
-		{ SpecializedPreds = [] ->
+		{ SpecializedPreds \= [] ->
 			module_info_clobber_dependency_info(ModuleInfo4,
 				ModuleInfo5)
 		;
@@ -523,12 +523,11 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
 	(
-		Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0,
+		Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes0,
 				_Det, _IsPredOrFunc)
 	->
 		PredVar = PredVar0,
-		Args = Args0,
-		Modes = Modes0
+		Args = Args0
 	;
 		error("higher_order.m: higher_order_call expected")
 	),
@@ -543,12 +542,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		pred_info_name(PredInfo, PredName),
 		code_util__builtin_state(Module, PredId, ProcId, Builtin),
 
-		% We need to permute the arguments so that inputs come before
-		% outputs, since lambda.m will have done that to the arguments
-		% of the closure.
-		lambda__permute_argvars(Args, Modes, Module, PermutedArgs, _),
-
-		list__append(CurriedArgs, PermutedArgs, AllArgs),
+		list__append(CurriedArgs, Args, AllArgs),
 		MaybeContext = no,
 		Goal1 = call(PredId, ProcId, AllArgs,
 			Builtin, MaybeContext,
@@ -1055,7 +1049,6 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		PredInfo, Substitution0, Substitution, Goals) :-
 	HOArg = higher_order_arg(PredId, ProcId, Index, NumArgs, CurriedHOArgs),
 	list__index1_det(HeadVars0, Index, LVar),
-	list__index1_det(ArgModes0, Index, LVarMode),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 					CalledPredInfo, CalledProcInfo),
 	pred_info_arg_types(CalledPredInfo, CalledTVarset, CalledArgTypes0),
@@ -1093,41 +1086,15 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		error("list__split failed")
 	),
 	(
-		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes0)
+		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes)
 	->
-		%
-		% The called pred will have had its uncurried args permuted
-		% to make input args precede output args, so
-		% we need to do the same for the argument types of the
-		% higher-order pred variable (LVar), before unifying
-		% them with the types of the called predicate (which
-		% we need to do, so that we can make appropriate type
-		% substitutions).
-		% To permute them, we need to know the modes of the LVarArgs.
-		%
-		( 
-			mode_get_insts(ModuleInfo, LVarMode,
-				LVarInitialInst0, _LVarFinalInst),
-			inst_expand(ModuleInfo, LVarInitialInst0,
-				LVarInitialInst),
-			LVarInitialInst = ground(_, yes(LVarPredInstInfo))
+		(
+			type_unify_list(LVarArgTypes, UnCurriedArgTypes, [],
+				Substitution0, Substitution1)
 		->
-			LVarPredInstInfo = pred_inst_info(_, LVarArgModes0, _),
-			lambda__permute_argvars(LVarArgTypes0, LVarArgModes0,
-				ModuleInfo, LVarArgTypes, _LVarArgModes),
-			(
-				type_unify_list(LVarArgTypes,
-						UnCurriedArgTypes, [],
-						Substitution0, Substitution1)
-			->
-				Substitution2 = Substitution1
-			;
-				error("type error in specialized higher-order argument")
-			)
+			Substitution2 = Substitution1
 		;
-			error(
-			    "mode error in specialized higher-order argument"
-			)
+			error("type error in specialized higher-order argument")
 		)
 	;
 		error("specialized argument not of higher-order type")

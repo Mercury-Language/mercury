@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,27 +37,29 @@
 	% a default mode of `:- mode foo(in, in, ..., in) = out.'
 	% for functions that don't have an explicit mode declaration.
 
-:- pred maybe_add_default_modes(list(pred_id), pred_table, pred_table).
-:- mode maybe_add_default_modes(in, in, out) is det.
+:- pred maybe_add_default_modes(module_info, list(pred_id), 
+		pred_table, pred_table).
+:- mode maybe_add_default_modes(in, in, in, out) is det.
 
-:- pred maybe_add_default_mode(pred_info, pred_info, maybe(proc_id)).
-:- mode maybe_add_default_mode(in, out, out) is det.
+:- pred maybe_add_default_mode(module_info, pred_info, 
+		pred_info, maybe(proc_id)).
+:- mode maybe_add_default_mode(in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, make_hlds.
+:- import_module hlds_goal, hlds_data, prog_data, make_hlds, globals.
 :- import_module int, list, set, map, std_util.
 
-maybe_add_default_modes([], Preds, Preds).
-maybe_add_default_modes([PredId | PredIds], Preds0, Preds) :-
+maybe_add_default_modes(_, [], Preds, Preds).
+maybe_add_default_modes(ModuleInfo, [PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
-	maybe_add_default_mode(PredInfo0, PredInfo, _),
+	maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, _),
 	map__det_update(Preds0, PredId, PredInfo, Preds1),
-	maybe_add_default_modes(PredIds, Preds1, Preds).
+	maybe_add_default_modes(ModuleInfo, PredIds, Preds1, Preds).
 
-maybe_add_default_mode(PredInfo0, PredInfo, MaybeProcId) :-
+maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, MaybeProcId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	( 
@@ -87,9 +89,11 @@ maybe_add_default_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_args_method(Globals, ArgsMethod),
 		add_new_proc(PredInfo0, PredArity, PredArgModes, 
 			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
-			Context, PredInfo, ProcId),
+			Context, ArgsMethod, PredInfo, ProcId),
 		MaybeProcId = yes(ProcId)
 	;
 		PredInfo = PredInfo0,

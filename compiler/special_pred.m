@@ -76,11 +76,11 @@ special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 	out_mode(Out).
 
 special_pred_info(compare, Type,
-		 "__Compare__", [ResType, Type, Type], [Out, In, In], det) :-
+		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
 	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
 							[], ResType),
 	in_mode(In),
-	out_mode(Out).
+	uo_mode(Uo).
 
 :- pred in_mode((mode)::out) is det.
 
@@ -90,6 +90,9 @@ in_mode(user_defined_mode(qualified("mercury_builtin", "in"), [])).
 
 out_mode(user_defined_mode(qualified("mercury_builtin", "out"), [])).
 
+:- pred uo_mode((mode)::out) is det.
+
+uo_mode(user_defined_mode(qualified("mercury_builtin", "uo"), [])).
 
 	% Given the mangled predicate name and the list of argument types,
 	% work out which type this special predicate is for.
