@@ -2206,11 +2206,14 @@ The compiler constructs three impure functions for converting between
 @samp{arity} is the number of type parameters it takes):
 
 @example
-:- impure func 'representation of name/arity'(solver_type) =
+:- impure func 'representation of ground name/arity'(solver_type) =
                         representation_type.
-:-        mode 'representation of name/arity'(in) =
+:-        mode 'representation of ground name/arity'(in) =
                         out(ground_inst) is det.
-:-        mode 'representation of name/arity'(in(any)) =
+
+:- impure func 'representation of any name/arity'(solver_type) =
+                        representation_type.
+:-        mode 'representation of any name/arity'(in(any)) =
                         out(any_inst) is det.
 
 :- impure func 'representation to ground name/arity'(representation_type) =
@@ -2226,10 +2229,6 @@ The compiler constructs three impure functions for converting between
 
 These functions are impure because of the semantic gap issue mentioned
 above.
-
-Two @code{representation_type}-to-@code{solver_type} functions are
-needed to avoid mode ambiguity in the case where @code{any_inst} and
-@code{ground_inst} are equivalent.
 
 These functions are constructed in-line as part of a source-to-source
 transformation, hence it is an error to define a solver type in the

@@ -463,19 +463,15 @@ add_item_decl_pass_1(instance(_, _, _, _, _,_), _, !Status, !Module, no, !IO).
 	%
 	% causes the following to be introduced:
 	%
-	% :- impure func 'representation of st'(st)      = rt.
-	% :-        mode 'representation of st'(in)      = out(gi) is det.
-	% :-        mode 'representation of st'(in(any)) = out(ai) is det.
+	% :- impure func 'representation of ground st'(st::in) =
+	% 			(rt::out(gi)) is det.
+	% :- impure func 'representation of any st'(st::in(any)) =
+	% 			(rt::out(ai)) is det.
 	%
 	% :- impure func 'representation to ground st'(rt::in(gi)) =
 	% 			(st::out) is det.
 	% :- impure func 'representation to any st'(rt::in(ai)) =
 	% 			(st::out(any)) is det.
-	%
-	% We need two 'representation to ...' functions because
-	% having a single, two-moded conversion function would
-	% lead to the compiler issuing a `duplicate mode declaration'
-	% error in the case that gi = ai.
 	%
 :- pred add_solver_type_decl_items(
 		tvarset::in, sym_name::in, list(type_param)::in,
@@ -506,47 +502,28 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
 
 	% Insert the conversion function declarations.
 
-		% The `:- impure func 'representation of st'(st) = rt'
-		% declaration.
+		% The `:- impure
+		%	func 'representation of ground st'(st::in(gi)) =
+		% 			(rt::out) is det' declaration.
 		%
-	ToRepnSymName     = solver_to_repn_symname(TypeSymName, Arity),
-	ToRepnArgTypes    = [type_only(SolverType), type_only(RepnType)],
-	ToRepnTypeSigItem =
+	ToGroundRepnSymName     =
+		solver_to_ground_repn_symname(TypeSymName, Arity),
+	ToGroundRepnArgTypes    =
+		[type_and_mode(SolverType, in_mode      ),
+		 type_and_mode(RepnType,   OutGroundMode)],
+	ToGroundRepnTypeSigItem =
 		pred_or_func(TVarSet, InstVarSet, ExistQTVars,
 			function,
-			ToRepnSymName,
-			ToRepnArgTypes,
+			ToGroundRepnSymName,
+			ToGroundRepnArgTypes,
 			no,	/* no `with_type` ... */
 			no,	/* no `with_inst` ... */
-			no,	/* no determinism */
+			yes(det),
 			true,	/* no `where ...' */
 			(impure), 
 			constraints([], []) /* no type class constraints */
 		),
-	add_item_decl_pass_1(ToRepnTypeSigItem, Context,
-		!Status, !Module, InvalidToRepnMode, !IO),
-
-	( InvalidToRepnMode = yes ->
-		error("make_hlds.add_solver_type_decl_items: invalid mode " ++
-			"in ToRepn item")
-	;
-		true
-	),
-
-		% The `:- mode 'representation of st'(in) = out(gi) is det'
-		% declaration.
-		%
-	ToGroundRepnArgModes  = [in_mode, OutGroundMode],
-	ToGroundRepnModeItem =
-		pred_or_func_mode(InstVarSet,
-			yes(function),
-			ToRepnSymName,
-			ToGroundRepnArgModes,
-			no,	/* no `with_inst` ... */
-			yes(det),
-			true	/* no `where ...' */
-		),
-	add_item_decl_pass_1(ToGroundRepnModeItem, Context,
+	add_item_decl_pass_1(ToGroundRepnTypeSigItem, Context,
 		!Status, !Module, InvalidToGroundRepnMode, !IO),
 
 	( InvalidToGroundRepnMode = yes ->
@@ -556,20 +533,28 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
 		true
 	),
 
-		% The `:- mode 'representation of st'(in(any)) =
-		% 			out(ai) is det' declaration.
+		% The `:- impure
+		%	func 'representation of any st'(st::in(ai)) =
+		% 			(rt::out(any)) is det' declaration.
 		%
-	ToAnyRepnArgModes  = [in_any_mode, OutAnyMode],
-	ToAnyRepnModeItem =
-		pred_or_func_mode(InstVarSet,
-			yes(function),
-			ToRepnSymName,
-			ToAnyRepnArgModes,
+	ToAnyRepnSymName     =
+		solver_to_any_repn_symname(TypeSymName, Arity),
+	ToAnyRepnArgTypes    =
+		[type_and_mode(SolverType, in_any_mode ),
+		 type_and_mode(RepnType,   OutAnyMode)],
+	ToAnyRepnTypeSigItem =
+		pred_or_func(TVarSet, InstVarSet, ExistQTVars,
+			function,
+			ToAnyRepnSymName,
+			ToAnyRepnArgTypes,
+			no,	/* no `with_type` ... */
 			no,	/* no `with_inst` ... */
 			yes(det),
-			true	/* no `where ...' */
+			true,	/* no `where ...' */
+			(impure), 
+			constraints([], []) /* no type class constraints */
 		),
-	add_item_decl_pass_1(ToAnyRepnModeItem, Context,
+	add_item_decl_pass_1(ToAnyRepnTypeSigItem, Context,
 		!Status, !Module, InvalidToAnyRepnMode, !IO),
 
 	( InvalidToAnyRepnMode = yes ->
@@ -646,41 +631,35 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
 	% Obtain the solver type conversion function sym_names from
 	% the solver type sym_name.
 	%
-:- func solver_to_repn_symname(sym_name, arity) = sym_name.
+:- func solver_to_ground_repn_symname(sym_name, arity) = sym_name.
+solver_to_ground_repn_symname(SymName, Arity) =
+	solver_conversion_fn_symname("representation of ground ",
+		SymName, Arity).
 
-solver_to_repn_symname(unqualified(Name), Arity) =
-	unqualified(
-		"representation of " ++ Name ++ "/" ++ int_to_string(Arity)
-	).
-solver_to_repn_symname(qualified(ModuleNames, Name), Arity) =
-	qualified(ModuleNames,
-		"representation of " ++ Name ++ "/" ++ int_to_string(Arity)
-	).
-
-
-:- func repn_to_any_solver_symname(sym_name, arity) = sym_name.
-
-repn_to_any_solver_symname(SymName, Arity) =
-	repn_to_solver_symname("any", SymName, Arity).
-
+:- func solver_to_any_repn_symname(sym_name, arity) = sym_name.
+solver_to_any_repn_symname(SymName, Arity) =
+	solver_conversion_fn_symname("representation of any ",
+		SymName, Arity).
 
 :- func repn_to_ground_solver_symname(sym_name, arity) = sym_name.
-
 repn_to_ground_solver_symname(SymName, Arity) =
-	repn_to_solver_symname("ground", SymName, Arity).
+	solver_conversion_fn_symname("representation to ground ",
+		SymName, Arity).
+
+:- func repn_to_any_solver_symname(sym_name, arity) = sym_name.
+repn_to_any_solver_symname(SymName, Arity) =
+	solver_conversion_fn_symname("representation to any ",
+		SymName, Arity).
 
 
-:- func repn_to_solver_symname(string, sym_name, arity) = sym_name.
-
-repn_to_solver_symname(AnyOrGround, unqualified(Name), Arity) =
+:- func solver_conversion_fn_symname(string, sym_name, arity) = sym_name.
+solver_conversion_fn_symname(Prefix, unqualified(Name), Arity) =
 	unqualified(
-		string.format("representation to %s %s/%d",
-			[s(AnyOrGround), s(Name), i(Arity)])
+		Prefix ++ Name ++ "/" ++ int_to_string(Arity)
 	).
-repn_to_solver_symname(AnyOrGround, qualified(ModuleNames, Name), Arity) =
+solver_conversion_fn_symname(Prefix, qualified(ModuleNames, Name), Arity) =
 	qualified(ModuleNames,
-		string.format("representation to %s %s/%d",
-			[s(AnyOrGround), s(Name), i(Arity)])
+		Prefix ++ Name ++ "/" ++ int_to_string(Arity)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1148,11 +1127,6 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 		!Status, Context, !Module, !Info, !IO) :-
 
 	Arity             = length(TypeParams),
-	ToRepnSymName     = solver_to_repn_symname(TypeSymName, Arity),
-	FromAnyRepnSymName =
-		repn_to_any_solver_symname(TypeSymName, Arity),
-	FromGroundRepnSymName =
-		repn_to_ground_solver_symname(TypeSymName, Arity),
 
 	AnyInst           = SolverTypeDetails ^ any_inst,
 	GroundInst        = SolverTypeDetails ^ ground_inst,
@@ -1176,12 +1150,14 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 
 		% The `func(in) = out(<i_ground>) is det' mode.
 		%
+	ToGroundRepnSymName =
+		solver_to_ground_repn_symname(TypeSymName, Arity),
 	ToGroundRepnArgs = [ pragma_var(X, "X", in_mode      ),
                              pragma_var(Y, "Y", OutGroundMode) ],
 	ToGroundRepnForeignProc =
 		foreign_proc(
 			Attrs,
-			ToRepnSymName,
+			ToGroundRepnSymName,
 			function,
 			ToGroundRepnArgs,
 			VarSet,
@@ -1193,12 +1169,14 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 
 		% The `func(in(any)) = out(<i_any>) is det' mode.
 		%
+	ToAnyRepnSymName =
+		solver_to_any_repn_symname(TypeSymName, Arity),
 	ToAnyRepnArgs = [ pragma_var(X, "X", in_any_mode),
                           pragma_var(Y, "Y", OutAnyMode ) ],
 	ToAnyRepnForeignProc =
 		foreign_proc(
 			Attrs,
-			ToRepnSymName,
+			ToAnyRepnSymName,
 			function,
 			ToAnyRepnArgs,
 			VarSet,
@@ -1209,6 +1187,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 
 		% The `func(in(<i_ground>)) = out is det' mode.
 		%
+	FromGroundRepnSymName =
+		repn_to_ground_solver_symname(TypeSymName, Arity),
 	FromGroundRepnArgs        = [ pragma_var(X, "X", InGroundMode),
 			              pragma_var(Y, "Y", out_mode) ],
 	FromGroundRepnForeignProc =
@@ -1226,6 +1206,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
 
 		% The `func(in(<i_any>)) = out(any) is det' mode.
 		%
+	FromAnyRepnSymName =
+		repn_to_any_solver_symname(TypeSymName, Arity),
 	FromAnyRepnArgs        = [ pragma_var(X, "X", InAnyMode   ),
 			           pragma_var(Y, "Y", out_any_mode) ],
 	FromAnyRepnForeignProc =
