@@ -62,7 +62,7 @@
 
 :- import_module dense_switch, string_switch, tag_switch, lookup_switch.
 :- import_module llds, code_gen, unify_gen, code_aux, type_util, code_util.
-:- import_module globals, options.
+:- import_module trace, globals, options.
 :- import_module bool, int, string, list, map, tree, std_util, require.
 
 :- type switch_category
@@ -88,6 +88,8 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 	(
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		{ MaybeTraceInfo = no },
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, lookup_switch_size,
 			LookupSize) },
@@ -172,7 +174,7 @@ switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
 switch_gen__type_cat_to_switch_cat(float_type, other_switch).
 switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
 switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
-switch_gen__type_cat_to_switch_cat(user_type(_), tag_switch).
+switch_gen__type_cat_to_switch_cat(user_type, tag_switch).
 switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 %---------------------------------------------------------------------------%
@@ -301,6 +303,15 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
 
 switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 		CanFail, StoreMap, EndLabel, CasesCode) -->
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_goal_path(GoalInfo, Path) },
+		trace__generate_event_code(switch(Path), TraceInfo,
+			TraceCode)
+	;
+		{ TraceCode = empty }
+	),
 	code_info__grab_code_info(CodeInfo0),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
@@ -317,16 +328,21 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 		]) },
 		{ ThisCaseCode =
 			tree(TestCode,
+			tree(TraceCode,
 			tree(GoalCode,
 			tree(SaveCode,
-			     ElseCode)))
+			     ElseCode))))
 		},
 		code_info__grab_code_info(CodeInfo1),
 		code_info__slap_code_info(CodeInfo0)
 	;
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-		{ ThisCaseCode = tree(GoalCode, SaveCode) },
+		{ ThisCaseCode =
+			tree(TraceCode,
+			tree(GoalCode,
+			     SaveCode))
+		},
 		code_info__grab_code_info(CodeInfo1),
 		code_info__slap_code_info(CodeInfo0)
 	),

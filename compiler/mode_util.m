@@ -69,8 +69,17 @@
 :- pred get_arg_insts(inst, cons_id, arity, list(inst)).
 :- mode get_arg_insts(in, in, in, out) is semidet.
 
-        % Given a list of bound_insts, get the corresponding list of cons_ids
-        %
+	% get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
+	%       for a var-functor unification,
+	%       given the final inst of the var
+	%       and the initial insts of the functor arguments,
+	%       compute the modes of the functor arguments
+:- pred get_mode_of_args(inst, list(inst), inst_table, module_info,
+		list(mode)).
+:- mode get_mode_of_args(in, in, in, in, out) is semidet.
+
+	% Given a list of bound_insts, get the corresponding list of cons_ids
+	%
 :- pred functors_to_cons_ids(list(bound_inst), list(cons_id)).
 :- mode functors_to_cons_ids(in, out) is det.
 
@@ -433,6 +442,43 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 		get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
 	).
 
+get_mode_of_args(not_reached, ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
+        mode_set_args(ArgInsts, not_reached, ArgModes).
+get_mode_of_args(any(Uniq), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
+        mode_set_args(ArgInsts, any(Uniq), ArgModes).
+get_mode_of_args(ground(Uniq, no), ArgInsts, _InstTable, _ModuleInfo, ArgModes)
+		:-
+        mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
+get_mode_of_args(bound(_Uniq, List), ArgInstsA, _InstTable, _ModuleInfo,
+		ArgModes) :-
+        ( List = [] ->
+                % the code is unreachable
+                mode_set_args(ArgInstsA, not_reached, ArgModes)
+        ;
+                List = [functor(_Name, ArgInstsB)],
+                get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
+        ).
+get_mode_of_args(alias(Key), ArgInsts, InstTable, ModuleInfo, ArgModes) :-
+        inst_table_get_inst_key_table(InstTable, IKT),
+        inst_key_table_lookup(IKT, Key, Inst),
+        get_mode_of_args(Inst, ArgInsts, InstTable, ModuleInfo, ArgModes).
+
+:- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
+:- mode get_mode_of_args_2(in, in, out) is semidet.
+
+get_mode_of_args_2([], [], []).
+get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
+        Mode = (InstA -> InstB),
+        get_mode_of_args_2(InstsA, InstsB, Modes).
+
+:- pred mode_set_args(list(inst), inst, list(mode)).
+:- mode mode_set_args(in, in, out) is det.
+
+mode_set_args([], _, []).
+mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
+        Mode = (Inst -> FinalInst),
+        mode_set_args(Insts, FinalInst, Modes).
+
 %-----------------------------------------------------------------------------%
 
 inst_lookup(InstTable, ModuleInfo, InstName, Inst) :-
@@ -684,12 +730,12 @@ propagate_type_into_mode(Type, InstTable, ModuleInfo, Mode0, Mode) :-
 propagate_type_into_inst(Type, Subst, InstTable, ModuleInfo, Inst0, Inst) :-
 	apply_type_subst(Type0, Subst, Type),
 	(
-	        type_constructors(Type, ModuleInfo, Constructors)
+		type_constructors(Type, ModuleInfo, Constructors)
 	->
-	        propagate_ctor_info(Inst0, Type, Constructors, InstTable0,
+		propagate_ctor_info(Inst0, Type, Constructors, InstTable0,
 			ModuleInfo, InstTable, Inst) 
 	;
-	        Inst = Inst0
+		Inst = Inst0
 	).
 *********/
 
@@ -784,7 +830,7 @@ propagate_ctor_info_lazily(alias(Key), Type, Constructors, InstTable,
 		ModuleInfo, Inst) :-
 	inst_table_get_inst_key_table(InstTable, IKT),
 	inst_key_table_lookup(IKT, Key, Inst0),
-        propagate_ctor_info_lazily(Inst0, Type, Constructors, InstTable,
+	propagate_ctor_info_lazily(Inst0, Type, Constructors, InstTable,
 			ModuleInfo, Inst).
 
 propagate_ctor_info_lazily(any(Uniq), _Type, _, _, _, any(Uniq)).
@@ -1311,10 +1357,10 @@ recompute_instmap_delta_3(call(PredId, ProcId, Args, D, E, F), _,
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
-recompute_instmap_delta_3(unify(Var, UnifyRhs0, UniMode0, Uni, E),
+recompute_instmap_delta_3(unify(Var, UnifyRhs0, UniMode0, Uni0, E),
 		GoalInfo, unify(Var, UnifyRhs, UniMode, Uni, E), InstMap,
 		InstMapDelta) -->
-	recompute_instmap_delta_unify(Var, UnifyRhs0, Uni, UniMode0,
+	recompute_instmap_delta_unify(Var, UnifyRhs0, Uni0, Uni, UniMode0,
 		UniMode, GoalInfo, InstMap, InstMapDelta, UnifyRhs).
 
 recompute_instmap_delta_3(pragma_c_code(A, B, PredId, ProcId, Args, F, G,
@@ -1451,14 +1497,14 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		RI = RI0
 	).
 
-:- pred recompute_instmap_delta_unify(var, unify_rhs, unification,
+:- pred recompute_instmap_delta_unify(var, unify_rhs, unification, unification,
 	unify_mode, unify_mode, hlds_goal_info, instmap, instmap_delta,
 	unify_rhs, recompute_info, recompute_info).
-:- mode recompute_instmap_delta_unify(in, in, in, in, out,
+:- mode recompute_instmap_delta_unify(in, in, in, out, in, out,
 	in, in, out, out, in, out) is det.
 
-recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
-		UniMode0, UniMode, GoalInfo, InstMap0, InstMapDelta,
+recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
+		_UniMode0, UniMode, GoalInfo, InstMap0, InstMapDelta,
 		UnifyRhs, RI0, RI) :-
 
 	( UnifyRhs0 = functor(ConsId, Vars),
@@ -1487,25 +1533,58 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 		instmap__lookup_var(InstMap1, Var, InitialInst),
 
 		list__length(Vars, Arity),
-                list__duplicate(Arity, live, ArgLives),
+		list__duplicate(Arity, live, ArgLives),
 		list__map(instmap__lookup_var(InstMap1), Vars, ArgInsts),
-        	(
-                	map__init(Sub0),
-                	abstractly_unify_inst_functor(dead, InitialInst, ConsId,
-                        	ArgInsts, ArgLives, real_unify, InstTable1,
+		(
+			map__init(Sub0),
+			abstractly_unify_inst_functor(dead, InitialInst, ConsId,
+				ArgInsts, ArgLives, real_unify, InstTable1,
 				ModuleInfo0, Sub0,
 				UnifyInst0, _, InstTable2, ModuleInfo2, Sub1)
-        	->
+		->
 			ModuleInfo = ModuleInfo2,
 			apply_inst_key_sub(Sub1, InstMap1, InstMap2,
 				InstTable2, InstTable),
 			UnifyInst = UnifyInst0
-        	;
-                	error("recompute_instmap_delta_unify: var-functor unify failed")
-        	),
+		;
+			error("recompute_instmap_delta_unify: var-functor unify failed")
+		),
 		instmap__set(InstMap2, Var, UnifyInst, InstMap),
-		UniMode = UniMode0,
+		ModeOfX = (InitialInst -> UnifyInst),
+		ModeOfY = (bound(unique, [functor(ConsId, ArgInsts)]) ->
+				UnifyInst),
+		UniMode = ModeOfX - ModeOfY,
 		UnifyRhs = UnifyRhs0,
+		(
+			inst_expand(InstTable, ModuleInfo, InitialInst,
+				InstOfX2),
+			get_arg_insts(InstOfX2, ConsId, Arity, InstOfXArgs),
+			get_mode_of_args(UnifyInst, InstOfXArgs, InstTable,
+				ModuleInfo, ModeOfXArgs0)
+		->
+			ModeOfXArgs = ModeOfXArgs0
+		;
+			error("recompute_instmap_delta_unify: get_(inst/mode)_of_args failed")
+		),
+		(
+			get_mode_of_args(UnifyInst, ArgInsts, InstTable,
+				ModuleInfo, ModeArgs0)
+		->
+			ModeArgs = ModeArgs0
+		;
+			error("recompute_instmap_delta_unify: get_mode_of_args failed")
+		),
+
+		mode_util__modes_to_uni_modes(ModeOfXArgs, ModeArgs,
+				ModuleInfo, UniModes),
+		( Unification0 = construct(Var, ConsId, Vars, _) ->
+			Unification = construct(Var, ConsId, Vars, UniModes)
+		; Unification0 = deconstruct(Var, ConsId, Vars, _, CanFail) ->
+			Unification = deconstruct(Var, ConsId, Vars, UniModes,
+					CanFail)
+		;
+			error("recompute_instmap_delta_unify: bad var-functor unification")
+		),
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		compute_instmap_delta(InstMap0, InstMap, NonLocals,
 			InstMapDelta),
@@ -1519,6 +1598,7 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 
 		% Set the head modes of the lambda.
 		RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+
 		instmap__pre_lambda_update(ModuleInfo0, Vars, LambdaModes,
 			IMDelta, InstTable0, InstTable1, InstMap0, InstMap1),
 		RI1 = recompute_info(Atomic, ModuleInfo0, InstTable1),
@@ -1552,9 +1632,20 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 		compute_instmap_delta(InstMap0, InstMapUnify, NonLocals,
 			InstMapDelta),
 
-		UniMode = UniMode0,
+		ModeOfX = (InstOfX -> UnifyInst),
+		ModeOfY = (InstOfY -> UnifyInst),
+		UniMode = ModeOfX - ModeOfY,
 		UnifyRhs = lambda_goal(PredOrFunc, Vars, LambdaModes,
 				LambdaDet, IMDelta, Goal),
+		( Unification0 = construct(Var, ConsId, Vars, _) ->
+			instmap__lookup_vars(Vars, InstMap0, ArgInsts),
+			inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes0),
+			mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
+				ModuleInfo, ArgModes),
+			Unification = construct(Var, ConsId, Vars, ArgModes)
+		;
+			error("recompute_instmap_delta_unify: bad var-lambda unification")
+		),
 		RI = recompute_info(Atomic, ModuleInfo, InstTable)
 
 	; UnifyRhs0 = var(VarY),
@@ -1590,8 +1681,25 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 		),
 		instmap__set(InstMap2, VarX, UnifyInst, InstMap3),
 		instmap__set(InstMap3, VarY, UnifyInst, InstMap),
-		UniMode = UniMode0,
+		ModeOfX = (InitialInstX -> UnifyInst),
+		ModeOfY = (InitialInstY -> UnifyInst),
+		UniMode = ModeOfX - ModeOfY,
 		UnifyRhs = UnifyRhs0,
+		(
+			( Unification0 = assign(_, _)
+			; Unification0 = simple_test(_, _)
+			)
+		->
+			Unification = Unification0
+		;
+			Unification0 = complicated_unify(_, CanFail)
+		->
+			ComplUniMode = ((InitialInstX - InitialInstY) ->
+						(UnifyInst - UnifyInst)),
+			Unification = complicated_unify(ComplUniMode, CanFail)
+		;
+			error("recompute_instmap_delta_unify: bad var-var unification")
+		),
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		compute_instmap_delta(InstMap0, InstMap, NonLocals,
 			InstMapDelta)

@@ -461,12 +461,12 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 			Head = term__functor(term__atom("="),
 					[FuncHead, FuncResult], _)
 		->
-			parse_qualified_term(ModuleName, FuncHead,
+			parse_qualified_term(ModuleName, FuncHead, Head,
 				"equation head", R2),
 			process_func_clause(R2, FuncResult, VarSet2, Body2, R3)
 		;
-			parse_qualified_term(ModuleName, Head, "clause head",
-				R2),
+			parse_qualified_term(ModuleName, Head, Term,
+				"clause head", R2),
 			process_pred_clause(R2, VarSet2, Body2, R3)
 		),
 		add_context(R3, TheContext, Result)
@@ -978,9 +978,19 @@ process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
 :- mode check_for_errors(in, in, in, out) is det.
 check_for_errors(ModuleName, Head, Body, Result) :-
 	( Head = term__variable(_) ->
-		Result = error("variable on LHS of type definition", Head)
+		%
+		% `Head' has no term__context, so we need to get the
+		% context from `Body'
+		%
+		( Body = term__functor(_, _, Context) ->
+			dummy_term_with_context(Context, ErrorTerm)
+		;
+			dummy_term(ErrorTerm)
+		),
+		Result = error("variable on LHS of type definition", ErrorTerm)
 	;
-		parse_qualified_term(ModuleName, Head, "type definition", R),
+		parse_qualified_term(ModuleName, Head, Head,
+			"type definition", R),
 		check_for_errors_2(R, Body, Head, Result)
 	).
 
@@ -1059,7 +1069,7 @@ convert_constructor(ModuleName, Term, Result) :-
 	;
 		Term2 = Term
 	),
-	parse_qualified_term(ModuleName, Term2, "constructor definition",
+	parse_qualified_term(ModuleName, Term2, Term, "constructor definition",
 		ok(F, As)),
 	convert_constructor_arg_list(As, Args),
 	Result = F - Args.
@@ -1073,7 +1083,8 @@ convert_constructor(ModuleName, Term, Result) :-
 :- mode process_pred(in, in, in, in, in, out) is det.
 
 process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Result) :-
-	parse_qualified_term(ModuleName, PredType, "`:- pred' declaration", R),
+	parse_qualified_term(ModuleName, PredType, PredType,
+		"`:- pred' declaration", R),
 	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Result).
 
 :- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
@@ -1135,7 +1146,7 @@ process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
 	->
-		parse_qualified_term(ModuleName, FuncTerm,
+		parse_qualified_term(ModuleName, FuncTerm, Term,
 			"`:- func' declaration", R),
 		process_func_2(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
 				Cond, Result)
@@ -1203,12 +1214,12 @@ process_mode(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
 	->
-		parse_qualified_term(ModuleName, FuncTerm,
+		parse_qualified_term(ModuleName, FuncTerm, Term,
 				"function `:- mode' declaration", R),
 		process_func_mode(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
 				Cond, Result)
 	;
-		parse_qualified_term(ModuleName, Term,
+		parse_qualified_term(ModuleName, Term, Term,
 				"predicate `:- mode' declaration", R),
 		process_pred_mode(R, Term, VarSet, MaybeDet, Cond, Result)
 	).
@@ -1296,7 +1307,7 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 :- pred convert_inst_defn(string, term, term, maybe1(inst_defn)).
 :- mode convert_inst_defn(in, in, in, out) is det.
 convert_inst_defn(ModuleName, Head, Body, Result) :-
-	parse_qualified_term(ModuleName, Head, "inst definition", R),
+	parse_qualified_term(ModuleName, Head, Body, "inst definition", R),
 	convert_inst_defn_2(R, Head, Body, Result).
 
 :- pred convert_inst_defn_2(maybe_functor, term, term, maybe1(inst_defn)).
@@ -1356,7 +1367,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 :- pred convert_abstract_inst_defn(string, term, maybe1(inst_defn)).
 :- mode convert_abstract_inst_defn(in, in, out) is det.
 convert_abstract_inst_defn(ModuleName, Head, Result) :-
-	parse_qualified_term(ModuleName, Head, "inst definition", R),
+	parse_qualified_term(ModuleName, Head, Head, "inst definition", R),
 	convert_abstract_inst_defn_2(R, Head, Result).
 
 :- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
@@ -1407,23 +1418,19 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
 	).
 
+	% People never seem to remember what the right operator to use in a
+	% `:- mode' declaration is, so the syntax is forgiving.  We allow
+	% `::', the standard one which has the right precedence, but we
+	% also allow `==' just to be nice.
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
-		% People never seem to remember what the right
-		% operator to use in a `:- mode' declaration is,
-		% so the syntax is forgiving.
-		% We allow `::', the standard one which has the right
-		% precedence, but we also allow `==' just to be nice.
-	(	Op = "::"
-	->	true
-	;	Op = "=="
-	).
+	( Op = "::" ; Op = "==" ).
 
 :- pred convert_mode_defn(string, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn(in, in, in, out) is det.
 convert_mode_defn(ModuleName, Head, Body, Result) :-
-	parse_qualified_term(ModuleName, Head, "mode definition", R),
+	parse_qualified_term(ModuleName, Head, Head, "mode definition", R),
 	convert_mode_defn_2(R, Head, Body, Result).
 
 :- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
@@ -1758,7 +1765,7 @@ parse_predicate_specifier(Term, Result) :-
 	parse_symbol_name_specifier(Term, NameResult),
         process_maybe1(make_arity_predicate_specifier, NameResult, Result)
     ;
-	parse_qualified_term(Term, "predicate specifier", TermResult),
+	parse_qualified_term(Term, Term, "predicate specifier", TermResult),
 	process_typed_predicate_specifier(TermResult, Result)
     ).
 
@@ -1790,7 +1797,7 @@ parse_arg_types_specifier(Term, Result) :-
 	parse_symbol_name_specifier(Term, NameResult),
         process_maybe1(make_arity_predicate_specifier, NameResult, Result)
     ;
-	parse_qualified_term(Term, "constructor specifier", TermResult),
+	parse_qualified_term(Term, Term, "constructor specifier", TermResult),
 	process_typed_predicate_specifier(TermResult, Result)
     ).
 

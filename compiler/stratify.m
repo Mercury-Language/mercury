@@ -296,16 +296,15 @@ higher_order_check_scc([PredProcId|Remaining], WholeScc, HOInfo, Module0,
 	{ PredProcId = proc(PredId, ProcId) },
 	{ module_info_pred_info(Module0, PredId, PredInfo) },
 	globals__io_lookup_bool_option(warn_non_stratification, Warn),
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
 	( 	
-		{ list__member(request(memo), Markers) }
+		{ check_marker(Markers, memo) }
 	->
 		{ Error = yes }
 	;
 		{ Error = no }
 	),
-	(	( { Error = yes 
-		; Warn = yes } ),
+	(	( { Error = yes ; Warn = yes } ),
 		{ map__search(HOInfo, PredProcId, HigherOrderInfo) }
 	->
 		{ HigherOrderInfo = info(HOCalls, _) },

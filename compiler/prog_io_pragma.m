@@ -22,8 +22,8 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, hlds_pred.
-:- import_module string, std_util.
+:- import_module prog_io_goal, hlds_pred, term_util, term_errors.
+:- import_module string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
@@ -163,7 +163,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(FuncAndArgModesTerm,
+		    parse_qualified_term(FuncAndArgModesTerm, PredAndModesTerm,
 			"pragma export declaration", FuncAndArgModesResult),  
 		    (
 		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
@@ -185,7 +185,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		        Result = error(Msg, Term)
 		    )
 		;
-		    parse_qualified_term(PredAndModesTerm,
+		    parse_qualified_term(PredAndModesTerm, ErrorTerm,
 			"pragma export declaration", PredAndModesResult),  
 		    (
 		        PredAndModesResult = ok(PredName, ModeTerms),
@@ -267,7 +267,7 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
 					term__atom("function"), [], _),
 			PredOrFunc = function 
 		),
-		parse_qualified_term(PredNameTerm,
+		parse_qualified_term(PredNameTerm, ErrorTerm,
 			"predicate name", PredNameResult),
 		PredNameResult = ok(PredName, []),
 		convert_int_list(UnusedArgsTerm, UnusedArgsResult),
@@ -290,7 +290,8 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 	    ->
 	    	(
 		    parse_qualified_term(ModuleName, PredNameTerm,
-			    "pragma fact_table declaration", ok(PredName, [])),
+		            PredAndArityTerm, "pragma fact_table declaration",
+			    ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    (
@@ -321,6 +322,114 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 		ErrorTerm)
 	).
 
+parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
+	_VarSet, Result) :-
+    (
+	PragmaTerms = [
+	    PredAndModesTerm0,
+	    ConstTerm,
+	    TerminatesTerm,
+	    MaybeUsedArgsTerm
+	],
+	( 
+	    PredAndModesTerm0 = term__functor(Const, Terms0, _) 
+	->
+	    ( 
+		Const = term__atom("="),
+		Terms0 = [FuncAndModesTerm, FuncResultTerm0]
+	    ->
+		% function
+		PredOrFunc = function,
+		PredAndModesTerm = FuncAndModesTerm,
+		FuncResultTerm = [FuncResultTerm0]
+	    ;
+		% predicate
+		PredOrFunc = predicate,
+		PredAndModesTerm = PredAndModesTerm0,
+		FuncResultTerm = []
+	    ),
+	    parse_qualified_term(ModuleName, PredAndModesTerm, ErrorTerm,
+		"`pragma termination_info' declaration", PredNameResult),
+	    PredNameResult = ok(PredName, ModeListTerm0),
+	    (
+		PredOrFunc = predicate,
+		ModeListTerm = ModeListTerm0
+	    ;
+		PredOrFunc = function,
+		list__append(ModeListTerm0, FuncResultTerm, ModeListTerm)
+	    ),
+	    convert_mode_list(ModeListTerm, ModeList),
+	    (			
+		ConstTerm = term__functor(term__atom("not_set"), [], _),
+		TerminationConst = not_set
+	    ;
+		ConstTerm = term__functor( 
+		    term__atom("infinite"), [], ConstContext),
+		TerminationConst = inf(ConstContext - imported_pred)
+	    ;
+		ConstTerm = term__functor(term__atom("set"), [IntTerm], _),
+		IntTerm = term__functor(term__integer(Int), [], _),
+		TerminationConst = set(Int)
+	    ),
+	    (
+		TerminatesTerm = term__functor(term__atom("not_set"), [], _),
+		Terminates = not_set,
+		MaybeError = no
+	    ;
+		TerminatesTerm = term__functor(
+		    term__atom("dont_know"), [], TermContext),
+		Terminates = dont_know,
+		MaybeError = yes(TermContext - imported_pred)
+	    ;
+		TerminatesTerm = term__functor(term__atom("yes"), [], _),
+		Terminates = yes,
+		MaybeError = no
+	    ),
+	    (
+		MaybeUsedArgsTerm = term__functor(
+		    term__atom("yes"), [BoolListTerm], _),
+		convert_bool_list(BoolListTerm, BoolList),
+		MaybeUsedArgs = yes(BoolList)
+	    ;
+		MaybeUsedArgsTerm = term__functor(term__atom("no"), [], _),
+		MaybeUsedArgs = no
+	    ),
+	    Termination = term(TerminationConst, Terminates,
+	    	MaybeUsedArgs, MaybeError),
+	    Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
+	    	ModeList, Termination)))
+	;
+	    Result0 = error("unexpected variable in pragma termination_info",
+						ErrorTerm)
+	)
+    ->
+	Result = Result0
+    ;
+	Result = error("syntax error in `pragma termination_info'", ErrorTerm)
+    ).
+			
+
+parse_pragma_type(ModuleName, "terminates", PragmaTerms,
+				ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "terminates",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = terminates(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "does_not_terminate", PragmaTerms,
+				ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "does_not_terminate",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = does_not_terminate(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
+				ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "check_termination",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = check_termination(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 :- pred parse_simple_pragma(module_name, string,
 			pred(sym_name, int, pragma_type),
 			list(term), term, maybe1(item)).
@@ -337,8 +446,8 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 	    		[PredNameTerm, ArityTerm], _)
 	    ->
 		(
-		    parse_qualified_term(ModuleName, PredNameTerm, "",
-							ok(PredName, [])),
+		    parse_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
+		    		"", ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    call(MakePragma, PredName, Arity, Pragma),
@@ -410,7 +519,7 @@ parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, ExtraInfo,
 	    PredAndVarsTerm = PredAndVarsTerm0,
 	    FuncResultTerms = []
 	),
-	parse_qualified_term(ModuleName, PredAndVarsTerm,
+	parse_qualified_term(ModuleName, PredAndVarsTerm, PredAndVarsTerm0,
 			"pragma c_code declaration", PredNameResult),
 	(
 	    PredNameResult = ok(PredName, VarList0),
@@ -450,8 +559,8 @@ parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, ExtraInfo,
 	    Result = error(Msg, Term)
 	)
     ;
-	Result = error("unexpected variable in pragma(c_code, ...)",
-						PredAndVarsTerm0)
+	Result = error("unexpected variable in `pragma c_code' declaration",
+		PredAndVarsTerm0)
     ).
 
 	% parse the variable list in the pragma c code declaration.
@@ -517,4 +626,25 @@ convert_int_list(term__functor(Functor, Args, Context), Result) :-
 	;
 		Result = error("error in int list",
 				term__functor(Functor, Args, Context))
+	).
+
+:- pred convert_bool_list(term::in, list(bool)::out) is semidet.
+
+convert_bool_list(term__functor(Functor, Args, _), Bools) :-
+	(
+		Functor = term__atom("."),
+		Args = [term__functor(AtomTerm, [], _), RestTerm],
+		( 
+			AtomTerm = term__atom("yes"),
+			Bool = yes
+		;
+			AtomTerm = term__atom("no"),
+			Bool = no
+		),
+		convert_bool_list(RestTerm, RestList),
+		Bools = [ Bool | RestList ]
+	;
+		Functor = term__atom("[]"),
+		Args = [],
+		Bools = []
 	).

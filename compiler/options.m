@@ -23,8 +23,20 @@
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
+
 :- pred special_handler(option::in, special_data::in, option_table::in,
 	maybe_option_table::out) is semidet.
+%	special_handler(Option, ValueForThatOption, OptionTableIn,
+%			MaybeOptionTableOut).
+%	This predicate is invoked whenever getopt finds an option
+%	(long or short) designated as special, with special_data holding
+%	the argument of the option (if any). The predicate can change the
+%	option table in arbitrary ways in the course of handling the option,
+%	or it can return an error message.
+%	The canonical examples of special options are -O options in compilers,
+%	which set many other options at once.
+%	The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
+%	be error(ErrorString).
 
 :- pred options_help(io__state::di, io__state::uo) is det.
 
@@ -60,7 +72,9 @@
 		;	make_short_interface
 		;	make_interface
 		;	make_optimization_interface
+		;	make_transitive_opt_interface
 		;	generate_dependencies
+		;	generate_module_order
 		;	convert_to_mercury
 		;	convert_to_goedel
 		;	typecheck_only
@@ -87,6 +101,8 @@
 		;	infer_modes
 		;	infer_det
 		;	infer_all
+		;	type_inference_iteration_limit
+		;	mode_inference_iteration_limit
 	% Compilation Model options
 		;	grade
 		;	gcc_non_local_gotos
@@ -94,7 +110,10 @@
 		;	asm_labels
 		;	gc
 		;	profiling
+		;	profile_calls
+		;	profile_time
 		;	use_trail
+		;	pic_reg
 		;	debug
 		;	debug_data
 		;	tags
@@ -115,6 +134,7 @@
 		;	args
 		;	type_info
 		;	type_layout
+		;	stack_layout
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -148,6 +168,7 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	transitive_optimization
 		;	split_c_files
 	%	- HLDS
 		;	inlining
@@ -171,6 +192,11 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
+		;	termination
+		;	check_termination
+		;	verbose_check_termination
+		;	termination_single_args
+		;	termination_norm
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -221,7 +247,8 @@
 
 :- implementation.
 
-:- import_module bool, int, map, std_util, assoc_list, require, list.
+:- import_module string, bool, int, map, std_util, assoc_list, require, list.
+:- import_module handle_options.
 
 :- type option_category
 	--->	warning_option
@@ -278,9 +305,11 @@ option_defaults_2(verbosity_option, [
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
 	generate_dependencies	-	bool(no),
+	generate_module_order 	-	bool(no),
 	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
 	make_optimization_interface -	bool(no),
+	make_transitive_opt_interface -	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	typecheck_only		-	bool(no),
@@ -309,21 +338,26 @@ option_defaults_2(language_semantics_option, [
 	infer_types		-	bool(no),
 	infer_modes		-	bool(no),
 	infer_det		-	bool(yes),
-	infer_all		-	bool_special
+	infer_all		-	bool_special,
+	type_inference_iteration_limit	-	int(60),
+	mode_inference_iteration_limit	-	int(30)
 ]).
 option_defaults_2(compilation_model_option, [
 		% Compilation model options (ones that affect binary
 		% compatibility).
-	grade			-	string("asm_fast.gc"),
-					% the `mc' script will override the
-					% above default with a value determined
+	grade			-	string_special,
+					% the `mc' script will pass the
+					% default grade determined
 					% at configuration time
 	gcc_non_local_gotos	-	bool(yes),
 	gcc_global_registers	-	bool(yes),
 	asm_labels		-	bool(yes),
 	gc			-	string("conservative"),
-	profiling		-	bool(no),
+	profiling		-	bool_special,
+	profile_calls		-	bool(no),
+	profile_time		-	bool(no),
 	use_trail		-	bool(no),
+	pic_reg			-	bool(no),
 	debug			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -343,6 +377,7 @@ option_defaults_2(compilation_model_option, [
 	args			-	string("compact"),
 	type_info		-	string("default"),
 	type_layout		-	bool(yes),
+	stack_layout		-	bool(no),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -389,6 +424,12 @@ option_defaults_2(special_optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 	intermodule_optimization -	bool(no),
+	transitive_optimization -	bool(no),
+	check_termination	-	bool(no),
+	verbose_check_termination -	bool(no),
+	termination		-	bool(no),
+	termination_single_args	-	bool(no),
+	termination_norm	-	string("total"),
 	split_c_files		-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -545,6 +586,7 @@ long_option("debug-vn",			debug_vn).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
+long_option("generate-module-order",	generate_module_order).
 long_option("make-short-interface",	make_short_interface).
 long_option("make-short-int",		make_short_interface).
 long_option("make-interface",		make_interface).
@@ -554,6 +596,11 @@ long_option("make-optimization-interface",
 long_option("make-optimisation-interface",
 					make_optimization_interface).
 long_option("make-opt-int",		make_optimization_interface).
+long_option("make-transitive-optimization-interface",
+					make_transitive_opt_interface).
+long_option("make-transitive-optimisation-interface",
+					make_transitive_opt_interface).
+long_option("make-trans-opt", 		make_transitive_opt_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
@@ -588,6 +635,10 @@ long_option("infer-types",		infer_types).
 long_option("infer-modes",		infer_modes).
 long_option("infer-determinism",	infer_det).
 long_option("infer-det",		infer_det).
+long_option("type-inference-iteration-limit",
+					type_inference_iteration_limit).
+long_option("mode-inference-iteration-limit",
+					mode_inference_iteration_limit).
 
 % compilation model options
 long_option("grade",			grade).
@@ -597,6 +648,10 @@ long_option("asm-labels",		asm_labels).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
 long_option("profiling",		profiling).
+long_option("profile-calls",		profile_calls).
+long_option("profile-time",		profile_time).
+long_option("use-trail",		use_trail).
+long_option("pic-reg",			pic_reg).
 long_option("debug",			debug).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -608,6 +663,7 @@ long_option("arg-convention",		args).
 long_option("type-info",		type_info).
 long_option("type-info-convention",	type_info).
 long_option("type-layout",		type_layout).
+long_option("stack-layout",		type_layout).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -649,6 +705,11 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
+long_option("transitive-intermodule-optimization", 
+					transitive_optimization).
+long_option("transitive-intermodule-optimisation", 
+					transitive_optimization).
+long_option("trans-intermod-opt", 	transitive_optimization).
 
 % HLDS->HLDS optimizations
 long_option("inlining", 		inlining).
@@ -680,6 +741,19 @@ long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
+long_option("enable-termination",	termination).
+long_option("enable-term",		termination).
+long_option("check-termination",	check_termination).
+long_option("check-term",		check_termination).
+long_option("chk-term",			check_termination).
+long_option("verbose-check-termination",verbose_check_termination).
+long_option("verb-check-term",		verbose_check_termination).
+long_option("verb-chk-term",		verbose_check_termination).
+long_option("termination-single-argument-analysis",
+					termination_single_args).
+long_option("term-single-arg", 		termination_single_args).
+long_option("termination-norm",		termination_norm).
+long_option("term-norm",		termination_norm).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -753,6 +827,16 @@ long_option("use-search-directories-for-intermod",
 
 %-----------------------------------------------------------------------------%
 
+special_handler(grade, string(Grade), OptionTable0, Result) :-
+	( convert_grade_option(Grade, OptionTable0, OptionTable) ->
+		Result = ok(OptionTable)
+	;
+		string__append_list(["invalid Grade `", Grade, "'"], Msg),
+		Result = error(Msg)
+	).
+special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
+	map__set(OptionTable1, profile_calls, bool(Value), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
 	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),
@@ -987,6 +1071,7 @@ options_help -->
 	options_help_hlds_llds_optimization,
 	options_help_llds_llds_optimization,
 	options_help_output_optimization,
+	options_help_object_optimization,
 	options_help_link,
 	options_help_misc.
 
@@ -1073,6 +1158,11 @@ options_help_output -->
 	io__write_string("\t-M, --generate-dependencies\n"),
 	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
+	io__write_string("\t--generate-module-order\n"),
+	io__write_string("\t\tOutput the strongly connected components of the module\n"),
+	io__write_string("\t\tdependency graph in top-down order to `<module>.order'.\n"),
+	io__write_string("\t\tImplies --generate-dependencies.\n"),
+
 	io__write_string("\t-i, --make-int, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int',\n"),
 	io__write_string("\t\tand write the short interface to `<module>.int2'\n"),
@@ -1084,6 +1174,10 @@ options_help_output -->
 	io__write_string("\t\tWrite inter-module optimization information to\n"),
 	io__write_string("\t\t`<module>.opt'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
+%	io__write_string("\t--make-transitive-optimization-interface\n"),
+%	io__write_string("\t--make-trans-opt\n"),
+%	io__write_string("\t\tOutput transitive optimization information\n"),
+%	io__write_string("\t\tinto the <module>.trans_opt file.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
@@ -1163,7 +1257,12 @@ options_help_semantics -->
 
 	io__write_string("\t--no-infer-det, --no-infer-determinism\n"),
 	io__write_string("\t\tIf there is no determinism declaration for a procedure,\n"),
-	io__write_string("\t\tdon't try to infer the determinism, just report an error.\n").
+	io__write_string("\t\tdon't try to infer the determinism, just report an error.\n"),
+	io__write_string("\t--type-inference-iteration-limit <n>\n"),
+	io__write_string("\t\tPerform at most <n> passes of type inference (default: 60).\n"),
+	io__write_string("\t--mode-inference-iteration-limit <n>\n"),
+	io__write_string("\t\tPerform at most <n> passes of mode inference (default: 30).\n").
+
 
 :- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
 
@@ -1174,13 +1273,12 @@ options_help_compilation_model -->
 	io__write_string("\tcompiled with the same setting of these options,\n"),
 	io__write_string("\tand it must be linked to a version of the Mercury\n"),
 	io__write_string("\tlibrary which has been compiled with the same setting.\n"),
-	io__write_string("\tRather than setting them individually, you must\n"),
-	io__write_string("\tspecify them all at once by selecting a particular\n"),
-	io__write_string("\tcompilation model (""grade"").\n\n"),
 	io__write_string("\t-s <grade>, --grade <grade>\n"),
 	io__write_string("\t\tSelect the compilation model. The <grade> should be one of\n"),
-	io__write_string("\t\t`debug', `none', `reg', `jump', `asm_jump', `fast', `asm_fast',\n"),
-	io__write_string("\t\tor one of those with `.gc', `.prof' or `.gc.prof' appended.\n"),
+	io__write_string("\t\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast',\n"),
+	io__write_string("\t\tor one of those with `.gc', `.prof', `.proftime',\n"),
+	io__write_string("\t\t`.profcalls', `.tr', `.sa', `.debug', and/or `.pic_reg'\n"),
+	io__write_string("\t\tappended (in that order).\n"),
 	io__write_string("\t\tDepending on your particular installation, only a subset\n"),
 	io__write_string("\t\tof these possible grades will have been installed.\n"),
 	io__write_string("\t\tAttempting to use a grade which has not been installed\n"),
@@ -1188,19 +1286,19 @@ options_help_compilation_model -->
 	io__write_string("\t--gcc-global-registers\t"),
 	io__write_string("\t(grades: reg, fast, asm_fast)\n"),
 	io__write_string("\t--no-gcc-global-registers"),
-	io__write_string("\t(grades: debug, none, jump, asm_jump)\n"),
+	io__write_string("\t(grades: none, jump, asm_jump)\n"),
 	io__write_string("\t\tSpecify whether or not to use GNU C's\n"),
 	io__write_string("\t\tglobal register variables extension.\n"),
 	io__write_string("\t--gcc-non-local-gotos\t"),
 	io__write_string("\t(grades: jump, fast, asm_jump, asm_fast)\n"),
 	io__write_string("\t--no-gcc-non-local-gotos"),
-	io__write_string("\t(grades: debug, none, reg)\n"),
+	io__write_string("\t(grades: none, reg)\n"),
 	io__write_string("\t\tSpecify whether or not to use GNU C's\n"),
 	io__write_string("\t\t""labels as values"" extension.\n"),
 	io__write_string("\t--asm-labels\t\t"),
 	io__write_string("\t(grades: asm_jump, asm_fast)\n"),
 	io__write_string("\t--no-asm-labels\t\t"),
-	io__write_string("\t(grades: debug, none, reg, jump, fast)\n"),
+	io__write_string("\t(grades: none, reg, jump, fast)\n"),
 	io__write_string("\t\tSpecify whether or not to use GNU C's\n"),
 	io__write_string("\t\tasm extensions for inline assembler labels.\n"),
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
@@ -1209,23 +1307,40 @@ options_help_compilation_model -->
 	io__write_string("\t\t\t\t\tother grades use `--gc none'.)\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use\n"),
 	io__write_string("\t\t(default: conservative).  `accurate' GC is not yet implemented.\n"),
-	io__write_string("\t--use-trail\n"),
-	io__write_string("\t(grades: any grade ending in `.tr')\n"),
+	io__write_string("\t--use-trail\t\t"),
+	io__write_string("\t(grade modifier: `.tr')\n"),
 	io__write_string("\t\tEnable use of a trail.\n"),
 	io__write_string("\t\tThis is necessary for interfacing with constraint solvers,\n"),
 	io__write_string("\t\tor for backtrackable destructive update.\n"),
 	io__write_string("\t--profiling\t\t"),
-	io__write_string("\t(grades: any grade ending in `.prof')\n"),
+	io__write_string("\t(grade modifier: `.prof')\n"),
 	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
 	io__write_string("\t\tgenerated code, and also output some profiling\n"),
 	io__write_string("\t\tinformation (the static call graph) to the file\n"),
 	io__write_string("\t\t`<module>.prof'.\n"),
+	io__write_string("\t--profile-calls\t\t"),
+	io__write_string("\t(grade modifier: `.profcalls')\n"),
+	io__write_string("\t\tSimilar to --profiling, except that only gathers\n"),
+	io__write_string("\t\tcall counts, not timing information.\n"),
+	io__write_string("\t\tUseful on systems where time profiling is not supported\n"),
+	io__write_string("\t\t(e.g. MS Windows).\n"),
+	io__write_string("\t--profile-time\t\t"),
+	io__write_string("\t(grade modifier: `.proftime')\n"),
+	io__write_string("\t\tSimilar to --profiling, except that only gathers\n"),
+	io__write_string("\t\ttiming information, not call counts.\n"),
 	io__write_string("\t--debug\t\t\t"),
-	io__write_string("\t(grades: debug)\n"),
+	io__write_string("\t(grade modifier: `.debug')\n"),
 	io__write_string("\t\tEnable debugging.\n"),
 	io__write_string("\t\tDebugging support is currently extremely primitive.\n"),
 	io__write_string("\t\tWe recommend that you use instead use `mnp' or `msp'.\n"),
 	io__write_string("\t\tSee the Mercury User's Guide for details.\n"),
+	io__write_string("\t--pic-reg\t\t"),
+	io__write_string("\t(grade modifier: `.pic_reg')\n"),
+	io__write_string("\t[For Unix with intel x86 architecture only]\n"),
+	io__write_string("\t\tSelect a register usage convention that is compatible,\n"),
+	io__write_string("\t\twith position-independent code (gcc's `-fpic' option).\n"),
+	io__write_string("\t\tThis is necessary when using shared libraries on Intel x86\n"),
+	io__write_string("\t\tsystems running Unix.  On other systems it has no effect.\n"),
 	io__write_string("\t--tags {none, low, high}"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
@@ -1285,11 +1400,17 @@ options_help_compilation_model -->
 %	io__write_string("\t\ttype_info structures. Only one option, shared-one-or-two-cell,\n"),
 %	io__write_string("\t\tis presently available.\n"),
 
+
 	io__write_string("\t--no-type-layout\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't output base_type_layout structures or references\n"),
 	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
 	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
+
+	io__write_string("\t--stack-layout\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tGenerate stack_layout structures.\n"),
+
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tDon't box floating point numbers.\n"),
@@ -1324,12 +1445,7 @@ options_help_code_generation -->
 	io__write_string("\t--c-include-directory <dir>\n"),
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
-	io__write_string("\t\tSpecify options to be passed to the C compiler.\n").
-
-/*************
- % XXX documentation on `pragma fact_table' options should be uncommented when
- % fact tables are ready for public release.
-
+	io__write_string("\t\tSpecify options to be passed to the C compiler.\n"),
 	io__write_string("\t--fact-table-max-array-size <n>\n"),
 	io__write_string("\t\tSpecify the maximum number of elements in a single\n"),
 	io__write_string("\t\t`pragma fact_table' data array (default: 1024).\n"),
@@ -1337,7 +1453,6 @@ options_help_code_generation -->
 	io__write_string("\t\tSpecify how full the `pragma fact_table' hash tables should be\n"),
 	io__write_string("\t\tallowed to get.  Given as an integer percentage\n"),
 	io__write_string("\t\t(valid range: 1 to 100, default: 90).\n").
-**************/
 
 :- pred options_help_optimization(io__state::di, io__state::uo) is det.
 
@@ -1357,6 +1472,31 @@ options_help_optimization -->
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
 	io__write_string("\t\tThis option must be set throughout the compilation process.\n"),
+%	io__write_string("\t--transitive-intermodule-optimization\n"),
+%	io__write_string("\t--trans-intermod-opt\n"),
+%	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
+%	io__write_string("\t\tThis data is imported from <module>.trans_opt files.\n"),
+	io__write_string("\t--enable-term, --enable-termination\n"),
+	io__write_string("\t\tAnalyse each predicate to discover if it terminates.\n"),
+	io__write_string("\t--chk-term, --check-term, --check-termination\n"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for some\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.  In\n"),
+	io__write_string("\t\tmany cases where the compiler is unable to prove termination\n"),
+	io__write_string("\t\tthe problem is either a lack of information about the\n"),
+	io__write_string("\t\ttermination properties of other predicates, or because language\n"),
+	io__write_string("\t\tconstructs (such as higher order calls) were used which could\n"),
+	io__write_string("\t\tnot be analysed.  In these cases the compiler does not emit a\n"),
+	io__write_string("\t\twarning of non-termination, as it is likely to be spurious.\n"),
+	io__write_string("\t--verb-chk-term, --verb-check-term, --verbose-check-termination\n"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for all\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.\n"),
+	io__write_string("\t--termination-norm {simple, total, num-data-elems}\n"),
+	io__write_string("\t\tThe norm defines how termination analysis measures the size\n"),
+	io__write_string("\t\tof a memory cell. The simple norm says that size is always one.\n"),
+	io__write_string("\t\tThe total norm says that it is the number of words in the cell.\n"),
+	io__write_string("\t\tThe num-data-elems norm says that it is the number of words in\n"),
+	io__write_string("\t\tthe cell that contain something other than pointers to cells of\n"),
+	io__write_string("\t\tthe same type.\n"),
 	io__write_string("\t--split-c-files\n"),
 	io__write_string("\t\tGenerate each C function in its own C file,\n"),
 	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
@@ -1370,7 +1510,7 @@ options_help_optimization -->
 	is det.
 
 options_help_hlds_hlds_optimization -->
-	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),
+	io__write_string("\n    High-level (HLDS -> HLDS) optimizations:\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable all forms of inlining.\n"),
 	io__write_string("\t--no-inline-simple\n"),
@@ -1431,7 +1571,7 @@ options_help_hlds_hlds_optimization -->
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 
 options_help_hlds_llds_optimization -->
-	io__write_string("\n    Medium-level (HLDS->LLDS) optimizations:\n"),
+	io__write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n"),
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate switches as a simple if-then-else chains;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
@@ -1470,7 +1610,7 @@ options_help_hlds_llds_optimization -->
 :- pred options_help_llds_llds_optimization(io__state::di, io__state::uo) is det.
 
 options_help_llds_llds_optimization -->
-	io__write_string("\n    Low-level (LLDS->LLDS) optimizations:\n"),
+	io__write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
 	io__write_string("\t--no-llds-optimize\n"),
 	io__write_string("\t\tDisable the low-level optimization passes.\n"),
 	io__write_string("\t--optimize-dead-procs\n"),
@@ -1496,17 +1636,18 @@ options_help_llds_llds_optimization -->
 	io__write_string("\t--optimize-repeat <n>\n"),
 	io__write_string("\t\tIterate most optimizations at most <n> times (default: 3).\n"),
 	io__write_string("\t--optimize-vnrepeat <n>\n"),
-	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n").
-	% io__write_string("\t--pred-value-number\n"),
-	% io__write_string("\t\tExtend value numbering to entire predicates\n").
+	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n"),
+	io__write_string("\t--pred-value-number\n"),
+	io__write_string("\t\tExtend value numbering to entire predicates.\n").
 
 :- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
 
 options_help_output_optimization -->
-	io__write_string("\n    Output-level (LLDS->C) optimizations:\n"),
+	io__write_string("\n    Output-level (LLDS -> C) optimizations:\n"),
 	io__write_string("\t--use-macro-for-redo-fail\n"),
 	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
 	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
+	io__write_string("\t\tThis produces slightly bigger but slightly faster code.\n"),
 	io__write_string("\t--no-emit-c-loops\n"),
 	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
 	io__write_string("\t--procs-per-c-function <n>\n"),
@@ -1518,7 +1659,14 @@ options_help_output_optimization -->
 	io__write_string("\t\tThis option has the effect of putting the code for all\n"),
 	io__write_string("\t\tthe Mercury procedures in a single C function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
-	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
+	io__write_string("\t\tseverely stress the C compiler on large modules.\n").
+
+:- pred options_help_object_optimization(io__state::di, io__state::uo) is det.
+
+options_help_object_optimization -->
+	io__write_string("\n    Object-level (C -> object code) optimizations:\n"),
+	io__write_string("\t\tNote that if you are using Mmake, you need to pass these\n"),
+	io__write_string("\t\toptions to `mgnuc' rather than to `mmc'.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 	io__write_string("\t--inline-alloc\n"),

@@ -24,6 +24,11 @@
 %		`don't care' mode are ignored, and that assignments
 %		are cached.
 
+% XXX Currently the compiler generates code which does unnecessary
+% shuffling, in code_exprn__place_exprn.  The stuff in
+% code_exprn__fix_clearcode does not seem to be working.
+% See the XXX comment below.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -494,33 +499,21 @@ code_exprn__maybe_set_var_location(Var, Lval) -->
 %------------------------------------------------------------------------------%
 
 code_exprn__lval_in_use(Lval) -->
-	code_exprn__lval_in_use_except(Lval, no).
-
-:- pred code_exprn__lval_in_use_except(lval, maybe(var),
-	exprn_info, exprn_info).
-:- mode code_exprn__lval_in_use_except(in, in, in, out) is semidet.
-
-code_exprn__lval_in_use_except(Lval, MaybeVar) -->
 	code_exprn__get_vars(Vars),
-	{ map__to_assoc_list(Vars, VarStatList) },
-	{ code_exprn__lval_in_use_2(Lval, MaybeVar, VarStatList) }.
-
-	% The auxiliary predicate is needed to allow Mercury to recognize
-	% that the subcomputation has no outputs without using existential
-	% quantification, whose syntax SICStus doesn't like.
-
-:- pred code_exprn__lval_in_use_2(lval, maybe(var), assoc_list(var, var_stat)).
-:- mode code_exprn__lval_in_use_2(in, in, in) is semidet.
-
-code_exprn__lval_in_use_2(Lval, MaybeVar, VarStatList) :-
-	list__member(VarStat, VarStatList),
-	VarStat = Var - Stat,
+	code_exprn__get_regs(Regs),
 	(
-		MaybeVar = no
+		{ bag__contains(Regs, Lval) }
 	;
-		MaybeVar = yes(ExceptionVar),
-		\+ Var = ExceptionVar
-	),
+		{ map__to_assoc_list(Vars, VarStatList) },
+		{ code_exprn__lval_in_use_by_vars(Lval, VarStatList) }
+	).
+
+:- pred code_exprn__lval_in_use_by_vars(lval, assoc_list(var, var_stat)).
+:- mode code_exprn__lval_in_use_by_vars(in, in) is semidet.
+
+code_exprn__lval_in_use_by_vars(Lval, VarStatList) :-
+	list__member(VarStat, VarStatList),
+	VarStat = _Var - Stat,
 	(
 		Stat = cached(Rval),
 		exprn_aux__rval_contains_lval(Rval, Lval)
@@ -1163,7 +1156,7 @@ code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
 	code_exprn__add_lval_reg_dependencies(Lval),
 	code_exprn__maybe_get_var_name(MaybeVar, VarName),
 	( { IsConst = yes } ->
-		{ string__append("Assigning from ", VarName, Comment) },
+		{ string__append("Assigning from const ", VarName, Comment) },
 		{ ExprnCode = node([assign(Lval, Rval2) - Comment]) }
 	;
 		( { StandAlone = yes } ->
@@ -1189,6 +1182,15 @@ code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
 :- pred code_exprn__maybe_fix_clearcode(code_tree, code_tree, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__maybe_fix_clearcode(in, in, out, in, out) is det.
+
+	% XXX
+	% This predicate is supposed to optimize away unnecessary
+	% register shuffles.  It doesn't do much currently,
+	% because the target register is always marked in use
+	% in code_expr__place_exprn via the call to
+	% add_lval_reg_dependencies above.
+	% (The fact that there is no matching call to
+	% rem_lval_reg_dependencies is perhaps the problem?)
 
 code_exprn__maybe_fix_clearcode(ClearCode, ExprnCode, Code) -->
 	(

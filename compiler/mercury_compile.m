@@ -32,20 +32,19 @@
 :- import_module handle_options, prog_io, modules, module_qual, equiv_type.
 :- import_module make_hlds, typecheck, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
-:- import_module polymorphism, intermod, higher_order, inlining, dnf.
-:- import_module constraint, unused_args, dead_proc_elim, saved_vars.
+:- import_module simplify, intermod, trans_opt, bytecode_gen, bytecode.
+:- import_module (lambda), polymorphism, termination, higher_order, inlining.
+:- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
 :- import_module lco, liveness, stratify.
-:- import_module follow_code, live_vars, arg_info, store_alloc.
+:- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
-:- import_module llds_common, llds_out.
+:- import_module llds_common, llds_out, continuation_info, stack_layout.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph.
 :- import_module options, globals, passes_aux.
-
 
 %-----------------------------------------------------------------------------%
 
@@ -208,6 +207,8 @@ mercury_compile(Module, FactDeps) -->
 	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	    globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
+	    globals__io_lookup_bool_option(make_transitive_opt_interface,
+		MakeTransOptInt),
 	    ( { TypeCheckOnly = yes } ->
 		[]
 	    ; { ErrorCheckOnly = yes } ->
@@ -218,6 +219,8 @@ mercury_compile(Module, FactDeps) -->
 	    ; { MakeOptInt = yes } ->
 		% only run up to typechecking when making the .opt file
 	    	[]
+	    ; { MakeTransOptInt = yes } ->
+	    	mercury_compile__output_trans_opt_file(HLDS21)
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
@@ -260,7 +263,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 	{ ModuleImports0 = module_imports(Module, LongDeps, ShortDeps, _, _) },
 	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps), !,
 
-		% Errors in .opt files result in software errors.
+	% Errors in .opt and .trans_opt files result in software errors.
 	mercury_compile__maybe_grab_optfiles(ModuleImports0, Verbose,
 				 ModuleImports1, IntermodError), !,
 
@@ -318,15 +321,26 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
 	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
 	globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptInt),
+	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
 	( { UseOptInt = yes, MakeOptInt = no } ->
 		maybe_write_string(Verbose, "% Reading .opt files...\n"),
 		maybe_flush_output(Verbose),
-		intermod__grab_optfiles(Imports0, Imports, Error),
+		intermod__grab_optfiles(Imports0, Imports1, Error1),
 		maybe_write_string(Verbose, "% Done.\n")
 	;
-		{ Imports = Imports0 },
-		{ Error = no }
-	).
+		{ Imports1 = Imports0 },
+		{ Error1 = no }
+	),
+	( { TransOpt = yes } ->
+		maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
+		maybe_flush_output(Verbose),
+		trans_opt__grab_optfiles(Imports1, Imports, Error2),
+		maybe_write_string(Verbose, "% Done.\n")
+	;
+		{ Imports = Imports1 },
+		{ Error2 = no }
+	),
+	{ bool__or(Error1, Error2, Error) }.
 
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
 	bool, eqv_map, io__state, io__state).
@@ -453,6 +467,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+	globals__io_lookup_bool_option(termination, Termination),
+
 	( { MakeOptInt = yes } ->
 		intermod__write_optfile(HLDS0, HLDS1),
 
@@ -460,14 +476,25 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		% determinism analysis and polymorphism, then run unused_args
 		% to append the unused argument information to the `.opt.tmp' 
 		% file written above.
-		( { IntermodArgs = yes } ->
+		( { IntermodArgs = yes ; Termination = yes } ->
 			mercury_compile__frontend_pass_2_by_phases(
 				HLDS1, HLDS2, FoundModeError),
 			( { FoundModeError = no } ->
 				mercury_compile__maybe_polymorphism(HLDS2,
 					Verbose, Stats, HLDS3),
-				mercury_compile__maybe_unused_args(HLDS3,
-					Verbose, Stats, HLDS)
+				( { IntermodArgs = yes } ->
+					mercury_compile__maybe_unused_args(
+						HLDS3, Verbose, Stats, HLDS4)
+				;
+					{ HLDS4 = HLDS3 }
+				),
+				( { Termination = yes } ->
+					mercury_compile__maybe_termination(
+						HLDS4, Verbose, Stats, HLDS)
+				;
+					{ HLDS = HLDS4 }
+				)
+					
 			;
 				io__set_exit_status(1),
 				{ HLDS = HLDS2 }
@@ -482,6 +509,23 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	;
 		{ HLDS = HLDS0 }
 	).
+
+
+:- pred mercury_compile__output_trans_opt_file(module_info, 
+	io__state, io__state).
+:- mode mercury_compile__output_trans_opt_file(in, di, uo) is det.
+mercury_compile__output_trans_opt_file(HLDS25) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
+	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
+
+	mercury_compile__maybe_termination(HLDS26, Verbose, Stats, HLDS28),
+	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
+
+	trans_opt__write_optfile(HLDS28).
+	
 
 :- pred mercury_compile__frontend_pass_2(module_info, module_info,
 	bool, io__state, io__state).
@@ -602,8 +646,11 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28), !,
-	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"), !,
+	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
+	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
+
+	mercury_compile__maybe_termination(HLDS26, Verbose, Stats, HLDS28),
+	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
 	!,
@@ -695,16 +742,23 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68), !,
 	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"), !,
 
-	maybe_report_sizes(HLDS68),
+	mercury_compile__maybe_goal_paths(HLDS68, Verbose, Stats, HLDS72), !,
+	mercury_compile__maybe_dump_hlds(HLDS72, "72", "goal_path"), !,
 
-	{ HLDS90 = HLDS68 },
+	maybe_report_sizes(HLDS72),
+
+	{ HLDS90 = HLDS72 },
 	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"), !,
 
 	mercury_compile__generate_code(HLDS90, Verbose, Stats, HLDS95, LLDS1),
 	!,
 	mercury_compile__maybe_dump_hlds(HLDS95, "95", "codegen"), !,
 
-	{ HLDS99 = HLDS95 },
+	mercury_compile__maybe_generate_stack_layouts(HLDS95, LLDS1, Verbose, 
+		Stats, HLDS97), !,
+	mercury_compile__maybe_dump_hlds(HLDS97, "97", "stack_layout"), !,
+
+	{ HLDS99 = HLDS97 },
 	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"), !,
 
 	mercury_compile__maybe_do_optimize(LLDS1, Verbose, Stats, LLDS).
@@ -817,22 +871,46 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
-	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
-	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ globals__lookup_bool_option(Globals, generate_trace, Trace) },
+	( { Trace = yes } ->
+		write_proc_progress_message(
+			"% Calculating goal paths in ",
+					PredId, ProcId, ModuleInfo3),
+		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo7) }
+	;
+		{ ProcInfo7 = ProcInfo6 }
+	),
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
-	{ generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3, Globals,
-		ContInfo0, CellCount0, ContInfo, CellCount, Proc0) },
-	{ module_info_set_continuation_info(ModuleInfo3, ContInfo, 
+	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
+	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ generate_proc_code(ProcInfo7, ProcId, PredId, ModuleInfo3, Globals,
+		ContInfo0, CellCount0, ContInfo1, CellCount, Proc0) },
+	{ module_info_set_continuation_info(ModuleInfo3, ContInfo1, 
 		ModuleInfo4) },
-	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) },
+	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo5) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
 	;
 		{ Proc = Proc0 }
+	),
+	{ globals__lookup_bool_option(Globals, stack_layout, StackLayout) },
+	( { StackLayout = yes } ->
+		{ Proc = c_procedure(_, _, _, PredProcId, Instructions) },
+		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
+		write_proc_progress_message(
+			"% Generating stack layout information for ",
+					PredId, ProcId, ModuleInfo5),
+		{ continuation_info__process_instructions(PredProcId,
+			Instructions, ContInfo2, ContInfo3) },
+		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
+			ModuleInfo) }
+	;
+		{ ModuleInfo = ModuleInfo5 }
 	).
+	
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -903,6 +981,27 @@ mercury_compile__check_determinism(HLDS0, Verbose, Stats, HLDS, FoundError) -->
 			"% Program is determinism-correct.\n")
 	),
 	maybe_report_stats(Stats).
+
+:- pred mercury_compile__maybe_termination(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_termination(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_termination(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(polymorphism, Polymorphism),
+	globals__io_lookup_bool_option(termination, Termination),
+	% Termination analysis requires polymorphism to be run,
+	% as termination analysis does not handle complex unification
+	( 
+		{ Polymorphism = yes },
+		{ Termination = yes }
+	->
+		maybe_write_string(Verbose, "% Detecting termination...\n"),
+		termination__pass(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% Termination checking done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
 
 :- pred mercury_compile__check_unique_modes(module_info, bool, bool,
 	module_info, bool, io__state, io__state).
@@ -1027,9 +1126,10 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, Verbose, Stats,
 
 mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 		ModuleInfo) -->
-	globals__io_lookup_bool_option(profiling, Profiling),
+	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
+	globals__io_lookup_bool_option(profile_time, ProfileTime),
 	(
-		{ Profiling = yes }
+		{ ProfileCalls = yes ; ProfileTime = yes }
 	->
 		maybe_write_string(Verbose, "% Outputing profiling call graph..."),
 		maybe_flush_output(Verbose),
@@ -1361,6 +1461,24 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
+:- pred mercury_compile__maybe_goal_paths(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_goal_paths(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(generate_trace, Trace),
+	( { Trace = yes } ->
+		maybe_write_string(Verbose, "% Calculating goal paths..."),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_proc(goal_path__fill_slots),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
 :- pred mercury_compile__generate_code(module_info, bool, bool, module_info,
 	list(c_procedure), io__state, io__state).
 :- mode mercury_compile__generate_code(in, in, in, out, out, di, uo) is det.
@@ -1389,6 +1507,29 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 		{ LLDS = LLDS0 }
 	).
 
+:- pred mercury_compile__maybe_generate_stack_layouts(module_info, 
+	list(c_procedure), bool, bool, module_info, io__state, io__state).
+:- mode mercury_compile__maybe_generate_stack_layouts(in, in, in, in, out, 
+	di, uo) is det.
+
+mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
+		Stats, ModuleInfo) -->
+	globals__io_lookup_bool_option(stack_layout, StackLayout),
+	( { StackLayout = yes } ->
+		maybe_write_string(Verbose,
+			"% Generating stack layout information..."),
+		maybe_flush_output(Verbose),
+		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
+		{ continuation_info__process_llds(LLDS0, ContInfo0,
+			ContInfo) },
+		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
+			ModuleInfo) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ ModuleInfo = ModuleInfo0 }
+	).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1398,14 +1539,17 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 	bool, io__state, io__state).
 :- mode mercury_compile__output_pass(in, in, in, out, di, uo) is det.
 
-mercury_compile__output_pass(HLDS, LLDS0, ModuleName, CompileErrors) -->
+mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	{ base_type_info__generate_llds(HLDS, BaseTypeInfos) },
-	{ base_type_layout__generate_llds(HLDS, BaseTypeLayouts) },
+	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
+	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
+	{ stack_layout__generate_llds(HLDS1, HLDS, StackLayouts) },
 
-	{ llds_common(LLDS0, BaseTypeLayouts, ModuleName, LLDS1, 
+	{ list__append(StackLayouts, BaseTypeLayouts, StaticData0) },
+
+	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
 
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
@@ -1664,11 +1808,23 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		GC_Opt = ""
 	},
-	globals__io_lookup_bool_option(profiling, Profiling),
-	{ Profiling = yes ->
-		ProfileOpt = "-DPROFILE_CALLS -DPROFILE_TIME "
+	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
+	{ ProfileCalls = yes ->
+		ProfileCallsOpt = "-DPROFILE_CALLS "
 	;
-		ProfileOpt = ""
+		ProfileCallsOpt = ""
+	},
+	globals__io_lookup_bool_option(profile_time, ProfileTime),
+	{ ProfileTime = yes ->
+		ProfileTimeOpt = "-DPROFILE_TIME "
+	;
+		ProfileTimeOpt = ""
+	},
+	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
+	{ PIC_Reg = yes ->
+		PIC_Reg_Opt = "-DPIC_REG "
+	;
+		PIC_Reg_Opt = ""
 	},
 	globals__io_get_tags_method(Tags_Method),
 	{ Tags_Method = high ->
@@ -1754,7 +1910,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
-		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, PIC_Reg_Opt,
+		TagsOpt, NumTagBitsOpt, DebugOpt,
 		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
@@ -1823,7 +1980,8 @@ mercury_compile__link_module_list(Modules) -->
 		    report_error("compilation of init file failed.")
 		;
 		    maybe_write_string(Verbose, "% Linking...\n"),
-		    globals__io_lookup_string_option(grade, Grade),
+		    globals__io_get_globals(Globals),
+		    { compute_grade(Globals, Grade) },
 		    globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
 		    { join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },

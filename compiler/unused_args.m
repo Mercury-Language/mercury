@@ -891,12 +891,12 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	remove_listof_elements(ArgTypes0, 1, UnusedArgs, ArgTypes),
 	pred_info_context(PredInfo0, Context),
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	pred_info_get_marker_list(PredInfo0, MarkerList),
+	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_goal_type(PredInfo0, GoalType),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
-		ArgTypes, true, Context, ClausesInfo, Status, MarkerList,
+		ArgTypes, true, Context, ClausesInfo, Status, Markers,
 		GoalType, PredOrFunc, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 

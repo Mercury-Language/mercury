@@ -52,11 +52,13 @@
 % code at that resume point as well as the nature of the required
 % entry labels.
 %
-% Accurate Garbage Collection Notes:
+% Accurate garbage collection notes:
 %
-% Note that when using accurate gc, liveness is computed slightly
-% differently. The garbage collector needs access to the typeinfo
-% variables of any variable that could be garbage collected. 
+% When using accurate gc, liveness is computed slightly differently.
+% The garbage collector needs access to the typeinfo variables of any
+% variable that could be live at a garbage collection point. In the
+% present design of the garbage collector, garbage collection takes place
+% at procedure returns.
 % 
 % Hence, the invariant needed for accurate GC is:
 % 	a variable holding a typeinfo must be live at any continuation
@@ -75,6 +77,7 @@
 % 
 % A typeinfo variable becomes dead after both the following conditions
 % are true: 
+%
 % 	(1) The typeinfo variable is not used again (when it is no
 % 	    longer part of the nonlocals)
 %	(2) No other nonlocal variable's type is described by that typeinfo
@@ -91,6 +94,30 @@
 % die only when no other variable needing them will be live, so the
 % invariant holds.
 %
+% Quantification notes:
+%
+% If a variable is not live on entry to a goal, but the goal gives it a value,
+% the code of this module assumes that
+%
+% (a) any parallel goals also give it a value, or
+% (b) the variable is local to this goal and hence does not occur in parallel
+%     goals.
+%
+% If a variable occurs in the nonlocal set of the goal, the code of this
+% assumes that (b) is not true, and will therefore require (a) to be true.
+% If some of the parallel goals cannot succeed, the first pass will include
+% the variable in their post-birth sets.
+%
+% If a variable occurs in the nonlocal set of the goal, but is actually
+% local to the goal, then any occurrence of that variable in the postbirth
+% sets of parallel goals will lead to an inconsistency, because the variable
+% will not die on those parallel paths, but will die on the path that
+% actually gives a value to the variable.
+%
+% The nonlocal set of a goal is in general allowed to overapproximate the
+% true set of nonlocal variables of the goal. Since this module requires
+% *exact* information about nonlocals, it must recompute the nonlocal sets
+% before starting.
 
 %-----------------------------------------------------------------------------%
 
@@ -118,30 +145,31 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
-:- import_module hlds_out, mode_util, code_util.
+:- import_module hlds_out, mode_util, code_util, quantification.
 :- import_module prog_data, globals, passes_aux.
 :- import_module bool, list, map, set, std_util, term, assoc_list, require.
 :- import_module varset, string.
 
 detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, Varset),
-	proc_info_vartypes(ProcInfo0, VarTypes),
-	live_info_init(ModuleInfo, ProcInfo0, VarTypes, Varset, LiveInfo),
+	requantify_proc(ProcInfo0, ProcInfo1),
+	proc_info_goal(ProcInfo1, Goal0),
+	proc_info_variables(ProcInfo1, Varset),
+	proc_info_vartypes(ProcInfo1, VarTypes),
+	live_info_init(ModuleInfo, ProcInfo1, VarTypes, Varset, LiveInfo),
 
-	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo1, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
 		_, Goal1),
 
-	initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
+	initial_deadness(ProcInfo1, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
 	set__init(ResumeVars0),
 	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo).
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
+	proc_info_set_liveness_info(ProcInfo2, Liveness0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -870,10 +898,6 @@ initial_liveness_2([], [], [], _InstTable, _ModuleInfo, Liveness, Liveness).
 initial_liveness_2([V | Vs], [M | Ms], [T | Ts], InstTable, ModuleInfo,
 		Liveness0, Liveness) :-
 	(
-/*###873 [cc] In clause for predicate `liveness:initial_liveness_2/7':%%%*/
-/*###873 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
-/*###873 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
-/*###873 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
 		mode_to_arg_mode(InstTable, ModuleInfo, M, T, top_in)
 	->
 		set__insert(Liveness0, V, Liveness1)
@@ -891,8 +915,6 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
 	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-/*###890 [cc] In clause for predicate `liveness:initial_deadness/3':%%%*/
-/*###890 [cc] error: undefined predicate `proc_info_inst_table/2'.%%%*/
 	proc_info_inst_table(ProcInfo, InstTable),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
@@ -926,10 +948,6 @@ initial_deadness_2([], [], [], _InstTable, _ModuleInfo, Deadness, Deadness).
 initial_deadness_2([V | Vs], [M | Ms], [T | Ts], InstTable, ModuleInfo,
 		Deadness0, Deadness) :-
 	(
-/*###923 [cc] In clause for predicate `liveness:initial_deadness_2/7':%%%*/
-/*###923 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
-/*###923 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
-/*###923 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
 		mode_to_arg_mode(InstTable, ModuleInfo, M, T, top_out)
 	->
 		set__insert(Deadness0, V, Deadness1)
@@ -981,11 +999,8 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_search_var(InstMapDelta, Var, Inst),
-/*###974 [cc] In clause for predicate `liveness:find_value_giving_occurrences/5':%%%*/
-/*###974 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
-/*###974 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
-/*###974 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
-		mode_to_arg_mode(InstTable, ModuleInfo, (free -> Inst), Type, top_out)
+		mode_to_arg_mode(InstTable, ModuleInfo, (free -> Inst), Type,
+			top_out)
 	->
 		set__insert(ValueVars0, Var, ValueVars1)
 	;

@@ -75,6 +75,7 @@
 			string,			% predicate name
 			int,			% arity
 			llds_proc_id,		% mode number
+			pred_proc_id,		% the pred_proc_id this code
 			list(instruction)	% the code for this procedure
 		).
 
@@ -185,11 +186,13 @@
 			% any mutable global state to the state it was in when
 			% the ticket was obtained with store_ticket();
 			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit', leave the state
-			% unchanged, just discard the trail entries and
-			% any associated baggage; invalidates this
-			% ticket as well as any tickets allocated after this
-			% one.
+			% If undo_reason is `commit' or `solve', leave the state
+			% unchanged, just check that it is safe to commit
+			% to this solution (i.e. that there are no outstanding
+			% delayed goals -- this is the "floundering" check).
+			% Note that we do not discard trail entries after
+			% commits, because that would in general be unsafe.
+			%
 			% Any invalidated ticket is useless and should
 			% be deallocated with either `discard_ticket'
 			% or `discard_tickets_to'.
@@ -256,6 +259,7 @@
 :- type reset_trail_reason
 	--->	undo
 	;	commit
+	;	solve
 	;	exception
 	;	gc
 	.
@@ -428,7 +432,9 @@
 	;	float_const(float)
 	;	string_const(string)
 	;	code_addr_const(code_addr)
-	;	data_addr_const(data_addr).
+	;	data_addr_const(data_addr)
+	;	label_entry(label).
+			% the address of the label (uses ENTRY macro).
 
 :- type data_addr
 	--->	data_addr(string, data_name).
@@ -436,8 +442,10 @@
 
 :- type data_name
 	--->	common(int)
-	;	base_type(base_data, string, arity).
+	;	base_type(base_data, string, arity)
 			% base_data, type name, type arity
+	;	stack_layout(label).	
+			% stack_layout for a given label
 
 :- type base_data
 	--->	info
@@ -644,6 +652,7 @@ llds__const_type(float_const(_), float).
 llds__const_type(string_const(_), data_ptr).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_), data_ptr).
+llds__const_type(label_entry(_), code_ptr).
 
 llds__unop_return_type(mktag, word).
 llds__unop_return_type(tag, word).

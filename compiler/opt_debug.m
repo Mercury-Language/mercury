@@ -185,7 +185,7 @@
 
 :- implementation.
 
-:- import_module llds_out, opt_util, vn_util, hlds_pred.
+:- import_module llds_out, opt_util, vn_util, hlds_pred, globals, options.
 :- import_module int, set, map, string.
 
 opt_debug__msg(OptDebug, Msg) -->
@@ -201,18 +201,19 @@ opt_debug__msg(OptDebug, Msg) -->
 opt_debug__dump_instrs(OptDebug, Instrs) -->
 	(
 		{ OptDebug = yes },
-		opt_debug__dump_instrs_2(Instrs)
+		globals__io_lookup_bool_option(auto_comments, PrintComments),
+		opt_debug__dump_instrs_2(Instrs, PrintComments)
 	;
 		{ OptDebug = no }
 	).
 
-:- pred opt_debug__dump_instrs_2(list(instruction), io__state, io__state).
-:- mode opt_debug__dump_instrs_2(in, di, uo) is det.
+:- pred opt_debug__dump_instrs_2(list(instruction), bool, io__state, io__state).
+:- mode opt_debug__dump_instrs_2(in, in, di, uo) is det.
 
-opt_debug__dump_instrs_2([]) --> [].
-opt_debug__dump_instrs_2([Uinstr - _ | Instrs]) -->
-	output_instruction(Uinstr),
-	opt_debug__dump_instrs_2(Instrs).
+opt_debug__dump_instrs_2([], _PrintComments) --> [].
+opt_debug__dump_instrs_2([Uinstr - Comment | Instrs], PrintComments) -->
+	output_instruction_and_comment(Uinstr, Comment, PrintComments),
+	opt_debug__dump_instrs_2(Instrs, PrintComments).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
 	map__to_assoc_list(Relmap, Nodemap),
@@ -678,12 +679,17 @@ opt_debug__dump_const(data_addr_const(data_addr(BaseName, VarName)), Str) :-
 	opt_debug__dump_data_name(VarName, N_str),
 	string__append_list(["data_addr_const(", BaseName, ", ", N_str, ")"],
 		Str).
-
+opt_debug__dump_const(label_entry(Label), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["label_entry(", LabelStr, ")"], Str).
 opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
 	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
+opt_debug__dump_data_name(stack_layout(Label), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["stack_layout(", LabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

@@ -47,6 +47,15 @@
 :- pred hlds_out__cons_id_to_string(cons_id, string).
 :- mode hlds_out__cons_id_to_string(in, out) is det.
 
+	% hlds_out__write_pred_id/4 writes out a message such as
+	% 	predicate `foo:bar/3'
+	% or	function `foo:myfoo/5'
+	% unless the predicate name begins with a double underscore "__",
+	% in which case mercury_output_term is used to print out the
+	% predicate's (or function's) name and argument types (since for
+	% `__Unify__' predicates, the module, name and arity are not
+	% sufficient to indentify the predicate).
+
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
 
@@ -171,10 +180,12 @@
 :- implementation.
 
 :- import_module mercury_to_mercury, globals, options.
-:- import_module llds_out, prog_out, prog_util, (inst), instmap.
+:- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
 
 :- import_module bool, int, string, list, set, map, std_util, assoc_list.
 :- import_module term, term_io, varset, require, getopt.
+:- import_module termination, term_errors.
+
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),
@@ -439,7 +450,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	mercury_output_pred_type(TVarSet, qualified(Module, PredName), ArgTypes,
 		no, Context),
@@ -453,11 +464,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	io__write_string(", status: "),
 	hlds_out__write_import_status(ImportStatus),
 	io__write_string("\n"),
-	( { Markers = [] } ->
+	{ markers_to_marker_list(Markers, MarkerList) },
+	( { MarkerList = [] } ->
 		[]
 	;
 		io__write_string("% markers:"),
-		hlds_out__write_marker_list(Markers),
+		hlds_out__write_marker_list(MarkerList),
 		io__write_string("\n")
 	),
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
@@ -482,25 +494,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		ImportStatus, ProcTable),
 	io__write_string("\n").
 
-:- pred hlds_out__write_marker_list(list(marker_status), io__state, io__state).
+:- pred hlds_out__write_marker_list(list(marker), io__state, io__state).
 :- mode hlds_out__write_marker_list(in, di, uo) is det.
 
 hlds_out__write_marker_list([]) --> [].
 hlds_out__write_marker_list([Marker | Markers]) -->
-	hlds_out__write_marker_status(Marker),
+	hlds_out__write_marker(Marker),
 	hlds_out__write_marker_list(Markers).
-
-:- pred hlds_out__write_marker_status(marker_status, io__state, io__state).
-:- mode hlds_out__write_marker_status(in, di, uo) is det.
-
-hlds_out__write_marker_status(request(Marker)) -->
-	io__write_string(" request("),
-	hlds_out__write_marker(Marker),
-	io__write_string(")").
-hlds_out__write_marker_status(done(Marker)) -->
-	io__write_string(" done("),
-	hlds_out__write_marker(Marker),
-	io__write_string(")").
 
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
@@ -510,20 +510,25 @@ hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(memo, "memo").
+hlds_out__marker_name(terminates, "terminates").
+hlds_out__marker_name(check_termination, "check_termination").
+hlds_out__marker_name(does_not_terminate, "does_not_terminate").
 
 hlds_out__write_marker(Marker) -->
 	{ hlds_out__marker_name(Marker, Name) },
 	io__write_string(Name).
 
-hlds_out__write_clauses(Indent, InstTable, ModuleInfo, PredId, VarSet, AppendVarnums,
-		HeadVars, PredOrFunc, Clauses0, TypeQual) -->
+hlds_out__write_clauses(Indent, InstTable, ModuleInfo, PredId, VarSet,
+		AppendVarnums, HeadVars, PredOrFunc, Clauses0, TypeQual) -->
 	(
 		{ Clauses0 = [Clause|Clauses] }
 	->
-		hlds_out__write_clause(Indent, InstTable, ModuleInfo, PredId, VarSet,
-			AppendVarnums, HeadVars, PredOrFunc, Clause, TypeQual),
-		hlds_out__write_clauses(Indent, InstTable, ModuleInfo, PredId, VarSet,
-			AppendVarnums, HeadVars, PredOrFunc, Clauses, TypeQual)
+		hlds_out__write_clause(Indent, InstTable, ModuleInfo, PredId,
+			VarSet, AppendVarnums, HeadVars, PredOrFunc, Clause,
+			TypeQual),
+		hlds_out__write_clauses(Indent, InstTable, ModuleInfo, PredId,
+			VarSet, AppendVarnums, HeadVars, PredOrFunc, Clauses,
+			TypeQual)
 	;
 		[]
 	).
@@ -648,6 +653,16 @@ hlds_out__write_goal_a(Goal - GoalInfo, InstTable, ModuleInfo, VarSet, AppendVar
 		;
 			[]
 		)
+	;
+		[]
+	),
+	( { string__contains_char(Verbose, 'P') } ->
+		{ goal_info_get_goal_path(GoalInfo, Path) },
+		{ trace__path_to_string(Path, PathStr) },
+		hlds_out__write_indent(Indent),
+		io__write_string("% goal path: "),
+		io__write_string(PathStr),
+		io__write_string("\n")
 	;
 		[]
 	),
@@ -1870,6 +1885,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_argmodes(Proc, argument_modes(HeadInstTable, HeadModes)) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
+	{ proc_info_termination(Proc, Termination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ proc_info_inst_table(Proc, InstTable) },
 	{ Indent1 is Indent + 1 },
@@ -1883,6 +1899,21 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	io__write_string(" ("),
 	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
+	hlds_out__write_indent(Indent),
+
+	
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 't') } ->
+		io__write_string("% Inferred termination: "),
+		termination__out(Termination),
+		io__nl,
+		io__write_string("% Termination - used args: "),
+		termination__out_used_args(Termination),
+		io__nl,
+		term_errors__output_hlds(PredId, ProcId, ModuleInfo)
+	;
+		[]
+	),
 
 	hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
 		VarTypes, TVarSet),

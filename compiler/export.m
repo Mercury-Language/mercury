@@ -131,7 +131,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	copy_output_args(ArgInfoTypes, 0, OutputArgs),
 	
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
-	get_proc_label(ProcLabel, ProcLabelString),
+	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
 	string__append_list([	"\n",
 				C_RetType, "\n", 
@@ -459,7 +459,7 @@ export__produce_header_file(Module, ModuleName) -->
 					"extern ""C"" {\n",
 					"#endif\n",
 					"\n",
-					"#include ""imp.h""\n",
+					"#include ""mercury_imp.h""\n",
 					"\n"]),
 			export__produce_header_file_2(Preds, ExportedProcs),
 			io__write_strings([

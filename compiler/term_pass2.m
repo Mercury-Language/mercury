@@ -31,9 +31,10 @@
 
 :- implementation.
 
-:- import_module bag, hlds_pred, std_util, int, list, relation, require.
-:- import_module set, hlds_goal, term_util, term_errors, bool.
-:- import_module globals, options, map, term, type_util.
+:- import_module hlds_pred, hlds_goal, term_util, term_errors, type_util.
+:- import_module globals, prog_data, hlds_data.
+:- import_module bag, std_util, int, list, relation, require.
+:- import_module set, options, map, term, bool.
 
 % Used in termination_goal to keep track of the relative sizes of variables
 % between the head of a predicate and any recursive calls.
@@ -187,8 +188,8 @@ init_used_args([PPId | PPIds], Module, UsedArgs) :-
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, Args),
-	proc_info_argmodes(ProcInfo, ArgModes),
-	partition_call_args(Module, ArgModes, Args, InArgs, _OutVars),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgIT, ArgModes)),
+	partition_call_args(ArgIT, Module, ArgModes, Args, InArgs, _OutVars),
 	set__list_to_set(InArgs, ArgSet),
 	map__det_insert(UsedArgs0, PPId, ArgSet, UsedArgs).
 
@@ -249,12 +250,14 @@ termination_scc([ PPId | PPIds ], FunctorInfo, Module, Result,
 		% pairs.
 		UnifyInfo = VarTypes - FunctorInfo,
 		CallInfo = call_info(PPId, UsedArgs0, no),
-		termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo,
+		proc_info_inst_table(ProcInfo, IT),
+		termination_goal(GoalExpr, GoalInfo, IT, Module, UnifyInfo,
 			CallInfo, Res0, [], Out),
 		
-		proc_info_argmodes(ProcInfo, ArgModes),
+		proc_info_argmodes(ProcInfo, argument_modes(ArgIT, ArgModes)),
 		proc_info_headvars(ProcInfo, Args),
-		partition_call_args(Module, ArgModes, Args, InVars, _OutVars),
+		partition_call_args(ArgIT, Module, ArgModes, Args, InVars,
+			_OutVars),
 		bag__from_list(InVars, InVarsBag),
 	
 		( Res0 = ok ->
@@ -328,10 +331,11 @@ termination_scc_single_args([PPId | Rest], FunctorInfo, Error, UsedArgs,
 			_PredInfo, ProcInfo) },
 		{ proc_info_goal(ProcInfo, Goal) },
 		{ proc_info_vartypes(ProcInfo, VarTypes) },
+		{ proc_info_inst_table(ProcInfo, IT) },
 		{ Goal = GoalExpr - GoalInfo },
 		{ UnifyInfo = VarTypes - FunctorInfo },
 		{ CallInfo = call_info(PPId, UsedArgs, yes) },
-		{ termination_goal(GoalExpr, GoalInfo, Module0,
+		{ termination_goal(GoalExpr, GoalInfo, IT, Module0,
 			UnifyInfo, CallInfo, Res0, [], Out) },
 		( { Res0 = error(Error2) } ->
 			% The context of single_arg_failed needs to be the
@@ -464,21 +468,22 @@ add_pred_procs_to_relation([PPId | PPIds], Relation0, Relation) :-
 	).
 
 
-:- pred termination_goal(hlds_goal_expr, hlds_goal_info, module_info, 
-	unify_info, call_info, term_util__result(term_errors__error), 
+:- pred termination_goal(hlds_goal_expr, hlds_goal_info, inst_table,
+	module_info, unify_info, call_info,
+	term_util__result(term_errors__error), 
 	list(termination_call), list(termination_call)).
-:- mode termination_goal(in, in, in, in, in, out, in, out) is det.
+:- mode termination_goal(in, in, in, in, in, in, out, in, out) is det.
 
 termination_goal(conj(Goals), 
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_conj(Goals, Module, UnifyInfo, CallInfo, Res, 
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+	termination_conj(Goals, IT, Module, UnifyInfo, CallInfo, Res, 
 		Out0, Out).
 
 % This processes calls when doing normal termination analysis (as opposed
 % to single argument analysis).
 termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _), 
-		GoalInfo, Module, _UnifyInfo, call_info(PPId, UsedArgsMap, no), 
-		Res, Out0, Out) :-
+		GoalInfo, _IT, Module, _UnifyInfo,
+		call_info(PPId, UsedArgsMap, no), Res, Out0, Out) :-
 	PPId = proc(PredId, ProcId),
 	CallPPId = proc(CallPredId, CallProcId),
 
@@ -487,12 +492,14 @@ termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _),
 		CallProcInfo),
 
 	proc_info_vartypes(ProcInfo, VarType),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
+	proc_info_argmodes(CallProcInfo,
+		argument_modes(CallArgInstTable, CallArgModes)),
 	proc_info_termination(CallProcInfo, CallTermination),
 	CallTermination = term(CallTermConst, CallTerminates, CallUsedArgs, _),
 	goal_info_get_context(GoalInfo, Context),
 
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
+	partition_call_args(CallArgInstTable, Module, CallArgModes, Args,
+		InVars, OutVars),
 	bag__from_list(InVars, InVarBag0),
 	bag__from_list(OutVars, OutVarBag),
 
@@ -550,7 +557,7 @@ termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _),
 	).
 	
 termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _), 
-		GoalInfo, Module, _UnifyInfo, 
+		GoalInfo, _IT, Module, _UnifyInfo, 
 		call_info(PPId, _UsedArgsMap, yes), Res, Out0, Out) :-
 	PPId = proc(PredId, ProcId),
 	CallPPId = proc(CallPredId, CallProcId),
@@ -560,14 +567,17 @@ termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _),
 		CallProcInfo),
 
 	proc_info_vartypes(ProcInfo, VarType),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
+	proc_info_argmodes(CallProcInfo,
+		argument_modes(CallArgIT, CallArgModes)),
 	proc_info_headvars(CallProcInfo, HeadVars),
 	proc_info_termination(CallProcInfo, CallTermination),
 	CallTermination = term(_, CallTerminates, _CallUsedArgs, _),
 	goal_info_get_context(GoalInfo, Context),
 
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
-	partition_call_args(Module, CallArgModes, HeadVars, InHeadVars, _),
+	partition_call_args(CallArgIT, Module, CallArgModes, Args,
+		InVars, OutVars),
+	partition_call_args(CallArgIT, Module, CallArgModes, HeadVars,
+		InHeadVars, _),
 	bag__from_list(OutVars, OutVarBag),
 
 	% Step 1 - modify Out0
@@ -602,18 +612,19 @@ termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _),
 	).
 
 termination_goal(higher_order_call(_, _, _, _, _, _), 
-		GoalInfo, _Module, _UnifyInfo, _CallInfo, Res, Out0, Out) :-
+		GoalInfo, _IT, _Module, _UnifyInfo, _CallInfo, Res,
+		Out0, Out) :-
 	goal_info_get_context(GoalInfo, Context),
 	Res = error(Context - horder_call),
 	Out = Out0.
 
 termination_goal(switch(_Var, _CanFail, Cases, _StoreMap),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_switch(Cases, Module, UnifyInfo, CallInfo, 
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+	termination_switch(Cases, IT, Module, UnifyInfo, CallInfo, 
 		Res, Out0, Out).
 
 termination_goal(unify(_Var, _RHS, _UniMode, Unification, _Context),
-		_GInfo, Module, UnifyInfo, _CallInfo, ok, Out0, Out) :-
+		_GInfo, IT, Module, UnifyInfo, _CallInfo, ok, Out0, Out) :-
 	(
 		Unification = construct(OutVar, ConsId, Args0, Modes0),
 		UnifyInfo = VarTypes - FunctorInfo,
@@ -630,8 +641,8 @@ termination_goal(unify(_Var, _RHS, _UniMode, Unification, _Context),
 			),
 			functor_norm(FunctorInfo, TypeId, ConsId, Module,
 				FunctorNorm, Args0, Args, Modes0, Modes),
-			split_unification_vars(Args, Modes, Module, InVarBag, 
-				OutVarBag0),
+			split_unification_vars(Args, Modes, IT, Module,
+				InVarBag, OutVarBag0),
 			bag__insert(OutVarBag0, OutVar, OutVarBag),
 			termination_goal_modify_out(InVarBag, OutVarBag, 
 				FunctorNorm, Out0, Out)
@@ -647,8 +658,8 @@ termination_goal(unify(_Var, _RHS, _UniMode, Unification, _Context),
 		),
 		functor_norm(FunctorInfo, TypeId, ConsId, Module,
 			FunctorNorm, Args0, Args, Modes0, Modes),
-		split_unification_vars(Args, Modes, Module, InVarBag0,
-			OutVarBag),
+		split_unification_vars(Args, Modes, IT, Module,
+			InVarBag0, OutVarBag),
 		bag__insert(InVarBag0, InVar, InVarBag),
 		termination_goal_modify_out(InVarBag, OutVarBag, 
 			(- FunctorNorm), Out0, Out)
@@ -667,28 +678,29 @@ termination_goal(unify(_Var, _RHS, _UniMode, Unification, _Context),
 	).
 
 termination_goal(disj(Goals, _StoreMap),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_disj(Goals, Module, UnifyInfo, CallInfo, Res, Out0, Out).
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+	termination_disj(Goals, IT, Module, UnifyInfo, CallInfo, Res,
+		Out0, Out).
 
 termination_goal(not(GoalExpr - GoalInfo),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo, CallInfo, 
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+	termination_goal(GoalExpr, GoalInfo, IT, Module, UnifyInfo, CallInfo, 
 		Res, Out0, Out).
 
 termination_goal(some(_Vars, GoalExpr - GoalInfo),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo, CallInfo, 
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+	termination_goal(GoalExpr, GoalInfo, IT, Module, UnifyInfo, CallInfo, 
 		Res, Out0, Out).
 
 termination_goal(if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, _),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
+		_GoalInfo, IT, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
 	CondGoal = CondExpr - CondGoalInfo,
 	ThenGoal = ThenExpr - ThenGoalInfo,
 	ElseGoal = ElseExpr - ElseGoalInfo,
-	termination_goal(ThenExpr, ThenGoalInfo, Module, UnifyInfo, CallInfo, 
-		ThenRes, Out0, ThenOut),
-	termination_goal(ElseExpr, ElseGoalInfo, Module, UnifyInfo, CallInfo, 
-		ElseRes, Out0, ElseOut),
+	termination_goal(ThenExpr, ThenGoalInfo, IT, Module, UnifyInfo,
+		CallInfo, ThenRes, Out0, ThenOut),
+	termination_goal(ElseExpr, ElseGoalInfo, IT, Module, UnifyInfo,
+		CallInfo, ElseRes, Out0, ElseOut),
 	( ThenRes = error(_) ->
 		Res = ThenRes,
 		Out = ThenOut
@@ -698,16 +710,18 @@ termination_goal(if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, _),
 	;
 		% They both succeded - join the outs
 		list__append(ThenOut, ElseOut, Out1),
-		termination_goal(CondExpr, CondGoalInfo, Module, 
+		termination_goal(CondExpr, CondGoalInfo, IT, Module, 
 			UnifyInfo, CallInfo, Res, Out1, Out)
 	).
 	
 termination_goal(pragma_c_code(_, _, CallPredId, CallProcId, Args, _, _, _),
-		GoalInfo, Module, _UnifyInfo, _CallInfo, Res, Out, Out) :-
+		GoalInfo, _IT, Module, _UnifyInfo, _CallInfo, Res, Out, Out) :-
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
+	proc_info_argmodes(CallProcInfo,
+		argument_modes(CallArgIT, CallArgModes)),
+	partition_call_args(CallArgIT, Module, CallArgModes, Args,
+		_InVars, OutVars),
 	bag__from_list(OutVars, OutVarBag),
 	( termination_goal_check_intersect(Out, OutVarBag) ->
 		% c_code has no important output variables, so we 
@@ -721,18 +735,18 @@ termination_goal(pragma_c_code(_, _, CallPredId, CallProcId, Args, _, _, _),
 %-----------------------------------------------------------------------------%
 % These following predicates all support termination_goal. 
 
-:- pred termination_conj(list(hlds_goal), module_info, 
+:- pred termination_conj(list(hlds_goal), inst_table, module_info,
 	unify_info, call_info, term_util__result(term_errors__error), 
 	list(termination_call), list(termination_call)).
-:- mode termination_conj(in, in, in, in, out, in, out) is det.
-termination_conj([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out).
-termination_conj([ Goal | Goals ], Module, UnifyInfo, CallInfo, 
+:- mode termination_conj(in, in, in, in, in, out, in, out) is det.
+termination_conj([] , _IT, _Module, _UnifyInfo, _CallInfo, ok, Out, Out).
+termination_conj([ Goal | Goals ], IT, Module, UnifyInfo, CallInfo, 
 		Res, Out0, Out) :-
 	Goal = GoalExpr - GoalInfo,
-	termination_conj(Goals, Module, UnifyInfo, CallInfo, 
+	termination_conj(Goals, IT, Module, UnifyInfo, CallInfo, 
 		Res0, Out0, Out1),
 	( Res0 = ok ->
-		termination_goal(GoalExpr, GoalInfo, Module, 
+		termination_goal(GoalExpr, GoalInfo, IT, Module, 
 			UnifyInfo, CallInfo, Res, Out1, Out)
 	;
 		Res = Res0,
@@ -777,13 +791,13 @@ termination_call_2([Var | Vars], [HeadVar | HeadVars],
 	).
 
 
-:- pred termination_switch(list(case), module_info, 
+:- pred termination_switch(list(case), inst_table, module_info,
 	unify_info, call_info, term_util__result(term_errors__error), 
 	list(termination_call), list(termination_call)).
-:- mode termination_switch(in, in, in, in, out, in, out) is det.
-termination_switch([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out) :-
+:- mode termination_switch(in, in, in, in, in, out, in, out) is det.
+termination_switch([], _IT, _Module, _UnifyInfo, _CallInfo, ok, Out, Out) :-
     error("term_pass2:termination_switch: unexpected empty switch\n").
-termination_switch([ Case | Cases ], Module, UnifyInfo, 
+termination_switch([ Case | Cases ], IT, Module, UnifyInfo, 
 		CallInfo, Res, Out0, Out):-
 	Case = case(_, Goal),
 	Goal = GoalExpr - GoalInfo,
@@ -792,29 +806,29 @@ termination_switch([ Case | Cases ], Module, UnifyInfo,
 		Res1 = ok,
 		Out1 = Out0
 	;
-		termination_switch(Cases, Module, UnifyInfo, CallInfo, 
+		termination_switch(Cases, IT, Module, UnifyInfo, CallInfo, 
 			Res1, Out0, Out1)
 	),
 	( Res1 = ok ->
 		termination_goal(GoalExpr, GoalInfo, 
-			Module, UnifyInfo, CallInfo, Res, Out0, Out2),
+			IT, Module, UnifyInfo, CallInfo, Res, Out0, Out2),
 		list__append(Out1, Out2, Out)
 	;
 		Res = Res1,
 		Out = Out1
 	).
 
-:- pred termination_disj(list(hlds_goal), module_info, 
+:- pred termination_disj(list(hlds_goal), inst_table, module_info,
 	unify_info, call_info, term_util__result(term_errors__error), 
 	list(termination_call), list(termination_call)).
-:- mode termination_disj(in, in, in, in, out, in, out) is det.
-termination_disj([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out):-
+:- mode termination_disj(in, in, in, in, in, out, in, out) is det.
+termination_disj([] , _IT, _Module, _UnifyInfo, _CallInfo, ok, Out, Out):-
 	( Out = [] ->
 		true
 	;
 		error("term_pass2:termination_disj: Unexpected value after disjunction\n")
 	).
-termination_disj([ Goal | Goals ], Module, UnifyInfo, 
+termination_disj([ Goal | Goals ], IT, Module, UnifyInfo, 
 		CallInfo, Res, Out0, Out) :-
 	Goal = GoalExpr - GoalInfo,
 
@@ -822,11 +836,11 @@ termination_disj([ Goal | Goals ], Module, UnifyInfo,
 		Res1 = ok, 
 		Out1 = Out0
 	;
-		termination_disj(Goals, Module, UnifyInfo, CallInfo, 
+		termination_disj(Goals, IT, Module, UnifyInfo, CallInfo, 
 			Res1, Out0, Out1)
 	),
 	( Res1 = ok ->
-		termination_goal(GoalExpr, GoalInfo, Module, 
+		termination_goal(GoalExpr, GoalInfo, IT, Module, 
 			UnifyInfo, CallInfo, Res, Out0, Out2),
 		list__append(Out1, Out2, Out)
 	;

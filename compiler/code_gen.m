@@ -220,27 +220,23 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% now the code is a list of code fragments (== list(instr)),
 		% so we need to do a level of unwinding to get a flat list.
 	list__condense(FragmentList, Instructions0),
+	FrameInfo = frame(TotalSlots, MaybeSuccipSlot),
 	(
-		FrameInfo = frame(_TotalSlots, MaybeSuccipSlot),
 		MaybeSuccipSlot = yes(SuccipSlot)
 	->
 		code_gen__add_saved_succip(Instructions0,
-			SuccipSlot, Instructions),
-
-		( GC_Method = accurate ->
-			code_info__get_total_stackslot_count(StackSize,
-				CodeInfo, _),
-			code_util__make_proc_label(ModuleInfo, 
-				PredId, ProcId, ProcLabel),
-			continuation_info__add_proc_info(Instructions, 
-				ProcLabel, StackSize, CodeModel,
-				SuccipSlot, ContInfo1, ContInfo)
-		;
-			ContInfo = ContInfo1
-		)
+			SuccipSlot, Instructions)
 	;
-		ContInfo = ContInfo1,
 		Instructions = Instructions0
+	),
+	( GC_Method = accurate ->
+		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
+			ProcLabel),
+		continuation_info__add_proc_layout_info(proc(PredId, ProcId),
+			ProcLabel, TotalSlots, CodeModel, MaybeSuccipSlot,
+			ContInfo1, ContInfo)
+	;
+		ContInfo = ContInfo1
 	),
 
 		% get the name and arity of this predicate
@@ -248,7 +244,8 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	predicate_arity(ModuleInfo, PredId, Arity),
 		% construct a c_procedure structure with all the information
 	proc_id_to_int(ProcId, LldsProcId),
-	Proc = c_procedure(Name, Arity, LldsProcId, Instructions).
+	Proc = c_procedure(Name, Arity, LldsProcId, proc(PredId, ProcId),
+		Instructions).
 
 :- pred generate_category_code(code_model, hlds_goal, code_tree, frame_info,
 				code_info, code_info).
@@ -945,8 +942,8 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 	;
 		code_info__grab_code_info(CodeInfo),
 		code_info__pop_failure_cont,
-		% Is this necessary?  Must we reset things each step
-		% of the way, or can we just reset at the end?
+		% The call to reset_ticket(..., commit) here is necessary
+		% in order to properly detect floundering.
 		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
 			commit, DiscardTicketCode),
 		code_info__generate_failure(FailCode),

@@ -115,7 +115,7 @@ c_gen_header(Indent, Module) -->
 	io__write_string(Name),
 	io__write_string(". */\n\n"),
 	c_gen_indent(Indent),
-	io__write_string("#include ""imp.h""\n\n").
+	io__write_string("#include ""mercury_imp.h""\n\n").
 
 :- pred c_gen_footer(int, module_info, io__state, io__state).
 :- mode c_gen_footer(in, in, di, uo) is det.

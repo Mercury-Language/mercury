@@ -614,6 +614,15 @@ qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
 qualify_pragma(fact_table(SymName, Arity, FileName),
 	fact_table(SymName, Arity, FileName), Info, Info) --> [].
+qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Termination), 
+		termination_info(PredOrFunc, SymName, ModeList, Termination), 
+		Info0, Info) --> 
+	qualify_mode_list(ModeList0, ModeList, Info0, Info).
+qualify_pragma(terminates(A, B), terminates(A, B), Info, Info) --> [].
+qualify_pragma(does_not_terminate(A, B), does_not_terminate(A, B), 
+		Info, Info) --> [].
+qualify_pragma(check_termination(A, B), check_termination(A, B), Info, 
+		Info) --> [].
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.

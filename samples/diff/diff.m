@@ -72,17 +72,17 @@ main_2(no, [Fname1 | Rest]) -->
 	( { Rest = [Fname2 | _] },
 		( { Fname1 = Fname2 } ->
 		% There are no differences between identical files.
-			[]
+			io__write_string("Error: File names are identical\n")
 		;
 			% If either file is "-", simply use standard input.
 			% (Note: Both can't be "-" since that was dealt with
 			% in the previous case.)
 			( { Fname1 = "-" } ->
-				file__read_input(Contents1),
+				file__read_input("<stdin>", Contents1),
 				file__read_file(Fname2, Contents2)
 			; { Fname2 = "-" } ->
 				file__read_file(Fname1, Contents1),
-				file__read_input(Contents2)
+				file__read_input("<stdin>", Contents2)
 			;
 			% Otherwise read the files normally.
 				file__read_file(Fname1, Contents1),
@@ -112,7 +112,7 @@ main_2(no, [Fname1 | Rest]) -->
 :- mode diff__do_diff(in, in, di, uo) is det.
 diff__do_diff(File1, File2) -->
 	{ diff__find_diff(File1, File2, Diff) },
-	diffs__display_diff(File1, File2, Diff).
+	diffs__display_diff_cvs_merge(File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
 

@@ -50,3 +50,5 @@ getopt_test
 higher_order_type_manip
 ho_order
 no_inline
+impossible_unify
+erroneous_liveness

@@ -194,17 +194,21 @@ typecheck(Module0, Module, ModeError, FoundError) -->
 
 check_pred_types(Module0, Module, ModeError, FoundError) -->
 	{ module_info_predids(Module0, PredIds) },
-	typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError),
+	globals__io_lookup_int_option(type_inference_iteration_limit,
+		MaxIterations),
+	typecheck_to_fixpoint(MaxIterations, PredIds, Module0,
+		Module, ModeError, FoundError),
 	write_inference_messages(PredIds, Module).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
-:- pred typecheck_to_fixpoint(list(pred_id), module_info, module_info, 
+:- pred typecheck_to_fixpoint(int, list(pred_id), module_info, module_info, 
 		bool, bool, io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, out, in, out, di, uo) is det.
+:- mode typecheck_to_fixpoint(in, in, in, out, in, out, di, uo) is det.
 
-typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError) -->
+typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module, ModeError,
+		FoundError) -->
 	typecheck_pred_types_2(PredIds, Module0, Module1,
 		ModeError, no, FoundError1, no, Changed),
 	( { Changed = no ; FoundError1 = yes } ->
@@ -217,9 +221,32 @@ typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError) -->
 		;
 			[]
 		),
-		typecheck_to_fixpoint(PredIds, Module1, Module,
-			ModeError, FoundError)
+		{ NumIterations1 = NumIterations - 1 },
+		( { NumIterations1 > 0 } ->
+			typecheck_to_fixpoint(NumIterations1, PredIds, Module1,
+				Module, ModeError, FoundError)
+		;
+			typecheck_report_max_iterations_exceeded,
+			{ Module = Module1 },
+			{ FoundError = yes }
+		)
 	).
+
+:- pred typecheck_report_max_iterations_exceeded(io__state, io__state).
+:- mode typecheck_report_max_iterations_exceeded(di, uo) is det.
+
+typecheck_report_max_iterations_exceeded -->
+	io__set_exit_status(1),
+	io__write_strings([
+	   "Type inference iteration limit exceeded.\n",
+	   "This probably indicates that your program has a type error.\n",
+	   "You should declare the types explicitly.\n"
+	]),
+	globals__io_lookup_int_option(type_inference_iteration_limit,
+		MaxIterations),
+	io__format("(The current limit is %d iterations.  You can use the\n",
+		[i(MaxIterations)]),
+	io__write_string("`--type-inference-iteration-limit' option to increase the limit).\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -322,8 +349,9 @@ typecheck_propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
 typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId,
 		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
 	{ map__lookup(Procs0, ProcId, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, argument_modes(InstTable, ArgModes0)) },
-	{ propagate_types_into_mode_list(ArgTypes, InstTable, ModuleInfo,
+	{ proc_info_argmodes(ProcInfo0,
+		argument_modes(ArgInstTable, ArgModes0)) },
+	{ propagate_types_into_mode_list(ArgTypes, ArgInstTable, ModuleInfo,
 		ArgModes0, ArgModes) },
 	%
 	% check for unbound inst vars
@@ -332,15 +360,15 @@ typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId,
 	% needs to be done before mode analysis, to avoid internal errors)
 	%
 	(
-		{ mode_list_contains_inst_var(ArgModes, InstTable, ModuleInfo,
-			_InstVar) }
+		{ mode_list_contains_inst_var(ArgModes, ArgInstTable,
+			ModuleInfo, _InstVar) }
 	->
 		unbound_inst_var_error(PredId, ProcInfo0, ModuleInfo),
 		% delete this mode, to avoid internal errors
 		{ map__det_remove(Procs0, ProcId, _, Procs1) }
 	;
 		{ proc_info_set_argmodes(ProcInfo0,
-			argument_modes(InstTable, ArgModes), ProcInfo) },
+			argument_modes(ArgInstTable, ArgModes), ProcInfo) },
 		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
 	),
 	typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,
@@ -403,8 +431,8 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	        MaybePredInfo = no,
 		Changed = no
 	    ;
-		pred_info_get_marker_list(PredInfo0, Markers),
-		( list__member(request(infer_type), Markers) ->
+		pred_info_get_markers(PredInfo0, Markers),
+		( check_marker(Markers, infer_type) ->
 			% For a predicate whose type is inferred,
 			% the predicate is allowed to bind the type
 			% variables in the head of the predicate's
@@ -2335,7 +2363,7 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 	map__init(TypeBindings),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,
-	copy(IOState0, IOState),	% XXX
+	unsafe_promise_unique(IOState0, IOState),	% XXX
 	TypeCheckInfo = typecheck_info(
 		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
@@ -2351,7 +2379,7 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 
 typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_), 
 		IOState) :-
-	copy(IOState0, IOState).	% XXX
+	unsafe_promise_unique(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 
@@ -2361,7 +2389,7 @@ typecheck_info_get_io_state(typecheck_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_),
 
 typecheck_info_set_io_state(typecheck_info(_,B,C,D,E,F,G,H,I,J,K,L,M), IOState0,
 			typecheck_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M)) :-
-	copy(IOState0, IOState).	% XXX
+	unsafe_promise_unique(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 
@@ -2852,9 +2880,9 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 write_inference_messages([], _) --> [].
 write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_markers(PredInfo, Markers) },
 	(
-		{ list__member(request(infer_type), Markers) },
+		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
 		{ list__member(PredId, ValidPredIds) }
 	->
@@ -3115,17 +3143,103 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList, Functor, Args,
 	write_functor_name(Functor1, Arity),
 	io__write_string(".\n"),
 
-	% XXX we should print type pairs (one type from each side)
-	% only for the arguments in which the two types differ.
+	% If we know the type of the function symbol, and each argument
+	% also has at most one possible type, then we prefer to print an
+	% error message that mentions the actual and expected types of the
+	% arguments only for the arguments in which the two types differ.
+	(
+		{ ConsDefnList = [SingleDefn] },
+		{ SingleDefn = cons_type_info(ConsTVarSet, _ResultType,
+			ConsArgTypes) },
+		{ assoc_list__from_corresponding_lists(Args, ConsArgTypes,
+			ArgExpTypes) },
+		{ find_mismatched_args(ArgExpTypes, TypeAssignSet, ConsTVarSet,
+			1, Mismatches) },
+		{ Mismatches = [_ | _] }
+	->
+		prog_out__write_context(Context),
+		io__write_string("  The types of the relevant arguments are\n"),
+		report_mismatched_args(Mismatches, VarSet, Context)
+	;
+		prog_out__write_context(Context),
+		io__write_string("  "),
+		write_functor_name(Functor, Arity),
+		write_type_of_functor(Functor, Arity, Context, ConsDefnList),
+
+		write_types_of_vars(Args, VarSet, Context, TypeCheckInfo, 
+			TypeAssignSet),
+
+		write_type_assign_set_msg(TypeAssignSet, VarSet)
+	).
+
+:- type mismatch_info
+	--->	mismatch(
+			int,		% argument number, starting from 1
+			var,		% variable in that position
+			type,		% actual type of that variable
+			tvarset,	% the type vars in the actual type
+			type,		% expected type of that variable
+			tvarset		% the type vars in the expected type
+		).
+
+:- pred find_mismatched_args(assoc_list(var, type), type_assign_set, tvarset,
+	int, list(mismatch_info)).
+:- mode find_mismatched_args(in, in, in, in, out) is semidet.
+
+find_mismatched_args([], _, _, _, []).
+find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ExpTVarSet,
+		ArgNum0, Mismatched) :-
+	ArgNum1 is ArgNum0 + 1,
+	find_mismatched_args(ArgExpTypes, TypeAssignSet, ExpTVarSet,
+		ArgNum1, Mismatched1),
+	get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
+	TypeStuffList = [type_stuff(ArgType, ArgVarSet, ArgBinding)],
+	term__apply_rec_substitution(ArgType, ArgBinding, FullArgType),
+	(
+		(
+			% there is no mismatch if the actual type of the
+			% argument is the same as the expected type
+			identical_types(FullArgType, ExpType)
+		;
+			% there is no mismatch if the actual type of the
+			% argument has no constraints on it
+			FullArgType = term__functor(term__atom("<any>"), [], _)
+		)
+	->
+		Mismatched = Mismatched1
+	;
+		Mismatched = [mismatch(ArgNum0, Arg, FullArgType, ArgVarSet,
+			ExpType, ExpTVarSet) | Mismatched1]
+	).
+
+:- pred report_mismatched_args(list(mismatch_info), varset, term__context,
+	io__state, io__state).
+:- mode report_mismatched_args(in, in, in, di, uo) is det.
+
+report_mismatched_args([], _, _) --> [].
+report_mismatched_args([Mismatch | Mismatches], VarSet, Context) -->
+	{ Mismatch = mismatch(ArgNum, Var, ActType, ActTVarSet,
+		ExpType, ExpTVarSet) },
 	prog_out__write_context(Context),
-	io__write_string("  "),
-	write_functor_name(Functor, Arity),
-	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
-
-	write_types_of_vars(Args, VarSet, Context, TypeCheckInfo, 
-		TypeAssignSet),
-
-	write_type_assign_set_msg(TypeAssignSet, VarSet).
+	io__write_string("  argument "),
+	io__write_int(ArgNum),
+	( { varset__search_name(VarSet, Var, _) } ->
+		io__write_string(" ("),
+		mercury_output_var(Var, VarSet, no),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string(": actual `"),
+	mercury_output_term(ActType, ActTVarSet, no),
+	io__write_string("', expected `"),
+	mercury_output_term(ExpType, ExpTVarSet, no),
+	( { Mismatches = [] } ->
+		io__write_string("'.\n")
+	;
+		io__write_string("';\n"),
+		report_mismatched_args(Mismatches, VarSet, Context)
+	).
 
 :- pred write_types_of_vars(list(var), varset, term__context, typecheck_info,
 				type_assign_set, io__state, io__state).

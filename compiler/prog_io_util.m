@@ -159,7 +159,7 @@ convert_mode(Term, Mode) :-
 		Inst = ground(shared, yes(FuncInstInfo)),
 		Mode = (Inst -> Inst)
 	;
-		parse_qualified_term(Term, "mode definition", R),
+		parse_qualified_term(Term, Term, "mode definition", R),
 		R = ok(Name, Args),	% should improve error reporting
 		convert_inst_list(Args, ConvertedArgs),
 		Mode = user_defined_mode(Name, ConvertedArgs)
@@ -171,7 +171,8 @@ convert_inst_list([H0|T0], [H|T]) :-
 	convert_inst_list(T0, T).
 
 convert_inst(term__variable(V), inst_var(V)).
-convert_inst(term__functor(Name, Args0, Context), Result) :-
+convert_inst(Term, Result) :-
+	Term = term__functor(Name, Args0, _Context),
 	% `free' insts
 	( Name = term__atom("free"), Args0 = [] ->
 		Result = free
@@ -258,8 +259,8 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 
 	% anything else must be a user-defined inst
 	;
-		parse_qualified_term(term__functor(Name, Args0, Context),
-			"inst", ok(QualifiedName, Args1)),
+		parse_qualified_term(Term, Term, "inst",
+			ok(QualifiedName, Args1)),
 		convert_inst_list(Args1, Args),
 		Result = defined_inst(user_inst(QualifiedName, Args))
 	).
@@ -295,7 +296,8 @@ convert_bound_inst_list([H0|T0], [H|T]) :-
 convert_bound_inst(InstTerm, functor(ConsId, Args)) :-
 	InstTerm = term__functor(Functor, Args0, _),
 	( Functor = term__atom(_) ->
-		parse_qualified_term(InstTerm, "inst", ok(SymName, Args1)),
+		parse_qualified_term(InstTerm, InstTerm, "inst",
+			ok(SymName, Args1)),
 		list__length(Args1, Arity),
 		ConsId = cons(SymName, Arity)
 	;

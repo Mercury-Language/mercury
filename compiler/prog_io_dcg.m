@@ -21,6 +21,15 @@
 			maybe_item_and_context).
 :- mode parse_dcg_clause(in, in, in, in, in, out) is det.
 
+	% parse_dcg_pred_goal(GoalTerm, VarSet0, Goal,
+	%	DCGVarInitial, DCGVarFinal, Varset)
+	% parses `GoalTerm' and expands it as a DCG goal,
+	% `VarSet0' is the initial varset, and `VarSet' is
+	% the final varset. `DCGVarInitial' is the first DCG variable,
+	% and `DCGVarFinal' is the final DCG variable.
+:- pred parse_dcg_pred_goal(term, varset, goal, var, var, varset).
+:- mode parse_dcg_pred_goal(in, in, out, out, out, out) is det.
+
 :- implementation.
 
 :- import_module prog_io_goal, prog_util, prog_data.
@@ -33,10 +42,17 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
 	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
 	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
 			Body, VarSet, _N, DCG_Var),
-	parse_qualified_term(ModuleName, DCG_Head, "DCG clause head",
+	parse_qualified_term(ModuleName, DCG_Head, DCG_Body, "DCG clause head",
 			HeadResult),
 	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
 	add_context(R, DCG_Context, Result).
+
+%-----------------------------------------------------------------------------%
+
+parse_dcg_pred_goal(GoalTerm, VarSet0, Goal, DCGVar0, DCGVar, VarSet) :-
+	new_dcg_var(VarSet0, 0, VarSet1, N0, DCGVar0),
+	parse_dcg_goal(GoalTerm, VarSet1, N0, DCGVar0,
+			Goal, VarSet, _N, DCGVar).
 
 %-----------------------------------------------------------------------------%
 

@@ -48,9 +48,10 @@
 
 :- implementation.
 
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module term_errors, mode_util, type_util, lp.
 :- import_module int, list, bag, require, bool, std_util, char, map, string.
-:- import_module hlds_pred, hlds_goal, hlds_data, float.
-:- import_module term_errors, mode_util, type_util, term, varset, lp.
+:- import_module float, term, varset.
 
 %------------------------------------------------------------------------------
 
@@ -325,11 +326,12 @@ proc_inequalities_pred(Module, PredId, ProcId, FunctorInfo, Offs, Res,
 		OldUsedArgsMap, NewUsedArgs):-
 	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
 	proc_info_headvars(ProcInfo, Args),
-	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgIT, ArgModes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_inst_table(ProcInfo, InstTable),
 	proc_info_goal(ProcInfo, GoalExpr - GoalInfo),
 
-	partition_call_args(Module, ArgModes, Args, InVars, OutVars),
+	partition_call_args(ArgIT, Module, ArgModes, Args, InVars, OutVars),
 	bag__from_list(InVars, InVarsBag),
 	bag__from_list(OutVars, OutVarsBag),
 
@@ -339,8 +341,8 @@ proc_inequalities_pred(Module, PredId, ProcId, FunctorInfo, Offs, Res,
 	UnifyInfo = VarTypes - FunctorInfo,
 	CallInfo = OldUsedArgsMap,
 	Info = UnifyInfo - CallInfo,
-	proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, PPId, 
-		Res1, [ InitEqn - OutVarsBag ], OffsVars), 
+	proc_inequalities_goal(GoalExpr, GoalInfo, InstTable, Module, Info,
+		PPId, Res1, [ InitEqn - OutVarsBag ], OffsVars), 
 	split_offs_vars(OffsVars, Offs, InVars2Bag),
 
 	( Res1 = ok ->
@@ -385,20 +387,20 @@ proc_inequalities_used_args([ Arg | Args ], InVarsBag,
 % for checking for higher order arguments is that this traps calls to
 % solutions, which would not otherwise be checked.
 
-:- pred proc_inequalities_goal(hlds_goal_expr, hlds_goal_info, module_info, 
-	proc_inequalities_info, pred_proc_id, 
+:- pred proc_inequalities_goal(hlds_goal_expr, hlds_goal_info, inst_table,
+	module_info, proc_inequalities_info, pred_proc_id, 
 	term_util__result(term_errors__error),
 	proc_inequalities_equ, proc_inequalities_equ).
-:- mode proc_inequalities_goal(in, in, in, in, in, out, in, out) is det.
+:- mode proc_inequalities_goal(in, in, in, in, in, in, out, in, out) is det.
 
-proc_inequalities_goal(conj([]), _, _Module, _, _PPId, ok, Offs, Offs).
-proc_inequalities_goal(conj([ Goal | Goals ]), GoalInfo, Module, Info, 
+proc_inequalities_goal(conj([]), _, _IT, _Module, _, _PPId, ok, Offs, Offs).
+proc_inequalities_goal(conj([ Goal | Goals ]), GoalInfo, IT, Module, Info, 
 		PPId, Res, Offs0, Offs) :-
 	( goal_will_fail(GoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
-		proc_inequalities_conj(Goal, Goals, Module, Info, PPId, 
+		proc_inequalities_conj(Goal, Goals, IT, Module, Info, PPId, 
 			Res, Offs0, Offs)
 	).
 
@@ -407,11 +409,13 @@ proc_inequalities_goal(conj([ Goal | Goals ]), GoalInfo, Module, Info,
 %	The terminates value of the called predicate is 'dont_know'
 %	The termination constant of the called predicate is infinite
 proc_inequalities_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _SymName),
-		GoalInfo, Module, Info, PPId, Res, Offs0, Offs) :-
+		GoalInfo, _IT, Module, Info, PPId, Res, Offs0, Offs) :-
 	module_info_pred_proc_info(Module, CallPredId, 
 		CallProcId, _CallPredInfo, CallProcInfo),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
+	proc_info_argmodes(CallProcInfo,
+		argument_modes(CallArgIT, CallArgModes)),
+	partition_call_args(CallArgIT, Module, CallArgModes, Args, InVars,
+		OutVars),
 	bag__from_list(OutVars, OutVarsBag),
 
 	( goal_will_fail(GoalInfo) ->
@@ -483,22 +487,22 @@ proc_inequalities_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _SymNam
 	).
 	
 proc_inequalities_goal(higher_order_call(_, _, _, _, _, _), 
-		GoalInfo, _Module, _, _PPId, Error, Offs, Offs) :-
+		GoalInfo, _IT, _Module, _, _PPId, Error, Offs, Offs) :-
 	goal_info_get_context(GoalInfo, Context),
 	Error = error(Context - horder_call).
 
 proc_inequalities_goal(switch(_SwitchVar, _CanFail, Cases, _StoreMap), GoalInfo,
-		Module, Info, PPId, Res, Offs0, Offs) :-
+		IT, Module, Info, PPId, Res, Offs0, Offs) :-
 	( goal_will_fail(GoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
-		proc_inequalities_switch(Cases, GoalInfo, Module, 
+		proc_inequalities_switch(Cases, GoalInfo, IT, Module, 
 			Info, PPId, Res, Offs0, Offs)
 	).
 
 proc_inequalities_goal(unify(_Var, _RHS, _UnifyMode, Unification, _UnifyContext),
-		GoalInfo, Module, Info, PPId, ok, Offs0, Offs) :-
+		GoalInfo, IT, Module, Info, PPId, ok, Offs0, Offs) :-
 	Info = UnifyInfo - _CallInfo,
 	( goal_will_fail(GoalInfo) ->
 		Offs = []
@@ -527,8 +531,8 @@ proc_inequalities_goal(unify(_Var, _RHS, _UnifyMode, Unification, _UnifyContext)
 				functor_norm(FunctorInfo, TypeId, ConsId,
 					Module, FunctorNorm, Args0, Args, 
 					Modes0, Modes),
-				split_unification_vars(Args, Modes, Module,
-					InVarsBag , OutVarsBag0),
+				split_unification_vars(Args, Modes, IT,
+					Module, InVarsBag , OutVarsBag0),
 				bag__insert(OutVarsBag0, OutVar, OutVarsBag),
 				Eqn = eqn(set(FunctorNorm), PPId, []),
 				proc_inequalities_modify_offs(InVarsBag, 
@@ -546,7 +550,7 @@ proc_inequalities_goal(unify(_Var, _RHS, _UnifyMode, Unification, _UnifyContext)
 			),
 			functor_norm(FunctorInfo, TypeId, ConsId, Module,
 				FunctorNorm, Args0, Args, Modes0, Modes),
-			split_unification_vars(Args, Modes, Module,
+			split_unification_vars(Args, Modes, IT, Module,
 				InVarsBag , OutVarsBag),
 			bag__insert(InVarsBag, InVar, InVarsBag0),
 			Eqn = eqn(set(- FunctorNorm), PPId, []),
@@ -572,20 +576,21 @@ proc_inequalities_goal(unify(_Var, _RHS, _UnifyMode, Unification, _UnifyContext)
 % No variables are bound in an empty disjunction (fail), so it does not
 % make sense to define an equation relating input variables to output
 % variables.
-proc_inequalities_goal(disj([], _), _, _Module, _, _PPId, ok, _Offs, []).
+proc_inequalities_goal(disj([], _), _, _IT, _Module, _, _PPId, ok, _Offs, []).
 proc_inequalities_goal(disj([ Goal | Goals ], _StoreMap), 
-		GoalInfo, Module, Info, PPId, Res, Offs0, Offs) :-
+		GoalInfo, IT, Module, Info, PPId, Res, Offs0, Offs) :-
 	( goal_will_fail(GoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
-		proc_inequalities_disj(Goal, Goals, GoalInfo, Module, Info, 
+		proc_inequalities_disj(Goal, Goals, GoalInfo, IT, Module, Info, 
 			PPId, Res, Offs0, Offs)
 	).
 
 % As we are trying to form a relationship between variables sizes, and no
 % variables can be bound in a not, we dont need to evaluate inside the not
-proc_inequalities_goal(not(_), GoalInfo, _Module, _, _PPId, ok, Offs0, Offs) :-
+proc_inequalities_goal(not(_), GoalInfo, _IT, _Module, _, _PPId, ok,
+		Offs0, Offs) :-
 	( goal_will_fail(GoalInfo) ->
 		Offs = []
 	;
@@ -593,12 +598,12 @@ proc_inequalities_goal(not(_), GoalInfo, _Module, _, _PPId, ok, Offs0, Offs) :-
 	).
 
 proc_inequalities_goal(some(_Vars, GoalExpr - GoalInfo), SomeGoalInfo, 
-		Module, Info, PPId, Res, Offs0, Offs) :-
+		IT, Module, Info, PPId, Res, Offs0, Offs) :-
 	( goal_will_fail(SomeGoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
-		proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+		proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 			PPId, Res, Offs0, Offs)
 	).
 % an if-then-else is processed as:
@@ -613,27 +618,28 @@ proc_inequalities_goal(some(_Vars, GoalExpr - GoalInfo), SomeGoalInfo,
 % 	else_goal
 % )
 proc_inequalities_goal(if_then_else(_Vars, IfGoal, ThenGoal, ElseGoal, _),
-		GoalInfo, Module, Info, PPId, Res, Offs0, Offs) :-	
+		GoalInfo, IT, Module, Info, PPId, Res, Offs0, Offs) :-	
 	( goal_will_fail(GoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
 		NewThenGoal = conj([IfGoal, ThenGoal]) - GoalInfo,
 		proc_inequalities_disj(NewThenGoal, [ElseGoal], GoalInfo, 
-			Module, Info, PPId, Res, Offs0, Offs)
+			IT, Module, Info, PPId, Res, Offs0, Offs)
 	).
 
 proc_inequalities_goal(
 		pragma_c_code(_, _, CallPredId, CallProcId, Args, _, _, _), 
-		GoalInfo, Module, _Info, _PPId, Res, Offs0, Offs) :-
+		GoalInfo, _IT, Module, _Info, _PPId, Res, Offs0, Offs) :-
 	(goal_will_fail(GoalInfo) ->
 		Res = ok,
 		Offs = []
 	;
 		module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 			CallProcInfo),
-		proc_info_argmodes(CallProcInfo, CallArgModes),
-		partition_call_args(Module, CallArgModes, Args, 
+		proc_info_argmodes(CallProcInfo,
+			argument_modes(CallArgIT, CallArgModes)),
+		partition_call_args(CallArgIT, Module, CallArgModes, Args, 
 			_InVars, OutVars),
 		bag__from_list(OutVars, OutVarBag),
 	
@@ -652,24 +658,24 @@ proc_inequalities_goal(
 %-----------------------------------------------------------------------------%
 
 :- pred proc_inequalities_conj(hlds_goal, list(hlds_goal), 
-	module_info, proc_inequalities_info, pred_proc_id,
+	inst_table, module_info, proc_inequalities_info, pred_proc_id,
 	term_util__result(term_errors__error), proc_inequalities_equ,
 	proc_inequalities_equ).
-:- mode proc_inequalities_conj(in, in, in, in, in, out, in, out) is det.
+:- mode proc_inequalities_conj(in, in, in, in, in, in, out, in, out) is det.
 
-proc_inequalities_conj(Goal, [], Module, Info, PPId, Res,
+proc_inequalities_conj(Goal, [], IT, Module, Info, PPId, Res,
 		Offs0, Offs) :-
 	Goal = GoalExpr - GoalInfo,
-	proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+	proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 		PPId, Res, Offs0, Offs).
 
-proc_inequalities_conj(Goal, [ Goal2 | Goals ], Module, Info, PPId, 
+proc_inequalities_conj(Goal, [ Goal2 | Goals ], IT, Module, Info, PPId, 
 		Res, Offs0, Offs) :-
-	proc_inequalities_conj(Goal2, Goals, Module, Info, 
+	proc_inequalities_conj(Goal2, Goals, IT, Module, Info, 
 		PPId, Res1, Offs0, Offs1),
 	( Res1 = ok ->
 		Goal = GoalExpr - GoalInfo,
-		proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+		proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 			PPId, Res, Offs1, Offs)
 	;
 		Res = Res1,
@@ -677,20 +683,20 @@ proc_inequalities_conj(Goal, [ Goal2 | Goals ], Module, Info, PPId,
 	). 
 
 :- pred proc_inequalities_switch(list(case), hlds_goal_info, 
-	module_info, proc_inequalities_info, pred_proc_id,
+	inst_table, module_info, proc_inequalities_info, pred_proc_id,
 	term_util__result(term_errors__error), proc_inequalities_equ,
 	proc_inequalities_equ).
-:- mode proc_inequalities_switch(in, in, in, in, in, out, in, out) is det.
+:- mode proc_inequalities_switch(in, in, in, in, in, in, out, in, out) is det.
 
-proc_inequalities_switch([], _, _Module, _, _PPId, ok, Offs, Offs) :-
+proc_inequalities_switch([], _, _IT, _Module, _, _PPId, ok, Offs, Offs) :-
 	error("Unexpected empty switch in term_pass1:proc_inequalities_switch").
 
 proc_inequalities_switch([ Case | Cases ], SwitchGoalInfo, 
-	Module, Info, PPId, Res, Offs0, Offs) :-
+	IT, Module, Info, PPId, Res, Offs0, Offs) :-
 
 	Case = case(_ConsId, Goal),
 	Goal = GoalExpr - GoalInfo,	
-	proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+	proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 		PPId, Res1, Offs0, Offs1),
 
 	( Res1 = error(_) ->
@@ -701,7 +707,7 @@ proc_inequalities_switch([ Case | Cases ], SwitchGoalInfo,
 		Offs = Offs1
 	;
 		proc_inequalities_switch(Cases, SwitchGoalInfo, 
-			Module, Info, PPId, Res2, Offs0, Offs2),
+			IT, Module, Info, PPId, Res2, Offs0, Offs2),
 
 		( Res2 = error(_) ->
 			Res = Res2,
@@ -713,22 +719,22 @@ proc_inequalities_switch([ Case | Cases ], SwitchGoalInfo,
 	).
 	
 :- pred proc_inequalities_disj(hlds_goal, list(hlds_goal), hlds_goal_info, 
-	module_info, proc_inequalities_info, pred_proc_id,
+	inst_table, module_info, proc_inequalities_info, pred_proc_id,
 	term_util__result(term_errors__error), proc_inequalities_equ,
 	proc_inequalities_equ).
-:- mode proc_inequalities_disj(in, in, in, in, in, in, out, in, out) is det.
-proc_inequalities_disj(Goal, [], _, Module, Info, PPId, 
+:- mode proc_inequalities_disj(in, in, in, in, in, in, in, out, in, out) is det.
+proc_inequalities_disj(Goal, [], _, IT, Module, Info, PPId, 
 		Res, Offs0, Offs) :-
 	Goal = GoalExpr - GoalInfo,
-	proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+	proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 		PPId, Res, Offs0, Offs).
 
-proc_inequalities_disj(Goal, [Goal2 | Goals], DisjGoalInfo, Module, 
+proc_inequalities_disj(Goal, [Goal2 | Goals], DisjGoalInfo, IT, Module, 
 		Info, PPId, Res, Offs0, Offs) :-
-	proc_inequalities_disj(Goal2, Goals, DisjGoalInfo, Module, 
+	proc_inequalities_disj(Goal2, Goals, DisjGoalInfo, IT, Module, 
 		Info, PPId, Res1, Offs0, Offs1),
 	Goal = GoalExpr - GoalInfo,
-	proc_inequalities_goal(GoalExpr, GoalInfo, Module, Info, 
+	proc_inequalities_goal(GoalExpr, GoalInfo, IT, Module, Info, 
 		PPId, Res2, Offs0, Offs2),
 	( Res1 = error(_) ->
 		Res = Res1,

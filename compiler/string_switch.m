@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, tree.
+:- import_module hlds_data, code_gen, trace, tree.
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
@@ -301,6 +301,15 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		{ LabelCode = node([
 			label(Label) - Comment
 		]) },
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ Goal = _ - GoalInfo },
+			{ goal_info_get_goal_path(GoalInfo, Path) },
+			trace__generate_event_code(switch(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
@@ -320,9 +329,10 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		]) },
 		{ Code =
 			tree(LabelCode,
+			tree(TraceCode,
 			tree(GoalCode,
 			tree(SaveCode,
-			     FinishCode)))
+			     FinishCode))))
 		}
 	;
 		{ StringRval = const(int_const(0)) },

@@ -33,7 +33,8 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, llds, instmap, trace, globals.
+:- import_module hlds_pred, hlds_goal, llds, instmap, trace.
+:- import_module globals.
 :- import_module bool, set, std_util, assoc_list.
 
 :- implementation.

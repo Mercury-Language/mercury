@@ -429,37 +429,47 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, SM), GoalInfo,
 det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
 		DetInfo, _, _,
 		call(PredId, ModeId, A, B, C, N), Detism, Msgs) :-
-	det_lookup_detism(DetInfo, PredId, ModeId, Detism),
+	det_lookup_detism(DetInfo, PredId, ModeId, Detism0),
 	%
 	% Make sure we don't try to call a committed-choice pred
 	% from a non-committed-choice context.
 	%
-	determinism_components(Detism, _, NumSolns),
+	determinism_components(Detism0, CanFail, NumSolns),
 	(
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
-				PredId, ModeId)]
+		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
+				PredId, ModeId)],
+		% Code elsewhere relies on the assumption that
+		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
+		% so we need to enforce that here.
+		determinism_components(Detism, CanFail, at_most_many)
 	;
-		Msgs = []
+		Msgs = [],
+		Detism = Detism0
 	).
 
-det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det,
+det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
 			IsPredOrFunc),
 		GoalInfo, _InstMap0, SolnContext,
 		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		higher_order_call(PredVar, ArgVars, Types, Modes, Det,
+		higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
 			IsPredOrFunc),
 		Det, Msgs) :-
-	determinism_components(Det, _, NumSolns),
+	determinism_components(Det0, CanFail, NumSolns),
 	(
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)]
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)],
+		% Code elsewhere relies on the assumption that
+		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
+		% so we need to enforce that here.
+		determinism_components(Det, CanFail, at_most_many)
 	;
-		Msgs = []
+		Msgs = [],
+		Det = Det0
 	).
 
 	% unifications are either deterministic or semideterministic.
@@ -594,24 +604,33 @@ det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
 		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, Extra),
 		Detism, Msgs) :-
-	det_lookup_detism(DetInfo, PredId, ProcId, Detism0),
-	determinism_components(Detism0, CanFail, NumSolns0),
-	( Extra = extra_pragma_info(_, _) ->
-		% pragma C codes that specify saved variables and labels
-		% can have more than one solution
-		NumSolns = at_most_many
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_declared_determinism(ProcInfo, MaybeDetism),
+	( MaybeDetism = yes(Detism0) ->
+		determinism_components(Detism0, CanFail, NumSolns0),
+		( Extra = extra_pragma_info(_, _) ->
+			% pragma C codes that specify saved variables and labels
+			% can have more than one solution
+			NumSolns1 = at_most_many
+		;
+			NumSolns1 = NumSolns0
+		),
+		(
+			NumSolns1 = at_most_many_cc,
+			SolnContext \= first_soln
+		->
+			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
+					PredId, ProcId)],
+			NumSolns = at_most_many
+		;
+			Msgs = [],
+			NumSolns = NumSolns1
+		),
+		determinism_components(Detism, CanFail, NumSolns)
 	;
-		NumSolns = NumSolns0
-	),
-	determinism_components(Detism, CanFail, NumSolns),
-	(
-		NumSolns = at_most_many_cc,
-		SolnContext \= first_soln
-	->
-		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
-				PredId, ProcId)]
-	;
-		Msgs = []
+		Msgs = [pragma_c_code_without_det_decl(PredId, ProcId)],
+		Detism = erroneous
 	).
 
 %-----------------------------------------------------------------------------%

@@ -543,7 +543,7 @@ write_fact_table_header(PredName, PredInfo, FileName, FactArgInfos,
 		["/*\n** Automatically generated from `", FileName,
 		"' by the\n** Mercury compiler, version ", Version,
 		".  Do not edit.\n*/\n\n"]),
-	io__write_string(OutputStream, "#include ""imp.h""\n\n"),
+	io__write_string(OutputStream, "#include ""mercury_imp.h""\n\n"),
 
 	{ make_fact_table_identifier(PredName, Identifier) },
 	{ string__append_list(["mercury__", Identifier, "_fact_table"],

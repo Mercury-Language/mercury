@@ -10,12 +10,15 @@
 % This module does post-procesing on the command-line options, after
 % getopt has done its stuff.
 
+% It also contains code for handling the --grade option.
+
 %-----------------------------------------------------------------------------%
 
 :- module handle_options.
 
 :- interface.
 :- import_module list, bool, std_util, io.
+:- import_module globals, options.
 
 :- pred handle_options(maybe(string), list(string), bool, io__state, io__state).
 :- mode handle_options(out, out, out, di, uo) is det.
@@ -28,6 +31,16 @@
 
 	% Display long usage message for help
 :- pred long_usage(io__state::di, io__state::uo) is det.
+
+
+	% Given the current set of options, figure out
+	% which grade to use.
+:- pred compute_grade(globals::in, string::out) is det.
+
+	% The inverse of compute_grade: given a grade,
+	% set the appropriate options.
+:- pred convert_grade_option(string::in, option_table::in, option_table::out)
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -58,6 +71,8 @@ handle_options(MaybeError, Args, Link) -->
 						MakeShortInterface),
 		globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptimizationInt),
+		globals__io_lookup_bool_option(make_transitive_opt_interface,
+						MakeTransOptInt),
 		globals__io_lookup_bool_option(convert_to_mercury,
 			ConvertToMercury),
 		globals__io_lookup_bool_option(convert_to_goedel,
@@ -66,7 +81,7 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
-		{ bool__or_list([GenerateDependencies,
+		{ bool__or_list([GenerateDependencies, MakeTransOptInt,
 			MakeInterface, MakeShortInterface, MakeOptimizationInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
 			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
@@ -94,12 +109,7 @@ dump_arguments([Arg | Args]) -->
 :- mode postprocess_options(in, out, di, uo) is det.
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
-postprocess_options(ok(OptionTable0), Error) -->
-        { map__lookup(OptionTable0, grade, GradeOpt) },
-        (
-            { GradeOpt = string(GradeStr) },
-            { convert_grade_option(GradeStr, OptionTable0, OptionTable) }
-        ->
+postprocess_options(ok(OptionTable), Error) -->
             { map__lookup(OptionTable, gc, GC_Method0) },
             (
                 { GC_Method0 = string(GC_MethodStr) },
@@ -137,10 +147,21 @@ postprocess_options(ok(OptionTable0), Error) -->
 				    { Percent >= 1 },
 				    { Percent =< 100 }
 				->
-				    postprocess_options_2(OptionTable,
-				    	GC_Method, TagsMethod, ArgsMethod,
-				    	TypeInfoMethod, PrologDialect),
-				    { Error = no }
+				    { map__lookup(OptionTable,
+				    	termination_norm, TermNorm0) },
+				    ( 
+					{ TermNorm0 = string(TermNormStr) },
+					{ convert_termination_norm(
+						TermNormStr, TermNorm) }
+				    ->
+				    	postprocess_options_2(OptionTable,
+				    	    GC_Method, TagsMethod, ArgsMethod,
+				    	    TypeInfoMethod, PrologDialect,
+					    TermNorm),
+				        { Error = no }
+				    ;
+				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+				    )
 				;
 				    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n                 (must be an integer between 1 and 100)") }
 				)
@@ -158,17 +179,15 @@ postprocess_options(ok(OptionTable0), Error) -->
                 )
             ;
                 { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
-            )
-        ;
-            { Error = yes("Invalid grade option") }
-        ).
+            ).
 
-:- pred postprocess_options_2(option_table, gc_method, tags_method, args_method,
-	type_info_method, prolog_dialect, io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
+:- pred postprocess_options_2(option_table, gc_method, tags_method, 
+	args_method, type_info_method, prolog_dialect, termination_norm,
+	io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect) -->
+		TypeInfoMethod, PrologDialect, TermNorm) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -177,18 +196,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	{ copy(OptionTable, OptionTable1) }, % XXX
+	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect),
+		TypeInfoMethod, PrologDialect, TermNorm),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
 		globals__io_set_option(
-			reclaim_heap_on_semidet_failure, bool(no)
-		),
+			reclaim_heap_on_semidet_failure, bool(no)),
 		globals__io_set_option(
-			reclaim_heap_on_nondet_failure, bool(no)
-		)
+			reclaim_heap_on_nondet_failure, bool(no))
 	;
 		[]
 	),
@@ -219,7 +236,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		io__progname_base("mercury_compile", ProgName),
 		io__stderr_stream(StdErr),
 		report_warning(ProgName),
-		report_warning(": warning: --num-tag-bits invalid or unspecified\n"),
+		report_warning(
+			": warning: --num-tag-bits invalid or unspecified\n"),
 		io__write_string(StdErr, ProgName),
 		report_warning(": using --num-tag-bits 0 (tags disabled)\n"),
 		{ NumTagBits = 0 }
@@ -229,26 +247,22 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	% --verbose-check-termination implies --check-termination
+	option_implies(verbose_check_termination, check_termination,bool(yes)),
+	% --check-termination implies --enable-termination
+	option_implies(check_termination, termination, bool(yes)),
+
 	% --split-c-files implies --procs-per-c-function 1
-	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
-	( { Split_C_Files = yes } ->
-		globals__io_set_option(procs_per_c_function, int(1))
-	;	
-		[]
-	),
+	option_implies(split_c_files, procs_per_c_function, int(1)),
 
 	% --very-verbose implies --verbose
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	( { VeryVerbose = yes } ->
-		globals__io_set_option(verbose, bool(yes))
-	;	
-		[]
-	),
+	option_implies(very_verbose, verbose, bool(yes)),
 
 	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
 	( { VerboseDump = "all" } ->
-		globals__io_set_option(verbose_dump_hlds, string("abcdefghijklmnopqrstuvwxyz"))
+		globals__io_set_option(verbose_dump_hlds,
+			string("abcdefghijklmnopqrstuvwxyz"))
 	;	
 		[]
 	),
@@ -280,22 +294,19 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
-	globals__io_lookup_bool_option(intermod_unused_args, Intermod),
-	( { Intermod = yes } ->
-		globals__io_set_option(intermodule_optimization, bool(yes)),
-		globals__io_set_option(optimize_unused_args, bool(yes))
-	;
-		[]
-	),
+	option_implies(intermod_unused_args, intermodule_optimization, 
+		bool(yes)),
+	option_implies(intermod_unused_args, optimize_unused_args, bool(yes)),
 
 	% Don't do the unused_args optimization when making the
 	% optimization interface.
-	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
-	( { MakeOpt = yes } ->
-		globals__io_set_option(optimize_unused_args, bool(no))
-	;
-		[]
-	),
+	option_implies(make_optimization_interface, optimize_unused_args,
+		bool(no)),
+
+	% The information needed for generating the module ordering
+	% is only available while generating the dependencies.
+	option_implies(generate_module_order, generate_dependencies,
+		bool(yes)),
 
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
@@ -313,49 +324,209 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
-
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
-	globals__io_lookup_bool_option(optimize_frames, OptFrames),
-	( { OptFrames = yes } ->
-		globals__io_set_option(optimize_labels, bool(yes)),
-		globals__io_set_option(optimize_jumps, bool(yes))
+	option_implies(optimize_frames, optimize_labels, bool(yes)),
+	option_implies(optimize_frames, optimize_jumps, bool(yes)).
+
+% option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue, IO0, IO).
+% If the SourceBoolOption is set to yes, then the ImpliedOption is set
+% to ImpliedOptionValue.
+:- pred option_implies(option::in, option::in, option_data::in, 
+	io__state::di, io__state::uo) is det.
+option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
+	( { SourceOptionValue = yes } ->
+		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
 	;
 		[]
 	).
 
-:- pred convert_grade_option(string::in, option_table::in, option_table::out)
-	is semidet.
+	% IMPORTANT: any changes here may require similar changes to
+	%	runtime/mercury_grade.h
+	%	scripts/ml.in
+
+compute_grade(Globals, Grade) :-
+	globals__lookup_bool_option(Globals, asm_labels, AsmLabels),
+	globals__lookup_bool_option(Globals, gcc_non_local_gotos,
+						NonLocalGotos),
+	globals__lookup_bool_option(Globals, gcc_global_registers, GlobalRegs),
+	globals__get_gc_method(Globals, GC_Method),
+	globals__lookup_bool_option(Globals, profile_time, ProfileTime),
+	globals__lookup_bool_option(Globals, profile_calls, ProfileCalls),
+	globals__lookup_bool_option(Globals, use_trail, UseTrail),
+/*
+% These vary from machine to machine, and (for backwards compatibility,
+% if nothing else) we want examples such as "GRADE = asm_fast.gc.prof"
+% to continue to work, so we can't include these in the grade.
+	globals__get_tags_method(Globals, TagsMethod),
+	globals__lookup_int_option(Globals, tag_bits, TagBits),
+	globals__lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+*/
+	globals__get_args_method(Globals, ArgsMethod),
+	globals__lookup_bool_option(Globals, debug, Debug),
+/*
+	globals__lookup_bool_option(Globals, pic_reg, PIC_Reg),
+*/
+
+	( AsmLabels = yes ->
+		Part1 = "asm_"
+	;
+		Part1 = ""
+	),
+	( NonLocalGotos = yes ->
+		( GlobalRegs = yes ->
+			Part2 = "fast"
+		;
+			Part2 = "jump"
+		)
+	;
+		( GlobalRegs = yes ->
+			Part2 = "reg"
+		;
+			Part2 = "none"
+		)
+	),
+	( GC_Method = conservative, Part3 = ".gc"
+	; GC_Method = accurate, Part3 = ".agc"
+	; GC_Method = none, Part3 = ""
+	),
+	( ProfileTime = yes ->
+		( ProfileCalls = yes ->
+			Part4 = ".prof"
+		; 
+			Part4 = ".proftime"
+		)
+	;
+		( ProfileCalls = yes ->
+			Part4 = ".profcalls"
+		; 
+			Part4 = ""
+		)
+	),
+	( UseTrail = yes ->
+		Part5 = ".tr"
+	;
+		Part5 = ""
+	),
+
+/*
+% These vary from machine to machine, and (for backwards compatibility,
+% if nothing else) we want examples such as "GRADE = asm_fast.gc.prof"
+% to continue to work, so we can't include these in the grade.
+	( HighTags = yes ->
+		string__format(".hightags%d", [i(TagBits)], Part6)
+	;
+		string__format(".tags%d", [i(TagBits)], Part6)
+	;
+		
+	),
+	( UnboxedFloat = yes ->
+		Part7 = ".ubf"
+	;
+		Part7 = ""
+	),
+*/
+	Part6 = "",
+	Part7 = "",
+
+	( ArgsMethod = compact, Part8 = ""
+	; ArgsMethod = simple, Part8 = ".sa"
+	),
+
+	( Debug = yes ->
+		Part9 = ".debug"
+	;
+		Part9 = ""
+	),
+
+/*******
+	% This can't be part of the grade, due to the way
+	% we handle things on Linux.  See README.Linux.
+	( PIC_Reg = yes ->
+		Part10 = ".picreg"
+	;
+		Part10 = ""
+	),
+*******/
+	Part10 = "",
+
+	string__append_list( [Part1, Part2, Part3, Part4, Part5,
+				Part6, Part7, Part8, Part9, Part10], Grade).
+
+	% IMPORTANT: any changes here may require similar changes to
+	%	runtime/mercury_grade.h
+	%	scripts/parse_grade_options.sh-subr
 
 convert_grade_option(Grade0) -->
-	( { string__remove_suffix(Grade0, ".tr", Grade1) } ->
+	% part10
+	( { string__remove_suffix(Grade0, ".picreg", Grade1) } ->
 		{ Grade2 = Grade1 },
-		set_bool_opt(use_trail, yes)
+		set_bool_opt(pic_reg, yes)
 	;
 		{ Grade2 = Grade0 },
-		set_bool_opt(use_trail, no)
+		set_bool_opt(pic_reg, no)
 	),
-	( { string__remove_suffix(Grade2, ".prof", Grade3) } ->
+	% part9
+	( { string__remove_suffix(Grade2, ".debug", Grade3) } ->
 		{ Grade4 = Grade3 },
-		set_bool_opt(profiling, yes)
+		set_bool_opt(debug, yes)
 	;
 		{ Grade4 = Grade2 },
-		set_bool_opt(profiling, no)
+		set_bool_opt(debug, no)
 	),
-	( { string__remove_suffix(Grade4, ".gc", Grade5) } ->
-		{ Grade = Grade5 },
+	% part8
+	( { string__remove_suffix(Grade4, ".sa", Grade5) } ->
+		{ Grade6 = Grade5 },
+		set_string_opt(args, "simple")
+	;
+		{ Grade6 = Grade4 },
+		set_string_opt(args, "compact")
+	),
+	% part6 & 7
+	{ Grade10 = Grade6 },
+	% part5
+	( { string__remove_suffix(Grade10, ".tr", Grade11) } ->
+		{ Grade12 = Grade11 },
+		set_bool_opt(use_trail, yes)
+	;
+		{ Grade12 = Grade10 },
+		set_bool_opt(use_trail, no)
+	),
+	% part 4
+	( { string__remove_suffix(Grade12, ".prof", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, yes),
+		set_bool_opt(profile_calls, yes)
+	; { string__remove_suffix(Grade12, ".proftime", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, yes),
+		set_bool_opt(profile_calls, no)
+	; { string__remove_suffix(Grade12, ".profcalls", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, no),
+		set_bool_opt(profile_calls, yes)
+	;
+		{ Grade14 = Grade12 },
+		set_bool_opt(profile_time, no),
+		set_bool_opt(profile_calls, no)
+	),
+	% part 3
+	( { string__remove_suffix(Grade14, ".gc", Grade15) } ->
+		{ Grade = Grade15 },
 		{ GC = conservative }
-	; { string__remove_suffix(Grade4, ".agc", Grade5) } ->
-		{ Grade = Grade5 },
+	; { string__remove_suffix(Grade14, ".agc", Grade15) } ->
+		{ Grade = Grade15 },
 		{ GC = accurate }
 	;
-		{ Grade = Grade4 },
+		{ Grade = Grade14 },
 		{ GC = none }
 	),
 	% Set the type of gc that the grade option implies.
 	% 'accurate' is now set in the grade, so we can override it here.
 	( 
 		{ GC = accurate }, 
-		set_string_opt(gc, "accurate") 
+		set_string_opt(gc, "accurate"), 
+		set_bool_opt(stack_layout, yes) 
 	; 
 		{ GC = conservative },
 		set_string_opt(gc, "conservative")
@@ -363,6 +534,7 @@ convert_grade_option(Grade0) -->
 		{ GC = none },
 		set_string_opt(gc, "none")
 	),
+	% parts 2 & 1
 	convert_grade_option_2(Grade).
 
 :- pred convert_grade_option_2(string::in, option_table::in, option_table::out)

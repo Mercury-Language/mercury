@@ -37,6 +37,11 @@
 :- pred diffs__display_diff_rcs(file, file, diff, io__state, io__state).
 :- mode diffs__display_diff_rcs(in, in, in, di, uo) is det.
 
+	% diffs__display_diff takes a diff and displays it
+	% in the CVS merge conflict format.
+:- pred diffs__display_diff_cvs_merge(file, file, diff, io__state, io__state).
+:- mode diffs__display_diff_cvs_merge(in, in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -93,10 +98,7 @@ diffs__to_diff2(X, Y, [X2 - Y2 | Lcss], Diff) :-
 
 %-----------------------------------------------------------------------------%
 
-	% This is a quick 'n' dirty version until deep
-	% indexing is implemented in the determinism
-	% checker.
-diffs__display_diff(_, _, []) --> { true }.
+diffs__display_diff(_, _, []) --> [].
 diffs__display_diff(File1, File2, [SingDiff | Diff]) -->
 	( { SingDiff = add(X, Y1 - Y2) },
 		diffs__write_command(X - X, 'a', Y1 - Y2),
@@ -138,8 +140,9 @@ diffs__write_command(X - X2, C, Y - Y2) -->
 	),
 	io__write_char('\n').
 
+%-----------------------------------------------------------------------------%
 
-diffs__display_diff_rcs(_File1, _File2, []) --> { true }.
+diffs__display_diff_rcs(_File1, _File2, []) --> [].
 diffs__display_diff_rcs(File1, File2, [Cmd | Diff]) -->
 	( { Cmd = add(X, Y1 - Y2) },
 		{ Y is Y2 - Y1 },
@@ -169,6 +172,49 @@ diffs__write_command_rcs(C, X, Y) -->
 	io__write_int(Y),
 	io__write_char('\n').
 
+%-----------------------------------------------------------------------------%
+
+diffs__display_diff_cvs_merge(File1, File2, Diff) -->
+	diffs__display_diff_cvs_merge_2(0, File1, File2, Diff).
+
+:- pred diffs__display_diff_cvs_merge_2(int, file, file, diff,
+		io__state, io__state).
+:- mode diffs__display_diff_cvs_merge_2(in, in, in, in, di, uo) is det.
+
+diffs__display_diff_cvs_merge_2(Prev, File1, _File2, []) -->
+	{ file__get_numlines(File1, SegEnd) },
+	diffs__show_file(File1, "", Prev - SegEnd).
+diffs__display_diff_cvs_merge_2(Prev, File1, File2, [Cmd0 | Diff]) -->
+	{ file__get_file_name(File1, Name1) },
+	{ file__get_file_name(File2, Name2) },
+	( { Cmd0 = add(X, Seg2) },
+		diffs__show_file(File1, "", Prev - X),
+		io__write_strings(["<<<<<<< ", Name1, "\n"]),
+		io__write_string("=======\n"),
+		diffs__show_file(File2, "", Seg2),
+		io__write_strings([">>>>>>> ", Name2, "\n"]),
+		{ Next = X }
+	; { Cmd0 = delete(X1 - X2, _) },
+		diffs__show_file(File1, "", Prev - X1),
+		io__write_strings(["<<<<<<< ", Name1, "\n"]),
+		diffs__show_file(File1, "", X1 - X2),
+		io__write_string("=======\n"),
+		io__write_strings([">>>>>>> ", Name2, "\n"]),
+		{ Next = X2 }
+	; { Cmd0 = change(X1 - X2, Y1 - Y2) },
+		diffs__show_file(File1, "", Prev - X1),
+		io__write_strings(["<<<<<<< ", Name1, "\n"]),
+		diffs__show_file(File1, "", X1 - X2),
+		io__write_string("=======\n"),
+		diffs__show_file(File2, "", Y1 - Y2),
+		io__write_strings([">>>>>>> ", Name2, "\n"]),
+		{ Next = X2 }
+	),
+	diffs__display_diff_cvs_merge_2(Next, File1, File2, Diff).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% diffs__show_file shows the segment of the file
 	% from Low to High, with each line preceeded by
 	% the Prefix characher and a space.  The diff(1)
@@ -178,7 +224,8 @@ diffs__write_command_rcs(C, X, Y) -->
 	% flagged by '>'.
 :- pred diffs__show_file(file, string, segment, io__state, io__state).
 :- mode diffs__show_file(in, in, in, di, uo) is det.
-diffs__show_file(File, Prefix, Low - High) -->
+diffs__show_file(File, Prefix, Seg) -->
+	{ Seg = Low - High },
 	( { Low < High } ->
 		( { file__get_line(File, Low, Line) } ->
 			{ Low1 is Low + 1 },
@@ -188,7 +235,7 @@ diffs__show_file(File, Prefix, Low - High) -->
 			{ error("diffs_show_file: file ended prematurely") }
 		)
 	;
-		{ true }
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

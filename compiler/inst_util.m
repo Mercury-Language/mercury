@@ -440,13 +440,14 @@ abstractly_unify_inst_3(live, Real, bound(Uniq, List), abstract_inst(_,_), UI,
 	bound_inst_list_is_ground(InstTable, List, M).
 ***/
 
+abstractly_unify_inst_3(live, Real, ground(UniqX, yes(PredInst)), any(UniqY),
+			UI,         ground(Uniq, yes(PredInst)), semidet, UI) :-
+	Real = fake_unify,
+	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
+
 abstractly_unify_inst_3(live, Real,  ground(Uniq0, yes(PredInst)), free, UI,
 				     ground(Uniq, yes(PredInst)), det, UI) :-
 	unify_uniq(live, Real, det, unique, Uniq0, Uniq).
-
-abstractly_unify_inst_3(live, Real, ground(UniqX, yes(PredInst)), any(UniqY),
-			UI,         ground(Uniq, yes(PredInst)), semidet, UI) :-
-	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(live, Real, ground(UniqX, yes(_)),
 			bound(UniqY, BoundInsts0), UI0,
@@ -1096,7 +1097,7 @@ make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real, UI0,
 
 make_any_inst(not_reached, _, _, _, UI, not_reached, erroneous, UI).
 make_any_inst(alias(_), _, _, _, _, _, _, _) :-
-	error("make_any_inst: alias() NYI").
+	error("make_any_inst: alias() NYI").	% YYY
 make_any_inst(any(Uniq0), IsLive, Uniq1, Real, UI, any(Uniq),
 		semidet, UI) :-
 	allow_unify_bound_any(Real),

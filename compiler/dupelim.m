@@ -28,7 +28,7 @@
 
 :- import_module opt_util.
 
-:- type block == pair(label, list(instruction)).
+:- type block	--->	 block(label, string, list(instruction)).
 
 dupelim_main(Instrs0, Instrs) :-
 	map__init(Seqmap0),
@@ -48,10 +48,10 @@ dupelim_main(Instrs0, Instrs) :-
 dupelim__make_blocks(Instrs0, Blocks) :-
 	( Instrs0 = [] ->
 		Blocks = []
-	; Instrs0 = [label(BlockLabel) - _ | Instrs1] ->
+	; Instrs0 = [label(BlockLabel) - Comment | Instrs1] ->
 		opt_util__skip_to_next_label(Instrs1, BlockCode, Instrs2),
 		dupelim__make_blocks(Instrs2, Blocks1),
-		Blocks = [BlockLabel - BlockCode | Blocks1]
+		Blocks = [block(BlockLabel, Comment, BlockCode) | Blocks1]
 	;
 		error("instruction other than label in dupelim__make_blocks")
 	).
@@ -72,7 +72,7 @@ dupelim__make_blocks(Instrs0, Blocks) :-
 % the previous block.
 
 dupelim__build_maps([], _FallInto, _Seqmap, Replmap, Replmap).
-dupelim__build_maps([Label - Code | Blocks1], FallInto, Seqmap0,
+dupelim__build_maps([block(Label, _, Code) | Blocks1], FallInto, Seqmap0,
 		Replmap0, Replmap) :-
 	(
 		list__reverse(Code, RevCode0),
@@ -112,13 +112,14 @@ dupelim__build_maps([Label - Code | Blocks1], FallInto, Seqmap0,
 :- mode dupelim__replace_labels(in, in, out) is det.
 
 dupelim__replace_labels([], _Replmap, []).
-dupelim__replace_labels([Label - Code | Blocks1], Replmap, Blocks) :-
+dupelim__replace_labels([block(Label, Comment, Code) | Blocks1],
+		Replmap, Blocks) :-
 	( map__search(Replmap, Label, _) ->
 		dupelim__replace_labels(Blocks1, Replmap, Blocks)
 	;
 		dupelim__replace_labels_instr_list(Code, Replmap, Code1),
 		dupelim__replace_labels(Blocks1, Replmap, Blocks2),
-		Blocks = [Label - Code1 | Blocks2]
+		Blocks = [block(Label, Comment, Code1) | Blocks2]
 	).
 
 :- pred dupelim__replace_labels_instr_list(list(instruction), map(label, label),
@@ -267,6 +268,7 @@ dupelim__replace_labels_rval_const(code_addr_const(Addr0), Replmap,
 	dupelim__replace_labels_code_addr(Addr0, Replmap, Addr).
 dupelim__replace_labels_rval_const(data_addr_const(DataAddr), _,
 		data_addr_const(DataAddr)).
+dupelim__replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
 
 :- pred dupelim__replace_labels_code_addr(code_addr, map(label, label),
 	code_addr).
@@ -312,6 +314,6 @@ dupelim__replace_labels_label(Label0, Replmap, Label) :-
 :- mode dupelim__condense(in, out) is det.
 
 dupelim__condense([], []).
-dupelim__condense([Label - Code | Blocks1], Instrs) :-
+dupelim__condense([block(Label, Comment, Code) | Blocks1], Instrs) :-
 	dupelim__condense(Blocks1, Instrs1),
-	list__append([label(Label) - "" | Code], Instrs1, Instrs).
+	list__append([label(Label) - Comment | Code], Instrs1, Instrs).

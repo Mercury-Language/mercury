@@ -333,7 +333,10 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		set__list_to_set(Args, InsideVars),
 		set__intersect(OutsideVars, InsideVars, LambdaNonLocals),
 		goal_info_init(LambdaGoalInfo0),
-		goal_info_set_nonlocals(LambdaGoalInfo0, LambdaNonLocals,
+		mode_info_get_context(ModeInfo2, Context),
+		goal_info_set_context(LambdaGoalInfo0, Context,
+				LambdaGoalInfo1),
+		goal_info_set_nonlocals(LambdaGoalInfo1, LambdaNonLocals,
 				LambdaGoalInfo),
 		LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
 
@@ -1173,53 +1176,6 @@ ground_args(Uniq, [Arg | Args]) -->
 	{ map__init(Sub0) },
 	modecheck_set_var_inst(Arg, ground(Uniq, no), Sub0, _),	% YYY
 	ground_args(Uniq, Args).
-
-%-----------------------------------------------------------------------------%
-
-% get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
-%       for a var-functor unification,
-%       given the final inst of the var
-%       and the initial insts of the functor arguments,
-%       compute the modes of the functor arguments
-
-:- pred get_mode_of_args(inst, list(inst), inst_table, module_info,
-		list(mode)).
-:- mode get_mode_of_args(in, in, in, in, out) is semidet.
-
-get_mode_of_args(not_reached, ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
-	mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(any(Uniq), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
-	mode_set_args(ArgInsts, any(Uniq), ArgModes).
-get_mode_of_args(ground(Uniq, no), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
-	mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
-get_mode_of_args(bound(_Uniq, List), ArgInstsA, _InstTable, _ModuleInfo, ArgModes) :-
-	( List = [] ->
-		% the code is unreachable
-		mode_set_args(ArgInstsA, not_reached, ArgModes)
-	;
-		List = [functor(_Name, ArgInstsB)],
-		get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
-	).
-get_mode_of_args(alias(Key), ArgInsts, InstTable, ModuleInfo, ArgModes) :-
-	inst_table_get_inst_key_table(InstTable, IKT),
-	inst_key_table_lookup(IKT, Key, Inst),
-	get_mode_of_args(Inst, ArgInsts, InstTable, ModuleInfo, ArgModes).
-
-:- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
-:- mode get_mode_of_args_2(in, in, out) is semidet.
-
-get_mode_of_args_2([], [], []).
-get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
-	Mode = (InstA -> InstB),
-	get_mode_of_args_2(InstsA, InstsB, Modes).
-
-:- pred mode_set_args(list(inst), inst, list(mode)).
-:- mode mode_set_args(in, in, out) is det.
-
-mode_set_args([], _, []).
-mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
-	Mode = (Inst -> FinalInst),
-	mode_set_args(Insts, FinalInst, Modes).
 
 %-----------------------------------------------------------------------------%
 

@@ -49,6 +49,17 @@
 :- pred parse_pred_expression(term, list(term), list(mode), determinism).
 :- mode parse_pred_expression(in, out, out, out) is semidet.
 
+	% parse_dcg_pred_expression/3 converts the first argument to a -->/2
+	% higher-order dcg pred expression into a list of variables, a list
+	% of their corresponding modes and the two dcg argument modes, and a
+	% determinism.
+	% This is a variant of the higher-order pred syntax:
+	%	`(pred(Var1::Mode1, ..., VarN::ModeN, DCG0Mode, DCGMode)
+	%		is Det --> Goal)'.
+	%
+:- pred parse_dcg_pred_expression(term, list(term), list(mode), determinism).
+:- mode parse_dcg_pred_expression(in, out, out, out) is semidet.
+
 	% parse_func_expression/3 converts the first argument to a :-/2
 	% higher-order func expression into a list of variables, a list
 	% of their corresponding modes, and a determinism.  The syntax
@@ -74,23 +85,29 @@
 :- pred sym_name_and_args(term, sym_name, list(term)).
 :- mode sym_name_and_args(in, out, out) is semidet.
 
-	% parse_qualified_term takes a term and an error message,
+	% parse_qualified_term/4 takes a term (and also the containing
+	% term, and a string describing the context from which it
+	% was called [e.g. "clause head"] and the containing term)
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input.
-:- pred parse_qualified_term(term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, out) is det.
+:- pred parse_qualified_term(term, term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, in, out) is det.
 
-	% parse_qualified_term(DefaultModName, Term, Msg, Result).
-	% parse_qualified_term takes a default module name and a term,
+	% parse_qualified_term(DefaultModName, Term,
+	%	ContainingTerm, Msg, Result):
+	%
+	% parse_qualified_term/5 takes a default module name and a term,
+	% (and also the containing term, and a string describing
+	% the context from which it was called (e.g. "clause head"),
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input or a module qualifier that
 	% doesn't match the DefaultModName, if DefaultModName is not ""
 	% and not "mercury_builtin".
-	% parse_qualified_term/3 calls parse_qualified_term/4, and is 
+	% parse_qualified_term/4 calls parse_qualified_term/5, and is 
 	% used when no default module name exists.
 
-:- pred parse_qualified_term(string, term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, in, out) is det.
+:- pred parse_qualified_term(string, term, term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -276,6 +293,13 @@ parse_pred_expression(PredTerm, Vars, Modes, Det) :-
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
 	parse_pred_expr_args(PredArgsList, Vars, Modes).
 
+parse_dcg_pred_expression(PredTerm, Vars, Modes, Det) :-
+	PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
+	DetTerm = term__functor(term__atom(DetString), [], _),
+	standard_det(DetString, Det),
+	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
+	parse_dcg_pred_expr_args(PredArgsList, Vars, Modes).
+
 parse_func_expression(FuncTerm, Vars, Modes, Det) :-
 	%
 	% parse a func expression with specified modes and determinism
@@ -317,15 +341,30 @@ parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 	parse_lambda_arg(Term, Arg, Mode),
 	parse_pred_expr_args(Terms, Args, Modes).
 
+	% parse_dcg_pred_expr_args is like parse_pred_expr_args except
+	% that the last two elements of the list are the modes of the
+	% two dcg arguments.
+:- pred parse_dcg_pred_expr_args(list(term), list(term), list(mode)).
+:- mode parse_dcg_pred_expr_args(in, out, out) is semidet.
+
+parse_dcg_pred_expr_args([DCGModeTerm0, DCGModeTerm1], [],
+		[DCGMode0, DCGMode1]) :-
+	convert_mode(DCGModeTerm0, DCGMode0),
+	convert_mode(DCGModeTerm1, DCGMode1).
+parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
+	Terms = [_, _|_],
+	parse_lambda_arg(Term, Arg, Mode),
+	parse_dcg_pred_expr_args(Terms, Args, Modes).
+
 %-----------------------------------------------------------------------------%
 
 sym_name_and_args(Term, SymName, Args) :-
-	parse_qualified_term(Term, "", ok(SymName, Args)).
+	parse_qualified_term(Term, Term, "", ok(SymName, Args)).
 
-parse_qualified_term(Term, Msg, Result) :-
-	parse_qualified_term("", Term, Msg, Result).
+parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
+	parse_qualified_term("", Term, ContainingTerm, Msg, Result).
 
-parse_qualified_term(DefaultModName, Term, Msg, Result) :-
+parse_qualified_term(DefaultModName, Term, ContainingTerm, Msg, Result) :-
     (
        	Term = term__functor(term__atom(":"), [ModuleTerm, NameArgsTerm],
 		_Context)
@@ -383,7 +422,17 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
 	    )
         ;
 	    string__append("atom expected in ", Msg, ErrorMsg),
-            Result = error(ErrorMsg, Term)
+	    %
+	    % since variables don't have any term__context,
+	    % if Term is a variable, we use ContainingTerm instead
+	    % (hopefully that _will_ have a term__context).
+	    %
+	    ( Term = term__variable(_) ->
+	    	ErrorTerm = ContainingTerm
+	    ;
+	    	ErrorTerm = Term
+	    ),
+	    Result = error(ErrorMsg, ErrorTerm)
         )
     ).
 

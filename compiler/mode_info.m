@@ -377,14 +377,14 @@ mode_info_init(IOState, ModuleInfo, IKT, PredId, ProcId, Context,
 mode_info_get_io_state(mode_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 		IOState) :-
 	% XXX
-	copy(IOState0, IOState).
+	unsafe_promise_unique(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q), IOState0,
 			mode_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q)) :-
 	% XXX
-	copy(IOState0, IOState).
+	unsafe_promise_unique(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 

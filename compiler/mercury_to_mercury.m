@@ -40,16 +40,21 @@
 		io__state, io__state).
 :- mode mercury_output_pred_mode_decl(in, in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pred_mode_subdecl(varset, sym_name, list(mode),
-		maybe(determinism), term__context, inst_table,
-		io__state, io__state).
-:- mode mercury_output_pred_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
-
 :- pred mercury_output_func_mode_decl(varset, sym_name, list(mode), mode,
 		maybe(determinism), term__context, inst_table,
 		io__state, io__state).
 :- mode mercury_output_func_mode_decl(in, in, in, in, in, in, in,
 		di, uo) is det.
+
+:- pred mercury_output_mode_subdecl(pred_or_func, varset, sym_name,
+		list(mode), maybe(determinism), term__context,
+		inst_table, io__state, io__state).
+:- mode mercury_output_mode_subdecl(in, in, in, in, in, in, in, di, uo) is det.
+
+:- pred mercury_output_pred_mode_subdecl(varset, sym_name, list(mode),
+		maybe(determinism), term__context, inst_table,
+		io__state, io__state).
+:- mode mercury_output_pred_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_func_mode_subdecl(varset, sym_name, list(mode), mode,
 		maybe(determinism), term__context, inst_table,
@@ -57,8 +62,9 @@
 :- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, in,
 		di, uo) is det.
 
-:- pred mercury_output_pragma_decl(sym_name, int, string, io__state, io__state).
-:- mode mercury_output_pragma_decl(in, in, in, di, uo) is det.
+:- pred mercury_output_pragma_decl(sym_name, int, pred_or_func, string,
+		io__state, io__state).
+:- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_c_code(may_call_mercury, sym_name, pred_or_func,
 		list(pragma_var), maybe(pair(list(string))),
@@ -168,7 +174,7 @@
 :- implementation.
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, (inst).
-:- import_module globals, options.
+:- import_module globals, options, termination.
 :- import_module bool, int, string, set, term_io, lexer, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -304,16 +310,16 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 			C_Function, InstTable)
 	;
 		{ Pragma = obsolete(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, "obsolete")
+		mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete")
 	;
 		{ Pragma = memo(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, "memo")
+		mercury_output_pragma_decl(Pred, Arity, predicate, "memo")
 	;
 		{ Pragma = inline(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, "inline")
+		mercury_output_pragma_decl(Pred, Arity, predicate, "inline")
 	;
 		{ Pragma = no_inline(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, "no_inline")
+		mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline")
 	;
 		{ Pragma = unused_args(PredOrFunc, PredName,
 			Arity, ProcId, UnusedArgs) },
@@ -322,6 +328,23 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
+	;
+		{ Pragma = termination_info(PredOrFunc, PredName, 
+			ModeList, Termination) },
+		termination__output_pragma_termination_info(PredOrFunc,
+			PredName, argument_modes(InstTable, ModeList),
+			Termination, Context)
+	;
+		{ Pragma = terminates(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, predicate, "terminates")
+	;
+		{ Pragma = does_not_terminate(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, predicate,
+			"does_not_terminate")
+	;
+		{ Pragma = check_termination(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, predicate,
+			"check_termination")
 	).
 
 mercury_output_item(nothing, _, _) --> [].
@@ -1247,6 +1270,19 @@ mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
 
 %-----------------------------------------------------------------------------%
 
+	% Output a mode declaration for a predicate or function.
+
+mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes, MaybeDet,
+		Context, InstTable) -->
+	(	{ PredOrFunc = predicate },
+		mercury_output_pred_mode_subdecl(InstVarSet, Name, Modes,
+				MaybeDet, Context, InstTable)
+	;	{ PredOrFunc = function },
+		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+		mercury_output_func_mode_subdecl(InstVarSet, Name, ArgModes,
+				RetMode, MaybeDet, Context, InstTable)
+	).
+
 	% Output a mode declaration for a predicate.
 
 mercury_output_pred_mode_decl(VarSet, PredName, Modes, MaybeDet, Context,
@@ -1718,13 +1754,18 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet, InstTable) -->
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
+mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
+	{ PredOrFunc = predicate,
+		DeclaredArity = Arity
+	; PredOrFunc = function,
+		DeclaredArity is Arity - 1
+	},
 	io__write_string(":- pragma "),
 	io__write_string(PragmaName),
 	io__write_string("(("),
 	mercury_output_bracketed_sym_name(PredName),
 	io__write_string(")/"),
-	io__write_int(Arity),
+	io__write_int(DeclaredArity),
 	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%

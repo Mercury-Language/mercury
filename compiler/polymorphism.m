@@ -385,8 +385,8 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 		{ list__member(SpecialPredId, SpecialPredIds) }
 	->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
-		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
-			ModuleInfo, Name, PredId, ProcId) }
+		{ polymorphism__get_special_proc(TypeCategory, Type,
+			SpecialPredId, ModuleInfo, Name, PredId, ProcId) }
 	;
 		{ PredId = PredId0 },
 		{ ProcId = ProcId0 },
@@ -1021,7 +1021,7 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 	% for the operation specified by Id applied to Type.
 
 	classify_type(Type, ModuleInfo, TypeCategory),
-	polymorphism__get_special_proc(TypeCategory, Id, ModuleInfo,
+	polymorphism__get_special_proc(TypeCategory, Type, Id, ModuleInfo,
 					PredName2, PredId, ProcId),
 	ConsId = code_addr_const(PredId, ProcId),
 
@@ -1049,13 +1049,13 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 		Type, ModuleInfo, VarSet1, VarTypes1,
 		Vars, Goals, VarSet, VarTypes).
 
-:- pred polymorphism__get_special_proc(builtin_type, special_pred_id,
+:- pred polymorphism__get_special_proc(builtin_type, type, special_pred_id,
 				module_info, sym_name, pred_id, proc_id).
-:- mode polymorphism__get_special_proc(in, in, in, out, out, out) is det.
+:- mode polymorphism__get_special_proc(in, in, in, in, out, out, out) is det.
 
-polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
+polymorphism__get_special_proc(TypeCategory, Type, SpecialPredId, ModuleInfo,
 			PredName, PredId, ProcId) :-
-	( TypeCategory = user_type(Type) ->
+	( TypeCategory = user_type ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
 			map__lookup(SpecialPredMap, SpecialPredId - TypeId,
@@ -1091,7 +1091,7 @@ polymorphism__get_category_name(str_type, "string").
 polymorphism__get_category_name(pred_type, "pred").
 polymorphism__get_category_name(polymorphic_type, _) :-
 	error("polymorphism__get_category_name: polymorphic type").
-polymorphism__get_category_name(user_type(_), _) :-
+polymorphism__get_category_name(user_type, _) :-
 	error("polymorphism__get_category_name: user_type").
 
 	% find the builtin predicate with the specified name

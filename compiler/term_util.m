@@ -160,9 +160,9 @@
 
 % This predicate partitions the arguments of a call into a list of input
 % variables and a list of output variables,
-:- pred partition_call_args(module_info, list(mode), list(var), list(var),
-	list(var)).
-:- mode partition_call_args(in, in, in, out, out) is det.
+:- pred partition_call_args(inst_table, module_info, list(mode), list(var),
+	list(var), list(var)).
+:- mode partition_call_args(in, in, in, in, out, out) is det.
 
 % Removes variables from the InVarBag that are not used in the call.
 % remove_unused_args(InVarBag0, VarList, BoolList, InVarBag)
@@ -191,9 +191,9 @@
 
 % Given a list of variables from a unification, this predicate divides the
 % list into a bag of input variables, and a bag of output variables.
-:- pred split_unification_vars(list(var), list(uni_mode), module_info,
-	bag(var), bag(var)).
-:- mode split_unification_vars(in, in, in, out, out) is det.
+:- pred split_unification_vars(list(var), list(uni_mode), inst_table,
+	module_info, bag(var), bag(var)).
+:- mode split_unification_vars(in, in, in, in, out, out) is det.
 
 :- implementation.
 
@@ -277,28 +277,28 @@ remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
 % It is probably easiest to implement this by modifying term_weights.
 % The current implementation does not correctly handle partially
 % instantiated data structures.
-split_unification_vars([], Modes, _ModuleInfo, Vars, Vars) :-
+split_unification_vars([], Modes, _InstTable, _ModuleInfo, Vars, Vars) :-
 	bag__init(Vars),
 	( Modes = [] ->
 		true
 	;
 		error("term_util:split_unification_vars: Unmatched Variables")
 	).
-split_unification_vars([Arg | Args], Modes, ModuleInfo,
+split_unification_vars([Arg | Args], Modes, InstTable, ModuleInfo,
 		InVars, OutVars):-
 	( Modes = [UniMode | UniModes] ->
-		split_unification_vars(Args, UniModes, ModuleInfo,
+		split_unification_vars(Args, UniModes, InstTable, ModuleInfo,
 			InVars0, OutVars0),
 		UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
 		( % if
-			inst_is_bound(ModuleInfo, ArgInit) 
+			inst_is_bound(ArgInit, InstTable, ModuleInfo)
 		->
 			% Variable is an input variable
 			bag__insert(InVars0, Arg, InVars),
 			OutVars = OutVars0
 		; % else if
-			inst_is_free(ModuleInfo, ArgInit),
-			inst_is_bound(ModuleInfo, ArgFinal) 
+			inst_is_free(ArgInit, InstTable, ModuleInfo),
+			inst_is_bound(ArgFinal, InstTable, ModuleInfo) 
 		->
 			% Variable is an output variable
 			InVars = InVars0,
@@ -311,19 +311,19 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
 		error("term_util__split_unification_vars: Unmatched Variables")
 	).
 
-partition_call_args(_, [], [_ | _], _, _) :-
+partition_call_args(_, _, [], [_ | _], _, _) :-
 	error("Unmatched variables in term_util:partition_call_args").
-partition_call_args(_, [_ | _], [], _, _) :-
+partition_call_args(_, _, [_ | _], [], _, _) :-
 	error("Unmatched variables in term_util__partition_call_args").
-partition_call_args(_, [], [], [], []).
-partition_call_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
+partition_call_args(_, _, [], [], [], []).
+partition_call_args(InstTable, ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
 		InputArgs, OutputArgs) :-
-	partition_call_args(ModuleInfo, ArgModes, Args,
+	partition_call_args(InstTable, ModuleInfo, ArgModes, Args,
 		InputArgs1, OutputArgs1),
-	( mode_is_input(ModuleInfo, ArgMode) ->
+	( mode_is_input(InstTable, ModuleInfo, ArgMode) ->
 		InputArgs = [Arg | InputArgs1],
 		OutputArgs = OutputArgs1
-	; mode_is_output(ModuleInfo, ArgMode) ->
+	; mode_is_output(InstTable, ModuleInfo, ArgMode) ->
 		InputArgs = InputArgs1,
 		OutputArgs = [Arg | OutputArgs1]
 	;
@@ -450,8 +450,7 @@ do_ppid_check_terminates([ PPId | PPIds ], Error, Module0, Module) -->
 			% Success is only no if there was no error
 			% defined for this predicate.  As we just set the
 			% error, term_errors__output should succeed.
-			{ require(unify(Success, yes),
-		"term_util.m: Unexpected value in do_ppid_check_terminates") },
+			{ require(unify(Success, yes), "term_util.m: Unexpected value in do_ppid_check_terminates") },
 			io__set_exit_status(1),
 			{ module_info_incr_errors(Module1, Module2) }
 		; % else if

@@ -70,7 +70,7 @@
 % This predicate outputs termination_info pragmas which are used in .trans_opt
 % and .opt files.
 :- pred termination__output_pragma_termination_info(pred_or_func, sym_name,
-	list(mode), termination, term__context, io__state, io__state).
+	argument_modes, termination, term__context, io__state, io__state).
 :- mode termination__output_pragma_termination_info(in, in, in, in, in, 
 	di, uo) is det.
 
@@ -188,18 +188,18 @@ termination__out_const_2(set(Int)) -->
 	io__write_string(")").
 
 termination__output_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Termination, Context) -->
+		argument_modes(InstTable, ModeList), Termination, Context) -->
 	io__write_string(":- pragma termination_info("),
 	{ varset__init(InitVarSet) },
 	( 
 		{ PredOrFunc = predicate },
 		mercury_output_pred_mode_subdecl(InitVarSet, SymName, 
-			ModeList, no, Context)
+			ModeList, no, Context, InstTable)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ModeList, FuncModeList, RetMode) },
 		mercury_output_func_mode_subdecl(InitVarSet, SymName, 
-			FuncModeList, RetMode, no, Context)
+			FuncModeList, RetMode, no, Context, InstTable)
 	),
 	io__write_string(", "),
 	termination__out_const(Termination),
@@ -417,21 +417,22 @@ set_builtin_terminates([ProcId | ProcIds], PredInfo, Module, ProcTable0,
 :- mode attempt_set_proc_const(in, in, in) is semidet.
 attempt_set_proc_const(Module, PredInfo, ProcInfo) :-
 	pred_info_arg_types(PredInfo, _, TypeList),
-	proc_info_argmodes(ProcInfo, ModeList),
-	attempt_set_proc_const_2(TypeList, ModeList, Module). 
+	proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
+	attempt_set_proc_const_2(TypeList, Modes, InstTable, Module). 
 
-:- pred attempt_set_proc_const_2(list(type), list(mode), module_info).
-:- mode attempt_set_proc_const_2(in, in, in) is semidet.
-attempt_set_proc_const_2([], [], _).
-attempt_set_proc_const_2([], [_|_], _) :- 
+:- pred attempt_set_proc_const_2(list(type), list(mode), inst_table,
+		module_info).
+:- mode attempt_set_proc_const_2(in, in, in, in) is semidet.
+attempt_set_proc_const_2([], [], _, _).
+attempt_set_proc_const_2([], [_|_], _, _) :- 
 	error("termination__attempt_set_proc_const_2: Unmatched variables.").
-attempt_set_proc_const_2([_|_], [], _) :- 
+attempt_set_proc_const_2([_|_], [], _, _) :- 
 	error("termination:attempt_set_proc_const_2: Unmatched variables").
-attempt_set_proc_const_2([Type | Types], [Mode | Modes], Module) :-
-	( mode_is_input(Module, Mode) ->
+attempt_set_proc_const_2([Type | Types], [Mode | Modes], InstTable, Module) :-
+	( mode_is_input(InstTable, Module, Mode) ->
 		% The variable is an input variables, so its size is
 		% irrelevant.
-		attempt_set_proc_const_2(Types, Modes, Module)
+		attempt_set_proc_const_2(Types, Modes, InstTable, Module)
 	;
 		classify_type(Type, Module, TypeCategory),
 		% User_type could be a type_info, which should be called
@@ -442,7 +443,7 @@ attempt_set_proc_const_2([Type | Types], [Mode | Modes], Module) :-
 		% and seeing if it is recursive, or could it?
 		TypeCategory \= polymorphic_type, 
 		TypeCategory \= pred_type,
-		attempt_set_proc_const_2(Types, Modes, Module)
+		attempt_set_proc_const_2(Types, Modes, InstTable, Module)
 	).
 		
 % This predicate changes the terminate property of a list of procedures.
@@ -569,9 +570,9 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 		PredOrFunc, SymName, Context) -->
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
 	{ proc_info_termination(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, ModeList) },
+	{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
 	termination__output_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Termination, Context),
+		ArgModes, Termination, Context),
 	termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
 		PredOrFunc, SymName, Context).
 

@@ -39,7 +39,7 @@
 
 :- implementation.
 
-:- import_module code_gen, code_util, options, globals.
+:- import_module code_gen, code_util, trace, options, globals.
 :- import_module bool, set, tree, list, map, std_util, require.
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Code) -->
@@ -115,6 +115,15 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	code_info__maybe_discard_hp(MaybeHpSlot),
 
 		% Generate the then branch
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfoThen) } ->
+		{ ThenGoal = _ - ThenGoalInfo },
+		{ goal_info_get_goal_path(ThenGoalInfo, ThenPath) },
+		trace__generate_event_code(ite_then(ThenPath), TraceInfoThen,
+			ThenTraceCode)
+	;
+		{ ThenTraceCode = empty }
+	),
 	code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
 	code_info__generate_branch_end(CodeModel, StoreMap, ThenSaveCode),
 
@@ -126,6 +135,14 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
 
 		% Generate the else branch
+	( { MaybeTraceInfo = yes(TraceInfoElse) } ->
+		{ ElseGoal = _ - ElseGoalInfo },
+		{ goal_info_get_goal_path(ElseGoalInfo, ElsePath) },
+		trace__generate_event_code(ite_else(ElsePath), TraceInfoElse,
+			ElseTraceCode)
+	;
+		{ ElseTraceCode = empty }
+	),
 	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
 	code_info__generate_branch_end(CodeModel, StoreMap, ElseSaveCode),
 
@@ -138,15 +155,17 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		 tree(SaveTicketCode,
 		 tree(CondCode,
 		 tree(DiscardTicketCode,
+		 tree(ThenTraceCode,
 		 tree(ThenCode,
 		 tree(ThenSaveCode,
 		 tree(JumpToEndCode,
 		 tree(RestoreContCode,
 		 tree(RestoreHPCode,
 		 tree(RestoreTicketCode,
+		 tree(ElseTraceCode,
 		 tree(ElseCode,
 		 tree(ElseSaveCode,
-		      EndLabelCode)))))))))))))
+		      EndLabelCode)))))))))))))))
 	},
 	code_info__remake_with_store_map(StoreMap).
 
@@ -241,9 +260,10 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	( { NondetCond = yes } ->
 			% We cannot discard the trail ticket if the 
 			% condition can be backtracked into.
-		% code_info__maybe_pop_stack(MaybeTicketSlot, DiscardTicketCode)
-		{ DiscardTicketCode = empty }
-		% XXX should check for delayed nonlinear constraints
+			% But we do need to call reset_ticket(..., solve)
+			% to check for floundering.
+		code_info__maybe_reset_ticket(MaybeTicketSlot,
+			solve, DiscardTicketCode)
 	;
 			% Discard the trail ticket if the condition succeeded
 			% and we will not backtrack into the condition
@@ -252,6 +272,15 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	),
 
 		% Generate the then branch
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfoThen) } ->
+		{ ThenGoal = _ - ThenGoalInfo },
+		{ goal_info_get_goal_path(ThenGoalInfo, ThenPath) },
+		trace__generate_event_code(ite_then(ThenPath), TraceInfoThen,
+			ThenTraceCode)
+	;
+		{ ThenTraceCode = empty }
+	),
 	code_gen__generate_goal(model_non, ThenGoal, ThenCode),
 	code_info__generate_branch_end(model_non, StoreMap, ThenSaveCode),
 
@@ -263,6 +292,14 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		RestoreTicketCode),
 
 		% Generate the else branch
+	( { MaybeTraceInfo = yes(TraceInfoElse) } ->
+		{ ElseGoal = _ - ElseGoalInfo },
+		{ goal_info_get_goal_path(ElseGoalInfo, ElsePath) },
+		trace__generate_event_code(ite_else(ElsePath), TraceInfoElse,
+			ElseTraceCode)
+	;
+		{ ElseTraceCode = empty }
+	),
 	code_gen__generate_goal(model_non, ElseGoal, ElseCode),
 	code_info__generate_branch_end(model_non, StoreMap, ElseSaveCode),
 
@@ -279,6 +316,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		 tree(SoftCutCode,
 		 tree(FlushCode,
 		 tree(DiscardTicketCode,
+		 tree(ThenTraceCode,
 		 tree(ThenCode,
 		 tree(ThenSaveCode,
 		 tree(JumpToEndCode,
@@ -286,9 +324,10 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		 tree(RestoreContCode,
 		 tree(RestoreHPCode,
 		 tree(RestoreTicketCode,
+		 tree(ElseTraceCode,
 		 tree(ElseCode,
 		 tree(ElseSaveCode,
-		      EndLabelCode))))))))))))))))))
+		      EndLabelCode))))))))))))))))))))
 	},
 	code_info__remake_with_store_map(StoreMap).
 

@@ -450,8 +450,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		simplify_do_warn(Info0),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_get_marker_list(PredInfo, Markers),
-		list__member(request(obsolete), Markers),
+		pred_info_get_markers(PredInfo, Markers),
+		check_marker(Markers, obsolete),
 		%
 		% Don't warn about directly recursive calls.
 		% (That would cause spurious warnings, particularly

@@ -177,7 +177,9 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			{ \+ code_util__predinfo_is_builtin(PredInfo0) },
 			(
 				{ inlining__is_simple_goal(Goal,
-						InlineThreshold) }
+						InlineThreshold) },
+				{ pred_info_get_markers(PredInfo0, Markers) },
+				{ \+ check_marker(Markers, no_inline) }
 			;
 				{ pred_info_requested_inlining(PredInfo0) }
 			;
@@ -450,8 +452,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
 	{ pred_info_procids(PredInfo, ProcIds) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
-	( { list__member(request(infer_modes), Markers) } ->
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, infer_modes) } ->
 		% Don't write this pred if it calls preds without mode decls.
 		{ DoWrite = no }
 	; 
@@ -929,12 +931,13 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ SymName = qualified(Module, Name) },
-	{ pred_info_get_marker_list(PredInfo, Markers) },
-	intermod__write_pragmas(SymName, Arity, Markers),
+	{ pred_info_get_markers(PredInfo, Markers) },
+	{ markers_to_marker_list(Markers, MarkerList) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc),
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma(c_code, ...) separately
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ inst_table_init(InstTable) },	% YYY
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
@@ -948,16 +951,11 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 
-:- pred intermod__write_pragmas(sym_name::in, int::in, list(marker_status)::in,
-				io__state::di, io__state::uo) is det.
+:- pred intermod__write_pragmas(sym_name::in, int::in, list(marker)::in,
+		pred_or_func::in, io__state::di, io__state::uo) is det.
 
-intermod__write_pragmas(_, _, []) --> [].
-intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
-	(
-		{ MarkerStatus = request(Marker) }
-	;
-		{ MarkerStatus = done(Marker) }
-	),
+intermod__write_pragmas(_, _, [], _) --> [].
+intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 	(
 		\+ (
 			% Since the inferred declarations are output, these
@@ -967,11 +965,11 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 		)
 	->
 		{ hlds_out__marker_name(Marker, Name) },
-		mercury_output_pragma_decl(SymName, Arity, Name)
+		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name)
 	;
 		[]
 	),
-	intermod__write_pragmas(SymName, Arity, Markers).
+	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 

@@ -269,7 +269,7 @@ mode system to distinguish between different representations.
 
 :- implementation.
 :- import_module hlds_data, mode_util, det_analysis, prog_data, inst_util.
-:- import_module list, set, map, std_util, require.
+:- import_module list, set, map, term, std_util, require.
 
 inst_matches_initial(InstA, InstB, InstTable, ModuleInfo) :-
 	set__init(Expansions),
@@ -348,8 +348,8 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), InstTable, ModuleI
 inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _, _).
-inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), InstTable, ModuleInfo,
-		_) :-
+inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), InstTable,
+		ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	uniq_matches_bound_inst_list(UniqA, List, InstTable, ModuleInfo),
 	fail.	% XXX BUG! should fail only if 
@@ -369,7 +369,8 @@ inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _, _).
 inst_matches_initial_3(abstract_inst(_,_), free, _, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				InstTable, ModuleInfo, Expansions) :-
-	inst_list_matches_initial(ArgsA, ArgsB, InstTable, ModuleInfo, Expansions).
+	inst_list_matches_initial(ArgsA, ArgsB, InstTable, ModuleInfo,
+				Expansions).
 inst_matches_initial_3(not_reached, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
@@ -573,7 +574,8 @@ inst_matches_final_3(free, any(Uniq), _, _, _) :-
 	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_matches_final_3(free, free, _, _, _).
-inst_matches_final_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo, _) :-
+inst_matches_final_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo,
+		_) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo),
 	/* we do not yet allow `free' to match `any' */
@@ -583,16 +585,16 @@ inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB),
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_final(ListA, ListB, InstTable, ModuleInfo,
 			Expansions).
-inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), InstTable, ModuleInfo,
-			_Exps) :-
+inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), InstTable,
+			ModuleInfo, _Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, InstTable, ModuleInfo),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo).
 inst_matches_final_3(ground(UniqA, _), any(UniqB), _InstTable, _ModuleInfo,
 		_Expansions) :-
 	unique_matches_final(UniqA, UniqB).
-inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), InstTable, ModuleInfo,
-			_Exps) :-
+inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), InstTable,
+		ModuleInfo, _Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	uniq_matches_bound_inst_list(UniqA, ListB, InstTable, ModuleInfo).
 		% XXX BUG! Should fail if there are not_reached
