@@ -147,11 +147,9 @@
 :- type special_pred_id
 	--->	unify
 	;	index
-	;	compare.
-	/*
+	;	compare
 	;	read
 	;	write.
-	*/
 
 :- pred special_pred_info(special_pred_id, type, string, list(type),
 			list(mode), determinism).
@@ -179,11 +177,13 @@ determinism_to_code_model(multidet,  model_non).
 determinism_to_code_model(erroneous, model_det).
 determinism_to_code_model(failure,   model_semi).
 
-special_pred_list([unify, index, compare]).
+special_pred_list([unify, index, compare, read, write]).
 
 special_pred_name_arity(unify, "unify", 2).
 special_pred_name_arity(index, "index", 2).
 special_pred_name_arity(compare, "compare", 3).
+special_pred_name_arity(read, "read", 2).
+special_pred_name_arity(write, "write", 2).
 
 special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
 	In = (ground -> ground),
@@ -196,6 +196,7 @@ special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 	IntType = term__functor(term__atom("int"), [], Context),
 	In = (ground -> ground),
 	Out = (free -> ground).
+
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
 	term__context_init(Context),
@@ -203,6 +204,21 @@ special_pred_info(compare, Type,
 	In = (ground -> ground),
 	In2 = (ground -> ground),
 	Out = (free -> ground).
+
+special_pred_info(read, Type,
+		"__Read__", [TermType, Type], [In, Out], det) :-
+	term__context_init(Context),
+	TermType = term__functor(term__atom("term"), [], Context),
+	In = (ground -> ground),
+	Out = (free -> ground).
+
+special_pred_info(write, Type,
+		"__Write__", [Type, TermType], [In, Out], det) :-
+	term__context_init(Context),
+	TermType = term__functor(term__atom("term"), [], Context),
+	In = (ground -> ground),
+	Out = (free -> ground).
+
 
 :- interface.
 
