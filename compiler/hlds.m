@@ -579,8 +579,8 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 :- pred predinfo_set_procedures(pred_info, proc_table, pred_info).
 :- mode predinfo_set_procedures(input, input, output).
 
-:- pred predinfo_modes(pred_info, list(proc_id)).
-:- mode predinfo_modes(input, output).
+:- pred predinfo_procids(pred_info, list(proc_id)).
+:- mode predinfo_procids(input, output).
 
 :- pred predinfo_context(pred_info, term__context).
 :- mode predinfo_context(input, output).
@@ -621,9 +621,9 @@ predinfo_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F),
 	PredInfo = predicate(A, B, C, D, Procedures, F).
 
-predinfo_modes(PredInfo, Modes) :-
+predinfo_procids(PredInfo, ProcIds) :-
 	predinfo_procedures(PredInfo, Procedures),
-	map__keys(Procedures, Modes).
+	map__keys(Procedures, ProcIds).
 
 predinfo_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context).
