@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,9 +207,6 @@ ref_functor(Ref, Functor, Arity) -->
 	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 			Word *arg_type_info, Word **argument_ptr);
 
-	/* ML_compare_type_info() is defined in std_util.m */
-	int ML_compare_type_info(Word type_info_1, Word type_info_2);
-
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
@@ -226,7 +223,7 @@ ref_functor(Ref, Functor, Arity) -->
 		fatal_error(""tr_store__arg_ref: argument number out of range"");
 	}
 
-	if (ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
 		COMPARE_EQUAL)
 	{
 		fatal_error(""tr_store__arg_ref: argument has wrong type"");
@@ -252,7 +249,7 @@ ref_functor(Ref, Functor, Arity) -->
 	      fatal_error(""tr_store__new_arg_ref: argument number out of range"");
 	}
 
-	if (ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
+	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
 		COMPARE_EQUAL)
 	{
 	      fatal_error(""tr_store__new_arg_ref: argument has wrong type"");
