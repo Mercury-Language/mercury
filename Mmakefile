@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne. 
+# Copyright (C) 1995-1999 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -267,6 +267,17 @@ fullarch:
 
 .PHONY: install
 install: install_main install_grades
+	@echo
+	@echo "-- Installation complete."
+	@echo
+	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(setq load-path (cons (expand-file-name "
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_main
 install_main: all $(PREINSTALL_HACK) \
