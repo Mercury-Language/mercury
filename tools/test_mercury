@@ -269,7 +269,7 @@ case $FULLARCH in
 			TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
 			;;
 		    *)
-			TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared"
+			TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared --pic-reg"
 		    	;;
 		esac
 		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
