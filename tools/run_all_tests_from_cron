@@ -75,11 +75,40 @@ cvs checkout mercury/tools/generate_index_html
 
 #-----------------------------------------------------------------------------#
 
-echo run_test $HOST
+DAY=`date '+%e'`
+case $HOST in
+	murlibobo|taifun|hg|hydra)
+		#
+		# For these hosts:
+		# On odd-numbered days, test the release branch.
+		# On even-numbered days, test the main branch.
+		#
+		case $DAY in
+			*[13579]) BRANCH=0.10 ;;
+			*)	  BRANCH=latest ;;
+		esac
+		;;
+	*)
+		#
+		# For the remaining hosts, do the reverse:
+		# On odd-numbered days, test the main branch.
+		# On even-numbered days, test the release branch.
+		#
+		case $DAY in
+			*[13579]) BRANCH=latest ;;
+			*)	  BRANCH=0.10 ;;
+		esac
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+echo run_test $HOST $C_COMPILER
+echo branch $BRANCH
 
 case "$C_COMPILER" in
-	gcc)	logname="test_mercury_$HOST.out" ;;
-	*)	logname="test_mercury_$HOST-$C_COMPILER.out" ;;
+	gcc)	logname="test-$BRANCH-$HOST.out" ;;
+	*)	logname="test-$BRANCH-$HOST-$C_COMPILER.out" ;;
 esac
 
 mv -f $tm_dir/logs/old/$logname $tm_dir/logs/old2 2>/dev/null
@@ -91,7 +120,7 @@ trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
 {
 echo "Subject: Mercury auto-test on $HOST (with $C_COMPILER)"
 echo
-if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $C_COMPILER \
+if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
 then
 	echo test passed
@@ -107,14 +136,14 @@ then
 	ls -l mercury_compile
 	size mercury_compile
 	{
-		echo $FULLARCH $HOST
+		echo $FULLARCH $BRANCH $HOST $C_COMPILER
 		ls -l mercury_compile
 		size mercury_compile
 		echo
 	} >> $tm_dir/logs/sizes
 else
 	echo test FAILED
-	echo log file in $tm_dir/logs/test_mercury_$HOST.out
+	echo log file in $logfile
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
