@@ -202,8 +202,8 @@
 %		If characters on the input stream (up to the next `.' that
 %		is followed by whitespace) do not form a syntactically
 %		correct term, or if the term read is not a ground term,
-%		if the term is not a valid term of the appropriate type,
-%		or if encounters an I/O error, then it returns
+%		or if the term is not a valid term of the appropriate type,
+%		or if an I/O error is encountered, then it returns
 %		`error(Message, LineNumber)'.
 
 % The type `posn' represents a position within a string.
