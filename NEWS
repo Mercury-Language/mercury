@@ -262,8 +262,13 @@ Changes to the Mercury standard library:
 	io.binary_input_stream/3
 	io.binary_output_stream/3
 
-* We've added some constant functions, integer.zero/0 and integer.one/0
-  to integer.m.  We have also added a function version of integer.pow/3.
+* The following functions have been added to the integer module:
+	integer.zero/0
+	integer.one/0
+	integer.det_from_string/1
+	integer.pow/2
+  
+  The predicate integer.pow/3 has been deprecated. 
 
 * We've added some functions, rational.int/1, rational.from_integer/1,
   rational.from_integers/2 and rational.reciprocal/1 to rational.m

@@ -1991,7 +1991,7 @@ format_unsigned_int(Flags, Width, Prec, Base, Int, IsTypeP, Prefix) = String :-
 	->
 		AbsIntStr = ""
 	;
-		integer__pow(integer(2), integer(int__bits_per_int), Div),
+		Div = integer__pow(integer(2), integer(int__bits_per_int)),
 		UnsignedInteger = integer(Int) mod Div,
 		( Base = 10 ->
 			AbsIntStr0 = integer__to_string(UnsignedInteger)

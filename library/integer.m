@@ -41,6 +41,8 @@
 
 :- func integer__from_string(string::in) = (integer::out) is semidet.
 
+:- func integer__det_from_string(string) = integer.
+
 :- func '+'(integer) = integer.
 
 :- func '-'(integer) = integer.
@@ -73,8 +75,9 @@
 
 :- func integer__abs(integer) = integer.
 
-:- pred integer__pow(integer::in, integer::in, integer::out) is det.
 :- func integer__pow(integer, integer) = integer.
+:- pragma obsolete(integer.pow/3).
+:- pred integer__pow(integer::in, integer::in, integer::out) is det.
 
 :- func integer__float(integer) = float.
 :- func integer__int(integer) = int.
@@ -888,10 +891,9 @@ pos_geq(Xs, Ys) :-
 	C = pos_cmp(Xs, Ys),
 	( C = (>) ; C = (=) ).
 
-integer__pow(A, N) = P :-
-	integer__pow(A, N, P).
+integer__pow(A, N, integer.pow(A, N)).
 
-integer__pow(A, N, P) :-
+integer__pow(A, N) = P :-
 	( big_isnegative(N) ->
 		error("integer__pow: negative exponent")
 	;
@@ -983,6 +985,14 @@ integer__one = i(1, [1]).
 integer__from_string(S) = Big :-
 	string__to_char_list(S, Cs),
 	string_to_integer(Cs) = Big.
+
+integer__det_from_string(S) =
+	( I = integer__from_string(S) ->
+		I
+	;
+		func_error(
+		"integer.det_from_string/1: cannot convert to integer.")
+	).
 
 :- func string_to_integer(list(char)::in) = (integer::out) is semidet.
 
