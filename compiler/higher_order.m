@@ -512,8 +512,8 @@ check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :-
 				PredVars = PredVars0
 			)
 		;
-			map__set(PredVars0, LVar, yes(PredId, ProcId, Args),
-								PredVars)
+			map__det_insert(PredVars0, LVar,
+				yes(PredId, ProcId, Args), PredVars)
 		)
 	;
 		PredVars = PredVars0	
@@ -769,7 +769,8 @@ create_new_preds([Request | Requests], NewPreds0, NewPreds, PredsToFix0,
 		create_new_pred(Request, NewPred, NextHOid0, NextHOid1,
 						Module0, Module1, IO0, IO1),
 		set__singleton_set(SpecVersions0, NewPred),
-		map__set(NewPreds0, CalledPredProcId, SpecVersions0, NewPreds1)
+		map__det_insert(NewPreds0, CalledPredProcId, SpecVersions0,
+			NewPreds1)
 	),
 	create_new_preds(Requests, NewPreds1, NewPreds, PredsToFix1, PredsToFix,
 			NextHOid1, NextHOid, Module1, Module, IO1, IO).

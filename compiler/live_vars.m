@@ -552,7 +552,7 @@ allocate_stack_slots_2([Vars | VarSets], N0, CodeModel,
 
 allocate_same_stack_slot([], _Slot, StackSlots, StackSlots).
 allocate_same_stack_slot([Var | Vars], Slot, StackSlots0, StackSlots) :-
-	map__set(StackSlots0, Var, Slot, StackSlots1),
+	map__det_insert(StackSlots0, Var, Slot, StackSlots1),
 	allocate_same_stack_slot(Vars, Slot, StackSlots1, StackSlots).
 
 %-----------------------------------------------------------------------------%

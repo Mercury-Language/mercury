@@ -434,7 +434,7 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 				Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
-				map__set(Bindings0, Y, SubstBindingOfX,
+				map__det_insert(Bindings0, Y, SubstBindingOfX,
 					Bindings)
 			)
 		)
@@ -447,7 +447,7 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 				Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfY, X, Bindings0),
-				map__set(Bindings0, X, SubstBindingOfY,
+				map__det_insert(Bindings0, X, SubstBindingOfY,
 					Bindings)
 			)
 		;
@@ -456,7 +456,7 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 			( X = Y ->
 				Bindings = Bindings0
 			; 
-				map__set(Bindings0, X, term__variable(Y),
+				map__det_insert(Bindings0, X, term__variable(Y),
 					Bindings)
 			)
 		)
@@ -472,7 +472,7 @@ type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
+		map__det_insert(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
 type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
@@ -485,7 +485,7 @@ type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
 	;
 		\+ term__occurs_list(As, X, Bindings0),
 		\+ list__member(X, HeadTypeParams),
-		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
+		map__det_insert(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
 type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
@@ -562,7 +562,7 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 			Bindings = Bindings0
 		;
 			\+ list__member(Var, HeadTypeParams),
-			map__set(Bindings0, Var, term__variable(HeadVar),
+			map__det_insert(Bindings0, Var, term__variable(HeadVar),
 				Bindings)
 		)
 	).

@@ -835,7 +835,7 @@ tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 		( map__search(PtagCountMap0, Primary, _) ->
 			error("simple tag is shared")
 		;
-			map__set(PtagCountMap0, Primary, none - (-1),
+			map__det_insert(PtagCountMap0, Primary, none - (-1),
 				PtagCountMap1)
 		)
 	; ConsTag = complicated_tag(Primary, Secondary) ->
@@ -848,11 +848,11 @@ tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				error("remote tag is shared with non-remote")
 			),
 			int__max(Secondary, MaxSoFar, Max),
-			map__set(PtagCountMap0, Primary, remote - Max,
+			map__det_update(PtagCountMap0, Primary, remote - Max,
 				PtagCountMap1)
 		;
-			map__set(PtagCountMap0, Primary, remote - Secondary,
-				PtagCountMap1)
+			map__det_insert(PtagCountMap0, Primary,
+				remote - Secondary, PtagCountMap1)
 		)
 	; ConsTag = complicated_constant_tag(Primary, Secondary) ->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
@@ -864,11 +864,11 @@ tag_switch__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 				error("local tag is shared with non-local")
 			),
 			int__max(Secondary, MaxSoFar, Max),
-			map__set(PtagCountMap0, Primary, local - Max,
+			map__det_update(PtagCountMap0, Primary, local - Max,
 				PtagCountMap1)
 		;
-			map__set(PtagCountMap0, Primary, local - Secondary,
-				PtagCountMap1)
+			map__det_insert(PtagCountMap0, Primary,
+				local - Secondary, PtagCountMap1)
 		)
 	;
 		error("non-du tag in tag_switch__get_ptag_counts_2")
@@ -892,12 +892,11 @@ tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 		( map__search(PtagCaseMap0, Primary, _Group) ->
 			error("simple tag is shared")
 		;
-			true
-		),
-		map__init(StagGoalMap0),
-		map__set(StagGoalMap0, -1, Goal, StagGoalMap),
-		map__set(PtagCaseMap0, Primary, none - StagGoalMap,
-			PtagCaseMap1)
+			map__init(StagGoalMap0),
+			map__det_insert(StagGoalMap0, -1, Goal, StagGoalMap),
+			map__det_insert(PtagCaseMap0, Primary,
+				none - StagGoalMap, PtagCaseMap1)
+		)
 	; Tag = complicated_tag(Primary, Secondary) ->
 		( map__search(PtagCaseMap0, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
@@ -905,13 +904,18 @@ tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 				true
 			;
 				error("remote tag is shared with non-remote")
-			)
+			),
+			map__det_insert(StagGoalMap0, Secondary, Goal,
+				StagGoalMap),
+			map__det_update(PtagCaseMap0, Primary,
+				remote - StagGoalMap, PtagCaseMap1)
 		;
-			map__init(StagGoalMap0)
-		),
-		map__set(StagGoalMap0, Secondary, Goal, StagGoalMap),
-		map__set(PtagCaseMap0, Primary, remote - StagGoalMap,
-			PtagCaseMap1)
+			map__init(StagGoalMap0),
+			map__det_insert(StagGoalMap0, Secondary, Goal,
+				StagGoalMap),
+			map__det_insert(PtagCaseMap0, Primary,
+				remote - StagGoalMap, PtagCaseMap1)
+		)
 	; Tag = complicated_constant_tag(Primary, Secondary) ->
 		( map__search(PtagCaseMap0, Primary, Group) ->
 			Group = StagLoc - StagGoalMap0,
@@ -919,13 +923,18 @@ tag_switch__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 				true
 			;
 				error("local tag is shared with non-local")
-			)
+			),
+			map__det_insert(StagGoalMap0, Secondary, Goal,
+				StagGoalMap),
+			map__det_update(PtagCaseMap0, Primary,
+				local - StagGoalMap, PtagCaseMap1)
 		;
-			map__init(StagGoalMap0)
-		),
-		map__set(StagGoalMap0, Secondary, Goal, StagGoalMap),
-		map__set(PtagCaseMap0, Primary, local - StagGoalMap,
-			PtagCaseMap1)
+			map__init(StagGoalMap0),
+			map__det_insert(StagGoalMap0, Secondary, Goal,
+				StagGoalMap),
+			map__det_insert(PtagCaseMap0, Primary,
+				local - StagGoalMap, PtagCaseMap1)
+		)
 	;
 		error("non-du tag in tag_switch__group_cases_by_ptag")
 	),

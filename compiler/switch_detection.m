@@ -86,9 +86,9 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo0, Goal),
 
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
+	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -343,11 +343,12 @@ partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 		Left1 = Left0,
 		conj_list_to_goal(ConjList, GoalInfo, Goal),
 		( map__search(Cases0, Functor, DisjList0) ->
-			DisjList1 = [Goal | DisjList0]
+			DisjList1 = [Goal | DisjList0],
+			map__det_update(Cases0, Functor, DisjList1, Cases1)
 		;
-			DisjList1 = [Goal]
-		),
-		map__set(Cases0, Functor, DisjList1, Cases1)
+			DisjList1 = [Goal],
+			map__det_insert(Cases0, Functor, DisjList1, Cases1)
+		)
 	;
 		MaybeFunctor = no,
 		Left1 = [Goal0 | Left0],

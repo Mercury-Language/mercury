@@ -258,9 +258,9 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	proc_info_set_inferred_determinism(Proc1, Detism, Proc),
 
 		%  Put back the new proc_info structure.
-	map__set(Procs0, ProcId, Proc, Procs),
+	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Pred0, Procs, Pred),
-	map__set(Preds0, PredId, Pred, Preds),
+	map__det_update(Preds0, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
 
 %-----------------------------------------------------------------------------%

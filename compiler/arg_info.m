@@ -80,9 +80,9 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], Method,
 	generate_proc_arg_info(ProcInfo0, Method, ArgTypes, ModuleInfo0,
 		ProcInfo),
 
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
+	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 
 	generate_proc_list_arg_info(PredId, ProcIds, Method,

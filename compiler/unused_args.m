@@ -323,7 +323,7 @@ add_aliases(UseInf0, Var, Aliases, UseInf) :-
 		VarInf0 = unused(VarDep0, ArgDep),
 		set__insert_list(VarDep0, Aliases, VarDep),
 		VarInf = unused(VarDep, ArgDep),
-		map__set(UseInf0, Var, VarInf, UseInf)
+		map__det_update(UseInf0, Var, VarInf, UseInf)
 	;
 		UseInf = UseInf0
 	).

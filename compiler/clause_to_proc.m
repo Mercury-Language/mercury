@@ -54,7 +54,7 @@ maybe_add_default_modes([], Preds, Preds).
 maybe_add_default_modes([PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
 	maybe_add_default_mode(PredInfo0, PredInfo),
-	map__set(Preds0, PredId, PredInfo, Preds1),
+	map__det_update(Preds0, PredId, PredInfo, Preds1),
 	maybe_add_default_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_mode(PredInfo0, PredInfo) :-
@@ -125,7 +125,7 @@ copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	map__lookup(Procs0, ProcId, Proc0),
 	copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc),
-	map__set(Procs0, ProcId, Proc, Procs1),
+	map__det_update(Procs0, ProcId, Proc, Procs1),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-

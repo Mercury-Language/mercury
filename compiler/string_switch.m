@@ -143,9 +143,9 @@ string_switch__hash_cases([Case | Cases], HashMask, Map) :-
 	string__hash(String, HashVal0),
 	HashVal is HashVal0 /\ HashMask,
 	( map__search(Map0, HashVal, CaseList0) ->
-		map__set(Map0, HashVal, [Case | CaseList0], Map)
+		map__det_update(Map0, HashVal, [Case | CaseList0], Map)
 	;
-		map__set(Map0, HashVal, [Case], Map)
+		map__det_insert(Map0, HashVal, [Case], Map)
 	).
 
 :- type hash_slot ---> hash_slot(extended_case, int).
@@ -175,12 +175,12 @@ string_switch__calc_hash_slots(HashValList, HashMap, Map) :-
 :- mode string_switch__calc_hash_slots_1(in, in, in, in, out, out) is det.
 
 string_switch__calc_hash_slots_1([], _, Map, LastUsed, Map, LastUsed).
-string_switch__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0, LastUsed0,
-		Map, LastUsed) :-
-	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0, LastUsed0,
-		Map1, LastUsed1),
-	string_switch__calc_hash_slots_1(Rest, HashMap, Map1, LastUsed1,
-		Map, LastUsed).
+string_switch__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0,
+		LastUsed0, Map, LastUsed) :-
+	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
+		LastUsed0, Map1, LastUsed1),
+	string_switch__calc_hash_slots_1(Rest, HashMap, Map1,
+		LastUsed1, Map, LastUsed).
 
 :- pred string_switch__calc_hash_slots_2(cases_list, int, map(int, cases_list),
 	map(int, hash_slot), int, map(int, hash_slot), int).
@@ -188,19 +188,21 @@ string_switch__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0, LastUsed
 
 string_switch__calc_hash_slots_2([], _HashVal, _HashMap, Map, LastUsed,
 		Map, LastUsed).
-string_switch__calc_hash_slots_2([Case | Cases], HashVal, HashMap, Map0, LastUsed0,
-		Map, LastUsed) :-
-	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0, LastUsed0,
-		Map1, LastUsed1),
+string_switch__calc_hash_slots_2([Case | Cases], HashVal, HashMap, Map0,
+		LastUsed0, Map, LastUsed) :-
+	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
+		LastUsed0, Map1, LastUsed1),
 	( map__contains(Map1, HashVal) ->
 		string_switch__follow_hash_chain(Map1, HashVal, ChainEnd),
-		string_switch__next_free_hash_slot(Map1, HashMap, LastUsed1, Next),
+		string_switch__next_free_hash_slot(Map1, HashMap, LastUsed1,
+			Next),
 		map__lookup(Map1, ChainEnd, hash_slot(PrevCase, _)),
-		map__set(Map1, ChainEnd, hash_slot(PrevCase, Next), Map2),
-		map__set(Map2, Next, hash_slot(Case, -1), Map),
+		map__det_update(Map1, ChainEnd, hash_slot(PrevCase, Next),
+			Map2),
+		map__det_insert(Map2, Next, hash_slot(Case, -1), Map),
 		LastUsed = Next
 	;
-		map__set(Map1, HashVal, hash_slot(Case, -1), Map),
+		map__det_insert(Map1, HashVal, hash_slot(Case, -1), Map),
 		LastUsed = LastUsed1
 	).
 

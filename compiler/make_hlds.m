@@ -560,7 +560,7 @@ module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
 	module_info_preds(Module0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_mark_as_external(PredInfo0, PredInfo),
-	map__set(Preds0, PredId, PredInfo, Preds),
+	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module0, Preds, Module1),
 	module_mark_preds_as_external(PredIds, Module1, Module).
 
@@ -697,9 +697,10 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 		Status = Status1 
 	},
 	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status, Context, T) },
+	{ TypeId = Name - Arity },
 	(
 		% if there was an existing non-abstract definition for the type
-		{ map__search(Types0, Name - Arity, T2) },
+		{ map__search(Types0, TypeId, T2) },
 		{ hlds_data__get_type_defn_tparams(T2, Params) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
 		{ hlds_data__get_type_defn_context(T2, OrigContext) },
@@ -718,8 +719,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 			;
 				hlds_data__set_type_defn(TVarSet, Params,
 					Body_2, OrigStatus, OrigContext, T3),
-				TypeId = Name - Arity,
-				map__set(Types0, TypeId, T3, Types),
+				map__det_update(Types0, TypeId, T3, Types),
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
@@ -735,7 +735,6 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 				OrigContext)
 		)
 	;
-		{ TypeId = Name - Arity },
 		{ map__set(Types0, TypeId, T, Types) },
 		(
 			{ Body = du_type(ConsList, _, _) }
@@ -852,6 +851,7 @@ combine_status_abstract_imported(Status2, Status) :-
 
 :- pred add_abstract_export(module_info, type, type_id, module_info).
 :- mode add_abstract_export(in, in, in, out) is det.
+
 add_abstract_export(Module0, Type, TypeId, Module) :-
 	module_info_shape_info(Module0, Shape_Info0),
 	Shape_Info0 = shape_info(Shapes, Abs_Exports0, SpecialPredShapes),
@@ -929,10 +929,10 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 			map__search(Ctors1, UnqualifiedConsId,
 				UnqualifiedConsDefns)
 		->
-			map__set(Ctors1, UnqualifiedConsId,
+			map__det_update(Ctors1, UnqualifiedConsId,
 				[ConsDefn | UnqualifiedConsDefns], Ctors2)
 		;
-			map__set(Ctors1, UnqualifiedConsId, 
+			map__det_insert(Ctors1, UnqualifiedConsId, 
 				[ConsDefn], Ctors2)
 		)
 	;
@@ -1057,7 +1057,8 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 					PredInfo0, PredInfo) },
 				{ predicate_table_get_preds(PredicateTable1,
 					Preds1) },
-				{ map__set(Preds1, PredId, PredInfo, Preds) },
+				{ map__det_update(Preds1, PredId, PredInfo,
+					Preds) },
 				{ predicate_table_set_preds(PredicateTable1,
 					Preds, PredicateTable) }
 			;
@@ -1171,7 +1172,7 @@ add_special_pred(SpecialPredId,
 	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
 				Module1, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
-	map__set(Preds0, PredId, PredInfo, Preds),
+	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 
 :- pred add_special_pred_decl_list(list(special_pred_id),
@@ -1253,7 +1254,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
 	next_mode_id(Procs0, MaybeDet, ModeId),
 	proc_info_init(Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
 			NewProc),
-	map__set(Procs0, ModeId, NewProc, Procs),
+	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1328,7 +1329,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ ArgLives = no },
 	{ add_new_proc(PredInfo0, Arity, Modes, ArgLives, MaybeDet, MContext,
 			PredInfo, _) },
-	{ map__set(Preds0, PredId, PredInfo, Preds) },
+	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo) }.
@@ -1546,7 +1547,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		;
 			PredInfo = PredInfo5
 		),
-		map__set(Preds0, PredId, PredInfo, Preds),
+		map__det_update(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
 		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -1678,7 +1679,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
 				PredInfo) },
-			{ map__set(Preds0, PredId, PredInfo, Preds) },
+			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 			{ predicate_table_set_preds(PredicateTable1, Preds, 
 				PredicateTable) },
 			{ module_info_set_predicate_table(ModuleInfo0, 
@@ -1746,7 +1747,7 @@ pragma_set_markers(PredTable0, [PredId | PredIds], Markers, PredTable) :-
 	pred_info_get_marker_list(PredInfo0, MarkerList0),
 	pragma_set_markers_2(Markers, MarkerList0, MarkerList),
 	pred_info_set_marker_list(PredInfo0, MarkerList, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable1),
+	map__det_update(PredTable0, PredId, PredInfo, PredTable1),
 	pragma_set_markers(PredTable1, PredIds, Markers, PredTable).
 
 :- pred pragma_set_markers_2(list(marker_status), list(marker_status),
@@ -2939,7 +2940,7 @@ update_var_types(VarTypes0, Var, Type, Context, VarTypes) -->
 			{ VarTypes = VarTypes0 }
 		)
 	;
-		{ map__set(VarTypes0, Var, Type, VarTypes) }
+		{ map__det_insert(VarTypes0, Var, Type, VarTypes) }
 	).
 
 	% Add new type variables for those introduced by a type qualification.

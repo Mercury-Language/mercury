@@ -168,11 +168,12 @@ shapes__request_shape_number(ShapeId0, Type_Table, S_Tab0 - Next_S_Num0,
 	% Avoid infinite recursion by inserting a 'dummy' shape
 	% so that if the shape is self-referential, it doesn't
 	% cause trouble.
-		map__set(S_Tab0, ShapeId, num(Next_S_Num0) - quad(constant,
-			constant, constant, constant), S_Tab1),
+		map__det_insert(S_Tab0, ShapeId, num(Next_S_Num0) -
+			quad(constant, constant, constant, constant), S_Tab1),
 		shapes__create_shape(Type_Table, ShapeId, Shape,
 			S_Tab1 - Next_S_Num1, S_Tab2 - NextNum),
-		map__set(S_Tab2, ShapeId, num(Next_S_Num0) - Shape, S_Tab)
+		map__det_update(S_Tab2, ShapeId, num(Next_S_Num0) - Shape,
+			S_Tab)
 	).
 
 shapes__do_abstract_exports(HLDS0, HLDS) :-

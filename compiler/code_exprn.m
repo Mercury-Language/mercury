@@ -237,11 +237,12 @@ code_exprn__init_state_2([V - L | Rest], Vars0, Vars, Regs0, Regs) :-
 	(
 		map__search(Vars0, V, evaled(Vals0))
 	->
-		set__insert(Vals0, L, Vals)
+		set__insert(Vals0, L, Vals),
+		map__det_update(Vars0, V, evaled(Vals), Vars1)
 	;
-		set__singleton_set(Vals, L)
+		set__singleton_set(Vals, L),
+		map__det_insert(Vars0, V, evaled(Vals), Vars1)
 	),
-	map__set(Vars0, V, evaled(Vals), Vars1),
 	(
 		L = lval(Loc),
 		Loc = reg(_, _)
@@ -925,18 +926,17 @@ code_exprn__cache_exprn(Var, Rval) -->
 		{ string__append("code_exprn__cache_exprn: existing definition of variable ", Name, Msg) },
 		{ error(Msg) }
 	;
-		[]
-	),
-	code_exprn__add_rval_reg_dependencies(Rval),
-	(
-		{ exprn_aux__vars_in_rval(Rval, []) }
-	->
-		{ set__singleton_set(Rvals, Rval) },
-		{ map__set(Vars0, Var, evaled(Rvals), Vars) }
-	;
-		{ map__set(Vars0, Var, cached(Rval), Vars) }
-	),
-	code_exprn__set_vars(Vars).
+		code_exprn__add_rval_reg_dependencies(Rval),
+		(
+			{ exprn_aux__vars_in_rval(Rval, []) }
+		->
+			{ set__singleton_set(Rvals, Rval) },
+			{ map__det_insert(Vars0, Var, evaled(Rvals), Vars) }
+		;
+			{ map__det_insert(Vars0, Var, cached(Rval), Vars) }
+		),
+		code_exprn__set_vars(Vars)
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -977,7 +977,7 @@ code_exprn__place_cached(Rval0, Var, Lval, Code) -->
 			% but we do need to reserve the registers
 			% needed to access Lval
 		code_exprn__add_lval_reg_dependencies(Lval),
-		{ map__set(Vars0, Var, Stat0, Vars) },
+		{ map__det_update(Vars0, Var, Stat0, Vars) },
 		code_exprn__set_vars(Vars),
 		{ Code = empty }
 	;

@@ -266,7 +266,7 @@ atsort__map_delete_this_element([], _, Map, Map).
 atsort__map_delete_this_element([Node | Nodes], Elt, Map0, Map) :-
 	( map__search(Map0, Node, List0) ->
 		list__delete_all(List0, Elt, List1),
-		map__set(Map0, Node, List1, Map1)
+		map__det_update(Map0, Node, List1, Map1)
 	;
 		Map1 = Map0
 	),

@@ -235,9 +235,9 @@ unify_proc__request_unify(UnifyId, Determinism, ModuleInfo0, ModuleInfo) :-
 		proc_info_set_can_process(ProcInfo0, no, ProcInfo1),
 
 		copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
-		map__set(Procs1, ProcId, ProcInfo2, Procs2),
+		map__det_update(Procs1, ProcId, ProcInfo2, Procs2),
 		pred_info_set_procedures(PredInfo1, Procs2, PredInfo2),
-		map__set(Preds0, PredId, PredInfo2, Preds2),
+		map__det_update(Preds0, PredId, PredInfo2, Preds2),
 		module_info_set_preds(ModuleInfo0, Preds2, ModuleInfo2),
 
 		%
@@ -330,9 +330,9 @@ modecheck_unification_proc(HowToCheckGoal, UnifyProcId,
 	pred_info_procedures(PredInfo0, Procs0),
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_set_can_process(ProcInfo0, yes, ProcInfo1),
-	map__set(Procs0, ProcId, ProcInfo1, Procs1),
+	map__det_update(Procs0, ProcId, ProcInfo1, Procs1),
 	pred_info_set_procedures(PredInfo0, Procs1, PredInfo1),
-	map__set(Preds0, PredId, PredInfo1, Preds1),
+	map__det_update(Preds0, PredId, PredInfo1, Preds1),
 	module_info_set_preds(ModuleInfo0, Preds1, ModuleInfo1)
 	},
 
@@ -1368,7 +1368,7 @@ unify_proc__info_new_var(Type, Var,
 		unify_proc_info(VarSet0, Types0, ModuleInfo),
 		unify_proc_info(VarSet, Types, ModuleInfo)) :-
 	varset__new_var(VarSet0, Var, VarSet),
-	map__set(Types0, Var, Type, Types).
+	map__det_insert(Types0, Var, Type, Types).
 
 unify_proc__info_extract(unify_proc_info(VarSet, Types, _ModuleInfo),
 			VarSet, Types).

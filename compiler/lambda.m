@@ -97,10 +97,10 @@ lambda__process_proc(PredId, ProcId, ModuleInfo0, ModuleInfo) :-
 					ProcInfo, PredInfo1, ModuleInfo1),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
-	map__set(ProcTable1, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
 	module_info_preds(ModuleInfo1, PredTable1),
-	map__set(PredTable1, PredId, PredInfo, PredTable),
+	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
 
 :- pred lambda__process_proc_2(proc_info, pred_info, module_info,

@@ -249,7 +249,7 @@ typecheck_pred_types_2([PredId | PredIds],
 		{
 			MaybePredInfo = yes(PredInfo1),
 			Error1 = Error0,
-			map__set(Preds0, PredId, PredInfo1, Preds),
+			map__det_update(Preds0, PredId, PredInfo1, Preds),
 			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
 		;
 			MaybePredInfo = no,
@@ -1129,7 +1129,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, HeadTypeParams, VarId,
 		    ArgTypeAssignSet = ArgTypeAssignSet0
 		)
 	    ;
-		map__set(VarTypes0, VarId, Type, VarTypes),
+		map__det_insert(VarTypes0, VarId, Type, VarTypes),
 		type_assign_set_var_types(TypeAssign0, VarTypes, TypeAssign),
 		ArgTypeAssignSet = [TypeAssign - ArgTypes | ArgTypeAssignSet0]
 	    )
@@ -1281,7 +1281,7 @@ type_assign_var_has_type(TypeAssign0, HeadTypeParams, VarId, Type,
 			TypeAssignSet = TypeAssignSet0
 		)
 	;
-		map__set(VarTypes0, VarId, Type, VarTypes),
+		map__det_insert(VarTypes0, VarId, Type, VarTypes),
 		type_assign_set_var_types(TypeAssign0, VarTypes, TypeAssign),
 		TypeAssignSet = [TypeAssign | TypeAssignSet0]
 	).
@@ -1670,7 +1670,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
 		;
 			% Y is a fresh variable which hasn't been
 			% assigned a type yet
-			map__set(VarTypes0, Y, TypeX, VarTypes),
+			map__det_insert(VarTypes0, Y, TypeX, VarTypes),
 			type_assign_set_var_types(TypeAssign0, VarTypes,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
@@ -1681,7 +1681,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
 		->
 			% X is a fresh variable which hasn't been
 			% assigned a type yet
-			map__set(VarTypes0, X, TypeY, VarTypes),
+			map__det_insert(VarTypes0, X, TypeY, VarTypes),
 			type_assign_set_var_types(TypeAssign0, VarTypes,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
@@ -1694,8 +1694,8 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
 			type_assign_set_typevarset(TypeAssign0, TypeVarSet,
 				TypeAssign1),
 			Type = term__variable(TypeVar),
-			map__set(VarTypes0, X, Type, VarTypes1),
-			map__set(VarTypes1, Y, Type, VarTypes),
+			map__det_insert(VarTypes0, X, Type, VarTypes1),
+			map__det_insert(VarTypes1, Y, Type, VarTypes),
 			type_assign_set_var_types(TypeAssign1, VarTypes,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
@@ -1729,7 +1729,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
 			TypeAssignSet = TypeAssignSet0
 		)
 	;
-		map__set(VarTypes0, Y, ConsType, VarTypes),
+		map__det_insert(VarTypes0, Y, ConsType, VarTypes),
 		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
 		TypeAssignSet = [TypeAssign3 - ArgTypes | TypeAssignSet0]
 	).
@@ -2295,7 +2295,7 @@ expand_types([], _, VarTypes, VarTypes).
 expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 	map__lookup(VarTypes0, Var, Type0),
 	term__apply_rec_substitution(Type0, TypeSubst, Type),
-	map__set(VarTypes0, Var, Type, VarTypes1),
+	map__det_update(VarTypes0, Var, Type, VarTypes1),
 	expand_types(Vars, TypeSubst, VarTypes1, VarTypes).
 
 %-----------------------------------------------------------------------------%

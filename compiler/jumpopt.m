@@ -136,7 +136,7 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 		Instr = label(Label),
 		opt_util__is_forkproceed_next(Instrs, Sdprocmap, Between)
 	->
-		map__set(Forkmap0, Label, Between, Forkmap1)
+		map__det_insert(Forkmap0, Label, Between, Forkmap1)
 	;
 		Forkmap1 = Forkmap0
 	),

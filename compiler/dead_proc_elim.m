@@ -370,7 +370,8 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 	( proc(PredId, ProcId) = CurrProc ->
 		% if it's reachable and recursive, then we can't
 		% eliminate or inline it
-		NewNotation = no
+		NewNotation = no,
+		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
 	; map__search(Needed0, proc(PredId, ProcId), OldNotation) ->
 		(
 			OldNotation = no,
@@ -379,11 +380,13 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 			OldNotation = yes(Count0),
 			Count is Count0 + 1,
 			NewNotation = yes(Count)
-		)
+		),
+		map__det_update(Needed0, proc(PredId, ProcId), NewNotation,
+			Needed)
 	;
-		NewNotation = yes(1)
-	),
-	map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed).
+		NewNotation = yes(1),
+		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
+	).
 dead_proc_elim__examine_expr(pragma_c_code(_, _, PredId, ProcId, _, _, _),
 		_CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),

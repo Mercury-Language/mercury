@@ -325,7 +325,7 @@ vn_table__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 	;
 		Uses1 = [NewUse | Uses0]
 	),
-	map__set(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
+	map__det_update(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
 	VnTables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table1,
@@ -350,7 +350,7 @@ vn_table__del_old_use(Vn, OldUse, VnTables0, VnTables) :-
 		% src_liveval for a shared vn
 		Uses1 = Uses0
 	),
-	map__set(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
+	map__det_update(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
 	VnTables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table1,
@@ -423,7 +423,8 @@ vn_table__set_desired_value(Vnlval, Vn, VnTables0, VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
 	( map__search(Loc_to_vn_table0, Vnlval, _) ->
-		map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table1),
+		map__det_update(Lval_to_vn_table0, Vnlval, Vn,
+			Lval_to_vn_table1),
 		VnTables = vn_tables(NextVn0,
 			Lval_to_vn_table1, Rval_to_vn_table0,
 			Vn_to_rval_table0, Vn_to_uses_table0,
@@ -455,27 +456,30 @@ vn_table__set_current_value(Vnlval, Vn, VnTables0, VnTables) :-
 	( map__search(Loc_to_vn_table0, Vnlval, OldVn) ->
 
 		% change the forward mapping
-		map__set(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
+		map__det_update(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
 
 		% change the reverse mapping, first for old vn, then the new
 		map__lookup(Vn_to_locs_table0, OldVn, OldLocs0),
 		list__delete_all(OldLocs0, Vnlval, OldLocs1),
-		map__set(Vn_to_locs_table0, OldVn, OldLocs1, Vn_to_locs_table1),
+		map__det_update(Vn_to_locs_table0, OldVn, OldLocs1,
+			Vn_to_locs_table1),
 
-		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
+		map__lookup(Vn_to_locs_table1, Vn, NewLocs0),
 		list__append(NewLocs0, [Vnlval], NewLocs1),
-		map__set(Vn_to_locs_table1, Vn, NewLocs1, Vn_to_locs_table2)
+		map__det_update(Vn_to_locs_table1, Vn, NewLocs1,
+			Vn_to_locs_table2)
 	;
 		% The search in the condition can fail for newly introduced
 		% templocs
 
 		% change the forward mapping
-		map__set(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
+		map__det_insert(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
 
 		% change the reverse mapping
 		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
 		list__append(NewLocs0, [Vnlval], NewLocs1),
-		map__set(Vn_to_locs_table0, Vn, NewLocs1, Vn_to_locs_table2)
+		map__det_update(Vn_to_locs_table0, Vn, NewLocs1,
+			Vn_to_locs_table2)
 	),
 	VnTables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,

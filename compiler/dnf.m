@@ -114,7 +114,7 @@ dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	list__delete_all(Markers1, request(dnf), Markers2),
 	pred_info_set_marker_list(PredInfo1, [done(dnf) | Markers2], PredInfo),
 
-	map__set(PredTable1, PredId, PredInfo, PredTable),
+	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
 
 :- pred dnf__transform_procs(list(proc_id)::in, pred_id::in,
@@ -133,12 +133,12 @@ dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
 	dnf__transform_proc(ProcInfo1, PredInfo0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo1, ProcInfo, NewPredIds0, NewPredIds1),
 
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	% We must look up the pred table again
 	% since dnf__transform_proc may have added new predicates
 	module_info_preds(ModuleInfo1, PredTable1),
-	map__set(PredTable1, PredId, PredInfo, PredTable),
+	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,

@@ -1349,29 +1349,38 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 			% insert the pred_id into the pred name index
 		( map__search(Pred_N_Index0, Name, N_PredIdList0) ->
-			N_PredIdList = [PredId | N_PredIdList0]
+			N_PredIdList = [PredId | N_PredIdList0],
+			map__det_update(Pred_N_Index0, Name, N_PredIdList,
+				Pred_N_Index)
 		;
-			N_PredIdList = [PredId]
+			N_PredIdList = [PredId],
+			map__det_insert(Pred_N_Index0, Name, N_PredIdList,
+				Pred_N_Index)
 		),
-		map__set(Pred_N_Index0, Name, N_PredIdList, Pred_N_Index),
 
 			% insert it into the pred name/arity index
 		NA = Name / Arity,
 		( map__search(Pred_NA_Index0, NA, NA_PredIdList0) ->
-			NA_PredIdList = [PredId | NA_PredIdList0]
+			NA_PredIdList = [PredId | NA_PredIdList0],
+			map__det_update(Pred_NA_Index0, NA, NA_PredIdList,	
+				Pred_NA_Index)
 		;
-			NA_PredIdList = [PredId]
+			NA_PredIdList = [PredId],
+			map__det_insert(Pred_NA_Index0, NA, NA_PredIdList,	
+				Pred_NA_Index)
 		),
-		map__set(Pred_NA_Index0, NA, NA_PredIdList, Pred_NA_Index),
 
 			% insert it into the pred module:name/arity index
 		MNA = module_name_arity(Module, Name, Arity),
 		( map__search(Pred_MNA_Index0, MNA, MNA_PredIdList0) ->
-			MNA_PredIdList = [PredId | MNA_PredIdList0]
+			MNA_PredIdList = [PredId | MNA_PredIdList0],
+			map__det_update(Pred_MNA_Index0, MNA, MNA_PredIdList,
+				Pred_MNA_Index)
 		;
-			MNA_PredIdList = [PredId]
+			MNA_PredIdList = [PredId],
+			map__det_insert(Pred_MNA_Index0, MNA, MNA_PredIdList,
+				Pred_MNA_Index)
 		),
-		map__set(Pred_MNA_Index0, MNA, MNA_PredIdList, Pred_MNA_Index),
 
 		Func_N_Index = Func_N_Index0,
 		Func_NA_Index = Func_NA_Index0,
@@ -1381,30 +1390,39 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 			% insert the pred_id into the func name index
 		( map__search(Func_N_Index0, Name, N_PredIdList0) ->
-			N_PredIdList = [PredId | N_PredIdList0]
+			N_PredIdList = [PredId | N_PredIdList0],
+			map__det_update(Func_N_Index0, Name, N_PredIdList,
+				Func_N_Index)
 		;
-			N_PredIdList = [PredId]
+			N_PredIdList = [PredId],
+			map__det_insert(Func_N_Index0, Name, N_PredIdList,
+				Func_N_Index)
 		),
-		map__set(Func_N_Index0, Name, N_PredIdList, Func_N_Index),
 
 			% insert it into the func name/arity index
 		FuncArity is Arity - 1,
 		NA = Name / FuncArity,
 		( map__search(Func_NA_Index0, NA, NA_PredIdList0) ->
-			NA_PredIdList = [PredId | NA_PredIdList0]
+			NA_PredIdList = [PredId | NA_PredIdList0],
+			map__det_update(Func_NA_Index0, NA, NA_PredIdList,
+				Func_NA_Index)
 		;
-			NA_PredIdList = [PredId]
+			NA_PredIdList = [PredId],
+			map__det_insert(Func_NA_Index0, NA, NA_PredIdList,
+				Func_NA_Index)
 		),
-		map__set(Func_NA_Index0, NA, NA_PredIdList, Func_NA_Index),
 
 			% insert it into the func module:name/arity index
 		MNA = module_name_arity(Module, Name, FuncArity),
 		( map__search(Func_MNA_Index0, MNA, MNA_PredIdList0) ->
-			MNA_PredIdList = [PredId | MNA_PredIdList0]
+			MNA_PredIdList = [PredId | MNA_PredIdList0],
+			map__det_update(Func_MNA_Index0, MNA, MNA_PredIdList,
+				Func_MNA_Index)
 		;
-			MNA_PredIdList = [PredId]
+			MNA_PredIdList = [PredId],
+			map__det_insert(Func_MNA_Index0, MNA, MNA_PredIdList,
+				Func_MNA_Index)
 		),
-		map__set(Func_MNA_Index0, MNA, MNA_PredIdList, Func_MNA_Index),
 
 		Pred_N_Index = Pred_N_Index0,
 		Pred_NA_Index = Pred_NA_Index0,
@@ -1415,7 +1433,7 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	PredIds = [PredId | PredIds0],
 
 		% save the pred_info for this pred_id
-	map__set(Preds0, PredId, PredInfo, Preds),
+	map__det_insert(Preds0, PredId, PredInfo, Preds),
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,

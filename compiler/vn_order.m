@@ -698,26 +698,26 @@ vn_order__add_link(Source, Sink, Succmap0, Succmap, Predmap0, Predmap) :-
 	;
 		( map__search(Succmap0, Source, Sinks0) ->
 			vn_order__insert_if_not_there(Sink, Sinks0, Sinks1),
-			map__set(Succmap0, Source, Sinks1, Succmap1)
+			map__det_update(Succmap0, Source, Sinks1, Succmap1)
 		;
-			map__set(Succmap0, Source, [Sink], Succmap1)
+			map__det_insert(Succmap0, Source, [Sink], Succmap1)
 		),
-		( map__search(Succmap0, Sink, _) ->
+		( map__search(Succmap1, Sink, _) ->
 			Succmap = Succmap1
 		;
-			map__set(Succmap1, Sink, [], Succmap)
+			map__det_insert(Succmap1, Sink, [], Succmap)
 		),
 		( map__search(Predmap0, Sink, Sources0) ->
 			vn_order__insert_if_not_there(Source,
 				Sources0, Sources1),
-			map__set(Predmap0, Sink, Sources1, Predmap1)
+			map__det_update(Predmap0, Sink, Sources1, Predmap1)
 		;
-			map__set(Predmap0, Sink, [Source], Predmap1)
+			map__det_insert(Predmap0, Sink, [Source], Predmap1)
 		),
-		( map__search(Predmap0, Source, _) ->
+		( map__search(Predmap1, Source, _) ->
 			Predmap = Predmap1
 		;
-			map__set(Predmap1, Source, [], Predmap)
+			map__det_insert(Predmap1, Source, [], Predmap)
 		)
 	).
 
@@ -743,12 +743,12 @@ vn_order__add_node(Node, Succmap0, Succmap, Predmap0, Predmap) :-
 	( map__search(Succmap0, Node, _) ->
 		Succmap = Succmap0
 	;
-		map__set(Succmap0, Node, [], Succmap)
+		map__det_insert(Succmap0, Node, [], Succmap)
 	),
 	( map__search(Predmap0, Node, _) ->
 		Predmap = Predmap0
 	;
-		map__set(Predmap0, Node, [], Predmap)
+		map__det_insert(Predmap0, Node, [], Predmap)
 	).
 
 %-----------------------------------------------------------------------------%

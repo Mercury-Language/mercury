@@ -278,10 +278,10 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
-	map__set(ProcTable1, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
 	module_info_preds(ModuleInfo1, PredTable1),
-	map__set(PredTable1, PredId, PredInfo, PredTable),
+	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
 	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
@@ -306,7 +306,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	pred_info_procids(PredInfo0, ProcIds),
-	( ProcIds = [ProcId|_] ->
+	( ProcIds = [ProcId | _] ->
 		map__lookup(ProcTable0, ProcId, ProcInfo),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		proc_info_headvars(ProcInfo, HeadVars),
@@ -327,7 +327,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 		pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes,
 			PredInfo),
-		map__set(PredTable0, PredId, PredInfo, PredTable),
+		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 		polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo)
 	;

@@ -1114,7 +1114,7 @@ lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps,
 	;
 		read_dependencies(Module, Search, IntDeps, ImplDeps, FactDeps, 
 				Error),
-		{ map__set(DepsMap0, Module, 
+		{ map__det_insert(DepsMap0, Module, 
 		    deps(no, Error, IntDeps, ImplDeps, FactDeps), DepsMap) },
 		{ Done = no }
 	).

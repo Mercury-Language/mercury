@@ -876,7 +876,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ProcTable0, ProcTable,
 	->
 		proc_info_set_inferred_determinism(ProcInfo0, Determinism, 
 			ProcInfo),
-		map__set(ProcTable0, ProcID, ProcInfo, ProcTable1)
+		map__det_update(ProcTable0, ProcID, ProcInfo, ProcTable1)
 	;
 		ProcTable1 = ProcTable0
 	},
@@ -1165,7 +1165,7 @@ infer_determinism_pass_2([proc_stream(ProcID, Stream) | ProcStreams],
 	),
 	{ proc_info_set_inferred_determinism(ProcInfo0, Determinism, 
 	    ProcInfo)},
-	{ map__set(ProcTable0, ProcID, ProcInfo, ProcTable1) },
+	{ map__det_update(ProcTable0, ProcID, ProcInfo, ProcTable1) },
 	infer_determinism_pass_2(ProcStreams, ProcFiles, ExistsAllInMode,
 		ProcTable1, ProcTable).
 

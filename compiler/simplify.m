@@ -878,7 +878,7 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 	->
 		GoalNeeded = no,
 		map__init(Subn0),
-		map__set(Subn0, LocalVar, ReplacementVar, Subn),
+		map__det_insert(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, no,
 			Subn, Goals),
 		goal_util__rename_vars_in_goals(RevGoals0, no,

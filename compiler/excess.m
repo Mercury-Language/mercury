@@ -163,7 +163,7 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 		)
 	->
 		map__init(Subn0),
-		map__set(Subn0, LocalVar, ReplacementVar, Subn),
+		map__det_insert(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, no, Subn, Goals1),
 		goal_util__rename_vars_in_goals(RevGoals0, no, Subn, RevGoals1),
 		ElimVars1 = [LocalVar | ElimVars0]

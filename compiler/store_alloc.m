@@ -301,7 +301,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 	->
 		next_free_reg(N0, SeenLvals0, N1),
 		FinalLval = reg(r, N1),
-		map__set(StoreMap0, Var, FinalLval, StoreMap1)
+		map__det_update(StoreMap0, Var, FinalLval, StoreMap1)
 	;
 		N1 = N0,
 		FinalLval = Lval,
@@ -324,7 +324,7 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0,
 		SeenLvals1 = SeenLvals0
 	;
 		next_free_reg(N0, SeenLvals0, N1),
-		map__set(StoreMap0, Var, reg(r, N1), StoreMap1),
+		map__det_insert(StoreMap0, Var, reg(r, N1), StoreMap1),
 		set__insert(SeenLvals0, reg(r, N1), SeenLvals1)
 	),
 	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StoreMap1, StoreMap).

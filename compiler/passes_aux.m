@@ -189,9 +189,9 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		State9 = State0
 	),
 
-	map__set(Procs0, ProcId, Proc, Procs),
+	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Pred0, Procs, Pred),
-	map__set(Preds0, PredId, Pred, Preds),
+	map__det_update(Preds0, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
 
 	process_nonimported_procs(ProcIds, PredId, Task1, Task,

@@ -102,7 +102,7 @@ goal_util__create_variables([V | Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 		;
 			Varset2 = Varset1
 		),
-		map__set(Subn0, V, NV, Subn1),
+		map__det_insert(Subn0, V, NV, Subn1),
 		(
 			map__search(OldVarTypes, V, VT)
 		->

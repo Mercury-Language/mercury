@@ -157,9 +157,9 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
 		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
 
-		map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
+		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-		map__set(PredTable0, PredId, PredInfo, PredTable),
+		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo)
 	).
 

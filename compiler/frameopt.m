@@ -592,7 +592,7 @@ analyze_block_map_2([Label | Labels], BlockMap0, FirstLabel, BlockMap,
 	),
 	BlockInfo = block_info(BlockLabel, BlockInstrs, SideLabels,
 		MaybeFallThrough, Type),
-	map__set(BlockMap0, Label, BlockInfo, BlockMap1),
+	map__det_update(BlockMap0, Label, BlockInfo, BlockMap1),
 	analyze_block_map_2(Labels, BlockMap1, FirstLabel, BlockMap,
 		KeepFrame1, KeepFrame).
 
@@ -697,7 +697,7 @@ keep_frame([Label | Labels], BlockMap0, FirstLabel, SecondLabel, BlockMap) :-
 			Instrs),
 		BlockInfo = block_info(Label, Instrs, [SecondLabel], no,
 			ordinary(yes)),
-		map__set(BlockMap0, Label, BlockInfo, BlockMap1)
+		map__det_update(BlockMap0, Label, BlockInfo, BlockMap1)
 	;
 		BlockMap1 = BlockMap0
 	),
@@ -871,7 +871,7 @@ rev_map_side_labels([], _Label, RevMap, RevMap).
 rev_map_side_labels([Label | Labels], SourceLabel, RevMap0, RevMap) :-
 	( map__search(RevMap0, Label, OtherSources0) ->
 		OtherSources = [SourceLabel | OtherSources0],
-		map__set(RevMap0, Label, OtherSources, RevMap1)
+		map__det_update(RevMap0, Label, OtherSources, RevMap1)
 	;
 		OtherSources = [SourceLabel],
 		map__det_insert(RevMap0, Label, OtherSources, RevMap1)
@@ -985,7 +985,8 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 		;
 			BlockInfo = block_info(Label0, [LabelInstr],
 				SideLabels0, MaybeFallThrough0, ordinary(no)),
-			map__set(BlockMap0, Label0, BlockInfo, BlockMap1),
+			map__det_update(BlockMap0, Label0, BlockInfo,
+				BlockMap1),
 			process_frame_delay(Labels0, BlockMap1,
 				ParMap0, FallIntoParallel0, FramedLabels,
 				FrameSize, Msg, ProcLabel, N0,

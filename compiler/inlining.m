@@ -317,9 +317,9 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
 
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
+	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
+	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
