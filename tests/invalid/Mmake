@@ -16,6 +16,7 @@ SOURCES= \
 	errors2.m \
 	external.m \
 	funcs_as_preds.m \
+	ho_type_mode_bug.m \
 	io_in_ite_cond.m \
 	missing_det_decls.m \
 	modes_erroneous.m \
@@ -43,7 +44,8 @@ ERRS=		$(SOURCES:%.m=%.err)
 ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
 %.err: %.m
-	if mc --errorcheck-only $* > $*.err 2>&1; then false; else true; fi
+	if $(MC) $(MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	then false; else true; fi
 
 %.err_res: %.err %.err_exp
 	-rm -f $@

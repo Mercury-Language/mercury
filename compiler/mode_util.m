@@ -1176,7 +1176,10 @@ propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, ModuleInfo,
 			ground(Uniq, yes(PredInstInfo))) :-
 	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
 	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
-	( type_is_higher_order(Type, PredOrFunc, ArgTypes) ->
+	(
+		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		list__same_length(ArgTypes, Modes0)
+	->
 		propagate_types_into_mode_list(ArgTypes, ModuleInfo,
 			Modes0, Modes)
 	;
@@ -1240,7 +1243,10 @@ propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
 	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
 	apply_type_subst(Type0, Subst, Type),
-	( type_is_higher_order(Type, PredOrFunc, ArgTypes) ->
+	(
+		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		list__same_length(ArgTypes, Modes0)
+	->
 		propagate_types_into_mode_list(ArgTypes, ModuleInfo,
 			Modes0, Modes)
 	;
