@@ -57,6 +57,14 @@ Changes to the Mercury standard library:
 	float__min_exponent/1,
 	float__max_exponent/1.
 
+* The implementations of `int:>>/2' and `int:<</2' have been changed to define
+  the results for negative shift counts and shift counts greater than the
+  word size.
+
+  For efficiency, we also provide the functions `int:unchecked_left_shift/2'
+  and `int:unchecked_right_shift/2' that, like the previous implementations
+  of `int:>>/2' and `int:<</2', do not check for these cases.
+
 New library packages in the Mercury extras distribution:
 ********************************************************
 

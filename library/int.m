@@ -1,13 +1,20 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% int - some predicates for dealing with machine-size integer numbers.
-%
+% File: int.m.
 % Main authors: conway, fjh.
 % Stability: medium.
+%
+% Predicates and functions for dealing with machine-size integer numbers.
+%
+% The behaviour of a computation for which overflow occurs is undefined.
+% (In the current implementation, the predicates and functions in this
+% module do not check for overflow, and the results you get are those
+% delivered by the C compiler.  However, future implementations
+% might check for overflow.)
 %
 %-----------------------------------------------------------------------------%
 
@@ -106,13 +113,33 @@
 :- func int rem int = int.
 :- mode in rem in = uo is det.
 
-	% left shift
+	% Left shift.
+	% X << Y returns X "left shifted" by Y bits. 
+	% To be precise, if Y is negative, the result is
+	% X div (2^(-Y)), otherwise the result is X * (2^Y).
 :- func int << int = int.
 :- mode in  << in  = uo  is det.
 
-	% (arithmetic) right shift
+	% unchecked_left_shift(X, Y) is the same as X << Y
+	% except that the behaviour is undefined if Y is negative,
+	% or greater than or equal to the result of `int__bits_per_int/1'.
+	% It will typically be implemented more efficiently than X << Y.
+:- func unchecked_left_shift(int, int) = int.
+:- mode unchecked_left_shift(in, in) = uo is det.
+
+	% Right shift.
+	% X >> Y returns X "arithmetic right shifted" by Y bits.
+	% To be precise, if Y is negative, the result is
+	% X * (2^(-Y)), otherwise the result is X div (2^Y).
 :- func int >> int = int.
 :- mode in  >> in  = uo  is det.
+
+	% unchecked_right_shift(X, Y) is the same as X >> Y
+	% except that the behaviour is undefined if Y is negative,
+	% or greater than or equal to the result of `int__bits_per_int/1'.
+	% It will typically be implemented more efficiently than X >> Y.
+:- func unchecked_right_shift(int, int) = int.
+:- mode unchecked_right_shift(in, in) = uo is det.
 
 	% bitwise and
 :- func int /\ int = int.
@@ -220,6 +247,51 @@ X div Y = Div :-
 	).
 
 X mod Y = X - (X div Y) * Y.
+
+	% XXX This definition is here for bootstrapping.
+	% After the corresponding change to the compiler is installed,
+	% the compiler will ignore this clause, and will internally replace
+	% the body of unchecked_left_shift with a `recursive' call.
+	% See make_hlds:add_builtin.
+unchecked_left_shift(X, Y) = X << Y.
+
+X << Y = Z :-
+	int__bits_per_int(IntBits),
+	( Y >= 0 ->
+		( Y >= IntBits ->
+			Z = 0
+		;
+			Z = unchecked_left_shift(X, Y)
+		)
+	;
+		( Y =< -IntBits ->
+			Z = (if X >= 0 then 0 else -1)
+		;
+			Z = unchecked_right_shift(X, -Y)
+		)
+	).
+
+	% XXX This definition is here for bootstrapping.
+	% See the comment for unchecked_left_shift.
+unchecked_right_shift(X, Y) = X >> Y.
+
+	% Note: this assumes two's complement arithmetic.
+	% tests/hard_coded/shift_test.m will fail if this is not the case.
+X >> Y = Z :-
+	int__bits_per_int(IntBits),
+	( Y >= 0 ->
+		( Y >= IntBits ->
+			Z = (if X >= 0 then 0 else -1)
+		;
+			Z = unchecked_right_shift(X, Y)
+		)
+	;
+		( Y =< -IntBits ->
+			Z = 0
+		;
+			Z = unchecked_left_shift(X, -Y)
+		)
+	).
 
 int__abs(Num, Abs) :-
 	(

@@ -80,6 +80,7 @@ PROGS=	\
 	reverse_arith \
 	rnd \
 	rtc_bug \
+	shift_test \
 	space \
 	string_alignment \
 	string_loop \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -434,11 +434,11 @@ code_util__translate_builtin_2("int", "rem", 0, [X, Y, Z],
 	no, yes(Z - binop((mod), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_left_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((<<), var(X), var(Y)))).
-code_util__translate_builtin_2("int", "<<", 0, [X, Y, Z],
+code_util__translate_builtin_2("int", "unchecked_left_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((<<), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_right_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((>>), var(X), var(Y)))).
-code_util__translate_builtin_2("int", ">>", 0, [X, Y, Z],
+code_util__translate_builtin_2("int", "unchecked_right_shift", 0, [X, Y, Z],
 	no, yes(Z - binop((>>), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_bit_and", 0, [X, Y, Z],
 	no, yes(Z - binop((&), var(X), var(Y)))).
