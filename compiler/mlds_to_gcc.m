@@ -2024,8 +2024,8 @@ build_rtti_type(reserved_addr_table, _, GCC_Type) -->
 build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	% MR_Integer          MR_type_ctor_arity;
 	% MR_int_least8_t     MR_type_ctor_version;
-	% MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
 	% MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
+	% MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
 	% MR_ProcAddr         MR_type_ctor_unify_pred;
 	% MR_ProcAddr         MR_type_ctor_compare_pred;
 	% MR_ConstString      MR_type_ctor_module_name;
@@ -2044,9 +2044,9 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	build_struct_type("MR_TypeCtorInfo_Struct",
 		['MR_Integer'		- "MR_type_ctor_arity",
 		 'MR_int_least8_t'	- "MR_type_ctor_version",
-		 % MR_TypeCtorRepInt is typedef'd to be MR_int_least8_t
-		 'MR_int_least8_t'	- "MR_type_ctor_rep_CAST_ME",
 		 'MR_int_least8_t'	- "MR_type_ctor_num_ptags",
+		 % MR_TypeCtorRepInt is typedef'd to be MR_int_least16_t
+		 'MR_int_least16_t'	- "MR_type_ctor_rep_CAST_ME",
 		 MR_ProcAddr		- "MR_type_ctor_unify_pred",
 		 MR_ProcAddr		- "MR_type_ctor_compare_pred",
 		 'MR_ConstString'	- "MR_type_ctor_module_name",

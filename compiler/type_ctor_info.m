@@ -227,7 +227,7 @@ type_ctor_info__make_proc_label(yes(PredProcId), ModuleInfo, yes(ProcLabel)) :-
 
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 6.
+type_ctor_info_rtti_version = 7.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

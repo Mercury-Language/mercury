@@ -1025,8 +1025,8 @@ pseudotypeinfo_max_var = 1024.
 	enum type_ctor_info_field_nums {
 		type_ctor_arity 	= 0,
 		// type_ctor_version	= 1,
-		type_ctor_rep		= 2,
-		type_ctor_num_ptags	= 3,
+		type_ctor_num_ptags	= 2,
+		type_ctor_rep		= 3,
 		type_ctor_unify_pred 	= 4,
 		type_ctor_compare_pred	= 5,
 		type_ctor_module_name	= 6,

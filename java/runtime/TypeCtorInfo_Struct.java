@@ -10,8 +10,8 @@ public class TypeCtorInfo_Struct {
     
 	public int                              arity;
 	public int                              type_ctor_version;
-	public mercury.runtime.TypeCtorRep      type_ctor_rep;
 	public int                              type_ctor_num_ptags; // if DU
+	public mercury.runtime.TypeCtorRep      type_ctor_rep;
 	public mercury.runtime.MethodPtr        unify_pred;
 	public mercury.runtime.MethodPtr        compare_pred;
 	public java.lang.String                 type_ctor_module_name;

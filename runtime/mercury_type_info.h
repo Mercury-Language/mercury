@@ -44,9 +44,11 @@
 **      runtime/mercury_tabling.c
 **      runtime/mercury_type_info.c
 **      library/std_util.m
+**
+**      runtime/mercury_mcpp.h:
+**          (for updating the MC++ backend RTTI structures)
 **      java/ *.java
-**          (for updating the Java backend RTTI
-**          structures)
+**          (for updating the Java backend RTTI structures)
 **     
 */
 
@@ -68,15 +70,16 @@
 ** structures used for RTTI.
 **
 ** This number should be kept in sync with type_ctor_info_rtti_version in
-** compiler/type_ctor_info.m.
+** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__COMPACT
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__REP
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
 #define MR_RTTI_VERSION__VERSION_NO     5
 #define MR_RTTI_VERSION__COMPACT        6
+#define MR_RTTI_VERSION__REP            7
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -87,7 +90,17 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__COMPACT)
+    ( assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__COMPACT) \
+    || assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP))
+
+#ifdef  MR_BOOTSTRAP_TYPE_CTOR_REP
+  #define MR_TypeCtorInfo_Struct  MR_NewTypeCtorInfo_Struct
+#else
+  #define MR_TypeCtorInfo_Struct  MR_OldTypeCtorInfo_Struct
+#endif
+
+typedef const struct MR_NewTypeCtorInfo_Struct             *MR_NewTypeCtorInfo;
+typedef const struct MR_OldTypeCtorInfo_Struct             *MR_OldTypeCtorInfo;
 
 /*---------------------------------------------------------------------------*/
 
@@ -517,9 +530,18 @@ typedef enum {
 ** We cannot put enums into structures as bit fields. To avoid wasting space,
 ** we put MR_TypeCtorRepInts into structures instead of MR_TypeCtorReps
 ** themselves.
+**
+** We need more than eight bits for a TypeCtorRep. The number of different
+** TypeCtorRep values requires six bits to differentiate them, and in .rt
+** grades on 64-bit machines we need another three bits for a primary tag
+** value.
 */
 
-typedef MR_int_least8_t         MR_TypeCtorRepInt;
+#ifdef  MR_BOOTSTRAP_TYPE_CTOR_REP
+  typedef MR_int_least16_t  MR_TypeCtorRepInt;
+#else
+  typedef MR_int_least8_t   MR_TypeCtorRepInt;
+#endif
 
 /*
 ** This macro is intended to be used for the initialization of an array
@@ -561,7 +583,7 @@ typedef MR_int_least8_t         MR_TypeCtorRepInt;
     "TUPLE",                                    \
     "RESERVED_ADDR",                            \
     "RESERVED_ADDR_USEREQ",                     \
-    "TYPECTORINFO",                     	\
+    "TYPECTORINFO",                     	    \
     "BASETYPECLASSINFO",                     	\
     "UNKNOWN"
 
@@ -940,9 +962,12 @@ typedef union {
     ** A type_ctor_info describes the structure of a particular
     ** type constructor.  One of these is generated for every
     ** `:- type' declaration.
+    **
+    ** A change in the TypeCtorInfo structure also requires changes in the 
+    ** files listed at the top of this file, as well as in the macros below.
     */
 
-struct MR_TypeCtorInfo_Struct {
+struct MR_OldTypeCtorInfo_Struct {
     MR_Integer          MR_type_ctor_arity;
     MR_int_least8_t     MR_type_ctor_version;
     MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
@@ -962,8 +987,41 @@ struct MR_TypeCtorInfo_Struct {
 */
 };
 
+/*
+** The type of the MR_type_ctor_rep_CAST_ME field should be returned
+** to MR_TypeCtorRepInt when bootstrapping is complete.
+*/
+
+struct MR_NewTypeCtorInfo_Struct {
+    MR_Integer          MR_type_ctor_arity;
+    MR_int_least8_t     MR_type_ctor_version;
+    MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
+    MR_int_least16_t    MR_type_ctor_rep_CAST_ME;
+    MR_ProcAddr         MR_type_ctor_unify_pred;
+    MR_ProcAddr         MR_type_ctor_compare_pred;
+    MR_ConstString      MR_type_ctor_module_name;
+    MR_ConstString      MR_type_ctor_name;
+    MR_TypeFunctors     MR_type_ctor_functors;
+    MR_TypeLayout       MR_type_ctor_layout;
+    MR_int_least32_t    MR_type_ctor_num_functors;
+
+/*
+** The following fields will be added later, once we can exploit them:
+**  union MR_TableNode_Union    **type_std_table;
+**  MR_ProcAddr         prettyprinter;
+*/
+};
+
 #define MR_type_ctor_rep(tci)                                               \
-    ((MR_TypeCtorRep) (tci)->MR_type_ctor_rep_CAST_ME)
+    ((MR_TypeCtorRep)                                                       \
+    ((tci)->MR_type_ctor_version == MR_RTTI_VERSION__REP) ?                 \
+        (((MR_NewTypeCtorInfo) (tci))->MR_type_ctor_rep_CAST_ME) :          \
+        (((MR_OldTypeCtorInfo) (tci))->MR_type_ctor_rep_CAST_ME))
+
+#define MR_type_ctor_num_ptags(tci)                                         \
+    (((tci)->MR_type_ctor_version == MR_RTTI_VERSION__REP) ?                \
+        (((MR_NewTypeCtorInfo) (tci))->MR_type_ctor_num_ptags) :            \
+        (((MR_OldTypeCtorInfo) (tci))->MR_type_ctor_num_ptags))
 
 #define MR_type_ctor_module_name(tci)                                       \
     ((tci)->MR_type_ctor_module_name)
@@ -1010,9 +1068,9 @@ struct MR_TypeCtorInfo_Struct {
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)        \
     {                                                                   \
         a,                                                              \
-        MR_RTTI_VERSION__COMPACT,                                       \
-        cr,                                                             \
+        MR_RTTI_VERSION__REP,                                           \
         -1,                                                             \
+        cr,                                                             \
         MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),                              \
         MR_MAYBE_STATIC_CODE(MR_ENTRY(c)),                              \
         MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),    \
@@ -1072,9 +1130,9 @@ struct MR_TypeCtorInfo_Struct {
         MR_type_ctor_info_name(module, type, arity) =                   \
     {                                                                   \
         arity,                                                          \
-        MR_RTTI_VERSION__COMPACT,                                       \
-        type_rep,                                                       \
+        MR_RTTI_VERSION__REP,                                           \
         -1,                                                             \
+        type_rep,                                                       \
         (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
                         do_unify),                                      \
         (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
