@@ -4,3 +4,4 @@ help.h
 debugger_interface.h
 mer_browser.init
 Mercury
+browse.h
