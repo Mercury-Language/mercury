@@ -1,8 +1,8 @@
 pragma_c_code_and_clauses1.m:009: Warning: `pragma' declaration in module interface.
 pragma_c_code_and_clauses1.m:007: Warning: clause in module interface.
-pragma_c_code_and_clauses1.m:009: Error: `:- pragma foreign_code' (or `pragma c_code')
+pragma_c_code_and_clauses1.m:009: Error: `:- pragma foreign_proc' (or `pragma c_code')
 pragma_c_code_and_clauses1.m:009: declaration for predicate `pragma_c_code_and_clauses1:foo/1'
-pragma_c_code_and_clauses1.m:009:   with preceding clauses.
+pragma_c_code_and_clauses1.m:009:   with preceding non-mode specific clauses.
 pragma_c_code_and_clauses1.m:005: In `foo(in)':
 pragma_c_code_and_clauses1.m:005:   error: determinism declaration not satisfied.
 pragma_c_code_and_clauses1.m:005:   Declared `multi', inferred `semidet'.
