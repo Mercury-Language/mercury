@@ -121,22 +121,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	;
 		{ SemiJoinInfo = no }
 	),
-	(
-		{ TrivialJoinInfo = yes(trivial_join_info(Tuple,
-					MaybeProject)) },
-		io__write_string(" (trivial join input "),
-		io__write(Tuple),
-		(
-			{ MaybeProject = yes(_) },
-			io__write_string(" projected")
-		;
-			{ MaybeProject = no },
-			io__write_string(" not projected")
-		),
-		io__write_string(")")
-	;
-		{ TrivialJoinInfo = no }
-	),
+	rl_dump__write_trivial_join_or_subtract(TrivialJoinInfo),
 	comma,
 	io__nl,
 	rl_dump__write_goal(ModuleInfo, Exprn),
@@ -145,7 +130,8 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	io__nl.
 
 rl_dump__write_instruction(ModuleInfo, RelationInfo, 
-		subtract(Output, Input1, Input2, SubType, Exprn) - Comment) -->
+		subtract(Output, Input1, Input2, SubType,
+			Exprn, TrivialSubtractInfo) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = subtract("),
 	rl_dump__write_relation_id(RelationInfo, Input1),
@@ -154,6 +140,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	comma,
 	rl_dump__write_subtract_type(ModuleInfo, SubType),
 	comma,
+	rl_dump__write_trivial_join_or_subtract(TrivialSubtractInfo),
 	io__nl,
 	rl_dump__write_goal(ModuleInfo, Exprn),
 	io__write_string(").\t"),
@@ -476,6 +463,28 @@ rl_dump__write_insert_type(_ModuleInfo, index(IndexSpec)) -->
 	io__write_string("index("),
 	mercury_output_index_spec(IndexSpec),
 	io__write_string(")").
+
+:- pred rl_dump__write_trivial_join_or_subtract(
+		maybe(trivial_join_or_subtract_info)::in,
+		io__state::di, io__state::uo) is det.
+
+rl_dump__write_trivial_join_or_subtract(TrivialJoinInfo) -->
+	(
+		{ TrivialJoinInfo = yes(trivial_join_or_subtract_info(Tuple,
+					MaybeProject)) },
+		io__write_string(" (trivial input "),
+		io__write(Tuple),
+		(
+			{ MaybeProject = yes(_) },
+			io__write_string(" projected")
+		;
+			{ MaybeProject = no },
+			io__write_string(" not projected")
+		),
+		io__write_string(")")
+	;
+		{ TrivialJoinInfo = no }
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -230,8 +230,12 @@ rl_relops__join_2(InputRel1, InputRel2, Args1, Args2, InstMap,
 	rl_info__comment(Comment),
 		
 	rl_info_get_new_temporary(OutputSchema, OutputRel),
-	{ TrivialJoin = no },
-	{ SemiJoin = no },
+	{ rl__is_semi_join(JoinType, JoinCond, SemiJoin) },
+
+	rl_info_get_module_info(ModuleInfo),
+	{ rl__is_trivial_join(ModuleInfo, JoinType, JoinCond,
+		SemiJoin, TrivialJoin) },
+		
 	{ Code = node([join(output_rel(OutputRel, []), ReorderedInput1,
 		ReorderedInput2, JoinType, JoinCond,
 		SemiJoin, TrivialJoin) - Comment]) }.
@@ -289,8 +293,14 @@ rl_relops__subtract(Rel1, Rel2, OutputArgs1, OutputArgs2, InstMap,
 	rl_relops__goal(InstMap, two_inputs(OutputArgs1, OutputArgs2), no,
 		SubtractGoals, SubtractCond),
 	rl_info_get_new_temporary(same_as_relation(Rel1), TempRel),
+	rl_info_get_module_info(ModuleInfo),
+
+	{ rl__is_trivial_subtract(ModuleInfo, SubtractType, SubtractCond,
+		TrivialSubtract) },
+		
 	{ Subtract = subtract(output_rel(TempRel, []),
-		Rel1, Rel2, SubtractType, SubtractCond) - Comment },
+		Rel1, Rel2, SubtractType, SubtractCond,
+		TrivialSubtract) - Comment },
 	rl_info__comment(Comment),
 
 	% The output projection for subtracts must be done as a separate

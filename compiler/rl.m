@@ -136,7 +136,8 @@
 			relation_id,		% input 1
 			relation_id,		% input 2
 			subtract_type,
-			rl_goal			% subtraction condition
+			rl_goal,		% subtraction condition
+			maybe(trivial_subtract_info)
 		)
 	;
 		% A difference is just a special case of subtract.
@@ -219,7 +220,7 @@
 		% Make a copy of the input relation, making sure the
 		% output has the given set of indexes.
 		% This could be a bit slow, because the system can't just
-		% copy the files, but has to do a full 
+		% copy the files, but has to do a full tuple-by-tuple copy.
 		copy(
 			output_rel,		% output
 			relation_id		% input
@@ -336,25 +337,51 @@
 	% Output = join(Input1, Input2, Cond), where Cond does
 	% not depend on Input2, can be generated as:
 	%
-	% if (empty(Input2)) {
-	%	Output = project(Input1, Cond)
-	% else {
-	%	init(Output)
-	% }
+	%	if (empty(Input2)) {
+	%		Output = project(Input1, Cond)
+	%	} else {
+	%		init(Output)
+	%	}
 	%
 	% If the join is a semi-join with a deterministic
 	% condition, the project is not necessary.
 	%
+	% Subtracts are similar.
+	%
+	%	Output = semi_subtract(Input1, Input2, Cond).
+	%
+	% If Cond does not depend on Input1, this can be generated
+	% as:
+	%
+	%	if (empty(select(Input2, Cond))) {
+	%		Output = Input1
+	%	} else {
+	%		init(Output)
+	%	}
+	%
+	% If Cond does not depend on Input2, this can be generated
+	% as:
+	%
+	%	if (empty(Input2)) {
+	%		Output = Input1
+	%	} else {
+	%		Output = select(Input1, not(Cond))
+	%	}
+	%
+	%
 	% We don't just do this optimization in the intermediate RL
 	% because it introduces extra branching which can interfere
 	% with other optimizations (e.g. rl_block_opt.m, rl_stream.m).
-:- type trivial_join_info
-	---> trivial_join_info(
+:- type trivial_join_or_subtract_info
+	---> trivial_join_or_subtract_info(
 		tuple_num,	% which tuple does the join depend on
 		maybe(project_type)
-				% the type of projection to use,
+				% the type of selection/projection to use,
 				% if one is needed
 	).
+
+:- type trivial_join_info == trivial_join_or_subtract_info.
+:- type trivial_subtract_info == trivial_join_or_subtract_info.
 
 	% All subtracts are done using the semi-subtract operator.
 	% There is no advantage in including any post projection
@@ -491,8 +518,25 @@
 :- pred rl__is_semi_join(join_type::in, rl_goal::in,
 		maybe(semi_join_info)::out) is det.
 
-:- pred rl__is_trivial_join(module_info::in, join_type::in, rl_goal::in,
-	maybe(semi_join_info)::in, maybe(trivial_join_info)::out) is det.
+	% See the comment on type trivial_join_or_subtract_info.
+:- pred rl__is_trivial_join(module_info::in, join_type::in,
+	rl_goal::in, maybe(semi_join_info)::in,
+	maybe(trivial_join_info)::out) is det.
+
+	% See the comment on type trivial_join_or_subtract_info.
+:- pred rl__is_trivial_subtract(module_info::in, subtract_type::in,
+	rl_goal::in, maybe(trivial_subtract_info)::out) is det.
+
+	% Find the project type which is equivalent to the join type,
+	% useful for a trivial join which can be converted into a projection.
+:- pred rl__join_type_to_project_type(join_type::in,
+		maybe(project_type)::out) is det.
+
+	% Find the project type which is equivalent to the subtract type.
+	% useful for a trivial subtract which can be converted into a
+	% projection.
+:- pred rl__subtract_type_to_project_type(subtract_type::in,
+		maybe(project_type)::out) is det.
 
 	% Succeed if the goal contain any of the variables corresponding
 	% to the attributes of the given input tuple.
@@ -604,7 +648,7 @@ rl__instr_relations(
 		join(output_rel(Output, _), Input1, Input2, _, _, _, _) - _, 
 		[Input1, Input2], [Output]).
 rl__instr_relations(subtract(output_rel(Output, _),
-		Input1, Input2, _, _) - _, [Input1, Input2], [Output]).
+		Input1, Input2, _, _, _) - _, [Input1, Input2], [Output]).
 rl__instr_relations(difference(output_rel(Output, _),
 		Input1, Input2, _) - _, [Input1, Input2], [Output]).
 rl__instr_relations(project(OutputRel,
@@ -717,27 +761,57 @@ rl__is_semi_join(JoinType, Exprn, SemiJoinInfo) :-
 rl__is_trivial_join(ModuleInfo, JoinType, Cond,
 		SemiJoinInfo, TrivialJoinInfo) :-
 	(
-		join_type_to_project_type(JoinType, yes(ProjectType))
+		rl__join_type_to_project_type(JoinType, yes(ProjectType))
 	->
-		( rl__goal_is_independent_of_input(one, Cond) ->
-			rl__make_trivial_join_info(ModuleInfo, ProjectType,
-				Cond, two, SemiJoinInfo, TrivialJoinInfo)
-		; rl__goal_is_independent_of_input(two, Cond) ->
-			rl__make_trivial_join_info(ModuleInfo, ProjectType,
-				Cond, one, SemiJoinInfo, TrivialJoinInfo)
-		;
-			TrivialJoinInfo = no
-		)
+		rl__is_trivial_join_or_subtract(ModuleInfo, join,
+			ProjectType, Cond, SemiJoinInfo, TrivialJoinInfo)
 	;
 		TrivialJoinInfo = no
 	).
 
-:- pred rl__make_trivial_join_info(module_info::in, project_type::in,
-		rl_goal::in, tuple_num::in, maybe(semi_join_info)::in,
-		maybe(trivial_join_info)::out) is det.
+rl__is_trivial_subtract(ModuleInfo, SubtractType, Cond, TrivialSubtractInfo) :-
+	(
+		rl__subtract_type_to_project_type(SubtractType,
+			yes(ProjectType))
+	->
+		% Subtracts always return the first input tuple.
+		SemiJoinInfo = yes(one),
+		rl__is_trivial_join_or_subtract(ModuleInfo, subtract,
+			ProjectType, Cond, SemiJoinInfo, TrivialSubtractInfo)
+	;
+		TrivialSubtractInfo = no
+	).
 
-rl__make_trivial_join_info(ModuleInfo, ProjectType,
-		Cond, TupleNum, SemiJoin, TrivialJoinInfo) :-
+:- type join_or_subtract
+	--->	join
+	;	subtract
+	.
+
+:- pred rl__is_trivial_join_or_subtract(module_info::in, join_or_subtract::in,
+		project_type::in, rl_goal::in, maybe(semi_join_info)::in,
+		maybe(trivial_join_or_subtract_info)::out) is det.
+
+rl__is_trivial_join_or_subtract(ModuleInfo, JoinOrSubtract, ProjectType, Cond,
+		SemiJoinInfo, TrivialJoinInfo) :-
+	( rl__goal_is_independent_of_input(one, Cond) ->
+		rl__make_trivial_join_or_subtract_info(ModuleInfo,
+			JoinOrSubtract, ProjectType, Cond, two, SemiJoinInfo,
+			TrivialJoinInfo)
+	; rl__goal_is_independent_of_input(two, Cond) ->
+		rl__make_trivial_join_or_subtract_info(ModuleInfo,
+			JoinOrSubtract, ProjectType, Cond, one,
+			SemiJoinInfo, TrivialJoinInfo)
+	;
+		TrivialJoinInfo = no
+	).
+
+:- pred rl__make_trivial_join_or_subtract_info(module_info::in,
+		join_or_subtract::in, project_type::in, rl_goal::in,
+		tuple_num::in, maybe(semi_join_info)::in,
+		maybe(trivial_join_or_subtract_info)::out) is det.
+
+rl__make_trivial_join_or_subtract_info(ModuleInfo, JoinOrSubtract, ProjectType,
+		Cond, UsedTupleNum, SemiJoin, TrivialJoinInfo) :-
 	Goals = Cond ^ goal,
 
 	(
@@ -746,6 +820,18 @@ rl__make_trivial_join_info(ModuleInfo, ProjectType,
 		% deterministic conditions.
 		% 
 		SemiJoin = yes(_),
+		\+ ( 
+			% For this type of trivial subtract,
+			% the selection will use the negation
+			% of the condition, which will pretty
+			% much always be semidet.
+			% The select can only be removed if the
+			% condition has determinism failure, in
+			% which case the negation should have been
+			% removed earlier.
+			JoinOrSubtract = subtract,
+			UsedTupleNum = one
+		),
 		rl__goal_can_be_removed(ModuleInfo, Goals)
 	->
 		MaybeProjectType = no
@@ -753,7 +839,38 @@ rl__make_trivial_join_info(ModuleInfo, ProjectType,
 		MaybeProjectType = yes(ProjectType)
 	),
 
-	TrivialJoinInfo = yes(trivial_join_info(TupleNum, MaybeProjectType)).
+	TrivialJoinInfo =
+		yes(trivial_join_or_subtract_info(UsedTupleNum,
+			MaybeProjectType)).
+
+	% Check whether a projection is needed.
+	% A projection is not needed if it is a selection
+	% (there is no output tuple) and the selection condition
+	% is deterministic.
+:- pred rl__is_removeable_project(module_info::in, project_type::in,
+		rl_goal::in, bool::out) is det.
+
+rl__is_removeable_project(ModuleInfo, ProjectType, RLGoal, IsRemoveable) :-
+	(
+		ProjectType = filter,
+		(
+			\+ rl__goal_produces_tuple(RLGoal),
+			Goals = RLGoal ^ goal,
+
+			rl__goal_can_be_removed(ModuleInfo, Goals)
+        	->
+			IsRemoveable = yes
+		;
+			IsRemoveable = no
+		)
+	;
+		%
+		% Indexed projections contain a selection
+		% which must always be performed.
+		%
+		ProjectType = index(_, _),
+		IsRemoveable = no
+	).
 
 rl__goal_can_be_removed(ModuleInfo, Goals) :-
 	goal_list_determinism(Goals, Detism),
@@ -763,6 +880,10 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
 
+	% I'm not sure whether this test is actually worthwhile --
+	% the optimization passes which introduce index, sort-merge
+	% and hash joins and subtracts prune away large chunks of
+	% computation without caring about the semantics.
 	(
 		FullyStrict = no
 	;
@@ -773,12 +894,11 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 		)
 	).
 
-:- pred join_type_to_project_type(join_type::in,
-		maybe(project_type)::out) is det.
-
-join_type_to_project_type(nested_loop, yes(filter)).
-join_type_to_project_type(index(IndexSpec, KeyRange),
-		yes(index(IndexSpec, KeyRange))).
+rl__join_type_to_project_type(nested_loop, yes(filter)).
+rl__join_type_to_project_type(index(IndexSpec, KeyRange0),
+		yes(index(IndexSpec, KeyRange))) :-
+	join_key_range_to_project_key_range(KeyRange0, KeyRange).
+	
 	%
 	% Introducing sort-merge and hash joins means that there is a
 	% connection between the arguments of the two input tuples, so
@@ -786,6 +906,28 @@ join_type_to_project_type(index(IndexSpec, KeyRange),
 	%
 join_type_to_project_type(sort_merge(_, _), no).
 join_type_to_project_type(hash(_, _), no).
+
+
+subtract_type_to_project_type(semi_nested_loop, yes(filter)).
+subtract_type_to_project_type(semi_index(IndexSpec, KeyRange0),
+		yes(index(IndexSpec, KeyRange))) :-
+	join_key_range_to_project_key_range(KeyRange0, KeyRange).
+
+	%
+	% Introducing sort-merge and hash subtracts means that there is a
+	% connection between the arguments of the two input tuples, so
+	% the subtract cannot be turned into a projection.
+	%
+subtract_type_to_project_type(semi_sort_merge(_, _), no).
+subtract_type_to_project_type(semi_hash(_, _), no).
+
+	% The expression to create a key range for a project/select does
+	% not take an input tuple.
+:- pred join_key_range_to_project_key_range(key_range::in,
+		key_range::out) is det.
+
+join_key_range_to_project_key_range(key_range(A, B, _, D),
+	key_range(A, B, no, D)).
 
 rl__remove_goal_input(InputNo, RLGoal0, RLGoal) :-
 	require(rl__goal_is_independent_of_input(InputNo, RLGoal0),

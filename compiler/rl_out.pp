@@ -59,7 +59,7 @@
 :- import_module code_util, hlds_data, hlds_pred, prog_data, prog_out.
 :- import_module llds, globals, options, rl_code, tree, type_util, passes_aux.
 :- import_module rl_file, getopt, modules, prog_util, magic_util, hlds_goal.
-:- import_module code_aux.
+:- import_module code_aux, det_analysis, instmap.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- import_module rl_exprn.
@@ -560,38 +560,13 @@ rl_out__generate_instr_list([RLInstr | RLInstrs], Code) -->
 rl_out__generate_instr(join(Output, Input1, Input2, Type, Cond,
 		SemiJoin, TrivialJoin) - _, Code) -->
 	rl_out__generate_join(Output, Input1, Input2, Type,
-		SemiJoin, TrivialJoin, Cond, Code).
-
-rl_out__generate_instr(subtract(Output, Input1, Input2, Type, Cond) - _, 
+		Cond, SemiJoin, TrivialJoin, Code).
+rl_out__generate_instr(
+		subtract(Output, Input1, Input2,
+			Type, Cond, TrivialSubtract) - _, 
 		Code) -->
-	rl_out__generate_stream(Input1, Stream1Code),
-	rl_out__generate_stream(Input2, Stream2Code),
-	rl_out_info_get_output_relation_schema_offset(Output,
-		OutputSchemaOffset),
-	rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
-	(
-		{ Type = semi_nested_loop },
-		{ SubtractCode = rl_PROC_semisubtract_nl }
-	;
-		{ Type = semi_sort_merge(_, _) },
-		{ error(
-		"rl_out__generate_instr: subtract_sm not yet implemented") }
-	;
-		{ Type = semi_hash(_, _) },
-		{ error(
-		"rl_out__generate_instr: subtract_hash not yet implemented") }
-	;
-		{ Type = semi_index(_IndexSpec, _) },
-		{ error(
-		"rl_out__generate_instr: subtract_index not yet implemented") }
-	),
-	{ InstrCode =
-		tree(node([SubtractCode]), 
-		tree(Stream1Code, 
-		tree(Stream2Code,
-		node([rl_PROC_expr(CondExprn)])
-	))) },
-	rl_out__generate_stream_instruction(Output, InstrCode, Code).
+	rl_out__generate_subtract(Output, Input1, Input2, Type,
+		Cond, TrivialSubtract, Code).
 rl_out__generate_instr(difference(Output, Input1, Input2, Type) - _,
 		Code) -->
 	rl_out__generate_stream(Input1, Stream1Code),
@@ -810,12 +785,12 @@ rl_out__generate_instr(comment - _, empty) --> [].
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out__generate_join(output_rel::in, relation_id::in,
-	relation_id::in, join_type::in, maybe(semi_join_info)::in,
-	maybe(trivial_join_info)::in, rl_goal::in, byte_tree::out,
+	relation_id::in, join_type::in, rl_goal::in, maybe(semi_join_info)::in,
+	maybe(trivial_join_info)::in, byte_tree::out,
 	rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_join(Output, Input1a, Input2a, JoinType0, MaybeSemiJoin,
-		MaybeTrivialJoin, Cond0, Code) -->
+rl_out__generate_join(Output, Input1a, Input2a, JoinType0, Cond0,
+		MaybeSemiJoin, MaybeTrivialJoin, Code) -->
 	%
 	% Work out the bytecode to use for the join, and whether the
 	% join is actually a semi-join.
@@ -861,8 +836,8 @@ rl_out__generate_join(Output, Input1a, Input2a, JoinType0, MaybeSemiJoin,
 	%
 	(
 		{ MaybeTrivialJoin = yes(TrivialJoinInfo) },
-		{ TrivialJoinInfo = trivial_join_info(ProjectTupleNum0,
-					MaybeProjectType) },
+		{ TrivialJoinInfo = trivial_join_or_subtract_info(
+					ProjectTupleNum0, MaybeProjectType) },
 		{
 			SwapInputs = yes,
 			rl__swap_tuple_num(ProjectTupleNum0, ProjectTupleNum)
@@ -901,7 +876,7 @@ rl_out__generate_join(Output, Input1a, Input2a, JoinType0, MaybeSemiJoin,
 		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
 	;
 		{ MaybeTrivialJoin = no },
-		rl_out__generate_join_2(Output, Input1, Input2,
+		rl_out__generate_join_or_subtract(Output, Input1, Input2,
 			JoinType, JoinBytecode, Cond, Code)
 	).
 
@@ -923,9 +898,24 @@ rl_out__compute_join_bytecode(hash(_, _), yes(Tuple),
 		rl_PROC_semijoin_hj, Swap) :-
 	rl_out__should_swap_inputs(Tuple, Swap).
 
-rl_out__compute_join_bytecode(index(_, _), no, rl_PROC_join_index_simple, no).
+rl_out__compute_join_bytecode(index(_, _), no,
+		rl_PROC_join_index_simple(IndexRangeTypes), no) :-
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0.
+
 rl_out__compute_join_bytecode(index(_, _), yes(Tuple),
-		rl_PROC_semijoin_index, no) :-
+		rl_PROC_semijoin_index(Output, IndexRangeTypes), no) :-
+
+		% The tuple from the non-indexed relation is returned --
+		% returning the tuple from the index relation is not
+		% yet implemented in Aditi.
+	Output = 0,
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0,
 	require(unify(Tuple, one),
 		"indexed semi_join doesn't return first tuple").
 
@@ -935,15 +925,141 @@ rl_out__compute_join_bytecode(index(_, _), yes(Tuple),
 rl_out__should_swap_inputs(one, no).
 rl_out__should_swap_inputs(two, yes).
 
-:- pred rl_out__generate_join_2(output_rel::in, relation_id::in,
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out__generate_subtract(output_rel::in, relation_id::in,
+		relation_id::in, subtract_type::in, rl_goal::in,
+		maybe(trivial_subtract_info)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_subtract(Output, Input1, Input2, Type,
+		Cond, TrivialSubtract, Code) -->
+	(
+	    { TrivialSubtract = yes(
+		trivial_join_or_subtract_info(TupleNum, MaybeProject)) },
+	    (
+		{ TupleNum = one },
+		% Output = subtract(Input1, Input2, Cond),
+		% 	where Cond is independent of input two,
+		%	is generated as:
+		%  
+		% if (empty(Input2)) {
+		%	Output = Input1	
+		% else {
+		% 	Output = select(Input1, not(Cond))
+		% }
+		(
+			{ MaybeProject = yes(ProjectType) },
+			{ rl__remove_goal_input(two, Cond, ProjectCond0) },
+			{ Goals0 = ProjectCond0 ^ goal },
+			{ goal_list_nonlocals(Goals0, NonLocals) },
+			{ goal_list_determinism(Goals0, Detism0) },
+			{ det_negation_det(Detism0, MaybeDetism) },
+			{ MaybeDetism = yes(NegDetism0) ->
+				NegDetism = NegDetism0
+			;
+				% This should probably never happen,
+				% but semidet is a safe approximation.
+				NegDetism = semidet
+			},
+			{ instmap_delta_init_reachable(IMDelta) },
+			{ goal_info_init(NonLocals, IMDelta, Detism0,
+				GoalInfo) },
+			{ conj_list_to_goal(Goals0, GoalInfo, Conj) },
+			{ goal_info_init(NonLocals, IMDelta, NegDetism,
+				NegGoalInfo) },
+			{ NegGoal = not(Conj) - NegGoalInfo },
+			{ ProjectCond = ProjectCond0 ^ goal := [NegGoal] },
+			{ ProjectInstr = project(Output, Input1,
+				ProjectCond, [], ProjectType) - "" },
+			rl_out__generate_instr(ProjectInstr, ElseCode)
+		;
+			{ MaybeProject = no },
+			% The selection is not removed by
+			% rl__is_trivial_subtract in this case.
+			{ error(
+	"rl_out__generate_subtract: trivial subtract without select") }
+		),
+
+		rl_out__generate_stream(Input2, InputStream2Code),
+		{ CondCode = tree(node([rl_PROC_empty]), InputStream2Code) },	
+		rl_out__generate_instr(init(Output) - "", ThenCode),
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code)
+	    ;
+		{ TupleNum = two },
+		% Output = subtract(Input1, Input2, Cond),
+		% 	where Cond is independent of input one,
+		%	is generated as:
+		%  
+		% if (empty(select(Input2, Cond))) {
+		%	Output = Input1	
+		% else {
+		% 	init(Output)
+		% }
+
+		(
+			{ MaybeProject = yes(ProjectType) },
+			{ rl__remove_goal_input(one, Cond, ProjectCond) },
+
+			rl_out_info_get_relation_schema(Input2, Input2Schema),
+			rl_out_info_add_temporary_relation(Input2Schema,
+				stream, TmpRel),
+			{ ProjectInstr = project(output_rel(TmpRel, []),
+				Input2, ProjectCond, [], ProjectType) - "" },
+			rl_out__generate_instr(ProjectInstr, ProjectCode),
+			{ ProjectRel = TmpRel }
+		;
+			{ MaybeProject = no },
+			{ ProjectRel = Input2 },
+			{ ProjectCode = empty }
+		),
+		rl_out__generate_stream(ProjectRel, ProjectStreamCode),
+		{ CondCode = tree(node([rl_PROC_empty]), ProjectStreamCode) },
+		rl_out__maybe_materialise(Output, Input1, ThenCode),
+		rl_out__generate_instr(init(Output) - "", ElseCode),
+
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, ITECode),
+		{ Code = tree(ProjectCode, ITECode) }
+	    )
+	;
+		{ TrivialSubtract = no },
+		{ rl_out__compute_subtract_bytecode(Type, SubtractBytecode,
+			JoinType) },
+		rl_out__generate_join_or_subtract(Output, Input1, Input2,
+			JoinType, SubtractBytecode, Cond, Code)
+	).
+
+	% Work out which bytecode to use, and which join type
+	% uses the same instruction format.
+:- pred rl_out__compute_subtract_bytecode(subtract_type::in, bytecode::out,
+		join_type::out) is det.
+
+rl_out__compute_subtract_bytecode(semi_nested_loop, rl_PROC_semisubtract_nl,
+		nested_loop).
+rl_out__compute_subtract_bytecode(semi_sort_merge(_, _), _, _) :-
+	error(
+	"rl_out__compute_subtract_bytecode: subtract_sm not yet implemented").
+rl_out__compute_subtract_bytecode(semi_hash(Attrs1, Attrs2),
+		rl_PROC_semisubtract_hj, hash(Attrs1, Attrs2)).
+rl_out__compute_subtract_bytecode(semi_index(IndexSpec, KeyRange),
+		rl_PROC_semisubtract_index(IndexRangeTypes),
+		index(IndexSpec, KeyRange)) :-
+
+		% both ends of the key range are closed.
+		% XXX we should detect and use open ranges
+	IndexRangeTypes = 0.
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_out__generate_join_or_subtract(output_rel::in, relation_id::in,
 	relation_id::in, join_type::in, bytecode::in,
 	rl_goal::in, byte_tree::out, rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_join_2(Output, Input1, Input2, JoinType,
+rl_out__generate_join_or_subtract(Output, Input1, Input2, JoinType,
 		JoinBytecode, Cond, Code) -->
 	(
 		{ JoinType = nested_loop },
-		rl_out__generate_join_3(JoinBytecode, Output,
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
 			Input1, Input2, [], Cond, Code)
 	;
 		{ JoinType = hash(Attrs1, Attrs2) },
@@ -955,7 +1071,7 @@ rl_out__generate_join_2(Output, Input1, Input2, JoinType,
 		%
 		rl_out__generate_hash_exprn(Input1, Attrs1, HashExprn1),
 		rl_out__generate_hash_exprn(Input2, Attrs2, HashExprn2),
-		rl_out__generate_join_3(JoinBytecode, Output,
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
 			Input1, Input2, [HashExprn1, HashExprn2], Cond, Code)
 	;
 		{ JoinType = sort_merge(Spec1, Spec2) },
@@ -968,7 +1084,7 @@ rl_out__generate_join_2(Output, Input1, Input2, JoinType,
 		% XXX We should strip out the parts of the join
 		% condition which are already tested by the CompareExprns.
 		%
-		rl_out__generate_join_3(JoinBytecode, Output,
+		rl_out__generate_join_or_subtract_2(JoinBytecode, Output,
 			Input1, Input2, [CompareExprn],
 			Cond, Code)
 	;
@@ -998,12 +1114,12 @@ rl_out__generate_join_2(Output, Input1, Input2, JoinType,
 		rl_out__generate_stream_instruction(Output, InstrCode, Code)
 	).
 
-:- pred rl_out__generate_join_3(bytecode::in, output_rel::in,
+:- pred rl_out__generate_join_or_subtract_2(bytecode::in, output_rel::in,
 		relation_id::in, relation_id::in,
 		list(int)::in, rl_goal::in, byte_tree::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_join_3(JoinCode, Output, Input1, Input2,
+rl_out__generate_join_or_subtract_2(JoinCode, Output, Input1, Input2,
 		ExtraExprns, Cond, Code) -->
 	rl_out_info_get_output_relation_schema_offset(Output,
 		OutputSchemaOffset),
@@ -1038,24 +1154,14 @@ rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
 	% the projection is actually a selection.
 	%
 	{ rl__goal_returns_input_tuple(Cond0, one) ->
-		rl__strip_goal_outputs(Cond0, Cond1)
+		rl__strip_goal_outputs(Cond0, Cond)
 	;
-		Cond1 = Cond0
+		Cond = Cond0
 	},
 
-	rl_out_info_get_module_info(ModuleInfo),
-	{ rl_out__is_trivial_project(ModuleInfo, ProjectType,
-		Cond1, ProjectIsTrivial) },
 	(
-		{ ProjectIsTrivial = yes }
-	->
-		%
-		% Just copy the input to the output unmodified. 
-		%
-		rl_out__maybe_materialise(Output, Input, Code)
-	;
 		{ OtherOutputs = [] },
-		{ rl__goal_is_independent_of_input(one, Cond0) }
+		{ rl__goal_is_independent_of_input(one, Cond) }
 	->
 		%
 		% If the produced tuple is independent of the input tuple,
@@ -1073,8 +1179,9 @@ rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
 		% other projections of the same input relation in the
 		% one instruction by rl_block_opt.m.
 		%
-		{ rl__remove_goal_input(one, Cond0, Cond) },
-		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
+		{ rl__remove_goal_input(one, Cond, TupleGoal) },
+		rl_out__generate_exprn(TupleGoal,
+			OutputSchemaOffset, CondExprn),
 		rl_out__generate_stream(Input, StreamCode),
 		{ CondCode = tree(node([rl_PROC_empty]), StreamCode) },
 		rl_out__generate_instr(init(Output) - "", ThenCode),
@@ -1109,16 +1216,21 @@ rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
 			rl_out_info_get_relation_addr(Input, InputAddr),
 			rl_out_info_assign_const(string(IndexStr), IndexConst),
 			rl_out__generate_key_range(Range, RangeExprn),
+
+				% both ends of the key range are closed.
+				% XXX we should detect and use open ranges
+			{ IndexRangeTypes = 0 },
+
 			{ StreamCode = node([
 				rl_PROC_stream,
-				rl_PROC_btree_scan,
+				rl_PROC_btree_scan(IndexRangeTypes),
 				rl_PROC_indexed_var(InputAddr, 0, IndexConst),
 				rl_PROC_expr(RangeExprn),
 				rl_PROC_stream_end
 			]) }
 		),
 
-		rl_out__generate_exprn(Cond0, OutputSchemaOffset, CondExprn),
+		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
 
 		%
 		% Initialise the other output relations.
@@ -1151,37 +1263,6 @@ rl_out__generate_project(Output, Input, Cond0, OtherOutputs,
 		))))) },
 		rl_out__generate_stream_instruction(Output, InstrCode, Code0),
 		{ Code = tree(OtherOutputInitCode, Code0) }
-	).
-
-	%
-	% Check whether a projection is needed.
-	% A projection is not needed if it is a selection
-	% (there is no output tuple) and the selection condition
-	% is deterministic.
-	%
-:- pred rl_out__is_trivial_project(module_info::in, project_type::in,
-		rl_goal::in, bool::out) is det.
-
-rl_out__is_trivial_project(ModuleInfo, ProjectType, RLGoal, IsTrivial) :-
-	(
-		ProjectType = filter,
-		(
-			\+ rl__goal_produces_tuple(RLGoal),
-			Goals = RLGoal ^ goal,
-
-			rl__goal_can_be_removed(ModuleInfo, Goals)
-        	->
-			IsTrivial = yes
-		;
-			IsTrivial = no
-		)
-	;
-		%
-		% Indexed projections contain a selection
-		% which must always be performed.
-		%
-		ProjectType = index(_, _),
-		IsTrivial = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1440,13 +1521,13 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 	;
 		rl_out_info_get_relation_schema_offset(Output, SchemaOffset),
 		rl_out_info_get_tmp_var(SchemaOffset, TmpVar),
-		rl_out_info_return_tmp_var(SchemaOffset,
-			TmpVar, TmpClearCode),
 
 		{ LockSpec = 0 },	% default lock spec
 		rl_out__add_indexes_to_rel(does_not_have_index,
 			Output, Indexes, IndexInstrs),
 		rl_out_info_get_next_materialise_id(Id),
+		rl_out_info_return_tmp_var(SchemaOffset,
+			TmpVar, TmpClearCode),
 		{ Code = 
 			tree(node([
 				rl_PROC_createtemprel(TmpVar, SchemaOffset)
@@ -1482,10 +1563,10 @@ rl_out__maybe_materialise(OutputRel, Input, Code) -->
 		{ InputType = temporary(stream) },
 		{ OutputType = temporary(materialised) }
 	->
-		rl_out_info_get_relation_addr(Input, InputAddr),
-		{ LockSpec = 0 }, % default,
-		rl_out__generate_stream_instruction(OutputRel,
-			node([rl_PROC_var(InputAddr, LockSpec)]), Code)
+		%
+		% Materialise the input into the output.
+		%
+		rl_out__generate_instr(copy(OutputRel, Input) - "", Code)
 	;
 		rl_out__generate_instr(ref(Output, Input) - "", RefCode),
 		( { Indexes = [] } ->
@@ -2133,6 +2214,29 @@ rl_out_info_get_next_materialise_id(MaterialiseId) -->
 		rl_out_info::in, rl_out_info::out) is det.
 
 rl_out_info_get_relations(Relations) --> Relations =^ relations.
+
+:- pred rl_out_info_add_temporary_relation(list(type)::in, relation_state::in,
+		relation_id::out, rl_out_info::in, rl_out_info::out) is det.
+	
+rl_out_info_add_temporary_relation(Schema, State, RelationId) -->
+	Relations0 =^ relations,
+
+	% This should be pretty rare (this predicate is currently only
+	% used in optimizing one type of trivial subtract), so efficiency
+	% isn't a concern.
+	{ map__sorted_keys(Relations0, RelationIds0) },
+	{ list__last(RelationIds0, HighestRelationId) ->
+		RelationId = HighestRelationId + 1
+	;
+		RelationId = 0
+	},
+
+	{ rl__relation_id_to_string(RelationId, RelName) },
+	{ RelationInfo = relation_info(temporary(State),
+				Schema, [], RelName) },
+
+	{ map__det_insert(Relations0, RelationId, RelationInfo, Relations) },
+	^ relations := Relations.
 
 %-----------------------------------------------------------------------------%
 

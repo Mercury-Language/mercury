@@ -187,47 +187,57 @@ rl_key__bounds_to_key_range(MaybeConstructArgs, Args, VarTypes,
 	assoc_list(int, key_term)::in, bounding_tuple::out) is det.
 
 rl_key__convert_bound(MaybeArgs, Tuple, Bound) :-
+	assoc_list__keys(Tuple, Indexes),
+	assoc_list__values(Tuple, Terms),
+	SeenInfinity0 = no,
+	list__map_foldl(rl_key__convert_key_attr(MaybeArgs),
+		Terms, Attrs, SeenInfinity0, SeenInfinity),
+
+	% If there is an attribute of the key tuple which is
+	% not constrained either by a test against the arguments
+	% of the other input tuple, or by a test against
+	% a constructor, treat the entire bound as infinity.
+	% XXX this is temporary, until Aditi supports infinities
+	% within bounds tuples.
 	(
-		% XXX this is temporary, until Aditi supports infinities
-		% within bounds tuples.
-		(
-			list__member(Attr, Tuple),
-			(
-				MaybeArgs = no,
-				Attr = _ - (var - _)
-			;
-				MaybeArgs = yes(Args),
-				Attr = _ - (var - Vars),
-				\+ (
-					set__member(Var, Vars),
-					list__member(Var, Args)
-				)
-			)
-		)
+		SeenInfinity = yes
 	->
 		Bound = infinity
 	;
-		list__member(Attr, Tuple),
-		\+ (
-			MaybeArgs = yes(Args),
-			Attr = _ - (var - Vars),
-			set__member(Var, Vars),
-			list__member(Var, Args)
-		)
+		% If all attributes are infinity, the entire bound is just
+		% infinity.
+		Attrs = [KeyAttr | _],
+		KeyAttr = infinity
 	->
-		assoc_list__keys(Tuple, Indexes),
-		assoc_list__values(Tuple, Terms),
-		list__map(rl_key__convert_key_attr(MaybeArgs), Terms, Attrs),
+		Bound = infinity
+	;
 		assoc_list__from_corresponding_lists(Indexes, Attrs, KeyTuple),
 		Bound = bound(KeyTuple)
-	;
-		Bound = infinity
 	).
 
 :- pred rl_key__convert_key_attr(maybe(list(prog_var))::in,
-		key_term::in, key_attr::out) is det.
+		key_term::in, key_attr::out, bool::in, bool::out) is det.
 
-rl_key__convert_key_attr(MaybeArgs, var - Vars, Attr) :-
+rl_key__convert_key_attr(MaybeArgs, KeyTerm, KeyAttr,
+		SeenInfinity0, SeenInfinity) :-
+	(
+		% As soon as we've seen one infinity in the key tuple,
+		% the remaining attributes can't affect the result of
+		% the comparison in a B-tree search.
+		SeenInfinity0 = yes,
+		KeyAttr = infinity,
+		SeenInfinity = yes
+	;
+		SeenInfinity0 = no,
+		rl_key__convert_key_attr_2(MaybeArgs, KeyTerm,
+			KeyAttr, SeenInfinity)
+	).
+
+:- pred rl_key__convert_key_attr_2(maybe(list(prog_var))::in,
+		key_term::in, key_attr::out, bool::out) is det.
+
+rl_key__convert_key_attr_2(MaybeArgs, var - Vars, Attr,
+		SeenInfinity) :-
 	(
 		MaybeArgs = yes(Args),
 		set__list_to_set(Args, ArgSet),
@@ -235,13 +245,17 @@ rl_key__convert_key_attr(MaybeArgs, var - Vars, Attr) :-
 		set__to_sorted_list(Intersection, [Arg | _]),
 		list__nth_member_search(Args, Arg, Index)
 	->
-		Attr = input_field(Index)
+		Attr = input_field(Index),
+		SeenInfinity = no
 	;
-		Attr = infinity
+		Attr = infinity,
+		SeenInfinity = yes
 	).
-rl_key__convert_key_attr(MaybeArgs, functor(ConsId, Type, Terms) - _,
-		functor(ConsId, Type, Attrs)) :-
-	list__map(rl_key__convert_key_attr(MaybeArgs), Terms, Attrs).
+rl_key__convert_key_attr_2(MaybeArgs, functor(ConsId, Type, Terms) - _,
+		functor(ConsId, Type, Attrs), SeenInfinity) :-
+	SeenInfinity0 = no,
+	list__map_foldl(rl_key__convert_key_attr(MaybeArgs),
+		Terms, Attrs, SeenInfinity0, SeenInfinity).
 		
 :- pred rl_key__split_key_tuples(assoc_list(int, pair(key_term))::in,
 	assoc_list(int, key_term)::out, assoc_list(int, key_term)::out) is det.

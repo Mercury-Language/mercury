@@ -40,7 +40,7 @@
 :- implementation.
 
 :- import_module goal_util, hlds_goal, hlds_module, hlds_pred, inlining.
-:- import_module prog_data, rl, rl_key.
+:- import_module prog_data, rl, rl_key, globals, options.
 :- import_module assoc_list, bool, int, map, multi_map.
 :- import_module relation, require, set, std_util, string.
 
@@ -87,18 +87,21 @@ rl_block_opt__setup_input_relation(Relation) -->
 	% Add an instruction to the DAG for the block.
 :- pred rl_block_opt__build_dag(rl_instruction::in, dag::in, dag::out) is det.
 
-rl_block_opt__build_dag(
-		join(Output, Input1, Input2, Type, Exprn, _, _) - _) -->
+rl_block_opt__build_dag(join(Output, Input1, Input2, Type, Exprn,
+				SemiJoin, TrivialJoin) - _) -->
 	rl_block_opt__lookup_relation(Input1, Input1Node),
 	rl_block_opt__lookup_relation(Input2, Input2Node),
 	rl_block_opt__add_dag_node([Output], [Input1Node, Input2Node],
-		join(Input1Node, Input2Node, Type, Exprn), _).
+		join(Input1Node, Input2Node, Type, Exprn,
+			SemiJoin, TrivialJoin), _).
 
-rl_block_opt__build_dag(subtract(Output, Input1, Input2, Type, Exprn) - _) -->
+rl_block_opt__build_dag(subtract(Output, Input1, Input2, Type,
+				Exprn, TrivialSubtract) - _) -->
 	rl_block_opt__lookup_relation(Input1, Input1Node),
 	rl_block_opt__lookup_relation(Input2, Input2Node),
 	rl_block_opt__add_dag_node([Output], [Input1Node, Input2Node],
-		subtract(Input1Node, Input2Node, Type, Exprn), _).
+		subtract(Input1Node, Input2Node, Type, Exprn, TrivialSubtract),
+		_).
 
 rl_block_opt__build_dag(difference(Output, Input1, Input2, Type) - _) -->
 	rl_block_opt__lookup_relation(Input1, Input1Node),
@@ -507,7 +510,14 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 	dag_get_node_info_map(NodeInfoMap0),
 	{ NodeInfo0 = node_info(Instr, OutputRels0) },
 	dag_get_flags(Flags),
+	dag_get_rl_opt_info(RLInfo),
+	{ rl_opt_info_get_module_info(ModuleInfo, RLInfo, _) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals,
+		optimize_rl_index, OptimizeIndex) },
 	(
+		{ OptimizeIndex = yes },
+
 		% Look for a union and a difference which can be
 		% changed into a union_diff.
 		{ Instr = union(UnionInputLocs, _) },
@@ -1341,29 +1351,25 @@ rl_block_opt__get_ref_instrs(RelationId, OutputList, RefInstrs) :-
 	list(rl_instruction)::out, dag::in, dag::out) is det.		
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
-		join(Input1Loc, Input2Loc, JoinType, Exprn), [JoinInstr]) -->
-
-	{ rl__is_semi_join(JoinType, Exprn, SemiJoinInfo) },
-
-	dag_get_rl_opt_info(RLOptInfo),
-	{ rl_opt_info_get_module_info(ModuleInfo, RLOptInfo, _) },
-
-	{ rl__is_trivial_join(ModuleInfo, JoinType, Exprn, SemiJoinInfo,
-		TrivialJoinInfo) },
+		join(Input1Loc, Input2Loc, JoinType, Exprn,
+			SemiJoin, TrivialJoin),
+		[JoinInstr]) -->
 
 	rl_block_opt__get_relation_id(NodeRels, Input1Loc, Input1),
 	rl_block_opt__get_relation_id(NodeRels, Input2Loc, Input2),
 	{ rl_block_opt__one_output(NodeOutputs, Output) },
 	{ JoinInstr = join(Output, Input1, Input2, JoinType, Exprn,
-			SemiJoinInfo, TrivialJoinInfo) - "" }.
-
+			SemiJoin, TrivialJoin) - "" }.
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
-		subtract(Input1Loc, Input2Loc, Type, Exprn),
-		[subtract(Output, Input1, Input2, Type, Exprn) - ""]) -->
+		subtract(Input1Loc, Input2Loc, Type, Exprn, TrivialSubtract),
+		[SubtractInstr]) -->
+
 	rl_block_opt__get_relation_id(NodeRels, Input1Loc, Input1),
 	rl_block_opt__get_relation_id(NodeRels, Input2Loc, Input2),
-	{ rl_block_opt__one_output(NodeOutputs, Output) }.
+	{ rl_block_opt__one_output(NodeOutputs, Output) },
+	{ SubtractInstr = subtract(Output, Input1, Input2, Type,
+				Exprn, TrivialSubtract) - "" }.
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 		difference(Input1Loc, Input2Loc, Type),
@@ -1504,8 +1510,10 @@ rl_block_opt__one_output(Outputs, Output) :-
 
 	% Cut down versions of the relational operations without their outputs.
 :- type instr
-	--->	join(output_id, output_id, join_type, rl_goal)
-	;	subtract(output_id, output_id, subtract_type, rl_goal)
+	--->	join(output_id, output_id, join_type, rl_goal,
+			maybe(semi_join_info), maybe(trivial_join_info))
+	;	subtract(output_id, output_id, subtract_type, rl_goal,
+			maybe(trivial_subtract_info))
 	;	difference(output_id, output_id, difference_type)
 		% The first output of a project is distinguished -
 		% it can be a stream, the others must all be materialised.
