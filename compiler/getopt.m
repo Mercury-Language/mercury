@@ -108,6 +108,7 @@ process_options_2([Option | Args0], OptionTable0, Args, Result) :-
 
 :- pred process_short_option_list(list(character), list(string), option_table,
 		list(string), maybe_option_table).
+:- mode process_short_option_list(in, in, in, out, out) is det.
 
 process_short_option_list([], Args0, OptionsTable0, Args, Result) :-
 	process_options_2(Args0, OptionsTable0, Args, Result).
@@ -126,7 +127,7 @@ process_short_option_list([Opt | Opts], Args0, OptionsTable0, Args, Result) :-
 
 :- pred process_short_option(option, list(character), list(string),
 		option_table, list(string), maybe_option_table).
-:- mode process_short_option(in, in, in, in, out, out).
+:- mode process_short_option(in, in, in, in, out, out) is det.
 
 process_short_option(Flag, Opts, Args0, OptionTable0, Args, Result) :-
 	map__search(OptionTable0, Flag, Data),
@@ -135,8 +136,7 @@ process_short_option(Flag, Opts, Args0, OptionTable0, Args, Result) :-
 
 :- pred process_short_option_2(option_data, option, list(character),
 		list(string), option_table, list(string), maybe_option_table).
-:- mode process_short_option_2(in, in, in, in, in,
-			out, out).
+:- mode process_short_option_2(in, in, in, in, in, out, out) is det.
 
 process_short_option_2(bool(_), Flag, Opts, Args0, OptionTable0, Args,
 		Result) :-
@@ -158,7 +158,7 @@ process_short_option_2(accumulating(_), _Flag, _Opts, Args, _OptionTable0, Args,
 
 :- pred process_option(option, list(string), option_table,
 			list(string), maybe_option_table).
-:- mode process_option(in, in, in, out, out).
+:- mode process_option(in, in, in, out, out) is det.
 
 process_option(Flag, Args0, OptionTable0, Args, Result) :-
 	map__search(OptionTable0, Flag, Data),
@@ -166,7 +166,7 @@ process_option(Flag, Args0, OptionTable0, Args, Result) :-
 
 :- pred process_option_2(option_data, option, list(string), option_table,
 			list(string), maybe_option_table).
-:- mode process_option_2(in, in, in, in, out, out).
+:- mode process_option_2(in, in, in, in, out, out) is det.
 
 process_option_2(bool(_), Flag, Args0, OptionTable0, Args, Result) :-
 	map__set(OptionTable0, Flag, bool(yes), OptionTable1),
@@ -210,7 +210,7 @@ process_option_2(accumulating(List0), Flag, Args0, OptionTable0, Args, Result)
 
 :- pred process_negated_bool_option(option, list(string), option_table,
 			list(string), maybe_option_table).
-:- mode process_negated_bool_option(in, in, in, out, out).
+:- mode process_negated_bool_option(in, in, in, out, out) is det.
 
 process_negated_bool_option(Flag, Args0, OptionTable0, Args, Result) :-
 	map__search(OptionTable0, Flag, Data),
