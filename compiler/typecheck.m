@@ -590,7 +590,7 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 		typeinfo_get_predid(TypeInfo0, PredId),
 		typeinfo_get_varset(TypeInfo0, VarSet),
 		report_error_cons(PredId, C, VarSet, F, As, Type,
-					TypeAssignSet, IOState0, IOState),
+					TypeAssignSet0, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
