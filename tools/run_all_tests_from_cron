@@ -78,11 +78,12 @@ case "$BRANCH" in
         DAY=`date '+%e'`
         case $HOST in
 	    taifun|mundroo)
-	    	# For these hosts we only run 3 times a week.
-		# On Monday and Thursday, test the main branch.
-		# On Sunday, test the release branch.
+	    	# For these hosts we only run 3 times a week;
+		# twice during the week and once on the weekend.
+		# During the week, test the main branch.
+		# On the weekend, test the release branch.
 		case `date '+%w'` in
-			6)	BRANCH=$release_branch ;;
+			0|6)	BRANCH=$release_branch ;;
 			*)	BRANCH=latest ;;
 		esac
 		;;
