@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne.
+# Copyright (C) 1994-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -36,7 +36,8 @@ export MERCURY_LPSOLVE
 # all the options that describe the machine configuration.
 
 case $# in
-	0) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
+	0) exec $MC \
+		--c-include-directory "$C_INCL" \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
@@ -48,8 +49,10 @@ case $# in
 		$HAVE_DELAY_SLOT \
 		$HAVE_BOXED_FLOATS \
 		$DEFAULT_OPT_LEVEL \
+		-I "$INTDIR"
 		;;
-	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
+	*) exec $MC \
+		--c-include-directory "$C_INCL" \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
@@ -61,5 +64,7 @@ case $# in
 		$HAVE_DELAY_SLOT \
 		$HAVE_BOXED_FLOATS \
 		$DEFAULT_OPT_LEVEL \
-		"$@" ;;
+		"$@" \
+		-I "$INTDIR"
+		;;
 esac
