@@ -120,6 +120,24 @@ EOF
 	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
+# Let the user specify which C compiler to use.
+AC_ARG_WITH(cc,
+[  --with-cc=<program>     Specify which C compiler to use.],
+mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+case "$mercury_cv_with_cc" in
+	yes)	AC_MSG_ERROR(missing argument to --with-cc=... option)
+		exit 1
+		;;
+	no)	AC_MSG_ERROR(invalid option --without-cc)
+		exit 1
+		;;
+	"")
+		;;
+	*)
+		CC="$mercury_cv_with_cc"
+		;;
+esac
+#-----------------------------------------------------------------------------#
 #
 # Find the GCC source code
 # and determine whether or not to enable the GCC back-end interface.
@@ -183,6 +201,18 @@ ENABLE_GCC_BACK_END=$enable_gcc_back_end
 GCC_SRC_DIR=$gcc_src_dir
 AC_SUBST(ENABLE_GCC_BACK_END)
 AC_SUBST(GCC_SRC_DIR)
+#-----------------------------------------------------------------------------#
+#
+# Determine whether or not to enable the Aditi back-end.
+#
+AC_ARG_ENABLE(aditi-back-end,
+[  --disable-aditi-back-end
+                          disable the Mercury compiler's Aditi back-end],
+enable_aditi_back_end="$enableval",enable_aditi_back_end=yes)
+AC_MSG_CHECKING(whether to enable the Aditi back-end)
+AC_MSG_RESULT($enable_aditi_back_end)
+ENABLE_ADITI_BACK_END=$enable_aditi_back_end
+AC_SUBST(ENABLE_ADITI_BACK_END)
 #-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
@@ -300,7 +330,6 @@ CPPFLAGS="-I/usr/local/include $CPPFLAGS"
 LIBS="-L/usr/local/lib $LIBS"
 
 AC_PROG_CPP
-AC_C_CROSS
 AC_RETSIGTYPE
 #-----------------------------------------------------------------------------#
 # Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.

@@ -157,16 +157,22 @@ LIBRARY_INTERMODULE = yes
 # Do we want to include the support for compiling directly to assembler
 # using the GCC back-end in the compiler?
 # This requires that you have the source code for gcc in the
-# directory ../gcc.
+# directory specified by GCC_SRC_DIR (below).
+# This can be set using the `--enable-gcc-back-end' or `--disable-gcc-back-end'
+# options to configure; by default, configure will try to autoconfigure
+# it based on whether the gcc source is present.
 ENABLE_GCC_BACK_END = @ENABLE_GCC_BACK_END@
 
 # Specify the directory containing the GCC sources.
-# This should contain subdirectories `gcc', `libiberty', etc.,
+# This must be a relative path, not an absolute path.
+# The directory named should contain subdirectories `gcc', `libiberty', etc.,
 # and the `gcc' subdirectory should contain files `gcc.c',
 # `tree.c', `tree.h', etc.
 GCC_SRC_DIR = @GCC_SRC_DIR@
 
 # Do we want to include the support for Aditi compilation in the compiler?
+# This can be set using the `--enable-aditi-back-end' or
+# `--disable-aditi-back-end' options to configure.
 # It is not practical to include the code to output Aditi-RL in the alias
 # branch compiler - it currently takes more than an hour to compile
 # compiler/rl_code.m, due to performance problems compiling large disjunctions
@@ -177,7 +183,7 @@ GCC_SRC_DIR = @GCC_SRC_DIR@
 # `mmake depend' must be run in any compiler directories affected by
 # the changed value (tools/bootcheck will do this automatically for
 # the stage2 and stage3 directories). 
-INCLUDE_ADITI_OUTPUT = yes
+INCLUDE_ADITI_OUTPUT = @ENABLE_ADITI_BACK_END@
 
 #-----------------------------------------------------------------------------#
 
