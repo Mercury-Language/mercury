@@ -37,7 +37,7 @@
 :- mode parse_tree_to_hlds(in, in, out, out, out, di, uo) is det.
 
 :- pred create_atomic_unification(var, unify_rhs, term__context,
-			unify_main_context, unify_sub_contexts, hlds__goal).
+			unify_main_context, unify_sub_contexts, hlds_goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
 :- pred add_new_proc(pred_info, arity, list(mode), maybe(list(is_live)),
@@ -589,7 +589,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 			Cond, Context, Status, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-		{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
+		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 					Context, Status) },
 		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
 	->
@@ -597,7 +597,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 	;
 		{ Insts = Insts0 },
 		% If abstract insts are implemented, this will need to change
-		% to update the hlds__inst_defn to the non-abstract inst.
+		% to update the hlds_inst_defn to the non-abstract inst.
 		( { Status = opt_imported } ->
 			[]
 		;
@@ -605,7 +605,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 			%	 module_info_incr_errors
 			{ user_inst_table_get_inst_defns(Insts, InstDefns) },
 			{ map__lookup(InstDefns, Name - Arity, OrigI) },
-			{ OrigI = hlds__inst_defn(_, _, _, _,
+			{ OrigI = hlds_inst_defn(_, _, _, _,
 						OrigContext, _) },
 			multiple_def_error(Name, Arity, "inst",
 					Context, OrigContext)
@@ -632,7 +632,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body),
 			Cond, Context, Status, Modes) -->
 	{ list__length(Args, Arity) },
 	(
-		{ I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond,
+		{ I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Cond,
 			Context, Status) },
 		{ mode_table_insert(Modes0, Name - Arity, I, Modes1) }
 	->
@@ -644,7 +644,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body),
 		;
 			{ mode_table_get_mode_defns(Modes, ModeDefns) },
 			{ map__lookup(ModeDefns, Name - Arity, OrigI) },
-			{ OrigI = hlds__mode_defn(_, _, _, _,
+			{ OrigI = hlds_mode_defn(_, _, _, _,
 						OrigContext, _) },
 			% XXX we should record each error using
 			% 	module_info_incr_errors
@@ -653,7 +653,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body),
 		)
 	).
 
-:- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds__mode_body).
+:- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds_mode_body).
 :- mode mode_name_args(in, out, out, out) is det.
 
 mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
@@ -861,7 +861,7 @@ add_abstract_export(Module0, Type, TypeId, Module) :-
 	module_info_set_shape_info(Module0, Shape_Info, Module).
 
 :- pred add_special_preds(module_info, tvarset, type, type_id, 
-		hlds__type_body, term__context, import_status, module_info).
+		hlds_type_body, term__context, import_status, module_info).
 :- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
 
 add_special_preds(Module0, TVarSet, Type, TypeId,
@@ -876,7 +876,7 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 	).
 	
 :- pred convert_type_defn(type_defn, globals,
-			sym_name, list(type_param), hlds__type_body).
+			sym_name, list(type_param), hlds_type_body).
 :- mode convert_type_defn(in, in, out, out, out) is det.
 
 convert_type_defn(du_type(Name, Args, Body), Globals, Name, Args,
@@ -894,7 +894,7 @@ ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
 ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	{ make_cons_id(Name, Args, TypeId, ConsId) },
 	{ assoc_list__values(Args, Types) },
-	{ ConsDefn = hlds__cons_defn(Types, TypeId, Context) },
+	{ ConsDefn = hlds_cons_defn(Types, TypeId, Context) },
 	( %%% some [ConsDefns0]
 		{ map__search(Ctors0, ConsId, ConsDefns0) }
 	->
@@ -904,7 +904,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	),
 	(
 		{ list__member(OtherConsDefn, ConsDefns1) },
-		{ OtherConsDefn = hlds__cons_defn(_, TypeId, _) }
+		{ OtherConsDefn = hlds_cons_defn(_, TypeId, _) }
 	->
 		% XXX we should record each error using module_info_incr_errors
 		io__stderr_stream(StdErr),
@@ -1123,7 +1123,7 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred add_special_pred_list(list(special_pred_id),
-			module_info, tvarset, type, type_id, hlds__type_body,
+			module_info, tvarset, type, type_id, hlds_type_body,
 			term__context, import_status,
 			module_info).
 :- mode add_special_pred_list(in, in, in, in, in, in, in, in, out) is det.
@@ -1137,7 +1137,7 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
 		TVarSet, Type, TypeId, Body, Context, Status, Module).
 
 :- pred add_special_pred(special_pred_id,
-			module_info, tvarset, type, type_id, hlds__type_body,
+			module_info, tvarset, type, type_id, hlds_type_body,
 			term__context, import_status,
 			module_info).
 :- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
@@ -1838,7 +1838,7 @@ warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-:- pred maybe_warn_singletons(varset, pred_call_id, hlds__goal,
+:- pred maybe_warn_singletons(varset, pred_call_id, hlds_goal,
 				io__state, io__state).
 :- mode maybe_warn_singletons(in, in, in, di, uo) is det.
 
@@ -1851,7 +1851,7 @@ maybe_warn_singletons(VarSet, PredCallId, Body) -->
 		[]
 	).
 
-:- pred warn_singletons_in_goal(hlds__goal, set(var), varset, pred_call_id,
+:- pred warn_singletons_in_goal(hlds_goal, set(var), varset, pred_call_id,
 				io__state, io__state).
 :- mode warn_singletons_in_goal(in, in, in, in, di, uo) is det.
 
@@ -1859,7 +1859,7 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId) -->
 	warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet,
 		PredCallId).
 
-:- pred warn_singletons_in_goal_2(hlds__goal_expr, hlds__goal_info, set(var),
+:- pred warn_singletons_in_goal_2(hlds_goal_expr, hlds_goal_info, set(var),
 				varset, pred_call_id, io__state, io__state).
 :- mode warn_singletons_in_goal_2(in, in, in, in, in, di, uo) is det.
 
@@ -1885,7 +1885,7 @@ warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
 	% warn if any quantified variables occur only in the quantifier
 	%
 	( { Vars \= [] } ->
-		{ goal_vars(SubGoal, SubGoalVars) },
+		{ quantification__goal_vars(SubGoal, SubGoalVars) },
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
 		warn_singletons(Vars, EmptySet, SubGoalVars, VarSet, Context,
@@ -1903,8 +1903,8 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 	% or the "then" part of the if-then-else
 	%
 	( { Vars \= [] } ->
-		{ goal_vars(Cond, CondVars) },
-		{ goal_vars(Then, ThenVars) },
+		{ quantification__goal_vars(Cond, CondVars) },
+		{ quantification__goal_vars(Then, ThenVars) },
 		{ set__union(CondVars, ThenVars, CondThenVars) },
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
@@ -1944,7 +1944,7 @@ warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _),
 	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
 		PredCallId).
 
-:- pred warn_singletons_in_goal_list(list(hlds__goal), set(var), varset,
+:- pred warn_singletons_in_goal_list(list(hlds_goal), set(var), varset,
 				pred_call_id, io__state, io__state).
 :- mode warn_singletons_in_goal_list(in, in, in, in, di, uo) is det.
 
@@ -1963,7 +1963,7 @@ warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId) -->
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId).
 
-:- pred warn_singletons_in_unify(var, unify_rhs, hlds__goal_info, set(var),
+:- pred warn_singletons_in_unify(var, unify_rhs, hlds_goal_info, set(var),
 			varset, pred_call_id, io__state, io__state).
 :- mode warn_singletons_in_unify(in, in, in, in, in, in, di, uo) is det.
 
@@ -2235,7 +2235,7 @@ clauses_info_init(Arity, ClausesInfo) :-
 
 :- pred clauses_info_add_clause(clauses_info::in, pred_id::in, 
 		list(proc_id)::in, varset::in, tvarset::in, list(term)::in,
-		goal::in, term__context::in, hlds__goal::out, varset::out,
+		goal::in, term__context::in, hlds_goal::out, varset::out,
 		tvarset::out, clauses_info::out, list(quant_warning)::out,
 		qual_info::in, qual_info::out,
 		io__state::di, io__state::uo) is det.
@@ -2261,11 +2261,11 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % Add the pragma_c_code goal to the clauses_info for this procedure.
 % To do so, we must also insert unifications between the variables in the
 % pragma c_code declaration and the head vars of the pred. Also return the
-% hlds__goal.
+% hlds_goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, may_call_mercury,
 	pred_id, proc_id, varset, list(pragma_var), string, term__context,
-	maybe(pair(list(string))), clauses_info, hlds__goal,
+	maybe(pair(list(string))), clauses_info, hlds_goal,
 	qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in,
 	out, out, in, out, di, uo) is det.
@@ -2326,7 +2326,7 @@ allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
 %-----------------------------------------------------------------------------
 
 :- pred transform(substitution, list(var), list(term), goal, varset,
-			term__context, hlds__goal, varset, list(quant_warning),
+			term__context, hlds_goal, varset, list(quant_warning),
 			qual_info, qual_info, io__state, io__state).
 :- mode transform(in, in, in, in, in, in, out, out, out,
 			in, out, di, uo) is det.
@@ -2344,14 +2344,14 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
 %-----------------------------------------------------------------------------%
 
 	% Convert goals from the prog_data `goal' structure into the
-	% hlds `hlds__goal' structure.  At the same time, convert
+	% hlds `hlds_goal' structure.  At the same time, convert
 	% it to super-homogeneous form by unravelling all the complex
 	% unifications, and annotate those unifications with a unify_context
 	% so that we can still give good error messages.
 	% And also at the same time, apply the given substitution to
 	% the goal, to rename it apart from the other clauses.
 
-:- pred transform_goal(goal, varset, substitution, hlds__goal, varset,
+:- pred transform_goal(goal, varset, substitution, hlds_goal, varset,
 			qual_info, qual_info, io__state, io__state).
 :- mode transform_goal(in, in, in, out, out, in, out, di, uo) is det.
 
@@ -2362,7 +2362,7 @@ transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet,
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo1) }.
 
 :- pred transform_goal_2(goal_expr, term__context, varset, substitution,
-		hlds__goal, varset, qual_info, qual_info, io__state, io__state).
+		hlds_goal, varset, qual_info, qual_info, io__state, io__state).
 :- mode transform_goal_2(in, in, in, in, out, out, in, out, di, uo) is det.
 
 transform_goal_2(fail, _, VarSet, _, disj([], Empty) - GoalInfo, VarSet,
@@ -2511,7 +2511,7 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 		).
 
 :- pred insert_arg_unifications(list(var), list(term),
-		term__context, arg_context, hlds__goal, varset, hlds__goal,
+		term__context, arg_context, hlds_goal, varset, hlds_goal,
 		varset, qual_info, qual_info, io__state, io__state).
 :- mode insert_arg_unifications(in, in, in, in, in, in, out, out,
 		in, out, di, uo) is det.
@@ -2531,8 +2531,8 @@ insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 	).
 
 :- pred insert_arg_unifications_2(list(var), list(term),
-		term__context, arg_context, int, list(hlds__goal), varset,
-		list(hlds__goal), varset, qual_info, qual_info,
+		term__context, arg_context, int, list(hlds_goal), varset,
+		list(hlds_goal), varset, qual_info, qual_info,
 		io__state, io__state).
 :- mode insert_arg_unifications_2(in, in, in, in, in, in, in, out,
 		out, in, out, di, uo) is det.
@@ -2569,7 +2569,7 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 	% than before the goal.
 
 :- pred append_arg_unifications(list(var), list(term),
-		term__context, arg_context, hlds__goal, varset, hlds__goal,
+		term__context, arg_context, hlds_goal, varset, hlds_goal,
 		varset, qual_info, qual_info, io__state, io__state).
 :- mode append_arg_unifications(in, in, in, in, in, in,
 		out, out, in, out, di, uo) is det.
@@ -2589,8 +2589,8 @@ append_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 	).
 
 :- pred append_arg_unifications_2(list(var), list(term),
-	term__context, arg_context, int, list(hlds__goal), varset,
-	list(hlds__goal), varset, qual_info, qual_info, io__state, io__state).
+	term__context, arg_context, int, list(hlds_goal), varset,
+	list(hlds_goal), varset, qual_info, qual_info, io__state, io__state).
 :- mode append_arg_unifications_2(in, in, in, in, in, in, in,
 	out, out, in, out, di, uo) is det.
 
@@ -2668,7 +2668,7 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 %-----------------------------------------------------------------------------%
 
 :- pred unravel_unification(term, term, term__context,
-		unify_main_context, unify_sub_contexts, varset, hlds__goal,
+		unify_main_context, unify_sub_contexts, varset, hlds_goal,
 		varset, qual_info, qual_info, io__state, io__state).
 :- mode unravel_unification(in, in, in, in, in, in, out, out,
 		in, out, di, uo) is det.
@@ -2874,7 +2874,7 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	{ list__append(ConjList0, ConjList1, ConjList) },
 	{ conj_list_to_goal(ConjList, GoalInfo, Goal) }.
 
-	% create the hlds__goal for a unification which cannot be
+	% create the hlds_goal for a unification which cannot be
 	% further simplified, filling in all the as yet
 	% unknown slots with dummy values
 
@@ -2994,8 +2994,8 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 % 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
 %	append Conj0, and return the result in Conj.
 
-:- pred get_conj(goal, substitution, list(hlds__goal), varset,
-	list(hlds__goal), varset, qual_info, qual_info, io__state, io__state).
+:- pred get_conj(goal, substitution, list(hlds_goal), varset,
+	list(hlds_goal), varset, qual_info, qual_info, io__state, io__state).
 :- mode get_conj(in, in, in, in, out, out, in, out, di, uo) is det.
 
 get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet, Info0, Info) -->
@@ -3016,8 +3016,8 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet, Info0, Info) -->
 % 	Goal is a tree of disjuncts.  Flatten it into a list (applying Subst)
 %	append Disj0, and return the result in Disj.
 
-:- pred get_disj(goal, substitution, list(hlds__goal), varset,
-	list(hlds__goal), varset, qual_info, qual_info, io__state, io__state).
+:- pred get_disj(goal, substitution, list(hlds_goal), varset,
+	list(hlds_goal), varset, qual_info, qual_info, io__state, io__state).
 :- mode get_disj(in, in, in, in, out, out, in, out, di, uo) is det.
 
 get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet, Info0, Info) -->

@@ -43,14 +43,14 @@
 :- import_module bool, list, map, set, std_util, assoc_list, string.
 :- import_module varset, term, require.
 
-:- type constraint == hlds__goal.
+:- type constraint == hlds_goal.
 
 %-----------------------------------------------------------------------------%
 
 constraint_propagation(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
 	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
-	{ hlds__dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
+	{ hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
 	constraint_propagation2(DepOrd, ModuleInfo1, ModuleInfo).
 
 :- pred constraint_propagation2(dependency_ordering, module_info, module_info,
@@ -115,7 +115,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_goal(hlds__goal, hlds__goal,
+:- pred constraint__propagate_goal(hlds_goal, hlds_goal,
 					mode_info, mode_info).
 :- mode constraint__propagate_goal(in, out,
 					mode_info_di, mode_info_uo) is det.
@@ -130,7 +130,7 @@ constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_goal_2(hlds__goal_expr, hlds__goal_expr,
+:- pred constraint__propagate_goal_2(hlds_goal_expr, hlds_goal_expr,
 				mode_info, mode_info).
 :- mode constraint__propagate_goal_2(in, out,
 					mode_info_di, mode_info_uo) is det.
@@ -196,7 +196,7 @@ constraint__propagate_goal_2(
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__propagate_disj(list(hlds__goal), list(hlds__goal),
+:- pred constraint__propagate_disj(list(hlds_goal), list(hlds_goal),
 				mode_info, mode_info).
 :- mode constraint__propagate_disj(in, out,
 				mode_info_di, mode_info_uo) is det.
@@ -229,7 +229,7 @@ constraint__propagate_cases([case(Cons, Goal0)|Goals0],
 	% a conjunction and moves them to as early as possible
 	% in the list.
 
-:- pred constraint__propagate_conj(list(hlds__goal), list(hlds__goal),
+:- pred constraint__propagate_conj(list(hlds_goal), list(hlds_goal),
 				mode_info, mode_info).
 :- mode constraint__propagate_conj(in, out,
 				mode_info_di, mode_info_uo) is det.
@@ -259,7 +259,7 @@ constraint__propagate_conj(Goals0, Goals) -->
 	    { error("constraint__propagate_conj") }
 	).
 
-:- pred constraint__find_constraints(list(hlds__goal), list(hlds__goal),
+:- pred constraint__find_constraints(list(hlds_goal), list(hlds_goal),
 				list(constraint), mode_info, mode_info).
 :- mode constraint__find_constraints(in, out, out,
 				mode_info_di, mode_info_uo) is det.
@@ -286,14 +286,14 @@ constraint__find_constraints([Goal0 | Goals0], Goals, Constraints) -->
 	    )
 	).
 
-%:- pred constraint__distribute_constraints(list(constraint), list(hlds__goal),
-%			list(hlds__goal), mode_info, mode_info).
+%:- pred constraint__distribute_constraints(list(constraint), list(hlds_goal),
+%			list(hlds_goal), mode_info, mode_info).
 %:- mode constraint__distribute_constraints(in, in, out,
 %			mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__is_constraint(hlds__goal_info, mode_info).
+:- pred constraint__is_constraint(hlds_goal_info, mode_info).
 :- mode constraint__is_constraint(in, mode_info_ui) is semidet.
 
 constraint__is_constraint(GoalInfo, ModeInfo) :-
@@ -301,7 +301,7 @@ constraint__is_constraint(GoalInfo, ModeInfo) :-
 	constraint__determinism(Det),
 	constraint__no_output_vars(GoalInfo, ModeInfo).
 
-:- pred constraint__no_output_vars(hlds__goal_info, mode_info).
+:- pred constraint__no_output_vars(hlds_goal_info, mode_info).
 :- mode constraint__no_output_vars(in, mode_info_ui) is semidet.
 
 constraint__no_output_vars(GoalInfo, ModeInfo) :-
@@ -332,7 +332,7 @@ mode_info_write_string(Msg, ModeInfo0, ModeInfo) :-
 	io__write_string(Msg, IOState0, IOState),
 	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
 
-:- pred mode_info_write_goal(hlds__goal, int, mode_info, mode_info).
+:- pred mode_info_write_goal(hlds_goal, int, mode_info, mode_info).
 :- mode mode_info_write_goal(in, in, mode_info_di, mode_info_uo) is det.
 
 mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-

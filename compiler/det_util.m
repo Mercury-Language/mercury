@@ -27,7 +27,7 @@
 	% Given a goal and an initial instmap, compute the final instmap that
 	% results from the initial instmap after execution of the goal.
 
-:- pred update_instmap(hlds__goal, instmap, instmap).
+:- pred update_instmap(hlds_goal, instmap, instmap).
 :- mode update_instmap(in, in, out) is det.
 
 	% Given a list of cases, and a list of the possible cons_ids
@@ -54,7 +54,7 @@
 :- pred det_get_proc_info(det_info, proc_info).
 :- mode det_get_proc_info(in, out) is det.
 
-:- pred det_lookup_var_type(module_info, proc_info, var, hlds__type_defn).
+:- pred det_lookup_var_type(module_info, proc_info, var, hlds_type_defn).
 :- mode det_lookup_var_type(in, in, in, out) is semidet.
 
 :- pred det_no_output_vars(set(var), instmap, instmap_delta, det_info).

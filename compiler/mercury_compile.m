@@ -142,8 +142,7 @@ process_module_2(ModuleName) -->
 	maybe_write_string(Verbose, "% Parsing `"),
 	maybe_write_string(Verbose, ModuleName),
 	maybe_write_string(Verbose, ".m' and imported interfaces...\n"),
-	io__gc_call(read_mod(ModuleName, ".m", "Reading module", yes,
-			Items0, Error)),
+	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error),
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
 
@@ -1518,7 +1517,7 @@ mercury_compile__gen_hlds(DumpFile, HLDS) -->
 	maybe_flush_output(Verbose),
 	io__tell(DumpFile, Res),
 	( { Res = ok } ->
-		io__gc_call(mercury_to_c__gen_hlds(0, HLDS)),
+		mercury_to_c__gen_hlds(0, HLDS),
 		io__told,
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
@@ -1882,7 +1881,7 @@ mercury_compile__dump_hlds(DumpFile, HLDS) -->
 	maybe_flush_output(Verbose),
 	io__tell(DumpFile, Res),
 	( { Res = ok } ->
-		io__gc_call(hlds_out__write_hlds(0, HLDS)),
+		hlds_out__write_hlds(0, HLDS),
 		io__told,
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)

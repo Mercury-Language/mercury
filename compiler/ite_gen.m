@@ -23,15 +23,15 @@
 
 :- import_module hlds_goal, llds, code_info.
 
-:- pred ite_gen__generate_det_ite(hlds__goal, hlds__goal, hlds__goal,
+:- pred ite_gen__generate_det_ite(hlds_goal, hlds_goal, hlds_goal,
 	store_map, code_tree, code_info, code_info).
 :- mode ite_gen__generate_det_ite(in, in, in, in, out, in, out) is det.
 
-:- pred ite_gen__generate_semidet_ite(hlds__goal, hlds__goal, hlds__goal,
+:- pred ite_gen__generate_semidet_ite(hlds_goal, hlds_goal, hlds_goal,
 	store_map, code_tree, code_info, code_info).
 :- mode ite_gen__generate_semidet_ite(in, in, in, in, out, in, out) is det.
 
-:- pred ite_gen__generate_nondet_ite(hlds__goal, hlds__goal, hlds__goal,
+:- pred ite_gen__generate_nondet_ite(hlds_goal, hlds_goal, hlds_goal,
 	store_map, code_tree, code_info, code_info).
 :- mode ite_gen__generate_nondet_ite(in, in, in, in, out, in, out) is det.
 
@@ -52,7 +52,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred ite_gen__generate_basic_ite(hlds__goal, hlds__goal, hlds__goal,
+:- pred ite_gen__generate_basic_ite(hlds_goal, hlds_goal, hlds_goal,
 	store_map, code_model, code_tree, code_info, code_info).
 :- mode ite_gen__generate_basic_ite(in, in, in, in, in, out, in, out) is det.
 

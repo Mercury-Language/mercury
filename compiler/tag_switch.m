@@ -33,8 +33,8 @@
 :- type stag_loc	--->	none ; local ; remote.
 
 % map secondary tag values (-1 stands for none) to their goal
-:- type tag_goal_map	==	map(int, hlds__goal).
-:- type tag_goal_list	==	assoc_list(int, hlds__goal).
+:- type tag_goal_map	==	map(int, hlds_goal).
+:- type tag_goal_list	==	assoc_list(int, hlds_goal).
 
 % map primary tag values to the set of their goals
 :- type tag_case_map	==	map(tag_bits, pair(stag_loc, tag_goal_map)).

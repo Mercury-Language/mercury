@@ -41,7 +41,7 @@
 :- mode unique_modes__check_proc(in, in, in, out, di, uo) is det.
 
 	% just check a single goal
-:- pred unique_modes__check_goal(hlds__goal, hlds__goal, mode_info, mode_info).
+:- pred unique_modes__check_goal(hlds_goal, hlds_goal, mode_info, mode_info).
 :- mode unique_modes__check_goal(in, out, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -371,8 +371,8 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		ModeInfo = ModeInfo0
 	).
 
-:- pred unique_modes__check_goal_2(hlds__goal_expr, hlds__goal_info,
-		hlds__goal_expr, mode_info, mode_info).
+:- pred unique_modes__check_goal_2(hlds_goal_expr, hlds_goal_info,
+		hlds_goal_expr, mode_info, mode_info).
 :- mode unique_modes__check_goal_2(in, in, out, mode_info_di, mode_info_uo)
 		is det.
 
@@ -634,7 +634,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel, NeverSucceeds,
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__check_conj(list(hlds__goal), list(hlds__goal),
+:- pred unique_modes__check_conj(list(hlds_goal), list(hlds_goal),
 		mode_info, mode_info).
 :- mode unique_modes__check_conj(in, out, mode_info_di, mode_info_uo) is det.
 
@@ -654,7 +654,7 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 	% the original instmap before processing the next one.
 	% Collect up a list of the resulting instmaps.
 
-:- pred unique_modes__check_disj(list(hlds__goal), list(hlds__goal),
+:- pred unique_modes__check_disj(list(hlds_goal), list(hlds_goal),
 		list(instmap), mode_info, mode_info).
 :- mode unique_modes__check_disj(in, out, out, mode_info_di, mode_info_uo)
 		is det.
@@ -697,7 +697,7 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__goal_get_nonlocals(hlds__goal, set(var)).
+:- pred unique_modes__goal_get_nonlocals(hlds_goal, set(var)).
 :- mode unique_modes__goal_get_nonlocals(in, out) is det.
 
 unique_modes__goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-

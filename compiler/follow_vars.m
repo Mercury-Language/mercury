@@ -34,8 +34,8 @@
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
 
-:- pred find_follow_vars_in_goal(hlds__goal, args_method, module_info,
-				follow_vars, hlds__goal, follow_vars).
+:- pred find_follow_vars_in_goal(hlds_goal, args_method, module_info,
+				follow_vars, hlds_goal, follow_vars).
 :- mode find_follow_vars_in_goal(in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -86,8 +86,8 @@ find_follow_vars_in_goal(Goal0 - GoalInfo, ArgsMethod, ModuleInfo, FollowVars0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_follow_vars_in_goal_2(hlds__goal_expr, args_method, module_info,
-		follow_vars, hlds__goal_expr, follow_vars).
+:- pred find_follow_vars_in_goal_2(hlds_goal_expr, args_method, module_info,
+		follow_vars, hlds_goal_expr, follow_vars).
 :- mode find_follow_vars_in_goal_2(in, in, in, in, out, out) is det.
 
 find_follow_vars_in_goal_2(conj(Goals0), ArgsMethod, ModuleInfo, FollowVars0,
@@ -261,8 +261,8 @@ find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 	% model_det and model_semi disjunctions, they will never be
 	% entered at all.)
 
-:- pred find_follow_vars_in_disj(list(hlds__goal), args_method, module_info,
-				follow_vars, list(hlds__goal), follow_vars).
+:- pred find_follow_vars_in_disj(list(hlds_goal), args_method, module_info,
+				follow_vars, list(hlds_goal), follow_vars).
 :- mode find_follow_vars_in_disj(in, in, in, in, out, out) is det.
 
 find_follow_vars_in_disj([], _ArgsMethod, _ModuleInfo, FollowVars,
@@ -307,8 +307,8 @@ find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], ArgsMethod, ModuleInfo,
 	% We attach the follow_vars to each goal that follows a goal
 	% that is not cachable by the code generator.
 
-:- pred find_follow_vars_in_conj(list(hlds__goal), args_method, module_info,
-			follow_vars, bool, list(hlds__goal), follow_vars).
+:- pred find_follow_vars_in_conj(list(hlds_goal), args_method, module_info,
+			follow_vars, bool, list(hlds_goal), follow_vars).
 :- mode find_follow_vars_in_conj(in, in, in, in, in, out, out) is det.
 
 find_follow_vars_in_conj([], _ArgsMethod, _ModuleInfo, FollowVars,

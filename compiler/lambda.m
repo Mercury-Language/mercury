@@ -42,7 +42,7 @@
 :- mode lambda__process_pred(in, in, out) is det.
 
 :- pred lambda__transform_lambda(pred_or_func, list(var), list(mode), 
-		determinism, set(var), hlds__goal, unification,
+		determinism, set(var), hlds_goal, unification,
 		varset, map(var, type), tvarset, map(tvar, var), module_info,
 		unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
@@ -130,15 +130,15 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
-:- pred lambda__process_goal(hlds__goal, hlds__goal,
+:- pred lambda__process_goal(hlds_goal, hlds_goal,
 					lambda_info, lambda_info).
 :- mode lambda__process_goal(in, out, in, out) is det.
 
 lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 	lambda__process_goal_2(Goal0, GoalInfo0, Goal).
 
-:- pred lambda__process_goal_2(hlds__goal_expr, hlds__goal_info,
-					hlds__goal, lambda_info, lambda_info).
+:- pred lambda__process_goal_2(hlds_goal_expr, hlds_goal_info,
+					hlds_goal, lambda_info, lambda_info).
 :- mode lambda__process_goal_2(in, in, out, in, out) is det.
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
@@ -186,7 +186,7 @@ lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F,G), GoalInfo,
 			pragma_c_code(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
 
-:- pred lambda__process_goal_list(list(hlds__goal), list(hlds__goal),
+:- pred lambda__process_goal_list(list(hlds_goal), list(hlds_goal),
 					lambda_info, lambda_info).
 :- mode lambda__process_goal_list(in, out, in, out) is det.
 
@@ -206,7 +206,7 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_cases(Cases0, Cases).
 
 :- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
-		set(var), hlds__goal, unification, unify_rhs, unification,
+		set(var), hlds_goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.

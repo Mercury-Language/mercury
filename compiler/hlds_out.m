@@ -117,7 +117,7 @@
 
 	% print out an hlds goal.
 
-:- pred hlds_out__write_goal(hlds__goal, module_info, varset, bool, int, string,
+:- pred hlds_out__write_goal(hlds_goal, module_info, varset, bool, int, string,
 	io__state, io__state).
 :- mode hlds_out__write_goal(in, in, in, in, in, in, di, uo) is det.
 
@@ -610,7 +610,7 @@ hlds_out__write_goal(Goal, ModuleInfo, VarSet, AppendVarnums,
 
 	% TypeQual is yes(TVarset, VarTypes) if all constructors should
 	% be module qualified.
-:- pred hlds_out__write_goal_a(hlds__goal, module_info, varset, bool, int,
+:- pred hlds_out__write_goal_a(hlds_goal, module_info, varset, bool, int,
 	string, vartypes, io__state, io__state).
 :- mode hlds_out__write_goal_a(in, in, in, in, in, in, in, di, uo) is det.
 
@@ -789,7 +789,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		[]
 	).
 
-:- pred hlds_out__write_goal_2(hlds__goal_expr, module_info, varset, bool,
+:- pred hlds_out__write_goal_2(hlds_goal_expr, module_info, varset, bool,
 	int, string, vartypes, io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, in, in, in, di, uo) is det.
 
@@ -1292,7 +1292,7 @@ hlds_out__write_var_mode(Var, Mode, VarSet, AppendVarnums) -->
 	io__write_string("::"),
 	mercury_output_mode(Mode, VarSet).
 
-:- pred hlds_out__write_conj(hlds__goal, list(hlds__goal), module_info, varset,
+:- pred hlds_out__write_conj(hlds_goal, list(hlds_goal), module_info, varset,
 	bool, int, string, string, vartypes, io__state, io__state).
 :- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, in, di, uo) is det.
 
@@ -1322,7 +1322,7 @@ hlds_out__write_conj(Goal1, Goals1, ModuleInfo, VarSet, AppendVarnums,
 			AppendVarnums, Indent, Follow, TypeQual)
 	).
 
-:- pred hlds_out__write_disj(list(hlds__goal), module_info, varset, bool, int,
+:- pred hlds_out__write_disj(list(hlds_goal), module_info, varset, bool, int,
 	vartypes, io__state, io__state).
 :- mode hlds_out__write_disj(in, in, in, in, in, in, di, uo) is det.
 
@@ -1523,7 +1523,7 @@ hlds_out__write_types(Indent, TypeTable) -->
 	{ map__to_assoc_list(TypeTable, TypeAL) },
 	hlds_out__write_types_2(Indent, TypeAL).
 
-:- pred hlds_out__write_types_2(int, assoc_list(type_id, hlds__type_defn),
+:- pred hlds_out__write_types_2(int, assoc_list(type_id, hlds_type_defn),
 	io__state, io__state).
 :- mode hlds_out__write_types_2(in, in, di, uo) is det.
 
@@ -1598,7 +1598,7 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 	term_io__write_term(Tvarset, P),
 	hlds_out__write_type_params_2(Tvarset, Ps).
 
-:- pred hlds_out__write_type_body(int, tvarset, hlds__type_body,
+:- pred hlds_out__write_type_body(int, tvarset, hlds_type_body,
 	io__state, io__state).
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 

@@ -22,15 +22,15 @@
 
 :- import_module hlds_goal, llds, code_info.
 
-:- pred disj_gen__generate_det_disj(list(hlds__goal), store_map,
+:- pred disj_gen__generate_det_disj(list(hlds_goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_det_disj(in, in, out, in, out) is det.
 
-:- pred disj_gen__generate_semi_disj(list(hlds__goal), store_map,
+:- pred disj_gen__generate_semi_disj(list(hlds_goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_disj(in, in, out, in, out) is det.
 
-:- pred disj_gen__generate_non_disj(list(hlds__goal), store_map,
+:- pred disj_gen__generate_non_disj(list(hlds_goal), store_map,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_non_disj(in, in, out, in, out) is det.
 
@@ -55,7 +55,7 @@ disj_gen__generate_semi_disj(Goals, StoreMap, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_pruned_disj(list(hlds__goal), store_map,
+:- pred disj_gen__generate_pruned_disj(list(hlds_goal), store_map,
 	code_tree, code_info, code_info).
 :- mode disj_gen__generate_pruned_disj(in, in, out, in, out) is det.
 
@@ -87,7 +87,7 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_pruned_disjuncts(list(hlds__goal), store_map,
+:- pred disj_gen__generate_pruned_disjuncts(list(hlds_goal), store_map,
 	label, bool, bool, maybe(lval), maybe(lval), bool, code_tree,
 	code_info, code_info).
 :- mode disj_gen__generate_pruned_disjuncts(in, in, in, in, in, in, in, in,
@@ -263,7 +263,7 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 
 	% XXX We ought not to restore anything in the first disjunct.
 
-:- pred disj_gen__generate_non_disjuncts(list(hlds__goal), store_map, label,
+:- pred disj_gen__generate_non_disjuncts(list(hlds_goal), store_map, label,
 	bool, maybe(lval), maybe(lval), bool, code_tree, code_info, code_info).
 :- mode disj_gen__generate_non_disjuncts(in, in, in, in, in, in, in,
 	out, in, out) is det.

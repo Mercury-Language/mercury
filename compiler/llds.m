@@ -74,11 +74,11 @@
 	--->	c_procedure(
 			string,			% predicate name
 			int,			% arity
-			llds__proc_id,		% mode number
+			llds_proc_id,		% mode number
 			list(instruction)	% the code for this procedure
 		).
 
-:- type llds__proc_id	==	int.
+:- type llds_proc_id	==	int.
 
 	% the code for `pragma export' is generated directly as strings
 	% by export.m.

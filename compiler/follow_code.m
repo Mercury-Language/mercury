@@ -21,8 +21,8 @@
 :- mode move_follow_code_in_proc(in, out, in, out) is det.
 
 	% Split a list of goals into the prefix of builtins and the rest.
-:- pred move_follow_code_select(list(hlds__goal), list(hlds__goal),
-	list(hlds__goal)).
+:- pred move_follow_code_select(list(hlds_goal), list(hlds_goal),
+	list(hlds_goal)).
 :- mode move_follow_code_select(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -72,7 +72,7 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_goal(hlds__goal, hlds__goal, pair(bool),
+:- pred move_follow_code_in_goal(hlds_goal, hlds_goal, pair(bool),
 	bool, bool).
 :- mode move_follow_code_in_goal(in, out, in, in, out) is det.
 
@@ -81,7 +81,7 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, R0, R) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_goal_2(hlds__goal_expr, hlds__goal_expr,
+:- pred move_follow_code_in_goal_2(hlds_goal_expr, hlds_goal_expr,
 	pair(bool), bool, bool).
 :- mode move_follow_code_in_goal_2(in, out, in, in, out) is det.
 
@@ -119,7 +119,7 @@ move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G),
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_disj(list(hlds__goal), list(hlds__goal),
+:- pred move_follow_code_in_disj(list(hlds_goal), list(hlds_goal),
 	pair(bool), bool, bool).
 :- mode move_follow_code_in_disj(in, out, in, in, out) is det.
 
@@ -142,7 +142,7 @@ move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_conj(list(hlds__goal), list(hlds__goal),
+:- pred move_follow_code_in_conj(list(hlds_goal), list(hlds_goal),
 	pair(bool), bool, bool).
 :- mode move_follow_code_in_conj(in, out, in, in, out) is det.
 
@@ -153,8 +153,8 @@ move_follow_code_in_conj(Goals0, Goals, Flags, R0, R) :-
 	move_follow_code_in_conj_2(Goals0, [], RevGoals, Flags, R0, R),
 	list__reverse(RevGoals, Goals).
 
-:- pred move_follow_code_in_conj_2(list(hlds__goal), list(hlds__goal),
-	list(hlds__goal), pair(bool), bool, bool).
+:- pred move_follow_code_in_conj_2(list(hlds_goal), list(hlds_goal),
+	list(hlds_goal), pair(bool), bool, bool).
 :- mode move_follow_code_in_conj_2(in, in, out, in, in, out) is det.
 
 move_follow_code_in_conj_2([], RevPrevGoals, RevPrevGoals, _, R, R).
@@ -209,7 +209,7 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_move_goals(hlds__goal, list(hlds__goal), hlds__goal).
+:- pred move_follow_code_move_goals(hlds_goal, list(hlds_goal), hlds_goal).
 :- mode move_follow_code_move_goals(in, in, out) is semidet.
 
 move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
@@ -232,7 +232,7 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_move_goals_cases(list(case), list(hlds__goal),
+:- pred move_follow_code_move_goals_cases(list(case), list(hlds_goal),
 	list(case)).
 :- mode move_follow_code_move_goals_cases(in, in, out) is semidet.
 
@@ -245,8 +245,8 @@ move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_move_goals_disj(list(hlds__goal), list(hlds__goal),
-	list(hlds__goal)).
+:- pred move_follow_code_move_goals_disj(list(hlds_goal), list(hlds_goal),
+	list(hlds_goal)).
 :- mode move_follow_code_move_goals_disj(in, in, out) is semidet.
 
 move_follow_code_move_goals_disj([], _FollowGoals, []).
@@ -260,8 +260,8 @@ move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
 	% (with a potentially blank goal_info), checking that the
 	% determinism of the goal is not changed.
 
-:- pred follow_code__conjoin_goal_and_goal_list(hlds__goal, list(hlds__goal),
-	hlds__goal).
+:- pred follow_code__conjoin_goal_and_goal_list(hlds_goal, list(hlds_goal),
+	hlds_goal).
 :- mode follow_code__conjoin_goal_and_goal_list(in, in, out) is semidet.
 
 follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
@@ -284,7 +284,7 @@ follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 	% This check is necessary to make sure that follow_code
 	% doesn't change the determinism of the goal.
 
-:- pred check_follow_code_detism(list(hlds__goal), can_fail, soln_count).
+:- pred check_follow_code_detism(list(hlds_goal), can_fail, soln_count).
 :- mode check_follow_code_detism(in, in, in) is semidet.
 
 check_follow_code_detism([], _, _).
@@ -297,7 +297,7 @@ check_follow_code_detism([_ - GoalInfo | Goals], CanFail0, MaxSolns0) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_is_builtin(hlds__goal).
+:- pred move_follow_code_is_builtin(hlds_goal).
 :- mode move_follow_code_is_builtin(in) is semidet.
 
 move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
@@ -308,8 +308,8 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred move_prev_code(hlds__goal, hlds__goal, set(var),
-	list(hlds__goal), list(hlds__goal), bool, bool).
+:- pred move_prev_code(hlds_goal, hlds_goal, set(var),
+	list(hlds_goal), list(hlds_goal), bool, bool).
 % :- mode move_prev_code(di, uo, in, di, uo, in, out) is det.
 :- mode move_prev_code(in, out, in, in, out, in, out) is det.
 
@@ -342,11 +342,11 @@ move_prev_code(Goal, Goal, _, RevPrevGoals, RevPrevGoals, R, R).
 % 		RevPrevGoals = [Goal0 | RevPrevGoals0]
 % 	).
 % 
-% :- pred move_prev_code_breakup_branched(hlds__goal, hlds__goal, hlds__goal,
-% 	hlds__goal).
+% :- pred move_prev_code_breakup_branched(hlds_goal, hlds_goal, hlds_goal,
+% 	hlds_goal).
 % :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
 
-:- pred move_prev_code_forbidden_vars(list(hlds__goal), set(var)).
+:- pred move_prev_code_forbidden_vars(list(hlds_goal), set(var)).
 :- mode move_prev_code_forbidden_vars(in, out) is det.
 
 move_prev_code_forbidden_vars([], Empty) :-
@@ -357,11 +357,11 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 	set__union(Varset0, NonLocals, Varset).
 
 % 
-% :- pred move_prev_code_new_forbidden_vars(hlds__goal, hlds__goal,
+% :- pred move_prev_code_new_forbidden_vars(hlds_goal, hlds_goal,
 % 	set(var), set(var)).
 % :- mode move_prev_code_new_forbidden_vars(in, in, in, out) is det.
 % 
-% :- pred move_prev_code_vars_difference(hlds__goal, hlds__goal, hlds__goal,
+% :- pred move_prev_code_vars_difference(hlds_goal, hlds_goal, hlds_goal,
 % 	set(var), set(var)).
 % :- mode move_prev_code_vars_difference(in, in, in, in, out) is det.
 % 
@@ -376,10 +376,10 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 % 	set__difference(ThisBranchVars, RestVars, LocalVars0),
 % 	set__difference(LocalVars0, ForbiddenVars, LocalVars).
 % 
-% :- pred move_prev_code_can_pull_producer(set(var), list(hlds__goal),
-% 	list(hlds__goal), list(hlds__goal)).
+% :- pred move_prev_code_can_pull_producer(set(var), list(hlds_goal),
+% 	list(hlds_goal), list(hlds_goal)).
 % :- mode move_prev_code_can_pull_producer(in, in, di, uo) is det.
 % 
-% :- pred move_prev_code_replace_first(hlds__goal,
-% 	list(hlds__goal), list(hlds__goal), hlds__goal).
+% :- pred move_prev_code_replace_first(hlds_goal,
+% 	list(hlds_goal), list(hlds_goal), hlds_goal).
 % :- mode move_prev_code_replace_first(di, in, in, uo) is det.

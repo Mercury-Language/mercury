@@ -24,7 +24,7 @@
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
-			hlds__goal_info, how_to_check_goal, hlds__goal_expr,
+			hlds_goal_info, how_to_check_goal, hlds_goal_expr,
 			mode_info, mode_info).
 :- mode modecheck_unification(in, in, in, in, in, in, out,
 			mode_info_di, mode_info_uo) is det.
@@ -32,7 +32,7 @@
 	% Work out what kind of unification a var-var unification is.
 :- pred categorize_unify_var_var(mode, mode, is_live, is_live, var, var,
 			determinism, unify_context, map(var, type), mode_info,
-			hlds__goal_expr, mode_info).
+			hlds_goal_expr, mode_info).
 :- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
@@ -40,7 +40,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module llds, prog_data, type_util, module_qual, instmap.
+:- import_module llds, prog_data, prog_util, type_util, module_qual, instmap.
 :- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, unify_proc, code_util, unique_modes.
@@ -242,40 +242,18 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
 		%
-		% Build up the hlds__goal_expr for the call that will form
+		% Build up the hlds_goal_expr for the call that will form
 		% the lambda goal
 		%
-		(
-			PName = unqualified(UnqualPName),
-			get_pred_id_and_proc_id(UnqualPName, Arity, PredOrFunc,
-				PredArgTypes, ModuleInfo0, PredId, ProcId),
-			module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-			pred_info_module(PredInfo, PredModule),
-			QualifiedPName = qualified(PredModule, UnqualPName)
-		;
-			PName = qualified(PredModule, UnqualName),
-			QualifiedPName = PName,
-			(
-				predicate_table_search_sym(PredTable,
-					PName, [PredId0]),
-				module_info_pred_info(ModuleInfo0, PredId0,
-					PredInfo),
-				pred_info_procids(PredInfo, [ProcId0])
-			->
-				ProcId = ProcId0,
-				PredId = PredId0
-			;
-				string__int_to_string(Arity, ArStr),
-				string__append_list([
-					"sorry, not implemented: ",
-					"taking address of ", "\n`",
-					PredModule, ":", UnqualName, "/",
-					ArStr, "' with multiple modes.\n",
-					"(use an explicit lambda expression instead)"],
-					Message),
-				error(Message)
-			)
-		),
+
+		get_pred_id_and_proc_id(PName, Arity, PredOrFunc,
+			PredArgTypes, ModuleInfo0, PredId, ProcId),
+
+		% module-qualify the pred name (is this necessary?)
+		module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+		pred_info_module(PredInfo, PredModule),
+		unqualify_name(PName, UnqualPName),
+		QualifiedPName = qualified(PredModule, UnqualPName),
 
 		CallUnifyContext = call_unify_context(X0,
 				functor(ConsId, ArgVars0), UnifyContext),
@@ -498,7 +476,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 	).
 
 :- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
-			pair(list(hlds__goal)), pair(mode), list(var),
+			pair(list(hlds_goal)), pair(mode), list(var),
 			unification,
 			mode_info, mode_info).
 :- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out,
@@ -628,8 +606,8 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_higher_order_func_call(var, list(var), var, hlds__goal_info,
-		hlds__goal_expr, mode_info, mode_info).
+:- pred modecheck_higher_order_func_call(var, list(var), var, hlds_goal_info,
+		hlds_goal_expr, mode_info, mode_info).
 :- mode modecheck_higher_order_func_call(in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
@@ -660,7 +638,7 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 	% into separate unifications by introducing fresh variables here.
 
 :- pred split_complicated_subunifies(unification, list(var),
-			unification, list(var), pair(list(hlds__goal)),
+			unification, list(var), pair(list(hlds_goal)),
 			mode_info, mode_info).
 :- mode split_complicated_subunifies(in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
@@ -689,7 +667,7 @@ split_complicated_subunifies(Unification0, ArgVars0,
 	).
 
 :- pred split_complicated_subunifies_2(list(var), list(uni_mode),
-			list(var), list(uni_mode), pair(list(hlds__goal)),
+			list(var), list(uni_mode), pair(list(hlds_goal)),
 			mode_info, mode_info).
 :- mode split_complicated_subunifies_2(in, in, out, out, out,
 		mode_info_di, mode_info_uo) is semidet.

@@ -269,8 +269,8 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	% It annotates the goal and all its subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
 
-:- pred det_infer_goal(hlds__goal, instmap, soln_context, det_info,
-	hlds__goal, determinism, list(det_msg)).
+:- pred det_infer_goal(hlds_goal, instmap, soln_context, det_info,
+	hlds_goal, determinism, list(det_msg)).
 :- mode det_infer_goal(in, in, in, in, out, out, out) is det.
 
 det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
@@ -361,9 +361,9 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_goal_2(hlds__goal_expr, hlds__goal_info, instmap,
+:- pred det_infer_goal_2(hlds_goal_expr, hlds_goal_info, instmap,
 	soln_context, det_info, set(var), instmap_delta,
-	hlds__goal_expr, determinism, list(det_msg)).
+	hlds_goal_expr, determinism, list(det_msg)).
 :- mode det_infer_goal_2(in, in, in, in, in, in, in, out, out, out) is det.
 
 	% The determinism of a conjunction is the worst case of the elements
@@ -583,8 +583,8 @@ det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_conj(list(hlds__goal), instmap, soln_context, det_info,
-		list(hlds__goal), determinism, list(det_msg)).
+:- pred det_infer_conj(list(hlds_goal), instmap, soln_context, det_info,
+		list(hlds_goal), determinism, list(det_msg)).
 :- mode det_infer_conj(in, in, in, in, out, out, out) is det.
 
 det_infer_conj([], _InstMap0, _SolnContext, _DetInfo, [], det, []).
@@ -637,8 +637,8 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	determinism_components(Detism, CanFail, MaxSolns),
 	list__append(MsgsA, MsgsB, Msgs).
 
-:- pred det_infer_disj(list(hlds__goal), instmap, soln_context, det_info,
-	can_fail, soln_count, list(hlds__goal), determinism, list(det_msg)).
+:- pred det_infer_disj(list(hlds_goal), instmap, soln_context, det_info,
+	can_fail, soln_count, list(hlds_goal), determinism, list(det_msg)).
 :- mode det_infer_disj(in, in, in, in, in, in, out, out, out) is det.
 
 det_infer_disj([], _InstMap0, _SolnContext, _DetInfo, CanFail, MaxSolns,

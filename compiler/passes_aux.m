@@ -94,39 +94,39 @@
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	process__nonimported_procs_in_preds(PredIds, Task, _,
+	process_nonimported_procs_in_preds(PredIds, Task, _,
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	process__nonimported_procs_in_preds(PredIds, Task0, Task,
+	process_nonimported_procs_in_preds(PredIds, Task0, Task,
 		ModuleInfo0, ModuleInfo).
 
-:- pred process__nonimported_procs_in_preds(list(pred_id), task(T), task(T),
+:- pred process_nonimported_procs_in_preds(list(pred_id), task(T), task(T),
 	module_info, module_info, io__state, io__state).
-:- mode process__nonimported_procs_in_preds(in, task, out(task), in, out,
+:- mode process_nonimported_procs_in_preds(in, task, out(task), in, out,
 	di, uo) is det.
 
-process__nonimported_procs_in_preds([], Task, Task, ModuleInfo, ModuleInfo)
+process_nonimported_procs_in_preds([], Task, Task, ModuleInfo, ModuleInfo)
 		--> [].
-process__nonimported_procs_in_preds([PredId | PredIds], Task0, Task,
+process_nonimported_procs_in_preds([PredId | PredIds], Task0, Task,
 		ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	process__nonimported_procs(ProcIds, PredId, Task0, Task1,
+	process_nonimported_procs(ProcIds, PredId, Task0, Task1,
 		ModuleInfo0, ModuleInfo1),
-	process__nonimported_procs_in_preds(PredIds, Task1, Task,
+	process_nonimported_procs_in_preds(PredIds, Task1, Task,
 		ModuleInfo1, ModuleInfo).
 
-:- pred process__nonimported_procs(list(proc_id), pred_id, task(T), task(T),
+:- pred process_nonimported_procs(list(proc_id), pred_id, task(T), task(T),
 	module_info, module_info, io__state, io__state).
-:- mode process__nonimported_procs(in, in, task, out(task), in, out, di, uo)
+:- mode process_nonimported_procs(in, in, task, out(task), in, out, di, uo)
 	is det.
 
-process__nonimported_procs([], _PredId, Task, Task,
+process_nonimported_procs([], _PredId, Task, Task,
 		ModuleInfo, ModuleInfo, State, State).
-process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
+process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		ModuleInfo0, ModuleInfo, State0, State) :-
 
 	module_info_preds(ModuleInfo0, Preds0),
@@ -183,7 +183,7 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 	map__set(Preds0, PredId, Pred, Preds),
 	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
 
-	process__nonimported_procs(ProcIds, PredId, Task1, Task,
+	process_nonimported_procs(ProcIds, PredId, Task1, Task,
 		ModuleInfo9, ModuleInfo, State9, State).
 
 write_pred_progress_message(Message, PredId, ModuleInfo) -->

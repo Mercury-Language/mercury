@@ -289,7 +289,7 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred c_gen_predeclare_labels(hlds__goal, c_gen_info, io__state, io__state).
+:- pred c_gen_predeclare_labels(hlds_goal, c_gen_info, io__state, io__state).
 :- mode c_gen_predeclare_labels(in, in, di, uo) is det.
 
 	% XXX this should traverse the goal and count how many function labels
@@ -461,13 +461,13 @@ c_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet) -->
 	),
 	mercury_output_var(Var, VarSet, no).
 
-:- pred c_gen_local_var_decls(int, hlds__goal, varset, map(var, type),
+:- pred c_gen_local_var_decls(int, hlds_goal, varset, map(var, type),
 				list(var),
 				io__state, io__state).
 :- mode c_gen_local_var_decls(in, in, in, in, in, di, uo) is det.
 
 c_gen_local_var_decls(Indent, Goal, VarSet, VarTypes, HeadVars) -->
-	{ goal_vars(Goal, Vars0) },
+	{ quantification__goal_vars(Goal, Vars0) },
 	{ set__to_sorted_list(Vars0, Vars) },
 	{ list__delete_elems(Vars, HeadVars, LocalVars) },
 	c_gen_local_var_decls_2(LocalVars, VarSet, VarTypes, Indent).
@@ -488,7 +488,7 @@ c_gen_local_var_decls_2([Var|Vars], VarSet, VarTypes, Indent) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred c_gen_goal(hlds__goal, int, c_gen_info, c_gen_info,
+:- pred c_gen_goal(hlds_goal, int, c_gen_info, c_gen_info,
 				io__state, io__state).
 :- mode c_gen_goal(in, in, in, out, di, uo) is det.
 
@@ -512,7 +512,7 @@ c_gen_goal(Goal - GoalInfo, Indent, CGenInfo0, CGenInfo) -->
 	),
 	c_gen_goal_2(Goal, Indent, CGenInfo0, CGenInfo).
 
-:- pred c_gen_goal_2(hlds__goal_expr, int, c_gen_info, c_gen_info,
+:- pred c_gen_goal_2(hlds_goal_expr, int, c_gen_info, c_gen_info,
 					io__state, io__state).
 :- mode c_gen_goal_2(in, in, in, out, di, uo) is det.
 
@@ -792,7 +792,7 @@ c_gen_var_modes([], [_|_], _) -->
 c_gen_var_modes([_|_], [], _) -->
 	{ error("c_gen_var_modes: length mis-match") }.
 
-:- pred c_gen_conj(list(hlds__goal), int, c_gen_info, c_gen_info,
+:- pred c_gen_conj(list(hlds_goal), int, c_gen_info, c_gen_info,
 				io__state, io__state).
 :- mode c_gen_conj(in, in, in, out, di, uo) is det.
 
@@ -801,7 +801,7 @@ c_gen_conj([Goal | Goals], Indent, CGenInfo0, CGenInfo) -->
 	c_gen_goal(Goal, Indent, CGenInfo0, CGenInfo1),
 	c_gen_conj(Goals, Indent, CGenInfo1, CGenInfo).
 
-:- pred c_gen_disj(list(hlds__goal), c_label_func, int, c_gen_info, c_gen_info,
+:- pred c_gen_disj(list(hlds_goal), c_label_func, int, c_gen_info, c_gen_info,
 				io__state, io__state).
 :- mode c_gen_disj(in, in, in, in, out, di, uo) is det.
 

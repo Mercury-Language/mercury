@@ -357,10 +357,6 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
             Term = term__functor(term__atom(Name), Args, _Context4)
         ->
 	    (
-/**********
-Don't allow `__' as an alternative to `:',
-because we don't yet support qualification of constructors,
-e.g. `term__variable(_)'.
 		string__sub_string_search(Name, "__", LeftLength),
 		LeftLength > 0
 	    ->
@@ -379,7 +375,6 @@ e.g. `term__variable(_)'.
 		    Result = error("module qualifier (name before `__') in definition does not match preceding `:- module' declaration", Term)
 		)
 	    ;
-**********/
 		DefaultModName = ""
 	    ->
             	Result = ok(unqualified(Name), Args)

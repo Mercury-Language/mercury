@@ -16,9 +16,9 @@
 
 :- import_module list, llds.
 
-:- pred dupelim__main(list(instruction), list(instruction)).
-% :- mode dupelim__main(di, uo) is det.
-:- mode dupelim__main(in, out) is det.
+:- pred dupelim_main(list(instruction), list(instruction)).
+% :- mode dupelim_main(di, uo) is det.
+:- mode dupelim_main(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,7 +30,7 @@
 
 :- type block == pair(label, list(instruction)).
 
-dupelim__main(Instrs0, Instrs) :-
+dupelim_main(Instrs0, Instrs) :-
 	map__init(Seqmap0),
 	map__init(Replmap0),
 	opt_util__skip_to_next_label(Instrs0, Initial, Instrs1),

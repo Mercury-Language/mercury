@@ -2185,7 +2185,17 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		llds_out__maybe_qualify_name(DeclaringModule, Name0,
 			LabelName0)
 	),
-	( DefiningModule \= DeclaringModule ->
+	(
+		% if this is a specialized version of a predicate
+		% defined in some other module, then it needs both
+		% module prefixes
+		DefiningModule \= DeclaringModule,
+		% but we don't do that for "mercury_builtin",
+		% because that would give the wrong results
+		% for the definitions of term__context_init etc.
+		% in mercury_builtin.m.
+		DefiningModule \= "mercury_builtin"
+	->
 		string__append_list([DefiningModule, "__", LabelName0],
 			LabelName1)
 	;

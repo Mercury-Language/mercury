@@ -349,7 +349,7 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 	% Traversal of goal structure, building up dependencies for all
 	% variables. 
 
-:- pred traverse_goal(module_info::in, hlds__goal_expr::in,
+:- pred traverse_goal(module_info::in, hlds_goal_expr::in,
 				var_dep::in, var_dep::out) is det.
 
 % handle conjunction
@@ -534,14 +534,14 @@ add_construction_aliases(UseInf0, Alias, [Var | Vars], UseInf) :-
 	add_construction_aliases(UseInf1, Alias, Vars, UseInf).
 
 
-:- pred list_case_to_list_goal(list(case)::in, list(hlds__goal)::out) is det.
+:- pred list_case_to_list_goal(list(case)::in, list(hlds_goal)::out) is det.
 
 list_case_to_list_goal([], []).
 list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
 	list_case_to_list_goal(Cases, Goals).
 
 
-:- pred traverse_list_of_goals(module_info::in, list(hlds__goal)::in,
+:- pred traverse_list_of_goals(module_info::in, list(hlds_goal)::in,
 					var_dep::in, var_dep::out) is det.
 
 traverse_list_of_goals(_, [], UseInf, UseInf).
@@ -1102,7 +1102,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 % 	this is the important bit of the transformation
 :- pred fixup_goal(module_info::in, list(var)::in, proc_call_info::in,
-			bool::out, hlds__goal::in, hlds__goal::out) is det.
+			bool::out, hlds_goal::in, hlds_goal::out) is det.
 
 fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
 	fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo,
@@ -1119,7 +1119,7 @@ fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
 		
 
 :- pred fixup_goal_expr(module_info::in, list(var)::in, proc_call_info::in,
-			bool::out, hlds__goal::in, hlds__goal::out) is det.
+			bool::out, hlds_goal::in, hlds_goal::out) is det.
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 		conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) :-
@@ -1199,7 +1199,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 	% Remove useless unifications from a list of conjuncts.
 :- pred fixup_conjuncts(module_info::in, list(var)::in, proc_call_info::in,
-		bool::in, bool::out, hlds__goals::in, hlds__goals::out) is det. 
+		bool::in, bool::out, hlds_goals::in, hlds_goals::out) is det. 
 
 fixup_conjuncts(_, _, _, Changed, Changed, [], []).
 fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
@@ -1230,7 +1230,7 @@ fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
 	% for conjuncts, since that would change the determinism of
 	% the goal.
 :- pred fixup_disjuncts(module_info::in, list(var)::in, proc_call_info::in,
-		bool::in, bool::out, hlds__goals::in, hlds__goals::out) is det. 
+		bool::in, bool::out, hlds_goals::in, hlds_goals::out) is det. 
 
 fixup_disjuncts(_, _, _, Changed, Changed, [], []).
 fixup_disjuncts(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
@@ -1337,8 +1337,8 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, Changed, Used) :-
 
 	% Remove unused vars from the instmap_delta, quantification fixes
 	%	up the rest.
-:- pred fixup_goal_info(list(var)::in, hlds__goal_info::in,
-						hlds__goal_info::out) is det.
+:- pred fixup_goal_info(list(var)::in, hlds_goal_info::in,
+						hlds_goal_info::out) is det.
 
 fixup_goal_info(UnusedVars, GoalInfo0, GoalInfo) :-
 	goal_info_get_instmap_delta(GoalInfo0, InstMap0),

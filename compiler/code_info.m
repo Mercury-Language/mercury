@@ -617,13 +617,13 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 	% code_info__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes
 	% specified by GoalInfo.
-:- pred code_info__pre_goal_update(hlds__goal_info, bool, code_info, code_info).
+:- pred code_info__pre_goal_update(hlds_goal_info, bool, code_info, code_info).
 :- mode code_info__pre_goal_update(in, in, in, out) is det.
 
 	% code_info__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes described
 	% by GoalInfo.
-:- pred code_info__post_goal_update(hlds__goal_info, code_info, code_info).
+:- pred code_info__post_goal_update(hlds_goal_info, code_info, code_info).
 :- mode code_info__post_goal_update(in, in, out) is det.
 
 	% Find out the type of the given variable.
@@ -631,7 +631,7 @@ code_info__set_commit_triple_count(W, CI0, CI) :-
 :- pred code_info__variable_type(var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
 
-:- pred code_info__lookup_type_defn(type, hlds__type_defn,
+:- pred code_info__lookup_type_defn(type, hlds_type_defn,
 	code_info, code_info).
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 

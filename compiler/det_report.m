@@ -19,33 +19,33 @@
 
 :- type det_msg	--->
 			% warnings
-			multidet_disj(hlds__goal_info, list(hlds__goal))
-		;	det_disj(hlds__goal_info, list(hlds__goal))
-		;	semidet_disj(hlds__goal_info, list(hlds__goal))
-		;	zero_soln_disj(hlds__goal_info, list(hlds__goal))
-		;	zero_soln_disjunct(hlds__goal_info)
-		;	ite_cond_cannot_fail(hlds__goal_info)
-		;	ite_cond_cannot_succeed(hlds__goal_info)
-		;	negated_goal_cannot_fail(hlds__goal_info)
-		;	negated_goal_cannot_succeed(hlds__goal_info)
-		;	warn_obsolete(pred_id, hlds__goal_info)
+			multidet_disj(hlds_goal_info, list(hlds_goal))
+		;	det_disj(hlds_goal_info, list(hlds_goal))
+		;	semidet_disj(hlds_goal_info, list(hlds_goal))
+		;	zero_soln_disj(hlds_goal_info, list(hlds_goal))
+		;	zero_soln_disjunct(hlds_goal_info)
+		;	ite_cond_cannot_fail(hlds_goal_info)
+		;	ite_cond_cannot_succeed(hlds_goal_info)
+		;	negated_goal_cannot_fail(hlds_goal_info)
+		;	negated_goal_cannot_succeed(hlds_goal_info)
+		;	warn_obsolete(pred_id, hlds_goal_info)
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
 				% declaration.
-		;	warn_infinite_recursion(hlds__goal_info)
+		;	warn_infinite_recursion(hlds_goal_info)
 				% warning about recursive calls
 				% which would cause infinite loops.
 		;	duplicate_call(seen_call_id, term__context,
-				hlds__goal_info)
+				hlds_goal_info)
 				% multiple calls with the same input args.
 			% errors
-		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
+		;	cc_pred_in_wrong_context(hlds_goal_info, determinism,
 				pred_id, proc_id)
-		;	higher_order_cc_pred_in_wrong_context(hlds__goal_info,
+		;	higher_order_cc_pred_in_wrong_context(hlds_goal_info,
 				determinism)
 		;	error_in_lambda(
 				determinism, determinism, % declared, inferred
-				hlds__goal, hlds__goal_info, pred_id, proc_id).
+				hlds_goal, hlds_goal_info, pred_id, proc_id).
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -63,7 +63,7 @@
 	% Check a lambda goal with the specified declared and inferred
 	% determinisms.
 
-:- pred det_check_lambda(determinism, determinism, hlds__goal, hlds__goal_info,
+:- pred det_check_lambda(determinism, determinism, hlds_goal, hlds_goal_info,
 			det_info, list(det_msg)).
 :- mode det_check_lambda(in, in, in, in, in, out) is det.
 
@@ -269,7 +269,7 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
 	% The given goal should have determinism Desired, but doesn't.
 	% Find out what is wrong and print a report of the cause.
 
-:- pred det_diagnose_goal(hlds__goal, determinism, list(switch_context),
+:- pred det_diagnose_goal(hlds_goal, determinism, list(switch_context),
 	det_info, bool, io__state, io__state).
 :- mode det_diagnose_goal(in, in, in, in, out, di, uo) is det.
 
@@ -285,7 +285,7 @@ det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_diagnose_goal_2(hlds__goal_expr, hlds__goal_info,
+:- pred det_diagnose_goal_2(hlds_goal_expr, hlds_goal_info,
 	determinism, determinism, list(switch_context), det_info, bool,
 	io__state, io__state).
 :- mode det_diagnose_goal_2(in, in, in, in, in, in, out, di, uo) is det.
@@ -541,7 +541,7 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired,
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_diagnose_conj(list(hlds__goal), determinism,
+:- pred det_diagnose_conj(list(hlds_goal), determinism,
 	list(switch_context), det_info, bool, io__state, io__state).
 :- mode det_diagnose_conj(in, in, in, in, out, di, uo) is det.
 
@@ -552,7 +552,7 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
 	det_diagnose_conj(Goals, Desired, SwitchContext, DetInfo, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-:- pred det_diagnose_disj(list(hlds__goal), determinism, determinism,
+:- pred det_diagnose_disj(list(hlds_goal), determinism, determinism,
 	list(switch_context), det_info, int, int, bool, io__state, io__state).
 :- mode det_diagnose_disj(in, in, in, in, in, in, out, out, di, uo) is det.
 
@@ -987,7 +987,7 @@ det_report_seen_call_id(SeenCall, ModuleInfo) -->
 
 	% Insertion sort is good enough.
 
-:- pred det_report_sort_context_lines(list(hlds__goal), list(hlds__goal)).
+:- pred det_report_sort_context_lines(list(hlds_goal), list(hlds_goal)).
 :- mode det_report_sort_context_lines(in, out) is det.
 
 det_report_sort_context_lines([], []).
@@ -995,8 +995,8 @@ det_report_sort_context_lines([Goal0 | Goals0], Goals) :-
 	det_report_sort_context_lines(Goals0, Goals1),
 	det_report_insert_context_line(Goals1, Goal0, Goals).
 
-:- pred det_report_insert_context_line(list(hlds__goal), hlds__goal,
-	list(hlds__goal)).
+:- pred det_report_insert_context_line(list(hlds_goal), hlds_goal,
+	list(hlds_goal)).
 :- mode det_report_insert_context_line(in, in, out) is det.
 
 det_report_insert_context_line([], Goal, [Goal]).
@@ -1016,7 +1016,7 @@ det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_context_lines(list(hlds__goal), bool, io__state, io__state).
+:- pred det_report_context_lines(list(hlds_goal), bool, io__state, io__state).
 :- mode det_report_context_lines(in, in, di, uo) is det.
 
 det_report_context_lines([], _) --> [].

@@ -38,13 +38,13 @@
 :- import_module list, set, term.
 
 :- pred implicitly_quantify_clause_body(list(var),
-		hlds__goal, varset, map(var, type),
-		hlds__goal, varset, map(var, type), list(quant_warning)).
+		hlds_goal, varset, map(var, type),
+		hlds_goal, varset, map(var, type), list(quant_warning)).
 :- mode implicitly_quantify_clause_body(in, in, in, in, out, out, out, out)
 	is det.
 
-:- pred implicitly_quantify_goal(hlds__goal, varset, map(var, type), set(var),
-		hlds__goal, varset, map(var, type), list(quant_warning)).
+:- pred implicitly_quantify_goal(hlds_goal, varset, map(var, type), set(var),
+		hlds_goal, varset, map(var, type), list(quant_warning)).
 :- mode implicitly_quantify_goal(in, in, in, in, out, out, out, out) is det.
 
 :- pred requantify_proc(proc_info, proc_info) is det.
@@ -57,11 +57,11 @@
 :- type quant_warning
 	--->	warn_overlap(list(var), term__context).
 
-	% goal_vars(Goal, Vars):
+	% quantification__goal_vars(Goal, Vars):
 	%	Vars is the set of variables that are free (unquantified)
 	%	in Goal.
-:- pred goal_vars(hlds__goal, set(var)).
-:- mode goal_vars(in, out) is det.
+:- pred quantification__goal_vars(hlds_goal, set(var)).
+:- mode quantification__goal_vars(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -140,7 +140,7 @@ implicitly_quantify_goal(Goal0, Varset0, VarTypes0, OutsideVars,
 	quantification__get_warnings(Warnings0, QuantInfo, _),
 	list__reverse(Warnings0, Warnings).
 
-:- pred implicitly_quantify_goal(hlds__goal, hlds__goal,
+:- pred implicitly_quantify_goal(hlds_goal, hlds_goal,
 					quant_info, quant_info).
 :- mode implicitly_quantify_goal(in, out, in, out) is det.
 
@@ -153,7 +153,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 		% If there are any variables that are local to the goal
 		% which we have come across before, then we rename them
 		% apart.
-		{ goal_vars(Goal0 - GoalInfo0, GoalVars0) },
+		{ quantification__goal_vars(Goal0 - GoalInfo0, GoalVars0) },
 		{ set__difference(GoalVars0, NonLocalVars, LocalVars) },
 		{ set__intersect(SeenVars, LocalVars, RenameVars) },
 		{ \+ set__empty(RenameVars) }
@@ -166,8 +166,8 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	),
 	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo) }.
 
-:- pred implicitly_quantify_goal_2(hlds__goal_expr, term__context,
-				hlds__goal_expr, quant_info, quant_info).
+:- pred implicitly_quantify_goal_2(hlds_goal_expr, term__context,
+				hlds_goal_expr, quant_info, quant_info).
 :- mode implicitly_quantify_goal_2(in, in, out, in, out) is det.
 
 	% we retain explicit existential quantifiers in the source code,
@@ -263,7 +263,7 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, SM),
 		{ goal_util__rename_var_list(Vars0, no, RenameMap, Vars) }
 	),
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
-	{ goal_vars(Then1, VarsThen, LambdaVarsThen) },
+	{ quantification__goal_vars(Then1, VarsThen, LambdaVarsThen) },
 	{ set__union(OutsideVars, VarsThen, OutsideVars1) },
 	{ set__union(LambdaOutsideVars, LambdaVarsThen, LambdaOutsideVars1) },
 	quantification__set_quant_vars(QuantVars1),
@@ -381,7 +381,7 @@ implicitly_quantify_unify_rhs(
 	quantification__set_outside(OutsideVars0),
 	quantification__set_nonlocals(NonLocals).
 
-:- pred implicitly_quantify_conj(list(hlds__goal), list(hlds__goal), 
+:- pred implicitly_quantify_conj(list(hlds_goal), list(hlds_goal), 
 					quant_info, quant_info).
 :- mode implicitly_quantify_conj(in, out, in, out) is det.
 
@@ -389,8 +389,8 @@ implicitly_quantify_conj(Goals0, Goals) -->
 	{ get_vars(Goals0, FollowingVarsList) },
 	implicitly_quantify_conj_2(Goals0, FollowingVarsList, Goals).
 
-:- pred implicitly_quantify_conj_2(list(hlds__goal), list(pair(set(var))),
-			list(hlds__goal), quant_info, quant_info).
+:- pred implicitly_quantify_conj_2(list(hlds_goal), list(pair(set(var))),
+			list(hlds_goal), quant_info, quant_info).
 :- mode implicitly_quantify_conj_2(in, in, out, in, out) is det.
 
 implicitly_quantify_conj_2([], _, []) -->
@@ -421,7 +421,7 @@ implicitly_quantify_conj_2([Goal0 | Goals0],
 	quantification__set_outside(OutsideVars),
 	quantification__set_nonlocals(NonLocalVars).
 
-:- pred implicitly_quantify_disj(list(hlds__goal), list(hlds__goal), 
+:- pred implicitly_quantify_disj(list(hlds_goal), list(hlds_goal), 
 					quant_info, quant_info).
 :- mode implicitly_quantify_disj(in, out, in, out) is det.
 
@@ -475,14 +475,14 @@ quantification__update_seen_vars(NewVars) -->
 	% and the second contains following variables that
 	% occur in lambda goals.
 
-:- pred get_vars(list(hlds__goal), list(pair(set(var)))).
+:- pred get_vars(list(hlds_goal), list(pair(set(var)))).
 :- mode get_vars(in, out) is det.
 
 get_vars([], []).
 get_vars([_Goal | Goals], [Set - LambdaSet | SetPairs]) :-
 	get_vars_2(Goals, Set, LambdaSet, SetPairs).
 
-:- pred get_vars_2(list(hlds__goal), set(var), set(var), list(pair(set(var)))).
+:- pred get_vars_2(list(hlds_goal), set(var), set(var), list(pair(set(var)))).
 :- mode get_vars_2(in, out, out, out) is det.
 
 get_vars_2([], Set, LambdaSet, []) :-
@@ -490,18 +490,18 @@ get_vars_2([], Set, LambdaSet, []) :-
 	set__init(LambdaSet).
 get_vars_2([Goal | Goals], Set, LambdaSet, SetPairList) :-
 	get_vars_2(Goals, Set0, LambdaSet0, SetPairList0),
-	goal_vars(Goal, Set1, LambdaSet1),
+	quantification__goal_vars(Goal, Set1, LambdaSet1),
 	set__union(Set0, Set1, Set),
 	set__union(LambdaSet0, LambdaSet1, LambdaSet),
 	SetPairList = [Set0 - LambdaSet0 | SetPairList0].
 
-:- pred goal_list_vars_2(list(hlds__goal), set(var), set(var),
+:- pred goal_list_vars_2(list(hlds_goal), set(var), set(var),
 			set(var), set(var)).
 :- mode goal_list_vars_2(in, in, in, out, out) is det.
 
 goal_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
 goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, LambdaSet0, Set, LambdaSet) :-
-	goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
+	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
 	goal_list_vars_2(Goals, Set1, LambdaSet1, Set, LambdaSet).
 
 :- pred case_list_vars_2(list(case), set(var), set(var), set(var), set(var)).
@@ -510,81 +510,88 @@ goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, LambdaSet0, Set, LambdaSet) :-
 case_list_vars_2([], Set, LambdaSet, Set, LambdaSet).
 case_list_vars_2([case(_Cons, Goal - _GoalInfo)| Cases], Set0, LambdaSet0,
 			Set, LambdaSet) :-
-	goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
+	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set1, LambdaSet1),
 	case_list_vars_2(Cases, Set1, LambdaSet1, Set, LambdaSet).
 
-	% goal_vars(Goal, Vars):
+	% quantification__goal_vars(Goal, Vars):
 	%	Vars is the set of variables that occur free (unquantified)
 	%	in Goal.
-goal_vars(Goal, BothSet) :-
-	goal_vars(Goal, NonLambdaSet, LambdaSet),
+quantification__goal_vars(Goal, BothSet) :-
+	quantification__goal_vars(Goal, NonLambdaSet, LambdaSet),
 	set__union(NonLambdaSet, LambdaSet, BothSet).
 
-	% goal_vars(Goal, NonLambdaSet, LambdaSet):
+	% quantification__goal_vars(Goal, NonLambdaSet, LambdaSet):
 	%	Set is the set of variables that occur free (unquantified)
 	%	in Goal, not counting occurrences in lambda expressions.
 	%	LambdaSet is the set of variables that occur free (unquantified)
 	%	in lambda expressions in Goal.
-:- pred goal_vars(hlds__goal, set(var), set(var)).
-:- mode goal_vars(in, out, out) is det.
+:- pred quantification__goal_vars(hlds_goal, set(var), set(var)).
+:- mode quantification__goal_vars(in, out, out) is det.
 
-goal_vars(Goal - _GoalInfo, Set, LambdaSet) :-
+quantification__goal_vars(Goal - _GoalInfo, Set, LambdaSet) :-
 	set__init(Set0),
 	set__init(LambdaSet0),
-	goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
+	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
 
-:- pred goal_vars_2(hlds__goal_expr, set(var), set(var), set(var), set(var)).
-:- mode goal_vars_2(in, in, in, out, out) is det.
+:- pred quantification__goal_vars_2(hlds_goal_expr, set(var), set(var),
+		set(var), set(var)).
+:- mode quantification__goal_vars_2(in, in, in, out, out) is det.
 
-goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0, Set, LambdaSet) :-
+quantification__goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0,
+		Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
 	quantification__unify_rhs_vars(B, Set1, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _), Set0, LambdaSet,
-			Set, LambdaSet) :-
+quantification__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _),
+		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
-goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet, Set, LambdaSet) :-
+quantification__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet,
+		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-goal_vars_2(conj(Goals), Set0, LambdaSet0, Set, LambdaSet) :-
+quantification__goal_vars_2(conj(Goals), Set0, LambdaSet0, Set, LambdaSet) :-
 	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(disj(Goals, _), Set0, LambdaSet0, Set, LambdaSet) :-
+quantification__goal_vars_2(disj(Goals, _), Set0, LambdaSet0, Set, LambdaSet) :-
 	goal_list_vars_2(Goals, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(switch(Var, _Det, Cases, _), Set0, LambdaSet0, Set, LambdaSet) :-
+quantification__goal_vars_2(switch(Var, _Det, Cases, _), Set0, LambdaSet0,
+		Set, LambdaSet) :-
 	set__insert(Set0, Var, Set1),
 	case_list_vars_2(Cases, Set1, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(some(Vars, Goal), Set0, LambdaSet0, Set, LambdaSet) :-
-	goal_vars(Goal, Set1, LambdaSet1),
+quantification__goal_vars_2(some(Vars, Goal), Set0, LambdaSet0,
+		Set, LambdaSet) :-
+	quantification__goal_vars(Goal, Set1, LambdaSet1),
 	set__delete_list(Set1, Vars, Set2),
 	set__delete_list(LambdaSet1, Vars, LambdaSet2),
 	set__union(Set0, Set2, Set),
 	set__union(LambdaSet0, LambdaSet2, LambdaSet).
 
-goal_vars_2(not(Goal - _GoalInfo), Set0, LambdaSet0, Set, LambdaSet) :-
-	goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
+quantification__goal_vars_2(not(Goal - _GoalInfo), Set0, LambdaSet0,
+		Set, LambdaSet) :-
+	quantification__goal_vars_2(Goal, Set0, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0, Set, LambdaSet) :-
-		% This code does the following:
-		%     Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
-		% where `+' is set union and `\' is relative complement.
-	goal_vars(A, Set1, LambdaSet1),
-	goal_vars(B, Set2, LambdaSet2),
+quantification__goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0,
+		Set, LambdaSet) :-
+	% This code does the following:
+	%     Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
+	% where `+' is set union and `\' is relative complement.
+	quantification__goal_vars(A, Set1, LambdaSet1),
+	quantification__goal_vars(B, Set2, LambdaSet2),
 	set__union(Set1, Set2, Set3),
 	set__union(LambdaSet1, LambdaSet2, LambdaSet3),
 	set__delete_list(Set3, Vars, Set4),
 	set__delete_list(LambdaSet3, Vars, LambdaSet4),
 	set__union(Set0, Set4, Set5),
 	set__union(LambdaSet0, LambdaSet4, LambdaSet5),
-	goal_vars(C, Set6, LambdaSet6),
+	quantification__goal_vars(C, Set6, LambdaSet6),
 	set__union(Set5, Set6, Set),
 	set__union(LambdaSet5, LambdaSet6, LambdaSet).
 
-goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _), Set0, LambdaSet,
-		Set, LambdaSet) :-
+quantification__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _),
+		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 :- pred quantification__unify_rhs_vars(unify_rhs, set(var), set(var),
@@ -598,7 +605,7 @@ quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
 	set__insert_list(Set0, ArgVars, Set).
 quantification__unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes,
 		_Detism, Goal), Set, LambdaSet0, Set, LambdaSet) :-
-	goal_vars(Goal, GoalVars),
+	quantification__goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(LambdaSet0, GoalVars1, LambdaSet).
 
@@ -622,7 +629,7 @@ quantification__warn_overlapping_scope(OverlapVars, Context) -->
 %	Apply RenameMap to Goal0 giving Goal.
 
 :- pred quantification__rename_apart(set(var), map(var, var),
-				hlds__goal, hlds__goal, quant_info, quant_info).
+				hlds_goal, hlds_goal, quant_info, quant_info).
 :- mode quantification__rename_apart(in, out, in, out, in, out) is det.
 
 quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->

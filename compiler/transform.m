@@ -32,11 +32,11 @@
 :- interface.
 :- import_module hlds_goal, llds, mode_info.
 
-%:- pred unfold__in_proc(pred_id, proc_id, hlds__goal_expr,
+%:- pred unfold__in_proc(pred_id, proc_id, hlds_goal_expr,
 %			mode_info, mode_info).
 %:- mode unfold__in_proc(in, in, out, mode_info_di, module_info_uo) is det.
 
-:- pred transform__reschedule_conj(list(hlds__goal), list(hlds__goal), 
+:- pred transform__reschedule_conj(list(hlds_goal), list(hlds_goal), 
 			mode_info, mode_info).
 :- mode transform__reschedule_conj(in, out, mode_info_di, mode_info_uo) is det.
 

@@ -64,7 +64,7 @@ stratify__check_stratification(Module0, Module) -->
 	{ module_info_ensure_dependency_info(Module0, Module1) },
 	{ module_info_dependency_info(Module1, DepInfo) },
 	
-	{ hlds__dependency_info_get_dependency_graph(DepInfo, DepGraph0) },
+	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0) },
 	{ relation__atsort(DepGraph0, FOSCCs1) },	
 	{ dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs) },
 	globals__io_lookup_bool_option(warn_non_stratification, Warn),
@@ -152,7 +152,7 @@ first_order_check_scc_2([PredProcId|Remaining], WholeScc, Error,
 		PredProcId, Error, Module0, Module1),
 	first_order_check_scc_2(Remaining, WholeScc, Error, Module1, Module).
 
-:- pred first_order_check_goal(hlds__goal_expr, hlds__goal_info, bool,
+:- pred first_order_check_goal(hlds_goal_expr, hlds_goal_info, bool,
 		list(pred_proc_id), pred_proc_id, bool,
 		module_info, module_info, io__state, io__state).
 :- mode first_order_check_goal(in, in, in, in, in, in, in, out, di, uo) is det.
@@ -234,7 +234,7 @@ first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes,
 		"higher order call may introduce a non-stratified loop",
 		Error, Module0, Module).
 
-:- pred first_order_check_goal_list(list(hlds__goal), bool, 
+:- pred first_order_check_goal_list(list(hlds_goal), bool, 
 	list(pred_proc_id), pred_proc_id, bool, module_info, 
 	module_info, io__state, io__state).
 :- mode first_order_check_goal_list(in, in, in, in, in, in, out, di, uo) is det.
@@ -330,7 +330,7 @@ higher_order_check_scc([PredProcId|Remaining], WholeScc, HOInfo, Module0,
 	),
 	higher_order_check_scc(Remaining, WholeScc, HOInfo, Module1, Module).
 
-:- pred higher_order_check_goal(hlds__goal_expr, hlds__goal_info, bool,
+:- pred higher_order_check_goal(hlds_goal_expr, hlds_goal_info, bool,
 		set(pred_proc_id), pred_proc_id, bool, bool,
 		module_info, module_info, io__state, io__state).
 :- mode higher_order_check_goal(in, in, in, in, in, in, in, in, 
@@ -409,7 +409,7 @@ higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det),
 		{ Module = Module0 }
 	).
 	
-:- pred higher_order_check_goal_list(list(hlds__goal), bool, set(pred_proc_id),
+:- pred higher_order_check_goal_list(list(hlds_goal), bool, set(pred_proc_id),
 	pred_proc_id, bool, bool, module_info, module_info, 
 	io__state, io__state).
 :- mode higher_order_check_goal_list(in, in, in, in, in, in, in, out, 
@@ -773,7 +773,7 @@ higherorder_in_out1([Type|Types], [Mode|Modes], Module, HOIn0, HOIn,
 
 	% return the set of all procs called in and all addresses
 	% taken, in a given goal
-:- pred check_goal(hlds__goal_expr, set(pred_proc_id), set(pred_proc_id), 
+:- pred check_goal(hlds_goal_expr, set(pred_proc_id), set(pred_proc_id), 
 	bool). 
 :- mode check_goal(in, out, out, out) is det.
 
@@ -782,7 +782,7 @@ check_goal(Goal, Calls, TakenAddrs, CallsHO) :-
 	set__init(TakenAddrs0),
 	check_goal1(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs, no, CallsHO).
 
-:- pred check_goal1(hlds__goal_expr, set(pred_proc_id), set(pred_proc_id), 
+:- pred check_goal1(hlds_goal_expr, set(pred_proc_id), set(pred_proc_id), 
 	set(pred_proc_id), set(pred_proc_id), bool, bool).
 :- mode check_goal1(in, in, out, in, out, in, out) is det.
 
@@ -856,7 +856,7 @@ check_goal1(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _), Calls, Calls,
 		HasAT, HasAT, CallsHO, CallsHO).
 
 	
-:- pred check_goal_list(list(hlds__goal), set(pred_proc_id), set(pred_proc_id), 
+:- pred check_goal_list(list(hlds_goal), set(pred_proc_id), set(pred_proc_id), 
 	set(pred_proc_id), set(pred_proc_id), bool, bool). 
 :- mode check_goal_list(in, in, out, in, out, in, out) is det.
 
@@ -881,7 +881,7 @@ check_case_list([Case|Goals], Calls0, Calls, HasAT0, HasAT, CallsHO0,
 	% This pred returns a list of all the calls in a given set of
 	% goals including calls in unification lambda functions and
 	% pred_proc_id's in constructs 
-:- pred get_called_procs(hlds__goal_expr, list(pred_proc_id), 
+:- pred get_called_procs(hlds_goal_expr, list(pred_proc_id), 
 	list(pred_proc_id)). 
 :- mode get_called_procs(in, in, out) is det.
 
@@ -945,7 +945,7 @@ get_called_procs(not(Goal - _GoalInfo), Calls0, Calls) :-
 get_called_procs(pragma_c_code(_, _IsRec, _CPred, _CProc, _, _), Calls, Calls).
 
 
-:- pred check_goal_list(list(hlds__goal), list(pred_proc_id), 
+:- pred check_goal_list(list(hlds_goal), list(pred_proc_id), 
 	list(pred_proc_id)).
 :- mode check_goal_list(in, in, out) is det.
 

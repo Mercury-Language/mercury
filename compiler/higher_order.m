@@ -271,7 +271,7 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	% The first time through the only predicate we can specialize
 	% is call/N. The pred_proc_id is that of the current procedure,
 	% used to find out which procedures need fixing up later.
-:- pred traverse_goal(hlds__goal::in, hlds__goal::out, pred_proc_id::in,
+:- pred traverse_goal(hlds_goal::in, hlds_goal::out, pred_proc_id::in,
 	changed::out, int::out, higher_order_info::in,
 	higher_order_info::out) is det.
 
@@ -331,7 +331,7 @@ traverse_goal(Goal, Goal, _, unchanged, 1) -->
 	check_unify(Unify).
 
 
-:- pred traverse_conj(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
+:- pred traverse_conj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
 	higher_order_info::out) is det.
 
@@ -348,7 +348,7 @@ traverse_conj([Goal0 | Goals0], [Goal | Goals],
 		% specialization information before the goal, then merge the
 		% results to give the specialization information after the
 		% disjunction.
-:- pred traverse_disj(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
+:- pred traverse_disj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 		changed::out, int::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
@@ -361,7 +361,7 @@ traverse_disj([Goal0 | Goals0], [Goal | Goals], PredProcId,
 			Changed0, Changed, GoalSize0, GoalSize, Info0).
 
 
-:- pred traverse_disj_2(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
+:- pred traverse_disj_2(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
 	higher_order_info::in, higher_order_info::out) is det.
 
@@ -525,7 +525,7 @@ check_unify(complicated_unify(_, _)) -->
 
 		% Process a higher-order call to see if it could possibly
 		% be specialized.
-:- pred maybe_specialize_higher_order_call( hlds__goal::in, hlds__goal::out,
+:- pred maybe_specialize_higher_order_call( hlds_goal::in, hlds_goal::out,
 		pred_proc_id::in, changed::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
@@ -566,7 +566,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 	Info = info(PredVars, Requests, NewPreds, Module).
 
 		% Process a call to see if it could possibly be specialized.
-:- pred maybe_specialize_call( hlds__goal::in, hlds__goal::out,
+:- pred maybe_specialize_call( hlds_goal::in, hlds_goal::out,
 		pred_proc_id::in, changed::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
@@ -990,7 +990,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 			ModuleInfo2, ModuleInfo).
 
 	
-		% Returns a list of hlds__goals which construct the list of
+		% Returns a list of hlds_goals which construct the list of
 		% higher order arguments which have been specialized. Traverse
 		% goal will then recognize these as having a unique possible
 		% value and will specialize any calls involving them.
@@ -1011,7 +1011,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 		list(var)::out, list(mode)::in, list(mode)::out,
 		list(higher_order_arg)::in, proc_info::in, proc_info::out,
 		pred_info::in, pred_info::out, tsubst::in,
-		tsubst::out, list(hlds__goal)::out) is det.
+		tsubst::out, list(hlds_goal)::out) is det.
 
 construct_higher_order_terms(_, HeadVars, HeadVars, ArgModes, ArgModes,
 	[], ProcInfo, ProcInfo, PredInfo, PredInfo, Subst, Subst, []).

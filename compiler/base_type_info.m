@@ -132,7 +132,15 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
 	( 	
-		( Status = exported ; Status = abstract_exported )
+		( Status = exported ; Status = abstract_exported
+		; Status = imported 	% XXX this is a hack to make it work
+					% for `term__context', which is defined
+					% in mercury_builtin.m, but whose
+					% base_type_info is generated in
+					% term.m.  Apart from special cases
+					% in mercury_builtin.m, this should
+					% never happen.
+		)
 	->
 		Exported = yes
 	;

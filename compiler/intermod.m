@@ -335,7 +335,7 @@ intermod__gather_abstract_exported_types -->
 
 	% Go over the goal of an exported proc looking for proc decls, types,
 	% insts and modes that we need to write to the optfile.
-:- pred intermod__traverse_goal(hlds__goal::in, hlds__goal::out, bool::out,
+:- pred intermod__traverse_goal(hlds_goal::in, hlds_goal::out, bool::out,
 			intermod_info::in, intermod_info::out) is det.
 
 intermod__traverse_goal(conj(Goals0) - Info, conj(Goals) - Info, DoWrite) -->
@@ -403,7 +403,7 @@ intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
 			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 
-:- pred intermod__traverse_list_of_goals(hlds__goals::in, hlds__goals::out,
+:- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
 
 intermod__traverse_list_of_goals([], [], yes) --> [].
@@ -532,23 +532,18 @@ fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
 		intermod_info_add_proc(PredId, DoWrite)
 	;
 		intermod_info_get_var_types(VarTypes),
-		{
-			Functor0 = cons(qualified(Module, PredName), Arity),
-			predicate_table_search_sym(PredTable,
-				qualified(Module, PredName), [PredId])
-		;
-			Functor0 = cons(unqualified(PredName), Arity),
-			map__lookup(VarTypes, LVar, LVarType),
-			type_is_higher_order(LVarType,
-				PredOrFunc, PredArgTypes),
-			get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
-				PredArgTypes, ModuleInfo, PredId, _ProcId),
-			module_info_pred_info(ModuleInfo, PredId, PredInfo),
-			pred_info_module(PredInfo, Module)
-		}
+		{ Functor0 = cons(PredName, Arity) },
+		{ map__lookup(VarTypes, LVar, LVarType) },
+		{ type_is_higher_order(LVarType, PredOrFunc, PredArgTypes) }
 	->
 			% The unification creates a higher-order pred constant.
-		{ Functor = cons(qualified(Module, PredName), Arity) },
+		{ get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
+			PredArgTypes, ModuleInfo, PredId, _ProcId) },
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_module(PredInfo, Module) },
+		{ unqualify_name(PredName, UnqualPredName) },
+		{ QualifiedPredName = qualified(Module, UnqualPredName) },
+		{ Functor = cons(QualifiedPredName, Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
 		{ Functor = Functor0 },
@@ -598,7 +593,7 @@ intermod__gather_proc_modes(ModuleInfo, ModeTable,
 		{ list__length(Args, Arity) },
 		{ ModeId = Name - Arity },
 		{ map__lookup(ModeTable, ModeId, ModeDefn) },
-		{ ModeDefn = hlds__mode_defn(_,_,_,_,_, Status) },
+		{ ModeDefn = hlds_mode_defn(_,_,_,_,_, Status) },
 		( { Status = local } ->
 			intermod_info_get_modes(ModesToExport0),
 			{ set__insert(ModesToExport0, ModeId,
@@ -642,7 +637,7 @@ intermod__add_inst(UserInstTable, Inst) -->
 		{ list__length(InstArgs, Arity) },
 		{ InstId = Name - Arity },
 		{ map__lookup(UserInstTable, InstId, InstDefn) },
-		{ InstDefn = hlds__inst_defn(_,_,_,_,_, Status) },
+		{ InstDefn = hlds_inst_defn(_,_,_,_,_, Status) },
 		( { Status = local } ->
 			intermod_info_get_insts(InstsToExport0),
 			{ set__insert(InstsToExport0, InstId,
@@ -770,7 +765,7 @@ intermod__write_modes(_, _, []) --> [].
 intermod__write_modes(ModuleInfo, ModeTable, [ModeId | Modes]) -->
 	{ ModeId = SymName - _Arity },
 	{ map__lookup(ModeTable, ModeId, ModeDefn) },
-	{ ModeDefn = hlds__mode_defn(Varset, Args, eqv_mode(Mode),
+	{ ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode),
 							_, Context, _) },
 	mercury_output_mode_defn(
 			Varset,
@@ -787,7 +782,7 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 	io__write_char(':'),
 	{ Inst = SymName - _Arity },
 	{ map__lookup(UserInstTable, Inst, InstDefn) },
-	{ InstDefn = hlds__inst_defn(Varset, Args, Body, _, Context, _) },
+	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _, Context, _) },
 	(
 		{ Body = eqv_inst(Inst2) },
 		mercury_output_inst_defn(
@@ -1246,10 +1241,8 @@ read_optimization_interfaces([Import | Imports],
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
 	{ string__append(Import, ".opt", FileName) },
-        io__gc_call(
-		prog_io__read_module(FileName, Import, yes,
-				ModuleError, Messages, Items1)
-        ),
+	prog_io__read_module(FileName, Import, yes,
+			ModuleError, Messages, Items1),
 	update_error_status(FileName, ModuleError, Messages, Error0, Error1),
 	{ list__append(Items0, Items1, Items2) },
 	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).

@@ -17,16 +17,16 @@
 
 	% Here is how goals are represented
 
-:- type hlds__goal	== pair(hlds__goal_expr, hlds__goal_info).
+:- type hlds_goal	== pair(hlds_goal_expr, hlds_goal_info).
 
-:- type hlds__goal_expr
+:- type hlds_goal_expr
 
 		% A conjunction.
 		% Note: conjunctions must be fully flattened before
 		% mode analysis.  As a general rule, it is a good idea
 		% to keep them flattened.
 
-	--->	conj(hlds__goals)
+	--->	conj(hlds_goals)
 
 		% A predicate call.
 		% Initially only the sym_name and arguments
@@ -95,7 +95,7 @@
 		% Note: disjunctions should be fully flattened.
 
 	;	disj(
-			hlds__goals,
+			hlds_goals,
 			store_map	% a map saying where each live variable
 					% should be at the end of each arm of
 					% the disj. This field is filled in
@@ -106,7 +106,7 @@
 		)
 
 		% A negation
-	;	not(hlds__goal)
+	;	not(hlds_goal)
 
 		% An explicit quantification.
 		% Quantification information is stored in the `non_locals'
@@ -114,7 +114,7 @@
 		% (except to recompute the goal_info quantification).
 		% `all Vs' gets converted to `not some Vs not'.
 
-	;	some(list(var), hlds__goal)
+	;	some(list(var), hlds_goal)
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.
@@ -125,9 +125,9 @@
 	;	if_then_else(
 			list(var),	% The locally existentially quantified
 					% variables <Vars>.
-			hlds__goal,	% The <Condition>
-			hlds__goal,	% The <Then> part
-			hlds__goal,	% The <Else> part
+			hlds_goal,	% The <Condition>
+			hlds_goal,	% The <Then> part
+			hlds_goal,	% The <Else> part
 			store_map	% a map saying where each live variable
 					% should be at the end of each arm of
 					% the disj. This field is filled in
@@ -187,7 +187,7 @@
 			;	out_of_line_builtin
 			;	not_builtin.
 
-:- type case		--->	case(cons_id, hlds__goal).
+:- type case		--->	case(cons_id, hlds_goal).
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
@@ -223,7 +223,7 @@
 	--->	var(var)
 	;	functor(cons_id, list(var))
 	;	lambda_goal(pred_or_func, list(var), list(mode), determinism,
-				hlds__goal).
+				hlds_goal).
 
 :- type unification
 		% A construction unification is a unification with a functor
@@ -348,9 +348,9 @@
 			unify_context	% the context of the unification
 		).
 
-:- type hlds__goals == list(hlds__goal).
+:- type hlds_goals == list(hlds_goal).
 
-:- type hlds__goal_info.
+:- type hlds_goal_info.
 
 :- type goal_feature
 	--->	constraint.	% This is included if the goal is
@@ -370,7 +370,7 @@
 
 	% NB. Don't forget to check goal_util__name_apart_goalinfo
 	% if this structure is modified.
-:- type hlds__goal_info
+:- type hlds_goal_info
 	---> goal_info(
 		set(var),	% the pre-birth set
 		set(var),	% the post-birth set
@@ -434,105 +434,105 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for the hlds__goal_info data structure.
+	% Access predicates for the hlds_goal_info data structure.
 
 :- interface.
 
-:- pred goal_info_init(hlds__goal_info).
+:- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
 
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
 % and the changes in liveness.
 
-:- pred goal_info_get_pre_births(hlds__goal_info, set(var)).
+:- pred goal_info_get_pre_births(hlds_goal_info, set(var)).
 :- mode goal_info_get_pre_births(in, out) is det.
 
-:- pred goal_info_set_pre_births(hlds__goal_info, set(var), hlds__goal_info).
+:- pred goal_info_set_pre_births(hlds_goal_info, set(var), hlds_goal_info).
 :- mode goal_info_set_pre_births(in, in, out) is det.
 
-:- pred goal_info_get_post_births(hlds__goal_info, set(var)).
+:- pred goal_info_get_post_births(hlds_goal_info, set(var)).
 :- mode goal_info_get_post_births(in, out) is det.
 
-:- pred goal_info_set_post_births(hlds__goal_info, set(var), hlds__goal_info).
+:- pred goal_info_set_post_births(hlds_goal_info, set(var), hlds_goal_info).
 :- mode goal_info_set_post_births(in, in, out) is det.
 
-:- pred goal_info_get_pre_deaths(hlds__goal_info, set(var)).
+:- pred goal_info_get_pre_deaths(hlds_goal_info, set(var)).
 :- mode goal_info_get_pre_deaths(in, out) is det.
 
-:- pred goal_info_set_pre_deaths(hlds__goal_info, set(var), hlds__goal_info).
+:- pred goal_info_set_pre_deaths(hlds_goal_info, set(var), hlds_goal_info).
 :- mode goal_info_set_pre_deaths(in, in, out) is det.
 
-:- pred goal_info_get_post_deaths(hlds__goal_info, set(var)).
+:- pred goal_info_get_post_deaths(hlds_goal_info, set(var)).
 :- mode goal_info_get_post_deaths(in, out) is det.
 
-:- pred goal_info_set_post_deaths(hlds__goal_info, set(var), hlds__goal_info).
+:- pred goal_info_set_post_deaths(hlds_goal_info, set(var), hlds_goal_info).
 :- mode goal_info_set_post_deaths(in, in, out) is det.
 
-:- pred goal_info_get_code_model(hlds__goal_info, code_model).
+:- pred goal_info_get_code_model(hlds_goal_info, code_model).
 :- mode goal_info_get_code_model(in, out) is det.
 
-:- pred goal_info_get_determinism(hlds__goal_info, determinism).
+:- pred goal_info_get_determinism(hlds_goal_info, determinism).
 :- mode goal_info_get_determinism(in, out) is det.
 
-:- pred goal_info_set_determinism(hlds__goal_info, determinism,
-	hlds__goal_info).
+:- pred goal_info_set_determinism(hlds_goal_info, determinism,
+	hlds_goal_info).
 :- mode goal_info_set_determinism(in, in, out) is det.
 
-:- pred goal_info_get_nonlocals(hlds__goal_info, set(var)).
+:- pred goal_info_get_nonlocals(hlds_goal_info, set(var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
 
-:- pred goal_info_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
+:- pred goal_info_set_nonlocals(hlds_goal_info, set(var), hlds_goal_info).
 :- mode goal_info_set_nonlocals(in, in, out) is det.
 
-:- pred goal_info_get_features(hlds__goal_info, set(goal_feature)).
+:- pred goal_info_get_features(hlds_goal_info, set(goal_feature)).
 :- mode goal_info_get_features(in, out) is det.
 
-:- pred goal_info_set_features(hlds__goal_info, set(goal_feature),
-					hlds__goal_info).
+:- pred goal_info_set_features(hlds_goal_info, set(goal_feature),
+					hlds_goal_info).
 :- mode goal_info_set_features(in, in, out) is det.
 
-:- pred goal_info_add_feature(hlds__goal_info, goal_feature, hlds__goal_info).
+:- pred goal_info_add_feature(hlds_goal_info, goal_feature, hlds_goal_info).
 :- mode goal_info_add_feature(in, in, out) is det.
 
-:- pred goal_info_remove_feature(hlds__goal_info, goal_feature, 
-					hlds__goal_info).
+:- pred goal_info_remove_feature(hlds_goal_info, goal_feature, 
+					hlds_goal_info).
 :- mode goal_info_remove_feature(in, in, out) is det.
 
-:- pred goal_info_has_feature(hlds__goal_info, goal_feature).
+:- pred goal_info_has_feature(hlds_goal_info, goal_feature).
 :- mode goal_info_has_feature(in, in) is semidet.
 
-:- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
+:- pred goal_info_get_instmap_delta(hlds_goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.
 
-:- pred goal_info_set_instmap_delta(hlds__goal_info, instmap_delta,
-				hlds__goal_info).
+:- pred goal_info_set_instmap_delta(hlds_goal_info, instmap_delta,
+				hlds_goal_info).
 :- mode goal_info_set_instmap_delta(in, in, out) is det.
 
-:- pred goal_info_get_context(hlds__goal_info, term__context).
+:- pred goal_info_get_context(hlds_goal_info, term__context).
 :- mode goal_info_get_context(in, out) is det.
 
-:- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
+:- pred goal_info_set_context(hlds_goal_info, term__context, hlds_goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
-:- pred goal_info_get_follow_vars(hlds__goal_info, maybe(follow_vars)).
+:- pred goal_info_get_follow_vars(hlds_goal_info, maybe(follow_vars)).
 :- mode goal_info_get_follow_vars(in, out) is det.
 
-:- pred goal_info_set_follow_vars(hlds__goal_info, maybe(follow_vars),
-	hlds__goal_info).
+:- pred goal_info_set_follow_vars(hlds_goal_info, maybe(follow_vars),
+	hlds_goal_info).
 :- mode goal_info_set_follow_vars(in, in, out) is det.
 
-:- pred goal_info_get_resume_point(hlds__goal_info, resume_point).
+:- pred goal_info_get_resume_point(hlds_goal_info, resume_point).
 :- mode goal_info_get_resume_point(in, out) is det.
 
-:- pred goal_info_set_resume_point(hlds__goal_info, resume_point,
-	hlds__goal_info).
+:- pred goal_info_set_resume_point(hlds_goal_info, resume_point,
+	hlds_goal_info).
 :- mode goal_info_set_resume_point(in, in, out) is det.
 
-:- pred goal_set_follow_vars(hlds__goal, maybe(follow_vars), hlds__goal).
+:- pred goal_set_follow_vars(hlds_goal, maybe(follow_vars), hlds_goal).
 :- mode goal_set_follow_vars(in, in, out) is det.
 
-:- pred goal_set_resume_point(hlds__goal, resume_point, hlds__goal).
+:- pred goal_set_resume_point(hlds_goal, resume_point, hlds_goal).
 :- mode goal_set_resume_point(in, in, out) is det.
 
 :- pred goal_info_resume_vars_and_loc(resume_point, set(var), resume_locs).
@@ -542,14 +542,14 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
 
-:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
+:- pred goal_to_conj_list(hlds_goal, list(hlds_goal)).
 :- mode goal_to_conj_list(in, out) is det.
 
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts,
 	% otherwise return the goal as a singleton list.
 
-:- pred goal_to_disj_list(hlds__goal, list(hlds__goal)).
+:- pred goal_to_disj_list(hlds_goal, list(hlds_goal)).
 :- mode goal_to_disj_list(in, out) is det.
 
 	% Convert a list of conjuncts to a goal.
@@ -557,7 +557,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	% otherwise return the conjunction of the conjuncts,
 	% with the specified goal_info.
 
-:- pred conj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
+:- pred conj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
 :- mode conj_list_to_goal(in, in, out) is det.
 
 	% Convert a list of disjuncts to a goal.
@@ -565,19 +565,19 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	% otherwise return the disjunction of the disjuncts,
 	% with the specified goal_info.
 
-:- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
+:- pred disj_list_to_goal(list(hlds_goal), hlds_goal_info, hlds_goal).
 :- mode disj_list_to_goal(in, in, out) is det.
 
 	% Takes a goal and a list of goals, and conjoins them
 	% (with a potentially blank goal_info).
 
-:- pred conjoin_goal_and_goal_list(hlds__goal, list(hlds__goal),
-	hlds__goal).
+:- pred conjoin_goal_and_goal_list(hlds_goal, list(hlds_goal),
+	hlds_goal).
 :- mode conjoin_goal_and_goal_list(in, in, out) is det.
 
 	% Conjoin two goals (with a potentially blank goal_info).
 	
-:- pred conjoin_goals(hlds__goal, hlds__goal, hlds__goal).
+:- pred conjoin_goals(hlds_goal, hlds_goal, hlds_goal).
 :- mode conjoin_goals(in, in, out) is det.
 
 	% A goal is atomic iff it doesn't contain any sub-goals
@@ -585,7 +585,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	% but lambda expressions will get transformed into separate
 	% predicates by the polymorphism.m pass).
 
-:- pred goal_is_atomic(hlds__goal_expr).
+:- pred goal_is_atomic(hlds_goal_expr).
 :- mode goal_is_atomic(in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -641,7 +641,7 @@ goal_info_get_features(GoalInfo, Features) :-
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
 	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, ResumePoint).
 
-% :- type hlds__goal_info
+% :- type hlds_goal_info
 % 	--->	goal_info(
 % 		A	set(var),	% the pre-birth set
 % 		B	set(var),	% the post-birth set

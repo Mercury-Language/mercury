@@ -170,7 +170,7 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses1).
 
-:- pred get_clause_goals(list(clause)::in, list(hlds__goal)::out) is det.
+:- pred get_clause_goals(list(clause)::in, list(hlds_goal)::out) is det.
 
 get_clause_goals([], []).
 get_clause_goals([Clause | Clauses], Goals) :-

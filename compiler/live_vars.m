@@ -63,7 +63,7 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 % of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred build_live_sets_in_goal(hlds__goal, set(var), set(var), set(set(var)),
+:- pred build_live_sets_in_goal(hlds_goal, set(var), set(var), set(set(var)),
 	module_info, proc_info, set(var), set(var), set(set(var))).
 :- mode build_live_sets_in_goal(in, in, in, in, in, in, out, out, out) is det.
 
@@ -156,8 +156,8 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
 	% `LiveSets' is the interference graph, i.e. the set of sets
 	% of variables which need to be on the stack at the same time.
 
-:- pred build_live_sets_in_goal_2(hlds__goal_expr, set(var), set(var),
-	set(set(var)), hlds__goal_info, module_info, proc_info,
+:- pred build_live_sets_in_goal_2(hlds_goal_expr, set(var), set(var),
+	set(set(var)), hlds_goal_info, module_info, proc_info,
 	set(var), set(var), set(set(var))).
 :- mode build_live_sets_in_goal_2(in, in, in, in, in, in, in, out, out, out)
 	is det.
@@ -355,7 +355,7 @@ build_live_sets_in_goal_2(pragma_c_code(_, MayCallMercury, PredId, ProcId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_conj(list(hlds__goal), set(var), set(var),
+:- pred build_live_sets_in_conj(list(hlds_goal), set(var), set(var),
 	set(set(var)), module_info, proc_info, set(var), set(var),
 	set(set(var))).
 :- mode build_live_sets_in_conj(in, in, in, in, in, in, out, out, out) is det.
@@ -383,8 +383,8 @@ build_live_sets_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_disj(list(hlds__goal), set(var), set(var),
-	set(set(var)), hlds__goal_info, module_info, proc_info,
+:- pred build_live_sets_in_disj(list(hlds_goal), set(var), set(var),
+	set(set(var)), hlds_goal_info, module_info, proc_info,
 	set(var), set(var), set(set(var))).
 :- mode build_live_sets_in_disj(in, in, in, in, in, in, in, out, out, out)
 	is det.

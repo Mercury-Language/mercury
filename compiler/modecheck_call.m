@@ -24,18 +24,18 @@
 :- import_module hlds_goal, mode_info, modes.
 
 :- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
-				pair(list(hlds__goal)), mode_info, mode_info).
+				pair(list(hlds_goal)), mode_info, mode_info).
 :- mode modecheck_call_pred(in, in, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, var, list(var),
 				list(type), list(mode), determinism, list(var),
-				pair(list(hlds__goal)), mode_info, mode_info).
+				pair(list(hlds_goal)), mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_pred_call(var, list(var), hlds__goal_info,
-		hlds__goal_expr, mode_info, mode_info).
+:- pred modecheck_higher_order_pred_call(var, list(var), hlds_goal_info,
+		hlds_goal_expr, mode_info, mode_info).
 :- mode modecheck_higher_order_pred_call(in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
@@ -211,7 +211,7 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 	).
 
 :- pred modecheck_call_pred_2(list(proc_id), pred_id, proc_table, list(var),
-			set(var), proc_id, list(var), pair(list(hlds__goal)),
+			set(var), proc_id, list(var), pair(list(hlds_goal)),
 			mode_info, mode_info).
 :- mode modecheck_call_pred_2(in, in, in, in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.

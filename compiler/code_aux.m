@@ -22,17 +22,17 @@
 	% i.e. control does not leave G to call another procedure, even if
 	% that procedure is a complicated unification.
 
-:- pred code_aux__contains_only_builtins(hlds__goal).
+:- pred code_aux__contains_only_builtins(hlds_goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
 	% Succeeds if the goal cannot loop or call error/1.
-:- pred code_aux__goal_cannot_loop(module_info, hlds__goal).
+:- pred code_aux__goal_cannot_loop(module_info, hlds_goal).
 :- mode code_aux__goal_cannot_loop(in, in) is semidet.
 
 	% code_aux__goal_is_flat(Goal) is true if Goal does not contain
 	% any branched structures (ie if-then-else or disjunctions or
 	% switches.)
-:- pred code_aux__goal_is_flat(hlds__goal).
+:- pred code_aux__goal_is_flat(hlds_goal).
 :- mode code_aux__goal_is_flat(in) is semidet.
 
 	% code_aux__contains_simple_recursive_call(G, CI, Last) succeeds
@@ -42,7 +42,7 @@
 	% set dependening on whether the recursive call is last in the
 	% conjunction or not.
 
-:- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
+:- pred code_aux__contains_simple_recursive_call(hlds_goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
 :- pred code_aux__explain_stack_slots(stack_slots, varset, string).
@@ -58,7 +58,7 @@
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
 	code_aux__contains_only_builtins_2(Goal).
 
-:- pred code_aux__contains_only_builtins_2(hlds__goal_expr).
+:- pred code_aux__contains_only_builtins_2(hlds_goal_expr).
 :- mode code_aux__contains_only_builtins_2(in) is semidet.
 
 code_aux__contains_only_builtins_2(conj(Goals)) :-
@@ -97,7 +97,7 @@ code_aux__contains_only_builtins_cases([case(_ConsId, Goal)|Cases]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_cases(Cases).
 
-:- pred code_aux__contains_only_builtins_list(list(hlds__goal)).
+:- pred code_aux__contains_only_builtins_list(list(hlds_goal)).
 :- mode code_aux__contains_only_builtins_list(in) is semidet.
 
 code_aux__contains_only_builtins_list([]).
@@ -111,7 +111,7 @@ code_aux__goal_cannot_loop(ModuleInfo, Goal) :-
 	Goal = GoalExpr - _,
 	code_aux__goal_cannot_loop_2(ModuleInfo, GoalExpr).
 
-:- pred code_aux__goal_cannot_loop_2(module_info, hlds__goal_expr).
+:- pred code_aux__goal_cannot_loop_2(module_info, hlds_goal_expr).
 :- mode code_aux__goal_cannot_loop_2(in, in) is semidet.
 
 code_aux__goal_cannot_loop_2(ModuleInfo, conj(Goals)) :-
@@ -157,7 +157,7 @@ code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
 code_aux__goal_is_flat(Goal - _GoalInfo) :-
 	code_aux__goal_is_flat_2(Goal).
 
-:- pred code_aux__goal_is_flat_2(hlds__goal_expr).
+:- pred code_aux__goal_is_flat_2(hlds_goal_expr).
 :- mode code_aux__goal_is_flat_2(in) is semidet.
 
 code_aux__goal_is_flat_2(conj(Goals)) :-
@@ -173,7 +173,7 @@ code_aux__goal_is_flat_2(pragma_c_code(_, _, _, _, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred code_aux__goal_is_flat_list(list(hlds__goal)).
+:- pred code_aux__goal_is_flat_list(list(hlds_goal)).
 :- mode code_aux__goal_is_flat_list(in) is semidet.
 
 code_aux__goal_is_flat_list([]).
@@ -187,7 +187,7 @@ code_aux__contains_simple_recursive_call(Goal - _, CodeInfo, Last) :-
 	Goal = conj(Goals),
 	code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, Last).
 
-:- pred code_aux__contains_simple_recursive_call_2(list(hlds__goal), code_info,
+:- pred code_aux__contains_simple_recursive_call_2(list(hlds_goal), code_info,
 	bool).
 :- mode code_aux__contains_simple_recursive_call_2(in, in, out) is semidet.
 
@@ -208,7 +208,7 @@ code_aux__contains_simple_recursive_call_2([Goal|Goals], CodeInfo, Last) :-
 		)
 	).
 
-:- pred code_aux__is_recursive_call(hlds__goal_expr, code_info).
+:- pred code_aux__is_recursive_call(hlds_goal_expr, code_info).
 :- mode code_aux__is_recursive_call(in, in) is semidet.
 
 code_aux__is_recursive_call(Goal, CodeInfo) :-

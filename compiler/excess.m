@@ -79,8 +79,8 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 % and the notation `<Foo> [X/Y]' means <Foo> with all
 % occurrences of `X' replaced with `Y'.
 
-:- pred excess_assignments_in_goal(hlds__goal, list(var),
-				   hlds__goal, list(var)).
+:- pred excess_assignments_in_goal(hlds_goal, list(var),
+				   hlds_goal, list(var)).
 :- mode excess_assignments_in_goal(in, in, out, out) is det.
 
 excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
@@ -143,8 +143,8 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	% substitution has been made, the second assignment V_4 = V_6
 	% is left alone.
 
-:- pred excess_assignments_in_conj(list(hlds__goal), list(hlds__goal),
-	list(var), set(var), list(hlds__goal), list(var)).
+:- pred excess_assignments_in_conj(list(hlds_goal), list(hlds_goal),
+	list(var), set(var), list(hlds_goal), list(var)).
 :- mode excess_assignments_in_conj(in, in, in, in, out, out) is det.
 
 excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars) :-
@@ -177,8 +177,8 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred excess_assignments_in_disj(list(hlds__goal), list(var),
-	list(hlds__goal), list(var)).
+:- pred excess_assignments_in_disj(list(hlds_goal), list(var),
+	list(hlds_goal), list(var)).
 :- mode excess_assignments_in_disj(in, in, out, out) is det.
 
 excess_assignments_in_disj([], ElimVars, [], ElimVars).

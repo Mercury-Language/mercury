@@ -96,8 +96,8 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	% Given a goal, and the instmap on entry to that goal,
 	% replace disjunctions with switches whereever possible.
 
-:- pred detect_switches_in_goal(hlds__goal, instmap, map(var, type),
-	module_info, hlds__goal).
+:- pred detect_switches_in_goal(hlds_goal, instmap, map(var, type),
+	module_info, hlds_goal).
 :- mode detect_switches_in_goal(in, in, in, in, out) is det.
 
 detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal) :-
@@ -109,8 +109,8 @@ detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal) :-
 	% computed by applying the instmap delta specified in the
 	% goal's goalinfo.
 
-:- pred detect_switches_in_goal_1(hlds__goal, instmap, map(var, type),
-	module_info, hlds__goal, instmap).
+:- pred detect_switches_in_goal_1(hlds_goal, instmap, map(var, type),
+	module_info, hlds_goal, instmap).
 :- mode detect_switches_in_goal_1(in, in, in, in, out, out) is det.
 
 detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, ModuleInfo,
@@ -121,8 +121,8 @@ detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, ModuleInfo,
 
 	% Here we process each of the different sorts of goals.
 
-:- pred detect_switches_in_goal_2(hlds__goal_expr, hlds__goal_info, instmap,
-		map(var, type), module_info, hlds__goal_expr).
+:- pred detect_switches_in_goal_2(hlds_goal_expr, hlds_goal_info, instmap,
+		map(var, type), module_info, hlds_goal_expr).
 :- mode detect_switches_in_goal_2(in, in, in, in, in, out) is det.
 
 detect_switches_in_goal_2(disj(Goals0, SM), GoalInfo, InstMap0,
@@ -195,17 +195,17 @@ detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, _, _,
 	% each group of disjunctions can only succeed if the variable
 	% is bound to a different functor.
 
-:- type cases == map(cons_id, list(hlds__goal)).
+:- type cases == map(cons_id, list(hlds_goal)).
 
 :- type sorted_case_list == list(case).
 	% the sorted_case_list should always be sorted on cons_id -
 	% `delete_unreachable_cases' relies on this.
 
-:- type again ---> again(var, list(hlds__goal), sorted_case_list).
+:- type again ---> again(var, list(hlds_goal), sorted_case_list).
 
-:- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
+:- pred detect_switches_in_disj(list(var), list(hlds_goal), hlds_goal_info,
 	store_map, instmap, map(var, type), list(var), module_info,
-	list(again), hlds__goal_expr).
+	list(again), hlds_goal_expr).
 :- mode detect_switches_in_disj(in, in, in, in, in, in, in, in, in, out) is det.
 
 detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
@@ -267,8 +267,8 @@ select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
 	),
 	select_best_switch(AgainList, BestAgain1, BestAgain).
 
-:- pred detect_sub_switches_in_disj(list(hlds__goal), instmap, map(var, type),
-	module_info, list(hlds__goal)).
+:- pred detect_sub_switches_in_disj(list(hlds_goal), instmap, map(var, type),
+	module_info, list(hlds_goal)).
 :- mode detect_sub_switches_in_disj(in, in, in, in, out) is det.
 
 detect_sub_switches_in_disj([], _InstMap, _VarTypes, _ModuleInfo, []).
@@ -290,8 +290,8 @@ detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, ModuleInfo,
 	Case = case(Functor, Goal),
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases).
 
-:- pred detect_switches_in_conj(list(hlds__goal), instmap, map(var, type),
-	module_info, list(hlds__goal)).
+:- pred detect_switches_in_conj(list(hlds_goal), instmap, map(var, type),
+	module_info, list(hlds_goal)).
 :- mode detect_switches_in_conj(in, in, in, in, out) is det.
 
 detect_switches_in_conj([], _InstMap, _VarTypes, _ModuleInfo, []).
@@ -316,7 +316,7 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, ModuleInfo,
 	% We partition the goals by abstractly interpreting the unifications
 	% at the start of each disjunction, to build up a substitution.
 
-:- pred partition_disj(list(hlds__goal), var, hlds__goal_info, list(hlds__goal),
+:- pred partition_disj(list(hlds_goal), var, hlds_goal_info, list(hlds_goal),
 	sorted_case_list).
 :- mode partition_disj(in, in, in, out, out) is semidet.
 
@@ -327,8 +327,8 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 	fix_case_list(CasesAssocList, GoalInfo, CasesList),
 	CasesList = [_, _ | _].	% there must be more than one case
 
-:- pred partition_disj_trial(list(hlds__goal), var,
-	list(hlds__goal), list(hlds__goal), cases, cases).
+:- pred partition_disj_trial(list(hlds_goal), var,
+	list(hlds_goal), list(hlds_goal), cases, cases).
 :- mode partition_disj_trial(in, in, in, out, in, out) is det.
 
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
@@ -366,8 +366,8 @@ partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	%	`MaybeFunctor' to `no', and computes `Subst' as the
 	%	resulting substitution from interpreting through the goal.
 
-:- pred find_bind_var_for_switch(list(hlds__goal), substitution, var,
-	list(hlds__goal), substitution, maybe(cons_id)).
+:- pred find_bind_var_for_switch(list(hlds_goal), substitution, var,
+	list(hlds_goal), substitution, maybe(cons_id)).
 :- mode find_bind_var_for_switch(in, in, in, out, out, out) is det.
 
 find_bind_var_for_switch([], Substitution, _Var, [], Substitution, no).
@@ -425,8 +425,8 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 		MaybeFunctor = no
 	).
 
-:- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds__goal_info,
-	store_map, instmap, module_info, hlds__goal_expr).
+:- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds_goal_info,
+	store_map, instmap, module_info, hlds_goal_expr).
 :- mode cases_to_switch(in, in, in, in, in, in, in, out) is det.
 
 cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, ModuleInfo,
@@ -493,10 +493,10 @@ switch_covers_all_cases(CasesList, Type, ModuleInfo) :-
 	map__keys(ConsTable, Constructors),
 	list__same_length(CasesList, Constructors).
 
-	% convert the assoc_list(cons_id, list(hlds__goal) back into
+	% convert the assoc_list(cons_id, list(hlds_goal) back into
 	% a plain list(case).
 
-:- pred fix_case_list(assoc_list(cons_id, list(hlds__goal)), hlds__goal_info,
+:- pred fix_case_list(assoc_list(cons_id, list(hlds_goal)), hlds_goal_info,
 	list(case)).
 :- mode fix_case_list(in, in, out) is det.
 

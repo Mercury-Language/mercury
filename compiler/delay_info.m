@@ -53,7 +53,7 @@
 	% Insert a new delayed goal into the delay_info structure.
 	%
 :- pred delay_info__delay_goal(delay_info, mode_error_info,
-				hlds__goal, delay_info).
+				hlds_goal, delay_info).
 :- mode delay_info__delay_goal(in, in, in, out) is det.
 
 	% Mark a list of variables as having been bound.
@@ -81,7 +81,7 @@
 	% Check if there are any "pending" goals, and if so,
 	% remove them from the delay_info and return them.
 	%
-:- pred delay_info__wakeup_goals(delay_info, list(hlds__goal), delay_info).
+:- pred delay_info__wakeup_goals(delay_info, list(hlds_goal), delay_info).
 :- mode delay_info__wakeup_goals(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -462,7 +462,7 @@ delay_info__wakeup_goals(DelayInfo0, Goals, DelayInfo) :-
 	% and return it.  If there are no pending goals, this
 	% predicate will fail.
 	%
-:- pred delay_info__wakeup_goal(delay_info, hlds__goal, delay_info).
+:- pred delay_info__wakeup_goal(delay_info, hlds_goal, delay_info).
 :- mode delay_info__wakeup_goal(in, out, out) is semidet.
 
 	% delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff

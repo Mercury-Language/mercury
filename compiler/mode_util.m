@@ -182,7 +182,7 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
-:- pred recompute_instmap_delta(bool, hlds__goal, hlds__goal, instmap,
+:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, instmap,
 				module_info, module_info).
 :- mode recompute_instmap_delta(in, in, out, in, in, out) is det.
 
@@ -232,7 +232,7 @@
 	% Given the switched on variable and the instmaps before the switch
 	% and after a branch make sure that any information added by the
 	% functor test gets added to the instmap for the case.
-:- pred fixup_switch_var(var, instmap, instmap, hlds__goal, hlds__goal). 
+:- pred fixup_switch_var(var, instmap, instmap, hlds_goal, hlds_goal). 
 :- mode fixup_switch_var(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1007,7 +1007,7 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		user_inst_table_get_inst_defns(UserInstTable, InstDefns),
 		list__length(Args, Arity),
 		( map__search(InstDefns, Name - Arity, InstDefn) ->
-			InstDefn = hlds__inst_defn(_VarSet, Params, Inst0,
+			InstDefn = hlds_inst_defn(_VarSet, Params, Inst0,
 					_Cond, _C, _),
 			inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
 		;
@@ -1264,7 +1264,7 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_lookup_subst_args(hlds__inst_body, list(inst_param), sym_name,
+:- pred inst_lookup_subst_args(hlds_inst_body, list(inst_param), sym_name,
 			list(inst), inst).
 :- mode inst_lookup_subst_args(in, in, in, in, out) is det.
 
@@ -1283,7 +1283,7 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	module_info_modes(ModuleInfo, Modes),
 	mode_table_get_mode_defns(Modes, ModeDefns),
 	map__lookup(ModeDefns, Name - Arity, HLDS_Mode),
-	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond,
+	HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Cond,
 						_Context, _Status),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
@@ -1460,7 +1460,7 @@ mode_id_to_int(_ - X, X).
 recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, InstMap0) -->
 	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, InstMap0, _).
 
-:- pred recompute_instmap_delta(bool, hlds__goal, hlds__goal, instmap,
+:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, instmap,
 		instmap_delta, module_info, module_info).
 :- mode recompute_instmap_delta(in, in, out, in, out, in, out) is det.
 
@@ -1483,8 +1483,8 @@ recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 			InstMapDelta, GoalInfo) }
 	).
 
-:- pred recompute_instmap_delta_2(bool, hlds__goal_expr, hlds__goal_info,
-		hlds__goal_expr, instmap, instmap_delta,
+:- pred recompute_instmap_delta_2(bool, hlds_goal_expr, hlds_goal_info,
+		hlds_goal_expr, instmap, instmap_delta,
 		module_info, module_info).
 :- mode recompute_instmap_delta_2(in, in, in, out, in, out, in, out) is det.
 
@@ -1551,7 +1551,7 @@ recompute_instmap_delta_2(_, pragma_c_code(A, B, PredId, ProcId, Args, F, G), _,
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_conj(bool, list(hlds__goal), list(hlds__goal),
+:- pred recompute_instmap_delta_conj(bool, list(hlds_goal), list(hlds_goal),
 		instmap, instmap_delta, module_info, module_info).
 :- mode recompute_instmap_delta_conj(in, in, out, in, out, in, out) is det.
 
@@ -1569,7 +1569,7 @@ recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_disj(bool, list(hlds__goal), list(hlds__goal),
+:- pred recompute_instmap_delta_disj(bool, list(hlds_goal), list(hlds_goal),
 		instmap, set(var), instmap_delta, module_info, module_info).
 :- mode recompute_instmap_delta_disj(in, in, out, in, in, out, in, out) is det.
 
@@ -1676,7 +1676,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
 	).
 
 :- pred recompute_instmap_delta_unify(unification, unify_mode, unify_mode,
-	hlds__goal_info, instmap, instmap_delta, module_info, module_info).
+	hlds_goal_info, instmap, instmap_delta, module_info, module_info).
 :- mode recompute_instmap_delta_unify(in, in, out,
 	in, in, out, in, out) is det.
 

@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_out, prog_data, shapes.
+:- import_module hlds_data, hlds_out, prog_data, prog_util, shapes.
 :- import_module require, int, string, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,7 @@
 					string,		% type name
 					int,		% type arity
 					import_status,	% of the type
-					hlds__type_defn % defn of type
+					hlds_type_defn % defn of type
 				).
 
 	% This structure contains information needed to create
@@ -760,24 +760,24 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- type dependency_graph	== relation(pred_proc_id).
 :- type dependency_info.
 
-:- pred hlds__dependency_info_init(dependency_info).
-:- mode hlds__dependency_info_init(out) is det.
+:- pred hlds_dependency_info_init(dependency_info).
+:- mode hlds_dependency_info_init(out) is det.
 
-:- pred hlds__dependency_info_get_dependency_graph(dependency_info, 
+:- pred hlds_dependency_info_get_dependency_graph(dependency_info, 
 	dependency_graph).
-:- mode hlds__dependency_info_get_dependency_graph(in, out) is det.
+:- mode hlds_dependency_info_get_dependency_graph(in, out) is det.
 
-:- pred hlds__dependency_info_get_dependency_ordering(dependency_info, 
+:- pred hlds_dependency_info_get_dependency_ordering(dependency_info, 
 	dependency_ordering).
-:- mode hlds__dependency_info_get_dependency_ordering(in, out) is det.
+:- mode hlds_dependency_info_get_dependency_ordering(in, out) is det.
 
-:- pred hlds__dependency_info_set_dependency_graph(dependency_info,
+:- pred hlds_dependency_info_set_dependency_graph(dependency_info,
 	dependency_graph, dependency_info).
-:- mode hlds__dependency_info_set_dependency_graph(in, in, out) is det.
+:- mode hlds_dependency_info_set_dependency_graph(in, in, out) is det.
 
-:- pred hlds__dependency_info_set_dependency_ordering(dependency_info,
+:- pred hlds_dependency_info_set_dependency_ordering(dependency_info,
 	dependency_ordering, dependency_info).
-:- mode hlds__dependency_info_set_dependency_ordering(in, in, out) is det.
+:- mode hlds_dependency_info_set_dependency_ordering(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -793,23 +793,23 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 			unit
 		).
 
-hlds__dependency_info_init(DepInfo) :-
+hlds_dependency_info_init(DepInfo) :-
 	DepInfo = dependency_info(DepRel, DepOrd, Unused, unit, unit, unit),
 	relation__init(DepRel),
 	DepOrd = [],
 	set__init(Unused).
 
-hlds__dependency_info_get_dependency_graph(DepInfo, DepRel) :-
+hlds_dependency_info_get_dependency_graph(DepInfo, DepRel) :-
 	DepInfo = dependency_info(DepRel, _, _, _, _, _).
 
-hlds__dependency_info_get_dependency_ordering(DepInfo, DepOrd) :-
+hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrd) :-
 	DepInfo = dependency_info(_, DepOrd, _, _, _, _).
 
-hlds__dependency_info_set_dependency_graph(DepInfo0, DepRel, DepInfo) :-
+hlds_dependency_info_set_dependency_graph(DepInfo0, DepRel, DepInfo) :-
 	DepInfo0 = dependency_info(_, B, C, D, E, F),
 	DepInfo = dependency_info(DepRel, B, C, D, E, F).
 
-hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
+hlds_dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 	DepInfo0 = dependency_info(A, _, C, D, E, F),
 	DepInfo = dependency_info(A, DepRel, C, D, E, F).
 
@@ -1016,10 +1016,10 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 :- pred predicate_arity(module_info, pred_id, arity).
 :- mode predicate_arity(in, in, out) is det.
 
-	% Get the pred_id and proc_id matching a lambda expression with
+	% Get the pred_id and proc_id matching a higher-order term with
 	% the given argument types, aborting with an error if none is
 	% found.
-:- pred get_pred_id_and_proc_id(string, arity, pred_or_func, list(type),
+:- pred get_pred_id_and_proc_id(sym_name, arity, pred_or_func, list(type),
 				module_info, pred_id, proc_id).
 :- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
 
@@ -1428,14 +1428,15 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 				Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 
-get_pred_id_and_proc_id(Name, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
+get_pred_id_and_proc_id(SymName, Arity, PredOrFunc, PredArgTypes, ModuleInfo,
 			PredId, ProcId) :-
+	unqualify_name(SymName, Name),
 	list__length(PredArgTypes, PredArity),
 	TotalArity is Arity + PredArity,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
-	    predicate_table_search_pf_name_arity(PredicateTable,
-		PredOrFunc, Name, TotalArity, PredIds)
+	    predicate_table_search_pf_sym_arity(PredicateTable,
+		PredOrFunc, SymName, TotalArity, PredIds)
 	->
 	    (
 		PredIds = [PredId0]

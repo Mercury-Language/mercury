@@ -25,16 +25,16 @@
 :- import_module llds, code_info.
 :- import_module list, std_util.
 
-:- pred code_gen__generate_pragma_c_code(code_model::in, string::in,
+:- pred pragma_c_gen__generate_pragma_c_code(code_model::in, string::in,
 	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(string))::in, hlds__goal_info::in, code_tree::out,
+	list(maybe(string))::in, hlds_goal_info::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-:- pred code_gen__generate_backtrack_pragma_c_code(code_model::in, string::in,
-	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(string))::in, list(pair(var, string))::in, list(string)::in,
-	hlds__goal_info::in, code_tree::out, code_info::in, code_info::out)
-	is erroneous.
+:- pred pragma_c_gen__generate_backtrack_pragma_c_code(code_model::in,
+	string::in, may_call_mercury::in, pred_id::in, proc_id::in,
+	list(var)::in, list(maybe(string))::in, list(pair(var, string))::in,
+	list(string)::in, hlds_goal_info::in, code_tree::out,
+	code_info::in, code_info::out) is erroneous.
 
 %---------------------------------------------------------------------------%
 
@@ -87,7 +87,7 @@
 %	will be preserved, so if we're using conservative gc,
 %	there is nothing that needs restoring.
 
-code_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
+pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 		PredId, ProcId, Args, Names, _GoalInfo, Code) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo),
@@ -213,9 +213,9 @@ make_c_arg_list_2([Var | Vars], [Name | Names], ArgNames0, ArgNames) :-
 		ArgNames).
 
 make_c_arg_list_2([], [_ | _], _, _) :-
-	error("code_gen:make_c_arg_list_2 - length mismatch").
+	error("pragma_c_gen:make_c_arg_list_2 - length mismatch").
 make_c_arg_list_2([_ | _], [], _, _) :-
-	error("code_gen:make_c_arg_list_2 - length mismatch").
+	error("pragma_c_gen:make_c_arg_list_2 - length mismatch").
 
 :- pred get_c_arg_list_vars(list(c_arg)::in, list(var)::out) is det.
 
@@ -345,7 +345,8 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], [O | Outputs]) -->
 
 %---------------------------------------------------------------------------%
 
-code_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _, _, _) -->
+pragma_c_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _,
+		_, _) -->
 	{ error("nondet pragma_c_codes not yet implemented") }.
 
 %---------------------------------------------------------------------------%

@@ -117,13 +117,6 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 :- mode parse_dcg_goal_2(in, in, in, in, in, in, out, out, out, out)
 				is semidet.
 
-	% The following is a temporary and gross hack to strip out
-	% calls to `io__gc_call', since the mode checker can't handle
-	% them yet.
-parse_dcg_goal_2("io__gc_call", [Goal0],
-		_, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal, VarSet, N, Var).
-
 	% Ordinary goal inside { curly braces }.
 parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var,
 		Goal, VarSet, N, Var) :-

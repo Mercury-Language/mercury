@@ -68,10 +68,10 @@
 	% goals which do allocate heap space, such as construction
 	% of boxed constants.
 
-:- pred code_util__goal_may_allocate_heap(hlds__goal).
+:- pred code_util__goal_may_allocate_heap(hlds_goal).
 :- mode code_util__goal_may_allocate_heap(in) is semidet.
 
-:- pred code_util__goal_list_may_allocate_heap(list(hlds__goal)).
+:- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)).
 :- mode code_util__goal_list_may_allocate_heap(in) is semidet.
 
 	% Negate a condition.
@@ -127,7 +127,7 @@
 	% point we need for the resume point is the one with the resume
 	% variables in their original locations.
 
-:- pred code_util__cannot_stack_flush(hlds__goal).
+:- pred code_util__cannot_stack_flush(hlds_goal).
 :- mode code_util__cannot_stack_flush(in) is semidet.
 
 	% Succeed if the given goal cannot fail before encountering a context
@@ -135,7 +135,7 @@
 	% If such a goal needs a resume point, the only entry point we need
 	% is the stack entry point.
 
-:- pred code_util__cannot_fail_before_stack_flush(hlds__goal).
+:- pred code_util__cannot_fail_before_stack_flush(hlds_goal).
 :- mode code_util__cannot_fail_before_stack_flush(in) is semidet.
 
 	% code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max)
@@ -143,7 +143,7 @@
 	% return the minimum and maximum number of recursive calls that
 	% an execution of Goal may encounter.
 
-:- pred code_util__count_recursive_calls(hlds__goal, pred_id, proc_id,
+:- pred code_util__count_recursive_calls(hlds_goal, pred_id, proc_id,
 	int, int).
 :- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
 
@@ -532,7 +532,7 @@ code_util__compiler_generated(PredInfo) :-
 code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 	code_util__goal_may_allocate_heap_2(Goal).
 
-:- pred code_util__goal_may_allocate_heap_2(hlds__goal_expr).
+:- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr).
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
 code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _)).
@@ -681,7 +681,7 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 code_util__cannot_stack_flush(GoalExpr - _) :-
 	code_util__cannot_stack_flush_2(GoalExpr).
 
-:- pred code_util__cannot_stack_flush_2(hlds__goal_expr).
+:- pred code_util__cannot_stack_flush_2(hlds_goal_expr).
 :- mode code_util__cannot_stack_flush_2(in) is semidet.
 
 code_util__cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
@@ -693,7 +693,7 @@ code_util__cannot_stack_flush_2(conj(Goals)) :-
 code_util__cannot_stack_flush_2(switch(_, _, Cases, _)) :-
 	code_util__cannot_stack_flush_cases(Cases).
 
-:- pred code_util__cannot_stack_flush_goals(list(hlds__goal)).
+:- pred code_util__cannot_stack_flush_goals(list(hlds_goal)).
 :- mode code_util__cannot_stack_flush_goals(in) is semidet.
 
 code_util__cannot_stack_flush_goals([]).
@@ -720,13 +720,13 @@ code_util__cannot_fail_before_stack_flush(GoalExpr - GoalInfo) :-
 		code_util__cannot_fail_before_stack_flush_2(GoalExpr)
 	).
 
-:- pred code_util__cannot_fail_before_stack_flush_2(hlds__goal_expr).
+:- pred code_util__cannot_fail_before_stack_flush_2(hlds_goal_expr).
 :- mode code_util__cannot_fail_before_stack_flush_2(in) is semidet.
 
 code_util__cannot_fail_before_stack_flush_2(conj(Goals)) :-
 	code_util__cannot_fail_before_stack_flush_conj(Goals).
 
-:- pred code_util__cannot_fail_before_stack_flush_conj(list(hlds__goal)).
+:- pred code_util__cannot_fail_before_stack_flush_conj(list(hlds_goal)).
 :- mode code_util__cannot_fail_before_stack_flush_conj(in) is semidet.
 
 code_util__cannot_fail_before_stack_flush_conj([]).
@@ -755,7 +755,7 @@ code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 code_util__count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls_2(Goal, PredId, ProcId, Min, Max).
 
-:- pred code_util__count_recursive_calls_2(hlds__goal_expr, pred_id, proc_id,
+:- pred code_util__count_recursive_calls_2(hlds_goal_expr, pred_id, proc_id,
 	int, int).
 :- mode code_util__count_recursive_calls_2(in, in, in, out, out) is det.
 
@@ -794,7 +794,7 @@ code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
 	int__min(CTMin, EMin, Min),
 	int__max(CTMax, EMax, Max).
 
-:- pred code_util__count_recursive_calls_conj(list(hlds__goal),
+:- pred code_util__count_recursive_calls_conj(list(hlds_goal),
 	pred_id, proc_id, int, int, int, int).
 :- mode code_util__count_recursive_calls_conj(in, in, in, in, in, out, out)
 	is det.
@@ -808,7 +808,7 @@ code_util__count_recursive_calls_conj([Goal | Goals], PredId, ProcId,
 	code_util__count_recursive_calls_conj(Goals, PredId, ProcId,
 		Min2, Max2, Min, Max).
 
-:- pred code_util__count_recursive_calls_disj(list(hlds__goal),
+:- pred code_util__count_recursive_calls_disj(list(hlds_goal),
 	pred_id, proc_id, int, int).
 :- mode code_util__count_recursive_calls_disj(in, in, in, out, out) is det.
 

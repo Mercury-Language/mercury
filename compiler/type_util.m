@@ -318,10 +318,10 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 		% will fail for builtin cons_ids.
 		map__search(Ctors, ConsId, ConsDefns),
 		CorrectCons = lambda([ConsDefn::in] is semidet, (
-				ConsDefn = hlds__cons_defn(_, TypeId, _)
+				ConsDefn = hlds_cons_defn(_, TypeId, _)
 			)),
 		list__filter(CorrectCons, ConsDefns,
-			[hlds__cons_defn(ArgTypes0, _, _)]),
+			[hlds_cons_defn(ArgTypes0, _, _)]),
 		ArgTypes0 \= []
 	->
 		module_info_types(ModuleInfo, Types),
@@ -533,7 +533,7 @@ replace_eqv_type(Functor, Arity, Args, EqvType) :-
 
 	make_type_id(Functor, Arity, TypeId),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds__type_defn(TypeVarSet, TypeParams0,
+	TypeDefn = hlds_type_defn(TypeVarSet, TypeParams0,
 			eqv_type(EqvType0), _Condition, Context, _Status),
 	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
 			TVarSet, [EqvType1, TypeParams1]),

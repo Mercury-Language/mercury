@@ -130,7 +130,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode_gen__goal(hlds__goal::in, byte_info::in, byte_info::out,
+:- pred bytecode_gen__goal(hlds_goal::in, byte_info::in, byte_info::out,
 	byte_tree::out) is det.
 
 bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
@@ -139,7 +139,7 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	goal_info_get_context(GoalInfo, term__context(_, Line)),
 	Code = tree(node([context(Line)]), GoalCode).
 
-:- pred bytecode_gen__goal_expr(hlds__goal_expr::in, hlds__goal_info::in,
+:- pred bytecode_gen__goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
 	byte_info::in, byte_info::out, byte_tree::out) is det.
 
 bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
@@ -496,7 +496,7 @@ bytecode_gen__all_dirs_same([Dir | Dirs], Dir) :-
 
 	% Generate bytecode for a conjunction
 
-:- pred bytecode_gen__conj(list(hlds__goal)::in, byte_info::in, byte_info::out,
+:- pred bytecode_gen__conj(list(hlds_goal)::in, byte_info::in, byte_info::out,
 	byte_tree::out) is det.
 
 bytecode_gen__conj([], ByteInfo, ByteInfo, empty).
@@ -509,7 +509,7 @@ bytecode_gen__conj([Goal | Goals], ByteInfo0, ByteInfo, Code) :-
 
 	% Generate bytecode for each disjunct of a disjunction.
 
-:- pred bytecode_gen__disj(list(hlds__goal)::in, byte_info::in,
+:- pred bytecode_gen__disj(list(hlds_goal)::in, byte_info::in,
 	int::in, byte_info::out,  byte_tree::out) is det.
 
 bytecode_gen__disj([], _, _, _, _) :-

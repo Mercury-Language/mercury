@@ -384,15 +384,15 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
-:- pred polymorphism__process_goal(hlds__goal, hlds__goal,
+:- pred polymorphism__process_goal(hlds_goal, hlds_goal,
 					poly_info, poly_info).
 :- mode polymorphism__process_goal(in, out, in, out) is det.
 
 polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 	polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal).
 
-:- pred polymorphism__process_goal_expr(hlds__goal_expr, hlds__goal_info,
-					hlds__goal, poly_info, poly_info).
+:- pred polymorphism__process_goal_expr(hlds_goal_expr, hlds_goal_info,
+					hlds_goal, poly_info, poly_info).
 :- mode polymorphism__process_goal_expr(in, in, out, in, out) is det.
 
 	% We don't need to add type-infos for higher-order calls,
@@ -616,7 +616,7 @@ polymorphism__c_code_add_typeinfos([], [_|_], _, _, _) :-
 polymorphism__c_code_add_typeinfos([_|_], [], _, _, _) :-
 	error("polymorphism__c_code_add_typeinfos: length mismatch").
 
-:- pred polymorphism__process_goal_list(list(hlds__goal), list(hlds__goal),
+:- pred polymorphism__process_goal_list(list(hlds_goal), list(hlds_goal),
 					poly_info, poly_info).
 :- mode polymorphism__process_goal_list(in, out, in, out) is det.
 
@@ -639,7 +639,7 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 %-----------------------------------------------------------------------------%
 
 :- pred polymorphism__process_call(pred_id, proc_id, list(var), list(var),
-					list(var), list(hlds__goal),
+					list(var), list(hlds_goal),
 					poly_info, poly_info).
 :- mode polymorphism__process_call(in, in, in, out, out, out, in, out) is det.
 
@@ -680,7 +680,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				TypeInfoMap, ModuleInfo)
 	).
 
-:- pred polymorphism__fixup_quantification(hlds__goal, hlds__goal,
+:- pred polymorphism__fixup_quantification(hlds_goal, hlds_goal,
 		poly_info, poly_info).
 :- mode polymorphism__fixup_quantification(in, out, in, out) is det.
 
@@ -708,7 +708,7 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var), list(mode),
-		determinism, set(var), hlds__goal, unification,
+		determinism, set(var), hlds_goal, unification,
 		unify_rhs, unification, poly_info, poly_info).
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
@@ -730,7 +730,7 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 % Update the varset and vartypes accordingly.
 
 :- pred polymorphism__make_vars(list(type), module_info, map(tvar, var),
-	varset, map(var, type), list(var), list(hlds__goal),
+	varset, map(var, type), list(var), list(hlds_goal),
 	varset, map(var, type)).
 :- mode polymorphism__make_vars(in, in, in, in, in, out, out, out, out) is det.
 
@@ -745,7 +745,7 @@ polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap,
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals).
 
 :- pred polymorphism__make_var(type, module_info, map(tvar, var),
-	varset, map(var, type), var, list(hlds__goal),
+	varset, map(var, type), var, list(hlds_goal),
 	varset, map(var, type)).
 :- mode polymorphism__make_var(in, in, in, in, in, out, out, out, out) is det.
 
@@ -841,7 +841,7 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 
 :- pred polymorphism__construct_type_info(type, type_id, list(type),
 	bool, module_info, map(tvar, var), varset, map(var, type),
-	var, list(hlds__goal), varset, map(var, type)).
+	var, list(hlds_goal), varset, map(var, type)).
 :- mode polymorphism__construct_type_info(in, in, in, in, in, in, in, in,
 	out, out, out, out) is det.
 
@@ -935,9 +935,9 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 		% 	TypeInfoVar = type_info(BaseVar, Arity,
 		% 				ArgTypeInfoVars...).
 
-:- pred polymorphism__maybe_init_second_cell(list(var), list(hlds__goal), type,
-	bool, var, varset, map(var, type), list(hlds__goal),
-	var, varset, map(var, type), list(hlds__goal)).
+:- pred polymorphism__maybe_init_second_cell(list(var), list(hlds_goal), type,
+	bool, var, varset, map(var, type), list(hlds_goal),
+	var, varset, map(var, type), list(hlds_goal)).
 :- mode polymorphism__maybe_init_second_cell(in, in, in, in, in, in, in, in,
 	out, out, out, out) is det.
 
@@ -982,7 +982,7 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 	% Create a unification `CountVar = <NumTypeArgs>'
 
 :- pred polymorphism__make_count_var(int, varset, map(var, type),
-	var, hlds__goal, varset, map(var, type)).
+	var, hlds_goal, varset, map(var, type)).
 :- mode polymorphism__make_count_var(in, in, in, out, out, out, out) is det.
 
 polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
@@ -998,7 +998,7 @@ polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
 	% where Var is a freshly introduced variable and Num is an
 	% integer constant.
 
-:- pred polymorphism__init_with_int_constant(var, int, hlds__goal).
+:- pred polymorphism__init_with_int_constant(var, int, hlds_goal).
 :- mode polymorphism__init_with_int_constant(in, in, out) is det.
 
 polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
@@ -1038,7 +1038,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 :- pred polymorphism__get_special_proc_list(
 			type, module_info, varset, map(var, type),
-			list(var), list(hlds__goal), varset, map(var, type)).
+			list(var), list(hlds_goal), varset, map(var, type)).
 :- mode polymorphism__get_special_proc_list(in, in, in, in,
 					out, out, out, out) is det.
 
@@ -1051,7 +1051,7 @@ polymorphism__get_special_proc_list(Type, ModuleInfo, VarSet0, VarTypes0,
 
 :- pred polymorphism__get_special_proc_list_2(list(special_pred_id),
 			type, module_info, varset, map(var, type),
-			list(var), list(hlds__goal), varset, map(var, type)).
+			list(var), list(hlds_goal), varset, map(var, type)).
 :- mode polymorphism__get_special_proc_list_2(in, in, in, in, in,
 					out, out, out, out) is det.
 
@@ -1182,7 +1182,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	% heap at runtime.
 
 :- pred polymorphism__init_type_info_var(type, list(var), string,
-	varset, map(var, type), var, hlds__goal, varset, map(var, type)).
+	varset, map(var, type), var, hlds_goal, varset, map(var, type)).
 :- mode polymorphism__init_type_info_var(in, in, in, in, in, out, out, out, out)
 	is det.
 
@@ -1237,7 +1237,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	% in the module that defines the type.
 
 :- pred polymorphism__init_const_base_type_info_var(type, type_id,
-	module_info, varset, map(var, type), var, hlds__goal,
+	module_info, varset, map(var, type), var, hlds_goal,
 	varset, map(var, type)).
 :- mode polymorphism__init_const_base_type_info_var(in, in, in, in, in,
 	out, out, out, out) is det.

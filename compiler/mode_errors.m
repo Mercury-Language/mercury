@@ -32,7 +32,7 @@
 	--->	delayed_goal(
 			set(var),	% The vars it's waiting on
 			mode_error_info,% The reason it can't be scheduled
-			hlds__goal	% The goal itself
+			hlds_goal	% The goal itself
 		).
 
 :- type mode_error

@@ -31,15 +31,15 @@
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
 	%	NewGoalList).
-:- pred goal_util__rename_vars_in_goals(list(hlds__goal), bool, map(var, var),
-	list(hlds__goal)).
+:- pred goal_util__rename_vars_in_goals(list(hlds_goal), bool, map(var, var),
+	list(hlds_goal)).
 :- mode goal_util__rename_vars_in_goals(in, in, in, out) is det.
 
-:- pred goal_util__rename_vars_in_goal(hlds__goal, map(var, var), hlds__goal).
+:- pred goal_util__rename_vars_in_goal(hlds_goal, map(var, var), hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, out) is det.
 
-:- pred goal_util__must_rename_vars_in_goal(hlds__goal,
-					map(var, var), hlds__goal).
+:- pred goal_util__must_rename_vars_in_goal(hlds_goal,
+					map(var, var), hlds_goal).
 :- mode goal_util__must_rename_vars_in_goal(in, in, out) is det.
 
 :- pred goal_util__rename_var_list(list(var), bool, map(var, var), list(var)).
@@ -58,19 +58,19 @@
 	% Return all the variables in the goal.
 	% Unlike quantification:goal_vars, this predicate returns
 	% even the explicitly quantified variables.
-:- pred goal_util__goal_vars(hlds__goal, set(var)).
+:- pred goal_util__goal_vars(hlds_goal, set(var)).
 :- mode goal_util__goal_vars(in, out) is det.
 
 	% See whether the goal is a branched structure.
-:- pred goal_util__goal_is_branched(hlds__goal_expr).
+:- pred goal_util__goal_is_branched(hlds_goal_expr).
 :- mode goal_util__goal_is_branched(in) is semidet.
 
 	% Return an indication of the size of the goal.
-:- pred goal_size(hlds__goal, int).
+:- pred goal_size(hlds_goal, int).
 :- mode goal_size(in, out) is det.
 
 	% Test whether the goal calls the given procedure.
-:- pred goal_calls(hlds__goal, pred_proc_id).
+:- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -174,8 +174,8 @@ goal_util__rename_vars_in_goals([Goal0 | Goals0], Must, Subn, [Goal | Goals]) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal),
 	goal_util__rename_vars_in_goals(Goals0, Must, Subn, Goals).
 
-:- pred goal_util__rename_vars_in_goal(hlds__goal, bool, map(var, var),
-		hlds__goal).
+:- pred goal_util__rename_vars_in_goal(hlds_goal, bool, map(var, var),
+		hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, in, out) is det.
 
 goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :-
@@ -184,8 +184,8 @@ goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_2(hlds__goal_expr, bool, map(var, var),
-		hlds__goal_expr).
+:- pred goal_util__name_apart_2(hlds_goal_expr, bool, map(var, var),
+		hlds_goal_expr).
 :- mode goal_util__name_apart_2(in, in, in, out) is det.
 
 goal_util__name_apart_2(conj(Goals0), Must, Subn, conj(Goals)) :-
@@ -250,8 +250,8 @@ goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,F,Extra0), Must, Subn,
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_list(list(hlds__goal), bool, map(var, var),
-							list(hlds__goal)).
+:- pred goal_util__name_apart_list(list(hlds_goal), bool, map(var, var),
+							list(hlds_goal)).
 :- mode goal_util__name_apart_list(in, in, in, out) is det.
 
 goal_util__name_apart_list([], _Must, _Subn, []).
@@ -349,8 +349,8 @@ goal_util__rename_var_maps_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__name_apart_goalinfo(hlds__goal_info,
-					bool, map(var, var), hlds__goal_info).
+:- pred goal_util__name_apart_goalinfo(hlds_goal_info,
+					bool, map(var, var), hlds_goal_info).
 :- mode goal_util__name_apart_goalinfo(in, in, in, out) is det.
 
 goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
@@ -405,7 +405,7 @@ goal_util__goal_vars(Goal - _GoalInfo, Set) :-
 	set__init(Set0),
 	goal_util__goal_vars_2(Goal, Set0, Set).
 
-:- pred goal_util__goal_vars_2(hlds__goal_expr, set(var), set(var)).
+:- pred goal_util__goal_vars_2(hlds_goal_expr, set(var), set(var)).
 :- mode goal_util__goal_vars_2(in, in, out) is det.
 
 goal_util__goal_vars_2(unify(Var, RHS, _, _, _), Set0, Set) :-
@@ -454,7 +454,7 @@ goal_util__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, Extra),
 		set__insert_list(Set1, SavedVars, Set)
 	).
 
-:- pred goal_util__goals_goal_vars(list(hlds__goal), set(var), set(var)).
+:- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
 
 goal_util__goals_goal_vars([], Set, Set).
@@ -493,7 +493,7 @@ goal_util__goal_is_branched(disj(_, _)).
 goal_size(GoalExpr - _, Size) :-
 	goal_expr_size(GoalExpr, Size).
 
-:- pred goals_size(list(hlds__goal), int).
+:- pred goals_size(list(hlds_goal), int).
 :- mode goals_size(in, out) is det.
 
 goals_size([], 0).
@@ -511,7 +511,7 @@ cases_size([case(_, Goal) | Cases], Size) :-
 	cases_size(Cases, Size2),
 	Size is Size1 + Size2.
 
-:- pred goal_expr_size(hlds__goal_expr, int).
+:- pred goal_expr_size(hlds_goal_expr, int).
 :- mode goal_expr_size(in, out) is det.
 
 goal_expr_size(conj(Goals), Size) :-
@@ -543,7 +543,7 @@ goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
 goal_calls(GoalExpr - _, PredProcId) :-
 	goal_expr_calls(GoalExpr, PredProcId).
 
-:- pred goals_calls(list(hlds__goal), pred_proc_id).
+:- pred goals_calls(list(hlds_goal), pred_proc_id).
 :- mode goals_calls(in, in) is semidet.
 
 goals_calls([Goal | Goals], PredProcId) :-
@@ -563,7 +563,7 @@ cases_calls([case(_, Goal) | Cases], PredProcId) :-
 		cases_calls(Cases, PredProcId)
 	).
 
-:- pred goal_expr_calls(hlds__goal_expr, pred_proc_id).
+:- pred goal_expr_calls(hlds_goal_expr, pred_proc_id).
 :- mode goal_expr_calls(in, in) is semidet.
 
 goal_expr_calls(conj(Goals), PredProcId) :-

@@ -23,7 +23,7 @@
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
-:- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
+:- type cons_table	==	map(cons_id, list(hlds_cons_defn)).
 
 :- type cons_id		--->	cons(sym_name, arity)	% name, arity
 			;	int_const(int)
@@ -40,8 +40,8 @@
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
 
-:- type hlds__cons_defn
-	--->	hlds__cons_defn(
+:- type hlds_cons_defn
+	--->	hlds_cons_defn(
 			% maybe add tvarset?
 			list(type),		% The types of the arguments
 						% of this functor (if any)
@@ -144,46 +144,46 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- type type_id		== 	pair(sym_name, arity).
 				% name, arity
 
-:- type type_table	==	map(type_id, hlds__type_defn).
+:- type type_table	==	map(type_id, hlds_type_defn).
 
 	% This is how type, modes and constructors are represented.
 	% The parts that are not defined here (i.e. type_param, constructor,
 	% type, inst, mode, condition) are represented in the same way as
 	% in prog_io.m, and are defined there.
 
-	% An hlds__type_defn holds the information about a type definition.
+	% An hlds_type_defn holds the information about a type definition.
 
-:- type hlds__type_defn.
+:- type hlds_type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset, list(type_param),
-	hlds__type_body, import_status, term__context, hlds__type_defn).
+	hlds_type_body, import_status, term__context, hlds_type_defn).
 :- mode hlds_data__set_type_defn(in, in, in, in, in, out) is det.
 
-:- pred hlds_data__get_type_defn_tvarset(hlds__type_defn, tvarset).
+:- pred hlds_data__get_type_defn_tvarset(hlds_type_defn, tvarset).
 :- mode hlds_data__get_type_defn_tvarset(in, out) is det.
 
-:- pred hlds_data__get_type_defn_tparams(hlds__type_defn, list(type_param)).
+:- pred hlds_data__get_type_defn_tparams(hlds_type_defn, list(type_param)).
 :- mode hlds_data__get_type_defn_tparams(in, out) is det.
 
-:- pred hlds_data__get_type_defn_body(hlds__type_defn, hlds__type_body).
+:- pred hlds_data__get_type_defn_body(hlds_type_defn, hlds_type_body).
 :- mode hlds_data__get_type_defn_body(in, out) is det.
 
-:- pred hlds_data__get_type_defn_status(hlds__type_defn, import_status).
+:- pred hlds_data__get_type_defn_status(hlds_type_defn, import_status).
 :- mode hlds_data__get_type_defn_status(in, out) is det.
 
-:- pred hlds_data__get_type_defn_context(hlds__type_defn, term__context).
+:- pred hlds_data__get_type_defn_context(hlds_type_defn, term__context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
 
-:- pred hlds_data__set_type_defn_status(hlds__type_defn, import_status,
-			hlds__type_defn).
+:- pred hlds_data__set_type_defn_status(hlds_type_defn, import_status,
+			hlds_type_defn).
 :- mode hlds_data__set_type_defn_status(in, in, out) is det.
 
-	% An `hlds__type_body' holds the body of a type definition:
+	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
 	% eqv_type = equivalence type (a type defined to be equivalen
 	% to some other type)
 
-:- type hlds__type_body
+:- type hlds_type_body
 	--->	du_type(
 			list(constructor), 	% the ctors for this type
 			cons_tag_values,	% their tag values
@@ -273,12 +273,12 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 
 :- implementation.
 
-:- type hlds__type_defn
-	--->	hlds__type_defn(
+:- type hlds_type_defn
+	--->	hlds_type_defn(
 			tvarset,		% Names of type vars (empty
 						% except for polymorphic types)
 			list(type_param),	% Formal type parameters
-			hlds__type_body,	% The definition of the type
+			hlds_type_body,	% The definition of the type
 
 			import_status,		% Is the type defined in this
 						% module, and if yes, is it
@@ -298,16 +298,16 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 		).
 
 hlds_data__set_type_defn(Tvarset, Params, Body, Status, Context, Defn) :-
-	Defn = hlds__type_defn(Tvarset, Params, Body, Status, Context).
+	Defn = hlds_type_defn(Tvarset, Params, Body, Status, Context).
 
-hlds_data__get_type_defn_tvarset(hlds__type_defn(Tvarset, _, _, _, _), Tvarset).
-hlds_data__get_type_defn_tparams(hlds__type_defn(_, Params, _, _, _), Params).
-hlds_data__get_type_defn_body(hlds__type_defn(_, _, Body, _, _), Body).
-hlds_data__get_type_defn_status(hlds__type_defn(_, _, _, Status, _), Status).
-hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, _, Context), Context).
+hlds_data__get_type_defn_tvarset(hlds_type_defn(Tvarset, _, _, _, _), Tvarset).
+hlds_data__get_type_defn_tparams(hlds_type_defn(_, Params, _, _, _), Params).
+hlds_data__get_type_defn_body(hlds_type_defn(_, _, Body, _, _), Body).
+hlds_data__get_type_defn_status(hlds_type_defn(_, _, _, Status, _), Status).
+hlds_data__get_type_defn_context(hlds_type_defn(_, _, _, _, Context), Context).
 
-hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status, 
-				hlds__type_defn(A, B, C, Status, E)).
+hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status, 
+				hlds_type_defn(A, B, C, Status, E)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -322,7 +322,7 @@ hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status,
 :- type inst_table.
 
 :- type user_inst_table.
-:- type user_inst_defns ==	map(inst_id, hlds__inst_defn).
+:- type user_inst_defns ==	map(inst_id, hlds_inst_defn).
 
 :- type unify_inst_table ==	map(inst_name, maybe_inst_det).
 
@@ -343,17 +343,17 @@ hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status,
 :- type maybe_inst_det	--->	unknown
 			;	known(inst, determinism).
 
-	% An `hlds__inst_defn' holds the information we need to store
+	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
 	%	:- inst list_skel(I) = bound([] ; [I | list_skel(I)].
 
-:- type hlds__inst_defn
-	--->	hlds__inst_defn(
+:- type hlds_inst_defn
+	--->	hlds_inst_defn(
 			varset,			% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The inst parameters (if any).
 						% ([I] in the above example.)
-			hlds__inst_body,	% The definition of this inst.
+			hlds_inst_body,	% The definition of this inst.
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
@@ -364,7 +364,7 @@ hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status,
 						% whether to output this inst.
 		).
 
-:- type hlds__inst_body
+:- type hlds_inst_body
 	--->	eqv_inst(inst)			% This inst is equivalent to
 						% some other inst.
 	;	abstract_inst.			% This inst is just a forward
@@ -421,7 +421,7 @@ hlds_data__set_type_defn_status(hlds__type_defn(A, B, C, _, E), Status,
 :- pred user_inst_table_get_inst_ids(user_inst_table, list(inst_id)).
 :- mode user_inst_table_get_inst_ids(in, out) is det.
 
-:- pred user_inst_table_insert(user_inst_table, inst_id, hlds__inst_defn,
+:- pred user_inst_table_insert(user_inst_table, inst_id, hlds_inst_defn,
 					user_inst_table).
 :- mode user_inst_table_insert(in, in, in, out) is semidet.
 
@@ -518,9 +518,9 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 				% name, arity
 
 :- type mode_table.
-:- type mode_defns	 ==	map(mode_id, hlds__mode_defn).
+:- type mode_defns	 ==	map(mode_id, hlds_mode_defn).
 
-	% A hlds__mode_defn stores the information about a mode
+	% A hlds_mode_defn stores the information about a mode
 	% definition such as
 	%	:- mode out :: free -> ground.
 	% or
@@ -528,15 +528,15 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 	% or
 	%	:- mode in_list_skel :: in(list_skel).
 
-:- type hlds__mode_defn
-	--->	hlds__mode_defn(
+:- type hlds_mode_defn
+	--->	hlds_mode_defn(
 			varset,			% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The list of the inst
 						% parameters (if any).
 						% (e.g. [I] for the second
 						% example above.)
-			hlds__mode_body,	% The definition of this mode.
+			hlds_mode_body,	% The definition of this mode.
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
@@ -550,11 +550,11 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 
 	% The only sort of mode definitions allowed are equivalence modes.
 
-:- type hlds__mode_body
+:- type hlds_mode_body
 	--->	eqv_mode(mode).		% This mode is equivalent to some
 					% other mode.
 
-	% Given a mode table get the mode_id - hlds__mode_defn map.
+	% Given a mode table get the mode_id - hlds_mode_defn map.
 :- pred mode_table_get_mode_defns(mode_table, mode_defns).
 :- mode mode_table_get_mode_defns(in, out) is det.
 
@@ -562,9 +562,9 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 :- pred mode_table_get_mode_ids(mode_table, list(mode_id)).
 :- mode mode_table_get_mode_ids(in, out) is det.
 
-	% Insert a mode_id and corresponding hlds__mode_defn into the
+	% Insert a mode_id and corresponding hlds_mode_defn into the
 	% mode_table. Fail if the mode_id is already present in the table.
-:- pred mode_table_insert(mode_table, mode_id, hlds__mode_defn, mode_table).
+:- pred mode_table_insert(mode_table, mode_id, hlds_mode_defn, mode_table).
 :- mode mode_table_insert(in, in, in, out) is semidet.
 
 :- pred mode_table_init(mode_table).

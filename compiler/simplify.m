@@ -34,7 +34,7 @@
 	proc_info, proc_info, int, int, io__state, io__state).
 :- mode simplify__proc(in, in, in, in, out, in, out, out, out, di, uo) is det.
 
-:- pred simplify__goal(hlds__goal, hlds__goal,
+:- pred simplify__goal(hlds_goal, hlds_goal,
 		simplify_info, simplify_info).
 :- mode simplify__goal(in, out, in, out) is det.
 
@@ -211,8 +211,8 @@ simplify__goal(Goal0 - GoalInfo0, Goal - GoalInfo, Info0, Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__goal_2(hlds__goal_expr, hlds__goal_info, hlds__goal_expr,
-		hlds__goal_info, simplify_info, simplify_info).
+:- pred simplify__goal_2(hlds_goal_expr, hlds_goal_info, hlds_goal_expr,
+		hlds_goal_info, simplify_info, simplify_info).
 :- mode simplify__goal_2(in, in, out, out, in, out) is det.
 
 simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo0, Info0, Info) :-
@@ -582,8 +582,8 @@ simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
 %-----------------------------------------------------------------------------%
 
 	% replace nested `some's with a single `some',
-:- pred simplify__nested_somes(list(var)::in, hlds__goal::in,
-		list(var)::out, hlds__goal::out) is det.
+:- pred simplify__nested_somes(list(var)::in, hlds_goal::in,
+		list(var)::out, hlds_goal::out) is det.
 
 simplify__nested_somes(Vars0, Goal0, Vars, Goal) :-
 	( Goal0 = some(Vars1, Goal1) - _ ->
@@ -596,8 +596,8 @@ simplify__nested_somes(Vars0, Goal0, Vars, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__conj(list(hlds__goal), list(hlds__goal),
-		list(hlds__goal), hlds__goal_info,
+:- pred simplify__conj(list(hlds_goal), list(hlds_goal),
+		list(hlds_goal), hlds_goal_info,
 		simplify_info, simplify_info).
 :- mode simplify__conj(in, in, out, in, in, out) is det.
 
@@ -663,8 +663,8 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 	    )
 	).
 
-:- pred simplify__conjoin_goal_and_rev_goal_list(hlds__goal::in,
-		hlds__goals::in, hlds__goals::out) is det.
+:- pred simplify__conjoin_goal_and_rev_goal_list(hlds_goal::in,
+		hlds_goals::in, hlds_goals::out) is det.
 
 simplify__conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 	( Goal = conj(Goals) - _ ->
@@ -681,8 +681,8 @@ simplify__conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 	% switched on variable at the end of each branch than there is at the
 	% start of the current switch. If there is, it may be worth merging the
 	% goals.
-:- pred simplify__merge_adjacent_switches(hlds__goal::in, hlds__goal::out,
-		hlds__goals::in, hlds__goals::out, maybe(branch_info)::in,
+:- pred simplify__merge_adjacent_switches(hlds_goal::in, hlds_goal::out,
+		hlds_goals::in, hlds_goals::out, maybe(branch_info)::in,
 		simplify_info::in, simplify_info::out) is semidet.
 
 simplify__merge_adjacent_switches(SwitchGoal, Goal, RevGoals0, RevGoals,
@@ -742,7 +742,7 @@ simplify__merge_adjacent_switches(SwitchGoal, Goal, RevGoals0, RevGoals,
 	% applies for each branch's instmap delta.
 :- pred simplify__check_branches_for_extra_info(var::in,
 		instmap::in, list(instmap_delta)::in, list(case)::in,
-		list(hlds__goal)::in, list(hlds__goal)::out) is semidet.
+		list(hlds_goal)::in, list(hlds_goal)::out) is semidet.
 
 simplify__check_branches_for_extra_info(_, _, [], _, CaseList, CaseList).
 simplify__check_branches_for_extra_info(Var, InstMap,
@@ -755,7 +755,7 @@ simplify__check_branches_for_extra_info(Var, InstMap,
 		BranchInstMaps, Cases, [ThisCase | CaseList0], CaseList).
 
 :- pred simplify__inst_contains_more_information((inst)::in,
-		(inst)::in, list(case)::in, hlds__goal::out) is semidet.
+		(inst)::in, list(case)::in, hlds_goal::out) is semidet.
 
 simplify__inst_contains_more_information(not_reached, _, _, Goal) :-
 	goal_info_init(GoalInfo),
@@ -775,8 +775,8 @@ simplify__inst_contains_more_information(bound(_, BoundInsts),
 		Cases = [case(_, Goal)]
 	).
 
-:- pred simplify__merge_switch_into_goals(hlds__goals::in, hlds__goals::in,
-		list(hlds__goal)::in, hlds__goals::out) is det.
+:- pred simplify__merge_switch_into_goals(hlds_goals::in, hlds_goals::in,
+		list(hlds_goal)::in, hlds_goals::out) is det.
 
 simplify__merge_switch_into_goals([], _, [], []).
 simplify__merge_switch_into_goals([], _, [_|_], []) :-
@@ -788,8 +788,8 @@ simplify__merge_switch_into_goals([Goal0 | Goals0], Builtins,
 	simplify__merge_switch_into_goal(Goal0, Builtins, SwitchGoal, Goal),
 	simplify__merge_switch_into_goals(Goals0, Builtins, SwitchGoals, Goals).
 
-:- pred simplify__merge_switch_into_cases(list(case)::in, hlds__goals::in,
-		list(hlds__goal)::in, list(case)::out) is det.
+:- pred simplify__merge_switch_into_cases(list(case)::in, hlds_goals::in,
+		list(hlds_goal)::in, list(case)::out) is det.
 
 simplify__merge_switch_into_cases([], _, [], []).
 simplify__merge_switch_into_cases([], _, [_|_], []) :-
@@ -801,8 +801,8 @@ simplify__merge_switch_into_cases([case(ConsId, Goal0) | Cases0], Builtins,
 	simplify__merge_switch_into_goal(Goal0, Builtins, SwitchGoal, Goal),
 	simplify__merge_switch_into_cases(Cases0, Builtins, SwitchGoals, Cases).
 
-:- pred simplify__merge_switch_into_goal(hlds__goal::in, hlds__goals::in,
-		hlds__goal::in, hlds__goal::out) is det.
+:- pred simplify__merge_switch_into_goal(hlds_goal::in, hlds_goals::in,
+		hlds_goal::in, hlds_goal::out) is det.
 
 simplify__merge_switch_into_goal(Goal0, Builtins, SwitchGoal, Goal) :-
 	conjoin_goal_and_goal_list(Goal0, Builtins, Goal1),
@@ -818,8 +818,8 @@ simplify__merge_switch_into_goal(Goal0, Builtins, SwitchGoal, Goal) :-
 	% Create a conservative goal_info so that simplification can
 	% safely be re-run on the resulting goal. A full recomputation over
 	% the entire goal is done later.
-:- pred simplify__approximate_goal_info(list(hlds__goal)::in,
-		hlds__goal_info::in, hlds__goal_info::out) is det.
+:- pred simplify__approximate_goal_info(list(hlds_goal)::in,
+		hlds_goal_info::in, hlds_goal_info::out) is det.
 
 simplify__approximate_goal_info(NewGoals, GoalInfo0, GoalInfo) :-
 	ComputeGoalInfo =
@@ -847,9 +847,9 @@ simplify__approximate_goal_info(NewGoals, GoalInfo0, GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__excess_assigns(hlds__goal::in, hlds__goal_info::in,
-		hlds__goals::in, hlds__goals::out,
-		hlds__goals::in, hlds__goals::out, bool::out,
+:- pred simplify__excess_assigns(hlds_goal::in, hlds_goal_info::in,
+		hlds_goals::in, hlds_goals::out,
+		hlds_goals::in, hlds_goals::out, bool::out,
 		simplify_info::in, simplify_info::out) is det.
 
 simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
@@ -932,7 +932,7 @@ simplify__switch(Var, [Case0 | Cases0], [Case | Cases],
 	% Create a semidet unification at the start of a singleton case
 	% in a can_fail switch.
 :- pred simplify__create_test_unification(var::in, cons_id::in, int::in,
-		hlds__goal::out, simplify_info::in, simplify_info::out) is det.
+		hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 
 simplify__create_test_unification(Var, ConsId, ConsArity,
 		ExtraGoal - ExtraGoalInfo, Info0, Info) :-
@@ -975,7 +975,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__disj(list(hlds__goal), list(hlds__goal), list(instmap_delta),
+:- pred simplify__disj(list(hlds_goal), list(hlds_goal), list(instmap_delta),
 	list(instmap_delta), simplify_info, simplify_info, simplify_info).
 :- mode simplify__disj(in, out, in, out, in, in, out) is det.
 
@@ -1014,8 +1014,8 @@ simplify__disj([Goal0 |Goals0], [Goal | Goals], PostBranchInstMaps0,
 	% assume that an if-then-else is mode-correct, i.e. that
 	% the condition doesn't bind variables.
 
-:- pred simplify__fixup_disj(list(hlds__goal), determinism, bool,
-	hlds__goal_info, follow_vars, hlds__goal_expr,
+:- pred simplify__fixup_disj(list(hlds_goal), determinism, bool,
+	hlds_goal_info, follow_vars, hlds_goal_expr,
 	simplify_info, simplify_info).
 :- mode simplify__fixup_disj(in, in, in, in, in, out, in, out) is det.
 
@@ -1042,8 +1042,8 @@ simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
 	%		Disjunct3
 	%	).
 
-:- pred det_disj_to_ite(list(hlds__goal), hlds__goal_info, follow_vars,
-	hlds__goal).
+:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, follow_vars,
+	hlds_goal).
 :- mode det_disj_to_ite(in, in, in, out) is det.
 
 det_disj_to_ite([], _GoalInfo, _SM, _) :-
@@ -1094,7 +1094,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__contains_multisoln_goal(list(hlds__goal)::in) is semidet.
+:- pred simplify__contains_multisoln_goal(list(hlds_goal)::in) is semidet.
 
 simplify__contains_multisoln_goal(Goals) :-
 	list__member(_Goal - GoalInfo, Goals),
@@ -1281,7 +1281,7 @@ simplify_do_calls(Info) :-
 	simplify_info_get_simplify(Info, Simplify),
 	Simplify = simplify(_, _, _, _, _, _, yes).
 
-:- pred simplify_info_update_instmap(simplify_info::in, hlds__goal::in,
+:- pred simplify_info_update_instmap(simplify_info::in, hlds_goal::in,
 		simplify_info::out) is det.
 
 simplify_info_update_instmap(
@@ -1299,7 +1299,7 @@ simplify_info_update_instmap(
 	% would cause more variables to be live across the stack flush.
 	% Calls and construction unifications are not treated in this
 	% way since it is nearly always better to optimize them away.
-:- pred simplify_info_maybe_clear_structs(before_after::in, hlds__goal::in,
+:- pred simplify_info_maybe_clear_structs(before_after::in, hlds_goal::in,
 		simplify_info::in, simplify_info::out) is det.
 
 simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-

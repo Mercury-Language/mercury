@@ -69,12 +69,12 @@ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 				DepGraph0, DepGraph1),
 	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0,
 				DepGraph1, DepGraph),
-	hlds__dependency_info_init(DepInfo0),
-	hlds__dependency_info_set_dependency_graph(DepInfo0, DepGraph,
+	hlds_dependency_info_init(DepInfo0),
+	hlds_dependency_info_set_dependency_graph(DepInfo0, DepGraph,
 				DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
-	hlds__dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
+	hlds_dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
 				DepInfo),
 	module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo).
 
@@ -174,7 +174,7 @@ dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
 % of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred dependency_graph__add_arcs_in_goal(hlds__goal, relation_key,
+:- pred dependency_graph__add_arcs_in_goal(hlds_goal, relation_key,
 					dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_goal(in, in, in, out) is det.
 
@@ -187,7 +187,7 @@ dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId,
 	% `Liveness' is the set of live variables, i.e. vars which
 	% have been referenced and will be referenced again.
 
-:- pred dependency_graph__add_arcs_in_goal_2(hlds__goal_expr, relation_key,
+:- pred dependency_graph__add_arcs_in_goal_2(hlds_goal_expr, relation_key,
 					dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_goal_2(in, in, in, out) is det.
 
@@ -261,7 +261,7 @@ dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _), _,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_arcs_in_list(list(hlds__goal), relation_key,
+:- pred dependency_graph__add_arcs_in_list(list(hlds_goal), relation_key,
 			dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_list(in, in, in, out) is det.
 
@@ -330,13 +330,13 @@ dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	io__write_string("% Dependency graph\n"),
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
-	{ hlds__dependency_info_get_dependency_graph(DepInfo, DepGraph) },
+	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph) },
 	{ relation__domain(DepGraph, DomSet) },
 	{ set__to_sorted_list(DomSet, DomList) },
 	dependency_graph__write_dependency_graph_2(DomList, DepGraph,
 			ModuleInfo),
 	io__write_string("\n\n% Dependency ordering\n"),
-	{ hlds__dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
+	{ hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
 	dependency_graph__write_dependency_ordering(DepOrd, ModuleInfo, 1).
 
 :- pred dependency_graph__write_dependency_graph_2(list(pred_proc_id),
@@ -437,7 +437,7 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
 dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
-	{ hlds__dependency_info_get_dependency_graph(DepInfo, DepGraph) },
+	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph) },
 	{ relation__domain(DepGraph, DomSet) },
 	{ set__to_sorted_list(DomSet, DomList) },
 	dependency_graph__write_prof_dependency_graph_2(DomList, DepGraph,

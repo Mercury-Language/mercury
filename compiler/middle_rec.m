@@ -16,7 +16,7 @@
 
 :- import_module hlds_goal, llds, code_info.
 
-:- pred middle_rec__match_and_generate(hlds__goal, code_tree,
+:- pred middle_rec__match_and_generate(hlds_goal, code_tree,
 	code_info, code_info).
 :- mode middle_rec__match_and_generate(in, out, in, out) is semidet.
 
@@ -85,8 +85,8 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal,
-	hlds__goal, ite_rec, store_map, hlds__goal_info,
+:- pred middle_rec__generate_ite(list(var), hlds_goal, hlds_goal,
+	hlds_goal, ite_rec, store_map, hlds_goal_info,
 	code_tree, code_info, code_info).
 :- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
 	is det.
@@ -101,8 +101,8 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_switch(var, cons_id, hlds__goal, hlds__goal,
-	store_map, hlds__goal_info, code_tree, code_info, code_info).
+:- pred middle_rec__generate_switch(var, cons_id, hlds_goal, hlds_goal,
+	store_map, hlds_goal_info, code_tree, code_info, code_info).
 :- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
 	is semidet.
 

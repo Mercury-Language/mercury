@@ -1093,12 +1093,12 @@ lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps,
 
 read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps, 
 		FactTableDeps, Error) -->
-	io__gc_call(read_mod_ignore_errors(Module, ".m",
-			"Getting dependencies for module", Search, Items0, Error)),
+	read_mod_ignore_errors(Module, ".m",
+		"Getting dependencies for module", Search, Items0, Error),
 	( { Items0 = [], Error = fatal } ->
-		io__gc_call(read_mod_ignore_errors(Module, ".int", 
+		read_mod_ignore_errors(Module, ".int", 
 		    "Getting dependencies for module interface", Search, 
-		    Items, _Error))
+		    Items, _Error)
 	;
 		{ Items = Items0 }
 	),
@@ -1204,11 +1204,9 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		process_module_interfaces(Imports, IndirectImports0,
 					Module0, Module)
 	;
-		io__gc_call(
-			read_mod_interface(Import,
-				"Reading interface for module", yes, 
-				LongIntItems1, Error1)
-		),
+		read_mod_interface(Import,
+			"Reading interface for module", yes, 
+			LongIntItems1, Error1),
 		% strip off the `:- interface' declaration at the start, if any
 		{
 			LongIntItems1 = [ FirstItem | LongIntItems2 ],
@@ -1269,11 +1267,9 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 	->
 		process_module_short_interfaces(Imports, Ext, Module0, Module)
 	;
-		io__gc_call(
-			read_mod_short_interface(Import, Ext,
+		read_mod_short_interface(Import, Ext,
 				"Reading short interface for module", yes,
-					ShortIntItems1, Error1)
-		),
+				ShortIntItems1, Error1),
 		% strip off the `:- interface' declaration at the start, if any
 		{
 			ShortIntItems1 = [ FirstItem | ShortIntItems2 ],

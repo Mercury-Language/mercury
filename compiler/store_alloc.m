@@ -67,8 +67,8 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_goal(hlds__goal, liveness_info, set(var), module_info,
-	hlds__goal, liveness_info).
+:- pred store_alloc_in_goal(hlds_goal, liveness_info, set(var), module_info,
+	hlds_goal, liveness_info).
 :- mode store_alloc_in_goal(in, in, in, in, out, out) is det.
 
 store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
@@ -119,8 +119,8 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 
 	% Here we process each of the different sorts of goals.
 
-:- pred store_alloc_in_goal_2(hlds__goal_expr, liveness_info,
-	set(var), module_info, hlds__goal_expr, liveness_info).
+:- pred store_alloc_in_goal_2(hlds_goal_expr, liveness_info,
+	set(var), module_info, hlds_goal_expr, liveness_info).
 :- mode store_alloc_in_goal_2(in, in, in, in, out, out) is det.
 
 store_alloc_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, ModuleInfo,
@@ -178,8 +178,8 @@ store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G), Liveness, _, _,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_conj(list(hlds__goal), liveness_info, set(var),
-		module_info, list(hlds__goal), liveness_info).
+:- pred store_alloc_in_conj(list(hlds_goal), liveness_info, set(var),
+		module_info, list(hlds_goal), liveness_info).
 :- mode store_alloc_in_conj(in, in, in, in, out, out) is det.
 
 store_alloc_in_conj([], Liveness, _R, _M, [], Liveness).
@@ -203,8 +203,8 @@ store_alloc_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_disj(list(hlds__goal), liveness_info, set(var),
-	module_info, list(hlds__goal), liveness_info).
+:- pred store_alloc_in_disj(list(hlds_goal), liveness_info, set(var),
+	module_info, list(hlds_goal), liveness_info).
 :- mode store_alloc_in_disj(in, in, in, in, out, out) is det.
 
 store_alloc_in_disj([], Liveness, _ResumeVars0, _ModuleInfo, [], Liveness).

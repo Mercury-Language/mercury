@@ -169,9 +169,9 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 				list(marker_status)
 			).
 
-:- pred dnf__transform_goal(hlds__goal::in, instmap::in,
+:- pred dnf__transform_goal(hlds_goal::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, dnf_info::in, hlds__goal::out,
+	string::in, dnf_info::in, hlds_goal::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
@@ -238,9 +238,9 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dnf__transform_disj(list(hlds__goal)::in, instmap::in,
+:- pred dnf__transform_disj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, dnf_info::in, list(hlds__goal)::out,
+	string::in, int::in, dnf_info::in, list(hlds_goal)::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_disj([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
@@ -281,10 +281,10 @@ dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 		ModuleInfo1, ModuleInfo, Base, Counter1, DnfInfo,
 		Cases, NewPredIds1, NewPredIds).
 
-:- pred dnf__transform_ite(hlds__goal::in, hlds__goal::in, hlds__goal::in,
+:- pred dnf__transform_ite(hlds_goal::in, hlds_goal::in, hlds_goal::in,
 	instmap::in, maybe(set(pred_proc_id))::in, module_info::in,
 	module_info::out, string::in, int::in, dnf_info::in,
-	hlds__goal::out, hlds__goal::out, hlds__goal::out,
+	hlds_goal::out, hlds_goal::out, hlds_goal::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_ite(Cond0, Then0, Else0, InstMap0, MaybeNonAtomic,
@@ -311,9 +311,9 @@ dnf__transform_ite(Cond0, Then0, Else0, InstMap0, MaybeNonAtomic,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dnf__transform_conj(list(hlds__goal)::in, instmap::in,
+:- pred dnf__transform_conj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, int::out, dnf_info::in, list(hlds__goal)::out,
+	string::in, int::in, int::out, dnf_info::in, list(hlds_goal)::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_conj([], _, _, ModuleInfo, ModuleInfo, _, Counter, Counter,
@@ -331,9 +331,9 @@ dnf__transform_conj([Goal0 | Goals0], InstMap0, MaybeNonAtomic,
 		ModuleInfo1, ModuleInfo, Base, Counter1, Counter, DnfInfo,
 		Goals, NewPredIds1, NewPredIds).
 
-:- pred dnf__make_goal_literal(hlds__goal::in, instmap::in,
+:- pred dnf__make_goal_literal(hlds_goal::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, int::out, dnf_info::in, hlds__goal::out,
+	string::in, int::in, int::out, dnf_info::in, hlds_goal::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic,
@@ -367,7 +367,7 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 		N = N1
 	).
 
-:- pred dnf__define_new_pred(hlds__goal::in, hlds__goal::out, instmap::in,
+:- pred dnf__define_new_pred(hlds_goal::in, hlds_goal::out, instmap::in,
 	string::in, dnf_info::in, module_info::in, module_info::out,
 	pred_id::out) is det.
 
@@ -417,7 +417,7 @@ dnf__compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred dnf__is_considered_literal_goal(hlds__goal::in,
+:- pred dnf__is_considered_literal_goal(hlds_goal::in,
 	maybe(set(pred_proc_id))::in) is semidet.
 
 dnf__is_considered_literal_goal(GoalExpr - _, MaybeNonAtomic) :-
@@ -427,7 +427,7 @@ dnf__is_considered_literal_goal(GoalExpr - _, MaybeNonAtomic) :-
 		dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic)
 	).
 
-:- pred dnf__is_considered_atomic_expr(hlds__goal_expr::in,
+:- pred dnf__is_considered_atomic_expr(hlds_goal_expr::in,
 	maybe(set(pred_proc_id))::in) is semidet.
 
 dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
@@ -438,7 +438,7 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 		dnf__expr_free_of_nonatomic(GoalExpr, NonAtomic)
 	).
 
-:- pred dnf__is_atomic_expr(hlds__goal_expr::in, bool::out) is det.
+:- pred dnf__is_atomic_expr(hlds_goal_expr::in, bool::out) is det.
 
 dnf__is_atomic_expr(conj(_), no).
 dnf__is_atomic_expr(higher_order_call(_, _, _, _, _), yes).
@@ -452,7 +452,7 @@ dnf__is_atomic_expr(some(_, GoalExpr - _), IsAtomic) :-
 dnf__is_atomic_expr(if_then_else(_, _, _, _, _), no).
 dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _, _, _), yes).
 
-:- pred dnf__expr_free_of_nonatomic(hlds__goal_expr::in,
+:- pred dnf__expr_free_of_nonatomic(hlds_goal_expr::in,
 	set(pred_proc_id)::in) is semidet.
 
 dnf__expr_free_of_nonatomic(conj(Goals), NonAtomic) :-
@@ -474,13 +474,13 @@ dnf__expr_free_of_nonatomic(if_then_else(_, Cond, Then, Else, _), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Else, NonAtomic).
 dnf__expr_free_of_nonatomic(pragma_c_code(_, _, _, _, _, _, _), _NonAtomic).
 
-:- pred dnf__goal_free_of_nonatomic(hlds__goal::in,
+:- pred dnf__goal_free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.
 
 dnf__goal_free_of_nonatomic(GoalExpr - _, NonAtomic) :-
 	dnf__expr_free_of_nonatomic(GoalExpr, NonAtomic).
 
-:- pred dnf__goals_free_of_nonatomic(list(hlds__goal)::in,
+:- pred dnf__goals_free_of_nonatomic(list(hlds_goal)::in,
 	set(pred_proc_id)::in) is semidet.
 
 dnf__goals_free_of_nonatomic([], _NonAtomic).

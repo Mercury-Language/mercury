@@ -48,7 +48,7 @@
 
 :- type rval_map == map(var, list(pair(int, rval))).
 
-:- pred lookup_switch__is_lookup_switch(var, cases_list, hlds__goal_info,
+:- pred lookup_switch__is_lookup_switch(var, cases_list, hlds_goal_info,
 		can_fail, int, code_model, int, int, can_fail, can_fail,
 		list(var), case_consts, maybe(set(var)),
 		code_info, code_info).
@@ -148,7 +148,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__figure_out_output_vars(hlds__goal_info, list(var),
+:- pred lookup_switch__figure_out_output_vars(hlds_goal_info, list(var),
 		code_info, code_info).
 :- mode lookup_switch__figure_out_output_vars(in, out, in, out) is det.
 

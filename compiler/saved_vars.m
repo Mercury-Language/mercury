@@ -68,7 +68,7 @@ saved_vars_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred saved_vars_in_goal(hlds__goal, slot_info, hlds__goal, slot_info).
+:- pred saved_vars_in_goal(hlds_goal, slot_info, hlds_goal, slot_info).
 :- mode saved_vars_in_goal(in, in, out, out) is det.
 
 saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
@@ -131,8 +131,8 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 % several such unifications about which one should be closest to a following
 % goal that uses all the variables they define.
 
-:- pred saved_vars_in_conj(list(hlds__goal), set(var), slot_info,
-	list(hlds__goal), slot_info).
+:- pred saved_vars_in_conj(list(hlds_goal), set(var), slot_info,
+	list(hlds_goal), slot_info).
 :- mode saved_vars_in_conj(in, in, in, out, out) is det.
 
 saved_vars_in_conj([], _, SlotInfo, [], SlotInfo).
@@ -161,8 +161,8 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 % Divide a list of goals into an initial subsequence of goals that
 % construct constants, and all other goals.
 
-:- pred skip_constant_constructs(list(hlds__goal), list(hlds__goal),
-	list(hlds__goal)).
+:- pred skip_constant_constructs(list(hlds_goal), list(hlds_goal),
+	list(hlds_goal)).
 :- mode skip_constant_constructs(in, out, out) is det.
 
 skip_constant_constructs([], [], []).
@@ -184,7 +184,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 %
 % The logic of this predicate must match the logic of saved_vars_delay_goal.
 
-:- pred can_push(var, hlds__goal).
+:- pred can_push(var, hlds_goal).
 :- mode can_push(in, in) is semidet.
 
 can_push(Var, First) :-
@@ -223,8 +223,8 @@ can_push(Var, First) :-
 % If Var is exported from the conjunction, we include Construct at the end
 % of the conjunction to give it its value.
 
-:- pred saved_vars_delay_goal(list(hlds__goal), hlds__goal, var, bool,
-	slot_info, list(hlds__goal), slot_info).
+:- pred saved_vars_delay_goal(list(hlds_goal), hlds_goal, var, bool,
+	slot_info, list(hlds_goal), slot_info).
 :- mode saved_vars_delay_goal(in, in, in, in, in, out, out) is det.
 
 saved_vars_delay_goal([], Construct, _Var, IsNonLocal, SlotInfo,
@@ -356,8 +356,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 % Push a non-renamed version of the given construction into the given goal.
 % Also traverse the goal looking for further opprtunities.
 
-:- pred push_into_goal(hlds__goal, hlds__goal, var, slot_info,
-	hlds__goal, slot_info).
+:- pred push_into_goal(hlds_goal, hlds_goal, var, slot_info,
+	hlds_goal, slot_info).
 :- mode push_into_goal(in, in, in, in, out, out) is det.
 
 push_into_goal(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
@@ -373,8 +373,8 @@ push_into_goal(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 % then this would have no effect, so we merely traverse the goal looking
 % for other opportunities.
 
-:- pred push_into_goal_rename(hlds__goal, hlds__goal, var, slot_info,
-	hlds__goal, slot_info).
+:- pred push_into_goal_rename(hlds_goal, hlds_goal, var, slot_info,
+	hlds_goal, slot_info).
 :- mode push_into_goal_rename(in, in, in, in, out, out) is det.
 
 push_into_goal_rename(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
@@ -392,8 +392,8 @@ push_into_goal_rename(Goal0, Construct, Var, SlotInfo0, Goal, SlotInfo) :-
 
 % Push renamed versions of the given construction into each of several goals.
 
-:- pred push_into_goals_rename(list(hlds__goal), hlds__goal, var, slot_info,
-	list(hlds__goal), slot_info).
+:- pred push_into_goals_rename(list(hlds_goal), hlds_goal, var, slot_info,
+	list(hlds_goal), slot_info).
 :- mode push_into_goals_rename(in, in, in, in, out, out) is det.
 
 push_into_goals_rename([], _Construct, _Var, SlotInfo, [], SlotInfo).
@@ -406,7 +406,7 @@ push_into_goals_rename([Goal0 | Goals0], Construct, Var, SlotInfo0,
 
 % Push renamed versions of the given construction into each of several cases.
 
-:- pred push_into_cases_rename(list(case), hlds__goal, var, slot_info,
+:- pred push_into_cases_rename(list(case), hlds_goal, var, slot_info,
 	list(case), slot_info).
 :- mode push_into_cases_rename(in, in, in, in, out, out) is det.
 
@@ -420,8 +420,8 @@ push_into_cases_rename([case(ConsId, Goal0) | Cases0], Construct, Var,
 
 %-----------------------------------------------------------------------------%
 
-:- pred saved_vars_in_disj(list(hlds__goal), slot_info,
-	list(hlds__goal), slot_info).
+:- pred saved_vars_in_disj(list(hlds_goal), slot_info,
+	list(hlds_goal), slot_info).
 :- mode saved_vars_in_disj(in, in, out, out) is det.
 
 saved_vars_in_disj([], SlotInfo, [], SlotInfo).

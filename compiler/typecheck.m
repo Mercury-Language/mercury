@@ -542,7 +542,7 @@ END JUNK ***************************/
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_goal(hlds__goal, hlds__goal, type_info, type_info).
+:- pred typecheck_goal(hlds_goal, hlds_goal, type_info, type_info).
 :- mode typecheck_goal(in, out, type_info_di, type_info_uo) is det.
 
 	% Typecheck a goal.
@@ -569,7 +569,7 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 
 	check_warn_too_much_overloading(TypeInfo2, TypeInfo).
 
-:- pred typecheck_goal_2(hlds__goal_expr, hlds__goal_expr,
+:- pred typecheck_goal_2(hlds_goal_expr, hlds_goal_expr,
 				type_info, type_info).
 :- mode typecheck_goal_2(in, out, type_info_di, type_info_uo) is det.
 
@@ -615,7 +615,7 @@ typecheck_goal_2(pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G))
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_goal_list(list(hlds__goal), list(hlds__goal),
+:- pred typecheck_goal_list(list(hlds_goal), list(hlds_goal),
 				type_info, type_info).
 :- mode typecheck_goal_list(in, out, type_info_di, type_info_uo) is det.
 
@@ -2410,7 +2410,7 @@ type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
 		ConsInfoList = ConsInfoList1
 	).
 
-:- pred convert_cons_defn_list(type_info, list(hlds__cons_defn),
+:- pred convert_cons_defn_list(type_info, list(hlds_cons_defn),
 				list(cons_type_info)).
 :- mode convert_cons_defn_list(type_info_ui, in, out) is det.
 
@@ -2426,11 +2426,11 @@ convert_cons_defn_list(TypeInfo, [X|Xs], Ys) :-
 		convert_cons_defn_list(TypeInfo, Xs, Ys)
 	).
 
-:- pred convert_cons_defn(type_info, hlds__cons_defn, cons_type_info).
+:- pred convert_cons_defn(type_info, hlds_cons_defn, cons_type_info).
 :- mode convert_cons_defn(type_info_ui, in, out) is semidet.
 
 convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
-	HLDS_ConsDefn = hlds__cons_defn(ArgTypes, TypeId, Context),
+	HLDS_ConsDefn = hlds_cons_defn(ArgTypes, TypeId, Context),
 	type_info_get_types(TypeInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
 	type_info_get_pred_import_status(TypeInfo, PredStatus),

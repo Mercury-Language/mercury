@@ -305,19 +305,11 @@ read_all_items(ModuleName, Messages, Items, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-	% The loop is arranged somewhat carefully: we want it to
-	% be tail recursive, and we want to do a small garbage collection
-	% after we have read each item to minimize memory usage
-	% and improve cache locality.  So each iteration calls
-	% read_item(MaybeItem) - which does all the work for a single item -
-	% via io__gc_call/1, which calls the goal with garbage collection.
-	% This manual garbage collection won't be strictly necessary
-	% when (if) we implement automatic garbage collection, but
-	% it will probably still improve performance.
-	%
-	% Note: the following will NOT be tail recursive with our
-	% implementation unless the compiler is smart enough to inline
-	% read_items_loop_2.
+	% The code below was carefully optimized to run efficiently
+	% in NU-Prolog.  We used to call read_item(MaybeItem) -
+	% which does all the work for a single item -
+	% via io__gc_call/1, which called the goal with garbage collection.
+	% But optimizing for NU-Prolog is no longer a big priority...
 
 :- pred read_items_loop(string, string, message_list, item_list, module_error, 
 			message_list, item_list, module_error, 
@@ -326,7 +318,7 @@ read_all_items(ModuleName, Messages, Items, Error) -->
 
 read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 		Msgs, Items, Error) -->
-	io__gc_call(read_item(ModuleName, SourceFileName, MaybeItem)),
+	read_item(ModuleName, SourceFileName, MaybeItem),
  	read_items_loop_2(MaybeItem, ModuleName, SourceFileName,
 			Msgs1, Items1, Error1, Msgs, Items, Error).
 
@@ -337,8 +329,6 @@ read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 			message_list, item_list, module_error,
 			io__state, io__state).
 :- mode read_items_loop_2(in, in, in, in, in, in, out, out, out, di, uo) is det.
-
-:- pragma(inline, read_items_loop_2/11).
 
 % do a switch on the type of the next item
 
@@ -1812,9 +1802,6 @@ parse_symbol_name(DefaultModName, Term, Result) :-
         ( 
             Term = term__functor(term__atom(Name), [], _Context3)
         ->
-/********
-Don't allow `__' as an alternative to `:', because
-we don't yet support qualification on constructors (e.g. term__variable).
 	    (
 		string__sub_string_search(Name, "__", LeftLength),
 		LeftLength > 0
@@ -1825,7 +1812,6 @@ we don't yet support qualification on constructors (e.g. term__variable).
 		string__right(Name, RightLength, Name2),
 		Result = ok(qualified(Module, Name2))
 	    ;
-********/
 	        (
 		    DefaultModName = ""
 	        ->
@@ -1833,9 +1819,7 @@ we don't yet support qualification on constructors (e.g. term__variable).
 	        ;
 		    Result = ok(qualified(DefaultModName, Name))
 	        )
-/********
 	    )
-********/
         ;
             Result = error("symbol name specifier expected", Term)
         )

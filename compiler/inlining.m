@@ -36,7 +36,7 @@
 	% the call-graph towards the top, first perfoming inlining on a
 	% procedure then deciding if calls to it (higher in the call-graph)
 	% should be inlined. SCCs get flattend and processed in the order
-	% returned by hlds__dependency_info_get_dependency_ordering.
+	% returned by hlds_dependency_info_get_dependency_ordering.
 	%
 	% There are a couple of classes of procedure that we clearly want
 	% to inline because doing so *reduces* the size of the generated
@@ -84,7 +84,7 @@
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
 
-:- pred inlining__is_simple_goal(hlds__goal, int).
+:- pred inlining__is_simple_goal(hlds_goal, int).
 :- mode inlining__is_simple_goal(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -158,7 +158,7 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		% that yet.
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
 	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
-	{ hlds__dependency_info_get_dependency_ordering(DepInfo, SCCs) },
+	{ hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs) },
 	{ list__condense(SCCs, PredProcs) },
 	{ set__init(InlinedProcs0) },
 	inlining__do_inlining(PredProcs, NeededMap, Params, InlinedProcs0,
@@ -239,7 +239,7 @@ inlining__is_simple_goal(CalledGoal, SimpleThreshold) :-
 		inlining__is_flat_simple_goal(CalledGoal)
 	).
 
-:- pred inlining__is_flat_simple_goal(hlds__goal::in) is semidet.
+:- pred inlining__is_flat_simple_goal(hlds_goal::in) is semidet.
 
 inlining__is_flat_simple_goal(conj(Goals) - _) :-
 	inlining__is_flat_simple_goal_list(Goals).
@@ -251,7 +251,7 @@ inlining__is_flat_simple_goal(call(_, _, _, BuiltinState, _, _) - _) :-
 	BuiltinState = inline_builtin.
 inlining__is_flat_simple_goal(unify(_, _, _, _, _) - _).
 
-:- pred inlining__is_flat_simple_goal_list(hlds__goals::in) is semidet.
+:- pred inlining__is_flat_simple_goal_list(hlds_goals::in) is semidet.
 
 inlining__is_flat_simple_goal_list([]).
 inlining__is_flat_simple_goal_list([Goal | Goals]) :-
@@ -310,8 +310,8 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_goal(hlds__goal, varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), int, hlds__goal,
+:- pred inlining__inlining_in_goal(hlds_goal, varset, map(var, type),
+	tvarset, module_info, set(pred_proc_id), int, hlds_goal,
 	varset, map(var, type)).
 :- mode inlining__inlining_in_goal(in, in, in, in, in, in, in, out, out, out)
 	is det.
@@ -324,8 +324,8 @@ inlining__inlining_in_goal(Goal0 - GoalInfo, Varset0, VarTypes0, TypeVarSet,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_goal_2(hlds__goal_expr, varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), int, hlds__goal_expr,
+:- pred inlining__inlining_in_goal_2(hlds_goal_expr, varset, map(var, type),
+	tvarset, module_info, set(pred_proc_id), int, hlds_goal_expr,
 	varset, map(var, type)).
 :- mode inlining__inlining_in_goal_2(in, in, in, in, in, in, in, out, out, out)
 	is det.
@@ -464,8 +464,8 @@ inlining__inlining_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), Varset, VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_disj(list(hlds__goal), varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), int, list(hlds__goal),
+:- pred inlining__inlining_in_disj(list(hlds_goal), varset, map(var, type),
+	tvarset, module_info, set(pred_proc_id), int, list(hlds_goal),
 	varset, map(var, type)).
 :- mode inlining__inlining_in_disj(in, in, in, in, in, in, in, out, out, out)
 	is det.
@@ -500,8 +500,8 @@ inlining__inlining_in_cases([case(Cons, Goal0) | Goals0],
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__inlining_in_conj(list(hlds__goal), varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), int, list(hlds__goal),
+:- pred inlining__inlining_in_conj(list(hlds_goal), varset, map(var, type),
+	tvarset, module_info, set(pred_proc_id), int, list(hlds_goal),
 	varset, map(var, type)).
 :- mode inlining__inlining_in_conj(in, in, in, in, in, in, in, out, out, out)
 	is det.

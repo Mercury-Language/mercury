@@ -204,7 +204,7 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_set_var_inst_list(list(var), list(inst), list(inst),
-					list(var), pair(list(hlds__goal)),
+					list(var), pair(list(hlds_goal)),
 					mode_info, mode_info).
 :- mode modecheck_set_var_inst_list(in, in, in, out, out,
 					mode_info_di, mode_info_uo) is det.
@@ -215,10 +215,10 @@ a variable live if its value will be used later on in the computation.
 :- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
+:- pred mode_info_add_goals_live_vars(list(hlds_goal), mode_info, mode_info).
 :- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_remove_goals_live_vars(list(hlds__goal), mode_info,
+:- pred mode_info_remove_goals_live_vars(list(hlds_goal), mode_info,
 					mode_info).
 :- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
@@ -226,21 +226,21 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by modecheck_unify.m.
 
-:- pred modecheck_goal(hlds__goal, hlds__goal, mode_info, mode_info).
+:- pred modecheck_goal(hlds_goal, hlds_goal, mode_info, mode_info).
 :- mode modecheck_goal(in, out, mode_info_di, mode_info_uo) is det.
 
 	% Mode-check a single goal-expression.
 
-:- pred modecheck_goal_expr(hlds__goal_expr, hlds__goal_info, hlds__goal_expr,
+:- pred modecheck_goal_expr(hlds_goal_expr, hlds_goal_info, hlds_goal_expr,
 			mode_info, mode_info).
 :- mode modecheck_goal_expr(in, in, out, mode_info_di, mode_info_uo) is det.
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
-	% hlds__goal_expr.
+	% hlds_goal_expr.
 	%
-:- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)),
-		hlds__goal_info, list(var), list(var),
-		instmap, mode_info, hlds__goal_expr).
+:- pred handle_extra_goals(hlds_goal_expr, pair(list(hlds_goal)),
+		hlds_goal_info, list(var), list(var),
+		instmap, mode_info, hlds_goal_expr).
 :- mode handle_extra_goals(in, in, in, in, in, in, mode_info_ui, out)
 	is det.
 
@@ -880,8 +880,8 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		Goal = conj(GoalList)
 	).
 
-:- pred handle_extra_goals_contexts(list(hlds__goal), term__context,
-	list(hlds__goal)).
+:- pred handle_extra_goals_contexts(list(hlds_goal), term__context,
+	list(hlds_goal)).
 :- mode handle_extra_goals_contexts(in, in, out) is det.
 
 handle_extra_goals_contexts([], _Context, []).
@@ -891,7 +891,7 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	handle_extra_goals_contexts(Goals0, Context, Goals).
 
-:- pred goal_get_nonlocals(hlds__goal, set(var)).
+:- pred goal_get_nonlocals(hlds_goal, set(var)).
 :- mode goal_get_nonlocals(in, out) is det.
 
 goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
@@ -899,7 +899,7 @@ goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_conj_list(list(hlds__goal), list(hlds__goal),
+:- pred modecheck_conj_list(list(hlds_goal), list(hlds_goal),
 				mode_info, mode_info).
 :- mode modecheck_conj_list(in, out, mode_info_di, mode_info_uo) is det.
 
@@ -945,7 +945,7 @@ mode_info_remove_goals_live_vars([Goal | Goals]) -->
 	mode_info_remove_live_vars(Vars),
 	mode_info_remove_goals_live_vars(Goals).
 
-:- pred modecheck_conj_list_2(list(hlds__goal), list(hlds__goal),
+:- pred modecheck_conj_list_2(list(hlds_goal), list(hlds_goal),
 				mode_info, mode_info).
 :- mode modecheck_conj_list_2(in, out, mode_info_di, mode_info_uo) is det.
 
@@ -1036,7 +1036,7 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal), list(instmap),
+:- pred modecheck_disj_list(list(hlds_goal), list(hlds_goal), list(instmap),
 				mode_info, mode_info).
 :- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo) is det.
 
@@ -1158,7 +1158,7 @@ modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, Vars, Goals) -->
 	).
 
 :- pred modecheck_set_var_inst_list_2(list(var), list(inst), list(inst),
-					list(var), pair(list(hlds__goal)),
+					list(var), pair(list(hlds_goal)),
 					mode_info, mode_info).
 :- mode modecheck_set_var_inst_list_2(in, in, in, out, out,
 					mode_info_di, mode_info_uo) is semidet.
@@ -1176,7 +1176,7 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 
 % XXX this might need to be revisited to handle unique modes
 
-:- pred modecheck_set_var_inst(var, inst, inst, var, pair(list(hlds__goal)),
+:- pred modecheck_set_var_inst(var, inst, inst, var, pair(list(hlds_goal)),
 				mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
@@ -1292,7 +1292,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 % introduce a fresh variable.
 
 :- pred handle_implied_mode(var, inst, inst, inst, inst, determinism,
-				var, pair(list(hlds__goal)),
+				var, pair(list(hlds_goal)),
 				mode_info, mode_info).
 :- mode handle_implied_mode(in, in, in, in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.

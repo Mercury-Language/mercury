@@ -46,7 +46,7 @@
 
 		% This predicate generates code for a goal.
 
-:- pred code_gen__generate_goal(code_model, hlds__goal, code_tree,
+:- pred code_gen__generate_goal(code_model, hlds_goal, code_tree,
 						code_info, code_info).
 :- mode code_gen__generate_goal(in, in, out, in, out) is det.
 
@@ -212,7 +212,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% construct a c_procedure structure with all the information
 	{ Proc = c_procedure(Name, Arity, ProcId, Instructions) }.
 
-:- pred generate_category_code(code_model, hlds__goal, code_tree, maybe(int),
+:- pred generate_category_code(code_model, hlds_goal, code_tree, maybe(int),
 				code_info, code_info).
 :- mode generate_category_code(in, in, out, out, in, out) is det.
 
@@ -642,7 +642,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 % Note of course, that with a conjunction, state information
 % flows directly from one conjunct to the next.
 
-:- pred code_gen__generate_goals(hlds__goals, code_model, code_tree,
+:- pred code_gen__generate_goals(hlds_goals, code_model, code_tree,
 							code_info, code_info).
 :- mode code_gen__generate_goals(in, in, out, in, out) is det.
 
@@ -661,7 +661,7 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_det_goal_2(hlds__goal_expr, hlds__goal_info,
+:- pred code_gen__generate_det_goal_2(hlds_goal_expr, hlds_goal_info,
 					code_tree, code_info, code_info).
 :- mode code_gen__generate_det_goal_2(in, in, out, in, out) is det.
 
@@ -737,7 +737,7 @@ code_gen__generate_det_goal_2(pragma_c_code(C_Code, MayCallMercury,
 		PredId, ModeId, Args, ArgNames, Extra), GoalInfo, Instr) -->
 	(
 		{ Extra = none },
-		code_gen__generate_pragma_c_code(model_det, C_Code,
+		pragma_c_gen__generate_pragma_c_code(model_det, C_Code,
 			MayCallMercury, PredId, ModeId, Args, ArgNames,
 			GoalInfo, Instr)
 	;
@@ -747,7 +747,7 @@ code_gen__generate_det_goal_2(pragma_c_code(C_Code, MayCallMercury,
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_semi_goal_2(hlds__goal_expr, hlds__goal_info,
+:- pred code_gen__generate_semi_goal_2(hlds_goal_expr, hlds_goal_info,
 					code_tree, code_info, code_info).
 :- mode code_gen__generate_semi_goal_2(in, in, out, in, out) is det.
 
@@ -821,7 +821,7 @@ code_gen__generate_semi_goal_2(pragma_c_code(C_Code, MayCallMercury,
 		PredId, ModeId, Args, ArgNameMap, Extra), GoalInfo, Instr) -->
 	(
 		{ Extra = none },
-		code_gen__generate_pragma_c_code(model_semi, C_Code,
+		pragma_c_gen__generate_pragma_c_code(model_semi, C_Code,
 			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
 			GoalInfo, Instr)
 	;
@@ -832,7 +832,7 @@ code_gen__generate_semi_goal_2(pragma_c_code(C_Code, MayCallMercury,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_negation(code_model, hlds__goal, code_tree,
+:- pred code_gen__generate_negation(code_model, hlds_goal, code_tree,
 	code_info, code_info).
 :- mode code_gen__generate_negation(in, in, out, in, out) is det.
 
@@ -890,7 +890,7 @@ code_gen__generate_negation(CodeModel, Goal0, Code) -->
 	),
 	code_info__pop_resume_point_vars.
 
-:- pred code_gen__generate_negation_general(code_model, hlds__goal,
+:- pred code_gen__generate_negation_general(code_model, hlds_goal,
 	set(var), resume_locs, code_tree, code_info, code_info).
 :- mode code_gen__generate_negation_general(in, in, in, in, out, in, out)
 	is det.
@@ -952,7 +952,7 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_non_goal_2(hlds__goal_expr, hlds__goal_info,
+:- pred code_gen__generate_non_goal_2(hlds_goal_expr, hlds_goal_info,
 					code_tree, code_info, code_info).
 :- mode code_gen__generate_non_goal_2(in, in, out, in, out) is det.
 
@@ -1002,14 +1002,14 @@ code_gen__generate_non_goal_2(pragma_c_code(C_Code, MayCallMercury,
 		% is completed, and even then we must wait until that compiler
 		% is installed on all our machines.
 		% { error("nondet pragma has empty extras field") }
-		code_gen__generate_pragma_c_code(model_semi, C_Code,
+		pragma_c_gen__generate_pragma_c_code(model_semi, C_Code,
 			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
 			GoalInfo, Instr)
 	;
 		{ Extra = extra_pragma_info(SavedVars, LabelNames) },
-		code_gen__generate_backtrack_pragma_c_code(model_semi, C_Code,
-			MayCallMercury, PredId, ModeId, Args, ArgNameMap,
-			SavedVars, LabelNames, GoalInfo, Instr)
+		pragma_c_gen__generate_backtrack_pragma_c_code(model_semi,
+			C_Code, MayCallMercury, PredId, ModeId, Args,
+			ArgNameMap, SavedVars, LabelNames, GoalInfo, Instr)
 	).
 
 %---------------------------------------------------------------------------%

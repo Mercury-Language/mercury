@@ -45,13 +45,13 @@
 :- import_module hlds_goal, hlds_data, code_info.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
-	store_map, hlds__goal_info, code_tree, code_info, code_info).
+	store_map, hlds_goal_info, code_tree, code_info, code_info).
 :- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
 	is det.
 
 % These types are exported to dense_switch, string_switch and tag_switch.
 
-:- type extended_case ---> case(int, cons_tag, cons_id, hlds__goal).
+:- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
 :- type cases_list == list(extended_case).
 
 %---------------------------------------------------------------------------%

@@ -185,7 +185,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ dupelim__main(Instrs4, Instrs) },
+		{ dupelim_main(Instrs4, Instrs) },
 		( { Instrs = Instrs4 } ->
 			[]
 		;

@@ -55,7 +55,7 @@
 :- type clause		--->	clause(
 					list(proc_id),	% modes for which
 							% this clause applies
-					hlds__goal,	% Body
+					hlds_goal,	% Body
 					term__context
 				).
 
@@ -507,18 +507,18 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- mode proc_info_init(in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
-	list(mode), maybe(list(is_live)), hlds__goal, term__context,
+	list(mode), maybe(list(is_live)), hlds_goal, term__context,
 	stack_slots, determinism, bool, list(arg_info), liveness_info,
 	map(tvar, var), proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	out) is det.
 
 :- pred proc_info_create(varset, map(var, type), list(var), list(mode),
-	determinism, hlds__goal, term__context, map(tvar, var), proc_info).
+	determinism, hlds_goal, term__context, map(tvar, var), proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_set_body(proc_info, varset, map(var, type), list(var),
-	hlds__goal, proc_info).
+	hlds_goal, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, out) is det.
 
 :- pred proc_info_declared_determinism(proc_info, maybe(determinism)).
@@ -576,7 +576,7 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 					proc_info).
 :- mode proc_info_set_maybe_arglives(in, in, out) is det.
 
-:- pred proc_info_goal(proc_info, hlds__goal).
+:- pred proc_info_goal(proc_info, hlds_goal).
 :- mode proc_info_goal(in, out) is det.
 
 :- pred proc_info_context(proc_info, term__context).
@@ -594,7 +594,7 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_set_inferred_determinism(proc_info, determinism, proc_info).
 :- mode proc_info_set_inferred_determinism(in, in, out) is det.
 
-:- pred proc_info_set_goal(proc_info, hlds__goal, proc_info).
+:- pred proc_info_set_goal(proc_info, hlds_goal, proc_info).
 :- mode proc_info_set_goal(in, in, out) is det.
 
 :- pred proc_info_arg_info(proc_info, list(arg_info)).
@@ -649,7 +649,7 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 			maybe(list(is_live)),
 					% liveness (in the mode analysis sense)
 					% of the arguments
-			hlds__goal,	% Body
+			hlds_goal,	% Body
 			term__context,	% The context of the `:- mode' decl
 					% (or the context of the first clause,
 					% if there was no mode declaration).
@@ -810,7 +810,7 @@ proc_info_typeinfo_varmap(ProcInfo, TVarMap) :-
 % 				D	list(var),	% head vars
 % 				E	list(mode), 	% modes of args
 % 				F	list(is_live), 	% liveness of args
-% 				G	hlds__goal,	% Body
+% 				G	hlds_goal,	% Body
 % 				H	term__context,	% The context of
 % 							% the :- mode decl,
 % 							% not the clause.

@@ -297,7 +297,7 @@ dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo, Queue0, Queue,
 		Needed = Needed0
 	).
 
-:- pred dead_proc_elim__examine_goals(list(hlds__goal), pred_proc_id,
+:- pred dead_proc_elim__examine_goals(list(hlds_goal), pred_proc_id,
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_goals(in, in, in, out, in, out) is det.
 
@@ -321,7 +321,7 @@ dead_proc_elim__examine_cases([case(_, Goal) | Cases], CurrProc, Queue0, Queue,
 	dead_proc_elim__examine_cases(Cases, CurrProc, Queue1, Queue,
 		Needed1, Needed).
 
-:- pred dead_proc_elim__examine_goal(hlds__goal, pred_proc_id,
+:- pred dead_proc_elim__examine_goal(hlds_goal, pred_proc_id,
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_goal(in, in, in, out, in, out) is det.
 
@@ -330,7 +330,7 @@ dead_proc_elim__examine_goal(GoalExpr - _, CurrProc, Queue0, Queue,
 	dead_proc_elim__examine_expr(GoalExpr, CurrProc, Queue0, Queue,
 		Needed0, Needed).
 
-:- pred dead_proc_elim__examine_expr(hlds__goal_expr, pred_proc_id,
+:- pred dead_proc_elim__examine_expr(hlds_goal_expr, pred_proc_id,
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_expr(in, in, in, out, in, out) is det.
 

@@ -48,7 +48,7 @@ lco_modulo_constructors(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_goal(hlds__goal, module_info, hlds__goal).
+:- pred lco_in_goal(hlds_goal, module_info, hlds_goal).
 :- mode lco_in_goal(in, in, out) is det.
 
 lco_in_goal(Goal0 - GoalInfo, ModuleInfo, Goal - GoalInfo) :-
@@ -56,7 +56,7 @@ lco_in_goal(Goal0 - GoalInfo, ModuleInfo, Goal - GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_goal_2(hlds__goal_expr, module_info, hlds__goal_expr).
+:- pred lco_in_goal_2(hlds_goal_expr, module_info, hlds_goal_expr).
 :- mode lco_in_goal_2(in, in, out) is det.
 
 lco_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals)) :-
@@ -91,7 +91,7 @@ lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, pragma_c_code(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_disj(list(hlds__goal), module_info, list(hlds__goal)).
+:- pred lco_in_disj(list(hlds_goal), module_info, list(hlds_goal)).
 :- mode lco_in_disj(in, in, out) is det.
 
 lco_in_disj([], __ModuleInfo, []).
@@ -130,8 +130,8 @@ lco_in_cases([case(Cons, Goal0) | Cases0], ModuleInfo,
 %
 % invariant: append(reverse(RevGoals), Unifies) = original conjunction
 
-:- pred lco_in_conj(list(hlds__goal), list(hlds__goal), module_info,
-	list(hlds__goal)).
+:- pred lco_in_conj(list(hlds_goal), list(hlds_goal), module_info,
+	list(hlds_goal)).
 :- mode lco_in_conj(in, in, in, out) is det.
 
 lco_in_conj([], Unifies, __ModuleInfo, Unifies).
