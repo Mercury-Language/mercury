@@ -30,10 +30,6 @@ The argument is the "dictionary", or "typeclass_info" for the typeclass.
 The dictionary contains pointers to each of the class methods.
 <p>
 
-XXX This documentation is not complete RE the current/future situation;
-we should add pointer to documentation for typeclass_decl etc.
-and/or replace this file.
-
 Representation of a typeclass_info:
 The typeclass_info is represented in two parts (the typeclass_info
 itself, and a base_typeclass_info), in a similar fashion to the
@@ -212,10 +208,47 @@ p(TypeClassInfoT1, X) :-
 </pre>
 <p>
 
+<H3> Detecting duplicate instance declarations </H3>
+
+We would like to catch duplicate instance declarations
+(those that declare the same vector of possibly unground types
+to be members of the same typeclass)
+as early as possible.
+Since duplicate declarations can occur in different modules,
+the earliest practical time is link time.
+We would therefore like to generate a name for the global variable
+that holds the base_typeclass_info of an instance declaration
+that depends only on the identity of the typeclass
+and on the instance declaration's vector of argument types.
+
+For the C backends, this is what we actually do.
+As a result, duplicate instance declarations will result in a link error
+for a multiply defined symbol if linking is done statically.
+(With dynamic linking, multiply defined symbols
+don't seem to cause any warnings or errors on the platforms we use,
+unless both definitions occur in the same shared library
+or both occur in the main program.)
+Note that the names of the global variables
+do in fact have module names in them,
+but they are the names of the modules that declare the type class
+and that declare the type constructors occuring in the argument types.
+The name of the module that contains the instance declaration
+need not be among these names.
+
+For the IL and Java backends, the data structures we generate
+must all be module qualified with the name of the module which generates them.
+If two modules contain duplicate instance declarations,
+we cannot catch that fact at link time.
+We could catch them at runtime,
+by having each module register its base_typeclass_infos
+at module initialization time,
+and detecting duplicate registrations.
+However, we currently have no such mechanism in place.
+
 <hr>
 <!-------------------------->
 <hr>
 <!-------------------------->
-Last update was $Date: 2004-02-26 02:23:31 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-03-01 04:24:15 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
