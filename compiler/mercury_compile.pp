@@ -615,7 +615,7 @@ generate_dependencies_2([Module | Modules], ModuleName, DepsMap0, DepStream) -->
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module,
 			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
-		transitive_dependencies(IntDeps, DepsMap2, SecondaryDeps,
+		transitive_dependencies(ImplDeps, DepsMap2, SecondaryDeps,
 			DepsMap),
 		( { Error \= fatal } ->
 			write_dependency_file(Module, ImplDeps, SecondaryDeps)
