@@ -336,7 +336,7 @@ collect_class_and_inst_constraints([Constraint | Constraints],
 		ProgConstraints = [SimpleConstraint | ProgConstraints0],
 		InstVarSub = InstVarSub0
 	;
-		Constraint = class(ClassConstraint),
+		Constraint = non_simple(ClassConstraint),
 		ProgConstraints = [ClassConstraint | ProgConstraints0],
 		InstVarSub = InstVarSub0
 	;
@@ -350,7 +350,7 @@ collect_class_and_inst_constraints([Constraint | Constraints],
 			% A class constraint whose arguments are either
 			% variables or ground terms.
 
-	;	class(prog_constraint)
+	;	non_simple(prog_constraint)
 			% An arbitrary class constraint not matching the
 			% description of "simple".
 
@@ -404,7 +404,7 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
 		(
 			constraint_is_not_simple(Constraint)
 		->
-			Result = ok(class(Constraint))
+			Result = ok(non_simple(Constraint))
 		;
 			Result = ok(simple(Constraint))
 		)
