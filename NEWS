@@ -64,6 +64,11 @@ Changes to the Mercury language:
   extensions which are unlikely to be implemented.
 
 Changes to the Mercury standard library:
+* We've added a func version of error/1, called func_error/1, to require.m.
+* We've added two functions to list.m for mapping functions over
+  corresponding members of lists (list__map_corresponding/3 and
+  list__map_corresponding3/4).
+* We've added cc_multi modes to list__foldl/4 and list__foldr/4.
 * As mentioned above, the constructor for lists has changed from './2'
   to `[|]/2'. This change affects the behaviour of the term manipulation
   predicates in the standard library when dealing with values of

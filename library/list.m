@@ -441,6 +441,21 @@
 	is nondet.
 :- mode list__map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
 
+	% list__map_corresponding(F, [A1, .. An], [B1, .. Bn]) =
+	% 	[F(A1, B1), .., F(An, Bn)].
+	%
+	% An exception is raised if the list arguments differ in length.
+	%
+:- func list__map_corresponding(func(A, B) = C, list(A), list(B)) = list(C).
+
+	% list__map_corresponding3(F, [A1, .. An], [B1, .. Bn], [C1, .. Cn]) =
+	% 	[F(A1, B1, C1), .., F(An, Bn, Cn)].
+	%
+	% An exception is raised if the list arguments differ in length.
+	%
+:- func list__map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C)) =
+		list(D).
+
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
 	% (with the initial value of Start), and returns the final
@@ -450,6 +465,8 @@
 :- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode list__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode list__foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode list__foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
 :- func list__foldl(func(X, Y) = Y, list(X), Y) = Y.
 
@@ -461,6 +478,8 @@
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode list__foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode list__foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode list__foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
 :- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
 
@@ -1161,6 +1180,36 @@ list__map3(_, [],  [],  [],  []).
 list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
 	call(P, H0, H1, H2, H3),
 	list__map3(P, T0, T1, T2, T3).
+
+
+
+list__map_corresponding(_, [],       []      ) = [].
+
+list__map_corresponding(_, [],       [_|_]   ) = 
+	func_error("list__map_corresponding/3: mismatched list arguments").
+
+list__map_corresponding(_, [_|_],    []      ) =
+	func_error("list__map_corresponding/3: mismatched list arguments").
+
+list__map_corresponding(F, [A | As], [B | Bs]) = 
+	[F(A, B) | list__map_corresponding(F, As, Bs)].
+
+
+
+list__map_corresponding3(F, As, Bs, Cs) =
+
+	( if      As = [A | As0], Bs = [B | Bs0], Cs = [C | Cs0]
+	  then    [F(A, B, C) | list__map_corresponding3(F, As0, Bs0, Cs0)]
+
+	  else if As = [],        Bs = [],        Cs = []
+	  then    []
+
+	  else    func_error(
+	  		"list__map_corresponding3: mismatched list arguments"
+		  )
+	).
+
+
 
 list__foldl(_, [], Acc, Acc).
 list__foldl(P, [H|T], Acc0, Acc) :-
