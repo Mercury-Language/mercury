@@ -1496,12 +1496,12 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 		Result = ok(pragma(source_file(SourceFile)))
 	    ;
 		Result = error(
-		"String expected in `pragma source_file' declaration",
+		"string expected in `pragma source_file' declaration",
 				SourceFileTerm)
 	    )
 	;
 	    Result = error(
-		"Wrong number of arguments in `pragma source_file' declaration",
+		"wrong number of arguments in `pragma source_file' declaration",
 			ErrorTerm)
 	).
 
@@ -1519,7 +1519,7 @@ parse_pragma_type(_, "c_header_code", PragmaTerms,
 	    )
 	;
 	    Result = error(
-"Wrong number of arguments in `pragma c_header_code(...) declaration.", 
+"wrong number of arguments in `pragma c_header_code(...) declaration.", 
 			    ErrorTerm)
         ).
 
@@ -1584,7 +1584,7 @@ parse_pragma_type(ModuleName, "export", PragmaTerms,
 			ok(pragma(export(PredName, Modes, C_Function)))
 		    ;
 	   		Result = error(
-			"Expected pragma(export, PredName(ModeList), C_Function).",
+			"expected pragma(export, PredName(ModeList), C_Function).",
 				PredAndModesTerm)
 		    )
 		;
@@ -1593,7 +1593,7 @@ parse_pragma_type(ModuleName, "export", PragmaTerms,
 		)
 	    ;
 	    	Result = error(
-		     "Expected pragma(export, PredName(ModeList), C_Function).",
+		     "expected pragma(export, PredName(ModeList), C_Function).",
 		     PredAndModesTerm)
 	    )
 	;
@@ -1648,17 +1648,17 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 		    Result = ok(pragma(Pragma))
 		;
 		    string__append_list(
-			["Expected predname/arity for `pragma ",
+			["expected predname/arity for `pragma ",
 			 PragmaType, "(...)' declaration"], ErrorMsg),
 	    	    Result = error(ErrorMsg, PredAndArityTerm)
 		)
 	    ;
-	        string__append_list(["Expected predname/arity for `pragma ",
+	        string__append_list(["expected predname/arity for `pragma ",
 			 PragmaType, "(...)' declaration"], ErrorMsg),
 	        Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
-	    string__append_list(["Wrong number of arguments in `pragma ",
+	    string__append_list(["wrong number of arguments in `pragma ",
 		 PragmaType, "(...)' declaration"], ErrorMsg),
 	    Result = error(ErrorMsg, ErrorTerm)
        ).
@@ -2087,12 +2087,12 @@ process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 					Cond))
 		;
 			Result = error(
-			"Syntax error in return type of `:- func' declaration",
+			"syntax error in return type of `:- func' declaration",
 					ReturnTypeTerm)
 		)
 	;
 		Result = error(
-			"Syntax error in arguments of `:- func' declaration",
+			"syntax error in arguments of `:- func' declaration",
 					FuncTerm)
 	).
 process_func_2(error(M, T), _, _, _, _, _, error(M, T)).
@@ -2149,12 +2149,12 @@ process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet, MaybeDet, Cond,
 					Cond))
 		;
 			Result = error(
-		"Syntax error in return mode of function mode declaration",
+		"syntax error in return mode of function mode declaration",
 					RetMode0)
 		)
 	;
 		Result = error(
-		"Syntax error in arguments of function mode declaration",
+		"syntax error in arguments of function mode declaration",
 				FuncMode)
 	).
 process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
@@ -2276,7 +2276,7 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 		)
 	->
 		Result = error(
-			"Repeated inst parameters in abstract inst definition",
+			"repeated inst parameters in abstract inst definition",
 				Head)
 	;
 		Result = ok(abstract_inst(Name, Args))
