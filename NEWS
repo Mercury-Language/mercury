@@ -5,6 +5,7 @@ HIGHLIGHTS
 ==========
 
 Changes to the Mercury language:
+* Support for constrained polymorphic modes.
 * Addition of state variable syntax.
 * Improved support for higher-order functions.
 * Predicate and function equivalence type and mode declarations.
@@ -30,6 +31,9 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* We have added support for constrained polymorphic modes.  See the section on
+  Constrained Polymorphic Modes in the Modes chapter of the reference manual.
 
 * A more general alternative to DCG syntax has been added to the language
   to simplify the manipulation of threaded state.  See the section on State

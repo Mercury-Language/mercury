@@ -2450,7 +2450,7 @@ E.g. the above example could have been written as
 
 Also, if the constraint on an inst parameter is @samp{ground} then it
 is not necessary to give the constraint in the declaration.
-The example can be further shorted to
+The example can be further shortened to
 @example
 	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I))).
 @end example
