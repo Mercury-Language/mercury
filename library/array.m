@@ -666,7 +666,7 @@ array__equal_elements(N, Size, Array1, Array2) :-
 	;
 		array__lookup(Array1, N, Elem),
 		array__lookup(Array2, N, Elem),
-		N1 is N + 1,
+		N1 = N + 1,
 		array__equal_elements(N1, Size, Array1, Array2)
 	).
 
@@ -694,7 +694,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 		array__lookup(Array2, N, Elem2),
 		compare(ElemResult, Elem1, Elem2),
 		( ElemResult = (=) ->
-			N1 is N + 1,
+			N1 = N + 1,
 			array__compare_elements(N1, Size, Array1, Array2,
 				Result)
 		;
@@ -1230,7 +1230,7 @@ array__from_list(List, Array) :-
 array__insert_items([], _N, Array, Array).
 array__insert_items([Head|Tail], N, Array0, Array) :-
         array__set(Array0, N, Head, Array1),
-        N1 is N + 1,
+        N1 = N + 1,
         array__insert_items(Tail, N1, Array1, Array).
 
 %-----------------------------------------------------------------------------%
@@ -1255,7 +1255,7 @@ array__bsearch(A, El, Compare, Result) :-
 :- mode array__bsearch_2(in, in, in, in, pred(in, in, out) is det,
 				out) is det.
 array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
-	Width is Hi - Lo,
+	Width = Hi - Lo,
 
 	% If Width < 0, there is no range left.
 	( Width < 0 ->
@@ -1277,12 +1277,12 @@ array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	        array__lookup(Array, Mid, XMid),
 	        call(Compare, XMid, El, Comp),
 	        ( Comp = (<),
-		    Mid1 is Mid + 1,
+		    Mid1 = Mid + 1,
 		    array__bsearch_2(Array, Mid1, Hi, El, Compare, Result)
 	        ; Comp = (=),
 		    array__bsearch_2(Array, Lo, Mid, El, Compare, Result)
 	        ; Comp = (>),
-		    Mid1 is Mid - 1,
+		    Mid1 = Mid - 1,
 		    array__bsearch_2(Array, Lo, Mid1, El, Compare, Result)
 	        )
 	    )
