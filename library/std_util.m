@@ -63,6 +63,10 @@
 :- pred assoc_list__reverse_members(assoc_list(K, V), assoc_list(V, K)).
 :- mode assoc_list__reverse_members(in, out) is det.
 
+:- pred assoc_list__from_corresponding_lists(list(K), list(V),
+							assoc_list(K, V)).
+:- mode assoc_list__from_corresponding_lists(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred gc_call(pred).
@@ -97,6 +101,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 /*
 :- external("NU-Prolog", gc_call/1).
 :- external("NU-Prolog", report_stats/0).
@@ -107,6 +113,23 @@
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-
 	assoc_list__reverse_members(KVs, VKs).
+
+assoc_list__from_corresponding_lists(As, Bs, ABs) :-
+	(
+		assoc_list__from_corresponding_lists_2(As, Bs, ABs0)
+	->
+		ABs = ABs0
+	;
+		error("Lists have different lengths.")
+	).
+
+:- pred assoc_list__from_corresponding_lists_2(list(K), list(V), 
+							assoc_list(K, V)).
+:- mode assoc_list__from_corresponding_lists_2(in, in, out).
+
+assoc_list__from_corresponding_lists_2([], [], []).
+assoc_list__from_corresponding_lists_2([A|As], [B|Bs], [A - B|ABs]) :-
+	assoc_list__from_corresponding_lists_2(As, Bs, ABs).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 

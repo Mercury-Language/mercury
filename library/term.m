@@ -203,7 +203,8 @@
 %-----------------------------------------------------------------------------%
 
 	% term__vars(Term, Vars) is true if Vars is the list of variables
-	% contained in Term obtained by depth-first left-to-right traversal.
+	% contained in Term obtained by depth-first left-to-right traversal
+	% in that order.
 
 term__vars(Term, Vars) :-
 	term__vars_2(Term, [], Vars).
@@ -211,7 +212,7 @@ term__vars(Term, Vars) :-
 term__vars_list(Terms, Vars) :-
 	term__vars_2_list(Terms, [], Vars).
 
-term__vars_2(term__variable(V), Vs, V.Vs).
+term__vars_2(term__variable(V), Vs, [V|Vs]).
 term__vars_2(term__functor(_,Args,_), Vs0, Vs) :-
 	term__vars_2_list(Args, Vs0, Vs).
 
@@ -219,9 +220,9 @@ term__vars_2(term__functor(_,Args,_), Vs0, Vs) :-
 :- mode term__vars_2_list(in, in, out) is det.
 
 term__vars_2_list([], Vs, Vs).
-term__vars_2_list(T.Ts, Vs0, Vs) :-
-	term__vars_2(T, Vs0, Vs1),
-	term__vars_2_list(Ts, Vs1, Vs).
+term__vars_2_list([T|Ts], Vs0, Vs) :-
+	term__vars_2_list(Ts, Vs0, Vs1),
+	term__vars_2(T, Vs1, Vs).
 
 %-----------------------------------------------------------------------------%
 

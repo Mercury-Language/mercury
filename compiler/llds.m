@@ -36,6 +36,9 @@
 			;	redo
 			;	label(label)
 			;	goto(label)
+			;	test(rval, rval, label)
+					% branch to label if
+					% equality test fails
 			;	if_tag(lval, tag, label)
 					% branch to label if tag doesn't
 					% match reg's tag.

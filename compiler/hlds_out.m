@@ -539,6 +539,15 @@ hlds_out__write_mode_list(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
+:- pred hlds_out__write_arg_mode_list(int, list(arg_mode),
+						io__state, io__state).
+:- mode hlds_out__write_arg_mode_list(in, in, in, out).
+
+hlds_out__write_arg_mode_list(Indent, X) -->
+	hlds_out__write_indent(Indent),
+	io__write_anything(X),
+	io__write_string("\n").
+
 :- pred hlds_out__write_predid(int, pred_id, io__state, io__state).
 :- mode hlds_out__write_predid(in, in, in, out).
 
@@ -773,7 +782,7 @@ hlds_out__write_unification(Indent, construct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_anything(Indent1, Vars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_mode_list(Indent1, Modes),
+	hlds_out__write_arg_mode_list(Indent1, Modes),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, deconstruct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_indent(Indent),
@@ -786,7 +795,7 @@ hlds_out__write_unification(Indent, deconstruct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_anything(Indent1, Vars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_mode_list(Indent1, Modes),
+	hlds_out__write_arg_mode_list(Indent1, Modes),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, assign(VarId0, VarId1)) -->
 	hlds_out__write_indent(Indent),

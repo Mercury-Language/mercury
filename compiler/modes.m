@@ -1991,11 +1991,12 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 				list(term), module_info, unification).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, out).
 
-categorize_unify_var_functor(ModeX, ArgModes, X, Name, Args, ModuleInfo,
+categorize_unify_var_functor(ModeX, ArgModes0, X, Name, Args, ModuleInfo,
 		Unification) :-
 	list__length(Args, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
 	term_list_to_var_list(Args, ArgVars),
+	mode_util__modes_to_arg_modes(ArgModes0, ModuleInfo, ArgModes),
 	( mode_is_output(ModuleInfo, ModeX) ->
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 

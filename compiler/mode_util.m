@@ -19,6 +19,9 @@
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(in, in) is semidet.
 
+:- pred mode_util__modes_to_arg_modes(list(mode), module_info, list(arg_mode)).
+:- mode mode_util__modes_to_arg_modes(in, in, out) is det.
+
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
 
@@ -87,6 +90,25 @@ mode_is_output(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_bound(ModuleInfo, FinalInst).
+
+%-----------------------------------------------------------------------------%
+
+mode_util__modes_to_arg_modes([], _ModuleInfo, []).
+mode_util__modes_to_arg_modes([M|Ms], ModuleInfo, [A|As]) :-
+	(
+		mode_is_input(ModuleInfo, M)
+	->
+		A = top_in
+	;
+		mode_is_output(ModuleInfo, M)
+	->
+		A = top_out
+	;
+		A = top_unused
+	),
+	mode_util__modes_to_arg_modes(Ms, ModuleInfo, As).
+
+%-----------------------------------------------------------------------------%
 
 	% inst_is_free succeeds iff the inst passed is `free'
 	% or is a user-defined inst which is defined as `free'.
