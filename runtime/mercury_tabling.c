@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,39 +27,39 @@
 ** the same.
 */
 
-typedef struct MR_IntHashTableSlot_Struct	MR_IntHashTableSlot;
-typedef struct MR_FloatHashTableSlot_Struct	MR_FloatHashTableSlot;
-typedef struct MR_StringHashTableSlot_Struct	MR_StringHashTableSlot;
+typedef struct MR_IntHashTableSlot_Struct       MR_IntHashTableSlot;
+typedef struct MR_FloatHashTableSlot_Struct     MR_FloatHashTableSlot;
+typedef struct MR_StringHashTableSlot_Struct    MR_StringHashTableSlot;
 
-typedef struct MR_AllocRecord_Struct		MR_AllocRecord;
+typedef struct MR_AllocRecord_Struct            MR_AllocRecord;
 
 struct MR_IntHashTableSlot_Struct {
-	MR_IntHashTableSlot	*next;
-	MR_TableNode		data;
-	MR_Integer		key;
+        MR_IntHashTableSlot     *next;
+        MR_TableNode            data;
+        MR_Integer              key;
 };
 
 struct MR_FloatHashTableSlot_Struct {
-	MR_FloatHashTableSlot	*next;
-	MR_TableNode		data;
-	MR_Float		key;
+        MR_FloatHashTableSlot   *next;
+        MR_TableNode            data;
+        MR_Float                key;
 };
 
 struct MR_StringHashTableSlot_Struct {
-	MR_StringHashTableSlot	*next;
-	MR_TableNode		data;
-	MR_ConstString		key;
+        MR_StringHashTableSlot  *next;
+        MR_TableNode            data;
+        MR_ConstString          key;
 };
 
-typedef	union {
-	MR_IntHashTableSlot	*int_slot_ptr;
-	MR_FloatHashTableSlot	*float_slot_ptr;
-	MR_StringHashTableSlot	*string_slot_ptr;
+typedef union {
+        MR_IntHashTableSlot     *int_slot_ptr;
+        MR_FloatHashTableSlot   *float_slot_ptr;
+        MR_StringHashTableSlot  *string_slot_ptr;
 } MR_HashTableSlotPtr;
 
 struct MR_AllocRecord_Struct {
-	MR_HashTableSlotPtr	chunk;
-	MR_AllocRecord		*next;
+        MR_HashTableSlotPtr     chunk;
+        MR_AllocRecord          *next;
 };
 
 /*
@@ -103,17 +106,17 @@ struct MR_AllocRecord_Struct {
 */
 
 struct MR_HashTable_Struct {
-	MR_Integer		size;
-	MR_Integer		threshold;
-	MR_Integer		value_count;
-	MR_HashTableSlotPtr	*hash_table;
-	MR_HashTableSlotPtr	freespace;
-	MR_Integer		freeleft;
-	MR_AllocRecord		*allocrecord;
+        MR_Integer              size;
+        MR_Integer              threshold;
+        MR_Integer              value_count;
+        MR_HashTableSlotPtr     *hash_table;
+        MR_HashTableSlotPtr     freespace;
+        MR_Integer              freeleft;
+        MR_AllocRecord          *allocrecord;
 };
 
-#define	CHUNK_SIZE	256
-#define MAX_LOAD_FACTOR	0.65
+#define CHUNK_SIZE      256
+#define MAX_LOAD_FACTOR 0.65
 
 /*
 ** Prime numbers which are close to powers of 2.  Used for choosing
@@ -122,13 +125,13 @@ struct MR_HashTable_Struct {
 
 #define NUM_OF_PRIMES 16
 static MR_Word primes[NUM_OF_PRIMES] =
-	{127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
-	262147, 524287, 1048573, 2097143, 4194301};
+        {127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
+        262147, 524287, 1048573, 2097143, 4194301};
 
 /* Initial size of a new table */
 #define HASH_TABLE_START_SIZE primes[0]
 
-static	MR_Integer	next_prime(MR_Integer);
+static  MR_Integer      next_prime(MR_Integer);
 
 /*
 ** Return the next prime number greater than the number received.
@@ -138,18 +141,18 @@ static	MR_Integer	next_prime(MR_Integer);
 static MR_Integer
 next_prime(MR_Integer old_size)
 {
-	int i;
+        int i;
 
-	i = 0;
-	while ( (old_size >= primes[i]) && (i < NUM_OF_PRIMES) ) {
-		i++;
-	}
+        i = 0;
+        while ( (old_size >= primes[i]) && (i < NUM_OF_PRIMES) ) {
+                i++;
+        }
 
-	if (i < NUM_OF_PRIMES) {
-		return primes[i];
-	} else {
-		return 2 * old_size - 1;
-	}
+        if (i < NUM_OF_PRIMES) {
+                return primes[i];
+        } else {
+                return 2 * old_size - 1;
+        }
 }
 
 /*
@@ -171,252 +174,252 @@ next_prime(MR_Integer old_size)
 ** The third implements the initial creation of the hash table.
 */
 
-#ifdef	MR_TABLE_STATISTICS
-static	MR_Unsigned	MR_table_hash_resizes = 0;
-static	MR_Unsigned	MR_table_hash_allocs  = 0;
-static	MR_Unsigned	MR_table_hash_lookups = 0;
-static	MR_Unsigned	MR_table_hash_inserts = 0;
-static	MR_Unsigned	MR_table_hash_lookup_probes = 0;
-static	MR_Unsigned	MR_table_hash_insert_probes = 0;
+#ifdef  MR_TABLE_STATISTICS
+static  MR_Unsigned     MR_table_hash_resizes = 0;
+static  MR_Unsigned     MR_table_hash_allocs  = 0;
+static  MR_Unsigned     MR_table_hash_lookups = 0;
+static  MR_Unsigned     MR_table_hash_inserts = 0;
+static  MR_Unsigned     MR_table_hash_lookup_probes = 0;
+static  MR_Unsigned     MR_table_hash_insert_probes = 0;
 #endif
 
-#ifdef	MR_TABLE_STATISTICS
-  #define DECLARE_PROBE_COUNT	MR_Integer	probe_count = 0;
-  #define record_probe_count()	do { probe_count++; } while (0)
-  #define record_lookup_count()	do {					      \
-					MR_table_hash_lookup_probes +=	      \
-						probe_count;		      \
-					MR_table_hash_lookups++;	      \
-				} while (0)
-  #define record_insert_count()	do {					      \
-					MR_table_hash_insert_probes +=	      \
-						probe_count;		      \
-					MR_table_hash_inserts++;	      \
-				} while (0)
-  #define record_resize_count()	do { MR_table_hash_resizes++; } while (0)
-  #define record_alloc_count()	do { MR_table_hash_allocs++; } while (0)
+#ifdef  MR_TABLE_STATISTICS
+  #define DECLARE_PROBE_COUNT   MR_Integer      probe_count = 0;
+  #define record_probe_count()  do { probe_count++; } while (0)
+  #define record_lookup_count() do {                                          \
+                                        MR_table_hash_lookup_probes +=        \
+                                                probe_count;                  \
+                                        MR_table_hash_lookups++;              \
+                                } while (0)
+  #define record_insert_count() do {                                          \
+                                        MR_table_hash_insert_probes +=        \
+                                                probe_count;                  \
+                                        MR_table_hash_inserts++;              \
+                                } while (0)
+  #define record_resize_count() do { MR_table_hash_resizes++; } while (0)
+  #define record_alloc_count()  do { MR_table_hash_allocs++; } while (0)
 #else
   #define DECLARE_PROBE_COUNT
-  #define record_probe_count()	((void) 0)
-  #define record_lookup_count()	((void) 0)
-  #define record_insert_count()	((void) 0)
-  #define record_resize_count()	((void) 0)
-  #define record_alloc_count()	((void) 0)
+  #define record_probe_count()  ((void) 0)
+  #define record_lookup_count() ((void) 0)
+  #define record_insert_count() ((void) 0)
+  #define record_resize_count() ((void) 0)
+  #define record_alloc_count()  ((void) 0)
 #endif
 
-#ifdef	MR_TABLE_DEBUG
-  #define debug_key_msg(keyvalue, keyformat, keycast)			      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT search key " keyformat "\n",		      \
-				(keycast) keyvalue);			      \
-		}							      \
-	} while (0)
+#ifdef  MR_TABLE_DEBUG
+  #define debug_key_msg(keyvalue, keyformat, keycast)                         \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT search key " keyformat "\n",               \
+                                (keycast) keyvalue);                          \
+                }                                                             \
+        } while (0)
 
-  #define debug_resize_msg(oldsize, newsize, newthreshold)		      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT expanding table from %d to %d(%d)\n",      \
-				(oldsize), (newsize), (newthreshold));	      \
-		}							      \
-	} while (0)
+  #define debug_resize_msg(oldsize, newsize, newthreshold)                    \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT expanding table from %d to %d(%d)\n",      \
+                                (oldsize), (newsize), (newthreshold));        \
+                }                                                             \
+        } while (0)
 
-  #define debug_rehash_msg(rehash_bucket)				      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT rehashing bucket: %d\n",		      \
-				(rehash_bucket));			      \
-		}							      \
-	} while (0)
+  #define debug_rehash_msg(rehash_bucket)                                     \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT rehashing bucket: %d\n",                   \
+                                (rehash_bucket));                             \
+                }                                                             \
+        } while (0)
 
-  #define debug_probe_msg(probe_bucket)					      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT probing bucket: %d\n", (probe_bucket));    \
-		}							      \
-	} while (0)
+  #define debug_probe_msg(probe_bucket)                                       \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT probing bucket: %d\n", (probe_bucket));    \
+                }                                                             \
+        } while (0)
 
-  #define debug_lookup_msg(home_bucket)					      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT search successful in bucket: %d\n",	      \
-				(home_bucket));				      \
-		}							      \
-	} while (0)
+  #define debug_lookup_msg(home_bucket)                                       \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT search successful in bucket: %d\n",        \
+                                (home_bucket));                               \
+                }                                                             \
+        } while (0)
 
-  #define debug_insert_msg(home_bucket)					      \
-	do {								      \
-		if (MR_hashdebug) {					      \
-			printf("HT search unsuccessful in bucket: %d\n",      \
-				(home_bucket));				      \
-		}							      \
-	} while (0)
+  #define debug_insert_msg(home_bucket)                                       \
+        do {                                                                  \
+                if (MR_hashdebug) {                                           \
+                        printf("HT search unsuccessful in bucket: %d\n",      \
+                                (home_bucket));                               \
+                }                                                             \
+        } while (0)
 #else
-  #define debug_key_msg(keyvalue, keyformat, keycast)		((void) 0)
-  #define debug_resize_msg(oldsize, newsize, newthreshold)	((void) 0)
-  #define debug_rehash_msg(rehash_bucket)			((void) 0)
-  #define debug_probe_msg(probe_bucket)				((void) 0)
-  #define debug_lookup_msg(home_bucket)				((void) 0)
-  #define debug_insert_msg(home_bucket)				((void) 0)
+  #define debug_key_msg(keyvalue, keyformat, keycast)           ((void) 0)
+  #define debug_resize_msg(oldsize, newsize, newthreshold)      ((void) 0)
+  #define debug_rehash_msg(rehash_bucket)                       ((void) 0)
+  #define debug_probe_msg(probe_bucket)                         ((void) 0)
+  #define debug_lookup_msg(home_bucket)                         ((void) 0)
+  #define debug_insert_msg(home_bucket)                         ((void) 0)
 #endif
 
-#define	MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)  \
-	do {								      \
-		MR_Word		i;					      \
-		MR_HashTable	*newtable;				      \
-									      \
-		newtable = MR_TABLE_NEW(MR_HashTable);			      \
-									      \
-		newtable->size = table_size;				      \
-		newtable->threshold = (MR_Integer) ((float) table_size	      \
-				* MAX_LOAD_FACTOR);			      \
-		newtable->value_count = 0;				      \
-		newtable->freespace.table_field = NULL;			      \
-		newtable->freeleft = 0;					      \
-		newtable->allocrecord = NULL;				      \
-		newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,\
-				table_size);				      \
-									      \
-		for (i = 0; i < table_size; i++) {			      \
-			newtable->hash_table[i].table_field = NULL;	      \
-		}							      \
-									      \
-		table_ptr = newtable;					      \
-	} while (0)
+#define MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)  \
+        do {                                                                  \
+                MR_Word         i;                                            \
+                MR_HashTable    *newtable;                                    \
+                                                                              \
+                newtable = MR_TABLE_NEW(MR_HashTable);                        \
+                                                                              \
+                newtable->size = table_size;                                  \
+                newtable->threshold = (MR_Integer) ((float) table_size        \
+                                * MAX_LOAD_FACTOR);                           \
+                newtable->value_count = 0;                                    \
+                newtable->freespace.table_field = NULL;                       \
+                newtable->freeleft = 0;                                       \
+                newtable->allocrecord = NULL;                                 \
+                newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,\
+                                table_size);                                  \
+                                                                              \
+                for (i = 0; i < table_size; i++) {                            \
+                        newtable->hash_table[i].table_field = NULL;           \
+                }                                                             \
+                                                                              \
+                table_ptr = newtable;                                         \
+        } while (0)
 
-#define	MR_GENERIC_HASH_LOOKUP_OR_ADD					      \
-	MR_HashTable	*table;						      \
-	table_type	*slot;						      \
-	MR_Integer	abs_hash;					      \
-	MR_Integer	home;						      \
-	DECLARE_PROBE_COUNT						      \
-									      \
-	debug_key_msg(key, key_format, key_cast);			      \
-									      \
-	/* Has the table been built? */					      \
-	if (t->MR_hash_table == NULL) {					      \
-		MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,	      \
-			table_field, HASH_TABLE_START_SIZE);		      \
-	}								      \
-									      \
-	table = t->MR_hash_table; /* Deref the table pointer */		      \
-									      \
-	/* Rehash the table if it has grown too full */			      \
-	if (table->value_count > table->threshold) {			      \
-		MR_HashTableSlotPtr	*new_hash_table;		      \
-		int			new_size;			      \
-		int			new_threshold;			      \
-		int			old_bucket;			      \
-		int			new_bucket;			      \
-		table_type		*next_slot;			      \
-									      \
-		new_size = next_prime(table->size);			      \
-		new_threshold = (MR_Integer) ((float) new_size		      \
-				* MAX_LOAD_FACTOR);			      \
-		debug_resize_msg(table->size, new_size, new_threshold);	      \
-		record_resize_count();					      \
-									      \
-		new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
-				new_size);				      \
-		for (new_bucket = 0; new_bucket < new_size; new_bucket++) {   \
-			new_hash_table[new_bucket].table_field = NULL;	      \
-		}							      \
-									      \
-		for (old_bucket = 0; old_bucket < table->size; old_bucket++) {\
-			slot = table->hash_table[old_bucket].table_field;     \
-			while (slot != NULL) {				      \
-				debug_rehash_msg(old_bucket);		      \
-									      \
-				abs_hash = hash(slot->key);		      \
-				if (abs_hash < 0) {			      \
-					abs_hash = -abs_hash;		      \
-				}					      \
-									      \
-				new_bucket = abs_hash % new_size;	      \
-				next_slot = slot->next;			      \
-				slot->next = new_hash_table[new_bucket].      \
-					table_field;			      \
-				new_hash_table[new_bucket].table_field = slot;\
-									      \
-				slot = next_slot;			      \
-			}						      \
-		}							      \
-									      \
-		MR_table_free(table->hash_table);			      \
-		table->hash_table = new_hash_table;			      \
-		table->size = new_size;					      \
-		table->threshold = new_threshold;			      \
-	}								      \
-									      \
-	abs_hash = hash(key);						      \
-	if (abs_hash < 0) {						      \
-		abs_hash = -abs_hash;					      \
-	}								      \
-									      \
-	home = abs_hash % table->size;					      \
-									      \
-	/* Find if the element is present. If not add it */		      \
-	slot = table->hash_table[home].table_field;			      \
-	while (slot != NULL) {						      \
-		debug_probe_msg(home);					      \
-		record_probe_count();					      \
-									      \
-		if (equal_keys(key, slot->key)) {			      \
-			record_lookup_count();				      \
-			debug_lookup_msg(home);				      \
-			return &slot->data;				      \
-		}							      \
-									      \
-		slot = slot->next;					      \
-	}								      \
-									      \
-	debug_insert_msg(home);						      \
-	record_insert_count();						      \
-									      \
-	if (table->freeleft == 0) {					      \
-		MR_AllocRecord	*record;				      \
-									      \
-		table->freespace.table_field = MR_TABLE_NEW_ARRAY(	      \
-				table_type, CHUNK_SIZE);		      \
-		table->freeleft = CHUNK_SIZE;				      \
-									      \
-		record = MR_TABLE_NEW(MR_AllocRecord);			      \
-		record->chunk.table_field = table->freespace.table_field;     \
-		record->next = table->allocrecord;			      \
-		table->allocrecord = record;				      \
-									      \
-		record_alloc_count();					      \
-	}								      \
-									      \
-	slot = table->freespace.table_field;				      \
-	table->freespace.table_field++;					      \
-	table->freeleft--;						      \
-									      \
-	slot->key = key;						      \
-	slot->data.MR_integer = 0;					      \
-	slot->next = table->hash_table[home].table_field;		      \
-	table->hash_table[home].table_field = slot;			      \
-									      \
-	table->value_count++;						      \
-									      \
-	return &slot->data;
+#define MR_GENERIC_HASH_LOOKUP_OR_ADD                                         \
+        MR_HashTable    *table;                                               \
+        table_type      *slot;                                                \
+        MR_Integer      abs_hash;                                             \
+        MR_Integer      home;                                                 \
+        DECLARE_PROBE_COUNT                                                   \
+                                                                              \
+        debug_key_msg(key, key_format, key_cast);                             \
+                                                                              \
+        /* Has the table been built? */                                       \
+        if (t->MR_hash_table == NULL) {                                       \
+                MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,            \
+                        table_field, HASH_TABLE_START_SIZE);                  \
+        }                                                                     \
+                                                                              \
+        table = t->MR_hash_table; /* Deref the table pointer */               \
+                                                                              \
+        /* Rehash the table if it has grown too full */                       \
+        if (table->value_count > table->threshold) {                          \
+                MR_HashTableSlotPtr     *new_hash_table;                      \
+                int                     new_size;                             \
+                int                     new_threshold;                        \
+                int                     old_bucket;                           \
+                int                     new_bucket;                           \
+                table_type              *next_slot;                           \
+                                                                              \
+                new_size = next_prime(table->size);                           \
+                new_threshold = (MR_Integer) ((float) new_size                \
+                                * MAX_LOAD_FACTOR);                           \
+                debug_resize_msg(table->size, new_size, new_threshold);       \
+                record_resize_count();                                        \
+                                                                              \
+                new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
+                                new_size);                                    \
+                for (new_bucket = 0; new_bucket < new_size; new_bucket++) {   \
+                        new_hash_table[new_bucket].table_field = NULL;        \
+                }                                                             \
+                                                                              \
+                for (old_bucket = 0; old_bucket < table->size; old_bucket++) {\
+                        slot = table->hash_table[old_bucket].table_field;     \
+                        while (slot != NULL) {                                \
+                                debug_rehash_msg(old_bucket);                 \
+                                                                              \
+                                abs_hash = hash(slot->key);                   \
+                                if (abs_hash < 0) {                           \
+                                        abs_hash = -abs_hash;                 \
+                                }                                             \
+                                                                              \
+                                new_bucket = abs_hash % new_size;             \
+                                next_slot = slot->next;                       \
+                                slot->next = new_hash_table[new_bucket].      \
+                                        table_field;                          \
+                                new_hash_table[new_bucket].table_field = slot;\
+                                                                              \
+                                slot = next_slot;                             \
+                        }                                                     \
+                }                                                             \
+                                                                              \
+                MR_table_free(table->hash_table);                             \
+                table->hash_table = new_hash_table;                           \
+                table->size = new_size;                                       \
+                table->threshold = new_threshold;                             \
+        }                                                                     \
+                                                                              \
+        abs_hash = hash(key);                                                 \
+        if (abs_hash < 0) {                                                   \
+                abs_hash = -abs_hash;                                         \
+        }                                                                     \
+                                                                              \
+        home = abs_hash % table->size;                                        \
+                                                                              \
+        /* Find if the element is present. If not add it */                   \
+        slot = table->hash_table[home].table_field;                           \
+        while (slot != NULL) {                                                \
+                debug_probe_msg(home);                                        \
+                record_probe_count();                                         \
+                                                                              \
+                if (equal_keys(key, slot->key)) {                             \
+                        record_lookup_count();                                \
+                        debug_lookup_msg(home);                               \
+                        return &slot->data;                                   \
+                }                                                             \
+                                                                              \
+                slot = slot->next;                                            \
+        }                                                                     \
+                                                                              \
+        debug_insert_msg(home);                                               \
+        record_insert_count();                                                \
+                                                                              \
+        if (table->freeleft == 0) {                                           \
+                MR_AllocRecord  *record;                                      \
+                                                                              \
+                table->freespace.table_field = MR_TABLE_NEW_ARRAY(            \
+                                table_type, CHUNK_SIZE);                      \
+                table->freeleft = CHUNK_SIZE;                                 \
+                                                                              \
+                record = MR_TABLE_NEW(MR_AllocRecord);                        \
+                record->chunk.table_field = table->freespace.table_field;     \
+                record->next = table->allocrecord;                            \
+                table->allocrecord = record;                                  \
+                                                                              \
+                record_alloc_count();                                         \
+        }                                                                     \
+                                                                              \
+        slot = table->freespace.table_field;                                  \
+        table->freespace.table_field++;                                       \
+        table->freeleft--;                                                    \
+                                                                              \
+        slot->key = key;                                                      \
+        slot->data.MR_integer = 0;                                            \
+        slot->next = table->hash_table[home].table_field;                     \
+        table->hash_table[home].table_field = slot;                           \
+                                                                              \
+        table->value_count++;                                                 \
+                                                                              \
+        return &slot->data;
 
 MR_TrieNode
 MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 {
-#define	key_format		"%ld"
-#define	key_cast		long
-#define	table_type		MR_IntHashTableSlot
-#define	table_field		int_slot_ptr
-#define	hash(key)		(key)
-#define	equal_keys(k1, k2)	(k1 == k2)
+#define key_format              "%ld"
+#define key_cast                long
+#define table_type              MR_IntHashTableSlot
+#define table_field             int_slot_ptr
+#define hash(key)               (key)
+#define equal_keys(k1, k2)      (k1 == k2)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
-#undef	key_format
-#undef	key_cast
-#undef	table_type
-#undef	table_field
-#undef	hash
-#undef	equal_keys
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
 }
 
 /*
@@ -428,39 +431,39 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 MR_TrieNode
 MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 {
-#define	key_format		"%f"
-#define	key_cast		double
-#define	table_type		MR_FloatHashTableSlot
-#define	table_field		float_slot_ptr
-#define	hash(key)		(MR_hash_float(key))
-#define	equal_keys(k1, k2)	(memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
+#define key_format              "%f"
+#define key_cast                double
+#define table_type              MR_FloatHashTableSlot
+#define table_field             float_slot_ptr
+#define hash(key)               (MR_hash_float(key))
+#define equal_keys(k1, k2)      (memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
-#undef	key_format
-#undef	key_cast
-#undef	debug_search_key
-#undef	table_type
-#undef	table_field
-#undef	hash
-#undef	equal_keys
+#undef  key_format
+#undef  key_cast
+#undef  debug_search_key
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
 }
 
 MR_TrieNode
 MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 {
-#define	key_format		"%s"
-#define	key_cast		const char *
-#define	table_type		MR_StringHashTableSlot
-#define	table_field		string_slot_ptr
-#define	hash(key)		(MR_hash_string((MR_Word) key))
-#define	equal_keys(k1, k2)	(strtest(k1, k2) == 0)
+#define key_format              "%s"
+#define key_cast                const char *
+#define table_type              MR_StringHashTableSlot
+#define table_field             string_slot_ptr
+#define hash(key)               (MR_hash_string((MR_Word) key))
+#define equal_keys(k1, k2)      (strtest(k1, k2) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
-#undef	key_format
-#undef	key_cast
-#undef	debug_search_key
-#undef	table_type
-#undef	table_field
-#undef	hash
-#undef	equal_keys
+#undef  key_format
+#undef  key_cast
+#undef  debug_search_key
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
 }
 
 /*---------------------------------------------------------------------------*/
@@ -474,19 +477,19 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 MR_TrieNode
 MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 {
-	if (t->MR_fix_table == NULL) {
-		t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
-		memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
-	}
+        if (t->MR_fix_table == NULL) {
+                t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
+                memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
+        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (key >= range) {
-		MR_fatal_error(
-			"MR_int_fix_index_lookup_or_add: key out of range");
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (key >= range) {
+                MR_fatal_error(
+                        "MR_int_fix_index_lookup_or_add: key out of range");
+        }
 #endif
 
-	return &t->MR_fix_table[key];
+        return &t->MR_fix_table[key];
 }
 
 /*---------------------------------------------------------------------------*/
@@ -499,55 +502,55 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 ** not include the slot used for the zeroeth element.
 */
 
-#define	MR_START_TABLE_INIT_SIZE	1024
+#define MR_START_TABLE_INIT_SIZE        1024
 
 MR_TrieNode
 MR_int_start_index_lookup_or_add(MR_TrieNode table,
-	MR_Integer start, MR_Integer key)
+        MR_Integer start, MR_Integer key)
 {
-	MR_Integer	diff, size;
+        MR_Integer      diff, size;
 
-	diff = key - start;
+        diff = key - start;
 
-#ifdef	MR_TABLE_DEBUG
-	if (key < start) {
-		MR_fatal_error(
-			"MR_int_start_index_lookup_or_add: small too key");
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (key < start) {
+                MR_fatal_error(
+                        "MR_int_start_index_lookup_or_add: small too key");
+        }
 #endif
 
-	if (table->MR_start_table == NULL) {
-		size = max(MR_START_TABLE_INIT_SIZE, diff + 1);
-		table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
-					size + 1);
-		memset(table->MR_start_table + 1, 0,
-					sizeof(MR_TableNode) * size);
-		table->MR_start_table[0].MR_integer = size;
-	} else {
-		size = table->MR_start_table[0].MR_integer;
-	}
+        if (table->MR_start_table == NULL) {
+                size = max(MR_START_TABLE_INIT_SIZE, diff + 1);
+                table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
+                                        size + 1);
+                memset(table->MR_start_table + 1, 0,
+                                        sizeof(MR_TableNode) * size);
+                table->MR_start_table[0].MR_integer = size;
+        } else {
+                size = table->MR_start_table[0].MR_integer;
+        }
 
-	if (diff >= size) {
-		MR_TableNode	*new_array;
-		MR_Integer	new_size, i;
+        if (diff >= size) {
+                MR_TableNode    *new_array;
+                MR_Integer      new_size, i;
 
-		new_size = max(2 * size, diff + 1);
-		new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
+                new_size = max(2 * size, diff + 1);
+                new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
 
-		new_array[0].MR_integer = new_size;
+                new_array[0].MR_integer = new_size;
 
-		for (i = 0; i < size; i++) {
-			new_array[i + 1] = table->MR_start_table[i + 1];
-		}
+                for (i = 0; i < size; i++) {
+                        new_array[i + 1] = table->MR_start_table[i + 1];
+                }
 
-		for (; i < new_size; i++) {
-			new_array[i + 1].MR_integer = 0;
-		}
+                for (; i < new_size; i++) {
+                        new_array[i + 1].MR_integer = 0;
+                }
 
-		table->MR_start_table = new_array;
-	}
+                table->MR_start_table = new_array;
+        }
 
-	return &table->MR_start_table[diff + 1];
+        return &table->MR_start_table[diff + 1];
 }
 
 /*---------------------------------------------------------------------------*/
@@ -555,53 +558,53 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table,
 MR_TrieNode
 MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 {
-	MR_TypeCtorInfo		type_ctor_info;
-	MR_TrieNode		node;
-	MR_TypeInfo		*arg_vector;
-	int			arity;
-	int			i;
+        MR_TypeCtorInfo         type_ctor_info;
+        MR_TrieNode             node;
+        MR_TypeInfo             *arg_vector;
+        int                     arity;
+        int                     i;
 
-	/* XXX memory allocation here should be optimized */
-	type_info = MR_collapse_equivalences(type_info);
+        /* XXX memory allocation here should be optimized */
+        type_info = MR_collapse_equivalences(type_info);
 
-	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-	node = MR_int_hash_lookup_or_add(table, (MR_Integer) type_ctor_info);
+        type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+        node = MR_int_hash_lookup_or_add(table, (MR_Integer) type_ctor_info);
 
-	/*
-	** All calls to MR_type_info_lookup_or_add that have the same value
-	** of node at this point agree on the type_ctor_info of the type
-	** being tabled. They must therefore also agree on its arity.
-	** This is why looping over all the arguments works.
-	**
-	** If type_info has a zero-arity type_ctor, then it may be stored
-	** using a one-cell type_info, and type_info_args does not make
-	** sense. This is OK, because in that case it will never be used.
-	*/
+        /*
+        ** All calls to MR_type_info_lookup_or_add that have the same value
+        ** of node at this point agree on the type_ctor_info of the type
+        ** being tabled. They must therefore also agree on its arity.
+        ** This is why looping over all the arguments works.
+        **
+        ** If type_info has a zero-arity type_ctor, then it may be stored
+        ** using a one-cell type_info, and type_info_args does not make
+        ** sense. This is OK, because in that case it will never be used.
+        */
 
-	if (MR_type_ctor_rep_is_variable_arity(
-		MR_type_ctor_rep(type_ctor_info)))
-	{
-		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
-		arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
-			type_info);
-		node = MR_int_hash_lookup_or_add(node, arity);
-	} else {
-		arity = type_ctor_info->arity;
-		arg_vector = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-	}
+        if (MR_type_ctor_rep_is_variable_arity(
+                MR_type_ctor_rep(type_ctor_info)))
+        {
+                arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
+                arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
+                        type_info);
+                node = MR_int_hash_lookup_or_add(node, arity);
+        } else {
+                arity = type_ctor_info->MR_type_ctor_arity;
+                arg_vector = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+        }
 
-	for (i = 1; i <= arity; i++) {
-		node = MR_type_info_lookup_or_add(node, arg_vector[i]);
-	}
+        for (i = 1; i <= arity; i++) {
+                node = MR_type_info_lookup_or_add(node, arg_vector[i]);
+        }
 
-	return node;
+        return node;
 }
 
 MR_TrieNode
 MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
 {
-	MR_fatal_error("tabling of typeclass_infos not yet implemented");
-	return NULL;
+        MR_fatal_error("tabling of typeclass_infos not yet implemented");
+        return NULL;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -634,65 +637,65 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
             MR_DEBUG_TABLE_ENUM(table,
-                    type_ctor_info->type_ctor_num_functors, data);
+                    MR_type_ctor_num_functors(type_ctor_info), data);
             break;
 
         case MR_TYPECTOR_REP_RESERVED_ADDR: 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ: 
-	    {
-		int i;
-		MR_ReservedAddrTypeLayout ra_layout =
-			    type_ctor_info->type_layout.layout_reserved_addr;
+            {
+                int i;
+                MR_ReservedAddrTypeLayout ra_layout =
+                            MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
 
-		/*
-		** First check if this value is one of
-		** the numeric reserved addresses.
-		*/
-		if ((MR_Unsigned) data <
-		    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-		{
-		    MR_DEBUG_TABLE_ENUM(table,
-                        type_ctor_info->type_ctor_num_functors,
+                /*
+                ** First check if this value is one of
+                ** the numeric reserved addresses.
+                */
+                if ((MR_Unsigned) data <
+                    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+                {
+                    MR_DEBUG_TABLE_ENUM(table,
+                        MR_type_ctor_num_functors(type_ctor_info),
                         ra_layout->MR_ra_constants[data]->MR_ra_functor_ordinal);
-		    break;
-		}
+                    break;
+                }
 
-		/*
-		** Next check if this value is one of the
-		** the symbolic reserved addresses.
-		*/
-		for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-		    if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
-			int offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
-			MR_DEBUG_TABLE_ENUM(table,
-			    type_ctor_info->type_ctor_num_functors,
-			    ra_layout->MR_ra_constants[offset]->
-			    	MR_ra_functor_ordinal);
-			/* "break" here would just exit the "for" loop */
-			return table;
-		    }
-		}
-		    
-		/*
-		** Otherwise, it is not one of the reserved addresses,
-		** so handle it like a normal DU type.
-		*/
-		du_type_layout = ra_layout->MR_ra_other_functors;
-		goto du_type;
-	    }
+                /*
+                ** Next check if this value is one of the
+                ** the symbolic reserved addresses.
+                */
+                for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+                    if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
+                        int offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
+                        MR_DEBUG_TABLE_ENUM(table,
+                            MR_type_ctor_num_functors(type_ctor_info),
+                            ra_layout->MR_ra_constants[offset]->
+                                MR_ra_functor_ordinal);
+                        /* "break" here would just exit the "for" loop */
+                        return table;
+                    }
+                }
+                    
+                /*
+                ** Otherwise, it is not one of the reserved addresses,
+                ** so handle it like a normal DU type.
+                */
+                du_type_layout = ra_layout->MR_ra_other_functors;
+                goto du_type;
+            }
 
             
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
-	    du_type_layout = type_ctor_info->type_layout.layout_du;
-	    /* fall through */
-	
-	/*
-	** This label handles both the DU case and the second half of the
-	** RESERVED_ADDR case.  `du_type_layout' must be set before
-	** this code is entered.
-	*/
-	du_type:
+            du_type_layout = MR_type_ctor_layout(type_ctor_info).layout_du;
+            /* fall through */
+        
+        /*
+        ** This label handles both the DU case and the second half of the
+        ** RESERVED_ADDR case.  `du_type_layout' must be set before
+        ** this code is entered.
+        */
+        du_type:
             {
                 MR_MemoryList           allocated_memory_cells = NULL;
                 const MR_DuPtagLayout   *ptag_layout;
@@ -732,7 +735,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 }
 
                 MR_DEBUG_TABLE_ENUM(table,
-                        type_ctor_info->type_ctor_num_functors,
+                        MR_type_ctor_num_functors(type_ctor_info),
                         functor_desc->MR_du_functor_ordinal);
 
                 exist_info = functor_desc->MR_du_functor_exist_info;
@@ -790,7 +793,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 eqv_type_info = MR_make_type_info(
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                    type_ctor_info->type_layout.layout_notag->
+                    MR_type_ctor_layout(type_ctor_info).layout_notag->
                         MR_notag_functor_arg_type, &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
@@ -800,7 +803,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
         case MR_TYPECTOR_REP_NOTAG_GROUND: 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
-                type_ctor_info->type_layout.layout_notag->
+                MR_type_ctor_layout(type_ctor_info).layout_notag->
                 MR_notag_functor_arg_type), data);
             break;
 
@@ -811,7 +814,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 eqv_type_info = MR_make_type_info(
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                    type_ctor_info->type_layout.layout_equiv,
+                    MR_type_ctor_layout(type_ctor_info).layout_equiv,
                     &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
@@ -820,7 +823,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
-                type_ctor_info->type_layout.layout_equiv), data);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv), data);
             break;
 
         case MR_TYPECTOR_REP_EQUIV_VAR:
@@ -982,43 +985,43 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 void
 MR_table_report_statistics(FILE *fp)
 {
-	fprintf(fp, "hash table search statistics:\n");
+        fprintf(fp, "hash table search statistics:\n");
 
-#ifdef	MR_TABLE_STATISTICS
-	if (MR_table_hash_lookups == 0) {
-		fprintf(fp, "no successful searches\n");
-	} else {
-		fprintf(fp, "successful   %6d, "
-				"with an average of %6.3f comparisons\n",
-			MR_table_hash_lookups,
-			(float) MR_table_hash_lookup_probes /
-				(float) MR_table_hash_lookups);
-	}
+#ifdef  MR_TABLE_STATISTICS
+        if (MR_table_hash_lookups == 0) {
+                fprintf(fp, "no successful searches\n");
+        } else {
+                fprintf(fp, "successful   %6d, "
+                                "with an average of %6.3f comparisons\n",
+                        MR_table_hash_lookups,
+                        (float) MR_table_hash_lookup_probes /
+                                (float) MR_table_hash_lookups);
+        }
 
-	if (MR_table_hash_inserts == 0) {
-		fprintf(fp, "no unsuccessful searches\n");
-	} else {
-		fprintf(fp, "unsuccessful %6d, "
-				"with an average of %6.3f comparisons\n",
-			MR_table_hash_inserts,
-			(float) MR_table_hash_insert_probes /
-				(float) MR_table_hash_inserts);
-	}
+        if (MR_table_hash_inserts == 0) {
+                fprintf(fp, "no unsuccessful searches\n");
+        } else {
+                fprintf(fp, "unsuccessful %6d, "
+                                "with an average of %6.3f comparisons\n",
+                        MR_table_hash_inserts,
+                        (float) MR_table_hash_insert_probes /
+                                (float) MR_table_hash_inserts);
+        }
 
-	fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
-			MR_table_hash_resizes,
-			(float) (100 * MR_table_hash_resizes) /
-			(float) (MR_table_hash_lookups
-				 + MR_table_hash_inserts));
-	fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
+        fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
+                        MR_table_hash_resizes,
+                        (float) (100 * MR_table_hash_resizes) /
+                        (float) (MR_table_hash_lookups
+                                 + MR_table_hash_inserts));
+        fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
 #else
-	fprintf(fp, "not enabled\n");
+        fprintf(fp, "not enabled\n");
 #endif
 }
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL
 
 /*
 ** Save the current state of the Mercury abstract machine, so that the
@@ -1032,139 +1035,139 @@ MR_table_report_statistics(FILE *fp)
 
 static void
 save_state(MR_SavedState *saved_state,
-	MR_Word *generator_maxfr, MR_Word *generator_sp,
-	const char *who, const char *what)
+        MR_Word *generator_maxfr, MR_Word *generator_sp,
+        const char *who, const char *what)
 {
-	MR_restore_transient_registers();
+        MR_restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
-	MR_fatal_error("sorry, not implemented: "
-		"minimal model tabling with --high-level-code");
+        MR_fatal_error("sorry, not implemented: "
+                "minimal model tabling with --high-level-code");
   #else
-	saved_state->succ_ip = MR_succip;
-	saved_state->s_p = MR_sp;
-	saved_state->cur_fr = MR_curfr;
-	saved_state->max_fr = MR_maxfr;
+        saved_state->succ_ip = MR_succip;
+        saved_state->s_p = MR_sp;
+        saved_state->cur_fr = MR_curfr;
+        saved_state->max_fr = MR_maxfr;
 
-	saved_state->non_stack_block_start = generator_maxfr + 1;
-	if (MR_maxfr > generator_maxfr) {
-		saved_state->non_stack_block_size = MR_maxfr - generator_maxfr;
-		saved_state->non_stack_block =
-			MR_table_allocate_words(saved_state->non_stack_block_size);
-		MR_table_copy_words(saved_state->non_stack_block,
-			saved_state->non_stack_block_start,
-			saved_state->non_stack_block_size);
-	} else {
-		saved_state->non_stack_block_size = 0;
-		saved_state->non_stack_block = NULL;
-	}
+        saved_state->non_stack_block_start = generator_maxfr + 1;
+        if (MR_maxfr > generator_maxfr) {
+                saved_state->non_stack_block_size = MR_maxfr - generator_maxfr;
+                saved_state->non_stack_block =
+                        MR_table_allocate_words(saved_state->non_stack_block_size);
+                MR_table_copy_words(saved_state->non_stack_block,
+                        saved_state->non_stack_block_start,
+                        saved_state->non_stack_block_size);
+        } else {
+                saved_state->non_stack_block_size = 0;
+                saved_state->non_stack_block = NULL;
+        }
 
-	saved_state->det_stack_block_start = generator_sp;
-	if (MR_sp > generator_sp) {
-		saved_state->det_stack_block_size = (MR_sp - 1) - generator_sp;
-		saved_state->det_stack_block =
-			MR_table_allocate_words(saved_state->det_stack_block_size);
-		MR_table_copy_words(saved_state->det_stack_block,
-			saved_state->det_stack_block_start,
-			saved_state->det_stack_block_size);
-	} else {
-		saved_state->det_stack_block_size = 0;
-		saved_state->det_stack_block = NULL;
-	}
+        saved_state->det_stack_block_start = generator_sp;
+        if (MR_sp > generator_sp) {
+                saved_state->det_stack_block_size = (MR_sp - 1) - generator_sp;
+                saved_state->det_stack_block =
+                        MR_table_allocate_words(saved_state->det_stack_block_size);
+                MR_table_copy_words(saved_state->det_stack_block,
+                        saved_state->det_stack_block_start,
+                        saved_state->det_stack_block_size);
+        } else {
+                saved_state->det_stack_block_size = 0;
+                saved_state->det_stack_block = NULL;
+        }
 
   #endif /* ! MR_HIGHLEVEL_CODE */
 
-	saved_state->gen_next = MR_gen_next;
-	saved_state->generator_stack_block = MR_table_allocate_bytes(
-			MR_gen_next * sizeof(MR_GeneratorStackFrame));
-	MR_table_copy_bytes(saved_state->generator_stack_block,
-		MR_gen_stack, MR_gen_next * sizeof(MR_GeneratorStackFrame));
+        saved_state->gen_next = MR_gen_next;
+        saved_state->generator_stack_block = MR_table_allocate_bytes(
+                        MR_gen_next * sizeof(MR_GeneratorStackFrame));
+        MR_table_copy_bytes(saved_state->generator_stack_block,
+                MR_gen_stack, MR_gen_next * sizeof(MR_GeneratorStackFrame));
 
-	saved_state->cut_next = MR_cut_next;
-	saved_state->cut_stack_block = MR_table_allocate_bytes(
-			MR_cut_next * sizeof(MR_CutStackFrame));
-	MR_table_copy_bytes(saved_state->cut_stack_block,
-		MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
+        saved_state->cut_next = MR_cut_next;
+        saved_state->cut_stack_block = MR_table_allocate_bytes(
+                        MR_cut_next * sizeof(MR_CutStackFrame));
+        MR_table_copy_bytes(saved_state->cut_stack_block,
+                MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_USE_TRAIL
-	/*
-	** Saving the trail state here would not be sufficient to handle
-	** the combination of trailing and minimal model tabling.
-	** Consider the following sequence of events:
-	**
-	**	execution enters a goal being committed across
-	**	a new entry is pushed on the trail
-	**	a tabled goal suspends,
-	**		causing the saving of a trail segment
-	**		and then a failure
-	**	the goal being committed across fails,
-	**		which invokes a failed commit on the trail entry
-	**	...
-	**	the tabled goal is resumed,
-	**		causing the restoring of the saved trail segment
-	**		and then a success
-	**	the goal being committed across now succeeds,
-	**		which invokes a successful commit on the trail entry
-	**
-	** The trail handler will be thoroughly confused by such a sequence.
-	*/
+        /*
+        ** Saving the trail state here would not be sufficient to handle
+        ** the combination of trailing and minimal model tabling.
+        ** Consider the following sequence of events:
+        **
+        **      execution enters a goal being committed across
+        **      a new entry is pushed on the trail
+        **      a tabled goal suspends,
+        **              causing the saving of a trail segment
+        **              and then a failure
+        **      the goal being committed across fails,
+        **              which invokes a failed commit on the trail entry
+        **      ...
+        **      the tabled goal is resumed,
+        **              causing the restoring of the saved trail segment
+        **              and then a success
+        **      the goal being committed across now succeeds,
+        **              which invokes a successful commit on the trail entry
+        **
+        ** The trail handler will be thoroughly confused by such a sequence.
+        */
 
-	MR_fatal_error("Sorry, not implemented: "
-		"can't have both minimal model tabling and trailing");
+        MR_fatal_error("Sorry, not implemented: "
+                "can't have both minimal model tabling and trailing");
   #endif
 
   #ifdef MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("\n%s saves %s stacks: ", who, what);
-		printf("%d non, %d det, %d generator, %d cut\n",
-			saved_state->non_stack_block_size,
-			saved_state->det_stack_block_size,
-			MR_gen_next, MR_cut_next);
+        if (MR_tabledebug) {
+                printf("\n%s saves %s stacks: ", who, what);
+                printf("%d non, %d det, %d generator, %d cut\n",
+                        saved_state->non_stack_block_size,
+                        saved_state->det_stack_block_size,
+                        MR_gen_next, MR_cut_next);
 
     #ifdef MR_HIGHLEVEL_CODE
-		MR_fatal_error("sorry, not implemented: "
-			"minimal model tabling with --high-level-code");
+                MR_fatal_error("sorry, not implemented: "
+                        "minimal model tabling with --high-level-code");
     #else
-		printf("non region from ");
-		MR_printnondstackptr(saved_state->non_stack_block_start);
-		printf(" to ");
-		MR_printnondstackptr(MR_maxfr);
-		printf(" (both inclusive)\n");
-		printf("stored at %p to %p (both inclusive)\n",
-			saved_state->non_stack_block,
-			saved_state->non_stack_block +
-				saved_state->non_stack_block_size - 1);
+                printf("non region from ");
+                MR_printnondstackptr(saved_state->non_stack_block_start);
+                printf(" to ");
+                MR_printnondstackptr(MR_maxfr);
+                printf(" (both inclusive)\n");
+                printf("stored at %p to %p (both inclusive)\n",
+                        saved_state->non_stack_block,
+                        saved_state->non_stack_block +
+                                saved_state->non_stack_block_size - 1);
 
-		printf("det region from ");
-		MR_printdetstackptr(saved_state->det_stack_block_start);
-		printf(" to ");
-		MR_printdetstackptr(MR_sp);
-		printf(" (both inclusive)\n");
-		printf("stored at %p to %p (both inclusive)\n",
-			saved_state->det_stack_block,
-			saved_state->det_stack_block +
-				saved_state->det_stack_block_size - 1);
+                printf("det region from ");
+                MR_printdetstackptr(saved_state->det_stack_block_start);
+                printf(" to ");
+                MR_printdetstackptr(MR_sp);
+                printf(" (both inclusive)\n");
+                printf("stored at %p to %p (both inclusive)\n",
+                        saved_state->det_stack_block,
+                        saved_state->det_stack_block +
+                                saved_state->det_stack_block_size - 1);
 
-		printf("succip = %p, sp = ", (void *) MR_succip);
-		MR_printdetstackptr(MR_sp);
-		printf("\nmaxfr = ");
-		MR_printnondstackptr(MR_maxfr);
-		printf(", curfr = ");
-		MR_printnondstackptr(MR_curfr);
-		printf("\n\n");
+                printf("succip = %p, sp = ", (void *) MR_succip);
+                MR_printdetstackptr(MR_sp);
+                printf("\nmaxfr = ");
+                MR_printnondstackptr(MR_maxfr);
+                printf(", curfr = ");
+                MR_printnondstackptr(MR_curfr);
+                printf("\n\n");
     #endif
 
-		MR_print_gen_stack(stdout);
+                MR_print_gen_stack(stdout);
 
     #ifndef MR_HIGHLEVEL_CODE
-		if (MR_tablestackdebug) {
-			MR_dump_nondet_stack(stdout, MR_maxfr);
-		}
+                if (MR_tablestackdebug) {
+                        MR_dump_nondet_stack(stdout, MR_maxfr);
+                }
     #endif
-	}
+        }
   #endif /* MR_TABLE_DEBUG */
 
-	MR_save_transient_registers();
+        MR_save_transient_registers();
 }
 
 /*
@@ -1174,117 +1177,117 @@ save_state(MR_SavedState *saved_state,
 static void
 restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 {
-	MR_restore_transient_registers();
+        MR_restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
 
-	MR_fatal_error("sorry, not implemented: "
-		"minimal model tabling with --high-level-code");
+        MR_fatal_error("sorry, not implemented: "
+                "minimal model tabling with --high-level-code");
 
   #else
 
-	MR_succip = saved_state->succ_ip;
-	MR_sp = saved_state->s_p;
-	MR_curfr = saved_state->cur_fr;
-	MR_maxfr = saved_state->max_fr;
+        MR_succip = saved_state->succ_ip;
+        MR_sp = saved_state->s_p;
+        MR_curfr = saved_state->cur_fr;
+        MR_maxfr = saved_state->max_fr;
 
-	MR_table_copy_words(saved_state->non_stack_block_start,
-		saved_state->non_stack_block,
-		saved_state->non_stack_block_size);
+        MR_table_copy_words(saved_state->non_stack_block_start,
+                saved_state->non_stack_block,
+                saved_state->non_stack_block_size);
 
-	MR_table_copy_words(saved_state->det_stack_block_start,
-		saved_state->det_stack_block,
-		saved_state->det_stack_block_size);
+        MR_table_copy_words(saved_state->det_stack_block_start,
+                saved_state->det_stack_block,
+                saved_state->det_stack_block_size);
 
   #endif
 
-	MR_gen_next = saved_state->gen_next;
-	MR_table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
-		saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
+        MR_gen_next = saved_state->gen_next;
+        MR_table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
+                saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
 
-	MR_cut_next = saved_state->cut_next;
-	MR_table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
-		saved_state->cut_next * sizeof(MR_CutStackFrame));
+        MR_cut_next = saved_state->cut_next;
+        MR_table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
+                saved_state->cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("\n%s restores %s stacks: ", who, what);
-		printf("%d non, %d det, %d generator, %d cut\n",
-			saved_state->non_stack_block_size,
-			saved_state->det_stack_block_size,
-			saved_state->gen_next, saved_state->cut_next);
+        if (MR_tabledebug) {
+                printf("\n%s restores %s stacks: ", who, what);
+                printf("%d non, %d det, %d generator, %d cut\n",
+                        saved_state->non_stack_block_size,
+                        saved_state->det_stack_block_size,
+                        saved_state->gen_next, saved_state->cut_next);
 
-		printf("non region from ");
-		MR_printnondstackptr(saved_state->non_stack_block_start);
-		printf(" to ");
-		MR_printnondstackptr(saved_state->non_stack_block_start +
-			saved_state->non_stack_block_size - 1);
-		printf(" (both inclusive)\n");
-		printf("stored at %p to %p (both inclusive)\n",
-			saved_state->non_stack_block,
-			saved_state->non_stack_block +
-				saved_state->non_stack_block_size - 1);
+                printf("non region from ");
+                MR_printnondstackptr(saved_state->non_stack_block_start);
+                printf(" to ");
+                MR_printnondstackptr(saved_state->non_stack_block_start +
+                        saved_state->non_stack_block_size - 1);
+                printf(" (both inclusive)\n");
+                printf("stored at %p to %p (both inclusive)\n",
+                        saved_state->non_stack_block,
+                        saved_state->non_stack_block +
+                                saved_state->non_stack_block_size - 1);
 
-		printf("det region from ");
-		MR_printdetstackptr(saved_state->det_stack_block_start);
-		printf(" to ");
-		MR_printdetstackptr(saved_state->det_stack_block_start +
-			saved_state->det_stack_block_size - 1);
-		printf(" (both inclusive)\n");
-		printf("stored at %p to %p (both inclusive)\n",
-			saved_state->det_stack_block,
-			saved_state->det_stack_block +
-				saved_state->det_stack_block_size - 1);
+                printf("det region from ");
+                MR_printdetstackptr(saved_state->det_stack_block_start);
+                printf(" to ");
+                MR_printdetstackptr(saved_state->det_stack_block_start +
+                        saved_state->det_stack_block_size - 1);
+                printf(" (both inclusive)\n");
+                printf("stored at %p to %p (both inclusive)\n",
+                        saved_state->det_stack_block,
+                        saved_state->det_stack_block +
+                                saved_state->det_stack_block_size - 1);
 
-		printf("succip = %p, sp = ", (void *) MR_succip);
-		MR_printdetstackptr(MR_sp);
-		printf("\nmaxfr = ");
-		MR_printnondstackptr(MR_maxfr);
-		printf(", curfr = ");
-		MR_printnondstackptr(MR_curfr);
-		printf("\n");
+                printf("succip = %p, sp = ", (void *) MR_succip);
+                MR_printdetstackptr(MR_sp);
+                printf("\nmaxfr = ");
+                MR_printnondstackptr(MR_maxfr);
+                printf(", curfr = ");
+                MR_printnondstackptr(MR_curfr);
+                printf("\n");
 
-		MR_print_gen_stack(stdout);
+                MR_print_gen_stack(stdout);
 
-		if (MR_tablestackdebug) {
-			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
-		}
-	}
+                if (MR_tablestackdebug) {
+                        MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
+                }
+        }
   #endif /* MR_table_debug */
 
-	MR_save_transient_registers();
+        MR_save_transient_registers();
 }
 
 static void
 print_saved_state_stacks(MR_SavedState *saved_state)
 {
-	int	i;
+        int     i;
 
-	printf("saved state parameters:\n");
-	printf("succip:\t");
-	MR_printlabel(stdout, saved_state->succ_ip);
-	printf("sp:\t");
-	MR_printdetstackptr(saved_state->s_p);
-	printf("\ncurfr:\t");
-	MR_printnondstackptr(saved_state->cur_fr);
-	printf("\nmaxfr:\t");
-	MR_printnondstackptr(saved_state->max_fr);
+        printf("saved state parameters:\n");
+        printf("succip:\t");
+        MR_printlabel(stdout, saved_state->succ_ip);
+        printf("sp:\t");
+        MR_printdetstackptr(saved_state->s_p);
+        printf("\ncurfr:\t");
+        MR_printnondstackptr(saved_state->cur_fr);
+        printf("\nmaxfr:\t");
+        MR_printnondstackptr(saved_state->max_fr);
 
-	printf("\n\nnondet stack block: %d words from %p\n",
-		saved_state->non_stack_block_size,
-		saved_state->non_stack_block_start);
-	for (i = 0; i < saved_state->non_stack_block_size; i++) {
-		printf("%2d: %x\n", i, saved_state->non_stack_block[i]);
-	}
+        printf("\n\nnondet stack block: %d words from %p\n",
+                saved_state->non_stack_block_size,
+                saved_state->non_stack_block_start);
+        for (i = 0; i < saved_state->non_stack_block_size; i++) {
+                printf("%2d: %x\n", i, saved_state->non_stack_block[i]);
+        }
 
-	printf("\ndet stack block: %d words from %p\n",
-		saved_state->det_stack_block_size,
-		saved_state->det_stack_block_start);
-	for (i = 0; i < saved_state->det_stack_block_size; i++) {
-		printf("%2d: %x\n", i, saved_state->det_stack_block[i]);
-	}
+        printf("\ndet stack block: %d words from %p\n",
+                saved_state->det_stack_block_size,
+                saved_state->det_stack_block_start);
+        for (i = 0; i < saved_state->det_stack_block_size; i++) {
+                printf("%2d: %x\n", i, saved_state->det_stack_block[i]);
+        }
 
-	printf("\n");
+        printf("\n");
 }
 
 /*
@@ -1303,146 +1306,146 @@ MR_declare_entry(mercury__table_builtin__table_nondet_resume_1_0);
 static void
 extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 {
-	MR_Word	*arena_block;
-	MR_Word	*arena_start;
-	MR_Word	arena_size;
-	MR_Word	extension_size;
-	MR_Word	*saved_fr;
-	MR_Word	*real_fr;
-	MR_Word	frame_size;
-	MR_Word	offset;
+        MR_Word *arena_block;
+        MR_Word *arena_start;
+        MR_Word arena_size;
+        MR_Word extension_size;
+        MR_Word *saved_fr;
+        MR_Word *real_fr;
+        MR_Word frame_size;
+        MR_Word offset;
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tablestackdebug) {
-		printf("\nextending saved consumer stacks\n");
-		print_saved_state_stacks(&suspension->saved_state);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tablestackdebug) {
+                printf("\nextending saved consumer stacks\n");
+                print_saved_state_stacks(&suspension->saved_state);
+        }
 #endif
 
-	arena_start = leader->generator_sp;
-	extension_size = suspension->saved_state.det_stack_block_start
-			- arena_start;
-	arena_size  = extension_size
-			+ suspension->saved_state.det_stack_block_size;
-	if (arena_size != 0) {
-		assert(arena_start + arena_size
-				== suspension->saved_state.s_p - 1);
-	}
+        arena_start = leader->generator_sp;
+        extension_size = suspension->saved_state.det_stack_block_start
+                        - arena_start;
+        arena_size  = extension_size
+                        + suspension->saved_state.det_stack_block_size;
+        if (arena_size != 0) {
+                assert(arena_start + arena_size
+                                == suspension->saved_state.s_p - 1);
+        }
 
-	arena_block = MR_table_allocate_words(arena_size);
+        arena_block = MR_table_allocate_words(arena_size);
 
-	MR_table_copy_words(arena_block, arena_start, extension_size);
-	MR_table_copy_words(arena_block + extension_size,
-		suspension->saved_state.det_stack_block,
-		suspension->saved_state.det_stack_block_size);
+        MR_table_copy_words(arena_block, arena_start, extension_size);
+        MR_table_copy_words(arena_block + extension_size,
+                suspension->saved_state.det_stack_block,
+                suspension->saved_state.det_stack_block_size);
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("extending det stack of suspension %p for %p\n",
-			suspension, leader);
-		printf("start: old %p, new %p\n",
-			suspension->saved_state.det_stack_block_start,
-			arena_start);
-		printf("size:  old %d, new %d\n",
-			suspension->saved_state.det_stack_block_size,
-			arena_size);
-		printf("block: old %p, new %p\n",
-			suspension->saved_state.det_stack_block,
-			arena_block);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("extending det stack of suspension %p for %p\n",
+                        suspension, leader);
+                printf("start: old %p, new %p\n",
+                        suspension->saved_state.det_stack_block_start,
+                        arena_start);
+                printf("size:  old %d, new %d\n",
+                        suspension->saved_state.det_stack_block_size,
+                        arena_size);
+                printf("block: old %p, new %p\n",
+                        suspension->saved_state.det_stack_block,
+                        arena_block);
+        }
 #endif
 
-	suspension->saved_state.det_stack_block = arena_block;
-	suspension->saved_state.det_stack_block_size = arena_size;
-	suspension->saved_state.det_stack_block_start = arena_start;
+        suspension->saved_state.det_stack_block = arena_block;
+        suspension->saved_state.det_stack_block_size = arena_size;
+        suspension->saved_state.det_stack_block_start = arena_start;
 
-	arena_start = leader->generator_maxfr + 1;
-	extension_size = suspension->saved_state.non_stack_block_start
-			- arena_start;
-	arena_size  = extension_size
-			+ suspension->saved_state.non_stack_block_size;
-	assert(leader->generator_maxfr + arena_size
-			== suspension->saved_state.max_fr);
+        arena_start = leader->generator_maxfr + 1;
+        extension_size = suspension->saved_state.non_stack_block_start
+                        - arena_start;
+        arena_size  = extension_size
+                        + suspension->saved_state.non_stack_block_size;
+        assert(leader->generator_maxfr + arena_size
+                        == suspension->saved_state.max_fr);
 
-	arena_block = MR_table_allocate_words(arena_size);
+        arena_block = MR_table_allocate_words(arena_size);
 
-	MR_table_copy_words(arena_block, arena_start, extension_size);
-	MR_table_copy_words(arena_block + extension_size,
-		suspension->saved_state.non_stack_block,
-		suspension->saved_state.non_stack_block_size);
+        MR_table_copy_words(arena_block, arena_start, extension_size);
+        MR_table_copy_words(arena_block + extension_size,
+                suspension->saved_state.non_stack_block,
+                suspension->saved_state.non_stack_block_size);
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("extending non stack of suspension %p for %p\n",
-			suspension, leader);
-		printf("start: old %p, new %p\n",
-			suspension->saved_state.non_stack_block_start,
-			arena_start);
-		printf("size:  old %d, new %d\n",
-			suspension->saved_state.non_stack_block_size,
-			arena_size);
-		printf("block: old %p, new %p\n",
-			suspension->saved_state.non_stack_block,
-			arena_block);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("extending non stack of suspension %p for %p\n",
+                        suspension, leader);
+                printf("start: old %p, new %p\n",
+                        suspension->saved_state.non_stack_block_start,
+                        arena_start);
+                printf("size:  old %d, new %d\n",
+                        suspension->saved_state.non_stack_block_size,
+                        arena_size);
+                printf("block: old %p, new %p\n",
+                        suspension->saved_state.non_stack_block,
+                        arena_block);
+        }
 #endif
 
-	suspension->saved_state.non_stack_block = arena_block;
-	suspension->saved_state.non_stack_block_size = arena_size;
-	suspension->saved_state.non_stack_block_start = arena_start;
+        suspension->saved_state.non_stack_block = arena_block;
+        suspension->saved_state.non_stack_block_size = arena_size;
+        suspension->saved_state.non_stack_block_start = arena_start;
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tablestackdebug) {
-		printf("\nbefore pickling nondet stack\n");
-		print_saved_state_stacks(&suspension->saved_state);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tablestackdebug) {
+                printf("\nbefore pickling nondet stack\n");
+                print_saved_state_stacks(&suspension->saved_state);
+        }
 #endif
 
-	saved_fr = suspension->saved_state.non_stack_block +
-		suspension->saved_state.non_stack_block_size - 1;
-	real_fr = suspension->saved_state.non_stack_block_start +
-		suspension->saved_state.non_stack_block_size - 1;
-	while (saved_fr > suspension->saved_state.non_stack_block) {
-		frame_size = real_fr - MR_prevfr_slot(saved_fr);
+        saved_fr = suspension->saved_state.non_stack_block +
+                suspension->saved_state.non_stack_block_size - 1;
+        real_fr = suspension->saved_state.non_stack_block_start +
+                suspension->saved_state.non_stack_block_size - 1;
+        while (saved_fr > suspension->saved_state.non_stack_block) {
+                frame_size = real_fr - MR_prevfr_slot(saved_fr);
 
-		if (saved_fr - frame_size
-			> suspension->saved_state.non_stack_block)
-		{
-			*MR_redoip_addr(saved_fr) =
-				(MR_Word) MR_ENTRY(MR_do_fail);
+                if (saved_fr - frame_size
+                        > suspension->saved_state.non_stack_block)
+                {
+                        *MR_redoip_addr(saved_fr) =
+                                (MR_Word) MR_ENTRY(MR_do_fail);
 
-#ifdef	MR_TABLE_DEBUG
-			if (MR_tabledebug) {
-				printf("do_fail to redoip at %p (%d)\n",
-					MR_redoip_addr(saved_fr),
-					MR_redoip_addr(saved_fr) -
-					suspension->
-					saved_state.non_stack_block);
-			}
+#ifdef  MR_TABLE_DEBUG
+                        if (MR_tabledebug) {
+                                printf("do_fail to redoip at %p (%d)\n",
+                                        MR_redoip_addr(saved_fr),
+                                        MR_redoip_addr(saved_fr) -
+                                        suspension->
+                                        saved_state.non_stack_block);
+                        }
 #endif
-		} else {
-			*MR_redoip_addr(saved_fr) = (MR_Word)
-				MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
-#ifdef	MR_TABLE_DEBUG
-			if (MR_tabledebug) {
-				printf("resume to redoip at %p (%d)\n",
-					MR_redoip_addr(saved_fr),
-					MR_redoip_addr(saved_fr) -
-					suspension->
-					saved_state.non_stack_block);
-			}
+                } else {
+                        *MR_redoip_addr(saved_fr) = (MR_Word)
+                                MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
+#ifdef  MR_TABLE_DEBUG
+                        if (MR_tabledebug) {
+                                printf("resume to redoip at %p (%d)\n",
+                                        MR_redoip_addr(saved_fr),
+                                        MR_redoip_addr(saved_fr) -
+                                        suspension->
+                                        saved_state.non_stack_block);
+                        }
 #endif
-		}
+                }
 
-		saved_fr -= frame_size;
-		real_fr -= frame_size;
-	}
+                saved_fr -= frame_size;
+                real_fr -= frame_size;
+        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tablestackdebug) {
-		printf("\nfinished extending saved consumer stacks\n");
-		print_saved_state_stacks(&suspension->saved_state);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tablestackdebug) {
+                printf("\nfinished extending saved consumer stacks\n");
+                print_saved_state_stacks(&suspension->saved_state);
+        }
 #endif
 }
 
@@ -1456,36 +1459,36 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 static void
 make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 {
-	MR_Consumer		*suspension;
-	MR_SubgoalList		sub_followers;
-	MR_ConsumerList		suspend_list;
+        MR_Consumer             *suspension;
+        MR_SubgoalList          sub_followers;
+        MR_ConsumerList         suspend_list;
 
-	MR_restore_transient_registers();
+        MR_restore_transient_registers();
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("making %p follow %p\n", this_follower, leader);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("making %p follow %p\n", this_follower, leader);
+        }
 #endif
 
-	for (sub_followers = this_follower->followers;
-		sub_followers != NULL; sub_followers = sub_followers->next)
-	{
-		for (suspend_list = sub_followers->item->consumer_list;
-			suspend_list != NULL;
-			suspend_list = suspend_list->next)
-		{
-			MR_save_transient_registers();
-			extend_consumer_stacks(leader, suspend_list->item);
-			MR_restore_transient_registers();
-		}
-	}
+        for (sub_followers = this_follower->followers;
+                sub_followers != NULL; sub_followers = sub_followers->next)
+        {
+                for (suspend_list = sub_followers->item->consumer_list;
+                        suspend_list != NULL;
+                        suspend_list = suspend_list->next)
+                {
+                        MR_save_transient_registers();
+                        extend_consumer_stacks(leader, suspend_list->item);
+                        MR_restore_transient_registers();
+                }
+        }
 
-	this_follower->leader = leader;
-	*(leader->followers_tail) = this_follower->followers;
-	this_follower->followers = NULL;
+        this_follower->leader = leader;
+        *(leader->followers_tail) = this_follower->followers;
+        this_follower->followers = NULL;
 
-	MR_save_transient_registers();
+        MR_save_transient_registers();
 }
 
 /*
@@ -1511,162 +1514,162 @@ MR_declare_entry(MR_do_trace_redo_fail);
 MR_declare_entry(MR_table_nondet_commit);
 MR_define_extern_entry(mercury__table_builtin__table_nondet_suspend_2_0);
 MR_MAKE_PROC_LAYOUT(mercury__table_builtin__table_nondet_suspend_2_0,
-	MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
+        MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+        MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
 MR_BEGIN_MODULE(table_nondet_suspend_module)
-	MR_init_entry_sl(mercury__table_builtin__table_nondet_suspend_2_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_suspend_2_0);
+        MR_init_entry_sl(mercury__table_builtin__table_nondet_suspend_2_0);
+        MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_suspend_2_0);
 MR_BEGIN_CODE
 
 MR_define_entry(mercury__table_builtin__table_nondet_suspend_2_0);
 {
-	MR_TrieNode	table;
-	MR_Subgoal	*subgoal;
-	MR_Consumer	*consumer;
-	MR_ConsumerList	listnode;
-	MR_Integer	cur_gen;
-	MR_Integer	cur_cut;
-	MR_Word		*fr;
-	MR_Word		*prev_fr;
-	MR_Word		*stop_addr;
-	MR_Word		offset;
-	MR_Word		*clobber_addr;
+        MR_TrieNode     table;
+        MR_Subgoal      *subgoal;
+        MR_Consumer     *consumer;
+        MR_ConsumerList listnode;
+        MR_Integer      cur_gen;
+        MR_Integer      cur_cut;
+        MR_Word         *fr;
+        MR_Word         *prev_fr;
+        MR_Word         *stop_addr;
+        MR_Word         offset;
+        MR_Word         *clobber_addr;
 
-	/*
-	** This frame is not used in table_nondet_suspend, but it is copied
-	** to the suspend list as part of the saved nondet stack fragment,
-	** and it *will* be used when table_nondet_resume copies back the
-	** nondet stack fragment. The framevar slot is for use by
-	** table_nondet_resume.
-	*/
-	MR_mkframe("mercury__table_builtin__table_nondet_suspend", 1,
-		MR_ENTRY(MR_do_fail));
+        /*
+        ** This frame is not used in table_nondet_suspend, but it is copied
+        ** to the suspend list as part of the saved nondet stack fragment,
+        ** and it *will* be used when table_nondet_resume copies back the
+        ** nondet stack fragment. The framevar slot is for use by
+        ** table_nondet_resume.
+        */
+        MR_mkframe("mercury__table_builtin__table_nondet_suspend", 1,
+                MR_ENTRY(MR_do_fail));
 
-	table = (MR_TrieNode) MR_r1;
-	subgoal = table->MR_subgoal;
-	consumer = MR_table_allocate_bytes(sizeof(MR_Consumer));
-	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
+        table = (MR_TrieNode) MR_r1;
+        subgoal = table->MR_subgoal;
+        consumer = MR_table_allocate_bytes(sizeof(MR_Consumer));
+        consumer->remaining_answer_list_ptr = &subgoal->answer_list;
 
-	MR_save_transient_registers();
-	save_state(&(consumer->saved_state),
-		subgoal->generator_maxfr, subgoal->generator_sp,
-		"suspension", "consumer");
-	MR_restore_transient_registers();
+        MR_save_transient_registers();
+        save_state(&(consumer->saved_state),
+                subgoal->generator_maxfr, subgoal->generator_sp,
+                "suspension", "consumer");
+        MR_restore_transient_registers();
 
-	cur_gen = MR_gen_next - 1;
-	cur_cut = MR_cut_next - 1;
-	stop_addr = consumer->saved_state.non_stack_block_start;
-	for (fr = MR_maxfr; fr > stop_addr; fr = MR_prevfr_slot(fr))
-	{
-		offset = MR_redoip_addr(fr) -
-			consumer->saved_state.non_stack_block_start;
-		clobber_addr = consumer->saved_state.non_stack_block + offset;
+        cur_gen = MR_gen_next - 1;
+        cur_cut = MR_cut_next - 1;
+        stop_addr = consumer->saved_state.non_stack_block_start;
+        for (fr = MR_maxfr; fr > stop_addr; fr = MR_prevfr_slot(fr))
+        {
+                offset = MR_redoip_addr(fr) -
+                        consumer->saved_state.non_stack_block_start;
+                clobber_addr = consumer->saved_state.non_stack_block + offset;
 #if 0
-		if (MR_tablestackdebug) {
-			printf("redoip addr ");
-			MR_printnondstackptr(MR_redoip_addr(fr));
-			printf(", offset %d from start, ", offset);
-			printf("saved copy at %p\n", clobber_addr);
-		}
+                if (MR_tablestackdebug) {
+                        printf("redoip addr ");
+                        MR_printnondstackptr(MR_redoip_addr(fr));
+                        printf(", offset %d from start, ", offset);
+                        printf("saved copy at %p\n", clobber_addr);
+                }
 #endif
 
-		if (fr == MR_gen_stack[cur_gen].generator_frame) {
-			if (MR_gen_stack[cur_gen].generator_table->MR_subgoal
-					== subgoal)
-			{
-				/*
-				** This is the nondet stack frame of the
-				** generator corresponding to this consumer.
-				*/
+                if (fr == MR_gen_stack[cur_gen].generator_frame) {
+                        if (MR_gen_stack[cur_gen].generator_table->MR_subgoal
+                                        == subgoal)
+                        {
+                                /*
+                                ** This is the nondet stack frame of the
+                                ** generator corresponding to this consumer.
+                                */
 
-				assert(MR_prevfr_slot(fr) == (stop_addr - 1));
-				*clobber_addr = (MR_Word)
-					MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
-#ifdef	MR_TABLE_DEBUG
-				if (MR_tablestackdebug) {
-					printf("completing redoip "
-						"of frame at ");
-					MR_printnondstackptr(fr);
-					printf(" (in saved copy)\n");
-				}
+                                assert(MR_prevfr_slot(fr) == (stop_addr - 1));
+                                *clobber_addr = (MR_Word)
+                                        MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
+#ifdef  MR_TABLE_DEBUG
+                                if (MR_tablestackdebug) {
+                                        printf("completing redoip "
+                                                "of frame at ");
+                                        MR_printnondstackptr(fr);
+                                        printf(" (in saved copy)\n");
+                                }
 #endif
 
-				consumer->saved_state.gen_next = cur_gen + 1;
-#ifdef	MR_TABLE_DEBUG
-				if (MR_tabledebug) {
-					printf("saved gen_next set to %d\n",
-						cur_gen + 1);
-				}
+                                consumer->saved_state.gen_next = cur_gen + 1;
+#ifdef  MR_TABLE_DEBUG
+                                if (MR_tabledebug) {
+                                        printf("saved gen_next set to %d\n",
+                                                cur_gen + 1);
+                                }
 #endif
-			} else {
-				/*
-				** This is the nondet stack frame of some
-				** other generator.
-				*/
+                        } else {
+                                /*
+                                ** This is the nondet stack frame of some
+                                ** other generator.
+                                */
 
-				assert(MR_prevfr_slot(fr) != (stop_addr - 1));
+                                assert(MR_prevfr_slot(fr) != (stop_addr - 1));
 
-				*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
-#ifdef	MR_TABLE_DEBUG
-				if (MR_tablestackdebug) {
-					printf("clobbering redoip "
-						"of frame at ");
-					MR_printnondstackptr(fr);
-					printf(" (in saved copy)\n");
-				}
-#endif
-
-				MR_save_transient_registers();
-				make_subgoal_follow_leader(
-					MR_gen_stack[cur_gen].
-						generator_table->MR_subgoal,
-					subgoal);
-				MR_restore_transient_registers();
-			}
-
-			cur_gen--;
-		} else if (cur_cut > 0 && fr == MR_cut_stack[cur_cut].frame) {
-			*clobber_addr = (MR_Word) MR_ENTRY(MR_table_nondet_commit);
-#ifdef	MR_TABLE_DEBUG
-			if (MR_tablestackdebug) {
-				printf("committing redoip of frame at ");
-				MR_printnondstackptr(fr);
-				printf(" (in saved copy)\n");
-			}
+                                *clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
+#ifdef  MR_TABLE_DEBUG
+                                if (MR_tablestackdebug) {
+                                        printf("clobbering redoip "
+                                                "of frame at ");
+                                        MR_printnondstackptr(fr);
+                                        printf(" (in saved copy)\n");
+                                }
 #endif
 
-			cur_cut--;
-		} else {
-			*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
-#ifdef	MR_TABLE_DEBUG
-			if (MR_tablestackdebug) {
-				printf("clobbering redoip of frame at ");
-				MR_printnondstackptr(fr);
-				printf(" (in saved copy)\n");
-			}
-#endif
-		}
-	}
+                                MR_save_transient_registers();
+                                make_subgoal_follow_leader(
+                                        MR_gen_stack[cur_gen].
+                                                generator_table->MR_subgoal,
+                                        subgoal);
+                                MR_restore_transient_registers();
+                        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("adding suspension node %p to table %p",
-			consumer, subgoal);
-		printf(" at slot %p\n", subgoal->consumer_list_tail);
-	}
+                        cur_gen--;
+                } else if (cur_cut > 0 && fr == MR_cut_stack[cur_cut].frame) {
+                        *clobber_addr = (MR_Word) MR_ENTRY(MR_table_nondet_commit);
+#ifdef  MR_TABLE_DEBUG
+                        if (MR_tablestackdebug) {
+                                printf("committing redoip of frame at ");
+                                MR_printnondstackptr(fr);
+                                printf(" (in saved copy)\n");
+                        }
 #endif
 
-	assert(*(subgoal->consumer_list_tail) == NULL);
-	listnode = MR_table_allocate_bytes(sizeof(MR_ConsumerListNode));
-	*(subgoal->consumer_list_tail) = listnode;
-	subgoal->consumer_list_tail = &(listnode->next);
-	listnode->item = consumer;
-	listnode->next = NULL;
+                        cur_cut--;
+                } else {
+                        *clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
+#ifdef  MR_TABLE_DEBUG
+                        if (MR_tablestackdebug) {
+                                printf("clobbering redoip of frame at ");
+                                MR_printnondstackptr(fr);
+                                printf(" (in saved copy)\n");
+                        }
+#endif
+                }
+        }
+
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("adding suspension node %p to table %p",
+                        consumer, subgoal);
+                printf(" at slot %p\n", subgoal->consumer_list_tail);
+        }
+#endif
+
+        assert(*(subgoal->consumer_list_tail) == NULL);
+        listnode = MR_table_allocate_bytes(sizeof(MR_ConsumerListNode));
+        *(subgoal->consumer_list_tail) = listnode;
+        subgoal->consumer_list_tail = &(listnode->next);
+        listnode->item = consumer;
+        listnode->next = NULL;
 }
-	MR_fail();
+        MR_fail();
 MR_END_MODULE
 
-MR_Subgoal	*MR_cur_leader;
+MR_Subgoal      *MR_cur_leader;
 
 /*
 ** The procedure defined below restores answers to suspended consumers.
@@ -1694,334 +1697,334 @@ MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
 
 MR_MAKE_PROC_LAYOUT(mercury__table_builtin__table_nondet_resume_1_0,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
+        MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
+        MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_RedoPoint,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_RedoPoint,
+        mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_builtin__table_nondet_resume_1_0_RestartPoint,
-	mercury__table_builtin__table_nondet_resume_1_0);
+        mercury__table_builtin__table_nondet_resume_1_0_RestartPoint,
+        mercury__table_builtin__table_nondet_resume_1_0);
 
 MR_BEGIN_MODULE(table_nondet_resume_module)
-	MR_init_entry_sl(mercury__table_builtin__table_nondet_resume_1_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_resume_1_0);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
-	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
+        MR_init_entry_sl(mercury__table_builtin__table_nondet_resume_1_0);
+        MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_resume_1_0);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
+        MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
 MR_BEGIN_CODE
 
 MR_define_entry(mercury__table_builtin__table_nondet_resume_1_0);
-	MR_cur_leader = MR_top_generator_table();
+        MR_cur_leader = MR_top_generator_table();
 
-	if (MR_cur_leader->leader != NULL) {
-		/*
-		** The predicate that called table_nondet_resume
-		** is not the leader of its component.
-		** We will leave all answers to be returned
-		** by the leader.
-		*/
+        if (MR_cur_leader->leader != NULL) {
+                /*
+                ** The predicate that called table_nondet_resume
+                ** is not the leader of its component.
+                ** We will leave all answers to be returned
+                ** by the leader.
+                */
 
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("non-leader table_nondet_resume fails\n");
-		}
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("non-leader table_nondet_resume fails\n");
+                }
 #endif
 
-		(void) MR_pop_generator();
-		MR_redo();
-	}
+                (void) MR_pop_generator();
+                MR_redo();
+        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("table_nondet_resume enter: current leader is %p\n",
-			MR_cur_leader);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("table_nondet_resume enter: current leader is %p\n",
+                        MR_cur_leader);
+        }
 #endif
 
-	if (MR_cur_leader->resume_info != NULL) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("using existing resume info %p\n",
-				MR_cur_leader->resume_info);
-		}
+        if (MR_cur_leader->resume_info != NULL) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("using existing resume info %p\n",
+                                MR_cur_leader->resume_info);
+                }
 #endif
-	} else {
-		MR_cur_leader->resume_info = MR_TABLE_NEW(MR_ResumeInfo);
+        } else {
+                MR_cur_leader->resume_info = MR_TABLE_NEW(MR_ResumeInfo);
 
-		MR_save_transient_registers();
-		save_state(&(MR_cur_leader->resume_info->leader_state),
-			MR_cur_leader->generator_maxfr,
-			MR_cur_leader->generator_sp,
-			"resumption", "generator");
-		MR_restore_transient_registers();
+                MR_save_transient_registers();
+                save_state(&(MR_cur_leader->resume_info->leader_state),
+                        MR_cur_leader->generator_maxfr,
+                        MR_cur_leader->generator_sp,
+                        "resumption", "generator");
+                MR_restore_transient_registers();
 
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("creating new resume info %p\n",
-				MR_cur_leader->resume_info);
-		}
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("creating new resume info %p\n",
+                                MR_cur_leader->resume_info);
+                }
 #endif
-	}
+        }
 
-	MR_cur_leader->resume_info->changed = TRUE;
+        MR_cur_leader->resume_info->changed = TRUE;
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
 
-	if (MR_cur_leader->resume_info->changed) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("changed flag set\n");
-		}
+        if (MR_cur_leader->resume_info->changed) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("changed flag set\n");
+                }
 #endif
-	} else {
-		MR_SubgoalList	table_list;
+        } else {
+                MR_SubgoalList  table_list;
 
-		for (table_list = MR_cur_leader->resume_info->subgoal_list;
-			table_list != NULL; table_list = table_list->next)
-		{
-			if (table_list->item->num_committed_ans
-				!= table_list->item->num_ans)
-			{
-				MR_cur_leader->resume_info->changed = TRUE;
-#ifdef	MR_TABLE_DEBUG
-				if (MR_tabledebug) {
-					printf("table %p has new answers\n",
-						table_list->item);
-				}
+                for (table_list = MR_cur_leader->resume_info->subgoal_list;
+                        table_list != NULL; table_list = table_list->next)
+                {
+                        if (table_list->item->num_committed_ans
+                                != table_list->item->num_ans)
+                        {
+                                MR_cur_leader->resume_info->changed = TRUE;
+#ifdef  MR_TABLE_DEBUG
+                                if (MR_tabledebug) {
+                                        printf("table %p has new answers\n",
+                                                table_list->item);
+                                }
 #endif
-			}
-		}
-	}
+                        }
+                }
+        }
 
-	if (! MR_cur_leader->resume_info->changed) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("no more changes\n");
-		}
+        if (! MR_cur_leader->resume_info->changed) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("no more changes\n");
+                }
 #endif
-		MR_GOTO_LABEL(
-			mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
-	}
+                MR_GOTO_LABEL(
+                        mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
+        }
 
-	MR_cur_leader->resume_info->subgoal_list = MR_cur_leader->followers;
+        MR_cur_leader->resume_info->subgoal_list = MR_cur_leader->followers;
 
-	/* For each of the subgoals on our list of followers */
+        /* For each of the subgoals on our list of followers */
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
 
-	if (MR_cur_leader->resume_info->subgoal_list == NULL) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("no more subgoals in the followers list\n");
-		}
+        if (MR_cur_leader->resume_info->subgoal_list == NULL) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("no more subgoals in the followers list\n");
+                }
 #endif
 
-		MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
-	}
+                MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
+        }
 
-	MR_cur_leader->resume_info->cur_subgoal =
-		MR_cur_leader->resume_info->subgoal_list->item;
-	MR_cur_leader->resume_info->subgoal_list =
-		MR_cur_leader->resume_info->subgoal_list->next;
+        MR_cur_leader->resume_info->cur_subgoal =
+                MR_cur_leader->resume_info->subgoal_list->item;
+        MR_cur_leader->resume_info->subgoal_list =
+                MR_cur_leader->resume_info->subgoal_list->next;
 
-	MR_cur_leader->resume_info->consumer_list =
-		MR_cur_leader->resume_info->cur_subgoal->consumer_list;
+        MR_cur_leader->resume_info->consumer_list =
+                MR_cur_leader->resume_info->cur_subgoal->consumer_list;
 
-	MR_cur_leader->resume_info->changed = FALSE;
-	MR_cur_leader->resume_info->cur_subgoal->num_committed_ans =
-		MR_cur_leader->resume_info->cur_subgoal->num_ans;
+        MR_cur_leader->resume_info->changed = FALSE;
+        MR_cur_leader->resume_info->cur_subgoal->num_committed_ans =
+                MR_cur_leader->resume_info->cur_subgoal->num_ans;
 
-	/* For each of the suspended nodes for cur_subgoal */
+        /* For each of the suspended nodes for cur_subgoal */
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
 
-	if (MR_cur_leader->resume_info->consumer_list == NULL) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("no more suspensions for current subgoal\n");
-		}
+        if (MR_cur_leader->resume_info->consumer_list == NULL) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("no more suspensions for current subgoal\n");
+                }
 #endif
-		MR_GOTO_LABEL(
-			mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
-	}
+                MR_GOTO_LABEL(
+                        mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
+        }
 
-	MR_cur_leader->resume_info->cur_consumer =
-		MR_cur_leader->resume_info->consumer_list->item;
-	MR_cur_leader->resume_info->consumer_list =
-		MR_cur_leader->resume_info->consumer_list->next;
+        MR_cur_leader->resume_info->cur_consumer =
+                MR_cur_leader->resume_info->consumer_list->item;
+        MR_cur_leader->resume_info->consumer_list =
+                MR_cur_leader->resume_info->consumer_list->next;
 
-	MR_cur_leader->resume_info->cur_consumer_answer_list =
-		*(MR_cur_leader->resume_info->cur_consumer->
-			remaining_answer_list_ptr);
+        MR_cur_leader->resume_info->cur_consumer_answer_list =
+                *(MR_cur_leader->resume_info->cur_consumer->
+                        remaining_answer_list_ptr);
 
-	if (MR_cur_leader->resume_info->cur_consumer_answer_list == NULL) {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf("no first answer for this suspension\n");
-		}
+        if (MR_cur_leader->resume_info->cur_consumer_answer_list == NULL) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                        printf("no first answer for this suspension\n");
+                }
 #endif
-		MR_GOTO_LABEL(
-			mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
-	}
+                MR_GOTO_LABEL(
+                        mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
+        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("resuming consumer %p from table %p\n",
-			(void *) MR_cur_leader->resume_info->cur_consumer,
-			(void *) MR_cur_leader->resume_info->cur_subgoal);
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("resuming consumer %p from table %p\n",
+                        (void *) MR_cur_leader->resume_info->cur_consumer,
+                        (void *) MR_cur_leader->resume_info->cur_subgoal);
+        }
 #endif
 
-	MR_save_transient_registers();
-	restore_state(
-		&(MR_cur_leader->resume_info->cur_consumer->saved_state),
-		"resumption", "consumer");
-	MR_restore_transient_registers();
+        MR_save_transient_registers();
+        restore_state(
+                &(MR_cur_leader->resume_info->cur_consumer->saved_state),
+                "resumption", "consumer");
+        MR_restore_transient_registers();
 
-	/* check that there is room for exactly one framevar */
-	assert((MR_maxfr - MR_prevfr_slot(MR_maxfr)) ==
-		(MR_NONDET_FIXED_SIZE + 1));
+        /* check that there is room for exactly one framevar */
+        assert((MR_maxfr - MR_prevfr_slot(MR_maxfr)) ==
+                (MR_NONDET_FIXED_SIZE + 1));
 
-	MR_gen_next = MR_cur_leader->resume_info->leader_state.gen_next;
-	MR_redoip_slot(MR_maxfr) =
-		MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
-	MR_redofr_slot(MR_maxfr) = MR_maxfr;
-	MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
+        MR_gen_next = MR_cur_leader->resume_info->leader_state.gen_next;
+        MR_redoip_slot(MR_maxfr) =
+                MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
+        MR_redofr_slot(MR_maxfr) = MR_maxfr;
+        MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 
-	/*
-	** Return the next answer in MR_cur_leader->resume_info->
-	** cur_consumer_answer_list to the current consumer. Since we have
-	** already restored the context of the suspended consumer before
-	** we returned the first answer, we don't need to restore it again,
-	** since will not have changed in the meantime.
-	*/
+        /*
+        ** Return the next answer in MR_cur_leader->resume_info->
+        ** cur_consumer_answer_list to the current consumer. Since we have
+        ** already restored the context of the suspended consumer before
+        ** we returned the first answer, we don't need to restore it again,
+        ** since will not have changed in the meantime.
+        */
 
-	MR_r1 = (MR_Word) &MR_cur_leader->resume_info->
-		cur_consumer_answer_list->answer_data;
+        MR_r1 = (MR_Word) &MR_cur_leader->resume_info->
+                cur_consumer_answer_list->answer_data;
 
-	MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
-		&(MR_cur_leader->resume_info->cur_consumer_answer_list->
-		next_answer);
+        MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
+                &(MR_cur_leader->resume_info->cur_consumer_answer_list->
+                next_answer);
 
-	MR_cur_leader->resume_info->cur_consumer_answer_list =
-		MR_cur_leader->resume_info->cur_consumer_answer_list->
-		next_answer;
+        MR_cur_leader->resume_info->cur_consumer_answer_list =
+                MR_cur_leader->resume_info->cur_consumer_answer_list->
+                next_answer;
 
-	/*
-	** Return the answer. Since we just restored the state of the
-	** computation that existed when suspend was called, the code
-	** that we return to is the code following the call to suspend.
-	*/
-	MR_succeed();
+        /*
+        ** Return the answer. Since we just restored the state of the
+        ** computation that existed when suspend was called, the code
+        ** that we return to is the code following the call to suspend.
+        */
+        MR_succeed();
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
-	MR_update_prof_current_proc(MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0));
+        MR_update_prof_current_proc(MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0));
 
-	/*
-	** This is where the current consumer suspension will go on
-	** backtracking when it wants the next solution. If there is a solution
-	** we haven't returned to this consumer yet, we do so, otherwise we
-	** remember how many answers we have returned to this consumer so far
-	** and move on to the next suspended consumer of the current subgoal.
-	*/
+        /*
+        ** This is where the current consumer suspension will go on
+        ** backtracking when it wants the next solution. If there is a solution
+        ** we haven't returned to this consumer yet, we do so, otherwise we
+        ** remember how many answers we have returned to this consumer so far
+        ** and move on to the next suspended consumer of the current subgoal.
+        */
 
-	MR_cur_leader = (MR_Subgoal *) MR_based_framevar(MR_maxfr, 1);
+        MR_cur_leader = (MR_Subgoal *) MR_based_framevar(MR_maxfr, 1);
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("cur_consumer_answer_list: %p\n",
-			MR_cur_leader->resume_info->cur_consumer_answer_list);
-		printf("*cur_consumer->remaining_answer_list_ptr: %p\n",
-			*(MR_cur_leader->resume_info->cur_consumer->
-				remaining_answer_list_ptr));
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("cur_consumer_answer_list: %p\n",
+                        MR_cur_leader->resume_info->cur_consumer_answer_list);
+                printf("*cur_consumer->remaining_answer_list_ptr: %p\n",
+                        *(MR_cur_leader->resume_info->cur_consumer->
+                                remaining_answer_list_ptr));
+        }
 #endif
 
-	if (MR_cur_leader->resume_info->cur_consumer_answer_list != NULL) {
-		MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
-	}
+        if (MR_cur_leader->resume_info->cur_consumer_answer_list != NULL) {
+                MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
+        }
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf("no more unreturned answers for this suspension\n");
-	}
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+                printf("no more unreturned answers for this suspension\n");
+        }
 #endif
 
-	if (MR_cur_leader->resume_info->cur_subgoal->num_committed_ans
-		!= MR_cur_leader->resume_info->cur_subgoal->num_ans)
-	{
-		MR_cur_leader->resume_info->changed = TRUE;
-	}
+        if (MR_cur_leader->resume_info->cur_subgoal->num_committed_ans
+                != MR_cur_leader->resume_info->cur_subgoal->num_ans)
+        {
+                MR_cur_leader->resume_info->changed = TRUE;
+        }
 
-	MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
+        MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
-	{
-		MR_SubgoalList	table_list;
+        {
+                MR_SubgoalList  table_list;
 
-		for (table_list = MR_cur_leader->followers;
-			table_list != NULL; table_list = table_list->next)
-		{
-#ifdef	MR_TABLE_DEBUG
-			if (MR_tabledebug) {
-				printf("marking table %p complete\n",
-					table_list->item);
-			}
+                for (table_list = MR_cur_leader->followers;
+                        table_list != NULL; table_list = table_list->next)
+                {
+#ifdef  MR_TABLE_DEBUG
+                        if (MR_tabledebug) {
+                                printf("marking table %p complete\n",
+                                        table_list->item);
+                        }
 #endif
 
-			table_list->item->status = MR_SUBGOAL_COMPLETE;
-			table_list->item->num_committed_ans = -1;
-		}
-	}
+                        table_list->item->status = MR_SUBGOAL_COMPLETE;
+                        table_list->item->num_committed_ans = -1;
+                }
+        }
 
-	/* Restore the state we had when table_nondet_resume was called */
-	MR_save_transient_registers();
-	restore_state(&(MR_cur_leader->resume_info->leader_state),
-		"resumption", "generator");
-	MR_restore_transient_registers();
+        /* Restore the state we had when table_nondet_resume was called */
+        MR_save_transient_registers();
+        restore_state(&(MR_cur_leader->resume_info->leader_state),
+                "resumption", "generator");
+        MR_restore_transient_registers();
 
-	/* XXX we should free this cell and its components */
-	MR_cur_leader->resume_info = NULL;
+        /* XXX we should free this cell and its components */
+        MR_cur_leader->resume_info = NULL;
 
-	/* We are done with this generator */
-	(void) MR_pop_generator();
+        /* We are done with this generator */
+        (void) MR_pop_generator();
 
-	MR_proceed();
+        MR_proceed();
 MR_END_MODULE
 
 MR_define_extern_entry(MR_table_nondet_commit);
 MR_BEGIN_MODULE(table_nondet_commit_module)
-	MR_init_entry_an(MR_table_nondet_commit);
+        MR_init_entry_an(MR_table_nondet_commit);
 MR_BEGIN_CODE
 MR_define_entry(MR_table_nondet_commit);
-	MR_commit_cut();
-	MR_fail();
+        MR_commit_cut();
+        MR_fail();
 MR_END_MODULE
 
 #endif /* ! MR_HIGHLEVEL_CODE */
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif  /* MR_USE_MINIMAL_MODEL */
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -2034,26 +2037,26 @@ MR_END_MODULE
 
 /* Declare them first, to avoid warnings from gcc -Wmissing-decls */
 void MR_CALL mercury__table_builtin__table_nondet_resume_1_p_0(
-	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
-	MR_Cont cont, void *cont_env_ptr);
+        MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+        MR_Cont cont, void *cont_env_ptr);
 void MR_CALL mercury__table_builtin__table_nondet_suspend_2_p_0(
-	MR_C_Pointer subgoal_table_node);
+        MR_C_Pointer subgoal_table_node);
 
 void MR_CALL
 mercury__table_builtin__table_nondet_resume_1_p_0(
-	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
-	MR_Cont cont, void *cont_env_ptr)
+        MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+        MR_Cont cont, void *cont_env_ptr)
 {
-	MR_fatal_error("sorry, not implemented: "
-		"minimal model tabling with --high-level-code");
+        MR_fatal_error("sorry, not implemented: "
+                "minimal model tabling with --high-level-code");
 }
 
 void MR_CALL
 mercury__table_builtin__table_nondet_suspend_2_p_0(
-	MR_C_Pointer subgoal_table_node)
+        MR_C_Pointer subgoal_table_node)
 {
-	MR_fatal_error("sorry, not implemented: "
-		"minimal model tabling with --high-level-code");
+        MR_fatal_error("sorry, not implemented: "
+                "minimal model tabling with --high-level-code");
 }
 
 #endif /* MR_HIGHLEVEL_CODE */
@@ -2063,7 +2066,7 @@ mercury__table_builtin__table_nondet_suspend_2_p_0(
 INIT mercury_sys_init_table_modules
 */
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_suspend_module;
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_resume_module;
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_commit_module;
@@ -2072,27 +2075,27 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_commit_module;
 /* forward declarations to suppress gcc -Wmissing-decl warnings */
 void mercury_sys_init_table_modules_init(void);
 void mercury_sys_init_table_modules_init_type_tables(void);
-#ifdef	MR_DEEP_PROFILING
+#ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp);
 #endif
 
 void mercury_sys_init_table_modules_init(void)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
-	table_nondet_suspend_module();
-	table_nondet_resume_module();
-	table_nondet_commit_module();
+#ifdef  MR_USE_MINIMAL_MODEL
+        table_nondet_suspend_module();
+        table_nondet_resume_module();
+        table_nondet_commit_module();
 #endif
 }
 
 void mercury_sys_init_table_modules_init_type_tables(void)
 {
-	/* no types to register */
+        /* no types to register */
 }
 
-#ifdef	MR_DEEP_PROFILING
+#ifdef  MR_DEEP_PROFILING
 void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
 {
-	/* no proc_statics to write out */
+        /* no proc_statics to write out */
 }
 #endif

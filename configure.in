@@ -100,10 +100,12 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- pred main(io__state::di, io__state::uo) is det.
 
 		:- implementation.
+
+		:- import_module int.
         
 		main --> 
 			{ return_rtti_version(Version) },
-			( { Version = 5 } ->
+			( { Version >= 5 } ->
 				print("Hello, world\n")
 			;
 				print("Nope.\n")

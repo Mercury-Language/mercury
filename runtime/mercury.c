@@ -181,7 +181,7 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 			(MR_Pred) y);
 	}
 
-	arity = type_ctor_info->arity;
+	arity = type_ctor_info->MR_type_ctor_arity;
 	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	args = (MR_Mercury_Type_Info *) params;
 
@@ -191,19 +191,25 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 		** and then call it, passing the right number of
 		** type_info arguments
 		*/
-		case 0: return ((MR_UnifyFunc_0 *) type_ctor_info->unify_pred)
+		case 0: return ((MR_UnifyFunc_0 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(x, y);
-		case 1: return ((MR_UnifyFunc_1 *) type_ctor_info->unify_pred)
+		case 1: return ((MR_UnifyFunc_1 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(args[1], x, y);
-		case 2: return ((MR_UnifyFunc_2 *) type_ctor_info->unify_pred)
+		case 2: return ((MR_UnifyFunc_2 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(args[1], args[2], x, y);
-		case 3: return ((MR_UnifyFunc_3 *) type_ctor_info->unify_pred)
+		case 3: return ((MR_UnifyFunc_3 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(args[1], args[2], args[3],
 				 x, y);
-		case 4: return ((MR_UnifyFunc_4 *) type_ctor_info->unify_pred)
+		case 4: return ((MR_UnifyFunc_4 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(args[1], args[2], args[3],
 				 args[4], x, y);
-		case 5: return ((MR_UnifyFunc_5 *) type_ctor_info->unify_pred)
+		case 5: return ((MR_UnifyFunc_5 *)
+				type_ctor_info->MR_type_ctor_unify_pred)
 				(args[1], args[2], args[3],
 				 args[4], args[5], x, y);
 		default:
@@ -241,7 +247,7 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 	    	return;
 	}
 
-	arity = type_ctor_info->arity;
+	arity = type_ctor_info->MR_type_ctor_arity;
 	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	args = (MR_Mercury_Type_Info *) params;
 
@@ -251,23 +257,29 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 		** and then call it, passing the right number of
 		** type_info arguments
 		*/
-		case 0: ((MR_CompareFunc_0 *) type_ctor_info->compare_pred)
+		case 0: ((MR_CompareFunc_0 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (res, x, y);
 			 break;
-		case 1: ((MR_CompareFunc_1 *) type_ctor_info->compare_pred)
+		case 1: ((MR_CompareFunc_1 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (args[1], res, x, y);
 			 break;
-		case 2: ((MR_CompareFunc_2 *) type_ctor_info->compare_pred)
+		case 2: ((MR_CompareFunc_2 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (args[1], args[2], res, x, y);
 			 break;
-		case 3: ((MR_CompareFunc_3 *) type_ctor_info->compare_pred)
+		case 3: ((MR_CompareFunc_3 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (args[1], args[2], args[3], res, x, y);
 			 break;
-		case 4: ((MR_CompareFunc_4 *) type_ctor_info->compare_pred)
+		case 4: ((MR_CompareFunc_4 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (args[1], args[2], args[3],
 			  args[4], res, x, y);
 			 break;
-		case 5: ((MR_CompareFunc_5 *) type_ctor_info->compare_pred)
+		case 5: ((MR_CompareFunc_5 *)
+			 type_ctor_info->MR_type_ctor_compare_pred)
 			 (args[1], args[2], args[3],
 			  args[4], args[5], res, x, y);
 			 break;

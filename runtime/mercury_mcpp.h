@@ -116,7 +116,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP(a) MR_BOX_INT(mercury::runtime::Constants::a)
 
 // XXX This is hardcoded
-#define MR_RTTI_VERSION MR_BOX_INT(4)
+#define MR_RTTI_VERSION MR_BOX_INT(6)
 
 // XXX It is intended that we eventually define the constants in
 // private_builtin.m and mercury_mcpp.cpp in terms of these #defines
@@ -171,12 +171,9 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 	MR_BOX_INT(-1),							\
 	MR_MAYBE_STATIC_CODE(n##_unify),				\
 	MR_MAYBE_STATIC_CODE(n##_compare),				\
-	MR_TYPECTOR_REP(cr),						\
-	NULL,								\
-	NULL,								\
 	MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),	\
 	MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),	\
-	MR_RTTI_VERSION,						\
+	MR_BOX_INT(-1),							\
 	MR_BOX_INT(-1),							\
 	MR_BOX_INT(-1)							\
     MR_STRUCT_INIT_END(})						\
@@ -266,8 +263,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPEINFO_TYPE_CTOR_INFO_SLOT		0
 
 #define MR_TYPE_CTOR_INFO_ARITY_SLOT		0
-#define MR_TYPE_CTOR_INFO_UNIFY_PRED_SLOT	1
-#define MR_TYPE_CTOR_INFO_COMPARE_PRED_SLOT	3
+#define MR_TYPE_CTOR_INFO_UNIFY_PRED_SLOT	5
+#define MR_TYPE_CTOR_INFO_COMPARE_PRED_SLOT	6
 
 } /* end namespace mercury */
 

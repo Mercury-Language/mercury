@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000-2001 The University of Melbourne.
+** Copyright (C) 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,12 +56,12 @@ start_label:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_restore_transient_hp();
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
-            type_info = (MR_TypeInfo) type_ctor_info->type_layout.layout_equiv;
+            type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).layout_equiv;
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_VAR:
@@ -71,13 +71,13 @@ start_label:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_notag->
+                MR_type_ctor_layout(type_ctor_info).layout_notag->
                 MR_notag_functor_arg_type);
             MR_restore_transient_hp();
             goto start_label;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
-            type_info = (MR_TypeInfo) type_ctor_info->type_layout.
+            type_info = (MR_TypeInfo) MR_type_ctor_layout(type_ctor_info).
                 layout_notag->MR_notag_functor_arg_type;
             goto start_label;
 
@@ -117,7 +117,7 @@ start_label:
                     int                     sectag;                           \
                                                                               \
                     ptag = MR_tag(data);                                      \
-                    ptaglayout = &type_ctor_info->type_layout.layout_du[ptag];\
+                    ptaglayout = &MR_type_ctor_layout(type_ctor_info).layout_du[ptag];\
                     data_value = (MR_Word *) MR_body(data, ptag);             \
                                                                               \
                     switch (ptaglayout->MR_sectag_locn) {                     \
@@ -164,7 +164,7 @@ start_label:
                     return_answer(FALSE);
                 }
 
-                ptaglayout = &type_ctor_info->type_layout.layout_du[x_ptag];
+                ptaglayout = &MR_type_ctor_layout(type_ctor_info).layout_du[x_ptag];
                 x_data_value = (MR_Word *) MR_body(x, x_ptag);
                 y_data_value = (MR_Word *) MR_body(y, y_ptag);
 
@@ -322,12 +322,12 @@ start_label:
             ** may be worthwhile.
             */
 
-            if (type_ctor_info->arity == 0) {
+            if (type_ctor_info->MR_type_ctor_arity == 0) {
                 MR_r1 = x;
                 MR_r2 = y;
             }
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
-            else if (type_ctor_info->arity == 1) {
+            else if (type_ctor_info->MR_type_ctor_arity == 1) {
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
@@ -338,7 +338,7 @@ start_label:
             }
 #endif
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
-            else if (type_ctor_info->arity == 2) {
+            else if (type_ctor_info->MR_type_ctor_arity == 2) {
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
@@ -354,7 +354,7 @@ start_label:
                 int     type_arity;
                 MR_Word *args_base;
 
-                type_arity = type_ctor_info->arity;
+                type_arity = type_ctor_info->MR_type_ctor_arity;
                 args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
                 MR_save_registers();

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,8 +177,7 @@ dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, _Status, _HldsDefn, _Unify, _Compare,
-		_Solver, _Init, _Pretty),
+		Arity, _Status, _HldsDefn, _Unify, _Compare),
 	(
 		% XXX: We'd like to do this, but there are problems.
 		% status_is_exported(Status, yes)
@@ -333,16 +332,13 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 	(
 		TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName,
 			TypeName, TypeArity, _Status, _HldsDefn,
-			MaybeUnify, MaybeCompare,
-			MaybeSolver, MaybeInit, MaybePretty)
+			MaybeUnify, MaybeCompare)
 	->
 		Refs0 = [],
 		dead_proc_elim__maybe_add_ref(MaybeUnify,   Refs0, Refs1),
 		dead_proc_elim__maybe_add_ref(MaybeCompare, Refs1, Refs2),
-		dead_proc_elim__maybe_add_ref(MaybeSolver,  Refs2, Refs3),
-		dead_proc_elim__maybe_add_ref(MaybeInit,    Refs3, Refs4),
-		dead_proc_elim__maybe_add_ref(MaybePretty,  Refs4, Refs5),
-		Refs = Refs5
+		% dead_proc_elim__maybe_add_ref(MaybePretty,  Refs2, Refs3),
+		Refs = Refs2
 	;
 		dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
 			TypeArity, TypeCtorGenInfos, Refs)
@@ -673,8 +669,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 		TypeCtorGenInfos1),
 	TypeCtorGenInfo0 = type_ctor_gen_info(TypeId, ModuleName,
 		TypeName, Arity, Status, HldsDefn,
-		_MaybeUnify, _MaybeCompare,
-		_MaybeSolver, _MaybeInit, _MaybePretty),
+		_MaybeUnify, _MaybeCompare),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
@@ -683,7 +678,7 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 	;
 		NeuteredTypeCtorGenInfo = type_ctor_gen_info(TypeId,
 			ModuleName, TypeName, Arity, Status, HldsDefn,
-			no, no, no, no, no),
+			no, no),
 		TypeCtorGenInfos = [NeuteredTypeCtorGenInfo |
 			TypeCtorGenInfos1]
 	).

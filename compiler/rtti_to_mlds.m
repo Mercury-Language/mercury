@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -228,9 +228,8 @@ gen_init_rtti_data_defn(reserved_addr_table(RttiTypeId,
 		gen_init_rtti_name(ModuleName, RttiTypeId, DuLayout)
 	]).
 gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
-		CtorRep, SolverProc, InitProc, Version, NumPtags, NumFunctors,
-		FunctorsInfo, LayoutInfo, _MaybeHashCons,
-		_PrettyprinterProc), ModuleName, ModuleInfo, Init, []) :-
+		CtorRep, Version, NumPtags, NumFunctors, FunctorsInfo,
+		LayoutInfo), ModuleName, ModuleInfo, Init, []) :-
 	RttiTypeId = rtti_type_id(TypeModule, Type, TypeArity),
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	Init = init_struct([
@@ -240,12 +239,8 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		gen_init_int(NumPtags),
 		gen_init_maybe_proc_id(ModuleInfo, UnifyProc),
 		gen_init_maybe_proc_id(ModuleInfo, CompareProc),
-		gen_init_type_ctor_rep(CtorRep),
-		gen_init_maybe_proc_id(ModuleInfo, SolverProc),
-		gen_init_maybe_proc_id(ModuleInfo, InitProc),
 		gen_init_string(TypeModuleName),
 		gen_init_string(Type),
-		gen_init_int(Version),
 		% In the C back-end, these two "structs" are actually unions.
 		% We need to use `init_struct' here so that the initializers
 		% get enclosed in curly braces.

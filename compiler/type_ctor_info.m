@@ -135,9 +135,8 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 		MaybeUnify = no,
 		MaybeCompare = no
 	),
-	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName,
-		TypeName, TypeArity, Status, TypeDefn,
-		MaybeUnify, MaybeCompare, no, no, no).
+	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName, TypeName,
+		TypeArity, Status, TypeDefn, MaybeUnify, MaybeCompare).
 
 %---------------------------------------------------------------------------%
 
@@ -174,14 +173,9 @@ type_ctor_info__construct_type_ctor_infos(
 type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		ModuleInfo, TypeCtorData, TypeCtorTables) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
-		TypeArity, _Status, HldsDefn,
-		MaybeUnify, MaybeCompare,
-		MaybeSolver, MaybeInit, MaybePretty),
+		TypeArity, _Status, HldsDefn, MaybeUnify, MaybeCompare),
 	type_ctor_info__make_proc_label(MaybeUnify,   ModuleInfo, Unify),
 	type_ctor_info__make_proc_label(MaybeCompare, ModuleInfo, Compare),
-	type_ctor_info__make_proc_label(MaybeSolver,  ModuleInfo, Solver),
-	type_ctor_info__make_proc_label(MaybeInit,    ModuleInfo, Init),
-	type_ctor_info__make_proc_label(MaybePretty,  ModuleInfo, Pretty),
 
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
@@ -204,8 +198,8 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 	Version = type_ctor_info_rtti_version,
 	RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
 	TypeCtorData = type_ctor_info(RttiTypeId, Unify, Compare,
-		TypeCtorRep, Solver, Init, Version, NumPtags, NumFunctors,
-		MaybeFunctors, MaybeLayout, no, Pretty).
+		TypeCtorRep, Version, NumPtags, NumFunctors,
+		MaybeFunctors, MaybeLayout).
 
 :- pred type_ctor_info__make_proc_label(maybe(pred_proc_id)::in,
 	module_info::in, maybe(rtti_proc_label)::out) is det.
@@ -231,7 +225,7 @@ type_ctor_info__make_proc_label(yes(PredProcId), ModuleInfo, yes(ProcLabel)) :-
 
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 5.
+type_ctor_info_rtti_version = 6.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -14,9 +14,13 @@
 
 :- type list	--->	a ; b.
 
-:- pragma(c_code, main(IO0::di, IO::uo), "
+:- pragma foreign_decl("C", "
 extern const struct MR_TypeCtorInfo_Struct mercury_data_list__type_ctor_info_list_1;
 extern const struct MR_TypeCtorInfo_Struct mercury_data_type_tables__type_ctor_info_list_0;
+").
+
+:- pragma foreign_proc("C", main(IO0::di, IO::uo), [will_not_call_mercury],
+"
 	MR_TypeCtorInfo	tc1;
 	MR_TypeCtorInfo	tc2;
 
@@ -26,7 +30,11 @@ extern const struct MR_TypeCtorInfo_Struct mercury_data_type_tables__type_ctor_i
 	tc1 = MR_lookup_type_ctor_info(""list"", ""list"", 1);
 	tc2 = MR_lookup_type_ctor_info(""type_tables"", ""list"", 0);
 
-	printf(""%s %s\\n"", tc1->type_ctor_module_name, tc1->type_ctor_name);
-	printf(""%s %s\\n"", tc2->type_ctor_module_name, tc2->type_ctor_name);
+	printf(""%s %s\\n"",
+		MR_type_ctor_module_name(tc1),
+		MR_type_ctor_name(tc1));
+	printf(""%s %s\\n"",
+		MR_type_ctor_module_name(tc2),
+		MR_type_ctor_name(tc2));
 	IO = IO0;
 ").

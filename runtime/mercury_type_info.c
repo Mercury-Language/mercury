@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -215,7 +215,7 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
 				type_info_2);
 	} else {
-		num_arg_types = type_ctor_info_1->arity;
+		num_arg_types = type_ctor_info_1->MR_type_ctor_arity;
 		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
 				type_info_1);
 		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
@@ -259,7 +259,7 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 		maybe_equiv_type_info = MR_create_type_info(
 				MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
 					maybe_equiv_type_info),
-				type_ctor_info->type_layout.layout_equiv);
+				MR_type_ctor_layout(type_ctor_info).layout_equiv);
 
 		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
 				maybe_equiv_type_info);

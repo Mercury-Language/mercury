@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000-2001 The University of Melbourne.
+** Copyright (C) 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -69,7 +69,7 @@ exist_func(const MR_TypeInfoParams type_info_params,
 			pseudo_type_info);
 		start_region_size = 2;
 	} else {
-		arity = type_ctor_info->arity;
+		arity = type_ctor_info->MR_type_ctor_arity;
 		start_region_size = 1;
 	}
 

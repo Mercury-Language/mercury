@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -883,8 +883,8 @@ MR_is_io_state(MR_PseudoTypeInfo pti)
 
 	type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
 
-	return (streq(type_ctor_info->type_ctor_module_name, "io")
-		&& streq(type_ctor_info->type_ctor_name, "state"));
+	return (streq(MR_type_ctor_module_name(type_ctor_info), "io")
+		&& streq(MR_type_ctor_name(type_ctor_info), "state"));
 }
 
 static bool

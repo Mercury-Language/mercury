@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,10 +64,8 @@
 			import_status,	% of the type
 			hlds_type_defn,	% defn of type
 			maybe(pred_proc_id),	% unify, if not eliminated
-			maybe(pred_proc_id),	% compare, if not eliminated
-			maybe(pred_proc_id),	% solver, if relevant
-			maybe(pred_proc_id),	% init, if relevant
-			maybe(pred_proc_id)	% prettyprinter, if relevant
+			maybe(pred_proc_id)	% compare, if not eliminated
+			% maybe(pred_proc_id)	% prettyprinter, if relevant
 		).
 
 	% map from proc to a list of unused argument numbers.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -372,15 +372,12 @@ output_rtti_data_defn(reserved_addr_table(RttiTypeId, NumNumericReservedAddrs,
 	io__write_string(",\n\t"),
 	output_rtti_addr(RttiTypeId, DuFunctorLayout),
 	io__write_string("\n};\n").
-output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
-		CtorRep, Solver, Init, Version, NumPtags, NumFunctors,
-		FunctorsInfo, LayoutInfo, _MaybeHashCons, _Prettyprinter),
+output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare, CtorRep,
+		Version, NumPtags, NumFunctors, FunctorsInfo, LayoutInfo),
 		DeclSet0, DeclSet) -->
 	{ UnifyCA   = make_maybe_code_addr(Unify) },
 	{ CompareCA = make_maybe_code_addr(Compare) },
-	{ SolverCA  = make_maybe_code_addr(Solver) },
-	{ InitCA    = make_maybe_code_addr(Init) },
-	{ MaybeCodeAddrs = [UnifyCA, CompareCA, SolverCA, InitCA] },
+	{ MaybeCodeAddrs = [UnifyCA, CompareCA] },
 	{ CodeAddrs = list__filter_map(func(yes(CA)) = CA is semidet,
 		MaybeCodeAddrs) },
 	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
@@ -403,20 +400,12 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 	output_maybe_static_code_addr(UnifyCA),
 	io__write_string(",\n\t"),
 	output_maybe_static_code_addr(CompareCA),
-	io__write_string(",\n\t"),
-	io__write_string(CtorRepStr),
-	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(SolverCA),
-	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(InitCA),
 	io__write_string(",\n\t"""),
 	{ prog_out__sym_name_to_string(Module, ModuleName) },
 	c_util__output_quoted_string(ModuleName),
 	io__write_string(""",\n\t"""),
 	c_util__output_quoted_string(Type),
 	io__write_string(""",\n\t"),
-	io__write_int(Version),
-	io__write_string(",\n\t"),
 	(
 		{ FunctorsInfo = enum_functors(EnumFunctorsInfo) },
 		io__write_string("{ (void *) "),
@@ -784,8 +773,7 @@ output_rtti_type_decl(RttiName) -->
 
 rtti_out__init_rtti_data_if_nec(Data) -->
 	(
-		{ Data = type_ctor_info(RttiTypeId,
-			_,_,_,_,_,_,_,_,_,_,_,_) }
+		{ Data = type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_) }
 	->
 		io__write_string("\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
 		output_rtti_addr(RttiTypeId, type_ctor_info),
@@ -825,8 +813,7 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 
 rtti_out__register_rtti_data_if_nec(Data, SplitFiles) -->
 	(
-		{ Data = type_ctor_info(RttiTypeId,
-			_,_,_,_,_,_,_,_,_,_,_,_) }
+		{ Data = type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_) }
 	->
 		(
 			{ SplitFiles = yes },

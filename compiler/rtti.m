@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,16 +339,14 @@
 			maybe(rtti_proc_label),	% unify
 			maybe(rtti_proc_label),	% compare
 			type_ctor_rep,
-			maybe(rtti_proc_label),	% solver
-			maybe(rtti_proc_label),	% init
 			int,			% RTTI version number
 			int,			% num of ptags used if ctor_rep
 						% is DU or DUUSEREQ
 			int,			% number of functors in type
 			type_ctor_functors_info,% the functor layout
-			type_ctor_layout_info,	% the layout table
-			maybe(rtti_name),	% the type's hash cons table
-			maybe(rtti_proc_label)	% prettyprinter
+			type_ctor_layout_info	% the layout table
+			% maybe(rtti_name),	% the type's hash cons table
+			% maybe(rtti_proc_label)% prettyprinter
 		)
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
@@ -529,7 +527,7 @@ rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
 rtti_data_to_name(reserved_addr_table(RttiTypeId, _, _, _, _, _),
 	RttiTypeId, reserved_addr_table).
-rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
+rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
 rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
 	% there's no rtti_type_id associated with a base_typeclass_info

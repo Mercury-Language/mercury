@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -454,7 +454,7 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** END_OF_C_GRADE_INFO\n",
 		"*/\n",
 		"\n",
-		"\n#define MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO\n"
+		"#define MR_BOOTSTRAP_TYPE_CTOR_COMPACT\n"
 	]).
 
 :- pred convert_bool_to_string(bool, string).

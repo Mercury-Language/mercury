@@ -200,7 +200,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         {
             MR_ReservedAddrTypeLayout ra_layout;
         
-            ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+            ra_layout = MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
             data = *term_ptr;
 
             /*
@@ -239,7 +239,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_DU:
             data = *term_ptr;
-            du_type_layout = type_ctor_info->type_layout.layout_du;
+            du_type_layout = MR_type_ctor_layout(type_ctor_info).layout_du;
             /* fall through */
 
         /*
@@ -285,13 +285,13 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_EQUIV:
             eqv_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv);
             return MR_named_arg_num(eqv_type_info, term_ptr, arg_name,
                 arg_num_ptr);
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             eqv_type_info = MR_pseudo_type_info_is_ground(
-                type_ctor_info->type_layout.layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv);
             return MR_named_arg_num(eqv_type_info, term_ptr, arg_name,
                 arg_num_ptr);
 
@@ -307,7 +307,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            notag_functor_desc = type_ctor_info->type_functors.functors_notag;
+            notag_functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
 
             if (notag_functor_desc->MR_notag_functor_arg_name != NULL
             && streq(arg_name, notag_functor_desc->MR_notag_functor_arg_name))

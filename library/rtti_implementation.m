@@ -1003,15 +1003,11 @@ pseudotypeinfo_max_var = 1024.
 		type_ctor_num_ptags	= 3,
 		type_ctor_unify_pred 	= 4,
 		type_ctor_compare_pred	= 5,
-		// 6
-		// 7
-		// 8
-		type_ctor_module_name	= 9,
-		type_ctor_name		= 10,
-		// 11
-		type_functors		= 12,
-		type_layout		= 13,
-		type_ctor_num_functors	= 14
+		type_ctor_module_name	= 6,
+		type_ctor_name		= 7,
+		type_functors		= 8,
+		type_layout		= 9,
+		type_ctor_num_functors	= 10
 	}
 
 	enum ptag_layout_field_nums {
@@ -1366,7 +1362,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	Arity = tci->arity;
+	Arity = tci->MR_type_ctor_arity;
 ").
 
 :- some [P] func type_ctor_unify_pred(type_ctor_info) = P.
@@ -1382,7 +1378,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	UnifyPred = (MR_Integer) tci->unify_pred;
+	UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
 ").
 
 :- some [P] func type_ctor_compare_pred(type_ctor_info) = P.
@@ -1398,7 +1394,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	UnifyPred = (MR_Integer) tci->compare_pred;
+	UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
 
 
@@ -1438,7 +1434,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	Name = (MR_String) tci->type_ctor_module_name;
+	Name = (MR_String) MR_type_ctor_module_name(tci);
 ").
 
 
@@ -1457,7 +1453,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	Name = (MR_String) tci->type_ctor_name;
+	Name = (MR_String) MR_type_ctor_name(tci);
 ").
 
 
@@ -1475,7 +1471,7 @@ det_unimplemented(S) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	TypeLayout = (MR_Word) &(tci->type_layout); 
+	TypeLayout = (MR_Word) &(MR_type_ctor_layout(tci));
 ").
 
 :- pragma foreign_proc("C",

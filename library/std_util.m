@@ -1966,7 +1966,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 		*arg_type_info_list_ptr = ML_type_params_vector_to_list(arity,
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info));
 	} else {
-		arity = type_ctor_info->arity;
+		arity = type_ctor_info->MR_type_ctor_arity;
 		*arg_type_info_list_ptr = ML_type_params_vector_to_list(arity,
 			MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info));
 	}
@@ -2022,7 +2022,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	} else {
         type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
             type_ctor_desc);
-		arity = type_ctor_info->arity;
+		arity = type_ctor_info->MR_type_ctor_arity;
 	}
 
 	arg_type = ArgTypes;
@@ -2099,10 +2099,10 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
             */
 
             TypeCtorModuleName = (MR_String) (MR_Integer)
-                type_ctor_info->type_ctor_module_name;
+                MR_type_ctor_module_name(type_ctor_info);
             TypeCtorName = (MR_String) (MR_Integer)
-                type_ctor_info->type_ctor_name;
-            TypeCtorArity = type_ctor_info->arity;
+                MR_type_ctor_name(type_ctor_info);
+            TypeCtorArity = type_ctor_info->MR_type_ctor_arity;
         }
 }").
 
@@ -2384,7 +2384,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 		int total_reserved_addrs;
 		const MR_ReservedAddrFunctorDesc *functor_desc;
 
-		ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+		ra_layout = MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
 		total_reserved_addrs = ra_layout->MR_ra_num_res_numeric_addrs
 			+ ra_layout->MR_ra_num_res_symbolic_addrs;
 
@@ -2662,13 +2662,13 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             MR_DuFunctorDesc    *functor_desc;
 
             if (functor_number < 0 ||
-                functor_number >= type_ctor_info->type_ctor_num_functors)
+                functor_number >= MR_type_ctor_num_functors(type_ctor_info))
             {
                 MR_fatal_error(""ML_get_functor_info: ""
                     ""du functor_number out of range"");
             }
 
-            functor_desc = type_ctor_info->type_functors.
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
                 functors_du[functor_number];
             construct_info->functor_info.du_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_du_functor_name;
@@ -2686,13 +2686,13 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             MR_EnumFunctorDesc  *functor_desc;
 
             if (functor_number < 0 ||
-                functor_number >= type_ctor_info->type_ctor_num_functors)
+                functor_number >= MR_type_ctor_num_functors(type_ctor_info))
             {
                 MR_fatal_error(""ML_get_functor_info: ""
                     ""enum functor_number out of range"");
             }
 
-            functor_desc = type_ctor_info->type_functors.
+            functor_desc = MR_type_ctor_functors(type_ctor_info).
                 functors_enum[functor_number];
             construct_info->functor_info.enum_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_enum_functor_name;
@@ -2714,7 +2714,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
                     ""notag functor_number out of range"");
             }
 
-            functor_desc = type_ctor_info->type_functors.functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
             construct_info->functor_info.notag_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_notag_functor_name;
             construct_info->arity = 1;
@@ -2730,7 +2730,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
         return ML_get_functor_info(
             MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_equiv),
+                MR_type_ctor_layout(type_ctor_info).layout_equiv),
             functor_number, construct_info);
 
     case MR_TYPECTOR_REP_EQUIV_VAR:
@@ -3071,7 +3071,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
-            functors = type_ctor_info->type_ctor_num_functors;
+            functors = MR_type_ctor_num_functors(type_ctor_info);
             break;
 
         case MR_TYPECTOR_REP_NOTAG:
@@ -3094,7 +3094,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_EQUIV:
             functors = ML_get_num_functors(
                 MR_create_type_info((MR_TypeInfo *) type_info,
-                    type_ctor_info->type_layout.layout_equiv));
+                    MR_type_ctor_layout(type_ctor_info).layout_equiv));
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -3594,7 +3594,7 @@ get_functor_info(Univ, FunctorInfo) :-
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
-            functor_desc = type_ctor_info->type_functors.functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
             exp_type_info = MR_pseudo_type_info_is_ground(
                 functor_desc->MR_notag_functor_arg_type);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
@@ -3603,7 +3603,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            functor_desc = type_ctor_info->type_functors.functors_notag;
+            functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
@@ -3644,7 +3644,7 @@ get_functor_info(Univ, FunctorInfo) :-
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_EQUIV:
             exp_type_info = MR_pseudo_type_info_is_ground(
-                type_ctor_info->type_layout.layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3652,7 +3652,7 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             exp_type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_equiv);
+                MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = TRUE;
             break;
@@ -3734,7 +3734,7 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_DU_USEREQ:
             SUCCESS_INDICATOR = TRUE;
             Ptag = MR_tag(value);
-            ptag_layout = &type_ctor_info->type_layout.layout_du[Ptag];
+            ptag_layout = &MR_type_ctor_layout(type_ctor_info).layout_du[Ptag];
 
             switch(ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_LOCAL:
