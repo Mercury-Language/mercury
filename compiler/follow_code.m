@@ -39,13 +39,8 @@ move_follow_code_in_preds([], ModuleInfo, ModuleInfo).
 move_follow_code_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
-	( pred_info_is_imported(PredInfo) ->
-		ModuleInfo1 = ModuleInfo0
-	;
-		pred_info_procids(PredInfo, ProcIds),
-		move_follow_code_in_procs(ProcIds, PredId, ModuleInfo0,
-			ModuleInfo1)
-	),
+	pred_info_non_imported_procids(PredInfo, ProcIds),
+	move_follow_code_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
 	move_follow_code_in_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred move_follow_code_in_procs(list(proc_id), pred_id, module_info,

@@ -349,9 +349,6 @@
 :- pred code_info__variable_type(var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
 
-:- pred code_info__get_requests(unify_requests, code_info, code_info).
-:- mode code_info__get_requests(out, in, out) is det.
-
 :- pred code_info__generate_stack_livevals(set(var), set(lval),
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals(in, out, in, out) is det.
@@ -557,6 +554,9 @@ code_info__make_entry_label_2(ModuleInfo, ProcsPerFunc, PredId, ProcId,
 	map__lookup(Preds, PredId, PredInfo),
 	(
 		(	pred_info_is_imported(PredInfo)
+		;	pred_info_is_pseudo_imported(PredInfo),
+			% only the (in, in) mode of unification is imported
+			ProcId = 0
 		;	ProcsPerFunc \= 0,
 			\+ (PredId = CurPredId, ProcId = CurProcId)
 		)
@@ -1924,12 +1924,6 @@ code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
 	).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-code_info__get_requests(Requests) -->
-	code_info__get_module_info(ModuleInfo),
-	{ module_info_get_unify_requests(ModuleInfo, Requests) }.
-
 %---------------------------------------------------------------------------%
 
 code_info__apply_instmap_delta(Delta) -->

@@ -34,6 +34,10 @@
 			unify_main_context, unify_sub_contexts, hlds__goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
+:- pred add_new_proc(pred_info, int, list(mode), maybe(determinism),
+			term__context, pred_info, proc_id).
+:- mode add_new_proc(in, in, in, in, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -540,8 +544,21 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
 :- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred(SpecialPredId,
-		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status,
+		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status0,
 		Module) :-
+	% unification predicates are special - they are 
+	% "pseudo"-imported/exported (only mode 0 is imported/exported).
+	( SpecialPredId = unify ->
+		( Status0 = imported ->
+			Status = pseudo_imported
+		; Status0 = exported ->
+			Status = pseudo_exported
+		;
+			Status = Status0
+		)
+	;
+		Status = Status0
+	),
 	module_info_get_special_pred_map(Module0, SpecialPredMap0),
 	( map__contains(SpecialPredMap0, SpecialPredId - TypeId) ->
 		Module1 = Module0
@@ -554,15 +571,13 @@ add_special_pred(SpecialPredId,
 	map__lookup(SpecialPredMap1, SpecialPredId - TypeId, PredId),
 	module_info_preds(Module1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	% PredInfo1 = PredInfo0,
-%% /******** this hack doesn't work
-	( Status = imported ->
-		% this is a bit of a hack
-		pred_info_set_status(PredInfo0, imported, PredInfo1)
+	% if the type was imported, then the special preds for that
+	% type should be imported too
+	( (Status = imported ; Status = pseudo_imported) ->
+		pred_info_set_status(PredInfo0, Status, PredInfo1)
 	;
 		PredInfo1 = PredInfo0
 	),
-%% ********/
 	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
 				Module1, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
@@ -601,11 +616,8 @@ add_special_pred_decl(SpecialPredId,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0),
 
-	pred_info_procedures(PredInfo0, Procs0),
-	next_mode_id(Procs0, yes(Det), ModeId),
-	proc_info_init(Arity, ArgModes, yes(Det), Context, NewProc),
-	map__set(Procs0, ModeId, NewProc, Procs),
-	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+	add_new_proc(PredInfo0, Arity, ArgModes, yes(Det), Context,
+			PredInfo, _),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
 	predicate_table_insert(PredicateTable0, PredInfo, PredId,
@@ -616,6 +628,13 @@ add_special_pred_decl(SpecialPredId,
 	map__set(SpecialPredMap0, SpecialPredId - TypeId, PredId,
 		SpecialPredMap),
 	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
+
+add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context, PredInfo, ModeId) :-
+	pred_info_procedures(PredInfo0, Procs0),
+	next_mode_id(Procs0, MaybeDet, ModeId),
+	proc_info_init(Arity, ArgModes, MaybeDet, Context, NewProc),
+	map__set(Procs0, ModeId, NewProc, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -680,13 +699,10 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		[]
 	),
 		% add the mode declaration to the proc_info for this procedure.
-	{ pred_info_procedures(PredInfo0, Procs0) },
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
-	{ next_mode_id(Procs0, MaybeDet, ModeId) },
-	{ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) },
-	{ map__set(Procs0, ModeId, NewProc, Procs) },
-	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
+	{ add_new_proc(PredInfo0, Arity, Modes, MaybeDet, MContext,
+			PredInfo, _) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable0, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,

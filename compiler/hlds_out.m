@@ -261,7 +261,12 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo),
+		( { pred_info_is_imported(PredInfo) } ->
+			[]
+		;
+			hlds_out__write_pred(Indent, ModuleInfo, PredId,
+				PredInfo)
+		),
 		hlds_out__write_preds_2(Indent, ModuleInfo, PredIds, PredTable)
 	;
 		[]

@@ -400,20 +400,8 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
-		% We handle (in, in) unifications specially - they
-		% are always mode zero, and the procedure is global
-		% rather than local
-		(
-			{ UniMode = (XInitial - YInitial -> _Final) },
-			{ inst_is_ground(ModuleInfo, XInitial) },
-			{ inst_is_ground(ModuleInfo, YInitial) }
-		->
-			{ ModeNum = 0 }
-		;
-			code_info__get_requests(Requests),
-			{ unify_proc__lookup_num(Requests, VarTypeId, UniMode,
-				ModeNum) }
-		),
+		{ unify_proc__lookup_mode_num(ModuleInfo, VarTypeId, UniMode,
+				ModeNum) },
 		{ call_gen__input_args(ArgInfo, InputArguments) },
 		call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 		{ call_gen__output_args(Args, OutputArguments) },

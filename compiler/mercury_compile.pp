@@ -1541,6 +1541,7 @@ mercury_compile__semantic_pass_by_preds(HLDS1, HLDS9, Proceed0, Proceed) -->
 % 	{ module_info_preds(ModuleInfo0, Preds0) },
 % 	{ map__lookup(Preds0, PredId, PredInfo0) },
 % 	( { pred_info_is_imported(PredInfo0) } ->
+%		{ pred_info_procids(PredInfo, ProcIds) },
 % 		{ ModuleInfo = ModuleInfo0 }
 % 	;
 % 		semantic_analyze_predicate_1(PredId, ModuleInfo0, ModuleInfo)
@@ -1866,7 +1867,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 			[]
 		),
 
-		{ pred_info_procids(PredInfo, ProcIds) },
+		{ pred_info_non_imported_procids(PredInfo, ProcIds) },
 		{ module_info_shapes(ModuleInfo0, Shapes0) },
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
 			PredInfo, ModuleInfo0, Shapes0, Shapes, Code1),

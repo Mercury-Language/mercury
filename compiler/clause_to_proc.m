@@ -27,6 +27,9 @@
 :- pred copy_clauses_to_procs(pred_info, pred_info).
 :- mode copy_clauses_to_procs(in, out) is det.
 
+:- pred copy_clauses_to_proc(proc_id, clauses_info, proc_info, proc_info).
+:- mode copy_clauses_to_proc(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -36,17 +39,22 @@
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
 	pred_info_procedures(PredInfo0, Procs0),
-	map__keys(Procs0, ProcIds),
+	pred_info_non_imported_procids(PredInfo0, ProcIds),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 :- pred copy_clauses_to_procs_2(list(proc_id), clauses_info,
 	proc_table, proc_table).
-:- mode copy_clauses_to_procs_2(in, in, di, uo) is det.
+:- mode copy_clauses_to_procs_2(in, in, in, out) is det.
 
 copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	map__lookup(Procs0, ProcId, Proc0),
+	copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc),
+	map__set(Procs0, ProcId, Proc, Procs1),
+	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
+
+copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
@@ -70,9 +78,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo),
 		Goal = disj(GoalList) - GoalInfo
 	),
-	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc),
-	map__set(Procs0, ProcId, Proc, Procs1),
-	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
+	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc).
 
 :- pred select_matching_clauses(list(clause), proc_id, list(clause)).
 :- mode select_matching_clauses(in, in, out) is det.

@@ -39,13 +39,8 @@ inlining_in_preds([], ModuleInfo, ModuleInfo).
 inlining_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
-	( pred_info_is_imported(PredInfo) ->
-		ModuleInfo1 = ModuleInfo0
-	;
-		pred_info_procids(PredInfo, ProcIds),
-		inlining_in_procs(ProcIds, PredId, ModuleInfo0,
-			ModuleInfo1)
-	),
+	pred_info_non_imported_procids(PredInfo, ProcIds),
+	inlining_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
 	inlining_in_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred inlining_in_procs(list(proc_id), pred_id, module_info,
@@ -137,6 +132,7 @@ inlining__inlining_in_goal_2(
         	module_info_preds(ModuleInfo, Preds),
         	map__lookup(Preds, PredId, PredInfo),
 		\+ pred_info_is_imported(PredInfo),
+		\+ (pred_info_is_pseudo_imported(PredInfo), ProcId = 0),
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),
         	proc_info_goal(ProcInfo, CalledGoal),

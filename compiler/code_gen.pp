@@ -118,14 +118,15 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 	{ module_info_preds(ModuleInfo0, PredInfos) },
 		% get the pred_info structure for this predicate
 	{ map__lookup(PredInfos, PredId, PredInfo) },
-	( { pred_info_is_imported(PredInfo) }
-	->
+		% extract a list of all the procedure ids for this
+		% predicate and generate code for them
+	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	( { ProcIds = [] } ->
 		{ Predicates0 = [] },
 		{ ModuleInfo1 = ModuleInfo0 } 
 	;
-			% now generate code for this predicate.
 		generate_pred_code(ModuleInfo0, ModuleInfo1, PredId,
-					PredInfo, Predicates0) 
+					PredInfo, ProcIds, Predicates0) 
 	),
 #if NU_PROLOG
 	{ module_info_shapes(ModuleInfo1, Shape_Table) },
@@ -146,11 +147,10 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 % data in ModuleInfo, generate a code_tree.
 
 :- pred generate_pred_code(module_info, module_info, pred_id, pred_info,
-		list(c_procedure), io__state, io__state).
-:- mode generate_pred_code(in, out, in, in, out, di, uo) is det.
+		list(proc_id), list(c_procedure), io__state, io__state).
+:- mode generate_pred_code(in, out, in, in, in, out, di, uo) is det.
 
-generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, Code) -->
-		% extract a list of all the procedure ids for this predicate
+generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Generating code for "),
@@ -165,7 +165,6 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, Code) -->
 	;
 		[]
 	),
-	{ pred_info_proc_ids(PredInfo, ProcIds) },
 		% generate all the procedures for this predicate
 	{ module_info_shapes(ModuleInfo0, Shapes0) },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,

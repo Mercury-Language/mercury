@@ -1310,7 +1310,16 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
+	;	pseudo_imported % this is used for entities that are defined
+				% in the interface of some other module but
+				% for which we may generate some code in
+				% this module - in particular, this is used
+				% for unification predicates (see comments in
+				% unify_proc.m)
 	;	exported	% defined in the interface of this module
+	;	pseudo_exported % the converse of pseudo_imported
+				% this means that only the (in, in) mode
+				% of a unification is exported
 	;	local.		% defined in the implementation of this module
 
 :- pred predicate_module(module_info, pred_id, module_name).
@@ -1336,8 +1345,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_arity(pred_info, arity).
 :- mode pred_info_arity(in, out) is det.
 
-:- pred pred_info_proc_ids(pred_info, list(proc_id)).
-:- mode pred_info_proc_ids(in, out) is det.
+:- pred pred_info_procids(pred_info, list(proc_id)).
+:- mode pred_info_procids(in, out) is det.
+
+:- pred pred_info_non_imported_procids(pred_info, list(proc_id)).
+:- mode pred_info_non_imported_procids(in, out) is det.
 
 :- pred pred_info_arg_types(pred_info, tvarset, list(type)).
 :- mode pred_info_arg_types(in, out, out) is det.
@@ -1357,15 +1369,18 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_procedures(pred_info, proc_table, pred_info).
 :- mode pred_info_set_procedures(in, in, out) is det.
 
-:- pred pred_info_procids(pred_info, list(proc_id)).
-:- mode pred_info_procids(in, out) is det.
-
 :- pred pred_info_context(pred_info, term__context).
 :- mode pred_info_context(in, out) is det.
 
+:- pred pred_info_import_status(pred_info::in, import_status::out) is det.
+
 :- pred pred_info_is_imported(pred_info::in) is semidet.
 
+:- pred pred_info_is_pseudo_imported(pred_info::in) is semidet.
+
 :- pred pred_info_is_exported(pred_info::in) is semidet.
+
+:- pred pred_info_is_pseudo_exported(pred_info::in) is semidet.
 
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 
@@ -1431,9 +1446,21 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet).
 
-pred_info_proc_ids(PredInfo, ProcIds) :-
+pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
+
+pred_info_non_imported_procids(PredInfo, ProcIds) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	( ImportStatus = imported ->
+		ProcIds = []
+	; ImportStatus = pseudo_imported ->
+		pred_info_procids(PredInfo, ProcIds0),
+		% for pseduo_imported preds, procid 0 is imported
+		list__delete_all(ProcIds0, 0, ProcIds)
+	;
+		pred_info_procids(PredInfo, ProcIds)
+	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _).
@@ -1456,10 +1483,6 @@ pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K).
 
-pred_info_procids(PredInfo, ProcIds) :-
-	pred_info_procedures(PredInfo, Procedures),
-	map__keys(Procedures, ProcIds).
-
 pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _).
 
@@ -1472,11 +1495,20 @@ pred_info_name(PredInfo, PredName) :-
 pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _).
 
+pred_info_import_status(PredInfo, ImportStatus) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _).
+
 pred_info_is_imported(PredInfo) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _).
 
+pred_info_is_pseudo_imported(PredInfo) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, _).
+
 pred_info_is_exported(PredInfo) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _).
+
+pred_info_is_pseudo_exported(PredInfo) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, _).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),

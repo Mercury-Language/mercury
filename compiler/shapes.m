@@ -619,7 +619,6 @@ shapes__make_cons_id(Sym, Typelist, C_Id) :-
 %-----------------------------------------------------------------------------%
 % 
 %-----------------------------------------------------------------------------%
-/*###622 [cc] The switch on HeadVar__1 does not cover prevfr/0 and succfr/0.%%%*/
 shapes__write_shape_num(num(Number)) --> 
 	io__write_string("num("),
 	io__write_int(Number),

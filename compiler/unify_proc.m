@@ -34,6 +34,10 @@
 % code duplication involved is probably very small, so it's definitely not
 % worth worrying about right now.
 
+% XXX What about complicated unification of an abstract type in a partially
+% instantiated mode?  Currently we don't implement it correctly. Probably 
+% it should be disallowed, but we should issue a proper error message.
+
 %-----------------------------------------------------------------------------%
 
 :- module unify_proc.
@@ -45,8 +49,6 @@
 
 :- type unify_proc_id == pair(type_id, uni_mode).
 
-:- type unify_proc_num == int.
-
 	% Initialize the unify_requests table.
 
 :- pred unify_proc__init_requests(unify_requests).
@@ -54,8 +56,7 @@
 
 	% Add a new request to the unify_requests table.
 
-:- pred unify_proc__request_unify(unify_proc_id, unify_requests,
-				unify_requests).
+:- pred unify_proc__request_unify(unify_proc_id, module_info, module_info).
 :- mode unify_proc__request_unify(in, in, out) is det.
 
 	% Generate code for the unification procedures which have been
@@ -64,9 +65,14 @@
 :- pred modecheck_unify_procs(module_info, module_info, io__state, io__state).
 :- mode modecheck_unify_procs(in, out, di, uo) is det.
 
-:- pred unify_proc__lookup_num(unify_requests, type_id, uni_mode,
-				unify_proc_num).
-:- mode unify_proc__lookup_num(in, in, in, out) is det.
+	% Given the type and mode of a unification, look up the
+	% mode number for the unification proc.
+
+:- pred unify_proc__lookup_mode_num(module_info, type_id, uni_mode, proc_id).
+:- mode unify_proc__lookup_mode_num(in, in, in, out) is det.
+
+	% Generate the clauses for one of the compiler-generated
+	% special predicates (compare/3, index/3, unify, etc.)
 
 :- pred unify_proc__generate_clause_info(special_pred_id, type,
 			hlds__type_body, module_info, clauses_info).
@@ -80,20 +86,21 @@
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, term, prog_util.
-:- import_module quantification.
-:- import_module globals, options.
+:- import_module quantification, clause_to_proc, modes.
+:- import_module globals, options, mode_util.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the unify_requests structure.
-	% We assign a unique unify_proc_num to each one.
+	% For each unify_proc_id (i.e. type & mode), we store the proc_id
+	% (mode number) of the unification procedure which corresponds to
+	% that mode.
 
-:- type req_map == map(unify_proc_id, unify_proc_num).
+:- type req_map == map(unify_proc_id, proc_id).
 
 :- type req_queue == queue(unify_proc_id).
 
 :- type unify_requests --->
 		unify_requests(
-			unify_proc_num,		% next unused number
 			req_map,		% the assignment of numbers
 						% to unify_proc_ids
 			req_queue		% queue of procs we still need
@@ -105,14 +112,11 @@
 unify_proc__init_requests(Requests) :-
 	map__init(ReqMap),
 	queue__init(ReqQueue),
-	Requests = unify_requests(1, ReqMap, ReqQueue).
+	Requests = unify_requests(ReqMap, ReqQueue).
 
 %-----------------------------------------------------------------------------%
 
 	% Boring access predicates
-
-:- pred unify_proc__get_num(unify_requests, unify_proc_num).
-:- mode unify_proc__get_num(in, out) is det.
 
 :- pred unify_proc__get_req_map(unify_requests, req_map).
 :- mode unify_proc__get_req_map(in, out) is det.
@@ -120,58 +124,121 @@ unify_proc__init_requests(Requests) :-
 :- pred unify_proc__get_req_queue(unify_requests, req_queue).
 :- mode unify_proc__get_req_queue(in, out) is det.
 
-:- pred unify_proc__set_num(unify_requests, unify_proc_num, unify_requests).
-:- mode unify_proc__set_num(in, in, out) is det.
-
 :- pred unify_proc__set_req_map(unify_requests, req_map, unify_requests).
 :- mode unify_proc__set_req_map(in, in, out) is det.
 
 :- pred unify_proc__set_req_queue(unify_requests, req_queue, unify_requests).
 :- mode unify_proc__set_req_queue(in, in, out) is det.
 
-unify_proc__get_num(unify_requests(Num, _, _), Num).
+unify_proc__get_req_map(unify_requests(ReqMap, _), ReqMap).
 
-unify_proc__get_req_map(unify_requests(_, ReqMap, _), ReqMap).
+unify_proc__get_req_queue(unify_requests(_, ReqQueue), ReqQueue).
 
-unify_proc__get_req_queue(unify_requests(_, _, ReqQueue), ReqQueue).
+unify_proc__set_req_map(unify_requests(_, B), ReqMap,
+			unify_requests(ReqMap, B)).
 
-unify_proc__set_num(unify_requests(_, B, C), Num,
-			unify_requests(Num, B, C)).
-
-unify_proc__set_req_map(unify_requests(A, _, C), ReqMap,
-			unify_requests(A, ReqMap, C)).
-
-unify_proc__set_req_queue(unify_requests(A, B, _), ReqQueue,
-			unify_requests(A, B, ReqQueue)).
+unify_proc__set_req_queue(unify_requests(A, _), ReqQueue,
+			unify_requests(A, ReqQueue)).
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__lookup_num(Requests, TypeId, UniMode, Num) :-
-	unify_proc__get_req_map(Requests, ReqMap),
-	( map__search(ReqMap, TypeId - UniMode, Num0) ->
-		Num = Num0
+unify_proc__lookup_mode_num(ModuleInfo, TypeId, UniMode, Num) :-
+	( unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Num1) ->
+		Num = Num1
 	;
-		error("unify_proc.m: sorry, complicated unifications with partially instantiated modes not implemented")
+		error("unify_proc.m: unify_proc__search_num failed")
+	).
+
+:- pred unify_proc__search_mode_num(module_info, type_id, uni_mode, proc_id).
+:- mode unify_proc__search_mode_num(in, in, in, out) is semidet.
+
+	% Given the type and mode of a unification, look up the
+	% mode number for the unification proc.
+	% We handle (in, in) unifications specially - they
+	% are always mode zero.  For unreachable unifications,
+	% we also use mode zero.
+
+unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, ProcId) :-
+	UniMode = (XInitial - YInitial -> _Final),
+	(
+		inst_is_ground(ModuleInfo, XInitial),
+		inst_is_ground(ModuleInfo, YInitial)
+	->
+		ProcId = 0
+	;
+		XInitial = not_reached
+	->
+		ProcId = 0
+	;
+		YInitial = not_reached
+	->
+		ProcId = 0
+	;
+		module_info_get_unify_requests(ModuleInfo, Requests),
+		unify_proc__get_req_map(Requests, ReqMap),
+		map__search(ReqMap, TypeId - UniMode, ProcId)
 	).
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__request_unify(UnifyId, Requests0, Requests) :-
-	unify_proc__get_req_map(Requests0, ReqMap0),
-	( map__contains(ReqMap0, UnifyId) ->
-		Requests = Requests0
+unify_proc__request_unify(UnifyId, ModuleInfo0, ModuleInfo) :-
+	%
+	% check if this unification has already been requested
+	%
+	UnifyId = TypeId - UnifyMode,
+	( unify_proc__search_mode_num(ModuleInfo0, TypeId, UnifyMode, _) ->
+		ModuleInfo = ModuleInfo0
 	;
-		unify_proc__get_num(Requests0, Num0),
-		map__set(ReqMap0, UnifyId, Num0, ReqMap),
-		unify_proc__set_req_map(Requests0, ReqMap, Requests1),
+		%
+		% lookup the pred_id for the unification procedure
+		% that we are going to generate
+		%
+		module_info_get_special_pred_map(ModuleInfo0, SpecialPredMap),
+		map__lookup(SpecialPredMap, unify - TypeId, PredId),
 
-		unify_proc__get_num(Requests1, Num1),
-		Num is Num1 + 1,
-		unify_proc__set_num(Requests1, Num, Requests2),
+		%
+		% create a new proc_info for this procedure
+		%
+		module_info_preds(ModuleInfo0, Preds0),
+		map__lookup(Preds0, PredId, PredInfo0),
+		Arity = 2,
+		% convert from `uni_mode' to `list(mode)'
+		UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
+		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
+		MaybeDet = yes(semidet),
+		term__context_init(Context),
+		add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context,
+				PredInfo1, ProcId),
+
+		%
+		% copy the clauses for the procedure from the pred_info to the
+		% proc_info
+		%
+		pred_info_procedures(PredInfo1, Procs1),
+		pred_info_clauses_info(PredInfo1, ClausesInfo),
+		map__lookup(Procs1, ProcId, ProcInfo1),
+
+		copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
+		map__set(Procs1, ProcId, ProcInfo2, Procs2),
+		pred_info_set_procedures(PredInfo1, Procs2, PredInfo2),
+		map__set(Preds0, PredId, PredInfo2, Preds2),
+		module_info_set_preds(ModuleInfo0, Preds2, ModuleInfo2),
+
+		%
+		% save the proc_id for this unify_proc_id, 
+		% and insert the unify_proc_id into the request queue
+		%
+		module_info_get_unify_requests(ModuleInfo2, Requests0),
+		unify_proc__get_req_map(Requests0, ReqMap0),
+		map__set(ReqMap0, UnifyId, ProcId, ReqMap),
+		unify_proc__set_req_map(Requests0, ReqMap, Requests1),
 
 		unify_proc__get_req_queue(Requests1, ReqQueue1),
 		queue__put(ReqQueue1, UnifyId, ReqQueue),
-		unify_proc__set_req_queue(Requests2, ReqQueue, Requests)
+		unify_proc__set_req_queue(Requests1, ReqQueue, Requests),
+
+		module_info_set_unify_requests(ModuleInfo2, Requests,
+			ModuleInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -190,53 +257,81 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 			ModuleInfo1) },
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
-			io__write_string("% Generating "),
-			unify_proc__write_unify_proc_id(UnifyProcId),
-			io__write_string("\n")
+			{ UnifyProcId = TypeId - UniMode },
+			io__write_string(
+				"% Generating unification proc for type `"),
+			hlds_out__write_type_id(TypeId),
+			io__write_string("'\n"),
+			io__write_string("% with insts `"),
+			{ UniMode = ((InstA - InstB) -> _FinalInst) },
+			{ varset__init(InstVarSet) },
+			mercury_output_inst(InstA, InstVarSet),
+			io__write_string("', `"),
+			mercury_output_inst(InstB, InstVarSet),
+			io__write_string("'\n")
 		;
 			[]
 		),
-		{ modecheck_generate_unification(UnifyProcId, ModuleInfo1,
-			ModuleInfo2) },
+		modecheck_generate_unification(UnifyProcId, ModuleInfo1,
+			ModuleInfo2),
 		modecheck_unify_procs(ModuleInfo2, ModuleInfo)
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
 
-:- pred modecheck_generate_unification(unify_proc_id, module_info, module_info).
-:- mode modecheck_generate_unification(in, in, out) is det.
+:- pred modecheck_generate_unification(unify_proc_id, module_info, module_info,
+					io__state, io__state).
+:- mode modecheck_generate_unification(in, in, out, di, uo) is det.
 
-modecheck_generate_unification(_UnifyProcId, ModuleInfo, ModuleInfo).
-	% XXX stub only!!!
-	% currently we don't handle complicated unifications in
-	% partially instantiated modes
-/*
-modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) :-
+modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) -->
+	{
+	%
+	% lookup the pred_id for the unification procedure
+	% that we are going to generate
+	%
+	UnifyProcId = TypeId - _UnifyMode,
+	module_info_get_special_pred_map(ModuleInfo0, SpecialPredMap),
+	map__lookup(SpecialPredMap, unify - TypeId, PredId),
+
+	%
+	% lookup the proc_id
+	%
 	module_info_get_unify_requests(ModuleInfo0, Requests0),
 	unify_proc__get_req_map(Requests0, ReqMap),
-	map__lookup(ReqMap, UnifyProcId, UnifyModeNum),
-	UnifyProcId = TypeId - UnifyMode,
-*/
+	map__lookup(ReqMap, UnifyProcId, ProcId),
+
+	%
+	% lookup the proc_info
+	%
+	module_info_preds(ModuleInfo0, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
+	pred_info_procedures(PredInfo0, Procs0),
+	map__lookup(Procs0, ProcId, ProcInfo0)
+	},
+
+	%
+	% modecheck the procedure
+	%
+	modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
+			ModuleInfo1, ProcInfo, NumErrors),
+	{
+	( NumErrors \= 0 ->
+		error("mode error in compiler-generated unification predicate")
+	;
+		true
+	),
+
+	%
+	% save the mode-checked procedure back in the module_info
+	%
+	map__set(Procs0, ProcId, ProcInfo, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+	map__set(Preds0, PredId, PredInfo, Preds),
+	module_info_set_preds(ModuleInfo1, Preds, ModuleInfo)
+	}.
 
 %-----------------------------------------------------------------------------%
-
-:- pred unify_proc__write_unify_proc_id(unify_proc_id, io__state, io__state).
-:- mode unify_proc__write_unify_proc_id(in, di, uo) is det.
-
-unify_proc__write_unify_proc_id(TypeId - UniMode) -->
-	io__write_string("unification procedure for type `"),
-	hlds_out__write_type_id(TypeId),
-	io__write_string("' with initial insts `"),
-	{ UniMode = ((InstA - InstB) -> _FinalInst) },
-	{ varset__init(InstVarSet) },
-	mercury_output_inst(InstA, InstVarSet),
-	io__write_string("', `"),
-	mercury_output_inst(InstB, InstVarSet),
-	io__write_string("'").
-
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, ModuleInfo,
 				ClauseInfo) :-

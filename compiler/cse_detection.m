@@ -50,12 +50,7 @@ detect_cse_in_preds([], ModuleInfo, ModuleInfo) --> [].
 detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
-	( { pred_info_is_imported(PredInfo) } ->
-		{ ModuleInfo1 = ModuleInfo0 }
-	;
-		detect_cse_in_pred(PredId, PredInfo,
-			ModuleInfo0, ModuleInfo1)
-	),
+	detect_cse_in_pred(PredId, PredInfo, ModuleInfo0, ModuleInfo1),
 	detect_cse_in_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred detect_cse_in_pred(pred_id, pred_info, module_info, module_info,
@@ -63,7 +58,7 @@ detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 :- mode detect_cse_in_pred(in, in, di, uo, di, uo) is det.
 
 detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
-	{ pred_info_procids(PredInfo0, ProcIds) },
+	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
 	detect_cse_in_procs(ProcIds, PredId, no, Redo,
 		ModuleInfo0, ModuleInfo1),
 	(

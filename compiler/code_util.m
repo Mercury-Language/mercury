@@ -83,7 +83,11 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
-		pred_info_is_exported(PredInfo)
+		( pred_info_is_exported(PredInfo)
+		; pred_info_is_pseudo_exported(PredInfo),
+		  % only the (in, in) mode of a unification is exported
+		  ProcId = 0
+		)
 	->
 		Label = exported(ProcLabel)
 	;

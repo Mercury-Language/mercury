@@ -87,8 +87,8 @@ a local variable, then report the error [this idea not yet implemented].
 :- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
 
 :- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
-				proc_info, int, io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
+			module_info, proc_info, int, io__state, io__state).
+:- mode modecheck_proc(in, in, in, in, out, out, out, di, uo) is det.
 
 	% inst_merge should probably be moved to mode_util
 :- pred inst_merge(inst, inst, module_info, inst, module_info).
@@ -152,6 +152,8 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
 		{ ModuleInfo3 = ModuleInfo0 }
+	; { pred_info_is_pseudo_imported(PredInfo0) } ->
+		{ ModuleInfo3 = ModuleInfo0 }
 	;
 		write_progress_message("% Mode-checking predicate ",
 			PredId, ModuleInfo0),
@@ -173,57 +175,64 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 %-----------------------------------------------------------------------------%
 
 modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, Errs) -->
-	modecheck_procs(PredId, ModuleInfo0, PredInfo0, PredInfo, Errs),
-	{ module_info_preds(ModuleInfo0, Preds0) },
+	modecheck_procs(PredId, ModuleInfo0, PredInfo0, ModuleInfo1,
+			PredInfo, Errs),
+	{ module_info_preds(ModuleInfo1, Preds0) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
-	{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) }.
+	{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_procs(pred_id, module_info, pred_info, pred_info, int,
-			io__state, io__state).
-:- mode modecheck_procs(in, in, in, out, out, di, uo) is det.
+:- pred modecheck_procs(pred_id, module_info, pred_info, module_info,
+			pred_info, int, io__state, io__state).
+:- mode modecheck_procs(in, in, in, out, out, out, di, uo) is det.
 
-modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
+modecheck_procs(PredId, ModuleInfo0, PredInfo0,
+			ModuleInfo, PredInfo, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
 	( { ProcIds = [] } ->
-		report_warning_no_modes(PredId, PredInfo0, ModuleInfo),
+		report_warning_no_modes(PredId, PredInfo0, ModuleInfo0),
+		{ ModuleInfo = ModuleInfo0 },
 		{ PredInfo = PredInfo0 },
 		{ NumErrors = 0 }
 	;
-		modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs0, 0,
-					Procs, NumErrors),
+		modecheck_procs_2(ProcIds, PredId, ModuleInfo0, Procs0, 0,
+					ModuleInfo, Procs, NumErrors),
 		{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }
 	).
 
 	% Iterate over the list of modes for a predicate.
 
-:- pred modecheck_procs_2(list(proc_id), pred_id, module_info,
-		proc_table, int, proc_table, int, io__state, io__state).
-:- mode modecheck_procs_2(in, in, in, in, in, out, out, di, uo) is det.
+:- pred modecheck_procs_2(list(proc_id), pred_id,
+				module_info, proc_table, int,
+				module_info, proc_table, int,
+				io__state, io__state).
+:- mode modecheck_procs_2(in, in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_procs_2([], _PredId, _ModuleInfo, Procs, Errs, Procs, Errs) --> [].
-modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo, Procs0, Errs0,
-					Procs, Errs) -->
+modecheck_procs_2([], _PredId,  ModuleInfo, Procs, Errs,
+				ModuleInfo, Procs, Errs) --> [].
+modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo0, Procs0, Errs0,
+					ModuleInfo, Procs, Errs) -->
 		% lookup the proc_info
 	{ map__lookup(Procs0, ProcId, ProcInfo0) },
 		% mode-check that mode of the predicate
-	modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0,
-			ProcInfo, NumErrors),
+	modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
+			ModuleInfo1, ProcInfo, NumErrors),
 	{ Errs1 is Errs0 + NumErrors },
 		% save the proc_info
 	{ map__set(Procs0, ProcId, ProcInfo, Procs1) },
 		% recursively process the remaining modes
-	modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs1, Errs1,
-				Procs, Errs).
+	modecheck_procs_2(ProcIds, PredId, ModuleInfo1, Procs1, Errs1,
+				ModuleInfo, Procs, Errs).
 
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for predicate in a given mode.
 
-modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
-			IOState0, IOState) :-
+modecheck_proc(ProcId, PredId, ModuleInfo0, ProcInfo0,
+				ModuleInfo, ProcInfo, NumErrors,
+				IOState0, IOState) :-
 		% extract the useful fields in the proc_info
 	proc_info_goal(ProcInfo0, Body0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
@@ -232,7 +241,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% We use the context of the first clause, unless
 		% there weren't any clauses at all, in which case
 		% we use the context of the mode declaration.
-	module_info_preds(ModuleInfo, Preds),
+	module_info_preds(ModuleInfo0, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	ClausesInfo = clauses_info(_, _, _, ClauseList),
@@ -245,7 +254,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% extract the predicate's type from the pred_info
 		% and propagate the type information into the modes
 	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo, ArgModes0,
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
 			ArgModes),
 **************/
 	ArgModes = ArgModes0,
@@ -253,17 +262,18 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% of the head arguments, mode-check the body, and
 		% then check that the final instantiation matches that in
 		% the mode declaration
-	mode_list_get_initial_insts(ArgModes, ModuleInfo, ArgInitialInsts),
+	mode_list_get_initial_insts(ArgModes, ModuleInfo0, ArgInitialInsts),
 	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
 	InstMap0 = reachable(InstMapping0),
 		% initially, only the head variables are live
 	set__list_to_set(HeadVars, LiveVars),
 	proc_info_set_liveness_info(ProcInfo0, LiveVars, ProcInfo1),
-	mode_info_init(IOState0, ModuleInfo, PredId, ProcId, Context, LiveVars,
+	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context, LiveVars,
 			InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
 	modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo2),
 	modecheck_report_errors(ModeInfo2, ModeInfo),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
 	mode_info_get_varset(ModeInfo, VarSet),
@@ -1524,7 +1534,15 @@ modecheck_unification(X, var(Y), _Unification0, X, var(Y),
 	->
 		Inst = UnifyInst,
 		Det = Det1,
-		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1)
+		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
+		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo3),
+		ModeX = (InstX -> Inst),
+		ModeY = (InstY -> Inst),
+		Modes = ModeX - ModeY,
+		mode_info_get_var_types(ModeInfo3, VarTypes),
+		categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y,
+			Det, VarTypes, ModeInfo3, Unification, ModeInfo)
 	;
 		set__list_to_set([X, Y], WaitingVars),
 		mode_info_error(WaitingVars, 
@@ -1532,17 +1550,19 @@ modecheck_unification(X, var(Y), _Unification0, X, var(Y),
 					ModeInfo0, ModeInfo1),
 			% If we get an error, set the inst to not_reached
 			% to suppress follow-on errors
+			% But don't call categorize_unification, because
+			% that could cause an invalid call to
+			% `unify_proc__request_unify'
 		Inst = not_reached,
-		Det = det
-	),
-	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-	modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo3),
-	ModeX = (InstX -> Inst),
-	ModeY = (InstY -> Inst),
-	Modes = ModeX - ModeY,
-	mode_info_get_var_types(ModeInfo3, VarTypes),
-	categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y,
-			Det, VarTypes, ModeInfo3, Unification, ModeInfo).
+		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+		modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo),
+			% return any old garbage
+		Det = det,
+		Unification = assign(X, Y),
+		ModeX = (InstX -> Inst),
+		ModeY = (InstY -> Inst),
+		Modes = ModeX - ModeY
+	).
 
 modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 			X, functor(Name, ArgVars),
@@ -1570,13 +1590,57 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 							InstX, InstArgs),
 			ModeInfo0, ModeInfo1
 		),
-		Inst = not_reached
+		Inst = not_reached,
+			% If we get an error, set the inst to not_reached
+			% to avoid cascading errors
+			% But don't call categorize_unification, because
+			% that could cause an invalid call to
+			% `unify_proc__request_unify'
+		ModeX = (InstX -> Inst),
+		ModeY = (InstY -> Inst),
+		Mode = ModeX - ModeY,
+		( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
+			ModeArgs = ModeArgs0
+		;
+			error("get_mode_of_args failed")
+		),
+		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+		( bind_args(Inst, ArgVars0, ModeInfo2, ModeInfo3) ->
+			ModeInfo = ModeInfo3
+		;
+			error("bind_args failed")
+		),
+			% return any old garbage
+		Unification = Unification0,
+		ArgVars = ArgVars0,
+		ExtraGoals = [] - []
 	;
 		abstractly_unify_inst_functor(LiveX, InstX, Name,
 			InstArgs, LiveArgs, ModuleInfo0, UnifyInst, ModuleInfo1)
 	->
 		Inst = UnifyInst,
-		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1)
+		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
+		ModeX = (InstX -> Inst),
+		ModeY = (InstY -> Inst),
+		Mode = ModeX - ModeY,
+		( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
+			ModeArgs = ModeArgs0
+		;
+			error("get_mode_of_args failed")
+		),
+		mode_info_get_var_types(ModeInfo1, VarTypes),
+		categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
+				VarTypes, Unification0, ModeInfo1,
+				Unification1, ModeInfo2),
+		split_complicated_subunifies(Unification1, ArgVars0,
+				Unification, ArgVars, ExtraGoals,
+				ModeInfo2, ModeInfo3),
+		modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
+		( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
+			ModeInfo = ModeInfo5
+		;
+			error("bind_args failed")
+		)
 	;
 		set__list_to_set([X | ArgVars0], WaitingVars), % conservative
 		mode_info_error(WaitingVars,
@@ -1586,27 +1650,28 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 		),
 			% If we get an error, set the inst to not_reached
 			% to avoid cascading errors
-		Inst = not_reached
-	),
-	ModeX = (InstX -> Inst),
-	ModeY = (InstY -> Inst),
-	Mode = ModeX - ModeY,
-	( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
-		ModeArgs = ModeArgs0
-	;
-		error("get_mode_of_args failed")
-	),
-	mode_info_get_var_types(ModeInfo1, VarTypes),
-	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
-			VarTypes, Unification0, ModeInfo1,
-			Unification1, ModeInfo2),
-	split_complicated_subunifies(Unification1, ArgVars0,
-			Unification, ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
-	modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
-	( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
-		ModeInfo = ModeInfo5
-	;
-		error("bind_args failed")
+			% But don't call categorize_unification, because
+			% that could cause an invalid call to
+			% `unify_proc__request_unify'
+		Inst = not_reached,
+		ModeX = (InstX -> Inst),
+		ModeY = (InstY -> Inst),
+		Mode = ModeX - ModeY,
+		( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
+			ModeArgs = ModeArgs0
+		;
+			error("get_mode_of_args failed")
+		),
+		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
+		( bind_args(Inst, ArgVars0, ModeInfo2, ModeInfo3) ->
+			ModeInfo = ModeInfo3
+		;
+			error("bind_args failed")
+		),
+			% return any old garbage
+		Unification = Unification0,
+		ArgVars = ArgVars0,
+		ExtraGoals = [] - []
 	).
 
 modecheck_unification(_, lambda_goal(_Vars, _Goal), _, _, _, _, _, _, _, _) :-
@@ -1686,22 +1751,24 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		ModeVar0 = (InitialInstY -> FinalInstY),
 		ModeVar = (InitialInstX -> FinalInstX),
 
-		/* XXX temporary hack alert XXX */
-		Det = semidet,	% warning - it might be det in some cases
-/********
+		mode_info_get_module_info(ModeInfo3, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, InitialInstX, InitialInstY,
 				ModuleInfo0, _, Det1, ModuleInfo1)
 		->
-			ModuleInfo = ModuleInfo1,
+			mode_info_set_module_info(ModeInfo3, ModuleInfo1,
+				ModeInfo4),
 			Det = Det1
 		;
-			error("abstractly_unify_inst failed")
+			ModeInfo4 = ModeInfo3,
+			Det = semidet
+			% XXX warning - it might be det in some cases.
+			% should we report an error here?  should this
+			% ever happen?
 		),
-*********/
 		categorize_unify_var_var(ModeVar0, ModeVar,
 			live, dead, Var0, Var, Det,
-			VarTypes, ModeInfo3, Unification, ModeInfo),
+			VarTypes, ModeInfo4, Unification, ModeInfo),
 		mode_info_get_mode_context(ModeInfo, ModeContext),
 		mode_context_to_unify_context(ModeContext,
 			UnifyContext),
@@ -2313,12 +2380,8 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 			;
 				type_to_type_id(Type, TypeId, _)
 			->
-				module_info_get_unify_requests(ModuleInfo0,
-					UnifyRequests0),
 				unify_proc__request_unify(TypeId - UniMode, 
-					UnifyRequests0, UnifyRequests),
-				module_info_set_unify_requests(ModuleInfo0,
-					UnifyRequests, ModuleInfo),
+					ModuleInfo0, ModuleInfo),
 				mode_info_set_module_info(ModeInfo0, ModuleInfo,
 					ModeInfo)
 			;

@@ -49,7 +49,6 @@
 
 prof__main([], []) --> [].
 prof__main([P0|Ps0], [P|Ps]) -->
-	io__write_string("In prof__main\n"),
 	prof__proc(P0, P),
 	prof__main(Ps0, Ps).
 

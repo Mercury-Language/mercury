@@ -133,7 +133,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
-	pred_info_proc_ids(PredInfo0, ProcIds),
+	pred_info_procids(PredInfo0, ProcIds),
 	( ProcIds = [ProcId|_] ->
 		map__lookup(ProcTable0, ProcId, ProcInfo),
 		proc_info_vartypes(ProcInfo, VarTypes),
@@ -283,6 +283,10 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			;
 				error("polymorphism.m: can't find `unify/2'")
 			},
+			% XXX Bug! - we should check that the mode is (in, in),
+			%     and report an error (e.g. "unification of
+			%     polymorphicly typed variables in partially
+			%     instantiated mode") if it isn't
 			{ ProcId = 0 },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoVar) },
 			{ SymName = unqualified("unify") },
@@ -303,29 +307,8 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 				SpecialPredMap) },
 			{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
 
-			% We handle (in, in) unifications specially - they
-			% are always mode zero
-			{ UniMode = (XInitial - YInitial -> _Final) },
-			(
-				{ inst_is_ground(ModuleInfo, XInitial) },
-				{ inst_is_ground(ModuleInfo, YInitial) }
-			->
-				{ ProcId = 0 }
-			;
-				{ XInitial = not_reached }
-			->
-				{ ProcId = 0 }
-			;
-				{ YInitial = not_reached }
-			->
-				{ ProcId = 0 }
-			;
-				{ module_info_get_unify_requests(ModuleInfo,
-					UnifyRequests) },
-				{ unify_proc__lookup_num(UnifyRequests,
-					TypeId, UniMode, ProcId) }
-			),
-
+			{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
+				UniMode, ProcId) },
 			{ SymName = unqualified("__Unify__") },
 			{ ArgVars = [XVar, YVar] },
 			{ is_builtin__make_builtin(no, no, Builtin) },
@@ -686,7 +669,7 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 			["builtin_", SpecialName, "_", CategoryName], PredName),
 		polymorphism__get_pred_id(PredName, Arity, ModuleInfo, PredId)
 	),
-	polymorphism__get_proc_id(PredId, ModuleInfo, ProcId),
+	ProcId = 0,	% always use the first mode of a special predicate
 	ConsId = address_const(PredId, ProcId).
 
 :- pred polymorphism__get_category_name(builtin_type, string).
@@ -717,23 +700,6 @@ polymorphism__get_pred_id(Name, Arity, ModuleInfo, PredId) :-
 		PredId = PredId1
 	;
 		error("polymorphism__get_pred_id: pred_id lookup failed")
-	).
-
-:- pred polymorphism__get_proc_id(pred_id, module_info, proc_id).
-:- mode polymorphism__get_proc_id(in, in, out) is det.
-
-polymorphism__get_proc_id(PredId, ModuleInfo, ProcId) :-
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	predicate_table_get_preds(PredicateTable, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, Procs),
-	map__keys(Procs, ProcIds),
-	( ProcIds = [SingleProcId] ->
-		ProcId = SingleProcId
-	;
-		% builtin special predicates shouldn't have
-		% multiple modes
-		error("polymorphism__get_proc: proc_id lookup failed")
 	).
 
 
