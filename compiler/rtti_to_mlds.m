@@ -1096,9 +1096,17 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
 	% which unboxes the arguments if necessary.
 	%
 	( univ_to_type(RttiProcIdUniv, RttiProcId) ->
-		NumExtra = 0,
-		gen_wrapper_func_and_initializer(ModuleInfo, NumExtra,
+		( RttiProcId ^ arity = 0 ->
+			% If there are no arguments, then there's no unboxing
+			% to do, so we don't need a wrapper.
+			% (This case can occur with --no-special-preds, where
+			% the procedure will be private_builtin.unused/0.)
+			Init = gen_init_proc_id(ModuleInfo, RttiProcId)
+		;
+			NumExtra = 0,
+			gen_wrapper_func_and_initializer(ModuleInfo, NumExtra,
 				RttiProcId, special_pred, Init, !ExtraDefns)
+		)
 	;
 		error("gen_init_special_pred: cannot extract univ value")
 	).
@@ -1173,6 +1181,8 @@ gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Init :-
 		error("gen_init_proc_id_from_univ: cannot extract univ value")
 	).
 
+	% Succeed iff the specified rtti_data is one that requires an
+	% explicit mlds__defn to define it.
 :- pred real_rtti_data(rtti_data::in) is semidet.
 
 real_rtti_data(RttiData) :-
