@@ -85,7 +85,7 @@ MR_trace_help_add_node(Word path, const char *name, int slot, const char *text)
 		name_on_heap, text_on_heap, &result, &MR_trace_help_system);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-				MR_trace_help_system_type);
+				(Word *) MR_trace_help_system_type);
 
 	if (ML_HELP_result_is_error(result, &msg)) {
 		return msg;
@@ -153,17 +153,17 @@ MR_trace_help_ensure_init(void)
 		ML_HELP_help_system_type(&MR_trace_help_system_type);
 		MR_trace_help_system = MR_make_permanent(
 					MR_trace_help_system_type,
-					typeinfo_type);
+					(Word *) typeinfo_type);
 
 		ML_HELP_init(&MR_trace_help_system);
 
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-					MR_trace_help_system_type);
+					(Word *) MR_trace_help_system_type);
 
 		ML_io_output_stream_type(&output_stream_type);
 		ML_io_stdout_stream(&MR_trace_help_stdout);
 		MR_trace_help_stdout = MR_make_permanent(MR_trace_help_stdout,
-					output_stream_type);
+					(Word *) output_stream_type);
 
 		done = TRUE;
 	}
