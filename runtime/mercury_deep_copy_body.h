@@ -34,9 +34,10 @@ MR_Word
 copy(maybeconst MR_Word *data_ptr, MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
-    MR_Word                data;
-    MR_Word                new_data;
+    MR_Word             data;
+    MR_Word             new_data;
     MR_TypeCtorInfo     type_ctor_info;
+    MR_DuTypeLayout     du_type_layout;
 
     data = *data_ptr;
 
@@ -50,15 +51,62 @@ try_again:
         new_data = data;    /* just a copy of the actual item */
         break;
 
+    case MR_TYPECTOR_REP_RESERVED_ADDR:
+    case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+	{
+	    int j;
+	    MR_ReservedAddrTypeLayout ra_layout =
+		    	type_ctor_info->type_layout.layout_reserved_addr;
+
+	    /*
+	    ** First check if this value is one of
+	    ** the numeric reserved addresses.
+	    */
+	    if ((MR_Unsigned) data <
+		(MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+	    {
+		new_data = data;
+		break;
+	    }
+
+	    /*
+	    ** Next check if this value is one of the
+	    ** the symbolic reserved addresses.
+	    */
+	    for (j = 0; j < ra_layout->MR_ra_num_res_symbolic_addrs; j++) {
+	        if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[j]) {
+		   new_data = data;
+		   /* "break" here would just exit the "for" loop */
+		   return new_data;
+		}
+	    }
+		
+	    /*
+	    ** Otherwise, it is not one of the reserved addresses,
+	    ** so handle it like a normal DU type.
+	    */
+	    du_type_layout = ra_layout->MR_ra_other_functors;
+	    goto du_type;
+	}
+
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
+    	du_type_layout = type_ctor_info->type_layout.layout_du;
+	/* fallthru */
+
+    /*
+    ** This label handles both the DU case and the second half of the
+    ** RESERVED_ADDR case.  `du_type_layout' must be set before
+    ** this code is entered.
+    */
+    du_type:
         {
-            MR_DuPtagLayout     *ptag_layout;
-            int                 ptag;
-            MR_Word                *data_value;
+            MR_Word             *data_value;
+	    MR_DuPtagLayout     *ptag_layout;
+	    int                 ptag;
 
             ptag = MR_tag(data);
-            ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
+            ptag_layout = &du_type_layout[ptag];
 
             switch (ptag_layout->MR_sectag_locn) {
             case MR_SECTAG_LOCAL:

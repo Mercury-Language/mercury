@@ -56,6 +56,7 @@
 :- type type_ctor_rep
 	--->	enum(equality_axioms)
 	;	du(equality_axioms)
+	;	reserved_addr(equality_axioms)
 	;	notag(equality_axioms, equiv_type_inst)
 	;	equiv(equiv_type_inst)
 	;	unknown.
@@ -72,6 +73,9 @@
 			rtti_name
 		)
 	;	du_layout(
+			rtti_name
+		)
+	;	reserved_addr_layout(
 			rtti_name
 		)
 	;	equiv_layout(
@@ -175,6 +179,26 @@
 						% (as pseudo_type_info
 						% rtti_data)
 		)
+	;	reserved_addrs(
+			rtti_type_id,		% identifies the type
+
+			% The remaining argument of this function symbol
+			% corresponds to an array of const void *.
+
+			list(reserved_address)	% gives the values of the
+						% reserved addresses for that
+						% type
+		)
+	;	reserved_addr_functors(
+			rtti_type_id,		% identifies the type
+
+			% The remaining argument of this function symbol
+			% corresponds to an array of MR_ReservedAddrFunctorDesc
+
+			list(rtti_name)		% gives the functor descriptors
+						% for the reserved_addr
+						% functors for that type
+		)
 	;	enum_functor_desc(
 			rtti_type_id,		% identifies the type
 
@@ -235,6 +259,17 @@
 						% type variables, if any
 						% (an exist_info rtti_name)
 		)
+	;	reserved_addr_functor_desc(
+			rtti_type_id,		% identifies the type
+
+			% The remaining arguments of this function symbol
+			% correspond one-to-one to the fields of
+			% MR_ReservedAddrFunctorDesc.
+
+			string,			% functor name
+			int,			% ordinal number of functor
+			reserved_address	% value
+		)
 	;	enum_name_ordered_table(
 			rtti_type_id,		% identifies the type
 
@@ -251,6 +286,21 @@
 			% corresponds to the MR_EnumTypeLayout C type.
 
 			list(rtti_name)
+		)	
+	;	reserved_addr_table(
+			rtti_type_id,		% identifies the type
+
+			% The remaining argument of this function symbol
+			% corresponds to the functors_du alternative of
+			% the MR_ReservedAddrTypeDesc C type.
+			int,		% number of reserved numeric addresses
+			int,		% number of reserved symbolic addresses
+			rtti_name,	% the values of the reserved addresses
+			rtti_name,	% the reserved_addr_functor_descs
+					% for all the constants that are
+					% represented as reserved addresses
+			rtti_name	% the du_ptag_ordered_table for
+					% the remaining functors
 		)	
 	;	du_name_ordered_table(
 			rtti_type_id,		% identifies the type
@@ -316,14 +366,18 @@
 	;	exist_info(int)			% functor ordinal
 	;	field_names(int)		% functor ordinal
 	;	field_types(int)		% functor ordinal
+	;	reserved_addrs
+	;	reserved_addr_functors
 	;	enum_functor_desc(int)		% functor ordinal
 	;	notag_functor_desc
 	;	du_functor_desc(int)		% functor ordinal
+	;	reserved_addr_functor_desc(int)	% functor ordinal
 	;	enum_name_ordered_table
 	;	enum_value_ordered_table
 	;	du_name_ordered_table
 	;	du_stag_ordered_table(int)	% primary tag
 	;	du_ptag_ordered_table
+	;	reserved_addr_table
 	;	type_ctor_info
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
@@ -451,12 +505,18 @@ rtti_data_to_name(field_names(RttiTypeId, Ordinal, _),
 	RttiTypeId, field_names(Ordinal)).
 rtti_data_to_name(field_types(RttiTypeId, Ordinal, _),
 	RttiTypeId, field_types(Ordinal)).
+rtti_data_to_name(reserved_addrs(RttiTypeId, _),
+	RttiTypeId, reserved_addrs).
+rtti_data_to_name(reserved_addr_functors(RttiTypeId, _),
+	RttiTypeId, reserved_addr_functors).
 rtti_data_to_name(enum_functor_desc(RttiTypeId, _, Ordinal),
 	RttiTypeId, enum_functor_desc(Ordinal)).
 rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _, _),
 	RttiTypeId, notag_functor_desc).
 rtti_data_to_name(du_functor_desc(RttiTypeId, _,_,_,_, Ordinal, _,_,_,_,_),
 	RttiTypeId, du_functor_desc(Ordinal)).
+rtti_data_to_name(reserved_addr_functor_desc(RttiTypeId, _, Ordinal, _),
+	RttiTypeId, reserved_addr_functor_desc(Ordinal)).
 rtti_data_to_name(enum_name_ordered_table(RttiTypeId, _),
 	RttiTypeId, enum_name_ordered_table).
 rtti_data_to_name(enum_value_ordered_table(RttiTypeId, _),
@@ -467,6 +527,8 @@ rtti_data_to_name(du_stag_ordered_table(RttiTypeId, Ptag, _),
 	RttiTypeId, du_stag_ordered_table(Ptag)).
 rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
+rtti_data_to_name(reserved_addr_table(RttiTypeId, _, _, _, _, _),
+	RttiTypeId, reserved_addr_table).
 rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
 rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
@@ -488,14 +550,18 @@ rtti_name_has_array_type(exist_locns(_))		= yes.
 rtti_name_has_array_type(exist_info(_))			= no.
 rtti_name_has_array_type(field_names(_))		= yes.
 rtti_name_has_array_type(field_types(_))		= yes.
+rtti_name_has_array_type(reserved_addrs)		= yes.
+rtti_name_has_array_type(reserved_addr_functors)	= yes.
 rtti_name_has_array_type(enum_functor_desc(_))		= no.
 rtti_name_has_array_type(notag_functor_desc)		= no.
 rtti_name_has_array_type(du_functor_desc(_))		= no.
+rtti_name_has_array_type(reserved_addr_functor_desc(_))	= no.
 rtti_name_has_array_type(enum_name_ordered_table)	= yes.
 rtti_name_has_array_type(enum_value_ordered_table)	= yes.
 rtti_name_has_array_type(du_name_ordered_table)		= yes.
 rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
 rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
+rtti_name_has_array_type(reserved_addr_table)		= no.
 rtti_name_has_array_type(type_ctor_info)		= no.
 rtti_name_has_array_type(pseudo_type_info(_))		= no.
 rtti_name_has_array_type(base_typeclass_info(_, _, _))	= yes.
@@ -505,14 +571,18 @@ rtti_name_is_exported(exist_locns(_))		= no.
 rtti_name_is_exported(exist_info(_))            = no.
 rtti_name_is_exported(field_names(_))           = no.
 rtti_name_is_exported(field_types(_))           = no.
+rtti_name_is_exported(reserved_addrs)           = no.
+rtti_name_is_exported(reserved_addr_functors)   = no.
 rtti_name_is_exported(enum_functor_desc(_))     = no.
 rtti_name_is_exported(notag_functor_desc)       = no.
 rtti_name_is_exported(du_functor_desc(_))       = no.
+rtti_name_is_exported(reserved_addr_functor_desc(_)) = no.
 rtti_name_is_exported(enum_name_ordered_table)  = no.
 rtti_name_is_exported(enum_value_ordered_table) = no.
 rtti_name_is_exported(du_name_ordered_table)    = no.
 rtti_name_is_exported(du_stag_ordered_table(_)) = no.
 rtti_name_is_exported(du_ptag_ordered_table)    = no.
+rtti_name_is_exported(reserved_addr_table)      = no.
 rtti_name_is_exported(type_ctor_info)           = yes.
 rtti_name_is_exported(pseudo_type_info(Pseudo)) =
 	pseudo_type_info_is_exported(Pseudo).
@@ -576,6 +646,14 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		string__append_list([ModuleName, "__field_types_",
 			TypeName, "_", A_str, "_", O_str], Str)
 	;
+		RttiName = reserved_addrs,
+		string__append_list([ModuleName, "__reserved_addrs_",
+			TypeName, "_", A_str], Str)
+	;
+		RttiName = reserved_addr_functors,
+		string__append_list([ModuleName, "__reserved_addr_functors_",
+			TypeName, "_", A_str], Str)
+	;
 		RttiName = enum_functor_desc(Ordinal),
 		string__int_to_string(Ordinal, O_str),
 		string__append_list([ModuleName, "__enum_functor_desc_",
@@ -588,6 +666,11 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		RttiName = du_functor_desc(Ordinal),
 		string__int_to_string(Ordinal, O_str),
 		string__append_list([ModuleName, "__du_functor_desc_",
+			TypeName, "_", A_str, "_", O_str], Str)
+	;
+		RttiName = reserved_addr_functor_desc(Ordinal),
+		string__int_to_string(Ordinal, O_str),
+		string__append_list([ModuleName, "__reserved_addr_functor_desc_",
 			TypeName, "_", A_str, "_", O_str], Str)
 	;
 		RttiName = enum_name_ordered_table,
@@ -609,6 +692,10 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 	;
 		RttiName = du_ptag_ordered_table,
 		string__append_list([ModuleName, "__du_ptag_ordered_",
+			TypeName, "_", A_str], Str)
+	;
+		RttiName = reserved_addr_table,
+		string__append_list([ModuleName, "__reserved_addr_table_",
 			TypeName, "_", A_str], Str)
 	;
 		RttiName = type_ctor_info,
@@ -708,6 +795,10 @@ rtti__type_ctor_rep_to_string(du(standard),
 	"MR_TYPECTOR_REP_DU").
 rtti__type_ctor_rep_to_string(du(user_defined),
 	"MR_TYPECTOR_REP_DU_USEREQ").
+rtti__type_ctor_rep_to_string(reserved_addr(standard),
+	"MR_TYPECTOR_REP_RESERVED_ADDR").
+rtti__type_ctor_rep_to_string(reserved_addr(user_defined),
+	"MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ").
 rtti__type_ctor_rep_to_string(enum(standard),
 	"MR_TYPECTOR_REP_ENUM").
 rtti__type_ctor_rep_to_string(enum(user_defined),

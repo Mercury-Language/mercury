@@ -81,6 +81,10 @@ start_label:
                 layout_notag->MR_notag_functor_arg_type;
             goto start_label;
 
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+            MR_fatal_error("sorry, not implemented: "
+		    	"MR_COMPARE_BY_RTTI for RESERVED_ADDR");
+
         case MR_TYPECTOR_REP_DU:
             {
                 const MR_DuFunctorDesc  *functor_desc;
@@ -291,12 +295,14 @@ start_label:
         case MR_TYPECTOR_REP_EQUIV_VAR:
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
         case MR_TYPECTOR_REP_DU:
             /* fall through */
 
 #endif
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:

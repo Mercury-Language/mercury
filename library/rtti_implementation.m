@@ -108,6 +108,8 @@
 	;	notag_ground_usereq
 	;	equiv_ground
 	;	tuple
+	;	reserved_addr
+	;	reserved_addr_usereq
 	;	unknown.
 
 
@@ -533,7 +535,7 @@ iterate_foldl(Start, Max, Pred) -->
 %-----------------------------------------------------------------------------%
 
 
-	% Code to perform deconstructions (not yet complete).
+	% Code to perform deconstructions (XXX not yet complete).
 	%
 	% There are many cases to implement here, only the ones that were
 	% immediately useful (e.g. called by io__write) have been implemented
@@ -731,6 +733,16 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 	;
 		TypeCtorRep = ticket,
 		Functor = "some_ticket", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = reserved_addr,
+		Functor = "some_reserved_addr", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = reserved_addr_usereq,
+		Functor = "some_reserved_addr_usereq", 
 		Arity = 0,
 		Arguments = []
 	;

@@ -168,6 +168,8 @@ typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtr;
 typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtr;
 typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr;
 typedef MR_Box				MR_BaseTypeclassInfo;
+typedef const void * const *		MR_ReservedAddrs;
+typedef const MR_ReservedAddrFunctorDesc *MR_ReservedAddrFunctors;
 
 
 /*

@@ -154,6 +154,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ_val		28
 #define MR_TYPECTOR_REP_EQUIV_GROUND_val		29
 #define MR_TYPECTOR_REP_TUPLE_val			30
+#define MR_TYPECTOR_REP_RESERVED_ADDR_val		31
+#define MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ_val	32
 
 // XXX we should integrate this macro in with the version in 
 // mercury_typeinfo.h

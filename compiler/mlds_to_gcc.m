@@ -1899,6 +1899,11 @@ build_rtti_type(field_names(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_ConstString', Size, GCC_Type).
 build_rtti_type(field_types(_), Size, GCC_Type) -->
 	build_sized_array_type('MR_PseudoTypeInfo', Size, GCC_Type).
+build_rtti_type(reserved_addrs, Size, GCC_Type) -->
+	build_sized_array_type(gcc__ptr_type_node, Size, GCC_Type).
+build_rtti_type(reserved_addr_functors, Size, GCC_Type) -->
+	{ MR_ReservedAddrFunctorDescPtr = gcc__ptr_type_node },
+	build_sized_array_type(MR_ReservedAddrFunctorDescPtr, Size, GCC_Type).
 build_rtti_type(enum_functor_desc(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_ConstString      MR_enum_functor_name;
@@ -1948,6 +1953,17 @@ build_rtti_type(du_functor_desc(_), _, GCC_Type) -->
 		 MR_ConstStringPtr	- "MR_du_functor_arg_names",
 		 MR_DuExistInfoPtr	- "MR_du_functor_exist_info"],
 		GCC_Type).
+build_rtti_type(reserved_addr_functor_desc(_), _, GCC_Type) -->
+	% typedef struct {
+	%     MR_ConstString      MR_ra_functor_name;
+	%     MR_int_least32_t    MR_ra_functor_ordinal;
+	%     const void *        MR_ra_functor_reserved_addr;
+	% } MR_EnumFunctorDesc;
+	build_struct_type("MR_ReservedAddrFunctorDesc",
+		['MR_ConstString'	- "MR_ra_functor_name",
+		 'MR_int_least32_t'	- "MR_ra_functor_ordinal",
+		 gcc__ptr_type_node	- "MR_ra_functor_reserved_addr"],
+		GCC_Type).
 build_rtti_type(enum_name_ordered_table, Size, GCC_Type) -->
 	{ MR_EnumFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_EnumFunctorDescPtr, Size, GCC_Type).
@@ -1972,6 +1988,21 @@ build_rtti_type(du_ptag_ordered_table, Size, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_sectag_alternatives"],
 		MR_DuPtagLayout),
 	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
+build_rtti_type(reserved_addr_table, _, GCC_Type) -->
+	% typedef struct {
+	%     MR_int_least16_t    MR_ra_num_res_numeric_addrs;
+	%     MR_int_least16_t    MR_ra_num_res_symbolic_addrs;
+	%     const void * const *MR_ra_res_symbolic_addrs;
+	%     const MR_ReservedAddrFunctorDesc * const * MR_ra_constants;
+	%     MR_DuTypeLayout     MR_ra_other_functors;  
+	% } MR_ReservedAddrTypeDesc;
+	build_struct_type("MR_ReservedAddrTypeDesc",
+		['MR_int_least16_t'	- "MR_ra_num_res_numeric_addrs",
+		 'MR_int_least16_t'	- "MR_ra_num_res_symbolic_addrs",
+		 gcc__ptr_type_node	- "MR_ra_res_symbolic_addrs",
+		 gcc__ptr_type_node	- "MR_ra_constants",
+		 gcc__ptr_type_node	- "MR_ra_other_functors"
+		], GCC_Type).
 build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	% struct MR_TypeCtorInfo_Struct {
 	%     MR_Integer          arity;

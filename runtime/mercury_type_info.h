@@ -551,6 +551,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV_GROUND),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TUPLE),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -606,7 +608,9 @@ typedef enum {
     || ((rep) == MR_TYPECTOR_REP_NOTAG)                     \
     || ((rep) == MR_TYPECTOR_REP_NOTAG_USEREQ)              \
     || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND)              \
-    || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ))
+    || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ)       \
+    || ((rep) == MR_TYPECTOR_REP_RESERVED_ADDR)             \
+    || ((rep) == MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ))
 
 /*
 ** Returns TRUE if the type_ctor_info is used to represent
@@ -781,6 +785,14 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
+typedef struct {
+    MR_ConstString      MR_ra_functor_name;
+    MR_int_least32_t    MR_ra_functor_ordinal;
+    const void 		*MR_ra_functor_reserved_addr;
+} MR_ReservedAddrFunctorDesc;
+
+/*---------------------------------------------------------------------------*/
+
 /*
 ** This type describes the function symbols that share the same primary tag.
 ** The sharers field gives their number, and thus also the size
@@ -840,6 +852,45 @@ typedef MR_NotagFunctorDesc *MR_NotagTypeLayout;
 /*---------------------------------------------------------------------------*/
 
 /*
+** This type is used to describe the representation of discriminated unions
+** where one or more constants in the discriminated union are represented
+** using reserved addresses.
+*/
+
+typedef struct {
+    /*
+    ** The number of different reserved numeric addresses.
+    ** The actual numeric addresses reserved will range from 0 (NULL)
+    ** to one less than the value of this field.
+    */
+    MR_int_least16_t    MR_ra_num_res_numeric_addrs;
+
+    /*
+    ** The number of different reserved symbolic addresses,
+    ** and their corresponding values.
+    */
+    MR_int_least16_t    MR_ra_num_res_symbolic_addrs;
+    const void * const *MR_ra_res_symbolic_addrs;
+
+    /*
+    ** The functor descriptors for any constants represented with reserved
+    ** addresses.  Those with numeric addresses precede those with
+    ** symbolic addresses.
+    */
+    const MR_ReservedAddrFunctorDesc * const * MR_ra_constants;
+
+    /*
+    ** The representation of the remaining functors in the type.
+    */
+    MR_DuTypeLayout	MR_ra_other_functors;  
+
+} MR_ReservedAddrTypeDesc;
+
+typedef MR_ReservedAddrTypeDesc *MR_ReservedAddrTypeLayout;
+
+/*---------------------------------------------------------------------------*/
+
+/*
 ** This type describes the identity of the type that an equivalence type
 ** is equivalent to, and hence its layout.
 **
@@ -873,8 +924,8 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 
 /*
 ** This type describes the layout in any kind of discriminated union
-** type: du, enum and notag. In an equivalence type, it gives the identity
-** of the equivalent-to type.
+** type: du, enum, notag, or reserved_addr.
+** In an equivalence type, it gives the identity of the equivalent-to type.
 ** 
 ** The layout_init alternative is used only for static initializers,
 ** because ANSI C89 does not allow you to say which member of a union
@@ -883,11 +934,12 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 */
 
 typedef union {
-    void                *layout_init;
-    MR_DuTypeLayout     layout_du;
-    MR_EnumTypeLayout   layout_enum;
-    MR_NotagTypeLayout  layout_notag;
-    MR_EquivLayout      layout_equiv;
+    void                	*layout_init;
+    MR_DuTypeLayout     	layout_du;
+    MR_EnumTypeLayout   	layout_enum;
+    MR_NotagTypeLayout  	layout_notag;
+    MR_ReservedAddrTypeLayout	layout_reserved_addr;
+    MR_EquivLayout      	layout_equiv;
 } MR_TypeLayout;
 
 /*---------------------------------------------------------------------------*/

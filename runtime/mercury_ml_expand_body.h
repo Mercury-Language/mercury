@@ -176,6 +176,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     EXPAND_TYPE_NAME *expand_info)
 {
     MR_TypeCtorInfo type_ctor_info;
+    MR_DuTypeLayout du_type_layout;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     expand_info->non_canonical_type = FALSE;
@@ -198,11 +199,69 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             break;
 
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+            expand_info->non_canonical_type = TRUE;
+	    /* fall through */
+
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+	    {
+		int i;
+                MR_Word data;
+		MR_ReservedAddrTypeLayout ra_layout;
+
+		ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+		data = *data_word_ptr;
+
+		/*
+		** First check if this value is one of
+		** the numeric reserved addresses.
+		*/
+		if ((MR_Unsigned) data <
+		    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+		{
+		    handle_functor_name(ra_layout->MR_ra_constants[data]->
+			    	MR_ra_functor_name);
+		    handle_zero_arity_args();
+		    break;
+		}
+
+		/*
+		** Next check if this value is one of the
+		** the symbolic reserved addresses.
+		*/
+		for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+		    if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
+			int offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
+		    	handle_functor_name(ra_layout->MR_ra_constants[offset]->
+					MR_ra_functor_name);
+		    	handle_zero_arity_args();
+		    	/* "break" here would just exit the "for" loop */
+		    	return;
+		    }
+		}
+		    
+		/*
+		** Otherwise, it is not one of the reserved addresses,
+		** so handle it like a normal DU type.
+		*/
+		du_type_layout = ra_layout->MR_ra_other_functors;
+		goto du_type;
+	    }
+
         case MR_TYPECTOR_REP_DU_USEREQ:
             expand_info->non_canonical_type = TRUE;
             /* fall through */
 
         case MR_TYPECTOR_REP_DU:
+	    du_type_layout = type_ctor_info->type_layout.layout_du;
+	    /* fall through */
+
+	/*
+	** This label handles both the DU case and the second half of the
+	** RESERVED_ADDR case.  `du_type_layout' must be set before
+	** this code is entered.
+	*/
+	du_type:
             {
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
@@ -215,7 +274,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data = *data_word_ptr;
                 ptag = MR_tag(data);
-                ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
+                ptag_layout = &du_type_layout[ptag];
 
                 switch (ptag_layout->MR_sectag_locn) {
                     case MR_SECTAG_NONE:

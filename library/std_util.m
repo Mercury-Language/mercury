@@ -1621,7 +1621,7 @@ typedef struct ML_Construct_Info_Struct {
     MR_ConstString          functor_name;
     MR_Integer              arity;
     const MR_PseudoTypeInfo *arg_pseudo_type_infos;
-    MR_ConstString          *arg_names;
+    const MR_ConstString    *arg_names;
     MR_TypeCtorRep          type_ctor_rep;
     union {
         const MR_EnumFunctorDesc  *enum_functor_desc;
@@ -1640,7 +1640,7 @@ extern  int     	    ML_get_num_functors(MR_TypeInfo type_info);
 extern	MR_Word		    ML_type_params_vector_to_list(int arity,
                             MR_TypeInfoParams type_params);
 extern	MR_Word		    ML_arg_name_vector_to_list(int arity,
-                            MR_ConstString *arg_names);
+                            const MR_ConstString *arg_names);
 extern	MR_Word		    ML_pseudo_type_info_vector_to_type_info_list(int arity,
                             MR_TypeInfoParams type_params,
                             const MR_PseudoTypeInfo *arg_pseudo_type_infos);
@@ -2218,6 +2218,8 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             Ordinal = construct_info.functor_info.
                 du_functor_desc->MR_du_functor_ordinal;
             break;
@@ -2240,6 +2242,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     MR_Word             new_data;
     ML_Construct_Info   construct_info;
     bool                success;
+    MR_DuTypeLayout	du_type_layout;
 
     type_info = (MR_TypeInfo) TypeDesc;
 
@@ -2288,6 +2291,42 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
             new_data = MR_field(MR_UNIV_TAG, MR_list_head(ArgList),
                 MR_UNIV_OFFSET_FOR_DATA);
             break;
+
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+	    /*
+	    ** First check whether the functor we want is one of the
+	    ** reserved addresses.
+	    */
+	    {
+		int i;
+		MR_ReservedAddrTypeLayout ra_layout;
+		int total_reserved_addrs;
+		const MR_ReservedAddrFunctorDesc *functor_desc;
+
+		ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+		total_reserved_addrs = ra_layout->MR_ra_num_res_numeric_addrs
+			+ ra_layout->MR_ra_num_res_symbolic_addrs;
+
+		for (i = 0; i < total_reserved_addrs; i++) {
+		    functor_desc = ra_layout->MR_ra_constants[i];
+		    if (functor_desc->MR_ra_functor_ordinal == FunctorNumber)
+		    {
+		    	new_data = (MR_Word)
+			    functor_desc->MR_ra_functor_reserved_addr;
+
+		        /* `break' here would just exit the `for' loop */
+			goto end_of_main_switch;
+		    }
+		}
+	    }
+		    
+	    /*
+	    ** Otherwise, it is not one of the reserved addresses,
+	    ** so handle it like a normal DU type.
+	    */
+
+	    /* fall through */
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
@@ -2389,6 +2428,8 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
         default:
             MR_fatal_error(""bad type_ctor_rep in std_util:construct"");
         }
+
+    end_of_main_switch:
 
         /*
         ** Create a univ.
@@ -2541,6 +2582,8 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
     switch(type_ctor_info->type_ctor_rep) {
 
+    case MR_TYPECTOR_REP_RESERVED_ADDR:
+    case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
         {
@@ -2869,7 +2912,7 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
     */
 
 MR_Word
-ML_arg_name_vector_to_list(int arity, MR_ConstString *arg_names)
+ML_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
 {
     MR_TypeInfo arg_type;
     MR_Word     arg_names_list;
@@ -2951,9 +2994,8 @@ ML_get_num_functors(MR_TypeInfo type_info)
     switch(type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-            functors = type_ctor_info->type_ctor_num_functors;
-            break;
-
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             functors = type_ctor_info->type_ctor_num_functors;
@@ -3267,6 +3309,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     const char *arg_name, int *arg_num_ptr)
 {
     MR_TypeCtorInfo             type_ctor_info;
+    MR_DuTypeLayout       	du_type_layout;
     const MR_DuPtagLayout       *ptag_layout;
     const MR_DuFunctorDesc      *functor_desc;
     const MR_NotagFunctorDesc   *notag_functor_desc;
@@ -3279,11 +3322,63 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
     switch (type_ctor_info->type_ctor_rep) {
+        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+        case MR_TYPECTOR_REP_RESERVED_ADDR:
+	    {
+		MR_ReservedAddrTypeLayout ra_layout;
+		
+	    	ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+		data = *term_ptr;
+		
+		/*
+		** First check if this value is one of
+		** the numeric reserved addresses.
+		*/
+		if ((MR_Unsigned) data <
+		    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+		{
+		    /*
+		    ** If so, it must be a constant, and constants never have
+		    ** any arguments.
+		    */
+		    return FALSE;
+		}
+
+		/*
+		** Next check if this value is one of the
+		** the symbolic reserved addresses.
+		*/
+		for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+		    if (data ==
+		    	(MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i])
+		    {
+			return FALSE;
+		    }
+		}
+		    
+		/*
+		** Otherwise, it is not one of the reserved addresses,
+		** so handle it like a normal DU type.
+		*/
+		du_type_layout = ra_layout->MR_ra_other_functors;
+		goto du_type;
+	    }
+
+
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_DU:
             data = *term_ptr;
+	    du_type_layout = type_ctor_info->type_layout.layout_du;
+	    /* fall through */
+
+	/*
+	** This label handles both the DU case and the second half of the
+	** RESERVED_ADDR case.  `du_type_layout' and `data' must both be
+	** set before this code is entered.
+	*/
+	du_type:
             ptag = MR_tag(data);
-            ptag_layout = &type_ctor_info->type_layout.layout_du[ptag];
+            ptag_layout = &du_type_layout[ptag];
 
             switch (ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_NONE:
@@ -3562,6 +3657,9 @@ get_functor_info(Univ, FunctorInfo) :-
         FunctorInfo = functor_string(String)
     ; get_enum_functor_info(Univ, Enum) ->
         FunctorInfo = functor_enum(Enum)
+    %
+    % XXX we should handle reserved_addr types here
+    %
     ; get_du_functor_info(Univ, Where, Ptag, Sectag, Args) ->
         ( Where = 0 ->
             FunctorInfo = functor_unshared(Ptag, Args)

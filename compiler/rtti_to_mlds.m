@@ -30,7 +30,7 @@
 :- func mlds_rtti_type_name(rtti_name) = string.
 
 :- implementation.
-:- import_module prog_data.
+:- import_module prog_data, hlds_data.
 :- import_module pseudo_type_info, prog_util, prog_out, type_util.
 :- import_module ml_code_util, ml_unify_gen.
 :- import_module bool, list, std_util, string, term, require.
@@ -142,6 +142,15 @@ gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
 	Init = gen_init_array(
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 		ModuleName), Types).
+gen_init_rtti_data_defn(reserved_addrs(_RttiTypeId, ReservedAddrs),
+		_ModuleName, _, Init, []) :-
+	Init = gen_init_array(gen_init_reserved_address, ReservedAddrs).
+gen_init_rtti_data_defn(reserved_addr_functors(RttiTypeId,
+			ReservedAddrFunctorDescs),
+		ModuleName, _, Init, []) :-
+	Init = gen_init_array(
+		gen_init_rtti_name(ModuleName, RttiTypeId),
+		ReservedAddrFunctorDescs).
 gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal),
 		_, _, Init, []) :-
 	Init = init_struct([
@@ -177,6 +186,13 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 			gen_init_rtti_name(ModuleName, RttiTypeId),
 			MaybeExist)
 	]).
+gen_init_rtti_data_defn(reserved_addr_functor_desc(_RttiTypeId, FunctorName, Ordinal,
+		ReservedAddress), _, _, Init, []) :-
+	Init = init_struct([
+		gen_init_string(FunctorName),
+		gen_init_int(Ordinal),
+		gen_init_reserved_address(ReservedAddress)
+	]).
 gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors),
 		ModuleName, _, Init, []) :-
 	Init = gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
@@ -193,6 +209,16 @@ gen_init_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
 		ModuleName, _, Init, []) :-
 	Init = gen_init_array(gen_init_ptag_layout_defn(ModuleName, RttiTypeId),
 		PtagLayouts).
+gen_init_rtti_data_defn(reserved_addr_table(RttiTypeId,
+		NumNumeric, NumSymbolic, ReservedAddrs, FunctorDescs, DuLayout),
+		ModuleName, _, Init, []) :-
+	Init = init_struct([
+		gen_init_int(NumNumeric),
+		gen_init_int(NumSymbolic),
+		gen_init_rtti_name(ModuleName, RttiTypeId, ReservedAddrs),
+		gen_init_rtti_name(ModuleName, RttiTypeId, FunctorDescs),
+		gen_init_rtti_name(ModuleName, RttiTypeId, DuLayout)
+	]).
 gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		CtorRep, SolverProc, InitProc, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons,
@@ -277,6 +303,9 @@ gen_init_layout_info(notag_layout(NotagLayoutInfo), ModuleName, RttiTypeId) =
 gen_init_layout_info(du_layout(DuLayoutInfo), ModuleName, RttiTypeId) =
 	gen_init_cast_rtti_name(mlds__generic_type, ModuleName, RttiTypeId,
 		DuLayoutInfo).
+gen_init_layout_info(reserved_addr_layout(RaLayoutInfo), ModuleName, RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type, ModuleName, RttiTypeId,
+		RaLayoutInfo).
 gen_init_layout_info(equiv_layout(EquivTypeInfo), ModuleName, _RttiTypeId) =
 	gen_init_cast_rtti_data(mlds__generic_type, ModuleName,
 		EquivTypeInfo).
@@ -604,20 +633,32 @@ gen_init_int(Int) = init_obj(const(int_const(Int))).
 gen_init_boxed_int(Int) =
 	init_obj(unop(box(mlds__native_int_type), const(int_const(Int)))).
 
+:- func gen_init_reserved_address(reserved_address) = mlds__initializer.
+	/* XXX using `mlds__generic_type' here is probably wrong */
+gen_init_reserved_address(ReservedAddress) =
+	init_obj(ml_gen_reserved_address(ReservedAddress, mlds__generic_type)).
+
 %-----------------------------------------------------------------------------%
+
+% the type names mentioned here should be defined in runtime/mercury.h
+% (or in some header file that is included by that one)
 
 mlds_rtti_type_name(exist_locns(_)) =		"DuExistLocn".
 mlds_rtti_type_name(exist_info(_)) =		"DuExistInfo".
 mlds_rtti_type_name(field_names(_)) =		"ConstString".
 mlds_rtti_type_name(field_types(_)) =		"PseudoTypeInfo".
+mlds_rtti_type_name(reserved_addrs) =		"ReservedAddrs".
+mlds_rtti_type_name(reserved_addr_functors) =	"ReservedAddrFunctors".
 mlds_rtti_type_name(enum_functor_desc(_)) =	"EnumFunctorDesc".
 mlds_rtti_type_name(notag_functor_desc) =	"NotagFunctorDesc".
 mlds_rtti_type_name(du_functor_desc(_)) =	"DuFunctorDesc".
+mlds_rtti_type_name(reserved_addr_functor_desc(_)) = "ReservedAddrFunctorDesc".
 mlds_rtti_type_name(enum_name_ordered_table) =	"EnumFunctorDescPtr".
 mlds_rtti_type_name(enum_value_ordered_table) =	"EnumFunctorDescPtr".
 mlds_rtti_type_name(du_name_ordered_table) =	"DuFunctorDescPtr".
 mlds_rtti_type_name(du_stag_ordered_table(_)) =	"DuFunctorDescPtr".
 mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayout".
+mlds_rtti_type_name(reserved_addr_table) =	"ReservedAddrTypeDesc".
 mlds_rtti_type_name(type_ctor_info) =		"TypeCtorInfo_Struct".
 mlds_rtti_type_name(base_typeclass_info(_, _, _)) = "BaseTypeclassInfo".
 mlds_rtti_type_name(pseudo_type_info(Pseudo)) =
