@@ -51,6 +51,7 @@ SOURCES= \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
+	undef_symbol.m \
 	undef_type.m \
 	types.m	\
 	vars_in_wrong_places.m
