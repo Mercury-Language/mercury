@@ -61,6 +61,7 @@ SOURCES= \
 	undef_mode.m \
 	undef_symbol.m \
 	undef_type.m \
+	uniq_modes.m \
 	uu_type.m \
 	vars_in_wrong_places.m
 

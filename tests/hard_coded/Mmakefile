@@ -9,7 +9,6 @@ include ../Mmake.common
 PROGS=	\
 	address_of_builtins \
 	agg \
-	bidirectional \
 	bigtest \
 	boyer \
 	c_write_string \
@@ -95,6 +94,8 @@ PROGS=	\
 
 # we do no pass the following tests
 #	var_not_found -- "sorry, not implemented" in polymorphism.m.
+#	bidirectional -- unique mode analysis is overly conservative
+#		and thus rejects this test case.
 
 #-----------------------------------------------------------------------------#
 

@@ -80,9 +80,24 @@ test2 -->
 test3 -->
 	(   { impure incr_x },
 	    { fail }
+	;   { semipure get_x(Y) }
+	),
+	io__format("%d\n", [i(Y)]).
+
+/***
+% This test used to be written as follows, but currently
+% the unique mode analysis is not smart enough to realize
+% that the disjuncts which update the I/O state won't
+% backtrack over I/O if the code is written like that.
+
+% tempt compiler to optimize away impure goal in branch that cannot succeed.
+test3 -->
+	(   { impure incr_x },
+	    { fail }
 	;   { semipure get_x(Y) },
 	    io__format("%d\n", [i(Y)])
 	).
+***/
 
 % regression test for problem with calls to implied modes of impure/semipure
 % preds reporting spurious warnings about impurity markers in the wrong place.
@@ -118,9 +133,24 @@ test2_inline -->
 test3_inline -->
 	(   { impure incr_x_inline },
 	    { fail }
+	;   { semipure get_x_inline(Y) }
+	),
+	io__format("%d\n", [i(Y)]).
+
+/***
+% This test used to be written as follows, but currently
+% the unique mode analysis is not smart enough to realize
+% that the disjuncts which update the I/O state won't
+% backtrack over I/O if the code is written like that.
+
+% tempt compiler to optimize away impure goal in branch that cannot succeed.
+test3_inline -->
+	(   { impure incr_x_inline },
+	    { fail }
 	;   { semipure get_x_inline(Y) },
 	    io__format("%d\n", [i(Y)])
 	).
+***/
 
 % regression test for problem with calls to implied modes of impure/semipure
 % preds reporting spurious warnings about impurity markers in the wrong place.
