@@ -1459,7 +1459,7 @@ all other variables in data-terms are ordinary variables.)
 
 The three different variable sorts occupy different namespaces:
 there is no semantic relationship between two variables of different sorts
-(e.g. a type variable and an ordinary variable) even if they happen to
+(e.g.@: a type variable and an ordinary variable) even if they happen to
 share the same name.
 (However, as a matter of programming style, it is generally a
 bad idea to use the same name for variables of different sorts
@@ -2451,13 +2451,13 @@ then we would only have been able to infer an inst of @samp{list_skel(ground)}
 for the third argument, not the more specific inst.
 
 Note that attempting to call @samp{append} when the first two arguments do not
-have ground insts (e.g. @samp{list_skel(bound(g(free)))}) is a mode error
+have ground insts (e.g.@: @samp{list_skel(bound(g(free)))}) is a mode error
 because it violates the constraint on the inst parameter.
 
 To avoid having to repeat a constraint everywhere that an inst parameter occurs,
 it is possible to list the constraints after the rest of the mode declaration,
 following a @samp{<=}.
-E.g. the above example could have been written as
+E.g.@: the above example could have been written as
 @example
 	:- mode append(in(list_skel(I)), in(list_skel(I)), out(list_skel(I)))
 	              <= I =< ground.
@@ -5895,7 +5895,7 @@ set @code{succeeded} to false.
 @subsubsection Using pragma foreign_decl for C#
 
 @samp{pragma foreign_decl} declarations for C# can be used to provide
-any top-level C# declarations (e.g. @samp{using} declarations
+any top-level C# declarations (e.g.@: @samp{using} declarations
 or auxiliary class definitions) which are needed by C# code in
 @samp{pragma foreign_proc} declarations in that module.
 
@@ -5911,7 +5911,7 @@ For example:
 	[will_not_call_mercury],
 "
 	// here we can refer directly to Console rather than System.Console
-	Console.WriteLine(""hello world"").
+	Console.WriteLine(""hello world"");
 ").
 @end example
 
@@ -6144,7 +6144,7 @@ set @code{succeeded} to false.
 @subsubsection Using pragma foreign_decl for MC++
 
 @samp{pragma foreign_decl} declarations for MC++ can be used to provide
-any top-level MC++ declarations (e.g. @samp{#include} or @samp{#using})
+any top-level MC++ declarations (e.g.@: @samp{#include} or @samp{#using})
 which are needed by code in @code{pragma foreign_proc} declarations for MC++.
 
 For example:

@@ -3240,7 +3240,7 @@ This makes it possible to debug the declarative debugger itself.
 The debugger incorporates a declarative debugger
 which can be accessed from its command line.
 Starting from an event that exhibits a bug,
-e.g. an event giving a wrong answer,
+e.g.@: an event giving a wrong answer,
 the declarative debugger can find a bug which explains that behaviour
 using knowledge of the intended interpretation of the program only.
 
