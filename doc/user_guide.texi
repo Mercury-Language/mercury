@@ -261,6 +261,10 @@ Note that if the file name does not include all the module
 qualifiers (e.g. if it is @file{bar.baz.m} or @file{baz.m}
 rather than @file{foo.bar.baz.m}), then the module name in the
 @samp{:- module} declaration for that module must be fully qualified.
+To make the compiler look in another file for a module, use
+@samp{mmc -f @var{sources-files}} to generate a mapping from module name
+to file name, where @var{sources-files} is the list of source files in
+the directory (@pxref{Output options}).
 
 To compile a program which consists of just a single source file,
 use the command
@@ -452,6 +456,7 @@ With Mmake, building even a complicated Mercury program
 consisting of a number of modules is as simple as
 
 @example
+mmc -f @var{source-files}
 mmake @var{main-module}.depend
 mmake @var{main-module}
 @end example
@@ -469,10 +474,18 @@ to be repeated only when you add or remove a module from your program,
 and there is no danger of getting an inconsistent executable if you forget
 this step --- instead you will get a compile or link error.
 
+The @samp{mmc -f} step above is only required if there are any source
+files for which the file name does not match the module name.
+@samp{mmc -f} generates a file @file{Mercury.modules} containing
+a mapping from module name to source file.  The @file{Mercury.modules}
+file must be updated when a source file for which the file name does
+not match the module name is added to or removed from the directory.
+
 @samp{mmake} allows you to build more than one program in the same directory.
 Each program must have its own @file{.dep} and @file{.dv} files,
 and therefore you must run @samp{mmake @var{program}.depend}
-for each program.
+for each program.  The @samp{Mercury.modules} file is used for
+all programs in the directory.
 
 If there is a file called @samp{Mmake} or @samp{Mmakefile} in the
 current directory,
@@ -3777,6 +3790,17 @@ compile and link the modules named on the command line to produce
 an executable.
 
 @table @code
+@item -f
+@itemx --generate-source-file-mapping
+@findex --generate-source-file-mapping
+Output the module name to file name mapping for the list
+of source files given as non-option arguments to mmc
+to @file{Mercury.modules}. This must be done before
+@samp{mmc --generate-dependencies} if there are any modules
+for which the file name does not match the module name.
+If there are no such modules the mapping need not be
+generated.
+
 @item -M
 @itemx --generate-dependencies
 @findex -M

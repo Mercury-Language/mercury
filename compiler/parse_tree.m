@@ -35,7 +35,7 @@
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
 :- include_module equiv_type.
-:- include_module modules, module_qual.
+:- include_module modules, module_qual, source_file_map.
 
 % (Note that intermod and trans_opt also contain routines that
 % act on the parse tree, but those modules are considered part

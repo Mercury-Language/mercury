@@ -155,6 +155,10 @@
 		maybe_error(file_name), io__state, io__state).
 :- mode search_for_module_source(in, in, out, di, uo) is det.
 
+	% Read the first item from the given file to find the module name.
+:- pred find_module_name(file_name, maybe(module_name), io__state, io__state).
+:- mode find_module_name(in, out, di, uo) is det.
+
 	% parse_item(ModuleName, VarSet, Term, MaybeItem)
 	%
 	% parse Term. If successful, MaybeItem is bound to the parsed item,
@@ -249,7 +253,7 @@
 
 :- import_module parse_tree__prog_io_goal, parse_tree__prog_io_dcg.
 :- import_module parse_tree__prog_io_pragma, parse_tree__prog_io_util.
-:- import_module parse_tree__prog_io_typeclass.
+:- import_module parse_tree__prog_io_typeclass, parse_tree__modules.
 :- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
 :- import_module parse_tree__prog_out.
 :- import_module libs__globals, libs__options.
@@ -360,7 +364,7 @@ prog_io__read_module_2(OpenFile, DefaultModuleName,
 		io__close_input(ModuleInputStream)
 	;
 		{ OpenResult = error(Message0) },
-		io__progname_base("prog_io.m", Progname),
+		io__progname_base("mercury_compile", Progname),
 		{
 		  Message = Progname ++ ": " ++ Message0,
 		  dummy_term(Term),
@@ -546,6 +550,36 @@ dummy_term_with_context(Context, Term) :-
 
 %-----------------------------------------------------------------------------%
 
+find_module_name(FileName, MaybeModuleName) -->
+	io__open_input(FileName, OpenRes),
+	(
+		{ OpenRes = ok(InputStream) },
+		io__set_input_stream(InputStream, OldInputStream),
+		{ string__remove_suffix(FileName, ".m", PartialFileName0) ->
+			PartialFileName = PartialFileName0
+		;
+			PartialFileName = FileName
+		},
+		{ file_name_to_module_name(dir__basename(PartialFileName),
+			DefaultModuleName) },
+		read_first_item(DefaultModuleName, FileName,
+			ModuleName, RevMessages, _, _, _),
+		{ MaybeModuleName = yes(ModuleName) },
+		prog_out__write_messages(list__reverse(RevMessages)),
+		io__set_input_stream(OldInputStream, _),
+		io__close_input(InputStream)
+	;
+		{ OpenRes = error(Error) },
+		io__progname_base("mercury_compile", Progname),
+		io__write_string(Progname),
+		io__write_string(": error opening `"),
+		io__write_string(FileName),
+		io__write_string("': "),
+		io__write_string(io__error_message(Error)),
+		io__write_string(".\n"),
+		{ MaybeModuleName = no }
+	).	
+
  	% Read a source file from standard in, first reading in
 	% the input term by term and then parsing those terms and producing
 	% a high-level representation.
@@ -571,19 +605,33 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error) -->
 	io__input_stream(Stream),
 	io__input_stream_name(Stream, SourceFileName),
 	read_first_item(DefaultModuleName, SourceFileName, ModuleName,
-		RevMessages, RevItems0, Error0),
+		RevMessages0, RevItems0, MaybeSecondTerm, Error0),
+	(
+		{ MaybeSecondTerm = yes(SecondTerm) },
+		{ process_read_term(ModuleName, SecondTerm,
+			MaybeSecondItem) },
+
+		read_items_loop_2(MaybeSecondItem, ModuleName, SourceFileName,
+			RevMessages0, RevItems0, Error0,
+			RevMessages1, RevItems1, Error1)
+	;
+		{ MaybeSecondTerm = no },
+		read_items_loop(ModuleName, SourceFileName,
+			RevMessages0, RevItems0, Error0,
+			RevMessages1, RevItems1, Error1)
+	),
 
 	%
 	% get the end_module declaration (if any),
 	% check that it matches the initial module declaration (if any),
 	% and remove both of them from the final item list.
 	%
-	{ get_end_module(RevItems0, ModuleName, RevItems, EndModule) },
-	{ list__reverse(RevMessages, Messages0) },
-	{ list__reverse(RevItems, Items0) },
+	{ get_end_module(RevItems1, ModuleName, RevItems, EndModule) },
 	check_end_module(EndModule,
-			Messages0, Items0, Error0,
-			Messages, Items, Error).
+			RevMessages1, Items0, Error1,
+			RevMessages, Items, Error),
+	{ list__reverse(RevMessages, Messages) },
+	{ list__reverse(RevItems, Items0) }.
 
 %
 % We need to jump through a few hoops when reading the first item,
@@ -599,11 +647,12 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error) -->
 % we reparse it in the default module scope.  Blecchh.
 %
 :- pred read_first_item(module_name, file_name, module_name,
-		message_list, item_list, module_error, io__state, io__state).
-:- mode read_first_item(in, in, out, out, out, out, di, uo) is det.
+		message_list, item_list, maybe(read_term), module_error,
+		io__state, io__state).
+:- mode read_first_item(in, in, out, out, out, out, out, di, uo) is det.
 
 read_first_item(DefaultModuleName, SourceFileName, ModuleName,
-	Messages, Items, Error) -->
+	Messages, Items, MaybeSecondTerm, Error) -->
 
 	globals__io_lookup_bool_option(warn_missing_module_name, WarnMissing),
 	globals__io_lookup_bool_option(warn_wrong_module_name, WarnWrong),
@@ -627,7 +676,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 	    { FirstItem = pragma(source_file(NewSourceFileName)) }
 	->
 	    read_first_item(DefaultModuleName, NewSourceFileName,
-	    	ModuleName, Messages, Items, Error)
+	    	ModuleName, Messages, Items, MaybeSecondTerm, Error)
 	;
 	    %
 	    % check if the first term was a `:- module' decl
@@ -645,12 +694,12 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		match_sym_name(StartModuleName, DefaultModuleName)
 	    ->
 		ModuleName = DefaultModuleName,
-		Messages0 = []
+		Messages = []
 	    ;
 		match_sym_name(DefaultModuleName, StartModuleName)
 	    ->
 		ModuleName = StartModuleName,
-		Messages0 = []
+		Messages = []
 	    ;
 	    	prog_out__sym_name_to_string(StartModuleName,
 			StartModuleNameString),
@@ -658,7 +707,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 			"' contains module named `", StartModuleNameString,
 			"'"], WrongModuleWarning),
 	        maybe_add_warning(WarnWrong, MaybeFirstTerm, FirstContext,
-			WrongModuleWarning, [], Messages0),
+			WrongModuleWarning, [], Messages),
 
 		% Which one should we use here?
 		% We used to use the default module name
@@ -667,11 +716,9 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		ModuleName = StartModuleName
 	    },
 	    { make_module_decl(ModuleName, FirstContext, FixedFirstItem) },
-	    { Items0 = [FixedFirstItem] },
-	    { Error0 = no_module_errors },
-	    read_items_loop(ModuleName, SourceFileName,
-			Messages0, Items0, Error0,
-			Messages, Items, Error)
+	    { Items = [FixedFirstItem] },
+	    { Error = no_module_errors },
+	    { MaybeSecondTerm = no }
 	;
 	    %
 	    % if the first term was not a `:- module' decl,
@@ -687,9 +734,9 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		dummy_term_with_context(FirstContext, FirstTerm),
 		add_warning(
 			"module should start with a `:- module' declaration",
-			FirstTerm, [], Messages0)
+			FirstTerm, [], Messages)
 	    ;
-		Messages0 = []
+		Messages = []
 	    },
 	    { ModuleName = DefaultModuleName },
 	    { make_module_decl(ModuleName, FirstContext, FixedFirstItem) },
@@ -699,15 +746,9 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 	    % occuring within the scope of the implicit
 	    % `:- module' decl rather than in the root module.
 	    % 
-	    { MaybeSecondTerm = MaybeFirstTerm },
-	    { process_read_term(ModuleName, MaybeSecondTerm,
-		MaybeSecondItem) },
-
-	    { Items0 = [FixedFirstItem] },
-	    { Error0 = no_module_errors },
-	    read_items_loop_2(MaybeSecondItem, ModuleName, SourceFileName,
-		Messages0, Items0, Error0,
-		Messages, Items, Error)
+	    { MaybeSecondTerm = yes(MaybeFirstTerm) },
+	    { Items = [FixedFirstItem] },
+	    { Error = no_module_errors }
 	).
 
 :- pred make_module_decl(module_name, term__context, item_and_context).

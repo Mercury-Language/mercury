@@ -646,6 +646,12 @@
 :- pred update_interface(string, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
+	% make_directory(Dir)
+	%
+	% Make the directory Dir and all its parents.
+:- pred make_directory(string, io__state, io__state).
+:- mode make_directory(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Check whether a particular `pragma' declaration is allowed
@@ -669,6 +675,7 @@
 :- import_module ll_backend__llds_out, hlds__passes_aux, parse_tree__prog_out.
 :- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_io_util, libs__options.
+:- import_module parse_tree__source_file_map.
 :- import_module parse_tree__module_qual, backend_libs__foreign.
 :- import_module recompilation__version.
 :- import_module make. % XXX undesirable dependency
@@ -744,15 +751,17 @@ mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
 mercury_std_library_module("varset").
 
-	% It is not really clear what the naming convention
-	% should be.  Currently we assume that the module
-	% `foo:bar:baz' will be in files `foo.bar.baz.{m,int,etc.}'.
-	% It would be nice to allow a more flexible mapping.
-
 module_name_to_file_name(ModuleName, Ext, MkDir, FileName) -->
-	{ prog_out__sym_name_to_string(ModuleName, ".", BaseFileName) },
-	{ string__append_list([BaseFileName, Ext], BaseName) },
-	choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName).
+	( { Ext = ".m" } ->
+		% Look up the module in the module->file mapping.
+		source_file_map__lookup_module_source_file(ModuleName,
+			FileName)
+	;
+		{ prog_out__sym_name_to_string(ModuleName,
+			".", BaseFileName) },
+		{ string__append_list([BaseFileName, Ext], BaseName) },
+		choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName)
+	).
 
 module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName) -->
 	{ prog_out__sym_name_to_string(ModuleName, ".", BaseFileName) },
@@ -789,9 +798,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% and phony Mmake targets names go in the current directory
 		%
 		{
-			( Ext = ".m"
 			% executable files
-			; Ext = ""
+			( Ext = ""
 			; Ext = ".split"
 			% library files
 			; Ext = ".a"
@@ -955,9 +963,6 @@ file_name_to_module_name(FileName, ModuleName) :-
 
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
 	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
-
-:- pred make_directory(string, io__state, io__state).
-:- mode make_directory(in, di, uo) is det.
 
 make_directory(DirName) -->
 	( { dir__this_directory(DirName) } ->
@@ -2366,9 +2371,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			"\t@:\n"
 		]),
 
-		module_name_to_file_name(ModuleName, ".m", no,
-			ExpectedSourceFileName),
-		( { SourceFileName \= ExpectedSourceFileName } ->
+		( { SourceFileName \= default_source_file(ModuleName) } ->
 			%
 			% The pattern rules in Mmake.rules won't work,
 			% since the source file name doesn't match the
@@ -3720,18 +3723,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 :- mode generate_dep_file(in, in, in, in, di, uo) is det.
 
 generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
-	%
-	% Some of the targets are based on the source file name
-	% rather than on the module name.
-	%
-	{
-		string__remove_suffix(SourceFileName, ".m", SourceFileBase)
-	->
-		file_name_to_module_name(SourceFileBase, SourceModuleName)
-	;
-		error("modules.m: source file name doesn't end in `.m'")
-	},
-
 	io__write_string(DepStream,
 		"# Automatically generated dependencies for module `"),
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
@@ -3797,7 +3788,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% than the `.c' files.
 	%
 
-	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
+	module_name_to_file_name(ModuleName, "", no, ExeFileName),
 
 	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
 	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
@@ -3828,7 +3819,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	},
 	io__write_strings(DepStream, Rules),
 
-	module_name_to_file_name(SourceModuleName, ".split", yes,
+	module_name_to_file_name(ModuleName, ".split", yes,
 				SplitExeFileName),
 	module_name_to_file_name(ModuleName, ".split.$A",
 			yes, SplitLibFileName),
@@ -4025,8 +4016,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		])
 	),
 
-	module_name_to_file_name(SourceModuleName, ".check", no,
-				CheckTargetName),
+	module_name_to_file_name(ModuleName, ".check", no, CheckTargetName),
 	module_name_to_file_name(ModuleName, ".ints", no, IntsTargetName),
 	module_name_to_file_name(ModuleName, ".int3s", no, Int3sTargetName),
 	module_name_to_file_name(ModuleName, ".opts", no, OptsTargetName),
@@ -4090,8 +4080,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% will also require a fix in `mmake.in'.
 	%
 
-	module_name_to_file_name(SourceModuleName, ".clean", no,
-				CleanTargetName),
+	module_name_to_file_name(ModuleName, ".clean", no, CleanTargetName),
 	io__write_strings(DepStream, [
 		"clean_local : ", CleanTargetName, "\n"
 	]),
@@ -4126,7 +4115,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, "\n"),
 
-	module_name_to_file_name(SourceModuleName, ".realclean", no,
+	module_name_to_file_name(ModuleName, ".realclean", no,
 			RealCleanTargetName),
 	io__write_strings(DepStream, [
 		"realclean_local : ", RealCleanTargetName, "\n"
@@ -4771,30 +4760,30 @@ read_mod(ReadModules, ModuleName, Extension, Descr, Search, ReturnTimestamp,
 
 read_mod(ModuleName, Extension, Descr, Search, ReturnTimestamp,
 		Items, Error, FileName, MaybeTimestamp) -->
-	read_mod_2(no, ModuleName, ModuleName, Extension, Descr, Search,
+	read_mod_2(no, ModuleName, Extension, Descr, Search,
 		no, ReturnTimestamp, Items, Error, FileName, MaybeTimestamp).
 
 read_mod_if_changed(ModuleName, Extension, Descr, Search, OldTimestamp,
 		Items, Error, FileName, MaybeTimestamp) -->
-	read_mod_2(no, ModuleName, ModuleName, Extension, Descr, Search,
+	read_mod_2(no, ModuleName, Extension, Descr, Search,
 		yes(OldTimestamp), yes, Items, Error,
 		FileName, MaybeTimestamp).
 
 read_mod_ignore_errors(ModuleName, Extension, Descr, Search, ReturnTimestamp,
 		Items, Error, FileName, MaybeTimestamp) -->
-	read_mod_2(yes, ModuleName, ModuleName, Extension, Descr, Search,
+	read_mod_2(yes, ModuleName, Extension, Descr, Search,
 		no, ReturnTimestamp, Items, Error, FileName, MaybeTimestamp).
 
-:- pred read_mod_2(bool, module_name, module_name, string, string,
+:- pred read_mod_2(bool, module_name, string, string,
 		bool, maybe(timestamp), bool, item_list, module_error,
 		file_name, maybe(timestamp), io__state, io__state).
-:- mode read_mod_2(in, in, in, in, in, in, in, in, out, out, out, out,
+:- mode read_mod_2(in, in, in, in, in, in, in, out, out, out, out,
 		di, uo) is det.
 
-read_mod_2(IgnoreErrors, ModuleName, PartialModuleName,
+read_mod_2(IgnoreErrors, ModuleName,
 		Extension, Descr, Search, MaybeOldTimestamp,
 		ReturnTimestamp, Items, Error, FileName, MaybeTimestamp) -->
-	module_name_to_file_name(PartialModuleName, Extension, no, FileName0),
+	module_name_to_file_name(ModuleName, Extension, no, FileName0),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),
@@ -4832,8 +4821,7 @@ read_mod_2(IgnoreErrors, ModuleName, PartialModuleName,
 		MaybeFileName = no,
 		FileName = FileName0
 	},
-	check_module_has_expected_name(FileName,
-		ModuleName, ActualModuleName),
+	check_module_has_expected_name(FileName, ModuleName, ActualModuleName),
 
 	check_timestamp(FileName0, MaybeTimestamp0, MaybeTimestamp),
 	( { IgnoreErrors = yes } ->

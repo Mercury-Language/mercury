@@ -15,6 +15,7 @@ Changes to the Mercury compiler:
 * A new `--smart-recompilation' option, for fine-grained dependency tracking.
 * A new optional warning: `--warn-non-tail-recursion'.
 * A new optimization: `--constraint-propagation'.
+* Support for arbitrary mappings from module name to source file name. 
 
 Major improvements to the Mercury debugger, including:
 * Support for source-linked debugging using vim (rather than emacs).
@@ -254,6 +255,13 @@ Changes to the Mercury compiler:
   interface of a module changes, only modules which use the changed
   declarations are recompiled. Smart recompilation does not yet work
   with `--intermodule-optimization'.
+
+* The Mercury compiler can now handle arbitrary mappings from source files
+  to module names.  If the program contains modules for which the source
+  file name does not match the module name, before generating the
+  dependencies the command `mmc -f SOURCES' must be run, where `SOURCES'
+  is a list of the names of all of the source files.  If the names of the
+  source files all match the contained module names, `mmc -f' need not be run.
 
 * We've added a new compiler option `--warn-non-tail-recursion', which
   causes the compiler to issue a warning about any directly recursive

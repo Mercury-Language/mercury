@@ -4522,13 +4522,3 @@ output_rl_byte(Byte) -->
 	io__write_string(", ").
 
 %-----------------------------------------------------------------------------%
-
-:- pred make_directory(string::in, io__state::di, io__state::uo) is det.
-
-make_directory(DirName) -->
-	{ make_command_string(string__format(
-		"[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)]),
-		forward, Command) },
-	io__call_system(Command, _Result).
-
-%-----------------------------------------------------------------------------%

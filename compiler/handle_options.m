@@ -818,6 +818,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	option_implies(generate_module_order, generate_dependencies,
 		bool(yes)),
 
+	% We only generate the source file mapping if the module name
+	% doesn't match the file name. 
+	option_implies(generate_source_file_mapping, warn_wrong_module_name,
+		bool(no)),
+
 	% --aditi-only implies --aditi.
 	option_implies(aditi_only, aditi, bool(yes)),
 

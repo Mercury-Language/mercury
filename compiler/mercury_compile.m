@@ -37,7 +37,7 @@
 	% semantic analysis
 :- import_module libs__handle_options, parse_tree__prog_io.
 :- import_module parse_tree__prog_out, parse_tree__modules.
-:- import_module parse_tree__module_qual.
+:- import_module parse_tree__source_file_map, parse_tree__module_qual.
 :- import_module parse_tree__equiv_type, hlds__make_hlds.
 :- import_module check_hlds__typecheck, check_hlds__purity.
 :- import_module check_hlds__polymorphism, check_hlds__modes.
@@ -171,6 +171,8 @@ main_2(yes(ErrorMessage), _, _, _) -->
 	usage_error(ErrorMessage).
 main_2(no, OptionArgs, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
+	globals__io_lookup_bool_option(generate_source_file_mapping,
+		GenerateMapping),
 	globals__io_lookup_bool_option(output_grade_string, OutputGrade),
 	globals__io_lookup_bool_option(filenames_from_stdin,
 		FileNamesFromStdin),
@@ -186,6 +188,8 @@ main_2(no, OptionArgs, Args, Link) -->
 		io__stdout_stream(Stdout),
 		io__write_string(Stdout, Grade),
 		io__write_string(Stdout, "\n")
+	; { GenerateMapping = yes } ->
+		source_file_map__write_source_file_map(Args)
 	; { Make = yes } ->
 		make__process_args(OptionArgs, Args)
 	; { Args = [], FileNamesFromStdin = no } ->

@@ -100,6 +100,7 @@
 		;	make_private_interface
 		;	make_optimization_interface
 		;	make_transitive_opt_interface
+		;	generate_source_file_mapping
 		;	generate_dependencies
 		;	generate_module_order
 		;	convert_to_mercury
@@ -644,6 +645,7 @@ option_defaults_2(verbosity_option, [
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
+	generate_source_file_mapping -	bool(no),
 	generate_dependencies	-	bool(no),
 	generate_module_order 	-	bool(no),
 	make_short_interface	-	bool(no),
@@ -1092,6 +1094,7 @@ short_option('d', 			dump_hlds).
 short_option('D', 			dump_hlds_alias).
 short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
+short_option('f',			generate_source_file_mapping).
 short_option('h', 			help).
 short_option('H', 			highlevel_code).
 short_option('i', 			make_interface).
@@ -1171,6 +1174,8 @@ long_option("debug-stack-opt",		debug_stack_opt).
 long_option("debug-make",		debug_make).
 
 % output options (mutually exclusive)
+long_option("generate-source-file-mapping",
+					generate_source_file_mapping).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("generate-module-order",	generate_module_order).
 long_option("make-short-interface",	make_short_interface).
@@ -2169,6 +2174,14 @@ options_help_output -->
 		"Only the first one specified will apply.",
 		"If none of these options are specified, the default action",
 		"is to link the named modules to produce an executable.\n",
+		"-f, --generate-source-file-mapping",
+		"\tOutput the module name to file name mapping for the list",
+		"\tof source files given as non-option arguments to mmc",
+		"\tto `Mercury.modules'. This must be done before",
+		"\t`mmc --generate-dependencies' if there are any modules",
+		"\tfor which the file name does not match the module name.",
+		"\tIf there are no such modules the mapping need not be",
+		"\tgenerated.",
 		"-M, --generate-dependencies",
 		"\tOutput `Make'-style dependencies for the module",
 		"\tand all of its dependencies to `<module>.dep'.",

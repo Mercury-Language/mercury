@@ -17,7 +17,8 @@
 
 :- interface.
 :- import_module libs__options, libs__trace_params.
-:- import_module bool, getopt, list, io, std_util.
+:- import_module parse_tree, parse_tree__prog_data. % for module_name.
+:- import_module bool, getopt, list, map, io, std_util.
 
 :- type globals.
 
@@ -64,6 +65,9 @@
 	;	num_data_elems
 	;	size_data_elems.
 
+	% Map from module name to file name.
+:- type source_file_map == map(module_name, string).
+
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
@@ -89,6 +93,8 @@
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
 	is det.
+:- pred globals__get_source_file_map(globals::in,
+		maybe(source_file_map)::out) is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
@@ -99,6 +105,10 @@
 :- pred globals__set_trace_level(globals::in, trace_level::in, globals::out)
 	is det.
 :- pred globals__set_trace_level_none(globals::in, globals::out) is det.
+
+
+:- pred globals__set_source_file_map(globals::in, maybe(source_file_map)::in,
+		globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
@@ -254,13 +264,14 @@ convert_termination_norm("size-data-elems", size_data_elems).
 			tags_method 		:: tags_method,
 			termination_norm 	:: termination_norm,
 			trace_level 		:: trace_level,
-			trace_suppress_items	:: trace_suppress_items
+			trace_suppress_items	:: trace_suppress_items,
+			source_file_map		:: maybe(source_file_map)
 		).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
 		TerminationNorm, TraceLevel, TraceSuppress,
 	globals(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress)).
+		TerminationNorm, TraceLevel, TraceSuppress, no)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -269,6 +280,7 @@ globals__get_tags_method(Globals, Globals ^ tags_method).
 globals__get_termination_norm(Globals, Globals ^ termination_norm).
 globals__get_trace_level(Globals, Globals ^ trace_level).
 globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
+globals__get_source_file_map(Globals, Globals ^ source_file_map).
 
 globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
 	globals__lookup_accumulating_option(Globals, backend_foreign_languages,
@@ -289,6 +301,9 @@ globals__set_trace_level(Globals, TraceLevel,
 	Globals ^ trace_level := TraceLevel).
 globals__set_trace_level_none(Globals,
 	Globals ^ trace_level := trace_level_none).
+
+globals__set_source_file_map(Globals, SourceFileMap,
+	Globals ^ source_file_map := SourceFileMap).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
