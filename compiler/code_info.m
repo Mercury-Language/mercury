@@ -296,6 +296,9 @@
 :- pred code_info__restore_hp(code_tree, code_info, code_info).
 :- mode code_info__restore_hp(out, in, out) is det.
 
+:- pred code_info__get_old_hp(code_tree, code_info, code_info).
+:- mode code_info__get_old_hp(out, in, out) is det.
+
 :- pred code_info__pop_stack(code_tree, code_info, code_info).
 :- mode code_info__pop_stack(out, in, out) is det.
 
@@ -304,6 +307,9 @@
 
 :- pred code_info__maybe_restore_hp(bool, code_tree, code_info, code_info).
 :- mode code_info__maybe_restore_hp(in, out, in, out) is det.
+
+:- pred code_info__maybe_get_old_hp(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_get_old_hp(in, out, in, out) is det.
 
 :- pred code_info__maybe_pop_stack(bool, code_tree, code_info, code_info).
 :- mode code_info__maybe_pop_stack(in, out, in, out) is det.
@@ -2328,6 +2334,13 @@ code_info__maybe_restore_hp(Maybe, Code) -->
 		{ Code = empty }
 	).
 
+code_info__maybe_get_old_hp(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__get_old_hp(Code)
+	;
+		{ Code = empty }
+	).
+
 code_info__maybe_pop_stack(Maybe, Code) -->
 	( { Maybe = yes } ->
 		code_info__pop_stack(Code)
@@ -2340,6 +2353,9 @@ code_info__save_hp(Code) -->
 
 code_info__restore_hp(Code) -->
 	code_info__pop_lval(hp, Code).
+
+code_info__get_old_hp(Code) -->
+	code_info__get_stack_top(hp, Code).
 
 %---------------------------------------------------------------------------%
 
@@ -2445,6 +2461,18 @@ code_info__pop_lval(Lval, Code) -->
 	code_info__stack_variable(Slot, StackVar),
 	{ Code = node([
 		assign(Lval, lval(StackVar)) - "Restore value from stack"
+	]) }.
+
+:- pred code_info__get_stack_top(lval, code_tree, code_info, code_info).
+:- mode code_info__get_stack_top(in, out, in, out) is det.
+
+code_info__get_stack_top(Lval, Code) -->
+	code_info__get_push_count(Count),
+	code_info__get_stackslot_count(NumSlots),
+	{ Slot is Count + NumSlots },
+	code_info__stack_variable(Slot, StackVar),
+	{ Code = node([
+		assign(Lval, lval(StackVar)) - "Get value saved on stack"
 	]) }.
 
 %---------------------------------------------------------------------------%
@@ -2668,10 +2696,9 @@ code_info__generate_livevals_2([V|Vs], Vals) -->
 
 code_info__generate_livevals_3(Stack0, Vals0, Vals) :-
 	(
-		stack__top(Stack0, Top)
+		stack__pop(Stack0, Top, Stack1)
 	->
 		bintree_set__insert(Vals0, Top, Vals1),
-		stack__pop_det(Stack0, _, Stack1),
 		code_info__generate_livevals_3(Stack1, Vals1, Vals)
 	;
 		Vals = Vals0

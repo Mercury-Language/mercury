@@ -1,6 +1,10 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
+% File: disj_gen.nl:
+%
+% Generate code for disjunctions.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -24,6 +28,9 @@
 :- import_module tree, list, map, std_util, require, options, globals.
 
 %---------------------------------------------------------------------------%
+
+	% XXX for semidet disjunctions, should we restore the heap pointer
+	% after every disjunct rather than at the end of the disjunction?
 
 disj_gen__generate_semi_disj(Goals, Code) -->
 	code_info__get_globals(Globals),
@@ -82,7 +89,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
+disj_gen__generate_non_disj(Goals, Code) -->
 		% Sanity check
 	{ Goals = [] ->
 		error("empty disjunction shouldn't be non-det")
@@ -91,9 +98,14 @@ disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
 	;
 		true
 	},
-	code_info__generate_nondet_saves(SaveCode),
+	code_info__generate_nondet_saves(SaveVarsCode),
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals,
+			reclaim_heap_on_nondet_failure, ReclaimHeap) },
+	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 	code_info__get_next_label(EndLab),
-	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode).
+	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode),
+	{ Code = tree(SaveVarsCode, tree(SaveHeapCode, GoalsCode)) }.
 
 :- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, code_tree,
 						code_info, code_info).
@@ -111,31 +123,31 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 			modframe(label(ContLab0)) -
 					"Set failure continuation"
 		]) },
+		code_info__grab_code_info(CodeInfo),
+		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		{ SuccCode = node([
 			goto(label(EndLab)) - "Jump to end of disj",
 			label(ContLab0) - "Start of next disjunct"
 		]) },
-		code_info__grab_code_info(CodeInfo),
 		code_info__get_globals(Globals),
 		{ globals__lookup_bool_option(Globals,
 				reclaim_heap_on_nondet_failure, ReclaimHeap) },
-		code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
-		code_gen__generate_forced_non_goal(Goal, GoalCode),
-		code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
+		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__slap_code_info(CodeInfo),
 		code_info__remake_with_call_info,
 		code_info__pop_failure_cont,
-		{ DisjCode = tree(tree(tree(ContCode,SaveHeapCode), GoalCode),
+		{ DisjCode = tree(tree(ContCode, GoalCode),
 			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
+		code_info__pop_stack(PopCode),
 		code_info__restore_failure_cont(ContCode),
-		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
-		{ RestCode = node([
+		{ EndCode = node([
 			label(EndLab) - "End of disj"
 		]) },
-		{ DisjCode = tree(tree(ContCode, GoalCode), RestCode) }
+		{ DisjCode = tree(tree(PopCode, ContCode),
+				tree(GoalCode, EndCode)) }
 	).
 
 %---------------------------------------------------------------------------%
