@@ -1902,25 +1902,30 @@ string__to_int_list(String, IntList) :-
 :- pred string__contains_char(string, char).
 :- mode string__contains_char(in, in) is semidet.
 */
+	% strchr always returns true when searching for '\0',
+	% but the '\0' is an implementation detail which really
+	% shouldn't be considered to be part of the string itself.
 :- pragma foreign_proc("C", string__contains_char(Str::in, Ch::in),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);
+	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
 ").
 :- pragma foreign_proc("MC++", string__contains_char(Str::in, Ch::in),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);
 ").
 string__contains_char(String, Char) :-
-	string__contains_char(String, Char, 0).
+	string__contains_char(String, Char, 0, string__length(Char)).
 
-:- pred string__contains_char(string::in, char::in, int::in) is semidet.
+:- pred string__contains_char(string::in, char::in,
+		int::in, int::in) is semidet.
 
-string__contains_char(Str, Char, Index) :-
-	string__index(Str, Index, IndexChar),
+string__contains_char(Str, Char, Index, Length) :-
+	Index < Length,
+	string__unsafe_index(Str, Index, IndexChar),
 	( IndexChar = Char ->
 		true
 	;
-		string__contains_char(Str, Char, Index + 1)
+		string__contains_char(Str, Char, Index + 1, Length)
 	).
 
 /*-----------------------------------------------------------------------*/

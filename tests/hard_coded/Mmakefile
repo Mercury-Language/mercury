@@ -22,6 +22,7 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	comparison \
+	contains_char \
 	constraint \
 	constraint_order \
 	construct_test \
