@@ -33,8 +33,7 @@
   #endif
 
   #define BEGIN_MODULE(module_name)	\
-	void module_name(void);	/* suppress gcc warning */	\
-	void module_name(void) { {
+	static void module_name(void) { {
   /* initialization code for module goes here */
   #define BEGIN_CODE } return; {
   /* body of module goes here */
@@ -102,8 +101,7 @@
 #else
   /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
-  #define BEGIN_MODULE(module_name)	Code* module_name(void); \
-					Code* module_name(void) {
+  #define BEGIN_MODULE(module_name)	static Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
