@@ -225,6 +225,8 @@ code_util__compiler_generated(PredInfo) :-
     ( PredName = "__Unify__", PredArity = 2
     ; PredName = "__Compare__", PredArity = 3
     ; PredName = "__Index__", PredArity = 2
+    ; PredName = "__Read__", PredArity = 2
+    ; PredName = "__Write__", PredArity = 2
     ).
 
 %-----------------------------------------------------------------------------%
