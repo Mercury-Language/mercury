@@ -380,6 +380,45 @@ public static object[] MR_typeclass_info_arg_typeclass_info(
 
 ").
 
+:- pragma foreign_code("Java", "
+
+public static TypeInfo_Struct
+MR_typeclass_info_param_type_info(/* typeclass_info */ Object[] tcinfo,
+	int index)
+{
+	/* typeclass_info */ Object[] base_tcinfo;
+	int t1;
+
+	base_tcinfo = (Object[]) tcinfo[0];
+	t1 = ((Integer) base_tcinfo[0]).intValue() + index;
+	return (TypeInfo_Struct) tcinfo[t1];
+}
+
+public static TypeInfo_Struct MR_typeclass_info_instance_tvar_type_info(
+	/* typeclass_info */ Object[] tcinfo, int index) 
+{
+	return (TypeInfo_Struct) tcinfo[index];
+}
+
+public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
+	/* typeclass_info */ Object[] tcinfo, int index)
+{
+	/* typeclass_info */ Object[] base_tcinfo;
+	int t1;
+
+	base_tcinfo = (Object[]) tcinfo[0];
+	t1 = ((Integer) base_tcinfo[0]).intValue() + index;
+	return (/* typeclass_info */ Object[]) tcinfo[t1];
+}
+
+public static /* typeclass_info */ Object[] MR_typeclass_info_arg_typeclass_info(
+	/* typeclass_info */ Object[] tcinfo, int index) 
+{
+	return (/* typeclass_info */ Object[]) tcinfo[index];
+}
+
+").
+
 :- pragma foreign_code("C#", "
 
 	// XXX These static constants are duplicated both here and in
@@ -570,6 +609,42 @@ special__Compare____base_typeclass_info_1_0(
 "
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+").
+
+:- pragma foreign_proc("Java",
+	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+		TypeInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeInfo = MR_typeclass_info_param_type_info(
+			(Object[]) TypeClassInfo, Index);
+").
+
+:- pragma foreign_proc("Java",
+	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+		Index::in, TypeInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeInfo = MR_typeclass_info_instance_tvar_type_info(
+			(Object[]) TypeClassInfo, Index);
+").
+
+:- pragma foreign_proc("Java",
+	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+		TypeClassInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeClassInfo = MR_typeclass_info_superclass_info(
+			(Object[]) TypeClassInfo0, Index);
+").
+
+:- pragma foreign_proc("Java",
+	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+		Index::in, TypeClassInfo::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeClassInfo = MR_typeclass_info_arg_typeclass_info(
+			(Object[]) TypeClassInfo0, Index);
 ").
 
 %-----------------------------------------------------------------------------%

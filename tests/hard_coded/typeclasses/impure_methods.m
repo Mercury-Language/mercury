@@ -65,6 +65,13 @@ main -->
 :- pragma foreign_proc("C#", foo_m2(_F::in, Val::out),
 		[promise_semipure], "Val = foo_counter;").
 
+:- pragma foreign_code("Java", "static int foo_counter = 0;").
+
+:- pragma foreign_proc("Java", foo_m1(_F::in),
+		[], "foo_counter++;").
+:- pragma foreign_proc("Java", foo_m2(_F::in, Val::out),
+		[promise_semipure], "Val = foo_counter;").
+
 goo_m1(_).
 goo_m2(_, 42).
 

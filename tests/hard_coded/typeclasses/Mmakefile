@@ -65,9 +65,30 @@ TYPECLASSES_PROGS= \
 	use_abstract_instance \
 	use_abstract_typeclass
 
-# We currently don't do any testing in grade java on this directory.
+# XXX We currently do only limited testing in grade java on this directory.
+
+JAVA_TYPECLASSES_PROGS= \
+	ground_constraint \
+	implied_instance \
+	implied_instance_poly \
+	impure_methods \
+	intermod_typeclass_bug \
+	lambda_multi_constraint_same_tvar \
+	multi_constraint_diff_tvar \
+	multi_constraint_same_tvar \
+	multi_parameter \
+	multi_parameter_bug \
+	nondet_class_method \
+	reordered_existential_constraint \
+	superclass_bug \
+	superclass_bug2 \
+	superclass_bug3 \
+	superclass_call \
+	test_default_func_mode \
+	typeclass_test_5
+
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS=
+	PROGS=$(JAVA_TYPECLASSES_PROGS)
 else
 	PROGS=$(TYPECLASSES_PROGS)
 endif
