@@ -4,13 +4,16 @@
 :- module prog_out.
 :- import_module prog_io.
 
-	% This module defines some predicates which output various parts
-	% of the parse tree created by prog_io.
+% Main author: fjh.
 
-	% WARNING - this module is mostly junk at the moment
-	% (the format of the output is pretty terrible,
-	% and it includes calls to write/1 in various places).
-	% Consider it as just a debugging aid.
+% This module defines some predicates which output various parts
+% of the parse tree created by prog_io.
+
+% WARNING - this module is mostly junk at the moment!
+% (The format of the output is pretty terrible,
+% it includes calls to write/1 in various places,
+% and it has definite bugs at the moment.)
+% Consider it as just a debugging aid.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

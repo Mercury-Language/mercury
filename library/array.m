@@ -1,3 +1,10 @@
+%-----------------------------------------------------------------------------%
+
+% An "array" package, implemented as 2-3 trees.
+
+% Main author: conway.
+
+%-----------------------------------------------------------------------------%
 
 :- type subarray(T)	--->	node(T)
 			;	two(
@@ -130,3 +137,4 @@ array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
 		A = three(Low, High, Left, Middle, Right1)
 	).
 
+%-----------------------------------------------------------------------------%

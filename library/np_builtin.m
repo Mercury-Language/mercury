@@ -1,7 +1,13 @@
+%-----------------------------------------------------------------------------%
+%
+% Main author: fjh.
+%
 % This file should be loaded into np before any of the others.
 % (This is done automatically if you just load 'doit.nl'.)
 % We should perhaps use ensure_loaded to achieve this, but that
 % declaration is broken in NU-Prolog.
+%
+%-----------------------------------------------------------------------------%
 
 % Declare the appropriate operators.
 
@@ -76,3 +82,4 @@
 :- assert(use_adt(_)).
 :- assert(use_op(_)).
 
+%-----------------------------------------------------------------------------%

@@ -4,44 +4,48 @@
 :- module prog_io.
 :- import_module string, list, varset, term, io.
 
-	% This module defines a data structure for representing Mercury
-	% programs.
-	%
-	% In some ways the representation of programs here is considerably
-	% more complex than is necessary for the compiler.
-	% The basic reason for this is that it was designed to preserve
-	% as much information about the source code as possible, so that
-	% this representation could also be used for other tools such
-	% as Mercury-to-Goedel converters, pretty-printers, etc.
-	% Currently the only information that is lost is the comments,
-	% whitespace and indentation, and any redundant parenthesization.
-	% It would be a good idea to preserve those too (well, maybe not
-	% the redundant parentheses), but right now it's not worth the effort.
-	%
-	% So that means that this phase of compilation is purely parsing.
-	% No simplifications are done.  The results of this phase specify
-	% basically the same information as is contained in the source code,
-	% but in a parse tree rather than a flat file.
-	% Simplifications are done only by make_hlds.nl, which transforms
-	% the parse tree which we built here into the HLDS.
-	%
-	% Some of this code is a nightmare of cut-and-paste style reuse.
-	% It should be cleaned up to eliminate most of the duplication.
-	% But that task really needs to wait until we implement higher-order
-	% predicates.  For the moment, just be careful that any changes
-	% you make are reflected correctly in all similar parts of this
-	% file.
+%-----------------------------------------------------------------------------%
+%
+% Main author: fjh.
+%
+% This module defines a data structure for representing Mercury
+% programs.
+%
+% In some ways the representation of programs here is considerably
+% more complex than is necessary for the compiler.
+% The basic reason for this is that it was designed to preserve
+% as much information about the source code as possible, so that
+% this representation could also be used for other tools such
+% as Mercury-to-Goedel converters, pretty-printers, etc.
+% Currently the only information that is lost is the comments,
+% whitespace and indentation, and any redundant parenthesization.
+% It would be a good idea to preserve those too (well, maybe not
+% the redundant parentheses), but right now it's not worth the effort.
+%
+% So that means that this phase of compilation is purely parsing.
+% No simplifications are done.  The results of this phase specify
+% basically the same information as is contained in the source code,
+% but in a parse tree rather than a flat file.
+% Simplifications are done only by make_hlds.nl, which transforms
+% the parse tree which we built here into the HLDS.
+%
+% Some of this code is a nightmare of cut-and-paste style reuse.
+% It should be cleaned up to eliminate most of the duplication.
+% But that task really needs to wait until we implement higher-order
+% predicates.  For the moment, just be careful that any changes
+% you make are reflected correctly in all similar parts of this
+% file.
 
-	% XXX todo:
-	%
-	% 1.  implement importing/exporting operators with a particular fixity
-	%     eg. :- import_op prefix(+). % only prefix +, not infix
-	%     (not important, but should be there for reasons of symmetry.)
-	% 2.  improve the handling of type and inst parameters 
-	%     (see XXX's below)
-	% 3.  improve the error reporting
-	%
-	% Question: should we allow `:- rule' declarations???
+% XXX todo:
+%
+% 1.  implement importing/exporting operators with a particular fixity
+%     eg. :- import_op prefix(+). % only prefix +, not infix
+%     (not important, but should be there for reasons of symmetry.)
+% 2.  improve the handling of type and inst parameters 
+%     (see XXX's below)
+% 3.  improve the error reporting
+%
+% Question: should we allow `:- rule' declarations???
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -255,7 +259,7 @@ prog_io__read_program(FileName, Result) -->
 	io__op(1179, xfy, "--->"),		% XXX should be automatic
 	io__see(FileName, R),
 	(if { R = ok } then
-		read_program_3(RevMessages, RevItems0, Error),
+		read_all_items(RevMessages, RevItems0, Error),
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
 
@@ -355,50 +359,117 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
 	% The final stage produces a list of program items, each of
 	% which may be a declaration or a clause.
 
+
 :- type yes_or_no ---> yes ; no.
 
-:- pred read_program_3(message_list, list(item), yes_or_no, io__state,
+:- pred read_all_items(message_list, list(item), yes_or_no, io__state,
 			io__state).
-:- mode read_program_3(output, output, output, di, uo).
-read_program_3(Messages, Items, Error) -->
-	io__read_term(MaybeTerm),
-	read_program_4(MaybeTerm, [], [], no, Messages, Items, Error).
+:- mode read_all_items(output, output, output, di, uo).
 
-:- pred read_program_4(read_term, message_list, list(item), yes_or_no,
-			message_list, list(item), yes_or_no,
-			io__state,io__state).
-:- mode read_program_4(input, input, input, input,
+read_all_items(Messages, Items, Error) -->
+	read_items_loop([], [], no, Messages, Items, Error).
+
+%-----------------------------------------------------------------------------%
+
+	% The loop is arranged somewhat carefully: we want it to
+	% be tail recursive, and we want to do a small garbage collection
+	% after we have read each item to minimize memory usage
+	% and improve cache locality.  So each iteration calls
+	% read_item(MaybeItem) - which does all the work for a single item -
+	% via io__gc_call/1, which calls the goal with garbage collection.
+	% This manual garbage collection won't be strictly necessary
+	% when (if) we implement automatic garbage collection, but
+	% it will probably still improve performance.
+	%
+	% Note: the following will NOT be tail recursive with our
+	% implementation unless the compiler is smart enough to inline
+	% read_items_loop_2.
+
+:- pred read_items_loop(message_list, list(item), yes_or_no, message_list,
+			list(item), yes_or_no, io__state,io__state).
+:- mode read_items_loop(input, input, input, output, output, output, di, uo).
+
+read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
+	io__gc_call(read_item(MaybeItem)),
+ 	read_items_loop_2(MaybeItem, Msgs1, Items1, Error1, Msgs, Items, Error).
+
+%-----------------------------------------------------------------------------%
+
+:- pred read_items_loop_2(maybe_item_or_eof, message_list, list(item),
+	yes_or_no, message_list, list(item), yes_or_no, io__state, io__state).
+:- mode read_items_loop_2(input, input, input, input,
 			output, output, output, di, uo).
 
-read_program_4(eof, Msgs, Items, Error, Msgs, Items, Error) --> []. 
+% do a switch on the type of the next item
 
-read_program_4(error(ErrorMsg), Msgs0, Items, _, Msgs, Items, yes) -->
+read_items_loop_2(eof, Msgs, Items, Error, Msgs, Items, Error) --> []. 
+	% if the next item was end-of-file, then we're done.
+
+read_items_loop_2(syntax_error(ErrorMsg), Msgs0, Items0, _Error0,
+			Msgs, Items, Error) -->
+	% if the next item was a syntax error, then insert it in
+	% the list of messages and continue looping
 	{
-	  Error = ErrorMsg - term_functor(term_atom(""), []),
-	  Msgs = [Error | Msgs0]
-	}.
-
-read_program_4(term(VarSet, Term), Msgs0, Items0,
-		Error0, Msgs, Items, Error) -->
-	{ 
-	  parse_item(VarSet, Term, MaybeItem),
-	  process_item(MaybeItem, Msgs0, Items0, Error0,
-				  Msgs1, Items1, Error1)
+	  ThisError = ErrorMsg - term_functor(term_atom(""), []),
+	  Msgs1 = [ThisError | Msgs0],
+	  Items1 = Items0,
+	  Error1 = yes
 	},
-	io__read_term(MaybeTerm),
- 	read_program_4(MaybeTerm, Msgs1, Items1, Error1,
-			Msgs, Items, Error).
+	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
 
-:- pred process_item(maybe(item),  message_list, list(item), yes_or_no,
-		       message_list, list(item), yes_or_no). 
-:- mode process_item(input, input, input, input,
-			output, output, output).
-process_item(ok(Item), Msgs, Items0, Error, Msgs, [Item|Items0], Error).
-process_item(error(M,T), Msgs0, Items, _, Msgs, Items, yes) :-
-	add_error(M, T, Msgs0, Msgs).
+read_items_loop_2(error(M,T), Msgs0, Items0, _Error0, Msgs, Items, Error) -->
+	% if the next item was a semantic error, then insert it in
+	% the list of messages and continue looping
+	{
+	  add_error(M, T, Msgs0, Msgs1),
+	  Items1 = Items0,
+	  Error1 = yes
+	},
+ 	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
+
+read_items_loop_2(ok(Item), Msgs0, Items0, Error0, Msgs, Items, Error) -->
+	% if the next item was a valid item, then insert it in
+	% the list of items and continue looping
+	{
+	  Msgs1 = Msgs0,
+	  Items1 = [Item|Items0],
+	  Error1 = Error0
+	},
+ 	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
+
+%-----------------------------------------------------------------------------%
+
+	% read_item/1 reads a single item, and if it is a valid term
+	% parses it.
+
+:- type maybe_item_or_eof --->
+	eof ; syntax_error(string) ; error(string, term) ; ok(item).
+
+:- pred read_item(maybe_item_or_eof, io__state, io__state).
+:- mode read_item(output, di, uo).
+
+read_item(MaybeItem) -->
+	io__read_term(MaybeTerm),
+	{ process_read_term(MaybeTerm, MaybeItem) }.
+
+:- pred process_read_term(read_term, maybe_item_or_eof).
+:- mode process_read_term(input, output).
+
+process_read_term(eof, eof).
+process_read_term(error(ErrorMsg), syntax_error(ErrorMsg)).
+process_read_term(term(VarSet, Term), MaybeItemOrEof) :-
+	parse_item(VarSet, Term, MaybeItem),
+	convert_item(MaybeItem, MaybeItemOrEof).
+
+:- pred convert_item(maybe_item, maybe_item_or_eof).
+:- mode convert_item(input, output).
+
+convert_item(ok(Item), ok(Item)).
+convert_item(error(M,T), error(M,T)).
 
 :- pred parse_item(varset, term, maybe(item)).
 :- mode parse_item(input, input, output).
+
 parse_item(VarSet, Term, Result) :-
  	(if some [Decl]
 		Term = term_functor(term_atom(":-"), [Decl])
@@ -421,7 +492,7 @@ parse_item(VarSet, Term, Result) :-
 	).
 
 :- pred process_clause(maybe_functor, varset, goal, maybe(item)).
-:- mode process_clause(input, input, input, input, output).
+:- mode process_clause(input, input, input, output).
 process_clause(ok(Name, Args), VarSet, Body,
 		ok(clause(VarSet, Name, Args, Body))).
 process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).

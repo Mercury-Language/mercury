@@ -1,6 +1,8 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
+% Main authors: conway, fjh.
+%
 % This file provides a 'tree' data type.
 % The code generater uses this to build a tree of instructions and
 % then flatten them into a list.

@@ -3,6 +3,8 @@
 
 % HLDS - The High-Level Data Structure.
 
+% Main authors: fjh, conway, zs.
+
 % This file contains the data types for the high-level data structure.
 % The file is arranged as follows: first all the data structures are
 % listed.  Most of these are private to this module, with access
@@ -74,13 +76,13 @@
 			;	semideterministic	% just functional
 			;	nondeterministic.	% neither
 
-:- type pred_id 	=	pred(string, string, int).
+:- type pred_id 	--->	pred(string, string, int).
 			%	module, predname, arity
 
 :- export_type pred_table.
 :- type pred_table	=	map(pred_id, pred_info).
 
-:- type proc_id		=	proc(pred_id, pred_mode_id).
+:- type proc_id		--->	proc(pred_id, pred_mode_id).
 
 	% a pred_mode_id is a mode number within a particular predicate -
 	% not to be confused with a mode_id, which is the name of a
@@ -245,7 +247,7 @@
 
 :- interface.
 
-:- pred moduleinfo_init(module_info, string).
+:- pred moduleinfo_init(string, module_info).
 :- mode moduleinfo_init(input, output).
 
 :- pred moduleinfo_name(module_info, string).

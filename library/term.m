@@ -1,5 +1,10 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- module term.
+
+% Main author: fjh.
+
 % This file provides a type `term' used to represent Prolog terms.
 % This file also provides the following predicates:
 %	term_vars(Term,Vars)
@@ -9,7 +14,8 @@
 %		True if Term contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
-:- module term.
+%-----------------------------------------------------------------------------%
+
 :- import_module integer, string, float, varset.
 :- export_pred term_vars, term_contains_var.
 :- export_type term, const, variable.

@@ -1,6 +1,8 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
+% Main author: fjh.
+%
 % This file provides the 'map' ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key,Data) pairs which allows you to look up any Data item given the

@@ -1,6 +1,8 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
+% Main author: fjh.
+%
 % This file provides facilities for manipulating logical terms.
 % It provides the 'varset' ADT. A varset is a set of variables.
 % (These variables are object-level variables, and are represented

@@ -1,9 +1,15 @@
+%-----------------------------------------------------------------------------%
+%
+% Main author: fjh.
+%
 % This file should be prepended to any of the .nl files before
 % compilation with nc.
 % This is done automatically by the Makefile.
 % We should perhaps use :- ensure_loaded or :- include to achieve this,
 % but the former declaration is broken in NU-Prolog, and the second
 % isn't even implemented.
+%
+%-----------------------------------------------------------------------------%
 
 % Declare the appropriate operators.
 
@@ -78,3 +84,4 @@
 :- assert(use_adt(_)).
 :- assert(use_op(_)).
 
+%-----------------------------------------------------------------------------%

@@ -1,9 +1,25 @@
+%-----------------------------------------------------------------------------%
+
 :- module require.
+
+% Main author: fjh.
+
+% This module provides features similar to <assert.h> in C.
+
+%-----------------------------------------------------------------------------%
 :- interface.
 
 :- pred	require(pred, string).
+:- mode	require(input, input).
+
 %	require(Goal, Message).
 %		Call goal, and abort with error message if Goal fails.
+
+:- pred error(string).
+:- mode error(input).
+
+%	error(Message).
+%		Abort with error message.
 
 :- implementation.
 
@@ -18,7 +34,7 @@ require(Goal, Message) :-
 :- pred error(string).
 error(Message) :-
 	format("~s\n", [Message]),
-	trace,
+	trace,		% this doesn't work with NU-Prolog, unfortunately.
 	fail.
 
 :- end_module require.

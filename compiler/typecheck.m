@@ -1,5 +1,7 @@
 /******************************************************************************
 
+% Main author: fjh.
+
 This file contains a type-checker which I started writing a fair while
 ago.  It still needs quite a bit of work to integrate it with
 the rest of the stuff in this directory and to get it to actually work.
@@ -9,153 +11,41 @@ the rest of the stuff in this directory and to get it to actually work.
 :- import_module io, bag.
 
 %-----------------------------------------------------------------------------%
-
-	% A program is a list of type declarations, a list of other
-	% declarations (to be passed on to the underlying implementation), and
-	% a list of clauses.
-:- type program		--->	program(list(decl), list(type_decl),
-					list(clause)).
-
-%-----------------------------------------------------------------------------%
-	% A declaration other than a type declaration.
-	% We just store these as terms and pass them on to the underlying
-	% implementation.
-:- type decl		--->	decl(varset, term).
-	
-%-----------------------------------------------------------------------------%
-	% Terms. We use a ground representation.
-
-:- type term		--->	term_functor(const,list(term))
-			;	term_variable(variable).
-:- type const 		--->	term_atom(string)
-			;	term_integer(integer)
-			;	term_float(float).
-:- type variable	==	var_id.
-
-%-----------------------------------------------------------------------------%
-	% Here's a non-ground representation for terms.
-	% Not used at the moment.
-:- type term(T)		--->	term_functor(const, list(term(T)))
-			;	term_variable(T).
-%-----------------------------------------------------------------------------%
-
-	% Here's how clauses and goals are represented.
-	% Constructs like "=>", "<=", "<=>", and "all" are translated
-	% into their equivalents in the simplified structure which
-	% follows.
-
-:- type clause		--->	clause(varset, string, list(term), goal).
-			%	clause(VarSet, PredName, HeadArgs, ClauseBody)
-
-:- type goal		--->	(goal,goal)
-			;	fail	
-					% could use conj(goals) instead 
-			;	(goal;goal)
-			;	true	
-					% could use disj(goals) instead
-			;	not(goal)
-			;	some(variable,goal)
-					% could use some(vars,goal)
-			;	if_then_else(vars,goal,goal,goal)
-					% redundant? we could use
-					% if_then_else(V,A,B,C) ==>
-					% 	(A,B);not(some(V,A)),C
-					% except that this duplicates A
-			;	call(string,list(term)).
-
-:- type goals		==	list(goal).
-:- type vars		==	list(variable).
-
-%-----------------------------------------------------------------------------%
-
-	% When actually reading in type declarations, we need to
-	% check for errors.
-
-:- type maybe_functor	--->	error(string)
-			;	ok(const, list(term)).
-:- type maybe_type_defn	--->	error(string)
-			;	type_defn(type_defn).
-:- type type_decl 	--->	type(type_defn)
-			;	error(string).
-
-%-----------------------------------------------------------------------------%
-
-	% OK, this is how types are represented.
-
-:- type type_defn	--->    is_type(varset, type_head, type, condition).
-:- type type_head	--->	string - list(type_param).
-:- type type_param	--->	param(variable)
-			;	val(id, type_body).
-:- type type		--->	du_type(list(constructor))
-			;	uu_type(list(type_body))
-			;	eqv_type(type_body)
-			;	pred_type(list(type_body)).
-:- type constructor	--->	string - list(type_body).
-:- type type_body	--->	param(variable)
-			;	string - list(type_body).
-:- type condition	--->	true ; where(goal).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Validate command line arguments
-
-main_predicate([]) --> usage.
-main_predicate([_]) --> usage.
-main_predicate([_,File]) --> process_file(File).
-main_predicate([_,_,_|_]) --> usage.
-
-	% Display usage message
-:- pred usage(io_state, io_state).
-usage -->
-	{ progname(Progname) },
- 	io__write_string("Fergus' type-checker version 0.1\n"),
- 	io__write_string("Usage: "),
-	io__write_string(Progname),
-	io__write_string(" filename\n").
-
-%-----------------------------------------------------------------------------%
-
-	% Add appropriate operatator definitions,
-	% open the file, and process it.
-
-:- pred process_file(string, io_state, io_state).
-process_file(File) -->
-	io__write_string("Reading program...\n"),
-	read_program(File, Program, Messages, Result),
-
-	process_file_2(
-
-	read_program(Program, TypeDecls, OtherDecls),
-	io__write_string("Writing declarations...\n"),
-	write_decls(OtherDecls),
 	io__write_string("Type-checking...\n"),
-	typecheck(Program, TypeDecls).
-
-
 %-----------------------------------------------------------------------------%
 %
-% 1) descriminated unions:
-%	?- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
+% There are three sorts of types:
 %
-% 2) undescriminated unions (if rhs has a single type then the two
+% 1) discriminated unions:
+%	:- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
+%
+% 2) undiscriminated unions (if rhs has a single type then the two
 %	types have same structure but *different* name):
-%	?- type number = int + float.
+%	Basically just syntactic sugar for discriminated unions,
+%	except that it also works for builtin types like int.
+%
+%	:- type t1 ---> a ; b.
+%	:- type t2 ---> c ; d.
+%
+%		% same as type t3 ---> a ; b ; c ; d.
+%	:- type t3 = t1 + t2.
+%
+%	:- type number = int + float.
 %
 % 3) equivalent types (treated identically, ie, same name.  Any number
 %	of types can be equivalent; the *canonical* one is the one
 %	which is not defined using ==):
-%	?- type real == float.
+%	:- type real == float.
 %
 % 4) pred declarations:
-%	?- pred app(list, list, list).
+%	:- pred app(list(T), list(T), list(T)).
 %
 % builtin types: (these have special syntax)
 %	char, int, float
 %	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ...
 % system types:
 %	module <system>: array(T), list(T), string.
-%	module <io>: io_state.
+%	module <io>: io__state.
 %	module <lowlevel>: byte, word, ...
 % generally useful types:
 %	list(T) ---> [] | T.list(T).
@@ -176,34 +66,40 @@ type_check_clause_2(PredName, Args, Body) -->
 	type_check_call_pred(PredName,Args),
 	type_check_goal(Body).
 
-type_check_goal(true) --> [].
-type_check_goal(fail) --> [].
-type_check_goal((A,B)) -->
+type_check_goal(Goal - _GoalInfo) -->
+	type_check_goal_2(Goal).
+
+type_check_goal_2(true) --> [].
+type_check_goal_2(fail) --> [].
+type_check_goal_2((A,B)) -->
 	type_check_goal(A),
 	type_check_goal(B).
-type_check_goal((A;B),T0,T) -->
-	type_check_goal(A,T0,T1),
-	type_check_goal(B,T0,T2),
-	type_join(T0,T1,T).
-type_check_goal(not(A)) -->
+type_check_goal_2((A;B)) -->
+	type_check_goal(A),
+	type_check_goal(B).
+type_check_goal_2(if_then_else(_Vs,A,B,C)) -->
+	type_check_goal(A),
+	type_check_goal(B),
+	type_check_goal(C).
+type_check_goal_2(not(_Vs,A)) -->
 	type_check_goal(A).
-type_check_goal(some(Vs,G)) -->
-	type_new_var(Vs),
+type_check_goal_2(some(_Vs,G)) -->
 	type_check_goal(G).
-type_check_goal(call(PredName,Args)) -->
+type_check_goal_2(all(_Vs,G)) -->
+	type_check_goal(G).
+type_check_goal_2(call(PredName,_Mode,Args,_Builtin)) -->
 	type_check_call_pred(PredName,Args).
+type_check_goal_2(unify(A,B,_Info)) -->
+	type_check_unify(A,B).
 
 %-----------------------------------------------------------------------------%
 
-typecheck(Program, TypeDecls) -->
-	{ types_init(Types0) },
-	io__write_string("Processing type declarations...\n"),
-	process_types(TypeDecls, Types0, Types),
+typecheck(Module) -->
 	io__write_string("Checking for undefined types...\n"),
-	check_undefined_types(Types),
-	check_circular_eqv_types(Types),
+	check_undefined_types(Module),
+	check_circular_eqv_types(Module),
 	io__write_string("Type-checking clauses...\n"),
-	check_pred_types(Program, Types).
+	check_pred_types(Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -223,27 +119,21 @@ check_clause(Types, VarSet, Head, Body, Result) :-
 		Result = ok
 	).
 
-check_clause_2(_, _, term_variable(_), _, "clause head is free variable").
-/****
-check_clause_2(Types, VarSet, term_functor(F,Args), Body, error(X)) :-
-	length(Args, Arity),
-	length(ArgTypes, Arity),
-	types_pred_type(Types, F, _VarSet, ArgTypes, _Cond),
-	check_has_type(
-*******/
-
 %-----------------------------------------------------------------------------%
 
-	% !! At the moment we don't check for circular eqv types.
-check_circular_eqv_types(_Types) --> [].
+	% XXX - At the moment we don't check for circular eqv types.
+check_circular_eqv_types(_Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
 	% Check for any possible undefined types.
 
-check_undefined_types(Types) -->
+check_undefined_types(Module) -->
 	{ solutions(UndefType, undefined_type(Types, UndefType), List) },
 	write_undefined_types(List).
+
+:- pred write_undefined_types(list(type_id), io__state, io__state).
+:- mode write_undefined_types(input, di, uo).
 
 write_undefined_types([]) --> [].
 write_undefined_types((F/N).Ts) -->
@@ -317,6 +207,7 @@ types_pred_type(Types, Functor, VarSet, ArgTypes, Cond) :-
 %-----------------------------------------------------------------------------%
 
     % builtin types
+:- mode types_lookup_type(input, output, output, output, input, output).
 types_lookup_type(_, BuiltInType, VarSet, [], term_functor(Const,[]), true) :-
 	builtin_type(Const, BuiltInType),
 	varset_init(VarSet).
@@ -327,51 +218,37 @@ types_lookup_type(Types, Functor, VarSet, Args, term_functor(F1,As1), Cond) :-
 	length(As2,Arity),
 	member(term_functor(F1, As2), RHS).
 
+%-----------------------------------------------------------------------------%
+
 	% builtin_type(Term, Type)
 	%	is true iff 'Term' is a constant of the builtin type 'Type'.
+
 :- pred builtin_type(const, string).
-builtin_type(term_integer(_),"integer").
-builtin_type(term_float(_),"float").
-builtin_type(term_atom(String),"char") :-
-	char_to_string(_,String).
+:- mode builtin_type(input, output).
+
+builtin_type(term_integer(_), "integer").
+builtin_type(term_float(_), "float").
+builtin_type(term_atom(String), "char") :-
+	char_to_string(_, String).
 
 %-----------------------------------------------------------------------------%
 
-	% Given a list of type declarations and errors,
-	% write the errors to stdout and build our type data structure
-	% from the type declarations.
-	% At the moment our type data is very simple, just a bag (list)
-	% of all the declarations, but we want need to change this to
-	% improve efficiency later.
-
-process_types([], Types, Types) --> [].
-process_types(D.Ds, Types0, Types) -->
-	process_types_2(D, Types0, Types1),
-	process_types(Ds, Types1, Types).
-
-process_types_2(error(Error), Types, Types) -->
-	print_error(Error).
-process_types_2(type(VarSet,TypeDecl,Cond), Types0, Types) -->
-	{ bag_insert(Types0, type(VarSet, TypeDecl, Cond), Types) }.
-process_types_2(pred(VarSet,PredDecl,Cond), Types0, Types) -->
-	{ bag_insert(Types0, pred(VarSet, PredDecl, Cond), Types) }.
-
-%-----------------------------------------------------------------------------%
-
-% member(X, X._).
-% member(X, _.Xs) :- member(X, Xs).
-
-/* This version uses first-argument indexing to avoid creating a choice
-   point when a the item matches with the _last_ element in the list.
+/* This version of member uses first-argument indexing to avoid creating
+   a choice point when a the item matches with the _last_ element in the list.
    So this version will sometimes create fewer choice points than the
    original.
 */
-member(X, H.T) :-
-	member2(T, H, X).
+:- pred my_member(T, list(T)).
+:- mode my_member(output, input).
+my_member(X, H.T) :-
+	my_member_2(T, H, X).
 
-member2([], X, X).
-member2(_._, X, X).
-member2(H.T, _, X) :-
-	member2(T, H, X).
+:- pred my_member_2(list(T), T, T).
+:- mode my_member_2(input, input, output).
+
+my_member_2([], X, X).
+my_member_2(_._, X, X).
+my_member_2(H.T, _, X) :-
+	my_member_2(T, H, X).
 
 %-----------------------------------------------------------------------------%

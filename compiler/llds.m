@@ -2,6 +2,8 @@
 
 % LLDS - The Low-Level Data Structure.
 
+% Main authors: conway, fjh.
+
 :- module llds.		
 
 :- import_module io, list, string, integer.

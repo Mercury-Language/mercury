@@ -1,6 +1,12 @@
+%-----------------------------------------------------------------------------%
+%
+% Main author: fjh.
+%
 % This file should be listed on the command line for nit before any of
 % the others.
 % This is done automatically by the Makefile when you do 'make foo.nit'.
+%
+%-----------------------------------------------------------------------------%
 
 % Declare the appropriate operators.
 
@@ -66,3 +72,5 @@
 :- type ground_unique == any.
 
 :- type int == integer.
+
+%-----------------------------------------------------------------------------%

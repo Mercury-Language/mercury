@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+%
+% Main author: conway.
+%
 % This file provides a straight-forward binary search tree implementation of
 % an associative map.
+%
 %-----------------------------------------------------------------------------%
 
 :- module bintree.
@@ -147,3 +151,4 @@ bintree__to_list_2(tree(Node, Left, Right), List0, List) :-
 	bintree__to_list_2(Right, List0, List1),
 	bintree__to_list_2(Left, [Node | List1], List).
 
+%-----------------------------------------------------------------------------%

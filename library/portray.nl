@@ -1,3 +1,8 @@
+%-----------------------------------------------------------------------------%
+%
+% File: portray.nl
+% Main author: fjh.
+%
 % This file contains a definition for portray/1 that only
 % displays the top-level functors of big terms.
 % This is useful for debugging, since otherwise the NU-Prolog
@@ -5,6 +10,10 @@
 % a program.  It also contains a definition for spyHook/2 that displays
 % the term in full, so that you can get the full details by
 % typing "|" in the debugger.
+% Note that you need to compile it to a .no file -
+% loading it as a .np file doesn't work.
+%
+%-----------------------------------------------------------------------------%
 
 portray(Term) :-
 	compound(Term),
@@ -36,3 +45,4 @@ portray2(Term) :-
 spyHook(_,Term) :-
 	write(Term), writeln(.).
 
+%-----------------------------------------------------------------------------%

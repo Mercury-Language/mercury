@@ -1,31 +1,49 @@
+%-----------------------------------------------------------------------------%
+
 :- module string.
 	% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because
 	% of a NU-Prolog bug (fixed in 1.5.35).
 
+% Main author: fjh.
+
+% This modules provides basic string handling facilities.
+
+%-----------------------------------------------------------------------------%
+
 :- interface.
 
 :- pred string__append(string, string, string).
+:- mode string__append(input, input, output).
+:- mode string__append(output, output, input).
 
-string__append(A, B, C) :-
-	append(A, B, C).
-
+	% append two strings together
 
 :- pred char_to_string(char, string).
+:- mode char_to_string(input, output).
+:- mode char_to_string(output, input).
+
 %	char_to_string(Char, String).
 %		Converts a character (single-character atom) to a string
 %		(or vice versa).
+
+:- pred string__int_to_str(int, string).
+:- mode string__int_to_str(input, output).
+
+%	Convert an integer to a string.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- type string == list(integer).
 
+string__append(A, B, C) :-
+	append(A, B, C).
+
 :- char_to_string(Char,String) when Char or String.
 char_to_string(Char,String) :-
 	length(String,1),
 	name(Char,String).	
-
-:- pred string__int_to_str(int, string).
-:- mode string__int_to_str(input, output).
 
 string__int_to_str(N, Str) :-
 	(if
@@ -46,6 +64,11 @@ string__int_to_str(N, Str) :-
 		string__append(Str1, Digit, Str)
 	).
 
+% Simple-minded, but extremely portable.
+
+:- pred digit_to_string(int, string).
+:- mode digit_to_string(input, output).
+
 digit_to_string(0, "0").
 digit_to_string(1, "1").
 digit_to_string(2, "2").
@@ -58,3 +81,5 @@ digit_to_string(8, "8").
 digit_to_string(9, "9").
 
 :- end_module string.
+
+%-----------------------------------------------------------------------------%

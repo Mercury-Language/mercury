@@ -1,6 +1,9 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
+% File: io.nl.
+% Main author: fjh.
+%
 % This file encapsulates all the file I/O.
 % We implement a purely logical I/O system using Prolog's horrible
 % non-logical I/O primitives.
@@ -11,6 +14,8 @@
 % the old dec-10 Prolog I/O (see, seeing, seen, tell, telling, told)
 % instead of the stream-based I/O. 
 % TODO: fix this.
+%
+%-----------------------------------------------------------------------------%
 
 :- module io.
 :- import_module integer, float, string, list, varset, term, require.
@@ -89,11 +94,25 @@
 :- pred io__write_constant(const, io__state, io__state).
 %	io__write_constant(Const, IO0, IO1).
 %		Writes a constant (integer, float, or atom) to stdout.
-%
+
+:- pred io__gc_call(pred, io__state, io__state).
+%	io__gc_call(Goal, IO0, IO1).
+%		Execute Goal, passing IO0, and IO1, and
+%		collect any garbage created during it's execution.
+
+:- pred gc_call(pred).
+gc_call(Goal) :-
+	findall(Goal, Goal, List),
+	member(Goal, List).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+io__gc_call(Goal) -->
+	io__update_state,
+	{ io__call(Goal) }.
 
 :- dynamic(main_predicate/3).	% needed so that spy will work.
 :- spy(main_predicate/3).	% for debugging
@@ -116,18 +135,22 @@ run(Args) :-
 :- pred io__call(pred).
 io__call(Goal) :-
 	io__init_state(IOState0),
-	solutions([], ( call(Goal, IOState0, IOState1),
+	findall(Goal, ( call(Goal, IOState0, IOState1),
 			io__final_state(IOState1) ), Solutions),
-	io__call_2(Solutions).
+	io__call_2(Goal, Solutions).
 
-:- pred io__call_2(list(_)).
-io__call_2(Solutions) :-
-	(if Solutions = [] then
-		write('\nio.nl: error: top-level goal failed.\n')
-	else if Solutions = [_] then
-		true
-	else
-		write('\nio.nl: error: top-level goal not deterministic.\n')
+:- pred io__call_2(pred, list(_)).
+io__call_2(Goal, Solutions) :-
+	(Solutions = [] ->
+		write('\nio.nl: error: goal "'),
+		print(Goal),
+		write('." failed.\n')
+	; Solutions = [SingleSolution] ->
+		Goal = SingleSolution
+	;
+		write('\nio.nl: error: goal "'),
+		print(Goal),
+		write('." not deterministic.\n')
 	).
 
 :- pred atoms_to_strings(list(atom), list(string)).
