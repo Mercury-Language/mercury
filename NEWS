@@ -35,7 +35,7 @@ NEWS for Mercury release 0.6
   realistic "pseudoknot" benchmark by nearly a factor of four.
   (There's still plenty of room for performance improvements, however.)
 
-* We've added some new compiler options to simplify the choice of which
+* We have added some new compiler options to simplify the choice of which
   optimization options to enable.
 
   - You can now use `-O<n>' to select an optimization level between 0 and 5.
@@ -43,7 +43,7 @@ NEWS for Mercury release 0.6
   - You can now use `--optimize-space' to select optimization for space, instead
     of optimization for time (which is the default).
 
-* We've continued to improve the compiler's optimization.
+* We have continued to improve the compiler's optimization.
 
   As well as the above-mentioned improvements to float-point code generation:
 
@@ -95,15 +95,15 @@ NEWS for Mercury release 0.6
     sequence retrieves the value, this other code sequence will be
     reoptimized taking this into account.
 
-* We've added a little bit of inline assembler code for the Alpha so
+* We have added a little bit of inline assembler code for the Alpha so
   that we can support the use of gcc non-local gotos and asm labels.
   This improved both code size and execution speed for the Alpha port
   by about 20-25%.
 
-* We've ported the Mercury implementation to RS/6000 systems running AIX.
+* We have ported the Mercury implementation to RS/6000 systems running AIX.
   (Thanks to Andreas Kuehlmann.)
 
-* We've made a few changes to the Mercury standard library.
+* We have made a few changes to the Mercury standard library.
 
   - The getopt library is now more flexible.  It can handle command
     line switches (such as `-O2') that affect the values of many
@@ -115,6 +115,10 @@ NEWS for Mercury release 0.6
 	list__foldr/4, list__sort/4 and list__merge/4 in list.m and
 	maybe_pred/3 in std_util.m.  See the library reference manual
     for details.
+
+  - We have added some additional predicates for handling association lists:
+    assoc_list__search and assoc_list__remove. See the library reference
+    manual for details.
 
   - There are quite a few changes to the graph module.  The interface has been
     made more consistent with the rest of the library.  The predicate
