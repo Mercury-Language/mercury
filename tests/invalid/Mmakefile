@@ -116,12 +116,18 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #	typeclass_mode_{2,3,4}.m (compiler calls error/1)
 #	cyclic_typeclass.m (compiler goes into an infinite loop)
 
-MCFLAGS-aditi_errors =		--aditi
-MCFLAGS-aditi_state_errors =	--aditi
-MCFLAGS-aditi_update_errors =	--aditi
-MCFLAGS-aditi_update_mode_errors = --aditi
+# Inter-module optimization changes the diagnostics for some
+# tests (in most cases reporting diagnostics when writing the `.opt'
+# file). For those tests, we just disable inter-module optimization.
+
+MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization
+MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization
+MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization
+MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization
 MCFLAGS-any_mode	=	--infer-types
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
+MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-multisoln_func	=	--infer-types
@@ -129,9 +135,10 @@ MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-sub_c = 		--verbose-error-messages
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
-MCFLAGS-imported_mode =		--infer-all
-MCFLAGS-exported_mode =		--infer-all
+MCFLAGS-test_nested =		--no-intermodule-optimization
 MCFLAGS-typeclass_mode =	--infer-all
+MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
+MCFLAGS-undef_symbol = 		--no-intermodule-optimization
 
 # The bug is caught when generating dependencies, so it is
 # easiest just to do that step.
