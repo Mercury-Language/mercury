@@ -1,0 +1,22 @@
+<HTML>
+<HEAD>
+<!-- -->
+
+<TITLE>Mercury documentation</TITLE>
+</HEAD>
+<BODY>
+<H1>Mercury documentation, version <VERSION></H1>
+<P>
+<UL>
+<LI><A HREF="reference_manual_toc.html">Mercury Language Reference Manual</A>
+<LI><A HREF="user_guide_toc.html">Mercury User's Guide</A>
+<LI><A HREF="library_toc.html">Mercury Library Reference Manual</A>
+<LI><A HREF="transition_guide_toc.html">Prolog to Mercury Transition Guide</A>
+<LI><A HREF="faq_toc.html">Frequently Asked Questions</A>
+</UL>
+<P>
+<UL>
+<LI><A HREF="http://www.cs.mu.oz.au/mercury">Mercury Home Page</A>
+</UL>
+</BODY>
+</HTML>

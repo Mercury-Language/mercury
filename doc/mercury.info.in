@@ -1,0 +1,22 @@
+
+INFO-DIR-SECTION Development
+START-INFO-DIR-ENTRY
+* Mercury: (mercury).                The Mercury Programming Language.
+END-INFO-DIR-ENTRY
+
+
+File: mercury.info,  Node: Top,  Up: (DIR)
+
+Mercury Documentation, version <VERSION>
+***********************************
+
+* Menu:
+
+* Language Reference Manual: (mercury_ref)
+* User's Guide: (mercury_user_guide)
+* Library Reference Manual: (mercury_library)
+* Prolog to Mercury Transition Guide: (mercury_trans_guide)
+* Frequently Asked Questions: (mercury_faq)
+
+See also the Mercury WWW home page <http://www.cs.mu.oz.au/mercury/>.
+
