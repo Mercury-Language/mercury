@@ -40,15 +40,27 @@
 
 :- func tree234__lookup(tree234(K, V), K) = V.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Fails if there is no key with the given or lower value.
 :- pred tree234__lower_bound_search(tree234(K, V), K, K, V).
 :- mode tree234__lower_bound_search(in, in, out, out) is semidet.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Aborts if there is no key with the given or lower value.
 :- pred tree234__lower_bound_lookup(tree234(K, V), K, K, V).
 :- mode tree234__lower_bound_lookup(in, in, out, out) is det.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Fails if there is no key with the given or higher value.
 :- pred tree234__upper_bound_search(tree234(K, V), K, K, V).
 :- mode tree234__upper_bound_search(in, in, out, out) is semidet.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Aborts if there is no key with the given or higher value.
 :- pred tree234__upper_bound_lookup(tree234(K, V), K, K, V).
 :- mode tree234__upper_bound_lookup(in, in, out, out) is det.
 

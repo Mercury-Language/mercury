@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,15 +60,27 @@
 
 :- func map__lookup(map(K,V), K) = V.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Fails if there is no key with the given or lower value.
 :- pred map__lower_bound_search(map(K,V), K, K, V).
 :- mode map__lower_bound_search(in, in, out, out) is semidet.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Aborts if there is no key with the given or lower value.
 :- pred map__lower_bound_lookup(map(K,V), K, K, V).
 :- mode map__lower_bound_lookup(in, in, out, out) is det.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Fails if there is no key with the given or higher value.
 :- pred map__upper_bound_search(map(K,V), K, K, V).
 :- mode map__upper_bound_search(in, in, out, out) is semidet.
 
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Aborts if there is no key with the given or higher value.
 :- pred map__upper_bound_lookup(map(K,V), K, K, V).
 :- mode map__upper_bound_lookup(in, in, out, out) is det.
 
