@@ -156,9 +156,9 @@ il_assemble(ErrorStream, ModuleName,
 			HasMain, Succeeded) -->
 	module_name_to_file_name(ModuleName, ".il", no, IL_File),
 	( { HasMain = has_main } ->
-		module_name_to_file_name(ModuleName, ".exe", no, TargetFile)
+		module_name_to_file_name(ModuleName, ".exe", yes, TargetFile)
 	;	
-		module_name_to_file_name(ModuleName, ".dll", no, TargetFile)
+		module_name_to_file_name(ModuleName, ".dll", yes, TargetFile)
 	),
 	il_assemble(ErrorStream, IL_File, TargetFile,
 		HasMain, Succeeded).
