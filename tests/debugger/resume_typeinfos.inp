@@ -1,8 +1,8 @@
 echo on
 context none
-goto 3
+goto 4
 print *
-goto 5
+goto 6
 finish
 print *
 continue

@@ -1,7 +1,10 @@
 echo on
+register --quiet
 retry 1
 print *
-
+b data
+continue
+delete 0
 print *
 
 print *
@@ -46,7 +49,7 @@ print *
 
 print *
 
-goto -a 20
+goto -a 21
 stack
 stack -d
 print *

@@ -1,11 +1,11 @@
 echo on
 context none
 register --quiet
-goto 21
+goto 22
 nondet_stack
 stack_regs
 nondet_stack -d
-goto 38
+goto 39
 nondet_stack
 stack_regs
 nondet_stack -d

@@ -47,5 +47,5 @@ retry 2
 print *
 next
 retry 1
-finish
-continue -S
+finish -n
+continue -n -S

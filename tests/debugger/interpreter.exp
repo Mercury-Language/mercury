@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
-mdb> 10 step
+mdb> 12 step
 Pure Prolog Interpreter.
 
 Consulting file `interpreter.m'...
@@ -17,27 +17,28 @@ mdb> print *
        HeadVar__1             	term(varset(var_supply(0), empty, empty), functor(atom(":-"), [|](functor/3, []), context("interpreter.m", 22)))
        HeadVar__2             	[]
        DCG_0 (arg 4)          	state('<<c_pointer>>')
-mdb> goto 30
+mdb> goto 35
       E3:     C3 12 CALL pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
        Database (arg 1)       	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [])))
        VarSet (arg 2)         	varset(var_supply(0), empty, empty)
        Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 26))
 mdb> finish -a
-      E4:     C3 12 ELSE pred interpreter:database_assert_clause/4-0 (det) e;
-      E5:     C3 12 EXIT pred interpreter:database_assert_clause/4-0 (det)
+      E4:     C3 12 COND pred interpreter:database_assert_clause/4-0 (det) ?;
+      E5:     C3 12 ELSE pred interpreter:database_assert_clause/4-0 (det) e;
+      E6:     C3 12 EXIT pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
        Database (arg 1)       	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [])))
        VarSet (arg 2)         	varset(var_supply(0), empty, empty)
        Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 26))
        HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [|]/2)))
 mdb> 
-      E6:     C4 12 CALL pred interpreter:consult_until_eof/4-0 (det)
+      E7:     C4 12 CALL pred interpreter:consult_until_eof/4-0 (det)
 mdb> finish -n
-      E7:     C4 12 EXIT pred interpreter:consult_until_eof/4-0 (det)
+      E8:     C4 12 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> 
-      E8:     C5 11 EXIT pred interpreter:consult_until_eof_2/5-0 (det)
+      E9:     C5 11 EXIT pred interpreter:consult_until_eof_2/5-0 (det)
 mdb> 
-      E9:     C6 10 EXIT pred interpreter:consult_until_eof/4-0 (det)
+     E10:     C6 10 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> continue
 ?- 

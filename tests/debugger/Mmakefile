@@ -32,12 +32,14 @@ NONRETRY_PROGS = \
 	lval_desc_array			\
 	multi_parameter			\
 	nondet_stack			\
-	output_term_dep			\
 	polymorphic_output		\
 	print_goal			\
 	queens_rep			\
 	resume_typeinfos		\
 	type_desc_test
+
+# This test is currently not useful.
+#	output_term_dep
 
 SHALLOW_PROGS = \
 	shallow
@@ -271,18 +273,18 @@ queens_rep.out: queens_rep queens_rep.inp
 # avoid spurious inconsistencies in the output, we filter out its name even
 # when known.
 nondet_stack.out: nondet_stack nondet_stack.inp
-	$(MDB) ./nondet_stack < nondet_stack.inp 2>&1 | \
+	$(MDB_STD) ./nondet_stack < nondet_stack.inp 2>&1 | \
 		sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' | \
 		sed 's/entry label MR_do_trace_redo_fail_deep/label UNKNOWN/g' \
 		> nondet_stack.out 2>&1
 
 resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
-	$(MDB) ./resume_typeinfos < resume_typeinfos.inp 2>&1 | \
+	$(MDB_STD) ./resume_typeinfos < resume_typeinfos.inp 2>&1 | \
 		sed 's/resume_typeinfos.m:[0-9]*/resume_typeinfos.m:NNNN/g' \
 		> resume_typeinfos.out 2>&1
 
 retry.out: retry retry.inp
-	$(MDB) ./retry < retry.inp > retry.out 2>&1
+	$(MDB_STD) ./retry < retry.inp > retry.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1

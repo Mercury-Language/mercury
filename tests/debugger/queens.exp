@@ -1,12 +1,17 @@
       E1:     C1  1 CALL pred queens:main/2-0 (cc_multi) queens.m:17
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> retry 1
 not that many ancestors
 mdb> print *
        DCG_0 (arg 1)          	state('<<c_pointer>>')
-mdb> 
+mdb> b data
+ 0: + stop  interface pred queens:data/1-0 (det)
+mdb> continue
       E2:     C2  2 CALL pred queens:data/1-0 (det) queens.m:39 (queens.m:15)
+mdb> delete 0
+ 0: E stop  interface pred queens:data/1-0 (det)
 mdb> print *
 mdb: there are no live variables.
 mdb> 
@@ -22,12 +27,10 @@ mdb>
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> print_optionals on
-optional values are  being printed
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
        TypeInfo_for_T         	int
 mdb> print_optionals off
-optional values are not being printed
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
@@ -118,7 +121,7 @@ mdb> print *
 mdb> 
      E15:     C8  5 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-mdb> goto -a 20
+mdb> goto -a 21
      E16:     C8  5 SWTC queens.m:46
                          pred queens:qperm/2-0 (nondet) s2;
      E17:     C9  6 CALL queens.m:51 (from queens.m:47)
@@ -199,27 +202,29 @@ mdb> continue -a
                          pred queens:nodiag/3-0 (semidet)
      E41:    C16  4 SWTC queens.m:61
                          pred queens:nodiag/3-0 (semidet) s2;
-     E42:    C16  4 THEN queens.m:65
+     E42:    C16  4 COND queens.m:64
+                         pred queens:nodiag/3-0 (semidet) s2;c6;?;
+     E43:    C16  4 THEN queens.m:65
                          pred queens:nodiag/3-0 (semidet) s2;c6;t;
-     E43:    C16  4 FAIL queens.m:60 (from queens.m:57)
+     E44:    C16  4 FAIL queens.m:60 (from queens.m:57)
                          pred queens:nodiag/3-0 (semidet)
-     E44:    C15  3 FAIL queens.m:55 (from queens.m:43)
+     E45:    C15  3 FAIL queens.m:55 (from queens.m:43)
                          pred queens:safe/1-0 (semidet)
-     E45:     C4  3 REDO queens.m:45 (from queens.m:42)
+     E46:     C4  3 REDO queens.m:45 (from queens.m:42)
                          pred queens:qperm/2-0 (nondet)
-     E46:     C6  4 REDO queens.m:45 (from queens.m:49)
+     E47:     C6  4 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E47:     C8  5 REDO queens.m:45 (from queens.m:49)
+     E48:     C8  5 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E48:    C10  6 REDO queens.m:45 (from queens.m:49)
+     E49:    C10  6 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E49:    C12  7 REDO queens.m:45 (from queens.m:49)
+     E50:    C12  7 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E50:    C14  8 REDO queens.m:45 (from queens.m:49)
+     E51:    C14  8 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E51:    C14  8 FAIL queens.m:45 (from queens.m:49)
+     E52:    C14  8 FAIL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E52:    C13  8 REDO queens.m:51 (from queens.m:47)
+     E53:    C13  8 REDO queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
 mdb> break info
  0: + stop  interface pred queens:print_list/3-0 (det)
@@ -228,15 +233,15 @@ mdb> enable *
  0: + stop  interface pred queens:print_list/3-0 (det)
  1: + stop  interface pred queens:qdelete/3-0 (nondet)
 mdb> step -aS 5
-     E53:    C13  8 DISJ queens.m:52
+     E54:    C13  8 DISJ queens.m:52
                          pred queens:qdelete/3-0 (nondet) c2;d2;
-     E54:    C17  9 CALL queens.m:51 (from queens.m:53)
+     E55:    C17  9 CALL queens.m:51 (from queens.m:53)
                          pred queens:qdelete/3-0 (nondet)
-     E55:    C17  9 FAIL queens.m:51 (from queens.m:53)
+     E56:    C17  9 FAIL queens.m:51 (from queens.m:53)
                          pred queens:qdelete/3-0 (nondet)
-     E56:    C13  8 FAIL queens.m:51 (from queens.m:47)
+     E57:    C13  8 FAIL queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
-     E57:    C12  7 FAIL queens.m:45 (from queens.m:49)
+     E58:    C12  7 FAIL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> disable 1
  1: - stop  interface pred queens:qdelete/3-0 (nondet)
@@ -275,27 +280,27 @@ mdb> return
      E38:    C15  3 CALL queens.m:55 (from queens.m:43)
                          pred queens:safe/1-0 (semidet)
 mdb> continue -n
-     E46:     C6  4 REDO queens.m:45 (from queens.m:49)
+     E47:     C6  4 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> continue -n
-     E47:     C8  5 REDO queens.m:45 (from queens.m:49)
+     E48:     C8  5 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> forward
-     E48:    C10  6 REDO queens.m:45 (from queens.m:49)
+     E49:    C10  6 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E49:    C12  7 REDO queens.m:45 (from queens.m:49)
+     E50:    C12  7 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E50:    C14  8 REDO queens.m:45 (from queens.m:49)
+     E51:    C14  8 REDO queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E51:    C14  8 FAIL queens.m:45 (from queens.m:49)
+     E52:    C14  8 FAIL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
-     E53:    C13  8 DISJ queens.m:52
+     E54:    C13  8 DISJ queens.m:52
                          pred queens:qdelete/3-0 (nondet) c2;d2;
 mdb> continue -n
-     E57:    C12  7 FAIL queens.m:45 (from queens.m:49)
+     E58:    C12  7 FAIL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> continue -n
-     E58:    C18  7 CALL queens.m:45 (from queens.m:49)
+     E59:    C18  7 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> delete *
  0: E stop  interface pred queens:print_list/3-0 (det)
@@ -305,7 +310,7 @@ mdb> break main
  0: + stop  interface pred queens:main/2-0 (cc_multi)
 mdb> continue -n
 [1, 3, 5, 2, 4]
-     E59:     C1  1 EXIT queens.m:17
+     E60:     C1  1 EXIT queens.m:17
                          pred queens:main/2-0 (cc_multi)
 mdb> retry
 Retry across I/O operations is not always safe.

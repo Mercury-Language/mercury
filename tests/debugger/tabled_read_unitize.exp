@@ -11,9 +11,7 @@ mdb> break unitize
 mdb> continue
       E2:     C2  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
 mdb> finish -a
-      E3:     C2  2 THEN pred tabled_read_unitize:unitize/4-0 (det) t;
-      E4:     C2  2 ELSE pred tabled_read_unitize:unitize/4-0 (det) t;c2;e;
-      E5:     C2  2 EXIT pred tabled_read_unitize:unitize/4-0 (det)
+      E3:     C2  2 EXIT pred tabled_read_unitize:unitize/4-0 (det)
 mdb> retry -f
       E2:     C2  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
 mdb> continue -S

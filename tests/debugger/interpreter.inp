@@ -1,10 +1,15 @@
 echo on
 context none
 register --quiet
-10 step
+b consult
+c
+delete 0
 vars
 print *
-goto 30
+b database_assert_clause
+c
+delete 0
+finish
 print *
 finish -a
 print *
