@@ -19,6 +19,10 @@ define(MERCURY_MSG,
 #-----------------------------------------------------------------------------#
 AC_INIT(scripts/mmc.in)
 TMPDIR=${TMPDIR=/tmp}
+
+# AC_CHECK_TYPES does not exist in versions of autoconf before 2.50.
+# AC_CHECK_TYPE is broken in versions of autoconf before 2.50.
+AC_PREREQ(2.50)
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -1254,6 +1258,15 @@ AC_SUBST(MR_INT_LEAST32_MAX)
 AC_SUBST(MR_UINT_LEAST32_MAX)
 #-----------------------------------------------------------------------------#
 AC_TYPE_PID_T
+
+AC_CHECK_TYPES([dev_t, ino_t])
+case "$ac_cv_type_dev_t" in
+	yes) AC_DEFINE_UNQUOTED(MR_HAVE_DEV_T) ;;
+esac
+case "$ac_cv_type_ino_t" in
+	yes) AC_DEFINE_UNQUOTED(MR_HAVE_INO_T) ;;
+esac
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for an integer type of at least 16 bits)
 AC_CACHE_VAL(mercury_cv_int_least16_type,

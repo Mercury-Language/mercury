@@ -2829,14 +2829,79 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg))) -->
 
 %-----------------------------------------------------------------------------%
 
-:- type file_id
-	---> file_id(device :: int, inode :: int).
+:- type file_id ---> file_id.
+:- pragma foreign_type("C", file_id, "ML_File_Id") where
+		comparison is compare_file_id.
+
+:- pragma foreign_decl("C",
+"
+#ifdef MR_HAVE_DEV_T
+  typedef	dev_t		ML_dev_t;
+#else
+  typedef	MR_Integer	ML_dev_t;
+#endif
+
+#ifdef MR_HAVE_INO_T
+  typedef	ino_t		ML_ino_t;
+#else
+  typedef	MR_Integer	ML_ino_t;
+#endif
+
+typedef struct {
+  	ML_dev_t device;
+  	ML_ino_t inode;
+} ML_File_Id;
+").
+
+:- pred compare_file_id(comparison_result::uo,
+		file_id::in, file_id::in) is det.
+
+compare_file_id(Result, FileId1, FileId2) :-
+	compare_file_id_2(Result0, FileId1, FileId2),
+	Result =
+	    ( if Result0 < 0 then (<) else if Result0 = 0 then (=) else (>) ).
+
+:- pred compare_file_id_2(int::out, file_id::in, file_id::in) is det.
+
+:- pragma foreign_proc("C",
+	compare_file_id_2(Res::out, FileId1::in, FileId2::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	int device_cmp;
+	int inode_cmp;
+
+	/*
+	** For compilers other than GCC, glibc defines dev_t as
+	** struct (dev_t is 64 bits, and other compilers may
+	** not have a 64 bit arithmetic type).
+	** XXX This code assumes that dev_t and ino_t do not include
+	** padding bits.  In practice, that should be OK.
+	*/
+	device_cmp = memcmp(&(FileId1.device), &(FileId2.device),
+			sizeof(ML_dev_t));
+
+	if (device_cmp < 0) {
+		Res = -1;
+	} else if (device_cmp > 0) {
+		Res = 1;
+	} else {
+		inode_cmp = memcmp(&(FileId1.inode), &(FileId2.inode),
+				sizeof(ML_ino_t));
+		if (device_cmp < 0) {
+			Res = -1;
+		} else if (device_cmp > 0) {
+			Res = 1;
+		} else {	
+			Res = 0;
+		}
+	}
+").
 
 io__file_id(FileName, Result) -->
 	( { have_file_ids } ->
-		io__file_id_2(FileName, Status, Msg, Device, Inode),
+		io__file_id_2(FileName, Status, Msg, FileId),
 		( { Status = 1 } ->
-			{ Result = ok(file_id(Device, Inode)) }
+			{ Result = ok(FileId) }
 		;
 			{ Result = error(io_error(Msg)) }
 		)
@@ -2845,20 +2910,19 @@ io__file_id(FileName, Result) -->
 	make_io_error("io.file_id not implemented on this platform")) }
 	).
 
-:- pred io__file_id_2(string, int, string, int, int,
-		io__state, io__state).
-:- mode io__file_id_2(in, out, out, out, out, di, uo) is det.
+:- pred io__file_id_2(string, int, string, file_id, io__state, io__state).
+:- mode io__file_id_2(in, out, out, out, di, uo) is det.
 
 :- pragma foreign_proc("C",
 	io__file_id_2(FileName::in, Status::out, Msg::out,
-		Device::out, Inode::out, IO0::di, IO::uo),
+		FileId::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 #ifdef MR_HAVE_STAT
 	struct stat s;
 	if (stat(FileName, &s) == 0) {
-		Device = s.st_dev;
-		Inode = s.st_ino;
+		FileId.device = s.st_dev;
+		FileId.inode = s.st_ino;
 		Msg = MR_string_const("""", 0);
 		Status = 1;
 	} else {

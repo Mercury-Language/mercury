@@ -162,9 +162,13 @@
 **
 **	MR_HAVE_INTPTR_T	we have intptr_t and uintptr_t
 **	MR_HAVE_INT_LEASTN_T	we have {u,}int_least{8,16,32}_t
+**	MR_HAVE_DEV_T		we have dev_t
+**	MR_HAVE_INO_T		we have ino_t
 */
 #undef MR_HAVE_INTPTR_T
 #undef MR_HAVE_INT_LEASTN_T
+#undef MR_HAVE_DEV_T
+#undef MR_HAVE_INO_T
 
 /*
 ** pid_t is defined as `int' iff the system headers don't define it.

@@ -2,11 +2,12 @@
 #
 # INSTALL_CVS - installation instructions and installation script.
 #	This version is for use by Mercury developers after you have
-#       just checked the files out from the CVS archive. 
-#        Note: you need a previous version of Mercury
-#	already installed (the CVS archive doesn't have all the necessary
-#	files for bootstrapping).
-#	You also need autoconf (and hence GNU m4) installed.
+#	just checked the files out from the CVS archive. 
+#	Note: you need a previous version of Mercury already installed
+#	(the CVS archive doesn't have all the necessary files for
+#	bootstrapping).
+#	You also need autoconf (version 2.50 or later) (and hence GNU m4)
+#	installed.
 #
 # Step 0.  autoconf
 #
