@@ -7,23 +7,22 @@
 % Main author: ohutch
 % Significant modifications by zs.
 %
-% This module transforms HLDS code to a form that allows tabled evaluation,
-% minimal model evaluation and loop detection.  The tabling transformation
-% adds calls to several tabling predicates as well as restructuring the
-% HLDS to implement answer clause resolution, suspension and loop detection.
+% This module transforms HLDS code to implement loop detection, memoing
+% or minimal model evaluation. The transformation involves adding calls to
+% predicates defined in private_builtin.m and in mercury_tabling.c.
 %
 % The loop detection transformation adds code to a procedure that allows
 % early detection of infinite loops. If such loops are detected the program
-% will terminate with helpfully error message.
+% will terminate with a helpful error message.
 %
 % The memo transformation adds code that allows a procedure to "memo"
 % (remember) answers once they have been generated using program clause
 % resolution.
 %
 % The minimal model transformation changes the semantics of the procedure
-% being transformed. See the paper K. Sagonas. `The SLG-WAM: A
+% being transformed. See the PhD thesis of K. Sagonas: `The SLG-WAM: A
 % Search-Efficient Engine for Well-Founded Evaluation of Normal Logic
-% Programs.' PhD thesis, SUNY at Stony Brook, 1996 for a description of
+% Programs' from SUNY at Stony Brook in 1996 for a description of
 % the semantics behind the transformation. Currently only SLGd is
 % implemented.
 %
@@ -149,7 +148,7 @@
 %		).
 %
 % The memo and loopcheck transformations are very similar to the above
-% transformations except that for the memo case the code for handing
+% transformations except that for the memo case the code for handling
 % loops (fail in the semi_det case, suspend in the nondet case) is changed to
 % a loop check. And in the loop_check case the code for memoing answers is
 % dropped and the loop handling code is modified to call an error predicate.
@@ -183,9 +182,9 @@
 %-----------------------------------------------------------------------------%
 
 	% NOTE: following preds seem to duplicate the code in passes_aux.m.
-	% This is not strictly true as the following code saved the value of
-	% the pred_info and passes this value on to the code for handling
-	% each of the procedures.
+	% The reason for this duplication is that this module needs a variant
+	% of this code that is able to handle passing a module_info to
+	% polymorphism and getting an updated module_info back.
 table_gen__process_module(Module0, Module) :-
 	module_info_preds(Module0, Preds0),
 	map__keys(Preds0, PredIds),
