@@ -759,6 +759,10 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 
 %make_bitset_elem(A, B) = bitset_elem(A, B).
 
+:- pragma foreign_decl("C", "
+	#include ""mercury_heap.h""	/* for MR_incr_hp_atomic_msg() */
+").
+
 	% The bit pattern will often look like a pointer,
 	% so allocate the pairs using GC_malloc_atomic()
 	% to avoid unnecessary memory retention.

@@ -51,10 +51,6 @@
 % stuff defined by the gcc back-end are documented better
 % in the comments in the gcc source code.
 %
-% Many of the procedures here which are implemented using
-% stuff defined by the gcc back-end are documented better
-% in the comments in the gcc source code.
-%
 % QUOTES
 %
 %	``GCC is a software Vietnam.''

@@ -120,6 +120,10 @@
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
 
+:- pragma foreign_decl("C", "
+	#include ""mercury_heap.h""	/* for MR_free_heap() */
+").
+
 :- pragma foreign_code("C", free_heap(Val::di),
 	[will_not_call_mercury, thread_safe],
 	"MR_free_heap((void *) Val);").

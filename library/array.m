@@ -608,6 +608,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
+#include ""mercury_heap.h""		/* for MR_maybe_record_allocation() */
 #include ""mercury_library_types.h""	/* for MR_ArrayType */
 #include ""mercury_misc.h""		/* for MR_fatal_error() */
 ").

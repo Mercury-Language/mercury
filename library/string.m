@@ -1476,6 +1476,9 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- pragma c_header_code("
 #include <string.h>
 #include <stdio.h>
+
+#include ""mercury_string.h""	/* for MR_allocate_aligned_string*() etc. */
+#include ""mercury_tags.h""	/* for MR_list_cons*() */
 ").
 
 %-----------------------------------------------------------------------------%

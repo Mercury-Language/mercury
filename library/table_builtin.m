@@ -457,6 +457,10 @@
 % since the I/O actions executed during such times do not belong to the user
 % program.
 
+:- pragma foreign_decl("C", "
+	#include ""mercury_trace_base.h""	/* for MR_io_tabling_* */
+").
+
 :- pragma foreign_code("C",
 	table_io_in_range(T::out, Counter::out, Start::out),
 	[will_not_call_mercury],

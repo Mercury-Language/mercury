@@ -161,6 +161,8 @@
 	#endif
 
 	#define update_io(r_src, r_dest)	((r_dest) = (r_src))
+
+	#include ""mercury_string.h"" /* for MR_make_aligned_string_copy() */
 ").
 
 %-----------------------------------------------------------------------------%
