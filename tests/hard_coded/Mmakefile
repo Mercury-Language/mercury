@@ -70,6 +70,7 @@ ORDINARY_PROGS=	\
 	func_test \
 	getopt_test \
 	ground_dd \
+	hash_init_bug \
 	higher_order_func_test \
 	higher_order_syntax \
 	higher_order_syntax2 \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne
+% Copyright (C) 2001, 2003 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -342,6 +342,12 @@ det_insert(HT, K, V) =
         throw(software_error("hash_table__det_insert: key already present"))
       else if HT ^ num_occupants = HT ^ max_occupants then
         set(expand(HT), K, V)
+      else if array__size(HT ^ values) = 0 then
+        % If this is the first entry in the hash table, then we use it to
+        % set up the hash table (the arrays are currently empty because we
+        % need values to initialise them with).
+        %
+        set(HT, K, V)
       else
         (((( HT
                 ^ num_occupants    := HT ^ num_occupants + 1 )
