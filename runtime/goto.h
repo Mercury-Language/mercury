@@ -186,8 +186,10 @@
      to get confused, and we end up jumping into the data section.
      Hence the `.type' directive below.
   */
-  #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+  #ifdef __ELF__
+    #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
 	"	.type entry_" stringify(label) ",@function\n"
+  #endif
 
 #elif defined (__sparc)
 
