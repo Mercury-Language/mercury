@@ -1885,9 +1885,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			string__remove_suffix(SourceFileName, ".m",
 				SourceFileBase)
 		->
-			ErrFileName = SourceFileBase ++ ".err",
-			SourceDate = SourceFileBase ++ ".date",
-			SourceInt0 = SourceFileBase ++ ".int0"
+			ErrFileName = SourceFileBase ++ ".err"
 		;
 			error("modules.m: source file doesn't end in `.m'")
 		},
@@ -2226,7 +2224,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			%
 			io__write_strings(DepStream, [
 				"\n",
-				SourceDate, " : ", SourceInt0, "\n",
 				Date0FileName, " : ", SourceFileName, "\n",
 				"\t$(MCPI) $(ALL_MCPIFLAGS) $<\n",
 				DateFileName, " : ", SourceFileName, "\n",
