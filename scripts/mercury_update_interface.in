@@ -20,8 +20,6 @@
 #
 # Enviroment variables: none.
 
-PATH=/bin:/usr/bin
-
 verbose=false
 
 if [ $# -ge 1 ] && [ "$1" = "-v" ]; then
