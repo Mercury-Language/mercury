@@ -259,9 +259,7 @@ uninstall:
 
 .PHONY : bindist
 bindist:
-	tar cvf mercury.0.5-beta.bin.tar $(INSTALL_LIBDIR) $(INSTALL_BINDIR)
-	# gzip -9 mercury.0.5-beta.bin.tar
-	gzip mercury.0.5-beta.bin.tar
+	cd bindist; mmake binary_distribution
 
 #-----------------------------------------------------------------------------#
 

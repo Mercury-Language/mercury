@@ -75,6 +75,7 @@ fi
 AC_SUBST(GNU_MAKE)
 #-----------------------------------------------------------------------------#
 INSTALL_SICSTUS=
+SICSTUS=
 SP=
 echo "looking for SICStus Prolog..."
 AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
@@ -83,6 +84,7 @@ if test "$SP" != ""; then
 			$SP 2>&1`" in
 		SICStus*)
 			INSTALL_SICSTUS=install_sicstus
+			SICSTUS=sicstus
 			;;
 	esac
 fi
@@ -92,8 +94,10 @@ else
 	echo "found SICStus Prolog: $SP"
 fi
 AC_SUBST(INSTALL_SICSTUS)
+AC_SUBST(SICSTUS)
 #-----------------------------------------------------------------------------#
 INSTALL_NUPROLOG=
+NUPROLOG=
 NP=
 
 echo "looking for NU-Prolog..."
@@ -102,6 +106,7 @@ if test "$NP" != ""; then
 	case "`$NP < /dev/null 2>&1`" in
 		NU-Prolog*)
 			INSTALL_NUPROLOG=install_nuprolog
+			NUPROLOG=nuprolog
 			;;
 	esac
 fi
@@ -111,6 +116,7 @@ else
 	echo "found NU-Prolog: $NP"
 fi
 AC_SUBST(INSTALL_NUPROLOG)
+AC_SUBST(NUPROLOG)
 #-----------------------------------------------------------------------------#
 echo "looking for a way to create named pipes..."
 
@@ -788,7 +794,7 @@ AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
-scripts/mkfifo_using_mknod
+scripts/mkfifo_using_mknod bindist/bindist
 ,
 if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
 	touch runtime/conf.h.date

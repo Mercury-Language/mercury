@@ -44,6 +44,12 @@ RANLIB  		= @RANLIB@
 # Specify the name of the Sicstus Prolog interpreter.
 SP			= @SP@
 
+# Define `sicstus' for use in the construction of binary distributions
+SICSTUS			= @SICSTUS@
+
+# Define `nuprolog' for use in the construction of binary distributions
+NUPROLOG		= @NUPROLOG@
+
 # Specify SO as `so' if your operating system supports `.so' shared libraries,
 # or as `a' if it doesn't.  Currently shared libraries work on Solaris
 # and maybe also on Irix 5.
