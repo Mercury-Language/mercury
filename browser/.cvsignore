@@ -14,6 +14,7 @@
 *.date3
 *.pic_o
 mdb*.h
+mdb*.mh
 mer_browser.init
 Mercury
 mdb.dv
@@ -24,3 +25,4 @@ mdb.init
 *.pdb
 libmer_browser.lib
 *.*_date
+Mercury.modules
