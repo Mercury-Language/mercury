@@ -1,6 +1,6 @@
 // This source file is hereby placed in the public domain.  -fjh (the author).
 
-#include <stdio.h>
+#include <iostream>
 
 #include "cpp_main.h"
 
@@ -8,5 +8,7 @@
 class Foo { };
 
 void cpp_main(void) {
-	printf("In cpp_main().\n");
+	Foo *p = new Foo;
+	std::cout << "In cpp_main()." << std::endl;
+	delete p;
 }
