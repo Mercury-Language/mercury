@@ -106,7 +106,8 @@ for NT and use it to browse the INFO version.
 
 The system() function in gnu-win32 version beta-16 is broken, which
 means that compiling programs by invoking `mc' directly, rather than
-via `mmake', will fail.  Just use mmake.
+via `mmake', will fail.  Just use mmake.  Ignore the complaints about
+"error invoking system command" when creating interface files.
 
 There may still be some problems with case-insensitive filenames
 and the nameclash between `mmake' and `Mmake'.  If you run into any
