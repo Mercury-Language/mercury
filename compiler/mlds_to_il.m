@@ -1423,7 +1423,7 @@ store(var(Var, VarType), Instrs) -->
 	il_info) is det.
 :- mode unaryop_to_il(in, in, out, in, out) is det.
 
-	% Once upon a time the code generator generated primary tag tests
+	% Once upon a time the MLDS code generator generated primary tag tests
 	% (but we don't use primary tags).
 	% If we make mktag return its operand (since it will always be
 	% called with 0 as its operand), and we make tag return 0, it will
@@ -1438,9 +1438,8 @@ unaryop_to_il(std_unop(strip_tag),_,comment_node("strip_tag (a no-op)")) --> [].
 unaryop_to_il(std_unop(mkbody),	_, comment_node("mkbody (a no-op)")) --> [].
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)")) --> [].
 
-		% XXX implement this using string__hash
-unaryop_to_il(std_unop(hash_string), _,
-	throw_unimplemented("unimplemented hash_string unop")) --> [].
+unaryop_to_il(std_unop(hash_string), _, node([call(il_mercury_string_hash)]))
+		--> [].
 unaryop_to_il(std_unop(bitwise_complement), _, node([not])) --> [].
 
 		% might want to revisit this and define not to be only
@@ -1560,8 +1559,9 @@ binaryop_to_il(body, _) -->
 
 	% XXX we need to know what kind of thing is being indexed
 	% from the array in general. 
-binaryop_to_il(array_index, throw_unimplemented("array index unimplemented")) 
-		--> [].
+binaryop_to_il(array_index, node([
+		ldelem(refany)	% XXX FIXME element type here is wrong
+		])) --> [].
 
 	% String operations.
 binaryop_to_il(str_eq, node([
@@ -2572,6 +2572,15 @@ il_string_equals = get_static_methodref(il_string_class_name, id("Equals"),
 il_string_compare = get_static_methodref(il_string_class_name, id("Compare"), 
 	simple_type(int32), [il_string_type, il_string_type]).
 
+	% Note that we need to use the hash function from the Mercury
+	% standard library, rather than the one from the .NET BCL
+	% (Base Class Library), because it must match the one used by
+	% the Mercury compiler when computing the hash tables for
+	% string switches.
+:- func il_mercury_string_hash = methodref.
+il_mercury_string_hash = get_static_methodref(mercury_string_class_name,
+	id("hash_2"), simple_type(int32), [il_string_type]).
+
 :- func il_string_class_name = ilds__class_name.
 il_string_class_name = il_system_name(["String"]).
 
@@ -2580,6 +2589,10 @@ il_string_simple_type = class(il_string_class_name).
 
 :- func il_string_type = ilds__type.
 il_string_type = ilds__type([], il_string_simple_type).
+
+:- func mercury_string_class_name = ilds__class_name.
+mercury_string_class_name = mercury_library_name(StringClass) :-
+	sym_name_to_class_name(unqualified("string"), yes, StringClass).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2653,6 +2666,16 @@ il_commit_simple_type = class(il_commit_class_name).
 
 :- func il_commit_class_name = ilds__class_name.
 il_commit_class_name = mercury_runtime_name(["Commit"]).
+
+%-----------------------------------------------------------------------------
+
+	% qualifiy a name with "[mercury]mercury."
+:- func mercury_library_name(ilds__namespace_qual_name) = ilds__class_name.
+mercury_library_name(Name) = 
+	append_class_name(mercury_library_namespace_name, Name).
+
+:- func mercury_library_namespace_name = ilds__class_name.
+mercury_library_namespace_name = structured_name("mercury", ["mercury"]).
 
 %-----------------------------------------------------------------------------
 
