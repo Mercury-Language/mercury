@@ -10,6 +10,7 @@ include ../Mmake
 
 SOURCES= \
 	complicated_unify.m \
+	constructor_arg_names.m \
 	dcg_test.m \
 	det_condition.m \
 	det_inference.m \
@@ -29,6 +30,7 @@ SOURCES= \
 	lambda_quant.m \
 	loop.m \
 	loop_in_disj.m \
+	middle_rec_labels.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	name_mangling.m \
@@ -56,9 +58,20 @@ NOS =	$(SOURCES:%.m=%.no)
 PROGS =	$(SOURCES:%.m=%)
 
 all:	objs
+
+# we need to pass some options to really test middle_rec_labels.m
+middle_rec_labels.c: middle_rec_labels.m
+	$(MCG) $(MCGFLAGS) --middle-rec --no-follow-vars middle_rec_labels.m
+
 check:	objs
+
 objs:	$(OBJS)
+
 depend:
+
+printtests:
+	@echo $(PROGS)
+
 clean:
 	rm -f *.c *.o *.err2 *.d *.h
 
