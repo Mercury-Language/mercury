@@ -166,27 +166,6 @@
 :- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels(in, out, out) is det.
 
-	% See whether an instruction list contains the body of a chain
-	% predicate, i.e. a predicate that sets up a stack frame containing
-	% only succip, possibly does some argument shuffling, destroys the
-	% stack frame and then does a tailcall.
-
-:- pred opt_util__chain_pred(list(instruction),
-	list(instruction), list(instruction), list(instruction)).
-:- mode opt_util__chain_pred(in, out, out, out) is semidet.
-
-	% See whether an instruction list contains the first base case
-	% of a det or semidet predicate, a base case that does not need
-	% any stack space. If yes, return the instruction sequences
-	% setting up sp, saving succip, testing the base case (jump away),
-	% the base case code itself, the stack frame teardown code,
-	% and the code following the base case's proceed.
-
-:- pred opt_util__first_base_case(list(instruction),
-	list(instruction), list(instruction), list(instruction),
-	list(instruction), list(instruction), list(instruction)).
-:- mode opt_util__first_base_case(in, out, out, out, out, out, out) is semidet.
-
 	% Find a label number that does not occur in the instruction list,
 	% starting the search at a given number.
 
@@ -469,77 +448,6 @@ opt_util__detstack_teardown(Instrs0, FrameSize, Teardown, Tail, Remain) :-
 	list__condense([Comments1, [Instr1], Comments2, [Instr3]], Teardown),
 	list__condense([Comments3, SemiDet, Comments4, [Instr7]], Tail).
 
-opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = incr_sp(Framesize) - _,
-	Framesize = 1,
-
-	opt_util__skip_comments_livevals(Instrs2, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = assign(stackvar(Framesize), lval(succip)) - _,
-
-	opt_util__no_stack_straight_line(Instrs4, Shuffle, Instrs5),
-	Instrs5 = [Instr5 | Instrs6],
-	Instr5 = assign(succip, lval(stackvar(Framesize))) - _,
-
-	opt_util__gather_comments_livevals(Instrs6, _Comments2, Instrs7),
-	Instrs7 = [Instr7 | Instrs8],
-	Instr7 = decr_sp(Framesize) - _,
-
-	opt_util__gather_comments_livevals(Instrs8, Livevals, Instrs9),
-	Instrs9 = [Instr9 | Instrs10],
-	Instr9 = goto(_Label) - _,
-
-	opt_util__gather_comments(Instrs10, _Comments3, Instrs11),
-	Instrs11 = [],
-
-	Tailcall = [Instr9].
-
-opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
-		Test, After, Teardown, Follow) :-
-	opt_util__gather_comments_livevals(Instrs0, Comments0, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = incr_sp(Framesize) - _,
-
-	opt_util__gather_comments_livevals(Instrs2, Comments1, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = assign(stackvar(Framesize), lval(succip)) - _,
-
-	opt_util__gather_comments_livevals(Instrs4, Comments2, Instrs5),
-	Instrs5 = [Instr5 | Instrs6],
-	Instr5 = if_val(_, label(_)) - _,
-
-	opt_util__no_stack_straight_line(Instrs6, After0, Instrs7),
-	Instrs7 = [Instr7 | Instrs8],
-	Instr7 = assign(succip, lval(stackvar(Framesize))) - _,
-
-	opt_util__gather_comments_livevals(Instrs8, Comments3, Instrs9),
-	Instrs9 = [Instr9 | Instrs10],
-	Instr9 = decr_sp(Framesize) - _,
-
-	opt_util__gather_comments_livevals(Instrs10, Comments4, Instrs11),
-	Instrs11 = [Instr11 | Instrs12],
-	( Instr11 = assign(reg(r(1)), const(_)) - _ ->
-		Instr11use = Instr11,
-		opt_util__gather_comments_livevals(Instrs12, Comments5, Instrs13)
-	;
-		Instr11use = comment("no semidet assign to r1") - "",
-		Comments5 = [],
-		Instrs13 = Instrs11
-	),
-
-	Instrs13 = [Instr13 | Instrs14],
-	Instr13 = goto(succip) - _,
-
-	list__condense([Comments0, [Instr1], Comments1], SetupSp),
-	list__condense([[Instr3], Comments2], SetupSuccip),
-	Test = [Instr5],
-	list__condense([After0, Comments3, [Instr11use],
-		Comments4, Comments5], After),
-	Teardown = [Instr7, Instr9],
-	Follow = Instrs14.
-
 :- pred opt_util__no_stack_straight_line(list(instruction),
 	list(instruction), list(instruction)).
 :- mode opt_util__no_stack_straight_line(in, out, out) is det.
@@ -584,8 +492,8 @@ opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curredoip, no).
 opt_util__lval_refers_stackvars(hp, no).
 opt_util__lval_refers_stackvars(sp, no).
-opt_util__lval_refers_stackvars(field(_, Baselval, _), Refers) :-
-	opt_util__lval_refers_stackvars(Baselval, Refers).
+opt_util__lval_refers_stackvars(field(_, Rval, _), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(temp(_), no).
@@ -599,8 +507,6 @@ opt_util__rval_refers_stackvars(create(_, Rvals, _), Refers) :-
 opt_util__rval_refers_stackvars(mkword(_, Baserval), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval, Refers).
 opt_util__rval_refers_stackvars(const(_), no).
-opt_util__rval_refers_stackvars(field(_, Baserval, _), Refers) :-
-	opt_util__rval_refers_stackvars(Baserval, Refers).
 opt_util__rval_refers_stackvars(unop(_, Baserval), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval, Refers).
 opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
@@ -790,8 +696,8 @@ opt_util__count_temps_instr(decr_sp(_), N, N).
 opt_util__count_temps_lval(Lval, N0, N) :-
 	( Lval = temp(T) ->
 		int__max(N0, T, N)
-	; Lval = field(_, Sub_lval, _) ->
-		opt_util__count_temps_lval(Sub_lval, N0, N)
+	; Lval = field(_, Rval, _) ->
+		opt_util__count_temps_rval(Rval, N0, N)
 	;
 		N = N0
 	).

@@ -262,20 +262,20 @@ jumpopt__short_labels([Label0 | Labels0], Instmap, [Label | Labels], Mod) :-
 :- pred jumpopt__final_dest(label, instruction, instmap, label, instruction).
 :- mode jumpopt__final_dest(in, in, in, out, out) is det.
 
-jumpopt__final_dest(Srclabel, Srcinstr, Instmap, Destlabel, Destinstr) :-
+jumpopt__final_dest(SrcLabel, SrcInstr, Instmap, DestLabel, DestInstr) :-
 	(
-		Srcinstr = goto(label(TargetLabel)) - Comment,
+		SrcInstr = goto(label(TargetLabel)) - Comment,
 		map__search(Instmap, TargetLabel, TargetInstr)
 	->
 		jumpopt__final_dest(TargetLabel, TargetInstr,
-			Instmap, Destlabel, Destinstr)
+			Instmap, DestLabel, DestInstr)
 	;
-		Srcinstr = label(TargetLabel) - Comment,
+		SrcInstr = label(TargetLabel) - Comment,
 		map__search(Instmap, TargetLabel, TargetInstr)
 	->
 		jumpopt__final_dest(TargetLabel, TargetInstr,
-			Instmap, Destlabel, Destinstr)
+			Instmap, DestLabel, DestInstr)
 	;
-		Destlabel = Srclabel,
-		Destinstr = Srcinstr
+		DestLabel = SrcLabel,
+		DestInstr = SrcInstr
 	).

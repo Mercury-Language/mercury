@@ -136,7 +136,7 @@ unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
-			binop(eq,	field(Bits, Rval, 0),
+			binop(eq,	lval(field(Bits, Rval, 0)),
 					const(int_const(Num)))).
 unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 		TestRval) :-
@@ -257,7 +257,7 @@ unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
 unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 							[F|Fs], [A|As]) :-
-	F = lval(field(TagNum, Lval, Field0)),
+	F = lval(field(TagNum, lval(Lval), Field0)),
 	A = ref(Var),
 	Field1 is Field0 + 1,
 	unify_gen__make_fields_and_argvars(Vars, Lval, Field1, TagNum, Fs, As).

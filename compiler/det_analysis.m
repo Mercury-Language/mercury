@@ -271,7 +271,7 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			globals__io_lookup_bool_option(warn_det_decls_too_lax,
 				ShouldIssueWarning),
 			( { ShouldIssueWarning = yes } ->
-				report_determinism_warning(PredId, ModeId,
+				report_determinism_problem(PredId, ModeId,
 					InferredCategory, DeclaredCategory,
 					ModuleInfo0)
 			;
@@ -279,7 +279,7 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			),
 			{ ModuleInfo1 = ModuleInfo0 }
 		;
-			report_determinism_error(PredId, ModeId,
+			report_determinism_problem(PredId, ModeId,
 				InferredCategory, DeclaredCategory,
 				ModuleInfo0),
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
@@ -287,11 +287,11 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 	),
 	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
 
-:- pred report_determinism_error(pred_id, proc_id, category, category,
-				module_info, io__state, io__state).
-:- mode report_determinism_error(in, in, in, in, in, di, uo) is det.
+:- pred report_determinism_problem(pred_id, proc_id, category, category,
+	module_info, io__state, io__state).
+:- mode report_determinism_problem(in, in, in, in, in, di, uo) is det.
 
-report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
+report_determinism_problem(PredId, ModeId, InferredCategory, DeclaredCategory,
 		ModuleInfo) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
@@ -300,6 +300,13 @@ report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ proc_info_context(ProcInfo, Context) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
+
+	{ max_category(DeclaredCategory, InferredCategory, Category) },
+	{ Category = DeclaredCategory ->
+		Message = "  Warning: determinism declaration could be stricter.\n"
+	;
+		Message = "  Error: determinism declaration not satisfied.\n"
+	},
 
 	prog_out__write_context(Context),
 	io__write_string("In `"),
@@ -315,57 +322,19 @@ report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
 	io__write_string("':\n"),
 
 	prog_out__write_context(Context),
-	io__write_string("  Error: determinism declaration not satisfied.\n"),
+	io__write_string(Message),
 	prog_out__write_context(Context),
 	io__write_string("  Declared `"),
 	hlds_out__write_category(DeclaredCategory),
 	io__write_string("', inferred `"),
-	hlds_out__write_category(Category),
-	io__write_string("'.\n").
-
-:- pred report_determinism_warning(pred_id, proc_id, category, category,
-				module_info, io__state, io__state).
-:- mode report_determinism_warning(in, in, in, in, in, di, uo) is det.
-
-report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
-		ModuleInfo) -->
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ModeId, ProcInfo) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
-
-	prog_out__write_context(Context),
-	io__write_string("In `"),
-	io__write_string(PredName),
-	( { ArgModes \= [] } ->
-		io__write_string("("),
-		{ varset__init(InstVarSet) },	% XXX inst var names
-		mercury_output_mode_list(ArgModes, InstVarSet),
-		io__write_string(")")
-	;
-		[]
-	),
-	io__write_string("':\n"),
-
-	prog_out__write_context(Context),
-	io__write_string(
-		"  Warning: determinism declaration could be stricter.\n"
-	),
-	prog_out__write_context(Context),
-	io__write_string("  Declared `"),
-	hlds_out__write_category(DeclaredCategory),
-	io__write_string("', inferred `"),
-	hlds_out__write_category(Category),
+	hlds_out__write_category(InferredCategory),
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
 
 	% det_infer_goal(Goal0, MiscInfo, Goal, Category)
 	% Infers the determinism of `Goal0' and returns this in `Category'.
-	% It annotates the goal and all it's subgoals with their determinism
+	% It annotates the goal and all its subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
 
 :- pred det_infer_goal(hlds__goal, instmap, misc_info,

@@ -95,7 +95,7 @@
 						% nondet stack frame
 			;	hp		% heap pointer
 			;	sp		% top of det stack
-			;	field(tag, lval, int)
+			;	field(tag, rval, int)
 			;	lvar(var)
 			;	temp(int).	% only inside blocks
 
@@ -110,7 +110,6 @@
 				% get output, others will get transformed
 				% to incr_hp and mkword, etc.
 			;	mkword(tag, rval)
-			;       field(tag, rval, int)
 			;	const(rval_const)
 			;	unop(unary_op, rval)
 			;	binop(binary_op, rval, rval).
@@ -470,8 +469,6 @@ output_rval_decls(var(_)) -->
 	{ error("output_rval_decls: unexpected var") }.
 output_rval_decls(mkword(_, Rval)) --> 
 	output_rval_decls(Rval).
-output_rval_decls(field(_, Rval, _)) --> 
-	output_rval_decls(Rval).
 output_rval_decls(const(_)) --> [].
 output_rval_decls(unop(_, Rval)) -->
 	output_rval_decls(Rval).
@@ -751,14 +748,6 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(", "),
 	output_rval(Exprn),
 	io__write_string(")").
-output_rval(field(Tag, Rval, Field)) -->
-	io__write_string("(int) field("),
-	output_tag(Tag),
-	io__write_string(","),
-	output_rval(Rval),
-	io__write_string(","),
-	io__write_int(Field),
-	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_rval_lval(Lval).
 output_rval(create(Tag, _Args, LabelNum)) -->
@@ -843,7 +832,7 @@ output_lval(stackvar(N)) -->
 	io__write_string(")").
 output_lval(framevar(N)) -->
 	{ (N < 0) ->
-		error("stack var out of range")
+		error("frame var out of range")
 	;
 		true
 	},
@@ -860,11 +849,11 @@ output_lval(maxfr) -->
 	io__write_string("LVALUE_CAST(Word,maxfr)").
 output_lval(curredoip) -->
 	io__write_string("LVALUE_CAST(Word,curredoip)").
-output_lval(field(Tag, Lval, FieldNum)) -->
+output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_lval(Lval),
+	output_rval(Rval),
 	io__write_string(", "),
 	io__write_int(FieldNum),
 	io__write_string(")").
@@ -908,11 +897,11 @@ output_rval_lval(maxfr) -->
 	io__write_string("(int) maxfr").
 output_rval_lval(curredoip) -->
 	io__write_string("(int) curredoip").
-output_rval_lval(field(Tag, Lval, FieldNum)) -->
+output_rval_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("(int) field("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_rval_lval(Lval),
+	output_rval(Rval),
 	io__write_string(", "),
 	io__write_int(FieldNum),
 	io__write_string(")").

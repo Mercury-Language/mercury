@@ -311,8 +311,8 @@ middle_rec__find_used_registers_lvals([Lval | Lvals], Used0, Used) :-
 middle_rec__find_used_registers_lval(Lval, Used0, Used) :-
 	( Lval = reg(r(N)) ->
 		set__insert(Used0, N, Used)
-	; Lval = field(_, BaseLval, _) ->
-		middle_rec__find_used_registers_lval(BaseLval, Used0, Used)
+	; Lval = field(_, Rval, _) ->
+		middle_rec__find_used_registers_rval(Rval, Used0, Used)
 	; Lval = lvar(_) ->
 		error("lvar found in middle_rec__find_used_registers_lval")
 	;
@@ -334,9 +334,6 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		middle_rec__find_used_registers_maybe_rvals(MaybeRvals, Used0, Used)
 	;
 		Rval = mkword(_, Rval1),
-		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
-	;
-		Rval = field(_, Rval1, _),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
 	;
 		Rval = const(_),

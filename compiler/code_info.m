@@ -783,9 +783,6 @@ code_info__expr_is_constant(create(_Tag, Args, _Label)) -->
 	{ globals__lookup_bool_option(Globals, static_ground_terms, yes) },
 	code_info__args_are_constant(Args).
 
-code_info__expr_is_constant(field(_Tag, Rval, _Num)) -->
-	code_info__expr_is_constant(Rval).
-
 code_info__expr_is_constant(var(Var)) -->
 	code_info__get_variables(Variables),
 	{ map__search(Variables, Var, cached(Expr, _)) },
@@ -841,11 +838,11 @@ code_info__generate_expression_2(lval(Lval), TargetReg, Code) -->
 	->
 		{ Code = empty }
 	;
-		{ Lval = field(Tag, StructLval, FieldNum) }
+		{ Lval = field(Tag, StructRval, FieldNum) }
 	->
-		code_info__generate_expression_vars(lval(StructLval), Rval, CodeA),
+		code_info__generate_expression_vars(StructRval, Rval, CodeA),
 		{ CodeB = node([
-			assign(TargetReg, field(Tag, Rval, FieldNum))
+			assign(TargetReg, lval(field(Tag, Rval, FieldNum)))
 				- "Copy field"
 		]) },
 		{ Code = tree(CodeA, CodeB) }
@@ -949,14 +946,6 @@ code_info__generate_expression_2(const(Const), TargetReg, Code) -->
 	{ Code = node([
 		assign(TargetReg, const(Const)) - "Make a constant"
 	]) }.
-code_info__generate_expression_2(field(Tag, Rval0, Field), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, field(Tag, Rval, Field)) -
-						"Extract a field of a term"
-	]) },
-	{ Code = tree(Code0, Code1) }.
-
 code_info__generate_expression_2(binop(Op, L0, R0), TargetReg, Code) -->
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
@@ -988,8 +977,8 @@ code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
 		% since the target is a field, we won't need to swap
 		% a stackslot out of the way, so we call ..._2
 		% directly.
-		code_info__generate_expression_2(Rval, field(Tag, Reg, Field0),
-			Code0)
+		code_info__generate_expression_2(Rval,
+			field(Tag, lval(Reg), Field0), Code0)
 	;
 		{ Code0 = empty }
 	),
@@ -1018,9 +1007,6 @@ code_info__generate_expression_vars(unop(Unop, Rval0), unop(Unop, Rval), Code)
 						-->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(const(Const), const(Const), empty) --> [].
-code_info__generate_expression_vars(field(Tag, Rval0, Field),
-					field(Tag, Rval, Field), Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(binop(Op, L0, R0),
 						binop(Op, L, R), Code) -->
 	code_info__generate_expression_vars(L0, L, Code0),
@@ -2060,8 +2046,6 @@ code_info__expression_dependencies(mkword(_Tag, Rval), V0, V) -->
 code_info__expression_dependencies(unop(_Op, Rval), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(const(_), V, V) --> [].
-code_info__expression_dependencies(field(_, Rval,_), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(E0, V0, V1),
 	code_info__expression_dependencies(E1, V1, V).
@@ -2139,7 +2123,8 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 	->
 		code_info__add_variable_to_register(Var, R)
 	;
-		{ L = field(_, reg(R1), _) }
+		% XXX
+		{ L = field(_, lval(reg(R1)), _) }
 	->
 		code_info__add_variable_to_register(Var, R1)
 	;
@@ -2268,14 +2253,16 @@ code_info__reenter_lvalues(Var, Lval0, Lval, [L|Ls]) -->
 	->
 		code_info__add_lvalue_to_variable(L, Var)
 	;
-		{ L = field(Tag, Lval1, Field) },
+		{ L = field(Tag, Rval1, Field) },
+		{ Rval1 = lval(Lval1) },
 		{ \+ Lval1 = Lval0 }
 	->
 		code_info__add_lvalue_to_variable(L, Var)
 	;
-		{ L = field(Tag, Lval0, Field) }
+		{ L = field(Tag, lval(Lval0), Field) }
 	->
-		code_info__add_lvalue_to_variable(field(Tag, Lval, Field), Var)
+		code_info__add_lvalue_to_variable(field(Tag, lval(Lval), Field),
+			Var)
 	;
 		{ L = Lval0 }
 	->
@@ -2284,7 +2271,6 @@ code_info__reenter_lvalues(Var, Lval0, Lval, [L|Ls]) -->
 		{ true }
 	),
 	code_info__reenter_lvalues(Var, Lval0, Lval, Ls).
-
 
 %---------------------------------------------------------------------------%
 
