@@ -86,6 +86,7 @@ PROGS=	\
 	quantifier2 \
 	quoting_bug_test \
 	rational_test \
+	redoip_clobber \
 	relation_test \
 	remove_file \
 	reorder_di \
@@ -122,6 +123,7 @@ MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
+MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
