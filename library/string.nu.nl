@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,6 +51,15 @@ string__length(String, Length) :-
 
 %-----------------------------------------------------------------------------%
 
+string__substring(String, Start, Count, Substring) :-
+	string__split(String, Start, _Left, Right),
+	string__left(Right, Count, Substring).
+
+string__unsafe_substring(String, Start, Count, Substring) :-
+	string__substring(String, Start, Count, Substring).
+
+%-----------------------------------------------------------------------------%
+
 string__split(String, Count, LeftString, RightString) :-
 	(
 		Count =< 0
@@ -82,5 +91,11 @@ string__contains_char(String, Char) :-
 	string__to_int_list(String, List),
 	char__to_int(Char, CharCode),
 	list__member(CharCode, List).
+
+%-----------------------------------------------------------------------------%
+
+string__from_rev_char_list(RevChars, Str) :-
+	list__reverse(RevChars, Chars),
+	string__from_char_list(Chars, Str).
 
 %-----------------------------------------------------------------------------%

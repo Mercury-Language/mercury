@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -438,9 +438,9 @@ standard_print_term(Term, Depth, Precedence) :-
 	).
 
 prefix_op(Op, NeededPrecedence, ArgPrecedence) :-
-	(   current_op(NeededPrecedence, fx, Op) ->
+	(   currentOp(NeededPrecedence, fx, Op) ->
 		ArgPrecedence is NeededPrecedence - 1
-	;   current_op(NeededPrecedence, fy, Op) ->
+	;   currentOp(NeededPrecedence, fy, Op) ->
 		ArgPrecedence = NeededPrecedence
 	;
 		fail				% to keep NU Prolog happy
@@ -448,9 +448,9 @@ prefix_op(Op, NeededPrecedence, ArgPrecedence) :-
 
 
 postfix_op(Op, NeededPrecedence, ArgPrecedence) :-
-	(   current_op(NeededPrecedence, xf, Op) ->
+	(   currentOp(NeededPrecedence, xf, Op) ->
 		ArgPrecedence is NeededPrecedence - 1
-	;   current_op(NeededPrecedence, yf, Op) ->
+	;   currentOp(NeededPrecedence, yf, Op) ->
 		ArgPrecedence = NeededPrecedence
 	;
 		fail				% to keep NU Prolog happy
@@ -458,13 +458,13 @@ postfix_op(Op, NeededPrecedence, ArgPrecedence) :-
 
 
 infix_op(Op, NeededPrecedence, Arg1Precedence, Arg2Precedence) :-
-	(   current_op(NeededPrecedence, xfx, Op) ->
+	(   currentOp(NeededPrecedence, xfx, Op) ->
 		Arg1Precedence is NeededPrecedence - 1,
 		Arg2Precedence = Arg1Precedence
-	;   current_op(NeededPrecedence, xfy, Op) ->
+	;   currentOp(NeededPrecedence, xfy, Op) ->
 		Arg1Precedence is NeededPrecedence - 1,
 		Arg2Precedence = NeededPrecedence
-	;   current_op(NeededPrecedence, yfx, Op) ->
+	;   currentOp(NeededPrecedence, yfx, Op) ->
 		Arg1Precedence = NeededPrecedence,
 		Arg2Precedence is NeededPrecedence - 1
 	;

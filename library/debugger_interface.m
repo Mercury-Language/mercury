@@ -34,7 +34,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 :- type arity == int.
 
 :- type determinism == int. 
-	% encoded as specified in ../runtime/mercury_accurate_gc.h
+	% encoded as specified in ../runtime/mercury_stack_layout.h
+	% and ../compiler/stack_layout.m.
 
 % The stuff defined below is similar to types goal_path and trace_port
 % defined in modules compiler/hlds_goal.m and compiler/trace.m.

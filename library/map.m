@@ -175,6 +175,19 @@
 :- pred map__remove_smallest(map(K, V), K, V, map(K, V)).
 :- mode map__remove_smallest(in, out, out, out) is semidet.
 
+	% Perform an inorder tranversal of the map, applying
+	% an accumulator predicate for each key-value pair.
+:- pred map__foldl(pred(K, V, T, T), map(K, V), T, T).
+:- mode map__foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode map__foldl(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode map__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+
+	% Apply a transformation predicate to all the values
+	% in a map.
+:- pred map__map_values(pred(K, V, W), map(K, V), map(K, W)).
+:- mode map__map_values(pred(in, in, out) is det, in, out) is det.
+:- mode map__map_values(pred(in, in, out) is semidet, in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- import_module tree234.
@@ -385,6 +398,16 @@ map__apply_to_list([K | Ks], Map, [V | Vs]) :-
 
 map__remove_smallest(Map0, K, V, Map) :-
 	tree234__remove_smallest(Map0, K, V, Map).
+
+%-----------------------------------------------------------------------------%
+
+map__foldl(Pred, Map, Acc0, Acc) :-
+	tree234__foldl(Pred, Map, Acc0, Acc).
+
+%-----------------------------------------------------------------------------%
+
+map__map_values(Pred, Map0, Map) :-
+	tree234__map_values(Pred, Map0, Map).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -81,12 +81,14 @@
 
 :- pred string__replace(string, string, string, string).
 :- mode string__replace(in, in, in, out) is semidet.
+% string__replace(String0, Search, Replace, String):
 % 	string__replace replaces the first occurence of the second string in 
 % 	the first string with the third string to give the fourth string.
 % 	It fails if the second string does not occur in the first.
 
 :- pred string__replace_all(string, string, string, string).
 :- mode string__replace_all(in, in, in, out) is det.
+% string__replace_all(String0, Search, Replace, String):
 % 	string__replace_all replaces any occurences of the second string in 
 % 	the first string with the third string to give the fourth string.
 
@@ -190,6 +192,16 @@
 %	Calls error/1 if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
+:- pred string__unsafe_index(string, int, char).
+:- mode string__unsafe_index(in, in, out) is det.
+%	string__unsafe_index(String, Index, Char):
+%	`Char' is the (`Index' + 1)-th character of `String'.
+%	WARNING: behavior is UNDEFINED if `Index' is out of range
+%	(negative, or greater than or equal to the length of `String').
+%	This version is constant time, whereas string__index_det
+%	may be linear in the length of the string.
+%	Use with care!
+
 :- pred string__foldl(pred(char, T, T), string, T, T).
 :- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode string__foldl(pred(in, di, uo) is det, in, di, uo) is det.
@@ -237,6 +249,20 @@
 %	treated as if it were the nearest end-point of that range.
 %	If `Count' is out of the range [0, length of `String' - `Start'], it is
 %	treated as if it were the nearest end-point of that range.)
+
+:- pred string__unsafe_substring(string, int, int, string).
+:- mode string__unsafe_substring(in, in, in, out) is det.
+%	string__unsafe_substring(String, Start, Count, Substring):
+%	`Substring' is first the `Count' characters in what would
+%	remain of `String' after the first `Start' characters were
+%	removed.
+%	WARNING: if `Start' is out of the range [0, length of `String'],
+%	or if `Count' is out of the range [0, length of `String' - `Start'],
+%	then the behaviour is UNDEFINED.
+%	Use with care!
+%	This version takes time proportional to the length of the
+%	substring, whereas string__substring may take time proportional
+%	to the length of the whole string.
 
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, out) is det.
@@ -481,10 +507,6 @@ string__right(String, RightCount, RightString) :-
 	LeftCount is Length - RightCount,
 	string__split(String, LeftCount, _LeftString, RightString).
 
-string__substring(String, Start, Count, Substring) :-
-	string__split(String, Start, _Left, Right),
-	string__left(Right, Count, Substring).
-
 string__remove_suffix(A, B, C) :-
 	string__to_int_list(A, LA),
 	string__to_int_list(B, LB),
@@ -516,31 +538,36 @@ string__int_to_base_string(N, Base, Str) :-
 :- mode string__int_to_base_string_1(in, in, out) is det.
 
 string__int_to_base_string_1(N, Base, Str) :-
+	% Note that in order to handle MININT correctly,
+	% we need to do the conversion of the absolute
+	% number into digits using negative numbers
+	% (we can't use positive numbers, since -MININT overflows)
 	(
 		N < 0
 	->
-		N1 is 0 - N,
-		string__int_to_base_string_2(N1, Base, Str1),
+		string__int_to_base_string_2(N, Base, Str1),
 		string__append("-", Str1, Str)
 	;
-		string__int_to_base_string_2(N, Base, Str)
+		N1 is 0 - N,
+		string__int_to_base_string_2(N1, Base, Str)
 	).
 
 :- pred string__int_to_base_string_2(int, int, string).
 :- mode string__int_to_base_string_2(in, in, out) is det.
 
-string__int_to_base_string_2(N, Base, Str) :-
+string__int_to_base_string_2(NegN, Base, Str) :-
 	(
-		N < Base
+		NegN > -Base
 	->
+		N is -NegN,
 		char__det_int_to_digit(N, DigitChar),
 		string__char_to_string(DigitChar, Str)
 	;
-		N10 is N mod Base,
-		N1 is N // Base,
+		NegN1 is NegN // Base,
+		N10 is (NegN1 * Base) - NegN,
 		char__det_int_to_digit(N10, DigitChar),
 		string__char_to_string(DigitChar, DigitString),
-		string__int_to_base_string_2(N1, Base, Str1),
+		string__int_to_base_string_2(NegN1, Base, Str1),
 		string__append(Str1, DigitString, Str)
 	).
 
@@ -1634,9 +1661,6 @@ string__special_precision_and_width(-1).
 
 /*-----------------------------------------------------------------------*/
 
-:- pred string__unsafe_index(string, int, char).
-:- mode string__unsafe_index(in, in, out) is det.
-
 :- pragma(c_code, string__unsafe_index(Str::in, Index::in, Ch::out), "
 	Ch = Str[Index];
 ").
@@ -1810,6 +1834,52 @@ void sys_init_string_append_module(void) {
 :- pragma no_inline(string__append/3).
 
 /*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__substring(string, int, int, string).
+:- mode string__substring(in, in, in, out) is det.
+%	string__substring(String, Start, Count, Substring):
+*/
+
+:- pragma c_code(string__substring(Str::in, Start::in, Count::in,
+		SubString::out),
+		will_not_call_mercury,
+"{
+	Integer len;
+	Word tmp;
+	if (Start < 0) Start = 0;
+	if (Count <= 0) {
+		make_aligned_string(LVALUE_CAST(ConstString, SubString), """");
+	} else {
+		len = strlen(Str);
+		if (Start > len) Start = len;
+		if (Count > len - Start) Count = len - Start;
+		incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+		SubString = (char *) tmp;
+		memcpy(SubString, Str + Start, Count);
+		SubString[Count] = '\\0';
+	}
+}").
+
+
+/*
+:- pred string__unsafe_substring(string, int, int, string).
+:- mode string__unsafe_substring(in, in, in, out) is det.
+%	string__unsafe_substring(String, Start, Count, Substring):
+*/
+
+:- pragma c_code(string__unsafe_substring(Str::in, Start::in, Count::in,
+		SubString::out),
+		will_not_call_mercury,
+"{
+	Integer len;
+	Word tmp;
+	incr_hp_atomic(tmp, (Count + sizeof(Word)) / sizeof(Word));
+	SubString = (char *) tmp;
+	memcpy(SubString, Str + Start, Count);
+	SubString[Count] = '\\0';
+}").
+
 
 /*
 :- pred string__split(string, int, string, string).

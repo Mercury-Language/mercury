@@ -29,15 +29,18 @@ RM_C	=	$(LIBRARY_RM_C)
 MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
 		$(SCRIPTS_DIR)/mnc
 MNL	=	MERCURY_NU_LIB_DIR=. \
-		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
+		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) \
+					$(NU_LIBRARY_NOS)`" \
 		MERCURY_NU_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_NOS)" \
+		MERCURY_NU_DEBUG_LIB_OBJS="$(NU_DEBUG_LIBRARY_NOS)" \
 		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
-		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
-				$(library.qls) $(NU_LIBRARY_QLS) portray.ql`" \
+		MERCURY_SP_LIB_OBJS="`vpath_find $(qls_subdir)sp_builtin.ql \
+				$(library.qls) $(NU_LIBRARY_QLS) \
+				$(qls_subdir)portray.ql`" \
 		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
 		$(SCRIPTS_DIR)/msl
 
@@ -45,7 +48,11 @@ ifeq ($(LIBRARY_INTERMODULE),yes)
 
 INTERMODULE_OPTS = --transitive-intermodule-optimization
 ENABLE_TERM_OPTS = --enable-termination
-# CHECK_TERM_OPTS = --check-termination
+CHECK_TERM_OPTS =
+# If you want to actually check termination for the library, then you need
+#	CHECK_TERM_OPTS = --check-termination
+# but that is not enabled by default because it probably just results in
+# spurious warnings.
 
 else
 
@@ -102,21 +109,29 @@ DLL_CFLAGS = -Dlibmercury_DEFINE_DLL
 
 include $(MERCURY_DIR)/Makefile.DLLs
 
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
 endif
 
 #-----------------------------------------------------------------------------#
 
-NU_LIBRARY_NOS = \
-	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
-	int.nu.no float.nu.no char.nu.no mercury_builtin.nu.no library.nu.no \
-	store.nu.no
-NU_OVERRIDING_LIBRARY_NOS = map.nu.no assoc_list.nu.no array.nu.no
+NU_LIBRARY_NLS = \
+	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
+	int.nu.nl float.nu.nl char.nu.nl mercury_builtin.nu.nl library.nu.nl \
+	store.nu.nl
+NU_OVERRIDING_LIBRARY_NLS = map.nu.nl assoc_list.nu.nl array.nu.nl
+NU_DEBUG_LIBRARY_NLS = portray.nl debug.nl error.nl
 
-NU_LIBRARY_QLS = \
-	io.nu.ql require.nu.ql std_util.nu.ql string.nu.ql term_io.nu.ql \
-	int.nu.ql float.nu.ql char.nu.ql mercury_builtin.nu.ql library.nu.ql \
-	store.nu.ql sp_lib.ql
-NU_OVERRIDING_LIBRARY_QLS = map.nu.ql assoc_list.nu.ql array.nu.ql
+NU_LIBRARY_NOS = $(NU_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_OVERRIDING_LIBRARY_NOS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_DEBUG_LIBRARY_NOS = $(NU_DEBUG_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+
+NU_LIBRARY_QLS = $(NU_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql) \
+	$(qls_subdir)sp_lib.ql
+NU_OVERRIDING_LIBRARY_QLS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql)
 
 #-----------------------------------------------------------------------------#
 
@@ -201,7 +216,7 @@ cs: $(library.cs)
 .PHONY: libmercury
 # the following dependency is just there to improve compilation speed;
 # making tree234.o first improves effective parallelism with parallel makes.
-libmercury : tree234.o
+libmercury : $(os_subdir)tree234.o
 libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) libmercury.init
 
 libmercury$(DLL_DEF_LIB).a : $(library.os)
@@ -218,7 +233,7 @@ libmercury.so : $(library.pic_os)
 		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
-libmercury.init: library.dep
+libmercury.init: $(deps_subdir)library.dep
 	for file in $(library.ms); do \
 		grep '^INIT ' $$file; \
 		echo "INIT mercury__`basename $$file .m`__init"; \
@@ -231,15 +246,26 @@ libmercury.init: library.dep
 # isn't part of the application, but in this case it is.
 
 library.nu library.nu.debug: $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS)
-library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
+library.sicstus library.sicstus.debug: $(qls_subdir)sp_builtin.ql \
+	$(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
 
-library.nu.debug: error.no debug.no portray.no
-library.sicstus library.sicstus.debug: portray.ql
+library.nu.debug: $(nos_subdir)error.no $(nos_subdir)debug.no \
+	$(nos_subdir)portray.no
+library.sicstus library.sicstus.debug: $(qls_subdir)portray.ql
 
-sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) portray.ql: sicstus_compile
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) \
+$(qls_subdir)portray.ql: sicstus_compile
 
-$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) error.no \
-	debug.no portray.no: nc_builtin.nl
+$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) \
+	$(nos_subdir)error.no $(nos_subdir)debug.no $(nos_subdir)portray.no: \
+	nc_builtin.nl
+
+# Ensure we recompile library__version if VERSION is changed.
+$(os_subdir)library.o \
+$(os_subdir)library.pic_o \
+$(optdates_subdir)library.optdate \
+$(trans_opt_dates_subdir)library.trans_opt_date \
+	: $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 
@@ -275,11 +301,12 @@ on_exception(Error, (						\
 # We need to clean up the .no and .ql files for *.nu.nl, etc.
 
 clean:
-	rm -f *.no *.ql
+	rm -f $(nos_subdir)*.no $(qls_subdir)*.ql
 
 realclean:
 	rm -f libmercury.a libmercury.so libmercury.init
 	rm -f sicstus_saved_state sicstus_compile sp_builtin.pl
+	rm -f tags
 
 #-----------------------------------------------------------------------------#
 
@@ -317,6 +344,13 @@ install_ints: $(library.ints) $(library.int3s) \
 			cp $$file $$target; \
 		fi; \
 	done
+	# The following is needed to support the `--use-subdirs' option
+	[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		mkdir -p $(INSTALL_INT_DIR)/Mercury
+	for dir in ints int2s int3s opts trans_opts; do \
+		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
+		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
+	done
 
 .PHONY: install_init
 install_init: libmercury.init
@@ -346,13 +380,15 @@ install_nuprolog: install_library_nu install_interpreter_nu
 .PHONY: install_library_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
 			$(NU_OVERRIDING_LIBRARY_NOS) \
-			error.no debug.no portray.no nc_builtin.nl
+			$(nos_subdir)error.no $(nos_subdir)debug.no \
+			$(nos_subdir)portray.no nc_builtin.nl
 	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
 		$(NU_OVERRIDING_LIBRARY_NOS) \
-		error.no debug.no portray.no` $(INSTALL_NU_ARCH_DIR)
+		$(nos_subdir)error.no $(nos_subdir)debug.no \
+		$(nos_subdir)portray.no` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
 install_interpreter_nu: library.nu

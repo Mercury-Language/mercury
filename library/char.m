@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,9 +14,6 @@
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
-%
-% NU-Prolog atoms can only include 7-bit ASCII chars, so the current
-% implementation does not support 8-bit characters.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,6 +43,9 @@ getprop(Atom, Key, Property) :-
 	property(Atom, Key, Property).
 remprop(Atom, Key) :-
 	retractall(property(Atom, Key, _Property)).
+
+currentOp(A, B, C) :-
+	current_op(A, B, C).
 
 currentInput(X) :-
 	current_input(X).

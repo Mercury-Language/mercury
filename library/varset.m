@@ -28,7 +28,7 @@
 
 :- module varset.
 :- interface.
-:- import_module term, list, map, assoc_list.
+:- import_module term, list, map, set, assoc_list.
 
 :- type varset.
 
@@ -146,6 +146,11 @@
 :- pred varset__ensure_unique_names(list(var), string, varset, varset).
 :- mode varset__ensure_unique_names(in, in, in, out) is det.
 
+	% Given a varset and a set of variables, remove the names
+	% and values of any other variables stored in the varset.
+:- pred varset__select(varset, set(var), varset).
+:- mode varset__select(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -240,19 +245,8 @@ varset__vars_2(N, Max, L0, L) :-
 
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
-	varset__name_var_2(Names0, Id, Name, Names),
+	map__set(Names0, Id, Name, Names),
 	VarSet = varset(MaxId, Names, Vals).
-
-:- pred varset__name_var_2(map(var, string), var, string, map(var, string)).
-:- mode varset__name_var_2(in, in, in, out) is det.
-
-varset__name_var_2(Names0, Id, Name, Names) :-
-	( string__remove_suffix(Name, "'", _) ->
-		error("varset__name_var: name is already primed")
-	;
-		true
-	),
-	map__set(Names0, Id, Name, Names).
 
 %-----------------------------------------------------------------------------%
 
@@ -427,6 +421,13 @@ varset__ensure_unique_names_3(Trial0, Suffix, UsedNames, Final) :-
 	;
 		Final = Trial0
 	).
+
+%-----------------------------------------------------------------------------%
+
+varset__select(varset(Supply, VarNameMap0, Values0), Vars,
+		varset(Supply, VarNameMap, Values)) :-
+	map__select(VarNameMap0, Vars, VarNameMap),
+	map__select(Values0, Vars, Values).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -120,6 +120,12 @@
 %		Reads all the characters from the current input stream until
 %		eof or error.
 
+:- pred io__read_file_as_string(io__res, string, io__state, io__state).
+:- mode io__read_file_as_string(out, out, di, uo) is det.
+%		Reads all the characters from the current input stream until
+%		eof or error.  Returns the result as a string rather than
+%		as a list of char.
+
 :- pred io__putback_char(char, io__state, io__state).
 :- mode io__putback_char(in, di, uo) is det.
 %		Un-reads a character from the current input stream.
@@ -147,6 +153,13 @@
 %		Reads all the characters from the given input stream until
 %		eof or error.
 
+:- pred io__read_file_as_string(io__input_stream, io__res, string,
+							io__state, io__state).
+:- mode io__read_file_as_string(in, out, out, di, uo) is det.
+%		Reads all the characters from the given input stream until
+%		eof or error.  Returns the result as a string rather than
+%		as a list of char.
+
 :- pred io__putback_char(io__input_stream, char, io__state, io__state).
 :- mode io__putback_char(in, in, di, uo) is det.
 %		Un-reads a character from specified stream.
@@ -171,6 +184,30 @@
 %		if the term is not a valid term of the appropriate type,
 %		or if encounters an I/O error, then it returns
 %		`error(Message, LineNumber)'.
+
+% The type `posn' represents a position within a string.
+:- type posn
+	--->	posn(int, int, int).
+		% line number, offset of start of line, current offset
+		% (the first two are used only for the purposes of
+		% computing term_contexts, for use e.g. in error messages).
+		% Offsets start at zero.
+
+:- pred io__read_from_string(string, string, int, io__read_result(T), posn, posn).
+:- mode io__read_from_string(in, in, in, out, in, out) is det.
+% mode io__read_from_string(FileName, String, MaxPos, Result, Posn0, Posn):
+%		Same as io__read/4 except that it reads from
+%		a string rather than from a stream.
+%		FileName is the name of the source (for use in error messages).
+%		String is the string to be parsed.
+%		Posn0 is the position to start parsing from.
+%		Posn is the position one past where the term read in ends.
+%		MaxPos is the offset in the string which should be
+%		considered the end-of-stream -- this is the upper bound
+%		for Posn.  (In the usual case, MaxPos is just the length
+%		of the String.)
+%		WARNING: if MaxPos > length of String then the behaviour
+%		is UNDEFINED.
 
 :- pred io__ignore_whitespace(io__result, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
@@ -957,7 +994,7 @@
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module int, std_util.
+:- import_module int, std_util, parser.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -1190,6 +1227,218 @@ io__read_file_2(Stream, Chars0, Result) -->
 		io__read_file_2(Stream, [Char|Chars0], Result)
 	).
 
+%-----------------------------------------------------------------------------%
+
+io__read_file_as_string(Result, String) -->
+	io__input_stream(Stream),
+	io__read_file_as_string(Stream, Result, String).
+
+io__read_file_as_string(Stream, Result, String) -->
+	%
+	% check if the stream is a regular file;
+	% if so, allocate a buffer according to the
+	% size of the file.  Otherwise, just use
+	% a default buffer size of 4k minus a bit
+	% (to give malloc some room).
+	%
+	io__stream_file_size(Stream, FileSize),
+	{ FileSize >= 0 ->
+		BufferSize0 is FileSize + 1
+	;
+		BufferSize0 = 4000
+	},
+	{ io__alloc_buffer(BufferSize0, Buffer0) },
+
+	%
+	% Read the file into the buffer (resizing it as we go if necessary),
+	% convert the buffer into a string, and see if anything went wrong.
+	%
+	io__clear_err(Stream),
+	{ Pos0 = 0 },
+	io__read_file_as_string_2(Stream, Buffer0, Pos0, BufferSize0,
+		Buffer, Pos, BufferSize),
+	{ require(Pos < BufferSize, "io__read_file_as_string: overflow") },
+	{ io__buffer_to_string(Buffer, Pos, String) },
+	io__check_err(Stream, Result).
+
+:- pred io__read_file_as_string_2(io__input_stream, buffer, int, int,
+		buffer, int, int, io__state, io__state).
+:- mode io__read_file_as_string_2(in, di, in, in,
+		uo, out, out, di, uo) is det.
+
+io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
+	io__read_into_buffer(Stream, Buffer0, Pos0, Size0,
+		Buffer1, Pos1),
+	( { Pos1 = Pos0 } ->
+		% end of file (or error)
+		{ Size = Size0 },
+		{ Pos = Pos1 },
+		{ Buffer = Buffer1 }
+	; { Pos1 = Size0 } ->
+		% full buffer
+		{ Size1 is Size0 * 2 },
+		{ io__resize_buffer(Buffer1, Size0, Size1, Buffer2) },
+		io__read_file_as_string_2(Stream, Buffer2, Pos1, Size1,
+			Buffer, Pos, Size)
+	;
+		io__read_file_as_string_2(Stream, Buffer1, Pos1, Size0,
+			Buffer, Pos, Size)
+	).
+	
+%-----------------------------------------------------------------------------%
+
+:- pred io__clear_err(stream, io__state, io__state).
+:- mode io__clear_err(in, di, uo) is det.
+% same as ANSI C's clearerr().
+
+:- pragma c_code(io__clear_err(Stream::in, _IO0::di, _IO::uo),
+		will_not_call_mercury,
+"{
+	MercuryFile *f = (MercuryFile *) Stream;
+	clearerr(f->file);
+}").
+
+:- pred io__check_err(stream, io__res, io__state, io__state).
+:- mode io__check_err(in, out, di, uo) is det.
+
+io__check_err(Stream, Res) -->
+	io__ferror(Stream, Int, Msg),
+	{ Int = 0 ->
+		Res = ok
+	;
+		Res = error(Msg)
+	}.
+
+:- pred io__ferror(stream, int, string, io__state, io__state).
+:- mode io__ferror(in, out, out, di, uo) is det.
+% similar to ANSI C's ferror().
+
+:- pragma c_code(ferror(Stream::in, RetVal::out, RetStr::out,
+		_IO0::di, _IO::uo),
+		will_not_call_mercury,
+"{
+	MercuryFile *f = (MercuryFile *) Stream;
+	RetVal = ferror(f->file);
+	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "", RetStr);
+}").
+
+%-----------------------------------------------------------------------------%
+
+:- pred io__stream_file_size(stream, int, io__state, io__state).
+:- mode io__stream_file_size(in, out, di, uo) is det.
+% io__stream_file_size(Stream, Size):
+%	if Stream is a regular file, then Size is its size,
+%	otherwise Size is -1.
+
+:- pragma c_header_code("
+	#include <unistd.h>
+	#include <sys/stat.h>
+
+	/*
+	** in case some non-POSIX implementation doesn't have S_ISREG(),
+	** define it to always fail
+	*/
+	#ifndef S_ISREG
+	#define S_ISREG(x) FALSE
+	#endif
+").
+
+:- pragma c_code(io__stream_file_size(Stream::in, Size::out,
+		_IO0::di, _IO::uo),
+		will_not_call_mercury,
+"{
+	MercuryFile *f = (MercuryFile *) Stream;
+	struct stat s;
+	if (fstat(fileno(f->file), &s) == 0 && S_ISREG(s.st_mode)) {
+		Size = s.st_size;
+	} else {
+		Size = -1;
+	}
+}").
+
+%-----------------------------------------------------------------------------%
+
+% A `buffer' is just an array of Chars.
+% Buffer sizes are measured in Chars.
+
+:- type buffer ---> buffer(c_pointer).
+
+:- pred io__alloc_buffer(int::in, buffer::uo) is det.
+:- pragma c_code(io__alloc_buffer(Size::in, Buffer::uo),
+		will_not_call_mercury,
+"{
+	incr_hp_atomic(Buffer,
+		(Size * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word));
+}").
+
+:- pred io__resize_buffer(buffer::di, int::in, int::in, buffer::uo) is det.
+:- pragma c_code(io__resize_buffer(Buffer0::di, OldSize::in, NewSize::in,
+			Buffer::uo),
+	will_not_call_mercury,
+"{
+	Char *buffer0 = (Char *) Buffer0;
+	Char *buffer;
+
+#ifdef CONSERVATIVE_GC
+	buffer = GC_REALLOC(buffer0, NewSize * sizeof(Char));
+#else
+	if (buffer0 + OldSize == (Char *) MR_hp) {
+		Word next;
+		incr_hp_atomic(next, 
+		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word));
+		assert(buffer0 + OldSize == (Char *) next);
+	    	buffer = buffer0;
+	} else {
+		/* just have to alloc and copy */
+		incr_hp_atomic(Buffer,
+		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word));
+		buffer = (Char *) buffer;
+		if (OldSize > NewSize) {
+			memcpy(buffer, buffer0, NewSize);
+		} else {
+			memcpy(buffer, buffer0, OldSize);
+		}
+	}
+#endif
+
+	Buffer = (Word) buffer;
+}").
+
+:- pred io__buffer_to_string(buffer::di, int::in, string::uo) is det.
+:- pragma c_code(io__buffer_to_string(Buffer::di, Len::in, Str::uo),
+	will_not_call_mercury,
+"{
+	Str = (String) Buffer;
+	Str[Len] = '\\0';
+}").
+
+:- pred io__buffer_to_string(buffer::di, string::uo) is det.
+:- pragma c_code(io__buffer_to_string(Buffer::di, Str::uo),
+	will_not_call_mercury,
+"{
+	Str = (String) Buffer;
+}").
+
+:- pred io__read_into_buffer(stream::in, buffer::di, int::in, int::in,
+		    buffer::uo, int::out, io__state::di, io__state::uo) is det.
+
+:- pragma c_code(io__read_into_buffer(Stream::in,
+		    Buffer0::di, Pos0::in, Size::in,
+		    Buffer::uo, Pos::out, _IO0::di, _IO::uo),
+		will_not_call_mercury,
+"{
+	MercuryFile *f = (MercuryFile *) Stream;
+	char *buffer = (Char *) Buffer0;
+	int items_read;
+
+	items_read = fread(buffer + Pos0, sizeof(Char), Size - Pos0, f->file);
+
+	Buffer = (Word) buffer;
+	Pos = Pos0 + items_read;
+}").
+
+%-----------------------------------------------------------------------------%
+
 io__read_binary_file(Result) -->
 	io__binary_input_stream(Stream),
 	io__read_binary_file(Stream, Result).
@@ -1228,24 +1477,38 @@ io__read_anything(Result) -->
 
 io__read(Result) -->
 	term_io__read_term(ReadResult),
+	io__get_line_number(LineNumber),
+	{ io__process_read_term(ReadResult, LineNumber, Result) }.
+
+io__read_from_string(FileName, String, Len, Result, Posn0, Posn) :-
+	parser__read_term_from_string(FileName, String, Len, Posn0, Posn, ReadResult),
+	Posn = posn(LineNumber, _, _),
+	io__process_read_term(ReadResult, LineNumber, Result).
+
+:- pred io__process_read_term(read_term, int, io__read_result(T)).
+:- mode io__process_read_term(in, in, out) is det.
+
+io__process_read_term(ReadResult, LineNumber, Result) :-
 	(	
-		{ ReadResult = term(_VarSet, Term) },
-		( { term_to_type(Term, Type) } ->
-			{ Result = ok(Type) }
+		ReadResult = term(_VarSet, Term),
+		( term_to_type(Term, Type) ->
+			Result = ok(Type)
 		;
-			io__get_line_number(LineNumber),
-			( { \+ term__is_ground(Term) } ->
-				{ Result = error("io__read: the term read was not a ground term", LineNumber) }
+			( \+ term__is_ground(Term) ->
+				Result = error("io__read: the term read was not a ground term",
+					LineNumber)
 			;
-				{ Result = error("io__read: the term read did not have the right type", LineNumber) }
+				Result = error(
+					"io__read: the term read did not have the right type",
+					LineNumber)
 			)
 		)
 	;
-		{ ReadResult = eof },
-		{ Result = eof }
+		ReadResult = eof,
+		Result = eof
 	;
-		{ ReadResult = error(String, Int) },
-		{ Result = error(String, Int) }
+		ReadResult = error(String, Int),
+		Result = error(String, Int)
 	).
 
 io__read_anything(Stream, Result) -->
@@ -2034,11 +2297,6 @@ io__set_op_table(_OpTable) --> [].
 #ifdef HAVE_SYS_WAIT
 #include <sys/wait.h>
 #endif
-
-/*
-** Mercury files are not quite the same as C stdio FILEs,
-** because we keep track of a little bit more information.
-*/
 
 extern MercuryFile mercury_stdin;
 extern MercuryFile mercury_stdout;
