@@ -509,7 +509,7 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			;
 				Uinstr = c_code(_)
 			;
-				Uinstr = pragma_c(_, _, _, _)
+				Uinstr = pragma_c(_, _, _, _, _)
 			)
 		->
 			NeedsFrame = yes
@@ -657,7 +657,7 @@ possible_targets(restore_ticket(_), []).
 possible_targets(discard_ticket, []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, _), []).
+possible_targets(pragma_c(_, _, _, _, _), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1235,8 +1235,8 @@ substitute_labels_instr(restore_ticket(Rval), _, restore_ticket(Rval)).
 substitute_labels_instr(discard_ticket, _, discard_ticket).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-substitute_labels_instr(pragma_c(Decl, In, Code, Out), _,
-		pragma_c(Decl, In, Code, Out)).
+substitute_labels_instr(pragma_c(Decl, In, Code, Out, Context), _,
+		pragma_c(Decl, In, Code, Out, Context)).
 
 :- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
 	list(label)::out) is det.

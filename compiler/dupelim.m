@@ -183,7 +183,7 @@ dupelim__replace_labels_instr(restore_ticket(Rval0), Replmap,
 dupelim__replace_labels_instr(discard_ticket, _, discard_ticket).
 dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-dupelim__replace_labels_instr(pragma_c(A,B,C,D), _, pragma_c(A,B,C,D)).
+dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), _, pragma_c(A,B,C,D,E)).
 
 :- pred dupelim__replace_labels_lval(lval, map(label, label), lval).
 % :- mode dupelim__replace_labels_lval(di, in, uo) is det.

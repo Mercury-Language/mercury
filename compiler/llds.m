@@ -197,13 +197,13 @@
 			% Decrement the det stack pointer.
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_input),
-			string, list(pragma_c_output)).
+			string, list(pragma_c_output), term__context).
 			% The local variable decs, placing the inputs in the
 			% variables, the c code, and where to
 			% find the outputs for pragma(c_code, ... ) decs.
 
 %	;	frame_pragma_c(list(pragma_c_decl), list(pragma_c_input),
-%			string, list(pragma_c_output), list(label)).
+%			string, list(pragma_c_output), list(label), term__context).
 %			% The same as above, plus the list of labels to use
 %			% in LABEL_1 and DEFINE_LABEL_1 style macros.
 %			% For use in model_non pragma_c_codes, where it

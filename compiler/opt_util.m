@@ -861,7 +861,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _),
 		Need = no
 	).
 
@@ -959,7 +959,7 @@ opt_util__can_instr_branch_away(restore_ticket(_), no).
 opt_util__can_instr_branch_away(discard_ticket, no).
 opt_util__can_instr_branch_away(incr_sp(_, _), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
-opt_util__can_instr_branch_away(pragma_c(_, _, _, _), no).
+opt_util__can_instr_branch_away(pragma_c(_, _, _, _, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
@@ -982,7 +982,7 @@ opt_util__can_instr_fall_through(restore_ticket(_), yes).
 opt_util__can_instr_fall_through(discard_ticket, yes).
 opt_util__can_instr_fall_through(incr_sp(_, _), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1021,7 +1021,7 @@ opt_util__can_use_livevals(restore_ticket(_), no).
 opt_util__can_use_livevals(discard_ticket, no).
 opt_util__can_use_livevals(incr_sp(_, _), no).
 opt_util__can_use_livevals(decr_sp(_), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1077,7 +1077,7 @@ opt_util__instr_labels_2(restore_ticket(_), [], []).
 opt_util__instr_labels_2(discard_ticket, [], []).
 opt_util__instr_labels_2(incr_sp(_, _), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
-opt_util__instr_labels_2(pragma_c(_, _, _, _), [], []).
+opt_util__instr_labels_2(pragma_c(_, _, _, _, _), [], []).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
 :- mode opt_util__instr_rvals_and_lvals(in, out, out) is det.
@@ -1105,7 +1105,7 @@ opt_util__instr_rvals_and_lvals(restore_ticket(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(discard_ticket, [], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_, _), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
-opt_util__instr_rvals_and_lvals(pragma_c(_, In, _, Out), Rvals, Lvals) :-
+opt_util__instr_rvals_and_lvals(pragma_c(_, In, _, Out, _), Rvals, Lvals) :-
 	pragma_c_inputs_get_rvals(In, Rvals),
 	pragma_c_outputs_get_lvals(Out, Lvals).
 
@@ -1197,7 +1197,7 @@ opt_util__count_temps_instr(restore_ticket(Rval), R0, R, F0, F) :-
 opt_util__count_temps_instr(discard_ticket, R, R, F, F).
 opt_util__count_temps_instr(incr_sp(_, _), R, R, F, F).
 opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.

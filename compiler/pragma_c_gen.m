@@ -41,8 +41,8 @@
 
 :- implementation.
 
-:- import_module call_gen, tree.
-:- import_module string, assoc_list, set, require.
+:- import_module hlds_module, hlds_pred, call_gen, tree.
+:- import_module string, assoc_list, set, map, require.
 
 % The code we generate for a model_det or model_semi pragma_c_code
 % must be able to fit into the middle of a procedure, since such
@@ -89,9 +89,9 @@
 %	there is nothing that needs restoring.
 
 code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
-		PredId, ModeId, Args, Names, _GoalInfo, Instr) -->
+		PredId, ProcId, Args, Names, _GoalInfo, Code) -->
 	% First we need to get a list of input and output arguments
-	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
+	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo),
 	{ make_c_arg_list(Args, Names, ArgNames) },
 	{ assoc_list__from_corresponding_lists(ArgNames, ArgInfo, ArgModes) },
 	{ pragma_select_in_args(ArgModes, InArgs) },
@@ -170,10 +170,32 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 				"#endif\n"
 			], Wrapped_C_Code) }
 	),
-	{ PragmaCode = node([pragma_c(Decls, Inputs, Wrapped_C_Code, Outputs) - 
-			"Pragma C inclusion"]) },
-	{ Instr = tree(tree(tree(SaveVarsCode, InputVarsCode), ShuffleR1_Code), 
-			tree(PragmaCode, CheckFailureCode)) }.
+
+	% The context in the goal_info we are given is the context of the
+	% call to the predicate whose definition is a pragma_c_code.
+	% The context we want to put into the LLDS code we generate
+	% is the context of the pragma_c_code line in the definition
+	% of that predicate.
+	code_info__get_module_info(ModuleInfo),
+	{ module_info_preds(ModuleInfo, PredTable) },
+	{ map__lookup(PredTable, PredId, PredInfo) },
+	{ pred_info_procedures(PredInfo, ProcTable) },
+	{ map__lookup(ProcTable, ProcId, Proc) },
+	{ proc_info_goal(Proc, OrigGoal) },
+	{ OrigGoal = _ - OrigGoalInfo },
+	{ goal_info_get_context(OrigGoalInfo, Context) },
+
+	{ PragmaCode = node([
+		pragma_c(Decls, Inputs, Wrapped_C_Code, Outputs, Context) - 
+			"Pragma C inclusion"
+	]) },
+	{ Code =
+		tree(SaveVarsCode,
+		tree(InputVarsCode,
+		tree(ShuffleR1_Code, 
+		tree(PragmaCode,
+		     CheckFailureCode))))
+	}.
 
 %---------------------------------------------------------------------------%
 

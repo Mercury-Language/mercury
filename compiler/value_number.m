@@ -1068,7 +1068,7 @@ value_number__boundary_instr(restore_ticket(_), yes).
 value_number__boundary_instr(discard_ticket, yes).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
-value_number__boundary_instr(pragma_c(_, _, _, _), yes).
+value_number__boundary_instr(pragma_c(_, _, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%
 
