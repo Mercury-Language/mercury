@@ -58,6 +58,7 @@ make install
 /usr/bin/c2init
 /usr/bin/mdb
 /usr/bin/mdemangle
+/usr/bin/mercury_cleanup_install
 /usr/bin/mercury_update_interface
 /usr/bin/mgnuc
 /usr/bin/mkfifo_using_mknod
@@ -68,6 +69,7 @@ make install
 /usr/bin/mprof
 /usr/bin/mprof_merge_runs
 /usr/bin/mtags
+/usr/bin/vpath_find
 /usr/man/man1/c2init.1
 /usr/man/man1/mdb.1
 /usr/man/man1/mgnuc.1
