@@ -53,6 +53,9 @@ libmer.so: $(PIC_OBJS)
 runtime.init: $(MOD_CS)
 	cat $(MOD_CS) | grep '^INIT ' > runtime.init
 
+.PHONY: cs
+cs: $(MOD_CS)
+
 #-----------------------------------------------------------------------------#
 
 # installation rules
