@@ -66,11 +66,16 @@ set -x	# trace execution
 
 : checkout the sources and make sure the installation directory exists
 cd $DIR || { false; exit 1; }
+rm -rf mercury || { false; exit 1; }
 cvs checkout mercury/doc || { false; exit 1; }
 cvs checkout mercury/library || { false; exit 1; }
 cd $DIR/mercury || { false; exit 1; }
 # checkout the www module and remove RCS keywords.
 cvs checkout -kv www || { false; exit 1; }
+
+# make sure all pages are world readable
+chmod -R a+r * || { false; exit 1; }
+
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
 
 
