@@ -52,7 +52,7 @@ make install
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
 #	   register variables.  Currently these are supported for mips,
-#	   sparc, and maybe soon for i386 (see runtime/regs.h and
+#	   sparc, alpha, and maybe soon for i386 (see runtime/regs.h and
 #	   runtime/machdeps/*).  If you want to use Mercury on some other
 #	   CPU, contact us and we'll add support for gcc global registers
 #	   for that CPU.
