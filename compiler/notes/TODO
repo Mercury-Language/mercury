@@ -3,15 +3,22 @@
 TODO LIST:
 ----------
 
+For more information on any of these issues, contact mercury@cs.mu.oz.au.
+
 mode analysis
 -------------
 
-- handle "phantom aliasing", i.e. aliasing within a single procedure.
-  This is needed to make partially instantiated modes work.
+- check that unique modes do not get used in a context that could require
+  backtracking
+	[being done by fjh]
 
-- handle unique modes
+- extend the mode system to allow known aliasing.
+  This is needed to make partially instantiated modes and unique modes work.
+	[will be done by fjh]
 
 - detect incorrect usage of `bound(...)' insts.
+  That is, make sure that all of the functors in a bound(...) inst
+  are valid functors for the type.
 
 - split construct/deconstruct unifications into their atomic
   "micro-unification" pieces when necessary.
@@ -22,6 +29,13 @@ mercury_to_goedel.m
 
 - see comments at the start of that file
 
+type system
+-----------
+
+- handle predicate overloading in the case where predicates
+  with the same name and arity occur in different modules
+	  [will be done by fjh]
+
 module system
 -------------
 
@@ -30,10 +44,22 @@ module system
   section
 
 - handle module qualifiers properly
+	  [being done by dylan]
 
 - imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
+
+C interface
+-----------
+
+- make C interface bidirectional: allow C programs to call Mercury programs
+	  [is being done by dgj]
+
+runtime system
+--------------
+
+- reimplement runtime/*.mod using the new C interface.
 
 *******************************************************************************
 
@@ -43,7 +69,10 @@ WISH LIST
 typechecking
 ------------
 
-- see wish list comments at the start of typecheck.m
+- allow explicit type qualifications `X :: Type'
+
+- allow type inference for non-exported predicates
+
 
 mode analysis:
 --------------
@@ -53,8 +82,21 @@ mode analysis:
 - handle abstract insts in the same way abstract types are handled
   (a research issue - is this possible at all?)
 
+- implement `willbe(Inst)' insts
+	  [will be done by conway and fjh]
+
+- mode segments & high-level transformation of circularly moded programs.
+
+
+higher-order preds:
+-------------------
+
+- implement single-use higher-order predicate modes.
+  Single-use higher-order predicates are allowed to bind
+ 
 - allow taking the address of a predicate with multiple modes
   (This would require mode inference.)
+
 
 code generation:
 ----------------
@@ -67,39 +109,55 @@ code generation:
 
 - We could still generate better code for switches
 
-general
--------
 
-- optimization of various sorts
+source-level transformations
+----------------------------
 
-- "accurate" garbage collection
+- specialization of calls to list__map and similar higher-order predicates
+  that take predicates as arguments in the case where the predicate arguments
+  are known
+
+- more work on module system, separate compilation, and the multiple
+  specialization problem, in particular
+	- cross-module inlining
+	- cross-module specialization of higher-order preds
+
+- deforestation
+
+- transform non-tail-recursive predicates into tail-recursive form
+  using accumulators
+
+
+low-level optimizations
+-----------------------
+
+- reduce the overhead of higher-order predicate calls (avoid copying
+  the real registers into the fake_reg array and back)
 
 - tail recursion optimization using pass-by-reference argument conventions
 
 - other specializations, e.g. if argument is known to be bound to
   f(X,Y), then just pass X and Y in registers
 
+
+compilation speed
+-----------------
+
 - improve efficiency of the expansion of equivalence types (currently O(N^2))
+  (e.g. this is particularly bad when compiling live_vars.m.)
 
 - improve efficiency of the module import handling (currently O(N^2))
 
-- more work on module system, separate compilation, and the multiple
-  specialization problem, in particular
-	- cross-module inlining
-	- specialization of calls to list__map and similar predicates
-	  that take higher-order predicates as arguments
+- improve the efficiency of mode checking very large facts
+  (e.g. this is particularly bad when compiling eliza.m.)
 
-- reduce the overhead of higher-order predicate calls (avoid copying
-  the real registers into the fake_reg array and back)
+- improve the efficiency of the type_to_term and term_to_type implementation
+  so that we can enable them in the standard distribution of the Mercury
+  compiler
 
-- deforestation
 
-- mode segments & high-level transformation of circularly moded programs.
-
-- implement user-defined operators:
-	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
-	change prog_io.m to parse this construct and call io__op
-	accordingly.
+better diagnostics
+------------------
 
 - optional warning for any implicit quantifiers whose scope is not
   the entire clause (the "John Lloyd" option :-).
@@ -120,17 +178,36 @@ general
 
 - give a better error message for the use of if-then without else.
 
+- give a better error message for the use of `<=' instead of `>='
+  (but how?)
+
 - give a better error message for type errors involving higher-order pred
-  constants
+  constants (requested by Bart Demoen)
 
 - give better error messages for syntax errors in lambda expressions
 
 - issue a warning if the only use of an argument is in a recursive call
 
-- better error handling
 
-- fix all the `XXX's, `xxx's, `YYY's and `%%%'s.
+general
+-------
 
-- implement an interpreter/debugger
+- coroutining and parallel versions of Mercury
+	[being worked on by conway]
+
+- implement a very fast turn-around bytecode compiler/interpreter/debugger,
+  similar to Gofer
+
+- implement a new backend which compiles to high-level C that can
+  be debugged at the Mercury source code level using gdb
+	[a start has been made by fjh]
+
+- implement "accurate" garbage collection
+	[being worked on by tyson]
+
+- implement user-defined operators:
+	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
+	change prog_io.m to parse this construct and call io__op
+	accordingly.
 
 *******************************************************************************
