@@ -850,7 +850,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 			SplitLibFileName, !IO),
 		string__append(".dir/*", Obj, DirObj),
 		join_module_list(Modules, DirObj, ObjectList, !IO),
-		create_archive(OutputStream, SplitLibFileName,
+		create_archive(OutputStream, SplitLibFileName, no,
 			ObjectList, MakeLibCmdOK, !IO),
 		ObjectsList = [SplitLibFileName]
 	;
@@ -1063,7 +1063,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
 		Ext = LibExt,
 		module_name_to_lib_file_name("lib", ModuleName, LibExt, yes,
 			OutputFileName, !IO),
-		create_archive(ErrorStream, OutputFileName, ObjectsList,
+		create_archive(ErrorStream, OutputFileName, yes, ObjectsList,
 			LinkSucceeded, !IO)
 	; LinkTargetType = java_archive ->
 		Ext = ".jar",
@@ -1538,10 +1538,10 @@ process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded, !IO) :-
 		LinkerOpt = "-l" ++ LibName
 	).
 
-:- pred create_archive(io__output_stream::in, file_name::in,
+:- pred create_archive(io__output_stream::in, file_name::in, bool::in,
 	list(file_name)::in, bool::out, io::di, io::uo) is det.
 
-create_archive(ErrorStream, LibFileName, ObjectList, Succeeded, !IO) :-
+create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
 	globals__io_lookup_string_option(create_archive_command, ArCmd, !IO),
 	globals__io_lookup_accumulating_option(
 		create_archive_command_flags, ArFlagsList, !IO),
@@ -1549,7 +1549,16 @@ create_archive(ErrorStream, LibFileName, ObjectList, Succeeded, !IO) :-
 	globals__io_lookup_string_option(
 		create_archive_command_output_flag, ArOutputFlag, !IO),
 	globals__io_lookup_string_option(ranlib_command, RanLib, !IO),
-	join_quoted_string_list(ObjectList, "", "", " ", Objects),
+	(
+		Quote = yes,
+		join_quoted_string_list(ObjectList, "", "", " ", Objects)
+	;
+		Quote = no,
+		% Elements of ObjectList may contain shell wildcards, which
+		% are intended to cause the element to expand to several words.
+		% Quoting would prevent that.
+		join_string_list(ObjectList, "", "", " ", Objects)
+	),
 	MakeLibCmd = string__append_list([
 		ArCmd, " ", ArFlags, " ", ArOutputFlag, " ",
 		LibFileName, " ", Objects]),
