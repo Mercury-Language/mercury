@@ -32,7 +32,7 @@
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
-:- import_module negation, call_graph.
+:- import_module negation, dependency_graph, constraint.
 :- import_module common, require.
 
 %-----------------------------------------------------------------------------%
@@ -1254,17 +1254,11 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
 		{ bool__not(FoundModeError, Proceed2) },
 
-		globals__io_lookup_bool_option(make_call_graph, MakeCallGraph),
-		( { MakeCallGraph = yes } ->
-			mercury_compile__make_call_graph(HLDS3),
-			maybe_report_stats(Statistics)
-		;
-			[]
-		),
+		mercury_compile__make_dependency_graph(HLDS3, HLDS3a),
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
-			mercury_compile__maybe_polymorphism(HLDS3, HLDS4),
+			mercury_compile__maybe_polymorphism(HLDS3a, HLDS4),
 			maybe_report_stats(Statistics),
 			mercury_compile__maybe_dump_hlds(HLDS4, "4", "polymorphism"),
 
@@ -1340,26 +1334,32 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 			"% Program is mode-correct.\n")
 	).
 
-:- pred mercury_compile__make_call_graph(module_info,
+:- pred mercury_compile__make_dependency_graph(module_info, module_info,
 	io__state, io__state).
-:- mode mercury_compile__make_call_graph(in, di, uo) is det.
+:- mode mercury_compile__make_dependency_graph(in, out, di, uo) is det.
 
-mercury_compile__make_call_graph(ModuleInfo) -->
+mercury_compile__make_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Building call graph..."),
+	maybe_write_string(Verbose, "% Building dependency graph..."),
 	maybe_flush_output(Verbose),
-	{ call_graph__build_call_graph(ModuleInfo, CallGraph) },
+	{ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) },
 	maybe_write_string(Verbose, "done.\n"),
-	{ module_info_name(ModuleInfo, Name) },
-	{ string__append(Name, ".call_graph", WholeName) },
-	io__tell(WholeName, Res),
-	( { Res = ok } ->
-		call_graph__write_call_graph(CallGraph, ModuleInfo),
-		io__told
+	globals__io_lookup_bool_option(show_dependency_graph, ShowDepGraph),
+	( { ShowDepGraph = yes } ->
+		{ module_info_name(ModuleInfo, Name) },
+		{ string__append(Name, ".dependency_graph", WholeName) },
+		io__tell(WholeName, Res),
+		( { Res = ok } ->
+			dependency_graph__write_dependency_graph(ModuleInfo),
+			io__told
+		;
+			report_error("unable to write dependency graph")
+		)
 	;
-		report_error("unable to write call graph")
+		[]
 	).
 	
+
 :- pred mercury_compile__maybe_polymorphism(module_info, module_info,
 	io__state, io__state).
 :- mode mercury_compile__maybe_polymorphism(in, out, di, uo) is det.
@@ -1542,7 +1542,10 @@ mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
 		{ GenerateCode = yes },
 		{ FoundError = no }
 	->
-		mercury_compile__map_args_to_regs(HLDS10, HLDS11),
+		mercury_compile__maybe_propagate_constraints(HLDS10, HLDS10a),
+		mercury_compile__maybe_dump_hlds(HLDS10a, "50", "constraint"),
+
+		mercury_compile__map_args_to_regs(HLDS10a, HLDS11),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs")
 	;
@@ -1569,6 +1572,24 @@ mercury_compile__check_determinism(HLDS0, HLDS, FoundError) -->
 		maybe_write_string(Verbose,
 			"% Program is determinism-correct.\n")
 	).
+
+:- pred mercury_compile__maybe_propagate_constraints(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__maybe_propagate_constraints(in, out, di, uo) is det.
+
+mercury_compile__maybe_propagate_constraints(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(constraint_propagation, ConstraintProp),
+	( { ConstraintProp = yes } ->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Propagating constraints..."),
+		maybe_flush_output(Verbose),
+		constraint_propagation(HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n")
+	;
+		{ HLDS0 = HLDS }
+	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__map_args_to_regs(module_info, module_info,
 	io__state, io__state).
