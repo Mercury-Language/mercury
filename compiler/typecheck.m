@@ -64,12 +64,19 @@
 %		% another undiscriminated union
 %	:- type number = int + float.
 %
+%    NOT YET IMPLEMENTED.
+%
 % 3) equivalent types (treated identically, ie, same name.  Any number
 %	of types can be equivalent; the *canonical* one is the one
 %	which is not defined using ==):
 %	:- type real == float.
+%
 %    Currently references to equivalence types are expanded
-%    in a separate pass by toplevel.nl.
+%    in a separate pass by toplevel.nl.  It would be better
+%    to avoid expanding them (and instead modify the type unification
+%    algorithm to handle equivalent types) because this would
+%    give better error messages.  However, this is not a high
+%    priority.
 %
 % 4) builtin types
 %	character, int, float, string
@@ -88,16 +95,21 @@
 % 	XXX 	we should check that a predicate's type parameters
 %		don't get bound!
 %
+%		error reporting could still be improved:
+%		- undefined symbols are only handled cleanly
+%		  if they occur as predicate arguments.
+%		- type errors in predicate calls should state
+%		  which predicate call caused the error.
+%		- errors in unification with head arguments should be handled
+%		  specially; that `HeadVar', `HeadVars'', etc. is ugly.
+%
+%  Wish list:
 % 	 	we should handle explicit type qualifications
 % 		(and remove them here) but we don't do so yet
 %
 %		we should handle equivalence types here
 %
 %		we should handle overloading of predicates
-%
-%		error reporting could still be improved;
-%		eg. undefined symbols are only handled cleanly
-%		if they occur as predicate arguments.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
