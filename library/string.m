@@ -1041,9 +1041,14 @@ prec(Prec, PolyTypes0, PolyTypes) -->
 		=(Init),
 		digit,
 		zero_or_more_occurences(digit),
-		=(Final),
-
+		=(Final)
+	->
 		{ list__remove_suffix(Init, Final, Prec) },
+		{ PolyTypes = PolyTypes0 }
+	;
+			% When no number follows the '.' the precision
+			% defaults to 0.
+		{ Prec = ['0'] },
 		{ PolyTypes = PolyTypes0 }
 	).
 
