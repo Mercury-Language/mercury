@@ -749,12 +749,17 @@ then
 	MERCURY_INT_DIR=$root/${stage2_insert}library
 	export MERCURY_INT_DIR
 
+	if test "$test_grade" = ""; then
+		gc_grade=`scripts/ml --print-gc-grade`
+	else
+		gc_grade=`scripts/ml --grade $test_grade --print-gc-grade`
+	fi
 	MERCURY_LIBS="
 		`$CYGPATH $root/${stage2_insert}trace/lib$TRACE_LIB_NAME.$A`
 		`$CYGPATH $root/${stage2_insert}browser/lib$BROWSER_LIB_NAME.$A`
 		`$CYGPATH $root/${stage2_insert}library/lib$STD_LIB_NAME.$A`
 		`$CYGPATH $root/${stage2_insert}runtime/lib$RT_LIB_NAME.$A`
-		`$CYGPATH $root/${stage2_insert}boehm_gc/libgc.$A`
+		`$CYGPATH $root/${stage2_insert}boehm_gc/lib$gc_grade.$A`
 		-lm"
 	export MERCURY_LIBS
 
