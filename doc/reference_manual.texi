@@ -3560,6 +3560,12 @@ any calls to the standard library predicate @samp{builtin__compare/3}
 with arguments of that type are evaluated as if they were calls
 to @var{comparepred}.
 
+A type declaration may contain a
+@samp{where equality is @var{equalitypred}, comparison is @var{comparepred}}
+specification only if in addition to the conditions above,
+@samp{all [X, Y] (@var{comparepred}((=), X, Y) <=> @var{equalitypred}(X, Y))}.
+The compiler is not required to check this.
+
 @node Higher-order
 @chapter Higher-order programming
 
