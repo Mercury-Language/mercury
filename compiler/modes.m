@@ -82,8 +82,8 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 				ModuleInfo, Error) -->
 	{ moduleinfo_preds(ModuleInfo0, Preds0) },
 	{ map__search(Preds0, PredId, PredInfo0) },
-	{ predinfo_arg_modes(PredInfo0, ModeVarSet, ArgModes) },
-	{ predinfo_clauses(PredInfo0, Clauses0) },
+	%%% { predinfo_argmodes(PredInfo0, ModeVarSet, ArgModes) },
+	{ predinfo_clauses_info(PredInfo0, ClausesInfo0) },
 	( { Clauses0 = [] } ->
 		[]
 	;
@@ -93,10 +93,12 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 	),
 	{ copy_clauses_to_procs(PredInfo0, PredInfo1) },
 
+/******
 		% XXX fix here
 	modecheck_clause_list(Clauses0, PredId, ModeVarSet, ArgModes,
 		ModuleInfo0, Error0, Clauses, Error1),
-	{ predinfo_set_clauses(PredInfo0, Clauses, PredInfo) },
+*****/
+	{ predinfo_set_clauses_info(PredInfo0, ClausesInfo, PredInfo) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
 	{ moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1) },
 	modecheck_pred_modes_2(PredIds, ModuleInfo1, Error1, ModuleInfo, Error).
@@ -106,13 +108,16 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 :- pred copy_clauses_to_procs(pred_info, pred_info).
 :- mode copy_clauses_to_procs(input, output).
 
+/****
+
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	predinfo_clauses(PredInfo0, Clauses),
 	predinfo_procedures(PredInfo0, Procs0),
 	map__keys(Procs0, ProcIds),
 	copy_clauses_to_procs_2(ProcIds, Clauses, Procs0, Procs),
-	predinfo_set_procedures(PredInfo0, Procs).
+	predinfo_set_procedures(PredInfo0, Procs, PredInfo).
 
+:- pred copy_clauses_to_procs_2(list(proc_id), clauses_info
 copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], Clauses, Procs0, Procs) :-
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
@@ -121,6 +126,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], Clauses, Procs0, Procs) :-
 	procinfo_set_goal(Procs1, Goal, Procs2),
 	copy_clauses_to_procs_2(ProcIds, Clauses, Procs2, Procs).
 
+:- pred select_matching_clauses(list(clause),
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	Clause = clause(ProcIds, _, _, _, _, _),
@@ -131,10 +137,10 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses1).
 
+:- pred combine_clauses(...).
 combine_clauses([], HeadVars, conj([]) - GoalInfo) :-
 	% XXX HeadVars
 	goalinfo_init(GoalInfo).
-/****
 combine_clauses([Clause | Clauses], HeadVars, conj([]) - GoalInfo) :-
 ****/
 

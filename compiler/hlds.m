@@ -48,7 +48,7 @@
 					condition,	% formal specification
 							% (not used)
 
-					clause_list,
+					clauses_info,
 
 					proc_table,
 
@@ -56,15 +56,16 @@
 							% of the :- pred decl.
 				).
 
-:- type clause_list	==	list(clause).
-
-:- type clause		--->	clause(
-					list(proc_id),
-							% modes for which
-							% this clause applies
+:- type clauses_info	--->	clauses_info(
 					varset,		% variable names
 					map(var, type), % variable types
 					list(var),	% head vars
+					list(clause)
+				).
+
+:- type clause		--->	clause(
+					list(proc_id),  % modes for which
+							% this clause applies
 					hlds__goal,	% Body
 					term__context
 				).
@@ -73,7 +74,7 @@
 :- type proc_table	==	map(proc_id, proc_info).
 
 :- type proc_info	--->	procedure(
-					category,
+					determinism,	% _declared_ determism
 					varset,		% variable names
 					map(var, type),	% variable types
 					list(var),	% head vars
@@ -81,19 +82,19 @@
 					hlds__goal,	% Body
 					term__context,	% The context of
 							% the :- mode decl,
-							% not the clause.
-					call_info	% stack allocations
+							% not the clause.	
+					call_info,	% stack allocations
+					category	% _inferred_ det'ism
 				).
 
 %%% :- export_type category.
-:- type category	--->	deterministic(det_source) % functional & total
-			;	semideterministic(det_source) % just functional
-			;	nondeterministic(det_source) % neither
-			;	unspecified.
+:- type category	--->	deterministic		% functional & total
+			;	semideterministic	% just functional
+			;	nondeterministic.	% neither
 
 %%% :- export_type det_source.
 :- type det_source	--->	declared
-			;	infered.
+			;	inferred.
 
 :- type pred_id 	--->	pred(module_name, string, int).
 			%	module, predname, arity
@@ -163,7 +164,9 @@
 :- type hlds__goal		--->	hlds__goal_expr - hlds__goal_info.
 
 %%% :- export_type hlds__goal_expr.
-:- type hlds__goal_expr    	--->	conj(hlds__goals)
+:- type hlds__goal_expr    	--->	
+				% A conjunction
+				conj(hlds__goals)
 
 				% Initially only the pred_id and arguments
 				% are filled in.  Mode analysis fills in the
@@ -174,8 +177,8 @@
 			;	call(pred_id, proc_id, list(term), is_builtin)
 
 				% Deterministic disjunctions are converted
-				% into case statements by the determinism
-				% analysis.
+				% into case statements by the switch
+				% detection pass.
 				% Variable, functor-args-goal, followvars
 			;	switch(var, list(case), follow_vars)
 
@@ -184,18 +187,12 @@
 				% two fields.
 			;	unify(term, term, unify_mode, unification,
 								unify_context)
-
-			% The remainder aren't used as yet, since
-			% we only handle deterministic code.
-
 			;	disj(hlds__goals)
 			;	not(list(var), hlds__goal)
-					% could use if_then_else instead
 			;	all(list(var), hlds__goal)
 			;	some(list(var), hlds__goal)
 			;	if_then_else(list(var), hlds__goal,
-					hlds__goal, hlds__goal)
-			;	error.
+					hlds__goal, hlds__goal).
 
 	% Record whether a call is a builtin or not, and if so, which one.
 %%% :- export_type is_builtin.
@@ -264,7 +261,11 @@
 
 :- type hlds__goal_info	--->	goalinfo(
 					map(var, is_live), % XXX this is O(N*N)
-					category,
+					determinism, % the declared determinism
+				% (current always unspecified, since
+				% there's no way to declare the determinism
+				% of a goal.)
+					category, % the inferred determinism
 					instmap,	   % XXX this is O(N*N)
 					term__context
 				).
@@ -526,14 +527,17 @@ moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 :- pred predinfo_arg_types(pred_info, varset, list(type)).
 :- mode predinfo_arg_types(input, output, output).
 
-:- pred predinfo_clauses(pred_info, clause_list).
-:- mode predinfo_clauses(input, output).
+:- pred predinfo_clauses_info(pred_info, clauses_info).
+:- mode predinfo_clauses_info(input, output).
 
-:- pred predinfo_set_clauses(pred_info, clause_list, pred_info).
-:- mode predinfo_set_clauses(input, input, output).
+:- pred predinfo_set_clauses_info(pred_info, clauses_info, pred_info).
+:- mode predinfo_set_clauses_info(input, input, output).
 
 :- pred predinfo_procedures(pred_info, proc_table).
 :- mode predinfo_procedures(input, output).
+
+:- pred predinfo_set_procedures(pred_info, proc_table, pred_info).
+:- mode predinfo_set_procedures(input, input, output).
 
 :- pred predinfo_modes(pred_info, list(proc_id)).
 :- mode predinfo_modes(input, output).
@@ -555,10 +559,10 @@ predinfo_proc_ids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
 	map__keys(Procs, ProcIds).
 
-predinfo_clauses(PredInfo, Clauses) :-
+predinfo_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
 
-predinfo_set_clauses(PredInfo0, Clauses, PredInfo) :-
+predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 	PredInfo0 = predicate(_TypeVars, _ArgTypes, _Cond, _, _Procs, C),
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, C).
 
@@ -567,6 +571,10 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 
 predinfo_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
+
+predinfo_set_procedures(PredInfo0, Procedures, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, _, F),
+	PredInfo = predicate(A, B, C, D, Procedures, F).
 
 predinfo_modes(PredInfo, Modes) :-
 	predinfo_procedures(PredInfo, Procedures),
@@ -582,8 +590,17 @@ predinfo_context(PredInfo, Context) :-
 
 :- interface.
 
-:- pred procinfo_category(proc_info, category).
-:- mode procinfo_category(input, output).
+:- pred procinfo_init(list(mode), determinism, term__context, proc_info).
+:- mode procinfo_init(input, input, input, output).
+
+:- pred determinism_to_category(determinism, category).
+:- mode determinism_to_category(input, output).
+
+:- pred procinfo_declared_determinism(proc_info, determinism).
+:- mode procinfo_declared_determinism(input, output).
+
+:- pred procinfo_inferred_determinism(proc_info, category).
+:- mode procinfo_inferred_determinism(input, output).
 
 :- pred procinfo_variables(proc_info, varset).
 :- mode procinfo_variables(input, output).
@@ -609,32 +626,60 @@ predinfo_context(PredInfo, Context) :-
 :- pred procinfo_arg_registers(proc_info, list(var), map(var, int)).
 :- mode procinfo_arg_registers(input, input, output).
 
+:- pred procinfo_set_inferred_determinism(proc_info, category, proc_info).
+:- mode procinfo_set_inferred_determinism(input, input, output).
+
+:- pred procinfo_set_goal(proc_info, hlds__goal, proc_info).
+:- mode procinfo_set_goal(input, input, output).
+
 :- implementation.
 
-procinfo_category(ProcInfo, Category) :-
-	ProcInfo = procedure(Category, _Names, _Types, _HeadVars,
-				_ModeInfo, _Goal, _Context, _CallInfo).
+	% Some parts of the procedure aren't known yet.  We initialize
+	% them to any old garbage which we will later throw away
+
+procinfo_init(Modes, Det, MContext, NewProc) :-
+	map__init(BodyTypes),
+	goalinfo_init(GoalInfo),
+	varset__init(BodyVarSet),
+	HeadVars = [],
+	determinism_to_category(Det, Category),
+	map__init(CallInfo),
+	NewProc = procedure(
+		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
+		conj([]) - GoalInfo, MContext, CallInfo, Category
+	).
+
+determinism_to_category(det, deterministic).
+determinism_to_category(semidet, semideterministic).
+determinism_to_category(nondet, nondeterministic).
+determinism_to_category(unspecified, nondeterministic).
+
+procinfo_declared_determinism(ProcInfo, Determinism) :-
+	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _).
 procinfo_variables(ProcInfo, VarSet) :-
-	ProcInfo = procedure(_Category, VarSet, _Types, _HeadVars,
-				_ModeInfo, _Goal, _Context, _CallInfo).
+	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _).
 procinfo_vartypes(ProcInfo, VarTypes) :-
-	ProcInfo = procedure(_Category, _Names, VarTypes, _HeadVars,
-				_ModeInfo, _Goal, _Context, _CallInfo).
+	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _).
 procinfo_headvars(ProcInfo, HeadVars) :-
-	ProcInfo = procedure(_Category, _Names, _Types, HeadVars,
-				_ModeInfo, _Goal, _Context, _CallInfo).
+	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _).
 procinfo_argmodes(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				ModeInfo, _Goal, _Context, _CallInfo).
+	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _).
 procinfo_goal(ProcInfo, Goal) :-
-	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				_ModeInfo, Goal, _Context, _CallInfo).
+	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _).
 procinfo_context(ProcInfo, Context) :-
-	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				_ModeInfo, _Goal, Context, _CallInfo).
+	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _).
 procinfo_callinfo(ProcInfo, CallInfo) :-
-	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				_ModeInfo, _Goal, _Context, CallInfo).
+	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _).
+procinfo_inferred_determinism(ProcInfo, Category) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category).
+
+procinfo_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category).
+
+procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I),
+	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -653,11 +698,15 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 				hlds__goal_info).
 :- mode goalinfo_set_liveness(input, input, output).
 
-:- pred goalinfo_category(hlds__goal_info, category).
-:- mode goalinfo_category(input, output).
+:- pred goalinfo_declared_determinism(hlds__goal_info, determinism).
+:- mode goalinfo_declared_determinism(input, output).
 
-:- pred goalinfo_set_category(hlds__goal_info, category, hlds__goal_info).
-:- mode goalinfo_set_category(input, input, output).
+:- pred goalinfo_inferred_determinism(hlds__goal_info, category).
+:- mode goalinfo_inferred_determinism(input, output).
+
+:- pred goalinfo_set_inferred_determinism(hlds__goal_info, category,
+					  hlds__goal_info).
+:- mode goalinfo_set_inferred_determinism(input, input, output).
 
 :- type instmap == map(var, inst).
 
@@ -683,31 +732,36 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 
 :- implementation.
 
-goalinfo_init(goalinfo(Liveness, unspecified, InstMap, Context)) :-
+goalinfo_init(goalinfo(Liveness, DeclaredDet, InferredDet, InstMap, Context)) :-
+	DeclaredDet = unspecified,
+	InferredDet = nondeterministic, 
 	map__init(Liveness),
 	map__init(InstMap),
 	term__context_init("", 0, Context).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goalinfo(Liveness, _Detism, _InstMap, _Context).
+	GoalInfo = goalinfo(Liveness, _, _, _, _).
 
 goalinfo_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
-	GoalInfo0 = goalinfo(_, Detism, InstMap, Context),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
+	GoalInfo0 = goalinfo(_, B, C, D, E),
+	GoalInfo = goalinfo(Liveness, B, C, D, E).
 
-goalinfo_category(GoalInfo, Detism) :-
-	GoalInfo = goalinfo(_Liveness, Detism, _InstMap, _Context).
+goalinfo_declared_determinism(GoalInfo, DeclaredDeterminism) :-
+	GoalInfo = goalinfo(_, DeclaredDeterminism, _, _, _).
 
-goalinfo_set_category(GoalInfo0, Detism, GoalInfo) :-
-	GoalInfo0 = goalinfo(Liveness, _, InstMap, Context),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
+goalinfo_inferred_determinism(GoalInfo, InferredDeterminism) :-
+	GoalInfo = goalinfo(_, _, InferredDeterminism, _, _).
+
+goalinfo_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
+	GoalInfo0 = goalinfo(A, B, _, D, E),
+	GoalInfo = goalinfo(A, B, InferredDeterminism, D, E).
 
 goalinfo_instmap(GoalInfo, InstMap) :-
-	GoalInfo = goalinfo(_Liveness, _Detism, InstMap, _Context).
+	GoalInfo = goalinfo(_, _, _, InstMap, _).
 
 goalinfo_set_instmap(GoalInfo0, InstMap, GoalInfo) :-
-	GoalInfo0 = goalinfo(Liveness, Detism, _, Context),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
+	GoalInfo0 = goalinfo(A, B, C, _, E),
+	GoalInfo = goalinfo(A, B, C, InstMap, E).
 
 /*** This is a specification, not an implementation.
      It's not mode-correct.
@@ -716,11 +770,11 @@ liveness_livevars(Liveness, LiveVars) :-
 ***/
 
 goalinfo_context(GoalInfo, Context) :-
-	GoalInfo = goalinfo(_Liveness, _Detism, _InstMap, Context).
+	GoalInfo = goalinfo(_, _, _, _, Context).
 
 goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goalinfo(Liveness, Detism, InstMap, _),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
+	GoalInfo0 = goalinfo(A, B, C, D, _),
+	GoalInfo = goalinfo(A, B, C, D, Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -735,18 +789,34 @@ goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
 	% or not!
 
 :- pred mode_is_input(module_info, mode).
-:- mode mode_is_input(input, input).
+:- mode mode_is_input(input, input) is semidet.
 
 :- pred mode_is_output(module_info, mode).
-:- mode mode_is_output(input, input).
+:- mode mode_is_output(input, input) is semidet.
 
 :- pred mode_id_to_int(mode_id, int).
-:- mode mode_id_to_int(input, output).
+:- mode mode_id_to_int(input, output) is det.
+
+:- pred mode_list_get_final_insts(list(mode), module_info, list(inst)).
+:- mode mode_list_get_final_insts(input, input, output) is det.
+
+:- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
+:- mode mode_list_get_initial_insts(input, input, output) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
+
+mode_list_get_final_insts([], _ModuleInfo, []).
+mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
+	mode_get_insts(ModuleInfo, Mode, _, Inst),
+	mode_list_get_final_insts(Modes, ModuleInfo, Insts).
+
+mode_list_get_initial_insts([], _ModuleInfo, []).
+mode_list_get_initial_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
+	mode_get_insts(ModuleInfo, Mode, Inst, _),
+	mode_list_get_initial_insts(Modes, ModuleInfo, Insts).
 
 	% A mode is considered an input mode if the top-level
 	% node is input.
