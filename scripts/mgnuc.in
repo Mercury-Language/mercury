@@ -69,6 +69,7 @@ esac
 
 DEBUG_OPTS="-g"
 AS_OPTS=""
+SPLIT_OPTS=""
 
 grade=$DEFAULT_GRADE
 verbose=false
@@ -86,6 +87,14 @@ while : ; do
 		;;
 	--no-check)
 		CHECK_OPTS=
+		shift
+		;;
+	--split-c-files)
+		SPLIT_OPTS=-DSPLIT_C_FILES
+		shift
+		;;
+	--no-split-c-files)
+		SPLIT_OPTS=
 		shift
 		;;
 	-v|--verbose)
@@ -230,11 +239,11 @@ esac
 
 case $verbose in true)
 	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@" ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS "$@" ;;
 esac
 case $# in
 	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS ;;
 	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@" ;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $SPLIT_OPTS $ARCH_OPTS "$@" ;;
 esac
