@@ -76,3 +76,7 @@ trailed_update	Some library modules that make use of backtrackable
 		some support for Prolog-style unification constraints.
 
 xml		An XML parsing library.
+
+xml_stylesheets
+		Sample stylesheets that can be used with the term_to_xml
+		module in the standard library.
