@@ -16,7 +16,8 @@ main -->
 	test3,
 	test4,
 	test5(yes),
-	test5(no).
+	test5(no),
+	test6.
 
 :- pred test1(io__state::di, io__state::uo) is det.
 
@@ -65,6 +66,21 @@ test5(no) -->
 	{ Y = [] `with_type` T },
 	io__write(type_of(Y)), nl,
 	io__write(Y), nl.
+
+:- pred test6(io__state::di, io__state::uo) is det.
+
+test6 -->
+	(
+		{
+			X = type_of([] `with_type` list(int))
+		<=>
+			X = type_of([1, 2, 3])
+		}
+	->
+		io__write_string("bi-implication succeeded\n")
+	;
+		io__write_string("bi-implication failed\n")
+	).
 
 empty_list = [] `with_type` list(int).
 

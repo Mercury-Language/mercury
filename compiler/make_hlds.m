@@ -5591,15 +5591,16 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
 	->
 		{ VarSet2 = VarSet1 },
 		{ Goal2 = Goal1 },
-		{ Info = Info0 }
+		{ Info2 = Info0 }
 	;
 		{ ArgContext = head(PredOrFunc, Arity) },
 		insert_arg_unifications(HeadVars, Args, Context, ArgContext,
-			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
+			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info2)
 	),
-	{ map__init(EmptyVarTypes) },
-	{ implicitly_quantify_clause_body(HeadVars,
-		Goal2, VarSet2, EmptyVarTypes, Goal, VarSet, _, Warnings) }.
+	{ VarTypes2 = Info2 ^ qual_info ^ vartypes },
+	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, VarTypes2,
+		Goal, VarSet, VarTypes, Warnings) },
+	{ Info = Info2 ^ qual_info ^ vartypes := VarTypes }.
 
 %-----------------------------------------------------------------------------%
 
