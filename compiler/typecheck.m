@@ -144,24 +144,11 @@ typecheck(Module0, Module, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
+
+	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
+	check_pred_types(Module0, Module, FoundError),
 	maybe_report_stats(Statistics),
 
-	maybe_write_string(Verbose, "% Checking for undefined types...\n"),
-	check_undefined_types(Module0, Module1, FoundUndefError),
-	maybe_report_stats(Statistics),
-	( { FoundUndefError = yes } ->
-		{ Module = Module1 },
-		{ FoundError = yes }
-	;
-		%%% maybe_write_string(Verbose,
-		%%% 	"% Checking for circular type definitions...\n"),
-		check_circular_types(Module1, Module2),
-		%%% maybe_report_stats(Statistics),
-
-		maybe_write_string(Verbose, "% Type-checking clauses...\n"),
-		check_pred_types(Module2, Module, FoundError),
-		maybe_report_stats(Statistics)
-	),
 	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%
@@ -1512,31 +1499,6 @@ type_assign_unify_type(TypeAssign0, HeadTypeParams, X, Y, TypeAssign) :-
 	type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 	type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
 	type_assign_set_type_bindings(TypeAssign0, TypeBindings, TypeAssign).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% XXX - At the moment we don't check for circular equivalence types.
-	% (If they aren't used, the compiler will probably not
-	% detect the error; if they are, it will probably go into
-	% an infinite loop).
-
-:- pred check_circular_types(module_info, module_info, io__state, io__state).
-:- mode check_circular_types(in, out, di, uo) is det.
-
-check_circular_types(Module0, Module) -->
-	{ Module = Module0 }.
-
-/**** JUNK
-	{ module_info_types(Module0, Types0 },
-	{ map__keys(Types0, TypeIds) },
-	check_circular_types_2(TypeIds, Types0, Types),
-	{ module_info_set_types(Module0, Types, Module) }.
-
-check_circular_types_2([], Types, Types) --> [].
-check_circular_types_2([TypeId | TypeIds], Types0, Types) -->
-
-JUNK ****/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

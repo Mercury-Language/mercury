@@ -9,7 +9,8 @@
 
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism
-% using higher-order predicates.
+% using higher-order predicates, and also invokes `lambda__transform_lambda'
+% to handle lambda expressions by creating new predicates for them.
 %
 % Every polymorphic predicate is transformed
 % so that it takes one additional argument for every type variable in the
@@ -68,7 +69,7 @@
 :- import_module int, string, list, set, map, term, varset, std_util, require.
 :- import_module prog_io, type_util, mode_util, quantification.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module llds.
+:- import_module llds, (lambda).
 
 %-----------------------------------------------------------------------------%
 
@@ -307,7 +308,7 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 				GoalInfo, Goal) -->
 	(
-		{ Unification = complicated_unify(UniMode, _Category, Follow) },
+		{ Unification = complicated_unify(UniMode, CanFail, Follow) },
 		{ Y = var(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, ModuleInfo)),
@@ -374,9 +375,9 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ module_info_get_special_pred_map(ModuleInfo,
 				SpecialPredMap) },
 			{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
-
+			{ determinism_components(Det, CanFail, at_most_one) },
 			{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
-				UniMode, ProcId) },
+				UniMode, Det, ProcId) },
 			{ SymName = unqualified("__Unify__") },
 			{ ArgVars = [XVar, YVar] },
 			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
@@ -389,11 +390,15 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		)
 	; { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must recursively traverse the
-		% lambda goal
+		% lambda goal and then convert the lambda expression
+		% into a new predicate
+		{ LambdaGoal0 = _ - GoalInfo0 },
+		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
-		{ Y1 = lambda_goal(Vars, Modes, Det, LambdaGoal) },
-		{ Goal = unify(XVar, Y1, Mode, Unification, Context)
+		polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals,
+				LambdaGoal, Unification, Y1, Unification1),
+		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
 	;
 		% ordinary unifications are left unchanged,
@@ -408,8 +413,9 @@ polymorphism__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo) -->
 	polymorphism__process_goal_list(Goals0, Goals).
 polymorphism__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo) -->
 	polymorphism__process_goal(Goal0, Goal).
-polymorphism__process_goal_2(switch(_, _, _), _, _) -->
-	{ error("polymorphism__process_goal_2: switch unexpected") }.
+polymorphism__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo,
+				switch(Var, CanFail, Cases) - GoalInfo) -->
+	polymorphism__process_case_list(Cases0, Cases).
 polymorphism__process_goal_2(some(Vars, Goal0), GoalInfo,
 			some(Vars, Goal) - GoalInfo) -->
 	polymorphism__process_goal(Goal0, Goal).
@@ -439,6 +445,17 @@ polymorphism__process_goal_list([], []) --> [].
 polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 	polymorphism__process_goal(Goal0, Goal),
 	polymorphism__process_goal_list(Goals0, Goals).
+
+:- pred polymorphism__process_case_list(list(case), list(case),
+					poly_info, poly_info).
+:- mode polymorphism__process_case_list(in, out, in, out) is det.
+
+polymorphism__process_case_list([], []) --> [].
+polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
+	{ Case0 = case(ConsId, Goal0) },
+	polymorphism__process_goal(Goal0, Goal),
+	{ Case = case(ConsId, Goal) },
+	polymorphism__process_case_list(Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
 
@@ -512,6 +529,20 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
 	),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
+
+:- pred polymorphism__process_lambda(list(var), list(mode), determinism,
+		set(var), hlds__goal, unification, unify_rhs, unification,
+		poly_info, poly_info).
+:- mode polymorphism__process_lambda(in, in, in, in, in, in, out, out,
+		in, out) is det.
+
+polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
+		Unification0, Functor, Unification, PolyInfo0, PolyInfo) :-
+	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
+	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
+		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
+		Functor, Unification, ModuleInfo),
+	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -709,7 +740,8 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	map__set(CountInstMapping0, CountVar, CountInst,
 		CountInstMapping),
 	goal_info_set_instmap_delta(CountGoalInfo1,
-		reachable(CountInstMapping), CountGoalInfo),
+		reachable(CountInstMapping), CountGoalInfo2),
+	goal_info_set_determinism(CountGoalInfo2, det, CountGoalInfo),
 
 	CountUnifyGoal = CountUnify - CountGoalInfo.
 
@@ -766,7 +798,8 @@ polymorphism__get_special_proc_list([Id | Ids],
 	map__init(InstMapping0),
 	map__set(InstMapping0, Var, Inst, InstMapping),
 	goal_info_set_instmap_delta(GoalInfo1, reachable(InstMapping),
-		GoalInfo),
+		GoalInfo2),
+	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
 	Goal = Unify - GoalInfo,
 
 	polymorphism__get_special_proc_list(Ids,
@@ -878,7 +911,8 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 		bound(shared, [functor(TypeInfoFunctor, ArgInsts)]),
 		InstMapping),
 	goal_info_set_instmap_delta(GoalInfo1, reachable(InstMapping),
-		GoalInfo),
+		GoalInfo2),
+	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
 
 	TypeInfoGoal = Unify - GoalInfo.
 

@@ -208,8 +208,7 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	%
 	% Grab the original instmap
 	%
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	mode_info_get_vars_instmap(ModeInfo1, NonLocals, InstMap0),
+	mode_info_get_instmap(ModeInfo1, InstMap0),
 
 	% 
 	% Grab the original bag of nondet-live vars
@@ -242,7 +241,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
-	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
+	mode_info_get_instmap(ModeInfo, InstMap),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
 
@@ -495,21 +495,7 @@ unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 	mode_info_set_call_context(unify(UnifyContext)),
 
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-		check_unique_modes, A, B, ExtraGoals, Mode, UnifyInfo),
-	{ Goal = unify(A, B, Mode, UnifyInfo, UnifyContext) },
-
-	%
-	% modecheck_unification sometimes needs to introduce new goals
-	% to handle complicated sub-unifications in deconstructions.
-	% But this should never happen here.
-	% (If it did, the code would be wrong since it wouldn't have the
-	% correct determinism annotations.)
-	%
-	{ ExtraGoals = [] - [] ->
-		true
-	;
-		error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
-	},
+		check_unique_modes, Goal),
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").

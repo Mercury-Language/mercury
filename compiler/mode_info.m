@@ -108,9 +108,6 @@
 :- pred mode_info_dcg_get_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_dcg_get_instmap(out, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_vars_instmap(mode_info, set(var), instmap).
-:- mode mode_info_get_vars_instmap(mode_info_ui, in, out) is det.
-
 :- pred mode_info_set_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_set_instmap(in, mode_info_di, mode_info_uo) is det.
 
@@ -421,15 +418,6 @@ mode_info_get_instmap(mode_info(_,_,_,_,_,_,_,_,InstMap,_,_,_,_,_), InstMap).
 	% except that it's easier to use inside a DCG.
 
 mode_info_dcg_get_instmap(InstMap, ModeInfo, ModeInfo) :-
-	mode_info_get_instmap(ModeInfo, InstMap).
-
-	% mode_info_get_vars_instmap/3 is the same as mode_info_get_instmap/2
-	% except that the map it returns might only contain the specified
-	% variables if that would be more efficient; currently it's not,
-	% so the two are just the same, but if we were to change the
-	% data structures...
-
-mode_info_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 	mode_info_get_instmap(ModeInfo, InstMap).
 
 %-----------------------------------------------------------------------------%

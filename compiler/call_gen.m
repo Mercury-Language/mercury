@@ -394,9 +394,10 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	code_info__variable_type(Var1, VarType),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
 		{ unify_proc__lookup_mode_num(ModuleInfo, VarTypeId, UniMode,
-				ModeNum) },
+				Det, ModeNum) },
 		{ call_gen__input_args(ArgInfo, InputArguments) },
-		call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
+		call_gen__generate_call_livevals(OutArgs, InputArguments,
+			CodeC0),
 		{ call_gen__output_args(Args, OutputArguments) },
 		call_gen__generate_return_livevals(OutArgs, OutputArguments, 
 						OutLiveVals),
