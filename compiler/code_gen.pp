@@ -813,13 +813,13 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 %	   If a pragma c_code(non_recursive, ...) declaration was used,
 %	   they will not be emitted.
 %
-% (1)	   The call to save_registers() is needed so that if the
+% (2)	   The call to save_registers() is needed so that if the
 %	   C code calls Mercury code, we can call restore_registers()
 %	   on entry to the Mercury code (see export.m) to get the
 %	   right values of `sp', `hp', `curfr' and `maxfr' for the
 %	   recursive invocation of Mercury.
 %
-% (2)	   The call to restore_registers() is needed in case the
+% (3)	   The call to restore_registers() is needed in case the
 %	   C code calls Mercury code which allocates some data
 %	   on the heap, and this data is returned from Mercury
 %	   through C back to Mercury.  In that case, we need to
