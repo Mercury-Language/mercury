@@ -408,16 +408,15 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
 #undef	NONCANON
 }").
 
-functor_dna(_Term::in, _Functor::out, _Arity::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__functor_dna/3").
+functor_dna(Term::in, Functor::out, Arity::out) :-
+	rtti_implementation__deconstruct(Term,
+			do_not_allow, Functor, Arity, _Arguments).
 functor_can(Term::in, Functor::out, Arity::out) :-
-	rtti_implementation__deconstruct(Term, Functor, Arity, _Arguments).
-functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__functor_idcc/3").
+	rtti_implementation__deconstruct(Term,
+			canonicalize, Functor, Arity, _Arguments).
+functor_idcc(Term::in, Functor::out, Arity::out) :-
+	rtti_implementation__deconstruct(Term,
+			include_details_cc, Functor, Arity, _Arguments).
 
 %-----------------------------------------------------------------------------%
 
@@ -553,17 +552,18 @@ functor_idcc(_Term::in, _Functor::out, _Arity::out) :-
 #undef	SELECT_BY_NAME
 }").
 
-univ_arg_dna(_Term::in, _Index::in, _Arg::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__univ_arg_dna/3").
+univ_arg_dna(Term::in, Index::in, Arg::out) :-
+	rtti_implementation__deconstruct(Term,
+			do_not_allow, _Functor, _Arity, Arguments),
+	list__index0(Arguments, Index, Arg).
 univ_arg_can(Term::in, Index::in, Arg::out) :-
-	rtti_implementation__deconstruct(Term, _Functor, _Arity, Arguments),
+	rtti_implementation__deconstruct(Term,
+			canonicalize, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
 univ_arg_idcc(_Term::in, _Index::in, _Arg::out) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("deconstruct__univ_arg_idcc/3").
+	private_builtin__sorry("univ_arg_idcc/3").
 
 univ_named_arg_dna(_Term::in, _Name::in, _Arg::out) :-
 	% This version is only used for back-ends for which there is no
@@ -739,31 +739,31 @@ univ_named_arg_idcc(_Term::in, _Name::in, _Arg::out) :-
 #undef	NONCANON
 }").
 
-deconstruct_dna(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstuct__deconstruct_dna/4").
+deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
+	rtti_implementation__deconstruct(Term,
+			do_not_allow, Functor, Arity, Arguments).
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
-	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments).
-deconstruct_idcc(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstuct__deconstruct_idcc/4").
+	rtti_implementation__deconstruct(Term,
+			canonicalize, Functor, Arity, Arguments).
+deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
+	rtti_implementation__deconstruct(Term,
+			include_details_cc, Functor, Arity, Arguments).
 
-limited_deconstruct_dna(_Term::in, _MaxArity::in,
-		_Functor::out, _Arity::out, _Arguments::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("deconstuct__limited_deconstruct_dna/5").
+limited_deconstruct_dna(Term::in, MaxArity::in,
+		Functor::out, Arity::out, Arguments::out) :-
+	rtti_implementation__deconstruct(Term,
+			do_not_allow, Functor, Arity, Arguments),
+	Arity =< MaxArity.
 limited_deconstruct_can(Term::in, MaxArity::in,
 		Functor::out, Arity::out, Arguments::out) :-
-	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments),
+	rtti_implementation__deconstruct(Term,
+			canonicalize, Functor, Arity, Arguments),
 	Arity =< MaxArity.
 limited_deconstruct_idcc(_Term::in, _MaxArity::in,
 		_Functor::out, _Arity::out, _Arguments::out) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("deconstuct__limited_deconstruct_idcc/5").
+	private_builtin__sorry("limited_deconstruct_idcc/5").
 
 %-----------------------------------------------------------------------------%
 

@@ -29,7 +29,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module deconstruct, list.
 
 :- use_module std_util.
 
@@ -54,8 +54,11 @@
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
 		string::out, string::out, int::out) is det.
 
-:- pred deconstruct(T::in, string::out, int::out,
-		list(std_util__univ)::out) is det.
+:- pred deconstruct(T, noncanon_handling, string, int, list(std_util__univ)).
+:- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
+:- mode deconstruct(in, in(canonicalize), out, out, out) is det.
+:- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
+:- mode deconstruct(in, in, out, out, out) is cc_multi.
 
 	% This is useful in a few places, so we'd like to share the code, but
 	% it's better to put it into an implementation module such as this one.
@@ -66,7 +69,6 @@
 
 :- implementation.
 
-:- import_module deconstruct.
 :- import_module bool, require, string, int.
 
 	% std_util has a lot of types and functions with the same names,
@@ -626,12 +628,12 @@ iterate_foldl(Start, Max, Pred) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-deconstruct(Term, Functor, Arity, Arguments) :-
+deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
 	TypeInfo = get_type_info(Term),
 	TypeCtorInfo = get_type_ctor_info(TypeInfo),
 	TypeCtorRep = type_ctor_rep(TypeCtorInfo),
 	deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
-			canonicalize, Functor, Arity, Arguments).
+			NonCanon, Functor, Arity, Arguments).
 
 :- pred deconstruct(T, type_info, type_ctor_info, type_ctor_rep,
 		noncanon_handling, string, int, list(std_util__univ)).
