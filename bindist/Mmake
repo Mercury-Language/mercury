@@ -21,7 +21,7 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		  $(INSTALL_PREFIX)/bin/mtags
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
-		  ../NEWS ../RELEASE_NOTES
+		  ../NEWS ../RELEASE_NOTES ../BUGS
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/Mmake.rules
 
