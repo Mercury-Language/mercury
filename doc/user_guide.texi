@@ -436,7 +436,7 @@ with a normal consulting command such as
 ['@var{filename}.m'].
 @end example
 
-You can also use the @file{--debug} option to @samp{mnl} when linking.
+You can also use the @samp{--debug} option to @samp{mnl} when linking.
 This will produce an executable whose entry point is the NU-Prolog interpreter,
 rather than main/2 in your program.
 
