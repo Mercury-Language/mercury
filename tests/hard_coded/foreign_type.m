@@ -146,7 +146,7 @@ newpred(X, Y, coord(X, Y)).
 %----------------------------------------------------------------------------%
 
 :- pragma foreign_proc(c, export_new(X::in, Y::in) = (C::out),
-	[will_not_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, thread_safe],
 "
 	coord *local_c;
 	local_c = exported_new(X, Y);
@@ -156,7 +156,7 @@ newpred(X, Y, coord(X, Y)).
 export_new(X, Y) = new(X, Y).
 
 :- pragma foreign_proc(c, export_newpred(X::in, Y::in, C::out),
-	[will_not_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, thread_safe],
 "
 	coord *local_c;
 	exported_newpred(X, Y, &local_c);
