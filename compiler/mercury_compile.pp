@@ -896,16 +896,25 @@ mercury_compile(module(_, _, _, _, _)) -->
 		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
 
 		mercury_compile__check_determinism(HLDS6, HLDS7,
-			FoundDeterminismError),
-
-		mercury_compile__compute_liveness(HLDS7, HLDS8)
+			FoundDeterminismError)
 
 	;
-		{ HLDS8 = HLDS2 },
+		{ HLDS7 = HLDS2 },
 		{ FoundModeError = no },
 		{ FoundDeterminismError = no }
 	),
 	
+#if NU_PROLOG
+	{ putprop(mc, mc, HLDS7 - [FoundSemanticError,
+		FoundTypeError, FoundModeError, FoundDeterminismError]),
+	fail }.
+mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
+	{ getprop(mc, mc, HLDS7 - [FoundSemanticError, 
+		FoundTypeError, FoundModeError, FoundDeterminismError], Ref),
+	erase(Ref) },
+#endif
+	mercury_compile__compute_liveness(HLDS7, HLDS8),
+
 	mercury_compile__maybe_report_sizes(HLDS8),
 
 	mercury_compile__maybe_dump_hlds(HLDS8),

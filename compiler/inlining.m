@@ -124,7 +124,8 @@ inlining__inlining_in_goal_2(
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),
         	proc_info_goal(ProcInfo, CalledGoal),
-		code_aux__contains_only_builtins(CalledGoal)
+		code_aux__contains_only_builtins(CalledGoal),
+		code_aux__goal_is_flat(CalledGoal)
 	->
         	proc_info_headvars(ProcInfo, HeadVars0),
         	proc_info_argmodes(ProcInfo, ArgInfo),

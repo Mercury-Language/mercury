@@ -18,6 +18,9 @@
 :- pred code_aux__contains_only_builtins(hlds__goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
+:- pred code_aux__goal_is_flat(hlds__goal).
+:- mode code_aux__goal_is_flat(in) is semidet.
+
 :- pred code_aux__contains_simple_recursive_call(hlds__goal,
 	code_info, code_info).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
@@ -87,6 +90,33 @@ code_aux__contains_only_builtins_list([]).
 code_aux__contains_only_builtins_list([Goal|Goals]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_list(Goals).
+	
+%-----------------------------------------------------------------------------%
+
+code_aux__goal_is_flat(Goal - _GoalInfo) :-
+	code_aux__goal_is_flat_2(Goal).
+
+:- pred code_aux__goal_is_flat_2(hlds__goal_expr).
+:- mode code_aux__goal_is_flat_2(in) is semidet.
+
+code_aux__goal_is_flat_2(conj(Goals)) :-
+	code_aux__goal_is_flat_list(Goals).
+code_aux__goal_is_flat_2(not(_Vars, Goal)) :-
+	code_aux__goal_is_flat(Goal).
+code_aux__goal_is_flat_2(some(_Vars, Goal)) :-
+	code_aux__goal_is_flat(Goal).
+code_aux__goal_is_flat_2(call(_, _, _, _, _, _)).
+code_aux__goal_is_flat_2(unify(_, _, _, _, _)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred code_aux__goal_is_flat_list(list(hlds__goal)).
+:- mode code_aux__goal_is_flat_list(in) is semidet.
+
+code_aux__goal_is_flat_list([]).
+code_aux__goal_is_flat_list([Goal|Goals]) :-
+	code_aux__goal_is_flat(Goal),
+	code_aux__goal_is_flat_list(Goals).
 	
 %-----------------------------------------------------------------------------%
 
