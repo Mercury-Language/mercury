@@ -43,10 +43,12 @@
 :- type rval		--->	lval(lval)
 			;	mkword(tag, reg)
 			;	const(integer)		% integer constants
-			;	rval + rval
-			;	rval - rval
-			;	rval / rval
-			;	rval * rval.
+			;	binop(operator,rval,rval).
+
+:- type operator	--->	+
+			;	-
+			;	*
+			;	/.
 
 :- type reg		--->	r(integer)		% integer regs
 			;	succip
@@ -296,28 +298,10 @@ output_tag(Tag) -->
 :- pred output_rval(rval, io__state, io__state).
 :- mode output_rval(i, di, uo).
 
-output_rval(X + Y) -->
+output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
 	output_rval(X),
-	io__write_string(" + "),
-	output_rval(Y),
-	io__write_string(")").
-output_rval(X * Y) -->
-	io__write_string("("),
-	output_rval(X),
-	io__write_string(" * "),
-	output_rval(Y),
-	io__write_string(")").
-output_rval(X / Y) -->
-	io__write_string("("),
-	output_rval(X),
-	io__write_string(" / "),
-	output_rval(Y),
-	io__write_string(")").
-output_rval(X - Y) -->
-	io__write_string("("),
-	output_rval(X),
-	io__write_string(" - "),
+	ouput_operator(Op),
 	output_rval(Y),
 	io__write_string(")").
 output_rval(const(N)) -->
@@ -345,6 +329,17 @@ output_lval(field(Tag, Reg, FieldNum)) -->
 	io__write_int(FieldNum),
 	io__write_string(")").
 
+:- pred output_operator(operator, io__state, io__state).
+:- mode output_operator(input, di, do).
+
+output_operator(+) -->
+	io__write_string("+").
+output_operator(-) -->
+	io__write_string("-").
+output_operator(*) -->
+	io__write_string("*").
+output_operator(/) -->
+	io__write_string("/").
 %-----------------------------------------------------------------------------%
 
 :- pred clause_num_to_string(int::i, string::o).
