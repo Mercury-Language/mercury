@@ -85,9 +85,9 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
+		;	highlevel_c
 	% Code generation options
 		;	trad_passes
-		;	highlevel_c
 		;	polymorphism
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
@@ -103,7 +103,6 @@
 		;	opt_level
 	%	- HLDS
 		;	inlining
-%%% unused:	;	specialize
 		;	common_struct
 		;	common_goal
 		;	constraint_propagation
@@ -241,13 +240,13 @@ option_defaults_2(compilation_model_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	args			-	string("simple")
+	args			-	string("simple"),
+	highlevel_c		-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	trad_passes		-	bool(yes),
 	polymorphism		-	bool(yes),
-	highlevel_c		-	bool(no),
 	lazy_code		-	bool(yes),
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
@@ -276,20 +275,18 @@ option_defaults_2(optimization_option, [
 	opt_level		-	int_special,
 % HLDS
 	inlining		-	bool(yes),
-%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	common_goal		-	bool(yes),
 	constraint_propagation	-	bool(no),
 	excess_assign		-	bool(no),
-		% excess_assign is disabled by default since it
-		% breaks the C interface (`pragma(c_code,...)').
-		% When that problem is fixed, it should be re-enabled.
 	prev_code		-	bool(no),
 	follow_code		-	bool(yes),
 	optimize_unused_args	-	bool(no),
 		% unused_args is disabled by default since it is broken
 		% (see David Kemp's bug report)
-	optimize_higher_order	-	bool(yes),
+	optimize_higher_order	-	bool(no),
+		% higher_order is disabled by default since it is broken
+		% (see Philip Dart's bug report)
 	optimize_dead_procs	-	bool(no),
 
 % HLDS -> LLDS
@@ -397,7 +394,7 @@ long_option("vndebug",			vndebug).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("make-interface",		make_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
-long_option("convert-to-Mercury", 	convert_to_mercury).
+long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
 long_option("convert-to-goedel", 	convert_to_goedel).
 long_option("convert-to-Goedel", 	convert_to_goedel).
@@ -428,15 +425,15 @@ long_option("num-tag-bits",		num_tag_bits).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
+long_option("highlevel-C",		highlevel_c).
+long_option("highlevel-c",		highlevel_c).
+long_option("high-level-C",		highlevel_c).
+long_option("high-level-c",		highlevel_c).
 
 % code generation options
 long_option("polymorphism",		polymorphism).
 long_option("trad-passes",		trad_passes).
 long_option("lazy-code",		lazy_code).
-long_option("highlevel-C",		highlevel_c).
-long_option("highlevel-c",		highlevel_c).
-long_option("high-level-C",		highlevel_c).
-long_option("high-level-c",		highlevel_c).
 long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
@@ -457,7 +454,6 @@ long_option("optimisation-level",	opt_level).
 
 % HLDS->HLDS optimizations
 long_option("inlining",			inlining).
-%%% long_option("specialize",		specialize).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
@@ -566,7 +562,6 @@ opt_level(0, [
 	smart_indexing		-	bool(no),
 	middle_rec		-	bool(no),
 	inlining		-	bool(no),
-%%%	specialize		-	bool(no),
 	common_struct		-	bool(no),
 	constraint_propagation	-	bool(no)
 ]).
@@ -591,7 +586,6 @@ opt_level(1, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(no),
-%%%	specialize		-	bool(no),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
@@ -617,7 +611,6 @@ opt_level(2, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
@@ -634,8 +627,8 @@ opt_level(3, [
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(yes),
-	optimize_higher_order	-	bool(yes),
+%%%	optimize_unused_args	-	bool(yes),	% currently broken
+%%%	optimize_higher_order	-	bool(yes),	% currently broken
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1),
 	pred_value_number	-	bool(no),
@@ -643,7 +636,6 @@ opt_level(3, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
@@ -660,8 +652,8 @@ opt_level(4, [
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(yes),
-	optimize_higher_order	-	bool(yes),
+%%%	optimize_unused_args	-	bool(yes),	% currently broken
+%%%	optimize_higher_order	-	bool(yes),	% currently broken
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1),
 	pred_value_number	-	bool(yes),
@@ -669,7 +661,6 @@ opt_level(4, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)	% yes when it works
 ]).
@@ -686,8 +677,8 @@ opt_level(5, [
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(yes),
-	optimize_higher_order	-	bool(yes),
+%%%	optimize_unused_args	-	bool(yes),	% currently broken
+%%%	optimize_higher_order	-	bool(yes),	% currently broken
 	optimize_repeat		-	int(5),
 	optimize_vnrepeat	-	int(2),
 	pred_value_number	-	bool(yes),
@@ -695,7 +686,6 @@ opt_level(5, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)	% yes when it works
 ]).
