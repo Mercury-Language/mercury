@@ -53,11 +53,19 @@ maybe_read_label_addr(MaybeLabelAddr) -->
 		{ WordResult = ok(CharList) },
 		{ string__from_char_list(CharList, LabelAddrStr) },
 		( 
-			{ string__base_string_to_int(16, LabelAddrStr, LabelAddr) }
+			{ string__base_string_to_int(10, LabelAddrStr, 
+								LabelAddr) }
 		->
 			{ MaybeLabelAddr = yes(LabelAddr) }
 		;
-			{ error("maybe_read_label_addr: Label address not hexadecimal\n") }
+			(
+				{ string__base_string_to_int(16, LabelAddrStr, 
+								LabelAddrHex) }
+			->
+				{ MaybeLabelAddr = yes(LabelAddrHex) }
+			;
+				{ error("maybe_read_label_addr: Label address not hexadecimal or integer\n") }
+			)
 		)
 	;
 		{ WordResult = eof },
@@ -99,11 +107,19 @@ read_label_addr(LabelAddr) -->
 		{ WordResult = ok(CharList) },
 		{ string__from_char_list(CharList, LabelAddrStr) },
 		( 
-			{ string__base_string_to_int(16, LabelAddrStr, LabelAddr0) }
+			{ string__base_string_to_int(10, LabelAddrStr, 
+								LabelAddr0) }
 		->
 			{ LabelAddr = LabelAddr0 }
 		;
-			{ error("read_label_addr: Label address not hexadecimal\n") }
+			(
+				{ string__base_string_to_int(16,LabelAddrStr,
+								LabelAddrHex) }
+			->
+				{ LabelAddr = LabelAddrHex }
+			;
+				{ error("maybe_read_label_addr: Label address not hexadecimal or integer\n") }
+			)
 		)
 	;
 		{ WordResult = eof },
