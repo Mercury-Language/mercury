@@ -38,3 +38,5 @@ MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
 	# Conflicting termination pragmas won't show up unless we 
 	# perform termination analysis.
 MCFLAGS-pragma_term_conflict = --enable-termination
+
+MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
