@@ -22,8 +22,12 @@
 **
 **	WORD_TYPE		the base type for the definition of Word.
 **	LOW_TAG_BITS		the number of low-order tag bits we can use.
-**	BOXED_FLOAT		double precision floats do not fit in a Word,
-**				and must be boxed.
+**	BOXED_FLOAT		true if double precision floats might not fit
+**				in a Word, and hence must be boxed.
+**				(Note that when bootstrapping from the source
+**				distribution, we initially build things without
+**				BOXED_FLOAT even on machines for which
+**				sizeof(Float) <= sizeof(Integer).)
 **	HAVE_SYSCONF		the machine has the sysconf() syscall.
 **	HAVE_GETPAGESIZE	the machine has the getpagesize() syscall.
 **	HAVE_MEMALIGN		the machine has the memalign() function.
