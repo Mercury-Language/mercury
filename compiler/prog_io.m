@@ -2073,12 +2073,12 @@ make_maybe_where_details(
 			RepresentationIsResult = ok(no)
 		->
 			Result = error("solver type definitions must have a" ++
-				"`representation' attribute")
+				"`representation' attribute", WhereTerm)
 		;
 			InitialisationIsResult = ok(no)
 		->
 			Result = error("solver type definitions must have an" ++
-				"`initialisation' attribute")
+				"`initialisation' attribute", WhereTerm)
 		;
 			error("prog_io__make_maybe_where_details: " ++
 				"shouldn't have reached this point! (1)")
