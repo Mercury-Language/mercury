@@ -180,8 +180,8 @@ tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
 	NormalVarStoreCost = min(CellVarStoreCost, FieldVarStoreCost),
 	NormalVarLoadCost = min(CellVarLoadCost, FieldVarLoadCost),
 	TuningParams = tuning_params(
-		NormalVarLoadCost, NormalVarStoreCost, 
-		CellVarLoadCost, CellVarStoreCost, 
+		NormalVarLoadCost, NormalVarStoreCost,
+		CellVarLoadCost, CellVarStoreCost,
 		FieldVarLoadCost, FieldVarStoreCost,
 		CostsRatio, MinArgsToTuple),
 
@@ -198,7 +198,7 @@ tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
 	list__foldl4(maybe_tuple_scc(TraceCounts, TuningParams, DepGraph),
 		SCCs, !ModuleInfo, counter__init(0), _,
 		map__init, TransformMap, !IO),
-	
+
 	% Update the callers of the original procedures to call their
 	% transformed versions instead.  Do the same for the transformed
 	% procedures themselves.
@@ -311,7 +311,7 @@ proc_has_local_callers(CalleeProc, DepGraph) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_tuple_scc_2(trace_counts::in, tuning_params::in,
-	list(pred_proc_id)::in, candidate_headvars::in, 
+	list(pred_proc_id)::in, candidate_headvars::in,
 	module_info::in, module_info::out, counter::in, counter::out,
 	transform_map::in, transform_map::out, io::di, io::uo, bool::in)
 	is det.
@@ -575,16 +575,17 @@ less_total_cost(costs(LoadsA, StoresA), costs(LoadsB, StoresB)) :-
 	% greater or equal to MinRunLength, threading an accumulator through
 	% it.
 	%
-:- pred fold_over_list_runs(pred(list(L), A, A), list(L), int, A, A).
-:- mode fold_over_list_runs(pred(in, in, out) is det, in, in, in, out) is det.
+:- pred fold_over_list_runs(pred(list(L), A, A)::in(pred(in, in, out) is det),
+	list(L)::in, int::in, A::in, A::out) is det.
 
 fold_over_list_runs(_, [], _, !Acc).
 fold_over_list_runs(Pred, List @ [_ | Tail], MinLength, !Acc) :-
 	fold_over_list_runs_2(Pred, List, MinLength, !Acc),
 	fold_over_list_runs(Pred, Tail, MinLength, !Acc).
 
-:- pred fold_over_list_runs_2(pred(list(L), A, A), list(L), int, A, A).
-:- mode fold_over_list_runs_2(pred(in, in, out) is det, in, in, in, out) is det.
+:- pred fold_over_list_runs_2(
+	pred(list(L), A, A)::in(pred(in, in, out) is det),
+	list(L)::in, int::in, A::in, A::out) is det.
 
 fold_over_list_runs_2(Pred, List, Length, !Acc) :-
 	( list__take(Length, List, Front) ->
@@ -617,7 +618,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
 	some [!ProcInfo] (
 		module_info_pred_proc_info(!.ModuleInfo,
 			PredId, ProcId, PredInfo, !:ProcInfo),
-	
+
 		% Build up information about intervals and which
 		% variables are needed in each interval.
 		build_interval_info(!.ModuleInfo, !.ProcInfo, IntervalInfo),
@@ -850,7 +851,7 @@ get_tupling_proposal(CountInfo, PredProcId) = TuplingProposal :-
 
 :- func get_own_tupling_proposal(count_info) = tupling_proposal is det.
 
-get_own_tupling_proposal(CountInfo) = 
+get_own_tupling_proposal(CountInfo) =
 	get_tupling_proposal(CountInfo, CountInfo ^ count_info_pred_proc_id).
 
 %-----------------------------------------------------------------------------%
@@ -928,7 +929,7 @@ opt_at_par_conj(_NeedParConj, _GoalInfo, StackAlloc, StackAlloc).
 	module_info::in, tupling_scheme::in, list(pred_proc_id)::in,
 	costs::out) is det.
 
-count_load_stores_for_scc(TraceCounts, TuningParams, ModuleInfo, 
+count_load_stores_for_scc(TraceCounts, TuningParams, ModuleInfo,
 		TuplingScheme, PredProcIds, costs(Loads, Stores)) :-
 	list__foldl2(count_load_stores_for_scc_2(TraceCounts,
 			TuningParams, ModuleInfo, TuplingScheme),
@@ -939,7 +940,7 @@ count_load_stores_for_scc(TraceCounts, TuningParams, ModuleInfo,
 	module_info::in, tupling_scheme::in, pred_proc_id::in,
 	float::in, float::out, float::in, float::out) is det.
 
-count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo, 
+count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
 		TuplingScheme, PredProcId, !Loads, !Stores) :-
 	PredProcId = proc(PredId, ProcId),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -953,7 +954,7 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
 			proc_id_to_int(ProcId)),
 	( get_proc_counts(TraceCounts, ProcLabel, yes(ProcCounts)) ->
 		count_load_stores_in_proc(count_info(PredProcId, ProcInfo,
-			ModuleInfo, ProcCounts, TuningParams, TuplingScheme), 
+			ModuleInfo, ProcCounts, TuningParams, TuplingScheme),
 			ProcLoads, ProcStores),
 		% XXX: There is a problem somewhere causing CALL and EXIT
 		% events not to show up for some procedures in trace count
@@ -1115,7 +1116,7 @@ count_load_stores_in_goal(not(Goal) - _GoalInfo, CountInfo, !CountState) :-
 	),
 	count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
-count_load_stores_in_goal(if_then_else(_, Cond, Then, Else) - _GoalInfo, 
+count_load_stores_in_goal(if_then_else(_, Cond, Then, Else) - _GoalInfo,
 		CountInfo, !CountState) :-
 	goal_info_get_resume_point(snd(Cond), ResumePoint),
 	(
@@ -1155,7 +1156,7 @@ count_load_stores_in_goal(shorthand(_) - _, _, !_) :-
 	==	bound(call(ground, ground, ground, ground, ground, ground)).
 :- mode in_call_goal
 	==	in(pair(call_goal_expr, ground)).
-	
+
 :- pred count_load_stores_in_call_to_tupled(hlds_goal::in_call_goal,
 	count_info::in,
 	tupling_proposal::in(bound(tupling(ground, ground, ground))),
@@ -1301,7 +1302,7 @@ count_load_stores_in_cases([Case | Cases], CountInfo, !CountState) :-
 		ResumePoint = no_resume_point
 	),
 	reset_count_state_counts(!.CountState, BranchCountState0),
-	count_load_stores_in_goal(Goal, CountInfo, BranchCountState0, 
+	count_load_stores_in_goal(Goal, CountInfo, BranchCountState0,
 		BranchCountState),
 	ProcCounts = CountInfo ^ count_info_proc_counts,
 	goal_info_get_goal_path(GoalInfo, GoalPath),
@@ -1519,8 +1520,8 @@ build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
 	SuccMap = map__det_insert(map__init, CurIntervalId, []),
 	VarsMap = map__det_insert(map__init, CurIntervalId, OutputArgs),
 	IntParams = interval_params(ModuleInfo, VarTypes, no),
-	IntervalInfo0 = interval_info(IntParams, set__init, 
-		OutputArgs, map__init, map__init, map__init, 
+	IntervalInfo0 = interval_info(IntParams, set__init,
+		OutputArgs, map__init, map__init, map__init,
 		CurIntervalId, Counter,
 		set__make_singleton_set(CurIntervalId),
 		map__init, set__init, StartMap, EndMap,
@@ -1696,7 +1697,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, TransformMap) :-
 		Builtin = not_builtin,
 		map__search(TransformMap, proc(CalledPredId0, CalledProcId0),
 			transformed_proc(_,
-				TupleConsType, 
+				TupleConsType,
 				ArgsToTuple,
 				CallAux0 - CallAuxInfo))
 	->
@@ -1851,7 +1852,7 @@ extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-
 :- type mdbcomp_goal_path
 	== mdbcomp__program_representation__goal_path.
 
-:- pred get_proc_counts(trace_counts::in, proc_label::in, 
+:- pred get_proc_counts(trace_counts::in, proc_label::in,
 	maybe(proc_trace_counts)::out) is det.
 
 get_proc_counts(TraceCounts, ProcLabel, MaybeProcCounts) :-
@@ -1877,7 +1878,7 @@ get_path_only_count(ProcCounts, GoalPath, Count) :-
 		Count = 0
 	).
 
-:- pred get_ite_relative_frequencies(proc_trace_counts::in, 
+:- pred get_ite_relative_frequencies(proc_trace_counts::in,
 	goal_path::in, goal_path::in, float::out, float::out) is det.
 
 get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
@@ -1901,7 +1902,7 @@ get_ite_relative_frequencies(ProcCounts, ThenGoalPath, ElseGoalPath,
 get_disjunct_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
 	( GoalPath  = [disj(Num) | GoalPathRest] ->
 		goal_path_to_mdbcomp_goal_path(GoalPathRest, MdbGoalPathRest),
-		get_path_only_count(ProcCounts, 
+		get_path_only_count(ProcCounts,
 			[mdbcomp__program_representation__disj(Num) |
 				MdbGoalPathRest], DisjCount),
 		get_path_only_count(ProcCounts,
@@ -1935,7 +1936,7 @@ get_case_relative_frequency(ProcCounts, GoalPath, RelFreq) :-
 	int::out) is det.
 
 get_switch_total_count(ProcCounts, MdbGoalPath, Total) :-
-	map__foldl(get_switch_total_count_2(MdbGoalPath), 
+	map__foldl(get_switch_total_count_2(MdbGoalPath),
 		ProcCounts, 0, Total).
 
 :- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in, int::in,
@@ -1964,7 +1965,7 @@ case_in_switch([mdbcomp.program_representation.switch(_) | Prefix],
 	is det.
 
 goal_path_to_mdbcomp_goal_path(GoalPath, MdbGoalPath) :-
-	list__map(goal_path_step_to_mdbcomp_goal_path_step, 
+	list__map(goal_path_step_to_mdbcomp_goal_path_step,
 		GoalPath, MdbGoalPath).
 
 :- pred goal_path_step_to_mdbcomp_goal_path_step(goal_path_step::in,

@@ -30,18 +30,20 @@
 	% of a foreign function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
 	% procedure from the foreign language.
+	%
 :- pred export__get_foreign_export_decls(module_info::in,
 	foreign_export_decls::out) is det.
 
 	% From the module_info, get a list of foreign_export_defns,
 	% each of which is a string containing the foreign code
 	% for defining a foreign function named in a `pragma export' decl.
+	%
 :- pred export__get_foreign_export_defns(module_info::in,
 	foreign_export_defns::out) is det.
 
 	% Produce an interface file containing declarations for the
-	% exported foreign functions (if required in this foreign
-	% language).
+	% exported foreign functions (if required in this foreign language).
+	%
 :- pred export__produce_header_file(foreign_export_decls::in, module_name::in,
 	io::di, io::uo) is det.
 
@@ -53,15 +55,18 @@
 	% Generate C code to convert an rval (represented as a string), from
 	% a C type to a mercury C type (ie. convert strings and floats to
 	% words) and return the resulting C code as a string.
+	%
 :- pred convert_type_to_mercury(string::in, (type)::in, string::out) is det.
 
 	% Generate C code to convert an rval (represented as a string), from
 	% a mercury C type to a C type. (ie. convert words to strings and
 	% floats if required) and return the resulting C code as a string.
+	%
 :- pred convert_type_from_mercury(string::in, (type)::in, string::out) is det.
 
 	% Succeeds iff the given C type is known by the compiler to be
 	% an integer or pointer type the same size as MR_Word.
+	%
 :- pred c_type_is_word_sized_int_or_ptr(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -226,7 +231,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	module_info::in, list(string)::out) is det.
 
 export__to_c(_Preds, [], _Module, []).
-export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
+export__to_c(Preds, [E | ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	module_info_globals(Module, Globals),
 	get_export_info(Preds, PredId, ProcId, Globals, Module, DeclareString,
@@ -244,55 +249,55 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 
 	string__append_list([
 		"\n",
-				DeclareString, "(", ProcLabelString, ");\n",
-				"\n",
-				C_RetType, "\n",
-				C_Function, "(", ArgDecls, ")\n{\n",
-				"#if MR_NUM_REAL_REGS > 0\n",
-				"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
-				"#endif\n",
-				"#if MR_THREAD_SAFE\n",
-				"\tMR_bool must_finalize_engine;\n",
-				"#endif\n",
-		"#if MR_DEEP_PROFILING\n",
-		"\tMR_CallSiteDynList **saved_cur_callback;\n",
-		"\tMR_CallSiteDynamic *saved_cur_csd;\n",
+		DeclareString, "(", ProcLabelString, ");\n",
+		"\n",
+		C_RetType, "\n",
+		C_Function, "(", ArgDecls, ")\n{\n",
+		"#if MR_NUM_REAL_REGS > 0\n",
+		"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
 		"#endif\n",
-				MaybeDeclareRetval,
-				"\n",
-				"\tMR_save_regs_to_mem(c_regs);\n",
-				"#if MR_THREAD_SAFE\n",
-				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n",
-				"#endif\n",
-		"#if MR_DEEP_PROFILING\n",
-		"\tsaved_cur_callback = MR_current_callback_site;\n",
-		"\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
-		"\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
+		"#if MR_THREAD_SAFE\n",
+		"\tMR_bool must_finalize_engine;\n",
 		"#endif\n",
-				"\tMR_restore_registers();\n",
-				InputArgs,
-				"\tMR_save_transient_registers();\n",
-				"\t(void) MR_call_engine(MR_ENTRY(",
-					ProcLabelString, "), MR_FALSE);\n",
-				"\tMR_restore_transient_registers();\n",
-		"#if MR_DEEP_PROFILING\n",
-		"\tMR_current_call_site_dynamic = saved_cur_csd;\n",
-		"\tMR_current_callback_site = saved_cur_callback;\n",
+	"#if MR_DEEP_PROFILING\n",
+	"\tMR_CallSiteDynList **saved_cur_callback;\n",
+	"\tMR_CallSiteDynamic *saved_cur_csd;\n",
+	"#endif\n",
+		MaybeDeclareRetval,
+		"\n",
+		"\tMR_save_regs_to_mem(c_regs);\n",
+		"#if MR_THREAD_SAFE\n",
+		"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n",
 		"#endif\n",
-				MaybeFail,
-				OutputArgs,
-				"#if MR_THREAD_SAFE\n",
-				"\tif (must_finalize_engine) {\n",
-				"\t\t MR_finalize_thread_engine();\n",
-				"\t}\n",
-				"#endif\n",
-				"\tMR_restore_regs_from_mem(c_regs);\n",
-				MaybeSucceed,
-				"}\n\n"],
-				Code),
+	"#if MR_DEEP_PROFILING\n",
+	"\tsaved_cur_callback = MR_current_callback_site;\n",
+	"\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
+	"\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
+	"#endif\n",
+		"\tMR_restore_registers();\n",
+		InputArgs,
+		"\tMR_save_transient_registers();\n",
+		"\t(void) MR_call_engine(MR_ENTRY(",
+			ProcLabelString, "), MR_FALSE);\n",
+		"\tMR_restore_transient_registers();\n",
+	"#if MR_DEEP_PROFILING\n",
+	"\tMR_current_call_site_dynamic = saved_cur_csd;\n",
+	"\tMR_current_callback_site = saved_cur_callback;\n",
+	"#endif\n",
+		MaybeFail,
+		OutputArgs,
+		"#if MR_THREAD_SAFE\n",
+		"\tif (must_finalize_engine) {\n",
+		"\t\t MR_finalize_thread_engine();\n",
+		"\t}\n",
+		"#endif\n",
+		"\tMR_restore_regs_from_mem(c_regs);\n",
+		MaybeSucceed,
+		"}\n\n"],
+		Code),
 
 	export__to_c(Preds, ExportedProcs, Module, TheRest),
-	ExportedProcsCode = [Code|TheRest].
+	ExportedProcsCode = [Code | TheRest].
 
 	% get_export_info(Preds, PredId, ProcId, Globals, DeclareString,
 	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
@@ -309,16 +314,16 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	module_info::in, string::out, string::out, string::out, string::out,
 	string::out, assoc_list(arg_info, type)::out) is det.
 
-get_export_info(Preds, PredId, ProcId, Globals, Module,
-		HowToDeclareLabel, C_RetType, MaybeDeclareRetval,
-		MaybeFail, MaybeSucceed, ArgInfoTypes) :-
+get_export_info(Preds, PredId, ProcId, Globals, Module, HowToDeclareLabel,
+		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
+		ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_import_status(PredInfo, Status),
 	(
 		( procedure_is_exported(Module, PredInfo, ProcId)
 		; status_defined_in_this_module(Status, no)
-		  % for --split-c-files, we need to treat
-		  % all procedures as if they were exported
+			% for --split-c-files, we need to treat
+			% all procedures as if they were exported
 		; globals__lookup_bool_option(Globals, split_c_files, yes)
 		)
 	->
@@ -331,9 +336,11 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
 	pred_info_arg_types(PredInfo, ArgTypes),
-	( MaybeArgInfos = yes(ArgInfos0) ->
+	(
+		MaybeArgInfos = yes(ArgInfos0),
 		ArgInfos = ArgInfos0
 	;
+		MaybeArgInfos = no,
 		generate_proc_arg_info(ArgTypes, Module,
 			ProcInfo, NewProcInfo),
 		proc_info_arg_info(NewProcInfo, ArgInfos)
@@ -344,7 +351,8 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 
 	% figure out what the C return type should be,
 	% and build the `return' instructions (if any)
-	( CodeModel = model_det,
+	(
+		CodeModel = model_det,
 		(
 			PredOrFunc = function,
 			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
@@ -359,8 +367,7 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
 			string__append_list(["\t", C_RetType,
-					" return_value;\n"],
-						MaybeDeclareRetval),
+				" return_value;\n"], MaybeDeclareRetval),
 			% We need to unbox non-word-sized foreign types
 			% before returning them to C code
 			( foreign__is_foreign_type(Export_RetType) = yes(_) ->
@@ -383,7 +390,8 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 			MaybeSucceed = "",
 			ArgInfoTypes2 = ArgInfoTypes0
 		)
-	; CodeModel = model_semi,
+	;
+		CodeModel = model_semi,
 		% we treat semidet functions the same as semidet predicates,
 		% which means that for Mercury functions the Mercury return
 		% value becomes the last argument, and the C return value
@@ -394,11 +402,11 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 			"\tif (!MR_r1) {\n",
 			"\t\tMR_restore_regs_from_mem(c_regs);\n",
 			"\treturn MR_FALSE;\n",
-			"\t}\n"
-				], MaybeFail),
+			"\t}\n"], MaybeFail),
 		MaybeSucceed = "\treturn MR_TRUE;\n",
 		ArgInfoTypes2 = ArgInfoTypes0
-	; CodeModel = model_non,
+	;
+		CodeModel = model_non,
 		unexpected(this_file, "Attempt to export model_non procedure.")
 	),
 	list__filter(export__include_arg, ArgInfoTypes2, ArgInfoTypes).
@@ -421,23 +429,23 @@ export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	module_info::in, string::out) is det.
 
 get_argument_declarations([], _, _, "void").
-get_argument_declarations([X|Xs], NameThem, Module, Result) :-
-	get_argument_declarations_2([X|Xs], 0, NameThem, Module, Result).
+get_argument_declarations([X | Xs], NameThem, Module, Result) :-
+	get_argument_declarations_2([X | Xs], 0, NameThem, Module, Result).
 
 :- pred get_argument_declarations_2(assoc_list(arg_info, type)::in, int::in,
 	bool::in, module_info::in, string::out) is det.
 
 get_argument_declarations_2([], _, _, _, "").
-get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
+get_argument_declarations_2([AT | ATs], Num0, NameThem, Module, Result) :-
 	AT = ArgInfo - Type,
 	Num = Num0 + 1,
 	get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
-			TypeString, ArgName),
+		TypeString, ArgName),
 	(
-		ATs = []
-	->
+		ATs = [],
 		string__append(TypeString, ArgName, Result)
 	;
+		ATs = [_ | _],
 		get_argument_declarations_2(ATs, Num, NameThem, Module,
 			TheRest),
 		string__append_list([TypeString, ArgName, ", ", TheRest],
@@ -450,33 +458,32 @@ get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
 get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 		TypeString, ArgName) :-
 	ArgInfo = arg_info(_Loc, Mode),
-	( NameThem = yes ->
+	(
+		NameThem = yes,
 		string__int_to_string(Num, NumString),
 		string__append(" Mercury__argument", NumString, ArgName)
 	;
+		NameThem = no,
 		ArgName = ""
 	),
 	TypeString0 = foreign__to_type_string(c, Module, Type),
-	(
-		Mode = top_out
-	->
+	( Mode = top_out ->
 			% output variables are passed as pointers
 		string__append(TypeString0, " *", TypeString)
 	;
 		TypeString = TypeString0
 	).
 
-:- pred get_input_args(assoc_list(arg_info, type), int, module_info, string).
-:- mode get_input_args(in, in, in, out) is det.
+:- pred get_input_args(assoc_list(arg_info, type)::in, int::in,
+	module_info::in, string::out) is det.
 
 get_input_args([], _, _, "").
-get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
+get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
 	Num = Num0 + 1,
 	(
 		Mode = top_in,
-
 		string__int_to_string(Num, NumString),
 		string__append("Mercury__argument", NumString, ArgName0),
 		convert_type_to_mercury(ArgName0, Type, ArgName),
@@ -509,7 +516,7 @@ get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	module_info::in, string::out) is det.
 
 copy_output_args([], _, _, "").
-copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
+copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
 	Num = Num0 + 1,
@@ -561,16 +568,16 @@ argloc_to_string(RegNum, RegName) :-
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	(
-        	Type = term__functor(term__atom("string"), [], _)
+		Type = term__functor(term__atom("string"), [], _)
 	->
 		string__append("(MR_Word) ", Rval, ConvertedRval)
 	;
-        	Type = term__functor(term__atom("float"), [], _)
+		Type = term__functor(term__atom("float"), [], _)
 	->
 		string__append_list(["MR_float_to_word(", Rval, ")" ],
 			ConvertedRval)
 	;
-        	Type = term__functor(term__atom("character"), [], _)
+		Type = term__functor(term__atom("character"), [], _)
 	->
 		% We need to explicitly cast to UnsignedChar
 		% to avoid problems with C compilers for which `char'
@@ -582,11 +589,11 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 
 convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	(
-        	Type = term__functor(term__atom("string"), [], _)
+		Type = term__functor(term__atom("string"), [], _)
 	->
 		string__append("(MR_String) ", Rval, ConvertedRval)
 	;
-        	Type = term__functor(term__atom("float"), [], _)
+		Type = term__functor(term__atom("float"), [], _)
 	->
 		string__append_list(["MR_word_to_float(", Rval, ")" ],
 			ConvertedRval)
@@ -604,7 +611,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 		% .mh files of the imported modules so we always need to
 		% produce a .mh file even if it contains nothing.
 	ForeignExportDecls = foreign_export_decls(ForeignDecls,
-			C_ExportDecls),
+		C_ExportDecls),
 	HeaderExt = ".mh",
 	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
 	io__open_output(FileName ++ ".tmp", Result, !IO),
@@ -679,24 +686,24 @@ export__produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 :- pred export__produce_header_file_2(list(foreign_export_decl)::in,
 	io::di, io::uo) is det.
 
-export__produce_header_file_2([]) --> [].
-export__produce_header_file_2([E|ExportedProcs]) -->
-	{ E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls) },
+export__produce_header_file_2([], !IO).
+export__produce_header_file_2([E | ExportedProcs], !IO) :-
+	E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
 	(
-		{ Lang = c }
+		Lang = c
 	->
 			% output the function header
-		io__write_string(C_RetType),
-		io__write_string(" "),
-		io__write_string(C_Function),
-		io__write_string("("),
-		io__write_string(ArgDecls),
-		io__write_string(");\n")
+		io__write_string(C_RetType, !IO),
+		io__write_string(" ", !IO),
+		io__write_string(C_Function, !IO),
+		io__write_string("(", !IO),
+		io__write_string(ArgDecls, !IO),
+		io__write_string(");\n", !IO)
 	;
-		{ sorry(this_file,
-			"foreign languages other than C unimplemented") }
+		sorry(this_file,
+			"foreign languages other than C unimplemented")
 	),
-	export__produce_header_file_2(ExportedProcs).
+	export__produce_header_file_2(ExportedProcs, !IO).
 
 :- pred output_foreign_decl(maybe(foreign_decl_is_local)::in,
 	foreign_decl_code::in, io::di, io::uo) is det.
