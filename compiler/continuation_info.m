@@ -644,8 +644,8 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 			varset__lookup_name(VarSet, TypeInfoVar,
 				VarString),
 			string__format("%s: %s %s",
-				[s("code_info__find_typeinfos_for_tvars"),
-				s("can't find lval for type_info var"),
+			    [s("continuation_info__find_typeinfos_for_tvars"),
+				s("can't find rval for type_info var"),
 				s(VarString)], ErrStr),
 			error(ErrStr)
 		)
