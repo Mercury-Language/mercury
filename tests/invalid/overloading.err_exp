@@ -1,6 +1,6 @@
 overloading.m:050: In clause for predicate `overloading:p/4':
 overloading.m:050:   in unification of variable `OptInfo'
-overloading.m:050:   and term `opt_info(MustHaveOwnSlot, EverOnStack, CurIntervalId, V_17, Counter1, StartMap0, EndMap0, VarsMap0, SuccMap0)':
+overloading.m:050:   and term `opt_info(MustHaveOwnSlot, EverOnStack, CurIntervalId, V_22, Counter1, StartMap0, EndMap0, VarsMap0, SuccMap0)':
 overloading.m:050:   type error in argument(s) of functor `opt_info/9'.
 overloading.m:050:   variable `OptInfo' has type `(overloading:opt_info)',
 overloading.m:050:   functor `opt_info/9' has type 

@@ -12,12 +12,11 @@
 
 :- import_module int.
 
-:- pred p(int::out) is det.
+:- func f(int) = int.
 
 :- implementation.
 
-    % Warning about referring to "uninitialized" !.X.
+    % Illegally uses !Y as a func result.
     %
-p(!:X) :-
-    !.X = 1.
+f(!X) = !Y.
 

@@ -32,14 +32,14 @@ record_syntax_errors.m:005:   in definition of constructor `record_syntax_errors
 record_syntax_errors.m:046: In clause for predicate `record_syntax_errors:arg_type_error/1':
 record_syntax_errors.m:046:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:046:   in unification of argument
-record_syntax_errors.m:046:   and term `'field7 :='(V_5, V_4)':
+record_syntax_errors.m:046:   and term `'field7 :='(V_10, V_9)':
 record_syntax_errors.m:046:   type error in argument(s) of functor `field7 :=/2'.
 record_syntax_errors.m:046:   Argument 2 has type `string',
 record_syntax_errors.m:046:   expected type was `int'.
 record_syntax_errors.m:050: In clause for predicate `record_syntax_errors:term_type_error/1':
 record_syntax_errors.m:050:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:050:   in unification of argument
-record_syntax_errors.m:050:   and term `'field4 :='(V_5, V_4)':
+record_syntax_errors.m:050:   and term `'field4 :='(V_10, V_9)':
 record_syntax_errors.m:050:   type error in argument(s) of functor `field4 :=/2'.
 record_syntax_errors.m:050:   Argument 1 has type `(record_syntax_errors:cons2)',
 record_syntax_errors.m:050:   expected type was `(record_syntax_errors:cons)'.

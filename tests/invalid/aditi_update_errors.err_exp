@@ -1,49 +1,49 @@
-aditi_update_errors.m:090: Error: wrong number of arguments (5; should be 3 or 4)
-aditi_update_errors.m:090:   in `aditi_bulk_modify'.
-aditi_update_errors.m:089: Error: expected
-aditi_update_errors.m:089:   `aditi_bulk_modify(
-aditi_update_errors.m:089:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
-aditi_update_errors.m:089:     DB0, DB)'
-aditi_update_errors.m:089:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:079: Error: wrong number of arguments (5; should be 3 or 4)
-aditi_update_errors.m:079:   in `aditi_bulk_modify'.
-aditi_update_errors.m:078: Error: expected
-aditi_update_errors.m:078:   `aditi_bulk_modify(
-aditi_update_errors.m:078:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
-aditi_update_errors.m:078:     DB0, DB)'
-aditi_update_errors.m:078:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:068: Error: expected
-aditi_update_errors.m:068:   `aditi_bulk_modify(
-aditi_update_errors.m:068:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
-aditi_update_errors.m:068:     DB0, DB)'
-aditi_update_errors.m:068:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:067: Error: expected
-aditi_update_errors.m:067:   `aditi_bulk_modify(
-aditi_update_errors.m:067:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
-aditi_update_errors.m:067:     DB0, DB)'
-aditi_update_errors.m:067:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:031: Error: expected tuple to insert in `aditi_insert'.
+aditi_update_errors.m:033: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:033:   in `aditi_insert'.
+aditi_update_errors.m:034: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:034:   in `aditi_insert'.
+aditi_update_errors.m:036: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:036:   in `aditi_delete'.
+aditi_update_errors.m:037: Error: wrong number of arguments (4; should be 3)
+aditi_update_errors.m:037:   in `aditi_delete'.
+aditi_update_errors.m:045: Error: expected `aditi_bulk_insert((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:045:   or `aditi_bulk_insert(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:046: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:046:   in `aditi_bulk_delete'.
+aditi_update_errors.m:063: Error: expected `aditi_bulk_delete((p(<Args>) :- <Goal>), DB0, DB)'
+aditi_update_errors.m:063:   or `aditi_bulk_delete(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:064: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:064:   in `aditi_bulk_delete'.
 aditi_update_errors.m:066: Error: expected
 aditi_update_errors.m:066:   `aditi_bulk_modify(
 aditi_update_errors.m:066:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
 aditi_update_errors.m:066:     DB0, DB)'
 aditi_update_errors.m:066:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:064: Error: wrong number of arguments (5; should be 3 or 4)
-aditi_update_errors.m:064:   in `aditi_bulk_delete'.
-aditi_update_errors.m:063: Error: expected `aditi_bulk_delete((p(<Args>) :- <Goal>), DB0, DB)'
-aditi_update_errors.m:063:   or `aditi_bulk_delete(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:046: Error: wrong number of arguments (5; should be 3 or 4)
-aditi_update_errors.m:046:   in `aditi_bulk_delete'.
-aditi_update_errors.m:045: Error: expected `aditi_bulk_insert((p(<Args>) :- <Goal>), DB0, DB)'
-aditi_update_errors.m:045:   or `aditi_bulk_insert(PredOrFunc p/N, Closure, DB0, DB)'.
-aditi_update_errors.m:037: Error: wrong number of arguments (4; should be 3)
-aditi_update_errors.m:037:   in `aditi_delete'.
-aditi_update_errors.m:036: Error: wrong number of arguments (4; should be 3)
-aditi_update_errors.m:036:   in `aditi_delete'.
-aditi_update_errors.m:034: Error: wrong number of arguments (4; should be 3)
-aditi_update_errors.m:034:   in `aditi_insert'.
-aditi_update_errors.m:033: Error: wrong number of arguments (4; should be 3)
-aditi_update_errors.m:033:   in `aditi_insert'.
-aditi_update_errors.m:031: Error: expected tuple to insert in `aditi_insert'.
+aditi_update_errors.m:067: Error: expected
+aditi_update_errors.m:067:   `aditi_bulk_modify(
+aditi_update_errors.m:067:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:067:     DB0, DB)'
+aditi_update_errors.m:067:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:068: Error: expected
+aditi_update_errors.m:068:   `aditi_bulk_modify(
+aditi_update_errors.m:068:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:068:     DB0, DB)'
+aditi_update_errors.m:068:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:078: Error: expected
+aditi_update_errors.m:078:   `aditi_bulk_modify(
+aditi_update_errors.m:078:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:078:     DB0, DB)'
+aditi_update_errors.m:078:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:079: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:079:   in `aditi_bulk_modify'.
+aditi_update_errors.m:089: Error: expected
+aditi_update_errors.m:089:   `aditi_bulk_modify(
+aditi_update_errors.m:089:     (p(<Args0>) ==> p(<Args>) :- <Goal>),
+aditi_update_errors.m:089:     DB0, DB)'
+aditi_update_errors.m:089:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
+aditi_update_errors.m:090: Error: wrong number of arguments (5; should be 3 or 4)
+aditi_update_errors.m:090:   in `aditi_bulk_modify'.
 aditi_update_errors.m:048: In clause for predicate `aditi_update_errors:aditi_update_syntax/2':
 aditi_update_errors.m:048:   warning: variable `X' has overlapping scopes.
 aditi_update_errors.m:070: In clause for predicate `aditi_update_errors:aditi_update_syntax/2':
@@ -146,14 +146,14 @@ aditi_update_errors.m:149:   Perhaps you forgot to add ` = ...'?)
 aditi_update_errors.m:152: In clause for predicate `aditi_update_errors:aditi_update_types/2':
 aditi_update_errors.m:152:   in argument 4 of clause head:
 aditi_update_errors.m:152:   in unification of argument
-aditi_update_errors.m:152:   and term `(X0 + V_91)':
+aditi_update_errors.m:152:   and term `(X0 + V_103)':
 aditi_update_errors.m:152:   type error in argument(s) of functor `+/2'.
 aditi_update_errors.m:152:   Argument 1 (X0) has type `(aditi:state)',
 aditi_update_errors.m:152:   expected type was `int'.
 aditi_update_errors.m:153: In clause for predicate `aditi_update_errors:aditi_update_types/2':
 aditi_update_errors.m:153:   in argument 4 of clause head:
 aditi_update_errors.m:153:   in unification of argument
-aditi_update_errors.m:153:   and term `(Y0 + V_87)':
+aditi_update_errors.m:153:   and term `(Y0 + V_107)':
 aditi_update_errors.m:153:   type error in argument(s) of functor `+/2'.
 aditi_update_errors.m:153:   Argument 1 (Y0) has type `((func int) = int)',
 aditi_update_errors.m:153:   expected type was `int'.

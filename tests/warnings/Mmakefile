@@ -22,6 +22,7 @@ ERRORCHECK_PROGS= \
 	pragma_source_file \
 	simple_code \
 	singleton_test \
+	state_vars_test \
 	unused_args_test \
 	unused_import
 

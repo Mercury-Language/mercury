@@ -10,13 +10,13 @@
 
 :- interface.
 
-:- import_module int.
+:- import_module list, int.
 
-:- func f(int) = int.
+:- func f(list(int)) = int.
 
 :- implementation.
 
-    % Illegally uses !Y as a func result.
+    % Illegally uses !X as a lambda arg.
     %
-f(!X) = !Y.
+f(Xs) = foldl(func(!X) = !.X * !:X, Xs, 1).
 
