@@ -16,6 +16,24 @@
 nuprolog :-
 	fail.
 
+some(Vars, Goal) :-
+	call(Goal).
+
+not(Goal) :-
+	\+ Goal.
+
+all(Vars, Goal) :-
+	not some(Vars, not Goal).
+
+(P => Q) :-
+	not (P, not Q).
+
+(P <= Q) :-
+	Q => P.
+
+(P <=> Q) :-
+	(P => Q), (Q => P).
+
 putprop(Atom, Key, Property) :-
 	retractall(property(Atom, Key, _)),
 	assert(property(Atom, Key, Property)).
