@@ -78,7 +78,7 @@
 				MR_sp = MR_sp + (n),		\
 				MR_detstack_overflow_check(),	\
 				MR_collect_det_frame_stats(n),	\
-				(void)0				\
+				(void) 0			\
 			)
 
 #define	MR_decr_sp_pop_msg(n)					\
@@ -86,7 +86,7 @@
 				MR_debugdecrsp(n, MR_sp),	\
 				MR_sp = MR_sp - (n),		\
 				MR_detstack_underflow_check(),	\
-				(void)0				\
+				(void) 0			\
 			)
 
 #define	MR_incr_sp(n)	(					\
@@ -94,14 +94,14 @@
 				MR_sp = MR_sp + (n),		\
 				MR_detstack_overflow_check(),	\
 				MR_collect_det_frame_stats(n),	\
-				(void)0				\
+				(void) 0			\
 			)
 
 #define	MR_decr_sp(n)	(					\
 				MR_debugdecrsp(n, MR_sp),	\
 				MR_sp = MR_sp - (n),		\
 				MR_detstack_underflow_check(),	\
-				(void)0				\
+				(void) 0			\
 			)
 
 /*---------------------------------------------------------------------------*/
