@@ -745,7 +745,7 @@ next_mode_id(Procs, MaybeDet, ModeId) :-
 	% we should prefer to call it in a deterministic mode
 	% rather than a non-deterministic one, and we should prefer
 	% to call it in a semideterministic mode rather than a deterministic
-	% one.
+	% one.  Also we should prefer a nondet mode rather than a multidet mode.
 	% Higher numbers mean lower priority.
 	% This works because mode analysis tries each mode in turn,
 	% starting with the lowest-numbered modes.
@@ -758,7 +758,7 @@ determinism_priority(failure, 0).
 determinism_priority(det, 10000).
 determinism_priority(erroneous, 10000).
 determinism_priority(nondet, 30000).
-determinism_priority(multidet, 30000).
+determinism_priority(multidet, 40000).
 
 :- pred determinism_priority_unspecified(int).
 :- mode determinism_priority_unspecified(out) is det.
