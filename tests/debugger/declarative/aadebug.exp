@@ -47,11 +47,9 @@ Valid? no
 q('a', 'b')
 Valid? yes
 Call r('b', _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call q('b', _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found incorrect contour:
 q('a', 'b')
 p('a', 32)

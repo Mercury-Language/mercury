@@ -276,7 +276,8 @@ user_question_prompt(question_with_default(Question, DefaultTruth), Prompt) :-
 :- mode decl_question_prompt(in, out) is det.
 
 decl_question_prompt(wrong_answer(_, _, _), "Valid? ").
-decl_question_prompt(missing_answer(_, _, _), "Complete? ").
+decl_question_prompt(missing_answer(_, _, [_ | _]), "Complete? ").
+decl_question_prompt(missing_answer(_, _, []), "Unsatisfiable? ").
 decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
 
 :- pred default_prompt(decl_truth, string).
@@ -785,11 +786,11 @@ write_decl_question(missing_answer(_, Call, Solns), User) -->
 	write_decl_init_atom(User, "Call ", decl_caller_type, Call),
 	(
 		{ Solns = [] }
-	->
-		io__write_string(User ^ outstr, "No solutions.\n")
 	;
+		{ Solns = [_ | _] },
 		io__write_string(User ^ outstr, "Solutions:\n"),
-		list__foldl(write_decl_final_atom(User, "\t", print_all), Solns)
+		list__foldl(write_decl_final_atom(User, "\t", print_all),
+			Solns)
 	).
 
 write_decl_question(unexpected_exception(_, Call, ExceptionRep), User) -->

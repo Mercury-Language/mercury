@@ -58,8 +58,7 @@ mdb> f
       E9:     C6 FAIL pred divide_and_query1.abba/1-0 (semidet)
 mdb> dd -s divide_and_query
 Call abba([a, a, a, b])
-No solutions.
-Complete? n
+Unsatisfiable? n
 Call abba_perm([a, a, a, b], _)
 Solutions:
 	abba_perm([a, a, a, b], [a, a, a, b])

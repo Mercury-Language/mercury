@@ -12,39 +12,33 @@ mdb> finish
      161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> dd
 Call queen([1, 2, 3, 4, 5], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 Call qperm([1, 2, 3, 4, 5], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 qdelete(1, [1, 2, 3, 4, 5], [2, ...])
 Valid? yes
 qdelete(2, [1, 2, 3, 4, 5], [1, ...])
 Valid? yes
 Call qperm([1, 3, 4, 5], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 qdelete(1, [1, 3, 4, 5], [3, 4, ...])
 Valid? yes
 qdelete(3, [1, 3, 4, 5], [1, 4, ...])
 Valid? yes
 Call qperm([1, 4, 5], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 qdelete(1, [1, 4, 5], [4, 5])
 Valid? yes
 qdelete(4, [1, 4, 5], [1, 5])
 Valid? yes
 Call qperm([1, 5], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 qdelete(1, [1, 5], [5])
 Valid? yes
 qdelete(5, [1, 5], [1])
 Valid? yes
 Call qperm([1], _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 qdelete(1, [1], [])
 Valid? yes
 Call qdelete(_, [1], _)

@@ -10,18 +10,15 @@ mdb> finish
       16:      2  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
 mdb> dd
 Call p(1)
-No solutions.
-Complete? no
+Unsatisfiable? no
 q(0, x(0))
 Valid? yes
 Call x(0, 1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 q(0, y(0))
 Valid? yes
 Call y(0, 1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call q(0, _)
 Solutions:
 	q(0, x(0))
@@ -37,14 +34,11 @@ mdb> finish
       32:      6  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
 mdb> dd
 Call p(2)
-No solutions.
-Complete? no
+Unsatisfiable? no
 Call x(0, 2)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call y(0, 2)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found partially uncovered atom:
 p(2)
 Is this a bug? yes

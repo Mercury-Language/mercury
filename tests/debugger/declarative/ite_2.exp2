@@ -20,8 +20,7 @@ Valid? no
 a(1, 1)
 Valid? yes
 Call >(1, 1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 c(1, 1)
 Valid? yes
 Found incorrect contour:
@@ -39,8 +38,7 @@ Valid? no
 b(1, 0)
 Valid? yes
 Call >(0, 1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 b(1, 1)
 Valid? yes
 Call b(1, _)

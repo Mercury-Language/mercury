@@ -18,8 +18,7 @@ Valid? yes
 c(0, 2)
 Valid? yes
 Call d(2, _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 c(2, 6)
 Valid? yes
 f(6, -12)
@@ -119,13 +118,11 @@ Valid? yes
 g(6, -10)
 Valid? yes
 Call >(-10, 0)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 g(7, -11)
 Valid? yes
 Call >(-11, 0)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call c(2, _)
 Solutions:
 	c(2, 6)

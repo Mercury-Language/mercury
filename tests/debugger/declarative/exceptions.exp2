@@ -37,8 +37,7 @@ mdb> delete *
  0: E stop  interface pred exceptions.r/1-0 (semidet)
 mdb> dd -d1000
 Call r(_)
-No solutions.
-Complete? n
+Unsatisfiable? n
 t({yes(univ_cons("Error")), [4, 5, 6]})
 Valid? n
 s(4)

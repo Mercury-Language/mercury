@@ -12,8 +12,7 @@ Valid? no
 q(c, b)
 Valid? no
 Call r(c)
-No solutions.
-Complete? browse 1
+Unsatisfiable? browse 1
 browser> mark
 Found inadmissible call:
 Parent q(c, _)

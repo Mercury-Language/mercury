@@ -14,13 +14,11 @@ Valid? no
 q(0, 0)
 Valid? yes
 Call r(0)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 q(0, 1)
 Valid? yes
 Call r(1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call q(0, _)
 Solutions:
 	q(0, 0)

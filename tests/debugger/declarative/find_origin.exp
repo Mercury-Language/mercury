@@ -13,16 +13,13 @@ browser> mark
 monotest4(t(101), t(101))
 Valid? n
 Call lambda_find_origin_86(t(101), t(3))
-No solutions.
-Complete? y
+Unsatisfiable? y
 lambda_find_origin_86(t(101), t(101))
 Valid? y
 Call lambda_find_origin_86(t(101), t(2))
-No solutions.
-Complete? y
+Unsatisfiable? y
 Call lambda_find_origin_86(t(101), t(1))
-No solutions.
-Complete? y
+Unsatisfiable? y
 Found incorrect contour:
 lambda_find_origin_86(t(101), t(101))
 monotest4(t(101), t(101))
@@ -49,8 +46,7 @@ Valid? no
 lambda_find_origin_148(u(string), u(u("hello")), u(u("hello")))
 Valid? y
 Call lambda_find_origin_148(u(string), u(u("hello")), v(u("hello")))
-No solutions.
-Complete? y
+Unsatisfiable? y
 Found incorrect contour:
 lambda_find_origin_148(u(string), u(u("hello")), u(u("hello")))
 polytest4(u("hello"), u("hello"))

@@ -38,22 +38,19 @@ mdb> c
       E8:     C3 FAIL pred browser_mode.r/2-0 (semidet)
 mdb> dd
 Call r('b', _)
-No solutions.
-Complete? b 1
+Unsatisfiable? b 1
 browser> mode
 Input
 browser> quit
 Call r('b', _)
-No solutions.
-Complete? b
+Unsatisfiable? b
 browser> mode 2
 Unbound
 browser> mode 1
 Input
 browser> quit
 Call r('b', _)
-No solutions.
-Complete? a
+Unsatisfiable? a
 Diagnosis aborted.
       E8:     C3 FAIL pred browser_mode.r/2-0 (semidet)
 mdb> quit -y

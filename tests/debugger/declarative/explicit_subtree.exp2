@@ -44,8 +44,7 @@ Is this a bug? n
 +(50, 1) = 51
 Valid? [no] y
 Call =<(51, 0)
-No solutions.
-Complete? y
+Unsatisfiable? y
 -(51, 1) = 50
 Valid? y
 +(0, 1) = 1
@@ -82,8 +81,7 @@ Is this a bug? n
 +(48, 1) = 49
 Valid? [no] y
 Call =<(49, 0)
-No solutions.
-Complete? y
+Unsatisfiable? y
 -(49, 1) = 48
 Valid? y
 +(0, 1) = 1

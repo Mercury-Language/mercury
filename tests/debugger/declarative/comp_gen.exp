@@ -16,8 +16,7 @@ mdb> continue
        8:      3  2 FAIL pred comp_gen.p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
 mdb> dd
 Call p(f(1), f(2))
-No solutions.
-Complete? no
+Unsatisfiable? no
 Found partially uncovered atom:
 p(f(1), f(2))
 Is this a bug? yes

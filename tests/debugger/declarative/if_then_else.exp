@@ -30,8 +30,7 @@ mdb> dd
 ite(1, 0)
 Valid? no
 Call a(1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found incorrect contour:
 a(0)
 ite(1, 0)

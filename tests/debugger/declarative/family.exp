@@ -14,23 +14,19 @@ Valid? no
 siblings(a, b)
 Valid? yes
 Call full_siblings(_, _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 common_mother(a, b)
 Valid? yes
 Call common_father(_, _)
-No solutions.
-Complete? no
+Unsatisfiable? no
 parent(m, a)
 Valid? yes
 Call parent(a, _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 parent(m, b)
 Valid? yes
 Call parent(b, _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 parent(f, a)
 Valid? yes
 parent(f, b)
@@ -38,8 +34,7 @@ Valid? yes
 parent(f, c)
 Valid? yes
 Call parent(c, _)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 parent(s, c)
 Valid? yes
 Call parent(_, _)

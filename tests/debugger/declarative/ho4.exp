@@ -10,8 +10,7 @@ mdb> finish
       18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:10)
 mdb> dd
 Call p(1)
-No solutions.
-Complete? no
+Unsatisfiable? no
 q(r(5), 5)
 Valid? yes
 q(r(5), 0)
@@ -31,8 +30,7 @@ mdb> finish
       36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:17)
 mdb> dd
 Call p(2)
-No solutions.
-Complete? no
+Unsatisfiable? no
 Found partially uncovered atom:
 p(2)
 Is this a bug? yes

@@ -84,8 +84,7 @@ browser> mark
 ra(2)
 Valid? yes
 Call rb(2)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found incorrect contour:
 ra(2)
 r(2, 43)
@@ -125,8 +124,7 @@ browser> mark
 rd(-1)
 Valid? yes
 Call ra(4)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found incorrect contour:
 rd(-1)
 r(4, -1)
@@ -232,11 +230,9 @@ browser> mark
 tb(77)
 Valid? yes
 Call ta(1)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Call tc(77)
-No solutions.
-Complete? yes
+Unsatisfiable? yes
 Found incorrect contour:
 tb(77)
 t(1, 77)
