@@ -21,7 +21,9 @@ Options:
 		Do not perform a bootcheck; check only the tests directory.
 	-c, --compile-only
 		Compile only. Do not compare stage2.ok and stage3.
-	-d <dirname>, --dir <dirname>
+	-d, --dependency-only
+		Compile only. Do not compare stage2.ok and stage3.
+	-D <dirname>, --dir <dirname>
 		Confine the search to one directory, library or compiler.
 		(Usually useful only after a previous search.)
 	-f <modulename>, --file <modulename>
@@ -51,6 +53,7 @@ set -x
 
 bootcheck=""
 compile_only=""
+dependency_only=""
 jfactor=
 mmake_opts=""
 outfile=""
@@ -69,9 +72,12 @@ while [ $# -gt 0 ]; do
 	-c|--compile-only)
 		compile_only="-c" ;;
 
-	-d|--dir)
+	-d|--dependency-only)
+		dependency_only="-d" ;;
+
+	-D|--dir)
 		alldirs="$2"; shift ;;
-	-d*)
+	-D*)
 		alldirs="` expr $1 : '-d\(.*\)' `"; ;;
 
 	-f|--file)
@@ -239,7 +245,7 @@ then
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=library
 		else
@@ -247,7 +253,7 @@ then
 		fi
 		echo "solution seems to be in the $testeddir directory"
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=compiler
 		else
@@ -308,7 +314,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -327,7 +333,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -420,7 +426,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -439,7 +445,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
