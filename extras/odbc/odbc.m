@@ -36,7 +36,8 @@
 %
 %	In particular, the line
 % 		#define SQL_API		__attribute__ ((stdcall))
-%	must be added to sqlext.h.
+%	must be added to sqltypes.h in place of the existing definition
+%	of SQL_API.
 %
 % 	Also some C++ style comments and some typedef conflicts must be 
 %	removed from some of the header files. The error messages should 
