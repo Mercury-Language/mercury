@@ -786,6 +786,13 @@ array__init(Size, Item, Array) :-
 :- pragma foreign_proc("C#", 
 		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
+	// XXX A better solution then using the null pointer to represent
+	// the empty array would be to create an array of size 0.  However
+	// we need to determine the element type of the array before we can
+	// do that.  This could be done by examing the RTTI of the array
+	// type and then using System.Type.GetType(""<mercury type>"") to
+	// determine it.  However constructing the <mercury type> string is
+	// a non-trival amount of work.
 	Array = null;
 ").
 
