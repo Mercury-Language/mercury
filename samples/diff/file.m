@@ -6,7 +6,7 @@
 
 :- module file.
 :- interface.
-:- import_module io, string.
+:- import_module io, list, string.
 
 :- type file.
 
@@ -22,29 +22,26 @@
 :- pred file__get_numlines(file, int).
 :- mode file__get_numlines(in, out) is det.
 
+:- pred file__to_list(file, list(string)).
+:- mode file__to_list(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, require, int.
+:- import_module array, require, int.
 
 %-----------------------------------------------------------------------------%
 
-:- type file --->
-	file(
-		int,			% Number of lines
-		map(int, string)	% File contents
-		).
+:- type file == array(string).
 
 file__read_file(FileName, Contents) -->
 	io__open_input(FileName, Res),
-	( { Res = ok(InputStream) } ->
+	( { Res = ok(InputStream) },
 	    file__read_stream(InputStream, Contents),
 	    io__close_input(InputStream)
-	; { Res = error(Error) } ->
+	; { Res = error(Error) },
 	    { io__error_message(Error, Msg) },
 	    { error(Msg) }
-	;
-	    { error("Internal fault") }
 	).
 
 file__read_input(Contents) -->
@@ -53,35 +50,43 @@ file__read_input(Contents) -->
 
 :- pred file__read_stream(io__input_stream, file, io__state, io__state).
 :- mode file__read_stream(in, out, di, uo) is det.
-file__read_stream(Stream, file(Lines, Map)) -->
-	file__read_stream2(Stream, 0, Lines, Map).
+file__read_stream(Stream, File) -->
+	file__read_stream2(Stream, 0, _, File).
 
-:- pred file__read_stream2(io__input_stream, int, int, map(int, string),
+:- pred file__read_stream2(io__input_stream, int, int, file,
 		io__state, io__state).
 :- mode file__read_stream2(in, in, out, out, di, uo) is det.
-file__read_stream2(Stream, LinesIn, LinesOut, Map) -->
+file__read_stream2(Stream, LinesIn, LinesOut, File) -->
 	io__read_line(Stream, Res),
-	( { Res = eof } ->
-	    { LinesOut = LinesIn },
-	    { map__init(Map) }
-	; { Res = ok(Line) } ->
+	( { Res = eof },
+	    ( { LinesIn < 1 } ->
+		{ LinesOut = 1 }
+	    ;
+	    	{ LinesOut = LinesIn }
+	    ),
+	    { array__init(1, LinesOut, "", File) }
+	; { Res = ok(Line) },
 	    { LinesIn1 is LinesIn+1 },
 	    { string__from_char_list(Line, Line1) },
-	    file__read_stream2(Stream, LinesIn1, LinesOut, Map1),
-	    { map__det_insert(Map1, LinesIn1, Line1, Map) }
-	; { Res = error(Error) } ->
+	    file__read_stream2(Stream, LinesIn1, LinesOut, File1),
+	    { array__set(File1, LinesIn1, Line1, File) }
+	; { Res = error(Error) },
 	    { io__error_message(Error, Msg) },
 	    { error(Msg) }
-	;
-	    { error("Internal fault") }
 	).
 
 %-----------------------------------------------------------------------------%
 
-file__get_line(file(_, Map), LineNo, Line) :-
-	map__search(Map, LineNo, Line).
+file__get_line(File, LineNo, Line) :-
+	array__get_bounds(File, Low, High),
+	Low <= LineNo, LineNo <= High,
+	array__lookup(File, LineNo, Line).
 
-file__get_numlines(file(NumLines, _), NumLines).
+file__get_numlines(File, NumLines) :-
+	array__bounds(File, _, NumLines).
+
+file__to_list(File, List) :-
+	array__to_list(File, List).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
