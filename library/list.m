@@ -104,9 +104,18 @@
 :- pred list__nth_member_search(list(T), T, int).
 :- mode list__nth_member_search(in, in, out) is semidet.
 
-:- pred list__nth_member_lookup(list(T), int, T).
-:- mode list__nth_member_lookup(in, in, out) is det.
+:- pred list__index0(list(T)::in, int::in, T::out) is semidet.
+:- pred list__index1(list(T)::in, int::in, T::out) is semidet.
+:- pred list__index0_det(list(T)::in, int::in, T::out) is det.
+:- pred list__index1_det(list(T)::in, int::in, T::out) is det.
+%	These predicates select an element in a list from it's
+%	position.  The `index0' preds consider the first element
+%	element to be element number zero, whereas the `index1' preds
+%	consider the first element to be element number one.
+%	The `_det' preds call error/1 if the index is out of
+%	range, whereas the semidet preds fail if the index is out of range.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -121,15 +130,28 @@ list__nth_member_search([X | Xs], Y, N) :-
 		N is N0 + 1
 	).
 
-list__nth_member_lookup([], _, _) :-
-	error("invalid index in nth_member_lookup").
-list__nth_member_lookup([X | Xs], N, Y) :-
-	( N = 1 ->
-		Y = X
+list__index0([X | Xs], N, Elem) :-
+	( N = 0 ->
+		Elem = X
 	; 
 		N1 is N - 1,
-		list__nth_member_lookup(Xs, N1, Y)
+		list__index0(Xs, N1, Elem)
 	).
+
+list__index0_det(List, N, Elem) :-
+	( list__index0(List, N, Elem0) ->
+		Elem = Elem0
+	;
+		error("list__index: index out of range")
+	).
+
+list__index1(List, N, Elem) :-
+	N1 is N - 1,
+	list__index0(List, N1, Elem).
+
+list__index1_det(List, N, Elem) :-
+	N1 is N - 1,
+	list__index0_det(List, N1, Elem).
 
 list__condense([], []).
 list__condense([L|Ls], R) :-

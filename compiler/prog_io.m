@@ -34,14 +34,15 @@
 % you make are reflected correctly in all similar parts of this
 % file.
 
-% XXX todo:
+% Wishlist:
 %
 % 1.  implement importing/exporting operators with a particular fixity
 %     eg. :- import_op prefix(+). % only prefix +, not infix
 %     (not important, but should be there for reasons of symmetry.)
 % 2.  improve the handling of type and inst parameters 
-%     (see XXX's below)
-% 3.  improve the error reporting
+% 3.  improve the error reporting (most of the semidet preds should
+%     be det and should return a meaningful indication of where an
+%     error occured).
 %
 % Question: should we allow `:- rule' declarations???
 
@@ -147,7 +148,7 @@
 
 :- type constructor	==	pair(sym_name, list(type)).
 
-	% XXX should type parameters be variables not terms ??
+	% probably type parameters should be variables not terms.
 :- type type_param	==	term.
 
 :- type (type)		==	term.
@@ -172,7 +173,7 @@
 :- type inst_defn	--->	eqv_inst(sym_name, list(inst_param), inst)
 			;	abstract_inst(sym_name, list(inst_param)).
 
-	% XXX should inst parameters be variables not terms ??
+	% probably inst parameters should be variables not terms
 :- type inst_param	==	term.
 
 :- type (inst)		--->	free
@@ -245,7 +246,7 @@
 			;	name_args_res(sym_name,
 						list(type), type).
 :- type op_specifier	--->	sym(sym_name_specifier)
-			% XXX operator fixity specifiers not yet implemented
+			% operator fixity specifiers not yet implemented
 			;	fixity(sym_name_specifier, fixity).
 :- type fixity		--->	infix ; prefix ; postfix.
 :- type sym_name_specifier ---> name(sym_name)
@@ -284,7 +285,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module io, term_io.
+:- import_module io, term_io, dir.
 
 %-----------------------------------------------------------------------------%
 
@@ -339,16 +340,13 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 
 search_for_file([], _, error) --> [].
 search_for_file([Dir | Dirs], FileName, R) -->
-	% xxx Operating system dependency -- assumptions about "." and "/".
-	% This will work on Unix and even on DOS, but maybe
-	% there are operating systems somewhere for which this won't work.
-
-	( { Dir = "." } ->
-		{ ThisFileName = FileName }
+	{ dir__this_directory(Dir) ->
+		ThisFileName = FileName
 	;
-		{ string__append(Dir, "/", Tmp1) },
-		{ string__append(Tmp1, FileName, ThisFileName) }
-	),
+		dir__directory_seperator(Seperator),
+		string__first_char(Tmp1, Seperator, FileName),
+		string__append(Dir, Tmp1, ThisFileName)
+	},
 	io__see(ThisFileName, R0),
 	( { R0 = ok } ->
 		{ R = ok }
@@ -1241,7 +1239,7 @@ parse_type_decl_pred(VarSet, Pred, R) :-
 	get_determinism(Body, Body2, Determinism),
 	process_type_decl_pred(Determinism, VarSet, Body2, Condition, R).
 
-:- pred process_type_decl_pred(determinism, varset, term, condition,
+:- pred process_type_decl_pred(maybe1(determinism), varset, term, condition,
 				maybe1(item)).
 :- mode process_type_decl_pred(in, in, in, in, out) is det.
 

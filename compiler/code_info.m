@@ -227,6 +227,9 @@
 :- pred code_info__pop_failure_cont(label, code_info, code_info).
 :- mode code_info__pop_failure_cont(out, in, out) is semidet.
 
+:- pred code_info__pop_failure_cont_det(label, code_info, code_info).
+:- mode code_info__pop_failure_cont_det(out, in, out) is det.
+
 :- pred code_info__set_failure_cont(label, code_info, code_info).
 :- mode code_info__set_failure_cont(in, in, out) is det.
 
@@ -375,7 +378,7 @@ code_info__init_reg_info_2([], _N, _HeadVars, RegisterInfo, RegisterInfo).
 code_info__init_reg_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 						RegisterInfo0, RegisterInfo) :-
 	code_util__arg_loc_to_register(ArgLoc, Reg),
-	list__nth_member_lookup(HeadVars, N0, Var),
+	list__index1_det(HeadVars, N0, Var),
 	(
 		Mode = top_in
 	->
@@ -416,7 +419,7 @@ code_info__init_var_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 		Mode = top_in
 	->
 		code_util__arg_loc_to_register(ArgLoc, Reg),
-		list__nth_member_lookup(HeadVars, N0, Var),
+		list__index1_det(HeadVars, N0, Var),
 		Lval = reg(Reg),
 		set__singleton_set(Lvals, Lval),
 		map__set(VariableInfo0, Var, evaluated(Lvals), VariableInfo1)
@@ -1860,6 +1863,13 @@ code_info__push_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall0),
 	{ stack__push(Fall0, Cont, Fall) },
 	code_info__set_fall_through(Fall).
+
+code_info__pop_failure_cont_det(Cont) -->
+	( code_info__pop_failure_cont(Cont0) ->
+		{ Cont = Cont0 }
+	;
+		{ error("code_info__pop_failure_cont failed") }
+	).
 
 code_info__pop_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall0),

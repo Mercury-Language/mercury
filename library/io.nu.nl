@@ -117,10 +117,11 @@ atoms_to_strings(A.As,S.Ss) :-
 
 io__progname(DefaultName, Name) --> 
 	{ io__save_progname(N) ->
-		Name = N
+		Name0 = N
 	;
-		Name = DefaultName
-	}.
+		Name0 = DefaultName
+	},
+	{ dir__basename(Name0, Name) }.
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

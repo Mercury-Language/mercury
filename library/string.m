@@ -112,6 +112,54 @@
 %	construct a string consisting of `Count' occurrences of `Char'
 %	in sequence.
 
+:- pred string__index(string, int, character).
+:- mode string__index(in, in, out) is semidet.
+%	string__index(String, Index, Char):
+%	`Char' is the (`Index' + 1)-th character of `String'.
+%	Fails if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String').
+
+:- pred string__index_det(string, int, character).
+:- mode string__index_det(in, in, out) is det.
+%	string__index_det(String, Index, Char):
+%	`Char' is the (`Index' + 1)-th character of `String'.
+%	Calls error/1 if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String').
+
+:- pred string__split(string, int, string, string).
+:- mode string__split(in, in, out, out) is det.
+%	string__split(String, Count, LeftSubstring, RightSubstring):
+%	`LeftSubstring' is the left-most `Count' characters of `String',
+%	and `RightSubstring' is the remainder of `String'.
+%	(If `Count' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.)
+
+:- pred string__left(string, int, string).
+:- mode string__left(in, in, out) is det.
+%	string__left(String, Count, LeftSubstring):
+%	`LeftSubstring' is the left-most `Count' characters of `String'.
+%	(If `Count' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.)
+
+:- pred string__right(string, int, string).
+:- mode string__right(in, in, out) is det.
+%	string__right(String, Count, RightSubstring):
+%	`RightSubstring' is what would remain of `String' if the
+%	left-most `Count' characters were removed.
+%	(If `Count' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.)
+
+:- pred string__substring(string, int, int, string).
+:- mode string__substring(in, in, in, out) is det.
+%	string__substring(String, Start, Count, Substring):
+%	`Substring' is first the `Count' characters in what would
+%	remain of `String' after the first `Start' characters were
+%	removed.
+%	(If `Start' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.
+%	If `Count' is out of the range [0, length of `String' - `Start'], it is
+%	treated as if it were the nearest end-point of that range.)
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -128,6 +176,47 @@
 :- external("NU-Prolog", string__to_int_list).
 :- external("NU-Prolog", intToString).
 */
+
+string__index(String, Int, Char) :-
+	string__to_int_list(String, CodeList),
+	list__index0(CodeList, Int, Code),
+	char_to_int(Char, Code).
+
+string__index_det(String, Int, Char) :-
+	( string__index(String, Int, Char0) ->
+		Char = Char0
+	;
+		error("string__index_det: index out of range")
+	).
+
+string__split(String, Count, LeftString, RightString) :-
+	(
+		Count < 0
+	->
+		LeftString = "",
+		RightString = String
+	;
+		string__to_int_list(String, CodesList),
+		list__split_list(Count, CodesList, LeftCodes, RightCodes)
+	->
+		string__to_int_list(LeftString, LeftCodes),
+		string__to_int_list(RightString, RightCodes)
+	;
+		LeftString = String,
+		RightString = ""
+	).
+
+string__left(String, Count, LeftString) :-
+	string__split(String, Count, LeftString, _RightString).
+
+string__right(String, RightCount, RightString) :-
+	string__length(String, Length),
+	LeftCount is Length - RightCount,
+	string__split(String, LeftCount, _LeftString, RightString).
+
+string__substring(String, Start, Count, Substring) :-
+	string__right(String, Start, Right),
+	string__left(Right, Count, Substring).
 
 string__to_int(String, Int) :-
 	intToString(Int, String).

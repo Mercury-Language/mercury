@@ -65,7 +65,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__push_failure_cont(ElseLab),
 		% generate the semi-deterministc test goal
 	code_gen__generate_semi_goal(CondGoal, CondCode),
-	code_info__pop_failure_cont(_),
+	code_info__pop_failure_cont_det(_),
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_forced_semi_goal(ThenGoal, ThenGoalCode),
 	code_info__slap_code_info(CodeInfo),
