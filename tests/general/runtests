@@ -13,10 +13,25 @@
 # on a machine that has NU-Prolog installed.
 
 . ../handle_options
+
+# Run the tests in any subdirectories of this one.  If any of these
+# fail, we still perform the tests in this directory but return a
+# status of 1 regardless of the outcome.
+
+. ../subdir_runtests
+
+if test "$subdir_failures" = ""
+then
+        subdir_status=0
+else
+        subdir_status=1
+fi
+
+# Now run all the tests in this directory.
 . ../startup
 
-mmake $jfactor depend || exit 1
-eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+mmake $jfactor depend_local || exit 1
+eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check_local
 checkstatus=$?
 
 cat *.res > .allres
@@ -26,7 +41,7 @@ then
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
 	rm -f .allres
 	. ../shutdown
-	exit 0
+	exit $subdir_status
 else
 	echo "the tests in the general directory failed"
 	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"

@@ -1,8 +1,9 @@
-The Mercury test suite is (dis)organized into several subdirectories.
+The Mercury test suite is (dis)organized into a directory hierarchy.
 Each subdirectory has a script named "runtests" that runs the tests
 in that subdirectory; these indicate the presence of any errors by
-returning a nonzero exit status. The runtests script in this directory
-invokes the runtests scripts in all the subdirectories.
+returning a nonzero exit status. The runtests script in each directory
+invokes the runtests scripts in all subdirectories, and propagates
+any nonzero exit status upwards.
 
 Both the bootcheck script and the nightly script use the main runtests
 script to run all the tests.
@@ -11,6 +12,16 @@ benchmarks
 	This directory contains Mercury versions of the benchmarks.
 	These tests work by comparing the output of the Mercury and
 	the NU-Prolog versions.
+
+debugger
+	This directory is for testing mdb, the Mercury debugger.
+	Programs are compiled with deep tracing turned on.  The
+	tests in this directory are not performed if the base grade
+	is `jump' or `fast'.
+
+debugger/declarative
+	This directory is for testing the declarative debugging
+	features of mdb.
 
 general
 	This directory is for general test cases.

@@ -105,12 +105,44 @@ OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
 
-depend: $(DEPENDS)
-
 exp:	$(EXPS)
 
-check:	$(OUTS) $(RESS)
+depend_local:	$(DEPENDS)
+check_local:	$(OUTS) $(RESS)
+all_local:	$(PROGS)
 
-all:	$(PROGS)
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = accumulator
+
+check_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) check_subdirs) || exit 1; \
+	done
+
+dep_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) dep_subdirs) || exit 1; \
+	done
+
+depend_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) depend_subdirs) || exit 1; \
+	done
+
+realclean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) realclean_subdirs) || exit 1; \
+	done
+
+clean_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) clean_subdirs) || exit 1; \
+	done
+
+all_subdirs:
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && $(SUBDIR_MMAKE) all_subdirs) || exit 1; \
+	done
 
 #-----------------------------------------------------------------------------#

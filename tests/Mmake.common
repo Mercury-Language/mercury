@@ -48,4 +48,27 @@ clean_exp:
 clean_res:
 	rm -f *.res
 
+#
+# The `foo' targets make `foo_local' in the current directory before
+# recursively making `foo' in all subdirectories.  The recursive part
+# is handled in individual Mmakefiles.
+# 
+
+.PHONY: check_local dep_local depend_local all_local
+
+.PHONY: check_subdirs dep_subdirs depend_subdirs realclean_subdirs \
+        clean_subdirs all_subdirs
+
+check:          check_local check_subdirs
+dep:            dep_local dep_subdirs
+depend:         depend_local depend_subdirs
+realclean:      realclean_subdirs
+clean:          clean_subdirs
+all:            all_local all_subdirs
+
+SUBDIR_MMAKE = mmake \
+                GRADE='$(GRADE)' \
+                EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
+                EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
+
 #-----------------------------------------------------------------------------#

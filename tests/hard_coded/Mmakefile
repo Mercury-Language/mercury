@@ -143,45 +143,41 @@ DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 RESS=	$(PROGS:%=%.res)
 
+dep_local:	$(DEPS)
+depend_local:	$(DEPENDS)
+check_local:	$(OUTS) $(RESS)
+all_local:	$(PROGS)
+
 #-----------------------------------------------------------------------------#
 
 SUBDIRS = typeclasses sub-modules
 
-#-----------------------------------------------------------------------------#
-
-MMAKEFLAGS =
-
-SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
-			GRADE='$(GRADE)' \
-			EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
-			EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
-
-dep:	$(DEPS)
+dep_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
 	done
 
-depend:	$(DEPENDS)
+depend_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
 	done
 
-check:	$(OUTS) $(RESS)
+check_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
 	done
 
-all:	$(PROGS)
+all_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
 	done
 
-clean:
+clean_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
 	done
 
-realclean:
+realclean_subdirs:
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
 	done

@@ -1,33 +1,18 @@
 #!/bin/sh
-# Run the tests in each of the subdirectories.
 
+# Process command line options.
 . ./handle_options
 
-failures=""
-for dir in *
-do
-	if test -d $dir -a -x $dir/runtests
-	then
-		cd $dir
-		# we need to use `eval' here to get the quoting right in
-		# the case when $fflag or $cflag contains embedded spaces
-		if eval ./runtests $jfactor $gflag $fflag $cflag
-		then
-			true
-		else
-			failures="$failures $dir"
-		fi
-		cd ..
-	fi
-done
+# Run the tests in each of the subdirectories.
+. ./subdir_runtests
 
-if test "$failures" = ""
+if test "$subdir_failures" = ""
 then
 	echo "all tests have succeeded"
 	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
 	exit 0
 else
-	echo "some tests have failed in: $failures"
+	echo "some tests have failed in: $subdir_failures"
 	echo "gradeopt=$gflag, flagsopt=$fflag, cflagsopt=$cflag"
 	exit 1
 fi
