@@ -251,7 +251,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
 	( { VerboseDump = "all" } ->
 		globals__io_set_option(verbose_dump_hlds,
-			string("abcdefghijklmnopqrstuvwxyz"))
+			string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	;	
 		[]
 	),

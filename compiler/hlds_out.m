@@ -1,3 +1,4 @@
+
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -372,17 +373,26 @@ hlds_out__write_hlds(Indent, Module) -->
 		module_info_modes(Module, ModeTable),
 		module_info_classes(Module, ClassTable)
 	},
-
+	io__write_string("\n"),
 	hlds_out__write_header(Indent, Module),
 	io__write_string("\n"),
-	hlds_out__write_types(Indent, TypeTable),
-	io__write_string("\n"),
-	hlds_out__write_classes(Indent, ClassTable),
-	io__write_string("\n"),
-	hlds_out__write_insts(Indent, InstTable),
-	io__write_string("\n"),
-	hlds_out__write_modes(Indent, ModeTable),
-	io__write_string("\n"),
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 'T') } ->
+		hlds_out__write_types(Indent, TypeTable),
+		io__write_string("\n"),
+		hlds_out__write_classes(Indent, ClassTable),
+		io__write_string("\n")
+	;
+		[]
+	),
+	( { string__contains_char(Verbose, 'M') } ->
+		hlds_out__write_insts(Indent, InstTable),
+		io__write_string("\n"),
+		hlds_out__write_modes(Indent, ModeTable),
+		io__write_string("\n")
+	;
+		io__write_string("\n")  
+	),
 	hlds_out__write_preds(Indent, Module, PredTable),
 	io__write_string("\n"),
 	hlds_out__write_footer(Indent, Module).
@@ -422,11 +432,14 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
 :- mode hlds_out__write_preds_2(in, in, in, in, di, uo) is det.
 
 hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
+        globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	(
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		( { pred_info_is_imported(PredInfo) } ->
+		( 	
+			{ pred_info_is_imported(PredInfo) } 
+		->
 			[]
 		;
 			% for pseudo-imported predicates (i.e. unification
@@ -436,6 +449,18 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 			{ pred_info_procids(PredInfo, ProcIds) },
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ ProcIds = [ProcId] }
+		->
+			[]
+		;
+			% We dump unification predicates if suboption 
+			% 'U' is on. We don't really need that 
+			% information to understand how the program has 
+			% been transformed.
+			{ \+ string__contains_char(Verbose, 'U') },
+			{ pred_info_arity(PredInfo, Arity) },
+			{ Arity = 2 },
+			{ pred_info_name(PredInfo, PredName) },
+			{ PredName =  "__Unify__" }
 		->
 			[]
 		;
@@ -464,44 +489,57 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	{ pred_info_get_purity(PredInfo, Purity) },
-	mercury_output_pred_type(TVarSet, qualified(Module, PredName), 
-				ArgTypes, no, Purity, ClassContext, Context),
-	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
-	hlds_out__write_indent(Indent),
-	io__write_string("% pred id: "),
-	{ pred_id_to_int(PredId, PredInt) },
-	io__write_int(PredInt),
-	io__write_string(", category: "),
-	hlds_out__write_pred_or_func(PredOrFunc),
-	io__write_string(", status: "),
-	hlds_out__write_import_status(ImportStatus),
-	io__write_string("\n"),
-	{ markers_to_marker_list(Markers, MarkerList) },
-	( { MarkerList = [] } ->
-		[]
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 'C') } ->
+		% Information about predicates is dumped if 'C' 
+		% suboption is on.
+		mercury_output_pred_type(TVarSet, qualified(Module, PredName), 
+				ArgTypes, no, Purity, ClassContext, Context)
 	;
-		io__write_string("% markers:"),
-		hlds_out__write_marker_list(MarkerList),
-		io__write_string("\n")
+		[]
+	),
+	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
+	( { string__contains_char(Verbose, 'C') } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% pred id: "),
+		{ pred_id_to_int(PredId, PredInt) },
+		io__write_int(PredInt),
+		io__write_string(", category: "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(", status: "),
+		hlds_out__write_import_status(ImportStatus),
+		io__write_string("\n"),
+		{ markers_to_marker_list(Markers, MarkerList) },
+		( { MarkerList = [] } ->
+			[]
+		;
+			io__write_string("% markers:"),
+			hlds_out__write_marker_list(MarkerList),
+			io__write_string("\n")
+		)
+	;
+		[]
 	),
 
-	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 'v') } ->
 		{ AppendVarnums = yes }
 	;
 		{ AppendVarnums = no }
 	),
-	hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
-		VarTypes, TVarSet),
+	( { string__contains_char(Verbose, 'C') } ->
+		hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
+			VarTypes, TVarSet),
 
 		% Never write the clauses out verbosely -
 		% disable the verbose_dump_hlds option before writing them,
 		% and restore its initial value afterwards
-	globals__io_set_option(verbose_dump_hlds, string("")),
-	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
-		AppendVarnums, HeadVars, PredOrFunc, Clauses, no),
-	globals__io_set_option(verbose_dump_hlds, string(Verbose)),
-
+		globals__io_set_option(verbose_dump_hlds, string("")),
+		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
+			AppendVarnums, HeadVars, PredOrFunc, Clauses, no),
+		globals__io_set_option(verbose_dump_hlds, string(Verbose))
+	;
+		[]
+	),
 	hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
 		ImportStatus, ProcTable),
 	io__write_string("\n").

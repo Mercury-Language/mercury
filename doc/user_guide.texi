@@ -1733,7 +1733,12 @@ r - resume points of goals,
 s - store maps of goals,
 t - results of termination analysis,
 u - unification categories,
-v - variable numbers in variable names.
+v - variable numbers in variable names,
+T - type and typeclass information,
+M - mode and inst information,
+C - clause information,
+U - unify predicates,
+P - path information.
 The special argument value ``all''
 will cause the printing of all these fields.
 
