@@ -137,11 +137,11 @@
 % is required.
 
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(pred(out) is multi, out) is det.
+:- mode solutions(pred(out) is multi, out(non_empty_list)) is det.
 :- mode solutions(pred(out) is nondet, out) is det.
 
 :- func solutions(pred(T)) = list(T).
-:- mode solutions(pred(out) is multi) = out is det.
+:- mode solutions(pred(out) is multi) = out(non_empty_list) is det.
 :- mode solutions(pred(out) is nondet) = out is det.
 
 :- pred solutions_set(pred(T), set(T)).
@@ -153,7 +153,8 @@
 :- mode solutions_set(pred(out) is nondet) = out is det.
 
 :- pred unsorted_solutions(pred(T), list(T)).
-:- mode unsorted_solutions(pred(out) is multi, out) is cc_multi.
+:- mode unsorted_solutions(pred(out) is multi, out(non_empty_list)) 
+        is cc_multi.
 :- mode unsorted_solutions(pred(out) is nondet, out) is cc_multi.
 
 :- func aggregate(pred(T), func(T, U) = U, U) = U.
