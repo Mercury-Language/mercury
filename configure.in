@@ -809,7 +809,7 @@ AC_CACHE_VAL(mercury_cv_sync_term_size,
 )
 AC_MSG_RESULT($mercury_cv_sync_term_size)
 AC_DEFINE_UNQUOTED(SYNC_TERM_SIZE, $mercury_cv_sync_term_size)
-BYTES_PER_WORD=$mercury_cv_sync_term_size
+SYNC_TERM_SIZE=$mercury_cv_sync_term_size
 AC_SUBST(SYNC_TERM_SIZE)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of bits per word)
