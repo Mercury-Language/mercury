@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -734,12 +734,35 @@ repeat(N) :-
 ").
 */
 
+:- pragma foreign_code("Java",
+"
+	static volatile Object ML_benchmarking_dummy_word;
+").
+:- pragma foreign_proc("Java",
+	do_nothing(X::in), [will_not_call_mercury, thread_safe],
+"
+	ML_benchmarking_dummy_word = X;
+").
+
 %-----------------------------------------------------------------------------%
 
 %  Impure integer references.
 %  This type is implemented in C.
 %  It is represented as a pointer to a single word on the heap.
 :- type int_reference ---> int_reference(private_builtin__ref(int)).
+
+%  In Java, this is implemented as a class to wrap the int.
+:- pragma foreign_code("Java",
+"
+	public static class IntRef {
+		public int value;
+
+		public IntRef(int init) {
+			value = init;
+		}
+	}
+").
+:- pragma foreign_type(java, int_reference, "mercury.benchmarking.IntRef").
 
 %  Create a new int_reference given a term for it to reference.
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
@@ -752,6 +775,12 @@ repeat(N) :-
 		MR_PROC_LABEL, ""benchmarking:int_reference/1"");
 	MR_define_size_slot(0, Ref, 1);
 	* (MR_Integer *) Ref = X;
+").
+:- pragma foreign_proc("Java",
+        new_int_reference(X::in, Ref::out),
+	        [will_not_call_mercury],
+"
+	Ref = new mercury.benchmarking.IntRef(X);
 ").
 
 :- impure pred incr_ref(int_reference::in) is det.
@@ -768,14 +797,26 @@ incr_ref(Ref) :-
 "
 	X = * (MR_Integer *) Ref;
 ").
+:- pragma foreign_proc("Java",
+	ref_value(Ref::in, X::out),
+	[will_not_call_mercury],
+"
+	X = Ref.value;
+").
 
-:- impure pred update_ref(int_reference::in, T::in) is det.
+:- impure pred update_ref(int_reference::in, int::in) is det.
 :- pragma inline(update_ref/2).
 :- pragma foreign_proc("C",
 	update_ref(Ref::in, X::in),
 	[will_not_call_mercury],
 "
 	* (MR_Integer *) Ref = X;
+").
+:- pragma foreign_proc("Java",
+	update_ref(Ref::in, X::in),
+	[will_not_call_mercury],
+"
+	Ref.value = X;
 ").
 
 %-----------------------------------------------------------------------------%
