@@ -137,6 +137,9 @@
 %		Un-reads a character from the current input stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
+%		Note: `io__putback_char' uses the C library function ungetc().
+%		On some systems only one character of pushback is guaranteed.
+%		`io__putback_char' will abort with an error if ungetc() fails.
 
 :- pred io__read_char(io__input_stream, io__result(char),
 				io__state, io__state).
@@ -178,6 +181,9 @@
 %		Un-reads a character from specified stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
+%		Note: `io__putback_char' uses the C library function ungetc().
+%		On some systems only one character of pushback is guaranteed.
+%		`io__putback_char' will abort with an error if ungetc() fails.
 
 :- pred io__read(io__read_result(T), io__state, io__state).
 :- mode io__read(out, di, uo) is det.
