@@ -13,7 +13,6 @@ MMAKE_VARS=${MMAKE_VARS:-@LIBDIR@/mmake/Mmake.vars}
 MMAKE_RULES=${MMAKE_RULES:-@LIBDIR@/mmake/Mmake.rules}
 MERCURY_INT_DIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
 
-VPATH=${MMAKE_VPATH:-${MERCURY_INT_DIR}}
 MMAKE=$0
 verbose=false
 save_makefile=false
@@ -97,12 +96,12 @@ fi
 if $verbose; then
 	echo MMAKE=$MMAKE
 	echo export MMAKE
-	echo VPATH=$VPATH
-	echo export VPATH
+	echo MERCURY_INT_DIR=$MERCURY_INT_DIR
+	echo export MERCURY_INT_DIR
 	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">" $tmp
 	echo ${MAKE} -f $tmp "$@"
 fi
 export MMAKE
-export VPATH
+export MERCURY_INT_DIR
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
 ${MAKE} -f $tmp -r "$@"
