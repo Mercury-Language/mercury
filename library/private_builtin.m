@@ -512,8 +512,6 @@ unused :-
 compare_error :-
 	error("internal error in compare/3").
 
-:- pragma c_header_code("#include ""mercury_type_info.h"""). % XXX needed?
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -524,6 +522,9 @@ compare_error :-
 :- type ml_answer_block == c_pointer.
 
 :- pragma c_header_code("
+
+#include ""mercury_deep_copy.h""
+#include ""mercury_type_info.h""
 	
 	/* Used to mark the status of the table */
 #define ML_UNINITIALIZED	0
@@ -616,6 +617,23 @@ table_loopcheck_error(Message) :-
 :- pragma c_code(table_create_ans_block(T0::in, Size::in, T::out) ,"
 	MR_TABLE_CREATE_ANSWER_BLOCK(T0, Size);
 	T = T0;
+").
+
+:- pragma c_header_code("
+
+extern MR_STATIC_CODE_CONST struct
+	mercury_data___base_type_info_int_0_struct
+	mercury_data___base_type_info_int_0;
+extern MR_STATIC_CODE_CONST struct
+	mercury_data___base_type_info_string_0_struct
+	mercury_data___base_type_info_string_0;
+extern MR_STATIC_CODE_CONST struct
+	mercury_data___base_type_info_float_0_struct
+	mercury_data___base_type_info_float_0;
+extern MR_STATIC_CODE_CONST struct
+	mercury_data___base_type_info_character_0_struct
+	mercury_data___base_type_info_character_0;
+
 ").
 
 :- pragma c_code(table_save_int_ans(T::in, Offset::in, I::in), 
