@@ -776,6 +776,11 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 			% requires .h.tmp files to be in the same directory as
 			% the .h files
 			; Ext = ".h.tmp"
+			% The following files are only used by the Aditi
+			% query shell which doesn't know about --use-subdirs.
+			; Ext = ".base_schema"
+			; Ext = ".derived_schema"
+			; Ext = ".rlo"
 			)
 		;
 			% output files intended for use by the user
