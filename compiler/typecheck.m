@@ -133,6 +133,7 @@
 :- implementation.
 :- import_module list, map, string, require, std_util.
 :- import_module varset, prog_util, prog_out, hlds_out, mercury_to_mercury.
+:- import_module type_util.
 :- import_module options, getopt, globals.
 
 %-----------------------------------------------------------------------------%
@@ -1583,24 +1584,6 @@ find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
 		report_undef_type(TypeId, ErrorContext)
 	),
 	find_undef_type_list(As, ErrorContext, TypeDefns).
-
-%-----------------------------------------------------------------------------%
-
-	% Given a constant and an arity, return a type_id.
-	% XXX this should take a name and an arity;
-	% use of integers/floats/strings as type names should
-	% be rejected by the parser in prog_io.nl, not here.
-
-:- pred make_type_id(const, int, type_id).
-:- mode make_type_id(in, in, out).
-
-make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
-make_type_id(term__integer(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
-make_type_id(term__float(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
-make_type_id(term__string(_), _, unqualified("<error>") - 0) :-
-	error("atom expected").
 
 %-----------------------------------------------------------------------------%
 

@@ -42,7 +42,6 @@
 % 2.  improve the handling of type and inst parameters 
 %     (see XXX's below)
 % 3.  improve the error reporting
-% 4.  parse abstract inst definitions 
 %
 % Question: should we allow `:- rule' declarations???
 
@@ -111,10 +110,10 @@
 % clause/4 defined above
 
 :- type goal		--->	(goal,goal)
-			;	fail	
+			;	true	
 					% could use conj(goals) instead 
 			;	{goal;goal}	% {...} quotes ';'/2.
-			;	true	
+			;	fail	
 					% could use disj(goals) instead
 			;	not(vars,goal)
 			;	some(vars,goal)
@@ -176,6 +175,7 @@
 			;	bound(list(bound_inst))
 					% The list must be sorted
 			;	ground
+			;	not_reached
 			;	inst_var(var)
 			;	abstract_inst(sym_name, list(inst))
 			;	user_defined_inst(sym_name, list(inst)).
@@ -1524,9 +1524,16 @@ parse_inst_decl(VarSet, InstDefn, Result) :-
 		convert_inst_defn(H, Body, R),
 		process_inst_defn(R, VarSet, Condition, Result)
 	;
+		InstDefn = term__functor(term__atom("is"), [
+				Head,
+				term__functor(term__atom("private"), [], _)
+			], _)
+	->
+		convert_abstract_inst_defn(Head, R),
+		process_inst_defn(R, VarSet, Condition, Result)
+	;
 		Result = error("`=' expected in `:- inst' definition", InstDefn)
 	).
-
 		% we should check the condition for errs
 		% (don't bother at the moment, since we ignore
 		% conditions anyhow :-)
@@ -1553,7 +1560,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
 		(
-			member(Arg2, Args, Arg2.OtherArgs),
+			member(Arg2, Args, [Arg2|OtherArgs]),
 			member(Arg2, OtherArgs)
 		)
 	->
@@ -1581,6 +1588,39 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		)
 	).
 
+:- pred convert_abstract_inst_defn(term, maybe(inst_defn)).
+:- mode convert_abstract_inst_defn(in, out).
+convert_abstract_inst_defn(Head, Result) :-
+	parse_qualified_term(Head, "inst definition", R),
+	convert_abstract_inst_defn_2(R, Head, Result).
+
+:- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe(inst_defn)).
+:- mode convert_abstract_inst_defn_2(in, in, out).
+convert_abstract_inst_defn_2(error(M,T), _, error(M,T)).
+convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
+	% check that all the head args are variables
+	( %%%	some [Arg]
+		(
+			member(Arg, Args),
+			Arg \= term__variable(_)
+		)
+	->
+		Result = error("Inst parameters must be variables", Arg)
+	;
+	% check that all the head arg variables are distinct
+	%%%	some [Arg2, OtherArgs]
+		(
+			member(Arg2, Args, [Arg2|OtherArgs]),
+			member(Arg2, OtherArgs)
+		)
+	->
+		Result = error(
+			"Repeated inst parameters in abstract inst definition",
+				Head)
+	;
+		Result = ok(abstract_inst(Name, Args))
+	).
+
 :- pred convert_inst_list(list(term), list(inst)).
 :- mode convert_inst_list(in, out).
 convert_inst_list([], []).
@@ -1596,6 +1636,8 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		Result = free
 	; Name = term__atom("ground"), Args0 = [] ->
 		Result = ground
+	; Name = term__atom("not_reached"), Args0 = [] ->
+		Result = not_reached
 	;
 		(   ( Name = term__atom("bound")
 		    ; Name = term__atom("bound_unique")

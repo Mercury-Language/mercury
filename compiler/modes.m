@@ -95,7 +95,7 @@ a local variable, then report the error [this idea not yet implemented].
 :- implementation.
 
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
-:- import_module mode_util, prog_io.
+:- import_module type_util, mode_util, prog_io.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module stack.
 
@@ -291,10 +291,11 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% the mode declaration
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, ArgInitialInsts),
 	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
+	InstMap0 = reachable(InstMapping0),
 		% initially, only the head variables are live
 	set__list_to_set(HeadVars, LiveVars),
 	mode_info_init(IOState0, ModuleInfo, PredId, ProcId, Context, LiveVars,
-			InstMapping0, ModeInfo0),
+			InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
 	modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo2),
 	modecheck_report_errors(ModeInfo2, ModeInfo),
@@ -307,18 +308,40 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 
 modecheck_final_insts(_, _, ModeInfo, ModeInfo).	% XXX Stub only!!!
 
-/****
-modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo) :-
-	mode_info_found_error(ModeInfo, Error),
-	( Error = no ->
-		mode_list_get_final_insts(ArgModes, ModuleInfo, ArgFinalInsts),
-		check_final_insts(
-*/
+modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	mode_list_get_final_insts(ArgModes, ModuleInfo, ArgFinalInsts),
+	mode_info_get_instmap(ModeInfo0, InstMap),
+	check_final_insts(HeadVars, ArgFinalInsts, 1, InstMap,
+		ModuleInfo, ModeInfo0, ModeInfo).
+
+:- pred check_final_insts(list(var), list(inst), int, instmap, module_info,
+				mode_info, mode_info).
+:- mode check_final_insts(in, in, in, in, in, mode_info_di, mode_info_uo)
+	is det.
+
+check_final_insts([], [], _, _, _) --> [].
+check_final_insts([Var | Vars], [Inst | Insts], ArgNum, InstMap, ModuleInfo)
+		-->
+	{ instmap_lookup_var(InstMap, Var, VarInst) },
+	( { inst_is_compat(VarInst, Inst, ModuleInfo) } ->
+		[]
+	;
+		mode_info_error([],
+			mode_error_final_inst(ArgNum, Var, VarInst, Inst)
+		)
+	),
+	{ ArgNum1 is ArgNum + 1 },
+	check_final_insts(Vars, Insts, ArgNum1, InstMap, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
+% Modecheck a goal by abstractly interpreteting it, as explained
+% at the top of this file.
+
 % Input-output: InstMap - Stored in the ModeInfo, which is passed as an
 %			  argument pair
+%		DelayInfo - Stored in the ModeInfo
 %		Goal	- Passed as an argument pair
 % Input only:   Symbol tables	(constant)
 %			- Stored in the ModuleInfo which is in the ModeInfo
@@ -351,15 +374,20 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 			mode_info, mode_info).
 :- mode modecheck_goal_2(in, in, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_goal_2(conj(List0), _, conj(List1)) -->
+modecheck_goal_2(conj(List0), _NonLocals, conj(List)) -->
 	mode_checkpoint(enter, "conj"),
-	modecheck_conj_list(List0, List1),
+	( { List0 = [] } ->	% for efficiency, optimize common case
+		{ List = [] }
+	;
+		modecheck_conj_list(List0, List)
+	),
 	mode_checkpoint(exit, "conj").
 
 modecheck_goal_2(disj(List0), NonLocals, disj(List)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ List = [] }
+		{ List = [] },
+		mode_info_set_instmap(unreachable)
 	;
 		modecheck_disj_list(List0, List, InstMapList),
 		instmap_merge(NonLocals, InstMapList, disj)
@@ -457,7 +485,8 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 :- pred instmap_lookup_var(instmap, var, inst).
 :- mode instmap_lookup_var(in, in, out) is det.
 
-instmap_lookup_var(InstMap, Var, Inst) :-
+instmap_lookup_var(unreachable, _Var, not_reached).
+instmap_lookup_var(reachable(InstMap), Var, Inst) :-
 	( map__search(InstMap, Var, VarInst) ->
 		Inst = VarInst
 	;
@@ -502,6 +531,8 @@ modecheck_conj_list(Goals0, Goals) -->
 
 	( { DelayedGoals = [] } ->
 		[]
+	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
+		mode_info_add_error(Error)
 	;
 		{ get_all_waiting_vars(DelayedGoals, Vars0) },
 		{ sort(Vars0, Vars) },	% eliminate duplicates
@@ -547,9 +578,10 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 			% restore the original mode_info here.
 		dcg_set_state(ModeInfo0),
 
-		{ Errors = [ mode_error_info(Vars, _, _, _) | _] },
+		{ Errors = [ FirstError | _] },
 		{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
-		{ delay_info_delay_goal(DelayInfo0, Vars, Goal0, DelayInfo) },
+		{ delay_info_delay_goal(DelayInfo0, FirstError, Goal0,
+					DelayInfo) },
 		mode_info_set_delay_info(DelayInfo),
 		modecheck_conj_list_2(Goals0, Goals)
 	).
@@ -562,11 +594,11 @@ dcg_set_state(Val, _OldVal, Val).
 	% Given an association list of Vars - Goals,
 	% combine all the Vars together into a single list.
 
-:- pred get_all_waiting_vars(assoc_list(list(var), hlds__goal), list(var)).
+:- pred get_all_waiting_vars(list(delayed_goal), list(var)).
 :- mode get_all_waiting_vars(in, out).
 
 get_all_waiting_vars([], []).
-get_all_waiting_vars([Vars - _Goal | Rest], List) :-
+get_all_waiting_vars([delayed_goal(Vars, _, _) | Rest], List) :-
 	append(Vars, List0, List),
 	get_all_waiting_vars(Rest, List0).
 
@@ -593,7 +625,7 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 	mode_info_set_instmap(InstMap0),
 	modecheck_disj_list(Goals0, Goals, InstMaps).
 
-	% instmap_merge_2(NonLocalVars, InstMaps, MergeContext):
+	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
 	%	Merge the `InstMaps' resulting from different branches
 	%	of a disjunction or if-then-else, checking that
 	%	the resulting instantiatedness of all the nonlocal variables
@@ -609,18 +641,39 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 
 instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	map__init(InstMap0),
-	set__to_sorted_list(NonLocals, NonLocalsList),
-	instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo, InstMap0,
-				InstMap, ErrorList),
-	( ErrorList = [] ->
-		ModeInfo2 = ModeInfo0
+	get_reachable_instmaps(InstMapList, InstMappingList),
+	( InstMappingList = [] ->
+		InstMap = unreachable
 	;
-		ErrorList = [Var - _|_], 
-		mode_info_error([Var], mode_error_disj(MergeContext, ErrorList),
-			ModeInfo0, ModeInfo2)
+		map__init(InstMapping0),
+		set__to_sorted_list(NonLocals, NonLocalsList),
+		instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo,
+					InstMapping0, InstMapping, ErrorList),
+		( ErrorList = [] ->
+			ModeInfo2 = ModeInfo0
+		;
+			ErrorList = [Var - _|_], 
+			mode_info_error([Var],
+				mode_error_disj(MergeContext, ErrorList),
+				ModeInfo0, ModeInfo2
+			)
+		),
+		InstMap = reachable(InstMapping)
 	),
 	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo).
+
+:- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
+:- mode get_reachable_instmaps(in, out) is det.
+
+:- get_reachable_instmaps([], _) when ever.
+:- get_reachable_instmaps([X|_], _) when X.
+
+get_reachable_instmaps([], _).
+get_reachable_instmaps([reachable(InstMapping) | InstMaps], Reachables) :-
+	Reachables = [InstMapping | Reachables1],
+	get_reachable_instmaps(InstMaps, Reachables1).
+get_reachable_instmaps([unreachable | InstMaps], Reachables) :-
+	get_reachable_instmaps(InstMaps, Reachables).
 
 %-----------------------------------------------------------------------------%
 
@@ -631,8 +684,8 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 
 :- type merge_errors == assoc_list(var, list(inst)).
 
-:- pred instmap_merge_2(list(var), list(instmap), module_info, instmap,
-			instmap, merge_errors).
+:- pred instmap_merge_2(list(var), list(instmap), module_info,
+			map(var, inst), map(var, inst), merge_errors).
 :- mode instmap_merge_2(in, in, in, in, out, out) is det.
 
 instmap_merge_2([], _, _, InstMap, InstMap, []).
@@ -856,11 +909,12 @@ inst_gteq_3(bound(List), ground, ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 inst_gteq_3(ground, _, _, _).
 inst_gteq_3(abstract_inst(_Name, _Args), free, _, _).
+inst_gteq_3(not_reached, _, _, _).
 
 	% To make things consistent, we assume that if a bound(...)
 	% inst only specifies the insts for some of the constructors
-	% of its type, then it means that all other constructors
-	% must have all their arguments ground.
+	% of its type, then it implicitly means that all other constructors
+	% must have all their arguments `not_reached'.
 	% The code here makes use of the fact that the bound_inst lists
 	% are sorted.
 
@@ -946,19 +1000,26 @@ modecheck_set_var_inst_list([Var | Vars], [Inst | Insts]) -->
 
 modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	instmap_lookup_var(InstMap0, Var, Inst0),
-	( inst_gteq(Inst0, Inst, ModuleInfo) ->
-		ModeInfo = ModeInfo0
-	; mode_info_var_is_locked(ModeInfo0, Var) ->
-		mode_info_error([Var], mode_error_bind_var(Var, Inst0, Inst),
-				ModeInfo0, ModeInfo)
+	( InstMap0 = reachable(InstMapping0) ->
+		mode_info_get_module_info(ModeInfo0, ModuleInfo),
+		instmap_lookup_var(InstMap0, Var, Inst0),
+		( inst_gteq(Inst0, Inst, ModuleInfo) ->
+			ModeInfo = ModeInfo0
+		; mode_info_var_is_locked(ModeInfo0, Var) ->
+			mode_info_error([Var],
+					mode_error_bind_var(Var, Inst0, Inst),
+					ModeInfo0, ModeInfo
+			)
+		;
+			map__set(InstMapping0, Var, Inst, InstMapping),
+			InstMap = reachable(InstMapping),
+			mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
+			mode_info_get_delay_info(ModeInfo1, DelayInfo0),
+			delay_info_bind_var(DelayInfo0, Var, DelayInfo),
+			mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo)
+		)
 	;
-		map__set(InstMap0, Var, Inst, InstMap),
-		mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-		mode_info_get_delay_info(ModeInfo1, DelayInfo0),
-		delay_info_bind_var(DelayInfo0, Var, DelayInfo),
-		mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo)
+		ModeInfo = ModeInfo0
 	).
 
 :- pred inst_is_compat(inst, inst, module_info).
@@ -979,20 +1040,32 @@ inst_is_compat_2(InstA, InstB, ModuleInfo, Expansions) :-
 		inst_expand(ModuleInfo, InstA, InstA2),
 		inst_expand(ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
-		inst_is_compat_3(InstA2, InstB2, ModuleInfo, Expansions2)
+		( InstB2 = not_reached ->
+			true
+		;
+			inst_is_compat_3(InstA2, InstB2, ModuleInfo,
+				Expansions2)
+		)
 	).
 
 :- pred inst_is_compat_3(inst, inst, module_info, expansions).
 :- mode inst_is_compat_3(in, in, in, in) is semidet.
 
+:- inst_is_compat_3(A, B, _, _) when A and B.
+
 inst_is_compat_3(free, free, _, _).
 inst_is_compat_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
 	bound_inst_list_is_compat(ListA, ListB, ModuleInfo, Expansions).
+inst_is_compat_3(bound(ListA), ground, ModuleInfo, _Expansions) :-
+	bound_inst_list_is_ground(ListA, ModuleInfo).
+inst_is_compat_3(ground, bound(ListB), ModuleInfo, _Expansions) :-
+	bound_inst_list_is_ground(ListB, ModuleInfo).
 inst_is_compat_3(ground, ground, _, _).
 inst_is_compat_3(abstract_inst(NameA, ArgsA), abstract_inst(NameB, ArgsB),
 		ModuleInfo, Expansions) :-
 	NameA = NameB,
 	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo, Expansions).
+inst_is_compat_3(not_reached, _, _, _).
 
 :- pred inst_is_compat_list(list(inst), list(inst), module_info, expansions).
 :- mode inst_is_compat_list(in, in, in, in) is semidet.
@@ -1064,10 +1137,14 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 		lookup_option(statistics, bool(Statistics)),
 		maybe_report_stats(Statistics),
 		{ mode_info_get_instmap(ModeInfo, InstMap) },
-		{ map__to_assoc_list(InstMap, AssocList) },
-		{ mode_info_get_varset(ModeInfo, VarSet) },
-		{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-		write_var_insts(AssocList, VarSet, InstVarSet)
+		( { InstMap = reachable(InstMapping) } ->
+			{ map__to_assoc_list(InstMapping, AssocList) },
+			{ mode_info_get_varset(ModeInfo, VarSet) },
+			{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+			write_var_insts(AssocList, VarSet, InstVarSet)
+		;
+			io__write_string("\tUnreachable\n")
+		)
 	;
 		[]
 	),
@@ -1130,7 +1207,9 @@ modecheck_unification(term__variable(X), term__variable(Y), Modes, Unification,
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Modes = ModeX - ModeY,
-	categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification).
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
+		Unification).
 
 modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 			Mode, Unification, ModeInfo0, ModeInfo) :-
@@ -1255,8 +1334,7 @@ mode_ground_args([Inst | Insts], [Mode | Modes]) :-
 	% would be illegal, then abstract unification fails.
 	% If the unification would fail, then the abstract unification
 	% will succeed, and the resulting instantiatedness will be
-	% something like bound([]), which effectively means "this program
-	% point will never be reached".
+	% `not_reached'.
 
 	% Abstractly unify two inst lists.
 
@@ -1279,12 +1357,14 @@ abstractly_unify_inst(Live, InstA, InstB, ModuleInfo, Inst) :-
 	inst_expand(ModuleInfo, InstB, InstB2),
 	abstractly_unify_inst_2(Live, InstA2, InstB2, ModuleInfo, Inst).
 
-	% Abstractly unify two expanded insts, both of which are live.
+	% Abstractly unify two expanded insts.
+	% The is_live parameter is `live' iff *both* insts are live.
+	% XXX handle `not_reached' insts.
 
 :- pred abstractly_unify_inst_2(is_live, inst, inst, module_info, inst).
 :- mode abstractly_unify_inst_2(in, in, in, in, out) is semidet.
 
-:- abstractly_unify_inst_2(_, A, B, _, _) when A and B.
+:- abstractly_unify_inst_2(A, B, C, _, _) when A and B and C.
 
 abstractly_unify_inst_2(live, free,	free,		_, _) :- fail.
 abstractly_unify_inst_2(live, free,	bound(List),	M, bound(List)) :-
@@ -1353,10 +1433,7 @@ abstractly_unify_inst_2(dead, abstract_inst(Name, ArgsA),
 
 	% This is the abstract unification operation which
 	% unifies a variable (or rather, it's instantiatedness)
-	% with a functor.  We could just set the instantiatedness
-	% of the functor to be `bound([functor(Name, Args)])', and then
-	% call abstractly_unify_inst, but the following specialized code
-	% is slightly more efficient.
+	% with a functor.
 
 :- pred abstractly_unify_inst_functor(is_live, inst, const, list(inst),
 					list(is_live), module_info, inst).
@@ -1392,6 +1469,11 @@ abstractly_unify_inst_functor_2(dead, bound(ListX), Name, Args, _ArgLives, M,
 abstractly_unify_inst_functor_2(dead, ground, _Name, _Args, _, _, ground).
 abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _) :-
 	fail.
+
+	% Given a list of insts, and a corresponding list of livenesses,
+	% return true iff for every element in the list of insts, either
+	% the elemement is ground or the corresponding element in the liveness
+	% list is dead.
 
 :- pred inst_list_is_ground_or_dead(list(inst), list(is_live), module_info).
 :- mode inst_list_is_ground_or_dead(in, in, in) is semidet.
@@ -1452,9 +1534,6 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], ModuleInfo, L) :-
 		list(inst), list(is_live), module_info, list(bound_inst)).
 :- mode abstractly_unify_bound_inst_list_lives(in, in, in, in, in, out).
 
-:- abstractly_unify_bound_inst_list_lives(Xs, Ys, _, _, _, _) when Xs and Ys.
-	% Index
-
 abstractly_unify_bound_inst_list_lives([], _, _, _, _ModuleInfo, []).
 abstractly_unify_bound_inst_list_lives([X|Xs], NameY, ArgsY, LivesY,
 		ModuleInfo, L) :-
@@ -1475,7 +1554,7 @@ abstractly_unify_bound_inst_list_lives([X|Xs], NameY, ArgsY, LivesY,
 
 :- pred abstractly_unify_inst_list_lives(list(inst), list(inst), list(is_live),
 					module_info, list(inst)).
-:- mode abstractly_unify_inst_list_lives(in, in, in, in, out).
+:- mode abstractly_unify_inst_list_lives(in, in, in, in, out) is semidet.
 
 abstractly_unify_inst_list_lives([], [], [], _, []).
 abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo,
@@ -1485,25 +1564,24 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred categorize_unify_var_var(mode, mode, var, var, module_info,
-				unification).
-:- mode categorize_unify_var_var(in, in, in, in, in, out).
+:- pred categorize_unify_var_var(mode, mode, var, var, map(var, type), 
+				module_info, unification).
+:- mode categorize_unify_var_var(in, in, in, in, in, in, out).
 
-categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification) :-
+categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
+		Unification) :-
 	( mode_is_output(ModuleInfo, ModeX) ->
 		Unification = assign(X, Y)
 	; mode_is_output(ModuleInfo, ModeY) ->
 		Unification = assign(Y, X)
 	;
-		% XXX we should distinguish `simple_test's from
-		% `complicated_unify's!!!
-		% Currently we just assume that they're all `simple_test's.
+		map__lookup(VarTypes, X, Type),
+		type_is_atomic(Type, ModuleInfo)
+	->
 		Unification = simple_test(X, Y)
-/******
 	;
 		Unification = complicated_unify(ModeX - ModeY,
 				term__variable(X), term__variable(Y))
-*******/
 	).
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
@@ -1826,7 +1904,9 @@ write_inst_id(F - N) -->
 	--->	unify(unify_context)
 	;	call(pred_id).
 
-:- type instmap == map(var, inst).
+:- type instmap
+	--->	reachable(map(var, inst))
+	;	unreachable.
 
 :- type mode_info 
 	--->	mode_info(
@@ -1838,7 +1918,7 @@ write_inst_id(F - N) -->
 					% are currently checking
 			mode_context,	% A description of where in the
 					% goal the error occurred
-			map(var, inst),	% The current instantiatedness
+			instmap,	% The current instantiatedness
 					% of the variables
 			list(set(var)),	% The "locked" variables,
 					% i.e. variables which cannot be
@@ -2187,6 +2267,23 @@ mode_info_get_varset(ModeInfo, VarSet) :-
 mode_info_get_instvarset(_ModeInfo, InstVarSet) :-
 	varset__init(InstVarSet).
 
+:- pred mode_info_get_var_types(mode_info, map(var,type)).
+:- mode mode_info_get_var_types(mode_info_ui, out) is det.
+
+	% We don't bother to store the var types directly in the mode_info.
+	% Instead we look them up every time we need them.
+	% This is probably inefficient!
+
+mode_info_get_var_types(ModeInfo, VarTypes) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_predid(ModeInfo, PredId),
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_procedures(PredInfo, Procs),
+	mode_info_get_procid(ModeInfo, ProcId),
+	map__lookup(Procs, ProcId, ProcInfo),
+	proc_info_vartypes(ProcInfo, VarTypes).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2253,7 +2350,7 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 					% the current conjunction depth,
 					% i.e. the number of nested conjunctions
 					% which are currently active
-			stack(map(seq_num, pair(list(var), hlds__goal))),
+			stack(map(seq_num, delayed_goal)),
 					% DelayedGoalStack:
 					% for each nested conjunction,
 					% we store a collection of delayed goals
@@ -2274,6 +2371,13 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 					% SeqNumsStack:
 					% For each nested conjunction, the
 					% next available sequence number.
+		).
+
+:- type delayed_goal
+	--->	delayed_goal(
+			list(var),	% The vars it's waiting on
+			mode_error_info,% The reason it can't be scheduled
+			hlds__goal	% The goal itself
 		).
 
 :- type waiting_goals_table == map(var, waiting_goals).
@@ -2321,8 +2425,7 @@ delay_info_enter_conj(DelayInfo0, DelayInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred delay_info_leave_conj(delay_info, assoc_list(list(var), hlds__goal),
-				delay_info).
+:- pred delay_info_leave_conj(delay_info, list(delayed_goal), delay_info).
 :- mode delay_info_leave_conj(in, out, out) is det.
 
 delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
@@ -2337,10 +2440,12 @@ delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred delay_info_delay_goal(delay_info, list(var), hlds__goal, delay_info).
+:- pred delay_info_delay_goal(delay_info, mode_error_info,
+				hlds__goal, delay_info).
 :- mode delay_info_delay_goal(in, in, in, out) is det.
 
-delay_info_delay_goal(DelayInfo0, Vars, Goal, DelayInfo) :-
+delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
+	Error = mode_error_info(Vars, _, _, _),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 
@@ -2351,7 +2456,8 @@ delay_info_delay_goal(DelayInfo0, Vars, Goal, DelayInfo) :-
 
 		% Store the goal in the delayed goal stack
 	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
-	map__set(DelayedGoals0, SeqNum, Vars - Goal, DelayedGoals),
+	map__set(DelayedGoals0, SeqNum, delayed_goal(Vars, Error, Goal),
+			DelayedGoals),
 	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
 
 		% Store indexes to the goal in the waiting goals table
@@ -2493,7 +2599,8 @@ delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 	map__set(PendingGoalsTable0, CurrentDepth, PendingGoals,
 			PendingGoalsTable),
 	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
-	map__lookup(DelayedGoals0, SeqNum, _Vars - Goal),
+	map__lookup(DelayedGoals0, SeqNum, DelayedGoal),
+	DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal),
 	map__delete(DelayedGoals0, SeqNum, DelayedGoals),
 	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
@@ -2523,14 +2630,20 @@ delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
 	mode_info_get_context(ModeInfo0, Context),
 	mode_info_get_mode_context(ModeInfo0, ModeContext),
-	mode_info_get_errors(ModeInfo0, Errors0),
 	ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
+	mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo).
+
+:- pred mode_info_add_error(mode_error_info, mode_info, mode_info).
+:- mode mode_info_add_error(in, mode_info_di, mode_info_uo).
+
+mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
+	mode_info_get_errors(ModeInfo0, Errors0),
 	append(Errors0, [ModeErrorInfo], Errors),
 	mode_info_set_errors(Errors, ModeInfo0, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
-	% if there were any errors recorded in the mode_info,
+	% If there were any errors recorded in the mode_info,
 	% report them to the user now.
 
 :- pred modecheck_report_errors(mode_info, mode_info).
@@ -2573,9 +2686,12 @@ modecheck_report_errors(ModeInfo0, ModeInfo) :-
 							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
-	;	mode_error_conj(assoc_list(list(var), hlds__goal)).
+	;	mode_error_conj(list(delayed_goal))
 			% a conjunction contains one or more unscheduleable
 			% goals
+	;	mode_error_final_inst(int, var, inst, inst).
+			% one of the head variables did not have the
+			% expected final inst on exit from the proc
 
 %-----------------------------------------------------------------------------%
 
@@ -2602,10 +2718,13 @@ report_mode_error(mode_error_conj(Errors), ModeInfo) -->
 	report_mode_error_conj(ModeInfo, Errors).
 report_mode_error(mode_error_no_matching_mode(Vars, Insts), ModeInfo) -->
 	report_mode_error_no_matching_mode(ModeInfo, Vars, Insts).
+report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst), ModeInfo)
+		-->
+	report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_conj(mode_info, assoc_list(list(var), hlds__goal),
+:- pred report_mode_error_conj(mode_info, list(delayed_goal),
 				io__state, io__state).
 :- mode report_mode_error_conj(mode_info_no_io, in, di, uo).
 
@@ -2618,12 +2737,13 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	io__write_string("\tFloundered goals were:\n"),
 	report_mode_error_conj_2(Errors, VarSet, Context).
 
-:- pred report_mode_error_conj_2(assoc_list(list(var), hlds__goal),
-				varset, term__context, io__state, io__state).
+:- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
+				io__state, io__state).
 :- mode report_mode_error_conj_2(in, in, in, di, uo).
 
 report_mode_error_conj_2([], _, _) --> [].
-report_mode_error_conj_2([Vars - Goal | Rest], VarSet, Context) -->
+report_mode_error_conj_2([delayed_goal(Vars, _Error, Goal) | Rest],
+			VarSet, Context) -->
 	io__write_string("\t\t% waiting on { "),
 	mercury_output_vars(Vars, VarSet),
 	io__write_string(" } :\n"),
@@ -2854,6 +2974,44 @@ mode_info_write_context(ModeInfo) -->
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
 	write_mode_context(ModeContext, Context).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_final_inst(mode_info, int, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_final_inst(in, in, in, in, in, di, uo) is det.
+
+report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst) -->
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: argument "),
+	io__write_int(ArgNum),
+	( { inst_gteq(VarInst, Inst, ModuleInfo) } ->
+		io__write_string(" became too instantiated")
+	; { inst_gteq(Inst, VarInst, ModuleInfo) } ->
+		io__write_string(" did not get sufficiently instantiated")
+	;
+		% I don't think this can happen.  But just in case...
+		io__write_string(" had the wrong instantiatedness")
+	),
+	io__write_string(".\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  Final instantiatedness of `"),
+	mercury_output_var(Var, VarSet),
+	io__write_string("' was `"),
+	mercury_output_inst(VarInst, InstVarSet),
+	io__write_string("',\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  expected final instantiatedness was `"),
+	mercury_output_inst(Inst, InstVarSet),
+	io__write_string("'.\n").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
