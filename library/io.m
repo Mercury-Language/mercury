@@ -3302,7 +3302,7 @@ io__make_temp(Name) -->
 
 :- pragma c_code(io__make_temp(Dir::in, Prefix::in, FileName::out,
 		IO0::di, IO::uo),
-		[will_not_call_mercury, thread_safe],
+		[may_call_mercury, thread_safe],
 "{
 	/*
 	** Constructs a temporary name by concatenating Dir, `/',
