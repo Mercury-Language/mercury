@@ -118,6 +118,12 @@ install_dvi: dvi
 	-[ -d INSTALL_DVI_DIR ] || mkdir -p $(INSTALL_DVI_DIR)
 	cp *.dvi $(INSTALL_DVI_DIR)
 
+# The uninstall rule here only removes the info files; the others
+# are removed by the top-level uninstall rule.
+.PHONY: uninstall
+uninstall:
+	cd $(INSTALL_INFO_DIR); rm -f mercury*.info*
+
 #-----------------------------------------------------------------------------#
 
 clean: distclean clean_texi
