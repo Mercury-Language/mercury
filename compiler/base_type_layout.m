@@ -1335,7 +1335,7 @@ base_type_layout__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
 		Pseudo = create(0, [Pseudo0 | PseudoArgs], uniform(no),
-			must_be_static, CNum0, "type_layout")
+			must_be_static, CNum1, "type_layout")
 	;
 		type_util__var(Type, Var)
 	->
@@ -1526,7 +1526,7 @@ base_type_layout__add_c_data(LayoutInfo0, CModule, LayoutInfo) :-
 
 :- pred base_type_layout__get_next_cell_number(int, layout_info, layout_info).
 :- mode base_type_layout__get_next_cell_number(out, in, out) is det.
-base_type_layout__get_next_cell_number(CNum0, LayoutInfo0, LayoutInfo) :-
+base_type_layout__get_next_cell_number(CNum, LayoutInfo0, LayoutInfo) :-
 	LayoutInfo0 = layout_info(A, B, C, D, CNum0, F, G),
 	CNum = CNum0 + 1,
 	LayoutInfo = layout_info(A, B, C, D, CNum, F, G).
