@@ -115,7 +115,7 @@
 					hlds__type_body, condition).
 
 :- type hlds__type_body	--->	du_type(string, list(term), list(constructor))
-%			;	uu_type(string, list(term), list(type))
+			;	uu_type(string, list(term), list(type))
 			;	eqv_type(string, list(term), (type)).
 
 
@@ -174,8 +174,11 @@
 
 %-----------------------------------------------------------------------------%
 
+	% The symbol table for predicates.
+
 :- type pred_info	--->	predicate(
-					varset,		% names of type vars
+					varset,		% names of _type_ vars
+							% in the type decl
 					list(type),	% argument types
 					condition,	% formal specification
 							% (not used)
@@ -186,7 +189,8 @@
 
 :- type proc_info	--->	procedure(
 					category,
-					map(var_id, var_info), % all vars
+					varset,		% variable names
+					map(var_id, type), % variable types
 					list(var_id),	% head vars
 					mode_info,
 					goal  % Body
@@ -206,6 +210,8 @@
 
 %-----------------------------------------------------------------------------%
 
+	% The symbol table for types.
+
 :- type type_id		= 	pair(sym_name, int).
 				% name, arity
 
@@ -213,12 +219,16 @@
 
 %-----------------------------------------------------------------------------%
 
+	% The symbol table for modes.
+
 :- type mode_id		=	pair(sym_name, int).
 				% name, arity
 
 :- type mode_table	=	map(mode_id, mode).
 
 %-----------------------------------------------------------------------------%
+
+	% The symbol table for insts.
 
 :- type inst_id		=	pair(sym_name, int).
 				% name, arity.
@@ -291,7 +301,9 @@ predinfo_procedures(PredInfo, Procs) :-
 %-----------------------------------------------------------------------------%
 
 procinfo_category(ProcInfo, Category) :-
-	ProcInfo = procedure(Category, _Vars, _HeadVars, _ModeInfo, _Goal).
+	ProcInfo = procedure(Category, _Names, _Types, _HeadVars, _ModeInfo, _Goal).
+procinfo_variables(ProcInfo, Vars) :-
+	ProcInfo = procedure(_Category, Vars, _HeadVars, _ModeInfo, _Goal).
 procinfo_variables(ProcInfo, Vars) :-
 	ProcInfo = procedure(_Category, Vars, _HeadVars, _ModeInfo, _Goal).
 procinfo_headvars(ProcInfo, HeadVars) :-
