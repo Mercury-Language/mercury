@@ -58,7 +58,7 @@
 
 :- type mode_info.
 
-:- pred mode_info_init(io__state, module_info, inst_key_table, pred_id, proc_id,
+:- pred mode_info_init(io__state, module_info, inst_table, pred_id, proc_id,
 			term__context, set(var), instmap, mode_info).
 :- mode mode_info_init(di, in, in, in, in, in, in, in, mode_info_uo) is det.
 
@@ -71,14 +71,14 @@
 :- pred mode_info_get_module_info(mode_info, module_info).
 :- mode mode_info_get_module_info(mode_info_ui, out) is det.
 
-:- pred mode_info_set_inst_key_table(inst_key_table, mode_info, mode_info).
-:- mode mode_info_set_inst_key_table(in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_set_inst_table(inst_table, mode_info, mode_info).
+:- mode mode_info_set_inst_table(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_inst_key_table(mode_info, inst_key_table).
-:- mode mode_info_get_inst_key_table(mode_info_ui, out) is det.
+:- pred mode_info_get_inst_table(mode_info, inst_table).
+:- mode mode_info_get_inst_table(mode_info_ui, out) is det.
 
-:- pred mode_info_dcg_get_inst_key_table(inst_key_table, mode_info, mode_info).
-:- mode mode_info_dcg_get_inst_key_table(out, mode_info_di, mode_info_uo)
+:- pred mode_info_dcg_get_inst_table(inst_table, mode_info, mode_info).
+:- mode mode_info_dcg_get_inst_table(out, mode_info_di, mode_info_uo)
 		is det.
 
 :- pred mode_info_set_module_info(mode_info, module_info, mode_info).
@@ -90,8 +90,8 @@
 :- pred mode_info_get_modes(mode_info, mode_table).
 :- mode mode_info_get_modes(mode_info_ui, out) is det.
 
-:- pred mode_info_get_insts(mode_info, inst_table).
-:- mode mode_info_get_insts(mode_info_ui, out) is det.
+:- pred mode_info_get_user_insts(mode_info, user_inst_table).
+:- mode mode_info_get_user_insts(mode_info_ui, out) is det.
 
 :- pred mode_info_get_predid(mode_info, pred_id).
 :- mode mode_info_get_predid(mode_info_ui, out) is det.
@@ -286,7 +286,7 @@
 	--->	mode_info(
 			io__state,
 			module_info,
-			inst_key_table,
+			inst_table,
 			pred_id,	% The pred we are checking
 			proc_id,	% The mode which we are checking
 			varset,		% The variables in the current proc
@@ -411,23 +411,23 @@ mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
-		Insts) :-
-	module_info_insts(ModuleInfo, Insts).
+mode_info_get_user_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+		UserInsts) :-
+	module_info_user_insts(ModuleInfo, UserInsts).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_inst_key_table(mode_info(_,_,IKT,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
-				IKT).
+mode_info_get_inst_table(mode_info(_,_,InstTable,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
+				InstTable).
 
-mode_info_dcg_get_inst_key_table(IKT, ModeInfo, ModeInfo) :-
-	mode_info_get_inst_key_table(ModeInfo, IKT).
+mode_info_dcg_get_inst_table(InstTable, ModeInfo, ModeInfo) :-
+	mode_info_get_inst_table(ModeInfo, InstTable).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_inst_key_table(IKT,
+mode_info_set_inst_table(InstTable,
 			mode_info(A,B,_,D,E,F,G,H,I,J,K,L,M,N,O,P,Q),
-			mode_info(A,B,IKT,D,E,F,G,H,I,J,K,L,M,N,O,P,Q)).
+			mode_info(A,B,InstTable,D,E,F,G,H,I,J,K,L,M,N,O,P,Q)).
 
 %-----------------------------------------------------------------------------%
 
@@ -733,25 +733,25 @@ mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
 mode_info_bind_var_to_functor(Var, ConsId, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 
 	instmap_bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
-		IKT0, IKT, ModuleInfo0, ModuleInfo),
+		InstTable0, InstTable, ModuleInfo0, ModuleInfo),
 
         mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-        mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo2),
+        mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
 	mode_info_set_module_info(ModeInfo2, ModuleInfo, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_apply_inst_key_sub(Sub, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 
-	apply_inst_key_sub(Sub, InstMap0, InstMap, IKT0, IKT),
+	apply_inst_key_sub(Sub, InstMap0, InstMap, InstTable0, InstTable),
 
 	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
-	mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo).
+	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

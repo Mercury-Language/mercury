@@ -152,8 +152,8 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_inst_key_table(ProcInfo0, IKT),
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, IKT),
+	proc_info_inst_table(ProcInfo0, InstTable),
+	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, InstTable),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
@@ -168,7 +168,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 				map(var, type),
 				varset,
 				list(marker_status),
-				inst_key_table
+				inst_table
 			).
 
 :- pred dnf__transform_goal(hlds_goal::in, instmap::in,
@@ -375,7 +375,7 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, IKT),
+	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, InstTable),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -390,11 +390,12 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
 	map__init(TVarMap), % later, polymorphism.m will fill this in. 
-	ArgIKT = IKT,	% XXX ArgIKT contains too many entries, but it's
+	ArgInstTable = InstTable,
+			% XXX ArgInstTable contains too many entries, but it's
 			%     safe.
 	proc_info_create(VarSet, VarTypes, ArgVars,
-		argument_modes(ArgIKT, ArgModes), Detism,
-		Goal0, Context, TVarMap, IKT, ProcInfo),
+		argument_modes(ArgInstTable, ArgModes), Detism,
+		Goal0, Context, TVarMap, InstTable, ProcInfo),
 	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
 		Context, local, Markers, predicate, ProcInfo, ProcId, PredInfo),
 

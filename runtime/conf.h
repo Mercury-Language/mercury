@@ -1,4 +1,4 @@
-/* conf.h.  Generated automatically by configure.  */
+/* runtime/conf.h.  Generated automatically by configure.  */
 /*
 ** Copyright (C) 1995-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
@@ -54,6 +54,7 @@
 **	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
+**	HAVE_SYS_WAIT		we have <sys/wait.h>
 */
 /* #undef	HAVE_SYS_SIGINFO */
 /* #undef	HAVE_UCONTEXT */
@@ -61,6 +62,7 @@
 #define	HAVE_ASM_SIGCONTEXT 1
 #define	HAVE_SYS_TIME 1
 #define	HAVE_SYS_PARAM 1
+/* #undef	HAVE_SYS_WAIT */
 
 /*
 ** The following macros are defined iff the corresponding function or
@@ -187,5 +189,11 @@
 ** Should we build the Mercury libraries as Windows DLLs?
 */
 /* #undef USE_DLLS */
+
+/*
+** For SPARC systems, does `as' not allow `.type' in inline asm?
+** (True for SunOS 4.x.)
+*/
+/* #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE */
 
 #endif /* CONF_H */

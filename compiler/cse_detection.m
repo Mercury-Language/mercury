@@ -129,7 +129,7 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 	--->	cse_info(
 			varset,
 			map(var, type),
-			inst_key_table,
+			inst_table,
 			module_info
 		).
 
@@ -151,8 +151,8 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_inst_key_table(ProcInfo0, IKT0),
-	CseInfo0 = cse_info(Varset0, VarTypes0, IKT0, ModuleInfo0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	CseInfo0 = cse_info(Varset0, VarTypes0, InstTable0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
 	(
@@ -313,11 +313,11 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, SM, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
+		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
 		common_deconstruct(Goals0, Var, CseInfo0, CseInfo1,
 			Unify, Goals)
 	->
@@ -355,12 +355,12 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 	(
 		Var \= SwitchVar,
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
+		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
 
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
 		common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo1,
 			Unify, Cases)
 	->
@@ -399,13 +399,13 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, SM, InstMap, CseInfo0,
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		SM, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
-		CseInfo0 = cse_info(_, _, IKT, ModuleInfo),
+		CseInfo0 = cse_info(_, _, InstTable, ModuleInfo),
 		instmap__lookup_var(InstMap, Var, VarInst0),
 
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.
-		inst_is_ground_or_any(VarInst0, IKT, ModuleInfo),
+		inst_is_ground_or_any(VarInst0, InstTable, ModuleInfo),
 		common_deconstruct([Then0, Else0], Var, CseInfo0, CseInfo1,
 			Unify, Goals),
 		Goals = [Then, Else]
@@ -559,11 +559,13 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			Var1 = UnifyVar1,
 			MaybeUnify0 = no
 		->
-			CseInfo0 = cse_info(Varset0, Typemap0, IKT, ModuleInfo),
+			CseInfo0 = cse_info(Varset0, Typemap0, InstTable,
+				ModuleInfo),
 			construct_common_unify(Var, Goal0 - GoalInfo, Goal,
 				Varset0, Varset, Typemap0, Typemap,
 				Replacements),
-			CseInfo = cse_info(Varset, Typemap, IKT, ModuleInfo),
+			CseInfo = cse_info(Varset, Typemap, InstTable,
+				ModuleInfo),
 			MaybeUnify = yes(Goal),
 			list__append(Replacements, Goals0, Goals),
 			Substitution = Substitution0

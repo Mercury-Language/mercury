@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module bool, list, map, std_util, term, varset, (inst).
+:- import_module bool, list, map, std_util, term, varset.
 
 :- implementation.
 
@@ -576,12 +576,12 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
 	argument_modes, maybe(list(is_live)), hlds_goal, term__context,
 	stack_slots, determinism, bool, list(arg_info), liveness_info,
-	map(tvar, var), inst_key_table, proc_info).
+	map(tvar, var), inst_table, proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, out) is det.
 
 :- pred proc_info_create(varset, map(var, type), list(var), argument_modes,
-	determinism, hlds_goal, term__context, map(tvar, var), inst_key_table,
+	determinism, hlds_goal, term__context, map(tvar, var), inst_table,
 	proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, in, out) is det.
 
@@ -695,11 +695,11 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_declared_argmodes(proc_info, argument_modes).
 :- mode proc_info_declared_argmodes(in, out) is det.
 
-:- pred proc_info_inst_key_table(proc_info, inst_key_table).
-:- mode proc_info_inst_key_table(in, out) is det.
+:- pred proc_info_inst_table(proc_info, inst_table).
+:- mode proc_info_inst_table(in, out) is det.
 
-:- pred proc_info_set_inst_key_table(proc_info, inst_key_table, proc_info).
-:- mode proc_info_set_inst_key_table(in, in, out) is det.
+:- pred proc_info_set_inst_table(proc_info, inst_table, proc_info).
+:- mode proc_info_set_inst_table(in, in, out) is det.
 
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
@@ -752,8 +752,8 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 					% type parameters
 			maybe(argument_modes),
 					% declared modes of args
-			inst_key_table
-					% the inst_key_table for this proc
+			inst_table
+					% the inst_table for this proc
 		).
 
 
@@ -778,30 +778,30 @@ proc_info_init(Arity, Modes, DeclaredModes, MaybeArgLives,
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
 	map__init(TVarsMap),
-	inst_key_table_init(IKT),
+	inst_table_init(InstTable),
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
 		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
-		ArgInfo, InitialLiveness, TVarsMap, DeclaredModes, IKT
+		ArgInfo, InitialLiveness, TVarsMap, DeclaredModes, InstTable
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal,
 		Context, StackSlots, InferredDetism, CanProcess,
-		ArgInfo, Liveness, TVarMap, IKT, ProcInfo) :-
+		ArgInfo, Liveness, TVarMap, InstTable, ProcInfo) :-
 	ProcInfo = procedure(
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
-		CanProcess, ArgInfo, Liveness, TVarMap, no, IKT).
+		CanProcess, ArgInfo, Liveness, TVarMap, no, InstTable).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
-		Context, TVarMap, IKT, ProcInfo) :-
+		Context, TVarMap, InstTable, ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
 		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
-		Liveness, TVarMap, no, IKT).
+		Liveness, TVarMap, no, InstTable).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, _, _, E, F, _,
@@ -844,8 +844,8 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 	( MaybeArgLives = yes(ArgLives0) ->
 		ArgLives = ArgLives0
 	;
-		proc_info_argmodes(ProcInfo, argument_modes(IKT, Modes)),
-		get_arg_lives(Modes, IKT, ModuleInfo, ArgLives)
+		proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
+		get_arg_lives(Modes, InstTable, ModuleInfo, ArgLives)
 	).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
@@ -902,8 +902,9 @@ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _,
 		_, _, _, _, _, _, _, MaybeArgModes, _).
 
-proc_info_inst_key_table(ProcInfo, IKT) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, IKT).
+proc_info_inst_table(ProcInfo, InstTable) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		InstTable).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
 	proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
@@ -936,7 +937,7 @@ proc_info_declared_argmodes(ProcInfo, ArgModes) :-
 %							% vars.
 %				O	maybe(list(mode)) % declared modes
 %							% of args
-%				P	inst_key_table	% inst_key_table
+%				P	inst_table	% inst_table
 %							% for this proc
 % 				).
 
@@ -1000,10 +1001,10 @@ proc_info_set_typeinfo_varmap(ProcInfo0, TVarMap, ProcInfo) :-
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I,
 			J, K, L, M, TVarMap, O, P).
 
-proc_info_set_inst_key_table(ProcInfo0, IKT, ProcInfo) :-
+proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I,
-			J, K, L, M, N, O, IKT).
+			J, K, L, M, N, O, InstTable).
 
 proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),

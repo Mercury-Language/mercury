@@ -211,7 +211,7 @@ delete_context(Context *c)
 void 
 flounder(void)
 {
-	fatal_error("computation floundered.");
+	fatal_error("computation floundered");
 }
 
 BEGIN_MODULE(context_module)

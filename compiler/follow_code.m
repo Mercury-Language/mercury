@@ -57,10 +57,10 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		proc_info_inst_key_table(ProcInfo0, IKT0),
+		proc_info_inst_table(ProcInfo0, InstTable0),
 		recompute_instmap_delta(no, Goal2, Goal, InstMap0,
-			IKT0, IKT, ModuleInfo0, ModuleInfo),
-		proc_info_set_inst_key_table(ProcInfo0, IKT, ProcInfo1),
+			InstTable0, InstTable, ModuleInfo0, ModuleInfo),
+		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
 		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
 		proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo)

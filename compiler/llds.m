@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, tree, prog_data, (inst).
+:- import_module hlds_data, hlds_pred, tree, prog_data, (inst).
 :- import_module assoc_list, bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -295,7 +295,7 @@
 
 :- type qualified_inst
 	--->	qualified_inst(
-			inst_key_table,
+			inst_table,
 			inst
 		).
 

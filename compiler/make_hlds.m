@@ -623,11 +623,9 @@ module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
 
 module_add_inst_defn(Module0, VarSet, InstDefn, Cond,
 		Context, item_status(Status, _NeedQual), Module) -->
-	{ module_info_insts(Module0, InstTable0) },
-	{ inst_table_get_user_insts(InstTable0, Insts0) },
+	{ module_info_user_insts(Module0, Insts0) },
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Status, Insts),
-	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
-	{ module_info_set_insts(Module0, InstTable, Module) }.
+	{ module_info_set_user_insts(Module0, Insts, Module) }.
 
 :- pred insts_add(user_inst_table, varset, inst_defn, condition, term__context,
 			import_status, user_inst_table, io__state, io__state).
@@ -641,8 +639,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body),
 	{ list__length(Args, Arity) },
 	(
 		% XXX For now, Body has no aliasing declarations.
-		{ inst_key_table_init(IKT) },
-		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(IKT, Body), Cond,
+		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 					Context, Status) },
 		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
 	->
@@ -1242,8 +1239,8 @@ add_special_pred_decl(SpecialPredId,
 		Context, ClausesInfo0, Status, [], none, predicate, PredInfo0),
 	ArgLives = no,
 	% XXX Code may break if the pred has aliased argument modes.
-	inst_key_table_init(ArgIKT),
-	Modes = argument_modes(ArgIKT, ArgModes),
+	inst_table_init(ArgInstTable),
+	Modes = argument_modes(ArgInstTable, ArgModes),
 	add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
 		yes(Det), Context, PredInfo, _),
 
@@ -1364,8 +1361,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% isn't the same as an existing one
 	{ ArgLives = no },
 	% XXX This code may break if the proc has aliased argument modes.
-	{ inst_key_table_init(ArgIKT) },
-	{ ArgModes = argument_modes(ArgIKT, Modes) },
+	{ inst_table_init(ArgInstTable) },
+	{ ArgModes = argument_modes(ArgInstTable, Modes) },
 	{ add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes), ArgLives,
 		MaybeDet, MContext, PredInfo, _) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
@@ -2532,8 +2529,8 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 			Types = [],
 			Modes = [],
 			Det = erroneous,
-			inst_key_table_init(IKT),
-			ArgModes = argument_modes(IKT, Modes),
+			inst_table_init(InstTable),
+			ArgModes = argument_modes(InstTable, Modes),
 			Call = higher_order_call(PredVar, RealHeadVars,
 					Types, ArgModes, Det, predicate)
 		;
@@ -2812,9 +2809,10 @@ unravel_unification(term__variable(X), Rhs,
 		insert_arg_unifications(Vars, Vars1, Context, head,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ instmap_delta_init_reachable(InstMapDelta) },
-		{ inst_key_table_init(IKT) },
+		{ inst_table_init(InstTable) },
 		{ create_atomic_unification(X,
-			lambda_goal(predicate, Vars, argument_modes(IKT, Modes),
+			lambda_goal(predicate, Vars,
+				argument_modes(InstTable, Modes),
 				Det, InstMapDelta, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;
@@ -2846,9 +2844,10 @@ unravel_unification(term__variable(X), Rhs,
 		insert_arg_unifications(Vars, Vars1, Context, head,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ instmap_delta_init_reachable(InstMapDelta) },
-		{ inst_key_table_init(IKT) },
+		{ inst_table_init(InstTable) },
 		{ create_atomic_unification(X,
-			lambda_goal(function, Vars, argument_modes(IKT, Modes),
+			lambda_goal(function, Vars,
+				argument_modes(InstTable, Modes),
 				Det, InstMapDelta, HLDS_Goal),
 			Context, MainContext, SubContext, Goal) }
 	;

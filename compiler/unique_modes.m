@@ -131,9 +131,10 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Extract the useful fields in the proc_info.
 	%
 	proc_info_headvars(ProcInfo0, Args),
-	proc_info_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes)),
+	proc_info_argmodes(ProcInfo0, argument_modes(_, ArgModes)),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
 
 	%
 	% Figure out the right context to use.
@@ -167,8 +168,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% At last we're ready to construct the initial mode_info
 	%
-	mode_info_init(IOState0, ModuleInfo0, ArgIKT, PredId, ProcId, Context,
-			LiveVars, InstMap0, ModeInfo0),
+	mode_info_init(IOState0, ModuleInfo0, InstTable0, PredId, ProcId,
+			Context, LiveVars, InstMap0, ModeInfo0),
 	%
 	% Modecheck the goal
 	%
@@ -189,7 +190,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Get the info we need from the mode_info and stuff it back
 	% in the proc_info
 	%
-	mode_info_get_inst_key_table(ModeInfo, IKT),
+	mode_info_get_inst_table(ModeInfo, InstTable),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_io_state(ModeInfo, IOState1),
 	mode_info_get_errors(ModeInfo, Errors),
@@ -203,7 +204,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-	proc_info_set_inst_key_table(ProcInfo3, IKT, ProcInfo).
+	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo).
 
 	% XXX we currently make the conservative assumption that
 	% any non-local variable in a disjunction or nondet call
@@ -319,12 +320,12 @@ select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
 select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap0),
-	mode_info_get_inst_key_table(ModeInfo, IKT),
+	mode_info_get_inst_table(ModeInfo, InstTable),
 	instmap__lookup_var(InstMap0, Var, Inst0),
 	(
 		instmap_delta_is_reachable(DeltaInstMap),
 		instmap_delta_search_var(DeltaInstMap, Var, Inst),
-		\+ inst_matches_final(Inst, Inst0, IKT, ModuleInfo)
+		\+ inst_matches_final(Inst, Inst0, InstTable, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
 		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
@@ -348,7 +349,7 @@ make_var_list_mostly_uniq([Var | Vars], ModeInfo0, ModeInfo) :-
 make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	(
 		%
 		% only variables which are `unique' need to be changed
@@ -357,17 +358,17 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		instmap__vars_list(InstMap0, Vars),
 		list__member(Var, Vars),
 		instmap__lookup_var(InstMap0, Var, Inst0),
-		inst_expand(IKT0, ModuleInfo0, Inst0, _, Inst1),
+		inst_expand(InstTable0, ModuleInfo0, Inst0, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
 		; Inst1 = any(unique)
 		)
 	->
 		map__init(Sub0),
-		make_mostly_uniq_inst(Inst0, IKT0, ModuleInfo0, Sub0, Inst,
-			IKT, ModuleInfo, Sub),
+		make_mostly_uniq_inst(Inst0, InstTable0, ModuleInfo0, Sub0,
+			Inst, InstTable, ModuleInfo, Sub),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		mode_info_set_inst_key_table(IKT, ModeInfo1, ModeInfo2),
+		mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
 		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		instmap__set(InstMap0, Var, Inst, InstMap),
 		mode_info_set_instmap(InstMap, ModeInfo3, ModeInfo)
@@ -497,10 +498,10 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	{ Modes = argument_modes(ArgIKT, ArgModes0) },
-	mode_info_dcg_get_inst_key_table(IKT0),
-	{ inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT) },
-	mode_info_set_inst_key_table(IKT),
+	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
+	mode_info_dcg_get_inst_table(InstTable0),
+	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
+	mode_info_set_inst_table(InstTable),
 	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
 
 	unique_modes__check_call_modes(Args, ArgModes, CodeModel,
@@ -567,10 +568,10 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 
-	ProcArgModes0 = argument_modes(ArgIKT, ArgModes0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
-	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT),
-	mode_info_set_inst_key_table(IKT, ModeInfo0, ModeInfo1),
+	ProcArgModes0 = argument_modes(ArgInstTable, ArgModes0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
+	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
+	mode_info_set_inst_table(InstTable, ModeInfo0, ModeInfo1),
 	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
 
 	proc_info_interface_code_model(ProcInfo, CodeModel),

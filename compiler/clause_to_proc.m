@@ -87,8 +87,8 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
-		inst_key_table_init(IKT),
-		ArgumentModes = argument_modes(IKT, PredArgModes),
+		inst_table_init(InstTable),
+		ArgumentModes = argument_modes(InstTable, PredArgModes),
 		add_new_proc(PredInfo0, PredArity, ArgumentModes, 
 			yes(ArgumentModes), MaybePredArgLives, yes(Determinism),
 			Context, PredInfo, _ProcId)

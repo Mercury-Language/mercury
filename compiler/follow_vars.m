@@ -29,12 +29,12 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, (inst).
+:- import_module hlds_module, hlds_pred.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
 
-:- pred find_follow_vars_in_goal(hlds_goal, args_method, inst_key_table,
+:- pred find_follow_vars_in_goal(hlds_goal, args_method, inst_table,
 			module_info, follow_vars, hlds_goal, follow_vars).
 :- mode find_follow_vars_in_goal(in, in, in, in, in, out, out) is det.
 
@@ -51,7 +51,7 @@
 		follow_vars_info(
 			args_method,
 			module_info,
-			inst_key_table
+			inst_table
 		).
 
 %-----------------------------------------------------------------------------%
@@ -86,9 +86,9 @@ find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-find_follow_vars_in_goal(Goal0, ArgsMethod, IKT, ModuleInfo, FollowVars0,
+find_follow_vars_in_goal(Goal0, ArgsMethod, InstTable, ModuleInfo, FollowVars0,
 					Goal, FollowVars) :-
-	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, IKT),
+	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, InstTable),
 	find_follow_vars_in_goal(Goal0, FVInfo, FollowVars0, Goal, FollowVars).
 
 :- pred find_follow_vars_in_goal(hlds_goal, follow_vars_info, follow_vars,
@@ -178,10 +178,10 @@ find_follow_vars_in_goal_expr(
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
 		FollowVars) :-
-	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, _IKT),
+	FVInfo = follow_vars_info(ArgsMethod, ModuleInfo, _InstTable),
 	determinism_to_code_model(Det, CodeModel),
-	Modes = argument_modes(ArgIKT, ArgModes),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgIKT,
+	Modes = argument_modes(ArgInstTable, ArgModes),
+	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgInstTable,
 		ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
@@ -198,7 +198,7 @@ find_follow_vars_in_goal_expr(call(A,B,C,D,E,F), FVInfo,
 
 find_follow_vars_in_goal_expr(unify(A,B,C,D,E), FVInfo,
 		FollowVars0, unify(A,B,C,D,E), FollowVars) :-
-	FVInfo = follow_vars_info(ArgsMethod, _ModuleInfo, _IKT),
+	FVInfo = follow_vars_info(ArgsMethod, _ModuleInfo, _InstTable),
 	(
 		B = var(BVar),
 		D = complicated_unify(_Mode, CanFail)

@@ -89,8 +89,8 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_inst_key_table(ProcInfo0, IKT),
-	detect_switches_in_goal(Goal0, InstMap0, VarTypes, IKT, ModuleInfo0,
+	proc_info_inst_table(ProcInfo0, InstTable),
+	detect_switches_in_goal(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo0,
 			Goal),
 
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo),
@@ -105,11 +105,11 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	% replace disjunctions with switches whereever possible.
 
 :- pred detect_switches_in_goal(hlds_goal, instmap, map(var, type),
-	inst_key_table, module_info, hlds_goal).
+	inst_table, module_info, hlds_goal).
 :- mode detect_switches_in_goal(in, in, in, in, in, out) is det.
 
-detect_switches_in_goal(Goal0, InstMap0, VarTypes, IKT, ModuleInfo, Goal) :-
-	detect_switches_in_goal_1(Goal0, InstMap0, VarTypes, IKT, ModuleInfo,
+detect_switches_in_goal(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo, Goal) :-
+	detect_switches_in_goal_1(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goal, _InstMap).
 
 	% This version is the same as the above except that it returns
@@ -118,56 +118,56 @@ detect_switches_in_goal(Goal0, InstMap0, VarTypes, IKT, ModuleInfo, Goal) :-
 	% goal's goalinfo.
 
 :- pred detect_switches_in_goal_1(hlds_goal, instmap, map(var, type),
-	inst_key_table, module_info, hlds_goal, instmap).
+	inst_table, module_info, hlds_goal, instmap).
 :- mode detect_switches_in_goal_1(in, in, in, in, in, out, out) is det.
 
-detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, IKT, ModuleInfo,
+detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goal - GoalInfo, InstMap) :-
 	detect_switches_in_goal_2(Goal0, GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, Goal),
+		VarTypes, InstTable, ModuleInfo, Goal),
 	update_instmap(Goal0 - GoalInfo, InstMap0, InstMap).
 
 	% Here we process each of the different sorts of goals.
 
 :- pred detect_switches_in_goal_2(hlds_goal_expr, hlds_goal_info, instmap,
-		map(var, type), inst_key_table, module_info, hlds_goal_expr).
+		map(var, type), inst_table, module_info, hlds_goal_expr).
 :- mode detect_switches_in_goal_2(in, in, in, in, in, in, out) is det.
 
 detect_switches_in_goal_2(disj(Goals0, SM), GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, Goal) :-
+		VarTypes, InstTable, ModuleInfo, Goal) :-
 	( Goals0 = [] ->
 		Goal = disj([], SM)
 	;
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo,
-			SM, InstMap0, VarTypes, NonLocalsList, IKT, ModuleInfo,
+			SM, InstMap0, VarTypes, NonLocalsList, InstTable, ModuleInfo,
 			[], Goal)
 	).
 
 detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, conj(Goals)) :-
-	detect_switches_in_conj(Goals0, InstMap0, VarTypes, IKT, ModuleInfo,
+		VarTypes, InstTable, ModuleInfo, conj(Goals)) :-
+	detect_switches_in_conj(Goals0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goals).
 
 detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, not(Goal)) :-
-	detect_switches_in_goal(Goal0, InstMap0, VarTypes, IKT, ModuleInfo,
+		VarTypes, InstTable, ModuleInfo, not(Goal)) :-
+	detect_switches_in_goal(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goal).
 
 detect_switches_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
-		_GoalInfo, InstMap0, VarTypes, IKT, ModuleInfo,
+		_GoalInfo, InstMap0, VarTypes, InstTable, ModuleInfo,
 		if_then_else(Vars, Cond, Then, Else, SM)) :-
-	detect_switches_in_goal_1(Cond0, InstMap0, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal_1(Cond0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Cond, InstMap1),
-	detect_switches_in_goal(Then0, InstMap1, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal(Then0, InstMap1, VarTypes, InstTable, ModuleInfo,
 		Then),
-	detect_switches_in_goal(Else0, InstMap0, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal(Else0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Else).
 
 detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, some(Vars, Goal)) :-
-	detect_switches_in_goal(Goal0, InstMap0, VarTypes, IKT, ModuleInfo,
+		VarTypes, InstTable, ModuleInfo, some(Vars, Goal)) :-
+	detect_switches_in_goal(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goal).
 
 detect_switches_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, _, _, _,
@@ -177,12 +177,12 @@ detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _, _,
 		call(A,B,C,D,E,F)).
 
 detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
-		VarTypes, IKT, ModuleInfo, unify(A,RHS,C,D,E)) :-
+		VarTypes, InstTable, ModuleInfo, unify(A,RHS,C,D,E)) :-
 	( RHS0 = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal0) ->
 		% we need to insert the initial insts for the lambda
 		% variables in the instmap before processing the lambda goal
 		instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
-		detect_switches_in_goal(Goal0, InstMap1, VarTypes, IKT,
+		detect_switches_in_goal(Goal0, InstMap1, VarTypes, InstTable,
 			ModuleInfo, Goal),
 		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal)
 	;
@@ -190,8 +190,8 @@ detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 	).
 
 detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
-		VarTypes, IKT, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
-	detect_switches_in_cases(Cases0, InstMap, VarTypes, IKT, ModuleInfo,
+		VarTypes, InstTable, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
+	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable, ModuleInfo,
 		Cases).
 
 detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), _, _, _, _, _,
@@ -215,17 +215,17 @@ detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), _, _, _, _, _,
 :- type again ---> again(var, list(hlds_goal), sorted_case_list).
 
 :- pred detect_switches_in_disj(list(var), list(hlds_goal), hlds_goal_info,
-	store_map, instmap, map(var, type), list(var), inst_key_table,
+	store_map, instmap, map(var, type), list(var), inst_table,
 	module_info, list(again), hlds_goal_expr).
 :- mode detect_switches_in_disj(in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
 detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
-		VarTypes, AllVars, IKT, ModuleInfo, Again0, Goal) :-
+		VarTypes, AllVars, InstTable, ModuleInfo, Again0, Goal) :-
 	% can we do at least a partial switch on this variable?
 	(
 		instmap__lookup_var(InstMap, Var, VarInst0),
-		inst_is_bound(VarInst0, IKT, ModuleInfo),
+		inst_is_bound(VarInst0, InstTable, ModuleInfo),
 		partition_disj(Goals0, Var, GoalInfo, Left, CasesList)
 	->
 		%
@@ -246,11 +246,11 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
 		->
 			( CasesList = [_, _ | _] ->
 				cases_to_switch(CasesList, Var, VarTypes,
-					GoalInfo, SM, InstMap, IKT, ModuleInfo,
+					GoalInfo, SM, InstMap, InstTable, ModuleInfo,
 					Goal)
 			;
 				detect_sub_switches_in_disj(Goals0, InstMap,
-					VarTypes, IKT, ModuleInfo, Goals),
+					VarTypes, InstTable, ModuleInfo, Goals),
 				Goal = disj(Goals, SM)
 			)
 		;
@@ -264,28 +264,28 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
 			),
 			% try to find a switch
 			detect_switches_in_disj(Vars, Goals0, GoalInfo,
-				SM, InstMap, VarTypes, AllVars, IKT,
+				SM, InstMap, VarTypes, AllVars, InstTable,
 				ModuleInfo, Again1, Goal)
 		)
 	;
 		detect_switches_in_disj(Vars, Goals0, GoalInfo, SM, InstMap,
-			VarTypes, AllVars, IKT, ModuleInfo, Again0, Goal)
+			VarTypes, AllVars, InstTable, ModuleInfo, Again0, Goal)
 	).
 detect_switches_in_disj([], Goals0, GoalInfo, SM, InstMap,
-		VarTypes, AllVars, IKT, ModuleInfo, AgainList0,
+		VarTypes, AllVars, InstTable, ModuleInfo, AgainList0,
 		disj(Goals, SM)) :-
 	(
 		AgainList0 = [],
 		detect_sub_switches_in_disj(Goals0, InstMap, VarTypes,
-			IKT, ModuleInfo, Goals)
+			InstTable, ModuleInfo, Goals)
 	;
 		AgainList0 = [Again | AgainList1],
 		select_best_switch(AgainList1, Again, BestAgain),
 		BestAgain = again(Var, Left0, CasesList),
 		cases_to_switch(CasesList, Var, VarTypes, GoalInfo, SM, InstMap,
-			IKT, ModuleInfo, SwitchGoal),
+			InstTable, ModuleInfo, SwitchGoal),
 		detect_switches_in_disj(AllVars, Left0, GoalInfo, SM, InstMap,
-			VarTypes, AllVars, IKT, ModuleInfo, [], Left),
+			VarTypes, AllVars, InstTable, ModuleInfo, [], Left),
 		goal_to_disj_list(Left - GoalInfo, LeftList),
 		Goals = [SwitchGoal - GoalInfo | LeftList]
 	).
@@ -309,41 +309,41 @@ select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
 	select_best_switch(AgainList, BestAgain1, BestAgain).
 
 :- pred detect_sub_switches_in_disj(list(hlds_goal), instmap, map(var, type),
-	inst_key_table, module_info, list(hlds_goal)).
+	inst_table, module_info, list(hlds_goal)).
 :- mode detect_sub_switches_in_disj(in, in, in, in, in, out) is det.
 
-detect_sub_switches_in_disj([], _InstMap, _VarTypes, _IKT, _ModuleInfo, []).
-detect_sub_switches_in_disj([Goal0 | Goals0], InstMap, VarTypes, IKT,
+detect_sub_switches_in_disj([], _InstMap, _VarTypes, _InstTable, _ModuleInfo, []).
+detect_sub_switches_in_disj([Goal0 | Goals0], InstMap, VarTypes, InstTable,
 		ModuleInfo, [Goal | Goals]) :-
-	detect_switches_in_goal(Goal0, InstMap, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal(Goal0, InstMap, VarTypes, InstTable, ModuleInfo,
 		Goal),
-	detect_sub_switches_in_disj(Goals0, InstMap, VarTypes, IKT, ModuleInfo,
+	detect_sub_switches_in_disj(Goals0, InstMap, VarTypes, InstTable, ModuleInfo,
 		Goals).
 
 :- pred detect_switches_in_cases(list(case), instmap, map(var, type),
-	inst_key_table, module_info, list(case)).
+	inst_table, module_info, list(case)).
 :- mode detect_switches_in_cases(in, in, in, in, in, out) is det.
 
-detect_switches_in_cases([], _InstMap, _VarTypes, _IKT, _ModuleInfo, []).
-detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, IKT, ModuleInfo,
+detect_switches_in_cases([], _InstMap, _VarTypes, _InstTable, _ModuleInfo, []).
+detect_switches_in_cases([Case0 | Cases0], InstMap, VarTypes, InstTable, ModuleInfo,
 		[Case | Cases]) :-
 	Case0 = case(Functor, Goal0),
-	detect_switches_in_goal(Goal0, InstMap, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal(Goal0, InstMap, VarTypes, InstTable, ModuleInfo,
 			Goal),
 	Case = case(Functor, Goal),
-	detect_switches_in_cases(Cases0, InstMap, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable, ModuleInfo,
 			Cases).
 
 :- pred detect_switches_in_conj(list(hlds_goal), instmap, map(var, type),
-	inst_key_table, module_info, list(hlds_goal)).
+	inst_table, module_info, list(hlds_goal)).
 :- mode detect_switches_in_conj(in, in, in, in, in, out) is det.
 
-detect_switches_in_conj([], _InstMap, _VarTypes, _IKT, _ModuleInfo, []).
-detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, IKT, ModuleInfo,
+detect_switches_in_conj([], _InstMap, _VarTypes, _InstTable, _ModuleInfo, []).
+detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, InstTable, ModuleInfo,
 		[Goal | Goals]) :-
-	detect_switches_in_goal_1(Goal0, InstMap0, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_goal_1(Goal0, InstMap0, VarTypes, InstTable, ModuleInfo,
 		Goal, InstMap1),
-	detect_switches_in_conj(Goals0, InstMap1, VarTypes, IKT, ModuleInfo,
+	detect_switches_in_conj(Goals0, InstMap1, VarTypes, InstTable, ModuleInfo,
 		Goals).
 
 %-----------------------------------------------------------------------------%
@@ -472,13 +472,13 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 	).
 
 :- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds_goal_info,
-	store_map, instmap, inst_key_table, module_info, hlds_goal_expr).
+	store_map, instmap, inst_table, module_info, hlds_goal_expr).
 :- mode cases_to_switch(in, in, in, in, in, in, in, in, out) is det.
 
-cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, IKT,
+cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, InstTable,
 		ModuleInfo, Goal) :-
 	instmap__lookup_var(InstMap, Var, VarInst),
-	( inst_is_bound_to_functors(VarInst, IKT, ModuleInfo, Functors) ->
+	( inst_is_bound_to_functors(VarInst, InstTable, ModuleInfo, Functors) ->
 		functors_to_cons_ids(Functors, ConsIds0),
 		list__sort(ConsIds0, ConsIds),
 		delete_unreachable_cases(CasesList, ConsIds, CasesList1),
@@ -497,7 +497,7 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, SM, InstMap, IKT,
 		)
 	),
 	detect_switches_in_cases(CasesList1, InstMap, VarTypes,
-		IKT, ModuleInfo, Cases),
+		InstTable, ModuleInfo, Cases),
 
 	% We turn switches with no arms into fail, since this avoids having
 	% the code generator flush the control variable of the switch.

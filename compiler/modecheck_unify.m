@@ -63,9 +63,11 @@
 :- mode mode_info_make_alias(in, out, mode_info_di, mode_info_uo) is det.
 
 mode_info_make_alias(Inst, InstKey, ModeInfo0, ModeInfo) :-
-	mode_info_get_inst_key_table(ModeInfo0, InstKeyTable0),
-	inst_key_table_add(InstKeyTable0, Inst, InstKey, InstKeyTable),
-	mode_info_set_inst_key_table(InstKeyTable, ModeInfo0, ModeInfo).
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	inst_key_table_add(IKT0, Inst, InstKey, IKT),
+	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+	mode_info_set_inst_table(InstTable, ModeInfo0, ModeInfo).
 
 :- pred mode_info_make_aliased_insts(list(var), list(inst),
 		mode_info, mode_info).
@@ -91,7 +93,7 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 			Unify, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	instmap__lookup_var(InstMap0, X, InstOfX),
 	instmap__lookup_var(InstMap0, Y, InstOfY),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
@@ -104,13 +106,13 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 		),
 		map__init(Sub0),
 		abstractly_unify_inst(BothLive, InstOfX, InstOfY,
-			real_unify, IKT0, ModuleInfo0, Sub0, UnifyInst,
-			Det1, IKT1, ModuleInfo1, Sub)
+			real_unify, InstTable0, ModuleInfo0, Sub0, UnifyInst,
+			Det1, InstTable1, ModuleInfo1, Sub)
 	->
 		Inst = UnifyInst,
 		Det = Det1,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
-		mode_info_set_inst_key_table(IKT1, ModeInfo1, ModeInfo2),
+		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
 
 		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		( Inst = alias(_) ->
@@ -339,7 +341,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% work out the modes of the introduced lambda variables
 		% and the determinism of the lambda goal
 		%
-		proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes)),
+		proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
 
 		( list__drop(Arity, ArgModes, LambdaModes0) ->
 			LambdaModes = LambdaModes0
@@ -359,7 +361,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		%
 		instmap_delta_init_reachable(IMDelta),
 		Functor0 = lambda_goal(PredOrFunc, LambdaVars,
-				argument_modes(ArgIKT, LambdaModes),
+				argument_modes(ArgInstTable, LambdaModes),
 				LambdaDet, IMDelta, LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
 				GoalInfo0, HowToCheckGoal, Goal,
@@ -403,16 +405,16 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 
 	( HowToCheckGoal = check_modes ->
 		% This only needs to be done once.
-		Modes0 = argument_modes(ArgIKT0, ArgModes0),
+		Modes0 = argument_modes(ArgInstTable0, ArgModes0),
 		mode_info_get_types_of_vars(ModeInfo0, Vars, VarTypes),
-		propagate_types_into_mode_list(VarTypes, ArgIKT0, ModuleInfo0,
+		propagate_types_into_mode_list(VarTypes, ArgInstTable0, ModuleInfo0,
 			ArgModes0, ArgModes1),
-		Modes = argument_modes(ArgIKT0, ArgModes1)
+		Modes = argument_modes(ArgInstTable0, ArgModes1)
  	;
 		Modes = Modes0
 	),
@@ -420,8 +422,8 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	% initialize the initial insts of the lambda variables
 	% XXX Slightly bogus if ArgModesX has any aliasing in it.
 
-	Modes = argument_modes(ArgIKT, ArgModesX),
-	inst_key_table_create_sub(IKT0, ArgIKT, Sub, IKT1),
+	Modes = argument_modes(ArgInstTable, ArgModesX),
+	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
 	list__map(apply_inst_key_sub_mode(Sub), ArgModesX, ArgModes),
 	mode_list_get_initial_insts(ArgModes, ModuleInfo0, InitialInsts),
 	assoc_list__from_corresponding_lists(Vars, InitialInsts,
@@ -429,11 +431,11 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	instmap_delta_from_assoc_list(VarInitialInsts, IMDelta),
 	instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
  
-	mode_info_set_inst_key_table(IKT1, ModeInfo0, ModeInfo1),
+	mode_info_set_inst_table(InstTable1, ModeInfo0, ModeInfo1),
 	mode_info_set_instmap(InstMap1, ModeInfo1, ModeInfo2),
 
 	% mark the non-clobbered lambda variables as live
-	get_arg_lives(ArgModes, ArgIKT, ModuleInfo0, ArgLives),
+	get_arg_lives(ArgModes, ArgInstTable, ModuleInfo0, ArgLives),
 	get_live_vars(Vars, ArgLives, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_add_live_vars(LiveVars, ModeInfo2, ModeInfo3),
@@ -482,19 +484,19 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		Unification0, Mode, Unification, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	instmap__lookup_var(InstMap0, X, InstOfX),
 	InstOfY = ground(unique, yes(LambdaPredInfo)),
 	LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
 	(
 		map__init(Sub0),
 		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
-			IKT0, ModuleInfo0, Sub0, UnifyInst, _Det, IKT1,
+			InstTable0, ModuleInfo0, Sub0, UnifyInst, _Det, InstTable1,
 			ModuleInfo1, Sub)
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
-		mode_info_set_inst_key_table(IKT1, ModeInfo1, ModeInfo2),
+		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
 		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		mode_info_get_instmap(ModeInfo2, InstMap2),
 		ModeOfX = (InstOfX -> Inst),
@@ -559,7 +561,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	instmap__lookup_var(InstMap0, X, InstOfX),
 	mode_info_make_aliased_insts(ArgVars0, InstArgs, ModeInfo0, ModeInfo1),
 	mode_info_get_module_info(ModeInfo1, ModuleInfo1),
-	mode_info_get_inst_key_table(ModeInfo1, IKT1),
+	mode_info_get_inst_table(ModeInfo1, InstTable1),
 	mode_info_var_is_live(ModeInfo1, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo1, LiveArgs),
 	InstOfY = bound(unique, [functor(ConsId, InstArgs)]),
@@ -571,7 +573,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		% so it's better to report it.)
 
 		list__member(X, ArgVars0),
-		\+ inst_is_ground(InstOfX, IKT1, ModuleInfo1)
+		\+ inst_is_ground(InstOfX, InstTable1, ModuleInfo1)
 	->
 		set__list_to_set([X], WaitingVars),
 		mode_info_error(WaitingVars,
@@ -605,21 +607,21 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	;
 		map__init(Sub0),
 		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
-			InstArgs, LiveArgs, real_unify, IKT1, ModuleInfo1, Sub0,
-			UnifyInst, Det1, IKT2, ModuleInfo2, Sub)
+			InstArgs, LiveArgs, real_unify, InstTable1, ModuleInfo1, Sub0,
+			UnifyInst, Det1, InstTable2, ModuleInfo2, Sub)
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo1, ModuleInfo2, ModeInfo2),
-		mode_info_set_inst_key_table(IKT2, ModeInfo2, ModeInfo3),
+		mode_info_set_inst_table(InstTable2, ModeInfo2, ModeInfo3),
 		mode_info_apply_inst_key_sub(Sub, ModeInfo3, ModeInfo4),
 		mode_info_get_module_info(ModeInfo4, ModuleInfo4),
-		mode_info_get_inst_key_table(ModeInfo4, IKT4),
+		mode_info_get_inst_table(ModeInfo4, InstTable4),
 		Det = Det1,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
 		(
-			get_mode_of_args(Inst, InstArgs, IKT4, ModuleInfo4,
+			get_mode_of_args(Inst, InstArgs, InstTable4, ModuleInfo4,
 				ModeArgs0)
 		->
 			ModeArgs = ModeArgs0
@@ -627,13 +629,13 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			error("get_mode_of_args failed")
 		),
 		(
-			inst_expand(IKT2, ModuleInfo4, InstOfX, IKT3, InstOfX2),
+			inst_expand(InstTable2, ModuleInfo4, InstOfX, InstOfX2),
 			get_arg_insts(InstOfX2, ConsId, Arity, InstOfXArgs),
-			get_mode_of_args(Inst, InstOfXArgs, IKT3, ModuleInfo4,
-				ModeOfXArgs0)
+			get_mode_of_args(Inst, InstOfXArgs, InstTable2,
+				ModuleInfo4, ModeOfXArgs0)
 		->
 			ModeOfXArgs = ModeOfXArgs0,
-			mode_info_set_inst_key_table(IKT3, ModeInfo4,
+			mode_info_set_inst_table(InstTable2, ModeInfo4,
 				ModeInfo4a)
 		;
 			error("get_(inst/mode)_of_args failed")
@@ -780,15 +782,15 @@ split_complicated_subunifies_2([], [], [], [], no_extra_goals) --> [].
 split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 			Vars, UniModes, ExtraGoals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_info_get_inst_key_table(ModeInfo0, IKT),
+	mode_info_get_inst_table(ModeInfo0, InstTable),
 	UniMode0 = (InitialInstX - InitialInstY -> FinalInstX - FinalInstY),
 	ModeX = (InitialInstX -> FinalInstX),
 	ModeY = (InitialInstY -> FinalInstY),
 	mode_info_get_var_types(ModeInfo0, VarTypes0),
 	map__lookup(VarTypes0, Var0, VarType),
 	(
-		mode_to_arg_mode(IKT, ModuleInfo, ModeX, VarType, top_in),
-		mode_to_arg_mode(IKT, ModuleInfo, ModeY, VarType, top_in)
+		mode_to_arg_mode(InstTable, ModuleInfo, ModeX, VarType, top_in),
+		mode_to_arg_mode(InstTable, ModuleInfo, ModeY, VarType, top_in)
 	->
 		% introduce a new variable `Var'
 		mode_info_get_varset(ModeInfo0, VarSet0),
@@ -812,16 +814,16 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		ModeVar = (InitialInstX -> FinalInstX),
 
 		mode_info_get_module_info(ModeInfo3, ModuleInfo0),
-		mode_info_get_inst_key_table(ModeInfo3, IKT0),
+		mode_info_get_inst_table(ModeInfo3, InstTable0),
 		(
 			map__init(Sub0),
 			abstractly_unify_inst(dead, InitialInstX, InitialInstY,
-				real_unify, IKT0, ModuleInfo0, Sub0, _Inst,
-				Det1, IKT1, ModuleInfo1, Sub)
+				real_unify, InstTable0, ModuleInfo0, Sub0, _Inst,
+				Det1, InstTable1, ModuleInfo1, Sub)
 		->
 			mode_info_set_module_info(ModeInfo3, ModuleInfo1,
 				ModeInfo4),
-			mode_info_set_inst_key_table(IKT1, ModeInfo4,
+			mode_info_set_inst_table(InstTable1, ModeInfo4,
 					ModeInfo5),
 			mode_info_apply_inst_key_sub(Sub, ModeInfo5, ModeInfo6),
 			Det = Det1
@@ -885,20 +887,20 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 		UnifyContext, VarTypes, ModeInfo0, Unify, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	(
-		mode_is_output(IKT0, ModuleInfo0, ModeOfX)
+		mode_is_output(InstTable0, ModuleInfo0, ModeOfX)
 	->
 		Unification = assign(X, Y),
 		ModeInfo = ModeInfo0
 	;
-		mode_is_output(IKT0, ModuleInfo0, ModeOfY)
+		mode_is_output(InstTable0, ModuleInfo0, ModeOfY)
 	->
 		Unification = assign(Y, X),
 		ModeInfo = ModeInfo0
 	;
-		mode_is_unused(IKT0, ModuleInfo0, ModeOfX),
-		mode_is_unused(IKT0, ModuleInfo0, ModeOfY)
+		mode_is_unused(InstTable0, ModuleInfo0, ModeOfX),
+		mode_is_unused(InstTable0, ModuleInfo0, ModeOfY)
 	->
 		% For free-free unifications, we pretend for a moment that they
 		% are an assignment to the dead variable - they will then
@@ -954,7 +956,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 				UniMode0 = UniMode,
 				mode_info_get_context(ModeInfo0, Context),
 				unify_proc__request_unify(TypeId - UniMode, Det,
-					Context, IKT0, ModuleInfo0, ModuleInfo),
+					Context, InstTable0, ModuleInfo0, ModuleInfo),
 				mode_info_set_module_info(ModeInfo0, ModuleInfo,
 					ModeInfo)
 			;
@@ -1031,11 +1033,11 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_info_get_inst_key_table(ModeInfo0, IKT),
+	mode_info_get_inst_table(ModeInfo0, InstTable),
 	mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
 						ModuleInfo, ArgModes),
 	(
-		mode_is_output(IKT, ModuleInfo, ModeOfX)
+		mode_is_output(InstTable, ModuleInfo, ModeOfX)
 	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes),
 		ModeInfo = ModeInfo0
@@ -1068,7 +1070,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		X, NewConsId, ArgVars, VarTypes,
 		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_info_get_inst_key_table(ModeInfo0, IKT0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	map__lookup(VarTypes, X, TypeOfX),
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	( Unification0 = construct(_, ConsId0, _, _) ->
@@ -1081,7 +1083,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	mode_util__modes_to_uni_modes(ModeOfXArgs, ArgModes0,
 						ModuleInfo, ArgModes),
 	(
-		mode_is_output(IKT0, ModuleInfo, ModeOfX)
+		mode_is_output(InstTable0, ModuleInfo, ModeOfX)
 	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes),
 		ModeInfo = ModeInfo0
@@ -1097,9 +1099,10 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			% then the unification must be deterministic.
 			mode_get_insts(ModuleInfo, ModeOfX,
 					InitialInst0, FinalInst0),
-			inst_expand(IKT0, ModuleInfo, InitialInst0, IKT1,
+			inst_expand(InstTable0, ModuleInfo, InitialInst0,
 				InitialInst),
-			inst_expand(IKT1, ModuleInfo, FinalInst0, _, FinalInst),
+			inst_expand(InstTable0, ModuleInfo, FinalInst0,
+				FinalInst),
 			InitialInst = bound(_, [_]),
 			FinalInst = bound(_, [_])
 		->
@@ -1179,17 +1182,17 @@ ground_args(Uniq, [Arg | Args]) -->
 %       and the initial insts of the functor arguments,
 %       compute the modes of the functor arguments
 
-:- pred get_mode_of_args(inst, list(inst), inst_key_table, module_info,
+:- pred get_mode_of_args(inst, list(inst), inst_table, module_info,
 		list(mode)).
 :- mode get_mode_of_args(in, in, in, in, out) is semidet.
 
-get_mode_of_args(not_reached, ArgInsts, _IKT, _ModuleInfo, ArgModes) :-
+get_mode_of_args(not_reached, ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(any(Uniq), ArgInsts, _IKT, _ModuleInfo, ArgModes) :-
+get_mode_of_args(any(Uniq), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
 	mode_set_args(ArgInsts, any(Uniq), ArgModes).
-get_mode_of_args(ground(Uniq, no), ArgInsts, _IKT, _ModuleInfo, ArgModes) :-
+get_mode_of_args(ground(Uniq, no), ArgInsts, _InstTable, _ModuleInfo, ArgModes) :-
 	mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
-get_mode_of_args(bound(_Uniq, List), ArgInstsA, _IKT, _ModuleInfo, ArgModes) :-
+get_mode_of_args(bound(_Uniq, List), ArgInstsA, _InstTable, _ModuleInfo, ArgModes) :-
 	( List = [] ->
 		% the code is unreachable
 		mode_set_args(ArgInstsA, not_reached, ArgModes)
@@ -1197,9 +1200,10 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, _IKT, _ModuleInfo, ArgModes) :-
 		List = [functor(_Name, ArgInstsB)],
 		get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
 	).
-get_mode_of_args(alias(Key), ArgInsts, IKT, ModuleInfo, ArgModes) :-
+get_mode_of_args(alias(Key), ArgInsts, InstTable, ModuleInfo, ArgModes) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
 	inst_key_table_lookup(IKT, Key, Inst),
-	get_mode_of_args(Inst, ArgInsts, IKT, ModuleInfo, ArgModes).
+	get_mode_of_args(Inst, ArgInsts, InstTable, ModuleInfo, ArgModes).
 
 :- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
 :- mode get_mode_of_args_2(in, in, out) is semidet.

@@ -828,11 +828,11 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
 	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_inst_key_table(ProcInfo, IKT),
+	proc_info_inst_table(ProcInfo, InstTable),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
 	(
-		initial_liveness_2(Vars, Modes, Types, IKT, ModuleInfo,
+		initial_liveness_2(Vars, Modes, Types, InstTable, ModuleInfo,
 			Liveness0, Liveness1)
 	->
 		Liveness2 = Liveness1
@@ -862,21 +862,25 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	set__intersect(Liveness2, NonLocals, Liveness).
 
 
-:- pred initial_liveness_2(list(var), list(mode), list(type), inst_key_table,
+:- pred initial_liveness_2(list(var), list(mode), list(type), inst_table,
 	module_info, set(var), set(var)).
 :- mode initial_liveness_2(in, in, in, in, in, in, out) is semidet.
 
-initial_liveness_2([], [], [], _IKT, _ModuleInfo, Liveness, Liveness).
-initial_liveness_2([V | Vs], [M | Ms], [T | Ts], IKT, ModuleInfo,
+initial_liveness_2([], [], [], _InstTable, _ModuleInfo, Liveness, Liveness).
+initial_liveness_2([V | Vs], [M | Ms], [T | Ts], InstTable, ModuleInfo,
 		Liveness0, Liveness) :-
 	(
-		mode_to_arg_mode(IKT, ModuleInfo, M, T, top_in)
+/*###873 [cc] In clause for predicate `liveness:initial_liveness_2/7':%%%*/
+/*###873 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
+/*###873 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
+/*###873 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
+		mode_to_arg_mode(InstTable, ModuleInfo, M, T, top_in)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;
 		Liveness1 = Liveness0
 	),
-	initial_liveness_2(Vs, Ms, Ts, IKT, ModuleInfo, Liveness1, Liveness).
+	initial_liveness_2(Vs, Ms, Ts, InstTable, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 
@@ -887,11 +891,13 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
 	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_inst_key_table(ProcInfo, IKT),
+/*###890 [cc] In clause for predicate `liveness:initial_deadness/3':%%%*/
+/*###890 [cc] error: undefined predicate `proc_info_inst_table/2'.%%%*/
+	proc_info_inst_table(ProcInfo, InstTable),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
 	(
-		initial_deadness_2(Vars, Modes, Types, IKT, ModuleInfo,
+		initial_deadness_2(Vars, Modes, Types, InstTable, ModuleInfo,
 			Deadness0, Deadness1)
 	->
 		Deadness2 = Deadness1
@@ -913,20 +919,24 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	).
 
 :- pred initial_deadness_2(list(var), list(mode), list(type),
-			inst_key_table, module_info, set(var), set(var)).
+			inst_table, module_info, set(var), set(var)).
 :- mode initial_deadness_2(in, in, in, in, in, in, out) is semidet.
 
-initial_deadness_2([], [], [], _IKT, _ModuleInfo, Deadness, Deadness).
-initial_deadness_2([V | Vs], [M | Ms], [T | Ts], IKT, ModuleInfo,
+initial_deadness_2([], [], [], _InstTable, _ModuleInfo, Deadness, Deadness).
+initial_deadness_2([V | Vs], [M | Ms], [T | Ts], InstTable, ModuleInfo,
 		Deadness0, Deadness) :-
 	(
-		mode_to_arg_mode(IKT, ModuleInfo, M, T, top_out)
+/*###923 [cc] In clause for predicate `liveness:initial_deadness_2/7':%%%*/
+/*###923 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
+/*###923 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
+/*###923 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
+		mode_to_arg_mode(InstTable, ModuleInfo, M, T, top_out)
 	->
 		set__insert(Deadness0, V, Deadness1)
 	;
 		Deadness1 = Deadness0
 	),
-	initial_deadness_2(Vs, Ms, Ts, IKT, ModuleInfo, Deadness1, Deadness).
+	initial_deadness_2(Vs, Ms, Ts, InstTable, ModuleInfo, Deadness1, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -967,11 +977,15 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ValueVars0, ValueVars) :-
 	live_info_get_var_types(LiveInfo, VarTypes),
 	live_info_get_module_info(LiveInfo, ModuleInfo),
-	live_info_get_inst_key_table(LiveInfo, IKT),
+	live_info_get_inst_table(LiveInfo, InstTable),
 	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_search_var(InstMapDelta, Var, Inst),
-		mode_to_arg_mode(IKT, ModuleInfo, (free -> Inst), Type, top_out)
+/*###974 [cc] In clause for predicate `liveness:find_value_giving_occurrences/5':%%%*/
+/*###974 [cc] in argument 1 of call to pred `mode_to_arg_mode/5':%%%*/
+/*###974 [cc] type error: variable `InstTable' has type `((inst):inst_table)',%%%*/
+/*###974 [cc] expected type was `(hlds_data:inst_table)'.%%%*/
+		mode_to_arg_mode(InstTable, ModuleInfo, (free -> Inst), Type, top_out)
 	->
 		set__insert(ValueVars0, Var, ValueVars1)
 	;
@@ -1017,12 +1031,12 @@ live_info_get_var_types(live_info(_, _, VarTypes, _), VarTypes).
 
 live_info_get_varset(live_info(_, _, _, Varset), Varset).
 
-:- pred live_info_get_inst_key_table(live_info, inst_key_table).
-:- mode live_info_get_inst_key_table(in, out) is det.
+:- pred live_info_get_inst_table(live_info, inst_table).
+:- mode live_info_get_inst_table(in, out) is det.
 
-live_info_get_inst_key_table(LiveInfo, IKT) :-
+live_info_get_inst_table(LiveInfo, InstTable) :-
 	live_info_get_proc_info(LiveInfo, ProcInfo),
-	proc_info_inst_key_table(ProcInfo, IKT).
+	proc_info_inst_table(ProcInfo, InstTable).
 
 %-----------------------------------------------------------------------------%
 

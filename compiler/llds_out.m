@@ -1273,8 +1273,8 @@ output_live_value_type(var(Type, QualifiedInst)) -->
 	{ varset__init(NewVarset) },
 	mercury_output_term(Type, NewVarset, no),
 	io__write_string(", "),
-	{ QualifiedInst = qualified_inst(IKT, Inst) },
-	mercury_output_inst(expand_silently, Inst, NewVarset, IKT),
+	{ QualifiedInst = qualified_inst(InstTable, Inst) },
+	mercury_output_inst(expand_silently, Inst, NewVarset, InstTable),
 	io__write_string(")").
 
 :- pred output_temp_decls(int, string, io__state, io__state).

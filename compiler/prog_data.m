@@ -304,7 +304,7 @@
 
 % mode/4 defined above
 
-:- type argument_modes	--->	argument_modes(inst_key_table, list(mode)).
+:- type argument_modes	--->	argument_modes(inst_table, list(mode)).
 
 %-----------------------------------------------------------------------------%
 

@@ -289,7 +289,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 						% parameters
 			string,			% pred name
 			module_info,
-			inst_key_table
+			inst_table
 		).
 
 :- pred polymorphism__process_proc(proc_info, pred_info, module_info,
@@ -306,8 +306,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_argmodes(ProcInfo0, argument_modes(ArgIKT, ArgModes0)),
-	proc_info_inst_key_table(ProcInfo0, IKT0),
+	proc_info_argmodes(ProcInfo0, argument_modes(ArgInstTable, ArgModes0)),
+	proc_info_inst_table(ProcInfo0, InstTable0),
 
 	% insert extra head variables to hold the address of the
 	% equality predicate for each polymorphic type in the predicate's
@@ -326,7 +326,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
 				TypeInfoMap0),
 	Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
-				TypeInfoMap0, PredName, ModuleInfo0, IKT0),
+			TypeInfoMap0, PredName, ModuleInfo0, InstTable0),
 	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
 	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap, _PredName,
@@ -337,8 +337,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_argmodes(ProcInfo4, argument_modes(ArgIKT, ArgModes),
-		ProcInfo5),
+	proc_info_set_argmodes(ProcInfo4,
+		argument_modes(ArgInstTable, ArgModes), ProcInfo5),
 	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
@@ -373,7 +373,7 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 		{ special_pred_name_arity(SpecialPredId, PredName0,
 						MangledPredName, Arity) },
 		=(poly_info(_, VarTypes, _, _TypeInfoMap, _PN, ModuleInfo,
-			_IKT)),
+			_InstTable)),
 		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
 		{ map__lookup(VarTypes, MainVar, Type) },
 		{ Type \= term__variable(_) },
@@ -410,7 +410,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		{ Y = var(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, _PName, ModuleInfo,
-			IKT)),
+			InstTable)),
 		{ map__lookup(VarTypes, XVar, Type) },
 		( { Type = term__variable(TypeVar) } ->
 			% Convert polymorphic unifications into calls to
@@ -478,8 +478,8 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			% YYY Optimise UniMode0 in the case where there are
 			%     no shared inst_keys.
 			{ UniMode0 = UniMode },
-			{ unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId,
-				UniMode, Det, ProcId) },
+			{ unify_proc__lookup_mode_num(InstTable, ModuleInfo,
+				TypeId, UniMode, Det, ProcId) },
 			{ SymName = unqualified("__Unify__") },
 			{ ArgVars = [XVar, YVar] },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
@@ -625,7 +625,7 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				ExtraVars, ExtraGoals, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0,
-				TypeInfoMap0, PredName, ModuleInfo, IKT),
+				TypeInfoMap0, PredName, ModuleInfo, InstTable),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
@@ -657,7 +657,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				VarTypes),
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
-				TypeInfoMap, PredName, ModuleInfo, IKT)
+				TypeInfoMap, PredName, ModuleInfo, InstTable)
 	).
 
 :- pred polymorphism__fixup_quantification(hlds_goal, hlds_goal,
@@ -673,7 +673,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 
 polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
-			PredName, ModuleInfo, IKT),
+			PredName, ModuleInfo, InstTable),
 	( map__is_empty(TypeVarMap) ->
 		Info = Info0,
 		Goal = Goal0
@@ -697,7 +697,7 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap,
-				PredName, ModuleInfo, IKT)
+				PredName, ModuleInfo, InstTable)
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
@@ -710,13 +710,13 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 		LambdaGoal, Unification0, Functor, Unification,
 		PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, PredName,
-			ModuleInfo0, IKT),
+			ModuleInfo0, InstTable),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, IKT, ModuleInfo0, Functor,
+		TVarSet, TVarMap, InstTable, ModuleInfo0, Functor,
 		Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, TVarMap, PredName,
-			ModuleInfo, IKT).
+			ModuleInfo, InstTable).
 
 %---------------------------------------------------------------------------%
 

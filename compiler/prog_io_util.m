@@ -129,9 +129,9 @@ convert_mode(Term, Mode) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerms, ArgModes),
-		inst_key_table_init(ArgIKT),
+		inst_table_init(ArgInstTable),
 		PredInstInfo = pred_inst_info(predicate,
-			argument_modes(ArgIKT, ArgModes), Detism),
+			argument_modes(ArgInstTable, ArgModes), Detism),
 		Inst = ground(shared, yes(PredInstInfo)),
 		Mode = (Inst -> Inst)
 	;
@@ -153,9 +153,9 @@ convert_mode(Term, Mode) :-
 		convert_mode_list(ArgModesTerms, ArgModes0),
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
-		inst_key_table_init(ArgIKT),
+		inst_table_init(ArgInstTable),
 		FuncInstInfo = pred_inst_info(function,
-			argument_modes(ArgIKT, ArgModes), Detism),
+			argument_modes(ArgInstTable, ArgModes), Detism),
 		Inst = ground(shared, yes(FuncInstInfo)),
 		Mode = (Inst -> Inst)
 	;
@@ -213,9 +213,9 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerm, ArgModes),
-		inst_key_table_init(ArgIKT),
+		inst_table_init(ArgInstTable),
 		PredInst = pred_inst_info(predicate,
-			argument_modes(ArgIKT, ArgModes), Detism),
+			argument_modes(ArgInstTable, ArgModes), Detism),
 		Result = ground(shared, yes(PredInst))
 	;
 
@@ -236,9 +236,9 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		convert_mode_list(ArgModesTerm, ArgModes0),
 		convert_mode(RetModeTerm, RetMode),
 		list__append(ArgModes0, [RetMode], ArgModes),
-		inst_key_table_init(ArgIKT),
+		inst_table_init(ArgInstTable),
 		FuncInst = pred_inst_info(function,
-			argument_modes(ArgIKT, ArgModes), Detism),
+			argument_modes(ArgInstTable, ArgModes), Detism),
 		Result = ground(shared, yes(FuncInst))
 
 	% `not_reached' inst

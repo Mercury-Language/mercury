@@ -103,8 +103,7 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 				IntermodInfo2, IntermodInfo3) },
 		{ intermod_info_get_module_info(ModuleInfo1,
 				IntermodInfo3, IntermodInfo4) },
-		{ module_info_insts(ModuleInfo1, Insts) },
-		{ inst_table_get_user_insts(Insts, UserInsts) },
+		{ module_info_user_insts(ModuleInfo1, UserInsts) },
 		{ user_inst_table_get_inst_defns(UserInsts, InstDefns) },
 		{ module_info_modes(ModuleInfo1, Modes) },
 		{ mode_table_get_mode_defns(Modes, ModeDefns) },
@@ -248,22 +247,22 @@ intermod__traverse_clauses([clause(P, Goal0, C) | Clauses0],
 
 has_ho_input(ModuleInfo, ProcInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
-	proc_info_argmodes(ProcInfo, argument_modes(ArgIKT, ArgModes)),
+	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	check_for_ho_input_args(ArgIKT, ModuleInfo, HeadVars, ArgModes,
+	check_for_ho_input_args(ArgInstTable, ModuleInfo, HeadVars, ArgModes,
 		VarTypes).
 
-:- pred check_for_ho_input_args(inst_key_table::in, module_info::in,
+:- pred check_for_ho_input_args(inst_table::in, module_info::in,
 		list(var)::in, list(mode)::in, map(var, type)::in) is semidet.
 
-check_for_ho_input_args(IKT, ModuleInfo, [HeadVar | HeadVars],
+check_for_ho_input_args(InstTable, ModuleInfo, [HeadVar | HeadVars],
 			[ArgMode | ArgModes], VarTypes) :-
 	(
-		mode_is_input(IKT, ModuleInfo, ArgMode),
+		mode_is_input(InstTable, ModuleInfo, ArgMode),
 		map__lookup(VarTypes, HeadVar, Type),
 		classify_type(Type, ModuleInfo, pred_type)
 	;
-		check_for_ho_input_args(IKT, ModuleInfo, HeadVars,
+		check_for_ho_input_args(InstTable, ModuleInfo, HeadVars,
 							ArgModes, VarTypes)
 	).
 
@@ -505,8 +504,7 @@ intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,E,Goal0),
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_modes(ModuleInfo, ModeTable) },
 	{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
-	{ module_info_insts(ModuleInfo, Insts) },
-	{ inst_table_get_user_insts(Insts, UserInsts) },
+	{ module_info_user_insts(ModuleInfo, UserInsts) },
 	{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
 	{ Modes = argument_modes(_ArgIKT, ArgModes) },
 	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
@@ -736,8 +734,7 @@ intermod__write_intermod_info(IntermodInfo) -->
 	{ module_info_modes(ModuleInfo, ModeTable) },
 	{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
 	intermod__write_modes(ModuleInfo, ModeDefns, Modes),
-	{ module_info_insts(ModuleInfo, InstTable) },
-	{ inst_table_get_user_insts(InstTable, UserInstTable) },
+	{ module_info_user_insts(ModuleInfo, UserInstTable) },
 	{ user_inst_table_get_inst_defns(UserInstTable, InstDefns) },
 	intermod__write_insts(ModuleInfo, InstDefns, Insts),
 	intermod__write_pred_decls(ModuleInfo, PredDecls),
@@ -807,12 +804,12 @@ intermod__write_modes(ModuleInfo, ModeTable, [ModeId | Modes]) -->
 	{ map__lookup(ModeTable, ModeId, ModeDefn) },
 	{ ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode),
 							_, Context, _) },
-	{ inst_key_table_init(InstKeyTable) },	% YYY
+	{ inst_table_init(InstTable) },	% YYY
 	mercury_output_mode_defn(
 			Varset,
 			eqv_mode(SymName, Args, Mode),
 			Context,
-			InstKeyTable
+			InstTable
 	),
 	intermod__write_modes(ModuleInfo, ModeTable, Modes).
 
@@ -825,21 +822,22 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 	{ map__lookup(UserInstTable, Inst, InstDefn) },
 	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _, Context, _) },
 	(
-		{ Body = eqv_inst(InstKeyTable, Inst2) },
+		{ Body = eqv_inst(Inst2) },
+		{ inst_table_init(InstTable) },	% YYY
 		mercury_output_inst_defn(
 				Varset,
 				eqv_inst(SymName, Args, Inst2),
 				Context,
-				InstKeyTable
+				InstTable
 		)
 	;
 		{ Body = abstract_inst },
-		{ inst_key_table_init(InstKeyTable) },	% YYY
+		{ inst_table_init(InstTable) },	% YYY
 		mercury_output_inst_defn(
 				Varset,
 				abstract_inst(SymName, Args),
 				Context,
-				InstKeyTable
+				InstTable
 		)
 	),
 	intermod__write_insts(ModuleInfo, UserInstTable, Insts).
@@ -937,15 +935,15 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma(c_code, ...) separately
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ inst_key_table_init(IKT) },	% YYY
+	{ inst_table_init(InstTable) },	% YYY
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
-						Clauses, Procs, IKT)
+						Clauses, Procs, InstTable)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
-		hlds_out__write_clauses(1, IKT, ModuleInfo, PredId, Varset, no,
-			HeadVars, PredOrFunc, Clauses, no)
+		hlds_out__write_clauses(1, InstTable, ModuleInfo, PredId,
+			Varset, no, HeadVars, PredOrFunc, Clauses, no)
 		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
@@ -978,11 +976,11 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 
 	list(var)::in, varset::in, list(clause)::in, proc_table::in,
-	inst_key_table::in, io__state::di, io__state::uo) is det.
+	inst_table::in, io__state::di, io__state::uo) is det.
 
 intermod__write_c_code(_, _, _, _, [], _, _) --> [].
 intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
-		[Clause | Clauses], Procs, InstKeyTable) -->
+		[Clause | Clauses], Procs, InstTable) -->
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
 		(
@@ -1001,21 +999,21 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 		)
 	->	
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
-			MayCallMercury, Vars, Varset, SymName, InstKeyTable)
+			MayCallMercury, Vars, Varset, SymName, InstTable)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
 	intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
-				Clauses, Procs, InstKeyTable).
+				Clauses, Procs, InstTable).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
 		pred_or_func::in, string::in, may_call_mercury::in,
-		list(var)::in, varset::in, sym_name::in, inst_key_table::in,
+		list(var)::in, varset::in, sym_name::in, inst_table::in,
 		io__state::di, io__state::uo) is det.
 
 intermod__write_c_clauses(_, [], _, _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-		CCode, MayCallMercury, Vars, Varset, SymName, InstKeyTable) -->
+		CCode, MayCallMercury, Vars, Varset, SymName, InstTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	% XXX will need modification for alias declarations in arguments
@@ -1025,9 +1023,9 @@ intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 		% XXX will need modification for nondet pragma C code
 		mercury_output_pragma_c_code(MayCallMercury, SymName,
 			PredOrFunc, PragmaVars, no, Varset, CCode,
-			InstKeyTable),
+			InstTable),
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
-			MayCallMercury, Vars, Varset, SymName, InstKeyTable)
+			MayCallMercury, Vars, Varset, SymName, InstTable)
 	;
 		{ error("intermod__write_c_clauses: no mode declaration") }
 	).

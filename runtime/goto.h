@@ -243,13 +243,16 @@
 
   #endif /* PIC */
 
-  /* For Solaris 5.5.1, we need to declare that the type of labels is
+  /*
+  ** For Solaris 5.5.1, we need to declare that the type of labels is
   ** #function (i.e. code, not data), otherwise the dynamic linker seems
   ** to get confused, and we end up jumping into the data section.
   ** Hence the `.type' directive below.
   */
-  #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+  #ifndef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
+    #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
 	"	.type _entry_" stringify(label) ",#function\n"
+  #endif
 
 #endif
 

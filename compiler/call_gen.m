@@ -647,8 +647,8 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap,
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
 		code_info__find_type_infos(TypeVars, TypeParams),
-		code_info__get_inst_key_table(IKT),
-		{ QualifiedInst = qualified_inst(IKT, Inst) },	% YYY
+		code_info__get_inst_table(InstTable),
+		{ QualifiedInst = qualified_inst(InstTable, Inst) },
 		{ LiveVal = live_lvalue(R, var(Type, QualifiedInst),
 			TypeParams) }
 	;

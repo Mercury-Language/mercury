@@ -170,7 +170,7 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 	;
 		code_info__get_instmap(CurrentInstMap),
 		code_info__get_module_info(ModuleInfo),
-		code_info__get_inst_key_table(IKT),
+		code_info__get_inst_table(InstTable),
 		{ instmap_delta_changed_vars(InstMapDelta, ChangedVars) },
 		{ instmap__apply_instmap_delta(CurrentInstMap, InstMapDelta,
 			InstMapAfter) },
@@ -180,7 +180,8 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 			set__member(Var, ChangedVars),
 			instmap__lookup_var(CurrentInstMap, Var, Initial),
 			instmap__lookup_var(InstMapAfter, Var, Final),
-			mode_is_output(IKT, ModuleInfo, (Initial -> Final))
+			mode_is_output(InstTable, ModuleInfo,
+				(Initial -> Final))
 		)) },
 		{ solutions(Lambda, OutVars) }
 	).

@@ -246,8 +246,9 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
-	proc_info_inst_key_table(Proc0, IKT0),
-	det_info_init(ModuleInfo0, PredId, ProcId, IKT0, Globals, DetInfo),
+	proc_info_inst_table(Proc0, InstTable0),
+	det_info_init(ModuleInfo0, PredId, ProcId, InstTable0, Globals,
+		DetInfo),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs),
 

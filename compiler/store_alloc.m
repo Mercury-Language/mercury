@@ -49,11 +49,11 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	( ApplyFollowVars = yes ->
 		globals__get_args_method(Globals, ArgsMethod),
 		proc_info_goal(ProcInfo0, Goal0),
-		proc_info_inst_key_table(ProcInfo0, IKT),
+		proc_info_inst_table(ProcInfo0, InstTable),
 
 		find_final_follow_vars(ProcInfo0, FollowVars0),
-		find_follow_vars_in_goal(Goal0, ArgsMethod, IKT, ModuleInfo,
-			FollowVars0, Goal1, FollowVars),
+		find_follow_vars_in_goal(Goal0, ArgsMethod, InstTable,
+			ModuleInfo, FollowVars0, Goal1, FollowVars),
 		Goal1 = GoalExpr1 - GoalInfo1,
 		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
 			GoalInfo2),

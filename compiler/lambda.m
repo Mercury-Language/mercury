@@ -35,7 +35,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, prog_data, (inst).
+:- import_module hlds_module, hlds_pred, prog_data.
 :- import_module list, set, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
@@ -43,13 +43,13 @@
 
 :- pred lambda__transform_lambda(pred_or_func, string, list(var),
 		argument_modes, determinism, set(var), hlds_goal, unification,
-		varset, map(var, type), tvarset, map(tvar, var), inst_key_table,
+		varset, map(var, type), tvarset, map(tvar, var), inst_table,
 		module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
 		in, in, in, out, out, out) is det.
 
 	% Permute the list of variables so that inputs come before outputs.
-:- pred lambda__permute_argvars(list(var), list(mode), inst_key_table,
+:- pred lambda__permute_argvars(list(var), list(mode), inst_table,
 			module_info, list(var), list(mode)).
 :- mode lambda__permute_argvars(in, in, in, in, out, out) is det.
 
@@ -72,7 +72,7 @@
 			pred_or_func,
 			string,			% pred/func name
 			module_info,
-			inst_key_table
+			inst_table
 		).
 
 %-----------------------------------------------------------------------------%
@@ -125,12 +125,12 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
-	proc_info_inst_key_table(ProcInfo0, IKT),
+	proc_info_inst_table(ProcInfo0, InstTable),
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, TVarMap0, 
 		PredOrFunc, PredName,
-		ModuleInfo0, IKT),
+		ModuleInfo0, InstTable),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
 	Info = lambda_info(VarSet, VarTypes, TypeVarSet, TVarMap, 
 		_, _, ModuleInfo, _),
@@ -229,17 +229,17 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			POF, PredName, ModuleInfo0, IKT),
+			POF, PredName, ModuleInfo0, InstTable),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, IKT, ModuleInfo0, Functor,
+		TVarSet, TVarMap, InstTable, ModuleInfo0, Functor,
 		Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			POF, PredName, ModuleInfo, IKT).
+			POF, PredName, ModuleInfo, InstTable).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
-		TVarSet, TVarMap, IKT, ModuleInfo0, Functor,
+		TVarSet, TVarMap, InstTable, ModuleInfo0, Functor,
 		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
@@ -290,15 +290,15 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		),
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo,
-			argument_modes(Call_ArgIKT, Call_ArgModes)),
+			argument_modes(Call_ArgInstTable, Call_ArgModes)),
 		list__length(InitialVars, NumInitialVars),
 		list__split_list(NumInitialVars, Call_ArgModes,
 			CurriedArgModes, UncurriedArgModes),
 		\+ (	list__member(Mode, CurriedArgModes), 
-			\+ mode_is_input(Call_ArgIKT, ModuleInfo0, Mode)
+			\+ mode_is_input(Call_ArgInstTable, ModuleInfo0, Mode)
 		),
 			% and that all the inputs precede the outputs
-		inputs_precede_outputs(UncurriedArgModes, Call_ArgIKT,
+		inputs_precede_outputs(UncurriedArgModes, Call_ArgInstTable,
 			ModuleInfo0)
 	->
 		ArgVars = InitialVars,
@@ -360,18 +360,18 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		% permute the argument variables so that all the inputs
 		% come before all the outputs.
 		
-		lambda__permute_argvars(AllArgVars, AllArgModes, IKT,
+		lambda__permute_argvars(AllArgVars, AllArgModes, InstTable,
 			ModuleInfo1, PermutedArgVars, PermutedArgModes),
 		map__apply_to_list(PermutedArgVars, VarTypes, ArgTypes),
 
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
-		ArgIKT = IKT,	% XXX Should optimise ArgIKT
-		PermutedModes = argument_modes(ArgIKT, PermutedArgModes),
+		ArgInstTable = InstTable,	% XXX Should optimise ArgInstTable
+		PermutedModes = argument_modes(ArgInstTable, PermutedArgModes),
 		proc_info_create(VarSet, VarTypes, PermutedArgVars,
 			PermutedModes, Detism, LambdaGoal, LambdaContext,
-			TVarMap, ArgIKT, ProcInfo),
+			TVarMap, ArgInstTable, ProcInfo),
 
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
 			true, LambdaContext, local, [], PredOrFunc, ProcInfo,
@@ -417,22 +417,22 @@ lambda__uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
 	Mode = (Initial1 -> Initial1),
 	lambda__uni_modes_to_modes(UniModes, Modes).
 
-:- pred inputs_precede_outputs(list(mode), inst_key_table, module_info).
+:- pred inputs_precede_outputs(list(mode), inst_table, module_info).
 :- mode inputs_precede_outputs(in, in, in) is semidet.
 
 	% succeed iff all the inputs in the list of modes precede the outputs
 
 inputs_precede_outputs([], _, _).
-inputs_precede_outputs([Mode | Modes], IKT, ModuleInfo) :-
-	( mode_is_input(IKT, ModuleInfo, Mode) ->
-		inputs_precede_outputs(Modes, IKT, ModuleInfo)
+inputs_precede_outputs([Mode | Modes], InstTable, ModuleInfo) :-
+	( mode_is_input(InstTable, ModuleInfo, Mode) ->
+		inputs_precede_outputs(Modes, InstTable, ModuleInfo)
 	;
 		% the following is an if-then-else rather than a 
 		% negation purely because the compiler got an internal
 		% error compiling it when it was a negation
 		(
 			list__member(OtherMode, Modes),
-			mode_is_input(IKT, ModuleInfo, OtherMode)
+			mode_is_input(InstTable, ModuleInfo, OtherMode)
 		->
 			fail
 		;
@@ -443,9 +443,9 @@ inputs_precede_outputs([Mode | Modes], IKT, ModuleInfo) :-
 	% permute a list of variables and a corresponding list of their modes
 	% so that all the input variables precede all the output variables.
 
-lambda__permute_argvars(AllArgVars, AllArgModes, IKT, ModuleInfo,
+lambda__permute_argvars(AllArgVars, AllArgModes, InstTable, ModuleInfo,
 		PermutedArgVars, PermutedArgModes) :-
-	( split_argvars(AllArgVars, AllArgModes, IKT, ModuleInfo,
+	( split_argvars(AllArgVars, AllArgModes, InstTable, ModuleInfo,
 		InArgVars, InArgModes, OutArgVars, OutArgModes) ->
 		list__append(InArgVars, OutArgVars, PermutedArgVars),
 		list__append(InArgModes, OutArgModes, PermutedArgModes)
@@ -453,7 +453,7 @@ lambda__permute_argvars(AllArgVars, AllArgModes, IKT, ModuleInfo,
 		error("lambda__permute_argvars: split_argvars failed")
 	).
 
-:- pred split_argvars(list(var), list(mode), inst_key_table, module_info,
+:- pred split_argvars(list(var), list(mode), inst_table, module_info,
 			list(var), list(mode), list(var), list(mode)).
 :- mode split_argvars(in, in, in, in, out, out, out, out) is semidet.
 
@@ -461,11 +461,11 @@ lambda__permute_argvars(AllArgVars, AllArgModes, IKT, ModuleInfo,
 	% into the input vars/modes and the output vars/modes.
 
 split_argvars([], [], _, _, [], [], [], []).
-split_argvars([Var|Vars], [Mode|Modes], IKT, ModuleInfo,
+split_argvars([Var|Vars], [Mode|Modes], InstTable, ModuleInfo,
 		InVars, InModes, OutVars, OutModes) :-
-	split_argvars(Vars, Modes, IKT, ModuleInfo,
+	split_argvars(Vars, Modes, InstTable, ModuleInfo,
 		InVars0, InModes0, OutVars0, OutModes0),
-	( mode_is_input(IKT, ModuleInfo, Mode) ->
+	( mode_is_input(InstTable, ModuleInfo, Mode) ->
 		InVars = [Var|InVars0],
 		InModes = [Mode|InModes0],
 		OutVars = OutVars0,

@@ -259,11 +259,11 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, Code) -->
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_key_table(IKT),
+	code_info__get_inst_table(InstTable),
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, IKT, ModuleInfo,
-		RVals) },
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstTable,
+		ModuleInfo, RVals) },
 	{ Code = empty },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
@@ -271,11 +271,11 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_key_table(IKT),
+	code_info__get_inst_table(InstTable),
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
-	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, IKT, ModuleInfo,
-		RVals0) },
+	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstTable,
+		ModuleInfo, RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 	{ Code = empty },
@@ -457,12 +457,15 @@ unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
 :- pred unify_gen__generate_cons_args(list(var), list(type), list(uni_mode),
-			inst_key_table, module_info, list(maybe(rval))).
+			inst_table, module_info, list(maybe(rval))).
 :- mode unify_gen__generate_cons_args(in, in, in, in, in, out) is det.
 
-unify_gen__generate_cons_args(Vars, Types, Modes, IKT, ModuleInfo, Args) :-
-	( unify_gen__generate_cons_args_2(Vars, Types, Modes, IKT, ModuleInfo,
-			Args0) ->
+unify_gen__generate_cons_args(Vars, Types, Modes, InstTable, ModuleInfo,
+		Args) :-
+	(
+		unify_gen__generate_cons_args_2(Vars, Types, Modes, InstTable,
+			ModuleInfo, Args0)
+	->
 		Args = Args0
 	;
 		error("unify_gen__generate_cons_args: length mismatch")
@@ -475,20 +478,20 @@ unify_gen__generate_cons_args(Vars, Types, Modes, IKT, ModuleInfo, Args) :-
 	% generate an assignment to that field.
 
 :- pred unify_gen__generate_cons_args_2(list(var), list(type), list(uni_mode),
-			inst_key_table, module_info, list(maybe(rval))).
+			inst_table, module_info, list(maybe(rval))).
 :- mode unify_gen__generate_cons_args_2(in, in, in, in, in, out) is semidet.
 
 unify_gen__generate_cons_args_2([], [], [], _, _, []).
 unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
-			IKT, ModuleInfo, [Arg|RVals]) :-
+			InstTable, ModuleInfo, [Arg|RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
-	( mode_to_arg_mode(IKT, ModuleInfo, (RI -> RF), Type, top_in) ->
+	( mode_to_arg_mode(InstTable, ModuleInfo, (RI -> RF), Type, top_in) ->
 		Arg = yes(var(Var))
 	;
 		Arg = no
 	),
-	unify_gen__generate_cons_args_2(Vars, Types, UniModes, IKT, ModuleInfo,
-		RVals).
+	unify_gen__generate_cons_args_2(Vars, Types, UniModes, InstTable,
+		ModuleInfo, RVals).
 
 %---------------------------------------------------------------------------%
 
@@ -636,9 +639,9 @@ unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
 unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 	{ Mode = ((LI - RI) -> (LF - RF)) },
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_inst_key_table(IKT),
-	{ mode_to_arg_mode(IKT, ModuleInfo, (LI -> LF), Type, LeftMode) },
-	{ mode_to_arg_mode(IKT, ModuleInfo, (RI -> RF), Type, RightMode) },
+	code_info__get_inst_table(IT),
+	{ mode_to_arg_mode(IT, ModuleInfo, (LI -> LF), Type, LeftMode) },
+	{ mode_to_arg_mode(IT, ModuleInfo, (RI -> RF), Type, RightMode) },
 	(
 			% Input - input == test unification
 		{ LeftMode = top_in },

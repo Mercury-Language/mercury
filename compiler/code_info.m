@@ -33,8 +33,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, llds, instmap, trace, (inst).
-:- import_module globals.
+:- import_module hlds_pred, hlds_goal, llds, instmap, trace, globals.
 :- import_module bool, set, std_util, assoc_list.
 
 :- implementation.
@@ -616,9 +615,9 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 
 :- interface.
 
-		% Get the inst_key_table of this proc.
-:- pred code_info__get_inst_key_table(inst_key_table, code_info, code_info).
-:- mode code_info__get_inst_key_table(out, in, out) is det.
+		% Get the inst_table of this proc.
+:- pred code_info__get_inst_table(inst_table, code_info, code_info).
+:- mode code_info__get_inst_table(out, in, out) is det.
 
 		% Get the hlds mapping from variables to stack slots
 :- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
@@ -756,9 +755,9 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 
 %-----------------------------------------------------------------------------%
 
-code_info__get_inst_key_table(IKT, CI, CI) :-
+code_info__get_inst_table(InstTable, CI, CI) :-
 	code_info__get_proc_info(ProcInfo, CI, _),
-	proc_info_inst_key_table(ProcInfo, IKT).
+	proc_info_inst_table(ProcInfo, InstTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -2877,8 +2876,8 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
-	code_info__get_inst_key_table(IKT),
-	code_info__livevals_to_livelvals(LiveVals2, GC_Method, IKT,
+	code_info__get_inst_table(InstTable),
+	code_info__livevals_to_livelvals(LiveVals2, GC_Method, InstTable,
 		AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsSet),
 	{ map__to_assoc_list(TempsSet, Temps) },
@@ -2936,11 +2935,11 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 	).
 
 :- pred code_info__livevals_to_livelvals(assoc_list(lval, var), gc_method,
-	inst_key_table, instmap, list(liveinfo), code_info, code_info).
+	inst_table, instmap, list(liveinfo), code_info, code_info).
 :- mode code_info__livevals_to_livelvals(in, in, in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _GC_Method, _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, IKT,
+code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, InstTable,
 		AfterCallInstMap, [LiveLval | Lives]) -->
 	(
 		{ GC_Method = accurate }
@@ -2952,12 +2951,12 @@ code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, IKT,
 		code_info__find_type_infos(TypeVars, TypeParams),
 		{ LiveLval = live_lvalue(Lval, var(Type, QualInst),
 				TypeParams) },
-		{ QualInst = qualified_inst(IKT, Inst) }
+		{ QualInst = qualified_inst(InstTable, Inst) }
 	;
 		{ LiveLval = live_lvalue(Lval, unwanted, []) }
 	),
-	code_info__livevals_to_livelvals(Ls, GC_Method, IKT, AfterCallInstMap, 
-		Lives).
+	code_info__livevals_to_livelvals(Ls, GC_Method, InstTable,
+		AfterCallInstMap, Lives).
 
 :- pred code_info__get_live_value_type(slot_contents, live_value_type).
 :- mode code_info__get_live_value_type(in, out) is det.

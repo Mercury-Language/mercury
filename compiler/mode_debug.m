@@ -34,7 +34,7 @@
 
 :- implementation.
 :- import_module globals, std_util, list, assoc_list, io, bool, map.
-:- import_module term, varset, hlds_module.
+:- import_module term, varset, hlds_module, hlds_data.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
 :- import_module hlds_goal, instmap, prog_data, (inst).
 
@@ -88,10 +88,9 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 			{ instmap__to_assoc_list(InstMap, NewInstList) },
 			{ mode_info_get_varset(ModeInfo, VarSet) },
 			{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-			{ mode_info_get_inst_key_table(ModeInfo, IKT) },
+			{ mode_info_get_inst_table(ModeInfo, InstTable) },
 			write_var_insts(NewInstList, OldInstList,
-				VarSet, InstVarSet, IKT)
-%			inst_key_table_dump(IKT)
+				VarSet, InstVarSet, InstTable)
 		;
 			{ NewInstList = [] },
 			io__write_string("\tUnreachable\n")
@@ -103,12 +102,12 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 	io__flush_output.
 
 :- pred write_var_insts(assoc_list(var, inst), assoc_list(var, inst),
-	varset, varset, inst_key_table, io__state, io__state).
+	varset, varset, inst_table, io__state, io__state).
 :- mode write_var_insts(in, in, in, in, in, di, uo) is det.
 
 write_var_insts([], _, _, _, _) --> [].
 write_var_insts([Var - Inst | VarInsts], OldInstList, VarSet, InstVarSet,
-		InstKeyTable) -->
+		InstTable) -->
 	io__write_string("\t"),
 	mercury_output_var(Var, VarSet, no),
 	io__write_string(" ::"),
@@ -120,10 +119,10 @@ write_var_insts([Var - Inst | VarInsts], OldInstList, VarSet, InstVarSet,
 	;
 		io__write_string("\n"),
 		mercury_output_structured_inst(expand_noisily, Inst, 2,
-			InstVarSet, InstKeyTable)
+			InstVarSet, InstTable)
 	),
 	write_var_insts(VarInsts, OldInstList, VarSet, InstVarSet,
-		InstKeyTable).
+		InstTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

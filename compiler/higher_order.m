@@ -151,7 +151,7 @@ max_specialized_goal_size(20).
 			set(request),
 			new_preds,
 			module_info,
-			inst_key_table
+			inst_table
 		).
 
 :- type new_preds == map(pred_proc_id, set(new_pred)).
@@ -208,8 +208,9 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			% first time through we can only specialize call/N
 		map__init(NewPreds0),
 		PredProcId = proc(PredId, ProcId),
-		proc_info_inst_key_table(ProcInfo0, IKT),
-		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0, IKT),
+		proc_info_inst_table(ProcInfo0, InstTable),
+		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0,
+			InstTable),
 		traverse_goal(Goal0, Goal1, PredProcId, Changed,
 				GoalSize, Info0, info(_, Requests1,_,_,_)),
 		map__set(GoalSizes0, PredId, GoalSize, GoalSizes1),
@@ -254,8 +255,8 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_inst_key_table(ProcInfo0, IKT),
-	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo, IKT),
+	proc_info_inst_table(ProcInfo0, InstTable),
+	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo, InstTable),
 	traverse_goal(Goal0, Goal1, proc(PredId, ProcId), _, _,
 					Info0, info(_, Requests1,_,_,_)),
 	proc_info_headvars(ProcInfo0, HeadVars),
@@ -564,8 +565,8 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		% We need to permute the arguments so that inputs come before
 		% outputs, since lambda.m will have done that to the arguments
 		% of the closure.
-		Modes = argument_modes(ArgIKT, ArgModes),
-		lambda__permute_argvars(Args, ArgModes, ArgIKT, Module,
+		Modes = argument_modes(ArgInstTable, ArgModes),
+		lambda__permute_argvars(Args, ArgModes, ArgInstTable, Module,
 			PermutedArgs, _),
 
 		list__append(CurriedArgs, PermutedArgs, AllArgs),
@@ -935,9 +936,10 @@ fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	map__init(PredVars0),
 	set__init(Requests0),
-	proc_info_inst_key_table(ProcInfo0, IKT),
+	proc_info_inst_table(ProcInfo0, InstTable),
 	traverse_goal(Goal0, Goal1, PredProcId, _, _,
-		info(PredVars0, Requests0, NewPreds, ModuleInfo0, IKT), _),
+		info(PredVars0, Requests0, NewPreds, ModuleInfo0, InstTable),
+		_),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
@@ -1024,10 +1026,10 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	pred_info_set_arg_types(NewPredInfo1, ArgTVarset, ArgTypes,
 							 NewPredInfo2),
 	map__init(PredVars0),
-	inst_key_table_init(IKT0),
+	inst_table_init(InstTable0),
         traverse_goal(Goal1, Goal2, proc(NewPredId, NewProcId), _, GoalSize,
-		info(PredVars0, Requests0, NewPredMap, ModuleInfo0, IKT0),
-		info(_, Requests1,_,_,IKT1)),
+		info(PredVars0, Requests0, NewPredMap, ModuleInfo0,
+		InstTable0), info(_, Requests1,_,_,InstTable1)),
 	map__set(GoalSizes0, NewPredId, GoalSize, GoalSizes1),
 	proc_info_variables(NewProcInfo1, Varset0),
 					
@@ -1051,9 +1053,9 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	% YYY NewProcInfo1 is not in the ModuleInfo here!  What to do
 	%     about it?
 	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
-		IKT1, IKT2, ModuleInfo5, ModuleInfo6),
+		InstTable1, InstTable2, ModuleInfo5, ModuleInfo6),
 	proc_info_set_goal(NewProcInfo5, Goal4, NewProcInfo6),
-	proc_info_set_inst_key_table(NewProcInfo6, IKT2, NewProcInfo),
+	proc_info_set_inst_table(NewProcInfo6, InstTable2, NewProcInfo),
 
 	map__det_insert(NewProcs0, NewProcId, NewProcInfo5, NewProcs),
 	pred_info_set_procedures(NewPredInfo2, NewProcs, NewPredInfo),

@@ -59,7 +59,7 @@
 	% Add a new request to the unify_requests table.
 
 :- pred unify_proc__request_unify(unify_proc_id, determinism, term__context,
-				inst_key_table, module_info, module_info).
+				inst_table, module_info, module_info).
 :- mode unify_proc__request_unify(in, in, in, in, in, out) is det.
 
 	% Modecheck the unification procedures which have been
@@ -74,7 +74,7 @@
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
 
-:- pred unify_proc__lookup_mode_num(inst_key_table, module_info, type_id,
+:- pred unify_proc__lookup_mode_num(inst_table, module_info, type_id,
 					uni_mode, determinism, proc_id).
 :- mode unify_proc__lookup_mode_num(in, in, in, in, in, out) is det.
 
@@ -153,9 +153,9 @@ unify_proc__set_req_queue(unify_requests(A, _), ReqQueue,
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId, UniMode, Det, Num) :-
+unify_proc__lookup_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Det, Num) :-
 	(
-		unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode,
+		unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode,
 				Det, Num1)
 	->
 		Num = Num1
@@ -163,7 +163,7 @@ unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId, UniMode, Det, Num) :-
 		error("unify_proc.m: unify_proc__search_num failed")
 	).
 
-:- pred unify_proc__search_mode_num(inst_key_table, module_info, type_id,
+:- pred unify_proc__search_mode_num(inst_table, module_info, type_id,
 				uni_mode, determinism, proc_id).
 :- mode unify_proc__search_mode_num(in, in, in, in, in, out) is semidet.
 
@@ -175,13 +175,13 @@ unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId, UniMode, Det, Num) :-
 	% we assume that `ground' and `any' have the same representation.)
 	% For unreachable unifications, we also use mode zero.
 
-unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode, Determinism,
+unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Determinism,
 		ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
 	(
 		Determinism = semidet,
-		inst_is_ground_or_any(XInitial, IKT, ModuleInfo),
-		inst_is_ground_or_any(YInitial, IKT, ModuleInfo)
+		inst_is_ground_or_any(XInitial, InstTable, ModuleInfo),
+		inst_is_ground_or_any(YInitial, InstTable, ModuleInfo)
 	->
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;
@@ -200,14 +200,14 @@ unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode, Determinism,
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__request_unify(UnifyId, Determinism, Context, IKT, ModuleInfo0,
+unify_proc__request_unify(UnifyId, Determinism, Context, InstTable, ModuleInfo0,
 		ModuleInfo) :-
 	%
 	% check if this unification has already been requested
 	%
 	UnifyId = TypeId - UnifyMode,
 	(
-		unify_proc__search_mode_num(IKT, ModuleInfo0, TypeId, UnifyMode,
+		unify_proc__search_mode_num(InstTable, ModuleInfo0, TypeId, UnifyMode,
 			Determinism, _)
 	->
 		ModuleInfo = ModuleInfo0
@@ -230,9 +230,9 @@ unify_proc__request_unify(UnifyId, Determinism, Context, IKT, ModuleInfo0,
 		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 		MaybeDet = yes(Determinism),
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
-		% XXX IKT may contain a LOT more info than is necessary.
+		% XXX InstTable may contain a LOT more info than is necessary.
 		%     We should optimise it here.
-		ArgumentModes = argument_modes(IKT, ArgModes),
+		ArgumentModes = argument_modes(InstTable, ArgModes),
 		add_new_proc(PredInfo0, Arity, ArgumentModes, no, ArgLives,
 				MaybeDet, Context, PredInfo1, ProcId),
 
@@ -298,12 +298,12 @@ modecheck_unify_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo) -->
 			io__write_string("% with insts `"),
 			{ UniMode = ((InstA - InstB) -> _FinalInst) },
 			{ varset__init(InstVarSet) },
-			{ inst_key_table_init(InstKeyTable) },	% YYY
+			{ inst_table_init(InstTable) },	% YYY
 			mercury_output_inst(expand_noisily, InstA, InstVarSet,
-				InstKeyTable),
+				InstTable),
 			io__write_string("', `"),
 			mercury_output_inst(expand_noisily, InstB, InstVarSet,
-				InstKeyTable),
+				InstTable),
 			io__write_string("'\n")
 		;
 			[]

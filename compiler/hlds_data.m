@@ -341,10 +341,10 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
 
 :- type maybe_inst	--->	unknown
-			;	known(inst, inst_key_table).
+			;	known(inst).
 
 :- type maybe_inst_det	--->	unknown
-			;	known(inst, inst_key_table, determinism).
+			;	known(inst, determinism).
 
 	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
@@ -368,7 +368,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 		).
 
 :- type hlds_inst_body
-	--->	eqv_inst(inst_key_table, inst)	% This inst is equivalent to
+	--->	eqv_inst(inst)			% This inst is equivalent to
 						% some other inst.
 	;	abstract_inst.			% This inst is just a forward
 						% declaration; the real
@@ -381,8 +381,16 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_init(inst_table).
 :- mode inst_table_init(out) is det.
 
-:- pred inst_table_get_user_insts(inst_table, user_inst_table).
-:- mode inst_table_get_user_insts(in, out) is det.
+:- pred inst_table_get_all_tables(inst_table, unify_inst_table,
+	merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, inst_key_table).
+:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out) is det.
+
+:- pred inst_table_set_all_tables(inst_table, unify_inst_table,
+	merge_inst_table, ground_inst_table, any_inst_table,
+	shared_inst_table, mostly_uniq_inst_table, inst_key_table,
+	inst_table).
+:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
 :- mode inst_table_get_unify_insts(in, out) is det.
@@ -404,9 +412,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
 :- mode inst_table_get_inst_key_table(in, out) is det.
-
-:- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
-:- mode inst_table_set_user_insts(in, in, out) is det.
 
 :- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
 :- mode inst_table_set_unify_insts(in, in, out) is det.
@@ -430,6 +435,9 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 :- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
 :- mode inst_table_set_inst_key_table(in, in, out) is det.
 
+:- pred user_inst_table_init(user_inst_table).
+:- mode user_inst_table_init(out) is det.
+
 :- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
 :- mode user_inst_table_get_inst_defns(in, out) is det.
 
@@ -449,7 +457,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type inst_table
 	--->	inst_table(
-			user_inst_table,
+			unit,
 			unify_inst_table,
 			merge_inst_table,
 			ground_inst_table,
@@ -468,10 +476,8 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 				% qualifying the modes of lambda expressions.
 		).
 
-inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
+inst_table_init(inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
 			AnyInsts, SharedInsts, NondetLiveInsts, InstKeys)) :-
-	map__init(UserInstDefns),
-	UserInsts = user_inst_table(UserInstDefns, []),
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
 	map__init(GroundInsts),
@@ -480,8 +486,16 @@ inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
 	map__init(NondetLiveInsts),
 	inst_key_table_init(InstKeys).
 
-inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _, _, _, _),
-			UserInsts).
+inst_table_get_all_tables(InstTable, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys) :-
+	InstTable = inst_table(unit, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
+
+inst_table_set_all_tables(InstTable0, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys, InstTable) :-
+	InstTable0 = inst_table(A, _, _, _, _, _, _, _),
+	InstTable  = inst_table(A, UnifyInsts, MergeInsts, GroundInsts,
+		AnyInsts, SharedInsts, NondetLiveInsts, InstKeys).
 
 inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _),
 			UnifyInsts).
@@ -504,9 +518,6 @@ inst_table_get_mostly_uniq_insts(
 inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, InstKeyTable),
 			InstKeyTable).
 
-inst_table_set_user_insts(inst_table(_, B, C, D, E, F, G, H), UserInsts,
-			inst_table(UserInsts, B, C, D, E, F, G, H)).
-
 inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H), UnifyInsts,
 			inst_table(A, UnifyInsts, C, D, E, F, G, H)).
 
@@ -528,6 +539,10 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H),
 
 inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, _), InstKeys,
 			inst_table(A, B, C, D, E, F, G, InstKeys)).
+
+user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
+	map__init(InstDefns),
+	InstIds = [].
 
 user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
 
