@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2003 The University of Melbourne.
+# Copyright (C) 2001-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -50,6 +50,7 @@ print_grade=false
 print_gc_grade=false
 print_link_command=false
 print_shared_lib_link_command=false
+print_map=false
 
 # initialize c2init options
 maxcalls=40	# maximum number of calls to put in a single function
@@ -99,6 +100,8 @@ Diagnostics options:
 		Print the command used to link executables.
 	--print-shared-lib-link-command
 		Print the command used to link shared libraries.
+	--print-map
+		Print a link map, via \`ld --print-map'.
 
 Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
@@ -397,6 +400,12 @@ EOF
 		;;
 	--no-print-shared-lib-link-command)
 		print_shared_lib_link_command=false
+		;;
+	--print-map)
+		print_map=true
+		;;
+	--no-print-map)
+		print_map=false
 		;;
 
 	#

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne.
+# Copyright (C) 1995-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -308,6 +308,13 @@ case "$print_shared_lib_link_command" in true)
 	exit 0
 esac
 
+if $print_map
+then
+	PRINT_MAP_OPT="-Wl,--print-map"
+else
+	PRINT_MAP_OPT=""
+fi
+
 merc_libdir_opts="\
 	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
 	@LIB_LIBPATH@$LIBDIR/$FULLARCH
@@ -375,7 +382,7 @@ case "$MKFIFO" in
     none) demangle=false ;;
 esac
 
-LINKER_PRE_FLAGS="$MSVCRT_OPTS $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+LINKER_PRE_FLAGS="$MSVCRT_OPTS $PRINT_MAP_OPT $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
 LINKER_POST_FLAGS="@LINK_OPT_SEP@ $NODEFAULTLIB_FLAG $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
 
 case $verbose in
