@@ -70,8 +70,9 @@
 :- import_module mdb__util.
 :- import_module mdb__declarative_execution.
 :- import_module mdbcomp__program_representation.
+:- import_module mdb.parse.
 
-:- import_module std_util, char, string, bool, int, deconstruct.
+:- import_module std_util, char, string, bool, int, deconstruct, getopt.
 
 :- type user_state
 	--->	user(
@@ -165,6 +166,20 @@ handle_command(print_arg(From, To), UserQuestion, UserQuestions, Skipped,
 	print_atom_arguments(TraceAtom, From, To, User0),
 	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
 		User0, User).
+
+handle_command(set(MaybeOptionTable, Setting), UserQuestion, UserQuestions,
+		Skipped, Response, !User, !IO) :-
+	(
+		MaybeOptionTable = ok(OptionTable),
+		browser_info.set_param(no, OptionTable, Setting, 
+			!.User ^ browser, Browser),
+		!:User = !.User ^ browser := Browser
+	;
+		MaybeOptionTable = error(Msg),
+		io.write_string(Msg++"\n", !IO)
+	),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response, !User,
+		!IO).
 
 handle_command(browse_io(ActionNum), UserQuestion, UserQuestions, Skipped,
 		Response, User0, User) -->
@@ -431,6 +446,8 @@ reverse_and_append([A | As], Bs, Cs) :-
 					% before answering.
 	;	pd			% Commence procedural debugging from
 					% this point.
+	;	set(maybe_option_table(setting_option), setting) 
+					% Set a browser option.
 	;	abort			% Abort this diagnosis session.
 	;	help			% Request help before answering.
 	;	empty_command		% User just pressed return.
@@ -454,7 +471,9 @@ user_help_message(User) -->
 		"\tp <n-m>\tprint <n-m>\tprint the nth to the mth arguments of the atom\n",
 		"\tp io <n>\tprint io <n>\tprint the atom's nth I/O action\n",
 		"\tp io <n-m>\tprint io <n-m>\tprint the atom's nth to mth I/O actions\n",
-		"\tpd\t\tcommence procedural debugging from this point\n",
+		"\tset [-APBfpv] <param> <value>\t",
+		"set a term browser parameter value\n",
+		"\tpd\t\t\tcommence procedural debugging from this point\n",
 		"\ta\tabort\t\t",
 			"abort this diagnosis session and return to mdb\n",
 		"\th, ?\thelp\t\tthis help message\n"
@@ -531,6 +550,7 @@ cmd_handler("b",	browse_arg_cmd).
 cmd_handler("browse",	browse_arg_cmd).
 cmd_handler("p",	print_arg_cmd).
 cmd_handler("print",	print_arg_cmd).
+cmd_handler("set",	set_arg_cmd).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
 	is semidet.
@@ -552,6 +572,12 @@ print_arg_cmd(["io", Arg]) = print_io(From, To) :-
 	string_to_range(Arg, From, To).
 
 :- pred string_to_range(string::in, int::out, int::out) is semidet.
+
+:- func set_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+
+set_arg_cmd(ArgWords) = set(MaybeOptionTable, Setting) :-
+	ArgWords \= [],
+	parse.parse(["set" | ArgWords], set(MaybeOptionTable, Setting)).
 
 string_to_range(Arg, From, To) :-
 	( string__to_int(Arg, Num) ->

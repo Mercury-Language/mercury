@@ -17,8 +17,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__program_representation.
 :- import_module mdb__browser_term.
+:- import_module mdb.parse.
 
-:- import_module bool, list, std_util, io.
+:- import_module bool, list, std_util, io, getopt.
 
 	% The non-persistent browser information.  A new one of these is
 	% created every time the browser is called, based on the contents
@@ -146,6 +147,14 @@
 	bool::in, bool::in, bool::in, bool::in, setting::in, 
 	browser_persistent_state::in, browser_persistent_state::out) is det.
 
+	% browser_info.set_param(FromBrowser, OptionTable, Setting, !State)
+	% Same as set_param/11, but looks up the options in the
+	% supplied option table.
+	%
+:- pred browser_info.set_param(bool::in, option_table(setting_option)::in,
+	setting::in, browser_persistent_state::in,
+	browser_persistent_state::out) is det.
+	
 %---------------------------------------------------------------------------%
 
 % These three predicates are like the deconstruct, limited_deconstruct
@@ -396,6 +405,17 @@ browser_info__set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0,
 		State = browser_persistent_state(PParams, BParams, AParams,
 			State0 ^ num_printed_io_actions)
 	).
+
+browser_info.set_param(FromBrowser, OptionTable, Setting, !State) :-
+	browser_info.set_param(FromBrowser,
+		lookup_bool_option(OptionTable, print) `with_type` bool,
+		lookup_bool_option(OptionTable, browse) `with_type` bool,
+		lookup_bool_option(OptionTable, print_all) `with_type` bool,
+		lookup_bool_option(OptionTable, flat) `with_type` bool,
+		lookup_bool_option(OptionTable, raw_pretty) `with_type` bool,
+		lookup_bool_option(OptionTable, verbose) `with_type` bool,
+		lookup_bool_option(OptionTable, pretty) `with_type` bool,
+		Setting, !State).
 
 :- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
 	bool::out, bool::out, bool::out) is det.

@@ -536,17 +536,10 @@ bool_format_option_is_true(Format - bool(yes), Format).
 :- pred set_browse_param(option_table(setting_option)::in, setting::in,
 	browser_info::in, browser_info::out) is det.
 
-set_browse_param(OptionTable, Setting, Info0, Info) :-
-	browser_info__set_param(yes,
-		lookup_bool_option(OptionTable, print) `with_type` bool,
-		lookup_bool_option(OptionTable, browse) `with_type` bool,
-		lookup_bool_option(OptionTable, print_all) `with_type` bool,
-		lookup_bool_option(OptionTable, flat) `with_type` bool,
-		lookup_bool_option(OptionTable, raw_pretty) `with_type` bool,
-		lookup_bool_option(OptionTable, verbose) `with_type` bool,
-		lookup_bool_option(OptionTable, pretty) `with_type` bool,
-		Setting, Info0 ^ state, NewState),
-	Info = Info0 ^ state := NewState.
+set_browse_param(OptionTable, Setting, !Info) :-
+	browser_info.set_param(yes, OptionTable, Setting, !.Info ^ state, 
+		NewState),
+	!:Info = !.Info ^ state := NewState.
 
 :- pred help(debugger::in, io::di, io::uo) is det.
 

@@ -7,6 +7,9 @@ dd
 browse 2
 ls
 quit
+set format verbose
+set -B format pretty
+set -P format pretty
 no
 yes
 continue

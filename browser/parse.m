@@ -155,6 +155,11 @@
 
 :- pred parse__read_command_external(command::out, io::di, io::uo) is det.
 
+	% parse(Words, Command).
+	% Command is the command give by the list of strings Words.
+	%
+:- pred parse__parse(list(string)::in, command::out) is semidet.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -291,8 +296,6 @@ lexer_name(C, Cs, Toks) :-
 	Toks = [name(Name) | Toks2].
 
 %---------------------------------------------------------------------------%
-
-:- pred parse(list(string)::in, command::out) is semidet.
 
 parse(Words, Command) :-
 	(

@@ -15,6 +15,22 @@ browser> ls
 baz(1, bar)
 browser> quit
 p(1, baz(1, bar))
+Valid? set format verbose
+p
+1-1
+2-baz
+  1-1
+  2-bar
+
+Valid? set -B format pretty
+p
+1-1
+2-baz
+  1-1
+  2-bar
+
+Valid? set -P format pretty
+p(1, baz(1, bar))
 Valid? no
 Found incorrect contour:
 p(1, baz(1, bar))
