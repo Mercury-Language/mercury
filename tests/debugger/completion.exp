@@ -20,16 +20,12 @@ delete             ignore             quit               v
 disable            io_query           r                  vars
 document           label_stats        register           view
 document_category  level              retry              
-
 h     help  
-
 vars  view  
 help vars 
 vars
      Prints the names of all the known variables in the current
      environment, together with an ordinal number for each variable.
-
-
 mdb> 
 *           --pretty    -f          -v          exception   
 --flat      --verbose   -p          HeadVar__1  goal        
@@ -41,14 +37,11 @@ stack --detailed
    0       1       1    1 pred completion:main/2-0 (det) (completion.m:13) (empty)
 mdb> 
 proc_stats  procedures  
-
 completion            completion:sub2       
 completion:sub1       completion:sub2:sub3  
-
 completion:sub1       completion:sub2       completion:sub2:sub3
 procedures completion:sub1
 List of procedures in module `completion:sub1'
-
 pred completion:sub1:zp/1-0 (det)
 func completion:sub1:z1/0-0 (det)
 mdb> set --flat format pretty 
@@ -59,25 +52,20 @@ mdb> b zabc3
 mdb> 
 func*completion:            func*completion:sub2:
 func*completion:sub1:       func*completion:sub2:sub3:
-
 func*completion:z   func*completion:zz  
 b func*completion:z
  1: + stop  interface func completion:z/0-0 (det)
 mdb> 
 completion:            completion:sub2:       
 completion:sub1:       completion:sub2:sub3:  
-
 completion:sub1:       completion:sub2:       completion:sub2:sub3:
-
 completion:sub1:z1  completion:sub1:zp  
 b completion:sub1:z1
  2: + stop  interface func completion:sub1:z1/0-0 (det)
 mdb> 
 completion:            completion:sub2:       
 completion:sub1:       completion:sub2:sub3:  
-
 completion:sub1:       completion:sub2:       completion:sub2:sub3:
-
 completion:sub2:       completion:sub2:sub3:  
 b completion:sub2:sub3:zabc3 
  3: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)

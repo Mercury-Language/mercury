@@ -137,7 +137,7 @@ cmd_quote.out: cmd_quote cmd_quote.inp
 # Set up readline to make it easier to use completion non-interactively.
 completion.out: completion completion.inp
 	INPUTRC=completion.inputrc $(MDB) ./completion \
-		< completion.inp > completion.out 2>&1
+		< completion.inp 2>&1 | sed -e '/^$$/d' > completion.out 2>&1
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1

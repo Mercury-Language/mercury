@@ -31,8 +31,6 @@ help vars
 vars
      Prints the names of all the known variables in the current
      environment, together with an ordinal number for each variable.
-
-
 mdb> p --flat 
 *           --pretty    -f          -v          exception   
 --flat      --verbose   -p          HeadVar__1  goal        
@@ -54,7 +52,6 @@ completion:sub1       completion:sub2       completion:sub2:sub3
 mdb> procedures completion:sub1
 procedures completion:sub1
 List of procedures in module `completion:sub1'
-
 pred completion:sub1:zp/1-0 (det)
 func completion:sub1:z1/0-0 (det)
 mdb> set --flat format pretty 
