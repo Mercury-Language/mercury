@@ -567,7 +567,7 @@ io__rename_file_2(OldName, NewName, Result, ResultStr) -->
 
 io__remove_file_2(FileName, Result, ResultStr) -->
 	{ use_module(library(system)) }, % for delete_file/2
-	{ name(FileAtom, OldName) },
+	{ name(FileAtom, FileName) },
 	{ delete_file(FileAtom, []) ->
 		Result = 0
 	;
