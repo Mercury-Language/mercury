@@ -185,9 +185,18 @@ libmmc:		libmercury_compile.a mercury_compile_init.$O
 
 LN = ln
 
-mercury_compile: $(MC_PROG)
+ifneq ("$(EXT_FOR_EXE)","")
+.PHONY: mercury_compile
+mercury_compile: mercury_compile$(EXT_FOR_EXE)
+endif
+
+mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 	rm -f mercury_compile$(EXT_FOR_EXE)
 	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
+ifeq ($(findstring il,$(GRADE)),il)        
+	# set the stack size to 100M -- the default of 1M is too low
+	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
+endif
 
 libmercury_compile.a: lib$(MC_PROG).a
 	rm -f libmercury_compile.a
@@ -208,6 +217,8 @@ mercury_compile_init.$O: $(MC_PROG)_init.$O
 # (We used to just build mlds_to_gcc.err, but that caused bootstrapping problems
 # with the source distribution; using the .c files is little more robust.)
 
+ifneq ($(findstring il,$(GRADE)),il)        
+
 .PHONY: depend
 depend:		mlds_to_gcc.depend
 
@@ -219,6 +230,7 @@ mercury:	mlds_to_gcc.c gcc.c
 .PHONY: cs
 cs: 		mlds_to_gcc.c gcc.c
 
+endif
 
 #-----------------------------------------------------------------------------#
 

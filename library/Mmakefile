@@ -239,6 +239,9 @@ mercury_il.dll: ../runtime/mercury_il.dll
 mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
 	cp ../runtime/mercury_mcpp.dll .
 
+%__csharp_code.dll: $(RUNTIME_DLLS)
+%__cpp_code.dll: $(RUNTIME_DLLS)
+
 builtin__cpp_code.dll : builtin__csharp_code.dll
 exception__csharp_code.dll : exception__cpp_code.dll
 CSHARP_ASSEMBLY_REFS-exception__csharp_code += /addmodule:exception__cpp_code.dll

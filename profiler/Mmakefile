@@ -35,11 +35,12 @@ all : mercury_profile
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
+ifneq ($(findstring il,$(GRADE)),il)        
 mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
-# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
-# so just leave it out.
+# XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
+# if in .gc(.prof) grade.
+endif
 
 $(cs_subdir)mercury_profile_init.c: $(UTIL_DIR)/mkinit
 
