@@ -49,6 +49,13 @@
 :- pred opt_util__can_instr_fall_through(instr, bool).
 :- mode opt_util__can_instr_fall_through(in, out) is det.
 
+	% Check whether a code_addr, when the target of a goto, represents
+	% either a call or a proceed/succeed; if so, it is the end of an
+	% extended basic block and needs a livevals in front of it.
+
+:- pred opt_util__livevals_addr(code_addr, bool).
+:- mode opt_util__livevals_addr(in, out) is det.
+
 	% Determine all the labels and code addresses which are referenced
 	% by an instruction.
 
@@ -128,6 +135,8 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	Instrs_between = [Instr1, Instr3].
 
 opt_util__can_instr_branch_away(comment(_), no).
+opt_util__can_instr_branch_away(livevals(_), no).
+opt_util__can_instr_branch_away(block(_, _), no).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _, _), no).
@@ -140,9 +149,10 @@ opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 opt_util__can_instr_branch_away(incr_hp(_), no).
-opt_util__can_instr_branch_away(livevals(_), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
+opt_util__can_instr_fall_through(livevals(_), yes).
+opt_util__can_instr_fall_through(block(_, _), yes).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _), no).
 opt_util__can_instr_fall_through(mkframe(_, _, _), yes).
@@ -155,26 +165,31 @@ opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(incr_hp(_), yes).
-opt_util__can_instr_fall_through(livevals(_), yes).
 
-	% opt_util__instr_labels(Instr, Labels, CodeAddresses):
-	% Determine all the labels and code addresses which are referenced
-	% by an instruction.
-
-opt_util__instr_labels(label(_), [], []).
+opt_util__instr_labels(comment(_), [], []).
+opt_util__instr_labels(livevals(_), [], []).
+opt_util__instr_labels(block(_, _), [], []).
+opt_util__instr_labels(assign(_,_), [], []).
 opt_util__instr_labels(call(Target, Ret), [], [Target, Ret]).
-opt_util__instr_labels(goto(Addr), [], [Addr]).
-opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
 opt_util__instr_labels(mkframe(_, _, Addr), [], [Addr]).
 opt_util__instr_labels(modframe(Addr), [], [Addr]).
+opt_util__instr_labels(label(_), [], []).
+opt_util__instr_labels(goto(Addr), [], [Addr]).
+opt_util__instr_labels(computed_goto(_, Labels), Labels, []).
 opt_util__instr_labels(if_val(_, Addr), [], [Addr]).
-opt_util__instr_labels(comment(_), [], []).
 opt_util__instr_labels(c_code(_), [], []).
 opt_util__instr_labels(incr_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
-opt_util__instr_labels(assign(_,_), [], []).
-opt_util__instr_labels(livevals(_), [], []).
+
+opt_util__livevals_addr(label(local(_)), yes).
+opt_util__livevals_addr(label(local(_, _)), no).
+opt_util__livevals_addr(label(exported(_)), yes).
+opt_util__livevals_addr(imported(_), yes).
+opt_util__livevals_addr(succip, yes).
+opt_util__livevals_addr(do_succeed, yes).
+opt_util__livevals_addr(do_redo, no).
+opt_util__livevals_addr(do_fail, no).
 
 :- end_module opt_util.
 

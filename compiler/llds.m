@@ -35,6 +35,10 @@
 			% A list of which registers and stack locations
 			% are currently live.
 
+	;	block(int, list(instruction))
+			% a list of instructions that make use of
+			% some local temporary variables
+
 	;	assign(lval, rval)
 			% Assign the value specified by rval to the location
 			% specified by lval
@@ -90,7 +94,8 @@
 			;	hp
 			;	sp
 			;	field(tag, lval, int)
-			;	lvar(var).
+			;	lvar(var)
+			;	temp(int).	% only inside blocks
 
 :- type rval		--->	lval(lval)
 			;	var(var)
@@ -124,8 +129,10 @@
 			   code_info__generate_expression
 			   code_info__generate_expression_vars
 			   code_info__expression_dependencies
+			   value_number__make_live
 			*/
 
+% should be renamed binary_op
 :- type operator	--->	(+)
 			;	(-)
 			;	(*)
@@ -300,6 +307,14 @@ output_instruction(livevals(LiveVals)) -->
 		[]
 	).
 
+output_instruction(block(N, Instrs)) -->
+	io__write_string("\t{\n"),
+	io__write_string("\tWord "),
+	output_temp_decls(N),
+	io__write_string("\n"),
+	output_instruction_list(Instrs),
+	io__write_string("\t}\n").
+
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t{ "),
 	output_lval_decls(Lval),
@@ -394,6 +409,30 @@ output_livevals([Lval|Lvals]) -->
 	output_lval(Lval),
 	io__write_string("\n"),
 	output_livevals(Lvals).
+
+:- pred output_temp_decls(int, io__state, io__state).
+:- mode output_temp_decls(in, di, uo) is det.
+
+output_temp_decls(N) --> 
+	output_temp_decls_2(1, N).
+
+:- pred output_temp_decls_2(int, int, io__state, io__state).
+:- mode output_temp_decls_2(in, in, di, uo) is det.
+
+output_temp_decls_2(Next, Max) --> 
+	( { Next < Max } ->
+		( { Next > 0 } ->
+			io__write_string(", ")
+		;
+			[]
+		),
+		io__write_string("temp"),
+		io__write_int(Next),
+		{ Next1 is Next + 1 },
+		output_temp_decls_2(Next1, Max)
+	;
+		[]
+	).
 
 :- pred output_rval_decls(rval, io__state, io__state).
 :- mode output_rval_decls(in, di, uo) is det.
@@ -722,24 +761,6 @@ output_rval_const(false) -->
 
 output_lval(reg(R)) -->
 	output_reg(R).
-output_lval(field(Tag, Lval, FieldNum)) -->
-	io__write_string("field("),
-	output_tag(Tag),
-	io__write_string(", "),
-	output_lval(Lval),
-	io__write_string(", "),
-	io__write_int(FieldNum),
-	io__write_string(")").
-output_lval(succip) -->
-	io__write_string("LVALUE_CAST(Word,succip)").
-output_lval(sp) -->
-	io__write_string("LVALUE_CAST(Word,sp)").
-output_lval(hp) -->
-	io__write_string("LVALUE_CAST(Word,hp)").
-output_lval(maxfr) -->
-	io__write_string("LVALUE_CAST(Word,maxfr)").
-output_lval(curredoip) -->
-	io__write_string("LVALUE_CAST(Word,curredoip)").
 output_lval(stackvar(N)) -->
 	{ (N < 0) ->
 		error("stack var out of range")
@@ -758,8 +779,29 @@ output_lval(framevar(N)) -->
 	io__write_string("framevar("),
 	io__write_int(N),
 	io__write_string(")").
+output_lval(succip) -->
+	io__write_string("LVALUE_CAST(Word,succip)").
+output_lval(sp) -->
+	io__write_string("LVALUE_CAST(Word,sp)").
+output_lval(hp) -->
+	io__write_string("LVALUE_CAST(Word,hp)").
+output_lval(maxfr) -->
+	io__write_string("LVALUE_CAST(Word,maxfr)").
+output_lval(curredoip) -->
+	io__write_string("LVALUE_CAST(Word,curredoip)").
+output_lval(field(Tag, Lval, FieldNum)) -->
+	io__write_string("field("),
+	output_tag(Tag),
+	io__write_string(", "),
+	output_lval(Lval),
+	io__write_string(", "),
+	io__write_int(FieldNum),
+	io__write_string(")").
 output_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
+output_lval(temp(N)) -->
+	io__write_string("temp"),
+	io__write_int(N).
 
 %-----------------------------------------------------------------------------%
 
