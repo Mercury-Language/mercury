@@ -188,7 +188,7 @@ void reg_msg(void)
 
 /*--------------------------------------------------------------------*/
 
-#ifndef SPEED
+#if !defined(SPEED) || defined(DEBUG_GOTOS)
 
 /* debugging printing tools */
 
