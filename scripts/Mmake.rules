@@ -63,6 +63,11 @@ main_target: $(MAIN_TARGET)
 .nl.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
 
+.nl.dep:
+	@-[ ! -f $*.dep ] || chmod +w $*.dep
+	$(MCD) $(MCDFLAGS) $<
+	@-chmod -w $*.dep
+
 .nl.depend:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
