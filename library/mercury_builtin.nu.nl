@@ -28,3 +28,42 @@ builtin_float_lt(X, Y) :- X < Y.
 builtin_float_ge(X, Y) :- X >= Y.
 builtin_float_gt(X, Y) :- X > Y.
 
+	% dynamic_environment_hack/2 is a mechanism for
+	% storing any environment variables which are
+	% set during the course of the program.  This is
+	% because NU-Prolog does not provide a putenv-
+	% like operation for modifying the environment.
+	%
+	% Entries are stored as
+	%       dynamic_environment_hack(Var, Value)
+	% where Var (an atom) is the variable and Value
+	% (a string) is the associated value.
+:- dynamic(dynamic_environment_hack/2).
+
+io__getenv(Name, MaybeValue) :-
+	name(NameA, Name),
+	( dynamic_environment_hack(NameA, Value) ->
+	    MaybeValue = Value
+	;
+	    ( getenv(NameA, Value) ->
+		MaybeValue = Value
+	    ;
+		fail
+	    )
+	).
+
+io__putenv(Line) :-
+	np_builtin__split_env_string(Line, VarS, Value),
+	name(Var, VarS),
+	retractall(dynamic_environment_hack(Var, _)),
+	assert(dynamic_environment_hack(Var, Value)).
+
+np_builtin__split_env_string([], [], []).
+np_builtin__split_env_string([C | Cs], Var, Rest) :-
+	( C = (0'=) ->
+	    Var = [], Rest = Cs
+	;
+	    Var = [C | Var0],
+	    np_builtin__split_env_string(Cs, Var0, Rest)
+	).
+
