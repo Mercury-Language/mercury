@@ -954,6 +954,9 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		% to have no output vars
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
+		% XXX we should check for delayed goals
+		% (e.g. delayed non-linear constraints) here
+
 	( { CodeModel = model_det } ->
 		{ DiscardTicketCode = empty },
 		{ FailCode = empty }

@@ -243,6 +243,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 			% condition can be backtracked into.
 		% code_info__maybe_pop_stack(MaybeTicketSlot, DiscardTicketCode)
 		{ DiscardTicketCode = empty }
+		% XXX should check for delayed nonlinear constraints
 	;
 			% Discard the trail ticket if the condition succeeded
 			% and we will not backtrack into the condition
