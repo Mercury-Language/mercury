@@ -461,12 +461,8 @@ vn_order__use_sink_before_redef(Sink, VnTables, Liveset,
 
 		vn_order__add_users(Users, Sink, Vnlval, VnTables, Liveset,
 			Succmap0, Succmap1, Predmap0, Predmap1),
-		(
-			{ vn_table__search_desired_value(Vnlval, Vn,
-				VnTables) },
-			{ map__search(Succmap1, node_shared(NewVn), _) }
-		->
-			vn_order__add_users(Users, node_shared(Vn), Vnlval,
+		( { map__search(Succmap1, node_shared(NewVn), _) } ->
+			vn_order__add_users(Users, node_shared(NewVn), Vnlval,
 				VnTables, Liveset,
 				Succmap1, Succmap, Predmap1, Predmap)
 		;
