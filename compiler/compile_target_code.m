@@ -151,14 +151,19 @@
 
 %-----------------------------------------------------------------------------%
 
-	% maybe_pic_object_file_extension(G, P, E) is true iff
-	% E is the extension which should be used on object files according
-	% to the value of P.
+	% maybe_pic_object_file_extension(Globals, PIC, Ext) is true iff
+	% Ext is the extension which should be used on object files according
+	% to the value of PIC.  The value of PIC should be obtained
+	% from a call to `get_object_code_type'.  In particular, on
+	% architectures for which no special handling for PIC is
+	% necessary, only a value of `non_pic' should be used.
+	% The `(in, out, in)' mode guarantees that the returned
+	% value of PIC meets this requirement.
 :- pred maybe_pic_object_file_extension(globals, pic, string).
 :- mode maybe_pic_object_file_extension(in, in, out) is det.
 :- mode maybe_pic_object_file_extension(in, out, in) is semidet.
 
-	% Same as above except the globals, G, are obtained from the io__state.
+	% Same as above except the globals are obtained from the io__state.
 :- pred maybe_pic_object_file_extension(pic::in, string::out,
 		io__state::di, io__state::uo) is det.
 
