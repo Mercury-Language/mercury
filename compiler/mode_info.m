@@ -462,7 +462,7 @@ mode_info_dcg_get_instmap(InstMap, ModeInfo, ModeInfo) :-
 mode_info_set_instmap( InstMap,
 		mode_info(A,B,C,D,E,F,G,H,InstMap0,J,DelayInfo0,L,M,N,O),
 		mode_info(A,B,C,D,E,F,G,H,InstMap,J,DelayInfo,L,M,N,O)) :-
-	( InstMap = unreachable, InstMap0 \= unreachable ->
+	( instmap__is_unreachable(InstMap), instmap__is_reachable(InstMap0) ->
 		delay_info__bind_all_vars(DelayInfo0, DelayInfo)
 	;
 		DelayInfo = DelayInfo0

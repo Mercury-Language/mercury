@@ -71,7 +71,7 @@
 :- import_module type_util, mode_util, std_util, int, set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
-:- import_module passes_aux, code_aux, middle_rec.
+:- import_module code_aux, middle_rec, passes_aux.
 :- import_module prog_data, instmap.
 
 %---------------------------------------------------------------------------%
@@ -230,7 +230,7 @@ generate_category_code(model_det, Goal, Instrs, Used) -->
 		code_info__manufacture_failure_cont(no),
 
 		code_gen__generate_goal(model_det, Goal, Instr1),
-		code_info__get_instmap(InstMap),
+		code_info__get_instmap(Instmap),
 
 		% generate the prolog for the clause, which for deterministic
 		% procedures creates a label, increments the
@@ -247,7 +247,7 @@ generate_category_code(model_det, Goal, Instrs, Used) -->
 		% and restore the succip.
 
 		(
-			{ InstMap \= unreachable }
+			{ instmap__is_reachable(Instmap) }
 		->
 			code_gen__generate_det_epilog(Instr2)
 		;
@@ -345,7 +345,7 @@ code_gen__generate_det_epilog(ExitCode) -->
 	code_info__get_headvars(HeadVars),
 	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args)},
 	(
-		{ Instmap = unreachable }
+		{ instmap__is_unreachable(Instmap) }
 	->
 		{ CodeA = empty }
 	;
@@ -445,7 +445,7 @@ code_gen__generate_semi_epilog(Instr) -->
 	code_info__get_headvars(HeadVars),
 	{assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
 	(
-		{ Instmap = unreachable }
+		{ instmap__is_unreachable(Instmap) }
 	->
 		{ CodeA = empty }
 	;
@@ -558,7 +558,7 @@ code_gen__generate_non_epilog(Instr) -->
 	code_info__get_headvars(HeadVars),
 	{assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
 	(
-		{ Instmap = unreachable }
+		{ instmap__is_unreachable(Instmap) }
 	->
 		{ CodeA = empty }
 	;
@@ -597,9 +597,9 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		IsAtomic = no
 	},
 	code_aux__pre_goal_update(GoalInfo, IsAtomic),
-	code_info__get_instmap(InstMap),
+	code_info__get_instmap(Instmap),
 	(
-		{ InstMap \= unreachable }
+		{ instmap__is_reachable(Instmap) }
 	->
 		{ goal_info_get_code_model(GoalInfo, CodeModel) },
 		(
@@ -629,7 +629,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		),
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
-		code_info__set_instmap(InstMap),
+		code_info__set_instmap(Instmap),
 		code_aux__post_goal_update(GoalInfo),
 		code_info__get_globals(Options),
 		(
@@ -659,9 +659,9 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 code_gen__generate_goals([], _, empty) --> [].
 code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 	code_gen__generate_goal(CodeModel, Goal, Instr1),
-	code_info__get_instmap(InstMap),
+	code_info__get_instmap(Instmap),
 	(
-		{ InstMap = unreachable }
+		{ instmap__is_unreachable(Instmap) }
 	->
 		{ Instr = Instr1 }
 	;

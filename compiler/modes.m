@@ -500,8 +500,8 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 		% then check that the final instantiation matches that in
 		% the mode declaration
 	mode_list_get_initial_insts(ArgModes1, ModuleInfo0, ArgInitialInsts),
-	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
-	InstMap0 = reachable(InstMapping0),
+	assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts, InstAL),
+	instmap__from_assoc_list(InstAL, InstMap0),
 		% initially, only the non-clobbered head variables are live
 	mode_list_get_final_insts(ArgModes1, ModuleInfo0, ArgFinalInsts0),
 	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
@@ -551,7 +551,7 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 			FinalInsts, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
-	instmap_lookup_vars(HeadVars, InstMap, VarFinalInsts1),
+	instmap__lookup_vars(HeadVars, InstMap, VarFinalInsts1),
 
 	( InferModes = yes ->
 		normalise_insts(VarFinalInsts1, ModuleInfo, VarFinalInsts2),
@@ -700,11 +700,12 @@ modecheck_goal_expr(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] },
-		mode_info_set_instmap(unreachable)
+		{ instmap__init_unreachable(InstMap) },
+		mode_info_set_instmap(InstMap)
 	;
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		modecheck_disj_list(List0, List, InstMapList),
-		instmap_merge(NonLocals, InstMapList, disj)
+		instmap__merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "disj").
 
@@ -725,8 +726,8 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal) -->
 	modecheck_goal(C0, C),
 	mode_info_dcg_get_instmap(InstMapC),
 	mode_info_set_instmap(InstMap0),
-	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else),
-	( { InstMapA = unreachable } ->
+	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
+	( { instmap__is_unreachable(InstMapA) } ->
 		% if the condition can never succeed, we delete the
 		% unreachable `then' part by replacing
 		%	if some [Vs] A then B else C
@@ -740,9 +741,9 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal) -->
 		{ goal_info_init(EmptyGoalInfo) },
 		{ goal_info_set_nonlocals(EmptyGoalInfo, SomeA_NonLocals,
 			SomeA_GoalInfo) },
-		{ map__init(EmptyInstmapDelta) },
+		{ instmap_delta_init_reachable(EmptyInstmapDelta) },
 		{ goal_info_set_instmap_delta(SomeA_GoalInfo,
-			reachable(EmptyInstmapDelta), NotSomeA_GoalInfo) },
+			EmptyInstmapDelta, NotSomeA_GoalInfo) },
 		
 		{ Goal = conj([not(some(Vs, A) - SomeA_GoalInfo) -
 				NotSomeA_GoalInfo, C]) }
@@ -807,11 +808,12 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, FV), GoalInfo0,
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
-		mode_info_set_instmap(unreachable)
+		{ instmap__init_unreachable(InstMap) },
+		mode_info_set_instmap(InstMap)
 	;
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		modecheck_case_list(Cases0, Var, Cases, InstMapList),
-		instmap_merge(NonLocals, InstMapList, disj)
+		instmap__merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "switch").
 
@@ -1018,7 +1020,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	),
 	mode_info_set_delay_info(DelayInfo),
 	mode_info_dcg_get_instmap(InstMap),
-	( { InstMap = unreachable } ->
+	( { instmap__is_unreachable(InstMap) } ->
 		mode_info_remove_goals_live_vars(Goals1),
 		{ Goals2  = [] }
 	;
@@ -1157,7 +1159,7 @@ modecheck_var_has_inst_list([Var|Vars], [Inst|Insts], ArgNum0) -->
 
 modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
-	instmap_lookup_var(InstMap, VarId, VarInst),
+	instmap__lookup_var(InstMap, VarId, VarInst),
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	( inst_matches_initial(VarInst, Inst, ModuleInfo) ->
@@ -1208,10 +1210,10 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	( InstMap0 = reachable(_) ->
+	( instmap__is_reachable(InstMap0) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
-		instmap_lookup_var(InstMap0, Var0, VarInst0),
+		instmap__lookup_var(InstMap0, Var0, VarInst0),
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, VarInst0, FinalInst,
@@ -1245,10 +1247,10 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 
 modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
-	( InstMap0 = reachable(InstMapping0) ->
+	( instmap__is_reachable(InstMap0) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
-		instmap_lookup_var(InstMap0, Var0, Inst0),
+		instmap__lookup_var(InstMap0, Var0, Inst0),
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, Inst0, FinalInst,
@@ -1266,15 +1268,15 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			% then the instmap as a whole must be unreachable
 			inst_expand(ModuleInfo, Inst, not_reached)
 		->
-			mode_info_set_instmap(unreachable, ModeInfo1, ModeInfo)
+			instmap__init_unreachable(InstMap),
+			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 		;
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
 			inst_matches_initial(Inst0, Inst, ModuleInfo)
 		->
-			map__set(InstMapping0, Var0, Inst, InstMapping),
-			InstMap = reachable(InstMapping),
+			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 		;
 			% We must have either added some information,
@@ -1285,8 +1287,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		->
 			% We've just added some information
 			% or lost some uniqueness.
-			map__set(InstMapping0, Var0, Inst, InstMapping),
-			InstMap = reachable(InstMapping),
+			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
 			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
@@ -1302,8 +1303,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 					ModeInfo1, ModeInfo
 			)
 		;
-			map__set(InstMapping0, Var0, Inst, InstMapping),
-			InstMap = reachable(InstMapping),
+			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
 			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
@@ -1377,19 +1377,20 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 
 			% compute the goal_info nonlocal vars & instmap delta
 			set__list_to_set([Var0, Var], NonLocals),
-			map__init(InstMapDelta0),
 			( VarInst = VarInst0 ->
-				InstMapDelta1 = InstMapDelta0
+				InstMapDeltaAL0 = []
 			;
-				map__set(InstMapDelta0, Var0, VarInst,
-					InstMapDelta1)
+				InstMapDeltaAL0 = [Var0 - VarInst]
 			),
-			map__set(InstMapDelta1, Var, VarInst, InstMapDelta),
+			
+			InstMapDeltaAL = [Var - VarInst | InstMapDeltaAL0],
 			goal_info_init(GoalInfo0),
 			goal_info_set_nonlocals(GoalInfo0, NonLocals,
 				GoalInfo1),
-			goal_info_set_instmap_delta(GoalInfo1,
-				reachable(InstMapDelta), GoalInfo),
+			instmap_delta_from_assoc_list(InstMapDeltaAL,
+				InstMapDelta),
+			goal_info_set_instmap_delta(GoalInfo1, InstMapDelta,
+				GoalInfo),
 			Goals = [] - [AfterGoal - GoalInfo]
 		)
 	).

@@ -678,11 +678,13 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	( { Verbose = yes } ->
 		mercury_output_newline(Indent),
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-		( { InstMapDelta = reachable(Map), map__is_empty(Map) } ->
+		( { instmap_delta_changed_vars(InstMapDelta, Vars),
+				set__empty(Vars) } ->
 			[]
 		;
 			io__write_string("% new insts: "),
-			hlds_out__write_instmap(InstMapDelta, VarSet, Indent),
+			hlds_out__write_instmap_delta(InstMapDelta, VarSet,
+				Indent),
 			mercury_output_newline(Indent)
 		),
 		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
@@ -1170,11 +1172,13 @@ hlds_out__write_builtin(Builtin) -->
 :- pred hlds_out__write_instmap(instmap, varset, int, io__state, io__state).
 :- mode hlds_out__write_instmap(in, in, in, di, uo) is det.
 
-hlds_out__write_instmap(unreachable, _, _) -->
-	io__write_string("unreachable").
-hlds_out__write_instmap(reachable(InstMapping), VarSet, Indent) -->
-	{ map__to_assoc_list(InstMapping, AssocList) },
-	hlds_out__write_instmap_2(AssocList, VarSet, Indent).
+hlds_out__write_instmap(InstMap, VarSet, Indent) -->
+	( { instmap__is_unreachable(InstMap) } ->
+		io__write_string("unreachable")
+	;
+		{ instmap__to_assoc_list(InstMap, AssocList) },
+		hlds_out__write_instmap_2(AssocList, VarSet, Indent)
+	).
 
 :- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset, int,
 					io__state, io__state).
@@ -1192,6 +1196,18 @@ hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, Indent) -->
 		mercury_output_newline(Indent),
 		io__write_string("%            "),
 		hlds_out__write_instmap_2(Rest, VarSet, Indent)
+	).
+
+:- pred hlds_out__write_instmap_delta(instmap_delta, varset, int,
+			io__state, io__state).
+:- mode hlds_out__write_instmap_delta(in, in, in, di, uo) is det.
+
+hlds_out__write_instmap_delta(InstMapDelta, VarSet, Indent) -->
+	( { instmap_delta_is_unreachable(InstMapDelta) } ->
+		io__write_string("unreachable")
+	;
+		{ instmap_delta_to_assoc_list(InstMapDelta, AssocList) },
+		hlds_out__write_instmap_2(AssocList, VarSet, Indent)
 	).
 
 hlds_out__write_import_status(local) -->

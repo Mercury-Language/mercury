@@ -296,7 +296,8 @@ detect_live_vars_in_conj([Goal0|Goals0], Liveness0, LiveVars0,
 		ModuleInfo, ProcInfo, Liveness, LiveVars) :-
 	(
 		Goal0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+		instmap_delta_is_unreachable(InstMapDelta)
 	->
 		detect_live_vars_in_goal(Goal0, Liveness0,
 			LiveVars0, ModuleInfo, ProcInfo,

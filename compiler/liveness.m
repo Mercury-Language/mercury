@@ -119,7 +119,7 @@ detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
 find_binding_occurrences([], _, _, BoundVars, BoundVars).
 find_binding_occurrences([Var | Vars], ModuleInfo, InstMapDelta, BoundVars0,
 		BoundVars) :-
-	instmap_lookup_var(InstMapDelta, Var, Inst),
+	instmap_delta_lookup_var(InstMapDelta, Var, Inst),
 	( inst_is_bound(ModuleInfo, Inst) ->
 		set__insert(BoundVars0, Var, BoundVars1)
 	;
@@ -200,7 +200,8 @@ detect_liveness_in_conj([Goal0|Goals0], Liveness0,
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness1, Goal),
 	(
 		Goal0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
+		goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+		instmap_delta_is_unreachable(InstmapDelta)
 	->
 		Goals = Goals0,
 		Liveness = Liveness1
@@ -382,7 +383,8 @@ detect_deadness_in_conj([Goal0|Goals0], Deadness0, ModuleInfo, ProcInfo,
 						[Goal|Goals], Deadness) :-
 	(
 		Goal0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
+		goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+		instmap_delta_is_unreachable(InstmapDelta)
 	->
 		Goals = Goals0,
 		detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, ProcInfo,
@@ -745,7 +747,8 @@ add_nondet_lives_to_conj([G0|Gs0], Liveness0, Extras0,
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G, Liveness1, Extras1),
 	(
 		G0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
+		goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
+		instmap_delta_is_unreachable(InstmapDelta)
 	->
 		Gs = Gs0,
 		Liveness = Liveness1,

@@ -19,7 +19,7 @@
 :- implementation.
 
 :- import_module make_hlds, prog_util, mode_util, type_util.
-:- import_module int, string, set, require.
+:- import_module int, string, set, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
 
@@ -744,7 +744,7 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 		get_arg_lives(Modes, ModuleInfo, ArgLives)
 	).
 
-proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
+proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
@@ -754,7 +754,8 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	propagate_type_info_inst_list(VarTypes, ModuleInfo, InitialInsts0,
 					InitialInsts),
 ***********/
-	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
+	assoc_list__from_corresponding_lists(HeadVars, InitialInsts, InstAL),
+	instmap__from_assoc_list(InstAL, InstMap).
 
 proc_info_declared_determinism(ProcInfo, Detism) :-
 	ProcInfo = procedure(Detism, _, _, _, _, _, _, _, _, _, _, _, _, _, _).

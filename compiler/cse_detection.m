@@ -192,7 +192,7 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 	detect_cse_in_goal_2(Goal0, GoalInfo, InstMap0, CseInfo0, CseInfo,
 		Redo, Goal),
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-	apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 	% Here we process each of the different sorts of goals.
 
@@ -296,7 +296,7 @@ detect_cse_in_disj([], Goals0, _, FV, InstMap, CseInfo0, CseInfo,
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, FV, InstMap,
 		CseInfo0, CseInfo, Redo, Goal) :-
 	(
-		instmap_lookup_var(InstMap, Var, VarInst0),
+		instmap__lookup_var(InstMap, Var, VarInst0),
 		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
@@ -338,7 +338,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 		FV, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		Var \= SwitchVar,
-		instmap_lookup_var(InstMap, Var, VarInst0),
+		instmap__lookup_var(InstMap, Var, VarInst0),
 		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
@@ -383,7 +383,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		FV, InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
 		CseInfo0 = cse_info(_, _, ModuleInfo),
-		instmap_lookup_var(InstMap, Var, VarInst0),
+		instmap__lookup_var(InstMap, Var, VarInst0),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between free
 		% variables.

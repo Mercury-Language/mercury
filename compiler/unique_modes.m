@@ -50,9 +50,10 @@
 :- implementation.
 
 :- import_module hlds_data, mode_debug, modecheck_unify, instmap.
-:- import_module bool, int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, inst_match, prog_data, mode_errors, llds, unify_proc.
+:- import_module bool, int, list, map, set, std_util, require, term, varset.
+:- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
 
@@ -159,8 +160,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Construct the initial instmap
 	%
 	mode_list_get_initial_insts(ArgModes, ModuleInfo0, ArgInitialInsts),
-	map__from_corresponding_lists(Args, ArgInitialInsts, InstMapping0),
-	InstMap0 = reachable(InstMapping0),
+	assoc_list__from_corresponding_lists(Args, ArgInitialInsts, InstAL),
+	instmap__from_assoc_list(InstAL, InstMap0),
 
 	%
 	% Construct the initial set of live variables:
@@ -277,8 +278,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, FullInstMap0),
-	( FullInstMap0 = reachable(InstMapping0) ->
-		map__keys(InstMapping0, AllVars),
+	( instmap__is_reachable(FullInstMap0) ->
+		instmap__vars_list(FullInstMap0, AllVars),
 		select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
 		make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
 	;
@@ -322,10 +323,10 @@ select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
 select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap0),
-	instmap_lookup_var(InstMap0, Var, Inst0),
+	instmap__lookup_var(InstMap0, Var, Inst0),
 	(
-		DeltaInstMap = reachable(DeltaInstMapping),
-		map__search(DeltaInstMapping, Var, Inst),
+		instmap_delta_is_reachable(DeltaInstMap),
+		instmap_delta_lookup_var(DeltaInstMap, Var, Inst),
 		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
@@ -354,8 +355,10 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 		%
 		% only variables which are `unique' need to be changed
 		%
-		InstMap0 = reachable(InstMapping0),
-		map__search(InstMapping0, Var, Inst0),
+		instmap__is_reachable(InstMap0),
+		instmap__vars_list(InstMap0, Vars),
+		list__member(Var, Vars),
+		instmap__lookup_var(InstMap0, Var, Inst0),
 		inst_expand(ModuleInfo0, Inst0, Inst1),
 		( Inst1 = ground(unique, _)
 		; Inst1 = bound(unique, _)
@@ -364,9 +367,8 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 	->
 		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		map__set(InstMapping0, Var, Inst, InstMapping),
-		mode_info_set_instmap(reachable(InstMapping), ModeInfo1,
-			ModeInfo)
+		instmap__set(InstMap0, Var, Inst, InstMap),
+		mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo)
 	;
 		ModeInfo = ModeInfo0
 	).
@@ -390,7 +392,8 @@ unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->
 		{ List = [] },
-		mode_info_set_instmap(unreachable)
+		{ instmap__init_unreachable(InstMap) },
+		mode_info_set_instmap(InstMap)
 	;
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
@@ -413,7 +416,7 @@ unique_modes__check_goal_2(disj(List0, FV), GoalInfo0, disj(List, FV)) -->
 		% merge the resulting instmaps.
 		%
 		unique_modes__check_disj(List0, List, InstMapList),
-		instmap_merge(NonLocals, InstMapList, disj)
+		instmap__merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "disj").
 
@@ -459,7 +462,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, FV), GoalInfo0, Goal)
 	unique_modes__check_goal(C0, C),
 	mode_info_dcg_get_instmap(InstMapC),
 	mode_info_set_instmap(InstMap0),
-	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else),
+	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 /*
 % this optimization from modes.m does not need to be repeated here
 	( { InstMapA = unreachable } ->
@@ -548,11 +551,12 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, FV), GoalInfo0,
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
-		mode_info_set_instmap(unreachable)
+		{ instmap__init_unreachable(InstMap) },
+		mode_info_set_instmap(InstMap)
 	;
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
-		instmap_merge(NonLocals, InstMapList, disj)
+		instmap__merge(NonLocals, InstMapList, disj)
 	),
 	mode_checkpoint(exit, "switch").
 
@@ -617,7 +621,8 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel, NeverSucceeds,
 		error("unique_modes.m: call to implied mode?")
 	),
 	( NeverSucceeds = yes ->
-		mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+		instmap__init_unreachable(InstMap),
+		mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo)
 	;
 		%
 		% Check whether we are at a call to a nondet predicate.

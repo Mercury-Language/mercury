@@ -188,7 +188,8 @@ store_alloc_in_conj([Goal0 | Goals0], Liveness0, ModuleInfo,
 	(
 			% XXX should be threading the instmap
 		Goal0 = _ - GoalInfo,
-		goal_info_get_instmap_delta(GoalInfo, unreachable)
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+		instmap_delta_is_unreachable(InstMapDelta)
 	->
 		store_alloc_in_goal(Goal0, Liveness0, ModuleInfo,
 			Goal, Liveness),

@@ -281,7 +281,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	% If a goal has no output variables, then the goal is in
 	% single-solution context
 
-	( no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, DetInfo) ->
+	( det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, DetInfo) ->
 		OutputVars = no,
 		SolnContext = first_soln
 	;
@@ -297,7 +297,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		% if mode analysis notices that a goal cannot succeed,
 		% then determinism analysis should notice this too
 
-		DeltaInstMap = unreachable
+		instmap_delta_is_unreachable(DeltaInstMap)
 	->
 		Solns = at_most_zero
 	;

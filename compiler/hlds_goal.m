@@ -529,7 +529,7 @@ goal_info_init(GoalInfo) :-
 	set__init(Deaths),
 	set__init(NondetLives),
 	DeltaLiveness = Births - Deaths,
-	InstMapDelta = unreachable,
+	instmap_delta_init_unreachable(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init(Context),
 	set__init(Features),

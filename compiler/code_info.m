@@ -2159,7 +2159,7 @@ code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
 
 code_info__apply_instmap_delta(Delta) -->
 	code_info__get_instmap(InstMap0),
-	{ apply_instmap_delta(InstMap0, Delta, InstMap) },
+	{ instmap__apply_instmap_delta(InstMap0, Delta, InstMap) },
 	code_info__set_instmap(InstMap).
 
 %---------------------------------------------------------------------------%

@@ -1113,14 +1113,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, Changed, Used) :-
 
 fixup_goal_info(UnusedVars, GoalInfo0, GoalInfo) :-
 	goal_info_get_instmap_delta(GoalInfo0, InstMap0),
-	(
-		InstMap0 = reachable(InstMapping0),
-		map__delete_list(InstMapping0, UnusedVars, InstMapping),
-		InstMap = reachable(InstMapping)
-	;
-		InstMap0 = unreachable,
-		InstMap = unreachable
-	),
+	instmap_delta_delete_vars(InstMap0, UnusedVars, InstMap),
 	goal_info_set_instmap_delta(GoalInfo0, InstMap, GoalInfo).
 
 %-------------------------------------------------------------------------------

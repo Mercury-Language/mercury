@@ -1224,7 +1224,8 @@ recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) -->
 	;
 		recompute_instmap_delta_2(Goal0, Goal, InstMapDelta0),
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		{ instmap_restrict(InstMapDelta0, NonLocals, InstMapDelta) },
+		{ instmap_delta_restrict(InstMapDelta0, NonLocals,
+			InstMapDelta) },
 		{ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
 			GoalInfo) }
 	).
@@ -1244,7 +1245,7 @@ recompute_instmap_delta_2(disj(Goals0, FV), disj(Goals, FV), InstMapDelta) -->
 	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta).
 
 recompute_instmap_delta_2(not(Goal0), not(Goal), InstMapDelta) -->
-	{ instmap_init(InstMapDelta) },
+	{ instmap_delta_init_reachable(InstMapDelta) },
 	recompute_instmap_delta(Goal0, Goal).
 
 recompute_instmap_delta_2(if_then_else(Vars, A0, B0, C0, FV),
@@ -1252,7 +1253,8 @@ recompute_instmap_delta_2(if_then_else(Vars, A0, B0, C0, FV),
 	recompute_instmap_delta(A0, A, InstMapDelta1),
 	recompute_instmap_delta(B0, B, InstMapDelta2),
 	recompute_instmap_delta(C0, C, InstMapDelta3),
-	{ apply_instmap_delta(InstMapDelta1, InstMapDelta2, InstMapDelta4) },
+	{ instmap_delta_apply_instmap_delta(InstMapDelta1, InstMapDelta2,
+		InstMapDelta4) },
 	merge_instmap_delta(InstMapDelta3, InstMapDelta4, InstMapDelta).
 
 recompute_instmap_delta_2(some(Vars, Goal0), some(Vars, Goal), InstMapDelta) -->
@@ -1284,11 +1286,12 @@ recompute_instmap_delta_2(pragma_c_code(_, _, _, _, _, _), _, _) -->
 :- mode recompute_instmap_delta_conj(in, out, out, in, out) is det.
 
 recompute_instmap_delta_conj([], [], InstMapDelta) -->
-	{ instmap_init(InstMapDelta) }.
+	{ instmap_delta_init_reachable(InstMapDelta) }.
 recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta0),
 	recompute_instmap_delta_conj(Goals0, Goals, InstMapDelta1),
-	{ apply_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta) }.
+	{ instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
+		InstMapDelta) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1297,7 +1300,7 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals], InstMapDelta) -->
 :- mode recompute_instmap_delta_disj(in, out, out, in, out) is det.
 
 recompute_instmap_delta_disj([], [], InstMapDelta) -->
-	{ instmap_init(InstMapDelta) }.
+	{ instmap_delta_init_reachable(InstMapDelta) }.
 recompute_instmap_delta_disj([Goal0], [Goal], InstMapDelta) -->
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta).
 recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta)
@@ -1314,7 +1317,7 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals], InstMapDelta)
 :- mode recompute_instmap_delta_cases(in, out, out, in, out) is det.
 
 recompute_instmap_delta_cases([], [], InstMapDelta) -->
-	{ instmap_init(InstMapDelta) }.
+	{ instmap_delta_init_reachable(InstMapDelta) }.
 recompute_instmap_delta_cases([Case0], [Case], InstMapDelta) -->
 	{ Case0 = case(Functor, Goal0) },
 	recompute_instmap_delta(Goal0, Goal, InstMapDelta),
@@ -1327,58 +1330,6 @@ recompute_instmap_delta_cases([Case0 | Cases0], [Case | Cases], InstMapDelta)
 	{ Case = case(Functor, Goal) },
 	recompute_instmap_delta_cases(Cases0, Cases, InstMapDelta1),
 	merge_instmap_delta(InstMapDelta0, InstMapDelta1, InstMapDelta).
-
-%-----------------------------------------------------------------------------%
-
-	% Given two instmap deltas, merge them to produce a new instmap.
-
-:- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap,
-				module_info, module_info).
-:- mode merge_instmap_delta(in, in, out, in, out) is det.
-
-merge_instmap_delta(unreachable, InstMap, InstMap) --> [].
-merge_instmap_delta(reachable(InstMapping), unreachable,
-				reachable(InstMapping)) --> [].
-merge_instmap_delta(reachable(InstMappingA), reachable(InstMappingB),
-			reachable(InstMapping))  -->
-	merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping).
-
-:- pred merge_instmapping_delta(instmapping, instmapping, instmapping,
-				module_info, module_info).
-:- mode merge_instmapping_delta(in, in, out, in, out) is det.
-
-merge_instmapping_delta(InstMappingA, InstMappingB, InstMapping) -->
-	{ map__keys(InstMappingA, VarsInA) },
-	merge_instmapping_delta_2(VarsInA, InstMappingA, InstMappingB,
-		InstMapping).
-
-:- pred merge_instmapping_delta_2(list(var), instmapping, instmapping,
-				instmapping, module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, out, in, out) is det.
-
-merge_instmapping_delta_2([], _, InstMapping, InstMapping, ModInfo, ModInfo).
-merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
-			InstMapping, ModuleInfo0, ModuleInfo) :-
-	map__lookup(MergeInstMapping, Var, MergeInst),
-	( map__search(InstMapping0, Var, Inst0) ->
-	    ( inst_merge(Inst0, MergeInst, ModuleInfo0, Inst, ModuleInfoPrime) ->
-		ModuleInfo1 = ModuleInfoPrime,
-		map__det_update(InstMapping0, Var, Inst, InstMapping1)
-	    ;
-		error("merge_instmapping_delta_2: unexpected mode error")
-	    )
-	;
-	    % if a variable only occurs in one of the instmap deltas,
-	    % then mode correctness means that the delta must be adding
-	    % information only, not binding the variable any further;
-	    % since we don't know which path will actually get executed,
-	    % we should not add that information - the merged delta should
-	    % not have any entry for that variable.
-	    ModuleInfo1 = ModuleInfo0,
-	    InstMapping1 = InstMapping0
-	),
-	merge_instmapping_delta_2(Vars, MergeInstMapping, InstMapping1,
-				InstMapping, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

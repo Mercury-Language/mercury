@@ -36,7 +36,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module mode_util, passes_aux, code_aux, prog_data, instmap.
-:- import_module delay_info, mode_info, inst_match, modes.
+:- import_module delay_info, mode_info, inst_match, modes, mode_debug.
 :- import_module transform, options, globals.
 :- import_module mercury_to_mercury, hlds_out, dependency_graph.
 
@@ -123,7 +123,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	{ goal_info_get_instmap_delta(GoalInfo, DeltaInstMap) },
-	{ apply_instmap_delta(InstMap0, DeltaInstMap, InstMap) },
+	{ instmap__apply_instmap_delta(InstMap0, DeltaInstMap, InstMap) },
 	mode_info_set_instmap(InstMap),
 	constraint__propagate_goal_2(Goal0, Goal),
 	mode_info_set_instmap(InstMap).
@@ -136,63 +136,64 @@ constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 					mode_info_di, mode_info_uo) is det.
 
 constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
-	constraint__checkpoint(enter, "conj"),
+	mode_checkpoint(enter, "conj"),
 	constraint__propagate_conj(Goals0, Goals),
-	constraint__checkpoint(exit, "conj").
+	mode_checkpoint(exit, "conj").
 
 constraint__propagate_goal_2(disj(Goals0, FV), disj(Goals, FV)) -->
-	constraint__checkpoint(enter, "disj"),
+	mode_checkpoint(enter, "disj"),
 	constraint__propagate_disj(Goals0, Goals),
-	constraint__checkpoint(exit, "disj").
+	mode_checkpoint(exit, "disj").
 
 constraint__propagate_goal_2(switch(Var, Det, Cases0, FV),
 				switch(Var, Det, Cases, FV)) -->
-	constraint__checkpoint(enter, "switch"),
+	mode_checkpoint(enter, "switch"),
 	constraint__propagate_cases(Cases0, Cases),
-	constraint__checkpoint(exit, "switch").
+	mode_checkpoint(exit, "switch").
 
 constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 			if_then_else(Vars, Cond, Then, Else, FV)) -->
-	constraint__checkpoint(enter, "if_then_else"),
+	mode_checkpoint(enter, "if_then_else"),
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Cond0, Cond),
 %	mode_info_dcg_get_instmap(InstMap1),
 	constraint__propagate_goal(Then0, Then),
 	mode_info_set_instmap(InstMap0),
 	constraint__propagate_goal(Else0, Else),
-	constraint__checkpoint(exit, "if_then_else").
+	mode_checkpoint(exit, "if_then_else").
 
 constraint__propagate_goal_2(not(Goal0), not(Goal)) -->
-	constraint__checkpoint(enter, "not"),
+	mode_checkpoint(enter, "not"),
 	constraint__propagate_goal(Goal0, Goal),
-	constraint__checkpoint(exit, "not").
+	mode_checkpoint(exit, "not").
 
 constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
-	constraint__checkpoint(enter, "some"),
+	mode_checkpoint(enter, "some"),
 	constraint__propagate_goal(Goal0, Goal),
-	constraint__checkpoint(exit, "some").
+	mode_checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
 		higher_order_call(A, B, C, D, E),
 		higher_order_call(A, B, C, D, E)) -->
-	constraint__checkpoint(enter, "higher-order call"),
-	constraint__checkpoint(exit, "higher-order call").
+	mode_checkpoint(enter, "higher-order call"),
+	mode_checkpoint(exit, "higher-order call").
 
 constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
-	constraint__checkpoint(enter, "call"),
-	constraint__checkpoint(exit, "call").
+	mode_checkpoint(enter, "call"),
+	mode_checkpoint(exit, "call").
 
 constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
-	constraint__checkpoint(enter, "unify"),
-	constraint__checkpoint(exit, "unify").
+	mode_checkpoint(enter, "unify"),
+	mode_checkpoint(exit, "unify").
+
 
 constraint__propagate_goal_2(
 		pragma_c_code(A, B, C, D, E, F), 
 		pragma_c_code(A, B, C, D, E, F)) -->
-	constraint__checkpoint(enter, "pragma_c_code"),
-	constraint__checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(enter, "pragma_c_code"),
+	mode_checkpoint(exit, "pragma_c_code").
 
 %-----------------------------------------------------------------------------%
 
@@ -306,33 +307,10 @@ constraint__is_constraint(GoalInfo, ModeInfo) :-
 
 constraint__no_output_vars(GoalInfo, ModeInfo) :-
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-	(
-	    InstMapDelta = unreachable
-	;
-	    InstMapDelta = reachable(InstMapDelta1),
-	    mode_info_get_varset(ModeInfo, VarSet),
-	    varset__vars(VarSet, VarList),
-	    mode_info_get_module_info(ModeInfo, ModuleInfo),
-	    mode_info_get_instmap(ModeInfo, InstMap),
-	    constraint__no_output_vars_2(VarList, InstMap, InstMapDelta1, 
-				ModuleInfo)
-	).
-
-:- pred constraint__no_output_vars_2(list(var), instmap, instmapping, 
-				module_info).
-:- mode constraint__no_output_vars_2(in, in, in, in) is semidet.
-
-constraint__no_output_vars_2([], _, _, _).
-constraint__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, 
-				ModuleInfo) :-
-	instmap_lookup_var(InstMap0, Var, Inst0),
-	( map__search(InstMapDelta, Var, Inst1) ->
-		Inst = Inst1
-	;
-		Inst = Inst0
-	),
-	inst_matches_binding(Inst, Inst0, ModuleInfo),
-	constraint__no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
+	goal_info_get_nonlocals(GoalInfo, Vars),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_instmap(ModeInfo, InstMap),
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
 
 	% constraint__determinism(Det) is true iff Det is
 	% a possible determinism of a constraint.  The
@@ -344,86 +322,6 @@ constraint__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta,
 constraint__determinism(semidet).
 constraint__determinism(failure).
 % constraint__determinism(erroneous).	% maybe
-
-%-----------------------------------------------------------------------------%
-
-:- type my_port
-	--->	enter
-	;	exit
-	;	wakeup.
-
-:- pred constraint__checkpoint(my_port, string, mode_info, mode_info).
-:- mode constraint__checkpoint(in, in, mode_info_di, mode_info_uo) is det.
-
-constraint__checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
-	mode_info_get_io_state(ModeInfo0, IOState0),
-        globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
-		IOState0, IOState1),
-	( DoCheckPoint = yes ->
-		constraint__checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
-	;
-		IOState = IOState1
-	),
-	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
-
-:- pred is_bool(bool::in) is det.
-is_bool(_).
-
-:- pred constraint__checkpoint_2(my_port, string, mode_info, io__state, io__state).
-:- mode constraint__checkpoint_2(in, in, mode_info_ui, di, uo) is det.
-
-constraint__checkpoint_2(Port, Msg, ModeInfo) -->
-	{ mode_info_get_errors(ModeInfo, Errors) },
-	{ is_bool(Detail) },	% explicit type qualification needed to
-				% resolve type ambiguity
-	( { Port = enter } ->
-		io__write_string("Enter "),
-		{ Detail = yes }
-	; { Port = wakeup } ->
-		io__write_string("Wake  "),
-		{ Detail = no }
-	; { Errors = [] } ->
-		io__write_string("Exit "),
-		{ Detail = yes }
-	;
-		io__write_string("Delay  "),
-		{ Detail = no }
-	),
-	io__write_string(Msg),
-	( { Detail = yes } ->
-		io__write_string(":\n"),
-		globals__io_lookup_bool_option(statistics, Statistics),
-		maybe_report_stats(Statistics),
-		{ mode_info_get_instmap(ModeInfo, InstMap) },
-		( { InstMap = reachable(InstMapping) } ->
-			{ map__to_assoc_list(InstMapping, AssocList) },
-			{ mode_info_get_varset(ModeInfo, VarSet) },
-			{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-			constraint__write_var_insts(AssocList, VarSet, InstVarSet)
-		;
-			io__write_string("\tUnreachable\n")
-		)
-	;
-		[]
-	),
-	io__write_string("\n").
-
-:- pred constraint__write_var_insts(assoc_list(var, inst), varset, varset,
-			io__state, io__state).
-:- mode constraint__write_var_insts(in, in, in, di, uo) is det.
-
-constraint__write_var_insts([], _, _) --> [].
-constraint__write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
-	io__write_string("\t"),
-	mercury_output_var(Var, VarSet),
-	io__write_string(" :: "),
-	mercury_output_inst(Inst, InstVarSet),
-	( { VarInsts = [] } ->
-		[]
-	;
-		io__write_string("\n"),
-		constraint__write_var_insts(VarInsts, VarSet, InstVarSet)
-	).
 
 %-----------------------------------------------------------------------------%
 

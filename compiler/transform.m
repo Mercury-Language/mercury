@@ -68,7 +68,7 @@ transform__reschedule_conj([Goal0 | Goals0], Goals) -->
 	;
 	    { Goal0 = _Goal0Goal - Goal0Info },
 	    { goal_info_get_instmap_delta(Goal0Info, InstMapDelta) },
-	    { apply_instmap_delta(InstMap0, InstMapDelta, InstMap1) },
+	    { instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1) },
 	    mode_info_set_instmap(InstMap1),
 	    transform__reschedule_conj(Goals0, Goals1),
 	    { Goals = [Goal0 | Goals1] }

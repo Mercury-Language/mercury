@@ -76,8 +76,8 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
                 globals__io_lookup_bool_option(statistics, Statistics),
                 maybe_report_stats(Statistics),
                 { mode_info_get_instmap(ModeInfo, InstMap) },
-                ( { InstMap = reachable(InstMapping) } ->
-                        { map__to_assoc_list(InstMapping, AssocList) },
+                ( { instmap__is_reachable(InstMap) } ->
+                        { instmap__to_assoc_list(InstMap, AssocList) },
                         { mode_info_get_varset(ModeInfo, VarSet) },
                         { mode_info_get_instvarset(ModeInfo, InstVarSet) },
                         write_var_insts(AssocList, VarSet, InstVarSet)

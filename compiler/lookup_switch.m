@@ -158,19 +158,23 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 	% the switch.
 
 lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
-	{ goal_info_get_instmap_delta(GoalInfo, InstMap) },
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	(
-		{ InstMap = unreachable },
+		{ instmap_delta_is_unreachable(InstMapDelta) }
+	->
 		{ OutVars = [] }
 	;
-		{ InstMap = reachable(InstMapAfter) },
 		code_info__get_instmap(CurrentInstMap),
 		code_info__get_module_info(ModuleInfo),
+		{ instmap_delta_changed_vars(InstMapDelta, ChangedVars) },
+		{ instmap__apply_instmap_delta(CurrentInstMap, InstMapDelta,
+			InstMapAfter) },
 		{ Lambda = lambda([Var::out] is nondet, (
 			% If a variable has a final inst, then it changed
 			% instantiatedness during the switch.
-			map__member(InstMapAfter, Var, Final),
-			instmap_lookup_var(CurrentInstMap, Var, Initial),
+			set__member(Var, ChangedVars),
+			instmap__lookup_var(CurrentInstMap, Var, Initial),
+			instmap__lookup_var(InstMapAfter, Var, Final),
 			mode_is_output(ModuleInfo, (Initial -> Final))
 		)) },
 		{ solutions(Lambda, OutVars) }

@@ -345,16 +345,9 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 	goal_util__name_apart_set(NonLocals0, Must, Subn, NonLocals),
 	goal_info_set_nonlocals(GoalInfo2, NonLocals, GoalInfo3),
 
-	goal_info_get_instmap_delta(GoalInfo3, MaybeInstMap0),
-	(
-		MaybeInstMap0 = reachable(InstMap0)
-	->
-		goal_util__rename_follow_vars(InstMap0, Must, Subn, InstMap),
-		MaybeInstMap = reachable(InstMap),
-		goal_info_set_instmap_delta(GoalInfo3, MaybeInstMap, GoalInfo4)
-	;
-		GoalInfo4 = GoalInfo3
-	),
+	goal_info_get_instmap_delta(GoalInfo3, InstMap0),
+	instmap_delta_apply_sub(InstMap0, Must, Subn, InstMap),
+	goal_info_set_instmap_delta(GoalInfo3, InstMap, GoalInfo4),
 
 	goal_info_nondet_lives(GoalInfo4, NondetLives0),
 	goal_util__name_apart_set(NondetLives0, Must, Subn, NondetLives),

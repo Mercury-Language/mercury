@@ -88,7 +88,8 @@ simplify__goal(Goal0 - GoalInfo0, InstMap0, DetInfo, Goal - GoalInfo, Msgs) :-
 		MaxSoln \= at_most_zero,
 		goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 		goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
-		no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, DetInfo)
+		det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap,
+			DetInfo)
 	->
 		Goal = conj([]),
 		GoalInfo = GoalInfo0,		% need we massage this?
@@ -154,7 +155,7 @@ simplify__goal_2(disj(Disjuncts0, FV), _GoalInfo, InstMap0, DetInfo,
 			goal_info_get_instmap_delta(GoalInfo, DeltaInstMap),
 			goal_info_get_nonlocals(GoalInfo, NonLocalVars),
 			(
-				no_output_vars(NonLocalVars, InstMap0,
+				det_no_output_vars(NonLocalVars, InstMap0,
 					DeltaInstMap, DetInfo)
 			->
 				OutputVars = no
@@ -318,7 +319,7 @@ simplify__conj([Goal0 | Goals0], InstMap0, DetInfo, Goals, Msgs) :-
 		simplify__goal(Goal0, InstMap0, DetInfo, Goal, MsgsA),
 		update_instmap(Goal0, InstMap0, InstMap1),
 		% delete unreachable goals
-		( InstMap1 = unreachable ->
+		( instmap__is_unreachable(InstMap1) ->
 			Goals = [Goal],
 			Msgs = MsgsA
 		;
@@ -421,8 +422,8 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 		Cond = _CondGoal - CondGoalInfo,
 
 		goal_info_init(ThenGoalInfo0),
-		map__init(InstMap1),
-		goal_info_set_instmap_delta(ThenGoalInfo0, reachable(InstMap1),
+		instmap_delta_init_reachable(InstMap1),
+		goal_info_set_instmap_delta(ThenGoalInfo0, InstMap1,
 			ThenGoalInfo1),
 		goal_info_set_determinism(ThenGoalInfo1, det, ThenGoalInfo),
 		Then = conj([]) - ThenGoalInfo,
@@ -436,14 +437,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 		goal_info_set_nonlocals(GoalInfo, NonLocals, NewGoalInfo0),
 
 		goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
-		(
-			InstMapDelta0 = reachable(InstMap0),
-			map__select(InstMap0, NonLocals, InstMap),
-			InstMapDelta = reachable(InstMap)
-		;
-			InstMapDelta0 = unreachable,
-			InstMapDelta = InstMapDelta0
-		),
+		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
 		goal_info_set_instmap_delta(NewGoalInfo0, InstMapDelta,
 			NewGoalInfo1),
 

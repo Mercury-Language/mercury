@@ -47,8 +47,8 @@
 :- pred det_lookup_var_type(module_info, proc_info, var, hlds__type_defn).
 :- mode det_lookup_var_type(in, in, in, out) is semidet.
 
-:- pred no_output_vars(set(var), instmap, instmap_delta, det_info).
-:- mode no_output_vars(in, in, in, in) is semidet.
+:- pred det_no_output_vars(set(var), instmap, instmap_delta, det_info).
+:- mode det_no_output_vars(in, in, in, in) is semidet.
 
 :- pred det_info_init(module_info, pred_id, proc_id, globals, det_info).
 :- mode det_info_init(in, in, in, in, out) is det.
@@ -80,7 +80,7 @@
 
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
-	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap).
+	instmap__apply_instmap_delta(InstMap0, DeltaInstMap, InstMap).
 
 interpret_unify(X, var(Y), Subst0, Subst) :-
 	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
@@ -125,33 +125,9 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 		error("cannot lookup the type of a variable")
 	).
 
-no_output_vars(_, _, unreachable, _).
-no_output_vars(Vars, InstMap0, reachable(InstMapDelta), DetInfo) :-
-	set__to_sorted_list(Vars, VarList),
+det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	no_output_vars_2(VarList, InstMap0, InstMapDelta, ModuleInfo).
-
-:- pred no_output_vars_2(list(var), instmap, instmapping, module_info).
-:- mode no_output_vars_2(in, in, in, in) is semidet.
-
-no_output_vars_2([], _, _, _).
-no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
-	% We use `inst_matches_binding' to check that the new inst
-	% has only added information or lost uniqueness,
-	% not bound anything.
-	% If the instmap delta contains the variable, the variable may
-	% still not be output, if the change is just an increase in
-	% information rather than an increase in instantiatedness.
-	% If the instmap delta doesn't contain the variable, it may still
-	% have been (partially) output, if its inst is (or contains) `any'.
-	instmap_lookup_var(InstMap0, Var, Inst0),
-	( map__search(InstMapDelta, Var, Inst1) ->
-		Inst = Inst1
-	;
-		Inst = Inst0
-	),
-	inst_matches_binding(Inst, Inst0, ModuleInfo),
-	no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -206,7 +206,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, FV, InstMap,
 		VarTypes, AllVars, ModuleInfo, Again0, Goal) :-
 	% can we do at least a partial switch on this variable?
 	(
-		instmap_lookup_var(InstMap, Var, VarInst0),
+		instmap__lookup_var(InstMap, Var, VarInst0),
 		inst_is_bound(ModuleInfo, VarInst0),
 		partition_disj(Goals0, Var, Left, CasesList)
 	->
@@ -424,7 +424,7 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 
 cases_to_switch(CasesList, Var, VarTypes, GoalInfo, FV, InstMap, ModuleInfo,
 		Goal) :-
-	instmap_lookup_var(InstMap, Var, VarInst),
+	instmap__lookup_var(InstMap, Var, VarInst),
 	( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
 		functors_to_cons_ids(Functors, ConsIds0),
 		list__sort(ConsIds0, ConsIds),
