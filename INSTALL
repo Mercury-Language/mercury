@@ -2,7 +2,7 @@
 #
 # Installation instructions:
 # 
-# 0.  The source will be distributed with the .dep files and Makefile
+# 1.  The source will be distributed with the .dep files and Makefile
 #     already created and up-to-date.  But if you obtained the source
 #     using `cvs checkout', you will need GNU make and you will need to
 #     type
@@ -24,6 +24,8 @@ else
 	$MAKE -f Makefile.tmp Makefile
 fi
 
+# 2.  You need to install the scripts that are used by the makefile.
+
 $MAKE install_scripts
  
 #     When using GNU make, the individual file dependencies are automatically
@@ -31,7 +33,7 @@ $MAKE install_scripts
 #     the system can determine which files need to be linked in to produce
 #     the main executable.
 # 
-# 1.  If you don't have GNU make, then type
+# 3.  If you don't have GNU make, then type
 # 
 # 	make ints
 
@@ -44,13 +46,13 @@ fi
 #     This is necessary because ordinary make doesn't handle transitive
 #     dependencies.
 # 
-# 2.  Type
+# 4.  Type
 # 
 # 	make install
 
 $MAKE install
 
-# 3.  (Optional) 
+# 5.  (Optional) 
 #     Type
 # 
 # 	make clean
