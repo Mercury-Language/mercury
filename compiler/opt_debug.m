@@ -9,7 +9,7 @@
 :- module opt_debug.
 
 :- interface.
-:- import_module llds, value_number, peephole, list, std_util.
+:- import_module llds, value_number, peephole, list, std_util, int.
 
 :- pred opt_debug__dump_tables(vn_tables, string).
 :- mode opt_debug__dump_tables(in, out) is det.
@@ -56,8 +56,8 @@
 :- pred opt_debug__dump_label(label, string).
 :- mode opt_debug__dump_label(in, out) is det.
 
-:- pred opt_debug__dump_maybe_rvals(list(maybe(rval)), string).
-:- mode opt_debug__dump_maybe_rvals(in, out) is det.
+:- pred opt_debug__dump_maybe_rvals(list(maybe(rval)), int, string).
+:- mode opt_debug__dump_maybe_rvals(in, in, out) is det.
 
 :- pred opt_debug__dump_rval(rval, string).
 :- mode opt_debug__dump_rval(in, out) is det.
@@ -205,7 +205,7 @@ opt_debug__dump_vn_rval(vn_const(C), Str) :-
 	string__append_list(["vn_const(", C_str, ")"], Str).
 opt_debug__dump_vn_rval(vn_create(T, MA, L), Str) :-
 	string__int_to_string(T, T_str),
-	opt_debug__dump_maybe_rvals(MA, MA_str),
+	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	string__int_to_string(L, L_str),
 	string__append_list(["vn_create(", T_str, ", ", MA_str, ", ",
 		L_str, ")"], Str).
@@ -246,12 +246,17 @@ opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 opt_debug__dump_binop(Op, String) :-
 	llds__binary_op_to_string(Op, String).
 
-opt_debug__dump_maybe_rvals([], "").
-opt_debug__dump_maybe_rvals([MR | MRs], Str) :-
-	( MR = yes(R) ->
-		opt_debug__dump_rval(R, MR_str)
+opt_debug__dump_maybe_rvals([], _, "").
+opt_debug__dump_maybe_rvals([MR | MRs], N, Str) :-
+	( N > 0 ->
+		( MR = yes(R) ->
+			opt_debug__dump_rval(R, MR_str)
+		;
+			MR_str = "no"
+		),
+		N1 is N - 1,
+		opt_debug__dump_maybe_rvals(MRs, N1, MRs_str),
+		string__append_list([MR_str, ", ", MRs_str], Str)
 	;
-		MR_str = "no"
-	),
-	opt_debug__dump_maybe_rvals(MRs, MRs_str),
-	string__append_list([MR_str, ", ", MRs_str], Str).
+		Str = "truncated"
+	).

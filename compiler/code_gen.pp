@@ -76,6 +76,7 @@
 :- import_module type_util, mode_util, std_util, int, set, bintree_set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, unify_proc, globals, options, hlds_out.
+:- import_module code_aux, middle_rec.
 
 %---------------------------------------------------------------------------%
 
@@ -93,7 +94,7 @@ generate_code(ModuleInfo, c_file(Name, [c_module(ModName, Procedures)])) -->
 	{ unify_proc__init_requests(Requests0) },
 		% now generate the code for each predicate
 	generate_pred_list_code(ModuleInfo, PredIDList, Requests0,
-			Procedures0, Requests),
+			Procedures0, _Requests),
 	% unify_proc__generate_unification_procs(ModuleInfo, Requests,
 	% 	UnifyProcs),
 	% { list__append(Procedures0, UnifyProcs, Procedures) }.
@@ -245,28 +246,32 @@ generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Determinism,
 		CodeInfo) },
 	{ code_info__get_requests(Requests, CodeInfo, _) }.
 	
-
 :- pred generate_category_code_2(category, hlds__goal, code_tree, maybe(int),
 				code_info, code_info).
 :- mode generate_category_code_2(in, in, out, out, in, out) is det.
 
 generate_category_code_2(deterministic, Goal, Instrs, Used) -->
 		% generate the code for the body of the clause
-	code_gen__generate_det_goal(Goal, Instr1),
+	( middle_rec__match_det(Goal, Switch) ->
+		middle_rec__gen_det(Switch, Instrs),
+		{ Used = no }
+	;
+		code_gen__generate_det_goal(Goal, Instr1),
 		% generate the prolog for the clause, which for deterministic
 		% procedures creates a label, increments the
 		% stack pointer to reserve space for local variables and
 		% the succip, and saves the succip.
-	code_gen__generate_det_prolog(Instr0, Used),
+		code_gen__generate_det_prolog(Instr0, Used),
 		% generate a procedure epilog
 		% This needs information based on what variables are
 		% live at the end of the goal - that is, those that
 		% are output parameters which are known from goal_info,
 		% and decrement the stack pointer to free local variables,
 		% and restore the succip.
-	code_gen__generate_det_epilog(Instr2),
+		code_gen__generate_det_epilog(Instr2),
 		% combine the prolog, body and epilog
-	{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }.
+		{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }
+	).
 
 generate_category_code_2(semideterministic, Goal, Instrs, Used) -->
 		% Create a label for fall through on failure.
@@ -327,18 +332,12 @@ code_gen__generate_forced_non_goal(Goal, Code) -->
 
 code_gen__generate_det_goal(Goal - GoalInfo, Instr) -->
 		% Make any changes to liveness before Goal
-	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
-	code_info__update_liveness_info(PreDelta),
-	code_info__update_deadness_info(PreDelta),
-	code_info__reduce_variables_and_registers,
+	code_aux__pre_goal_update(GoalInfo),
 		% generate goal
-	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta),
 	code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0),
 		% Make live any variables which subsequent goals
 		% will expect to be live, but were not generated
-	code_info__update_liveness_info(PostDelta),
-	code_info__reduce_variables_and_registers,
+	code_aux__post_goal_update(GoalInfo),
 	code_info__get_globals(Options),
 	(
 		{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -459,7 +458,7 @@ code_gen__generate_det_goals([Goal | Goals], Instr) -->
 code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	code_info__get_call_info(CallInfo),
 	code_info__get_varset(VarSet),
-	{ code_gen__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
 	code_info__get_total_stackslot_count(NS0),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
@@ -552,7 +551,7 @@ code_gen__generate_det_epilog(ExitCode) -->
 code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	code_info__get_call_info(CallInfo),
 	code_info__get_varset(VarSet),
-	{ code_gen__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_succip_used(Used),
@@ -673,7 +672,7 @@ code_gen__generate_semi_epilog(Instr) -->
 code_gen__generate_non_prolog(EntryCode, no) -->
 	code_info__get_call_info(CallInfo),
 	code_info__get_varset(VarSet),
-	{ code_gen__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_total_stackslot_count(NS),
@@ -722,12 +721,7 @@ code_gen__generate_non_epilog(Instr) -->
 %---------------------------------------------------------------------------%
 
 code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
-	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
-	code_info__update_liveness_info(PreDelta),
-	code_info__update_deadness_info(PreDelta),
-	code_info__reduce_variables_and_registers,
-	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta),
+	code_aux__pre_goal_update(GoalInfo),
 	{ goal_info_determinism(GoalInfo, Category) },
 	(
 		{ Category = deterministic }
@@ -743,8 +737,7 @@ code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
 		code_info__generate_commit(FailLabel, Commit),
 		{ Instr0 = tree(PreCommit, tree(GoalCode, Commit)) }
 	),
-	code_info__update_liveness_info(PostDelta),
-	code_info__reduce_variables_and_registers,
+	code_aux__post_goal_update(GoalInfo),
 	code_info__get_globals(Options),
 	(
 		{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -905,12 +898,7 @@ code_gen__generate_negation(Goal, Code) -->
 %---------------------------------------------------------------------------%
 
 code_gen__generate_non_goal(Goal - GoalInfo, Instr) -->
-	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
-	code_info__update_liveness_info(PreDelta),
-	code_info__update_deadness_info(PreDelta),
-	code_info__reduce_variables_and_registers,
-	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta),
+	code_aux__pre_goal_update(GoalInfo),
 	{ goal_info_determinism(GoalInfo, Category) },
 	(
 		{ Category = deterministic }
@@ -923,8 +911,7 @@ code_gen__generate_non_goal(Goal - GoalInfo, Instr) -->
 	;
 		code_gen__generate_non_goal_2(Goal, GoalInfo, Instr0)
 	),
-	code_info__update_liveness_info(PostDelta),
-	code_info__reduce_variables_and_registers,
+	code_aux__post_goal_update(GoalInfo),
 	code_info__get_globals(Options),
 	(
 		{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -1058,39 +1045,6 @@ code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 		I = I0
 	),
 	code_gen__add_saved_succip(Is0, N, Is).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__explain_call_info(map(var, lval), varset, string).
-:- mode code_gen__explain_call_info(in, in, out) is det.
-
-code_gen__explain_call_info(CallInfo, VarSet, Explanation) :-
-	map__to_assoc_list(CallInfo, CallInfoList),
-	code_gen__explain_call_info_2(CallInfoList, VarSet, "", Explanation1),
-	string__append("\nStack slot assignments (if any):\n", Explanation1,
-		Explanation).
-
-:- pred code_gen__explain_call_info_2(assoc_list(var, lval), varset, string,
-				string).
-:- mode code_gen__explain_call_info_2(in, in, in, out) is det.
-
-code_gen__explain_call_info_2([], _, String, String).
-code_gen__explain_call_info_2([Var - Lval | Rest], VarSet, String0, String) :-
-	code_gen__explain_call_info_2(Rest, VarSet, String0, String1),
-	( llds__lval_to_string(Lval, LvalString0) ->
-		LvalString = LvalString0
-	;
-		LvalString = "some lval"
-	),
-	( varset__lookup_name(VarSet, Var, VarName) ->
-		VarString = VarName
-	;
-		term__var_to_int(Var, VarNum),
-		string__int_to_string(VarNum, VarNumString),
-		string__append("variable number ", VarNumString, VarString)
-	),
-	string__append_list([VarString, "\t ->\t", LvalString, "\n", String1],
-		String).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

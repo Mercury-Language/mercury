@@ -185,7 +185,7 @@ option_defaults_2(optimization_option, [
 	peephole_opt_redoip	-	bool(yes),
 	peephole_value_number	-	bool(no),
 	peephole_frame_opt	-	bool(yes),
-	peephole_repeat		-	int(2),
+	peephole_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes)
 ]).

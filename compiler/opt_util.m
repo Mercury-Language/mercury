@@ -107,7 +107,16 @@
 :- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels(in, out, out) is det.
 
-	% See whether an instruction lists contains the first base case
+	% See whether an instruction list contains the body of a chain
+	% predicate, i.e. a predicate that sets up a stack frame containing
+	% only succip, possibly does some argument shuffling, destroys the
+	% stack frame and then does a tailcall.
+
+:- pred opt_util__chain_pred(list(instruction),
+	list(instruction), list(instruction), list(instruction)).
+:- mode opt_util__chain_pred(in, out, out, out) is semidet.
+
+	% See whether an instruction list contains the first base case
 	% of a det or semidet predicate, a base case that does not need
 	% any stack space. If yes, return the instruction sequences
 	% setting up sp, saving succip, testing the base case (jump away),
@@ -315,6 +324,34 @@ opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 	Instr3 = goto(do_succeed) - _,
 	Instrs_between = [Instr1use].
 
+opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
+	opt_util__gather_comments_livevals(Instrs0, _Comments0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = incr_sp(Framesize) - _,
+	Framesize = 1,
+
+	opt_util__gather_comments_livevals(Instrs2, _Comments1, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = assign(stackvar(Framesize), lval(succip)) - _,
+
+	opt_util__no_stack_straight_line(Instrs4, [], RevShuffle, Instrs5),
+	Instrs5 = [Instr5 | Instrs6],
+	Instr5 = assign(succip, lval(stackvar(Framesize))) - _,
+
+	opt_util__gather_comments_livevals(Instrs6, _Comments2, Instrs7),
+	Instrs7 = [Instr7 | Instrs8],
+	Instr7 = decr_sp(Framesize) - _,
+
+	opt_util__gather_comments_livevals(Instrs8, Livevals, Instrs9),
+	Instrs9 = [Instr9 | Instrs10],
+	Instr9 = goto(_Label) - _,
+
+	opt_util__gather_comments(Instrs10, _Comments3, Instrs11),
+	Instrs11 = [],
+
+	list__reverse(RevShuffle, Shuffle),
+	Tailcall = [Instr9].
+
 opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
 		Test, After, Teardown, Follow) :-
 	opt_util__gather_comments_livevals(Instrs0, Comments0, Instrs1),
@@ -444,7 +481,8 @@ opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
 			MaybeRval = no
 		;
 			MaybeRval = yes(Rval),
-			opt_util__rval_refers_stackvars(Rval, no)
+			opt_util__rval_refers_stackvars(Rval, Refers1),
+			Refers1 = no
 		)
 	->
 		opt_util__rvals_refer_stackvars(Tail, Refers)

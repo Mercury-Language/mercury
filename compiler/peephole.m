@@ -888,6 +888,18 @@ peephole__frame_opt(Instrs0, Instrs, Mod) :-
 	),
 	opt_util__gather_comments(Instrs2, Comments2, Instrs3),
 	(
+		opt_util__chain_pred(Instrs3, Shuffle, Livevals, Tailcall)
+	->
+		list__condense([
+			Comments1,
+			[Instr1],
+			Comments2,
+			Shuffle,
+			Livevals,
+			Tailcall]
+		, Instrs),
+		Mod = yes
+	;
 		opt_util__first_base_case(Instrs3, SetupSp, _SetupSuccip,
 			Test, After, Teardown, Follow),
 		Test = [if_val(Cond, Addr) - _]
