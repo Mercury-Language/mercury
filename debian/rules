@@ -9,13 +9,17 @@
 
 package=mercury
 
-MERCURY_DOCS = 	BUGS HISTORY LIMITATIONS NEWS README RELEASE_NOTES \
-		README.Linux WORK_IN_PROGRESS
 MERCURY_MANS =	doc/c2init.1 doc/mmc.1 doc/mgnuc.1 doc/ml.1 \
 		doc/mprof.1 
-DEBIAN_DOCS =	debian/README.debian debian/copyright 
+#DEBIAN_DOCS =	debian/README.debian debian/copyright 
 
-PATH	    :=    $(PATH):/usr/local/mercury-DEV/bin:/home/tyson/install/bin
+	# A local installation of Mercury.  You might want to override
+	# this to be where you installed a Mercury compiler to bootstrap 
+	# with.  If you are building from an installed binary package in
+	# /usr/bin it shouldn't be a problem
+LOCAL_MERCURY_INSTALL = /home/tyson/install/bin
+
+PATH	    := $(PATH):/usr/local/mercury-DEV/bin:$(LOCAL_MERCURY_INSTALL)
 
 # To build, configure as if we are going to install in /usr,
 # then build the compiler. 
@@ -36,9 +40,9 @@ clean:
 	-mmake realclean
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
-	-rm -f bindist.build_vars bindist/bindist.build_vars
-	-rm -f Mmake.common
-	-rm -f configure
+	-rm -f bindist/bindist.build_vars
+	-rm -f make_all.log make_install.log mercury-compiler.spec
+	-rm -f Mmake.common configure
 	-rm -f `find . -name "*~"`
 	-rm -rf debian/tmp debian/files* core debian/substvars
 
@@ -51,6 +55,7 @@ binary-indep: checkroot build
 # are architecture independent. But that's not really worth worrying
 # about.
 
+
 # To build the binary package, we install into ./debian/tmp/usr
 # However, we have configured as if we are going to install into
 # /usr, so we need to convince the "make install" target to
@@ -58,38 +63,33 @@ binary-indep: checkroot build
 # We override INSTALL_PREFIX to tell it to install to ./debian/tmp/usr.
 # Hardcoded paths should be depending on FINAL_INSTALL_PREFIX instead,
 # which we leave configured for /usr.
-binary-arch: checkroot build
-	$(checkdir)
-	-rm -rf debian/tmp
-	install -d debian/tmp
-	cd debian/tmp;install -d `cat ../dirs`
+install: build 
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
 	make install INSTALL_PREFIX=`pwd`/debian/tmp/usr ;\
-	cp boehm_gc/README debian/tmp/usr/doc/mercury/README.boehm_gc
-# According to debian policy, samples go in examples
-	cp -r samples debian/tmp/usr/doc/mercury/examples
-# install the various information files into /usr/doc
-	install -m 644 $(MERCURY_DOCS) $(DEBIAN_DOCS) debian/tmp/usr/doc/mercury
-	install -m 644 debian/changelog \
-		debian/tmp/usr/doc/mercury/changelog.Debian
-# install the manpages
-	install -m 644 $(MERCURY_MANS) debian/tmp/usr/man/man1/
-# compress manpages, info pages, and html
-	-gzip -9 `find debian/tmp/usr/man -type f 2>/dev/null`
-	-gzip -9 `find debian/tmp/usr/info -type f`
-	-gzip -9 `find debian/tmp/usr/doc -type f -size +4k ! -name "*.htm*"`
-# strip all executables
-	strip `find debian/tmp -type f -perm +111 | xargs file | fgrep ELF | sed 's/^\([^:]*\):.*$$/\1/'`
-# create DEBIAN directory
-	install -d debian/tmp/DEBIAN
-# install necessary scrips into debian directory
-	install -m 755 debian/postinst debian/postrm debian/tmp/DEBIAN/
-	# XXX not entirely sure what to do about the shlibs
-	-dpkg-shlibdeps `find debian/tmp -type f -perm +111 | xargs file | fgrep ELF | sed 's/^\([^:]*\):.*$$/\1/'`
-	md5sum `find debian/tmp/* -type f ! -regex "debian/tmp/DEBIAN/.*"` >debian/tmp/DEBIAN/checksums
-	dpkg-gencontrol
-	chown -R root.root debian/tmp
-	chmod -R go=rX debian/tmp
-	dpkg --build debian/tmp ..
+
+binary-arch: install
+	# cp boehm_gc/README debian/tmp/usr/share/doc/mercury/README.boehm_gc
+# We are probably going to have to override the installation directories
+# to put the documents into /usr/share/doc
+	dh_installdocs 
+	dh_installexamples	samples/*
+	dh_installmanpages
+
+#	dh_undocumented		undocumented commands
+
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_suidregister
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+
+	dh_md5sums
+	dh_builddeb
 
 define checkdir
 	test -f debian/rules
