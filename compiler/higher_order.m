@@ -1556,7 +1556,13 @@ specialize_special_pred(Info0, CalledPred, _CalledProc, Args,
 	;
 		polymorphism__get_special_proc(SpecialPredType, SpecialId,
 			ModuleInfo, SymName, SpecialPredId, SpecialProcId),
-		list__append(TypeInfoArgs, SpecialPredArgs, CallArgs),
+		( type_is_higher_order(SpecialPredType, _, _, _) ->
+			% builtin_*_pred are special cases which
+			% doesn't need the type-info arguments.
+			CallArgs = SpecialPredArgs
+		;
+			list__append(TypeInfoArgs, SpecialPredArgs, CallArgs)
+		),	
 		Goal = call(SpecialPredId, SpecialProcId, CallArgs,
 			not_builtin, MaybeContext, SymName)
 	).

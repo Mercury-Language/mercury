@@ -52,6 +52,7 @@ OTHER_SOURCES= \
 	higher_order_implied_mode.m \
 	ho_func_call.m \
 	ho_inst.m \
+	ho_unify.m \
 	implied_mode.m \
 	indexing.m \
 	inhibit_warn_test.m \
