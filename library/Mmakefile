@@ -83,6 +83,14 @@ endif
 MCFLAGS += --strict-sequential --trace minimum --generate-mmc-deps \
 		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
 
+# The IL and Java implementations of the standard library are not yet complete,
+# so we need to pass `--allow-stubs' to get them to compile.
+# Since the standard library is compiled with `--halt-at-warn',
+# we also need `--no-warn-stubs'.
+ifneq ("","$(findstring il,$(GRADE))$(findstring java, $(GRADE))")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
+
 #-----------------------------------------------------------------------------#
 
 CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
