@@ -862,6 +862,7 @@ use @samp{mc --help} to get the most up-to-date list.
 * Warning options::   
 * Output options::   
 * Auxiliary output options::   
+* Language semantics options::
 * Compilation model options::
 * Code generation options::   
 * Optimization options::   
@@ -1089,6 +1090,42 @@ Multiple dump options accumulate.
 @item -D
 @itemx --verbose-dump-hlds
 With @samp{--dump-hlds}, dumps some additional info.
+
+@end table
+
+@node Language semantics options
+@section Language semantics options
+
+See the Mercury language reference manual for detailed explanations
+of these options.
+
+@table @code
+@item --no-reorder-conj
+Execute conjunctions left-to-right except where the modes imply
+that reordering is unavoidable.
+
+@sp 1
+@item --no-reorder-disj
+Execute disjunctions strictly left-to-right.
+
+@sp 1
+@item --fully-strict
+Don't optimize away loops or calls to @code{error/1}.
+
+@sp 1
+@item --infer-types
+If there is no type declaration for a predicate or function,
+try to infer the type, rather than just reporting an error.
+
+@sp 1
+@item --infer-modes
+If there is no mode declaration for a predicate,
+try to infer the modes, rather than just reporting an error.
+
+@sp 1
+@item --no-infer-det, --no-infer-determinism
+If there is no determinism declaration for a procedure,
+don't try to infer the determinism, just report an error.
 
 @end table
 
