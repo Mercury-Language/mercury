@@ -177,6 +177,9 @@ on_exception(Error, (						\
 clean:
 	rm -f *.no *.ql
 
+realclean:
+	rm -f sicstus_saved_state sicstus_compile
+
 #-----------------------------------------------------------------------------#
 
 CHGRP=mercury
