@@ -1,0 +1,333 @@
+\input texinfo
+@setfilename transition_guide.info
+@settitle The Prolog to Mercury transition guide
+
+@ignore
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* Mercury: (mercury).                The Prolog to Mercury transition guide
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+@end ignore
+
+@c @smallbook
+@c @cropmarks
+@c @finalout
+@setchapternewpage odd
+@ifinfo
+This file is an aid for people porting Prolog programs to Mercury.
+
+Copyright (C) 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@c @finalout
+@title The Prolog to Mercury transition guide
+@subtitle ALPHA TEST version, July 1995
+@author Thomas Conway
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+
+@iftex
+@chapter Getting Started
+@end iftex
+
+@node Top,,, (DIR)
+@ifinfo
+@chapter The Prolog to Mercury transition guide - ALPHA TEST version, July 1995
+@end ifinfo
+@menu
+* Preliminaries::   Introduction
+* Syntax::          Syntax
+* IO::              Input and Output
+* FailLoops::       Failure Driven Loops, Assert and Retract
+* Commits::         Cuts
+% * Problems::        Common Problems
+@end menu
+
+@node Preliminaries, ,, Top
+@section Introduction
+
+This document assumes the reader to be familiar with Prolog.
+It is intended to help the reader translate existing Prolog
+programs to Mercury. In some cases, where the Prolog code is
+quite declarative and does not make use of Prolog's non-logical
+constructions (very much), then the job will usually be quite
+straight forward. In other cases, where the Prolog program makes
+extensive use of non-logical constructions, for example, it may
+be very difficult (or even impossible to do a direct transliteration).
+This guide should be used in conjunction with the User Guide and
+Reference Manuals.
+
+@node Syntax, , , Top
+@section Syntax and Declarations
+
+Prolog and Mercury have very similar syntax. Although there
+are a few differences, by and large if a program is accepted
+by a Prolog system, it will be accepted by Mercury. There are
+however a few extra operators defined by the term parser.
+These are
+@example
+else
+if
+implementation
+import_module
+inst
+interface
+mode
+module
+pred
+then
+type
+when
+XXX
+@end example
+
+In addition, Mercury implements both existential and
+universal quantification using the syntax
+@example
+some Vars Goal
+@end example
+and
+@example
+all Vars Goal
+@end example
+
+@node IO, , , Top
+@section Input and Output
+
+Mercury is a purely declarative language.
+Therefore it cannot use Prolog's mechanism for doing
+input and output with side-effects.
+The mechanism that Mercury uses is the threading of an
+object that represents the state of the world through
+the computation. The type of this structure is @samp{io__state}.
+The modes of the two arguments that are added to calls are
+@samp{di} for ``destructive input'' and @samp{uo} for ``unique
+output''. See the section on Modes in the Reference Manual for
+more on what these mean.
+
+Predicates that do input or output must have these arguments
+added. For example the predicate:
+@example
+write_total(Total) :-
+    write("The total is "),
+    write(Total),
+    write(".\n").
+@end example
+becomes
+@example
+:- pred write_total(int, io__state, io__state).
+:- mode write_total(in, di, uo) is det.
+
+write_total(Total, IO0, IO) :-
+    io__write_string("The total is ", IO0, IO1),
+    io__write_int(Total, IO1, IO2),
+    io__write_string(".\n", IO2, IO).
+@end example
+
+Definite Clause Grammars (DCGs) are convenient syntactic
+sugar to use in this situation. The above clause can
+also be written
+@example
+write_total(Total) -->
+    io__write_string("The total is "),
+    io__write_int(Total),
+    io__write_string(".\n").
+@end example
+Any calls (including unifications) that do not need
+the extra arguments are escaped in the usual way by
+surrounding them in braces @code{ @{ @} }.
+
+One of the important consequences of this model for
+input and output is that predicates that can fail may
+not do input or output.
+This is because the state of the world must be a unique
+object, and each IO operation destructively replaces it
+with a new state.
+Since each IO operation destroys the current state object
+and produces a new one, it is not possible for IO to be
+performed in a context that may fail, since when failure
+occurs the old state of the world will have been destroyed,
+and since bindings cannot be exported from a failing computation,
+the new state of the world is not accessable.
+
+In some circumstances, Prolog programs that suffer from this problem
+can be fixed by moving the IO out of the failing context.
+For example
+@example
+    ...
+    ( solve(Goal) ->
+        ...
+    ;
+        ...
+    ),
+    ...
+@end example
+where @code{solve(Goal)} does some IO can be transformed into
+valid Mercury in at least two ways. The first is to make
+@code{solve} deterministic and return a status:
+@example
+    ...
+    solve(Goal, Result, IO6, IO7),
+    ( Result = yes ->
+        ...
+    ;
+        ...
+    ),
+    ...
+@end example
+
+The other way is to transform @code{solve} so that all the input
+and output takes place outside it:
+@example
+    ...
+    io__write_string("calling: ", IO6, IO7),
+    solve__write_goal(Goal, IO7, IO8),
+    ( solve(Goal) ->
+        io__write_string("succeeded, IO8, IO9),
+        ...
+    ;
+        IO9 = IO8,
+        ...
+    ),
+    ...
+@end example
+
+@node FailLoops, , , Top
+@section Failure driven loops, assert and retract
+
+Because Mercury is purely declarative, the goal @samp{Goal, fail} is
+interchangable with the goal @samp{fail, Goal}. Also because it is
+purely declarative, there are no side effects to goals (see also the
+section on input and output). As a consequence of these two facts
+it is not possible to write failure driven loops in Mercury.
+Neither is it possible to use predicates such as assert or retract.
+Here is not the place to argue it, but we believe programs that use
+failure driven loops, assert and retract to be less clear and harder
+to maintain than those that do not.
+
+The use of assert and retract should be replaced with a threaded
+collection data structure. The standard library contains quite a
+number of different collection ADTs each of which will be useful
+for different classes of problem. Perhaps the collection data type
+that is most able to mimic the behaviour of assert and retract is
+an ordinary list. The assertion of a fact becomes an append to the
+tail of the list of the corresponding fact; a retract becomes a
+deletion from the list.
+
+However, for better efficiency there are various ADTs that map
+between a domain of keys to a range of values. The ADTs in this
+class are the @code{map}, @code{bintree}, @code{rbtree}, and @code{tree234}
+modules. The @code{map} ADT is recommended for generic use --- its
+current implementation is as a 234 tree (using @code{tree234}).
+
+If you need only a domain, then the @code{set} ADT is probably what
+you need (you may prefer to use a map from T to unit depending on
+the specific use you have in mind).
+
+Failure driven loops should be transformed into ordinary recursion.
+This does have the consequence that the code no longer has the benefit
+of heap reclaimation, but the code does become more declarative and
+hence easier to maintain and understand as well as becoming easier for
+the compiler to optimize.
+
+@node Commits, , , Top
+@section Cuts and Indexing
+
+The cut operator is not part of the Mercury language (the builtin
+library contains the predicates !/0 and !/2 which are both
+interchangeable with the goal @code{true}). In addition, the
+conditional operator @samp{-> ;} does not do a hard cut across
+the condition - only a soft cut which prunes away either the
+`then' or `else' goal.
+
+Prolog programs that use cuts and a `catch-all' clause should be
+transformed to use @code{-> ;}.
+
+For example
+@example
+p(this, ...) :- !,
+    ...
+p(that, ...) :- !,
+    ...
+p(Thing, ...) :-
+    ...
+@end example
+
+should be written
+@example
+p(Thing, ...) :-
+    ( Thing = this ->
+        ...
+    ; Thing = that ->
+        ...
+    ;
+        ...
+    ).
+@end example
+
+The Mercury compiler does much better indexing than most Prolog
+compilers. Actually, the compiler indexes on all input variables
+to a disjunction (seperate clauses of a predicate are merged into
+a single clause with a disjunction inside the compiler). As a
+consequence, the Mercury compiler indexes on all arguments. It
+also does deep indexing. That is, a predicate such as the following
+will be indexed.
+@example
+p([f(g(h)) | Rest]) :- ...
+p([f(g(i)) | Rest]) :- ...
+@end example
+
+Since indexing is done on disjunctions rather than clauses, it
+is often unnecessary to introduce auxilary predicates in Mercury
+where in Prolog it is often important for efficiency.
+
+If you have a predicate that needs to test all the functors of
+a type, it is better to write it as a disjunction rather than a
+@code{-> ;} for two reasons. If you add a new functor to
+a type, you can get a determinism error if you forget to add
+the new case to the disjunction. Also, in some situations the
+code generator can do much better with a switch (which is what
+we call a disjunction that will be indexed) by using a jump table,
+or a hash table rather than a chain of if-then-elses.
+
+
+
+@bye

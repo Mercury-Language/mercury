@@ -25,18 +25,23 @@ all: info dvi html
 #-----------------------------------------------------------------------------#
 
 .PHONY: dvi
-dvi: user_guide.dvi reference_manual.dvi faq.dvi library.dvi
+dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
+	transition_guide.dvi
 
 .PHONY: info
-info: mercury.info mercury_ref.info mercury_user_guide.info mercury_faq.info mercury_library.info
+info: mercury.info mercury_ref.info mercury_user_guide.info \
+	mercury_library.info mercury_faq.info transition_guide.info
 
 .PHONY: html
-html: mercury.html user_guide_toc.html reference_manual_toc.html faq_toc.html library_toc.html
+html: mercury.html user_guide_toc.html reference_manual_toc.html \
+	library_toc.html faq_toc.html transition_guide_toc.html
 
 user_guide.dvi: user_guide.texi
 	$(TEXI2DVI) user_guide.texi
 reference_manual.dvi: reference_manual.texi
 	$(TEXI2DVI) reference_manual.texi
+transition_guide.dvi: transition_guide.texi
+	$(TEXI2DVI) transition_guide.texi
 faq.dvi: faq.texi
 	$(TEXI2DVI) faq.texi
 library.dvi: library.texi library-menu.texi library-chapters.texi
@@ -46,6 +51,8 @@ mercury_user_guide.info: user_guide.texi
 	$(MAKEINFO) user_guide.texi
 mercury_ref.info: reference_manual.texi
 	$(MAKEINFO) reference_manual.texi
+transition_guide.info: transition_guide.texi
+	$(MAKEINFO) transition_guide.texi
 mercury_faq.info: faq.texi
 	$(MAKEINFO) faq.texi
 mercury_library.info: library.texi library-menu.texi library-chapters.texi
@@ -55,6 +62,8 @@ user_guide_toc.html: user_guide.texi
 	$(TEXI2HTML) user_guide.texi
 reference_manual_toc.html: reference_manual.texi
 	$(TEXI2HTML) reference_manual.texi
+transition_guide_toc.html: transition_guide.texi
+	$(TEXI2HTML) transition_guide.texi
 faq_toc.html: faq.texi
 	$(TEXI2HTML) faq.texi
 library_toc.html: library.texi library-menu.texi library-chapters.texi
