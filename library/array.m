@@ -897,7 +897,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 array__lookup(Array, Index, Item) :-
 	( bounds_checks, \+ array__in_bounds(Array, Index) ->
-		throw(out_of_bounds_error("array__lookup", Array, Index))
+		out_of_bounds_error(Array, Index, "array__lookup")
 	;
 		array__unsafe_lookup(Array, Index, Item)
 	).
@@ -935,7 +935,7 @@ array__lookup(Array, Index, Item) :-
 
 array__set(Array0, Index, Item, Array) :-
 	( bounds_checks, \+ array__in_bounds(Array0, Index) ->
-		throw(out_of_bounds_error("array__set", Array0, Index))
+		out_of_bounds_error(Array0, Index, "array__set")
 	;
 		array__unsafe_set(Array0, Index, Item, Array)
 	).
@@ -1612,18 +1612,24 @@ merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
 
 %------------------------------------------------------------------------------%
 
-    % out_of_bounds_error(OpName, Array, Index) = IndexOutOfBounds.
-    %
-:- func out_of_bounds_error(string, array(T), int) = index_out_of_bounds.
+	% throw an exception indicating an array bounds error
+:- pred out_of_bounds_error(array(T), int, string).
+:- mode out_of_bounds_error(array_ui, in, in) is erroneous.
+:- mode out_of_bounds_error(in, in, in) is erroneous.
 
-out_of_bounds_error(Op, A, I) =
-    index_out_of_bounds(
-        string__format(
-            "%s: array type %s, bounds [%d, %d], index %d",
-    	    [s(Op), s(type_name(type_of(A))),
-             i(array__min(A)), i(array__max(A)), i(I)]
-	)
-    ).
+	% Note: we deliberately do not include the array element type name
+	% in the error message here, for performance reasons:
+	% using the type name could prevent the compiler from optimizing
+	% away the construction of the type_info in the caller,
+	% because it would prevent unused argument elimination.
+	% Performance is important here, because array__set and array__lookup
+	% are likely to be used in the inner loops of performance-critical
+	% applications.
+out_of_bounds_error(Array, Index, PredName) :-
+	array__bounds(Array, Min, Max),
+	throw(array__index_out_of_bounds(
+		string__format("%s: index %d not in range [%d, %d]",
+			[s(PredName), i(Index), i(Min), i(Max)]))).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
