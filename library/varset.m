@@ -52,6 +52,11 @@
 :- pred varset__new_named_var(varset(T), string, var(T), varset(T)).
 :- mode varset__new_named_var(in, in, out, out) is det.
 
+	% create a new named variable with a unique (w.r.t. the
+	% varset) number appended to the name.
+:- pred varset__new_uniquely_named_var(varset(T), string, var(T), varset(T)).
+:- mode varset__new_uniquely_named_var(in, in, out, out) is det.
+
 	% create a new variable, and maybe give it a name
 :- pred varset__new_maybe_named_var(varset(T), maybe(string),
 	var(T), varset(T)).
@@ -259,6 +264,12 @@ varset__new_named_var(varset(MaxId0, Names0, Vals), Name, Var,
 		varset(MaxId, Names, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId),
 	map__set(Names0, Var, Name, Names).
+
+varset__new_uniquely_named_var(varset(MaxId0, Names0, Vals), Name, Var,
+		varset(MaxId, Names, Vals)) :-
+	term__create_var(MaxId0, Var, MaxId),
+	N = term__var_id(Var),
+	map__set(Names0, Var, string__format("%s_%d", [s(Name), i(N)]), Names).
 
 varset__new_maybe_named_var(varset(MaxId0, Names0, Vals), MaybeName, Var,
 		varset(MaxId, Names, Vals)) :-

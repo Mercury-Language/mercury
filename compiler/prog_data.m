@@ -697,6 +697,10 @@
 				% existential quantification
 				% (The curly braces just quote the 'some'/2.)
 	;	all(prog_vars, goal)	% universal quantification
+	;	some_state_vars(prog_vars, goal)
+	;	all_state_vars(prog_vars, goal)
+				% state variables extracted from
+				% some/2 and all/2 quantifiers.
 
 	% implications
 	;	implies(goal, goal)	% A => B
@@ -704,8 +708,11 @@
 
 	% negation and if-then-else
 	;	not(goal)
-	;	if_then(prog_vars, goal, goal)
-	;	if_then_else(prog_vars, goal, goal, goal)
+	;	if_then(prog_vars, prog_vars, goal, goal)
+				% if_then(SomeVars, StateVars, If, Then)
+	;	if_then_else(prog_vars, prog_vars, goal, goal, goal)
+				% if_then_else(SomeVars, StateVars,
+				% 			If, Then, Else)
 
 	% atomic goals
 	;	call(sym_name, list(prog_term), purity)

@@ -5,6 +5,7 @@ HIGHLIGHTS
 ==========
 
 Changes to the Mercury language:
+* Addition of state variable syntax.
 * Improved support for higher-order functions.
 * Predicate and function equivalence type and mode declarations.
 * Support for defining predicates or functions
@@ -29,6 +30,10 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* A more general alternative to DCG syntax has been added to the language
+  to simplify the manipulation of threaded state.  See the section on State
+  Variables in the Syntax chapter in the reference manual.
 
 * If a higher-order function term has inst 'ground' it is now assumed to have
   the standard higher-order function inst 'func(in, .., in) = out is det'.
@@ -107,6 +112,9 @@ Changes to the Mercury language:
   extensions which are unlikely to be implemented.
 
 Changes to the Mercury standard library:
+
+* The builtin predicates !/0 and !/2 from Mercury's Prolog heritage have been
+  removed (`!' is now a prefix operator used in the state variable syntax).
 
 * io__close_input, io__close_output, io__close_binary_input and
   io__close_binary_output now throw an exception rather than

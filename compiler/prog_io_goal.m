@@ -22,12 +22,13 @@
 :- mode parse_goal(in, in, out, out) is det.
 
 	% Convert a term, possibly starting with `some [Vars]', into
-	% a list of variables and a goal. (If the term doesn't start
-	% with `some [Vars]', we return an empty list of variables.)
+	% a list of the quantified variables, a list of quantified
+	% state variables, and a goal. (If the term doesn't start
+	% with `some [Vars]', we return empty lists of variables.)
 	% 
-:- pred parse_some_vars_goal(term, prog_varset, list(prog_var),
+:- pred parse_some_vars_goal(term, prog_varset, list(prog_var), list(prog_var),
 		goal, prog_varset).
-:- mode parse_some_vars_goal(in, in, out, out, out) is det.
+:- mode parse_some_vars_goal(in, in, out, out, out, out) is det.
 
 	% parse_lambda_expression/3 converts the first argument to a lambda/2
 	% expression into a list of arguments, a list of their corresponding
@@ -156,7 +157,7 @@ parse_goal_2("=", [A0, B0], V, unify(A, B, pure), V) :-
 	Since (A -> B) has different semantics in standard Prolog
 	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
 	for the moment we'll just disallow it.
-parse_goal_2("->", [A0, B0], V0, if_then(Vars, A, B), V) :-
+parse_goal_2("->", [A0, B0], V0, if_then(Vars, StateVars, A, B), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V).
 ******/
@@ -170,10 +171,10 @@ parse_goal_2(";", [A0, B0], V0, R, V) :-
 	(
 		A0 = term__functor(term__atom("->"), [X0, Y0], _Context)
 	->
-		parse_some_vars_goal(X0, V0, Vars, X, V1),
+		parse_some_vars_goal(X0, V0, Vars, StateVars, X, V1),
 		parse_goal(Y0, V1, Y, V2),
 		parse_goal(B0, V2, B, V),
-		R = if_then_else(Vars, X, Y, B)
+		R = if_then_else(Vars, StateVars, X, Y, B)
 	;
 		parse_goal(A0, V0, A, V1),
 		parse_goal(B0, V1, B, V),
@@ -183,7 +184,7 @@ parse_goal_2(";", [A0, B0], V0, R, V) :-
 	For consistency we also disallow if-then
 parse_goal_2("if",
 		[term__functor(term__atom("then"), [A0, B0], _)], V0,
-		if_then(Vars, A, B), V) :-
+		if_then(Vars, StateVars, A, B), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V).
 ****/
@@ -193,18 +194,40 @@ parse_goal_2("else", [
 		    ], _),
 		    C0
 		], V0,
-		if_then_else(Vars, A, B, C), V) :-
-	parse_some_vars_goal(A0, V0, Vars, A, V1),
+		if_then_else(Vars, StateVars, A, B, C), V) :-
+	parse_some_vars_goal(A0, V0, Vars, StateVars, A, V1),
 	parse_goal(B0, V1, B, V2),
 	parse_goal(C0, V2, C, V).
+
 parse_goal_2("not", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
+
 parse_goal_2("\\+", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
-parse_goal_2("all", [Vars0, A0], V0, all(Vars, A), V):-
-	term__coerce(Vars0, Vars1),
-	term__vars(Vars1, Vars),
-	parse_goal(A0, V0, A, V).
+
+parse_goal_2("all", [QVars, A0], V0, GoalExpr, V):-
+
+		% Extract any state variables in the quantifier.
+		%
+	parse_quantifier_vars(QVars, StateVars0, Vars0),
+	list__map(term__coerce_var, StateVars0, StateVars),
+	list__map(term__coerce_var, Vars0, Vars),
+
+	parse_goal(A0, V0, A @ (GoalExprA - ContextA), V),
+
+	(
+		Vars = [],    StateVars = [],
+		GoalExpr = GoalExprA
+	;
+		Vars = [],    StateVars = [_|_],
+		GoalExpr = all_state_vars(StateVars, A)
+	;
+		Vars = [_|_], StateVars = [],
+		GoalExpr = all(Vars, A)
+	;
+		Vars = [_|_], StateVars = [_|_],
+		GoalExpr = all(Vars, all_state_vars(StateVars, A) - ContextA)
+	).
 
 	% handle implication
 parse_goal_2("<=", [A0, B0], V0, implies(B, A), V):-
@@ -220,10 +243,29 @@ parse_goal_2("<=>", [A0, B0], V0, equivalent(A, B), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
-parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
-	parse_list_of_vars(Vars0, Vars1),
-	list__map(term__coerce_var, Vars1, Vars),
-	parse_goal(A0, V0, A, V).
+parse_goal_2("some", [QVars, A0], V0, GoalExpr, V):-
+
+		% Extract any state variables in the quantifier.
+		%
+	parse_quantifier_vars(QVars, StateVars0, Vars0),
+	list__map(term__coerce_var, StateVars0, StateVars),
+	list__map(term__coerce_var, Vars0, Vars),
+
+	parse_goal(A0, V0, A @ (GoalExprA - ContextA), V),
+
+	(
+		Vars = [],    StateVars = [],
+		GoalExpr = GoalExprA
+	;
+		Vars = [],    StateVars = [_|_],
+		GoalExpr = some_state_vars(StateVars, A)
+	;
+		Vars = [_|_], StateVars = [],
+		GoalExpr = some(Vars, A)
+	;
+		Vars = [_|_], StateVars = [_|_],
+		GoalExpr = some(Vars, some_state_vars(StateVars, A) - ContextA)
+	).
 
 	% The following is a temporary hack to handle `is' in
 	% the parser - we ought to handle it in the code generation -
@@ -257,18 +299,19 @@ parse_goal_with_purity(A0, V0, Purity, A, V) :-
 		A = call(unqualified(PurityString), [A2], pure)
 	).
 
-
 %-----------------------------------------------------------------------------%
 
-parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
+parse_some_vars_goal(A0, VarSet0, Vars, StateVars, A, VarSet) :-
 	( 
-		A0 = term__functor(term__atom("some"), [Vars0, A1], _Context),
-		parse_list_of_vars(Vars0, Vars1)
+		A0 = term__functor(term__atom("some"), [QVars, A1], _Context),
+		parse_quantifier_vars(QVars, StateVars0, Vars0)
 	->
-		list__map(term__coerce_var, Vars1, Vars),
+		list__map(term__coerce_var, StateVars0, StateVars),
+		list__map(term__coerce_var, Vars0,      Vars),
 		parse_goal(A1, VarSet0, A, VarSet)
 	;
-		Vars = [],
+		Vars      = [],
+		StateVars = [],
 		parse_goal(A0, VarSet0, A, VarSet)
 	).
 

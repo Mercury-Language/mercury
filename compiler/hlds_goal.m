@@ -479,6 +479,13 @@
 	;	call(
 			call_id,	% the name and arity of the predicate
 			int		% the argument number (first arg == 1)
+		)
+
+		% a unification added by some syntactic transformation
+		% (e.g. for handling state variables.)
+	;	implicit(
+			string		% used to explain the source of the
+					% unification
 		).
 
 	% A unify_sub_context describes the location of sub-unification

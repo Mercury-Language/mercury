@@ -1880,8 +1880,8 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	mercury_compile__maybe_unneeded_code(HLDS39, Verbose, Stats, HLDS40),
 	mercury_compile__maybe_dump_hlds(HLDS40, "40", "unneeded_code"),
 
-	mercury_compile__maybe_lco(HLDS40, Verbose, Stats, HLDS42), !,
-	mercury_compile__maybe_dump_hlds(HLDS42, "42", "lco"), !,
+	mercury_compile__maybe_lco(HLDS40, Verbose, Stats, HLDS42),
+	mercury_compile__maybe_dump_hlds(HLDS42, "42", "lco"),
 
 	% DNF transformations should be after inlining.
 	mercury_compile__maybe_transform_dnf(HLDS40, Verbose, Stats, HLDS44),

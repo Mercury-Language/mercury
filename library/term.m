@@ -279,6 +279,11 @@
 %		create a fresh variable (var) and return the
 %		updated var_supply.
 
+:- func term__var_id(var(T)) = int.
+%	term__var_id(Variable) :
+%		returns a unique number associated with this variable w.r.t.
+%		its originating var_supply.
+
 %-----------------------------------------------------------------------------%
 
 	% from_int/1 should only be applied to integers returned
@@ -1073,6 +1078,10 @@ term__init_var_supply(var_supply(0)).
 
 term__create_var(var_supply(V0), var(V), var_supply(V)) :-
 	V is V0 + 1.
+
+%------------------------------------------------------------------------------%
+
+term__var_id(var(V)) = V.
 
 %-----------------------------------------------------------------------------%
 

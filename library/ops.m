@@ -346,6 +346,9 @@ ops__op_table("when", after, xfx, 900).		% NU-Prolog extension (*)
 ops__op_table("where", after, xfx, 1175).	% NU-Prolog extension (*)
 ops__op_table("~", before, fy, 900).		% Goedel (*)
 ops__op_table("~=", after, xfx, 700).		% NU-Prolog (*)
+ops__op_table("!", before, fx, 40).		% Mercury extension
+ops__op_table("!.", before, fx, 40).		% Mercury extension
+ops__op_table("!:", before, fx, 40).		% Mercury extension
 
 % (*) means that the operator is not useful in Mercury
 %     and is provided only for compatibility.

@@ -1,0 +1,9 @@
+state_vars_test5.m:  1: Warning: interface for module `state_vars_test5' does not export anything.
+state_vars_test5.m:021: Error: !X cannot be a lambda argument.
+
+state_vars_test5.m:021:   Perhaps you meant !.X or !:X.
+state_vars_test5.m:021: In clause for `f(in) = out':
+state_vars_test5.m:021:   in argument 1 of call to function `list:foldl/3':
+state_vars_test5.m:021:   mode error: variable `V_5' has instantiatedness `free',
+state_vars_test5.m:021:   expected instantiatedness was `(func((ground -> ground), (ground -> ground)) = (free -> ground) is det)'.
+For more information, try recompiling with `-E'.

@@ -387,7 +387,11 @@ process_assert((GA ; GB) - _, Symbols, Success) :-
 process_assert(fail - _, [], yes).
 process_assert(some(_, G) - _, Symbols, Success) :-
 	process_assert(G, Symbols, Success).
+process_assert(some_state_vars(_, G) - _, Symbols, Success) :-
+	process_assert(G, Symbols, Success).
 process_assert(all(_, G) - _, Symbols, Success) :-
+	process_assert(G, Symbols, Success).
+process_assert(all_state_vars(_, G) - _, Symbols, Success) :-
 	process_assert(G, Symbols, Success).
 process_assert(implies(GA, GB) - _, Symbols, Success) :-
 	process_assert(GA, SymbolsA, SuccessA),
@@ -401,12 +405,12 @@ process_assert(equivalent(GA, GB) - _, Symbols, Success) :-
 	bool__and(SuccessA, SuccessB, Success).
 process_assert(not(G) - _, Symbols, Success) :-
 	process_assert(G, Symbols, Success).
-process_assert(if_then(_, GA, GB) - _, Symbols, Success) :-
+process_assert(if_then(_, _, GA, GB) - _, Symbols, Success) :-
 	process_assert(GA, SymbolsA, SuccessA),
 	process_assert(GB, SymbolsB, SuccessB),
 	list__append(SymbolsA, SymbolsB, Symbols),
 	bool__and(SuccessA, SuccessB, Success).
-process_assert(if_then_else(_, GA, GB, GC) - _, Symbols, Success) :-
+process_assert(if_then_else(_, _, GA, GB, GC) - _, Symbols, Success) :-
 	process_assert(GA, SymbolsA, SuccessA),
 	process_assert(GB, SymbolsB, SuccessB),
 	process_assert(GC, SymbolsC, SuccessC),

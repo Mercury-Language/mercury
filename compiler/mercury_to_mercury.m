@@ -2388,6 +2388,20 @@ mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
+mercury_output_goal_2(some_state_vars(Vars, Goal), VarSet, Indent) -->
+	( { Vars = [] } ->
+		mercury_output_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("some ["),
+		mercury_output_state_vars(Vars, VarSet, no),
+		io__write_string("] ("),
+		{ Indent1 = Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	).
+
 mercury_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
 		mercury_output_goal(Goal, VarSet, Indent)
@@ -2402,9 +2416,24 @@ mercury_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
 		io__write_string(")")
 	).
 
-mercury_output_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
+mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent) -->
+	( { Vars = [] } ->
+		mercury_output_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("all ["),
+		mercury_output_state_vars(Vars, VarSet, no),
+		io__write_string("] ("),
+		{ Indent1 = Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	).
+
+mercury_output_goal_2(if_then_else(Vars, StateVars, A, B, C), VarSet,
+		Indent) -->
 	io__write_string("(if"),
-	mercury_output_some(Vars, VarSet),
+	mercury_output_some(Vars, StateVars, VarSet),
 	{ Indent1 = Indent + 1 },
 	mercury_output_newline(Indent1),
 	mercury_output_goal(A, VarSet, Indent1),
@@ -2419,9 +2448,9 @@ mercury_output_goal_2(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal_2(if_then(Vars, A, B), VarSet, Indent) -->
+mercury_output_goal_2(if_then(Vars, StateVars, A, B), VarSet, Indent) -->
 	io__write_string("(if"),
-	mercury_output_some(Vars, VarSet),
+	mercury_output_some(Vars, StateVars, VarSet),
 	{ Indent1 = Indent + 1 },
 	mercury_output_newline(Indent1),
 	mercury_output_goal(A, VarSet, Indent1),
@@ -2529,17 +2558,18 @@ mercury_output_par_conj(Goal, VarSet, Indent) -->
 		mercury_output_goal(Goal, VarSet, Indent1)
 	).
 
-:- pred mercury_output_some(list(var(T)), varset(T), io__state, io__state).
-:- mode mercury_output_some(in, in, di, uo) is det.
+:- pred mercury_output_some(list(var(T)), list(var(T)), varset(T),
+		io__state, io__state).
+:- mode mercury_output_some(in, in, in, di, uo) is det.
 
-mercury_output_some(Vars, VarSet) -->
-	(
-		{ Vars = [] }
-	->
-		[]
-	;
+mercury_output_some(Vars, StateVars, VarSet) -->
+	( if { Vars \= [] ; StateVars \= [] } then
 		io__write_string(" some ["),
 		mercury_output_vars(Vars, VarSet, no),
+		( if { Vars \= [], StateVars \= [] } then
+			io__write_string(", "),
+			mercury_output_state_vars(StateVars, VarSet, no)
+		),
 		io__write_string("]")
 	).
 
@@ -3277,6 +3307,23 @@ mercury_format_remaining_terms([Term | Terms], VarSet, AppendVarnums) -->
 	add_string(", "),
 	mercury_format_term(Term, VarSet, AppendVarnums),
 	mercury_format_remaining_terms(Terms, VarSet, AppendVarnums).
+
+	% Similar to mercury_output_vars//3, but prefixes each variable
+	% with `!' to indicate that it is a state variable.
+	%
+:- pred mercury_output_state_vars(list(var(T)), varset(T), bool, io, io).
+:- mode mercury_output_state_vars(in, in, in, di, uo) is det.
+
+mercury_output_state_vars(StateVars, VarSet, AppendVarnums) -->
+	io__write_list(StateVars, ", ",
+		mercury_output_state_var(VarSet, AppendVarnums)).
+
+:- pred mercury_output_state_var(varset(T), bool, var(T), io, io).
+:- mode mercury_output_state_var(in, in, in, di, uo) is det.
+
+mercury_output_state_var(VarSet, AppendVarnum, Var) -->
+	io__write_string("!"),
+	mercury_output_var(Var, VarSet, AppendVarnum).
 
 	% output a comma-separated list of variables
 

@@ -61,6 +61,8 @@ ORDINARY_PROGS=	\
 		read_line_as_string \
 		semidet_map \
 		set_test \
+		state_vars_tests \
+		state_vars_typeclasses \
 		string_format_test \
 		string_format_test_2 \
 		string_format_test_3 \

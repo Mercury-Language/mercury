@@ -316,8 +316,16 @@ prog_util__rename_in_goal_expr(some(Vars0, Goal0), OldVar, NewVar,
 		some(Vars, Goal)) :-
 	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
 	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
+prog_util__rename_in_goal_expr(some_state_vars(Vars0, Goal0), OldVar, NewVar,
+		some_state_vars(Vars, Goal)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
 prog_util__rename_in_goal_expr(all(Vars0, Goal0), OldVar, NewVar,
 		all(Vars, Goal)) :-
+	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
+prog_util__rename_in_goal_expr(all_state_vars(Vars0, Goal0), OldVar, NewVar,
+		all_state_vars(Vars, Goal)) :-
 	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
 	prog_util__rename_in_goal(Goal0, OldVar, NewVar, Goal).
 prog_util__rename_in_goal_expr(implies(GoalA0, GoalB0), OldVar, NewVar,
@@ -328,14 +336,19 @@ prog_util__rename_in_goal_expr(equivalent(GoalA0, GoalB0), OldVar, NewVar,
 		equivalent(GoalA, GoalB)) :-
 	prog_util__rename_in_goal(GoalA0, OldVar, NewVar, GoalA),
 	prog_util__rename_in_goal(GoalB0, OldVar, NewVar, GoalB).
-prog_util__rename_in_goal_expr(if_then(Vars0, Cond0, Then0), OldVar, NewVar,
-		if_then(Vars, Cond, Then)) :-
+prog_util__rename_in_goal_expr(if_then(Vars0, StateVars0, Cond0, Then0),
+		OldVar, NewVar,
+		if_then(Vars, StateVars, Cond, Then)) :-
 	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_vars(StateVars0, OldVar, NewVar, StateVars),
 	prog_util__rename_in_goal(Cond0, OldVar, NewVar, Cond),
 	prog_util__rename_in_goal(Then0, OldVar, NewVar, Then).
-prog_util__rename_in_goal_expr(if_then_else(Vars0, Cond0, Then0, Else0),
-		OldVar, NewVar, if_then_else(Vars, Cond, Then, Else)) :-
+prog_util__rename_in_goal_expr(
+		if_then_else(Vars0, StateVars0, Cond0, Then0, Else0),
+		OldVar, NewVar,
+		if_then_else(Vars, StateVars, Cond, Then, Else)) :-
 	prog_util__rename_in_vars(Vars0, OldVar, NewVar, Vars),
+	prog_util__rename_in_vars(StateVars0, OldVar, NewVar, StateVars),
 	prog_util__rename_in_goal(Cond0, OldVar, NewVar, Cond),
 	prog_util__rename_in_goal(Then0, OldVar, NewVar, Then),
 	prog_util__rename_in_goal(Else0, OldVar, NewVar, Else).

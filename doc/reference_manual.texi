@@ -51,6 +51,7 @@ into another language, under the above conditions for modified versions.
 @author Simon Taylor
 @author Chris Speirs
 @author Tyson Dowd
+@author Ralph Becket
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995-2001 The University of Melbourne.
@@ -162,6 +163,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * Facts::
 * Rules::
 * Goals::
+* State variables::
 * DCG-rules::
 * DCG-goals::
 * Data-terms::
@@ -738,8 +740,210 @@ The arguments must be valid data-terms.
 
 @end table
 
+@node State variables
+@section State variables
+
+Clauses may use @samp{state variables} as a shorthand for naming
+intermediate values in a sequence.  That is, where in the plain syntax one
+might write
+@example
+	main(IO0, IO) :-
+		io__write_string("The answer is ", IO0, IO1),
+		io__write_int(calculate_answer(@dots{}), IO1, IO2),
+		io__nl(IO3, IO).
+@end example
+using state variable syntax one could write
+@example
+	main(!IO) :-
+		io__write_string("The answer is ", !IO),
+		io__write_int(calculate_answer(@dots{}), !IO),
+		io__nl(!IO).
+@end example
+
+A state variable is written @samp{!.@var{X}} or @samp{!:@var{X}},
+denoting the ``current'' or ``next'' value of the sequence labelled
+@var{X}.  An argument @samp{!@var{X}} is shorthand for two state
+variable arguments @samp{!.@var{X}, !:@var{X}}; that is,
+@samp{p(@dots{}, !@var{X}, @dots{})} is parsed as
+@samp{p(@dots{}, !.@var{X}, !:@var{X}, @dots{})}.
+
+Within each clause, a transformation converts state variables into
+sequences of ordinary logic variables.  The syntactic conversion is
+described in terms of the notional @samp{transform} function defined 
+next.
+
+The transformation is applied once for each state variable @var{X}
+with some fresh variables which we shall call @var{ThisX} and
+@var{NextX}.
+
+The expression
+@samp{substitute(@var{Term}, @var{X}, @var{ThisX}, @var{NextX})}
+stands for a copy of @var{Term} with free occurrences of @samp{!.@var{X}}
+replaced with @var{ThisX} and occurrences of @samp{!:@var{X}}
+replaced with @var{NextX} (a free occurrence is one not bound by the
+head of a clause or lambda or by explicit quantification.)
+
+State variables obey the special scope rules.
+A state variable @var{X} must be explicitly introduced either in the head of
+the clause or lambda (in which case it may appear as either or both of
+@samp{!.@var{X}} or @samp{!:@var{X}}) or in an explicit quantification (in
+which case it must appear as @samp{!@var{X}}.)  A state variable @var{X} in
+the enclosing scope of a lambda or if-then-else expression may only be 
+referred to as @samp{!.@var{X}} (unless the enclosing @var{X} is masked
+by a more local state variable of the same name.)
+
+For instance, the following goal employing an if-then-else expression
+@example
+	p((if q(!@var{X}), r(!@var{X}) then @var{A} else @var{B}), !@var{X})
+@end example
+is illegal because it implicitly refers to @samp{!:@var{X}} in the condition
+of the if-then-else expression.  However
+@example
+	p((if some[!@var{X}] (q(!@var{X}), r(!@var{X})) then @var{A} else @var{B}), !@var{X})
+@end example
+is acceptable because the state variable @var{X} is locally scoped to the
+condition and then-goal of the if-then-else expression, hence @samp{!:@var{X}}
+may appear therein.
+
+There are three restrictions concerning state variables in lambdas: first,
+@samp{!@var{X}} is not a legitimate function result, since it stands for two
+arguments, rather than one; second, @samp{!@var{X}} may not appear as a
+parameter term in the head of a lambda since there is no syntax for specifying
+the modes of the two implied parameters; third, @samp{!@var{X}} may not appear
+as an argument in a function application since this would not make sense given
+the usual interpretation of state variables and functions.
+
+@table @code
+
+@item @var{Head} :- @var{Body}
+@example
+transform((@var{Head} :- @var{Body}), @var{X}, @var{ThisX}, @var{NextX}) =
+substitute(@var{Head}, @var{X}, @var{ThisX}, @var{NextX}) :- transform(@var{Body}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+
+@item @var{Head} --> @var{Body}
+@example
+transform((@var{Head} --> @var{Body}), @var{X}, @var{ThisX}, @var{NextX}) =
+substitute(@var{Head}, @var{X}, @var{ThisX}, @var{NextX}) :- transform(@var{Body}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+
+@item @var{Goal1}, @var{Goal2}
+@example
+transform((@var{Goal1}, @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
+transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}), transform(@var{Goal2}, @var{X}, @var{TmpX}, @var{NextX})
+@end example
+for some fresh variable @var{TmpX}.
+
+@item @var{Goal1} ; @var{Goal2}
+@example
+transform((@var{Goal1} ; @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
+transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{NextX}) ; transform(@var{Goal2}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+
+@item not @var{Goal}
+@item \+ @var{Goal}
+A negation.  The two different syntaxes have identical semantics.
+@example
+transform((not @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
+not transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{DummyX}), @var{NextX} = @var{ThisX}
+@end example
+for some fresh variable @var{DummyX}.
+
+@item if @var{Goal1} then @var{Goal2} else @var{Goal3}
+@item @var{Goal1} -> @var{Goal2} ; @var{Goal3}
+An if-then-else.  The two different syntaxes have identical semantics.
+@example
+transform((if @var{Goal1} then @var{Goal2} else @var{Goal3}), @var{X}, @var{ThisX}, @var{NextX}) =
+if transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}) then transform(@var{Goal2}, @var{X}, @var{TmpX},  @var{NextX})
+                                    else transform(@var{Goal3}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+for some fresh variable @var{TmpX}.
+
+@item @var{Goal1} => @var{Goal2}
+@item @var{Goal2} <= @var{Goal1}
+An implication.  The two different syntaxes have identical semantics.
+@example
+transform((@var{Goal1} => @var{Goal2}), @var{X}, @var{ThisX}, @var{NextX}) =
+transform(@var{Goal1}, @var{X}, @var{ThisX}, @var{TmpX}) => transform(@var{Goal2}, @var{X}, @var{TmpX},  @var{NextX}),
+@var{NextX} = @var{ThisX}
+@end example
+for some fresh variable @var{TmpX}.
+
+@item all @var{Vars} @var{Goal}
+@example
+transform((all @var{Vars} @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
+all @var{Vars} transform(@var{Goal}, @var{X}, @var{ThisX}, @var{DummyX}), @var{NextX} = @var{ThisX}
+@end example
+for some fresh variable @var{DummyX}.
+
+@item some @var{Vars} @var{Goal}
+@example
+transform((some @var{Vars} @var{Goal}), @var{X}, @var{ThisX}, @var{NextX}) =
+some @var{Vars} transform(@var{Goal}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+
+@item @var{Call_or_Unification}
+If @samp{!:@var{X}} does not appear in @var{Call_or_Unification} then
+@example
+transform(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}) =
+substitute(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}), @var{NextX} = @var{ThisX}
+@end example
+If @samp{!:@var{X}} does appear in @var{Call_or_Unification} then
+@example
+transform(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX}) =
+substitute(@var{Call_or_Unification}, @var{X}, @var{ThisX}, @var{NextX})
+@end example
+
+@end table
+
+This transformation can lead to the introduction of chains of
+unifications for variables that do not otherwise play a role in the
+definition.  Such chains are removed transparently.
+
+The following code fragments illustrate appropriate use of state
+variable syntax.
+
+@table @b
+
+@item Threading the IO state
+@example
+main(!IO) :-
+	io__write_string("The 100th prime is ", !IO),
+	X = prime(100),
+	io__write_int(X, !IO),
+	io__nl(!IO).
+@end example
+
+@item Handling accumulators (1)
+@example
+foldl2(_, [], !A, !B).
+
+foldl2(P, [X | Xs], !A, !B) :-
+	P(X, !A, !B),
+	foldl2(P, Xs, !A, !B).
+@end example
+
+@item Handling accumulators (2)
+@example
+iterate_while2(P, F, !A, !B) :-
+	( if P(!.A, !.B) then 
+		F(!A, !B),
+		iterate_while2(P, F, !A, !B)
+	  else
+	  	true
+	).
+@end example
+@end table
+
 @node DCG-rules
 @section DCG-rules
+
+(DCG notation is intended for writing parsers and sequence generators
+in a particular style; in the past it has also been used to thread an
+implicit state variable, typically the IO state, through code.  As a
+matter of style, we recommend that in future DCG notation be reserved
+for writing parsers and sequence generators and that state variable
+syntax be used for passing state threads.)
 
 DCG-rules in Mercury have identical syntax and semantics to
 DCG-rules in Prolog.
@@ -1121,6 +1325,9 @@ forms
 both data-terms. The semantics of a conditional expression is that
 if @var{Goal} is true, then the expression has the meaning of
 @var{Expression1}, else the expression has the meaning of @var{Expression2}.
+
+If @var{Goal} takes the form @code{some [X, Y, Z] ...} then the scope of
+@var{X}, @var{Y}, and @var{Z} includes @var{Expression1}.
 
 @node Lambda expressions
 @subsection Lambda expressions

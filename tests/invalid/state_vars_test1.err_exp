@@ -1,0 +1,8 @@
+state_vars_test1.m:  1: Warning: interface for module `state_vars_test1' does not export anything.
+state_vars_test1.m:023: Error: cannot use !:X in this context;
+
+state_vars_test1.m:023:   however !.X may be used here.
+state_vars_test1.m:023: In clause for predicate `state_vars_test1:p/2':
+state_vars_test1.m:023:   warning: variable `X' occurs only once in this scope.
+state_vars_test1.m:022: Warning: the condition of this if-then-else cannot fail.
+For more information, try recompiling with `-E'.

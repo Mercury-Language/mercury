@@ -96,6 +96,11 @@ SINGLEMODULE_SOURCES= \
 	record_syntax_errors.m \
 	some.m \
 	spurious_mode_error.m \
+	state_vars_test1.m \
+	state_vars_test2.m \
+	state_vars_test3.m \
+	state_vars_test4.m \
+	state_vars_test5.m \
 	tc_err1.m \
 	tc_err2.m \
 	tricky_assert1.m \

@@ -175,19 +175,6 @@
 
 %-----------------------------------------------------------------------------%
 
-
-% We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
-% backwards compatibility with Prolog systems.  But of course it only works
-% if all your cuts are green cuts.
-
-:- pred ! is det.
-
-:- pred !(T, T).
-:- mode !(di, uo) is det.
-:- mode !(in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
 	% unify(X, Y) is true iff X = Y.
 :- pred unify(T::in, T::in) is semidet.
 
@@ -317,11 +304,6 @@ cc_cast_io(_) = _ :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("builtin__cc_cast_io").
-
-%-----------------------------------------------------------------------------%
-
-!.
-!(X, X).
 
 %-----------------------------------------------------------------------------%
 

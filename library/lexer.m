@@ -511,8 +511,8 @@ lexer__special_token('}', close_curly).
 lexer__special_token('|', ht_sep).
 lexer__special_token(',', comma).
 lexer__special_token(';', name(";")).
-lexer__special_token('!', name("!")).
 
+lexer__graphic_token_char('!').
 lexer__graphic_token_char('#').
 lexer__graphic_token_char('$').
 lexer__graphic_token_char('&').

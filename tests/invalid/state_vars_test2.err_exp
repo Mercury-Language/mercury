@@ -1,0 +1,7 @@
+state_vars_test2.m:  1: Warning: interface for module `state_vars_test2' does not export anything.
+state_vars_test2.m:023: Error: state variable !:Y is not visible in this context.
+
+state_vars_test2.m:023: In clause for predicate `state_vars_test2:p/2':
+state_vars_test2.m:023:   warning: variable `Y' occurs only once in this scope.
+state_vars_test2.m:022: Warning: the condition of this if-then-else cannot fail.
+For more information, try recompiling with `-E'.

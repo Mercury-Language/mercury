@@ -6171,6 +6171,17 @@ report_error_undef_cons(TypeCheckInfo, ConsErrors, Functor, Arity) -->
 	; { Functor = cons(unqualified("."), 2) } ->
 		io__write_string(
 		  "  error: the list constructor is now `[|]/2', not `./2'.\n")
+	; { Functor = cons(unqualified("!"), 1) } ->
+		io__write_string(
+		  "  error: invalid use of `!' state variable operator.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  You probably meant to use `!.' or `!:'.\n")
+		;
+			[]
+		)
 	;
 		(
 			{ Functor = cons(Constructor, Arity) },

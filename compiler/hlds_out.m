@@ -645,6 +645,10 @@ hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no) -->
 	hlds_out__write_call_arg_id(CallId, ArgNum, Markers),
 	io__write_string(":\n").
 
+hlds_out__write_unify_main_context(First, implicit(Source), Context, First) -->
+	hlds_out__start_in_message(First, Context),
+	io__format("implicit %s unification:\n", [s(Source)]).
+
 :- pred hlds_out__write_unify_sub_contexts(bool, unify_sub_contexts,
 	prog_context, bool, io__state, io__state).
 :- mode hlds_out__write_unify_sub_contexts(in, in, in, out, di, uo) is det.

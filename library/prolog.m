@@ -16,20 +16,6 @@
 :- interface.
 :- import_module std_util, list.
 
-% We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
-% backwards compatibility with Prolog systems.  But of course it only works
-% if all your cuts are green cuts.
-
-/********
-cut is currently defined in builtin.m, for historical reasons.
-
-:- pred ! is det.
-
-:- pred !(T, T).
-:- mode !(di, uo) is det.
-:- mode !(in, out) is det.
-********/
-
 % Prolog arithmetic operators.
 
 :- pred T =:= T.			% In Mercury, just use =
@@ -95,12 +81,6 @@ is/2 is currently defined in int.m, for historical reasons.
 
 :- implementation.
 :- import_module require, int.
-
-/*********
-% !/0 and !/2 currently defined in builtin.m, for historical reasons.
-!.
-!(X, X).
-*********/
 
 % we use module qualifiers here to avoid
 % overriding the builtin Prolog versions

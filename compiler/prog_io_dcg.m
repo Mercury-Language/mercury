@@ -9,6 +9,11 @@
 %
 % This module handles the parsing of clauses in Definite Clause Grammar
 % notation.
+%
+% XXX This module performs no error checking.
+% XXX It may be an idea to recode this as a state variable transformation:
+% 	roughly		Head --> G1, G2, {G3}, G4.
+% 	becomes		Head(!DCG) :- G1(!DCG), G2(!DCG), G3, G4(!DCG).
 
 :- module parse_tree__prog_io_dcg.
 
@@ -195,13 +200,13 @@ parse_dcg_goal_2(":=", [A0], Context, VarSet0, N0, _Var0,
 parse_dcg_goal_2("->", [Cond0, Then0], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
-		SomeVars, Cond, Then, VarSet, N, Var),
+		SomeVars, StateVars, Cond, Then, VarSet, N, Var),
 	( Var = Var0 ->
-		Goal = if_then(SomeVars, Cond, Then) - Context
+		Goal = if_then(SomeVars, StateVars, Cond, Then) - Context
 	;
 		Unify = unify(term__variable(Var), term__variable(Var0)),
-		Goal = if_then_else(SomeVars, Cond, Then, Unify - Context)
-			- Context
+		Goal = if_then_else(SomeVars, StateVars, Cond, Then,
+					Unify - Context) - Context
 	).
 ******/
 
@@ -210,13 +215,13 @@ parse_dcg_goal_2("if", [
 			term__functor(term__atom("then"), [Cond0, Then0], _)
 		], Context, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
-		SomeVars, Cond, Then, VarSet, N, Var),
+		SomeVars, StateVars, Cond, Then, VarSet, N, Var),
 	( Var = Var0 ->
-		Goal = if_then(SomeVars, Cond, Then) - Context
+		Goal = if_then(SomeVars, StateVars, Cond, Then) - Context
 	;
 		Unify = unify(term__variable(Var), term__variable(Var0), pure),
-		Goal = if_then_else(SomeVars, Cond, Then, Unify - Context)
-			- Context
+		Goal = if_then_else(SomeVars, StateVars, Cond, Then,
+					Unify - Context) - Context
 	).
 
 	% Conjunction.
@@ -288,20 +293,60 @@ parse_dcg_goal_2( "\\+", [A0], Context, VarSet0, N0, Var0,
 	Var = Var0.
 
 	% Universal quantification.
-parse_dcg_goal_2("all", [Vars0, A0], Context,
-		VarSet0, N0, Var0, all(Vars, A) - Context,
+parse_dcg_goal_2("all", [QVars, A0], Context,
+		VarSet0, N0, Var0, GoalExpr - Context,
 		VarSet, N, Var) :-
-	term__coerce(Vars0, Vars1),
-	term__vars(Vars1, Vars),
-	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
+
+		% Extract any state variables in the quantifier.
+		%
+	parse_quantifier_vars(QVars, StateVars0, Vars0),
+	list__map(term__coerce_var, StateVars0, StateVars),
+	list__map(term__coerce_var, Vars0, Vars),
+
+	parse_dcg_goal(A0, VarSet0, N0, Var0, A @ (GoalExprA - ContextA),
+			VarSet, N, Var),
+
+	(
+		Vars = [],    StateVars = [],
+		GoalExpr = GoalExprA
+	;
+		Vars = [],    StateVars = [_|_],
+		GoalExpr = all_state_vars(StateVars, A)
+	;
+		Vars = [_|_], StateVars = [],
+		GoalExpr = all(Vars, A)
+	;
+		Vars = [_|_], StateVars = [_|_],
+		GoalExpr = all(Vars, all_state_vars(StateVars, A) - ContextA)
+	).
 
 	% Existential quantification.
-parse_dcg_goal_2("some", [Vars0, A0], Context,
-		VarSet0, N0, Var0, some(Vars, A) - Context,
+parse_dcg_goal_2("some", [QVars, A0], Context,
+		VarSet0, N0, Var0, GoalExpr - Context,
 		VarSet, N, Var) :-
-	term__coerce(Vars0, Vars1),
-	term__vars(Vars1, Vars),
-	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
+
+		% Extract any state variables in the quantifier.
+		%
+	parse_quantifier_vars(QVars, StateVars0, Vars0),
+	list__map(term__coerce_var, StateVars0, StateVars),
+	list__map(term__coerce_var, Vars0, Vars),
+
+	parse_dcg_goal(A0, VarSet0, N0, Var0, A @ (GoalExprA - ContextA),
+			VarSet, N, Var),
+
+	(
+		Vars = [],    StateVars = [],
+		GoalExpr = GoalExprA
+	;
+		Vars = [],    StateVars = [_|_],
+		GoalExpr = some_state_vars(StateVars, A)
+	;
+		Vars = [_|_], StateVars = [],
+		GoalExpr = some(Vars, A)
+	;
+		Vars = [_|_], StateVars = [_|_],
+		GoalExpr = some(Vars, some_state_vars(StateVars, A) - ContextA)
+	).
 
 :- pred parse_dcg_goal_with_purity(term, prog_varset, int, prog_var,
 		purity, goal, prog_varset, int, prog_var).
@@ -337,18 +382,27 @@ append_to_disjunct(Disjunct0, Goal, Context, Disjunct) :-
 		Disjunct = (Disjunct0, Goal - Context) - Context
 	).
 
-:- pred parse_some_vars_dcg_goal(term, list(prog_var), prog_varset,
-		int, prog_var, goal, prog_varset, int, prog_var).
-:- mode parse_some_vars_dcg_goal(in, out, in, in, in, out, out, out, out)
+:- pred parse_some_vars_dcg_goal(term, list(prog_var), list(prog_var),
+		prog_varset, int, prog_var, goal, prog_varset, int, prog_var).
+:- mode parse_some_vars_dcg_goal(in, out, out, in, in, in, out, out, out, out)
 	is det.
-parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
+parse_some_vars_dcg_goal(A0, SomeVars, StateVars, VarSet0, N0, Var0,
 		A, VarSet, N, Var) :-
-	( A0 = term__functor(term__atom("some"), [SomeVars0, A1], _Context) ->
-		term__coerce(SomeVars0, SomeVars1),
-		term__vars(SomeVars1, SomeVars),
+	( A0 = term__functor(term__atom("some"), [QVars0, A1], _Context) ->
+		term__coerce(QVars0, QVars),
+		( if parse_quantifier_vars(QVars, StateVars0, SomeVars0) then
+			SomeVars = SomeVars0,
+			StateVars = StateVars0
+		  else
+				% XXX a hack because we do not do
+				% error checking in this module.
+			term__vars(QVars, SomeVars),
+			StateVars = []
+		),
 		A2 = A1
 	;
 		SomeVars = [],
+		StateVars = [],
 		A2 = A0
 	),
 	parse_dcg_goal(A2, VarSet0, N0, Var0, A, VarSet, N, Var).
@@ -374,14 +428,14 @@ parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
 	% so that the implicit quantification of DCG_2 is correct.
 
 :- pred parse_dcg_if_then(term, term, prog_context, prog_varset, int,
-		prog_var, list(prog_var), goal, goal, prog_varset, int,
-		prog_var).
-:- mode parse_dcg_if_then(in, in, in, in, in, in, out, out, out, out, out,
+		prog_var, list(prog_var), list(prog_var), goal, goal,
+		prog_varset, int, prog_var).
+:- mode parse_dcg_if_then(in, in, in, in, in, in, out, out, out, out, out, out,
 		out) is det.
 
 parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
-		SomeVars, Cond, Then, VarSet, N, Var) :-
-	parse_some_vars_dcg_goal(Cond0, SomeVars, VarSet0, N0, Var0,
+		SomeVars, StateVars, Cond, Then, VarSet, N, Var) :-
+	parse_some_vars_dcg_goal(Cond0, SomeVars, StateVars, VarSet0, N0, Var0,
 				Cond, VarSet1, N1, Var1),
 	parse_dcg_goal(Then0, VarSet1, N1, Var1, Then1, VarSet2, N2,
 		Var2),
@@ -404,7 +458,7 @@ parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
 parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
-		SomeVars, Cond, Then1, VarSet1, N1, VarThen),
+		SomeVars, StateVars, Cond, Then1, VarSet1, N1, VarThen),
 	parse_dcg_goal(Else0, VarSet1, N1, Var0, Else1, VarSet, N,
 		VarElse),
 	( VarThen = Var0, VarElse = Var0 ->
@@ -437,7 +491,7 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
 		prog_util__rename_in_goal(Then1, VarThen, VarElse, Then),
 		Else = Else1
 	),
-	Goal = if_then_else(SomeVars, Cond, Then, Else) - Context.
+	Goal = if_then_else(SomeVars, StateVars, Cond, Then, Else) - Context.
 
 	% term_list_append_term(ListTerm, Term, Result):
 	% 	if ListTerm is a term representing a proper list, 

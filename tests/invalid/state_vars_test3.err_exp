@@ -1,0 +1,5 @@
+state_vars_test3.m:  1: Warning: interface for module `state_vars_test3' does not export anything.
+state_vars_test3.m:022: Warning: reference to unitialized state variable !.X.
+state_vars_test3_init.o: In function `mercury_init':
+state_vars_test3_init.o(.text+0x2b6): undefined reference to `<predicate 'main'/2 mode 0>'
+collect2: ld returned 1 exit status

@@ -66,6 +66,12 @@
 :- pred parse_list_of_vars(term(T), list(var(T))).
 :- mode parse_list_of_vars(in, out) is semidet.
 
+	% Parse a list of quantified variables, splitting it into
+	% state variables and ordinary logic variables, respectively.
+	%
+:- pred parse_quantifier_vars(term(T), list(var(T)), list(var(T))).
+:- mode parse_quantifier_vars(in, out, out) is semidet.
+
 :- pred parse_name_and_arity(module_name, term(_T), sym_name, arity).
 :- mode parse_name_and_arity(in, in, out, out) is semidet.
 
@@ -591,4 +597,20 @@ report_warning(FileName, LineNum, Message) -->
 		[]
 	).
 
+%------------------------------------------------------------------------------%
+
+parse_quantifier_vars(functor(atom("[]"),  [],     _), [],  []).
+
+parse_quantifier_vars(functor(atom("[|]"), [H, T], _), SVs, Vs) :-
+	(
+		H   = functor(atom("!"), [variable(SV)], _),
+		SVs = [SV | SVs0],
+		parse_quantifier_vars(T, SVs0, Vs)
+	;
+		H   = variable(V),
+		Vs = [V | Vs0],
+		parse_quantifier_vars(T, SVs, Vs0)
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
