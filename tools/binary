@@ -165,7 +165,7 @@ do
 	fi
 done
 
-if test "$doubtful = ""
+if test "$doubtful" = ""
 then
 	echo "cannot find the problem; all modules seem ok"
 	exit 1
