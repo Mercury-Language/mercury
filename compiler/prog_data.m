@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -516,14 +516,15 @@
 	
 :- type inst_name	
 	--->	user_inst(sym_name, list(inst))
-	;	merge_inst(inst, inst)
+	;	merge_inst(is_live, inst, inst)
 	;	unify_inst(is_live, inst, inst, unify_is_real)
 	;	ground_inst(inst_name, is_live, uniqueness, unify_is_real)
 	;	any_inst(inst_name, is_live, uniqueness, unify_is_real)
 	;	shared_inst(inst_name)
 	;	mostly_uniq_inst(inst_name)
 	;	typed_ground(uniqueness, type)
-	;	typed_inst(type, inst_name).
+	;	typed_inst(type, inst_name)
+	;	substitution_inst(inst_name, inst_key_set, inst_key_sub).
 
 	% Note: `is_live' records liveness in the sense used by
 	% mode analysis.  This is not the same thing as the notion of liveness

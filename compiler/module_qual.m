@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -565,7 +565,7 @@ qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
 	{ list__length(Insts0, Arity) },
 	find_unique_match(SymName0 - Arity, SymName - _,
 				InstIds, inst_id, Info1, Info).
-qualify_inst_name(merge_inst(_, _), _, _, _) -->
+qualify_inst_name(merge_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(unify_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
@@ -580,6 +580,8 @@ qualify_inst_name(mostly_uniq_inst(_), _, _, _) -->
 qualify_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(typed_inst(_, _), _, _, _) -->
+	{ error("compiler generated inst unexpected") }.
+qualify_inst_name(substitution_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 	% Qualify an inst of the form bound(functor(...)).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -285,10 +285,11 @@
 				).
 */
 :- inst uniq_mode_info	=	ground.
+:- inst dead_mode_info  =	ground.
 
 :- mode mode_info_uo :: free -> uniq_mode_info.
 :- mode mode_info_ui :: uniq_mode_info -> uniq_mode_info.
-:- mode mode_info_di :: uniq_mode_info -> dead.
+:- mode mode_info_di :: uniq_mode_info -> dead_mode_info.
 
 	% Some fiddly modes used when we want to extract
 	% the io_state from a mode_info struct and then put it back again.
@@ -307,7 +308,7 @@
 
 :- mode mode_info_get_io_state	:: uniq_mode_info -> mode_info_no_io.
 :- mode mode_info_no_io		:: mode_info_no_io -> mode_info_no_io.
-:- mode mode_info_set_io_state	:: mode_info_no_io -> dead.
+:- mode mode_info_set_io_state	:: mode_info_no_io -> dead_mode_info.
 
 %-----------------------------------------------------------------------------%
 

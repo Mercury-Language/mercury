@@ -42,7 +42,7 @@ in the general case.
 :- interface.
 
 :- import_module hlds_module, hlds_data, prog_data, (inst), instmap.
-:- import_module list.
+:- import_module list, map, std_util, set.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real,
 		inst_table, module_info, instmap, inst, determinism,
@@ -89,11 +89,41 @@ in the general case.
 	% of `unique' replaced with `shared'.  It is an error if any part
 	% of the inst list is free.
 
-%-----------------------------------------------------------------------------%
+:- pred make_clobbered_inst(inst, inst_table, module_info, instmap,
+		inst, inst_table, module_info, instmap, list(inst_key)).
+:- mode make_clobbered_inst(in, in, in, in, out, out, out, out, out) is det.
 
-:- pred inst_merge(inst, inst, instmap, inst_table, module_info, inst,
-		instmap, inst_table, module_info).
-:- mode inst_merge(in, in, in, in, in, out, out, out, out) is semidet.
+%-----------------------------------------------------------------------------%
+	% Info collected by inst_merge for use in instmap__merge.
+:- type merge_info
+	--->	merge_info(
+			merge_subs,
+			ref_counts
+		).
+
+	% Inst_key substitutions made when merging pairs of alias() insts.
+:- type merge_subs == map(pair(inst_key), inst_key).
+
+	% Reference counts for inst_keys in the two branches.  The first two
+	% fields are for references in live variable only.  These are passed
+	% in by instmap__merge and not changed within inst_merge.
+	% The last two fields are the total number of references among all
+	% non-local variables.  The total reference counts are decremented by
+	% one whenever a dead variable containing an inst_key reference is
+	% clobbered.
+:- type ref_counts
+	--->	ref_counts(
+			inst_key_counts,	% Live count for branch A.
+			inst_key_counts,	% Live count for branch B.
+			inst_key_counts,	% Total reference count, A.
+			inst_key_counts		% Total reference count, B.
+		).
+
+:- pred inst_merge(inst, inst, is_live, instmap, inst_table,
+		module_info, merge_info, inst, instmap, inst_table,
+		module_info, merge_info).
+:- mode inst_merge(in, in, in, in, in, in, in, out, out, out, out, out)
+		is semidet.
 
 	% inst_merge(InstA, InstB, InstC):
 	%       Combine the insts found in different arms of a
@@ -102,6 +132,11 @@ in the general case.
 	%       information in InstA and InstB.  Where InstA and
 	%       InstB specify a binding (free or bound), it must be
 	%       the same in both.
+	%	Note: inst_merge is designed to be called only from
+	%	instmap__merge.  It does not make sense to merge a single pair
+	%	of insts in isolation.  In particular, the returned instmap is
+	%	not completely correct and needs to be fixed up by
+	%	instmap__merge after all insts in the instmap have been merged.
 
 %-----------------------------------------------------------------------------%
 
@@ -118,6 +153,33 @@ in the general case.
 
 :- pred inst_table_create_sub(inst_table, inst_table, inst_key_sub, inst_table).
 :- mode inst_table_create_sub(in, in, out, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type inst_fold_pred(T) == pred(inst, set(inst_name), T, T).
+:- mode inst_fold_pred :: (pred(in, in, in, out) is semidet).
+
+:- type inst_fold_merge_pred(T) == pred(T, T, T).
+:- mode inst_fold_merge_pred :: (pred(in, in, out) is det).
+
+%	inst_fold(InstMap, InstTable, ModuleInfo, Before, After, Merge,
+%			Inst, T0, T)
+% 		Recursively traverse Inst calling Before before recursive
+%		calls and After after recursive calls.  Traverses sub-insts
+%		of `bound' and argument insts of `abstract_inst' and expands
+%		and traverses `alias' and `defined_inst'.
+%		Before and After are passed the current sub-inst, the set of
+%		previously seen inst_names and the current state of the
+%		accumulator; they return the new state of the accumulator.
+%		If a call to Before or After fails, the state of the accumulator
+%		is passed on unchanged.
+%		Merge is called to combine the results of the or-nodes of
+%		a `bound' inst.
+
+:- pred inst_fold(instmap, inst_table, module_info, inst_fold_pred(T),
+		inst_fold_pred(T), inst_fold_merge_pred(T), inst, T, T).
+:- mode inst_fold(in, in, in, inst_fold_pred, inst_fold_pred,
+		inst_fold_merge_pred, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -412,7 +474,7 @@ abstractly_unify_inst_3(live, Real, free(_),	bound(UniqY, List0), UI0,
 		% since both are live, we must make the result shared
 		% (unless it was already shared)
 	( ( UniqY = unique ; UniqY = mostly_unique ) ->
-		make_shared_bound_inst_list(List0, UI0, List, UI)
+		make_shared_bound_inst_list(List0, UI0, List, UI, yes)
 	;
 		List = List0, UI = UI0
 	).
@@ -439,7 +501,7 @@ abstractly_unify_inst_3(live, Real,	bound(UniqY, List0), free(_), UI0,
 	unify_inst_info_get_inst_table(UI0, InstTable0),
 	unify_inst_info_get_instmap(UI0, InstMap0),
 	bound_inst_list_is_ground_or_any(List0, InstMap0, InstTable0, M0),
-	make_shared_bound_inst_list(List0, UI0, List, UI).
+	make_shared_bound_inst_list(List0, UI0, List, UI, yes).
 
 abstractly_unify_inst_3(live, Real, bound(UniqX, ListX), bound(UniqY, ListY),
 			UI0,     bound(Uniq, List), Det, UI) :-
@@ -1338,13 +1400,13 @@ make_any_inst_list([Inst0 | Insts0], Live, Uniq, Real, UI0,
 
 :- pred maybe_make_shared_inst_list(list(inst), list(is_live), unify_inst_info,
 				list(inst), unify_inst_info).
-:- mode maybe_make_shared_inst_list(in, in, in, out, out) is det.
+:- mode maybe_make_shared_inst_list(in, in, in, out, out) is semidet.
 
 maybe_make_shared_inst_list([], [], UI, [], UI).
 maybe_make_shared_inst_list([Inst0 | Insts0], [IsLive | IsLives], UI0,
 		[Inst | Insts], UI) :-
 	( IsLive = live ->
-		make_shared_inst(Inst0, UI0, Inst, UI1)
+		make_shared_inst(Inst0, UI0, Inst, UI1, yes)
 	;
 		Inst = Inst0,
 		UI1 = UI0
@@ -1356,35 +1418,43 @@ maybe_make_shared_inst_list([_|_], [], _, _, _) :-
 	error("maybe_make_shared_inst_list: length mismatch").
 
 :- pred make_shared_inst_list(list(inst), unify_inst_info,
-				list(inst), unify_inst_info).
-:- mode make_shared_inst_list(in, in, out, out) is det.
+				list(inst), unify_inst_info, bool).
+:- mode make_shared_inst_list(in, in, out, out, out) is det.
 
-make_shared_inst_list([], UI, [], UI).
-make_shared_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI) :-
-	make_shared_inst(Inst0, UI0, Inst, UI1),
-	make_shared_inst_list(Insts0, UI1, Insts, UI).
+make_shared_inst_list([], UI, [], UI, yes).
+make_shared_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI, Success) :-
+	make_shared_inst(Inst0, UI0, Inst, UI1, Success0),
+	make_shared_inst_list(Insts0, UI1, Insts, UI, Success1),
+	bool__and(Success0, Success1, Success).
 
 	% This is a wrapper for the above predicate, since this
 	% operation is exported (used in modecheck_unify.m).
 make_shared_inst_list(Insts0, InstTable0, ModuleInfo0, Sub0,
 		Insts, InstTable, ModuleInfo, Sub) :-
 	UI0 = unify_inst_info(ModuleInfo0, InstTable0, Sub0),
-	make_shared_inst_list(Insts0, UI0, Insts, UI),
+	( make_shared_inst_list(Insts0, UI0, Insts1, UI1, yes) ->
+		Insts = Insts1,
+		UI = UI1
+	;
+		% The caller should ensure that this case never happens.
+		error("make_shared_inst_list: inst is partially instantiated")
+	),
 	UI  = unify_inst_info(ModuleInfo, InstTable, Sub).
 
-% make an inst shared; replace all occurrences of `unique' or `mostly_unique'
-% in the inst with `shared'.
+% make an inst shared; replace all occurrences of `unique' or
+% `mostly_unique' in the inst with `shared'.  The bool parameter is `yes' if
+% the inst is ground (i.e. fully instantiated) and `no' otherwise.
 
-:- pred make_shared_inst(inst, unify_inst_info, inst, unify_inst_info).
-:- mode make_shared_inst(in, in, out, out) is det.
+:- pred make_shared_inst(inst, unify_inst_info, inst, unify_inst_info, bool).
+:- mode make_shared_inst(in, in, out, out, out) is det.
 
-make_shared_inst(not_reached, UI, not_reached, UI).
-make_shared_inst(alias(Key), UI0, Inst, UI) :-
+make_shared_inst(not_reached, UI, not_reached, UI, yes).
+make_shared_inst(alias(Key), UI0, Inst, UI, Success) :-
 	unify_inst_info_get_instmap(UI0, InstMap0),
 	unify_inst_info_get_inst_table(UI0, InstTable0),
 	inst_table_get_inst_key_table(InstTable0, IKT0),
 	instmap__inst_key_table_lookup(InstMap0, IKT0, Key, Inst0),
-	make_shared_inst(Inst0, UI0, Inst1, UI1),
+	make_shared_inst(Inst0, UI0, Inst1, UI1, Success),
 	( Inst0 = Inst1 ->
 		Inst = alias(Key),
 		UI = UI1
@@ -1399,24 +1469,22 @@ make_shared_inst(alias(Key), UI0, Inst, UI) :-
 		unify_inst_info_set_instmap(UI2, InstMap, UI),
 		Inst = alias(NewKey)
 	).
-make_shared_inst(any(Uniq0), UI, any(Uniq), UI) :-
+make_shared_inst(any(Uniq0), UI, any(Uniq), UI, yes) :-
 	make_shared(Uniq0, Uniq).
-make_shared_inst(free(_), UI, free(_), UI) :-
-	% the caller should ensure that this never happens
-	error("make_shared_inst: cannot make shared version of `free'").
-make_shared_inst(free(_, T), UI, free(_, T), UI) :-
-	% the caller should ensure that this never happens
-	error("make_shared_inst: cannot make shared version of `free(T)'").
-make_shared_inst(bound(Uniq0, BoundInsts0), UI0, bound(Uniq, BoundInsts), UI) :-
+make_shared_inst(free(A), UI, free(A), UI, no).
+make_shared_inst(free(A, T), UI, free(A, T), UI, no).
+make_shared_inst(bound(Uniq0, BoundInsts0), UI0, bound(Uniq, BoundInsts), UI,
+		Success) :-
 	make_shared(Uniq0, Uniq),
-	make_shared_bound_inst_list(BoundInsts0, UI0, BoundInsts, UI).
-make_shared_inst(ground(Uniq0, PredInst), UI, ground(Uniq, PredInst), UI) :-
+	make_shared_bound_inst_list(BoundInsts0, UI0, BoundInsts, UI, Success).
+make_shared_inst(ground(Uniq0, PredInst), UI, ground(Uniq, PredInst), UI, yes)
+		:-
 	make_shared(Uniq0, Uniq).
-make_shared_inst(inst_var(_), _, _, _) :-
-	error("free inst var").
-make_shared_inst(abstract_inst(_,_), UI, _, UI) :-
+make_shared_inst(inst_var(_), _, _, _, _) :-
+	error("make_shared_inst: free inst var").
+make_shared_inst(abstract_inst(_,_), UI, _, UI, _) :-
 	error("make_shared_inst(abstract_inst)").
-make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
+make_shared_inst(defined_inst(InstName), UI0, Inst, UI, Success) :-
 		% check whether the inst name is already in the
 		% shared_inst table
 	unify_inst_info_get_inst_table(UI0, InstTable0),
@@ -1429,7 +1497,8 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 		;
 			SharedInst = defined_inst(InstName)
 		),
-		UI = UI0
+		UI = UI0,
+		Success = yes
 	;
 		% insert the inst name in the shared_inst table, with
 		% value `unknown' for the moment
@@ -1441,10 +1510,9 @@ make_shared_inst(defined_inst(InstName), UI0, Inst, UI) :-
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
 		unify_inst_info_get_module_info(UI1, ModuleInfo1),
-		unify_inst_info_get_instmap(UI1, InstMap1),
 		inst_lookup(InstTable1, ModuleInfo1, InstName, Inst0),
-		inst_expand(InstMap1, InstTable1, ModuleInfo1, Inst0, Inst1),
-		make_shared_inst(Inst1, UI1, SharedInst, UI2),
+		inst_expand_defined_inst(InstTable1, ModuleInfo1, Inst0, Inst1),
+		make_shared_inst(Inst1, UI1, SharedInst, UI2, Success),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(SharedInst)' in the shared_inst
@@ -1479,15 +1547,17 @@ make_shared(mostly_clobbered, mostly_clobbered).
 make_shared(clobbered, clobbered).
 
 :- pred make_shared_bound_inst_list(list(bound_inst), unify_inst_info,
-					list(bound_inst), unify_inst_info).
-:- mode make_shared_bound_inst_list(in, in, out, out) is det.
+			list(bound_inst), unify_inst_info, bool).
+:- mode make_shared_bound_inst_list(in, in, out, out, out) is det.
 
-make_shared_bound_inst_list([], UI, [], UI).
-make_shared_bound_inst_list([Bound0 | Bounds0], UI0, [Bound | Bounds], UI) :-
+make_shared_bound_inst_list([], UI, [], UI, yes).
+make_shared_bound_inst_list([Bound0 | Bounds0], UI0, [Bound | Bounds], UI,
+		Success) :-
 	Bound0 = functor(ConsId, ArgInsts0),
-	make_shared_inst_list(ArgInsts0, UI0, ArgInsts, UI1),
+	make_shared_inst_list(ArgInsts0, UI0, ArgInsts, UI1, Success0),
 	Bound = functor(ConsId, ArgInsts),
-	make_shared_bound_inst_list(Bounds0, UI1, Bounds, UI).
+	make_shared_bound_inst_list(Bounds0, UI1, Bounds, UI, Success1),
+	bool__and(Success0, Success1, Success).
 
 %-----------------------------------------------------------------------------%
 
@@ -1546,9 +1616,8 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
 		unify_inst_info_get_module_info(UI1, ModuleInfo1),
-		unify_inst_info_get_instmap(UI1, InstMap1),
 		inst_lookup(InstTable1, ModuleInfo1, InstName, Inst0),
-		inst_expand(InstMap1, InstTable1, ModuleInfo1, Inst0, Inst1),
+		inst_expand_defined_inst(InstTable1, ModuleInfo1, Inst0, Inst1),
 		make_mostly_uniq_inst_2(Inst1, UI1, NondetLiveInst, UI2),
 
 		% now that we have determined the resulting Inst, store
@@ -1627,6 +1696,105 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI) :-
 
 %-----------------------------------------------------------------------------%
 
+make_clobbered_inst(Inst0, InstTable0, ModuleInfo0, InstMap0,
+		Inst, InstTable, ModuleInfo, InstMap, RemovedKeys) :-
+	UI0 = unify_inst_info(ModuleInfo0, InstTable0, InstMap0),
+	make_clobbered_inst(Inst0, Inst, [] - UI0, RemovedKeys - UI),
+	UI = unify_inst_info(ModuleInfo, InstTable, InstMap).
+
+:- type clobber_inst_info == pair(list(inst_key), unify_inst_info).
+
+:- pred make_clobbered_inst(inst, inst, clobber_inst_info, clobber_inst_info).
+:- mode make_clobbered_inst(in, out, in, out) is det.
+
+make_clobbered_inst(any(U0), any(U), CI, CI) :-
+	clobber(U0, U).
+make_clobbered_inst(alias(IK), Inst, Rem0 - UI0, CI) :-
+	unify_inst_info_get_inst_table(UI0, InstTable0),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	unify_inst_info_get_instmap(UI0, InstMap0),
+	instmap__inst_key_table_lookup(InstMap0, IKT0, IK, Inst0),
+	make_clobbered_inst(Inst0, Inst, [IK | Rem0] - UI0, CI).
+make_clobbered_inst(free(A), free(A), CI, CI).
+make_clobbered_inst(free(A, T), free(A, T), CI, CI).
+make_clobbered_inst(bound(U0, Bs0), bound(U, Bs), CI0, CI) :-
+	clobber(U0, U),
+	list__map_foldl(
+	    ( pred(functor(C, Is0)::in, functor(C, Is)::out, in, out) is det -->
+		    list__map_foldl(make_clobbered_inst, Is0, Is)
+	    ), Bs0, Bs, CI0, CI).
+make_clobbered_inst(ground(U0, P), ground(U, P), CI, CI) :-
+	clobber(U0, U).
+make_clobbered_inst(not_reached, not_reached, CI, CI).
+make_clobbered_inst(inst_var(_), _, _, _) :-
+	error("inst_util__make_clobbered_inst: inst_var").
+make_clobbered_inst(abstract_inst(S, Is0), abstract_inst(S, Is), CI0, CI) :-
+	list__map_foldl(make_clobbered_inst, Is0, Is, CI0, CI).
+make_clobbered_inst(defined_inst(InstName), Inst, Rem0 - UI0, Rem - UI) :-
+	unify_inst_info_get_inst_table(UI0, InstTable0),
+	inst_table_get_clobbered_insts(InstTable0, ClobberedInsts0),
+	(
+		map__search(ClobberedInsts0, InstName, Result)
+	->
+		( Result = known(ClobberedInst0) ->
+			ClobberedInst = ClobberedInst0
+		;
+			ClobberedInst = defined_inst(InstName)
+		),
+		UI = UI0,
+		Rem = Rem0
+	;
+		% insert the inst name in the clobbered_inst table, with
+		% value `unknown' for the moment
+		map__det_insert(ClobberedInsts0, InstName, unknown,
+			ClobberedInsts1),
+		inst_table_set_clobbered_insts(InstTable0, ClobberedInsts1,
+			InstTable1),
+		unify_inst_info_set_inst_table(UI0, InstTable1, UI1),
+
+		% expand the inst name, and invoke ourself recursively on
+		% it's expansion
+		unify_inst_info_get_module_info(UI1, ModuleInfo1),
+		inst_lookup(InstTable1, ModuleInfo1, InstName, Inst0),
+		inst_expand_defined_inst(InstTable1, ModuleInfo1, Inst0, Inst1),
+		make_clobbered_inst(Inst1, ClobberedInst, Rem0 - UI1,
+			Rem - UI2),
+
+		% now that we have determined the resulting Inst, store 
+		% the appropriate value `known(ClobberedInst)' in the
+		% clobbered_inst table
+		unify_inst_info_get_inst_table(UI2, InstTable2),
+		inst_table_get_clobbered_insts(InstTable2, ClobberedInsts2),
+		map__det_update(ClobberedInsts2, InstName, known(ClobberedInst),
+			ClobberedInsts),
+		inst_table_set_clobbered_insts(InstTable2, ClobberedInsts,
+			InstTable),
+		unify_inst_info_set_inst_table(UI2, InstTable, UI)
+	),
+		% avoid expanding recursive insts
+	unify_inst_info_get_inst_table(UI, LastInstTable),
+	unify_inst_info_get_module_info(UI, LastModuleInfo),
+	unify_inst_info_get_instmap(UI, LastInstMap),
+	(
+		inst_contains_instname(ClobberedInst, LastInstMap,
+			LastInstTable, LastModuleInfo, InstName)
+	->
+		Inst = defined_inst(InstName)
+	;
+		Inst = ClobberedInst
+	).
+
+:- pred clobber(uniqueness, uniqueness).
+:- mode clobber(in, out) is det.
+
+clobber(shared, shared).
+clobber(unique, clobbered).
+clobber(mostly_unique, mostly_clobbered).
+clobber(clobbered, clobbered).
+clobber(mostly_clobbered, mostly_clobbered).
+
+%-----------------------------------------------------------------------------%
+
 	% Should we allow unifications between bound (or ground) insts
 	% and `any' insts?
 	% Previously we only allowed this for fake_unifies,
@@ -1636,6 +1804,7 @@ make_mostly_uniq_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI) :-
 allow_unify_bound_any(_) :- true.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% inst_merge(InstA, InstB, InstC):
 	%       Combine the insts found in different arms of a
@@ -1644,22 +1813,29 @@ allow_unify_bound_any(_) :- true.
 	%       information in InstA and InstB.  Where InstA and
 	%       InstB specify a binding (free or bound), it must be
 	%       the same in both.
+	%	Note: inst_merge is designed to be called only from
+	%	instmap__merge.  It does not make sense to merge a single pair
+	%	of insts in isolation.  In particular, the returned instmap is
+	%	not completely correct and needs to be fixed up by
+	%	instmap__merge after all insts in the instmap have been merged.
 
-inst_merge(InstA, InstB, InstMap0, InstTable0, ModuleInfo0, Inst, InstMap,
-			InstTable, ModuleInfo) :-
+inst_merge(InstA, InstB, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, Inst, InstMap, InstTable, ModuleInfo,
+		MergeInfo) :-
 		% check whether this pair of insts is already in
 		% the merge_insts table
 	inst_table_get_merge_insts(InstTable0, MergeInstTable0),
-	ThisInstPair = InstA - InstB,
+	ThisInstPair = merge_inst_pair(IsLive, InstA, InstB),
 	( map__search(MergeInstTable0, ThisInstPair, Result) ->
 		ModuleInfo = ModuleInfo0,
 		( Result = known(MergedInst) ->
 			Inst0 = MergedInst
 		;
-			Inst0 = defined_inst(merge_inst(InstA, InstB))
+			Inst0 = defined_inst(merge_inst(IsLive, InstA, InstB))
 		),
 		InstTable = InstTable0,
-		InstMap = InstMap0
+		InstMap = InstMap0,
+		MergeInfo = MergeInfo0
 	;
 			% insert ThisInstPair into the table with value
 			%`unknown'
@@ -1669,69 +1845,148 @@ inst_merge(InstA, InstB, InstMap0, InstTable0, ModuleInfo0, Inst, InstMap,
 			InstTable1),
 
 			% merge the insts
-		inst_merge_2(InstA, InstB, InstMap0, InstTable1, ModuleInfo0,
-				Inst0, InstMap, InstTable2, ModuleInfo),
+		inst_merge_2(InstA, InstB, IsLive, InstMap0,
+			InstTable1, ModuleInfo0, MergeInfo0, Inst0, InstMap,
+			InstTable2, ModuleInfo, MergeInfo),
 
 			% now update the value associated with ThisInstPair
 		inst_table_get_merge_insts(InstTable2, MergeInstTable2),
 		map__det_update(MergeInstTable2, ThisInstPair,
-			known(Inst0), MergeInstTable3),
+				known(Inst0), MergeInstTable3),
 		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
-			InstTable)
+				InstTable)
 	),
 		% avoid expanding recursive insts
-	( inst_contains_instname(Inst0, InstMap0, InstTable, ModuleInfo,
-			merge_inst(InstA, InstB)) ->
-		Inst = defined_inst(merge_inst(InstA, InstB))
+	(
+		inst_contains_instname(Inst0, InstMap, InstTable, ModuleInfo,
+			merge_inst(IsLive, InstA, InstB))
+	->
+		Inst = defined_inst(merge_inst(IsLive, InstA, InstB))
 	;
 		Inst = Inst0
 	).
 
-:- pred inst_merge_2(inst, inst, instmap, inst_table, module_info,
-		inst, instmap, inst_table, module_info).
-:- mode inst_merge_2(in, in, in, in, in, out, out, out, out) is semidet.
+:- pred inst_merge_2(inst, inst, is_live, instmap, inst_table,
+		module_info, merge_info, inst, instmap, inst_table,
+		module_info, merge_info).
+:- mode inst_merge_2(in, in, in, in, in, in, in, out, out, out, out, out)
+		is semidet.
 
-inst_merge_2(InstA, InstB, InstMap0, InstTable0, ModuleInfo0, Inst,
-		InstMap, InstTable, ModuleInfo) :-
-/*********
-		% would this test improve efficiency??
-	( InstA = InstB ->
-		Inst = InstA,
-		ModuleInfo = ModuleInfo0
-	;
-*********/
-	%     fixed!
-	inst_expand_defined_inst(InstTable0, ModuleInfo0, InstA, InstA2),
-	inst_expand_defined_inst(InstTable0, ModuleInfo0, InstB, InstB2),
+inst_merge_2(InstA, InstB, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, Inst, InstMap, InstTable, ModuleInfo,
+		MergeInfo) :-
+	MergeInfo0 = merge_info(MergeSubs0, RefCounts0),
+	RefCounts0 = ref_counts(LiveCountsA, LiveCountsB, CountsA0, CountsB0),
+	expand_inst(IsLive, LiveCountsA, InstA, InstMap0, InstTable0,
+		ModuleInfo0, CountsA0, InstA2, InstMap1,
+		InstTable1, ModuleInfo1, CountsA),
+	expand_inst(IsLive, LiveCountsB, InstB, InstMap1, InstTable1,
+		ModuleInfo1, CountsB0, InstB2, InstMap2,
+		InstTable2, ModuleInfo2, CountsB),
+	RefCounts1 = ref_counts(LiveCountsA, LiveCountsB, CountsA, CountsB),
+	MergeInfo1 = merge_info(MergeSubs0, RefCounts1),
 	(
 		InstB2 = not_reached
 	->
 		Inst = InstA2,
-		ModuleInfo = ModuleInfo0,
-		InstTable = InstTable0,
-		InstMap = InstMap0
+		ModuleInfo = ModuleInfo2,
+		InstTable = InstTable2,
+		InstMap = InstMap2,
+		MergeInfo = MergeInfo1
 	;
-		InstA2 = alias(IKA)
+		InstA2 = not_reached
 	->
-		inst_table_get_inst_key_table(InstTable0, IKT0),
-		instmap__inst_key_table_lookup(InstMap0, IKT0, IKA, InstA3),
-		inst_merge_3(InstA3, InstB2, InstMap0, InstTable0, ModuleInfo0,
-			Inst, InstMap, InstTable, ModuleInfo)
+		Inst = InstB2,
+		ModuleInfo = ModuleInfo2,
+		InstTable = InstTable2,
+		InstMap = InstMap2,
+		MergeInfo = MergeInfo1
 	;
+		InstA2 = alias(IKA0),
+		InstB2 \= alias(_)
+	->
+		Lambda = lambda([I::out] is nondet, (
+			map__member(MergeSubs0, IKA0 - _, MergeIK),
+			I = alias(MergeIK))),
+		make_shared_merge_insts(IKA0, Lambda, InstMap2,
+			InstTable2, ModuleInfo2, InstA3, InstMap3,
+			InstTable3, ModuleInfo3),
+		inst_merge_3(InstA3, InstB2, IsLive, 
+			InstMap3, InstTable3, ModuleInfo3, MergeInfo1,
+			Inst, InstMap, InstTable, ModuleInfo, MergeInfo)
+	;
+		InstB2 = alias(IKB0),
+		InstA2 \= alias(_)
+	->
+		Lambda = lambda([I::out] is nondet, (
+			map__member(MergeSubs0, _ - IKB0, MergeIK),
+			I = alias(MergeIK))),
+		make_shared_merge_insts(IKB0, Lambda, InstMap2,
+			InstTable2, ModuleInfo2, InstB3, InstMap3,
+			InstTable3, ModuleInfo3),
+		inst_merge_3(InstA2, InstB3, IsLive, 
+			InstMap3, InstTable3, ModuleInfo3, MergeInfo1,
+			Inst, InstMap, InstTable, ModuleInfo, MergeInfo)
+	;
+		InstA2 = alias(IKA),
 		InstB2 = alias(IKB)
 	->
-		inst_table_get_inst_key_table(InstTable0, IKT0),
-		instmap__inst_key_table_lookup(InstMap0, IKT0, IKB, InstB3),
-		inst_merge_3(InstA2, InstB3, InstMap0, InstTable0, ModuleInfo0,
-			Inst, InstMap, InstTable, ModuleInfo)
+		(
+			instmap__inst_keys_are_equivalent(IKA, InstMap2,
+				IKB, InstMap2)
+		->
+			IK = IKA,
+			InstTable = InstTable2,
+			ModuleInfo = ModuleInfo2,
+			InstMap = InstMap2,
+			map__set(MergeSubs0, IKA - IKB, IKA, MergeSubs),
+			MergeInfo = merge_info(MergeSubs, RefCounts1)
+		;
+			map__search(MergeSubs0, IKA - IKB, IK0)
+		->
+			IK = IK0,
+			InstTable = InstTable2,
+			ModuleInfo = ModuleInfo2,
+			InstMap = InstMap2,
+			MergeInfo = MergeInfo1
+		;
+			inst_table_get_inst_key_table(InstTable2, IKT0),
+			instmap__inst_key_table_lookup(InstMap2, IKT0, IKA,
+			    InstA3),
+			instmap__inst_key_table_lookup(InstMap2, IKT0, IKB,
+			    InstB3),
+			inst_merge_3(InstA3, InstB3, IsLive, InstMap2,
+			    InstTable2, ModuleInfo2, MergeInfo1,
+			    Inst0, InstMap, InstTable3, ModuleInfo,
+			    MergeInfo2),
+			MergeInfo2 = merge_info(MergeSubs2, RefCounts),
+			( map__search(MergeSubs2, IKA - IKB, IK1) ->
+			    IK = IK1,
+			    MergeSubs = MergeSubs2,
+			    InstTable = InstTable3
+			;
+			    % Create a new inst key for the merged inst.
+			    inst_table_get_inst_key_table(InstTable3, IKT1),
+			    inst_key_table_add(IKT1, Inst0, IK, IKT),
+			    inst_table_set_inst_key_table(InstTable3, IKT,
+				InstTable),
+			    map__det_insert(MergeSubs2, IKA - IKB, IK,
+				MergeSubs)
+			),
+			MergeInfo = merge_info(MergeSubs, RefCounts)
+		),
+		Inst = alias(IK)
 	;
-		inst_merge_3(InstA2, InstB2, InstMap0, InstTable0, ModuleInfo0,
-			Inst, InstMap, InstTable, ModuleInfo)
+		inst_merge_3(InstA2, InstB2, IsLive, InstMap2,
+			InstTable2, ModuleInfo2, MergeInfo1, Inst,
+			InstMap, InstTable, ModuleInfo, MergeInfo)
 	).
 
-:- pred inst_merge_3(inst, inst, instmap, inst_table, module_info, inst,
-		instmap, inst_table, module_info).
-:- mode inst_merge_3(in, in, in, in, in, out, out, out, out) is semidet.
+:- pred inst_merge_3(inst, inst, is_live, instmap, inst_table,
+		module_info, merge_info, inst, instmap, inst_table,
+		module_info, merge_info).
+:- mode inst_merge_3(in, in, in, in, in, in, in, out, out, out, out, out)
+		is semidet.
 
 % We do not yet allow merging of `free' and `any',
 % except in the case where the any is `mostly_clobbered_any'
@@ -1749,15 +2004,15 @@ inst_merge_2(InstA, InstB, InstMap0, InstTable0, ModuleInfo0, Inst,
 % too weak -- it might not be able to detect bugs as well
 % as it can currently.
 
-inst_merge_3(any(UniqA), any(UniqB), InstMap, InstTable, M, any(Uniq),
-		InstMap, InstTable, M) :-
+inst_merge_3(any(UniqA), any(UniqB), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(any(Uniq), free(_), InstMap, InstTable, M, any(Uniq), InstMap,
-		InstTable, M) :-
+inst_merge_3(any(Uniq), free(_), _, InstMap, InstTable, M, MS, any(Uniq),
+		InstMap, InstTable, M, MS) :-
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(any(UniqA), bound(UniqB, ListB), InstMap, InstTable, M,
-		any(Uniq), InstMap, InstTable, M) :-
+inst_merge_3(any(UniqA), bound(UniqB, ListB), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, InstMap, InstTable, M, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1765,20 +2020,20 @@ inst_merge_3(any(UniqA), bound(UniqB, ListB), InstMap, InstTable, M,
 	;
 		bound_inst_list_is_ground_or_any(ListB, InstMap, InstTable, M)
 	).
-inst_merge_3(any(UniqA), ground(UniqB, _), InstMap, InstTable, M, any(Uniq),
-		InstMap, InstTable, M) :-
+inst_merge_3(any(UniqA), ground(UniqB, _), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(any(UniqA), abstract_inst(_, _), InstMap, InstTable, M,
-		any(Uniq), InstMap, InstTable, M) :-
+inst_merge_3(any(UniqA), abstract_inst(_, _), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq(UniqA, shared, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(free(_), any(Uniq), InstMap, InstTable, M, any(Uniq),
-		InstMap, InstTable, M) :-
+inst_merge_3(free(_), any(Uniq), _, InstMap, InstTable, M, MS, any(Uniq),
+		InstMap, InstTable, M, MS) :-
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(bound(UniqA, ListA), any(UniqB), InstMap, InstTable, M,
-		any(Uniq), InstMap, InstTable, M) :-
+inst_merge_3(bound(UniqA, ListA), any(UniqB), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq_bound(UniqB, UniqA, ListA, InstMap, InstTable, M, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1786,35 +2041,38 @@ inst_merge_3(bound(UniqA, ListA), any(UniqB), InstMap, InstTable, M,
 	;
 		bound_inst_list_is_ground_or_any(ListA, InstMap, InstTable, M)
 	).
-inst_merge_3(ground(UniqA, _), any(UniqB), InstMap, InstTable, M, any(Uniq),
-		InstMap, InstTable, M) :-
+inst_merge_3(ground(UniqA, _), any(UniqB), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(abstract_inst(_, _), any(UniqB), InstMap, InstTable, M,
-		any(Uniq), InstMap, InstTable, M) :-
+inst_merge_3(abstract_inst(_, _), any(UniqB), _, InstMap, InstTable, M, MS,
+		any(Uniq), InstMap, InstTable, M, MS) :-
 	merge_uniq(shared, UniqB, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(free(A), free(A), InstMap, InstTable, M, free(A), InstMap,
-		InstTable, M).
-inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), InstMap0, InstTable0,
-		ModuleInfo0, bound(Uniq, List), InstMap, InstTable,
-		ModuleInfo) :-
+inst_merge_3(free(A), free(A), _, InstMap, InstTable, M, MS, free(A),
+		InstMap, InstTable, M, MS).
+inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), IsLive, InstMap0,
+		InstTable0, ModuleInfo0, MergeInfo0, bound(Uniq, List),
+		InstMap, InstTable, ModuleInfo, MergeInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
-	bound_inst_list_merge(ListA, ListB, InstMap0, InstTable0, ModuleInfo0,
-		List, InstMap, InstTable, ModuleInfo).
-inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), InstMap, InstTable,
-		ModuleInfo, ground(Uniq, no), InstMap, InstTable, ModuleInfo) :-
+	bound_inst_list_merge(ListA, ListB, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, List, InstMap, InstTable,
+		ModuleInfo, MergeInfo).
+inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), _, InstMap,
+		InstTable, ModuleInfo, MS, ground(Uniq, no), InstMap, InstTable,
+		ModuleInfo, MS) :-
 	merge_uniq_bound(UniqB, UniqA, ListA, InstMap, InstTable, ModuleInfo,
 		Uniq),
 	bound_inst_list_is_ground(ListA, InstMap, InstTable, ModuleInfo).
-inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), InstMap, InstTable,
-		ModuleInfo, ground(Uniq, no), InstMap, InstTable, ModuleInfo) :-
+inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), _, InstMap,
+		InstTable, ModuleInfo, MS, ground(Uniq, no), InstMap, InstTable,
+		ModuleInfo, MS) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, InstMap, InstTable,
 			ModuleInfo, Uniq),
 	bound_inst_list_is_ground(ListB, InstMap, InstTable, ModuleInfo).
-inst_merge_3(ground(UniqA, MaybePredA), ground(UniqB, MaybePredB), InstMap,
-		InstTable, ModuleInfo, ground(Uniq, MaybePred), InstMap,
-		InstTable, ModuleInfo) :-
+inst_merge_3(ground(UniqA, MaybePredA), ground(UniqB, MaybePredB), _,
+		InstMap, InstTable, ModuleInfo, MS, ground(Uniq, MaybePred),
+		InstMap, InstTable, ModuleInfo, MS) :-
 	(
 		MaybePredA = yes(PredA),
 		MaybePredB = yes(PredB)
@@ -1839,14 +2097,15 @@ inst_merge_3(ground(UniqA, MaybePredA), ground(UniqB, MaybePredB), InstMap,
 		MaybePred = no
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-			InstMap0, InstTable0, ModuleInfo0,
-			abstract_inst(Name, Args), InstMap, InstTable,
-			ModuleInfo) :-
-	inst_list_merge(ArgsA, ArgsB, InstMap0, InstTable0, ModuleInfo0, Args,
-			InstMap, InstTable, ModuleInfo).
-inst_merge_3(not_reached, Inst, InstMap, InstTable, M, Inst, InstMap,
-			InstTable, M).
+inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB), IsLive,
+		InstMap0, InstTable0, ModuleInfo0, MergeInfo0,
+		abstract_inst(Name, Args), InstMap, InstTable, ModuleInfo,
+		MergeInfo) :-
+	inst_list_merge(ArgsA, ArgsB, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, Args, InstMap, InstTable, ModuleInfo,
+		MergeInfo).
+inst_merge_3(not_reached, Inst, _, InstMap, InstTable, M, MS, Inst, InstMap,
+			InstTable, M, MS).
 
 :- pred merge_uniq(uniqueness, uniqueness, uniqueness).
 :- mode merge_uniq(in, in, out) is det.
@@ -1939,19 +2198,23 @@ merge_inst_uniq(inst_var(_), _, _, _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_list_merge(list(inst), list(inst), instmap, inst_table,
-		module_info, list(inst), instmap, inst_table, module_info).
-:- mode inst_list_merge(in, in, in, in, in, out, out, out, out) is semidet.
+:- pred inst_list_merge(list(inst), list(inst), is_live, instmap,
+		inst_table, module_info, merge_info, list(inst), instmap,
+		inst_table, module_info, merge_info).
+:- mode inst_list_merge(in, in, in, in, in, in, in, out, out, out,
+		out, out) is semidet.
 
-inst_list_merge([], [], InstMap, InstTable, ModuleInfo, [], InstMap,
-		InstTable, ModuleInfo).
-inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], InstMap0, InstTable0,
-		ModuleInfo0,
-		[Arg | Args], InstMap, InstTable, ModuleInfo) :-
-	inst_merge(ArgA, ArgB, InstMap0, InstTable0, ModuleInfo0,
-		Arg, InstMap1, InstTable1, ModuleInfo1),
-	inst_list_merge(ArgsA, ArgsB, InstMap1, InstTable1, ModuleInfo1,
-		Args, InstMap, InstTable, ModuleInfo).
+inst_list_merge([], [], _, InstMap, InstTable, ModuleInfo, MergeInfo, [],
+		InstMap, InstTable, ModuleInfo, MergeInfo).
+inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], IsLive, InstMap0,
+		InstTable0, ModuleInfo0, MergeInfo0, [Arg | Args], InstMap,
+		InstTable, ModuleInfo, MergeInfo) :-
+	inst_merge(ArgA, ArgB, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, Arg, InstMap1, InstTable1,
+		ModuleInfo1, MergeInfo1),
+	inst_list_merge(ArgsA, ArgsB, IsLive, InstMap1, InstTable1,
+		ModuleInfo1, MergeInfo1, Args, InstMap, InstTable, ModuleInfo,
+		MergeInfo).
 
 	% bound_inst_list_merge(Xs, Ys, InstTable0, ModuleInfo0, Zs, InstTable,
 	%	ModuleInfo):
@@ -1960,50 +2223,141 @@ inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], InstMap0, InstTable0,
 	% so that the functors of the output list Zs are the union
 	% of the functors of the input lists Xs and Ys.
 
-:- pred bound_inst_list_merge(list(bound_inst), list(bound_inst),
-			instmap, inst_table, module_info,
-			list(bound_inst), instmap, inst_table, module_info).
-:- mode bound_inst_list_merge(in, in, in, in, in, out, out, out, out)
-			is semidet.
+:- pred bound_inst_list_merge(list(bound_inst), list(bound_inst), is_live,
+		instmap, inst_table, module_info, merge_info,
+		list(bound_inst), instmap, inst_table, module_info, merge_info).
+:- mode bound_inst_list_merge(in, in, in, in, in, in, in, out, out, out,
+		out, out) is semidet.
 
-bound_inst_list_merge(Xs, Ys, InstMap0, InstTable0, ModuleInfo0,
-		Zs, InstMap, InstTable, ModuleInfo) :-
+bound_inst_list_merge(Xs, Ys, IsLive, InstMap0, InstTable0,
+		ModuleInfo0, MergeInfo0, Zs, InstMap, InstTable, ModuleInfo,
+		MergeInfo) :-
 	( Xs = [] ->
-		Zs = Ys,
+		MergeInfo = MergeInfo0,
 		ModuleInfo = ModuleInfo0,
 		InstTable = InstTable0,
-		InstMap = InstMap0
+		InstMap = InstMap0,
+		Zs = Ys
 	; Ys = [] ->
-		Zs = Xs,
+		MergeInfo = MergeInfo0,
 		ModuleInfo = ModuleInfo0,
 		InstTable = InstTable0,
-		InstMap = InstMap0
+		InstMap = InstMap0,
+		Zs = Xs
 	;
 		Xs = [X | Xs1],
 		Ys = [Y | Ys1],
 		X = functor(ConsIdX, ArgsX),
 		Y = functor(ConsIdY, ArgsY),
 		( ConsIdX = ConsIdY ->
-			inst_list_merge(ArgsX, ArgsY, InstMap0, InstTable0,
-					ModuleInfo0, Args, InstMap1,
-					InstTable1, ModuleInfo1),
+			MergeInfo0 = merge_info(_, RefCounts0),
+			RefCounts0 = ref_counts(_, _, TotalA0, TotalB0),
+
+			inst_list_merge(ArgsX, ArgsY, IsLive, InstMap0,
+				InstTable0, ModuleInfo0, MergeInfo0,
+				Args, InstMap1, InstTable1, ModuleInfo1,
+				MergeInfo1),
 			Z = functor(ConsIdX, Args),
 			Zs = [Z | Zs1],
-			bound_inst_list_merge(Xs1, Ys1, InstMap1, InstTable1,
-				ModuleInfo1, Zs1, InstMap, InstTable,
-				ModuleInfo)
+
+			MergeInfo1 = merge_info(MergeSubs1, RefCounts1),
+			RefCounts1 = ref_counts(LiveA1, LiveB1, TotalA1,
+				TotalB1),
+			RefCounts2 = ref_counts(LiveA1, LiveB1, TotalA0,
+				TotalB0),
+			MergeInfo2 = merge_info(MergeSubs1, RefCounts2),
+
+			bound_inst_list_merge(Xs1, Ys1, IsLive, InstMap1,
+				InstTable1, ModuleInfo1, MergeInfo2, Zs1,
+				InstMap, InstTable, ModuleInfo, MergeInfo3),
+
+			MergeInfo3 = merge_info(MergeSubs, RefCounts3),
+			RefCounts3 = ref_counts(LiveA, LiveB, TotalA3, TotalB3),
+			uniq_counts_max_merge(TotalA1, TotalA3, TotalA),
+			uniq_counts_max_merge(TotalB1, TotalB3, TotalB),
+			RefCounts = ref_counts(LiveA, LiveB, TotalA, TotalB),
+			MergeInfo = merge_info(MergeSubs, RefCounts)
 		; compare(<, ConsIdX, ConsIdY) ->
 			Zs = [X | Zs1],
-			bound_inst_list_merge(Xs1, Ys, InstMap0, InstTable0,
-				ModuleInfo0, Zs1, InstMap, InstTable,
-				ModuleInfo)
+			bound_inst_list_merge(Xs1, Ys, IsLive, InstMap0,
+				InstTable0, ModuleInfo0, MergeInfo0,
+				Zs1, InstMap, InstTable, ModuleInfo, MergeInfo)
 		;
 			Zs = [Y | Zs1],
-			bound_inst_list_merge(Xs, Ys1, InstMap0, InstTable0,
-				ModuleInfo0, Zs1, InstMap, InstTable,
-				ModuleInfo)
+			bound_inst_list_merge(Xs, Ys1, IsLive, InstMap0,
+				InstTable0, ModuleInfo0, MergeInfo0,
+				Zs1, InstMap, InstTable, ModuleInfo, MergeInfo)
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred expand_inst(is_live, inst_key_counts, inst, instmap, inst_table,
+		module_info, inst_key_counts, inst, instmap, inst_table,
+		module_info, inst_key_counts).
+:- mode expand_inst(in, in, in, in, in, in, in, out, out, out, out, out)
+		is det.
+
+expand_inst(IsLive, LiveCounts, Inst0, InstMap0, InstTable0, ModuleInfo0,
+		Counts0, Inst, InstMap, InstTable, ModuleInfo, Counts) :-
+	( Inst0 = alias(IK) ->
+		( IsLive = dead ->
+			inst_expand(InstMap0, InstTable0, ModuleInfo0, Inst0,
+				Inst1),
+			( has_count_many(Counts0, IK) ->
+				make_clobbered_inst(Inst1, InstTable0,
+					ModuleInfo0, InstMap0, Inst, InstTable,
+					ModuleInfo, InstMap, RemovedKeys),
+				list__foldl(dec_uniq_count, [IK | RemovedKeys],
+					Counts0, Counts)
+			;
+				Inst = Inst1,
+				InstMap = InstMap0,
+				InstTable = InstTable0,
+				ModuleInfo = ModuleInfo0,
+				Counts = Counts0
+			)
+		; has_count_many(LiveCounts, IK) ->
+			% If the inst_key has multiple references, we need to
+			% hang on to it.
+			Inst = Inst0,
+			InstMap = InstMap0,
+			InstTable = InstTable0,
+			ModuleInfo = ModuleInfo0,
+			Counts = Counts0
+		;
+			% This is the only live reference to the inst_key so
+			% we can remove the alias.
+			InstMap = InstMap0,
+			InstTable = InstTable0,
+			ModuleInfo = ModuleInfo0,
+			inst_expand(InstMap0, InstTable0, ModuleInfo0, Inst0,
+				Inst),
+			Counts = Counts0
+		)
+	;
+		InstMap = InstMap0,
+		InstTable = InstTable0,
+		ModuleInfo = ModuleInfo0,
+		Counts = Counts0,
+		inst_expand_defined_inst(InstTable, ModuleInfo, Inst0, Inst)
+	).
+
+:- pred make_shared_merge_insts(inst_key, pred(inst), instmap,
+	inst_table, module_info, inst, instmap, inst_table, module_info).
+:- mode make_shared_merge_insts(in, pred(out) is nondet,
+	in, in, in, out, out, out, out) is semidet.
+
+make_shared_merge_insts(IK0, Lambda, InstMap0, InstTable0, ModuleInfo0,
+		Inst, InstMap, InstTable, ModuleInfo) :-
+	UI0 = unify_inst_info(ModuleInfo0, InstTable0, InstMap0),
+	make_shared_inst(alias(IK0), UI0, Inst1, UI1, yes),
+	solutions(Lambda, Insts),
+	make_shared_inst_list(Insts, UI1, _, UI, yes),
+	UI = unify_inst_info(ModuleInfo, InstTable, InstMap),
+	Inst1 = alias(IK),
+	inst_table_get_inst_key_table(InstTable, IKT),
+	instmap__inst_key_table_lookup(InstMap, IKT, IK, Inst).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2052,12 +2406,14 @@ get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
 %-----------------------------------------------------------------------------%
 
 inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
-	inst_table_get_all_tables(InstTable0, UnifyInstTable0,
+	inst_table_get_all_tables(InstTable0, SubInstTable0, UnifyInstTable0,
 		MergeInstTable0, GroundInstTable0, AnyInstTable0,
-		SharedInstTable0, MostlyUniqInstTable0, IKT0),
-	inst_table_get_all_tables(NewInstTable, NewUnifyInstTable,
-		NewMergeInstTable, NewGroundInstTable, NewAnyInstTable,
-		NewSharedInstTable, NewMostlyUniqInstTable, NewIKT),
+		SharedInstTable0, ClobberedInstTable0, MostlyUniqInstTable0,
+		IKT0),
+	inst_table_get_all_tables(NewInstTable, NewSubInstTable,
+		NewUnifyInstTable, NewMergeInstTable, NewGroundInstTable,
+		NewAnyInstTable, NewSharedInstTable, NewMostlyUniqInstTable,
+		NewClobberedInstTable, NewIKT),
 	inst_key_table_create_sub(IKT0, NewIKT, Sub, IKT),
 
 	maybe_inst_det_table_apply_sub(UnifyInstTable0, NewUnifyInstTable,
@@ -2065,6 +2421,9 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 
 	merge_inst_table_apply_sub(MergeInstTable0, NewMergeInstTable,
 		MergeInstTable, Sub),
+
+	substitution_inst_table_apply_sub(SubInstTable0, NewSubInstTable,
+		SubInstTable, Sub),
 
 	maybe_inst_det_table_apply_sub(GroundInstTable0, NewGroundInstTable,
 		GroundInstTable, Sub),
@@ -2084,9 +2443,15 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 	;
 		error("NYI: inst_table_create_sub (mostly_uniq_inst_table)")
 	),
-	inst_table_set_all_tables(InstTable0, UnifyInstTable,
+	( map__is_empty(NewClobberedInstTable) ->
+		ClobberedInstTable = ClobberedInstTable0
+	;
+		error("NYI: inst_table_create_sub (clobbered_inst_table)")
+	),
+	inst_table_set_all_tables(InstTable0, SubInstTable, UnifyInstTable,
 		MergeInstTable, GroundInstTable, AnyInstTable,
-		SharedInstTable, MostlyUniqInstTable, IKT, InstTable).
+		SharedInstTable, MostlyUniqInstTable, ClobberedInstTable, IKT,
+		InstTable).
 
 :- pred maybe_inst_table_apply_sub(map(inst_name, maybe_inst),
 		map(inst_name, maybe_inst), map(inst_name, maybe_inst),
@@ -2165,13 +2530,13 @@ merge_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
 		merge_inst_table_apply_sub_2(NewTableAL, Table0, Table, Sub)
 	).
 
-:- pred merge_inst_table_apply_sub_2(assoc_list(pair(inst), maybe_inst),
+:- pred merge_inst_table_apply_sub_2(assoc_list(merge_inst_pair, maybe_inst),
 		merge_inst_table, merge_inst_table, inst_key_sub).
 :- mode merge_inst_table_apply_sub_2(in, in, out, in) is det.
 
 merge_inst_table_apply_sub_2([], Table, Table, _).
-merge_inst_table_apply_sub_2([(IA0 - IB0) - Inst0 | Rest], Table0, Table, 
-		Sub) :-
+merge_inst_table_apply_sub_2([Pair0 - Inst0 | Rest], Table0, Table, Sub) :-
+	Pair0 = merge_inst_pair(IsLive, IA0, IB0),
 	inst_apply_sub(Sub, IA0, IA),
 	inst_apply_sub(Sub, IB0, IB),
 	( Inst0 = unknown,
@@ -2180,16 +2545,49 @@ merge_inst_table_apply_sub_2([(IA0 - IB0) - Inst0 | Rest], Table0, Table,
 		inst_apply_sub(Sub, I0, I),
 		Inst = known(I)
 	),
-	map__set(Table0, IA - IB, Inst, Table1),
+	map__set(Table0, merge_inst_pair(IsLive, IA, IB), Inst, Table1),
 	merge_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
+
+:- pred substitution_inst_table_apply_sub(substitution_inst_table,
+	substitution_inst_table, substitution_inst_table, inst_key_sub).
+:- mode substitution_inst_table_apply_sub(in, in, out, in) is det.
+
+substitution_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
+	( map__is_empty(Table0) ->
+		% Optimise common case
+		Table = Table0
+	;
+		map__to_assoc_list(NewTable, NewTableAL),
+		substitution_inst_table_apply_sub_2(NewTableAL, Table0, Table,
+			Sub)
+	).
+
+:- pred substitution_inst_table_apply_sub_2(assoc_list(substitution_inst,
+	maybe_inst), substitution_inst_table, substitution_inst_table,
+	inst_key_sub).
+:- mode substitution_inst_table_apply_sub_2(in, in, out, in) is det.
+
+substitution_inst_table_apply_sub_2([], Table, Table, _).
+substitution_inst_table_apply_sub_2(
+		[substitution_inst(InstName0, K, S) - Inst0 | Rest],
+		Table0, Table, Sub) :-
+	inst_name_apply_sub(Sub, InstName0, InstName),
+	( Inst0 = unknown,
+		Inst = unknown
+	; Inst0 = known(I0),
+		inst_apply_sub(Sub, I0, I),
+		Inst = known(I)
+	),
+	map__set(Table0, substitution_inst(InstName, K, S), Inst, Table1),
+	substitution_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
 
 :- pred inst_name_apply_sub(inst_key_sub, inst_name, inst_name).
 :- mode inst_name_apply_sub(in, in, out) is det.
 
 inst_name_apply_sub(Sub, user_inst(Sym, Insts0), user_inst(Sym, Insts)) :-
 	list__map(inst_apply_sub(Sub), Insts0, Insts).
-inst_name_apply_sub(Sub, merge_inst(InstA0, InstB0),
-		merge_inst(InstA, InstB)) :-
+inst_name_apply_sub(Sub, merge_inst(IsLive, InstA0, InstB0),
+		merge_inst(IsLive, InstA, InstB)) :-
 	inst_apply_sub(Sub, InstA0, InstA),
 	inst_apply_sub(Sub, InstB0, InstB).
 inst_name_apply_sub(Sub, unify_inst(IsLive, InstA0, InstB0, IsReal),
@@ -2209,7 +2607,77 @@ inst_name_apply_sub(Sub, mostly_uniq_inst(Name0), mostly_uniq_inst(Name)) :-
 inst_name_apply_sub(_Sub, typed_ground(Uniq, Type), typed_ground(Uniq, Type)).
 inst_name_apply_sub(Sub, typed_inst(Type, Name0), typed_inst(Type, Name)) :-
 	inst_name_apply_sub(Sub, Name0, Name).
+inst_name_apply_sub(Sub, substitution_inst(Name0, K, S),
+		substitution_inst(Name, K, S)) :-
+	inst_name_apply_sub(Sub, Name0, Name).
 
+%-----------------------------------------------------------------------------%
+
+inst_fold(InstMap, InstTable, ModuleInfo, Before, After, Merge, Inst) -->
+	{ set__init(Recursive) },
+	inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive, Before, After,
+		Merge, Inst).
+
+:- pred inst_fold_2(instmap, inst_table, module_info, set(inst_name),
+		inst_fold_pred(T), inst_fold_pred(T), inst_fold_merge_pred(T),
+		inst, T, T).
+:- mode inst_fold_2(in, in, in, in, inst_fold_pred, inst_fold_pred,
+		inst_fold_merge_pred, in, in, out) is det.
+
+inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive, Before, After, Merge,
+		Inst) -->
+	( call(Before, Inst, Recursive) -> [] ; [] ),
+	inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive, Before, After,
+		Merge, Inst),
+	( call(After, Inst, Recursive) -> [] ; [] ).
+
+:- pred inst_fold_3(instmap, inst_table, module_info, set(inst_name),
+		inst_fold_pred(T), inst_fold_pred(T), inst_fold_merge_pred(T),
+		inst, T, T).
+:- mode inst_fold_3(in, in, in, in, inst_fold_pred, inst_fold_pred,
+		inst_fold_merge_pred, in, in, out) is det.
+
+inst_fold_3(_, _, _, _, _, _, _, any(_)) --> [].
+inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive, Before, After, Merge,
+		alias(Key)) -->
+	{ inst_table_get_inst_key_table(InstTable, IKT) },
+	{ instmap__inst_key_table_lookup(InstMap, IKT, Key, Inst) },
+	inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive, Before, After,
+		Merge, Inst).
+inst_fold_3(_, _, _, _, _, _, _, free(_)) --> [].
+inst_fold_3(_, _, _, _, _, _, _, free(_, _)) --> [].
+inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive, Before, After, Merge,
+		bound(_, BoundInsts0)) -->
+	( { BoundInsts0 = [] }
+	; { BoundInsts0 = [functor(_, Insts0) | BoundInsts1] },
+		=(Acc0),
+		list__foldl(inst_fold_2(InstMap, InstTable, ModuleInfo,
+			Recursive, Before, After, Merge), Insts0),
+		list__foldl(lambda([BI::in, A0::in, A::out] is det,
+		(   
+			BI = functor(_, Insts),
+			list__foldl(inst_fold_2(InstMap, InstTable, ModuleInfo,
+			    Recursive, Before, After, Merge), Insts, Acc0, A1),
+			call(Merge, A0, A1, A)
+		)), BoundInsts1)
+	).
+inst_fold_3(_, _, _, _, _, _, _, ground(_, _)) --> [].
+inst_fold_3(_, _, _, _, _, _, _, not_reached) --> [].
+inst_fold_3(_, _, _, _, _, _, _, inst_var(_)) --> [].
+inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive0, Before, After,
+		Merge, defined_inst(InstName)) -->
+	( { set__member(InstName, Recursive0) } ->
+		[]
+	;
+		{ set__insert(Recursive0, InstName, Recursive) },
+		{ inst_lookup(InstTable, ModuleInfo, InstName, Inst) },
+		inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive, Before,
+			After, Merge, Inst)
+	).
+inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive, Before, After,
+		Merge, abstract_inst(_, Insts)) -->
+	list__foldl(inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive,
+		Before, After, Merge), Insts).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

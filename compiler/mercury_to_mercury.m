@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -847,10 +847,15 @@ mercury_output_structured_inst_name(Expand, user_inst(Name, Args), Indent,
 		mercury_output_tabs(Indent),
 		io__write_string(")\n")
 	).
-mercury_output_structured_inst_name(Expand, merge_inst(InstA, InstB), Indent,
-		VarSet, InstMap, InstTable) -->
+mercury_output_structured_inst_name(Expand, merge_inst(Liveness, InstA, InstB),
+		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
 	io__write_string("$merge_inst(\n"),
+	( { Liveness = live } ->
+		io__write_string("live, ")
+	;
+		io__write_string("dead, ")
+	),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_list(Expand, [InstA, InstB], Indent1,
 		VarSet, InstMap, InstTable),
@@ -959,6 +964,15 @@ mercury_output_structured_inst_name(Expand, typed_inst(Type, InstName),
 		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
+mercury_output_structured_inst_name(Expand, substitution_inst(InstName, _, _),
+		Indent, VarSet, InstMap, InstTable) -->
+	mercury_output_tabs(Indent),
+	io__write_string("$substitution_inst(\n"),
+	{ Indent1 is Indent + 1 },
+	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
+		InstMap, InstTable),
+	mercury_output_tabs(Indent),
+	io__write_string(")\n").
 
 :- pred mercury_output_inst_name(inst_name, inst_varset, inst_table,
 		io__state, io__state).
@@ -974,8 +988,14 @@ mercury_output_inst_name(user_inst(Name, Args), VarSet, InstTable) -->
 			InstTable),
 		io__write_string(")")
 	).
-mercury_output_inst_name(merge_inst(InstA, InstB), VarSet, InstTable) -->
+mercury_output_inst_name(merge_inst(Liveness, InstA, InstB), VarSet,
+		InstTable) -->
 	io__write_string("$merge_inst("),
+	( { Liveness = live } ->
+		io__write_string("live, ")
+	;
+		io__write_string("dead, ")
+	),
 	mercury_output_inst_list(expand_noisily, [InstA, InstB], VarSet,
 		InstTable),
 	io__write_string(")").
@@ -1049,6 +1069,11 @@ mercury_output_inst_name(typed_inst(Type, InstName), VarSet, InstTable) -->
 	{ varset__init(TypeVarSet) },
 	mercury_output_term(Type, TypeVarSet, no),
 	io__write_string(", "),
+	mercury_output_inst_name(InstName, VarSet, InstTable),
+	io__write_string(")").
+mercury_output_inst_name(substitution_inst(InstName, _, _), VarSet,
+		InstTable) -->
+	io__write_string("$substitution_inst("),
 	mercury_output_inst_name(InstName, VarSet, InstTable),
 	io__write_string(")").
 
