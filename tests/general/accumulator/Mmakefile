@@ -41,7 +41,14 @@ ACC_FLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
 		--intermodule-optimization
 
 	# Optimizations to turn off/on.
-OPT_FLAGS = --trace-optimized --excess-assign --common-struct
+	# Deforestation optimizes away the opportunities for accumulator
+	# introduction in many of the test cases, so turn it off.
+OPT_FLAGS = --trace-optimized --excess-assign --common-struct \
+		--no-deforestation
+
+	# XXX There appears to be a bug in value numbering which
+	# causes incorrect output from this test case.
+MCFLAGS-split = --no-optimize-value-number
 
 	# Ensure that the accumulator introduction flags are passed
 	# after EXTRA_MCFLAGS, so that we can override things set in
