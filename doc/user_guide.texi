@@ -974,8 +974,8 @@ Output detailed debugging traces of the type checking.
 Output detailed debugging traces of the mode checking.
 
 @sp 1
-@item --debug-detism
-Output detailed debugging traces of deterministic analysis.
+@item --debug-det, --debug-determinism
+Output detailed debugging traces of determinism analysis.
 
 @sp 1
 @item --debug-opt
