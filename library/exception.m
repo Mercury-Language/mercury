@@ -569,10 +569,8 @@ Define_extern_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 
 Define_extern_entry(mercury__exception__builtin_throw_1_0);
 
-/* the following are defined in runtime/mercury_ho_call.c */
-Declare_entry(do_call_det_closure);
-Declare_entry(do_call_semidet_closure);
-Declare_entry(do_call_nondet_closure);
+/* the following is defined in runtime/mercury_ho_call.c */
+Declare_entry(mercury__do_call_closure);
 
 /* the following is defined in runtime/mercury_trace_base.c */
 Declare_entry(MR_do_trace_redo_fail);
@@ -676,14 +674,14 @@ Define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	r1 = r2;	/* The Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(do_call_det_closure), 
+	call(ENTRY(mercury__do_call_closure), 
 		LABEL(mercury__exception__builtin_catch_3_2_i2),
 		ENTRY(mercury__exception__builtin_catch_3_2));
 		
 Define_label(mercury__exception__builtin_catch_3_2_i2);
 	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_2));
 	/*
-	** On exit from do_call_det_closure, Result is in r1
+	** On exit from mercury__do_call_closure, Result is in r1
 	**
 	** We must now deallocate the ticket and nondet stack frame that
 	** were allocated by MR_create_exception_handler().
@@ -726,7 +724,7 @@ Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	r1 = r2;	/* The Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(do_call_semidet_closure), 
+	call(ENTRY(mercury__do_call_closure), 
 		LABEL(mercury__exception__builtin_catch_3_3_i2),
 		ENTRY(mercury__exception__builtin_catch_3_3));
 		
@@ -784,7 +782,7 @@ Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	r1 = r2;	/* the Goal to call */
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
-	call(ENTRY(do_call_nondet_closure), 
+	call(ENTRY(mercury__do_call_closure), 
 		LABEL(mercury__exception__builtin_catch_3_5_i2),
 		ENTRY(mercury__exception__builtin_catch_3_5));
 		
@@ -1038,22 +1036,22 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	/*
 	** If the catch was semidet, we need to set the success indicator
 	** r1 to TRUE and return the result in r2; otherwise, we return
-	** the result in r1, which is where do_call_det_closure puts it,
+	** the result in r1, which is where mercury__do_call_closure puts it,
 	** so we can to a tailcall.
 	*/
 	if (catch_code_model != MR_MODEL_SEMI_HANDLER) {
-		tailcall(ENTRY(do_call_det_closure), 
+		tailcall(ENTRY(mercury__do_call_closure), 
 			ENTRY(mercury__exception__builtin_throw_1_0));
 	}
 	MR_incr_sp_push_msg(1, ""builtin_throw/1"");
 	MR_stackvar(1) = (Word) MR_succip;
-	call(ENTRY(do_call_det_closure), 
+	call(ENTRY(mercury__do_call_closure), 
 		LABEL(mercury__exception__builtin_throw_1_0_i1),
 		ENTRY(mercury__exception__builtin_throw_1_0));
 }
 Define_label(mercury__exception__builtin_throw_1_0_i1);
 	update_prof_current_proc(LABEL(mercury__exception__builtin_throw_1_0));
-	/* we've just returned from do_call_det_closure */
+	/* we've just returned from mercury__do_call_closure */
 	r2 = r1;
 	r1 = TRUE;
 	MR_succip = (Code *) MR_stackvar(1);
