@@ -250,12 +250,28 @@
 	% set__fold(F, S, A) =
 	% 	list__foldl(F, to_sorted_list(S), A).
 	%
-:- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
+:- func set__fold(func(T, A) = A, set(T), A) = A.
 
-:- pred set__fold(pred(T1, T2, T2), set(T1), T2, T2).
-:- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
+:- pred set__fold(pred(T, A, A), set(T), A, A).
 :- mode set__fold(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
 :- mode set__fold(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+:- pred set__fold2(pred(T, A, A, B, B), set(T), A, A, B, B).
+:- mode set__fold2(pred(in, in, out, di, uo) is det, in,
+	in, out, di, uo) is det.
+:- mode set__fold2(pred(in, in, out, in, out) is det, in,
+	in, out, in, out) is det.
+:- mode set__fold2(pred(in, in, out, in, out) is semidet,
+	in, in, out, in, out) is semidet.
+
+:- pred set__fold3(pred(T, A, A, B, B, C, C), set(T), A, A, B, B, C, C).
+:- mode set__fold3(pred(in, in, out, in, out, di, uo) is det, in,
+	in, out, in, out, di, uo) is det.
+:- mode set__fold3(pred(in, in, out, in, out, in, out) is det, in,
+	in, out, in, out, in, out) is det.
+:- mode set__fold3(pred(in, in, out, in, out, in, out) is semidet, in,
+	in, out, in, out, in, out) is semidet.
 
 	% set__divide(Pred, Set, TruePart, FalsePart):
 	% TruePart consists of those elements of Set for which Pred succeeds;
@@ -470,11 +486,17 @@ set__filter(P, S1) = S2 :-
 set__filter_map(PF, S1) = S2 :-
 	S2 = set__list_to_set(list__filter_map(PF, set__to_sorted_list(S1))).
 
-set__fold(F, S) -->
-	list__foldl(F, set__to_sorted_list(S)).
-
 set__fold(F, S, A) = B :-
 	B = list__foldl(F, set__to_sorted_list(S), A).
+
+set__fold(F, S, !A) :-
+	list__foldl(F, set__to_sorted_list(S), !A).
+
+set__fold2(F, S, !A, !B) :-
+	list__foldl2(F, set__to_sorted_list(S), !A, !B).
+
+set__fold3(F, S, !A, !B, !C) :-
+	list__foldl3(F, set__to_sorted_list(S), !A, !B, !C).
 
 set__divide(P, Set, TruePart, FalsePart) :-
 	set_ordlist__divide(P, Set, TruePart, FalsePart).
