@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2003 The University of Melbourne.
+% Copyright (C) 1995-1997, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,7 +235,7 @@ propagate__counts_2([Pred | Preds], M - MM, AddrDeclMap, ProfNodeMap0,
 		prof_node_get_propagated_counts(ProfNode, PropCounts),
 		prof_node_get_parent_list(ProfNode, ParentList),
 		prof_node_get_total_calls(ProfNode, TotalCalls),
-		int__to_float(InitCounts, InitCountsFloat),
+		InitCountsFloat = float__float(InitCounts),
 
 		% writeln("Predicate:"),
 		% writeln(Pred),
@@ -246,7 +246,7 @@ propagate__counts_2([Pred | Preds], M - MM, AddrDeclMap, ProfNodeMap0,
 
 		TotalCounts is InitCountsFloat + PropCounts,
 
-		int__to_float(TotalCalls, FltTotalCalls),
+		FltTotalCalls = float__float(TotalCalls),
 
 		propagate__counts_3(ParentList, TotalCounts, FltTotalCalls,
 				AddrDeclMap, ProfNodeMap0, ProfNodeMap1),
@@ -296,8 +296,8 @@ propagate__process_cycle(Preds, Cycle, AddrMap, ProfNodeMap0, ProfNodeMap) :-
 	
 		
 		% Propagate the counts XXX
-	int__to_float(SelfCounts, FltSelfCounts),
-	int__to_float(Total, TotalCalls),
+	FltSelfCounts = float__float(SelfCounts),
+	TotalCalls = float__float(Total),
 	TotalCounts is FltSelfCounts + PropCounts,
 	propagate__counts_3(ParentList, TotalCounts, TotalCalls, AddrMap,
 						ProfNodeMap1, ProfNodeMap).
@@ -362,7 +362,7 @@ propagate__counts_3([ P | Ps], TotalCounts, TotalCalls, AddrMap,
 
 		% Work out the number of counts to propagate.
 		% XXX Probably need to do a 0.0 check
-	int__to_float(Calls, FloatCalls),
+	FloatCalls = float__float(Calls),
 	ToPropagateCounts is FloatCalls / TotalCalls * TotalCounts,
 
 		% Add new counts to current propagated counts

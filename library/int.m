@@ -59,6 +59,7 @@
 
 	% conversion of integer to floating point
 	% OBSOLETE: use float__float/1 instead.
+:- pragma obsolete(int.to_float/2).
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 

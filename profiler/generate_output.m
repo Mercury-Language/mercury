@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,7 @@
 generate_output__main(Prof, IndexMap, Output) -->
 	% Get intitial values of use.
 	{ prof_get_entire(Prof, _, _, IntTotalCounts, _, ProfNodeMap, _) },
-	{ int__to_float(IntTotalCounts, _TotalCounts) },
+	{ _TotalCounts = float__float(IntTotalCounts) },
 
 	{ map__values(ProfNodeMap, ProfNodeList) },
 
@@ -128,7 +128,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 	prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _,
 								_CycleMap),
-	int__to_float(IntTotalCounts, TotalCounts),
+	TotalCounts = float__float(IntTotalCounts),
 
 	prof_node_get_entire_cycle(ProfNode, Name, CycleNum, Initial, Prop, 
 					_CycleMembers, TotalCalls, SelfCalls),
@@ -138,7 +138,7 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 	% Calculate proportion of time in current predicate and its
 	% descendents as a percentage.
 	% 
-	int__to_float(Initial, InitialFloat),
+	InitialFloat = float__float(Initial),
 	(
 		TotalCounts = 0.0
 	->
@@ -175,7 +175,7 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 	prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _, 
 								CycleMap),
-	int__to_float(IntTotalCounts, TotalCounts),
+	TotalCounts = float__float(IntTotalCounts),
 
 	prof_node_get_entire_pred(ProfNode, LabelName, CycleNum, Initial, Prop,
 					ParentList, ChildList, TotalCalls,
@@ -197,7 +197,7 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 		% descendents as a percentage.
 		% Calculate proportion of time in current predicate 
 		% as a percentage.
-		int__to_float(Initial, InitialFloat),
+		InitialFloat = float__float(Initial),	
 		(
 			TotalCounts = 0.0
 		->
@@ -268,7 +268,7 @@ process_prof_node_parents(Parents0, SelfTime, DescTime, TotalCalls0, CycleNum,
 			CycleMap, OutputParentList, OutputCycleParentList) :-
 	remove_cycle_members(Parents0, TotalCalls0, CycleNum, CycleMap, 
 				TotalCalls, Parents, OutputCycleParentList),
-	int__to_float(TotalCalls, FltTotalCalls),
+	FltTotalCalls = float__float(TotalCalls),
 	process_prof_node_parents_2(Parents, SelfTime, DescTime, FltTotalCalls,
 						CycleMap, OutputParentList).
 
@@ -345,7 +345,7 @@ process_prof_node_parents_3([PN | PNs], SelfTime, DescTime, TotalCalls,
 		ParentCycleNum = 0
 	),
 
-        int__to_float(Calls, FloatCalls),
+        FloatCalls = float__float(Calls),
         checked_float_divide(FloatCalls, TotalCalls, Proportion),
 
 	% Calculate the amount of the current predicate's self-time spent
@@ -437,11 +437,11 @@ process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
 	prof_node_get_propagated_counts(ProfNode, Prop),
 	prof_node_get_total_calls(ProfNode, TotalCalls),
 
-	int__to_float(Initial, InitialFloat),
+	InitialFloat = float__float(Initial),
 	CurrentCount is InitialFloat + Prop,
 
-	int__to_float(TotalCalls, FloatTotalCalls),
-        int__to_float(Calls, FloatCalls),
+	FloatTotalCalls = float__float(TotalCalls),
+	FloatCalls = float__float(Calls),
         checked_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 
 	% Calculate the self time spent in the current predicate.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2003 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -283,8 +283,26 @@ X / Y = Z :-
 %	explicitly.  So every time there's a cast to int, the bounds are
 %	checked first.
 
-float(Int) = Float :-
-	int__to_float(Int, Float).
+:- pragma foreign_proc("C",
+	float(IntVal::in) = (FloatVal::out),
+	[will_not_call_mercury, promise_pure],
+"
+	FloatVal = IntVal;
+").
+
+:- pragma foreign_proc("C#",
+	float(IntVal::in) = (FloatVal::out),
+	[will_not_call_mercury, promise_pure],
+"
+	FloatVal = (double) IntVal;
+").
+
+:- pragma foreign_proc("Java",
+	float(IntVal::in) = (FloatVal::out),
+	[will_not_call_mercury, promise_pure],
+"
+	FloatVal = (double) IntVal;
+").
 
 	% float__ceiling_to_int(X) returns the
 	% smallest integer not less than X.

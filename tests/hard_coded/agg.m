@@ -84,8 +84,8 @@ avg_agg(P, F) = A :-
 	aggregate(P, agg_pair(count, sum(F)), C-S),
 	( C = 0 ->
 		A = no
-    	;	int__to_float(C, C1),
-		int__to_float(S, S1),
+    	;	C1 = float__float(C),
+		S1 = float__float(S),
 		A = yes(S1/C1)
 	).
 

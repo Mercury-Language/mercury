@@ -123,7 +123,7 @@ format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 		(Poly_var = f(F) ->
 			float_abs(F, Ft),
 			int__pow(10, Precision, P),
-			int__to_float(P, Pe),
+			Pe = float__float(P),
 			( 
 				Ft > 0.0001,
 				Pe > Ft
@@ -140,7 +140,7 @@ format_mod_conv_char( Precision, Poly_var, Conv_c_out, Conv_c_in) :-
 		(Poly_var = f(F) ->
 			float_abs(F, Ft),
 			int__pow(10, Precision, P),
-			int__to_float(P, Pe),
+			Pe = float__float(P),
 			(
 				Ft > 0.0001,
 				Pe > Ft

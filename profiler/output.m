@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -438,9 +438,8 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	),
 
 	{
-	int__to_float(SelfCalls, FloatSelfCalls),
-	int__to_float(TotalCalls, FloatTotalCalls0),
-
+	FloatSelfCalls = float__float(SelfCalls),
+	FloatTotalCalls0 = float__float(TotalCalls),
 	FloatTotalCalls is FloatTotalCalls0 + FloatSelfCalls,
 	Calls is SelfCalls + TotalCalls,
 	CumTime is CumTime0 + Self,

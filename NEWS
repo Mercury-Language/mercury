@@ -103,6 +103,8 @@ Changes to the Mercury standard library:
   int.fold_up2/7 and int.fold_down2/7 support iteration over
   contiguous integer ranges.
 
+* The predicate int.to_float/2 has now been deprecated.
+
 * We've added a new library module, `array2d', for two-dimensional arrays.
 
 * We've added a new module, cord, for sequences with O(1) consing and

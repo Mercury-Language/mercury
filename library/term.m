@@ -394,7 +394,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, char, std_util, require, array, int, string.
+:- import_module bool, char, float, std_util, require, array, int, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -512,7 +512,7 @@ term__term_to_univ_special_case(IsAditiTuple, "builtin", "float", [],
 	;
 		IsAditiTuple = yes,
 		Term = term__functor(term__integer(Int), [], _),
-		int__to_float(Int, Float),
+		Float = float__float(Int),
 		type_to_univ(Float, Univ)
 	).
 term__term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
