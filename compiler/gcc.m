@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,6 +36,10 @@
 % <http://gcc.gnu.org/readings.html>, in particular
 % "Writing a Compiler Front End to GCC" by Joachim Nadler
 % and Tim Josling <tej@melbpc.org.au>.
+%
+% Many of the procedures here which are implemented using
+% stuff defined by the gcc back-end are documented better
+% in the comments in the gcc source code.
 %
 % Many of the procedures here which are implemented using
 % stuff defined by the gcc back-end are documented better
@@ -222,7 +226,7 @@
 	% they are defined by C part of the Mercury front-end,
 	% in gcc/mercury/mercury-gcc.c.  (XXX We might want to
 	% consider moving these to a separate module, to make
-	% this module more language-independant.)
+	% this module more language-independent.)
 :- func alloc_func_decl = gcc__func_decl.	% GC_malloc()
 :- func strcmp_func_decl = gcc__func_decl.	% strcmp()
 :- func hash_string_func_decl = gcc__func_decl.	% MR_hash_string()
@@ -1035,8 +1039,8 @@ build_string(String, Expr) -->
 % operator expressions
 %
 
-:- pragma c_code(build_unop(Op::in, Type::in, Arg::in, Expr::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma c_code(build_unop(Op::in, Type::in, Arg::in, Expr::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	Expr = (MR_Word) fold(build1(Op, (tree) Type, (tree) Arg));
 ").
@@ -1057,8 +1061,8 @@ build_string(String, Expr) -->
 	DerefExpr = (MR_Word) build1 (INDIRECT_REF, type, ptr);
 ").
 
-:- pragma c_code(build_component_ref(ObjectExpr::in, FieldDecl::in, FieldExpr::out,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
+:- pragma c_code(build_component_ref(ObjectExpr::in, FieldDecl::in,
+	FieldExpr::out, _IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	/* XXX should move to mercury-gcc.c */
 	tree field_type = TREE_TYPE ((tree) FieldDecl);
@@ -1119,7 +1123,7 @@ var_expr(Decl) = Decl.
 %
 
 	% GCC represents functions pointer expressions just as ordinary
-	% ADDR_EXPR nodes whose operand the function declaration tree node.
+	% ADDR_EXPR nodes whose operand is the function declaration tree node.
 build_func_addr_expr(FuncDecl, Expr) -->
 	build_addr_expr(FuncDecl, Expr).
 
