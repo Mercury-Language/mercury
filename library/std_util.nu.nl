@@ -13,9 +13,10 @@ report_stats :-
 	member(trail=[Trail,_], L),
 	member(program=[Prog,_], L),
 	member(memory=[Total,_], L),
+	member(time=[Time,_], L),
 	format(user_error,
-		"[Heap ~3dk, Stack ~3dk, Trail ~3dk, Prog ~3dk, Tot ~3dk]\n",
-		[Heap, Stack, Trail, Prog, Total]),
+		"[Heap ~3dk, Stack ~3dk, Trail ~3dk, Prog ~3dk, Tot ~3dk, Time ~3d]\n",
+		[Heap, Stack, Trail, Prog, Total, Time]),
 	fail ; true.
 
 %-----------------------------------------------------------------------------%
