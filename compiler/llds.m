@@ -15,9 +15,12 @@
 :- type c_file		--->	c_file(string, list(c_module)).
 			%	filename, modules
 
-:- type c_module	--->	c_module(string, list(instruction)).
+:- type c_module	--->	c_module(string, list(c_predicate)).
 			%	module name, code
 
+:- type c_predicate	--->	c_predicate(string, int, mode_id,
+						list(instruction)).
+			%	predicate name, arity, mode, code
 :- type instruction	--->	instr - string.	
 			%	 instruction, comment
 
@@ -101,14 +104,14 @@ output_c_file(c_file(Name, Modules)) -->
 
 output_c_module_list([]) --> [].
 output_c_module_list([M|Ms]) -->
-	io__write_string("\n"),
 	output_c_module(M),
 	output_c_module_list(Ms).
 
 :- pred output_c_module(c_module, io__state, io__state).
 :- mode output_c_module(i, di, uo).
 
-output_c_module(c_module(Name,Instructions)) -->
+output_c_module(c_module(Name,Predicates)) -->
+	io__write_string("\n"),
 	io__write_string("/* this code automatically generated - do no edit.*/\n"),
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE("),
@@ -117,8 +120,29 @@ output_c_module(c_module(Name,Instructions)) -->
 	io__write_string("\t/* no module initialization in automatically generated code */\n"),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
-	output_instruction_list(Instructions),
+	output_c_predicate_list(Predicates),
 	io__write_string("END_MODULE\n").
+
+:- pred output_c_predicate_list(list(c_predicate), io__state, io__state).
+:- mode output_c_predicate_list(i, di, uo).
+
+output_c_predicate_list([]) --> [].
+output_c_predicate_list([P|Ps]) -->
+	output_c_predicate(P),
+	output_c_predicate_list(Ps).
+
+:- pred output_c_predicate(c_predicate, io__state, io__state).
+:- mode output_c_predicate(i, di, uo).
+
+output_c_predicate(c_predicate(Name,Arity,Mode,Instructions)) -->
+	io__write_string("/* code for predicate "),
+	io__write_string(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(" in mode "),
+	io__write_int(Mode),
+	io__write_string(" */\n"),
+	output_instruction_list(Instructions).
 
 :- pred output_instruction_list(list(instruction), io__state, io__state).
 :- mode output_instruction_list(i, di, uo).
