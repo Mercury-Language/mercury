@@ -761,6 +761,9 @@ opt_debug__dump_rtti_name(exist_info(Ordinal), Str) :-
 opt_debug__dump_rtti_name(field_names(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("field_names_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(field_types(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("field_types_", Ordinal_str, Str).
 opt_debug__dump_rtti_name(enum_functor_desc(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("enum_functor_desc_", Ordinal_str, Str).
@@ -782,6 +785,9 @@ opt_debug__dump_rtti_name(du_ptag_ordered_table, Str) :-
 	Str = "du_ptag_ordered_table".
 opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
+opt_debug__dump_rtti_name(pseudo_type_info(_Pseudo), Str) :-
+	% XXX should give more info than this
+	Str = "pseudo_type_info".
 opt_debug__dump_rtti_name(type_hashcons_pointer, Str) :-
 	Str = "type_hashcons_pointer".
 

@@ -123,86 +123,8 @@ llds_common__process_data(
 		comp_gen_c_data(Name, DataName, Export, Args, ArgTypes, Refs),
 		Info0, Info) :-
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info).
-llds_common__process_data(rtti_data(RttiData0), rtti_data(RttiData),
-		Info0, Info) :-
-	llds_common__process_rtti_data(RttiData0, RttiData, Info0, Info).
-
-:- pred llds_common__process_rtti_data(rtti_data::in, rtti_data::out,
-	common_info::in, common_info::out) is det.
-
-llds_common__process_rtti_data(
-		exist_locns(RttiTypeId, Ordinal, Locns),
-		exist_locns(RttiTypeId, Ordinal, Locns),
+llds_common__process_data(rtti_data(RttiData), rtti_data(RttiData),
 		Info, Info).
-llds_common__process_rtti_data(
-		exist_info(RttiTypeId, Ordinal, Plain, InTci, Tci, Locns),
-		exist_info(RttiTypeId, Ordinal, Plain, InTci, Tci, Locns),
-		Info, Info).
-llds_common__process_rtti_data(
-		field_names(RttiTypeId, Ordinal, Names),
-		field_names(RttiTypeId, Ordinal, Names),
-		Info, Info).
-llds_common__process_rtti_data(
-		enum_functor_desc(RttiTypeId, FunctorName, Ordinal),
-		enum_functor_desc(RttiTypeId, FunctorName, Ordinal),
-		Info, Info).
-llds_common__process_rtti_data(
-		notag_functor_desc(RttiTypeId, FunctorName, ArgType0),
-		notag_functor_desc(RttiTypeId, FunctorName, ArgType),
-		Info0, Info) :-
-	llds_common__process_rval(ArgType0, ArgType, Info0, Info).
-llds_common__process_rtti_data(
-		du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag, Locn,
-			Ordinal, Arity, BitVector, Args0, Names, Exist),
-		du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag, Locn,
-			Ordinal, Arity, BitVector, Args, Names, Exist),
-		Info0, Info) :-
-	llds_common__process_rval(Args0, Args, Info0, Info).
-llds_common__process_rtti_data(
-		enum_name_ordered_table(RttiTypeId, Functors),
-		enum_name_ordered_table(RttiTypeId, Functors),
-		Info, Info).
-llds_common__process_rtti_data(
-		enum_value_ordered_table(RttiTypeId, Functors),
-		enum_value_ordered_table(RttiTypeId, Functors),
-		Info, Info).
-llds_common__process_rtti_data(
-		du_name_ordered_table(RttiTypeId, Functors),
-		du_name_ordered_table(RttiTypeId, Functors),
-		Info, Info).
-llds_common__process_rtti_data(
-		du_stag_ordered_table(RttiTypeId, Ptag, Functors),
-		du_stag_ordered_table(RttiTypeId, Ptag, Functors),
-		Info, Info).
-llds_common__process_rtti_data(
-		du_ptag_ordered_table(RttiTypeId, Functors),
-		du_ptag_ordered_table(RttiTypeId, Functors),
-		Info, Info).
-llds_common__process_rtti_data(
-		type_ctor_info(RttiTypeId, Unify, Index, Compare, Rep, Solver,
-			Init, Version, NumPtags, NumFunctors, Functors,
-			Layout0, HashCons, PrettyPrint),
-		type_ctor_info(RttiTypeId, Unify, Index, Compare, Rep, Solver,
-			Init, Version, NumPtags, NumFunctors, Functors,
-			Layout, HashCons, PrettyPrint),
-		Info0, Info) :-
-	llds_common__process_layout_info(Layout0, Layout, Info0, Info).
-
-:- pred llds_common__process_layout_info(type_ctor_layout_info::in,
-	type_ctor_layout_info::out, common_info::in, common_info::out) is det.
-
-llds_common__process_layout_info(no_layout, no_layout, Info, Info).
-llds_common__process_layout_info(enum_layout(Layout), enum_layout(Layout),
-		Info, Info).
-llds_common__process_layout_info(notag_layout(Layout), notag_layout(Layout),
-		Info, Info).
-llds_common__process_layout_info(du_layout(Layout), du_layout(Layout),
-		Info, Info).
-llds_common__process_layout_info(
-		equiv_layout(PseudoTypeInfo0), equiv_layout(PseudoTypeInfo),
-		Info0, Info) :-
-	llds_common__process_rval(PseudoTypeInfo0, PseudoTypeInfo,
-		Info0, Info).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.

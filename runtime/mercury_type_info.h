@@ -82,9 +82,9 @@
 
 /* Forward declarations */
 
-typedef struct MR_TypeCtorInfo_Struct       *MR_TypeCtorInfo;
-typedef struct MR_TypeInfo_Almost_Struct    *MR_TypeInfo;
-typedef struct MR_PseudoTypeInfo_Almost_Struct  *MR_PseudoTypeInfo;
+typedef const struct MR_TypeCtorInfo_Struct		*MR_TypeCtorInfo;
+typedef       struct MR_TypeInfo_Almost_Struct		*MR_TypeInfo;
+typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 
 /*---------------------------------------------------------------------------*/
 
@@ -120,26 +120,45 @@ typedef struct MR_PseudoTypeInfo_Almost_Struct  *MR_PseudoTypeInfo;
 ** to memory that is either inaccessible (due to the first page of virtual
 ** memory being invalid) or is guaranteed to contains something other than
 ** type_ctor_info structures (such as the code of the program).
-**
-** MR_PSEUDOTYPEINFO_EXIST_VAR_BASE should be kept in sync with
-** base_type_layout__pseudo_typeinfo_min_exist_var in base_type_layout.m.
-**
-** MR_PSEUDOTYPEINFO_MAX_VAR should be kept in sync with
-** base_type_layout__pseudo_typeinfo_max_var in base_type_layout.m,
-** and with the default value of MR_VARIABLE_SIZED in mercury_conf_params.h.
 */
 
-struct MR_TypeInfo_Almost_Struct {
-    MR_TypeCtorInfo     MR_ti_type_ctor_info;
-    Integer             MR_ti_higher_order_arity;
-    MR_TypeInfo         MR_ti_first_ho_arg_typeinfo;
-};
+/*
+** First define generic macro versions of these struct types;
+** these are used in the code that the compiler generates
+** for static constant typeinfos and pseudotypeinfos.
+*/
+#define MR_FIRST_ORDER_TYPEINFO_STRUCT(NAME, ARITY)			\
+    struct NAME {							\
+	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
+	MR_TypeInfo         MR_ti_first_order_arg_typeinfos[ARITY];	\
+    }
+#define MR_HIGHER_ORDER_TYPEINFO_STRUCT(NAME, ARITY)			\
+    struct NAME {							\
+	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
+	Integer             MR_ti_higher_order_arity;			\
+	MR_TypeInfo         MR_ti_higher_order_arg_typeinfos[ARITY];	\
+    }
+#define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
+    struct NAME {							\
+	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
+	MR_PseudoTypeInfo   MR_pti_first_order_arg_pseudo_typeinfos[ARITY]; \
+    }
+#define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
+    struct NAME {							\
+	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
+	Integer             MR_pti_higher_order_arity;			\
+	MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
+    }
 
-struct MR_PseudoTypeInfo_Almost_Struct {
-    MR_TypeCtorInfo     MR_pti_type_ctor_info;
-    Integer             MR_pti_higher_order_arity;
-    MR_PseudoTypeInfo   MR_pti_first_ho_arg_pseudo_typeinfo;
-};
+/*
+** Now define specific versions of these struct types,
+** which are used by the MR_TypeInfo and MR_PseudoTypeInfo
+** typedefs above.
+*/
+MR_HIGHER_ORDER_TYPEINFO_STRUCT(MR_TypeInfo_Almost_Struct,
+	MR_VARIABLE_SIZED);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_PseudoTypeInfo_Almost_Struct,
+	MR_VARIABLE_SIZED);
 
 /*
 ** When converting a MR_PseudoTypeInfo to a MR_TypeInfo, we need the
@@ -149,6 +168,14 @@ struct MR_PseudoTypeInfo_Almost_Struct {
 */
 typedef MR_TypeInfo     *MR_TypeInfoParams;
 
+/*
+** MR_PSEUDOTYPEINFO_EXIST_VAR_BASE should be kept in sync with
+** base_type_layout__pseudo_typeinfo_min_exist_var in base_type_layout.m.
+**
+** MR_PSEUDOTYPEINFO_MAX_VAR should be kept in sync with
+** base_type_layout__pseudo_typeinfo_max_var in base_type_layout.m,
+** and with the default value of MR_VARIABLE_SIZED in mercury_conf_params.h.
+*/
 #define MR_PSEUDOTYPEINFO_EXIST_VAR_BASE    512
 #define MR_PSEUDOTYPEINFO_MAX_VAR           1024
 
@@ -219,18 +246,18 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_fill_in_first_order_type_info(arena, type_ctor_info, vector) \
     do {                                                            \
         MR_TypeInfo new_ti;                                         \
-        new_ti = (MR_TypeInfo) arena;                               \
+        new_ti = (MR_TypeInfo) (arena);                             \
         new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
-        vector = (MR_TypeInfoParams) &new_ti->MR_ti_type_ctor_info; \
+        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_type_ctor_info; \
     } while (0)
 
 #define MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)\
     do {                                                            \
         MR_TypeInfo new_ti;                                         \
-        new_ti = (MR_TypeInfo) arena;                               \
+        new_ti = (MR_TypeInfo) (arena);                             \
         new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
         new_ti->MR_ti_higher_order_arity = (arity);                 \
-        vector = (MR_TypeInfoParams) &new_ti->MR_ti_higher_order_arity;\
+        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_higher_order_arity;\
     } while (0)
 
 /*---------------------------------------------------------------------------*/

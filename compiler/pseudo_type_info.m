@@ -15,17 +15,15 @@
 %---------------------------------------------------------------------------%
 
 :- module pseudo_type_info.
-
 :- interface.
+:- import_module prog_data, rtti.
+:- import_module list.
 
-:- import_module llds, prog_data.
-
-	% pseudo_type_info__construct_typed_pseudo_type_info(Type,
-	% 	NumUnivQTvars, ExistQVars, Rval, LldsType, LabelNum0, LabelNum)
+	% pseudo_type_info__construct_pseudo_type_info(Type,
+	% 	NumUnivQTvars, ExistQVars, PseudoTypeInfo)
 	%
-	% Given a Mercury type (`Type'), this predicate returns an rval
-	% (`Rval') giving the pseudo type info for that type, plus the
-	% llds_type (`LldsType') of that rval.
+	% Given a Mercury type (`Type'), this predicate returns an
+	% representation of the pseudo type info for that type.
 	%
 	% NumUnivQTvars is either the number of universally quantified type
 	% variables of the enclosing type (so that all universally quantified
@@ -33,37 +31,56 @@
 	% or is the special value -1, meaning that all variables in the type
 	% are universally quantified. ExistQVars is the list of existentially
 	% quantified type variables of the constructor in question.
-	%
-	% The int arguments (`LabelNum0' and `LabelNum') are label numbers for
-	% generating `create' rvals with.
-
-:- pred pseudo_type_info__construct_typed_pseudo_type_info((type)::in,
-	int::in, existq_tvars::in, rval::out, llds_type::out,
-	int::in, int::out) is det.
-
-	% This is the same as the previous predicate, but does not return
-	% the LLDS type.
 
 :- pred pseudo_type_info__construct_pseudo_type_info((type)::in,
-	int::in, existq_tvars::in, rval::out, int::in, int::out) is det.
+	int::in, existq_tvars::in, pseudo_type_info::out) is det.
+
+:- type pseudo_type_info
+	--->	type_var(int)
+			% This represents a type variable.
+			% Type variables are numbered consecutively,
+			% starting from 1.
+	;	type_ctor_info(
+			%
+			% This represents a zero-arity type,
+			% i.e. a type constructor with no arguments.
+			%
+			rtti_type_id
+		)
+	;	type_info(
+			%
+			% This represents a type with arity > zero,
+			% i.e. a type constructor applied to some arguments.
+			% The argument list should not be empty.
+			%
+			rtti_type_id,
+			list(pseudo_type_info)
+		)
+	;	higher_order_type_info(
+			%
+			% This represents a higher-order type.
+			% The rtti_type_id field will be pred/0
+			% or func/0; the real arity is 
+			% given in the arity field.
+			%
+			rtti_type_id,
+			arity,
+			list(pseudo_type_info)
+		)
+	.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_data, hlds_pred, hlds_out, builtin_ops, type_util.
-:- import_module rtti, make_tags, code_util, globals, options, prog_util.
-:- import_module list, assoc_list, bool, string, int, map, std_util, require.
-:- import_module term.
+:- import_module prog_util, type_util.
+:- import_module int, list, term, std_util, require.
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, Pseudo, CNum0, CNum) :-
-	pseudo_type_info__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, Pseudo, _LldsType, CNum0, CNum).
-
-pseudo_type_info__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
-		ExistQTvars, Pseudo, LldsType, CNum0, CNum) :-
+		ExistQTvars, Pseudo) :-
 	(
 		type_to_type_id(Type, TypeId, TypeArgs0)
 	->
@@ -94,34 +111,26 @@ pseudo_type_info__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 			TypeModule = unqualified(""),
 			TypeName = "pred",
 			Arity = 0,
+			RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
 			TypeId = _QualTypeName - RealArity,
-			RealArityArg = [yes(const(int_const(RealArity)))]
+			pseudo_type_info__generate_args(TypeArgs,
+				NumUnivQTvars, ExistQTvars, PseudoArgs),
+			Pseudo = higher_order_type_info(RttiTypeId, RealArity,
+				PseudoArgs)
 		;
 			TypeId = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
 			sym_name_get_module_name(QualTypeName, unqualified(""),
 					TypeModule),
-			RealArityArg = []
-		),
-		RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
-		DataAddr = rtti_addr(RttiTypeId, type_ctor_info),
-		Pseudo0 = yes(const(data_addr_const(DataAddr))),
-		LldsType = data_ptr,
-		CNum1 = CNum0 + 1,
-
-			% generate args, but remove one level of create()s.
-		list__map_foldl((pred(T::in, P::out, C0::in, C::out) is det :-
-			pseudo_type_info__construct_pseudo_type_info(
-				T, NumUnivQTvars, ExistQTvars, P, C0, C)
-		), TypeArgs, PseudoArgs0, CNum1, CNum),
-		list__map(pseudo_type_info__remove_create,
-			PseudoArgs0, PseudoArgs1),
-
-		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
-
-		Reuse = no,
-		Pseudo = create(0, [Pseudo0 | PseudoArgs], uniform(no),
-			must_be_static, CNum1, "type_layout", Reuse)
+			RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
+			pseudo_type_info__generate_args(TypeArgs,
+				NumUnivQTvars, ExistQTvars, PseudoArgs),
+			( PseudoArgs = [] ->
+				Pseudo = type_ctor_info(RttiTypeId)
+			;
+				Pseudo = type_info(RttiTypeId, PseudoArgs)
+			)
+		)
 	;
 		type_util__var(Type, Var)
 	->
@@ -159,23 +168,20 @@ pseudo_type_info__construct_typed_pseudo_type_info(Type, NumUnivQTvars,
 		),
 		require(VarInt =< pseudo_type_info__pseudo_typeinfo_max_var,
 			"type_ctor_layout: type variable representation exceeds limit"),
-		Pseudo = const(int_const(VarInt)),
-		LldsType = integer,
-		CNum = CNum0
+		Pseudo = type_var(VarInt)
 	;
 		error("type_ctor_layout: type neither var nor non-var")
 	).
 
-	% Remove a create() from an rval, if present.
+:- pred pseudo_type_info__generate_args(list(type)::in,
+		int::in, existq_tvars::in, list(pseudo_type_info)::out) is det.
 
-:- pred pseudo_type_info__remove_create(rval::in, maybe(rval)::out) is det.
-
-pseudo_type_info__remove_create(Rval0, MaybeRval) :-
-	( Rval0 = create(_, [PTI], _, _, _, _, _) ->
-		MaybeRval = PTI
-	;
-		MaybeRval = yes(Rval0)
-	).
+pseudo_type_info__generate_args(TypeArgs, NumUnivQTvars, ExistQTvars,
+		PseudoArgs) :-
+	list__map((pred(T::in, P::out) is det :-
+		pseudo_type_info__construct_pseudo_type_info(
+			T, NumUnivQTvars, ExistQTvars, P)
+	), TypeArgs, PseudoArgs).
 
 %---------------------------------------------------------------------------%
 

@@ -21,14 +21,9 @@
 % In the first stage, it inserts type_ctor_gen_info structures describing the
 % type_ctor_infos of all the locally-defined types into the HLDS; some of
 % these type_ctor_gen_infos are later eliminated by dead_proc_elim.m. The
-% second stage then generates low-level descriptions of type_ctor_infos
-% for LLDS (or later MLDS) from the surviving type_ctor_gen_infos.
-%
-% The representation we build is designed to be independent of whether
-% the compiler is generating LLDS or MLDS. However, at the moment, we
-% still generate some LLDS rvals to represent typeinfos and pseudotypeinfos.
-% These `create' rvals are expected to be removed by llds_common.m to
-% create static structures.
+% second stage then generates lower-level RTTI descriptions of type_ctor_infos
+% from the surviving type_ctor_gen_infos.  These can then be easily
+% turned into either LLDS or MLDS.
 %
 % The documentation of the data structures built in this module is in
 % runtime/mercury_type_info.h; that file also contains a list of all
@@ -44,17 +39,18 @@
 
 :- interface.
 
-:- import_module hlds_module, llds.
+:- import_module hlds_module, rtti.
 :- import_module list.
 
 :- pred type_ctor_info__generate_hlds(module_info::in, module_info::out)
 	is det.
 
-:- pred type_ctor_info__generate_llds(module_info::in, module_info::out,
-	list(comp_gen_c_data)::out) is det.
+:- pred type_ctor_info__generate_rtti(module_info::in, module_info::out,
+	list(rtti_data)::out) is det.
 
 :- implementation.
 
+:- import_module llds.  % XXX for code_addr
 :- import_module rtti, pseudo_type_info.
 :- import_module hlds_data, hlds_pred, hlds_out.
 :- import_module make_tags, prog_data, prog_util, prog_out.
@@ -152,37 +148,38 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 
 %---------------------------------------------------------------------------%
 
-type_ctor_info__generate_llds(ModuleInfo0, ModuleInfo, Tables) :-
-	module_info_type_ctor_gen_infos(ModuleInfo0, TypeCtorGenInfos),
+type_ctor_info__generate_rtti(ModuleInfo, ModuleInfo, Tables) :-
+	module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
 	type_ctor_info__construct_type_ctor_infos(TypeCtorGenInfos,
-		ModuleInfo0, ModuleInfo, [], Dynamic0, [], Static0),
-	list__map(llds__wrap_rtti_data, Dynamic0, Dynamic),
-	list__map(llds__wrap_rtti_data, Static0, Static),
+		ModuleInfo, [], Dynamic, [], Static0),
+	% The same pseudo_type_info may be generated in several
+	% places; we need to eliminate duplicates here, to avoid
+	% duplicate definition errors in the generated C code.
+	Static = list__remove_dups(Static0),
 	list__append(Dynamic, Static, Tables).
 
 :- pred type_ctor_info__construct_type_ctor_infos(
-	list(type_ctor_gen_info)::in, module_info::in, module_info::out,
+	list(type_ctor_gen_info)::in, module_info::in,
 	list(rtti_data)::in, list(rtti_data)::out,
 	list(rtti_data)::in, list(rtti_data)::out) is det.
 
-type_ctor_info__construct_type_ctor_infos([], ModuleInfo, ModuleInfo,
+type_ctor_info__construct_type_ctor_infos([], _ModuleInfo,
 		Dynamic, Dynamic, Static, Static).
 type_ctor_info__construct_type_ctor_infos(
-		[TypeCtorGenInfo | TypeCtorGenInfos], ModuleInfo0, ModuleInfo,
+		[TypeCtorGenInfo | TypeCtorGenInfos], ModuleInfo,
 		Dynamic0, Dynamic, Static0, Static) :-
 	type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
-		ModuleInfo0, ModuleInfo1, TypeCtorCModule, TypeCtorTables),
+		ModuleInfo, TypeCtorCModule, TypeCtorTables),
 	Dynamic1 = [TypeCtorCModule | Dynamic0],
 	list__append(TypeCtorTables, Static0, Static1),
 	type_ctor_info__construct_type_ctor_infos(TypeCtorGenInfos,
-		ModuleInfo1, ModuleInfo, Dynamic1, Dynamic, Static1, Static).
+		ModuleInfo, Dynamic1, Dynamic, Static1, Static).
 
 :- pred type_ctor_info__construct_type_ctor_info(type_ctor_gen_info::in,
-	module_info::in, module_info::out,
-	rtti_data::out, list(rtti_data)::out) is det.
+	module_info::in, rtti_data::out, list(rtti_data)::out) is det.
 
 type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
-		ModuleInfo0, ModuleInfo, TypeCtorData, TypeCtorTables) :-
+		ModuleInfo, TypeCtorData, TypeCtorTables) :-
 	TypeCtorGenInfo = type_ctor_gen_info(_TypeId, ModuleName, TypeName,
 		TypeArity, _Status, HldsDefn,
 		MaybeUnify, MaybeIndex, MaybeCompare,
@@ -194,11 +191,11 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 	type_ctor_info__make_pred_addr(MaybeInit,    ModuleInfo, Init),
 	type_ctor_info__make_pred_addr(MaybePretty,  ModuleInfo, Pretty),
 
-	module_info_globals(ModuleInfo0, Globals),
+	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
 	( TypeLayoutOption = yes ->
 		type_ctor_info__gen_layout_info(ModuleName,
-			TypeName, TypeArity, HldsDefn, ModuleInfo0, ModuleInfo,
+			TypeName, TypeArity, HldsDefn, ModuleInfo,
 			TypeCtorRep, NumFunctors, MaybeFunctors, MaybeLayout,
 			NumPtags, TypeCtorTables)
 	;
@@ -210,8 +207,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		NumFunctors = -1,
 		MaybeFunctors = no_functors,
 		MaybeLayout = no_layout,
-		TypeCtorTables = [],
-		ModuleInfo = ModuleInfo0
+		TypeCtorTables = []
 	),
 	Version = type_ctor_info_rtti_version,
 	RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity),
@@ -252,15 +248,14 @@ type_ctor_info_rtti_version = 4.
 
 :- pred type_ctor_info__gen_layout_info(module_name::in,
 	string::in, int::in, hlds_type_defn::in,
-	module_info::in, module_info::out, type_ctor_rep::out, int::out,
+	module_info::in, type_ctor_rep::out, int::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out,
 	int::out, list(rtti_data)::out) is det.
 
 type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
-		ModuleInfo0, ModuleInfo, TypeCtorRep, NumFunctors,
+		ModuleInfo, TypeCtorRep, NumFunctors,
 		FunctorsInfo, LayoutInfo, NumPtags, TypeTables) :-
 	hlds_data__get_type_defn_body(HldsDefn, TypeBody),
-	module_info_get_cell_count(ModuleInfo0, CellNumber0),
 	(
 		TypeBody = uu_type(_Alts),
 		error("type_ctor_layout: sorry, undiscriminated union unimplemented\n")
@@ -271,7 +266,6 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		FunctorsInfo = no_functors,
 		LayoutInfo = no_layout,
 		TypeTables = [],
-		CellNumber = CellNumber0,
 		NumPtags = -1
 	;
 		TypeBody = eqv_type(Type),
@@ -281,15 +275,15 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			TypeCtorRep = equiv(equiv_type_is_not_ground)
 		),
 		NumFunctors = -1,
+		FunctorsInfo = no_functors,
 		UnivTvars = TypeArity,
 			% There can be no existentially typed args to an
 			% equivalence.
 		ExistTvars = [],
-		pseudo_type_info__construct_pseudo_type_info(Type,
-			UnivTvars, ExistTvars, Rval, CellNumber0, CellNumber),
-		FunctorsInfo = no_functors,
-		LayoutInfo = equiv_layout(Rval),
-		TypeTables = [],
+		make_pseudo_type_info_and_tables(Type,
+			UnivTvars, ExistTvars, PseudoTypeInfoRttiData,
+			[], TypeTables),
+		LayoutInfo = equiv_layout(PseudoTypeInfoRttiData),
 		NumPtags = -1
 	;
 		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred),
@@ -308,7 +302,6 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			type_ctor_info__make_enum_tables(Ctors, ConsTagMap,
 				RttiTypeId, TypeTables,
 				FunctorsInfo, LayoutInfo),
-			CellNumber = CellNumber0,
 			NumPtags = -1
 		;
 			Enum = no,
@@ -321,11 +314,10 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				TypeCtorRep = notag(EqualityAxioms, Inst),
 				type_ctor_info__make_notag_tables(Name,
 					ArgType, RttiTypeId,
-					CellNumber0, CellNumber,
 					TypeTables, FunctorsInfo, LayoutInfo),
 				NumPtags = -1
 			;
-				module_info_globals(ModuleInfo0, Globals),
+				module_info_globals(ModuleInfo, Globals),
 				globals__lookup_int_option(Globals,
 					num_tag_bits, NumTagBits),
 				int__pow(2, NumTagBits, NumTags),
@@ -333,13 +325,47 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				TypeCtorRep = du(EqualityAxioms),
 				type_ctor_info__make_du_tables(Ctors,
 					ConsTagMap, MaxPtag, RttiTypeId,
-					ModuleInfo0, CellNumber0, CellNumber,
+					ModuleInfo,
 					TypeTables, NumPtags,
 					FunctorsInfo, LayoutInfo)
 			)
 		)
-	),
-	module_info_set_cell_count(ModuleInfo0, CellNumber, ModuleInfo).
+	).
+
+% Construct an rtti_data for a pseudo_type_info,
+% and also construct rtti_data definitions for all of the pseudo_type_infos
+% that it references and prepend them to the given list of rtti_data tables.
+
+:- pred make_pseudo_type_info_and_tables(type, int, existq_tvars, rtti_data,
+		list(rtti_data), list(rtti_data)).
+:- mode make_pseudo_type_info_and_tables(in, in, in, out, in, out) is det.
+
+make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
+		Tables0, Tables) :-
+	pseudo_type_info__construct_pseudo_type_info(Type,
+		UnivTvars, ExistTvars, PseudoTypeInfo),
+	RttiData = pseudo_type_info(PseudoTypeInfo),
+	make_pseudo_type_info_tables(PseudoTypeInfo,
+		Tables0, Tables).
+
+% Construct rtti_data definitions for all of the non-atomic subterms
+% of a pseudo_type_info, and prepend them to the given
+% list of rtti_data tables.
+
+:- pred make_pseudo_type_info_tables(pseudo_type_info,
+		list(rtti_data), list(rtti_data)).
+:- mode make_pseudo_type_info_tables(in, in, out) is det.
+
+make_pseudo_type_info_tables(type_var(_), Tables, Tables).
+make_pseudo_type_info_tables(type_ctor_info(_), Tables, Tables).
+make_pseudo_type_info_tables(TypeInfo, Tables0, Tables) :-
+	TypeInfo = type_info(_, Args),
+	Tables1 = [pseudo_type_info(TypeInfo) | Tables0],
+	list__foldl(make_pseudo_type_info_tables, Args, Tables1, Tables).
+make_pseudo_type_info_tables(HO_TypeInfo, Tables0, Tables) :-
+	HO_TypeInfo = higher_order_type_info(_, _, Args),
+	Tables1 = [pseudo_type_info(HO_TypeInfo) | Tables0],
+	list__foldl(make_pseudo_type_info_tables, Args, Tables1, Tables).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -347,25 +373,24 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 % Make the functor and notag tables for a notag type.
 
 :- pred type_ctor_info__make_notag_tables(sym_name::in, (type)::in,
-	rtti_type_id::in, int::in, int::out, list(rtti_data)::out,
+	rtti_type_id::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
 type_ctor_info__make_notag_tables(SymName, ArgType, RttiTypeId,
-		CellNumber0, CellNumber,
 		TypeTables, FunctorsInfo, LayoutInfo) :-
 	unqualify_name(SymName, FunctorName),
 	RttiTypeId = rtti_type_id(_, _, UnivTvars),
 		% There can be no existentially typed args to the functor
 		% in a notag type.
 	ExistTvars = [],
-	pseudo_type_info__construct_pseudo_type_info(ArgType,
-		UnivTvars, ExistTvars, Rval, CellNumber0, CellNumber),
-	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, Rval),
+	make_pseudo_type_info_and_tables(ArgType, UnivTvars, ExistTvars,
+		RttiData, [], Tables0),
+	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData),
 	FunctorRttiName = notag_functor_desc,
 
 	FunctorsInfo = notag_functors(FunctorRttiName),
 	LayoutInfo = notag_layout(FunctorRttiName),
-	TypeTables = [FunctorDesc].
+	TypeTables = [FunctorDesc | Tables0].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -446,15 +471,14 @@ type_ctor_info__make_enum_functor_tables([Functor | Functors], NextOrdinal0,
 
 :- pred type_ctor_info__make_du_tables(list(constructor)::in,
 	cons_tag_values::in, int::in, rtti_type_id::in, module_info::in,
-	int::in, int::out, list(rtti_data)::out, int::out,
+	list(rtti_data)::out, int::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
 type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
-		ModuleInfo, CellNumber0, CellNumber,
-		TypeTables, NumPtags, FunctorInfo, LayoutInfo) :-
+		ModuleInfo, TypeTables, NumPtags, FunctorInfo, LayoutInfo) :-
 	map__init(TagMap0),
 	type_ctor_info__make_du_functor_tables(Ctors, 0, ConsTagMap,
-		RttiTypeId, ModuleInfo, CellNumber0, CellNumber,
+		RttiTypeId, ModuleInfo,
 		FunctorDescs, SortInfo0, TagMap0, TagMap),
 	list__sort(SortInfo0, SortInfo),
 	assoc_list__values(SortInfo, NameOrderedRttiNames),
@@ -481,13 +505,13 @@ type_ctor_info__make_du_tables(Ctors, ConsTagMap, MaxPtag, RttiTypeId,
 
 :- pred type_ctor_info__make_du_functor_tables(list(constructor)::in,
 	int::in, cons_tag_values::in, rtti_type_id::in, module_info::in,
-	int::in, int::out, list(rtti_data)::out, name_sort_info::out,
+	list(rtti_data)::out, name_sort_info::out,
 	tag_map::in, tag_map::out) is det.
 
 type_ctor_info__make_du_functor_tables([], _, _, _, _,
-		CellNumber, CellNumber, [], [], TagMap, TagMap).
+		[], [], TagMap, TagMap).
 type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
-		ConsTagMap, RttiTypeId, ModuleInfo, CellNumber0, CellNumber,
+		ConsTagMap, RttiTypeId, ModuleInfo,
 		Tables, SortInfo, TagMap0, TagMap) :-
 	Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
 	list__length(FunctorArgs, Arity),
@@ -519,7 +543,7 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 
 	type_ctor_info__generate_arg_info_tables(ModuleInfo,
 		RttiTypeId, Ordinal, FunctorArgs, ExistTvars,
-		CellNumber0, CellNumber1, MaybeArgNames,
+		MaybeArgNames,
 		ArgPseudoTypeInfoVector, FieldTables, ContainsVarBitVector),
 	( ExistTvars = [] ->
 		MaybeExistInfo = no,
@@ -537,7 +561,7 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 		ArgPseudoTypeInfoVector, MaybeArgNames, MaybeExistInfo),
 	FunctorSortInfo = (FunctorName - Arity) - RttiName,
 	type_ctor_info__make_du_functor_tables(Functors, Ordinal + 1,
-		ConsTagMap, RttiTypeId, ModuleInfo, CellNumber1, CellNumber,
+		ConsTagMap, RttiTypeId, ModuleInfo,
 		Tables1, SortInfo1, TagMap1, TagMap),
 	list__append([FunctorDesc | SubTables], Tables1, Tables),
 	SortInfo = [FunctorSortInfo | SortInfo1].
@@ -546,41 +570,39 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 
 :- pred type_ctor_info__generate_arg_info_tables(module_info::in,
 	rtti_type_id::in, int::in, list(constructor_arg)::in, existq_tvars::in,
-	int::in, int::out, maybe(rtti_name)::out, rval::out,
-	list(rtti_data)::out, int::out) is det.
+	maybe(rtti_name)::out, rtti_name::out, list(rtti_data)::out, int::out)
+	is det.
 
 type_ctor_info__generate_arg_info_tables(
-		ModuleInfo, RttiTypeId, Ordinal,
-		Args, ExistTvars, CellNumber0, CellNumber,
-		MaybeFieldNamesRttiName, Vector, Tables,
+		ModuleInfo, RttiTypeId, Ordinal, Args, ExistTvars,
+		MaybeFieldNamesRttiName, FieldTypesRttiName, Tables,
 		ContainsVarBitVector) :-
 	RttiTypeId = rtti_type_id(_TypeModule, _TypeName, TypeArity),
 	type_ctor_info__generate_arg_infos(Args, TypeArity, ExistTvars,
-		ModuleInfo, CellNumber0, CellNumber1,
-		MaybeArgNames, LldsTypes, MaybePseudoTypeInfos,
-		0, 0, ContainsVarBitVector),
+		ModuleInfo, MaybeArgNames, PseudoTypeInfos,
+		0, 0, ContainsVarBitVector, [], Tables0),
+	FieldTypesRttiName = field_types(Ordinal),
+	FieldTypesTable = field_types(RttiTypeId, Ordinal,
+			PseudoTypeInfos),
+	Tables1 = [FieldTypesTable | Tables0],
 	list__filter((lambda([MaybeName::in] is semidet, MaybeName = yes(_))),
 		MaybeArgNames, FieldNames),
 	(
 		FieldNames = [],
 		MaybeFieldNamesRttiName = no,
-		Tables = []
+		Tables = Tables1
 	;
 		FieldNames = [_|_],
 		FieldNameTable = field_names(RttiTypeId, Ordinal,
 			MaybeArgNames),
 		FieldNamesRttiName = field_names(Ordinal),
 		MaybeFieldNamesRttiName = yes(FieldNamesRttiName),
-		Tables = [FieldNameTable]
-	),
-	type_ctor_info__get_next_cell_number(CellNumber1, CN, CellNumber),
-	Reuse = no,
-	Vector = create(0, MaybePseudoTypeInfos, initial(LldsTypes, none),
-		must_be_static, CN, "arg_types", Reuse).
+		Tables = [FieldNameTable | Tables1]
+	).
 
 % For each argument of a functor, return three items of information:
-% its name (if any), a pseudotypeinfo describing its type (and the llds_type
-% that describes the pseudotypeinfo), and an indication whether the type
+% its name (if any), a rtti_data for the pseudotypeinfo describing
+% its type, and an indication whether the type
 % contains variables or not. The last item is encoded as an integer
 % which contains a 1 bit in the position given by 1 << N if argument N's type
 % contains variables (assuming that arguments are numbered starting from zero).
@@ -588,19 +610,17 @@ type_ctor_info__generate_arg_info_tables(
 % arguments beyond this limit do not contribute to this bit vector.
 
 :- pred type_ctor_info__generate_arg_infos(list(constructor_arg)::in,
-	int::in, existq_tvars::in, module_info::in, int::in, int::out,
-	list(maybe(string))::out, initial_arg_types::out,
-	list(maybe(rval))::out, int::in, int::in, int::out) is det.
+	int::in, existq_tvars::in, module_info::in, list(maybe(string))::out,
+	list(rtti_data)::out, int::in, int::in, int::out,
+	list(rtti_data)::in, list(rtti_data)::out) is det.
 
-type_ctor_info__generate_arg_infos([], _, _, _,
-		CellNumber, CellNumber, [], [], [],
-		_, ContainsVarBitVector, ContainsVarBitVector).
+type_ctor_info__generate_arg_infos([], _, _, _, [], [],
+		_, ContainsVarBitVector, ContainsVarBitVector, Tables, Tables).
 type_ctor_info__generate_arg_infos([MaybeArgSymName - ArgType | Args],
-		NumUnivTvars, ExistTvars, ModuleInfo, CellNumber0, CellNumber,
-		[MaybeArgName | MaybeArgNames],
-		[1 - yes(LldsType) | LldsTypes],
-		[yes(PseudoTypeInfo) | MaybePseudoTypeInfos],
-		ArgNum, ContainsVarBitVector0, ContainsVarBitVector) :-
+		NumUnivTvars, ExistTvars, ModuleInfo,
+		[MaybeArgName | MaybeArgNames], [RttiData | RttiDatas],
+		ArgNum, ContainsVarBitVector0, ContainsVarBitVector,
+		Tables0, Tables) :-
 	(
 		MaybeArgSymName = yes(SymName),
 		unqualify_name(SymName, ArgName),
@@ -609,9 +629,8 @@ type_ctor_info__generate_arg_infos([MaybeArgSymName - ArgType | Args],
 		MaybeArgSymName = no,
 		MaybeArgName = no
 	),
-	pseudo_type_info__construct_typed_pseudo_type_info(ArgType,
-		NumUnivTvars, ExistTvars, PseudoTypeInfo, LldsType,
-		CellNumber0, CellNumber1),
+	make_pseudo_type_info_and_tables(ArgType, NumUnivTvars, ExistTvars,
+		RttiData, Tables0, Tables1),
 	( term__is_ground(ArgType) ->
 		ContainsVarBitVector1 = ContainsVarBitVector0
 	;
@@ -623,9 +642,9 @@ type_ctor_info__generate_arg_infos([MaybeArgSymName - ArgType | Args],
 		ContainsVarBitVector1 = ContainsVarBitVector0 \/ (1 << BitNum)
 	),
 	type_ctor_info__generate_arg_infos(Args, NumUnivTvars,
-		ExistTvars, ModuleInfo, CellNumber1, CellNumber,
-		MaybeArgNames, LldsTypes, MaybePseudoTypeInfos,
-		ArgNum + 1, ContainsVarBitVector1, ContainsVarBitVector).
+		ExistTvars, ModuleInfo, MaybeArgNames, RttiDatas,
+		ArgNum + 1, ContainsVarBitVector1, ContainsVarBitVector,
+		Tables1, Tables).
 
 % This function gives the size of the MR_du_functor_arg_type_contains_var
 % field of the C type MR_DuFunctorDesc in bits.

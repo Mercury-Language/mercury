@@ -2402,7 +2402,7 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 data_addr_would_include_code_address(data_addr(_, DataName), CodeAddr) :-
 	data_name_would_include_code_address(DataName, CodeAddr).
 data_addr_would_include_code_address(rtti_addr(_, RttiName), CodeAddr) :-
-	rtti__name_would_include_code_address(RttiName, CodeAddr).
+	rtti_name_would_include_code_addr(RttiName, CodeAddr).
 
 :- pred data_name_would_include_code_address(data_name, bool).
 :- mode data_name_would_include_code_address(in, out) is det.

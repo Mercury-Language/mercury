@@ -253,8 +253,8 @@
 :- implementation.
 
 :- import_module globals, options, llds_out, trace.
-:- import_module hlds_data, hlds_pred, pseudo_type_info, prog_data, prog_out.
-:- import_module rtti, (inst), code_util.
+:- import_module hlds_data, hlds_pred, prog_data, prog_out.
+:- import_module rtti, ll_pseudo_type_info, (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set.
 
@@ -1297,7 +1297,7 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
 
-	pseudo_type_info__construct_typed_pseudo_type_info(Type, 
+	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type, 
 		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, CNum0, CNum).
 
 %---------------------------------------------------------------------------%
@@ -1363,7 +1363,7 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		% variable number directly from the procedure's tvar set.
 	{ ExistQTvars = [] },
 	{ NumUnivQTvars = -1 },
-	{ pseudo_type_info__construct_typed_pseudo_type_info(Type,
+	{ ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
 		NumUnivQTvars, ExistQTvars,
 		Rval, LldsType, CNum0, CNum) },
 	stack_layout__set_cell_number(CNum).

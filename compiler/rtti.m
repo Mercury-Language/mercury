@@ -8,9 +8,12 @@
 % within the compiler. When output by rtti_out.m, values of most these types
 % will correspond to the types defined in runtime/mercury_type_info.h;
 % the documentation of those types can be found there.
+% The code to generate the structures is in type_ctor_info.m.
+% See also pseudo_type_info.m.
 %
 % Eventually, this module will be independent of whether we are compiling
 % to LLDS or MLDS. For the time being, it depends on LLDS.
+% See the XXX comment below.
 %
 % Author: zs.
 
@@ -20,8 +23,9 @@
 
 :- interface.
 
-:- import_module llds, prog_data.
-:- import_module bool, list, std_util.
+:- import_module llds. % XXX for code_addr, which is used in type_ctor_infos
+:- import_module prog_data, pseudo_type_info.
+:- import_module list, std_util.
 
 	% For a given du type and a primary tag value, this says where,
 	% if anywhere, the secondary tag is.
@@ -68,7 +72,7 @@
 			rtti_name
 		)
 	;	equiv_layout(
-			rval
+			rtti_data	% a pseudo_type_info rtti_data
 		)
 	;	no_layout.
 
@@ -160,6 +164,14 @@
 
 			list(maybe(string))	% gives the field names
 		)
+	;	field_types(
+			rtti_type_id,		% identifies the type
+			int,			% identifies functor in type
+
+			list(rtti_data)		% gives the field types
+						% (as pseudo_type_info
+						% rtti_data)
+		)
 	;	enum_functor_desc(
 			rtti_type_id,		% identifies the type
 
@@ -179,7 +191,9 @@
 			% the MR_NotagFunctorDesc C type.
 
 			string,			% functor name
-			rval			% pseudo typeinfo of argument
+			rtti_data		% pseudo typeinfo of argument
+						% (as a pseudo_type_info
+						% rtti_data)
 		)
 	;	du_functor_desc(
 			rtti_type_id,		% identifies the type
@@ -203,15 +217,18 @@
 						% contains variables (assuming
 						% that arguments are numbered
 						% from zero)
-			rval,			% a vector of length arity
+			rtti_name,		% a vector of length arity
 						% containing the pseudo
 						% typeinfos of the arguments
+						% (a field_types rtti_name)
 			maybe(rtti_name),	% possibly a vector of length
 						% arity containing the names
 						% of the arguments, if any
+						% (a field_names rtti_name)
 			maybe(rtti_name)	% information about the
 						% existentially quantified
 						% type variables, if any
+						% (an exist_info rtti_name)
 		)
 	;	enum_name_ordered_table(
 			rtti_type_id,		% identifies the type
@@ -263,7 +280,7 @@
 			% one-to-one to the fields of the MR_TypeCtorInfo
 			% C type.
 
-			rtti_type_id,		% identifies the type
+			rtti_type_id,		% identifies the type ctor
 			maybe(code_addr),	% unify
 			maybe(code_addr),	% index
 			maybe(code_addr),	% compare
@@ -278,12 +295,15 @@
 			type_ctor_layout_info,	% the layout table
 			maybe(rtti_name),	% the type's hash cons table
 			maybe(code_addr)	% prettyprinter
-		).
+		)
+	;	pseudo_type_info(pseudo_type_info)
+	.
 
 :- type rtti_name
 	--->	exist_locns(int)		% functor ordinal
 	;	exist_info(int)			% functor ordinal
 	;	field_names(int)		% functor ordinal
+	;	field_types(int)		% functor ordinal
 	;	enum_functor_desc(int)		% functor ordinal
 	;	notag_functor_desc
 	;	du_functor_desc(int)		% functor ordinal
@@ -293,37 +313,33 @@
 	;	du_stag_ordered_table(int)	% primary tag
 	;	du_ptag_ordered_table
 	;	type_ctor_info
+	;	pseudo_type_info(pseudo_type_info)
 	;	type_hashcons_pointer.
 
 	% Return the C variable name of the RTTI data structure identified
 	% by the input arguments.
+	% XXX this should be in rtti_out.m
 
 :- pred rtti__addr_to_string(rtti_type_id::in, rtti_name::in, string::out)
 	is det.
 
 	% Return the C representation of a secondary tag location.
+	% XXX this should be in rtti_out.m
 
 :- pred rtti__sectag_locn_to_string(sectag_locn::in, string::out) is det.
 
 	% Return the C representation of a type_ctor_rep value.
+	% XXX this should be in rtti_out.m
 
 :- pred rtti__type_ctor_rep_to_string(type_ctor_rep::in, string::out) is det.
 
-	% Return true iff the given type of RTTI data structure includes
-	% code addresses.
-
-:- pred rtti__name_would_include_code_address(rtti_name::in, bool::out) is det.
-
 :- implementation.
 
-:- import_module llds_out.
-:- import_module string.
+:- import_module llds_out, hlds_data, type_util.
+:- import_module string, require.
 
 rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
-	RttiTypeId = rtti_type_id(ModuleName0, TypeName0, TypeArity),
-	llds_out__sym_name_mangle(ModuleName0, ModuleName),
-	llds_out__name_mangle(TypeName0, TypeName),
-	string__int_to_string(TypeArity, A_str),
+	rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_str),
 	(
 		RttiName = exist_locns(Ordinal),
 		string__int_to_string(Ordinal, O_str),
@@ -338,6 +354,11 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		RttiName = field_names(Ordinal),
 		string__int_to_string(Ordinal, O_str),
 		string__append_list([ModuleName, "__field_names_",
+			TypeName, "_", A_str, "_", O_str], Str)
+	;
+		RttiName = field_types(Ordinal),
+		string__int_to_string(Ordinal, O_str),
+		string__append_list([ModuleName, "__field_types_",
 			TypeName, "_", A_str, "_", O_str], Str)
 	;
 		RttiName = enum_functor_desc(Ordinal),
@@ -379,10 +400,79 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		string__append_list([ModuleName, "__type_ctor_info_",
 			TypeName, "_", A_str], Str)
 	;
+		RttiName = pseudo_type_info(PseudoTypeInfo),
+		rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str)
+	;
 		RttiName = type_hashcons_pointer,
 		string__append_list([ModuleName, "__hashcons_ptr_",
 			TypeName, "_", A_str], Str)
 	).
+
+:- pred rtti__mangle_rtti_type_id(rtti_type_id, string, string, string).
+:- mode rtti__mangle_rtti_type_id(in, out, out, out) is det.
+
+rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_str) :-
+	RttiTypeId = rtti_type_id(ModuleName0, TypeName0, TypeArity),
+	llds_out__sym_name_mangle(ModuleName0, ModuleName),
+	llds_out__name_mangle(TypeName0, TypeName),
+	string__int_to_string(TypeArity, A_str).
+
+:- pred rtti__pseudo_type_info_to_string(pseudo_type_info::in, string::out)
+	is det.
+
+rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str) :-
+	(
+		PseudoTypeInfo = type_var(VarNum),
+		string__int_to_string(VarNum, Str)
+	;
+		PseudoTypeInfo = type_ctor_info(RttiTypeId),
+		rtti__addr_to_string(RttiTypeId, type_ctor_info, Str)
+	;
+		PseudoTypeInfo = type_info(RttiTypeId, ArgTypes),
+		rtti__mangle_rtti_type_id(RttiTypeId,
+			ModuleName, TypeName, A_str),
+		ATs_str = pseudo_type_list_to_string(ArgTypes),
+		string__append_list([ModuleName, "__type_info_",
+			TypeName, "_", A_str, ATs_str], Str)
+	;
+		PseudoTypeInfo = higher_order_type_info(RttiTypeId, RealArity, ArgTypes),
+		rtti__mangle_rtti_type_id(RttiTypeId,
+			ModuleName, TypeName, _A_str),
+		ATs_str = pseudo_type_list_to_string(ArgTypes),
+		string__int_to_string(RealArity, RA_str),
+		string__append_list([ModuleName, "__ho_type_info_",
+			TypeName, "_", RA_str, ATs_str], Str)
+	).
+
+:- func pseudo_type_list_to_string(list(pseudo_type_info)) = string.
+pseudo_type_list_to_string(PseudoTypeList) =
+	string__append_list(list__map(pseudo_type_to_string, PseudoTypeList)).
+
+:- func pseudo_type_to_string(pseudo_type_info) = string.
+pseudo_type_to_string(type_var(Int)) =
+	string__append("__var_", string__int_to_string(Int)).
+pseudo_type_to_string(type_ctor_info(TypeId)) =
+	string__append("__type0_", rtti__type_id_to_string(TypeId)).
+pseudo_type_to_string(type_info(TypeId, ArgTypes)) =
+	string__append_list([
+		"__type_", rtti__type_id_to_string(TypeId),
+		pseudo_type_list_to_string(ArgTypes)
+	]).
+pseudo_type_to_string(higher_order_type_info(TypeId, Arity, ArgTypes)) =
+	string__append_list([
+		"__ho_type_", rtti__type_id_to_string(TypeId),
+		"_", string__int_to_string(Arity),
+		pseudo_type_list_to_string(ArgTypes)
+	]).
+
+:- func rtti__type_id_to_string(rtti_type_id) = string.
+rtti__type_id_to_string(RttiTypeId) = String :-
+	rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_Str),
+	String0 = string__append_list([ModuleName, "__", TypeName, "_", A_Str]),
+	% To ensure that the mapping is one-to-one, and to make demangling
+	% easier, we insert the length of the string at the start of the string.
+	string__length(String0, Length),
+	String = string__format("%d_%s", [i(Length), s(String0)]).
 
 rtti__sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
 rtti__sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").
@@ -411,16 +501,3 @@ rtti__type_ctor_rep_to_string(equiv(equiv_type_is_ground),
 rtti__type_ctor_rep_to_string(unknown,
 	"MR_TYPECTOR_REP_UNKNOWN").
 
-rtti__name_would_include_code_address(exist_locns(_),            no).
-rtti__name_would_include_code_address(exist_info(_),             no).
-rtti__name_would_include_code_address(field_names(_),            no).
-rtti__name_would_include_code_address(enum_functor_desc(_),      no).
-rtti__name_would_include_code_address(notag_functor_desc,        no).
-rtti__name_would_include_code_address(du_functor_desc(_),        no).
-rtti__name_would_include_code_address(enum_name_ordered_table,   no).
-rtti__name_would_include_code_address(enum_value_ordered_table,  no).
-rtti__name_would_include_code_address(du_name_ordered_table,     no).
-rtti__name_would_include_code_address(du_stag_ordered_table(_),  no).
-rtti__name_would_include_code_address(du_ptag_ordered_table,     no).
-rtti__name_would_include_code_address(type_ctor_info,            yes).
-rtti__name_would_include_code_address(type_hashcons_pointer,     no).
