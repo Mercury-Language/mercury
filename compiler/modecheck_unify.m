@@ -309,45 +309,10 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% It's not a higher-order pred unification - just
 		% call modecheck_unify_functor to do the ordinary thing.
 		%
-		mode_info_get_instmap(ModeInfo0, InstMap0),
 		modecheck_unify_functor(X0, TypeOfX,
-			ConsId0, ArgVars0, Unification0, ExtraGoals, Mode,
-			ConsId, ArgVars, Unification, ModeInfo0, ModeInfo),
-		%
-		% Optimize away construction of unused terms by
-		% replacing the unification with `true'.
-		%
-		(
-			Unification = construct(ConstructTarget, _, _, _),
-			mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
-		->
-			Goal = conj([])
-		;
-			Functor = functor(ConsId, ArgVars),
-			Unify = unify(X, Functor, Mode, Unification,
-				UnifyContext),
-			X = X0,
-			%
-			% modecheck_unification sometimes needs to introduce
-			% new goals to handle complicated sub-unifications
-			% in deconstructions.  But this should never happen
-			% during unique mode analysis.
-			% (If it did, the code would be wrong since it
-			% wouldn't have the correct determinism annotations.)
-			%
-			(
-				HowToCheckGoal = check_unique_modes,
-				ExtraGoals \= [] - []
-			->
-				error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
-			;
-				true
-			),
-
-			handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
-						[X0|ArgVars0], [X|ArgVars],
-						InstMap0, ModeInfo, Goal)
-		)
+			ConsId0, ArgVars0, Unification0, UnifyContext,
+			HowToCheckGoal, GoalInfo0,
+			Goal, ModeInfo0, ModeInfo)
 	).
 
 modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
@@ -488,14 +453,14 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 	).
 
 :- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
-			pair(list(hlds_goal)), pair(mode), cons_id, list(var),
-			unification, mode_info, mode_info).
-:- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out, out,
-			mode_info_di, mode_info_uo) is det.
+			unify_context, how_to_check_goal, hlds_goal_info,
+			hlds_goal_expr, mode_info, mode_info).
+:- mode modecheck_unify_functor(in, in, in, in, in, in, in, in,
+			out, mode_info_di, mode_info_uo) is det.
 
 modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
-			ExtraGoals, Mode, ConsId, ArgVars, Unification,
-			ModeInfo0, ModeInfo) :-
+			UnifyContext, HowToCheckGoal, GoalInfo0,
+			Goal, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	list__length(ArgVars0, Arity),
 	(
@@ -531,6 +496,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			ModeInfo0, ModeInfo1
 		),
 		Inst = not_reached,
+		Det = erroneous,
 			% If we get an error, set the inst to not_reached
 			% to avoid cascading errors
 			% But don't call categorize_unification, because
@@ -552,9 +518,10 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	;
 		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
 			InstArgs, LiveArgs, real_unify, ModuleInfo0,
-			UnifyInst, ModuleInfo1)
+			UnifyInst, Det1, ModuleInfo1)
 	->
 		Inst = UnifyInst,
+		Det = Det1,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
@@ -579,8 +546,8 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 				Unification0, ModeInfo1,
 				Unification1, ModeInfo2),
 		split_complicated_subunifies(Unification1, ArgVars0,
-					Unification, ArgVars, ExtraGoals,
-					ModeInfo2, ModeInfo3),
+				Unification, ArgVars, ExtraGoals,
+				ModeInfo2, ModeInfo3),
 		modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
 		( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
 			ModeInfo = ModeInfo5
@@ -600,6 +567,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			% that could cause an invalid call to
 			% `unify_proc__request_unify'
 		Inst = not_reached,
+		Det = erroneous,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
@@ -613,6 +581,54 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		Unification = Unification0,
 		ArgVars = ArgVars0,
 		ExtraGoals = [] - []
+	),
+
+	%
+	% Optimize away construction of unused terms by
+	% replacing the unification with `true'.  Optimize
+	% away unifications which always fail by replacing
+	% them with `fail'.
+	%
+	(
+		Unification = construct(ConstructTarget, _, _, _),
+		mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
+	->
+		Goal = conj([])
+	;
+		Det = failure
+	->
+		% This optimisation is safe because the only way that
+		% we can analyse a unification as having no solutions
+		% is that the unification always fails.
+		%
+		% Unifying two preds is not erroneous as far as the
+		% mode checker is concerned, but a mode _error_.
+		map__init(Empty),
+		Goal = disj([], Empty)
+	;
+		Functor = functor(ConsId, ArgVars),
+		Unify = unify(X, Functor, Mode, Unification,
+			UnifyContext),
+		X = X0,
+		%
+		% modecheck_unification sometimes needs to introduce
+		% new goals to handle complicated sub-unifications
+		% in deconstructions.  But this should never happen
+		% during unique mode analysis.
+		% (If it did, the code would be wrong since it
+		% wouldn't have the correct determinism annotations.)
+		%
+		(
+			HowToCheckGoal = check_unique_modes,
+			ExtraGoals \= [] - []
+		->
+			error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
+		;
+			true
+		),
+		handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
+					[X0|ArgVars0], [X|ArgVars],
+					InstMap0, ModeInfo, Goal)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -826,6 +842,8 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 	% because otherwise determinism analysis assumes they can fail.
 	% The optimization of assignments to dead variables may be
 	% necessary to stop the code generator from getting confused.)
+	% Optimize away unifications which always fail by replacing
+	% them with `fail'.
 	%
 	(
 		Unification = assign(AssignTarget, _),
@@ -837,6 +855,17 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 		Det = det
 	->
 		Unify = conj([])
+	;
+		Det = failure
+	->
+		% This optimisation is safe because the only way that
+		% we can analyse a unification as having no solutions
+		% is that the unification always fails.
+		%
+		% Unifying two preds is not erroneous as far as the
+		% mode checker is concerned, but a mode _error_.
+		map__init(Empty),
+		Unify = disj([], Empty)
 	;
 		Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification,
 				UnifyContext)
@@ -894,14 +923,14 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_functor(mode, list(mode), list(mode), var,
-		cons_id, list(var), map(var, type), unification, mode_info,
-		unification, mode_info).
+		cons_id, list(var), map(var, type),
+		unification, mode_info, unification, mode_info).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
-		X, NewConsId, ArgVars, VarTypes, Unification0, ModeInfo0,
-		Unification, ModeInfo) :-
+		X, NewConsId, ArgVars, VarTypes,
+		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(VarTypes, X, TypeOfX),
 	% if we are re-doing mode analysis, preserve the existing cons_id

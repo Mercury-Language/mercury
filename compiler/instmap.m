@@ -368,14 +368,22 @@ instmap__set(reachable(InstMapping0), Var, Inst,
 	map__set(InstMapping0, Var, Inst, InstMapping).
 
 instmap_delta_set(unreachable, _Var, _Inst, unreachable).
-instmap_delta_set(reachable(InstMapping0), Var, Inst,
-		reachable(InstMapping)) :-
-	map__set(InstMapping0, Var, Inst, InstMapping).
+instmap_delta_set(reachable(InstMapping0), Var, Inst, Instmap) :-
+	( Inst = not_reached ->
+		Instmap = unreachable
+	;
+		map__set(InstMapping0, Var, Inst, InstMapping),
+		Instmap = reachable(InstMapping)
+	).
 
 instmap_delta_insert(unreachable, _Var, _Inst, unreachable).
-instmap_delta_insert(reachable(InstMapping0), Var, Inst,
-		reachable(InstMapping)) :-
-	map__det_insert(InstMapping0, Var, Inst, InstMapping).
+instmap_delta_insert(reachable(InstMapping0), Var, Inst, Instmap) :-
+	( Inst = not_reached ->
+		Instmap = unreachable
+	;
+		map__det_insert(InstMapping0, Var, Inst, InstMapping),
+		Instmap = reachable(InstMapping)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -433,7 +441,8 @@ bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
 	list__duplicate(Arity, free, ArgInsts),
 	(
 		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts, 
-			ArgLives, real_unify, ModuleInfo0, Inst1, ModuleInfo1)
+			ArgLives, real_unify, ModuleInfo0, Inst1, _Det,
+			ModuleInfo1)
 	->
 		ModuleInfo = ModuleInfo1,
 		Inst = Inst1

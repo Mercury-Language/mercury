@@ -331,7 +331,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type merge_inst_table ==	map(pair(inst), maybe_inst).
 
-:- type ground_inst_table == 	map(inst_name, maybe_inst).
+:- type ground_inst_table == 	map(inst_name, maybe_inst_det).
 
 :- type shared_inst_table == 	map(inst_name, maybe_inst).
 

@@ -79,6 +79,9 @@
 :- pred det_conjunction_detism(determinism, determinism, determinism).
 :- mode det_conjunction_detism(in, in, out) is det.
 
+:- pred det_par_conjunction_detism(determinism, determinism, determinism).
+:- mode det_par_conjunction_detism(in, in, out) is det.
+
 :- pred det_disjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_disjunction_maxsoln(in, in, out) is det.
 
@@ -715,6 +718,18 @@ det_conjunction_detism(DetismA, DetismB, Detism) :-
 		det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
 		determinism_components(Detism, CanFail, MaxSoln)
 	).
+
+% Figuring out the determinism of a parallel conjunction is much
+% easier than for a sequential conjunction, since you simply
+% ignore the case where the second goal is unreachable.  Just do
+% a normal solution count.
+
+det_par_conjunction_detism(DetismA, DetismB, Detism) :-
+	determinism_components(DetismA, CanFailA, MaxSolnA),
+	determinism_components(DetismB, CanFailB, MaxSolnB),
+	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+	det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+	determinism_components(Detism, CanFail, MaxSoln).
 
 % For the at_most_zero, at_most_one, at_most_many,
 % we're just doing abstract interpretation to count

@@ -436,7 +436,7 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_ground_insts(InstTable, GroundInstTable),
 		map__lookup(GroundInstTable, InstName, MaybeInst),
-		( MaybeInst = known(Inst0) ->
+		( MaybeInst = known(Inst0, _) ->
 			Inst = Inst0
 		;
 			Inst = defined_inst(InstName)

@@ -24,6 +24,7 @@ SOURCES= \
 	double_vn.m \
 	easy_nondet_test.m \
 	easy_nondet_test_2.m \
+	empty_bound_inst_list.m \
 	empty_switch.m \
 	error.m \
 	fail_ite.m \
