@@ -427,28 +427,27 @@ code_gen__generate_det_goal_2(
 	).
 code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 	(
-		{ Uni = assign(Left, Right) }
-	->
+		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Instr)
 	;
-		{ Uni = construct(Var, ConsId, Args, Modes) }
-	->
+		{ Uni = construct(Var, ConsId, Args, Modes) },
 		unify_gen__generate_construction(Var, ConsId, Args,
 								Modes, Instr)
 	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) }
-	->
+		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
 		unify_gen__generate_det_deconstruction(Var, ConsId, Args,
 								Modes, Instr)
 	;
-		{ L = term__variable(Var1) },
-		{ R = term__variable(Var2) },
-		{ Uni = complicated_unify(UniMode, CanFail, _Follow) }
-	->
-		call_gen__generate_complicated_unify(Var1, Var2, UniMode,
-			CanFail, Instr)
+		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
+		( { R = var(RVar) } ->
+			call_gen__generate_complicated_unify(L, RVar, UniMode,
+				CanFail, Instr)
+		;
+			{ error("generate_det_goal_2: invalid complicated unify") }
+		)
 	;
-		{ error("Cannot generate det code for semidet unifications") }
+		{ Uni = simple_test(_, _) },
+		{ error("generate_det_goal_2: cannot have det simple_test") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -868,32 +867,29 @@ code_gen__generate_semi_goal_2(
 code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 							_GoalInfo, Code) -->
 	(
-		{ Uni = assign(Left, Right) }
-	->
+		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Code)
 	;
-		{ Uni = construct(Var, ConsId, Args, Modes) }
-	->
+		{ Uni = construct(Var, ConsId, Args, Modes) },
 		unify_gen__generate_construction(Var, ConsId, Args,
 								Modes, Code)
 	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _) }
-	->
+		{ Uni = deconstruct(Var, ConsId, Args, Modes, _) },
 		unify_gen__generate_semi_deconstruction(Var, ConsId, Args,
 								Modes, Code)
 	;
-		{ Uni = simple_test(Var1, Var2) }
-	->
+		{ Uni = simple_test(Var1, Var2) },
 		unify_gen__generate_test(Var1, Var2, Code)
 	;
-		{ L = term__variable(Var1) },
-		{ R = term__variable(Var2) },
-		{ Uni = complicated_unify(UniMode, CanFail, _Follow) }
-	->
-		call_gen__generate_complicated_unify(Var1, Var2, UniMode,
-			CanFail, Code)
-	;
-		{ error("code_gen__generate_semi_goal_2: unify") }
+		{ Uni = complicated_unify(UniMode, CanFail, _Follow) },
+		(
+			{ R = var(RVar) }
+		->
+			call_gen__generate_complicated_unify(L, RVar, UniMode,
+				CanFail, Code)
+		;
+			{ error("code_gen__generate_semi_goal_2: invalid complicated unify") }
+		)
 	).
 
 %---------------------------------------------------------------------------%

@@ -536,12 +536,12 @@ typecheck_goal_2(call(_, Mode, Args, Builtin, PredName, Follow),
 			call(PredId, Mode, Args, Builtin, PredName, Follow)) -->
 	checkpoint("call"),
 	typecheck_call_pred(PredName, Args, PredId).
-typecheck_goal_2(unify(A, B, Mode, Info, UnifyContext),
+typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),
 	type_info_set_arg_num(0),
 	type_info_set_unify_context(UnifyContext),
-	typecheck_unification(A, B).
+	typecheck_unification(A, B0, B).
 typecheck_goal_2(switch(_, _, _), _) -->
 	{ error("unexpected switch") }.
 
@@ -928,134 +928,50 @@ type_assign_var_has_type(TypeAssign0, HeadTypeParams, VarId, Type,
 	).
 
 %-----------------------------------------------------------------------------%
-	
-:- pred typecheck_term_has_type_list(list(term), list(type), int,
-					type_info, type_info).
-:- mode typecheck_term_has_type_list(in, in, in, type_info_di, type_info_uo)
-	is det.
 
-typecheck_term_has_type_list([], [_|_], _) -->
-	{ error("typecheck_term_has_type_list: length mis-match") }.
-typecheck_term_has_type_list([_|_], [], _) -->
-	{ error("typecheck_term_has_type_list: length mis-match") }.
-typecheck_term_has_type_list([], [], _) --> [].
-typecheck_term_has_type_list([Arg | Args], [Type | Types], N) -->
-	{ N1 is N + 1 },
-	type_info_set_arg_num(N1),
-	typecheck_term_has_type(Arg, Type),
-	typecheck_term_has_type_list(Args, Types, N1).
-
-:- pred typecheck_term_has_type(term, type, type_info, type_info).
-:- mode typecheck_term_has_type(in, in, type_info_di, type_info_uo) is det.
-
-typecheck_term_has_type(term__variable(Var), Type, TypeInfo0, TypeInfo) :-
-	typecheck_var_has_type(Var, Type, TypeInfo0, TypeInfo).
-
-typecheck_term_has_type(term__functor(_, _, _), _, _, _) :-
-	error("typecheck_term_has_type: unexpected functor").
-
-%-----------------------------------------------------------------------------%
-
-	% For each possible constructor which matches the
-	% term (overloading means that there may be more than one),
-	% if this constructor matches the specified type and
-	% the types of it's arguments are ok, then add the resulting
-	% type assignment to the type assignment set.
-
-:- pred type_assign_cons_has_type(list(cons_type_info), type_assign,
-		list(term), type, type_info, type_assign_set, type_assign_set).
-:- mode type_assign_cons_has_type(in, in, in, in, type_info_ui, in, out) is det.
-
-type_assign_cons_has_type([], _TypeAssign0, _Args, _Type, _TypeInfo) -->
-	[].
-type_assign_cons_has_type([ConsDefn | ConsDefns], TypeAssign0, Args, Type,
-		TypeInfo) -->
-	type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type,
-		TypeInfo),
-	type_assign_cons_has_type(ConsDefns, TypeAssign0, Args, Type, TypeInfo).
-
-:- pred type_assign_cons_has_type_2(cons_type_info, type_assign, list(term),
-		type, type_info, type_assign_set, type_assign_set).
-:- mode type_assign_cons_has_type_2(in, in, in, in, type_info_ui, in, out)
-	is det.
-
-type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
-		TypeAssignSet0, TypeAssignSet) :-
-
-	get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
-			ConsType, ArgTypes, TypeAssign1),
-	
-	type_info_get_head_type_params(TypeInfo, HeadTypeParams),
-
-	(
-		type_assign_unify_type(TypeAssign1, HeadTypeParams,
-			ConsType, Type, TypeAssign2)
-	->
-			% check the types of the arguments
-		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2,
-			TypeInfo, TypeAssignSet0, TypeAssignSet)
-	;
-		TypeAssignSet = TypeAssignSet0
-	).
-
-%-----------------------------------------------------------------------------%
-
-	% type_assign_term_has_type_list(Terms, Types, TypeAssign, TypeInfo,
+	% type_assign_var_has_type_list(Vars, Types, TypeAssign, TypeInfo,
 	%		TypeAssignSet0, TypeAssignSet):
 	% 	Let TAs = { TA | TA is a an extension of TypeAssign
-	%		    	 for which the types of the Terms unify with
+	%		    	 for which the types of the Vars unify with
 	%		    	 their respective Types },
 	% 	list__append(TAs, TypeAssignSet0, TypeAssignSet).
 
-:- pred type_assign_term_has_type_list(list(term), list(type), type_assign,
+:- pred type_assign_var_has_type_list(list(var), list(type), type_assign,
 			type_info, type_assign_set, type_assign_set).
-:- mode type_assign_term_has_type_list(in, in, in, type_info_ui, in, out)
+:- mode type_assign_var_has_type_list(in, in, in, type_info_ui, in, out)
 	is det.
 
-type_assign_term_has_type_list([], [_|_], _, _, _, _) :-
-	error("type_assign_term_has_type_list: length mis-match").
-type_assign_term_has_type_list([_|_], [], _, _, _, _) :-
-	error("type_assign_term_has_type_list: length mis-match").
-type_assign_term_has_type_list([], [], TypeAssign, _,
+type_assign_var_has_type_list([], [_|_], _, _, _, _) :-
+	error("type_assign_var_has_type_list: length mis-match").
+type_assign_var_has_type_list([_|_], [], _, _, _, _) :-
+	error("type_assign_var_has_type_list: length mis-match").
+type_assign_var_has_type_list([], [], TypeAssign, _,
 		TypeAssignSet, [TypeAssign|TypeAssignSet]).
-type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
+type_assign_var_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	type_assign_term_has_type(Arg, Type, TypeAssign0, TypeInfo,
+	type_info_get_head_type_params(TypeInfo, HeadTypeParams),
+	type_assign_var_has_type(TypeAssign0, HeadTypeParams, Arg, Type,
 		[], TypeAssignSet1),
-	type_assign_list_term_has_type_list(TypeAssignSet1,
+	type_assign_list_var_has_type_list(TypeAssignSet1,
 		Args, Types, TypeInfo, TypeAssignSet0, TypeAssignSet).
 
-	% type_assign_list_term_has_type_list(TAs, Terms, Types, 
+	% type_assign_list_var_has_type_list(TAs, Terms, Types, 
 	%		TypeInfo, TypeAssignSet0, TypeAssignSet):
 	% 	Let TAs2 = { TA | TA is a an extension of a member of TAs
 	%		    	  for which the types of the Terms unify with
 	%		    	  their respective Types },
 	% 	list__append(TAs, TypeAssignSet0, TypeAssignSet).
 
-:- pred type_assign_list_term_has_type_list(type_assign_set, list(term),
+:- pred type_assign_list_var_has_type_list(type_assign_set, list(var),
 		list(type), type_info, type_assign_set, type_assign_set).
-:- mode type_assign_list_term_has_type_list(in, in, in, type_info_ui, in, out)
+:- mode type_assign_list_var_has_type_list(in, in, in, type_info_ui, in, out)
 	is det.
 
-type_assign_list_term_has_type_list([], _, _, _) --> [].
-type_assign_list_term_has_type_list([TA | TAs], Args, Types, TypeInfo) -->
-	type_assign_term_has_type_list(Args, Types, TA, TypeInfo),
-	type_assign_list_term_has_type_list(TAs, Args, Types, TypeInfo).
+type_assign_list_var_has_type_list([], _, _, _) --> [].
+type_assign_list_var_has_type_list([TA | TAs], Args, Types, TypeInfo) -->
+	type_assign_var_has_type_list(Args, Types, TA, TypeInfo),
+	type_assign_list_var_has_type_list(TAs, Args, Types, TypeInfo).
 	
-:- pred type_assign_term_has_type(term, type, type_assign,
-			type_info, type_assign_set, type_assign_set).
-:- mode type_assign_term_has_type(in, in, in, type_info_ui, in, out) is det.
-
-type_assign_term_has_type(term__variable(V), Type, TypeAssign, TypeInfo) -->
-	{ type_info_get_head_type_params(TypeInfo, HeadTypeParams) },
-	type_assign_var_has_type(TypeAssign, HeadTypeParams, V, Type).
-type_assign_term_has_type(term__functor(F, Args, _Context), Type, TypeAssign,
-		TypeInfo) -->
-	{ list__length(Args, Arity) },
-	{ type_info_get_ctor_list(TypeInfo, F, Arity, ConsDefnList) },
-	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
-		TypeInfo).
-
 %-----------------------------------------------------------------------------%
 
 	% Because we allow overloading, type-checking is NP-complete.
@@ -1147,19 +1063,20 @@ checkpoint_tree_stats(Description, Tree) -->
 	% Get the type assignment set from the type info and then just
 	% iterate over all the possible type assignments.
 
-:- pred typecheck_unification(term, term, type_info, type_info).
-:- mode typecheck_unification(in, in, type_info_di, type_info_uo) is det.
+:- pred typecheck_unification(var, unify_rhs, unify_rhs, type_info, type_info).
+:- mode typecheck_unification(in, in, out, type_info_di, type_info_uo) is det.
 
-:- typecheck_unification(X, Y, _, _) when X and Y.
+:- typecheck_unification(_, Y, _, _, _) when Y.
 
-typecheck_unification(term__variable(X), term__variable(Y)) -->
+typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
-typecheck_unification(term__functor(F, As, C), term__variable(Y)) -->
-	typecheck_unify_var_functor(Y, F, As, C).
-typecheck_unification(term__variable(X), term__functor(F, As, C)) -->
-	typecheck_unify_var_functor(X, F, As, C).
-typecheck_unification(term__functor(_, _, _), term__functor(_, _, _)) -->
-	{ error("not implemented: unification of term with term\n") }.
+typecheck_unification(X, functor(F, As), functor(F, As)) -->
+	typecheck_unify_var_functor(X, F, As).
+typecheck_unification(_X, lambda_goal(Vars, Goal0), lambda_goal(Vars, Goal)) -->
+	typecheck_goal(Goal0, Goal),
+	{ error("type checking of lambda terms not implemented") }.
+	% LambdaType = term__functor("pred", VarTypes, _)
+ 	% typecheck_var_has_type(X, LambdaType).
 
 :- pred typecheck_unify_var_var(var, var, type_info, type_info).
 :- mode typecheck_unify_var_var(in, in, type_info_di, type_info_uo) is det.
@@ -1179,13 +1096,12 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 			TypeInfo)
 	).
 
-:- pred typecheck_unify_var_functor(var, const, list(term), term__context,
+:- pred typecheck_unify_var_functor(var, const, list(var),
 					type_info, type_info).
-:- mode typecheck_unify_var_functor(in, in, in, in, type_info_di, type_info_uo)
+:- mode typecheck_unify_var_functor(in, in, in, type_info_di, type_info_uo)
 	is det.
 
-typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
-	type_info_set_context(Context, TypeInfo9, TypeInfo0),
+typecheck_unify_var_functor(Var, Functor, Args, TypeInfo0, TypeInfo) :-
 	%
 	% get the list of possible constructors that match this functor/arity
 	% if there aren't any, report an undefined constructor error
@@ -1335,7 +1251,7 @@ typecheck_functor_type([TypeAssign - ConsType | ConsTypeAssigns],
 	% for each possible constructor argument types,
 	% check that the types of `Args' matches these types.
 
-:- pred typecheck_functor_arg_types(args_type_assign_set, list(term),
+:- pred typecheck_functor_arg_types(args_type_assign_set, list(var),
 				type_info, type_assign_set, type_assign_set).
 :- mode typecheck_functor_arg_types(in, in, type_info_ui, in, out)
 	is det.
@@ -1343,7 +1259,7 @@ typecheck_functor_type([TypeAssign - ConsType | ConsTypeAssigns],
 typecheck_functor_arg_types([], _, _) --> [].
 typecheck_functor_arg_types([TypeAssign - ArgTypes | ConsTypeAssigns],
 			Args, TypeInfo) -->
-	type_assign_term_has_type_list(Args, ArgTypes, TypeAssign, TypeInfo),
+	type_assign_var_has_type_list(Args, ArgTypes, TypeAssign, TypeInfo),
 	typecheck_functor_arg_types(ConsTypeAssigns, Args, TypeInfo).
 
 	% iterate over all the possible type assignments.
@@ -1429,50 +1345,6 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred type_assign_unify_var_functor_2(type, list(type), list(term),
-		var, type_assign, type_info,
-		type_assign_set, type_assign_set).
-:- mode type_assign_unify_var_functor_2(in, in, in, in, in, type_info_ui,
-		in, out) is det.
-
-	% unify the type of the variable with the type of
-	% the constructor and if this succeeds insert that
-	% type assignment into the type assignment set.
-
-type_assign_unify_var_functor_2(ConsType, ArgTypes, Args, Y, TypeAssign1,
-		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-
-		% unify the type of Var with the type of the constructor
-	type_assign_get_var_types(TypeAssign1, VarTypes0),
-	( %%% if some [TypeY]
-		map__search(VarTypes0, Y, TypeY)
-	->
-		type_info_get_head_type_params(TypeInfo, HeadTypeParams),
-		( %%% if some [TypeAssign2]
-			type_assign_unify_type(TypeAssign1, HeadTypeParams,
-					ConsType, TypeY, TypeAssign2)
-		->
-			% check that the types of the arguments matches the
-			% specified arg types for this constructor
-			type_assign_term_has_type_list(Args, ArgTypes,
-				TypeAssign2, TypeInfo,
-				TypeAssignSet0, TypeAssignSet)
-		;
-			% the top-level types didn't unify - no need to
-			% check the types of the arguments, since this
-			% type-assignment has already been rules out
-			TypeAssignSet = TypeAssignSet0
-		)
-	;
-		map__set(VarTypes0, Y, ConsType, VarTypes),
-		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
-
-			% check that the types of the arguments matches the
-			% specified arg types for this constructor
-		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign3,
-			TypeInfo, TypeAssignSet0, TypeAssignSet)
-	).
 
 :- pred type_assign_check_functor_type(type, list(type), 
 		var, type_assign, type_info,
@@ -2238,7 +2110,7 @@ report_error_functor_type(TypeInfo, Var, ConsDefnList, Functor, Arity,
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
 :- pred report_error_functor_arg_types(type_info, var, list(cons_type_info),
-					const, list(term),
+					const, list(var),
 					type_assign_set,
 					io__state, io__state).
 :- mode report_error_functor_arg_types(type_info_no_io, in, in, in, in, in,
@@ -2261,7 +2133,7 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
-	mercury_output_term(term__functor(Functor, Args, Context), VarSet),
+	hlds_out__write_functor(Functor, Args, VarSet),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),
@@ -2273,8 +2145,7 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 
-	{ term__term_list_to_var_list(Args, ArgVars) },
-	write_types_of_vars(ArgVars, VarSet, Context, TypeInfo, TypeAssignSet),
+	write_types_of_vars(Args, VarSet, Context, TypeInfo, TypeAssignSet),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
@@ -2794,13 +2665,6 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 	),
 	report_ambiguity_error_2(Vs, VarSet, TypeInfo,
 				TypeAssign1, TypeAssign2).
-
-:- pred write_type(type, io__state, io__state).
-:- mode write_type(in, di, uo) is det.
-
-write_type(Type) -->
-	{ varset__init(TVarSet) },	% XXX type parameter names
-	mercury_output_term(Type, TVarSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

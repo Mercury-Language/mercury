@@ -402,7 +402,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Initially only the terms and the context
 				% are known. Mode analysis fills in the
 				% missing information.
-			;	unify(term, term, unify_mode, unification,
+			;	unify(var, unify_rhs, unify_mode, unification,
 								unify_context)
 				% A disjunction.
 				% Note: disjunctions must be fully flattened.
@@ -431,11 +431,16 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
-	% Initially all unifications are represented as
-	% unify(term, term, _, _), but mode analysis replaces
-	% these with various special cases.
-
 :- type follow_vars	==	map(var, lval).
+
+	% Initially all unifications are represented as
+	% unify(var, unify_rhs, _, _, _), but mode analysis replaces
+	% these with various special cases (construct/deconstruct/assign/
+	% simple_test/complicated_unify).
+
+:- type unify_rhs	--->	var(var)
+			;	functor(const, list(var))
+			;	lambda_goal(list(var), hlds__goal).
 
 :- type unification	--->
 				% Y = f(X) where the top node of Y is output,
@@ -482,6 +487,10 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type hlds__goals	==	list(hlds__goal).
 
+:- type hlds__goal_info.
+
+:- implementation.
+
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
@@ -506,6 +515,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% These are the only kinds of goal that
 				% use this field.
 	).
+
+:- interface.
 
 :- type unify_mode	==	pair(mode, mode).
 
