@@ -497,7 +497,10 @@ case $status in
     	cd $DIR &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
 	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
-	cp $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE
+	ln $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullarch.tar.gz" &&
+	rcp $STABLE/mercury-$version.$fullarch.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR 
        } || status=1
     ;;
 esac
@@ -513,6 +516,8 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
+		# Only delete the stable rotds.
+	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
 	    ln $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    ln $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
