@@ -12,7 +12,8 @@ main_target: $(MAIN_TARGET)
 
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
-		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o .i .s \
+		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o \
+		.i .s .pic_s \
 		.garb .ql .pl
 
 .PRECIOUS: %.date %.date3 %.optdate
@@ -115,6 +116,9 @@ main_target: $(MAIN_TARGET)
 
 .c.s:
 	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -S $< -o $@
+
+.c.pic_s:
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
 
 .c.i:
 	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -E $< > $@
