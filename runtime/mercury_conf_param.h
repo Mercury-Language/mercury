@@ -213,7 +213,7 @@
 #ifdef MR_USE_STACK_LAYOUTS
   #error "MR_USE_STACK_LAYOUTS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_STACK_TRACE_THIS_MODULE)
+#if (defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_STACK_TRACE_THIS_MODULE)) && defined(MR_STATIC_CODE_ADDRESSES)
   #define MR_USE_STACK_LAYOUTS
 #endif
 
