@@ -581,16 +581,25 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 		Inherits = [ParentClassId],
 		Implements = [],
 
-		% generate a constructor function to initialize the fields
+		% generate a constructor function to initialize the fields,
+		% if needed (not all back-ends use constructor functions)
 		%
-		CtorClassType = mlds__class_type(qual(BaseClassQualifier,
-				UnqualCtorName), CtorArity, mlds__class),
-		CtorClassQualifier = mlds__append_class_qualifier(
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_target(Globals, Target),
+		( target_uses_constructors(Target) = yes ->
+			CtorClassType = mlds__class_type(
+				qual(BaseClassQualifier, UnqualCtorName),
+				CtorArity, mlds__class),
+			CtorClassQualifier = mlds__append_class_qualifier(
 				BaseClassQualifier, UnqualCtorName, CtorArity),
-		CtorFunction = gen_constructor_function(BaseClassId,
-			CtorClassType, CtorClassQualifier, SecondaryTagClassId,
-			MaybeTagVal, Members, MLDS_Context),
-		Ctors = [CtorFunction],
+			CtorFunction = gen_constructor_function(BaseClassId,
+				CtorClassType, CtorClassQualifier,
+				SecondaryTagClassId, MaybeTagVal, Members,
+				MLDS_Context),
+			Ctors = [CtorFunction]
+		;
+			Ctors = []
+		),
 
 		% put it all together
 		MLDS_TypeName = type(UnqualCtorName, CtorArity),
@@ -601,6 +610,12 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 			MLDS_TypeFlags, MLDS_TypeDefnBody),
 		MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0]
 	).
+
+:- func target_uses_constructors(compilation_target) = bool.
+target_uses_constructors(c)	= no.
+target_uses_constructors(il)	= yes.
+target_uses_constructors(java)	= yes.
+target_uses_constructors(asm)	= no.
 
 :- func gen_constructor_function(mlds__class_id, mlds__type, mlds_module_name,
 		mlds__class_id, maybe(int), mlds__defns, mlds__context) =
