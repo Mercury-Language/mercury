@@ -13,10 +13,13 @@ CXX=CC $(ABI_FLAG)
 AS=as $(ABI_FLAG)
 #  The above doesn't work with gas, which doesn't run cpp.
 #  Define AS as `gcc -c -x assembler-with-cpp' instead.
-#  Under Irix 6, you will have to specify the ABI for as if you specify
-#  it for the C compiler.
+#  Under Irix 6, you will have to specify the ABI (-o32, -n32, or -64)
+#  if you use something other than the default ABI on your machine.
 
-CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXECUTE_PERMISSION -DSILENT
+CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DNO_EXECUTE_PERMISSION -DALL_INTERIOR_POINTERS -DSILENT
+
+# For dynamic library builds, it may be necessary to add flags to generate
+# PIC code, e.g. -fPIC on Linux.
 
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
@@ -30,10 +33,12 @@ CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXEC
 # -DSOLARIS_THREADS enables support for Solaris (thr_) threads.
 #   (Clients should also define SOLARIS_THREADS and then include
 #   gc.h before performing thr_ or dl* or GC_ operations.)
-#   Must also define -D_REENTRANT
+#   Must also define -D_REENTRANT.
 # -D_SOLARIS_PTHREADS enables support for Solaris pthreads.
 #   Define SOLARIS_THREADS as well.
 # -DIRIX_THREADS enables support for Irix pthreads.  See README.irix.
+# -DLINUX_THREADS enables support for Xavier Leroy's Linux threads.
+#   see README.linux.  -D_REENTRANT may also be required.
 # -DALL_INTERIOR_POINTERS allows all pointers to the interior
 #   of objects to be recognized.  (See gc_priv.h for consequences.)
 # -DSMALL_CONFIG tries to tune the collector for small heap sizes,
@@ -93,6 +98,10 @@ CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXEC
 #   fragmentation, but generally better performance for large heaps.
 # -DUSE_MMAP use MMAP instead of sbrk to get new memory.
 #   Works for Solaris and Irix.
+# -DUSE_MUNMAP causes memory to be returned to the OS under the right
+#   circumstances.  This currently disables VM-based incremental collection.
+#   This is currently experimental, and works only under some Unix and
+#   Linux versions.
 # -DMMAP_STACKS (for Solaris threads) Use mmap from /dev/zero rather than
 #   GC_scratch_alloc() to get stack memory.
 # -DPRINT_BLACK_LIST Whenever a black list entry is added, i.e. whenever
@@ -104,6 +113,13 @@ CFLAGS= -O -DATOMIC_UNCOLLECTABLE -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DNO_EXEC
 #   allocation strategy.  The new strategy tries harder to minimize
 #   fragmentation, sometimes at the expense of spending more time in the
 #   large block allocator and/or collecting more frequently.
+#   If you expect the allocator to promtly use an explicitly expanded
+#   heap, this is highly recommended.
+# -DGC_ASSERTIONS Enable some internal GC assertion checking.  Currently
+#   this facility is only used in a few places.  It is intended primarily
+#   for debugging of the garbage collector itself, but could also
+#   occasionally be useful for debugging of client code.  Slows down the
+#   collector somewhat, but not drastically.
 #
 
 
@@ -134,16 +150,17 @@ CORD_OBJS=  cord/cordbscs.o cord/cordxtra.o cord/cordprnt.o
 
 SRCS= $(CSRCS) mips_sgi_mach_dep.s rs6000_mach_dep.s alpha_mach_dep.s \
     sparc_mach_dep.s gc.h gc_typed.h gc_hdrs.h gc_priv.h gc_private.h \
-    config.h gc_mark.h include/gc_inl.h include/gc_inline.h gc.man \
+    gcconfig.h gc_mark.h include/gc_inl.h include/gc_inline.h gc.man \
     threadlibs.c if_mach.c if_not_there.c gc_cpp.cc gc_cpp.h weakpointer.h \
     gcc_support.c mips_ultrix_mach_dep.s include/gc_alloc.h gc_alloc.h \
-    sparc_sunos4_mach_dep.s solaris_threads.h $(CORD_SRCS)
+    include/new_gc_alloc.h include/javaxfc.h sparc_sunos4_mach_dep.s \
+    solaris_threads.h $(CORD_SRCS)
 
 OTHER_FILES= Makefile PCR-Makefile OS2_MAKEFILE NT_MAKEFILE BCC_MAKEFILE \
            README test.c test_cpp.cc setjmp_t.c SMakefile.amiga \
            SCoptions.amiga README.amiga README.win32 cord/README \
            cord/gc.h include/gc.h include/gc_typed.h include/cord.h \
-           include/ec.h include/private/cord_pos.h include/private/config.h \
+           include/ec.h include/private/cord_pos.h include/private/gcconfig.h \
            include/private/gc_hdrs.h include/private/gc_priv.h \
 	   include/gc_cpp.h README.rs6000 \
            include/weakpointer.h README.QUICK callprocs pc_excludes \
@@ -153,7 +170,7 @@ OTHER_FILES= Makefile PCR-Makefile OS2_MAKEFILE NT_MAKEFILE BCC_MAKEFILE \
            Mac_files/MacOS_config.h Mac_files/MacOS_Test_config.h \
            add_gc_prefix.c README.solaris2 README.sgi README.hp README.uts \
 	   win32_threads.c NT_THREADS_MAKEFILE gc.mak README.dj Makefile.dj \
-	   README.alpha README.linux version.h Makefile.DLLs gc_watcom.asm \
+	   README.alpha README.linux version.h Makefile.DLLs \
 	   WCC_MAKEFILE
 
 CORD_INCLUDE_FILES= $(srcdir)/gc.h $(srcdir)/cord/cord.h $(srcdir)/cord/ec.h \
@@ -177,12 +194,12 @@ SPECIALCFLAGS =
 
 all: gc.a gctest
 
-pcr: PCR-Makefile gc_private.h gc_hdrs.h gc.h config.h mach_dep.o $(SRCS)
+pcr: PCR-Makefile gc_private.h gc_hdrs.h gc.h gcconfig.h mach_dep.o $(SRCS)
 	make -f PCR-Makefile depend
 	make -f PCR-Makefile
 
 $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_hdrs.h $(srcdir)/gc.h \
-    $(srcdir)/config.h $(srcdir)/gc_typed.h Makefile
+    $(srcdir)/gcconfig.h $(srcdir)/gc_typed.h Makefile
 # The dependency on Makefile is needed.  Changing
 # options such as -DSILENT affects the size of GC_arrays,
 # invalidating all .o files that rely on gc_priv.h
@@ -191,28 +208,23 @@ mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
 base_lib gc.a: $(OBJS) dyn_load.o $(UTILS)
 	echo > base_lib
-	rm -f on_sparc_sunos5
-	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
+	rm -f dont_ar_1
+	./if_mach SPARC SUNOS5 touch dont_ar_1
 	./if_mach SPARC SUNOS5 $(AR) rus gc.a $(OBJS) dyn_load.o
-	./if_not_there on_sparc_sunos5 $(AR) ru gc.a $(OBJS) dyn_load.o
-	./if_not_there on_sparc_sunos5 $(RANLIB) gc.a || cat /dev/null
+	./if_mach M68K AMIGA touch dont_ar_1
+	./if_mach M68K AMIGA $(AR) -vrus gc.a $(OBJS) dyn_load.o
+	./if_not_there dont_ar_1 $(AR) ru gc.a $(OBJS) dyn_load.o
+	./if_not_there dont_ar_1 $(RANLIB) gc.a || cat /dev/null
 #	ignore ranlib failure; that usually means it doesn't exist, and isn't needed
 
-libgc.a: 
-	make CFLAGS="$(LIBGC_CFLAGS)" clean gc.a gcc_support.o
-	mv gc.a libgc.a
-	rm -f on_sparc_sunos5
-	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
-	./if_mach SPARC SUNOS5 $(AR) rus libgc.a gcc_support.o
-	./if_not_there on_sparc_sunos5 $(AR) ru libgc.a gcc_support.o
-	./if_not_there on_sparc_sunos5 $(RANLIB) libgc.a || cat /dev/null
-
 cords: $(CORD_OBJS) cord/cordtest $(UTILS)
-	rm -f on_sparc_sunos5
-	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
+	rm -f dont_ar_3
+	./if_mach SPARC SUNOS5 touch dont_ar_3
 	./if_mach SPARC SUNOS5 $(AR) rus gc.a $(CORD_OBJS)
-	./if_not_there on_sparc_sunos5 $(AR) ru gc.a $(CORD_OBJS)
-	./if_not_there on_sparc_sunos5 $(RANLIB) gc.a || cat /dev/null
+	./if_mach M68K AMIGA touch dont_ar_3
+	./if_mach M68K AMIGA $(AR) -vrus gc.a $(CORD_OBJS)
+	./if_not_there dont_ar_3 $(AR) ru gc.a $(CORD_OBJS)
+	./if_not_there dont_ar_3 $(RANLIB) gc.a || cat /dev/null
 
 gc_cpp.o: $(srcdir)/gc_cpp.cc $(srcdir)/gc_cpp.h $(srcdir)/gc.h Makefile
 	$(CXX) -c $(CXXFLAGS) $(srcdir)/gc_cpp.cc
@@ -224,11 +236,13 @@ base_lib $(UTILS)
 	./if_not_there test_cpp $(CXX) $(CXXFLAGS) -o test_cpp $(srcdir)/test_cpp.cc gc_cpp.o gc.a `./threadlibs`
 
 c++: gc_cpp.o $(srcdir)/gc_cpp.h test_cpp
-	rm -f on_sparc_sunos5
-	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
+	rm -f dont_ar_4
+	./if_mach SPARC SUNOS5 touch dont_ar_4
 	./if_mach SPARC SUNOS5 $(AR) rus gc.a gc_cpp.o
-	./if_not_there on_sparc_sunos5 $(AR) ru gc.a gc_cpp.o
-	./if_not_there on_sparc_sunos5 $(RANLIB) gc.a || cat /dev/null
+	./if_mach M68K AMIGA touch dont_ar_4
+	./if_mach M68K AMIGA $(AR) -vrus gc.a gc_cpp.o
+	./if_not_there dont_ar_4 $(AR) ru gc.a gc_cpp.o
+	./if_not_there dont_ar_4 $(RANLIB) gc.a || cat /dev/null
 	./test_cpp 1
 	echo > c++
 
@@ -236,8 +250,9 @@ dyn_load_sunos53.o: dyn_load.c
 	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c $(srcdir)/dyn_load.c -o $@
 
 # SunOS5 shared library version of the collector
-libgc.so: $(OBJS) dyn_load_sunos53.o
-	$(CC) -G -o libgc.so $(OBJS) dyn_load_sunos53.o -ldl
+sunos5gc.so: $(OBJS) dyn_load_sunos53.o
+	$(CC) -G -o sunos5gc.so $(OBJS) dyn_load_sunos53.o -ldl
+	ln sunos5gc.so libgc.so
 
 # Alpha/OSF shared library version of the collector
 libalphagc.so: $(OBJS)
@@ -249,6 +264,24 @@ libirixgc.so: $(OBJS) dyn_load.o
 	ld -shared $(ABI_FLAG) -o libirixgc.so $(OBJS) dyn_load.o -lc
 	ln libirixgc.so libgc.so
 
+# Linux shared library version of the collector
+liblinuxgc.so: $(OBJS) dyn_load.o
+	gcc -shared -o liblinuxgc.so $(OBJS) dyn_load.o -lo
+	ln liblinuxgc.so libgc.so
+
+# Alternative Linux rule.  This is preferable, but is likely to break the
+# Makefile for some non-linux platforms.
+# LIBOBJS= $(patsubst %.o, %.lo, $(OBJS))
+#
+#.SUFFIXES: .lo $(SUFFIXES)
+#
+#.c.lo:
+#	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c $< -o $@
+#
+# liblinuxgc.so: $(LIBOBJS) dyn_load.lo
+# 	gcc -shared -Wl,-soname=libgc.so.0 -o libgc.so.0 $(LIBOBJS) dyn_load.lo
+#	touch liblinuxgc.so
+
 mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.s $(srcdir)/mips_ultrix_mach_dep.s $(srcdir)/rs6000_mach_dep.s $(UTILS)
 	rm -f mach_dep.o
 	./if_mach MIPS IRIX5 $(AS) -o mach_dep.o $(srcdir)/mips_sgi_mach_dep.s
@@ -258,6 +291,7 @@ mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.s $(srcdir)/mips_ul
 	./if_mach ALPHA "" $(AS) -o mach_dep.o $(srcdir)/alpha_mach_dep.s
 	./if_mach SPARC SUNOS5 $(AS) -o mach_dep.o $(srcdir)/sparc_mach_dep.s
 	./if_mach SPARC SUNOS4 $(AS) -o mach_dep.o $(srcdir)/sparc_sunos4_mach_dep.s
+	./if_mach SPARC OPENBSD $(AS) -o mach_dep.o $(srcdir)/sparc_sunos4_mach_dep.s
 	./if_not_there mach_dep.o $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 
 mark_rts.o: $(srcdir)/mark_rts.c if_mach if_not_there $(UTILS)
@@ -270,16 +304,16 @@ mark_rts.o: $(srcdir)/mark_rts.c if_mach if_not_there $(UTILS)
 alloc.o: version.h
 
 cord/cordbscs.o: $(srcdir)/cord/cordbscs.c $(CORD_INCLUDE_FILES)
-	$(CC) $(CFLAGS) -c $(srcdir)/cord/cordbscs.c
+	$(CC) $(CFLAGS) -c -I$(srcdir) $(srcdir)/cord/cordbscs.c
 	mv cordbscs.o cord/cordbscs.o
 #  not all compilers understand -o filename
 
 cord/cordxtra.o: $(srcdir)/cord/cordxtra.c $(CORD_INCLUDE_FILES)
-	$(CC) $(CFLAGS) -c $(srcdir)/cord/cordxtra.c
+	$(CC) $(CFLAGS) -c -I$(srcdir) $(srcdir)/cord/cordxtra.c
 	mv cordxtra.o cord/cordxtra.o
 
 cord/cordprnt.o: $(srcdir)/cord/cordprnt.c $(CORD_INCLUDE_FILES)
-	$(CC) $(CFLAGS) -c $(srcdir)/cord/cordprnt.c
+	$(CC) $(CFLAGS) -c -I$(srcdir) $(srcdir)/cord/cordprnt.c
 	mv cordprnt.o cord/cordprnt.o
 
 cord/cordtest: $(srcdir)/cord/cordtest.c $(CORD_OBJS) gc.a $(UTILS)
@@ -290,17 +324,18 @@ cord/cordtest: $(srcdir)/cord/cordtest.c $(CORD_OBJS) gc.a $(UTILS)
 
 cord/de: $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a $(UTILS)
 	rm -f cord/de
-	./if_mach SPARC DRSNX $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a $(CURSES) -lucb
+	./if_mach SPARC DRSNX $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a $(CURSES) -lucb `./threadlibs`
 	./if_mach HP_PA "" $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a $(CURSES) -ldld
 	./if_mach RS6000 "" $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a -lcurses
-	./if_mach I386 LINUX $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a -lcurses
+	./if_mach I386 LINUX $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a -lcurses `./threadlibs`
 	./if_mach ALPHA LINUX $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a -lcurses
+	./if_mach M68K AMIGA $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a -lcurses
 	./if_not_there cord/de $(CC) $(CFLAGS) -o cord/de $(srcdir)/cord/de.c cord/cordbscs.o cord/cordxtra.o gc.a $(CURSES) `./threadlibs`
 
-if_mach: $(srcdir)/if_mach.c $(srcdir)/config.h
+if_mach: $(srcdir)/if_mach.c $(srcdir)/gcconfig.h
 	$(CC) $(CFLAGS) -o if_mach $(srcdir)/if_mach.c
 
-threadlibs: $(srcdir)/threadlibs.c $(srcdir)/config.h Makefile
+threadlibs: $(srcdir)/threadlibs.c $(srcdir)/gcconfig.h Makefile
 	$(CC) $(CFLAGS) -o threadlibs $(srcdir)/threadlibs.c
 
 if_not_there: $(srcdir)/if_not_there.c
@@ -364,7 +399,7 @@ gc.tar.gz: gc.tar
 	gzip gc.tar
 
 lint: $(CSRCS) test.c
-	lint -DLINT $(CSRCS) test.c | egrep -v "possible pointer alignment problem|abort|exit|sbrk|mprotect|syscall"
+	lint -DLINT $(CSRCS) test.c | egrep -v "possible pointer alignment problem|abort|exit|sbrk|mprotect|syscall|change in ANSI|improper alignment"
 
 # BTL: added to test shared library version of collector.
 # Currently works only under SunOS5.  Requires GC_INIT call from statically

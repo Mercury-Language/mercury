@@ -278,7 +278,7 @@ ptr_t p;
     for (q = p; q <= scan_limit; q += ALIGNMENT) {
     	r = *(ptr_t *)q;
     	if (r < p || r > target_limit) {
-    	    GC_PUSH_ONE_HEAP((word)r);
+    	    GC_PUSH_ONE_HEAP((word)r, q);
     	}
     }
 }
@@ -648,8 +648,9 @@ void GC_enqueue_all_finalizers()
  * which can make the runtime guarantee that all finalizers are run.
  * Unfortunately, the Java standard implies we have to keep running
  * finalizers until there are no more left, a potential infinite loop.
- * YUCK.  * This routine is externally callable, so is called without 
- * the allocation lock 
+ * YUCK.
+ * This routine is externally callable, so is called without 
+ * the allocation lock. 
  */
 void GC_finalize_all()
 {
