@@ -1816,11 +1816,67 @@ ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
 				offset(const(int_const(0))),
 				mlds__generic_type, MLDS_VarType)))
 	;
-		FieldId = ml_gen_field_id(VarType, "tag_type", 0,
-			"data_tag"),
+		FieldId = ml_gen_hl_tag_field_id(VarType, ModuleInfo),
 		SecondaryTagField = lval(field(yes(PrimaryTagVal), Rval,
 			FieldId, mlds__native_int_type, MLDS_VarType))
 	).
+
+	% Return the field_id for the "data_tag" field of the specified
+	% Mercury type, which holds the secondary tag.
+	%
+:- func ml_gen_hl_tag_field_id(prog_type, module_info) = mlds__field_id.
+
+ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
+	FieldName = "data_tag",
+
+	% Figure out the type name and arity
+	( type_to_type_id(Type, TypeId0, _) ->
+		TypeId = TypeId0
+	;
+		error("ml_gen_hl_tag_field_id: invalid type")
+	),
+	ml_gen_type_name(TypeId, qual(MLDS_Module, TypeName), TypeArity),
+
+	% Figure out whether this type has constructors both
+	% with and without secondary tags.  If so, then the
+	% secondary tag field is in a class "tag_type" that is
+	% derived from the base class for this type,
+	% rather than in the base class itself.
+	module_info_types(ModuleInfo, TypeTable),
+	TypeDefn = map__lookup(TypeTable, TypeId),
+	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
+	( TypeDefnBody = du_type(Ctors, TagValues, _, _) ->
+		(
+			(some [Ctor] (
+				list__member(Ctor, Ctors),
+				ml_uses_secondary_tag(TagValues, Ctor, _)
+			)),
+			(some [Ctor] (
+				list__member(Ctor, Ctors),
+				\+ ml_uses_secondary_tag(TagValues, Ctor, _)
+			))
+		->
+			ClassQualifier = mlds__append_class_qualifier(
+				MLDS_Module, TypeName, TypeArity),
+			ClassName = "tag_type",
+			ClassArity = 0
+		;
+			ClassQualifier = MLDS_Module,
+			ClassName = TypeName,
+			ClassArity = TypeArity
+		)
+	;
+		error("ml_gen_hl_tag_field_id: non-du type")
+	),
+
+	% Put it all together
+	QualClassName = qual(ClassQualifier, ClassName),
+	ClassPtrType = mlds__ptr_type(mlds__class_type(
+		QualClassName, ClassArity, mlds__class)),
+	FieldQualifier = mlds__append_class_qualifier(
+		ClassQualifier, ClassName, ClassArity),
+	QualifiedFieldName = qual(FieldQualifier, FieldName),
+	FieldId = named_field(QualifiedFieldName, ClassPtrType).
 
 :- func ml_gen_field_id(prog_type, mlds__class_name, arity, mlds__field_name) =
 	mlds__field_id.
@@ -1829,8 +1885,7 @@ ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
 	(
 		type_to_type_id(Type, TypeId, _)
 	->
-		ml_gen_type_name(TypeId,
-			qual(MLDS_Module, TypeName), TypeArity),
+		ml_gen_type_name(TypeId, qual(MLDS_Module, TypeName), TypeArity),
 		ClassQualifier = mlds__append_class_qualifier(
 			MLDS_Module, TypeName, TypeArity),
 		QualClassName = qual(ClassQualifier, ClassName),

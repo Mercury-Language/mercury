@@ -22,7 +22,7 @@
 
 :- module ml_type_gen.
 :- interface.
-:- import_module prog_data, hlds_module, mlds.
+:- import_module prog_data, hlds_module, hlds_data, mlds.
 :- import_module io.
 
 	% Generate MLDS definitions for all the types in the HLDS.
@@ -53,11 +53,19 @@
 	% from normal members in that their finality is `final'.
 	%
 :- func ml_gen_special_member_decl_flags = mlds__decl_flags.
+
+	%
+	% ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag):
+	% Check if this constructor uses a secondary tag,
+	% and if so, return the secondary tag value.
+	%
+:- pred ml_uses_secondary_tag(cons_tag_values, constructor, int).
+:- mode ml_uses_secondary_tag(in, in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module hlds_pred, prog_data, prog_util, type_util, polymorphism.
-:- import_module hlds_data.
 :- import_module ml_code_util.
 :- import_module globals, options.
 
@@ -387,9 +395,6 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
 	% Check if this constructor uses a secondary tag,
 	% and if so, return the secondary tag value.
 	%
-:- pred ml_uses_secondary_tag(cons_tag_values, constructor, int).
-:- mode ml_uses_secondary_tag(in, in, out) is semidet.
-
 ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag) :-
 	Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
 	list__length(Args, Arity),
