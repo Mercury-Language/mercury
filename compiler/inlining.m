@@ -153,15 +153,7 @@ inlining__inlining_in_goal_2(
 		inlining__init_subn(ArgSub, Subn0, Subn1),
 		inlining__create_variables(Vars0, Varset0, VarTypes0,
 			Subn1, CVarTypes, Varset, VarTypes, Subn),
-		inlining__name_apart(CalledGoal, Subn, NewGoal),
-		goal_to_conj_list(NewGoal, GoalList),
-		(
-			GoalList = [SingleGoal - _]
-		->
-			Goal = SingleGoal
-		;
-			Goal = conj(GoalList)
-		)
+		inlining__name_apart(CalledGoal, Subn, Goal - _GoalInfo)
 	;
 		Goal = call(PredId, ProcId, Args, Builtin, SymName, Follow),
 		Varset = Varset0,
