@@ -588,7 +588,8 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		% starting at r4.
 	call_gen__generate_immediate_args(InVars, InVars, 4, ImmediateCode),
 	code_info__generate_stack_livevals(OutArgs, LiveVals0),
-	{ set__insert(LiveVals0, reg(r(1)), LiveVals) },
+	{ set__insert_list(LiveVals0, [reg(r(1)), reg(r(2)), reg(r(3))],
+		LiveVals) },
 	call_gen__generate_return_livevals(OutArgs, [], OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(
