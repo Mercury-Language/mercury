@@ -2121,8 +2121,6 @@ unaryop_to_il(box(UnboxedType), _, Instrs) -->
 	{ already_boxed(UnboxedILType) ->
 			% It is already boxed, so we don't need
 			% to do anything.
-			% It would be good if we didn't generate 
-			% such code, but it's no big deal
 		Instrs = empty
 	;
 		Instrs = convert_to_object(UnboxedILType)
