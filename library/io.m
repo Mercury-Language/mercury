@@ -1821,7 +1821,7 @@ END_MODULE
 }").
 
 :- pragma(c_code, io__putenv(VarAndValue::in), "
-	SUCCESS_INDICATOR = (putenv(VarAndValue) != 0);
+	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
 
 /*---------------------------------------------------------------------------*/
