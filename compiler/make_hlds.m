@@ -497,7 +497,7 @@ make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
 
 insert_head_unifications([], [], Body, Body).
 insert_head_unifications([Arg|Args], [Var|Vars], Body0, Body) :-
-	Body = (unify(Arg, Var), Body1),
+	Body = (unify(Arg, term_variable(Var)), Body1),
 	insert_head_unifications(Args, Vars, Body0, Body1).
 
 :- pred transform_goal(goal, hlds__goal).
@@ -581,7 +581,8 @@ get_conj(Goal, Conj0, Conj) :-
 		get_conj(B, Conj0, Conj1),
 		get_conj(A, Conj1, Conj)
 	else
-		Conj = [Goal | Conj0]
+		transform_goal(Goal, Goal1),
+		Conj = [Goal1 | Conj0]
 	).
 
 % get_disj(Goal, Disj0, Disj) :
@@ -598,6 +599,7 @@ get_disj(Goal, Disj0, Disj) :-
 		get_disj(B, Disj0, Disj1),
 		get_disj(A, Disj1, Disj)
 	else
+		transform_goal(Goal, Goal1),
 		Disj = [Goal | Disj0]
 	).
 
