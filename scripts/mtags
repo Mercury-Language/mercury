@@ -214,7 +214,7 @@ while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
 	}
 	if ($ARGV[0] eq "--") {
 		shift(ARGV);
-		break;
+		last;
 	}
 	die "mtags: unrecognized option \`$ARGV[0]'\n" .
 		"Use \`mtags --help' for help.\n";
