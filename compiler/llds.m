@@ -298,7 +298,7 @@ output_instruction(c_code(C_Code_String)) -->
 	io__write_string(C_Code_String).
 
 output_instruction(mkframe(Str, Num, FailureContinuation)) -->
-	io__write_string("\t{"),
+	io__write_string("\t{ "),
 	output_code_addr_decls(FailureContinuation),
 	io__write_string("mkframe(\""),
 	io__write_string(Str),

@@ -1171,9 +1171,28 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 
 			inst_matches_initial(Inst0, Inst, ModuleInfo)
 		->
-			Var = Var0,
-			Goals = [] - [],
-			ModeInfo = ModeInfo1
+			(
+				% If this was a call to an implied mode
+				% for that variable, then we
+				% need to introduce a fresh variable.
+				\+ inst_matches_final(Inst0, InitialInst,
+					ModuleInfo)
+			->
+				% XXX - implied modes not implemented
+				% we should introduce a fresh variable
+				Var = Var0,
+				Goals = [] - [],
+				set__singleton_set(WaitingVars, Var0),
+				mode_info_error(WaitingVars,
+					mode_error_implied_mode(Var0, Inst0,
+								InitialInst),
+						ModeInfo1, ModeInfo
+				)
+			;
+				Var = Var0,
+				Goals = [] - [],
+				ModeInfo = ModeInfo1
+			)
 		;
 			% We must have either added some information,
 			% or bound part of the var.  The call to
@@ -1206,7 +1225,7 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			% We've bound part of the var.  If this was a call
 			% to an implied mode for that variable, then we
 			% need to introduce a fresh variable.
-			inst_matches_final(Inst0, InitialInst, ModuleInfo)
+			\+ inst_matches_final(Inst0, InitialInst, ModuleInfo)
 		->
 			% XXX - implied modes not implemented
 			% we should introduce a fresh variable
@@ -1214,7 +1233,8 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			Goals = [] - [],
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
-				mode_error_implied_mode(Var0, Inst0, Inst),
+				mode_error_implied_mode(Var0, Inst0,
+							InitialInst),
 					ModeInfo1, ModeInfo
 			)
 		;
