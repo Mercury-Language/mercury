@@ -303,6 +303,12 @@
 :- pred list__chunk(list(T), int, list(list(T))).
 :- mode list__chunk(in, in, out) is det.
 
+	% list__sublist(SubList, FullList) is true
+	%	if one can obtain SubList by starting with FullList
+	%	and deleting some of its elements.
+:- pred list__sublist(list(T), list(T)).
+:- mode list__sublist(in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % The following group of predicates use higher-order terms to simplify
@@ -785,6 +791,16 @@ list__perm([], []).
 list__perm([X|Xs], Ys) :-
 	list__perm(Xs, Ys0),
 	list__insert(X, Ys0, Ys).
+
+%-----------------------------------------------------------------------------%
+
+list__sublist([], _).
+list__sublist([SH | ST], [FH | FT]) :-
+	( SH = FH ->
+		list__sublist(ST, FT)
+	;
+		list__sublist([SH | ST], FT)
+	).
 
 %-----------------------------------------------------------------------------%
 

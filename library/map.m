@@ -170,7 +170,7 @@
 :- pred map__optimize(map(K, V), map(K, V)).
 :- mode map__optimize(in, out) is det.
 
-	% Remove the smallest item from the map, fail if 
+	% Remove the smallest item from the map, fail if
 	% the map is empty.
 :- pred map__remove_smallest(map(K, V), K, V, map(K, V)).
 :- mode map__remove_smallest(in, out, out, out) is semidet.
@@ -216,14 +216,14 @@ map__lookup(Map, K, V) :-
 
 map__insert(Map0, K, V, Map) :-
 	tree234__insert(Map0, K, V, Map).
- 
+
 map__det_insert(Map0, K, V, Map) :-
 	( tree234__insert(Map0, K, V, Map1) ->
 		Map = Map1
-	;	
+	;
 		error("map__det_insert: key already present")
 	).
- 
+
 map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
 	( Ks = [Key | Keys], Vs = [Value | Values] ->
 		map__det_insert(Map0, Key, Value, Map1),
@@ -243,7 +243,7 @@ map__update(Map0, K, V, Map) :-
 map__det_update(Map0, K, V, Map) :-
 	( tree234__update(Map0, K, V, Map1) ->
 		Map = Map1
-	;	
+	;
 		error("map__det_update: key not found")
 	).
 
@@ -268,7 +268,7 @@ map__from_sorted_assoc_list(L, M) :-
 map__delete(Map0, Key, Map) :-
 	tree234__delete(Map0, Key, Map).
 
-map__delete_list(Map, [], Map). 
+map__delete_list(Map, [], Map).
 map__delete_list(Map0, [Key | Keys], Map) :-
 	map__delete(Map0, Key, Map1),
 	map__delete_list(Map1, Keys, Map).
@@ -341,7 +341,7 @@ map__overlay_2([], Map, Map).
 map__overlay_2([K - V | AssocList], Map0, Map) :-
 	map__set(Map0, K, V, Map1),
 	map__overlay_2(AssocList, Map1, Map).
-	
+
 %-----------------------------------------------------------------------------%
 
 map__select(Original, KeySet, NewMap) :-
