@@ -388,7 +388,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module exception, int, require.
+:- import_module exception, int, require, string.
 
 /****
 lower bounds other than zero are not supported
@@ -897,7 +897,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 array__lookup(Array, Index, Item) :-
 	( bounds_checks, \+ array__in_bounds(Array, Index) ->
-		throw(array__index_out_of_bounds("array__lookup"))
+		throw(out_of_bounds_error("array__lookup", Array, Index))
 	;
 		array__unsafe_lookup(Array, Index, Item)
 	).
@@ -935,7 +935,7 @@ array__lookup(Array, Index, Item) :-
 
 array__set(Array0, Index, Item, Array) :-
 	( bounds_checks, \+ array__in_bounds(Array0, Index) ->
-		throw(array__index_out_of_bounds("array__set"))
+		throw(out_of_bounds_error("array__set", Array0, Index))
 	;
 		array__unsafe_set(Array0, Index, Item, Array)
 	).
@@ -1606,6 +1606,21 @@ merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
             R = (>),
             B = merge_subarrays(A, B0^elem(I) := X2, Lo1, Hi1, Lo2+1, Hi2, I+1)
         )
+    ).
+
+%------------------------------------------------------------------------------%
+
+    % out_of_bounds_error(OpName, Array, Index) = IndexOutOfBounds.
+    %
+:- func out_of_bounds_error(string, array(T), int) = index_out_of_bounds.
+
+out_of_bounds_error(Op, A, I) =
+    index_out_of_bounds(
+        string__format(
+            "%s: array type %s, bounds [%d, %d], index %d",
+    	    [s(Op), s(type_name(type_of(A))),
+             i(array__min(A)), i(array__max(A)), i(I)]
+	)
     ).
 
 %------------------------------------------------------------------------------%
