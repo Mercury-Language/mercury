@@ -126,7 +126,7 @@ arg_info list.
 
 Resumption points
 
-We handle these through the cont_lives field in goal infos. During the
+We handle these through the resume_point field in goal infos. During the
 store_map pass, we fill in this field for every goal that establishes
 a point at which execution may resume after backtracking. This means
 the conditions of if-then-elses (the resumption point is the start of
@@ -139,14 +139,14 @@ Note that for the purposes of handling resumption points, it does not
 matter whether any part of an if-then-else, disjunction or negation
 can succeed more than once.
 
-The cont_lives field does not assign a location to these variables.
+The resume_point field does not assign a location to these variables.
 The reason is that as an optimization, each conceptual resumption point
 is associated with either one or two labels, and if there are two labels,
 these will differ in where they expect these variables to be. The
 the failure continuation stack entry created by the code generator
 that describes the resumption point will associate a store map with
 each label, with each store map assigning a location to each variable
-included in the cont_lives set.
+included in the resume_point set.
 
 The usual case has two labels. The store map of the first label maps each
 variable to its stack slot, while the store map of the second label maps
