@@ -43,15 +43,17 @@ static	int		MR_next_spy_point = 0;
 static	MR_next	MR_trace_debug_cmd(MR_trace_cmd_info *cmd,
 			const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, int seqno, int depth,
-			const char *path);
-static	void	MR_trace_list_vars(int var_count,
-			const MR_Stack_Layout_Vars *var_info);
-static	void	MR_trace_browse_one(int which_var,
-			const MR_Stack_Layout_Vars *var_info);
-static	void	MR_trace_browse_all(int var_count,
-			const MR_Stack_Layout_Vars *var_info);
+			const char *path, int *ancestor_level);
+static	void	MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout,
+			int ancestor_level);
+static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
+			int ancestor_level, int which_var);
+static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
+			int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
-			const MR_Stack_Layout_Var *var, Word *type_params);
+			const MR_Stack_Layout_Var *var,
+			bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+			Word *type_params);
 static	void	MR_trace_help(void);
 
 static	bool	MR_trace_is_number(char *word, int *value);
@@ -75,6 +77,7 @@ MR_trace_event_internal(MR_trace_cmd_info *cmd,
 	Word	saved_seqno;
 	Word	saved_depth;
 	Word	saved_event;
+	int	ancestor_level;
 
 	MR_trace_event_internal_report(layout, port, seqno, depth, path);
 
@@ -83,8 +86,11 @@ MR_trace_event_internal(MR_trace_cmd_info *cmd,
 	saved_depth = MR_trace_call_depth;
 	saved_event = MR_trace_event_number;
 
-	while (MR_trace_debug_cmd(cmd, layout, port, seqno, depth, path)
-			== KEEP_INTERACTING) {
+	/* by default, print variables from the current procedure */
+	ancestor_level = 0;
+
+	while (MR_trace_debug_cmd(cmd, layout, port, seqno, depth, path,
+			&ancestor_level) == KEEP_INTERACTING) {
 		; /* all the work is done in MR_trace_debug_cmd */
 	}
 
@@ -95,7 +101,8 @@ MR_trace_event_internal(MR_trace_cmd_info *cmd,
 
 static MR_next
 MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, int seqno, int depth, const char *path)
+	MR_trace_port port, int seqno, int depth, const char *path,
+	int *ancestor_level)
 {
 	char	line[MR_MAX_LINE_LEN];
 	char	count_buf[MR_MAX_LINE_LEN];
@@ -262,27 +269,26 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 		} else {
 			printf("This command expects no argument.\n");
 		}
+	} else if (streq(words[0], "l")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			*ancestor_level = n;
+			printf("Ancestor level set to %d\n", n);
+		} else {
+			printf("This command expects one argument,\n");
+			printf("a number denoting an ancestor level.\n");
+		}
 	} else if (streq(words[0], "v")) {
 		if (word_count == 1) {
-			MR_trace_list_vars((int) layout->MR_sll_var_count,
-				&layout->MR_sll_var_info);
+			MR_trace_list_vars(layout, *ancestor_level);
 		} else {
 			printf("This command expects no argument.\n");
 		}
 	} else if (streq(words[0], "p")) {
 		if (word_count == 2) {
 			if (MR_trace_is_number(words[1], &n)) {
-				if (n < layout->MR_sll_var_count) {
-					MR_trace_browse_one(n,
-						&layout->MR_sll_var_info);
-				} else {
-					printf("There is no variable #%d.\n",
-						n);
-				}
+				MR_trace_browse_one(layout, *ancestor_level, n);
 			} else if streq(words[1], "*") {
-				MR_trace_browse_all((int)
-					layout->MR_sll_var_count,
-					&layout->MR_sll_var_info);
+				MR_trace_browse_all(layout, *ancestor_level);
 			} else {
 				printf("The argument of this command should be,\n");
 				printf("a variable number or a '*' indicating all variables.\n");
@@ -297,13 +303,20 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 
 			do_init_modules();
 			result = MR_dump_stack_from_layout(stdout,
-					layout->MR_sll_entry, sp, maxfr);
+					layout->MR_sll_entry,
+					MR_saved_sp(MR_saved_regs),
+					MR_saved_maxfr(MR_saved_regs));
 			if (result != NULL) {
 				printf("%s\n", result);
 			}
 		} else {
 			printf("This command expects no argument.\n");
 		}
+	} else if (streq(words[0], "X")) {
+		printf("sp = %p, curfr = %p, maxfr = %p\n",
+			MR_saved_sp(MR_saved_regs),
+			MR_saved_curfr(MR_saved_regs),
+			MR_saved_maxfr(MR_saved_regs));
 	} else if (streq(words[0], "b")) {
 		if (word_count != 3) {
 			printf("This command expects two arguments,\n");
@@ -423,53 +436,128 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 }
 
 static void
-MR_trace_list_vars(int var_count, const MR_Stack_Layout_Vars *vars)
+MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, int ancestor_level)
 {
-	Word	*type_params;
-	bool	succeeded;
-	int	count;
-	int	i;
+	const MR_Stack_Layout_Label	*level_layout;
+	Word				*base_sp;
+	Word				*base_curfr;
+	Word				*type_params;
+	int				var_count;
+	const MR_Stack_Layout_Vars	*vars;
+	int				i;
+	const char 			*problem;
 
-	if (var_count == 0) {
-		printf("mtrace: no live variables\n");
+	base_sp = MR_saved_sp(MR_saved_regs);
+	base_curfr = MR_saved_curfr(MR_saved_regs);
+	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+				&base_sp, &base_curfr, &problem);
+
+	if (level_layout == NULL) {
+		printf("%s\n", problem);
 		return;
 	}
 
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mtrace: there is no information about live variables\n");
+		return;
+	} else if (var_count == 0) {
+		printf("mtrace: there are no live variables\n");
+		return;
+	}
+
+	vars = &level_layout->MR_sll_var_info;
 	for (i = 0; i < var_count; i++) {
-		printf("%3d %s\n", i, MR_name_if_present(vars, i));
+		printf("%9d %s\n", i, MR_name_if_present(vars, i));
 	}
 }
 
 static void
-MR_trace_browse_one(int which_var, const MR_Stack_Layout_Vars *vars)
+MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
+	int ancestor_level, int which_var)
 {
-	Word	*type_params;
-	int	i;
+	const MR_Stack_Layout_Label	*level_layout;
+	Word				*base_sp;
+	Word				*base_curfr;
+	Word				*type_params;
+	bool				saved_regs_valid;
+	int				var_count;
+	const MR_Stack_Layout_Vars	*vars;
+	const char 			*problem;
 
-	type_params = MR_trace_materialize_typeinfos(vars);
+	base_sp = MR_saved_sp(MR_saved_regs);
+	base_curfr = MR_saved_curfr(MR_saved_regs);
+	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+				&base_sp, &base_curfr, &problem);
+
+	if (level_layout == NULL) {
+		printf("%s\n", problem);
+		return;
+	}
+
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mtrace: there is no information about live variables\n");
+		return;
+	} else if (which_var >= var_count) {
+		printf("mtrace: there is no such variable\n");
+		return;
+	}
+
+	vars = &level_layout->MR_sll_var_info;
+	saved_regs_valid = (ancestor_level == 0);
+
+	type_params = MR_trace_materialize_typeinfos_base(vars,
+				saved_regs_valid, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
-		&vars->MR_slvs_pairs[which_var], type_params);
+		&vars->MR_slvs_pairs[which_var], saved_regs_valid,
+		base_sp, base_curfr, type_params);
 	free(type_params);
 }
 
 static void 
-MR_trace_browse_all(int var_count, const MR_Stack_Layout_Vars *vars)
+MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
+	int ancestor_level)
 {
-	Word	*type_params;
-	bool	succeeded;
-	int	count;
-	int	i;
+	const MR_Stack_Layout_Label	*level_layout;
+	Word				*base_sp;
+	Word				*base_curfr;
+	Word				*type_params;
+	bool				saved_regs_valid;
+	int				var_count;
+	const MR_Stack_Layout_Vars	*vars;
+	const char 			*problem;
+	int				i;
 
-	if (var_count == 0) {
-		printf("mtrace: no live variables\n");
+	base_sp = MR_saved_sp(MR_saved_regs);
+	base_curfr = MR_saved_curfr(MR_saved_regs);
+	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+				&base_sp, &base_curfr, &problem);
+
+	if (level_layout == NULL) {
+		printf("%s\n", problem);
 		return;
 	}
 
-	type_params = MR_trace_materialize_typeinfos(vars);
+	var_count = (int) level_layout->MR_sll_var_count;
+	if (var_count < 0) {
+		printf("mtrace: there is no information about live variables\n");
+		return;
+	} else if (var_count == 0) {
+		printf("mtrace: there are no live variables\n");
+		return;
+	}
+
+	vars = &level_layout->MR_sll_var_info;
+	saved_regs_valid = (ancestor_level == 0);
+
+	type_params = MR_trace_materialize_typeinfos_base(vars,
+				saved_regs_valid, base_sp, base_curfr);
 
 	for (i = 0; i < var_count; i++) {
 		MR_trace_browse_var(MR_name_if_present(vars, i),
-			&vars->MR_slvs_pairs[i], type_params);
+			&vars->MR_slvs_pairs[i], saved_regs_valid,
+			base_sp, base_curfr, type_params);
 	}
 
 	free(type_params);
@@ -477,9 +565,11 @@ MR_trace_browse_all(int var_count, const MR_Stack_Layout_Vars *vars)
 
 static void
 MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
+	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
 	Word *type_params)
 {
-	Word	value, type_info;
+	Word	value;
+	Word	type_info;
 	bool	print_value;
 	int	i;
 
@@ -513,7 +603,8 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	** are not of interest to the user.
 	*/
 
-	if (MR_trace_get_type_and_value(var, type_params, &type_info, &value))
+	if (MR_trace_get_type_and_value_base(var, saved_regs_valid,
+			base_sp, base_curfr, type_params, &type_info, &value))
 	{
 		printf("\t");
 
@@ -803,8 +894,10 @@ MR_trace_help(void)
 		"\tgo to event #N, printing the trace.\n"
 		"v:\t\t"
 		"\tlist the names of the variables live at this point.\n"
+		"l <n>:\t\t"
+		"\tset ancestor level to <n>\n"
 		"p <n>:\t\t"
-		"\tprint variable #n (or all live vars if <n> is '*')\n"
+		"\tprint variable #n (or all vars if <n> is '*')\n"
 		"r:\t\t"
 		"\tcontinue until forward execution is resumed.\n"
 		"[<N>] [s]:\t"

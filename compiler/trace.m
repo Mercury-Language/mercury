@@ -162,7 +162,7 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 trace__setup(TraceLevel) -->
 	code_info__get_trace_slot(CallNumSlot),
 	code_info__get_trace_slot(CallDepthSlot),
-	( { TraceLevel = full } ->
+	( { trace_level_trace_ports(TraceLevel, yes) } ->
 		{ TraceType = full_trace }
 	;
 		code_info__get_trace_slot(CallFromFullSlot),
@@ -353,7 +353,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 		]),
 	Code = tree(ProduceCode, TraceCode)
 	},
-	code_info__add_layout_for_label(Label, yes(LayoutLabelInfo)).
+	code_info__add_trace_layout_for_label(Label, LayoutLabelInfo).
 
 :- pred trace__produce_vars(list(var)::in, varset::in, instmap::in,
 	set(tvar)::in, set(tvar)::out, list(var_info)::out, code_tree::out,

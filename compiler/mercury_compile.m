@@ -240,7 +240,7 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 			globals__io_get_trace_level(TraceLevel),
 
 			globals__io_set_option(trace_stack_layout, bool(no)),
-			globals__io_set_trace_level(minimal),
+			globals__io_set_trace_level_none,
 
 			% XXX it would be better to do something like
 			%
@@ -1110,7 +1110,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel = interface ; TraceLevel = full } ->
+	( { trace_level_trace_interface(TraceLevel, yes) } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
@@ -1139,13 +1139,21 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	( { BasicStackLayout = yes } ->
 		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
-		{ globals__lookup_bool_option(Globals, agc_stack_layout,
-			AgcStackLayout) },
 		write_proc_progress_message(
 			"% Generating call continuation information for ",
 				PredId, ProcId, ModuleInfo5),
+		{ globals__get_gc_method(Globals, GcMethod) },
+		{
+			( GcMethod = accurate
+			; trace_level_trace_returns(TraceLevel, yes)
+			)
+		->
+			WantReturnInfo = yes
+		;
+			WantReturnInfo = no
+		},
 		{ continuation_info__process_instructions(PredProcId,
-			Instructions, AgcStackLayout, ContInfo2, ContInfo3) },
+			Instructions, WantReturnInfo, ContInfo2, ContInfo3) },
 		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
 			ModuleInfo) }
 	;
@@ -1748,7 +1756,7 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel = interface ; TraceLevel = full } ->
+	( { trace_level_trace_interface(TraceLevel, yes) } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
@@ -1800,10 +1808,19 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 		maybe_write_string(Verbose,
 			"% Generating call continuation information..."),
 		maybe_flush_output(Verbose),
-		globals__io_lookup_bool_option(agc_stack_layout, 
-			AgcStackLayout),
+		globals__io_get_gc_method(GcMethod),
+		globals__io_get_trace_level(TraceLevel),
+		{
+			( GcMethod = accurate
+			; trace_level_trace_returns(TraceLevel, yes)
+			)
+		->
+			WantReturnInfo = yes
+		;
+			WantReturnInfo = no
+		},
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0, AgcStackLayout,
+		{ continuation_info__process_llds(LLDS0, WantReturnInfo,
 			ContInfo0, ContInfo) },
 		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
 			ModuleInfo) },

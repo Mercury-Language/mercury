@@ -40,7 +40,7 @@ static const char * detism_names[] = {
 };
 
 static	MR_Stack_Walk_Step_Result MR_stack_walk_step(MR_Stack_Layout_Entry *,
-			MR_Stack_Layout_Entry **, Word **, Word **,
+			MR_Stack_Layout_Label **, Word **, Word **,
 			const char **);
 
 static	void	MR_dump_stack_record_init(void);
@@ -81,10 +81,10 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 const char *
 MR_dump_stack_from_layout(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
-		Word *det_stack_pointer, Word *current_frame)
+	Word *det_stack_pointer, Word *current_frame)
 {
 	MR_Stack_Walk_Step_Result	result;
-	MR_Stack_Layout_Entry		*next_entry_layout;
+	MR_Stack_Layout_Label		*return_label_layout;
 	const char			*problem;
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
@@ -95,7 +95,7 @@ MR_dump_stack_from_layout(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
 	stack_trace_curfr = current_frame;
 
 	do {
-		result = MR_stack_walk_step(entry_layout, &next_entry_layout,
+		result = MR_stack_walk_step(entry_layout, &return_label_layout,
 				&stack_trace_sp, &stack_trace_curfr, &problem);
 		if (result == STEP_ERROR_BEFORE) {
 			MR_dump_stack_record_flush(fp);
@@ -108,32 +108,58 @@ MR_dump_stack_from_layout(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
 			MR_dump_stack_record_frame(fp, entry_layout);
 		}
 
-		if (next_entry_layout == NULL) {
+		if (return_label_layout == NULL) {
 			break;
 		}
 
-		entry_layout = next_entry_layout;
+		entry_layout = return_label_layout->MR_sll_entry;
 	} while (TRUE); 
 
 	MR_dump_stack_record_flush(fp);
 	return NULL;
 }
 
+const MR_Stack_Layout_Label *
+MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
+	int ancestor_level, Word **stack_trace_sp, Word **stack_trace_curfr,
+	const char **problem)
+{
+	MR_Stack_Walk_Step_Result	result;
+	MR_Stack_Layout_Label		*return_label_layout;
+	int				i;
+
+	*problem = NULL;
+	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
+		(void) MR_stack_walk_step(label_layout->MR_sll_entry,
+				&return_label_layout,
+				stack_trace_sp, stack_trace_curfr, problem);
+		label_layout = return_label_layout;
+	}
+
+	if (label_layout == NULL && *problem == NULL) {
+		*problem = "not that many ancestors";
+	}
+
+	return label_layout;
+}
+
+
 static	MR_Stack_Walk_Step_Result
 MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
-	MR_Stack_Layout_Entry **next_entry_layout,
+	MR_Stack_Layout_Label **return_label_layout,
 	Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,
 	const char **problem_ptr)
 {
 	Label			*label;
 	MR_Live_Lval		location;
-	MR_Stack_Layout_Label	*layout;
+	MR_Stack_Layout_Label	*label_layout;
 	MR_Lval_Type		type;
 	int			number, determinism;
 	Code			*success;
 
-	determinism = entry_layout->MR_sle_detism;
+	*return_label_layout = NULL;
 
+	determinism = entry_layout->MR_sle_detism;
 	if (determinism < 0) {
 		/*
 		** This means we have reached some handwritten code that has
@@ -163,7 +189,6 @@ MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
 	}
 
 	if (success == MR_stack_trace_bottom) {
-		*next_entry_layout = NULL;
 		return STEP_OK;
 	}
 
@@ -173,13 +198,13 @@ MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
 		return STEP_ERROR_AFTER;
 	}
 
-	layout = (MR_Stack_Layout_Label *) label->e_layout;
-	if (layout == NULL) {
+	label_layout = (MR_Stack_Layout_Label *) label->e_layout;
+	if (label_layout == NULL) {
 		*problem_ptr = "reached label with no stack layout info";
 		return STEP_ERROR_AFTER;
 	}
 
-	*next_entry_layout = layout->MR_sll_entry;
+	*return_label_layout = label_layout;
 	return STEP_OK;
 }
 

@@ -216,7 +216,7 @@ output_c_file_init(ModuleName, C_Modules) -->
 
 output_c_file_mercury_headers -->
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel = interface ; TraceLevel = full } ->
+	( { trace_level_trace_interface(TraceLevel, yes) } ->
 		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
 		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("#include ""mercury_trace.h""\n")

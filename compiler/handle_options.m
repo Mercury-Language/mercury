@@ -273,7 +273,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
-	( { TraceLevel = interface ; TraceLevel = full } ->
+	( { trace_level_trace_interface(TraceLevel, yes) } ->
 			% The following options modify the structure
 			% of the program, which makes it difficult to
 			% relate the trace to the source code (although
