@@ -477,7 +477,6 @@ LIBGRADES		= @LIBGRADES@
 #-----------------------------------------------------------------------------#
 
 OBJFILE_OPT=@OBJFILE_OPT@
-BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
 
 O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@

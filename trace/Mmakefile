@@ -119,14 +119,14 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: trace
-trace: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+trace: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 trace: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
-lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
+	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
 	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
-	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
+		$(AR_LIBFILE_OPT)lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A $(OBJS)
+	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).$A
 
 lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)	\
@@ -161,9 +161,9 @@ install_headers: $(HDRS) $(LIB_GLOBALS_H)
 	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 
 .PHONY: install_lib
-install_lib: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+install_lib: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find lib$(TRACE_LIB_NAME).a \
+	cp `vpath_find lib$(TRACE_LIB_NAME).$A \
 		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
@@ -181,6 +181,6 @@ clean_o:
 	rm -f $(OBJS) $(PIC_OBJS) 
 
 realclean_local:
-	rm -f lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).so
+	rm -f lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).so
 
 #-----------------------------------------------------------------------------#

@@ -94,7 +94,7 @@ BODY_HDRS	=	\
 			mercury_unify_compare_body.h
 
 # Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
-# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a, and $(OBJ) : $(HDRS) would create a
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ) : $(HDRS) would create a
 # circular dependency.
 
 MACHHDRS	= 	machdeps/no_regs.h	\
@@ -197,15 +197,15 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(BODY_HDRS) $(MACHHDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: runtime
-runtime: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+runtime: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 runtime: $(RT_LIB_NAME).init
 runtime: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
-lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
-	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A: $(OBJS)
+	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A
 	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
-	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
+		$(AR_LIBFILE_OPT)lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A $(OBJS)
+	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A
 
 lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o lib$(RT_LIB_NAME).so $(PIC_OBJS)		\
@@ -307,9 +307,9 @@ install_init: $(RT_LIB_NAME).init install_dirs
 	rm -f $(INSTALL_MODULE_DIR)/runtime.init
 
 .PHONY: install_lib
-install_lib: lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs
-	cp `vpath_find lib$(RT_LIB_NAME).a \
+	cp `vpath_find lib$(RT_LIB_NAME).$A \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
@@ -331,7 +331,7 @@ clean_check:
 	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
 
 realclean_local:
-	rm -f lib$(RT_LIB_NAME).a lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
+	rm -f lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
 	rm -f mercury_conf.h mercury_conf.h.date
 
 #-----------------------------------------------------------------------------#

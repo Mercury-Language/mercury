@@ -17,7 +17,7 @@ include $(MERCURY_DIR)/Mmake.common
 .PHONY: libgc$(PROF)
 libgc$(PROF): submake
 
-libgc$(PROF).a: submake
+libgc$(PROF).$A: submake
 
 libgc$(PROF).so: submake
 
@@ -32,7 +32,7 @@ MMAKEFLAGS=
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) GRADE=$(GRADE) PROF=$(PROF) \
-		libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB) \
+		libgc$(PROF).$A libgc$(PROF).$(EXT_FOR_SHARED_LIB) \
 		$(EXT_FOR_SHARED_LIB)
 
 .PHONY: force
@@ -41,7 +41,7 @@ force:
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
-	rm -f libgc.a libgc.so
+	rm -f libgc.$A libgc.so
 
 #-----------------------------------------------------------------------------#
 
@@ -85,8 +85,8 @@ install_headers: install_dirs
 	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
 
 .PHONY: install_lib
-install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB) install_dirs
-	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
+install_lib: libgc$(PROF).$A libgc$(PROF).$(EXT_FOR_SHARED_LIB) install_dirs
+	cp `vpath_find libgc$(PROF).$A libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_GC_LIB_DIR) \
 
 #-----------------------------------------------------------------------------#

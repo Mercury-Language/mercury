@@ -1930,7 +1930,7 @@ SHLIB_RPATH_OPT="-Wl,-rpath,"
 SHLIB_RPATH_SEP=" -Wl,-rpath,"
 CFLAGS_FOR_PIC="-fpic -DPIC"
 EXT_FOR_PIC_OBJECTS=pic_o
-EXT_FOR_SHARED_LIB=a
+EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
 # The following variables specify options to $LINK_SHARED_OBJ to
 # allow/disallow unresolved symbols when building shared libraries.

@@ -126,15 +126,15 @@ cs: $(mdb.cs)
 #-----------------------------------------------------------------------------#
 
 .PHONY: library
-library: lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+library: lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 library: $(BROWSER_LIB_NAME).init
 
-lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a : $(mdb.os)
-	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A : $(mdb.os)
+	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
 	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a \
+		$(AR_LIBFILE_OPT)lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A \
 		$(mdb.os)
-	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
+	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
@@ -157,7 +157,7 @@ $(os_subdir)mdb.pic_o \
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).so \
+	rm -f lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).so \
 		$(BROWSER_LIB_NAME).init mdb.init
 	rm -f tags
 
@@ -178,8 +178,8 @@ install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
-install_library: lib$(BROWSER_LIB_NAME).a \
+install_library: lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_dirs
-	cp `vpath_find lib$(BROWSER_LIB_NAME).a \
+	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)

@@ -190,15 +190,15 @@ cs: $(library.cs)
 # the following dependency is just there to improve compilation speed;
 # making tree234.o first improves effective parallelism with parallel makes.
 lib_std: $(os_subdir)tree234.o
-lib_std: lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 lib_std: $(STD_LIB_NAME).init
 
-lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a : $(library.os)
-	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
+lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : $(library.os)
+	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
 	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a \
+		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A \
 		$(library.os)
-	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
+	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
 RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
@@ -237,7 +237,7 @@ $(os_subdir)std_util.pic_o \
 
 realclean_local:
 	rm -f $(library.mods:%=%.h)
-	rm -f lib$(STD_LIB_NAME).a lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
+	rm -f lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).so $(STD_LIB_NAME).init
 	rm -f tags
 
 #-----------------------------------------------------------------------------#
@@ -283,18 +283,18 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 		$(INSTALL_MODULE_DIR)/libmercury.init
 
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).a \
+install_library: lib$(STD_LIB_NAME).$A \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB) install_grade_dirs
-	cp `vpath_find lib$(STD_LIB_NAME).a \
+	cp `vpath_find lib$(STD_LIB_NAME).$A \
 		lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
-# library.split.a is a version of lib$(STD_LIB_NAME).a that has been compiled
+# library.split.$A is a version of lib$(STD_LIB_NAME).$A that has been compiled
 # with `--split-c-files'.
 .PHONY: install_split_library
-install_split_library: library.split.a install_grade_dirs
-	cp `vpath_find library.split.a` \
-		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).a
+install_split_library: library.split.$A install_grade_dirs
+	cp `vpath_find library.split.$A` \
+		$(INSTALL_MERC_LIB_DIR)/lib$(STD_LIB_NAME).$A
 
 else
 
