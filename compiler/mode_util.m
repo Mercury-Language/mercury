@@ -458,11 +458,6 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 		get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
 	).
 
-	% YYY
-get_mode_of_args(FinalInst, InitialInsts, ArgModes) :-
-	mode_set_args(InitialInsts, FinalInst, ArgModes),
-	semidet_succeed.
-/********************
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
         mode_set_args(ArgInsts, not_reached, ArgModes).
 get_mode_of_args(any(Uniq), ArgInsts, ArgModes) :-
@@ -478,12 +473,9 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
                 assoc_list__from_corresponding_lists(ArgInstsA, ArgInstsB,
 				ArgModes)
         ).
-get_mode_of_args(alias(Key), ArgInsts, InstTable, ModuleInfo, ArgModes) :-
-        inst_table_get_inst_key_table(InstTable, IKT),
-        inst_key_table_lookup(IKT, Key, Inst),
-        get_mode_of_args(Inst, ArgInsts, InstTable, ModuleInfo, ArgModes).
-********************/
-
+get_mode_of_args(alias(Key), ArgInsts, ArgModes) :-
+	mode_set_args(ArgInsts, alias(Key), ArgModes).
+	
 :- pred mode_set_args(list(inst), inst, assoc_list(inst, inst)).
 :- mode mode_set_args(in, in, out) is det.
 
