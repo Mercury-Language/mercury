@@ -13,15 +13,16 @@ MAIN_TARGET=mercury_compile
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
-MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
-		MERCURY_INT_DIR=$(LIBRARY_DIR) mc
+MC	=	MERCURY_INT_DIR=. mc
+MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
+		MERCURY_INT_DIR=$(LIBRARY_DIR) mc -g
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR)
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
 		mod2init
-ML	=	MERCURY_C_LIB_DIR=`pwd`/$(RUNTIME_DIR) ml
-MLFLAGS=	-L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
+ML	=	MERCURY_C_LIB_DIR=. ml
+MLFLAGS =	-- -static -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -47,6 +48,14 @@ mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
 
 .PHONY: all
 all : mercury_compile
+
+#-----------------------------------------------------------------------------#
+
+# Add some additional dependencies, so that Mmake knows to remake the
+# compiler if one of the libraries changes.
+
+mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
+	$(BOEHM_GC_DIR)/libgc.a
 
 #-----------------------------------------------------------------------------#
 
@@ -86,8 +95,10 @@ cs: $(mercury_compile.cs) mercury_compile_init.c
 # Installation targets
 
 .PHONY: install
-install: install_mercury install_nuprolog install_sicstus
-	echo "Don't forget to fix the permissions"
+install: install_mercury
+
+.PHONY: install_all
+install_all: install_mercury install_nuprolog install_sicstus
 
 .PHONY: install_mercury
 install_mercury: install_compiler
