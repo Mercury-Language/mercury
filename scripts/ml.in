@@ -282,9 +282,10 @@ esac
 # it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
-	case $FULLARCH in i?86-*-linux*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
+		# Likewise for FreeBSD
 		case $make_shared_lib in false)
 			mercury_libs=static
 			;;
@@ -298,9 +299,10 @@ esac
 # (shared on most systems).
 case $all_libs in default)
 	all_libs=shared
-	case $FULLARCH in i?86-*-linux*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
+		# Likewise for FreeBSD
 		case $make_shared_lib in false)
 			all_libs=static
 			;;
