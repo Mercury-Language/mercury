@@ -265,7 +265,7 @@
 :- type hlds__goal_info	--->	goalinfo(
 					map(var, is_live), % XXX this is O(N*N)
 					category,
-					map(var, inst),	   % XXX this is O(N*N)
+					instmap,	   % XXX this is O(N*N)
 					term__context
 				).
 
@@ -535,6 +535,9 @@ moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 :- pred predinfo_procedures(pred_info, proc_table).
 :- mode predinfo_procedures(input, output).
 
+:- pred predinfo_modes(pred_info, list(proc_id)).
+:- mode predinfo_modes(input, output).
+
 :- pred predinfo_context(pred_info, term__context).
 :- mode predinfo_context(input, output).
 
@@ -552,9 +555,6 @@ predinfo_proc_ids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
 	map__keys(Procs, ProcIds).
 
-predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
-
 predinfo_clauses(PredInfo, Clauses) :-
 	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
 
@@ -564,6 +564,13 @@ predinfo_set_clauses(PredInfo0, Clauses, PredInfo) :-
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).
+
+predinfo_procedures(PredInfo, Procs) :-
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
+
+predinfo_modes(PredInfo, Modes) :-
+	predinfo_procedures(PredInfo, Procedures),
+	map__keys(Procedures, Modes).
 
 predinfo_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context).
@@ -652,10 +659,12 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 :- pred goalinfo_set_category(hlds__goal_info, category, hlds__goal_info).
 :- mode goalinfo_set_category(input, input, output).
 
-:- pred goalinfo_instmap(hlds__goal_info, map(var, inst)).
+:- type instmap == map(var, inst).
+
+:- pred goalinfo_instmap(hlds__goal_info, instmap).
 :- mode goalinfo_instmap(input, output).
 
-:- pred goalinfo_set_instmap(hlds__goal_info, map(var, inst),
+:- pred goalinfo_set_instmap(hlds__goal_info, instmap,
 				hlds__goal_info).
 :- mode goalinfo_set_instmap(input, input, output).
 

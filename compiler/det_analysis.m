@@ -22,7 +22,7 @@
 :- interface.
 :- import_module hlds.
 
-:- pred determinism_pass(moduleinfo, moduleinfo).
+:- pred determinism_pass(module_info, module_info).
 :- mode determinism_pass(input, output).
 
 %-----------------------------------------------------------------------------%
@@ -39,8 +39,9 @@ determinism_pass(ModuleInfo0, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type predproclist	==	list(pair(pred_id, pred_mode_id)).
-:- type miscinfo	--->	miscinfo(module_info, pred_id, pred_mode_id).
+:- type predproclist	==	list(pair(pred_id, proc_id)).
+
+:- type miscinfo	--->	miscinfo(module_info, pred_id, proc_id).
 
 :- pred determinism_declarations(module_info, predproclist, predproclist).
 :- mode determinism_declarations(input, output, output).
@@ -50,7 +51,7 @@ determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
 	segregate_procs(ModuleInfo, PredProcs, [], DeclaredProcs,
 			[], UndeclaredProcs).
 
-:- pred get_all_pred_procs(moduleinfo, predproclist).
+:- pred get_all_pred_procs(module_info, predproclist).
 :- mode get_all_pred_procs(input, output).
 
 get_all_pred_procs(ModuleInfo, PredProcs) :-
@@ -69,7 +70,7 @@ get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	fold_pred_modes(PredId, PredModes, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
-:- pred fold_pred_modes(pred_id, list(pred_mode), predproclist, predproclist).
+:- pred fold_pred_modes(pred_id, list(proc_id), predproclist, predproclist).
 :- mode fold_pred_modes(input, input, input, output).
 
 fold_pred_modes(_PredId, [], PredProcs, PredProcs).
@@ -78,7 +79,7 @@ fold_pred_modes(PredId, [PredMode|PredModes], PredProcs0, PredProcs) :-
 		PredProcs).
 
 :- pred segregate_procs(module_info, predproclist, predproclist,
-			predproclist, predproclist).
+			predproclist, predproclist, predproclist).
 :- mode segregate_procs(input, input, input, output, input, output).
 
 segregate_procs(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
@@ -114,9 +115,9 @@ global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo) :-
 
 :- type maybe_changed ---> changed ; unchanged.
 
-:- pred global_analysis_pass(module_info, predproclist, predproclist,
+:- pred global_analysis_pass_2(module_info, predproclist, predproclist,
 				maybe_changed, module_info).
-:- mode global_analysis_pass(input, input, input, input, output).
+:- mode global_analysis_pass_2(input, input, input, input, output).
 
 :- global_analysis_pass_2(_, _, L, _, _) when L.	% NU-Prolog indexing.
 
@@ -166,6 +167,10 @@ global_checking_pass(ModuleInfo0, Result0, Result,
 ****/
 	
 %-----------------------------------------------------------------------------%
+
+:- pred local_det_goal(hlds__goal, miscinfo, hlds__goal, instmap, instmap,
+			category, category).
+:- mode local_det_goal(input, input, output, input, output, input, output).
 
 	% the category of a conjunction is the worst case of the elements
 	% of that conjuction.
@@ -289,15 +294,26 @@ local_det_goal(all(Vars, Goal0) - GoalInfo0, MiscInfo,
 	goalinfo_set_category(GoalInfo0, semideterministic(infered), GoalInfo),
 	max_category(D0, semideterministic(infered), D).
 
-local_det_conj([], MiscInfo, InstMap0, D, [], D).
+:- pred local_det_conj(list(hlds__goal), miscinfo,
+			instmap, category, list(hlds__goal), category).
+:- mode local_det_conj(input, input, input, input, output, output).
+
+local_det_conj([], _MiscInfo, _InstMap0, D, [], D).
 local_det_conj([Goal0|Goals0], MiscInfo, InstMap0, D0, [Goal|Goals], D) :-
 	local_det_goal(Goal0, MiscInfo, Goal, InstMap0, InstMap1, D0, D1),
 	local_det_conj(Goals0, MiscInfo, InstMap1, D1, Goals, D).
 
-local_det_disj([], MiscInfo, InstMap0, []).
+:- pred local_det_disj(list(hlds__goal), miscinfo,
+			instmap, list(hlds__goal)).
+:- mode local_det_disj(input, input, input, output).
+
+local_det_disj([], _MiscInfo, _InstMap0, []).
 local_det_disj([Goal0|Goals0], MiscInfo, InstMap0, [Goal|Goals]) :-
 	local_det_goal(Goal0, MiscInfo, Goal, InstMap0, InstMap, deterministic(infered), _D),
 	local_det_disj(Goals0, MiscInfo, InstMap, Goals).
+
+:- pred local_det_unify(unification, miscinfo, category).
+:- mode local_det_unify(input, input, output).
 
 local_det_unify(construct(_, _, _, _), MiscInfo,
 		deterministic(infered)).
@@ -308,13 +324,24 @@ local_det_unify(simple_test(_, _), MiscInfo,
 local_det_unify(complicated_unify(_, _, _), MiscInfo,
 		semideterministic(infered)).
 
+:- pred local_det_switch(list(case), miscinfo, list(case), cons_id, cons_id,
+			instmap, category, category).
+:- mode local_det_switch(input, input, output, input, output,
+		 	input, input, output).
 
-local_det_switch([], MiscInfo, [], Cons, Cons, InstMap0, D, D).
-local_det_switch([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons, InstMap0, D0, D) :-
+local_det_switch([], _MiscInfo, [], Cons, Cons, InstMap0, D, D).
+local_det_switch([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
+		InstMap0, D0, D) :-
 	Case0 = case(ConsId, Vars, Goal0),
 	local_det_goal(Goal0, MiscInfo, Goal, InstMap0, _InstMap1, D0, D1),
 	Case = case(ConsId, Vars, Goal),
-	local_det_switch(Cases0, MiscInfo, Cases, [ConsId|Cons0], InstMap0, D1, D).
+	local_det_switch(Cases0, MiscInfo, Cases, [ConsId|Cons0],
+		InstMap0, D1, D).
+
+:- pred max_category(category, category, category).
+:- mode max_category(input, input, output).
+
+:- max_category(X, Y) when X and Y.	% NU-Prolog indexing.
 
 max_category(deterministic(I0), deterministic(I1), deterministic(I)) :-
 	max_category_2(I0, I1, I).
@@ -335,16 +362,33 @@ max_category(nondeterministic(I0), nondeterministic(I1), nondeterministic(I)) :-
 	% We consider inference to be stronger than declarations,
 	% since we may be able to prove by inference that a declaration
 	% is wrong. 
+
+:- pred max_category_2(det_source, det_source, det_source).
+:- mode max_category_2(input, input, output).
+
 max_category_2(declared, I, I).
 max_category_2(infered, _I, infered).
+
+:- pred infered_category(category, category).
+:- mode infered_category(input, output).
 
 infered_category(deterministic(_), deterministic(infered)).
 infered_category(semideterministic(_), semideterministic(infered)).
 infered_category(nondeterministic(_), nondeterministic(infered)).
 
+:- type modemap == map(var, mode).
+
+:- pred make_var_modes(instmap, instmap, modemap).
+:- mode make_var_modes(input, input, output).
+
 make_var_modes(InstMap0, InstMap1, ModeMap) :-
 	map__keys(InstMap1, Keys),
 	make_var_modes_2(InstMap0, InstMap1, Keys, ModeMap).
+
+:- pred make_var_modes_2(instmap, instmap, list(var), modemap).
+:- mode make_var_modes_2(input, input, input, output).
+
+:- make_var_modes_2(_, _, X, _) when X.		% NU-Prolog indexing.
 
 make_var_modes_2(_InstMap0, _InstMap1, [], ModeMap) :-
 	map__init(ModeMap).
@@ -356,14 +400,18 @@ make_var_modes_2(InstMap0, InstMap1, [Key|Keys], ModeMap) :-
 			map__search(InstMap0, Key, Inst0)
 		)
 	then
-		map__set(ModeMap0, Key,Inst0 -> Inst1, ModeMap)
+		map__set(ModeMap0, Key, (Inst0 -> Inst1), ModeMap)
 	else
-		map__set(ModeMap0, Key,free -> Inst1, ModeMap)
+		map__set(ModeMap0, Key, (free -> Inst1), ModeMap)
 	).
 
+:- pred detism_lookup(miscinfo, pred_id, proc_id, category).
+:- mode detism_lookup(input, input, input, output).
+
 detism_lookup(MiscInfo, PredId, ModeId, Category) :-
-	MiscInfo = miscinfo(ModuleInfo, _PredId, _PredModeId),
+	MiscInfo = miscinfo(ModuleInfo, _PredId2, _PredModeId),
 	moduleinfo_predinfo(ModuleInfo, PredId, PredInfo),
+		% XXX PredMode???
 	predinfo_procinfo(PredInfo, PredMode, ProcInfo),
 	procinfo_category(ProcInfo, Category).
 
@@ -376,6 +424,12 @@ detism_lookup(MiscInfo, PredId, ModeId, Category) :-
 	% of itself does not introduce any nondeterminism, so any conflict
 	% will have been incurred in a member of the conjuction and will 
 	% have been reported there.
+
+:- pred local_check_goal(hlds__goal, miscinfo, hlds__goal, instmap, instmap,
+		category, category, category).
+:- mode local_check_goal(input, input, output, input, output,
+		input, input, output).
+
 local_check_goal(conj(Goals0) - GoalInfo0, MiscInfo, conj(Goals) - GoalInfo,
 		InstMap0, InstMap, Category, D0, D) :-
 	local_check_conj(Goals0, MiscInfo, InstMap0, Category,
@@ -543,12 +597,20 @@ local_check_goal(all(Vars, Goal0) - GoalInfo0, MiscInfo,
 	goalinfo_set_category(GoalInfo0, semideterministic(infered), GoalInfo),
 	max_category(D0, semideterministic(infered), D).
 
+:- pred local_check_conj(list(hlds__goal), miscinfo, instmap, category,
+			category, list(hlds__goal), category).
+:- mode local_check_conj(input, input, input, input, input, output, output).
+
 local_check_conj([], MiscInfo, InstMap0, Category, D, [], D).
 local_check_conj([Goal0|Goals0], MiscInfo, InstMap0,
 					Category, D0, [Goal|Goals], D) :-
 	local_check_goal(Goal0, MiscInfo, Goal, InstMap0,
 					InstMap1, Category, D0, D1),
 	local_check_conj(Goals0, MiscInfo, InstMap1, Category, D1, Goals, D).
+
+:- pred local_check_disj(list(hlds__goal), miscinfo, instmap, 
+			category, list(hlds__goal)).
+:- mode local_check_disj(input, input, input, input, output).
 
 local_check_disj([], MiscInfo, InstMap0, Category, []).
 local_check_disj([Goal0|Goals0], MiscInfo, InstMap0, Category, [Goal|Goals]) :-
