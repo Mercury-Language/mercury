@@ -222,7 +222,7 @@ install_grades: scripts dep_library
 		        ;; \
 	        esac; \
 	        cd boehm_gc && { \
-		    $(SUBDIR_MMAKE) GRADE=$(GRADE).prof PROF=$$prof install \
+		    $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib \
 			|| exit 1; \
 		    rm -f *.o *.pic_o *.a *.so; \
 	        } && cd .. && \
