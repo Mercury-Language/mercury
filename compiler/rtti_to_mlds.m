@@ -98,32 +98,32 @@ rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, MLDS_Defn) :-
 	mlds__initializer::in, mlds__defn::out) is det.
 
 rtti_entity_name_and_init_to_defn(Name, RttiName, Initializer, MLDS_Defn) :-
-		%
-		% Generate the context
-		%
-		% XXX the rtti_data ought to include a prog_context
-		% (the context of the corresponding type or instance
-		% definition)
-		term__context_init(Context),
-		MLDS_Context = mlds__make_context(Context),
+	%
+	% Generate the context
+	%
+	% XXX the rtti_data ought to include a prog_context
+	% (the context of the corresponding type or instance
+	% definition)
+	term__context_init(Context),
+	MLDS_Context = mlds__make_context(Context),
 
-		%
-		% Generate the declaration flags
-		%
-		Exported = rtti_name_is_exported(RttiName),
-		Flags = rtti_data_decl_flags(Exported),
+	%
+	% Generate the declaration flags
+	%
+	Exported = rtti_name_is_exported(RttiName),
+	Flags = rtti_data_decl_flags(Exported),
 
-		% The GC never needs to trace these definitions,
-		% because they are static constants, and can point
-		% only to other static constants, not to the heap.
-		GC_TraceCode = no,
+	% The GC never needs to trace these definitions,
+	% because they are static constants, and can point
+	% only to other static constants, not to the heap.
+	GC_TraceCode = no,
 
-		%
-		% Generate the declaration body,
-		% i.e. the type and the initializer
-		%
-		MLDS_Type = rtti_type(RttiName),
-		DefnBody = mlds__data(MLDS_Type, Initializer, GC_TraceCode),
+	%
+	% Generate the declaration body,
+	% i.e. the type and the initializer
+	%
+	MLDS_Type = rtti_type(RttiName),
+	DefnBody = mlds__data(MLDS_Type, Initializer, GC_TraceCode),
 	MLDS_Defn = mlds__defn(Name, MLDS_Context, Flags, DefnBody).
 
 	% Return the declaration flags appropriate for an rtti_data.
