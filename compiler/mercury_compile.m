@@ -2436,18 +2436,9 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 	;
 		{ C_ExportDecls = [_|_] },
 		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
-                globals__io_lookup_bool_option(split_c_files, SplitFiles),
-                { 
-			SplitFiles = yes,
-                        string__append_list(
-                                ["#include ""../", HeaderFileName, """\n"],
-				IncludeString)
-                ;
-			SplitFiles = no,
-                        string__append_list(
-				["#include """, HeaderFileName, """\n"],
-				IncludeString)
-                },
+		{ string__append_list(
+			["#include """, HeaderFileName, """\n"],
+			IncludeString) },
 
 		{ term__context_init(Context) },
 		{ Include = foreign_decl_code(c, IncludeString, Context) },
@@ -2746,8 +2737,11 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
 
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
-	{ UseSubdirs = yes ->
-		% the file will be compiled in the "Mercury/cs" subdir,
+	globals__io_lookup_bool_option(split_c_files, SplitCFiles),
+	{ (UseSubdirs = yes ; SplitCFiles = yes) ->
+		% the source file (foo.c) will be compiled in a subdirectory
+		% (either Mercury/cs, foo.dir, or Mercury/dirs/foo.dir,
+		% depending on which of these two options is set)
 		% so we need to add `-I.' so it can
 		% include header files in the source directory.
 		SubDirInclOpt = "-I. "
