@@ -756,7 +756,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
      || defined(_WIN32)
   /* win32S may not free all resources on process exit.  */
   /* This explicitly deallocates the heap.		 */
-    GC_API void GC_win32_free_heap ();
+    GC_API void GC_win32_free_heap GC_PROTO((void));
 #endif
 
 #ifdef __cplusplus
