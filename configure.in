@@ -458,7 +458,10 @@ if test $mercury_cv_gcc_labels = yes; then
 	typedef	unsigned int Word;
 	#define USE_GCC_NONLOCAL_GOTOS
 	#define USE_GCC_GLOBAL_REGISTERS
-	#include "regs.h"
+	#include "memory.h"
+	changequote(<<,>>) 
+	Word fake_reg[MAX_FAKE_REG];
+	changequote([,]) 
 	main() {
 		mr0 = 20;
 		mr7 = 22;
