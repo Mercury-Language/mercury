@@ -15,9 +15,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module arg_info.
-
 :- interface. 
-
 :- import_module hlds.
 
 :- pred generate_arg_info(module_info, module_info).
@@ -27,7 +25,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, int, mode_util.
+:- import_module map, int, mode_util, list.
 
 %-----------------------------------------------------------------------------%
 

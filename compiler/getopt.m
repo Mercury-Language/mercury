@@ -31,6 +31,7 @@
 			maybe_option_table::out) is det.
 
 :- implementation.
+:- import_module std_util.
 
 process_options(Args0, Args, Result) :-
 	option_defaults(OptionDefaultsList),

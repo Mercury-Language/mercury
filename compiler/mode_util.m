@@ -53,7 +53,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, map.
+:- import_module require, map, set, term, std_util.
 
 mode_list_get_final_insts([], _ModuleInfo, []).
 mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
@@ -100,7 +100,7 @@ inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 	% Abstract insts must be bound.
 
 :- pred inst_is_bound(module_info, inst).
-:- mode inst_is_bound(in, in).
+:- mode inst_is_bound(in, in) is semidet.
 
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
@@ -112,6 +112,23 @@ inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_bound(ModuleInfo, Inst).
 inst_is_bound(_, abstract_inst(_, _)).
+
+	% inst_is_bound_to_functors succeeds iff the inst passed is
+	% `bound(Functors)' or is a user-defined inst which expands to
+	% `bound(Functors)'.
+
+:- pred inst_is_bound_to_functors(module_info, inst, list(bound_inst)).
+:- mode inst_is_bound_to_functors(in, in, out) is semidet.
+
+:- inst_is_bound_to_functors(_, _, X) when X.		% NU-Prolog indexing.
+
+inst_is_bound_to_functors(_, bound(Functors), Functors).
+inst_is_bound_to_functors(_, inst_var(_), _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_bound_to_functors(ModuleInfo, user_defined_inst(Name, Args), Functors)
+		:-
+	inst_lookup(ModuleInfo, Name, Args, Inst),
+	inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
 
 	% inst_is_ground succeeds iff the inst passed is `ground'
 	% or the equivalent.  Abstract insts are not considered ground.

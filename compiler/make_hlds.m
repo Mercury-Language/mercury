@@ -17,7 +17,7 @@
 
 :- module make_hlds.
 :- interface.
-:- import_module prog_io, hlds.
+:- import_module prog_io, hlds, io.
 
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo).
@@ -27,7 +27,8 @@
 
 :- implementation.
 :- import_module prog_util, prog_out, set, require, globals, options.
-:- import_module hlds_out.
+:- import_module hlds_out, bintree, list, map, std_util, varset, term_io.
+:- import_module string, term, int.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },

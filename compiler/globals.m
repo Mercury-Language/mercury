@@ -26,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, std_util.
+:- import_module map, std_util, io.
 
 	% currently the only global data is the option table
 

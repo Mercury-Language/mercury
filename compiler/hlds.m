@@ -21,7 +21,7 @@
 
 :- module hlds.
 :- interface.
-:- import_module int, string, list, set, varset, term, map, prog_io.
+:- import_module int, string, list, set, varset, term, map, prog_io, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

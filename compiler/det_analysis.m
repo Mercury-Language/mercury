@@ -45,7 +45,7 @@
 
 :- implementation.
 :- import_module list, map, prog_io, prog_out, std_util.
-:- import_module globals, options.
+:- import_module globals, options, io.
 
 %-----------------------------------------------------------------------------%
 

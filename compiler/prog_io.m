@@ -50,7 +50,7 @@
 
 :- module prog_io.
 :- interface.
-:- import_module string, int, list, varset, term, io, term_io.
+:- import_module string, int, list, varset, term, std_util.
 :- import_module globals, options.
 
 %-----------------------------------------------------------------------------%
@@ -80,8 +80,10 @@
 					determinism, condition)
 				%      VarNames, PredName, ArgTypes,
 				%	Deterministicness, Cond
+			/***** OBSOLETE
 			; 	rule(varset, sym_name, list(type), condition)
 				%      VarNames, PredName, ArgTypes, Cond
+			*******/
 			; 	mode(varset, sym_name, list(mode),
 					determinism, condition)
 				%      VarNames, PredName, ArgModes,
@@ -269,6 +271,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module io, term_io.
 
 %-----------------------------------------------------------------------------%
 

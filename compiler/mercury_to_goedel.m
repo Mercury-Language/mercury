@@ -27,6 +27,7 @@
 :- interface.
 
 :- import_module string, list, prog_io, io.
+:- import_module globals, options.
 
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
 :- mode convert_to_goedel(in, in, di, uo).
@@ -34,6 +35,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module int, char, std_util, varset, term.
 :- import_module prog_io, prog_out, prog_util.
 
 %-----------------------------------------------------------------------------%

@@ -10,8 +10,7 @@
 :- module mercury_to_mercury.
 :- interface.
 
-:- import_module list, string, io, prog_io.
-:- import_module hlds.
+:- import_module list, string, hlds, io, prog_io.
 
 :- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
@@ -44,7 +43,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_out, prog_util.
+:- import_module int, set, prog_out, prog_util, varset, term, term_io, std_util.
 :- import_module globals, options.
 
 %-----------------------------------------------------------------------------%

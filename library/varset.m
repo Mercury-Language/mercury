@@ -98,7 +98,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map.
+:- import_module map, list, std_util.
 
 :- type varset		--->	varset(
 					var_supply,

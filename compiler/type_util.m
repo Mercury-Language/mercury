@@ -50,6 +50,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module list, term, require, map, std_util.
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
