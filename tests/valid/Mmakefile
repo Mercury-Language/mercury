@@ -185,7 +185,8 @@ else
     SOURCES=$(SOURCES1) $(ADITI_SOURCES)
 endif
 
-DEPS =	$(SOURCES:%.m=%.depend)
+ALL_SOURCES = $(SOURCES) $(RLO_SOURCES)
+DEPS =	$(ALL_SOURCES:%.m=%.depend)
 OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) $(RLO_SOURCES:%.m=$(rlos_subdir)%.rlo)
 PROGS =	$(SOURCES:%.m=%)
 
