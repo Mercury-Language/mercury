@@ -101,11 +101,17 @@ static volatile	int		in_profiling_code = FALSE;
 #ifdef PROFILE_CALLS
 static	FILE	 	*declfptr = NULL;
 static	prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
+static	bool		profiling_on = FALSE;
 #endif
 
 #ifdef PROFILE_TIME
 static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 #endif
+
+/*
+** Local function declarations
+*/
+static	void prof_finish(void);
 
 /* ======================================================================== */
 
@@ -164,6 +170,18 @@ checked_fclose(FILE *file, const char *filename)
 		fprintf(stderr,
 			"Mercury runtime: error closing file `%s': %s\n",
 			filename, strerror(errno));
+		exit(1);
+	}
+}
+
+static void
+checked_atexit(void (*func)(void))
+{
+	errno = 0;
+	if (atexit(func) != 0) {
+		fprintf(stderr,
+			"Mercury runtime: error in call to atexit: %s\n",
+			strerror(errno));
 		exit(1);
 	}
 }
@@ -245,6 +263,10 @@ prof_init_time_profile()
 	fprintf(fptr, "%d %d\n", HZ, CLOCK_TICKS);
 	checked_fclose(fptr, "Prof.Counts");
 
+	checked_atexit(prof_finish);
+
+	profiling_on = TRUE;
+
 	itime.it_value.tv_sec = 0;
 	itime.it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
 	itime.it_interval.tv_sec = 0;
@@ -252,6 +274,7 @@ prof_init_time_profile()
 
 	checked_signal(SIGPROF, prof_time_profile);
 	checked_setitimer(ITIMER_PROF, &itime);
+
 }
 
 #endif /* PROFILE_TIME */
@@ -369,6 +392,9 @@ prof_turn_off_time_profiling()
 {
 	struct itimerval itime;
 
+	if (profiling_on == FALSE)
+		return;
+
 	itime.it_value.tv_sec = 0;
 	itime.it_value.tv_usec = 0;
 	itime.it_interval.tv_sec = 0;
@@ -394,8 +420,11 @@ static	void	print_addr_pair_node(FILE *fptr, prof_call_node *node);
 void
 prof_output_addr_pair_table(void)
 {
+	static	bool	addr_pair_table_written = FALSE;
 	FILE		*fptr;
 	int		i;
+	if (addr_pair_table_written == TRUE)
+		return;
 
 	fptr = checked_fopen("Prof.CallPair", "create", "w");
 	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
@@ -403,6 +432,8 @@ prof_output_addr_pair_table(void)
 	}
 
 	checked_fclose(fptr, "Prof.CallPair");
+
+	addr_pair_table_written = TRUE;
 }
 
 static void
@@ -457,8 +488,12 @@ static	void	print_time_node(FILE *fptr, prof_time_node *node);
 void
 prof_output_addr_table()
 {
+	static	bool	addr_table_written = FALSE;
 	FILE *fptr;
 	int  i;
+
+	if (addr_table_written == TRUE)
+		return;
 
 	fptr = checked_fopen("Prof.Counts", "append to", "a");
 	for (i = 0; i < TIME_TABLE_SIZE ; i++) {
@@ -466,6 +501,8 @@ prof_output_addr_table()
 	}
 
 	checked_fclose(fptr, "Prof.Counts");
+
+	addr_table_written = TRUE;
 }
 
 static void
@@ -481,3 +518,17 @@ print_time_node(FILE *fptr, prof_time_node *node)
 }
 
 #endif /* PROFILE_TIME */
+
+void prof_finish()
+{
+
+#ifdef PROFILE_TIME
+	prof_turn_off_time_profiling();
+	prof_output_addr_table();
+#endif
+
+#ifdef PROFILE_CALLS
+	prof_output_addr_pair_table();
+#endif
+}
+
