@@ -2050,12 +2050,25 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 
-		% XXXXX compute determinism!
-		% module_info_get_insts(ModuleInfo, ModeX, InitialInst0, _Final),
-		% inst_expand(ModuleInfo, InitialInst0, InitialInst),
-		% ( InitialInst = bound([SingleFunctor]) ->
-		Det = semideterministic,
-		
+		% It's a deconstruction.
+		% If the variable was already known to be bound to a
+		% single particular functor, then the unification either
+		% always succeeds or always fails.  In the latter case,
+		% the final inst will be `not_reached' or `bound([])'.
+		% So if both the initial and final inst are `bound([_])',
+		% then the unification must be deterministic.
+
+		mode_get_insts(ModuleInfo, ModeX, InitialInst0, FinalInst0),
+		inst_expand(ModuleInfo, InitialInst0, InitialInst),
+		inst_expand(ModuleInfo, FinalInst0, FinalInst),
+		(
+			InitialInst = bound([_]),
+			FinalInst = bound([_])
+		->
+			Det = deterministic
+		;
+			Det = semideterministic
+		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)
 	).
 
