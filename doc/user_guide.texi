@@ -3059,7 +3059,7 @@ Reports an error if the most recently added breakpoint has since been deleted.
 @item break_print [-fpv] [-e] [-n] @var{num} @var{print-spec}*
 @sp 1
 Adds the specified print list elements (there may be more than one)
-to the print list of the brakpoint numbered @var{num}.
+to the print list of the breakpoint numbered @var{num}.
 @sp 1
 Normally, if a variable with the given name or number doesn't exist
 when execution reaches the breakpoint, mdb will issue a warning.
