@@ -535,17 +535,8 @@
 #include ""system.h""
 #include ""gansidecl.h""
 #include ""tree.h""
-#include ""flags.h""
-#include ""output.h""
-#include <stdio.h>
-
-#include ""c-lex.h""
+/* XXX we should eliminate the dependency on the C front-end */
 #include ""c-tree.h""
-#include ""rtl.h""
-#include ""tm_p.h""
-#include ""ggc.h""
-#include ""toplev.h""
-#include ""real.h""
 
 #include ""mercury-gcc.h""
 
@@ -619,7 +610,8 @@
 "
 	/* XXX Move this code to `mercury-gcc.c'. */
 	/* XXX Do we need to check that NumElems fits in a HOST_WIDE_INT?  */
-	tree index_type = build_index_type (build_int_2 (NumElems, 0));
+	HOST_WIDE_INT max = (NumElems == 0 ? 0 : (HOST_WIDE_INT) NumElems - 1);
+	tree index_type = build_index_type (build_int_2 (max, 0));
 	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
 ").
 
@@ -959,13 +951,13 @@ build_string(String, Expr) -->
 :- pragma c_code(build_unop(Op::in, Type::in, Arg::in, Expr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
-	Expr = (MR_Word) build1(Op, (tree) Type, (tree) Arg);
+	Expr = (MR_Word) fold(build1(Op, (tree) Type, (tree) Arg));
 ").
 
 :- pragma c_code(build_binop(Op::in, Type::in, Arg1::in, Arg2::in, Expr::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	Expr = (MR_Word) build(Op, (tree) Type, (tree) Arg1, (tree) Arg2);
+	Expr = (MR_Word) fold(build(Op, (tree) Type, (tree) Arg1, (tree) Arg2));
 ").
 
 :- pragma c_code(build_pointer_deref(Pointer::in, DerefExpr::out,
