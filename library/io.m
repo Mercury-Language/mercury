@@ -1120,6 +1120,7 @@
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module bool, int, parser, exception.
 :- use_module table_builtin.
+:- use_module rtti_implementation.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -1594,7 +1595,7 @@ io__check_err(Stream, Res) -->
 		MR_PROC_LABEL, RetStr);
 }").
 
-:- pragma foreign_proc("MC++", ferror(Stream::in, RetVal::out, RetStr::out,
+:- pragma foreign_proc("MC++", ferror(_Stream::in, RetVal::out, _RetStr::out,
 		IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe],
 "{
@@ -2410,22 +2411,8 @@ io__write_array(Array) -->
 :- pred io__write_private_builtin_type_info(private_builtin__type_info(T)::in,
 		io__state::di, io__state::uo) is det.
 io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
-	{ TypeInfo = unsafe_cast(PrivateBuiltinTypeInfo) },
+	{ TypeInfo = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo) },
 	io__write_type_desc(TypeInfo).
-
-:- func unsafe_cast(T1::in) = (T2::out) is det.
-:- pragma foreign_proc("C",
-	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, thread_safe],
-"
-	VarOut = VarIn;
-").
-:- pragma foreign_proc("C#",
-	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, thread_safe],
-"
-	VarOut = VarIn;
-").
 
 %-----------------------------------------------------------------------------%
 
@@ -3621,7 +3608,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 }").
 
 :- pragma foreign_proc("MC++",
-	io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
+	io__putback_byte(File::in, _Character::in, IO0::di, IO::uo),
 		may_call_mercury, "{
 
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
