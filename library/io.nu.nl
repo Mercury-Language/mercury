@@ -298,7 +298,10 @@ io__putback_char(Stream, Char, IO_0, IO) :-
 io__putback_byte(_Stream, _Char, IO, IO) :-
 	error("io__putback_byte: binary IO is not implemented for Prolog.").
 
-io__read_anything(S, Result) -->
+io__read_anything(S, R) -->
+	io__read(S, R).
+
+io__read(S, Result) -->
 	{ read(S, Term) },
 	{ eof(Term) ->
 		Result = eof
@@ -306,7 +309,10 @@ io__read_anything(S, Result) -->
 		Result = ok(Term)
 	}.
 
-io__read_anything(Result) -->
+io__read_anything(R) -->
+	io__read(R).
+
+io__read(Result) -->
 	{ read(Term) },
 	{ eof(Term) ->
 		Result = eof
@@ -339,6 +345,9 @@ io__write_string(Stream, String) -->
 	io__update_state.
 	
 io__write_anything(S, I) -->
+	io__write(S, I).
+
+io__write(S, I) -->
 	{ write(S, I) },
 	io__update_state.
 
@@ -370,8 +379,11 @@ io__write_float(Float) -->
 	io__write_float(Stream, Float).
 
 io__write_anything(Term) -->
+	io__write(Term).
+
+io__write(Term) -->
 	io__output_stream(Stream),
-	io__write_anything(Stream, Term).
+	io__write(Stream, Term).
 
 io__flush_output -->
 	io__output_stream(Stream),
@@ -487,6 +499,13 @@ io__adjust_line_num([C | Cs], N0, N) :-
 		N1 = N0
 	),
 	io__adjust_line_num(Cs, N1, N).
+
+io__get_output_line_number(LineNumber) -->
+	{ currentOutput(Stream) },
+	io__get_output_line_number(Stream, LineNumber).
+
+io__get_output_line_number(Stream, LineNumber) -->
+	{ lineCount(Stream, LineNumber) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
