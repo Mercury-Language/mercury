@@ -393,7 +393,7 @@ process_options(int argc, char **argv)
 	unsigned long size;
 	int c;
 
-	while ((c = getopt(argc, argv, "acd:hLlp:r:s:tw:xz:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acd:hLlP:p:r:s:tw:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
@@ -475,6 +475,17 @@ process_options(int argc, char **argv)
 
 				exit(0);
 		}
+
+#ifdef	PARALLEL
+		case 'P':
+				if (sscanf(optarg, "%u", &numprocs) != 1)
+					usage();
+				
+				if (numprocs < 1)
+					usage();
+
+				break;
+#endif
 
 		case 'p':
 				if (sscanf(optarg, "%lu", &size) != 1)
@@ -628,6 +639,8 @@ static void usage(void)
 		"-zh<n> \t\tallocate n kb for the heap redzone\n"
 		"-zd<n> \t\tallocate n kb for the det stack redzone\n"
 		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
+		"-P<n> \t\tnumber of processes to use for parallel execution\n"
+		"\t\tapplies only if Mercury is configured with --enable-parallel\n"
 		"-p<n> \t\tprimary cache size in kbytes\n"
 		"-r<n> \t\trepeat n times\n"
 	"-m<name> \tcall I/O predicate with given name (default: main/2)\n"

@@ -17,7 +17,7 @@
 #include "context.h"
 
 #ifdef	PARALLEL
-int numprocs	=	1;
+unsigned numprocs = 1;
 #endif
 
 #ifdef	PARALLEL
@@ -36,9 +36,9 @@ SpinLock *free_context_list_lock;
 
 Context	*do_schedule_cptr;
 Code	*do_schedule_resume;
-Word     *do_join_and_terminate_syncterm;
-Word     *do_join_and_continue_syncterm;
-Code     *do_join_and_continue_whereto;
+Word     *do_join_and_terminate_sync_term;
+Word     *do_join_and_continue_sync_term;
+Code     *do_join_and_continue_where_to;
 
 static void init_free_context_list(void);
 
@@ -298,29 +298,29 @@ do_schedule:
 
 	/*
 	** do_join_and_terminate synchronises with the structure pointed to
-	** by do_join_and_terminate_syncterm, then terminates the current
+	** by do_join_and_terminate_sync_term, then terminates the current
 	** context and does a context switch. If the current context was the
 	** last context to arrive at the synchronisation point, then we
 	** resume the parent context rather than do a context switch.
 	*/
 do_join_and_terminate:
 {
-	register Word *syncterm;
+	register Word *sync_term;
 	Context *ctxt;
 
-	syncterm = do_join_and_terminate_syncterm;
+	sync_term = do_join_and_terminate_sync_term;
 
-	get_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
-	if (--(syncterm[SYNC_TERM_COUNTER]) == 0) {
-		assert(syncterm[SYNC_TERM_PARENT] != NULL);
-		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
-		ctxt = (Context *) syncterm[SYNC_TERM_PARENT];
+	get_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
+	if (--(sync_term[SYNC_TERM_COUNTER]) == 0) {
+		assert(sync_term[SYNC_TERM_PARENT] != NULL);
+		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
+		ctxt = (Context *) sync_term[SYNC_TERM_PARENT];
 		delete_context(this_context);
 		this_context = ctxt;
 		load_context(this_context);
 		GOTO(this_context->resume);
 	} else {
-		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
+		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 		delete_context(this_context);
 		runnext();
 	}
@@ -328,27 +328,28 @@ do_join_and_terminate:
 
 	/*
 	** do_join_and_continue synchronises with the structure pointed to
-	** by do_join_and_continue_syncterm. If we are the last context to
+	** by do_join_and_continue_sync_term. If we are the last context to
 	** arrive here, then we branch to the continuation stored in
-	** do_join_and_continue_whereto. If we have to wait for other contexts
+	** do_join_and_continue_where_to. If we have to wait for other contexts
 	** to arrive, then we save the current context and store a pointer
 	** to it in the synchronisation term before doing a context switch.
 	*/
 do_join_and_continue:
 {
-	register Word *syncterm;
+	register Word *sync_term;
 
-	syncterm = do_join_and_continue_syncterm;
-	get_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
-	if (--(syncterm[SYNC_TERM_COUNTER]) == 0) {
-		assert(syncterm[SYNC_TERM_PARENT] == NULL);
-		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
-		GOTO(do_join_and_continue_whereto);
+	sync_term = do_join_and_continue_sync_term;
+
+	get_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
+	if (--(sync_term[SYNC_TERM_COUNTER]) == 0) {
+		assert(sync_term[SYNC_TERM_PARENT] == NULL);
+		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
+		GOTO(do_join_and_continue_where_to);
 	} else {
 		save_context(this_context);
-		this_context->resume = do_join_and_continue_whereto;
-		syncterm[SYNC_TERM_PARENT] = (Word) this_context;
-		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
+		this_context->resume = do_join_and_continue_where_to;
+		sync_term[SYNC_TERM_PARENT] = (Word) this_context;
+		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 		runnext();
 	}
 }

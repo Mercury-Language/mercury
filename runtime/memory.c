@@ -241,15 +241,15 @@ void init_memory(void)
 static void init_memory_arena()
 {
 #ifdef	PARALLEL
-#ifndef	CONSERVATIVE_GC
+  #ifndef	CONSERVATIVE_GC
 	if (numprocs > 1) {
 		fatal_error("shared memory not implemented");
 	}
-#else
+  #else
 	if (numprocs > 1) {
 		fatal_error("shared memory not implemented with conservative gc");
 	}
-#endif
+  #endif
 #endif
 }
 
@@ -413,7 +413,10 @@ MemoryZone *create_zone(const char *name, int id, size_t size,
 	total_size = size + unit;
 #endif
 
-#ifndef	PARALLEL
+  #ifdef	PARALLEL
+	if (numprocs > 1)
+		fatal_error("shared memory not supported yet");
+  #endif
 	base = memalign(unit, total_size);
 	if (base == NULL)
 	{
@@ -421,9 +424,6 @@ MemoryZone *create_zone(const char *name, int id, size_t size,
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
 		fatal_error(buf);
 	}
-#else
-#error	"allocation in shared memory not supported yet"
-#endif
 
 	return construct_zone(name, id, base, size, offset, redsize, handler);
 }
@@ -928,6 +928,11 @@ void *allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
 
+  #ifdef	PARALLEL
+	if (numprocs > 1)
+		fatal_error("shared memory not supported (yet)");
+  #endif
+
 	tmp = GC_MALLOC(numbytes);
 	
 	if (tmp == NULL)
@@ -938,13 +943,14 @@ void *allocate_bytes(size_t numbytes)
 
 #else
 
-#ifdef	PARALLEL
-#error "shared memory not implemented"
-#endif
-
 void *allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
+
+  #ifdef	PARALLEL
+	if (numprocs > 1)
+		fatal_error("shared memory not supported (yet)");
+  #endif
 
 	tmp = malloc(numbytes);
 	
@@ -959,10 +965,17 @@ void *allocate_bytes(size_t numbytes)
 void deallocate_memory(void *ptr)
 {
 #ifdef CONSERVATIVE_GC
+  #ifdef	PARALLEL
+	if (numprocs > 1)
+		fatal_error("shared memory not supported");
+  #endif
 	GC_FREE(ptr);
-#elif	PARALLEL
-#error	"shared memory not implemented"
+
 #else
+  #ifdef	PARALLEL
+	if (numprocs > 1)
+		fatal_error("shared memory not supported");
+  #endif
 	free(ptr);
 #endif
 }

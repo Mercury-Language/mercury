@@ -59,7 +59,7 @@
 ** MERCURY_OPTIONS environment variable.
 */
 #ifdef	PARALLEL
-extern int numprocs;
+extern unsigned numprocs;
 #endif
 
 /*
@@ -251,12 +251,12 @@ extern Code *do_schedule_resume;
 		for (fork_new_context_i = (numslots) ;		\
 				fork_new_context_i > 0 ;	\
 				fork_new_context_i--) {		\
-			*(fork_new_context_context->sp) =	\
+			*(fork_new_context_context->context_sp) = \
 				detstackvar(fork_new_context_i); \
-			fork_new_context_context->sp++;		\
+			fork_new_context_context->context_sp++;	\
 		}						\
-		c->resume = (child);				\
-		schedule(c, (parent));				\
+		fork_new_context_context->resume = (child);	\
+		schedule(fork_new_context_context, (parent));	\
 	} while (0)
 
 #ifndef	CONSERVATIVE_GC
@@ -361,12 +361,14 @@ extern Code *do_schedule_resume;
 #define	SYNC_TERM_COUNTER	1
 #define	SYNC_TERM_PARENT	2
 
+Declare_entry(do_join_and_terminate);
 extern Word	*do_join_and_terminate_sync_term;
 #define join_and_terminate(sync_term)	do {				\
 		do_join_and_terminate_sync_term = (Word *)(sync_term);	\
 		GOTO(ENTRY(do_join_and_terminate));			\
 	} while (0)
 
+Declare_entry(do_join_and_continue);
 extern Word	*do_join_and_continue_sync_term;
 extern Code	*do_join_and_continue_where_to;
 #define join_and_continue(sync_term, where_to)	do {			\

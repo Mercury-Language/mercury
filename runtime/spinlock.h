@@ -70,7 +70,7 @@ void do_spinunlock(SpinLock *s);
 		}					\
 	} while(0)
 
-#define allocate_lock() 	allocate_type(SpinLock)
+#define allocate_lock() 	allocate_object(SpinLock)
 
 #define deallocate_lock(lock)	deallocate(lock)
 

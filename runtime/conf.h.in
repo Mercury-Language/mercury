@@ -43,6 +43,7 @@
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
 **				(either sa_handler or sa_sigaction).
+**	PARALLEL		we are configuring for parallel execution
 */
 
 #undef	WORD_TYPE
@@ -64,5 +65,6 @@
 #undef	PC_ACCESS_GREG
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
+#undef	PARALLEL
 
 #endif /* CONF_H */
