@@ -1,5 +1,5 @@
 typeclass_test_3.m:014: In instance declaration for
-typeclass_test_3.m:014:   typeclass_test_3:numbered_type(int), no
+typeclass_test_3.m:014:   typeclass_test_3:numbered_type(int): no
 typeclass_test_3.m:014:   implementation for type class method
 typeclass_test_3.m:014:   typeclass_test_3:type_num/2.
 For more information, try recompiling with `-E'.
