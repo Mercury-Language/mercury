@@ -36,6 +36,9 @@ string__index(String, Int, Char) :-
 	list__index0(String, Int, Code),
 	char__to_int(Char, Code).
 
+string__unsafe_index(String, Int, Char) :-
+	string__index(String, Int, Char).
+
 %-----------------------------------------------------------------------------%
 
 string__append(A, B, C) :-
