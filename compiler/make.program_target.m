@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -388,9 +388,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			{ Succeeded = yes }
 		;
 			{ CompilationTarget = java },
-			{ Succeeded = no },
-			io__write_string(
-			"Sorry, not implemented, linking for `--target java'")
+			create_java_shell_script(MainModuleName, Succeeded)
 		),
 
 		{ Info5 = Info4 ^ command_line_targets :=
@@ -406,6 +404,88 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		)
 	),
 	globals__io_set_option(link_objects, accumulating(LinkObjects)).
+
+	% create_java_shell_script:
+	%	Create a shell script with the same name as the given module
+	%	to invoke Java with the appropriate options on the class of the
+	%	same name.
+	
+:- pred create_java_shell_script(module_name::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+create_java_shell_script(MainModuleName, Succeeded) -->
+	% XXX Extension should be ".bat" on Windows
+	{ Extension = "" },
+	module_name_to_file_name(MainModuleName, Extension, no, FileName),
+
+        globals__io_lookup_bool_option(verbose, Verbose),
+        maybe_write_string(Verbose, "% Generating shell script `" ++
+			FileName ++ "':\n"),
+
+	module_name_to_file_name(MainModuleName, ".class", no, ClassFileName),
+	{ DirName = dir.dirname(ClassFileName) },
+
+	% XXX PathSeparator should be ";" on Windows
+	{ PathSeparator = ":" },
+	% XXX The correct classpath needs to be set somewhere.
+	%     It should take the form:
+	%     DirName:<path>/mer_std.jar:<path>/mer_std.runtime.jar:.
+	%     Currently this variable is empty, which causes problems, so
+	%     we prepend the .class files' directory and the current CLASSPATH.
+	globals__io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0),
+	{ Java_Incl_Dirs = [DirName, "$CLASSPATH" | Java_Incl_Dirs0] },
+	{ join_string_list(Java_Incl_Dirs, "", "", PathSeparator, ClassPath) },
+
+	globals__io_lookup_string_option(java_interpreter, Java),
+	module_name_to_file_name(MainModuleName, "", no, Name_No_Extn),
+
+	io__open_output(FileName, OpenResult),
+	(
+		{ OpenResult = ok(ShellScript) },
+		% XXX On Windows we should output a .bat file instead
+		io__write_string(ShellScript, "#!/bin/sh\n"),
+		io__write_string(ShellScript, "CLASSPATH=" ++ ClassPath ++ " "),
+		io__write_string(ShellScript, Java ++ " "),
+		io__write_string(ShellScript, Name_No_Extn ++ "\n"),
+		io__close_output(ShellScript),
+		io__call_system("chmod a+x " ++ FileName, ChmodResult),
+		(
+			{ ChmodResult = ok(Status) },
+			{ Status = 0 ->
+				Succeeded = yes
+			;
+				error("chmod exit status != 0"),
+				Succeeded = no
+			}
+		;
+			{ ChmodResult = error(Message) },
+			{ error(io__error_message(Message)) },
+			{ Succeeded = no }
+		)
+	;
+		{ OpenResult = error(Message) },
+		{ error(io__error_message(Message)) },
+		{ Succeeded = no }
+	).
+
+	% join_string_list(Strings, Prefix, Suffix, Serarator, Result)
+	%
+	% Appends the strings in the list `Strings' together into the
+	% string Result. Each string is prefixed by Prefix, suffixed by
+	% Suffix and separated by Separator.
+
+:- pred join_string_list(list(string), string, string, string, string).
+:- mode join_string_list(in, in, in, in, out) is det.
+
+join_string_list([], _Prefix, _Suffix, _Separator, "").
+join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
+	( Strings = [] ->
+		string__append_list([Prefix, String, Suffix], Result)
+	;
+		join_string_list(Strings, Prefix, Suffix, Separator, Result0),
+		string__append_list([Prefix, String, Suffix, Separator,
+			Result0], Result)
+	).
 
 :- pred linked_target_cleanup(module_name::in, linked_target_type::in,
 	file_name::in, compilation_target::in, make_info::in, make_info::out,

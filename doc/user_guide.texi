@@ -6699,6 +6699,12 @@ to be quoted when passed to the shell.
 Specify which Java compiler to use.  The default is @samp{javac}.
 
 @sp 1
+@item --java-interpreter @var{interpreter-name}
+@findex --java-interpreter
+@cindex Java interpreter
+Specify which Java interpreter to use.  The default is @samp{java}.
+
+@sp 1
 @item --java-flags @var{options}
 @itemx --java-flag @var{option}
 @findex --java-flags

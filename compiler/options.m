@@ -557,6 +557,7 @@
 
 			% Java
 		;	java_compiler
+		;	java_interpreter
 		;	java_flags
 		;	quoted_java_flag
 		;	java_classpath
@@ -1164,6 +1165,7 @@ option_defaults_2(target_code_compilation_option, [
 
 % Java
 	java_compiler		-	string("javac"),
+	java_interpreter	-	string("java"),
 	java_flags		-	accumulating([]),
 	quoted_java_flag	-	string_special,
 	java_classpath  	-	accumulating([]),
@@ -1840,6 +1842,7 @@ long_option("link-with-pic-object-file-extension",
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
+long_option("java-interpreter",		java_interpreter).
 long_option("java-flags",		java_flags).
 long_option("java-flag",		quoted_java_flag).
 	% XXX we should consider the relationship between java_debug and
@@ -3851,6 +3854,10 @@ options_help_target_code_compilation -->
 		"--java-compiler <javac>",
 		"\tSpecify which Java compiler to use.  The default is `javac'.",
 		
+		"--java-interpreter <java>",
+		"\tSpecify which Java interpreter to use.",
+		"\tThe default is `java'",
+
 		"--java-flags <options>, --java-flag <option>",
 		"\tSpecify options to be passed to the Java compiler.",
 		"\t`--java-flag' should be used for single words which need",
