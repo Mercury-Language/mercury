@@ -869,13 +869,13 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(string__sub_string_search(String::in, SubString::in,
+:- pragma c_code(string__sub_string_search(WholeString::in, SubString::in,
 			Index::out) , [will_not_call_mercury, thread_safe],
 "{
 	char *match;
-	match = strstr(String, SubString);
+	match = strstr(WholeString, SubString);
 	if (match) {
-		Index = match - String;
+		Index = match - WholeString;
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -1252,7 +1252,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- func int_length_modifer = string.
 :- pragma c_code(int_length_modifer = (LengthModifier::out),
 		[will_not_call_mercury, thread_safe], "{
-	MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
+	MR_make_aligned_string(LengthModifier,
+		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
 }").
 
 
