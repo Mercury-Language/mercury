@@ -106,6 +106,8 @@ ml_gen_type_defn(ModuleInfo, TypeTable, TypeId, MLDS_Defns0, MLDS_Defns) :-
 
 ml_gen_type_2(abstract_type, _, _, _) --> [].
 ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
+	% For a description of the problems with equivalence types,
+	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
 ml_gen_type_2(uu_type(_), _, _, _) -->
 	{ error("sorry, undiscriminated union types not implemented") }.
 ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
@@ -118,9 +120,8 @@ ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
 		ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn,
 			Ctors, TagValues, MaybeEqualityMembers)
 	).
-	% XXX Fixme!
-ml_gen_type_2(foreign_type(_, _), _, _, _) -->
-	{ error("sorry, foreign types not implemented") }.
+	% XXX Fixme!  Same issues here as for eqv_type/1.
+ml_gen_type_2(foreign_type(_, _), _, _, _) --> [].
 
 %-----------------------------------------------------------------------------%
 %
