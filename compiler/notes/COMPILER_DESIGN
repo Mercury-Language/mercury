@@ -42,3 +42,11 @@ information in the output specifying the exact ordering constraints,
 and later stages will reorder things only if the reordering satisfies those
 constraints.
 
+switch constructs: any builtins after a switch up to the next call
+or the end of the clause are moved into the arms of the switch.
+This means that if there are N branches, then those builtins
+will get duplicated N times.  We will rely a post-code-generation
+optimization pass (or gcc :-) to factorize any duplicate code at the end
+of the branches, but in general the code produced may be different
+because the variables needed may be in different registers.
+
