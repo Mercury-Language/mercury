@@ -254,7 +254,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 	#include <signal.h>
 	#include <stdlib.h>
 
-	#define FAULT_ADDRESS ((int *)64)
+	#define FAULT_ADDRESS ((int *)112)
 
 	extern void handler(int signum, siginfo_t *info, void *context);
 
@@ -278,6 +278,8 @@ if test "$ac_cv_func_sigaction" = yes; then
 		    (int *)info->si_addr == FAULT_ADDRESS)
 		{
 			exit(0);
+		} else {
+			exit(1);
 		}
 	}],
 	[mercury_cv_sigaction_field=sa_sigaction],
@@ -285,7 +287,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 	[mercury_cv_sigaction_field=sa_handler]))
 	AC_MSG_RESULT($mercury_cv_sigaction_field)
 	AC_DEFINE_UNQUOTED(SIGACTION_FIELD,$mercury_cv_sigaction_field)
-	if test $mercury_cv_sigaction_field = sa_handler; then
+	if test $mercury_cv_sigaction_field = sa_sigaction; then
 		AC_DEFINE(HAVE_SIGINFO)
 	fi
 fi
@@ -299,7 +301,7 @@ AC_TRY_RUN([
 
 #define __KERNEL__
 #include <signal.h>
-#undef __KERNEL
+#undef __KERNEL__
 
 #ifdef HAVE_ASM_SIGCONTEXT
 #include <asm/sigcontext.h>
@@ -309,7 +311,7 @@ AC_TRY_RUN([
 
 extern void handler(int signum, struct sigcontext_struct info);
 
-#define FAULT_ADDRESS ((int *)64)
+#define FAULT_ADDRESS ((int *)112)
 
 int main() {
 	signal(SIGSEGV, (void (*)(int))handler);
@@ -323,6 +325,8 @@ int main() {
 void handler(int signum, struct sigcontext_struct context) {
 	if (signum == SIGSEGV && (int *) context.cr2 == FAULT_ADDRESS) {
 		exit(0);
+	} else {
+		exit(1);
 	}
 }], [mercury_cv_sigcontext_struct=yes], [true], [true]))
 AC_MSG_RESULT($mercury_cv_sigcontext_struct)
@@ -339,7 +343,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	AC_TRY_RUN([
 	#define __KERNEL__
 	#include <signal.h>
-	#undef __KERNEL
+	#undef __KERNEL__
 
 	#ifdef HAVE_ASM_SIGCONTEXT
 	#include <asm/sigcontext.h>
@@ -349,7 +353,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 
 	extern void handler(int signum, struct sigcontext_struct info);
 
-	#define FAULT_ADDRESS ((int *)64)
+	#define FAULT_ADDRESS ((int *)112)
 
 	int main() {
 		signal(SIGSEGV, (void (*)(int))handler);
@@ -366,6 +370,8 @@ if test $mercury_cv_sigcontext_struct = yes; then
 			(long) info.eip != 0)
 		{
 			exit(0);
+		} else {
+			exit(1);
 		}
 	}], [mercury_cv_pc_access=yes], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_pc_access)
