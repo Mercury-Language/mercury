@@ -1430,6 +1430,9 @@ AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(LIBRARY_RM_C)
+if test $USE_DLLS = "yes"; then
+	AC_DEFINE(USE_DLLS)
+fi
 #-----------------------------------------------------------------------------#
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mmc
