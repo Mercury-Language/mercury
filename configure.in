@@ -2121,6 +2121,16 @@ case "$host" in
 		esac
 		;;
 
+	# Theoretically we should change this check to *apple*darwin*)
+	# as darwin should be the same whether or not we are on a powerpc or
+	# an i386, but since we don't have access to an i386 with darwin 
+	# installed to test this, we currently restrict ourselves to the
+	# powerpc architecture.
+	*powerpc*apple*darwin*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_MACOSX_THREADS"
+		THREAD_LIBS=""
+		;;
+
 ###	# The threads stuff on Digital Unix (OSF) is not yet enabled because
 ###	# the Boehm garbage collector doesn't support threads on that platform
 ###	# XXX probably we should enable it but report an error if you try to
