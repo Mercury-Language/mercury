@@ -345,9 +345,9 @@ unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 	{ Code = tree(Code0, Code1) }.
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
 		Var, _Args, _Modes, _IMDelta, Code) -->
-	{ Code = empty },
-	code_info__cache_expression(Var,
-		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
+	unify_gen__cache_unification(Var, 
+		mkword(Bits1, unop(mkbody, const(int_const(Num1)))),
+		Code).
 unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		TypeName, TypeArity), Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
@@ -364,9 +364,9 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 	;
 		{ error("unify_gen: typeclass-info constant has args") }
 	),
-	{ Code = empty },
-	code_info__cache_expression(Var, const(data_addr_const(data_addr(
-		ModuleName, base_typeclass_info(ClassId, Instance))))).
+	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
+		ModuleName, base_typeclass_info(ClassId, Instance)))),
+		Code).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 		Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
@@ -374,12 +374,12 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 	;
 		{ error("unify_gen: tabling pointer constant has args") }
 	),
-	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) },
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
-	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
+	unify_gen__cache_unification(Var, const(data_addr_const(DataAddr)),
+		Code).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 		Var, Args, _Modes, _IMDelta, Code) -->
 	( { Args = [] } ->
