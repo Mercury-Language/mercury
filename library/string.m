@@ -20,6 +20,8 @@
 
 :- interface.
 :- import_module list, char.
+:- import_module deconstruct.
+:- import_module ops.
 
 	% Determine the length of a string.
 	% An empty string has length zero.
@@ -67,6 +69,32 @@
 :- pred string__suffix(string, string).
 :- mode string__suffix(in, in) is semidet.
 :- mode string__suffix(in, out) is multi.
+
+:- func string__string(T) = string.
+	% string__string(X): Returns a canonicalized string representation of
+	% the value X using the standard Mercury operators.
+
+:- func string__string(ops__table, T) = string.
+	%
+	% As above, but using the supplied table of operators.
+
+:- pred string__string(deconstruct__noncanon_handling, ops__table, T, string).
+:- mode string__string(in(do_not_allow), in, in, out) is det.
+:- mode string__string(in(canonicalize), in, in, out) is det.
+:- mode string__string(in(include_details_cc), in, in, out) is cc_multi.
+:- mode string__string(in, in, in, out) is cc_multi.
+%	string__string(NonCanon, OpsTable, X, String)
+%
+%	As above, but the caller specifies what behaviour should
+%	occur for non-canonical terms (i.e. terms where multiple
+%	representations may compare as equal):
+%	- `do_not_allow' will throw an exception if (any subterm of)
+%	   the argument is not canonical;
+%	- `canonicalize' will substitute a string indicating the
+%	   presence of a non-canonical subterm;
+%	- `include_details_cc' will show the structure of any
+%	   non-canonical subterms, but can only be called from a
+%	   committed choice context.
 
 	% string__char_to_string(Char, String).
 	% Converts a character (single-character atom) to a string
@@ -558,7 +586,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, integer, std_util, int, float, require.
+:- import_module bool, integer, std_util, int, float, array, require.
+:- use_module term_io, type_desc, rtti_implementation.
 
 string__replace(String, SubString0, SubString1, StringOut) :-
 	string__to_char_list(String, CharList),
@@ -1300,7 +1329,7 @@ string__format(FormatString, PolyList, String) :-
 		error("string__format: format string invalid.")
 	).
 
-:- type specifier
+:- type string__specifier
 	--->	conv(
 			flags		:: list(char),
 			width		:: maybe(list(char)),
@@ -1314,9 +1343,9 @@ string__format(FormatString, PolyList, String) :-
 	% We alternate between the list of characters which don't
 	% represent a conversion specifier and those that do.
 	%
-:- pred format_string(list(specifier)::out,
-	list(string__poly_type)::in, list(string__poly_type)::out,
-	list(char)::in, list(char)::out) is det.
+:- pred format_string(list(string__specifier)::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is det.
 
 format_string(Results, PolyTypes0, PolyTypes) -->
 	other(NonConversionSpecChars),
@@ -1349,9 +1378,9 @@ other(Result) -->
 	% may be (in this order) zero or more flags, an optional
 	% minimum field width, and an optional precision.
 	%
-:- pred conversion_specification(specifier::out,
-	list(string__poly_type)::in, list(string__poly_type)::out,
-	list(char)::in, list(char)::out) is semidet.
+:- pred conversion_specification(string__specifier::out,
+		list(string__poly_type)::in, list(string__poly_type)::out,
+		list(char)::in, list(char)::out) is semidet.
 
 conversion_specification(Specificier, PolyTypes0, PolyTypes) -->
 	['%'],
@@ -1550,7 +1579,7 @@ zero_or_more_occurences(P, !Chars) :-
 		true
 	).
 
-:- func specifier_to_string(specifier) = string.
+:- func specifier_to_string(string__specifier) = string. 
 
 specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 	(
@@ -3993,6 +4022,445 @@ suffix_length_2(I, N, P, S) =
 
 %------------------------------------------------------------------------------%
 
+	% For efficiency, these predicates collect a list of strings
+	% which, when concatenated in reverse order, produce the final
+	% output.
+	%
+:- type revstrings == list(string).
+
+	% Utility predicate.
+	%
+:- pred add_revstring(string, revstrings, revstrings).
+:- mode add_revstring(in,     in,         out       ) is det.
+
+add_revstring(String, RevStrings, [String | RevStrings]).
+
+
+
+% various different versions of univ_to_string.
+
+string__string(Univ) = String :-
+	string__string(canonicalize, ops__init_mercury_op_table, Univ, String).
+
+string__string(OpsTable, Univ) = String :-
+	string__string(canonicalize, OpsTable, Univ, String).
+
+
+
+string__string(NonCanon, OpsTable, Univ, String) :-
+	value_to_revstrings(NonCanon, OpsTable, Univ, [], RevStrings),
+	String = string__append_list(list__reverse(RevStrings)).
+
+
+
+:- pred value_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, T, revstrings, revstrings).
+:- mode value_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode value_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode value_to_revstrings(in(include_details_cc), in, in, in, out)
+	is cc_multi.
+:- mode value_to_revstrings(in, in, in, in, out)
+	is cc_multi.
+
+value_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
+	Priority = ops__max_priority(OpsTable) + 1,
+	value_to_revstrings(NonCanon, OpsTable, Priority, Univ, !Rs).
+
+
+
+:- pred value_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, ops__priority, T, revstrings, revstrings).
+:- mode value_to_revstrings(in(do_not_allow), in, in, in, in, out) is det.
+:- mode value_to_revstrings(in(canonicalize), in, in, in, in, out) is det.
+:- mode value_to_revstrings(in(include_details_cc), in, in, in, in, out)
+	is cc_multi.
+:- mode value_to_revstrings(in, in, in, in, in, out)
+	is cc_multi.
+
+value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
+	%
+	% we need to special-case the builtin types:
+	%	int, char, float, string
+	%	type_info, univ, c_pointer, array
+	%	and private_builtin:type_info
+	%
+	( dynamic_cast(X, String) ->
+		add_revstring(term_io__quoted_string(String), !Rs)
+	; dynamic_cast(X, Char) ->
+		add_revstring(term_io__quoted_char(Char), !Rs)
+	; dynamic_cast(X, Int) ->
+		add_revstring(string__int_to_string(Int), !Rs)
+	; dynamic_cast(X, Float) ->
+		add_revstring(string__float_to_string(Float), !Rs)
+	; dynamic_cast(X, TypeDesc) ->
+		type_desc_to_revstrings(TypeDesc, !Rs)
+	; dynamic_cast(X, TypeCtorDesc) ->
+		type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs)
+	; dynamic_cast(X, C_Pointer) ->
+		add_revstring(c_pointer_to_string(C_Pointer), !Rs)
+	;
+		%
+		% Check if the type is array:array/1.
+		% We can't just use dynamic_cast here since 
+		% array:array/1 is a polymorphic type.
+		%
+		% The calls to type_ctor_name and type_ctor_module_name
+		% are not really necessary -- we could use dynamic_cast
+		% in the condition instead of det_dynamic_cast in the body.
+		% However, this way of doing things is probably more efficient
+		% in the common case when the thing being printed is
+		% *not* of type array:array/1.
+		%
+		% The ordering of the tests here (arity, then name, then
+		% module name, rather than the reverse) is also chosen
+		% for efficiency, to find failure cheaply in the common cases,
+		% rather than for readability.
+		%
+		type_desc__type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
+		ArgTypes = [ElemType],
+		type_desc__type_ctor_name(TypeCtor) = "array",
+		type_desc__type_ctor_module_name(TypeCtor) = "array"
+	->
+		%
+		% Now that we know the element type, we can
+		% constrain the type of the variable `Array'
+		% so that we can use det_dynamic_cast.
+		%
+		type_desc__has_type(Elem, ElemType),
+		same_array_elem_type(Array, Elem),
+		det_dynamic_cast(X, Array),
+		array_to_revstrings(NonCanon, OpsTable, Array, !Rs)
+	; 
+		%
+		% Check if the type is private_builtin:type_info/1.
+		% See the comments above for array:array/1.
+		%
+		type_desc__type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
+		ArgTypes = [ElemType],
+		type_desc__type_ctor_name(TypeCtor) = "type_info",
+		type_desc__type_ctor_module_name(TypeCtor) = "private_builtin"
+	->
+		type_desc__has_type(Elem, ElemType),
+		same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
+		det_dynamic_cast(X, PrivateBuiltinTypeInfo),
+		private_builtin_type_info_to_revstrings(
+			PrivateBuiltinTypeInfo, !Rs)
+	; 
+		ordinary_term_to_revstrings(NonCanon, OpsTable, Priority,
+			X, !Rs)
+	).
+
+
+
+:- pred same_array_elem_type(array(T), T).
+:- mode same_array_elem_type(unused, unused) is det.
+same_array_elem_type(_, _).
+
+
+
+:- pred same_private_builtin_type(private_builtin__type_info(T), T).
+:- mode same_private_builtin_type(unused, unused) is det.
+same_private_builtin_type(_, _).
+
+
+
+:- pred ordinary_term_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, ops__priority, T, revstrings, revstrings).
+:- mode ordinary_term_to_revstrings(in(do_not_allow), in, in, in, in, out)
+	is det.
+:- mode ordinary_term_to_revstrings(in(canonicalize), in, in, in, in, out)
+	is det.
+:- mode ordinary_term_to_revstrings(in(include_details_cc), in, in, in, in, out)
+	is cc_multi.
+:- mode ordinary_term_to_revstrings(in, in, in, in, in, out)
+	is cc_multi.
+
+ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
+	deconstruct__deconstruct(X, NonCanon, Functor, _Arity, Args),
+	(
+		Functor = "[|]",
+		Args = [ListHead, ListTail]
+	->
+		add_revstring("[", !Rs),
+		arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
+		list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs),
+		add_revstring("]", !Rs)
+	;
+		Functor = "[]",
+		Args = []
+	->
+		add_revstring("[]", !Rs)
+	;
+		Functor = "{}",
+		Args = [BracedTerm]
+	->
+		add_revstring("{ ", !Rs),
+		value_to_revstrings(NonCanon, OpsTable, BracedTerm, !Rs),
+		add_revstring(" }", !Rs)
+	;
+		Functor = "{}",
+		Args = [BracedHead | BracedTail]
+	->
+		add_revstring("{", !Rs),
+		arg_to_revstrings(NonCanon, OpsTable, BracedHead, !Rs),
+		term_args_to_revstrings(NonCanon, OpsTable, BracedTail, !Rs),
+		add_revstring("}", !Rs)
+	;
+		Args = [PrefixArg],
+		ops__lookup_prefix_op(OpsTable, Functor,
+			OpPriority, OpAssoc)
+	->
+		maybe_add_revstring("(", Priority, OpPriority, !Rs),
+		add_revstring(term_io__quoted_atom(Functor), !Rs),
+		add_revstring(" ", !Rs),
+		adjust_priority(OpPriority, OpAssoc, NewPriority),
+		value_to_revstrings(NonCanon, OpsTable, NewPriority,
+			PrefixArg, !Rs),
+		maybe_add_revstring(")", Priority, OpPriority, !Rs)
+	;
+		Args = [PostfixArg],
+		ops__lookup_postfix_op(OpsTable, Functor,
+			OpPriority, OpAssoc)
+	->
+		maybe_add_revstring("(", Priority, OpPriority, !Rs),
+		adjust_priority(OpPriority, OpAssoc, NewPriority),
+		value_to_revstrings(NonCanon, OpsTable, NewPriority,
+			PostfixArg, !Rs),
+		add_revstring(" ", !Rs),
+		add_revstring(term_io__quoted_atom(Functor), !Rs),
+		maybe_add_revstring(")", Priority, OpPriority, !Rs)
+	;
+		Args = [Arg1, Arg2],
+		ops__lookup_infix_op(OpsTable, Functor, 
+			OpPriority, LeftAssoc, RightAssoc)
+	->
+		maybe_add_revstring("(", Priority, OpPriority, !Rs),
+		adjust_priority(OpPriority, LeftAssoc, LeftPriority),
+		value_to_revstrings(NonCanon, OpsTable, LeftPriority, Arg1, !Rs),
+		( Functor = "," ->
+			add_revstring(", ", !Rs)
+		;
+			add_revstring(" ", !Rs),
+			add_revstring(term_io__quoted_atom(Functor), !Rs),
+			add_revstring(" ", !Rs)
+		),
+		adjust_priority(OpPriority, RightAssoc, RightPriority),
+		value_to_revstrings(NonCanon, OpsTable, RightPriority,
+			Arg2, !Rs),
+		maybe_add_revstring(")", Priority, OpPriority, !Rs)
+	;
+		Args = [Arg1, Arg2],
+		ops__lookup_binary_prefix_op(OpsTable, Functor,
+			OpPriority, FirstAssoc, SecondAssoc)
+	->
+		maybe_add_revstring("(", Priority, OpPriority, !Rs),
+		add_revstring(term_io__quoted_atom(Functor), !Rs),
+		add_revstring(" ", !Rs),
+		adjust_priority(OpPriority, FirstAssoc, FirstPriority),
+		value_to_revstrings(NonCanon, OpsTable, FirstPriority,
+			Arg1, !Rs),
+		add_revstring(" ", !Rs),
+		adjust_priority(OpPriority, SecondAssoc, SecondPriority),
+		value_to_revstrings(NonCanon, OpsTable, SecondPriority,
+			Arg2, !Rs),
+		maybe_add_revstring(")", Priority, OpPriority, !Rs)
+	;
+		(
+			Args = [],
+			ops__lookup_op(OpsTable, Functor),
+			Priority =< ops__max_priority(OpsTable)
+		->
+			add_revstring("(", !Rs),
+			add_revstring(term_io__quoted_atom(Functor), !Rs),
+			add_revstring(")", !Rs)
+		;
+			add_revstring(
+				term_io__quoted_atom(Functor,
+				    term_io__maybe_adjacent_to_graphic_token),
+				!Rs
+			)
+		),
+		(
+			Args = [Y | Ys]
+		->
+			add_revstring("(", !Rs),
+			arg_to_revstrings(NonCanon, OpsTable, Y, !Rs),
+			term_args_to_revstrings(NonCanon, OpsTable, Ys, !Rs),
+			add_revstring(")", !Rs)
+		;
+			true
+		)
+	).
+
+
+
+:- pred maybe_add_revstring(string, ops__priority, ops__priority,
+			revstrings, revstrings).
+:- mode maybe_add_revstring(in, in, in, in, out) is det.
+
+maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
+	( OpPriority > Priority ->
+		add_revstring(String, !Rs)
+	;
+		true
+	).
+
+
+
+:- pred adjust_priority(ops__priority, ops__assoc, ops__priority).
+:- mode adjust_priority(in, in, out) is det.
+
+adjust_priority(Priority, ops__y, Priority).
+adjust_priority(Priority, ops__x, Priority - 1).
+
+
+
+:- pred list_tail_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, T, revstrings, revstrings).
+:- mode list_tail_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode list_tail_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode list_tail_to_revstrings(in(include_details_cc), in, in, in, out)
+	is cc_multi.
+:- mode list_tail_to_revstrings(in, in, in, in, out) is cc_multi.
+
+list_tail_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
+	deconstruct__deconstruct(X, NonCanon, Functor, _Arity, Args),
+	( Functor = "[|]", Args = [ListHead, ListTail] ->
+		add_revstring(", ", !Rs),
+		arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
+		list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs)
+	; Functor = "[]", Args = [] ->
+		true
+	;
+		add_revstring(" | ", !Rs),
+		value_to_revstrings(NonCanon, OpsTable, X, !Rs)
+	).
+
+
+
+:- pred term_args_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, list(T), revstrings, revstrings).
+:- mode term_args_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode term_args_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode term_args_to_revstrings(in(include_details_cc), in, in, in, out)
+	is cc_multi.
+:- mode term_args_to_revstrings(in, in, in, in, out) is cc_multi.
+
+	% write the remaining arguments
+term_args_to_revstrings(_, _, [], !Rs).
+term_args_to_revstrings(NonCanon, OpsTable, [X|Xs], !Rs) :-
+	add_revstring(", ", !Rs),
+	arg_to_revstrings(NonCanon, OpsTable, X, !Rs),
+	term_args_to_revstrings(NonCanon, OpsTable, Xs, !Rs).
+
+
+
+:- pred arg_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, T, revstrings, revstrings).
+:- mode arg_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode arg_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode arg_to_revstrings(in(include_details_cc), in, in, in, out) is cc_multi.
+:- mode arg_to_revstrings(in, in, in, in, out) is cc_multi.
+
+arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
+	Priority = comma_priority(OpsTable),
+	value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs).
+
+
+
+:- func comma_priority(ops__table) = ops__priority.
+/*
+comma_priority(OpsTable) =
+	( if ops__lookup_infix_op(OpTable, ",", Priority, _, _) then
+		Priority
+	  else
+		func_error("arg_priority: can't find the priority of `,'")
+	).
+*/
+% We could implement this as above, but it's more efficient to just
+% hard-code it.
+comma_priority(_OpTable) = 1000.
+
+
+
+:- func c_pointer_to_string(c_pointer) = string.
+
+c_pointer_to_string(_C_Pointer) = "<<c_pointer>>".
+
+
+
+:- pred array_to_revstrings(deconstruct__noncanon_handling,
+	ops__table, array(T), revstrings, revstrings).
+:- mode array_to_revstrings(in(do_not_allow), in, in, in, out) is det.
+:- mode array_to_revstrings(in(canonicalize), in, in, in, out) is det.
+:- mode array_to_revstrings(in(include_details_cc), in, in, in, out)
+	is cc_multi.
+:- mode array_to_revstrings(in, in, in, in, out)
+	is cc_multi.
+
+array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
+	add_revstring("array(", !Rs),
+	value_to_revstrings(NonCanon, OpsTable,
+		array__to_list(Array) `with_type` list(T), !Rs),
+	add_revstring(")", !Rs).
+
+
+
+:- pred type_desc_to_revstrings(type_desc__type_desc, revstrings, revstrings).
+:- mode type_desc_to_revstrings(in, in, out) is det.
+
+type_desc_to_revstrings(TypeDesc, !Rs) :-
+	add_revstring(
+		term_io__quoted_atom(type_desc__type_name(TypeDesc)),
+		!Rs
+	).
+
+
+
+:- pred type_ctor_desc_to_revstrings(type_desc__type_ctor_desc,
+	revstrings, revstrings).
+:- mode type_ctor_desc_to_revstrings(in, in, out) is det.
+
+type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
+        type_desc__type_ctor_name_and_arity(TypeCtorDesc,
+		ModuleName, Name0, Arity0),
+	Name = term_io__quoted_atom(Name0),
+	( ModuleName = "builtin", Name = "func" ->
+		% The type ctor that we call `builtin:func/N' takes N + 1
+		% type parameters: N arguments plus one return value.
+		% So we need to subtract one from the arity here.
+		Arity = Arity0 - 1
+	;
+		Arity = Arity0
+	),
+	( ModuleName = "builtin" ->
+		String = string__format("%s/%d", [s(Name), i(Arity)])
+	;
+		String = string__format("%s.%s/%d",
+			[s(ModuleName), s(Name), i(Arity)])
+	),
+	add_revstring(String, !Rs).
+
+
+
+:- pred private_builtin_type_info_to_revstrings(
+		private_builtin__type_info(T), revstrings, revstrings).
+:- mode private_builtin_type_info_to_revstrings(in, in, out) is det.
+
+private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
+	TypeDesc = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo),
+	type_desc_to_revstrings(TypeDesc, !Rs).
+
+
+
+:- pred det_dynamic_cast(T1, T2).
+:- mode det_dynamic_cast(in, out) is det.
+
+det_dynamic_cast(X, Y) :-
+	det_univ_to_type(univ(X), Y).
+
+%-----------------------------------------------------------------------------%
+
 % char_list_remove_suffix/3: We use this instead of the more general
 % list__remove_suffix so that (for example) string__format will succeed in
 % grade Java, even though unification has not yet been implemented.
@@ -4013,4 +4481,9 @@ char_list_equal([], []).
 char_list_equal([X | Xs], [X | Ys]) :-
 	char_list_equal(Xs, Ys).
 
+%------------------------------------------------------------------------------%
+
+:- end_module string.
+
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

@@ -100,6 +100,9 @@
 	% escaped if necessary, to stdout.
 :- pred term_io__quote_char(char::in, io::di, io::uo) is det.
 
+:- func term_io__quoted_char(char) = string.
+	% Like term_io__quote_char, but return the result in a string.
+
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
 :- pred term_io__write_escaped_char(char::in, io::di, io::uo) is det.
@@ -474,10 +477,11 @@ term_io__format_constant(term__string(S), _) =
 
 %-----------------------------------------------------------------------------%
 
-term_io__quote_char(C, !IO) :-
-	io__write_char('''', !IO),
-	term_io__write_escaped_char(C, !IO),
-	io__write_char('''', !IO).
+term_io__quote_char(C) -->
+	io__write_string(term_io__quoted_char(C)).
+
+term_io__quoted_char(C) =
+	string__format("'%s'", [s(term_io__escaped_char(C))]).
 
 term_io__quote_atom(S, !IO) :-
 	term_io__quote_atom(S, not_adjacent_to_graphic_token, !IO).
