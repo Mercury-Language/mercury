@@ -21,7 +21,7 @@
 :- import_module hlds.
 
 :- pred generate_arg_info(module_info, module_info).
-:- mode generate_arg_info(input, output) is det.
+:- mode generate_arg_info(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 	% This whole section just traverses the module structure.
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
-	moduleinfo_predids(ModuleInfo0, PredIds),
+	module_info_predids(ModuleInfo0, PredIds),
 	generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
 :- pred generate_pred_arg_info(list(pred_id), module_info, module_info).
@@ -42,9 +42,9 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 
 generate_pred_arg_info([], ModuleInfo, ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	moduleinfo_preds(ModuleInfo0, PredTable),
+	module_info_preds(ModuleInfo0, PredTable),
 	map__search(PredTable, PredId, PredInfo),
-	predinfo_procids(PredInfo, ProcIds),
+	pred_info_procids(PredInfo, ProcIds),
 	generate_proc_arg_info(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
 	generate_pred_arg_info(PredIds, ModuleInfo1, ModuleInfo).
 
@@ -54,15 +54,15 @@ generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 generate_proc_arg_info(_PredId, [], ModuleInfo, ModuleInfo).
 generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
-	moduleinfo_preds(ModuleInfo0, PredTable0),
+	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
-	predinfo_procedures(PredInfo0, ProcTable0),
+	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 	make_arg_infos(ProcInfo0, ModuleInfo0, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	predinfo_set_procedures(PredInfo0, ProcTable, PredInfo),
+	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	moduleinfo_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 	generate_proc_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
 
 %---------------------------------------------------------------------------%
@@ -80,15 +80,15 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 :- mode make_arg_infos(in, in, out) is det.
 
 make_arg_infos(ProcInfo0, ModuleInfo, ProcInfo) :-
-	procinfo_argmodes(ProcInfo0, ArgModes),
-	procinfo_inferred_determinism(ProcInfo0, Determinism),
+	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_inferred_determinism(ProcInfo0, Determinism),
 	( Determinism = semideterministic ->
 		StartingRegister = 2
 	;
 		StartingRegister = 1
 	),
 	make_arg_infos_list(ArgModes, StartingRegister, ModuleInfo, ArgInfo),
-	procinfo_set_arginfo(ProcInfo0, ArgInfo, ProcInfo).
+	proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo).
 
 :- pred make_arg_infos_list(list(mode), int, module_info, list(arg_info)).
 :- mode make_arg_infos_list(in, in, in, out) is det.
@@ -103,7 +103,7 @@ make_arg_infos_list([Mode | Modes], RegNum, ModuleInfo,
 	;
 		ArgMode = top_unused
 	),
-	ArgInfo = arginfo(RegNum, ArgMode),
+	ArgInfo = arg_info(RegNum, ArgMode),
 	RegNum1 is RegNum + 1,
 	make_arg_infos_list(Modes, RegNum1, ModuleInfo, ArgInfos).
 

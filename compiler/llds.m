@@ -406,7 +406,7 @@ output_lval(stackvar(N)) -->
 %-----------------------------------------------------------------------------%
 
 :- pred output_c_quoted_string(string, io__state, io__state).
-:- mode output_c_quoted_string(input, di, uo).
+:- mode output_c_quoted_string(in, di, uo).
 
 output_c_quoted_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
@@ -422,7 +422,7 @@ output_c_quoted_string(S0) -->
 	).
 
 :- pred quote_c_char(character, character).
-:- mode quote_c_char(input, output).
+:- mode quote_c_char(in, out).
 
 quote_c_char('\"', '"').
 quote_c_char('\\', '\\').
@@ -433,7 +433,7 @@ quote_c_char('\b', 'b').
 %-----------------------------------------------------------------------------%
 
 :- pred output_operator(operator, io__state, io__state).
-:- mode output_operator(input, di, uo).
+:- mode output_operator(in, di, uo).
 
 output_operator(+) -->
 	io__write_string("+").

@@ -11,14 +11,14 @@
 
 /***
 :- pred	require(pred, string).
-:- mode	require(input, input).
+:- mode	require(in, in).
 
 %	require(Goal, Message).
 %		Call goal, and abort with error message if Goal fails.
 ****/
 
 :- pred error(string).
-:- mode error(input).
+:- mode error(in).
 
 %	error(Message).
 %		Abort with error message.

@@ -15,7 +15,7 @@
 
 :- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
-:- mode convert_to_mercury(input, input, input, di, uo).
+:- mode convert_to_mercury(in, in, in, di, uo).
 
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo).
@@ -29,16 +29,16 @@
 	% output a comma-separated list of variables
 
 :- pred mercury_output_vars(list(var), varset, io__state, io__state).
-:- mode mercury_output_vars(input, input, di, uo).
+:- mode mercury_output_vars(in, in, di, uo).
 
 :- pred mercury_output_var(var, varset, io__state, io__state).
-:- mode mercury_output_var(input, input, di, uo).
+:- mode mercury_output_var(in, in, di, uo).
 
 :- pred mercury_output_term(term, varset, io__state, io__state).
-:- mode mercury_output_term(input, input, di, uo).
+:- mode mercury_output_term(in, in, di, uo).
 
 :- pred mercury_output_hlds_goal(hlds__goal, varset, int, io__state, io__state).
-:- mode mercury_output_hlds_goal(input, input, input, di, uo).
+:- mode mercury_output_hlds_goal(in, in, in, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 			[]
 		),
 		io__write_string(":- module "),
-		mercury_output_bracketed_constant(term_atom(ProgName)),
+		mercury_output_bracketed_constant(term__atom(ProgName)),
 		io__write_string(".\n"),
 		mercury_output_item_list(Items),
 		( { Verbose = yes } ->
@@ -82,7 +82,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 	% output the declarations one by one 
 
 :- pred mercury_output_item_list(list(item_and_context), io__state, io__state).
-:- mode mercury_output_item_list(input, di, uo).
+:- mode mercury_output_item_list(in, di, uo).
 
 mercury_output_item_list([]) --> [].
 mercury_output_item_list([Item - Context | Items]) -->
@@ -106,7 +106,7 @@ mercury_output_item_list([Item - Context | Items]) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_item(item, term__context, io__state, io__state).
-:- mode mercury_output_item(input, input, di, uo).
+:- mode mercury_output_item(in, in, di, uo).
 
 	% dispatch on the different types of items
 
@@ -145,7 +145,7 @@ mercury_output_item(nothing, _) --> [].
 
 :- pred mercury_output_module_defn(varset, module_defn, term__context,
 			io__state, io__state).
-:- mode mercury_output_module_defn(input, input, input, di, uo).
+:- mode mercury_output_module_defn(in, in, in, di, uo).
 
 mercury_output_module_defn(_VarSet, Module, _Context) -->
 	( { Module = import(module(ImportedModules)) } ->
@@ -167,7 +167,7 @@ mercury_output_module_defn(_VarSet, Module, _Context) -->
 
 mercury_write_module_spec_list([]) --> [].
 mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
-	mercury_output_bracketed_constant(term_atom(ModuleName)),
+	mercury_output_bracketed_constant(term__atom(ModuleName)),
 	( { ModuleNames = [] } ->
 		[]
 	;
@@ -177,20 +177,20 @@ mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
 
 :- pred mercury_output_inst_defn(varset, inst_defn, term__context,
 			io__state, io__state).
-:- mode mercury_output_inst_defn(input, input, input, di, uo).
+:- mode mercury_output_inst_defn(in, in, in, di, uo).
 
 :- mercury_output_inst_defn(_, X, _, _, _) when X.	% NU-Prolog indexing
 
 mercury_output_inst_defn(VarSet, abstract_inst(Name, Args), Context) -->
 	io__write_string(":- inst ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(").\n").
 mercury_output_inst_defn(VarSet, eqv_inst(Name, Args, Body), Context) -->
 	io__write_string(":- inst ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(") = "),
 	mercury_output_inst(Body, VarSet),
@@ -251,14 +251,14 @@ mercury_output_bound_insts([functor(Name, Args) | BoundInsts], VarSet) -->
 
 :- pred mercury_output_mode_defn(varset, mode_defn, term__context,
 			io__state, io__state).
-:- mode mercury_output_mode_defn(input, input, input, di, uo).
+:- mode mercury_output_mode_defn(in, in, in, di, uo).
 
 :- mercury_output_mode_defn(_, X, _, _, _) when X. 	% NU-Prolog indexing.
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(") :: "),
 	mercury_output_mode(Mode, VarSet),
@@ -297,14 +297,14 @@ mercury_output_mode(user_defined_mode(Name, Args), VarSet) -->
 
 :- pred mercury_output_type_defn(varset, type_defn, term__context,
 			io__state, io__state).
-:- mode mercury_output_type_defn(input, input, input, di, uo).
+:- mode mercury_output_type_defn(in, in, in, di, uo).
 
 mercury_output_type_defn(VarSet, TypeDefn, Context) -->
 	mercury_output_type_defn_2(TypeDefn, VarSet, Context).
 
 :- pred mercury_output_type_defn_2(type_defn, varset, term__context,
 			io__state, io__state).
-:- mode mercury_output_type_defn_2(input, input, input, di, uo).
+:- mode mercury_output_type_defn_2(in, in, in, di, uo).
 
 mercury_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__stderr_stream(StdErr),
@@ -316,14 +316,14 @@ mercury_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 mercury_output_type_defn_2(abstract_type(Name, Args), VarSet, Context) -->
 	io__write_string(":- type ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(").\n").
 
 mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
 	io__write_string(":- type ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(") == "),
 	mercury_output_term(Body, VarSet),
@@ -332,7 +332,7 @@ mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
 mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 	io__write_string(":- type ("),
 	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term_functor(term_atom(Name2), Args, Context),
+	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
 			VarSet),
 	io__write_string(")\n\t--->\t"),
 	mercury_output_ctors(Ctors, VarSet),
@@ -340,7 +340,7 @@ mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 
 :- pred mercury_output_ctors(list(constructor), varset,
 				io__state, io__state).
-:- mode mercury_output_ctors(input, input, di, uo).
+:- mode mercury_output_ctors(in, in, di, uo).
 
 mercury_output_ctors([], _) --> [].
 mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
@@ -384,7 +384,7 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 
 :- pred mercury_output_pred_decl(varset, sym_name, list(type_and_mode),
 		determinism, term__context, io__state, io__state).
-:- mode mercury_output_pred_decl(input, input, input, input, input, di, uo).
+:- mode mercury_output_pred_decl(in, in, in, in, in, di, uo).
 
 mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
@@ -399,7 +399,7 @@ mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
 
 :- pred mercury_output_pred_type(varset, sym_name, list(type),
 		term__context, io__state, io__state).
-:- mode mercury_output_pred_type(input, input, input, input, di, uo).
+:- mode mercury_output_pred_type(in, in, in, in, di, uo).
 
 mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 	io__write_string(":- pred "),
@@ -436,7 +436,7 @@ mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 
 :- pred mercury_output_remaining_terms(list(term), varset,
 					io__state, io__state).
-:- mode mercury_output_remaining_terms(input, input, di, uo).
+:- mode mercury_output_remaining_terms(in, in, di, uo).
 
 mercury_output_remaining_terms([], _VarSet) --> [].
 mercury_output_remaining_terms([Term | Terms], VarSet) -->
@@ -450,7 +450,7 @@ mercury_output_remaining_terms([Term | Terms], VarSet) -->
 
 :- pred mercury_output_mode_decl(varset, sym_name, list(mode), determinism,
 			term__context, io__state, io__state).
-:- mode mercury_output_mode_decl(input, input, input, input, input, di, uo).
+:- mode mercury_output_mode_decl(in, in, in, in, in, di, uo).
 
 mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	io__write_string(":- mode "),
@@ -487,14 +487,14 @@ mercury_output_det(nondet) -->
 
 mercury_output_bracketed_sym_name(Name) -->
 	{ unqualify_name(Name, Name2) },
-	mercury_output_bracketed_constant(term_atom(Name2)).
+	mercury_output_bracketed_constant(term__atom(Name2)).
 
 :- pred mercury_output_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_sym_name(in, di, uo).
 
 mercury_output_sym_name(Name) -->
 	{ unqualify_name(Name, Name2) },
-	io__write_constant(term_atom(Name2)).
+	io__write_constant(term__atom(Name2)).
 
 %-----------------------------------------------------------------------------%
 
@@ -502,11 +502,11 @@ mercury_output_sym_name(Name) -->
 
 :- pred mercury_output_clause(varset, sym_name, list(term), goal, term__context,
 			io__state, io__state).
-:- mode mercury_output_clause(input, input, input, input, input, di, uo).
+:- mode mercury_output_clause(in, in, in, in, in, di, uo).
 
 mercury_output_clause(VarSet, PredName, Args, Body, Context) -->
 	{ unqualify_name(PredName, PredName2) },
-	mercury_output_term(term_functor(term_atom(PredName2), Args, Context),
+	mercury_output_term(term__functor(term__atom(PredName2), Args, Context),
 			VarSet),
 	(
 		{ Body = true }
@@ -519,7 +519,7 @@ mercury_output_clause(VarSet, PredName, Args, Body, Context) -->
 	io__write_string(".\n").
 
 :- pred mercury_output_goal(goal, varset, int, io__state, io__state).
-:- mode mercury_output_goal(input, input, input, di, uo).
+:- mode mercury_output_goal(in, in, in, di, uo).
 
 mercury_output_goal(fail, _, _) -->
 	io__write_string("fail").
@@ -618,13 +618,13 @@ mercury_output_goal(unify(A, B), VarSet, _Indent) -->
 	mercury_output_term(B, VarSet).
 
 :- pred mercury_output_call(term, varset, int, io__state, io__state).
-:- mode mercury_output_call(input, input, input, di, uo).
+:- mode mercury_output_call(in, in, in, di, uo).
 
 mercury_output_call(Term, VarSet, _Indent) -->
 	mercury_output_term(Term, VarSet).
 
 :- pred mercury_output_disj(goal, varset, int, io__state, io__state).
-:- mode mercury_output_disj(input, input, input, di, uo).
+:- mode mercury_output_disj(in, in, in, di, uo).
 
 mercury_output_disj(Goal, VarSet, Indent) -->
 	mercury_output_newline(Indent),
@@ -641,7 +641,7 @@ mercury_output_disj(Goal, VarSet, Indent) -->
 	).
 
 :- pred mercury_output_some(list(var), varset, io__state, io__state).
-:- mode mercury_output_some(input, input, di, uo).
+:- mode mercury_output_some(in, in, di, uo).
 
 mercury_output_some(Vars, VarSet) -->
 	(
@@ -658,7 +658,7 @@ mercury_output_some(Vars, VarSet) -->
 
 mercury_output_hlds_goal(Goal - GoalInfo, VarSet, Indent) -->
 		% debugging aid
-	{ goalinfo_get_nonlocals(GoalInfo, NonLocalsSet) },
+	{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 	{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 	io__write_string("% nonlocals: "),
 	mercury_output_vars(NonLocalsList, VarSet),
@@ -668,7 +668,7 @@ mercury_output_hlds_goal(Goal - GoalInfo, VarSet, Indent) -->
 
 :- pred mercury_output_hlds_goal_2(hlds__goal_expr, varset, int,
 					io__state, io__state).
-:- mode mercury_output_hlds_goal_2(input, input, input, di, uo).
+:- mode mercury_output_hlds_goal_2(in, in, in, di, uo).
 
 mercury_output_hlds_goal_2(switch(Var, CasesList, _), VarSet, Indent) -->
 	io__write_string("( % switch on `"),
@@ -775,18 +775,18 @@ mercury_output_hlds_goal_2(unify(A, B, _, _, _), VarSet, _Indent) -->
 
 :- pred mercury_output_hlds_call(pred_id, list(term), varset, int,
 				io__state, io__state).
-:- mode mercury_output_hlds_call(input, input, input, input, di, uo).
+:- mode mercury_output_hlds_call(in, in, in, in, di, uo).
 
 mercury_output_hlds_call(PredId, Args, VarSet, _Indent) -->
 		% XXX module name
 	{ predicate_name(PredId, PredName) },
 	{ term__context_init(0, Context) },
-	mercury_output_term(term_functor(term_atom(PredName), Args, Context),
+	mercury_output_term(term__functor(term__atom(PredName), Args, Context),
 				VarSet).
 
 :- pred mercury_output_hlds_conj(list(hlds__goal), varset, int,
 				io__state, io__state).
-:- mode mercury_output_hlds_conj(input, input, input, di, uo).
+:- mode mercury_output_hlds_conj(in, in, in, di, uo).
 
 mercury_output_hlds_conj(GoalList, VarSet, Indent) -->
 	(
@@ -803,7 +803,7 @@ mercury_output_hlds_conj(GoalList, VarSet, Indent) -->
 
 :- pred mercury_output_hlds_disj(list(hlds__goal), varset, int,
 				io__state, io__state).
-:- mode mercury_output_hlds_disj(input, input, input, di, uo).
+:- mode mercury_output_hlds_disj(in, in, in, di, uo).
 
 mercury_output_hlds_disj(GoalList, VarSet, Indent) -->
 	(
@@ -821,7 +821,7 @@ mercury_output_hlds_disj(GoalList, VarSet, Indent) -->
 
 :- pred mercury_output_hlds_case(case, var, varset, int,
 				io__state, io__state).
-:- mode mercury_output_hlds_case(input, input, input, input, di, uo).
+:- mode mercury_output_hlds_case(in, in, in, in, di, uo).
 
 mercury_output_hlds_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
 	{ term_list_to_var_list(Args, ArgVars) },
@@ -829,14 +829,14 @@ mercury_output_hlds_case(case(ConsId, ArgVars, Goal), Var, VarSet, Indent) -->
 	{ term__context_init(0, Context) },
 	mercury_output_var(Var, VarSet),
 	io__write_string(" = "),
-	mercury_output_term(term_functor(Name, Args, Context), VarSet),
+	mercury_output_term(term__functor(Name, Args, Context), VarSet),
 	io__write_string(","),
 	mercury_output_newline(Indent),
 	mercury_output_hlds_goal(Goal, VarSet, Indent).
 
 :- pred mercury_output_hlds_cases(list(case), var, varset, int,
 				io__state, io__state).
-:- mode mercury_output_hlds_cases(input, input, input, input, di, uo).
+:- mode mercury_output_hlds_cases(in, in, in, in, di, uo).
 
 mercury_output_hlds_cases(CasesList, Var, VarSet, Indent) -->
 	(
@@ -853,7 +853,7 @@ mercury_output_hlds_cases(CasesList, Var, VarSet, Indent) -->
 	).
 
 :- pred mercury_output_hlds_some(list(var), varset, io__state, io__state).
-:- mode mercury_output_hlds_some(input, input, di, uo).
+:- mode mercury_output_hlds_some(in, in, di, uo).
 
 	% quantification is all implicit by the time we get to the hlds.
 
@@ -862,14 +862,14 @@ mercury_output_hlds_some(_Vars, _VarSet) --> [].
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_newline(int, io__state, io__state).
-:- mode mercury_output_newline(input, di, uo).
+:- mode mercury_output_newline(in, di, uo).
 
 mercury_output_newline(Indent) -->
 	io__write_char('\n'),
 	mercury_output_tabs(Indent).
 
 :- pred mercury_output_tabs(int, io__state, io__state).
-:- mode mercury_output_tabs(input, di, uo).
+:- mode mercury_output_tabs(in, di, uo).
 
 mercury_output_tabs(Indent) -->
 	(
@@ -885,11 +885,11 @@ mercury_output_tabs(Indent) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_list_args(term, varset, io__state, io__state).
-:- mode mercury_output_list_args(input, input, di, uo).
+:- mode mercury_output_list_args(in, in, di, uo).
 
 mercury_output_list_args(Term, VarSet) -->
 	(
-	    	{ Term = term_functor(term_atom("."), Args, _),
+	    	{ Term = term__functor(term__atom("."), Args, _),
 		  Args = [X, Xs]
 	    	}
 	->
@@ -897,7 +897,7 @@ mercury_output_list_args(Term, VarSet) -->
 		mercury_output_term(X, VarSet),
 		mercury_output_list_args(Xs, VarSet)
 	;
-		{ Term = term_functor(term_atom("[]"), [], _) }
+		{ Term = term__functor(term__atom("[]"), [], _) }
 	->
 		[]
 	;
@@ -907,11 +907,11 @@ mercury_output_list_args(Term, VarSet) -->
 
 	% write a term to standard output.
 
-mercury_output_term(term_variable(Var), VarSet) -->
+mercury_output_term(term__variable(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
-mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
+mercury_output_term(term__functor(Functor, Args, _), VarSet) -->
 	(
-	    	{ Functor = term_atom("."),
+	    	{ Functor = term__atom("."),
 		  Args = [X, Xs]
 	    	}
 	->
@@ -921,7 +921,7 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string("]")
 	;
 		{ Args = [PrefixArg],
-		  Functor = term_atom(FunctorName),
+		  Functor = term__atom(FunctorName),
 		  mercury_unary_prefix_op(FunctorName)
 	    	}
 	->
@@ -932,7 +932,7 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string(")")
 	;
 		{ Args = [PostfixArg],
-		  Functor = term_atom(FunctorName),
+		  Functor = term__atom(FunctorName),
 		  mercury_unary_postfix_op(FunctorName)
 	    	}
 	->
@@ -943,7 +943,7 @@ mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
 		io__write_string(")")
 	;
 		{ Args = [Arg1, Arg2],
-		  Functor = term_atom(FunctorName),
+		  Functor = term__atom(FunctorName),
 		  mercury_infix_op(FunctorName)
 		}
 	->
@@ -974,7 +974,7 @@ mercury_output_vars([Var | Vars], VarSet) -->
 	mercury_output_vars_2(Vars, VarSet).
 
 :- pred mercury_output_vars_2(list(var), varset, io__state, io__state).
-:- mode mercury_output_vars_2(input, input, di, uo).
+:- mode mercury_output_vars_2(in, in, di, uo).
 
 mercury_output_vars_2([], _VarSet) --> [].
 mercury_output_vars_2([Var | Vars], VarSet) -->
@@ -1003,10 +1003,10 @@ mercury_output_var(Var, VarSet) -->
 	).
 
 :- pred mercury_output_bracketed_constant(const, io__state, io__state).
-:- mode mercury_output_bracketed_constant(input, di, uo).
+:- mode mercury_output_bracketed_constant(in, di, uo).
 
 mercury_output_bracketed_constant(Const) -->
-	( { Const= term_atom(Op), mercury_op(Op) } ->
+	( { Const= term__atom(Op), mercury_op(Op) } ->
 		io__write_string("("),
 		io__write_constant(Const),
 		io__write_string(")")
@@ -1019,7 +1019,7 @@ mercury_output_bracketed_constant(Const) -->
 	% Predicates to test whether a functor is a Mercury operator
 
 :- pred mercury_op(string).
-:- mode mercury_op(input).
+:- mode mercury_op(in).
 
 mercury_op(Op) :-
 	(
@@ -1039,7 +1039,7 @@ mercury_op(Op) :-
 	).
 
 :- pred mercury_binary_prefix_op(string).
-:- mode mercury_binary_prefix_op(input).
+:- mode mercury_binary_prefix_op(in).
 
 mercury_binary_prefix_op("some").
 mercury_binary_prefix_op("all").
@@ -1047,7 +1047,7 @@ mercury_binary_prefix_op("gSome").
 mercury_binary_prefix_op("gAll").
 
 :- pred mercury_infix_op(string).
-:- mode mercury_infix_op(input).
+:- mode mercury_infix_op(in).
 
 mercury_infix_op("-->").
 mercury_infix_op(":-").
@@ -1103,7 +1103,7 @@ mercury_infix_op("mod").
 mercury_infix_op("^").
 
 :- pred mercury_unary_prefix_op(string).
-:- mode mercury_unary_prefix_op(input).
+:- mode mercury_unary_prefix_op(in).
 
 mercury_unary_prefix_op(":-").
 mercury_unary_prefix_op(":-").
@@ -1133,7 +1133,7 @@ mercury_unary_prefix_op("+").
 mercury_unary_prefix_op("-").
 
 :- pred mercury_unary_postfix_op(string).
-:- mode mercury_unary_postfix_op(input).
+:- mode mercury_unary_postfix_op(in).
 
 mercury_unary_postfix_op("sorted").
 
@@ -1159,7 +1159,7 @@ mercury_unary_postfix_op("sorted").
 	% anthing else			same as original name
 
 :- pred mercury_convert_var_name(string, string).
-:- mode mercury_convert_var_name(input, output) is det.
+:- mode mercury_convert_var_name(in, out) is det.
 
 mercury_convert_var_name(Name, ConvertedName) :-
 	( string__append(_, "'", Name) ->

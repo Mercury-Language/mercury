@@ -14,13 +14,13 @@
 	% or not!
 
 :- pred mode_is_input(module_info, mode).
-:- mode mode_is_input(input, input) is semidet.
+:- mode mode_is_input(in, in) is semidet.
 
 :- pred mode_is_output(module_info, mode).
-:- mode mode_is_output(input, input) is semidet.
+:- mode mode_is_output(in, in) is semidet.
 
 :- pred inst_is_ground(module_info, inst).
-:- mode inst_is_ground(input, input) is semidet.
+:- mode inst_is_ground(in, in) is semidet.
 
 :- pred inst_list_is_ground(list(inst), module_info).
 :- mode inst_list_is_ground(in, in) is semidet.
@@ -29,16 +29,16 @@
 :- mode bound_inst_list_is_ground(in, in) is semidet.
 
 :- pred mode_id_to_int(mode_id, int).
-:- mode mode_id_to_int(input, output) is det.
+:- mode mode_id_to_int(in, out) is det.
 
 :- pred mode_list_get_final_insts(list(mode), module_info, list(inst)).
-:- mode mode_list_get_final_insts(input, input, output) is det.
+:- mode mode_list_get_final_insts(in, in, out) is det.
 
 :- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
-:- mode mode_list_get_initial_insts(input, input, output) is det.
+:- mode mode_list_get_initial_insts(in, in, out) is det.
 
 :- pred inst_lookup(module_info, sym_name, list(inst), inst).
-:- mode inst_lookup(input, input, input, output) is det.
+:- mode inst_lookup(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -78,7 +78,7 @@ mode_is_output(ModuleInfo, Mode) :-
 	% Abstract insts must not be free.
 
 :- pred inst_is_free(module_info, inst).
-:- mode inst_is_free(input, input).
+:- mode inst_is_free(in, in).
 
 :- inst_is_free(_, X) when X.		% NU-Prolog indexing.
 
@@ -94,7 +94,7 @@ inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 	% Abstract insts must be bound.
 
 :- pred inst_is_bound(module_info, inst).
-:- mode inst_is_bound(input, input).
+:- mode inst_is_bound(in, in).
 
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
@@ -133,14 +133,14 @@ inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 
 inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),
-	moduleinfo_insts(ModuleInfo, Insts),
+	module_info_insts(ModuleInfo, Insts),
 	map__search(Insts, Name - Arity, InstDefn),
 	InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
 	inst_lookup_2(Inst0, Params, Name, Args, Inst).
 
 :- pred inst_lookup_2(hlds__inst_body, list(inst_param), sym_name, list(inst),
 			inst).
-:- mode inst_lookup_2(input, input, input, input, output).
+:- mode inst_lookup_2(in, in, in, in, out).
 
 inst_lookup_2(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
 	inst_substitute_arg_list(Inst0, Params, Args, Inst).
@@ -151,12 +151,12 @@ inst_lookup_2(abstract_inst, _Params, Name, Args,
 	% the final instantiatedness for a given mode.
 
 :- pred mode_get_insts(module_info, mode, inst, inst).
-:- mode mode_get_insts(input, input, output, output).
+:- mode mode_get_insts(in, in, out, out).
 
 mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	length(Args, Arity),
-	moduleinfo_modes(ModuleInfo, Modes),
+	module_info_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, HLDS_Mode),
 	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond, _Context),
 	ModeDefn = eqv_mode(Mode0),
@@ -169,7 +169,7 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	% value in Args.
 
 :- pred mode_substitute_arg_list(mode, list(inst_param), list(inst), mode).
-:- mode mode_substitute_arg_list(input, input, input, output).
+:- mode mode_substitute_arg_list(in, in, in, out).
 
 mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 	( Params = [] ->
@@ -185,7 +185,7 @@ mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 	% value in Args.
 
 :- pred inst_substitute_arg_list(inst, list(inst_param), list(inst), inst).
-:- mode inst_substitute_arg_list(input, input, input, output).
+:- mode inst_substitute_arg_list(in, in, in, out).
 
 inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 	( Params = [] ->
@@ -201,7 +201,7 @@ inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 :- type inst_subst == map(inst_param, inst).
 
 :- pred mode_apply_substitution(mode, inst_subst, mode).
-:- mode mode_apply_substitution(input, input, output).
+:- mode mode_apply_substitution(in, in, out).
 
 mode_apply_substitution(I0 -> F0, Subst, I -> F) :-
 	inst_apply_substitution(I0, Subst, I),
@@ -214,7 +214,7 @@ mode_apply_substitution(user_defined_mode(Name, Args0), Subst,
 	% iff Inst is the inst that results from applying Subst to Insts0.
 
 :- pred inst_list_apply_substitution(list(inst), inst_subst, list(inst)).
-:- mode inst_list_apply_substitution(input, input, output).
+:- mode inst_list_apply_substitution(in, in, out).
 
 inst_list_apply_substitution([], _, []).
 inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
@@ -226,7 +226,7 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	% occurrences of Param in Inst0 with Arg.
 
 :- pred inst_apply_substitution(inst, inst_subst, inst).
-:- mode inst_apply_substitution(input, input, output).
+:- mode inst_apply_substitution(in, in, out).
 
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(ground, _, ground).
@@ -235,7 +235,7 @@ inst_apply_substitution(bound(Alts0), Subst, bound(Alts)) :-
 inst_apply_substitution(inst_var(Var), Subst, Result) :-
 	(if some [Replacement]
 		% XXX should params be vars?
-		map__search(Subst, term_variable(Var), Replacement)
+		map__search(Subst, term__variable(Var), Replacement)
 	then
 		Result = Replacement
 	else
@@ -250,7 +250,7 @@ inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).
-:- mode alt_list_apply_substitution(input, input, output).
+:- mode alt_list_apply_substitution(in, in, out).
 
 alt_list_apply_substitution([], _, []).
 alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-

@@ -27,20 +27,20 @@
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred io__op(int, op_type, string, io__state, io__state).
-:- mode io__op(input, input, input, di, uo).
+:- mode io__op(in, in, in, di, uo).
 %	io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
 :- type op_details ---> op(int, op_type, string).
 :- pred io__current_ops(list(op_details), io__state, io__state).
-:- mode io__current_ops(output, di, uo).
+:- mode io__current_ops(out, di, uo).
 %		Return a list containing all the current operator definitions.
 %		Does not modify the io__state.
 
 :- type read_term ---> eof ; error(string, int) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
-:- mode io__read_term(output, di, uo).
+:- mode io__read_term(out, di, uo).
 
 %	io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
@@ -49,26 +49,26 @@
 %		`term(VarSet, Term)', or `error(Message, LineNumber)'.
 
 :- pred io__write_term(varset, term, io__state, io__state).
-:- mode io__write_term(input, input, di, uo).
+:- mode io__write_term(in, in, di, uo).
 %		Writes a term to standard output.
 
 :- pred io__write_term_nl(varset, term, io__state, io__state).
-:- mode io__write_term_nl(input, input, di, uo).
+:- mode io__write_term_nl(in, in, di, uo).
 %		As above, except it appends a period and new-line.
 
 :- pred io__write_constant(const, io__state, io__state).
-:- mode io__write_constant(input, di, uo).
+:- mode io__write_constant(in, di, uo).
 %		Writes a constant (integer, float, or atom) to stdout.
 
 :- pred io__write_variable(var, varset, io__state, io__state).
-:- mode io__write_variable(input, input, di, uo).
+:- mode io__write_variable(in, in, di, uo).
 %		Writes a variable to stdout.
 
 :- pred mercury_quote_string(string, io__state, io__state).
-:- mode mercury_quote_string(input, di, uo).
+:- mode mercury_quote_string(in, di, uo).
 
 :- pred mercury_quote_atom(string, io__state, io__state).
-:- mode mercury_quote_atom(input, di, uo).
+:- mode mercury_quote_atom(in, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -95,7 +95,7 @@ io__write_variable(Variable, VarSet) -->
 
 :- pred io__write_variable_2(var, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_variable_2(input, input, input, output, output, di, uo).
+:- mode io__write_variable_2(in, in, in, out, out, di, uo).
 
 io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	(
@@ -128,13 +128,13 @@ io__write_term(VarSet, Term) -->
 	io__write_term_2(Term, VarSet, 0, _, _).
 
 :- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
-:- mode io__write_term_2(input, input, input, output, output, di, uo).
+:- mode io__write_term_2(in, in, in, out, out, di, uo).
 
-io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
+io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
 	io__write_variable_2(Id, VarSet0, N0, VarSet, N).
-io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
+io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 	(
-		{ Functor = term_atom(".") },
+		{ Functor = term__atom(".") },
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
@@ -142,7 +142,7 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
 		io__write_char(']')
 	;
-		{ Functor = term_atom("{}") },
+		{ Functor = term__atom("{}") },
 		{ Args = [BracedTerm] }
 	->
 		io__write_string("{ "),
@@ -194,22 +194,22 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 
 :- pred io__write_list_tail(term, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_list_tail(input, input, input, output, output, di, uo).
+:- mode io__write_list_tail(in, in, in, out, out, di, uo).
 
 io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	( 
-		{ Term = term_variable(Id) },
+		{ Term = term__variable(Id) },
 		{ varset__lookup_var(VarSet0, Id, Val) }
 	->
 		io__write_list_tail(Val, VarSet0, N0, VarSet, N)
 	;
-		{ Term = term_functor(term_atom("."), [ListHead, ListTail], _) }
+		{ Term = term__functor(term__atom("."), [ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
 		io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
 		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
 	;
-		{ Term = term_functor(term_atom("[]"), [], _) }
+		{ Term = term__functor(term__atom("[]"), [], _) }
 	->
 		{ VarSet = VarSet0 },
 		{ N = N0 }
@@ -219,13 +219,13 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	).
 
 :- pred io__infix_op(const, io__state, io__state).
-:- mode io__infix_op(input, di, uo).
+:- mode io__infix_op(in, di, uo).
 
 :- pred io__unary_prefix_op(const, io__state, io__state).
-:- mode io__unary_prefix_op(input, di, uo).
+:- mode io__unary_prefix_op(in, di, uo).
 
 :- pred io__unary_postfix_op(const, io__state, io__state).
-:- mode io__unary_postfix_op(input, di, uo).
+:- mode io__unary_postfix_op(in, di, uo).
 
 /*
 :- external("NU-Prolog", io__infix_op/3).
@@ -237,7 +237,7 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 
 :- pred io__write_term_args(list(term), varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_term_args(input, input, input, output, output, di, uo).
+:- mode io__write_term_args(in, in, in, out, out, di, uo).
 
 	% write the remaining arguments
 io__write_term_args([], VarSet, N, VarSet, N) --> [].
@@ -249,13 +249,13 @@ io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 %-----------------------------------------------------------------------------%
 
 	% write the functor
-io__write_constant(term_integer(I)) -->
+io__write_constant(term__integer(I)) -->
 	io__write_int(I).
-io__write_constant(term_float(F)) -->
+io__write_constant(term__float(F)) -->
 	io__write_float(F).
-io__write_constant(term_atom(A))  -->
+io__write_constant(term__atom(A))  -->
 	mercury_quote_atom(A).
-io__write_constant(term_string(S)) -->
+io__write_constant(term__string(S)) -->
 	io__write_char('"'),
 	mercury_quote_string(S),
 	io__write_char('"').
@@ -287,7 +287,7 @@ mercury_quote_string(S0) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_quote_char(character, character).
-:- mode mercury_quote_char(input, output).
+:- mode mercury_quote_char(in, out).
 
 mercury_quote_char('\"', '"').
 mercury_quote_char('\\', '\\').

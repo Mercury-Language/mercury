@@ -27,67 +27,67 @@
 
 	% Initialize an empty map.
 :- pred map__init(map(_,_)).
-:- mode map__init(output).
+:- mode map__init(out).
 
 	% Check whether map contains key
 :- pred map__contains(map(K,_V), K).
-:- mode map__contains(input, input).
+:- mode map__contains(in, in).
 
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
-:- mode map__search(input, input, output).
+:- mode map__search(in, in, out).
 
 	% Search map for key, but abort if search fails.
 :- pred map__lookup(map(K,V), K, V).
-:- mode map__lookup(input, input, output).
+:- mode map__lookup(in, in, out).
 
 	% Search map for data.
 :- pred map__inverse_search(map(K,V), V, K).
-:- mode map__inverse_search(input, input, output).
+:- mode map__inverse_search(in, in, out).
 
 	% Insert a new key and corresponding value into a map.
 :- pred map__insert(map(K,V), K, V, map(K,V)).
-:- mode map__insert(input, input, input, output).
+:- mode map__insert(in, in, in, out).
 
 	% Insert a new key and corresponding value into a map,
 	% or unify value with existing value in map.
 :- pred map__search_insert(map(K,V), K, V, map(K,V)).
-:- mode map__search_insert(input, input, input, output).
+:- mode map__search_insert(in, in, in, out).
 
 	% Update the value corresponding to a given key
 :- pred map__update(map(K,V), K, V, map(K,V)).
-:- mode map__update(input, input, input, output).
+:- mode map__update(in, in, in, out).
 
 	% Update value if it's already there, otherwise insert it
 :- pred map__set(map(K,V), K, V, map(K,V)).
-:- mode map__set(input, input, input, output).
+:- mode map__set(in, in, in, out).
 
 	% Given a map, return a list of all the keys in the map
 :- pred map__keys(map(K, _V), list(K)).
-:- mode map__keys(input, output) is det.
+:- mode map__keys(in, out) is det.
 
 	% Given a map, return a list of all the data values in the map
 :- pred map__values(map(_K, V), list(V)).
-:- mode map__values(input, output) is det.
+:- mode map__values(in, out) is det.
 
 	% convert a map to an association list
 :- pred map__to_assoc_list(map(K,V), assoc_list(K,V)).
-:- mode map__to_assoc_list(input, output).
+:- mode map__to_assoc_list(in, out).
 
 	% convert an association list to a map
 :- pred map__from_assoc_list(assoc_list(K,V), map(K,V)).
-:- mode map__from_assoc_list(input, output).
+:- mode map__from_assoc_list(in, out).
 
 	% convert a sorted association list to a map
 :- pred map__from_sorted_assoc_list(assoc_list(K,V), map(K,V)).
-:- mode map__from_sorted_assoc_list(input, output).
+:- mode map__from_sorted_assoc_list(in, out).
 
 	% delete a key-value pair from a map
 :- pred map__delete(map(K,V), K, map(K,V)).
-:- mode map__delete(input, input, output).
+:- mode map__delete(in, in, out).
 
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
-:- mode map__from_corresponding_lists(input, input, output).
+:- mode map__from_corresponding_lists(in, in, out).
 
 %-----------------------------------------------------------------------------%
 
@@ -163,9 +163,9 @@ map__inverse_search(Map, V, K) :-
 	% bootstrap this thing before we implement polymorphic modes.
 
 :- pred assoc_list_member(pair(K,V), list(pair(K,V))).
-:- mode assoc_list_member(bound(ground - free) -> ground, input).
-:- mode assoc_list_member(bound(free - ground) -> ground, input).
-:- mode assoc_list_member(bound(free - free) -> ground, input).
+:- mode assoc_list_member(bound(ground - free) -> ground, in).
+:- mode assoc_list_member(bound(free - ground) -> ground, in).
+:- mode assoc_list_member(bound(free - free) -> ground, in).
 assoc_list_member(X, [X|_]).
 assoc_list_member(X, [_|Xs]) :-
 	assoc_list_member(X, Xs).

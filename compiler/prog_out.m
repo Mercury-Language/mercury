@@ -18,16 +18,16 @@
 :- interface.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
-:- mode prog_out__write_messages(input, di, uo).
+:- mode prog_out__write_messages(in, di, uo).
 
 :- pred prog_out__write_context(term__context, io__state, io__state).
-:- mode prog_out__write_context(input, di, uo).
+:- mode prog_out__write_context(in, di, uo).
 
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
-:- mode prog_out__write_sym_name(input, di, uo).
+:- mode prog_out__write_sym_name(in, di, uo).
 
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
-:- mode prog_out__write_module_spec(input, input, output).
+:- mode prog_out__write_module_spec(in, in, out).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,17 +46,17 @@ prog_out__write_messages([Message | Messages]) -->
 	prog_out__write_messages(Messages).
 
 :- pred prog_out__write_message(pair(string, term), io__state, io__state).
-:- mode prog_out__write_message(input, di, uo).
+:- mode prog_out__write_message(in, di, uo).
 
 prog_out__write_message(Msg - Term) -->
 	(
-		{ Term = term_functor(_Functor, _Args, Context) }
+		{ Term = term__functor(_Functor, _Args, Context) }
 	->
 		prog_out__write_context(Context)
 	),
 	io__write_string(Msg),
 	(
-		{ Term = term_functor(term_atom(""), [], _Context2) }
+		{ Term = term__functor(term__atom(""), [], _Context2) }
 	->
 		io__write_string(".\n")
 	;
@@ -131,7 +131,7 @@ prog_out__writeDCGClause(Head, Body, VarSet) -->
 :- type context ---> '(' ; (';') ; (then) ; (else) ; ','.
 
 :- pred prog_out__write_goal(goal, int, context, varset, io__state, io__state).
-:- mode prog_out__write_goal(input, input, input, input, di, uo).
+:- mode prog_out__write_goal(in, in, in, in, di, uo).
 
 prog_out__write_goal(fail, I0, T, _VarSet) -->
 	prog_out__beforelit(T, I0),
@@ -257,7 +257,7 @@ prog_out__write_some_vars(_VarSet, Vars) -->
 	io__write_anything(Vars).		% XXX
 
 :- pred prog_out__beforelit(context, int, io__state, io__state).
-:- mode prog_out__beforelit(input, input, di, uo).
+:- mode prog_out__beforelit(in, in, di, uo).
 
 prog_out__beforelit('(', _) -->
 	io__write_string("\t").
@@ -290,7 +290,7 @@ prog_out__indent(N) -->
 	).
 
 :- pred prog_out__qwrite(int, varset, term, io__state, io__state).
-:- mode prog_out__qwrite(input, input, input, di, uo).
+:- mode prog_out__qwrite(in, in, in, di, uo).
 
 	% XXX problems with precedence
 
@@ -298,7 +298,7 @@ prog_out__qwrite(_Prec, VarSet, X) -->
 	io__write_term(VarSet, X).
 
 :- pred prog_out__get_op_prec(string, int, int, io__state, io__state).
-:- mode prog_out__get_op_prec(input, input, output, di, uo).
+:- mode prog_out__get_op_prec(in, in, out, di, uo).
 
 prog_out__get_op_prec(Op, Pos, Prec) -->
 	io__current_ops(Ops),
@@ -318,7 +318,7 @@ get_prec_and_type(ThisOp, [Op|Ops], Prec, Type) :-
 	).
 
 :- pred prog_out__op_adj(int, op_type, int).
-:- mode prog_out__op_adj(input, input, output).
+:- mode prog_out__op_adj(in, in, out).
 
 prog_out__op_adj(1, xfx, 1).
 prog_out__op_adj(1, xfy, 1).

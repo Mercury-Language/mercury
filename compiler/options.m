@@ -23,10 +23,10 @@
 
 % A couple of misc utilities
 
-:- pred maybe_report_stats(bool::input, io__state::di, io__state::uo).
+:- pred maybe_report_stats(bool::in, io__state::di, io__state::uo).
 :- pred maybe_write_string(bool::input, string::input,
 			io__state::di, io__state::uo).
-:- pred maybe_flush_output(bool::input, io__state::di, io__state::uo).
+:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo).
 
 :- type option		--->	verbose
 			;	very_verbose

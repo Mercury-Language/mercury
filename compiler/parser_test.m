@@ -17,67 +17,67 @@ test(TestNum, Name, String, Term, ExpectedTerm, Result) :-
 	).
 
 get_test(1, "empty string", "\"\"",
-	term_functor(term_string(""), [], _)).
+	term__functor(term__string(""), [], _)).
 get_test(2, "non-empty string", "\"foo\"",
-	term_functor(term_string("foo"), [], _)).
+	term__functor(term__string("foo"), [], _)).
 get_test(3, "empty list", "[]",
-	term_functor(term_atom("[]"), [], _)).
+	term__functor(term__atom("[]"), [], _)).
 get_test(4, "singleton list", "[x]",
-	term_functor(term_atom("."), [
-		term_functor(term_atom("x"), [], _),
-		term_functor(term_atom("[]"), [], _)
+	term__functor(term__atom("."), [
+		term__functor(term__atom("x"), [], _),
+		term__functor(term__atom("[]"), [], _)
 	], _)).
 get_test(5, "long list", "[x,y,z]",
-	term_functor(term_atom("."), [
-		term_functor(term_atom("x"), [], _),
-		term_functor(term_atom("."), [
-			term_functor(term_atom("y"), [], _),
-			term_functor(term_atom("."), [
-				term_functor(term_atom("z"), [], _),
-				term_functor(term_atom("[]"), [], _)
+	term__functor(term__atom("."), [
+		term__functor(term__atom("x"), [], _),
+		term__functor(term__atom("."), [
+			term__functor(term__atom("y"), [], _),
+			term__functor(term__atom("."), [
+				term__functor(term__atom("z"), [], _),
+				term__functor(term__atom("[]"), [], _)
 			], _)
 		], _)
 	], _)).
 get_test(6, "list with tail", "[x|y]",
-	term_functor(term_atom("."), [
-		term_functor(term_atom("x"), [], _),
-		term_functor(term_atom("y"), [], _)
+	term__functor(term__atom("."), [
+		term__functor(term__atom("x"), [], _),
+		term__functor(term__atom("y"), [], _)
 	], _)).
 get_test(7, "long list with tail", "[x,y|z]",
-	term_functor(term_atom("."), [
-		term_functor(term_atom("x"), [], _),
-		term_functor(term_atom("."), [
-			term_functor(term_atom("y"), [], _),
-			term_functor(term_atom("z"), [], _)
+	term__functor(term__atom("."), [
+		term__functor(term__atom("x"), [], _),
+		term__functor(term__atom("."), [
+			term__functor(term__atom("y"), [], _),
+			term__functor(term__atom("z"), [], _)
 		], _)
 	], _)).
-get_test(8, "integer", "3", term_functor(term_integer(3), [], _)).
-get_test(9, "float", "3.0", term_functor(term_float(3.0), [], _)).
+get_test(8, "integer", "3", term__functor(term__integer(3), [], _)).
+get_test(9, "float", "3.0", term__functor(term__float(3.0), [], _)).
 get_test(10, "braces", "{x}",
-	term_functor(term_atom("{}"), [
-		term_functor(term_atom("x"), [], _)
+	term__functor(term__atom("{}"), [
+		term__functor(term__atom("x"), [], _)
 	], _)).
 get_test(11, "braces pair", "{x,y}",
-	term_functor(term_atom("{}"), [
-		term_functor(term_atom(","), [
-			term_functor(term_atom("x"), [], _),
-			term_functor(term_atom("y"), [], _)
+	term__functor(term__atom("{}"), [
+		term__functor(term__atom(","), [
+			term__functor(term__atom("x"), [], _),
+			term__functor(term__atom("y"), [], _)
 		], _)
 	], _)).
 
 get_test(12, "atom", "x",
-	term_functor(term_atom("x"), [], _)).
+	term__functor(term__atom("x"), [], _)).
 get_test(13, "quoted atom", "'x'",
-	term_functor(term_atom("x"), [], _)).
+	term__functor(term__atom("x"), [], _)).
 get_test(14, "operator", "-",
-	term_functor(term_atom("-"), [], _)).
+	term__functor(term__atom("-"), [], _)).
 get_test(15, "random junk", "-----",
-	term_functor(term_atom("-----"), [], _)).
+	term__functor(term__atom("-----"), [], _)).
 
 get_test(16, "'[]'(x)", "'[]'(x)",
-	term_functor(term_atom("[]"), [
-		term_functor(term_atom("x"), [], _)
+	term__functor(term__atom("[]"), [
+		term__functor(term__atom("x"), [], _)
 	], _)).
-get_test(17, "variable", "X", term_variable(_)).
+get_test(17, "variable", "X", term__variable(_)).
 
 max_test(17).

@@ -11,7 +11,7 @@
 % (A,B,C) into conj([A,B,C]) form, convert all unifications into
 % super-homogenous form, and introduce implicit quantification.
 % 
-% XXX we should record each error using moduleinfo_incr_errors.
+% XXX we should record each error using module_info_incr_errors.
 
 % WISHLIST - we should handle explicit module quantification
 
@@ -20,7 +20,7 @@
 :- import_module prog_io, hlds.
 
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
-:- mode parse_tree_to_hlds(input, output, di, uo).
+:- mode parse_tree_to_hlds(in, out, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 :- import_module hlds_out.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
-	{ moduleinfo_init(Name, Module0) },
+	{ module_info_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
 	lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
@@ -40,9 +40,9 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
 		% effiency, so we return it to the correct order here.
-	{ moduleinfo_predids(Module3, RevPredIds) },
+	{ module_info_predids(Module3, RevPredIds) },
 	{ reverse(RevPredIds, PredIds) },
-	{ moduleinfo_set_predids(Module3, PredIds, Module) }.
+	{ module_info_set_predids(Module3, PredIds, Module) }.
 
 	% After we have finished constructing the symbol tables,
 	% we balance all the binary trees, to improve performance
@@ -53,29 +53,29 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 
 module_balance(ModuleInfo0, ModuleInfo) :-
 
-	moduleinfo_preds(ModuleInfo0, Preds0),
+	module_info_preds(ModuleInfo0, Preds0),
 	bintree__balance(Preds0, Preds),
-	moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1),
+	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
 
-	moduleinfo_pred_name_index(ModuleInfo1, PredNameIndex0),
+	module_info_pred_name_index(ModuleInfo1, PredNameIndex0),
 	bintree__balance(PredNameIndex0, PredNameIndex),
-	moduleinfo_set_pred_name_index(ModuleInfo1, PredNameIndex, ModuleInfo2),
+	module_info_set_pred_name_index(ModuleInfo1, PredNameIndex, ModuleInfo2),
 
-	moduleinfo_types(ModuleInfo2, Types0),
+	module_info_types(ModuleInfo2, Types0),
 	bintree__balance(Types0, Types),
-	moduleinfo_set_types(ModuleInfo2, Types, ModuleInfo3),
+	module_info_set_types(ModuleInfo2, Types, ModuleInfo3),
 
-	moduleinfo_insts(ModuleInfo3, Insts0),
+	module_info_insts(ModuleInfo3, Insts0),
 	bintree__balance(Insts0, Insts),
-	moduleinfo_set_insts(ModuleInfo3, Insts, ModuleInfo4),
+	module_info_set_insts(ModuleInfo3, Insts, ModuleInfo4),
 
-	moduleinfo_modes(ModuleInfo4, Modes0),
+	module_info_modes(ModuleInfo4, Modes0),
 	bintree__balance(Modes0, Modes),
-	moduleinfo_set_modes(ModuleInfo4, Modes, ModuleInfo5),
+	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo5),
 
-	moduleinfo_ctors(ModuleInfo5, Ctors0),
+	module_info_ctors(ModuleInfo5, Ctors0),
 	bintree__balance(Ctors0, Ctors),
-	moduleinfo_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
+	module_info_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -83,7 +83,7 @@ module_balance(ModuleInfo0, ModuleInfo) :-
 
 :- pred add_item_list_decls(item_list, module_info, module_info,
 				io__state, io__state).
-:- mode add_item_list_decls(input, input, output, di, uo).
+:- mode add_item_list_decls(in, in, out, di, uo).
 
 add_item_list_decls([], Module, Module) --> [].
 add_item_list_decls([Item - Context | Items], Module0, Module) -->
@@ -99,7 +99,7 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 		io__write_anything(Item),
 		io__write_string("\n"),
 		io__set_output_stream(OldStream, _),
-		{ moduleinfo_incr_errors(Module0, Module1) }
+		{ module_info_incr_errors(Module0, Module1) }
 	),
 	add_item_list_decls(Items, Module1, Module).
 
@@ -107,7 +107,7 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 
 :- pred add_item_list_clauses(item_list, module_info, module_info,
 				io__state, io__state).
-:- mode add_item_list_clauses(input, input, output, di, uo).
+:- mode add_item_list_clauses(in, in, out, di, uo).
 
 add_item_list_clauses([], Module, Module) --> [].
 add_item_list_clauses([Item - Context | Items], Module0, Module) -->
@@ -123,7 +123,7 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 		io__write_anything(Item),
 		io__write_string("\n"),
 		io__set_output_stream(OldStream, _),
-		{ moduleinfo_incr_errors(Module0, Module1) }
+		{ module_info_incr_errors(Module0, Module1) }
 	),
 	add_item_list_clauses(Items, Module1, Module).
 
@@ -133,7 +133,7 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 
 :- pred add_item_decl(item, term__context, module_info, module_info,
 			io__state, io__state).
-:- mode add_item_decl(input, input, input, output, di, uo).
+:- mode add_item_decl(in, in, in, out, di, uo).
 
 add_item_decl(clause(_, _, _, _), _, Module, Module) --> [].	% skip clauses
 
@@ -180,7 +180,7 @@ add_item_decl(nothing, _, Module, Module) -->
 
 :- pred add_item_clause(item, term__context, module_info, module_info,
 			io__state, io__state).
-:- mode add_item_clause(input, input, input, output, di, uo).
+:- mode add_item_clause(in, in, in, out, di, uo).
 
 add_item_clause(clause(VarSet, PredName, Args, Body), Context, Module0,
 			Module) -->
@@ -199,18 +199,18 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 :- pred module_add_inst_defn(module_info, varset, inst_defn, condition,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_inst_defn(input, input, input, input, input, output, di, uo).
+:- mode module_add_inst_defn(in, in, in, in, in, out, di, uo).
 
 module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
-	{ moduleinfo_insts(Module0, Insts0) },
+	{ module_info_insts(Module0, Insts0) },
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Insts),
-	{ moduleinfo_set_insts(Module0, Insts, Module) }.
+	{ module_info_set_insts(Module0, Insts, Module) }.
 
 	% XXX handle abstract insts
 
 :- pred insts_add(inst_table, varset, inst_defn, condition, term__context,
 			inst_table, io__state, io__state).
-:- mode insts_add(input, input, input, input, input, output, di, uo).
+:- mode insts_add(in, in, in, in, in, out, di, uo).
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ length(Args, Arity),
 	  I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond, Context) },
@@ -235,7 +235,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	% (This is perhaps more strict than it need be.)
 
 :- pred inst_is_compat(hlds__inst_defn, hlds__inst_defn).
-:- mode inst_is_compat(input, input).
+:- mode inst_is_compat(in, in).
 
 inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
 		hlds__inst_defn(_, Args, Body, _, _)).
@@ -244,16 +244,16 @@ inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
 
 :- pred module_add_mode_defn(module_info, varset, mode_defn, condition,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_mode_defn(input, input, input, input, input, output, di, uo).
+:- mode module_add_mode_defn(in, in, in, in, in, out, di, uo).
 
 module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
-	{ moduleinfo_modes(Module0, Modes0) },
+	{ module_info_modes(Module0, Modes0) },
 	modes_add(Modes0, VarSet, ModeDefn, Cond, Context, Modes),
-	{ moduleinfo_set_modes(Module0, Modes, Module) }.
+	{ module_info_set_modes(Module0, Modes, Module) }.
 
 :- pred modes_add(mode_table, varset, mode_defn, condition, term__context,
 			mode_table, io__state, io__state).
-:- mode modes_add(input, input, input, input, input, output, di, uo).
+:- mode modes_add(in, in, in, in, in, out, di, uo).
 
 modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	{ length(Args, Arity),
@@ -275,12 +275,12 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	).
 
 :- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds__mode_body).
-:- mode mode_name_args(input, output, output, output).
+:- mode mode_name_args(in, out, out, out).
 
 mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 
 :- pred mode_is_compat(hlds__mode_defn, hlds__mode_defn).
-:- mode mode_is_compat(input, input).
+:- mode mode_is_compat(in, in).
 
 mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 		hlds__mode_defn(_, Args, Body, _, _)).
@@ -294,10 +294,10 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 
 :- pred module_add_type_defn(module_info, varset, type_defn, condition,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
+:- mode module_add_type_defn(in, in, in, in, in, out, di, uo).
 
 module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
-	{ moduleinfo_types(Module0, Types0) },
+	{ module_info_types(Module0, Types0) },
 	{ type_name_args(TypeDefn, Name, Args, Body),
 	  length(Args, Arity),
 	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
@@ -329,13 +329,13 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		( %%% some [ConsList]
 			{ Body = du_type(ConsList) }
 		->
-			{ moduleinfo_ctors(Module0, Ctors0) },
+			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
-			{ moduleinfo_set_ctors(Module0, Ctors, Module1) }
+			{ module_info_set_ctors(Module0, Ctors, Module1) }
 		;
 			{ Module1 = Module0 }
 		),
-		{ moduleinfo_set_types(Module1, Types, Module) },
+		{ module_info_set_types(Module1, Types, Module) },
 		( { Body = uu_type(_) } ->
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
@@ -349,7 +349,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	).
 
 :- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
-:- mode type_name_args(input, output, output, output).
+:- mode type_name_args(in, out, out, out).
 
 type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
@@ -360,14 +360,14 @@ type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
 	% same argument lists and bodies.
 
 :- pred type_is_compat(hlds__type_defn, hlds__type_defn).
-:- mode type_is_compat(input, input).
+:- mode type_is_compat(in, in).
 
 type_is_compat( hlds__type_defn(_, Args, Body, _, _),
 		hlds__type_defn(_, Args, Body, _, _)).
 
 :- pred ctors_add(list(constructor), type_id, term__context, cons_table,
 			cons_table, io__state, io__state).
-:- mode ctors_add(input, input, input, input, output, di, uo).
+:- mode ctors_add(in, in, in, in, out, di, uo).
 
 
 ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
@@ -403,7 +403,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
 		determinism, condition, term__context, module_info,
 		io__state, io__state).
-:- mode module_add_pred(input, input, input, input, input, input, input, output,
+:- mode module_add_pred(in, in, in, in, in, in, in, out,
 		di, uo).
 
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
@@ -422,12 +422,12 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 
 :- pred preds_add(module_info, varset, sym_name, list(type),
 		condition, term__context, module_info, io__state, io__state).
-:- mode preds_add(input, input, input, input, input, input, output,
+:- mode preds_add(in, in, in, in, in, in, out,
 		di, uo).
 
 preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
-	{ moduleinfo_name(Module0, ModuleName) },
-	{ moduleinfo_preds(Module0, Preds0) },
+	{ module_info_name(Module0, ModuleName) },
+	{ module_info_preds(Module0, Preds0) },
 	{ length(Types, Arity),
 	  map__init(Procs),
 	  make_predid(ModuleName, Name, Arity, PredId),
@@ -449,11 +449,11 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 		)
 	;
 		{ map__insert(Preds0, PredId, P, Preds) },
-		{ moduleinfo_set_preds(Module0, Preds, Module1) },
-		{ moduleinfo_predids(Module1, PredIds0) },
-		{ moduleinfo_set_predids(Module1, [PredId | PredIds0],
+		{ module_info_set_preds(Module0, Preds, Module1) },
+		{ module_info_predids(Module1, PredIds0) },
+		{ module_info_set_predids(Module1, [PredId | PredIds0],
 				Module2) },
-		{ moduleinfo_pred_name_index(Module2, PredNameIndex0) },
+		{ module_info_pred_name_index(Module2, PredNameIndex0) },
 		{ unqualify_name(Name, UnqualifiedName) },
 		{
 			map__search(PredNameIndex0, UnqualifiedName, PredIdList)
@@ -464,18 +464,18 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 			map__insert(PredNameIndex0, UnqualifiedName,
 				[PredId], PredNameIndex)
 		},
-		{ moduleinfo_set_pred_name_index(Module2, PredNameIndex,
+		{ module_info_set_pred_name_index(Module2, PredNameIndex,
 				Module) }
 	).
 
 	% XXX This doesn't work.
 
 :- pred pred_is_compat(pred_info, pred_info).
-:- mode pred_is_compat(input, input).
+:- mode pred_is_compat(in, in).
 
 pred_is_compat(PredInfo1, PredInfo2) :-
-	predinfo_arg_types(PredInfo1, _, ArgTypes1),
-	predinfo_arg_types(PredInfo2, _, ArgTypes2),
+	pred_info_arg_types(PredInfo1, _, ArgTypes1),
+	pred_info_arg_types(PredInfo2, _, ArgTypes2),
 	ArgTypes1 = ArgTypes2.
  
 %-----------------------------------------------------------------------------%
@@ -485,22 +485,22 @@ pred_is_compat(PredInfo1, PredInfo2) :-
 :- pred module_add_mode(module_info, varset, sym_name, list(mode), determinism,
 			condition, term__context, module_info,
 			io__state, io__state).
-:- mode module_add_mode(input, input, input, input, input, input, input, output,
+:- mode module_add_mode(in, in, in, in, in, in, in, out,
 			di, uo).
 
 module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
 		-->
-	{ moduleinfo_preds(Module0, Preds0) },
-	{ moduleinfo_name(Module0, ModuleName) },
+	{ module_info_preds(Module0, Preds0) },
+	{ module_info_name(Module0, ModuleName) },
 	pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 			Context, Preds),
-	{ moduleinfo_set_preds(Module0, Preds, Module) }.
+	{ module_info_set_preds(Module0, Preds, Module) }.
 
 :- pred pred_modes_add(pred_table, module_name, varset, sym_name, list(mode),
 		determinism, condition, term__context, pred_table,
 		io__state, io__state).
-:- mode pred_modes_add(input, input, input, input, input, input, input,
-		input, output, di, uo).
+:- mode pred_modes_add(in, in, in, in, in, in, in,
+		in, out, di, uo).
 
 	% XXX we should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments
@@ -513,13 +513,13 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		% some [P0]
 		{ map__search(Preds0, PredId, P0) }
 	->
-		{ predinfo_procedures(P0, Procs0) },
+		{ pred_info_procedures(P0, Procs0) },
 			% XXX we should check that this mode declaration
 			% isn't the same as an existing one
 		{ next_mode_id(Procs0, ModeId) },
-		{ procinfo_init(Modes, Det, MContext, NewProc) },
+		{ proc_info_init(Modes, Det, MContext, NewProc) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) },
-		{ predinfo_set_procedures(P0, Procs, P) },
+		{ pred_info_set_procedures(P0, Procs, P) },
 		{ map__set(Preds0, PredId, P, Preds) }
 	;
 		undefined_pred_error(PredName, Arity, MContext,	
@@ -533,7 +533,7 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 	% predicate, we add an implicit declaration for that predicate.
 
 :- pred preds_add_implicit(pred_table, pred_id, term__context, pred_table).
-:- mode preds_add_implicit(input, input, input, output).
+:- mode preds_add_implicit(in, in, in, out).
 
 preds_add_implicit(Preds0, PredId, Context, Preds) :-
 	predicate_arity(PredId, Arity),
@@ -546,11 +546,11 @@ preds_add_implicit(Preds0, PredId, Context, Preds) :-
 	map__set(Preds0, PredId, P, Preds).
 
 :- pred var_list_to_term_list(list(var), list(term)).
-:- mode var_list_to_term_list(input, output) is det.
-:- mode var_list_to_term_list(output, input).
+:- mode var_list_to_term_list(in, out) is det.
+:- mode var_list_to_term_list(out, in).
 
 var_list_to_term_list([], []).
-var_list_to_term_list([V | Vs0], [term_variable(V) | Vs]) :-
+var_list_to_term_list([V | Vs0], [term__variable(V) | Vs]) :-
 	var_list_to_term_list(Vs0, Vs).
 
 	% XXX efficiency could be improved
@@ -558,7 +558,7 @@ var_list_to_term_list([V | Vs0], [term_variable(V) | Vs]) :-
 	% than recomputing it all the time
 
 :- pred next_mode_id(proc_table, proc_id).
-:- mode next_mode_id(input, output).
+:- mode next_mode_id(in, out).
 
 next_mode_id(Procs, ModeId) :-
 	map__to_assoc_list(Procs, List),
@@ -568,19 +568,19 @@ next_mode_id(Procs, ModeId) :-
 
 :- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_clause(input, input, input, input, input, input, output,
+:- mode module_add_clause(in, in, in, in, in, in, out,
 			di, uo).
 
 module_add_clause(Module0, VarSet, PredName, Args, Body, Context, Module) -->
-	{ moduleinfo_preds(Module0, Preds0) },
-	{ moduleinfo_name(Module0, ModuleName) },
+	{ module_info_preds(Module0, Preds0) },
+	{ module_info_name(Module0, ModuleName) },
 	clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		Preds),
-	{ moduleinfo_set_preds(Module0, Preds, Module) }.
+	{ module_info_set_preds(Module0, Preds, Module) }.
 
 :- pred clauses_add(pred_table, module_name, varset, sym_name, list(term),
 			goal, term__context, pred_table, io__state, io__state).
-:- mode clauses_add(input, input, input, input, input, input, input, output,
+:- mode clauses_add(in, in, in, in, in, in, in, out,
 			di, uo).
 
 clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
@@ -604,12 +604,12 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		{ map__search(Preds0, PredId, PredInfo0) }
 	->
 			% XXX abstract predicate/4
-		{ predinfo_clauses_info(PredInfo0, Clauses0), 
-		  predinfo_procedures(PredInfo0, Procs),
+		{ pred_info_clauses_info(PredInfo0, Clauses0), 
+		  pred_info_procedures(PredInfo0, Procs),
 		  map__keys(Procs, ModeIds),
 		  clauses_info_add_clause(Clauses0, ModeIds, VarSet, Args,
 				Body, Context, Clauses),
-		  predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo),
+		  pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
 	;
 		undefined_pred_error(PredName, Arity, Context, "clause"),
@@ -777,7 +777,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 
 :- pred transform(substitution, list(var), list(term), goal, varset,
 			hlds__goal, varset).
-:- mode transform(input, input, input, input, input, output, output) is det.
+:- mode transform(in, in, in, in, in, out, out) is det.
 
 transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
@@ -797,25 +797,25 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 	% the goal, to rename it apart from the other clauses.
 
 :- pred transform_goal(goal, varset, substitution, hlds__goal, varset).
-:- mode transform_goal(input, input, input, output, output).
+:- mode transform_goal(in, in, in, out, out).
 
 transform_goal(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(some(Vars0, Goal0), VarSet0, Subst,
 		some(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(all(Vars0, Goal0), VarSet0, Subst,
 		all(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
@@ -823,7 +823,7 @@ transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 	transform_goal(A0, VarSet0, Subst, A, VarSet1),
 	transform_goal(B0, VarSet1, Subst, B, VarSet2),
 	transform_goal(C0, VarSet2, Subst, C, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
 	transform_goal(if_then_else(Vars0, A0, B0, fail), Subst, VarSet0,
@@ -833,17 +833,17 @@ transform_goal(not(Vars0, A0), VarSet0, Subst,
 		not(Vars, A) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(A0, VarSet0, Subst, A, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal((A0,B0), VarSet0, Subst, conj(L) - GoalInfo, VarSet) :-
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_conj(A0, Subst, L0, VarSet1, L, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal((A0;B0), VarSet0, Subst, disj(L) - GoalInfo, VarSet) :-
 	get_disj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
-	goalinfo_init(GoalInfo).
+	goal_info_init(GoalInfo).
 
 transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 
@@ -856,7 +856,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	ModuleName = "",
 
 	term__apply_substitution(Goal0, Subst, Goal1),
-	( Goal1 = term_functor(term_atom(PredName0), Args0, _) ->
+	( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
 		PredName = PredName0,
 		Args = Args0
 	;
@@ -874,7 +874,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 	var_list_to_term_list(HeadVars, HeadArgs),
 	Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
-	goalinfo_init(GoalInfo),
+	goal_info_init(GoalInfo),
 	insert_arg_unifications(HeadVars, Args, call(PredId), Goal2,
 	 	VarSet1, Goal, VarSet).
 
@@ -904,8 +904,8 @@ transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 
 :- pred insert_arg_unifications(list(var), list(term), arg_context,
 				hlds__goal, varset, hlds__goal, varset).
-:- mode insert_arg_unifications(input, input, input, input, input, 
-				output, output).
+:- mode insert_arg_unifications(in, in, in, in, in, 
+				out, out).
 
 insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 			Goal, VarSet) :-
@@ -916,28 +916,28 @@ insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 		goal_to_conj_list(Goal0, List0),
 		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
 			List0, VarSet0, List, VarSet),
-		goalinfo_init(GoalInfo),
+		goal_info_init(GoalInfo),
 		Goal = conj(List) - GoalInfo
 	).
 
 :- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
-:- mode insert_arg_unifications_2(input, input, input, input, input, input,
-				output, output) is det.
+:- mode insert_arg_unifications_2(in, in, in, in, in, in,
+				out, out) is det.
 
 insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
 insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
 	N1 is N0 + 1,
-	( Arg = term_variable(Var) ->
+	( Arg = term__variable(Var) ->
 		% just skip unifications of the form `X = X'
 		List = List1,
 		VarSet1 = VarSet0
 	;
 		arg_context_to_unify_context(Context, N1,
 				UnifyMainContext, UnifySubContext),
-		unravel_unification(term_variable(Var), Arg, UnifyMainContext,
+		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
 				UnifySubContext, VarSet0, Goal, VarSet1),
 		( Goal = (conj(ConjList) - _) ->
 			append(ConjList, List1, List)
@@ -950,7 +950,7 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 
 :- pred arg_context_to_unify_context(arg_context, int,
 				unify_main_context, unify_sub_contexts).
-:- mode arg_context_to_unify_context(input, input, output, output) is det.
+:- mode arg_context_to_unify_context(in, in, out, out) is det.
 
 arg_context_to_unify_context(head, N, head(N), []).
 arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
@@ -964,13 +964,13 @@ arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
 	%	`VarSet0'.  `VarSet' is the resulting varset.
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
-:- mode make_n_fresh_vars(input, input, output, output).
+:- mode make_n_fresh_vars(in, in, out, out).
 
 make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
 	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
 
 :- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
-:- mode make_n_fresh_vars_2(input, input, input, output, output).
+:- mode make_n_fresh_vars_2(in, in, in, out, out).
 
 make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 	(N = Max ->
@@ -1001,7 +1001,7 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 	%	and then reversed to get the correct order.
 
 :- pred make_fresh_arg_vars(list(term), varset, list(var), varset).
-:- mode make_fresh_arg_vars(input, input, output, output).
+:- mode make_fresh_arg_vars(in, in, out, out).
 
 make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
 	make_fresh_arg_vars_2(Args, [], VarSet0, Vars1, VarSet),
@@ -1009,11 +1009,11 @@ make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
 
 :- pred make_fresh_arg_vars_2(list(term), list(var), varset,
 				list(var), varset).
-:- mode make_fresh_arg_vars_2(input, input, input, output, output).
+:- mode make_fresh_arg_vars_2(in, in, in, out, out).
 
 make_fresh_arg_vars_2([], Vars, VarSet, Vars, VarSet).
 make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
-	( Arg = term_variable(ArgVar), \+ member(ArgVar, Vars0) ->
+	( Arg = term__variable(ArgVar), \+ member(ArgVar, Vars0) ->
 		Var = ArgVar,
 		VarSet1 = VarSet0
 	;
@@ -1042,17 +1042,17 @@ goal_to_conj_list(Goal, ConjList) :-
 	% Rather than making implicit quantification explicit by
 	% inserting additional existential quantifiers in the form of
 	% `some/2' goals, we instead record existential quantification
-	% in the goalinfo for each goal.  In fact we could (should?)
+	% in the goal_info for each goal.  In fact we could (should?)
 	% even remove any explicit existential quantifiers that were
 	% present in the source code, since the information they convey
-	% will be stored in the goalinfo, although currently we don't
+	% will be stored in the goal_info, although currently we don't
 	% do that.
 	% 
 	% The important piece of information that later stages of the
 	% compilation process want to know is "Does this goal bind any
 	% of its non-local variables?".  So, rather than storing a list
 	% of the variables which _are_ existentially quantified in the
-	% goalinfo, we store the set of variables which are _not_
+	% goal_info, we store the set of variables which are _not_
 	% quantified.
 	%
 	% XXX we ought to rename variables with overlapping scopes
@@ -1060,7 +1060,7 @@ goal_to_conj_list(Goal, ConjList) :-
 	% at the same time).
 
 :- pred implicitly_quantify_clause_body(list(var), hlds__goal, hlds__goal).
-:- mode implicitly_quantify_clause_body(input, input, output).
+:- mode implicitly_quantify_clause_body(in, in, out).
 
 implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
 	set__init(Set0),
@@ -1073,7 +1073,7 @@ implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
 implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
 			Goal - GoalInfo, NonLocalVars) :-
 	implicitly_quantify_goal_2(Goal0, OutsideVars, Goal, NonLocalVars),
-	goalinfo_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo).
+	goal_info_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo).
 
 :- pred implicitly_quantify_goal_2(hlds__goal_expr, set(var),
 				   hlds__goal_expr, set(var)).
@@ -1093,7 +1093,7 @@ implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal1, NonLocals0),
 	set__remove_list(NonLocals0, Vars, NonLocals),
 	Goal1 = G - GoalInfo1,
-	goalinfo_set_nonlocals(GoalInfo1, NonLocals, GoalInfo).
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo).
 	Goal = G - GoalInfo.
 *********/
 
@@ -1305,9 +1305,9 @@ goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
 
 	% `X = Y' needs no unravelling.
 
-unravel_unification(term_variable(X), term_variable(Y), MainContext,
+unravel_unification(term__variable(X), term__variable(Y), MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
-	create_atomic_unification(term_variable(X), term_variable(Y),
+	create_atomic_unification(term__variable(X), term__variable(Y),
 			MainContext, SubContext, Goal),
 	VarSet0 = VarSet.
 
@@ -1320,18 +1320,18 @@ unravel_unification(term_variable(X), term_variable(Y), MainContext,
 	%	X = f(NewVar1, NewVar2, NewVar3).
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term_variable(X), term_functor(F, Args, C), MainContext,
+unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
 	( Args = [] ->
-		create_atomic_unification(term_variable(X),
-				term_functor(F, Args, C),
+		create_atomic_unification(term__variable(X),
+				term__functor(F, Args, C),
 				MainContext, SubContext, Goal),
 		VarSet = VarSet0
 	;
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		var_list_to_term_list(HeadVars, HeadArgs),
-		create_atomic_unification(term_variable(X),
-				term_functor(F, HeadArgs, C),
+		create_atomic_unification(term__variable(X),
+				term__functor(F, HeadArgs, C),
 				MainContext, SubContext, Goal0),
 		length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
@@ -1342,9 +1342,9 @@ unravel_unification(term_variable(X), term_functor(F, Args, C), MainContext,
 
 	% Handle `f(...) = X' in the same way as `X = f(...)'.
 
-unravel_unification(term_functor(F, As, C), term_variable(Y), MC, SC,
+unravel_unification(term__functor(F, As, C), term__variable(Y), MC, SC,
 			VarSet0, Goal, VarSet) :-
-	unravel_unification(term_variable(Y), term_functor(F, As, C), MC, SC,
+	unravel_unification(term__variable(Y), term__functor(F, As, C), MC, SC,
 			VarSet0, Goal, VarSet).
 
 	% If we find a unification of the form `f1(...) = f2(...)',
@@ -1353,8 +1353,8 @@ unravel_unification(term_functor(F, As, C), term_variable(Y), MC, SC,
 	% Note that we can't simplify it yet, because we might simplify
 	% away type errors.
 
-unravel_unification(term_functor(LeftF, LeftAs, LeftC),
-			term_functor(RightF, RightAs, RightC),
+unravel_unification(term__functor(LeftF, LeftAs, LeftC),
+			term__functor(RightF, RightAs, RightC),
 			MainContext, SubContext, VarSet0, Goal, VarSet) :-
 	make_fresh_arg_vars(LeftAs, VarSet0, LeftHeadVars, VarSet1),
 	make_fresh_arg_vars(RightAs, VarSet1, RightHeadVars, VarSet2),
@@ -1367,13 +1367,13 @@ unravel_unification(term_functor(LeftF, LeftAs, LeftC),
 	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
 	RightArgContext = functor(RightConsId, MainContext, SubContext),
 	varset__new_var(VarSet2, TmpVar, VarSet3),
-	create_atomic_unification(term_variable(TmpVar),
-			term_functor(LeftF, LeftHeadArgs, LeftC),
+	create_atomic_unification(term__variable(TmpVar),
+			term__functor(LeftF, LeftHeadArgs, LeftC),
 			MainContext, SubContext, Goal0),
-	create_atomic_unification(term_variable(TmpVar),
-			term_functor(RightF, RightHeadArgs, RightC),
+	create_atomic_unification(term__variable(TmpVar),
+			term__functor(RightF, RightHeadArgs, RightC),
 			MainContext, SubContext, Goal1),
-	goalinfo_init(GoalInfo),
+	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),
 	append(ConjList0, ConjList1, ConjList),
@@ -1395,7 +1395,7 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(Mode, A, B),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
-	goalinfo_init(GoalInfo),
+	goal_info_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -1405,12 +1405,12 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 %	and return the result in `Vars'.
 
 :- pred substitute_vars(list(var), substitution, list(var)).
-:- mode substitute_vars(input, input, output) is det.
+:- mode substitute_vars(in, in, out) is det.
 
 substitute_vars([], _, []).
 substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
-	term__apply_substitution(term_variable(Var0), Subst, Term),
-	Term = term_variable(Var),
+	term__apply_substitution(term__variable(Var0), Subst, Term),
+	Term = term__variable(Var),
 	substitute_vars(Vars0, Subst, Vars).
 
 %-----------------------------------------------------------------------------%
@@ -1421,7 +1421,7 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 
 :- pred get_conj(goal, substitution, list(hlds__goal), varset,
 		list(hlds__goal), varset).
-:- mode get_conj(input, input, input, input, output, output).
+:- mode get_conj(in, in, in, in, out, out).
 
 get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 	(
@@ -1442,7 +1442,7 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 
 :- pred get_disj(goal, substitution, list(hlds__goal), varset,
 		list(hlds__goal), varset).
-:- mode get_disj(input, input, input, input, output, output).
+:- mode get_disj(in, in, in, in, out, out).
 
 get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 	(
@@ -1462,7 +1462,7 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 
 :- pred duplicate_def_warning(sym_name, int, string, term__context,
 				io__state, io__state).
-:- mode duplicate_def_warning(input, input, input, input, di, uo).
+:- mode duplicate_def_warning(in, in, in, in, di, uo).
 
 duplicate_def_warning(Name, Arity, DefType, Context) -->
 	prog_out__write_context(Context),
@@ -1476,7 +1476,7 @@ duplicate_def_warning(Name, Arity, DefType, Context) -->
 
 :- pred multiple_def_error(sym_name, int, string, term__context,
 				io__state, io__state).
-:- mode multiple_def_error(input, input, input, input, di, uo).
+:- mode multiple_def_error(in, in, in, in, di, uo).
 
 multiple_def_error(Name, Arity, DefType, Context) -->
 	prog_out__write_context(Context),
@@ -1490,7 +1490,7 @@ multiple_def_error(Name, Arity, DefType, Context) -->
 
 :- pred undefined_pred_error(sym_name, int, term__context, string,
 				io__state, io__state).
-:- mode undefined_pred_error(input, input, input, input, di, uo).
+:- mode undefined_pred_error(in, in, in, in, di, uo).
 
 undefined_pred_error(Name, Arity, Context, Description) -->
 	prog_out__write_context(Context),

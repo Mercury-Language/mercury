@@ -167,7 +167,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type arg_info	--->	arginfo(
+:- type arg_info	--->	arg_info(
 					arg_loc,	% stored location
 					arg_mode	% mode of top functor
 				).
@@ -283,7 +283,7 @@
 :- type hlds__goals		==	list(hlds__goal).
 
 :- type hlds__goal_info
-	---> goalinfo(
+	---> goal_info(
 		map(var, is_live),	% XXX this is O(N*N)
 		determinism,	% the declared determinism
 				% (current always unspecified, since
@@ -357,87 +357,87 @@
 
 :- interface.
 
-:- pred moduleinfo_init(string, module_info).
-:- mode moduleinfo_init(input, output).
+:- pred module_info_init(string, module_info).
+:- mode module_info_init(in, out).
 
-:- pred moduleinfo_name(module_info, string).
-:- mode moduleinfo_name(input, output).
+:- pred module_info_name(module_info, string).
+:- mode module_info_name(in, out).
 
-:- pred moduleinfo_preds(module_info, pred_table).
-:- mode moduleinfo_preds(input, output).
+:- pred module_info_preds(module_info, pred_table).
+:- mode module_info_preds(in, out).
 
-:- pred moduleinfo_predids(module_info, list(pred_id)).
-:- mode moduleinfo_predids(input, output).
+:- pred module_info_predids(module_info, list(pred_id)).
+:- mode module_info_predids(in, out).
 
-:- pred moduleinfo_pred_name_index(module_info, pred_name_index).
-:- mode moduleinfo_pred_name_index(input, output).
+:- pred module_info_pred_name_index(module_info, pred_name_index).
+:- mode module_info_pred_name_index(in, out).
 
-:- pred moduleinfo_types(module_info, type_table).
-:- mode moduleinfo_types(input, output).
+:- pred module_info_types(module_info, type_table).
+:- mode module_info_types(in, out).
 
-:- pred moduleinfo_typeids(module_info, list(type_id)).
-:- mode moduleinfo_typeids(input, output).
+:- pred module_info_typeids(module_info, list(type_id)).
+:- mode module_info_typeids(in, out).
 
-:- pred moduleinfo_insts(module_info, inst_table).
-:- mode moduleinfo_insts(input, output).
+:- pred module_info_insts(module_info, inst_table).
+:- mode module_info_insts(in, out).
 
-:- pred moduleinfo_instids(module_info, list(inst_id)).
-:- mode moduleinfo_instids(input, output).
+:- pred module_info_instids(module_info, list(inst_id)).
+:- mode module_info_instids(in, out).
 
-:- pred moduleinfo_modes(module_info, mode_table).
-:- mode moduleinfo_modes(input, output).
+:- pred module_info_modes(module_info, mode_table).
+:- mode module_info_modes(in, out).
 
-:- pred moduleinfo_modeids(module_info, list(mode_id)).
-:- mode moduleinfo_modeids(input, output).
+:- pred module_info_modeids(module_info, list(mode_id)).
+:- mode module_info_modeids(in, out).
 
-:- pred moduleinfo_ctors(module_info, cons_table).
-:- mode moduleinfo_ctors(input, output).
+:- pred module_info_ctors(module_info, cons_table).
+:- mode module_info_ctors(in, out).
 
-:- pred moduleinfo_num_errors(module_info, int).
-:- mode moduleinfo_num_errors(input, output).
+:- pred module_info_num_errors(module_info, int).
+:- mode module_info_num_errors(in, out).
 
-:- pred moduleinfo_num_warnings(module_info, int).
-:- mode moduleinfo_num_warnings(input, output).
+:- pred module_info_num_warnings(module_info, int).
+:- mode module_info_num_warnings(in, out).
 
-:- pred moduleinfo_consids(module_info, list(cons_id)).
-:- mode moduleinfo_consids(input, output).
+:- pred module_info_consids(module_info, list(cons_id)).
+:- mode module_info_consids(in, out).
 
-:- pred moduleinfo_set_name(module_info, string, module_info).
-:- mode moduleinfo_set_name(input, input, output).
+:- pred module_info_set_name(module_info, string, module_info).
+:- mode module_info_set_name(in, in, out).
 
-:- pred moduleinfo_set_preds(module_info, pred_table, module_info).
-:- mode moduleinfo_set_preds(input, input, output).
+:- pred module_info_set_preds(module_info, pred_table, module_info).
+:- mode module_info_set_preds(in, in, out).
 
-:- pred moduleinfo_set_predids(module_info, list(pred_id), module_info).
-:- mode moduleinfo_set_predids(input, input, output).
+:- pred module_info_set_predids(module_info, list(pred_id), module_info).
+:- mode module_info_set_predids(in, in, out).
 
-:- pred moduleinfo_set_pred_name_index(module_info, pred_name_index,
+:- pred module_info_set_pred_name_index(module_info, pred_name_index,
 					module_info).
-:- mode moduleinfo_set_pred_name_index(input, input, output).
+:- mode module_info_set_pred_name_index(in, in, out).
 
-:- pred moduleinfo_set_types(module_info, type_table, module_info).
-:- mode moduleinfo_set_types(input, input, output).
+:- pred module_info_set_types(module_info, type_table, module_info).
+:- mode module_info_set_types(in, in, out).
 
-:- pred moduleinfo_set_insts(module_info, inst_table, module_info).
-:- mode moduleinfo_set_insts(input, input, output).
+:- pred module_info_set_insts(module_info, inst_table, module_info).
+:- mode module_info_set_insts(in, in, out).
 
-:- pred moduleinfo_set_modes(module_info, mode_table, module_info).
-:- mode moduleinfo_set_modes(input, input, output).
+:- pred module_info_set_modes(module_info, mode_table, module_info).
+:- mode module_info_set_modes(in, in, out).
 
-:- pred moduleinfo_set_ctors(module_info, cons_table, module_info).
-:- mode moduleinfo_set_ctors(input, input, output).
+:- pred module_info_set_ctors(module_info, cons_table, module_info).
+:- mode module_info_set_ctors(in, in, out).
 
-:- pred moduleinfo_set_num_errors(module_info, int, module_info).
-:- mode moduleinfo_set_num_errors(input, input, output).
+:- pred module_info_set_num_errors(module_info, int, module_info).
+:- mode module_info_set_num_errors(in, in, out).
 
-:- pred moduleinfo_incr_errors(module_info, module_info).
-:- mode moduleinfo_incr_errors(input, output).
+:- pred module_info_incr_errors(module_info, module_info).
+:- mode module_info_incr_errors(in, out).
 
-:- pred moduleinfo_incr_warnings(module_info, module_info).
-:- mode moduleinfo_incr_warnings(input, output).
+:- pred module_info_incr_warnings(module_info, module_info).
+:- mode module_info_incr_warnings(in, out).
 
-:- pred moduleinfo_remove_predid(module_info, pred_id, module_info).
-:- mode moduleinfo_remove_predid(in, in, out) is det.
+:- pred module_info_remove_predid(module_info, pred_id, module_info).
+:- mode module_info_remove_predid(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -445,7 +445,7 @@
 
 	% A predicate which creates an empty module
 
-moduleinfo_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
+module_info_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
 		Modes, Ctors, 0, 0)) :-
 	map__init(Preds),
 	map__init(PredNameIndex),
@@ -457,126 +457,126 @@ moduleinfo_init(Name, module(Name, Preds, [], PredNameIndex, Types, Insts,
 	% Various access predicates which extract different pieces
 	% of info from the module_info data structure.
 
-moduleinfo_name(ModuleInfo, Name) :-
+module_info_name(ModuleInfo, Name) :-
 	ModuleInfo = module(Name, _, _, _, _, _, _, _, _, _).
 
-moduleinfo_preds(ModuleInfo, Preds) :-
+module_info_preds(ModuleInfo, Preds) :-
 	ModuleInfo = module(_, Preds, _, _, _, _, _, _, _, _).
 
-moduleinfo_predids(ModuleInfo, PredIDs) :-
+module_info_predids(ModuleInfo, PredIDs) :-
 	ModuleInfo = module(_, _, PredIDs, _, _, _, _, _, _, _).
 
-moduleinfo_pred_name_index(ModuleInfo, PredNameIndex) :-
+module_info_pred_name_index(ModuleInfo, PredNameIndex) :-
 	ModuleInfo = module(_, _, _, PredNameIndex, _, _, _, _, _, _).
 
-moduleinfo_types(ModuleInfo, Types) :-
+module_info_types(ModuleInfo, Types) :-
 	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _).
 
-moduleinfo_typeids(ModuleInfo, TypeIDs) :-
+module_info_typeids(ModuleInfo, TypeIDs) :-
 	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _),
 	map__keys(Types, TypeIDs).
 
-moduleinfo_insts(ModuleInfo, Insts) :-
+module_info_insts(ModuleInfo, Insts) :-
 	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _).
 
-moduleinfo_instids(ModuleInfo, InstIDs) :-
+module_info_instids(ModuleInfo, InstIDs) :-
 	ModuleInfo = module(_, _, _, _, _, Insts, _, _, _, _),
 	map__keys(Insts, InstIDs).
 
-moduleinfo_modes(ModuleInfo, Modes) :-
+module_info_modes(ModuleInfo, Modes) :-
 	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _).
 
-moduleinfo_modeids(ModuleInfo, ModeIDs) :-
+module_info_modeids(ModuleInfo, ModeIDs) :-
 	ModuleInfo = module(_, _, _, _, _, _, Modes, _, _, _),
 	map__keys(Modes, ModeIDs).
 
-moduleinfo_ctors(ModuleInfo, Ctors) :-
+module_info_ctors(ModuleInfo, Ctors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _).
 
-moduleinfo_consids(ModuleInfo, ConsIDs) :-
+module_info_consids(ModuleInfo, ConsIDs) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, Ctors, _, _),
 	map__keys(Ctors, ConsIDs).
 
-moduleinfo_num_errors(ModuleInfo, NumErrors) :-
+module_info_num_errors(ModuleInfo, NumErrors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, NumErrors, _).
 
-moduleinfo_num_warnings(ModuleInfo, NumWarnings) :-
+module_info_num_warnings(ModuleInfo, NumWarnings) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, NumWarnings).
 
 	% Various predicates which modify the module_info data structure.
 
-moduleinfo_set_name(ModuleInfo0, Name, ModuleInfo) :-
+module_info_set_name(ModuleInfo0, Name, ModuleInfo) :-
 	ModuleInfo0 = module(_, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
+module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 	ModuleInfo0 = module(Name, _, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_predids(ModuleInfo0, PredIDs, ModuleInfo) :-
+module_info_set_predids(ModuleInfo0, PredIDs, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, _, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_pred_name_index(ModuleInfo0, PredNameIndex, ModuleInfo) :-
+module_info_set_pred_name_index(ModuleInfo0, PredNameIndex, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, _, Types,
 				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_types(ModuleInfo0, Types, ModuleInfo) :-
+module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, _,
 				Insts, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
+module_info_set_insts(ModuleInfo0, Insts, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				_, Modes, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
+module_info_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, _, Ctors, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
+module_info_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, _, Errs, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
+module_info_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, _, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_incr_errors(ModuleInfo0, ModuleInfo) :-
+module_info_incr_errors(ModuleInfo0, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs0, Warns),
 	Errs is Errs0 + 1,
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
+module_info_incr_warnings(ModuleInfo0, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns0),
 	Warns0 is Warns + 1,
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
-moduleinfo_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
-	moduleinfo_predids(ModuleInfo0, PredIds0),
+module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
+	module_info_predids(ModuleInfo0, PredIds0),
 	delete_all(PredIds0, PredId, PredIds),
-	moduleinfo_set_predids(ModuleInfo0, PredIds, ModuleInfo).
+	module_info_set_predids(ModuleInfo0, PredIds, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -589,16 +589,16 @@ moduleinfo_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 :- mode make_functor_cons_id(in, in, out) is det.
 
 :- pred make_cons_id(sym_name, list(type), type_id, cons_id).
-:- mode make_cons_id(input, input, input, output) is det.
+:- mode make_cons_id(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
-make_functor_cons_id(term_integer(Int), _, int_const(Int)).
-make_functor_cons_id(term_string(String), _, string_const(String)).
-make_functor_cons_id(term_float(Float), _, float_const(Float)).
+make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term__integer(Int), _, int_const(Int)).
+make_functor_cons_id(term__string(String), _, string_const(String)).
+make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
 make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
@@ -614,43 +614,43 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- interface.
 
 :- pred predicate_module(pred_id, module_name).
-:- mode predicate_module(input, output).
+:- mode predicate_module(in, out).
 
 :- pred predicate_name(pred_id, string).
-:- mode predicate_name(input, output).
+:- mode predicate_name(in, out).
 
 :- pred predicate_arity(pred_id, int).
-:- mode predicate_arity(input, output).
+:- mode predicate_arity(in, out).
 
 :- pred make_predid(string, sym_name, int, pred_id).
-:- mode make_predid(input, input, input, output).
+:- mode make_predid(in, in, in, out).
 
 
-:- pred predinfo_proc_ids(pred_info, list(proc_id)).
-:- mode predinfo_proc_ids(input, output).
+:- pred pred_info_proc_ids(pred_info, list(proc_id)).
+:- mode pred_info_proc_ids(in, out).
 
-:- pred predinfo_arg_types(pred_info, varset, list(type)).
-:- mode predinfo_arg_types(input, output, output).
+:- pred pred_info_arg_types(pred_info, varset, list(type)).
+:- mode pred_info_arg_types(in, out, out).
 
-:- pred predinfo_clauses_info(pred_info, clauses_info).
-:- mode predinfo_clauses_info(input, output).
+:- pred pred_info_clauses_info(pred_info, clauses_info).
+:- mode pred_info_clauses_info(in, out).
 
-:- pred predinfo_set_clauses_info(pred_info, clauses_info, pred_info).
-:- mode predinfo_set_clauses_info(input, input, output).
+:- pred pred_info_set_clauses_info(pred_info, clauses_info, pred_info).
+:- mode pred_info_set_clauses_info(in, in, out).
 
-:- pred predinfo_procedures(pred_info, proc_table).
-:- mode predinfo_procedures(input, output).
+:- pred pred_info_procedures(pred_info, proc_table).
+:- mode pred_info_procedures(in, out).
 
-:- pred predinfo_set_procedures(pred_info, proc_table, pred_info).
-:- mode predinfo_set_procedures(input, input, output).
+:- pred pred_info_set_procedures(pred_info, proc_table, pred_info).
+:- mode pred_info_set_procedures(in, in, out).
 
-:- pred predinfo_procids(pred_info, list(proc_id)).
-:- mode predinfo_procids(input, output).
+:- pred pred_info_procids(pred_info, list(proc_id)).
+:- mode pred_info_procids(in, out).
 
-:- pred predinfo_context(pred_info, term__context).
-:- mode predinfo_context(input, output).
+:- pred pred_info_context(pred_info, term__context).
+:- mode pred_info_context(in, out).
 
-:- pred predinfo_is_imported(pred_info::in) is semidet.
+:- pred pred_info_is_imported(pred_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -665,36 +665,36 @@ predicate_arity(pred(_Module,_Name,Arity), Arity).
 make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
 make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
 
-predinfo_proc_ids(PredInfo, ProcIds) :-
+pred_info_proc_ids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _),
 	map__keys(Procs, ProcIds).
 
-predinfo_clauses_info(PredInfo, Clauses) :-
+pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _).
 
-predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
+pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 	PredInfo0 = predicate(TypeVars, ArgTypes, Cond, _, Procs, C, Err),
 	PredInfo = predicate(TypeVars, ArgTypes, Cond, Clauses, Procs, C, Err).
 
-predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
+pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _).
 
-predinfo_procedures(PredInfo, Procs) :-
+pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _).
 
-predinfo_set_procedures(PredInfo0, Procedures, PredInfo) :-
+pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F, G),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G).
 
-predinfo_procids(PredInfo, ProcIds) :-
-	predinfo_procedures(PredInfo, Procedures),
+pred_info_procids(PredInfo, ProcIds) :-
+	pred_info_procedures(PredInfo, Procedures),
 	map__keys(Procedures, ProcIds).
 
-predinfo_context(PredInfo, Context) :-
+pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _).
 
-predinfo_is_imported(PredInfo) :-
-	predinfo_clauses_info(PredInfo, ClauseInfo),
+pred_info_is_imported(PredInfo) :-
+	pred_info_clauses_info(PredInfo, ClauseInfo),
 	ClauseInfo = clauses_info(_, _, _, []).
 
 %-----------------------------------------------------------------------------%
@@ -704,62 +704,62 @@ predinfo_is_imported(PredInfo) :-
 
 :- interface.
 
-:- pred procinfo_init(list(mode), determinism, term__context, proc_info).
-:- mode procinfo_init(input, input, input, output).
+:- pred proc_info_init(list(mode), determinism, term__context, proc_info).
+:- mode proc_info_init(in, in, in, out).
 
 :- pred determinism_to_category(determinism, category).
-:- mode determinism_to_category(input, output).
+:- mode determinism_to_category(in, out).
 
-:- pred procinfo_declared_determinism(proc_info, determinism).
-:- mode procinfo_declared_determinism(input, output).
+:- pred proc_info_declared_determinism(proc_info, determinism).
+:- mode proc_info_declared_determinism(in, out).
 
-:- pred procinfo_inferred_determinism(proc_info, category).
-:- mode procinfo_inferred_determinism(input, output).
+:- pred proc_info_inferred_determinism(proc_info, category).
+:- mode proc_info_inferred_determinism(in, out).
 
-:- pred procinfo_variables(proc_info, varset).
-:- mode procinfo_variables(input, output).
+:- pred proc_info_variables(proc_info, varset).
+:- mode proc_info_variables(in, out).
 
-:- pred procinfo_vartypes(proc_info, map(var, type)).
-:- mode procinfo_vartypes(input, output).
+:- pred proc_info_vartypes(proc_info, map(var, type)).
+:- mode proc_info_vartypes(in, out).
 
-:- pred procinfo_headvars(proc_info, list(var)).
-:- mode procinfo_headvars(input, output).
+:- pred proc_info_headvars(proc_info, list(var)).
+:- mode proc_info_headvars(in, out).
 
-:- pred procinfo_argmodes(proc_info, list(mode)).
-:- mode procinfo_argmodes(input, output).
+:- pred proc_info_argmodes(proc_info, list(mode)).
+:- mode proc_info_argmodes(in, out).
 
-:- pred procinfo_goal(proc_info, hlds__goal).
-:- mode procinfo_goal(input, output).
+:- pred proc_info_goal(proc_info, hlds__goal).
+:- mode proc_info_goal(in, out).
 
-:- pred procinfo_context(proc_info, term__context).
-:- mode procinfo_context(input, output).
+:- pred proc_info_context(proc_info, term__context).
+:- mode proc_info_context(in, out).
 
-:- pred procinfo_callinfo(proc_info, call_info).
-:- mode procinfo_callinfo(input, output).
+:- pred proc_info_call_info(proc_info, call_info).
+:- mode proc_info_call_info(in, out).
 
-:- pred procinfo_arg_registers(proc_info, list(var), map(var, int)).
-:- mode procinfo_arg_registers(input, input, output).
+:- pred proc_info_arg_registers(proc_info, list(var), map(var, int)).
+:- mode proc_info_arg_registers(in, in, out).
 
-:- pred procinfo_set_inferred_determinism(proc_info, category, proc_info).
-:- mode procinfo_set_inferred_determinism(input, input, output).
+:- pred proc_info_set_inferred_determinism(proc_info, category, proc_info).
+:- mode proc_info_set_inferred_determinism(in, in, out).
 
-:- pred procinfo_set_goal(proc_info, hlds__goal, proc_info).
-:- mode procinfo_set_goal(input, input, output).
+:- pred proc_info_set_goal(proc_info, hlds__goal, proc_info).
+:- mode proc_info_set_goal(in, in, out).
 
-:- pred procinfo_arginfo(proc_info, list(arg_info)).
-:- mode procinfo_arginfo(in, out).
+:- pred proc_info_arg_info(proc_info, list(arg_info)).
+:- mode proc_info_arg_info(in, out).
 
-:- pred procinfo_set_arginfo(proc_info, list(arg_info), proc_info).
-:- mode procinfo_set_arginfo(in, in, out).
+:- pred proc_info_set_arg_info(proc_info, list(arg_info), proc_info).
+:- mode proc_info_set_arg_info(in, in, out).
 
 :- implementation.
 
 	% Some parts of the procedure aren't known yet.  We initialize
 	% them to any old garbage which we will later throw away
 
-procinfo_init(Modes, Det, MContext, NewProc) :-
+proc_info_init(Modes, Det, MContext, NewProc) :-
 	map__init(BodyTypes),
-	goalinfo_init(GoalInfo),
+	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet),
 	HeadVars = [],
 	determinism_to_category(Det, Category),
@@ -780,37 +780,37 @@ determinism_to_category(nondet, nondeterministic).
 	% provide the correct inferred determinism for it.
 determinism_to_category(unspecified, deterministic).
 
-procinfo_declared_determinism(ProcInfo, Determinism) :-
+proc_info_declared_determinism(ProcInfo, Determinism) :-
 	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _).
-procinfo_variables(ProcInfo, VarSet) :-
+proc_info_variables(ProcInfo, VarSet) :-
 	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _).
-procinfo_vartypes(ProcInfo, VarTypes) :-
+proc_info_vartypes(ProcInfo, VarTypes) :-
 	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _).
-procinfo_headvars(ProcInfo, HeadVars) :-
+proc_info_headvars(ProcInfo, HeadVars) :-
 	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _).
-procinfo_argmodes(ProcInfo, ModeInfo) :-
+proc_info_argmodes(ProcInfo, ModeInfo) :-
 	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _).
-procinfo_goal(ProcInfo, Goal) :-
+proc_info_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _).
-procinfo_context(ProcInfo, Context) :-
+proc_info_context(ProcInfo, Context) :-
 	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _).
-procinfo_callinfo(ProcInfo, CallInfo) :-
+proc_info_call_info(ProcInfo, CallInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _).
-procinfo_inferred_determinism(ProcInfo, Category) :-
+proc_info_inferred_determinism(ProcInfo, Category) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category, _).
-procinfo_arginfo(ProcInfo, ArgInfo) :-
+proc_info_arg_info(ProcInfo, ArgInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, ArgInfo).
 
 
-procinfo_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
+proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J).
 
-procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
+proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J),
 	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J).
 
-procinfo_set_arginfo(ProcInfo0, ArgInfo, ProcInfo) :-
+proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo).
 
@@ -821,32 +821,32 @@ procinfo_set_arginfo(ProcInfo0, ArgInfo, ProcInfo) :-
 
 :- interface.
 
-:- pred goalinfo_init(hlds__goal_info).
-:- mode goalinfo_init(output).
+:- pred goal_info_init(hlds__goal_info).
+:- mode goal_info_init(out).
 
 :- type liveness == map(var, is_live).
 
-:- pred goalinfo_liveness(hlds__goal_info, liveness).
-:- mode goalinfo_liveness(input, output).
+:- pred goal_info_liveness(hlds__goal_info, liveness).
+:- mode goal_info_liveness(in, out).
 
-:- pred goalinfo_set_liveness(hlds__goal_info, liveness, hlds__goal_info).
-:- mode goalinfo_set_liveness(input, input, output).
+:- pred goal_info_set_liveness(hlds__goal_info, liveness, hlds__goal_info).
+:- mode goal_info_set_liveness(in, in, out).
 
-:- pred goalinfo_declared_determinism(hlds__goal_info, determinism).
-:- mode goalinfo_declared_determinism(input, output).
+:- pred goal_info_declared_determinism(hlds__goal_info, determinism).
+:- mode goal_info_declared_determinism(in, out).
 
-:- pred goalinfo_inferred_determinism(hlds__goal_info, category).
-:- mode goalinfo_inferred_determinism(input, output).
+:- pred goal_info_inferred_determinism(hlds__goal_info, category).
+:- mode goal_info_inferred_determinism(in, out).
 
-:- pred goalinfo_set_inferred_determinism(hlds__goal_info, category,
+:- pred goal_info_set_inferred_determinism(hlds__goal_info, category,
 					  hlds__goal_info).
-:- mode goalinfo_set_inferred_determinism(input, input, output).
+:- mode goal_info_set_inferred_determinism(in, in, out).
 
-:- pred goalinfo_get_nonlocals(hlds__goal_info, set(var)).
-:- mode goalinfo_get_nonlocals(input, output).
+:- pred goal_info_get_nonlocals(hlds__goal_info, set(var)).
+:- mode goal_info_get_nonlocals(in, out).
 
-:- pred goalinfo_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
-:- mode goalinfo_set_nonlocals(input, input, output).
+:- pred goal_info_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
+:- mode goal_info_set_nonlocals(in, in, out).
 
 	% The instmap delta stores the final instantiatedness
 	% of the non-local variables whose instantiatedness
@@ -854,61 +854,61 @@ procinfo_set_arginfo(ProcInfo0, ArgInfo, ProcInfo) :-
 
 :- type instmap_delta == map(var, inst).
 
-:- pred goalinfo_get_instmap_delta(hlds__goal_info, instmap_delta).
-:- mode goalinfo_get_instmap_delta(input, output).
+:- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
+:- mode goal_info_get_instmap_delta(in, out).
 
-:- pred goalinfo_set_instmap_delta(hlds__goal_info, instmap_delta,
+:- pred goal_info_set_instmap_delta(hlds__goal_info, instmap_delta,
 				hlds__goal_info).
-:- mode goalinfo_set_instmap_delta(input, input, output).
+:- mode goal_info_set_instmap_delta(in, in, out).
 
 /***** currently not used and not implemented
 :- pred liveness_livevars(map(var, is_live), list(var)).
-:- mode liveness_livevars(input, output).
+:- mode liveness_livevars(in, out).
 *****/
 
-:- pred goalinfo_context(hlds__goal_info, term__context).
-:- mode goalinfo_context(input, output).
+:- pred goal_info_context(hlds__goal_info, term__context).
+:- mode goal_info_context(in, out).
 
-:- pred goalinfo_set_context(hlds__goal_info, term__context, hlds__goal_info).
-:- mode goalinfo_set_context(input, input, output).
+:- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
+:- mode goal_info_set_context(in, in, out).
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-goalinfo_init(GoalInfo) :-
+goal_info_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
 	map__init(Liveness),
 	map__init(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
-	GoalInfo = goalinfo(Liveness, DeclaredDet, InferredDet,
+	GoalInfo = goal_info(Liveness, DeclaredDet, InferredDet,
 				InstMapDelta, Context, NonLocals).
 
-goalinfo_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goalinfo(Liveness, _, _, _, _, _).
+goal_info_liveness(GoalInfo, Liveness) :-
+	GoalInfo = goal_info(Liveness, _, _, _, _, _).
 
-goalinfo_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
-	GoalInfo0 = goalinfo(_, B, C, D, E, F),
-	GoalInfo = goalinfo(Liveness, B, C, D, E, F).
+goal_info_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
+	GoalInfo0 = goal_info(_, B, C, D, E, F),
+	GoalInfo = goal_info(Liveness, B, C, D, E, F).
 
-goalinfo_declared_determinism(GoalInfo, DeclaredDeterminism) :-
-	GoalInfo = goalinfo(_, DeclaredDeterminism, _, _, _, _).
+goal_info_declared_determinism(GoalInfo, DeclaredDeterminism) :-
+	GoalInfo = goal_info(_, DeclaredDeterminism, _, _, _, _).
 
-goalinfo_inferred_determinism(GoalInfo, InferredDeterminism) :-
-	GoalInfo = goalinfo(_, _, InferredDeterminism, _, _, _).
+goal_info_inferred_determinism(GoalInfo, InferredDeterminism) :-
+	GoalInfo = goal_info(_, _, InferredDeterminism, _, _, _).
 
-goalinfo_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, _, D, E, F),
-	GoalInfo = goalinfo(A, B, InferredDeterminism, D, E, F).
+goal_info_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, _, D, E, F),
+	GoalInfo = goal_info(A, B, InferredDeterminism, D, E, F).
 
-goalinfo_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goalinfo(_, _, _, InstMapDelta, _, _).
+goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
+	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _).
 
-goalinfo_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, C, _, E, F),
-	GoalInfo = goalinfo(A, B, C, InstMapDelta, E, F).
+goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, _, E, F),
+	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F).
 
 /*** This is a specification, not an implementation.
      It's not mode-correct.
@@ -916,19 +916,19 @@ liveness_livevars(Liveness, LiveVars) :-
 	solutions(X, map__search(Liveness, X, live), LiveVars).
 ***/
 
-goalinfo_context(GoalInfo, Context) :-
-	GoalInfo = goalinfo(_, _, _, _, Context, _).
+goal_info_context(GoalInfo, Context) :-
+	GoalInfo = goal_info(_, _, _, _, Context, _).
 
-goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, C, D, _, F),
-	GoalInfo = goalinfo(A, B, C, D, Context, F).
+goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, _, F),
+	GoalInfo = goal_info(A, B, C, D, Context, F).
 
-goalinfo_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goalinfo(_, _, _, _, _, NonLocals).
+goal_info_get_nonlocals(GoalInfo, NonLocals) :-
+	GoalInfo = goal_info(_, _, _, _, _, NonLocals).
 
-goalinfo_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, C, D, E, _),
-	GoalInfo  = goalinfo(A, B, C, D, E, NonLocals).
+goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, _),
+	GoalInfo  = goal_info(A, B, C, D, E, NonLocals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

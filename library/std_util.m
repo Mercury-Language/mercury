@@ -25,12 +25,12 @@
 :- type univ.
 
 :- pred type_to_univ(_T, univ).
-:- mode type_to_univ(input, output).
-:- mode type_to_univ(output, input).
+:- mode type_to_univ(in, out).
+:- mode type_to_univ(out, in).
 
 :- pred univ_to_type(univ, _T).
-:- mode univ_to_type(input, output).
-:- mode univ_to_type(output, input).
+:- mode univ_to_type(in, out).
+:- mode univ_to_type(out, in).
 
 %-----------------------------------------------------------------------------%
 
@@ -49,7 +49,7 @@
 :- type comparison_result ---> (=) ; (<) ; (>).
 
 :- pred compare(comparison_result, T, T).
-:- mode compare(output, input, input).
+:- mode compare(out, in, in).
 
 %-----------------------------------------------------------------------------%
 
@@ -64,7 +64,7 @@
 :- pred gc_call(pred).
 
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(complicated_mode, output).
+:- mode solutions(complicated_mode, out).
 
 % The following is a temporary hack until we implement higher-order
 % modes.

@@ -33,11 +33,7 @@ typecheck.nl
 modes.nl
 --------
 
-- handle functors
-
-- handle reordering
-
-- handle multiple modes per pred
+- avoid mode errors for code which always fails
 
 - detect incorrect usage of `bound(...)' insts.
 

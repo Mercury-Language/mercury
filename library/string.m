@@ -20,48 +20,48 @@
 :- mode string__length(in, out).
 
 :- pred string__append(string, string, string).
-:- mode string__append(input, input, output).
-:- mode string__append(output, output, input).
+:- mode string__append(in, in, out).
+:- mode string__append(out, out, in).
 	% append two strings together
 
 :- pred string__prefix(string, string).
-:- mode string__prefix(input, input).
-:- mode string__prefix(input, output).
+:- mode string__prefix(in, in).
+:- mode string__prefix(in, out).
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String
 
 :- pred string__char_to_string(character, string).
-:- mode string__char_to_string(input, output).
-:- mode string__char_to_string(output, input).
+:- mode string__char_to_string(in, out).
+:- mode string__char_to_string(out, in).
 %	string__char_to_string(Char, String).
 %		Converts a character (single-character atom) to a string
 %		or vice versa.
 
 :- pred string__int_to_string(int, string).
-:- mode string__int_to_string(input, output).
+:- mode string__int_to_string(in, out).
 %	Convert an integer to a string.
 
 :- pred string__first_char(string, character, string).
-:- mode string__first_char(input, output, output).
-:- mode string__first_char(output, input, input).
+:- mode string__first_char(in, out, out).
+:- mode string__first_char(out, in, in).
 %	string__first_char(String, Char, Rest) is true iff
 %		Char is the first character of String, and Rest is the
 %		remainder.
 
 :- pred string__capitalize_first(string, string).
-:- mode string__capitalize_first(input, output).
+:- mode string__capitalize_first(in, out).
 %	Convert the first character (if any) of a string to uppercase.
 
 :- pred string__uncapitalize_first(string, string).
-:- mode string__uncapitalize_first(input, output).
+:- mode string__uncapitalize_first(in, out).
 %	Convert the first character (if any) of a string to lowercase.
 
 :- pred string__to_char_list(string, list(character)).
-:- mode string__to_char_list(input, output).
-:- mode string__to_char_list(output, input).
+:- mode string__to_char_list(in, out).
+:- mode string__to_char_list(out, in).
 
 :- pred string__to_int(string, int).
-:- mode string__to_int(input, output).
+:- mode string__to_int(in, out).
 %	Convert a string (of digits) to an int. If the string contains
 %	non-digit characters, string__to_int fails.
 
@@ -83,8 +83,8 @@
 :- import_module list, int.
 
 :- pred string__to_int_list(string, list(int)).
-:- mode string__to_int_list(input, output).
-:- mode string__to_int_list(output, input).
+:- mode string__to_int_list(in, out).
+:- mode string__to_int_list(out, in).
 
 :- pred intToString(int, string).
 :- mode intToString(out, in).
@@ -137,7 +137,7 @@ string__int_to_string(N, Str) :-
 % Simple-minded, but extremely portable.
 
 :- pred digit_to_string(int, string).
-:- mode digit_to_string(input, output).
+:- mode digit_to_string(in, out).
 
 digit_to_string(0, "0").
 digit_to_string(1, "1").

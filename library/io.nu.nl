@@ -196,14 +196,14 @@ io__told -->
 %-----------------------------------------------------------------------------%
 
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
-:- mode io__delete_stream_name(input, di, uo).
+:- mode io__delete_stream_name(in, di, uo).
 
 io__delete_stream_name(Stream, io__state(StreamNames0, Globals, S),
 		io__state(StreamNames, Globals, S)) :-
 	map__delete(StreamNames0, Stream, StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
-:- mode io__insert_stream_name(input, string, di, uo).
+:- mode io__insert_stream_name(in, string, di, uo).
 
 io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
 		io__state(StreamNames, Globals, S)) :-
@@ -323,13 +323,13 @@ io__final_state(IOState) :-
 %-----------------------------------------------------------------------------%
 
 :- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(output, di, uo).
+:- mode io__get_globals(out, di, uo).
 
 io__get_globals(Globals, IOState, IOState) :-
 	IOState = io__state(_StreamNames, Globals, _S).
 
 :- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(input, di, uo).
+:- mode io__set_globals(in, di, uo).
 
 io__set_globals(Globals, io__state(StreamNames, _, S),
 		io__state(StreamNames, Globals, S)).

@@ -38,12 +38,12 @@ gc_call(Goal) :-
    original.
 */
 :- pred my_member(T, list(T)).
-:- mode my_member(output, input).
+:- mode my_member(out, in).
 my_member(X, H.T) :-
 	my_member_2(T, H, X).
 
 :- pred my_member_2(list(T), T, T).
-:- mode my_member_2(input, input, output).
+:- mode my_member_2(in, in, out).
 
 my_member_2([], X, X).
 my_member_2(_._, X, X).

@@ -33,7 +33,7 @@
 % External interface: exported predicates
 
 :- pred io__progname(string, string, io__state, io__state).
-:- mode io__progname(in, output, di, uo).
+:- mode io__progname(in, out, di, uo).
 % 	io__progname(DefaultProgname, Progname)
 %		Returns the name that the program was invoked with,
 %		if available, or DefaultProgname if the name is not
@@ -104,7 +104,7 @@
 
 :- type res ---> ok ; error.
 :- pred io__see(string, res, io__state, io__state).
-:- mode io__see(in, output, di, uo).
+:- mode io__see(in, out, di, uo).
 %	io__see(File, Result, IO0, IO1).
 %		Attempts to open a file for input, and if successful
 %		sets the current input stream to the newly opened stream.
@@ -116,7 +116,7 @@
 %		The current input stream reverts to standard input.
 
 :- pred io__tell(string, res, io__state, io__state).
-:- mode io__tell(in, output, di, uo).
+:- mode io__tell(in, out, di, uo).
 %	io__tell(File, Result, IO0, IO1).
 %		Attempts to open a file for output, and if successful
 %		sets the current output stream to the newly opened stream.
@@ -130,44 +130,44 @@
 %		As per Prolog told/0.
 
 :- pred io__output_stream(io__stream, io__state, io__state).
-:- mode io__output_stream(output, di, uo).
+:- mode io__output_stream(out, di, uo).
 %		Retrieves the current output stream.
 %		Does not modify the IO state.
 
 :- pred io__set_output_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_output_stream(in, output, di, uo).
+:- mode io__set_output_stream(in, out, di, uo).
 %	io__set_output_stream(NewStream, OldStream, IO0, IO)
 %		Changes the current output stream to the stream specified.
 %		Returns the previous stream.
 
 :- pred io__input_stream(io__stream, io__state, io__state).
-:- mode io__input_stream(output, di, uo).
+:- mode io__input_stream(out, di, uo).
 %		Retrieves the current input stream.
 %		Does not modify the IO state.
 
 :- pred io__set_input_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_input_stream(in, output, di, uo).
+:- mode io__set_input_stream(in, out, di, uo).
 %       io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %		Changes the current input stream to the stream specified.
 %		Returns the previous stream.
 
 :- pred io__stdin_stream(io__stream, io__state, io__state).
-:- mode io__stdin_stream(output, di, uo).
+:- mode io__stdin_stream(out, di, uo).
 %		Retrieves the standard input stream.
 %		Does not modify the IO state.
 
 :- pred io__stdout_stream(io__stream, io__state, io__state).
-:- mode io__stdout_stream(output, di, uo).
+:- mode io__stdout_stream(out, di, uo).
 %		Retrieves the standard output stream.
 %		Does not modify the IO state.
 
 :- pred io__stderr_stream(io__stream, io__state, io__state).
-:- mode io__stderr_stream(output, di, uo).
+:- mode io__stderr_stream(out, di, uo).
 %		Retrieves the standard error stream.
 %		Does not modify the IO state.
 
 :- pred io__get_line_number(int, io__state, io__state).
-:- mode io__get_line_number(output, di, uo).
+:- mode io__get_line_number(out, di, uo).
 %	Return the line number of the current stream
 %	(as per NU-Prolog lineCount/1).
 
@@ -188,7 +188,7 @@
 %	Flush the output buffer of the specified output stream.
 
 :- pred io__stream_name(io__stream, string, io__state, io__state).
-:- mode io__stream_name(in, output, di, uo).
+:- mode io__stream_name(in, out, di, uo).
 %	Retrieves the human-readable name associated with a stream.
 %	For file streams, this is the filename.
 %	For stdin this is the string "<standard input>" (and similarly
@@ -200,7 +200,7 @@
 % The following predicates can be used to access this global state.
 
 :- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(output, di, uo).
+:- mode io__get_globals(out, di, uo).
 	% Doesn't modify the io__state.
 
 :- pred io__set_globals(univ, io__state, io__state).

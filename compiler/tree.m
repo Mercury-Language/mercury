@@ -21,7 +21,7 @@
 			;	tree(tree(T), tree(T)).
 
 :- pred tree__flatten(tree(T), list(T)).
-:- mode tree__flatten(input, output) is det.
+:- mode tree__flatten(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,7 +31,7 @@ tree__flatten(T, L) :-
 	tree__flatten_2(T, [], L).
 
 :- pred tree__flatten_2(tree(T), list(T), list(T)).
-:- mode tree__flatten_2(input, input, output).
+:- mode tree__flatten_2(in, in, out).
 	% flatten_2(T, L0, L) is true iff L is the list that results from
 	% traversing T left-to-right depth-first, and then appending L0.
 tree__flatten_2(empty, L, L).

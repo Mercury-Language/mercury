@@ -153,23 +153,23 @@ convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, VarMap) :-
 		varmap__lookup(VarMap0, Term0, Name, Id),
 		convert_term_3(Id, Name, Term0, VarSet0, VarMap0,
 				VarId, VarSet, VarMap),
-		Term = term_variable(VarId)
+		Term = term__variable(VarId)
 	; integer(Term0) ->
-		Term = term_functor(term_integer(Term0), [], Context),
+		Term = term__functor(term__integer(Term0), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; float(Term0) ->
-		Term = term_functor(term_float(Term0), [], Context),
+		Term = term__functor(term__float(Term0), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; magic_string_atom(S),
 	  Term0 =.. [S, String] ->
-		Term = term_functor(term_string(String), [], Context),
+		Term = term__functor(term__string(String), [], Context),
 		VarSet = VarSet0,
 		VarMap = VarMap0
 	; functor(Term0, F ,_) ->
 		name(F, Name),
-		Term = term_functor(term_atom(Name), Args, Context),
+		Term = term__functor(term__atom(Name), Args, Context),
 		Term0 =.. [_|Args0],
 		convert_term_2_list(Args0, VarSet0, VarMap0,
 					Context, Args, VarSet, VarMap)
@@ -200,7 +200,7 @@ convert_term_4(name(Name), VarId, VarSet0, VarSet) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__current_op(Type, Prec, term_atom(OpName)) :-
+io__current_op(Type, Prec, term__atom(OpName)) :-
 	name(Op, OpName),
 	currentOp(Type, Prec, Op).
 

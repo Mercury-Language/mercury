@@ -19,7 +19,7 @@
 	% in the output.
 
 :- pred goedel_expand_eqv_types(list(item_and_context), list(item_and_context)).
-:- mode goedel_expand_eqv_types(input, output).
+:- mode goedel_expand_eqv_types(in, out).
 	
 	% The following predicate goedel_replace_eqv_type_list
 	% performs substititution of a single type on a list
@@ -28,21 +28,21 @@
 
 :- pred goedel_replace_eqv_type_list(list(item_and_context), varset, string,
 			list(type_param), type, list(item_and_context)).
-:- mode goedel_replace_eqv_type_list(input, input, input, input, input, output).
+:- mode goedel_replace_eqv_type_list(in, in, in, in, in, out).
 
 %-----------------------------------------------------------------------------%
 
 	% Convert a (possibly module-qualified) sym_name into a string.
 
 :- pred unqualify_name(sym_name, string).
-:- mode unqualify_name(input, output) is det.
+:- mode unqualify_name(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% A pred declaration may contains just types, as in
 	%	:- pred append(list(T), list(T), list(T)).
 	% or it may contain both types and modes, as in
-	%	:- pred append(list(T)::input, list(T)::input,
+	%	:- pred append(list(T)::in, list(T)::in,
 	%			list(T)::output).
 	%
 	% This predicate takes the argument list of a pred declaration,
@@ -52,7 +52,7 @@
 :- type maybe_modes ---> yes(list(mode)) ; no.
 
 :- pred split_types_and_modes(list(type_and_mode), list(type), maybe_modes).
-:- mode split_types_and_modes(input, output, output).
+:- mode split_types_and_modes(in, out, out).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@ goedel_expand_eqv_types(Items0, Items) :-
 
 :- pred goedel_replace_all_eqv_types(list(item_and_context),
 		list(item_and_context), list(item_and_context)).
-:- mode goedel_replace_all_eqv_types(input, input, output).
+:- mode goedel_replace_all_eqv_types(in, in, out).
 
 goedel_replace_all_eqv_types([], Items, Items).
 goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
@@ -102,7 +102,7 @@ goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 
 :- pred goedel_replace_eqv_type(item, varset, string, list(type_param), type,
 			item).
-:- mode goedel_replace_eqv_type(input, input, input, input, input, output).
+:- mode goedel_replace_eqv_type(in, in, in, in, in, out).
 
 goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
 			TVarSet, Name, Args0, Body0,
@@ -119,7 +119,7 @@ goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 	
 :- pred goedel_replace_eqv_type_defn(type_defn, string, list(type_param),
 					type, type_defn).
-:- mode goedel_replace_eqv_type_defn(input, input, input, input, output).
+:- mode goedel_replace_eqv_type_defn(in, in, in, in, out).
 
 goedel_replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
 				Name, Args, Body,
@@ -137,8 +137,8 @@ goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
 
 :- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
 					type, bool, list(type), bool).
-:- mode goedel_replace_eqv_type_uu(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_uu(in, in, in, in, in,
+					out, out).
 
 goedel_replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
@@ -147,8 +147,8 @@ goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 
 :- pred goedel_replace_eqv_type_du(list(constructor), string, list(type_param),
 				type, bool, list(constructor), bool).
-:- mode goedel_replace_eqv_type_du(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_du(in, in, in, in, in,
+					out, out).
 
 goedel_replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
@@ -157,8 +157,8 @@ goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 
 :- pred goedel_replace_eqv_type_ctor(constructor, string, list(type_param),
 				type, bool, constructor, bool).
-:- mode goedel_replace_eqv_type_ctor(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_ctor(in, in, in, in, in,
+					out, out).
 
 goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 		TName - Targs, Found) :-
@@ -167,17 +167,17 @@ goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 
 :- pred goedel_replace_eqv_type_type(type, string, list(type_param),
 				type, bool, type, bool).
-:- mode goedel_replace_eqv_type_type(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_type(in, in, in, in, in,
+					out, out).
 
-goedel_replace_eqv_type_type(term_variable(V), _Name, _Args, _Body, Found,
-		term_variable(V), Found).
-goedel_replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
+goedel_replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
+		term__variable(V), Found).
+goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		Body, Found0, Type, Found) :- 
 	goedel_replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
 		TArgs1, Found1),
 	(	
-		F = term_atom(Name),
+		F = term__atom(Name),
 		same_length(TArgs1, Args)
 	->
 		type_param_to_var_list(Args, Args2),
@@ -187,11 +187,11 @@ goedel_replace_eqv_type_type(term_functor(F, TArgs0, Context), Name, Args,
 		% XXX could we improve efficiency here by reclaiming
 		% garbage (or avoiding allocating it in the first place)?
 		Found = Found1,
-		Type = term_functor(F, TArgs1, Context)
+		Type = term__functor(F, TArgs1, Context)
 	).
 
 :- pred type_param_to_var_list(list(type_param), list(var)).
-:- mode type_param_to_var_list(input, output).
+:- mode type_param_to_var_list(in, out).
 
 type_param_to_var_list([], []).
 type_param_to_var_list([T | Ts], [V | Vs]) :-
@@ -199,14 +199,14 @@ type_param_to_var_list([T | Ts], [V | Vs]) :-
 	type_param_to_var_list(Ts, Vs).
 
 :- pred type_param_to_var(type_param, var).
-:- mode type_param_to_var(input, output).
+:- mode type_param_to_var(in, out).
 
-type_param_to_var(term_variable(V), V).
+type_param_to_var(term__variable(V), V).
 
 :- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
 	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode goedel_replace_eqv_type_pred(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_pred(in, in, in, in, in,
+					out, out).
 
 goedel_replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
@@ -216,8 +216,8 @@ goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,
 					TMs, Found).
 :- pred goedel_replace_eqv_type_tm(type_and_mode, string, list(type_param),
 				type, bool, type_and_mode, bool).
-:- mode goedel_replace_eqv_type_tm(input, input, input, input, input,
-					output, output).
+:- mode goedel_replace_eqv_type_tm(in, in, in, in, in,
+					out, out).
 
 goedel_replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
 				type_only(Type), Found) :-
@@ -250,7 +250,7 @@ split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
 :- type maybe ---> yes ; no.
 :- pred split_types_and_modes_2(list(type_and_mode), maybe,
 				list(type), list(mode), maybe).
-:- mode split_types_and_modes_2(input, input, output, output, output).
+:- mode split_types_and_modes_2(in, in, out, out, out).
 
 	% T = type, M = mode, TM = combined type and mode
 split_types_and_modes_2([], Result, [], [], Result).
@@ -263,7 +263,7 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 	% - should this be an error instead?
 
 :- pred split_type_and_mode(type_and_mode, maybe, type, mode, maybe).
-:- mode split_type_and_mode(input, input, output, output, output).
+:- mode split_type_and_mode(in, in, out, out, out).
 
 split_type_and_mode(type_only(T), _, T, (free -> free), no).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
