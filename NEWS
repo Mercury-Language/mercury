@@ -6,7 +6,7 @@ NEWS since Mercury release 0.8:
 
 * The extras distribution now includes support for dynamic linking.
 
-  The interface is a based on the C functions dlopen(), dlsym(), and co.,
+  The interface is based on the C functions dlopen(), dlsym(), and co.,
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
 
