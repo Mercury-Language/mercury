@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -54,6 +54,7 @@ Environment variables:
 FULLARCH=@FULLARCH@
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+GC_INCL_DIR=${MERCURY_GC_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
@@ -342,22 +343,26 @@ case $assemble in true)
 	exec $AS $AS_OPTS "$@" ;;
 esac
 
+# please keep the three long lines below in sync
 case $verbose in true)
-	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	echo $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
+		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
+		"$@" $OVERRIDE_OPTS ;;
 esac
 case $# in
-	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	0) exec $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $OVERRIDE_OPTS ;;
-	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
+		$OVERRIDE_OPTS ;;
+	*) exec $CC -I$C_INCL_DIR -I$GC_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
+		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
+		"$@" $OVERRIDE_OPTS ;;
 esac

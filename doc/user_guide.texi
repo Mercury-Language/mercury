@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -49,7 +49,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Ross
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1997 The University of Melbourne.
+Copyright @copyright{} 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -2556,7 +2556,11 @@ Set @samp{MERCURY_OPTIONS} to @samp{-h} for help.
 
 @sp 1
 @item MERCURY_C_INCL_DIR
-Directory for the Mercury C header files (@file{*.h}).
+Directory for the C header files for the Mercury runtime system (@file{*.h}).
+
+@sp 1
+@item MERCURY_GC_INCL_DIR
+Directory for the C header files for the Mercury garbage collector (@file{*.h}).
 
 @sp 1
 @item MERCURY_INT_DIR
