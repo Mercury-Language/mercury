@@ -326,45 +326,59 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 	% iff we have a case for that tag value.
 lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		CheckCode) -->
-	generate_bit_vec(CaseVals, Start, BitVec),
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
-	{ int__bits_per_int(MachineBits) },
-		% prevent cross-compilation errors by making sure that
-		% the bitvector uses a number of bits that will fit both
-		% on this machine (so that we can correctly generate it),
-		% and on the target machine (so that it can be executed
-		% correctly)
-	{ int__min(WordBits0, MachineBits, WordBits) },
+	lookup_switch__get_word_bits(WordBits),
+	generate_bit_vec(CaseVals, Start, WordBits, BitVec),
+
 	{ UIndex = unop(cast_to_unsigned, Index) },
-	{ Word = lval(field(0, BitVec,
-			binop(/, UIndex,const(int_const(WordBits)))))},
-	{ HasBit = binop((&), binop((<<),
-			const(int_const(1)),
-			binop(mod, UIndex, const(int_const(WordBits)))),Word) },
+		%
+		% Optimize the single-word case:
+		% if all the cases fit into a single word, then
+		% the word to use is always that word, and the index
+		% specifies which bit.  Otherwise, the high bits
+		% of the index specify which word to use and the
+		% low bits specify which bit.
+		%
+	{
+		BitVec = create(_, [yes(SingleWord)], _, _)
+	->
+		Word = SingleWord,
+		BitNum = UIndex
+	;
+		WordNum = binop(/, UIndex, const(int_const(WordBits))),
+		Word = lval(field(0, BitVec, WordNum)),
+		BitNum = binop(mod, UIndex, const(int_const(WordBits)))
+	},
+	{ HasBit = binop((&),
+			binop((<<), const(int_const(1)), BitNum),
+			Word) },
 	code_info__fail_if_rval_is_false(HasBit, CheckCode).
 
-:- pred generate_bit_vec(case_consts, int, rval,
-		code_info, code_info).
-:- mode generate_bit_vec(in, in, out, in, out) is det.
+
+:- pred lookup_switch__get_word_bits(int, code_info, code_info).
+:- mode lookup_switch__get_word_bits(out, in, out) is det.
+
+	% Prevent cross-compilation errors by making sure that
+	% the bitvector uses a number of bits that will fit both
+	% on this machine (so that we can correctly generate it),
+	% and on the target machine (so that it can be executed
+	% correctly)
+
+lookup_switch__get_word_bits(WordBits) -->
+	{ int__bits_per_int(HostWordBits) },
+	code_info__get_globals(Globals),
+	{ globals__get_options(Globals, Options) },
+	{ getopt__lookup_int_option(Options, bits_per_word, TargetWordBits) },
+	{ int__min(HostWordBits, TargetWordBits, WordBits) }.
+
+:- pred generate_bit_vec(case_consts, int, int, rval, code_info, code_info).
+:- mode generate_bit_vec(in, in, in, out, in, out) is det.
 
 	% we generate the bitvector by iterating through the cases
 	% marking the bit for each case. (We represent the bitvector
 	% here as a map from the word number in the vector to the bits
 	% for that word.
-generate_bit_vec(CaseVals, Start, BitVec) -->
+generate_bit_vec(CaseVals, Start, WordBits, BitVec) -->
 	{ map__init(Empty) },
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
-	{ int__bits_per_int(MachineBits) },
-		% prevent cross-compilation errors by making sure that
-		% the bitvector uses a number of bits that will fit both
-		% on this machine (so that we can correctly generate it),
-		% and on the target machine (so that it can be executed
-		% correctly)
-	{ int__min(WordBits0, MachineBits, WordBits) },
 	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },
@@ -372,7 +386,7 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ BitVec = create(0, Args, no, CellNo) }.
 
 :- pred generate_bit_vec_2(case_consts, int, int,
-		map(int, int), map(int, int)).
+			map(int, int), map(int, int)).
 :- mode generate_bit_vec_2(in, in, in, in, out) is det.
 
 generate_bit_vec_2([], _, _, Bits, Bits).
