@@ -1890,7 +1890,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% #undef it afterwards.
 	%		
 ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
+		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
 		LocalVarsDecls, LocalVarsContext, FirstCode, FirstContext,
 		LaterCode, LaterContext, SharedCode, SharedContext,
 		MLDS_Decls, MLDS_Statements) -->
@@ -1943,7 +1943,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate the MR_PROC_LABEL #define
 	%
-	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+	ml_gen_hash_define_mr_proc_label(HashDefine),
 
 	%
 	% Put it all together
@@ -2093,7 +2093,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	% Java.
 	%
 ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
 	%
 	% Combine all the information about the each arg
@@ -2127,7 +2127,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate the MR_PROC_LABEL #define
 	%
-	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+	ml_gen_hash_define_mr_proc_label(HashDefine),
 
 	%
 	% Put it all together
@@ -2218,16 +2218,22 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ReleaseLock = ""
 	}.
 
-:- pred ml_gen_hash_define_mr_proc_label(pred_id::in, proc_id::in,
-		list(target_code_component)::out,
+:- pred ml_gen_hash_define_mr_proc_label(list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine) -->
+ml_gen_hash_define_mr_proc_label(HashDefine) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, _Module) },
+	% Note that we use the pred_id and proc_id of the current procedure,
+	% not the one that the pragma foreign_code originally came from.
+	% There may not be any function address for the latter, e.g. if it
+	% has been inlined and the original definition optimized away.
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name,
+			MLDS_Module) },
 	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-			name(MLDS_Name),
+			name(qual(MLDS_Module, MLDS_Name)),
 			raw_target_code("\n")] }.
 
 

@@ -1441,15 +1441,9 @@ target_code_component_contains_var(target_code_input(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 target_code_component_contains_var(target_code_output(Lval), Name) :-
 	lval_contains_var(Lval, Name).
-target_code_component_contains_var(name(EntityName), _VarName) :-
-	EntityName = data(var(_UnqualVarName)),
-	% XXX They might match.  But the EntityName here is unqualified,
-	%     so we can't tell for sure if there is a match.  Hence we
-	%     just abort.  Currently name/1 is only used for procedure
-	%     names, not var names, so this case won't occur.  (If it
-	%     does, the right fix is probably to make the EntityName
-	%     a fully qualified name rather than an unqualified name.)
-	error("target_code_component_contains_var: name/1 used for var").
+target_code_component_contains_var(name(EntityName), VarName) :-
+	EntityName = qual(ModuleName, data(var(UnqualVarName))),
+	VarName = qual(ModuleName, UnqualVarName).
 
 :- pred rvals_contains_var(list(mlds__rval), mlds__var).
 :- mode rvals_contains_var(in, in) is semidet.

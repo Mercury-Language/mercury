@@ -1024,7 +1024,7 @@ XXX Full exception handling support is not yet implemented.
 			% output #line directives.
 	;	target_code_input(mlds__rval)
 	;	target_code_output(mlds__lval)
-	;	name(mlds__entity_name)
+	;	name(mlds__qualified_entity_name)
 	.
 
 	% XXX I'm not sure what representation we should use here

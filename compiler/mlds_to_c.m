@@ -2463,22 +2463,21 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-mlds_output_atomic_stmt(_Indent, FuncInfo, target_code(TargetLang, Components),
+mlds_output_atomic_stmt(_Indent, _FuncInfo, target_code(TargetLang, Components),
 		Context) -->
 	( { TargetLang = lang_C } ->
-		{ FuncInfo = func_info(qual(ModuleName, _), _FuncParams) },
 		list__foldl(
-			mlds_output_target_code_component(ModuleName, Context),
+			mlds_output_target_code_component(Context),
 			Components)
 	;
 		{ error("mlds_to_c.m: sorry, target_code only works for lang_C") }
 	).
 
-:- pred mlds_output_target_code_component(mlds_module_name, mlds__context,
-		target_code_component, io__state, io__state).
-:- mode mlds_output_target_code_component(in, in, in, di, uo) is det.
+:- pred mlds_output_target_code_component(mlds__context, target_code_component,
+		io__state, io__state).
+:- mode mlds_output_target_code_component(in, in, di, uo) is det.
 
-mlds_output_target_code_component(_ModuleName, Context,
+mlds_output_target_code_component(Context,
 		user_target_code(CodeString, MaybeUserContext)) -->
 	( { MaybeUserContext = yes(UserContext) } ->
 		mlds_output_context(mlds__make_context(UserContext))
@@ -2487,27 +2486,24 @@ mlds_output_target_code_component(_ModuleName, Context,
 	),
 	io__write_string(CodeString),
 	io__write_string("\n").
-mlds_output_target_code_component(_ModuleName, Context,
-		raw_target_code(CodeString)) -->
+mlds_output_target_code_component(Context, raw_target_code(CodeString)) -->
 	mlds_output_context(Context),
 	io__write_string(CodeString).
-mlds_output_target_code_component(_ModuleName, Context,
-		target_code_input(Rval)) -->
+mlds_output_target_code_component(Context, target_code_input(Rval)) -->
 	mlds_output_context(Context),
 	mlds_output_rval(Rval),
 	io__write_string("\n").
-mlds_output_target_code_component(_ModuleName, Context,
-		target_code_output(Lval)) -->
+mlds_output_target_code_component(Context, target_code_output(Lval)) -->
 	mlds_output_context(Context),
 	mlds_output_lval(Lval),
 	io__write_string("\n").
-mlds_output_target_code_component(ModuleName, _Context, name(Name)) -->
+mlds_output_target_code_component(_Context, name(Name)) -->
 	% Note: `name(Name)' target_code_components are used to
 	% generate the #define for `MR_PROC_LABEL'.
 	% The fact that they're used in a #define means that we can't do
 	% an mlds_output_context(Context) here, since #line directives
 	% aren't allowed inside #defines.
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)),
+	mlds_output_fully_qualified_name(Name),
 	io__write_string("\n").
 
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
