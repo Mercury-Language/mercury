@@ -1059,6 +1059,12 @@ long_option("user-guided-type-specialization",
 					user_guided_type_specialization).
 long_option("user-guided-type-specialisation",
 					user_guided_type_specialization).
+	% This option is for use in configure.in to test for
+	% some bug-fixes for type-specialization which are needed
+	% to compile the library. It's not documented, and should
+	% eventually be removed.
+long_option("fixed-user-guided-type-specialization",
+					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("introduce-accumulators",	introduce_accumulators).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
