@@ -2,66 +2,76 @@
 #include	"list.h"
 #include	"access.h"
 
-void mkcp_msg(void)
+void mkframe_msg(void)
 {
 	restore_registers();
-	printf("\nnew choice point for procedure %s\n", cpprednm);
-	printf("new  cp: "); printcpstack(curcp);
-	printf("prev cp: "); printcpstack(cpprevcp);
-	printf("succ cp: "); printcpstack(cpsucccp);
-	printf("succ ip: "); printlabel(cpsuccip);
-	printf("redo ip: "); printlabel(cpredoip);
+	printf("\nnew choice point for procedure %s\n", curprednm);
+	printf("new  fr: "); printnondstack(curfr);
+	printf("prev fr: "); printnondstack(curprevfr);
+	printf("succ fr: "); printnondstack(cursuccfr);
+	printf("succ ip: "); printlabel(cursuccip);
+	printf("redo ip: "); printlabel(curredoip);
 	if (detaildebug)
-		dumpcpstack();
+		dumpnondstack();
 }
 
 void mkreclaim_msg(void)
 {
 	restore_registers();
-	printf("\nnew reclaim point for procedure %s\n", cpprednm);
-	printf("new  cp: "); printcpstack(curcp);
-	printf("prev cp: "); printcpstack(recprevcp);
+	printf("\nnew reclaim point for procedure %s\n", curprednm);
+	printf("new  fr: "); printnondstack(curfr);
+	printf("prev fr: "); printnondstack(recprevfr);
 	printf("redo ip: "); printlabel(recredoip);
 	printf("save hp: "); printheap(recsavehp);
 	if (detaildebug)
-		dumpcpstack();
+		dumpnondstack();
 }
 
-void modcp_msg(void)
+void modframe_msg(void)
 {
 	restore_registers();
-	printf("\nmodifying choice point for procedure %s\n", cpprednm);
-	printf("redo ip: "); printlabel(cpredoip);
+	printf("\nmodifying choice point for procedure %s\n", curprednm);
+	printf("redo ip: "); printlabel(curredoip);
 	if (detaildebug)
-		dumpcpstack();
+		dumpnondstack();
 }
 
 void succeed_msg(void)
 {
 	restore_registers();
-	printf("\nsucceeding from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack(curcp);
-	printf("succ cp: "); printcpstack(cpsucccp);
-	printf("succ ip: "); printlabel(cpsuccip);
+	printf("\nsucceeding from procedure %s\n", curprednm);
+	printf("curr fr: "); printnondstack(curfr);
+	printf("succ fr: "); printnondstack(cursuccfr);
+	printf("succ ip: "); printlabel(cursuccip);
+	printregs("registers at success");
+}
+
+void succeeddiscard_msg(void)
+{
+	restore_registers();
+	printf("\nsucceeding from procedure %s, discarding frame\n", curprednm);
+	printf("curr fr: "); printnondstack(curfr);
+	printf("succ fr: "); printnondstack(cursuccfr);
+	printf("succ ip: "); printlabel(cursuccip);
 	printregs("registers at success");
 }
 
 void fail_msg(void)
 {
 	restore_registers();
-	printf("\nfailing from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack(curcp);
-	printf("fail cp: "); printcpstack(cpprevcp);
-	printf("fail ip: "); printlabel(bt_redoip(cpprevcp));
+	printf("\nfailing from procedure %s\n", curprednm);
+	printf("curr fr: "); printnondstack(curfr);
+	printf("fail fr: "); printnondstack(curprevfr);
+	printf("fail ip: "); printlabel(bt_redoip(curprevfr));
 }
 
 void redo_msg(void)
 {
 	restore_registers();
-	printf("\nredo from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack(curcp);
-	printf("redo cp: "); printcpstack(maxcp);
-	printf("redo ip: "); printlabel(bt_redoip(maxcp));
+	printf("\nredo from procedure %s\n", curprednm);
+	printf("curr fr: "); printnondstack(curfr);
+	printf("redo fr: "); printnondstack(maxfr);
+	printf("redo ip: "); printlabel(bt_redoip(maxfr));
 }
 
 void call_msg(const Code *proc, const Code *succcont)
@@ -100,13 +110,13 @@ void cr2_msg(Word val0, Word val1, const Word *addr)
 void push_msg(Word val, const Word *addr)
 {
 	printf("push value %9x to ", val);
-	printstack(addr);
+	printdetstack(addr);
 }
 
 void pop_msg(Word val, const Word *addr)
 {
 	printf("pop value %9x from ", val);
-	printstack(addr);
+	printdetstack(addr);
 }
 
 void goto_msg(const Code *addr)
@@ -134,54 +144,54 @@ void printheap(const Word *h)
 	printf("ptr 0x%p, offset %3d words\n", h, h - heapmin);
 }
 
-void printstack(const Word *s)
+void printdetstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3d words\n",
-		s, s - stackmin);
+		s, s - detstackmin);
 }
 
-void printcpstack(const Word *s)
+void printnondstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3d words, procedure %s\n",
-		s, s - cpstackmin, (const char *) s[PREDNM]);
+		s, s - nondstackmin, (const char *) s[PREDNM]);
 }
 
-void dumpframe(const Word *cp)
+void dumpframe(const Word *fr)
 {
 	reg	int	i;
 
-	if ((cp - bt_prevcp(cp)) == RECLAIM_SIZE)
+	if ((fr - bt_prevfr(fr)) == RECLAIM_SIZE)
 	{
 		printf("reclaim frame at ptr 0x%p, offset %3d words\n",
-			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", bt_prednm(cp));
-		printf("\t redoip    "); printlabel(bt_redoip(cp));
-		printf("\t prevcp    "); printcpstack(bt_prevcp(cp));
-		printf("\t savehp    "); printheap(bt_savehp(cp));
+			fr, fr - nondstackmin);
+		printf("\t predname  %s\n", bt_prednm(fr));
+		printf("\t redoip    "); printlabel(bt_redoip(fr));
+		printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
+		printf("\t savehp    "); printheap(bt_savehp(fr));
 	}
 	else
 	{
-		printf("cp frame at ptr 0x%p, offset %3d words\n",
-			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", bt_prednm(cp));
-		printf("\t succip    "); printlabel(bt_succip(cp));
-		printf("\t redoip    "); printlabel(bt_redoip(cp));
-		printf("\t succcp    "); printcpstack(bt_succcp(cp));
-		printf("\t prevcp    "); printcpstack(bt_prevcp(cp));
+		printf("frame at ptr 0x%p, offset %3d words\n",
+			fr, fr - nondstackmin);
+		printf("\t predname  %s\n", bt_prednm(fr));
+		printf("\t succip    "); printlabel(bt_succip(fr));
+		printf("\t redoip    "); printlabel(bt_redoip(fr));
+		printf("\t succfr    "); printnondstack(bt_succfr(fr));
+		printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
 
-		for (i = 0; &bt_var(cp,i) > bt_prevcp(cp); i++)
-			printf("\t cpvar(%d)  %d 0x%x\n",
-				i, bt_var(cp,i), bt_var(cp,i));
+		for (i = 0; &bt_var(fr,i) > bt_prevfr(fr); i++)
+			printf("\t framevar(%d)  %d 0x%x\n",
+				i, bt_var(fr,i), bt_var(fr,i));
 	}
 }
 
-void dumpcpstack(void)
+void dumpnondstack(void)
 {
-	reg	Word	*cp;
+	reg	Word	*fr;
 
-	printf("\ncpstack dump\n");
-	for (cp = maxcp; cp > cpstackmin; cp = bt_prevcp(cp))
-		dumpframe(cp);
+	printf("\nnondstack dump\n");
+	for (fr = maxfr; fr > nondstackmin; fr = bt_prevfr(fr))
+		dumpframe(fr);
 }
 
 #define	LIST_WRAP	4
@@ -268,7 +278,7 @@ int whichlabel(const char *name)
 #define P_STR	((PrintRegFunc *) printstring)
 #define P_LIST 	((PrintRegFunc *) printlist)
 #define P_LABEL ((PrintRegFunc *) printlabel)
-#define P_STACK	((PrintRegFunc *) printstack)
+#define P_STACK	((PrintRegFunc *) printdetstack)
 #define P_HEAP	((PrintRegFunc *) printheap)
 
 #if 0	/* this code no longer used */
@@ -360,39 +370,48 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 void printframe(const char *msg)
 {
 	reg	int	i;
+	reg	int	value;
 
 	printf("\n%s\n", msg);
-	dumpframe(curcp);
+	dumpframe(curfr);
+
+	restore_registers();
+
 	for (i = 0; i < 5; i++)
 	{
-		if (i < 10)
-			printf("r%d:      ", i + 1);
+		printf("r%d:      ", i + 1);
+		value = get_reg(i+1);
+		if ((int) heapmin <= value && value <= (int) heapmax)
+			printlist(value);
 		else
-			printf("r%2d:     ", i + 1);
-
-		printlist(get_reg(i + 1));
+			printint(value);
 	}
 }
 
 void printregs(const char *msg)
 {
-	int	i;
+	reg	int	i;
+	reg	int	value;
 
 	restore_registers();
 
 	printf("\n%s\n", msg);
 
 	printf("%-9s", "succip:");  printlabel(succip);
-	printf("%-9s", "curcp:");   printcpstack(curcp);
-	printf("%-9s", "maxcp:");   printcpstack(maxcp);
-	printf("%-9s", "childcp:"); printcpstack(maxcp);
+	printf("%-9s", "curfr:");   printnondstack(curfr);
+	printf("%-9s", "maxfr:");   printnondstack(maxfr);
+	printf("%-9s", "childfr:"); printnondstack(maxfr);
 	printf("%-9s", "hp:");      printheap(hp);
-	printf("%-9s", "sp:");      printstack(sp);
+	printf("%-9s", "sp:");      printdetstack(sp);
 
 	for (i = 0; i < 5; i++)
 	{
 		printf("r%d:      ", i + 1);
-		printlist(get_reg(i + 1));
+		value = get_reg(i+1);
+		if ((int) heapmin <= value && value <= (int) heapmax)
+			printlist(value);
+		else
+			printint(value);
 	}
 }
 

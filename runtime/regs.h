@@ -4,7 +4,7 @@
 /*
 ** The virtual machine registers are built up using two levels
 ** of abstraction.  This file defines the virtual machine registers
-** succip, hp, sp, curcp, maxcp, childcp, r1 - r32
+** succip, hp, sp, curfr, maxfr, childfr, r1 - r32
 ** using the registers mr0 - mr31 defined in machregs.h.
 */
 
@@ -53,9 +53,9 @@
 #define r5		count_usage(5, mr5)
 #define hp		LVALUE_CAST(Word *, count_usage(6, mr6))
 #define sp		LVALUE_CAST(Word *, count_usage(7, mr7))
-#define childcp		LVALUE_CAST(Word *, count_usage(8, mr8))
-#define curcp		LVALUE_CAST(Word *, count_usage(9, mr9))
-#define maxcp		LVALUE_CAST(Word *, count_usage(10, mr10))
+#define childfr		LVALUE_CAST(Word *, count_usage(8, mr8))
+#define curfr		LVALUE_CAST(Word *, count_usage(9, mr9))
+#define maxfr		LVALUE_CAST(Word *, count_usage(10, mr10))
 #define r6		count_usage(11, mr11)
 #define r7		count_usage(12, mr12)
 #define r8		count_usage(13, mr13)

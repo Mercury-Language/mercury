@@ -19,12 +19,12 @@
 
 # Use this option only with gcc
 # Currently only supported for mips and sparc cpus.
-# -DUSE_GCC_GLOBAL_REGISTERS
+-DUSE_GCC_GLOBAL_REGISTERS
 
 # Use this option only with gcc.
 # If you enable this option, you must ensure that MOD2CFLAGSFILE contains -l.
 # If you disable this option, you must ensure that it doesn't contains -l.
-# -DUSE_GCC_NONLOCAL_GOTOS
+-DUSE_GCC_NONLOCAL_GOTOS
 
 # Enable this option if you want to measure the number of times
 # each register is used.  Note that the measurement includes

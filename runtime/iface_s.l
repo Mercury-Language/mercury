@@ -3,8 +3,6 @@
 **	Scanner for the interface to the Ptah interpeter
 */
 
-static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.4 1993-12-02 06:59:30 zs Exp $";
 
 #include	<string.h>
 #include	"imp.h"

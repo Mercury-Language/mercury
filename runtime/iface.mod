@@ -14,9 +14,9 @@ int	cmdsize;
 int	cmdlen;
 int	cmdcur;
 
-Word	*ifacestackmin;
+Word	*ifacedetstackmin;
 
-static	Word	*cmdcp;
+static	Word	*cmdfr;
 static	int	cmdtarget;
 
 BEGIN_MODULE(iface_module)
@@ -30,8 +30,8 @@ do_iface_input:
 	proceed();
 
 do_iface:
-	cmdcp = maxcp;
-	ifacestackmin = sp;
+	cmdfr = maxfr;
+	ifacedetstackmin = sp;
 
 /*
 ** we use gotos instead of a while loop because we want
@@ -64,7 +64,7 @@ when Help:	printf("no help text available yet\n");
 
 when Print:	printf("%d\n", act_value);
 
-when Reset:	maxcp = cmdcp;
+when Reset:	maxfr = cmdfr;
 
 when Call:	cmdtarget = whichlabel(act_predname);
 		if (cmdtarget < 0)
@@ -75,11 +75,11 @@ when Call:	cmdtarget = whichlabel(act_predname);
 
 		/* make get_reg/set_reg operate on saved registers */
 		restore_registers();
-		maxcp = cmdcp;
-		mkcp("iface_1", 0, LABEL(iface_fail));
+		maxfr = cmdfr;
+		mkframe("iface_1", 0, LABEL(iface_fail));
 		call(entries[cmdtarget].e_addr, LABEL(iface_succ));
 
-when Redo:	if (maxcp <= cmdcp)
+when Redo:	if (maxfr <= cmdfr)
 		{
 			printf("no active call to redo\n");
 			GOTO_LABEL(get_cmd);

@@ -108,10 +108,10 @@ Word get_mem(Word *addr)
 	if (heapmin <= addr && addr < &heap[MAXHEAP])
 		return *addr;
 
-	if (stackmin <= addr && addr < &stack[MAXSTACK])
+	if (detstackmin <= addr && addr < &detstack[MAXDETSTACK])
 		return *addr;
 
-	if (cpstackmin <= addr && addr < &cpstack[MAXCPSTACK])
+	if (nondstackmin <= addr && addr < &nondstack[MAXNONDSTACK])
 		return *addr;
 
 	/* NOTREACHED */
@@ -128,13 +128,13 @@ Word set_mem(Word *addr, Word val)
 		return val;
 	}
 
-	if (stackmin <= addr && addr < &stack[MAXSTACK])
+	if (detstackmin <= addr && addr < &detstack[MAXDETSTACK])
 	{
 		*addr = val;
 		return val;
 	}
 
-	if (cpstackmin <= addr && addr < &cpstack[MAXCPSTACK])
+	if (nondstackmin <= addr && addr < &nondstack[MAXNONDSTACK])
 	{
 		*addr = val;
 		return val;

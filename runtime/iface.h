@@ -4,4 +4,4 @@ extern	int	yyparse(void);
 extern	void	yykwinit(void);
 extern	void	yyreinit(void);
 
-extern	Word	*ifacestackmin;
+extern	Word	*ifacedetstackmin;

@@ -2,10 +2,6 @@
 **	Linked list module.
 */
 
-#ifndef lint
-static  char    rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/list.c,v 1.1 1993-12-01 05:55:43 zs Exp $";
-#endif
-
 #include	<stdio.h>
 #include	"std.h"
 #include	"list.h"

@@ -7,10 +7,6 @@
 **	primary key and a hash function on it.
 */
 
-#ifndef lint
-static  char    rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/table.c,v 1.2 1993-12-02 05:17:19 zs Exp $";
-#endif
-
 #include	<stdio.h>
 #include	"std.h"
 #include	"list.h"

@@ -5,7 +5,7 @@
 
 #ifndef	lint
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.4 1993-12-02 06:59:29 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.5 1993-12-13 11:40:40 zs Exp $";
 #endif
 
 #include	<ctype.h>
@@ -100,12 +100,12 @@ line	:	RESET
 	|	DUMPFRAME
 		{
 			action = Null;
-			dumpframe(curcp);
+			dumpframe(curfr);
 		}
 	|	DUMPCPSTACK
 		{
 			action = Null;
-			dumpcpstack();
+			dumpnondstack();
 		}
 	|	/* empty */
 		{
@@ -120,9 +120,9 @@ debug	:	DEBUG
 	;
 
 flag	:	DETTOKEN
-		{	$$ = STACKFLAG;			}
+		{	$$ = DETSTACKFLAG;		}
 	|	NONDETTOKEN
-		{	$$ = CPSTACKFLAG;		}
+		{	$$ = NONDSTACKFLAG;		}
 	|	HEAPTOKEN
 		{	$$ = HEAPFLAG;			}
 	|	CALLTOKEN
@@ -158,7 +158,7 @@ cmd	:	TAG NUM expr
 	|	POP
 		{
 			$$ = pop();
-			if (sp < ifacestackmin)
+			if (sp < ifacedetstackmin)
 			{
 				printf("stack underflow\n");
 				push($$);

@@ -25,8 +25,8 @@ typedef void	Code;
 #define	GOTOFLAG	0
 #define	CALLFLAG	1
 #define	HEAPFLAG	2
-#define	STACKFLAG	3
-#define	CPSTACKFLAG	4
+#define	DETSTACKFLAG	3
+#define	NONDSTACKFLAG	4
 #define	FINALFLAG	5
 #define	DETAILFLAG	6
 #define	MAXFLAG		7
@@ -35,8 +35,8 @@ typedef void	Code;
 #define	gotodebug	debugflag[GOTOFLAG]
 #define	calldebug	debugflag[CALLFLAG]
 #define	heapdebug	debugflag[HEAPFLAG]
-#define	stackdebug	debugflag[STACKFLAG]
-#define	cpstackdebug	debugflag[CPSTACKFLAG]
+#define	detstackdebug	debugflag[DETSTACKFLAG]
+#define	nondstackdebug	debugflag[NONDSTACKFLAG]
 #define	finaldebug	debugflag[FINALFLAG]
 #define	detaildebug	debugflag[DETAILFLAG]
 
@@ -116,22 +116,14 @@ extern	int	which;		/* procedure called from interpreter */
 #define doredo 			ENTRY(do_redo)
 #define dofail 			ENTRY(do_fail)
 #define doresethpfail		ENTRY(do_reset_hp_fail)
-#define doresetcpvar0fail	ENTRY(do_reset_cpvar0_fail)
+#define doresetframevar0fail	ENTRY(do_reset_framevar0_fail)
 #define dosucceed		ENTRY(do_succeed)
-#define doslownegfail		ENTRY(do_slowneg_fail)
-#define doslownegsucceed	ENTRY(do_slowneg_succeed)
-#define dofastnegredo		ENTRY(do_fastneg_redo)
-#define dofastnegproceed	ENTRY(do_fastneg_proceed)
 
 extern	EntryPoint	doredo;
 extern	EntryPoint	dofail;
 extern	EntryPoint	doresethpfail;
-extern	EntryPoint	doresetcpvar0fail;
+extern	EntryPoint	doresetframevar0fail;
 extern	EntryPoint	dosucceed;
-extern	EntryPoint	doslownegfail;
-extern	EntryPoint	doslownegsucceed;
-extern	EntryPoint	dofastnegredo;
-extern	EntryPoint	dofastnegproceed;
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
@@ -167,21 +159,21 @@ extern	EntryPoint	dofastnegproceed;
 /* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
 
 #define	MAXHEAP		0x10000
-#define	MAXSTACK	0x10000
-#define	MAXCPSTACK	0x10000
+#define	MAXDETSTACK	0x10000
+#define	MAXNONDSTACK	0x10000
 #define	CACHE_OFFSET	0x200
 
 extern	Word	heap[];
-extern	Word	stack[];
-extern	Word	cpstack[];
+extern	Word	detstack[];
+extern	Word	nondstack[];
 
 extern	Word	*heapmax;
-extern	Word	*stackmax;
-extern	Word	*cpstackmax;
+extern	Word	*detstackmax;
+extern	Word	*nondstackmax;
 
 extern	Word	*heapmin;
-extern	Word	*stackmin;
-extern	Word	*cpstackmin;
+extern	Word	*detstackmin;
+extern	Word	*nondstackmin;
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
@@ -214,17 +206,17 @@ extern	Word	*cpstackmin;
 
 /* DEFINITIONS FOR MANIPULATING THE STACK */
 
-#define	stackvar(n)	sp[-n]
+#define	detstackvar(n)	sp[-n]
 
 #define	incr_sp(n)	(					\
 				sp += (n),			\
-				stack_overflow_check(),		\
+				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	decr_sp(n)	(					\
 				sp -= (n),			\
-				stack_underflow_check(),	\
+				detstack_underflow_check(),	\
 				(void)0				\
 			)
 
@@ -233,14 +225,14 @@ extern	Word	*cpstackmin;
 				*sp = (Word) (w),		\
 				debugpush(*sp, sp),		\
 				sp += 1,			\
-				stack_overflow_check(),		\
+				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	pop()		(					\
 				sp -= 1,			\
 				debugpop(*sp, sp),		\
-				stack_underflow_check(),	\
+				detstack_underflow_check(),	\
 				/* return */ *sp		\
 			)
 
@@ -248,107 +240,104 @@ extern	Word	*cpstackmin;
 
 #define	PREDNM		(-0)	/* for debugging, set up at call 	*/
 #define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
-#define	PREVCP		(-2)	/* prev cp on stack, set up at call	*/
-#define	SAVEHP		(-3)	/* in calling proc, set up at call	*/
-#define	SUCCIP		(-3)	/* in calling proc, set up at call	*/
-#define	SUCCCP		(-4)	/* cp of calling proc, set up at call	*/
+#define	PREVFR		(-2)	/* prev frame on stack, set up at call	*/
+#define	SAVEHP		(-3)	/* in caller proc, set up at call	*/
+#define	SUCCIP		(-3)	/* in caller proc, set up at call	*/
+#define	SUCCFR		(-4)	/* frame of caller proc, set up at call	*/
 #define	SAVEVAL		(-5)	/* saved values start at this offset	*/
 
-#define	bt_prednm(curcp)	LVALUE_CAST(const char *, curcp[PREDNM])
-#define	bt_redoip(curcp)	LVALUE_CAST(Code *, curcp[REDOIP])
-#define	bt_prevcp(curcp)	LVALUE_CAST(Word *, curcp[PREVCP])
-#define	bt_savehp(curcp)	LVALUE_CAST(Code *, curcp[SAVEHP])
-#define	bt_succip(curcp)	LVALUE_CAST(Code *, curcp[SUCCIP])
-#define	bt_succcp(curcp)	LVALUE_CAST(Word *, curcp[SUCCCP])
-#define	bt_var(curcp,n)		curcp[SAVEVAL-n]
+#define	bt_prednm(fr)	LVALUE_CAST(const char *, fr[PREDNM])
+#define	bt_redoip(fr)	LVALUE_CAST(Code *, fr[REDOIP])
+#define	bt_prevfr(fr)	LVALUE_CAST(Word *, fr[PREVFR])
+#define	bt_savehp(fr)	LVALUE_CAST(Code *, fr[SAVEHP])
+#define	bt_succip(fr)	LVALUE_CAST(Code *, fr[SUCCIP])
+#define	bt_succfr(fr)	LVALUE_CAST(Word *, fr[SUCCFR])
+#define	bt_var(fr,n)	fr[SAVEVAL-n]
 
 /* the offsets used by choice points */
-#define	cpprednm	bt_prednm(curcp)
-#define	cpredoip	bt_redoip(curcp)
-#define	cpprevcp	bt_prevcp(curcp)
-#define	cpsuccip	bt_succip(curcp)
-#define	cpsucccp	bt_succcp(curcp)
-#define	cpvar(n)	bt_var(curcp,n)
+#define	curprednm	bt_prednm(curfr)
+#define	curredoip	bt_redoip(curfr)
+#define	curprevfr	bt_prevfr(curfr)
+#define	cursuccip	bt_succip(curfr)
+#define	cursuccfr	bt_succfr(curfr)
+#define	framevar(n)	bt_var(curfr,n)
 
 /* the offsets used by reclaim points */
-#define	recprednm	bt_prednm(maxcp)
-#define	recredoip	bt_redoip(maxcp)
-#define	recprevcp	bt_prevcp(maxcp)
-#define	recsavehp	bt_savehp(maxcp)
+#define	recprednm	bt_prednm(maxfr)
+#define	recredoip	bt_redoip(maxfr)
+#define	recprevfr	bt_prevfr(maxfr)
+#define	recsavehp	bt_savehp(maxfr)
 
 #define	RECLAIM_SIZE		4	/* units: words */
 #define	CHOICE_POINT_SIZE	5	/* units: words */
 
 /* DEFINITIONS FOR MANIPULATING THE CHOICE POINT STACK */
 
-#define	mkcp(prednm, n, redoip)					\
+#define	mkframe(prednm, n, redoip)				\
 			do {					\
-				reg	Word	*prevcp;	\
-				reg	Word	*succcp;	\
+				reg	Word	*prevfr;	\
+				reg	Word	*succfr;	\
 								\
-				prevcp = maxcp;			\
-				succcp = curcp;			\
-				maxcp += (CHOICE_POINT_SIZE + n);	\
-				curcp = maxcp;			\
-				curcp[PREDNM] = (Word) prednm;	\
-				curcp[REDOIP] = (Word) redoip;	\
-				curcp[PREVCP] = (Word) prevcp;	\
-				curcp[SUCCIP] = (Word) succip;	\
-				curcp[SUCCCP] = (Word) succcp;	\
-				debugmkcp();			\
-				cpstack_overflow_check();	\
+				prevfr = maxfr;			\
+				succfr = curfr;			\
+				maxfr += (CHOICE_POINT_SIZE + n);	\
+				curfr = maxfr;			\
+				curfr[PREDNM] = (Word) prednm;	\
+				curfr[REDOIP] = (Word) redoip;	\
+				curfr[PREVFR] = (Word) prevfr;	\
+				curfr[SUCCIP] = (Word) succip;	\
+				curfr[SUCCFR] = (Word) succfr;	\
+				debugmkframe();			\
+				nondstack_overflow_check();	\
 			} while (0)
 
 #define	mkreclaim(prednm)					\
 			do {					\
-				reg	Word	*prevcp;	\
+				reg	Word	*prevfr;	\
 								\
-				prevcp = maxcp;			\
-				maxcp += 4;			\
-				maxcp[PREDNM] = (Word) prednm;	\
-				maxcp[REDOIP] = (Word) doresethpfail;	\
-				maxcp[PREVCP] = (Word) prevcp;	\
-				maxcp[SAVEHP] = (Word) hp;	\
+				prevfr = maxfr;			\
+				maxfr += 4;			\
+				maxfr[PREDNM] = (Word) prednm;	\
+				maxfr[REDOIP] = (Word) doresethpfail;	\
+				maxfr[PREVFR] = (Word) prevfr;	\
+				maxfr[SAVEHP] = (Word) hp;	\
 				debugmkreclaim();		\
-				cpstack_overflow_check();	\
+				nondstack_overflow_check();	\
 			} while (0)
 
-#define	modcp(redoip)	do {					\
-				cpredoip = redoip;		\
-				debugmodcp();			\
+#define	modframe(redoip)	do {				\
+				curredoip = redoip;		\
+				debugmodframe();			\
 			} while (0)
 
 #define	succeed()	do {					\
 				debugsucceed();			\
-				childcp = curcp;		\
-				curcp = cpsucccp;		\
-				GOTO(bt_succip(childcp));	\
+				childfr = curfr;		\
+				curfr = cursuccfr;		\
+				GOTO(bt_succip(childfr));	\
+			} while (0)
+
+#define	succeed_discard()					\
+			do {					\
+				debugsucceeddiscard();		\
+				childfr = curfr;		\
+				maxfr = curprevfr;		\
+				curfr = cursuccfr;		\
+				GOTO(bt_succip(childfr));	\
 			} while (0)
 
 #define	fail()		do {					\
 				debugfail();			\
-				maxcp = cpprevcp;		\
-				curcp = maxcp;			\
-				cpstack_underflow_check();	\
-				GOTO(cpredoip);			\
+				maxfr = curprevfr;		\
+				curfr = maxfr;			\
+				nondstack_underflow_check();	\
+				GOTO(curredoip);		\
 			} while (0)
 
 #define	redo()		do {					\
 				debugredo();			\
-				curcp = maxcp;			\
-				GOTO(cpredoip);			\
-			} while (0)
-
-#define	slowneg_setup(XXX)					\
-			do {					\
-				/* XXX */			\
-			} while (0)
-
-#define	fastneg_setup(XXX)					\
-			do {					\
-				push(cpredoip);			\
-				push(maxcp);			\
-				/* XXX */			\
+				curfr = maxfr;			\
+				GOTO(curredoip);		\
 			} while (0)
 
 /* DEFINITIONS FOR OVERFLOW CHECKS */
@@ -356,10 +345,10 @@ extern	Word	*cpstackmin;
 #ifdef	SPEED
 
 #define	heap_overflow_check()		((void)0)
-#define	stack_overflow_check()		((void)0)
-#define	stack_underflow_check()		((void)0)
-#define	cpstack_overflow_check()	((void)0)
-#define	cpstack_underflow_check()	((void)0)
+#define	detstack_overflow_check()	((void)0)
+#define	detstack_underflow_check()	((void)0)
+#define	nondstack_overflow_check()	((void)0)
+#define	nondstack_underflow_check()	((void)0)
 
 #else
 
@@ -375,43 +364,43 @@ extern	Word	*cpstackmin;
 				(void)0				\
 			)
 
-#define	stack_overflow_check()					\
+#define	detstack_overflow_check()				\
 			(					\
-				IF (sp >= &stack[MAXSTACK],(	\
+				IF (sp >= &detstack[MAXDETSTACK],(	\
 					printf("stack overflow\n"),	\
 					exit(1)			\
 				)),				\
-				IF (sp > stackmax,(		\
-					stackmax = sp		\
+				IF (sp > detstackmax,(		\
+					detstackmax = sp	\
 				)),				\
 				(void)0				\
 			)
 
-#define	stack_underflow_check()					\
+#define	detstack_underflow_check()				\
 			(					\
-				IF (sp < stackmin,(		\
+				IF (sp < detstackmin,(		\
 					printf("stack underflow\n"),	\
 					exit(1)			\
 				)),				\
 				(void)0				\
 			)
 
-#define	cpstack_overflow_check()				\
+#define	nondstack_overflow_check()				\
 			(					\
-				IF (maxcp >= &cpstack[MAXCPSTACK],(	\
-					printf("cpstack overflow\n"),	\
+				IF (maxfr >= &nondstack[MAXNONDSTACK],(	\
+					printf("nondstack overflow\n"),	\
 					exit(1)			\
 				)),				\
-				IF (maxcp > cpstackmax,(	\
-					cpstackmax = maxcp	\
+				IF (maxfr > nondstackmax,(	\
+					nondstackmax = maxfr	\
 				)),				\
 				(void)0				\
 			)
 
-#define	cpstack_underflow_check()				\
+#define	nondstack_underflow_check()				\
 			(					\
-				IF (maxcp < cpstackmin,(	\
-					printf("cpstack underflow\n"),	\
+				IF (maxfr < nondstackmin,(	\
+					printf("nondstack underflow\n"),	\
 					exit(1)			\
 				)),				\
 				(void)0				\
@@ -429,10 +418,11 @@ extern	Word	*cpstackmin;
 #define	debugpop(val, sp)			((void)0)
 #define	debugregs(msg)				((void)0)
 #define	debugframe(msg)				((void)0)
-#define	debugmkcp()				((void)0)
+#define	debugmkframe()				((void)0)
 #define	debugmkreclaim()			((void)0)
-#define	debugmodcp()				((void)0)
+#define	debugmodframe()				((void)0)
 #define	debugsucceed()				((void)0)
+#define	debugsucceeddiscard()			((void)0)
 #define	debugfail()				((void)0)
 #define	debugredo()				((void)0)
 #define	debugcall(proc, succcont)		((void)0)
@@ -453,32 +443,35 @@ extern	Word	*cpstackmin;
 	IF (heapdebug, (save_registers(), cr2_msg(val0, val1, hp)))
 
 #define	debugpush(val, sp) \
-	IF (stackdebug, (save_registers(), push_msg((val), (sp))))
+	IF (detstackdebug, (save_registers(), push_msg((val), (sp))))
 
 #define	debugpop(val, sp) \
-	IF (stackdebug, (save_registers(), pop_msg(val, sp)))
+	IF (detstackdebug, (save_registers(), pop_msg(val, sp)))
 
 #define	debugregs(msg)	(save_registers(), printregs(msg))
 
-#define	debugmkcp() \
-	IF (cpstackdebug, (save_registers(), mkcp_msg()))
+#define	debugmkframe() \
+	IF (nondstackdebug, (save_registers(), mkframe_msg()))
 
 #define	debugframe(msg)	(save_registers(), printframe(msg))
 
 #define	debugmkreclaim() \
-	IF (cpstackdebug, (save_registers(), mkreclaim_msg()))
+	IF (nondstackdebug, (save_registers(), mkreclaim_msg()))
 
-#define	debugmodcp() \
-	IF (cpstackdebug, (save_registers(), modcp_msg()))
+#define	debugmodframe() \
+	IF (nondstackdebug, (save_registers(), modframe_msg()))
 
 #define	debugsucceed() \
-	IF (cpstackdebug, (save_registers(), succeed_msg()))
+	IF (nondstackdebug, (save_registers(), succeed_msg()))
+
+#define	debugsucceeddiscard() \
+	IF (nondstackdebug, (save_registers(), succeeddiscard_msg()))
 
 #define	debugfail() \
-	IF (cpstackdebug, (save_registers(), fail_msg()))
+	IF (nondstackdebug, (save_registers(), fail_msg()))
 
 #define	debugredo() \
-	IF (cpstackdebug, (save_registers(), redo_msg()))
+	IF (nondstackdebug, (save_registers(), redo_msg()))
 
 #define	debugcall(proc, succcont) \
 	IF (calldebug, (save_registers(), call_msg(proc, succcont)))
@@ -537,10 +530,11 @@ extern	bool	debugflag[];
 
 /* debugging messages, defined in aux.c */
 
-extern	void	mkcp_msg(void);
+extern	void	mkframe_msg(void);
 extern	void	mkreclaim_msg(void);
-extern	void	modcp_msg(void);
+extern	void	modframe_msg(void);
 extern	void	succeed_msg(void);
+extern	void	succeeddiscard_msg(void);
 extern	void	fail_msg(void);
 extern	void	redo_msg(void);
 extern	void	call_msg(const Code *proc, const Code *succcont);
@@ -559,14 +553,14 @@ extern	void	printtmps(void);
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);
 extern	void	printheap(const Word *h);
-extern	void	printstack(const Word *s);
-extern	void	printcpstack(const Word *s);
+extern	void	printdetstack(const Word *s);
+extern	void	printnondstack(const Word *s);
 extern	void	printlist(Word p);
 extern	void	printlabel(const Code *w);
 extern	void	printregs(const char *);
 extern	void	printframe(const char *);
 extern	void	dumpframe(const Word *);
-extern	void	dumpcpstack(void);
+extern	void	dumpnondstack(void);
 extern	int	whichlabel(const char *name);
 
 extern 	void	init_engine(void);

@@ -7,23 +7,23 @@
 
 /* GLOBAL VARIABLES */
 
-/* heap, stack, and choice point stack */
+/* heap, detstack, and nondstack */
 
 Word	heap[MAXHEAP];
-Word	stack[MAXSTACK];
-Word	cpstack[MAXCPSTACK];
+Word	detstack[MAXDETSTACK];
+Word	nondstack[MAXNONDSTACK];
 
-Word	*heapmin    = &heap[0];
-Word	*stackmin   = &stack[CACHE_OFFSET];
-Word	*cpstackmin = &cpstack[CACHE_OFFSET*2];
+Word	*heapmin      = &heap[0];
+Word	*detstackmin  = &detstack[CACHE_OFFSET];
+Word	*nondstackmin = &nondstack[CACHE_OFFSET*2];
 
 /* statistics gathering */
 
 #ifndef SPEED
 
 Word	*heapmax;
-Word	*stackmax;
-Word	*cpstackmax;
+Word	*detstackmax;
+Word	*nondstackmax;
 
 #endif
 
@@ -86,13 +86,13 @@ void init_engine(void)
 static void init_registers(void)
 {
 	hp = heapmin;					
-	sp = stackmin;					
-	maxcp = curcp = childcp = cpstackmin;		
+	sp = detstackmin;					
+	maxfr = curfr = childfr = nondstackmin;		
 							
 	/* set up a buffer zone */			
 	succip = ENTRY(do_not_reached);			
-	mkcp("buffer_zone", 0, ENTRY(do_not_reached));		
-	cpstackmin = maxcp;				
+	mkframe("buffer_zone", 0, ENTRY(do_not_reached));		
+	nondstackmin = maxfr;				
 
 	save_registers();
 }
@@ -323,35 +323,12 @@ do_reset_hp_fail:
 	hp = recsavehp;
 	fail();
 
-do_reset_cpvar0_fail:
-	hp = (Word *) cpvar(0);
+do_reset_framevar0_fail:
+	hp = (Word *) framevar(0);
 	fail();
 
 do_succeed:
 	succeed();
-
-do_slowneg_fail:
-	/* XXX */
-
-do_slowneg_succeed:
-	/* XXX */
-
-do_fastneg_redo:
-	/* XXX */
-	debugregs("arrived at fastneg_redo");
-#ifndef SPEED
-	dumpcpstack();
-#endif
-	maxcp = (Word *) pop();	/* prune intervening choice points */
-	modcp((Code *) pop());
-	redo();
-
-do_fastneg_proceed:
-	/* XXX */
-	debugregs("arrived at fastneg_proceed");
-	(void) pop();
-	modcp((Code *) pop());
-	proceed();
 
 do_not_reached:
 	printf("reached not_reached\n");
