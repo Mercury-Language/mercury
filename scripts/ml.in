@@ -608,18 +608,29 @@ case $demangle in
 		# execute the demangler in the background, with stdin 
 		# coming from the pipe and with stdout redirected to stderr
 	exec $DEMANGLER --explain-link-errors 1>&2 < $PIPE &
-		# redirect our stdout and stderr into the pipe
-	exec >$PIPE 2>&1
-		# now we can remove the pipe; since is an open file, it will
-		# stay around until $CC and $DEMANGLER exit
-	rm -rf $ML_TMPDIR
-		# finally execute $CC; stdout & stderr will
+		# execute $CC with stdout & stderr redirected to
 		# go via the pipe to $DEMANGLER and then to stderr
+	case $# in
+		0) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS >$PIPE 2>&1 ;;
+
+		*) $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS >$PIPE 2>&1 ;;
+	esac
+	linker_status=$?
+		# now we can remove the pipe; since is an open file, it will
+		# stay around until $DEMANGLER exits
+	rm -rf $ML_TMPDIR
+		# wait for the demangler to exit before exiting ourselves
+	wait
+	exit $linker_status
 	;;
-esac
-case $# in
-	0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-	*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-		$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+false)
+	case $# in
+		0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
+		*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
+	esac
+	;;
 esac
