@@ -1,7 +1,6 @@
 #-----------------------------------------------------------------------------#
 
 MGNUCFLAGS=-g
-C2INITFLAGS=-w"`extract $(*:_init=) '' Entry`"
 
 #-----------------------------------------------------------------------------#
 
@@ -9,23 +8,19 @@ C2INITFLAGS=-w"`extract $(*:_init=) '' Entry`"
 
 %_init.c: Entry
 
-%_init.nl: NP_Entry
-	echo "main(_) :- `extract $* '' NP_Entry`." > $@
-
-%.nux: %.nu %_init.no
-	$(MNL) $(MNLFLAGS) -o $@ $($*.nos) $*_init.no
-
 %.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
-%.exp: %.nux
+%.exp: %.nu
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
 
 %.res: %.exp %.out
 	-rm -f $@
 	diff -u $*.exp $*.out > $@
 
-clean: clean_out clean_exp clean_res clean_nl_init
+#-----------------------------------------------------------------------------#
+
+clean: clean_out clean_exp clean_res
 
 clean_mc: clean_c clean_o clean_out clean_res
 
@@ -37,13 +32,5 @@ clean_exp:
 
 clean_res:
 	rm -f *.res
-
-clean_nl_init:
-	rm -f *_init.nl
-
-realclean: clean_nux
-
-clean_nux:
-	rm -f *.nux
 
 #-----------------------------------------------------------------------------#
