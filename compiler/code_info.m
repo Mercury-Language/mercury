@@ -115,9 +115,9 @@
 		% Generate code to swap a live value out of the given
 		% register, and place the value for the given variable
 		% into that register.
-:- pred code_info__shuffle_register(var, reg, code_tree,
+:- pred code_info__shuffle_register(var, list(var), reg, code_tree,
 						code_info, code_info).
-:- mode code_info__shuffle_register(in, in, out, in, out) is det.
+:- mode code_info__shuffle_register(in, in, in, out, in, out) is det.
 
 		% Get the fall though point for failure
 :- pred code_info__get_fall_through(label, code_info, code_info).
@@ -746,14 +746,14 @@ code_info__cache_expression_with_target(Var, Exprn, TargetReg) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__shuffle_register(Var, Reg, Code) -->
+code_info__shuffle_register(Var, Args, Reg, Code) -->
 	code_info__get_registers(Registers),
 	(
 		{ map__search(Registers, Reg, RegContents) }
 	->
 			% Generate code to swap the contents of
 			% the register out of the way
-		code_info__shuffle_registers_2(Reg, RegContents, CodeA)
+		code_info__shuffle_registers_2(Reg, Args, RegContents, CodeA)
 	;
 		{ CodeA = empty }
 	),
@@ -763,11 +763,11 @@ code_info__shuffle_register(Var, Reg, Code) -->
 	code_info__remap_variable(Var, reg(Reg)),
 	{ Code = tree(CodeA, CodeB) }.
 
-:- pred code_info__shuffle_registers_2(reg, register_stat, code_tree,
-						code_info, code_info).
-:- mode code_info__shuffle_registers_2(in, in, out, in, out) is det.
+:- pred code_info__shuffle_registers_2(reg, list(var), register_stat,
+					code_tree, code_info, code_info).
+:- mode code_info__shuffle_registers_2(in, in, in, out, in, out) is det.
 
-code_info__shuffle_registers_2(Reg, Contents, Code) -->
+code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 	(
 		{ Contents = unused }
 	->
@@ -796,7 +796,42 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 				"Swap variable to a new register"
 		]) }
 	;
+		{ Contents = vars(Vars1) },
+		{ set__to_sorted_list(Vars1, Vars2) },
+		{ code_info__variables_are_args(Vars2, Args) }
+	->
+			% get a spare register
+		code_info__get_free_register(NewReg),
+			% Update the register info -
+			% remove the entry for the old register,
+			% and set the entry for the new register.
+		code_info__add_variables_to_register(Vars1, NewReg),
+			% Update the variable info -
+			% Set the location of the variable to the
+			% new register.
+		code_info__remap_variables(Vars1, reg(NewReg)),
+			% Generate the code fragment.
+		{ Code = node([
+			assign(reg(NewReg), lval(reg(Reg))) -
+				"Swap variable to a new register"
+		]) }
+	;
 		{ Code = empty }
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__variables_are_args(list(var), list(var)).
+:- mode code_info__variables_are_args(in, in) is semidet.
+
+code_info__variables_are_args([], _Args) :- fail.
+code_info__variables_are_args([Var|Vars], Args) :-
+	(
+		list__member(Var, Args)
+	->
+		true
+	;
+		code_info__variables_are_args(Vars, Args)
 	).
 
 %---------------------------------------------------------------------------%

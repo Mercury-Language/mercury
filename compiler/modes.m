@@ -2042,7 +2042,7 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 		% module_info_get_insts(ModuleInfo, ModeX, InitialInst0, _Final),
 		% inst_expand(ModuleInfo, InitialInst0, InitialInst),
 		% ( InitialInst = bound([SingleFunctor]) ->
-		Det = deterministic,
+		Det = semideterministic,
 		
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)
 	).

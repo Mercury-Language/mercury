@@ -84,6 +84,10 @@ implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
 			   disj(Goals), NonLocalVars) :-
 	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars).
 
+implicitly_quantify_goal_2(switch(Var, Cases0, F), OutsideVars,
+			   switch(Var, Cases, F), NonLocalVars) :-
+	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars).
+
 implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
 		    not(Vars, Goal), NonLocals) :-
 	set__insert_list(OutsideVars, Vars, OutsideVars1),
@@ -154,6 +158,18 @@ implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
 			[Goal | Goals], NonLocalVars) :-
 	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
 	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars1),
+	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
+
+:- pred implicitly_quantify_cases(list(case), set(var),
+				 list(case), set(var)).
+:- mode implicitly_quantify_cases(in, in, out, out) is det.
+
+implicitly_quantify_cases([], _, [], NonLocalVars) :-
+	set__init(NonLocalVars).
+implicitly_quantify_cases([case(Cons, Goal0) | Cases0], OutsideVars,
+			[case(Cons, Goal) | Cases], NonLocalVars) :-
+	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
+	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars1),
 	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
 
 %-----------------------------------------------------------------------------%
