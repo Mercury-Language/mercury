@@ -1,8 +1,9 @@
-/*###1 [cc] Warning: incorrect module name in `:- module' declaration.%%%*/
-:- module bug.
+:- module loop_in_disj.
 :- interface.
 
 :- pred p(int::out) is det.
+
+:- pred q(int::out) is det.
 
 :- implementation.
 
@@ -11,5 +12,11 @@ loop :- loop.
 
 p(X) :-
 	loop
+	;
+	X = 42.
+
+q(X) :-
+	loop,
+	X = 41
 	;
 	X = 42.
