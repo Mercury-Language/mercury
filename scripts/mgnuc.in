@@ -238,7 +238,7 @@ esac
 #
 case $COMPILER in gcc)
 	case "$FULLARCH" in mips*)
-		case "$*" in *" int.c "*)
+		case "$*" in *" int.c "*|*" int.dir/int_"*".c "*)
 			ARCH_OPTS="$ARCH_OPTS -O1" ;;
 		esac ;;
 	esac ;;
