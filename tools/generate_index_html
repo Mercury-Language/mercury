@@ -62,21 +62,22 @@ echo "<hr>" >> $INDEX
 # Generate a line with the prefix followed by a link to the given file.
 # Record that the file has been handled.
 link_to_file () {
-	prefix=$1
-	this_file=$2
-	this_file_descr=$3
-	this_file_size=`ls -Ll $this_file | awk '{ print $5; }'`
-	this_file_sizekb=`expr $this_file_size / 1024`
+	prefix="$1"
+	this_file="$2"
+	this_file_descr="$3"
+	this_file_size=`ls -Ll "$this_file" | awk '{ print $5; }'`
+	this_file_sizekb=`expr "$this_file_size" / 1024`
 	handled_files="$this_file $handled_files"
-	echo "$prefix <a href=$this_file>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+	q='"'
+	echo "$prefix <a href=$q$this_file$q>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
 }
 
 #-----------------------------------------------------------------------------#
 
 skip_file () {
-	stable_file=$1
-	unstable_file=$2
-	if [ -f $stable_file ]; then
+	stable_file="$1"
+	unstable_file="$2"
+	if [ -f "$stable_file" ]; then
 		handled_files="$unstable_file $handled_files"
 	fi
 }
@@ -89,9 +90,9 @@ skip_file () {
 # This should be called within a `<ul>' element.
 link_to_existing_file () {
 	#echo link_to_existing_file "$@"
-	if [ -f $1 ]; then
+	if [ -f "$1" ]; then
 		#echo YES
-		link_to_file "<li> " $1 "$2"
+		link_to_file "<li> " "$1" "$2"
 	fi
 }
 
@@ -102,12 +103,12 @@ link_to_existing_file () {
 # Given the name of a source or binary distribution file in a release,
 # generate an entry describing all the files in the release.
 handle_release () {
-	file=$1
-	if [ -f $file ]
+	file="$1"
+	if [ -f "$file" ]
 	then
 		case "$handled_files" in
 		*$file*)	;;
-		*)		do_handle_release $file ;;
+		*)		do_handle_release "$file" ;;
 		esac
 	fi
 }
@@ -115,13 +116,13 @@ handle_release () {
 #-----------------------------------------------------------------------------#
 
 do_handle_release () {
-	file=$1
+	file="$1"
 	date=`expr "$file" : '.*\([0-9]\{4\}[-_][0-9][0-9][-_][0-9][0-9]\).*'`
 	date_underscores=`echo $date | tr '-' '_'`
 	date=`echo $date | tr '_' '-'`
 
 	#echo "file=$file, date=$date"
-	case $file in
+	case "$file" in
 	    *-rotd*-unstable*)
 		release_name="Unstable snapshot $date"
 		release_id="rotd-$date-unstable"
@@ -283,10 +284,11 @@ echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 #
 for file in *
 do
-	if [ -d $file -a $file != $LOCKDIR ]
+	if [ -d "$file" -a "$file" != $LOCKDIR ]
 	then
-		(cd $file && $0)
-		echo "$img_dir <a href=$file/index.html>$file/</a><br>" \
+		(cd "$file" && $0)
+		q='"'
+		echo "$img_dir <a href=$q$file/index.html$q>$file/</a><br>" \
 			>> $INDEX
 	fi
 done
@@ -304,7 +306,7 @@ echo "<ul>" >> $INDEX
 #
 # Current release.
 #
-handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
+handle_release "mercury-compiler-${CURRENT_RELEASE}.tar.gz"
 
 #
 # Stable beta for current release + bug fixes.
@@ -315,9 +317,9 @@ handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
 for file in `ls -1 mercury-compiler-${BETA_RELEASE}-beta*.{tar.gz,rpm} \
 		mercury-${BETA_RELEASE}-beta*.tar.gz 2>/dev/null | sort -r`
 do
-	case $file in
+	case "$file" in
 		*-unstable*) ;;
-		*)	handle_release $file ;;
+		*)	handle_release "$file" ;;
 	esac
 done
 
@@ -327,9 +329,9 @@ done
 for file in `ls -1 mercury-compiler-rotd*.{tar.gz,rpm} mercury-rotd* 2>/dev/null \
 		| sort -r`
 do
-	case $file in
+	case "$file" in
 		*-unstable*) ;;
-		*)	handle_release $file ;;
+		*)	handle_release "$file" ;;
 	esac
 done
 
@@ -339,7 +341,7 @@ done
 for file in `ls -1 mercury-compiler-rotd*-unstable.{tar.gz,rpm} 2>/dev/null \
 		| sort -r`
 do
-	handle_release $file
+	handle_release "$file"
 done
 
 #
@@ -347,7 +349,7 @@ done
 #
 for file in mercury-compiler-* mercury-rotd* mercury-gcc-*
 do
-	handle_release $file
+	handle_release "$file"
 done
 
 #
@@ -355,18 +357,18 @@ done
 #
 for file in *
 do
-    case $file in
+    case "$file" in
 		#
 		# Don't include the README or any of the index files
 		#
 	README|index.html*)
 		;;
 	*)
-		if [ ! -d $file ]
+		if [ ! -d "$file" ]
 		then
 			case $handled_files in
 				*$file*) ;;
-				*)	link_to_file "<li> " $file $file ;;
+				*)	link_to_file "<li> " "$file" "$file" ;;
 			esac
 		fi
     		;;
