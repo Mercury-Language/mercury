@@ -23,6 +23,9 @@ export CVSROOT
 
 #-----------------------------------------------------------------------------#
 
+TEST_MCFLAGS="-O2 --opt-space --args compact --type-info default"
+TEST_CFLAGS=""
+
 # directories to use
 DIR=/home/mercury/public/test_mercury/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
@@ -114,8 +117,9 @@ cd mercury || { false; exit 1; }
 # if [ -s tools/list.$HOST ]; then
 # 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
-	echo 'MC = ../scripts/mc' > Mmake.params
-	echo 'MCFLAGS = -O5 --opt-space' >> Mmake.params
+	echo "MC = ../scripts/mc" > Mmake.params
+	echo "EXTRA_MCFLAGS = $TEST_MCFLAGS" >> Mmake.params
+	echo "EXTRA_CFLAGS = $TEST_CFLAGS" >> Mmake.params
 # fi
 
 autoconf || { false; exit 1; }
@@ -155,7 +159,8 @@ esac
 cd tests || { false; exit 1; }
 for grade in $GRADES
 do
-	./runtests -f "-O5" -g "$grade" $PARALLEL || status=1
+	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		$PARALLEL || status=1
 	case $grade in
 		*.prof)	cd benchmarks
 			./poly
@@ -190,7 +195,8 @@ case $ARCH in
 		
 		PATH=../scripts:../util:$PATH 
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake EXTRA_CFLAGS=-O1 int.dir/*.o || status=1
+		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
+		int.dir/*.o || status=1
 
 		PATH=../scripts:../util:$PATH \
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
@@ -238,7 +244,7 @@ case $HOST in murlibobo)
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
 	version=`mmake version` &&
-	mmake MMAKEFLAGS='MCFLAGS="-O5 --opt-space" -j4' tar &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
 	rm -f mercury-latest-unstable.tar.gz &&
 	mv mercury-$version.tar.gz mercury-latest-unstable.tar.gz
