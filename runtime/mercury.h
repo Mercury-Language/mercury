@@ -138,14 +138,23 @@ typedef MR_Box *MR_Tuple;
 ** are defined here.
 */
 typedef struct MR_TypeCtorInfo_Struct	MR_TypeCtorInfo_Struct;
-typedef MR_DuExistLocn			MR_DuExistLocnArray[];
-typedef MR_ConstString			MR_ConstStringArray[];
-typedef MR_PseudoTypeInfo		MR_PseudoTypeInfoArray[];
-typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtrArray[];
-typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtrArray[];
-typedef MR_DuPtagLayout			MR_DuPtagLayoutArray[];
-typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr[];
-typedef MR_Box				MR_BaseTypeclassInfo[];
+
+#ifdef MR_BOOTSTRAP_RTTI_CHANGE
+  typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtr;
+  typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtr;
+  typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr;
+  typedef MR_Box				MR_BaseTypeclassInfo;
+#else
+  typedef MR_DuExistLocn                 MR_DuExistLocnArray[];
+  typedef MR_ConstString                 MR_ConstStringArray[];
+  typedef MR_PseudoTypeInfo              MR_PseudoTypeInfoArray[];
+  typedef const MR_EnumFunctorDesc *     MR_EnumFunctorDescPtrArray[];
+  typedef const MR_DuFunctorDesc *       MR_DuFunctorDescPtrArray[];
+  typedef MR_DuPtagLayout                        MR_DuPtagLayoutArray[];
+  typedef union MR_TableNode_Union * *   MR_TableNodePtrPtr[];
+  typedef MR_Box                         MR_BaseTypeclassInfo[];
+#endif
+
 
 /*
 ** XXX Currently we hard-code the declarations of the first

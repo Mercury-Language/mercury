@@ -22,9 +22,11 @@
 	% return a list of MLDS definitions for the given rtti_data list.
 :- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = mlds__defns.
 
-	% return a name, consisting only of alphabetic characters,
+	% Return a name, consisting only of alphabetic characters,
 	% that would be suitable for the type name for the type
-	% of the given rtti_name.
+	% of the given rtti_name.  If rtti_name_has_array_type(Name) = yes,
+	% then the name returned by mlds_rtti_type_name(Name) is the
+	% array element type, otherwise it is the complete type.
 :- func mlds_rtti_type_name(rtti_name) = string.
 
 :- implementation.
@@ -596,18 +598,18 @@ gen_init_boxed_int(Int) =
 
 %-----------------------------------------------------------------------------%
 
-mlds_rtti_type_name(exist_locns(_)) =		"DuExistLocnArray".
+mlds_rtti_type_name(exist_locns(_)) =		"DuExistLocn".
 mlds_rtti_type_name(exist_info(_)) =		"DuExistInfo".
-mlds_rtti_type_name(field_names(_)) =		"ConstStringArray".
-mlds_rtti_type_name(field_types(_)) =		"PseudoTypeInfoArray".
+mlds_rtti_type_name(field_names(_)) =		"ConstString".
+mlds_rtti_type_name(field_types(_)) =		"PseudoTypeInfo".
 mlds_rtti_type_name(enum_functor_desc(_)) =	"EnumFunctorDesc".
 mlds_rtti_type_name(notag_functor_desc) =	"NotagFunctorDesc".
 mlds_rtti_type_name(du_functor_desc(_)) =	"DuFunctorDesc".
-mlds_rtti_type_name(enum_name_ordered_table) =	"EnumFunctorDescPtrArray".
-mlds_rtti_type_name(enum_value_ordered_table) =	"EnumFunctorDescPtrArray".
-mlds_rtti_type_name(du_name_ordered_table) =	"DuFunctorDescPtrArray".
-mlds_rtti_type_name(du_stag_ordered_table(_)) =	"DuFunctorDescPtrArray".
-mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayoutArray".
+mlds_rtti_type_name(enum_name_ordered_table) =	"EnumFunctorDescPtr".
+mlds_rtti_type_name(enum_value_ordered_table) =	"EnumFunctorDescPtr".
+mlds_rtti_type_name(du_name_ordered_table) =	"DuFunctorDescPtr".
+mlds_rtti_type_name(du_stag_ordered_table(_)) =	"DuFunctorDescPtr".
+mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayout".
 mlds_rtti_type_name(type_ctor_info) =		"TypeCtorInfo_Struct".
 mlds_rtti_type_name(base_typeclass_info(_, _, _)) = "BaseTypeclassInfo".
 mlds_rtti_type_name(pseudo_type_info(Pseudo)) =
