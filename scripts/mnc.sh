@@ -4,12 +4,15 @@
 #
 # Compiles Mercury programs to NU-Prolog object code (*.no).
 
-nc_builtin=@LIBDIR@/nuprolog/nc_builtin
+nc_builtin_nl=${MERCURY_NC_BUILTIN:-@LIBDIR@/nuprolog/nc_builtin.nl}
 
 options=
 
 while true; do
 	case "$1" in
+		-F)	options="$options $1 $2"
+			shift 2
+			;;
 		-*)	options="$options $1"
 			shift
 			;;
@@ -19,10 +22,11 @@ while true; do
 done
 
 for file in "$@"; do
-	echo "mnc: compiling $file"
+	echo "mnc: compiling \`$file'"
 	tmp=/tmp/mnc$$
-	cat $nc_builtin.nl $file > $tmp.nl
+	trap 'rm -f $tmp.nl $tmp.ns $tmp.no; exit 1' 1 2 3 13 15
+	cat $nc_builtin_nl $file > $tmp.nl
 	nc -c $options $tmp.nl
-	rm $tmp.ns
+	rm $tmp.nl $tmp.ns
 	mv $tmp.no `dirname $file`/`basename $file .nl`.no
 done

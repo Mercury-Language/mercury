@@ -1,15 +1,25 @@
 #!/bin/sh
-if [  $# != 1 ]
+#
+# mint - Mercury interface browser.
+
+INTDIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
+
+exit_status=0
+
+if [  $# -lt 1 ]
 then
-	echo "usage: `basename $0` module-name" 1>&2
+	echo "usage: `basename $0` module-name ..." 1>&2
 	exit 1
 fi
 
-file="@LIBDIR@/$1.int"
-
-if [ -r $file ]
-then
-	${PAGER:-more} $file
-else
-	echo "`basename $0`: no interface file for $1." 1>&2
-fi
+for arg in "$@"; do
+	module="`basename $arg .nl`"
+	file="$INTDIR/$module.int"
+	if [ -r "$file" ]; then
+		${PAGER:-more} "$file"
+	else
+		echo "`basename $0`: no interface file for \`$module'." 1>&2
+		exit_status=1
+	fi
+done
+exit $exit_status
