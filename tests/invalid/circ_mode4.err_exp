@@ -1,0 +1,5 @@
+circ_mode4.m:010: Error: circular equivalence mode `circ_mode4:circ1/1'.
+circ_mode4.m:011: Error: circular equivalence mode `circ_mode4:circ2/1'.
+circ_mode4.m:014: Error: circular equivalence modes `circ_mode4:left/1' and
+circ_mode4.m:014:   `circ_mode4:right/1'.
+For more information, try recompiling with `-E'.
