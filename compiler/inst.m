@@ -165,6 +165,9 @@
 :- pred inst_apply_sub(inst_key_sub, inst, inst).
 :- mode inst_apply_sub(in, in, out) is det.
 
+:- pred bound_inst_apply_sub(map(inst_key, inst_key), bound_inst, bound_inst).
+:- mode bound_inst_apply_sub(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -189,15 +192,23 @@ inst_key_table_lookup(inst_key_table(_NextKey, FwdMap), Key, Inst) :-
 	map__lookup(FwdMap, Key, Inst).
 
 inst_key_table_add(InstKeyTable0, Inst, ThisKey, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(ThisKey, FwdMap0),
-	NextKey is ThisKey + 1,
-	map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
-	InstKeyTable = inst_key_table(NextKey, FwdMap).
+	( Inst = alias(_) ->
+		error("inst_key_table_add: Attempt to create an inst_key for alias(_).  This makes bad things happen later on.")
+	;
+		InstKeyTable0 = inst_key_table(ThisKey, FwdMap0),
+		NextKey is ThisKey + 1,
+		map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
+		InstKeyTable = inst_key_table(NextKey, FwdMap)
+	).
 
 inst_key_table_update(InstKeyTable0, Key, Inst, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(NextKey, FwdMap0),
-	map__det_update(FwdMap0, Key, Inst, FwdMap),
-	InstKeyTable = inst_key_table(NextKey, FwdMap).
+	( Inst = alias(_) ->
+		error("inst_key_table_update: Attempt to update an inst_key to alias(_).  This makes bad things happen later on.")
+	;
+		InstKeyTable0 = inst_key_table(NextKey, FwdMap0),
+		map__det_update(FwdMap0, Key, Inst, FwdMap),
+		InstKeyTable = inst_key_table(NextKey, FwdMap)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -499,9 +510,6 @@ inst_apply_sub(_Sub, defined_inst(Name), defined_inst(Name)).
 inst_apply_sub(Sub, abstract_inst(SymName, Insts0),
 		abstract_inst(SymName, Insts)) :-
 	list__map(inst_apply_sub(Sub), Insts0, Insts).
-
-:- pred bound_inst_apply_sub(map(inst_key, inst_key), bound_inst, bound_inst).
-:- mode bound_inst_apply_sub(in, in, out) is det.
 
 bound_inst_apply_sub(Sub, functor(ConsId, Insts0), functor(ConsId, Insts)) :-
 	list__map(inst_apply_sub(Sub), Insts0, Insts).

@@ -299,17 +299,17 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
 	code_info__get_instmap(InstMap0),
+	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstMap0,
-		InstTable, ModuleInfo, RVals) },
+		InstMap, InstTable, ModuleInfo, RVals) },
 	code_info__variable_type(Var, VarType),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
 	{ Expr = create(SimpleTag, RVals, no, CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes,
 		InstMap0, InstMap, InstTable, ModuleInfo, Var, SimpleTag,
 		0, Code0),
@@ -320,10 +320,11 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
 	code_info__get_instmap(InstMap0),
+	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, InstMap0,
-		InstTable, ModuleInfo, RVals0) },
+		InstMap, InstTable, ModuleInfo, RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
 	code_info__variable_type(Var, VarType),
@@ -332,7 +333,6 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 	% whether the cell must be unique or not.
 	{ Expr = create(Bits0, RVals, no, CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr),
-	{ instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap) },
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes, InstMap0,
 		InstMap, InstTable, ModuleInfo, Var, Bits0, 1, Code0),
 	unify_gen__maybe_place_refs(Var, Code1),
@@ -580,14 +580,15 @@ unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
 :- pred unify_gen__generate_cons_args(list(var), list(type), list(uni_mode),
-			instmap, inst_table, module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args(in, in, in, in, in, in, out) is det.
+		instmap, instmap, inst_table, module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args(in, in, in, in, in, in, in, out) is det.
 
-unify_gen__generate_cons_args(Vars, Types, Modes, InstMap, InstTable,
-		ModuleInfo, Args) :-
+unify_gen__generate_cons_args(Vars, Types, Modes, InstMapBefore, InstMapAfter,
+		InstTable, ModuleInfo, Args) :-
 	(
-		unify_gen__generate_cons_args_2(Vars, Types, Modes, InstMap,
-				InstTable, ModuleInfo, Args0)
+		unify_gen__generate_cons_args_2(Vars, Types, Modes,
+				InstMapBefore, InstMapAfter, InstTable,
+				ModuleInfo, Args0)
 	->
 		Args = Args0
 	;
@@ -601,23 +602,25 @@ unify_gen__generate_cons_args(Vars, Types, Modes, InstMap, InstTable,
 	% generate an assignment to that field.
 
 :- pred unify_gen__generate_cons_args_2(list(var), list(type), list(uni_mode),
-			instmap, inst_table, module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args_2(in, in, in, in, in, in, out) is semidet.
+		instmap, instmap, inst_table, module_info, list(maybe(rval))).
+:- mode unify_gen__generate_cons_args_2(in, in, in, in, in, in, in, out)
+		is semidet.
 
-unify_gen__generate_cons_args_2([], [], [], _, _, _, []).
+unify_gen__generate_cons_args_2([], [], [], _, _, _, _, []).
 unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
-			InstMapBefore, InstTable, ModuleInfo, [Arg|RVals]) :-
-	UniMode = ((_LI - RI) -> (_LF - _RF)),
+		InstMapBefore, InstMapAfter, InstTable, ModuleInfo,
+		[Arg|RVals]) :-
+	UniMode = ((_LI - RI) -> (_LF - RF)),
 	(
-		inst_has_representation(RI, InstMapBefore, InstTable, Type,
-				ModuleInfo)
+		insts_to_arg_mode(InstTable, ModuleInfo, RI, InstMapBefore,
+				RF, InstMapAfter, Type, top_in)
 	->
 		Arg = yes(var(Var))
 	;
 		Arg = no
 	),
 	unify_gen__generate_cons_args_2(Vars, Types, UniModes, InstMapBefore,
-		InstTable, ModuleInfo, RVals).
+		InstMapAfter, InstTable, ModuleInfo, RVals).
 
 :- pred unify_gen__aliased_vars_set_location(list(var), list(type),
 		list(uni_mode), instmap, instmap, inst_table, module_info,
@@ -645,13 +648,13 @@ unify_gen__aliased_vars_set_location(Args, Types, Modes, InstMap0, InstMap,
 
 unify_gen__aliased_vars_set_location_2([], [], [], _, _, _, _, _, _, _,
 		empty) --> [].
-unify_gen__aliased_vars_set_location_2([Var | Vars], [_Type | Types],
+unify_gen__aliased_vars_set_location_2([Var | Vars], [Type | Types],
 		[Mode | Modes], InstMap0, InstMap, InstTable, ModuleInfo,
 		LHSVar, Tag, FieldNum, Code) -->
 	{ Mode = ((_LI - RI) -> (_LF - RF)) },
 	( 
-		{ inst_is_free_alias(RI, InstMap0, InstTable, ModuleInfo) },
-		{ inst_is_bound(RF, InstMap, InstTable, ModuleInfo) }
+		{ insts_to_arg_mode(InstTable, ModuleInfo, RI, InstMap0,
+			RF, InstMap, Type, ref_in) }
 	->
 		code_info__acquire_reg_for_var(Var, Reg),
 		code_info__set_var_reference_location(Var, Reg),
