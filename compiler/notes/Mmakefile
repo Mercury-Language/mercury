@@ -24,12 +24,12 @@ HTML_TO_TEXT=lynx -dump
 
 #-----------------------------------------------------------------------------#
 
-DOCS_TEXT=ALLOCATION.text AUTHORS.text CODING_STANDARDS.text \
-	COMPILER_DESIGN.text GC_AND_C_CODE.text GLOSSARY.text \
-	MODULE_SYSTEM.text RELEASE_CHECKLIST.text REVIEWS.text TODO.text
-DOCS_HTML=ALLOCATION.html AUTHORS.html CODING_STANDARDS.html \
-	COMPILER_DESIGN.html GC_AND_C_CODE.html GLOSSARY.html \
-	MODULE_SYSTEM.html RELEASE_CHECKLIST.html REVIEWS.html TODO.html
+DOCS_TEXT=allocation.text authors.text coding_standards.text \
+	compiler_design.text gc_and_c_code.text glossary.text \
+	module_system.text release_checklist.text reviews.text todo.text
+DOCS_HTML=allocation.html authors.html coding_standards.html \
+	compiler_design.html gc_and_c_code.html glossary.html \
+	module_system.html release_checklist.html reviews.html todo.html
 DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
 
 #-----------------------------------------------------------------------------#
