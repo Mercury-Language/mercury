@@ -53,6 +53,7 @@ DECLARATIVE_PROGS=		\
 	propositional		\
 	queens			\
 	remember_modes		\
+	resume			\
 	revise			\
 	revise_2		\
 	small			\
@@ -383,6 +384,10 @@ queens.out: queens queens.inp
 remember_modes.out: remember_modes remember_modes.inp
 	$(MDB_STD) ./remember_modes < remember_modes.inp \
 			> remember_modes.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+resume.out: resume resume.inp
+	$(MDB_STD) ./resume < resume.inp > resume.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 revise.out: revise revise.inp

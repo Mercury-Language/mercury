@@ -1,0 +1,100 @@
+register --quiet
+context none
+echo on
+break -E3 resume.l
+c
+delete *
+f
+dd
+pd
+dd -r
+y
+pd
+break wrapper
+c
+retry
+dd -r
+a
+dd -r
+pd
+print
+c
+retry
+break resume.m:33
+c
+delete *
+break -E3 resume.l
+c
+delete *
+f
+dd
+pd
+break wrapper
+c
+retry
+dd -r
+y
+y
+n
+y
+c
+retry
+break resume.m:34
+c
+delete *
+break -E3 resume.l
+c
+f
+dd
+pd
+delete *
+break wrapper
+c
+dd -r
+y
+pd
+break resume.m:35
+c
+delete *
+f
+dd -d 2
+pd
+dd -r
+n
+n
+n
+n
+n
+y
+break resume.m:36
+c
+f
+dd -d 2
+pd
+delete *
+break wrapper
+c
+retry
+dd -r
+n
+n
+n
+n
+n
+y
+break resume.m:37
+c
+f
+dd -d 2
+pd
+delete *
+break wrapper
+c
+dd -r
+n
+n
+n
+n
+n
+y
+quit -y

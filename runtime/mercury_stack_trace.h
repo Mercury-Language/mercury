@@ -297,4 +297,25 @@ extern	void	MR_dump_stack_record_print(FILE *fp,
 			const char *filename, int linenumber,
 			const char *goal_path, MR_bool context_mismatch);
 
+/*
+** Find the first call event on the stack whose event number or sequence number
+** is less than or equal to the given event number or sequence number.  The
+** level of the call in the stack is returned.  This can then be passed to
+** MR_trace_retry as the ancestor_level.  If no such call is found then -1 is
+** returned and problem is set to the reason why the call could not be
+** found.
+*/
+
+typedef	enum {
+	MR_FIND_FIRST_CALL_BEFORE_SEQ,
+	MR_FIND_FIRST_CALL_BEFORE_EVENT
+} MR_find_first_call_seq_or_event;
+
+extern	int	MR_find_first_call_less_eq_seq_or_event(
+			MR_find_first_call_seq_or_event seq_or_event,
+			MR_Unsigned seq_no_or_event_no, 
+			const MR_Label_Layout *label_layout, 
+			MR_Word *det_stack_pointer, MR_Word *current_frame, 
+    			const char **problem);
+
 #endif /* MERCURY_STACK_TRACE_H */

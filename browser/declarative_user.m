@@ -252,7 +252,8 @@ handle_command(empty_command, UserQuestion, Response, !User,
 
 handle_command(illegal_command, UserQuestion, Response, !User, 
 		!IO) :-
-	io.write_string("Unknown command, 'h' for help.\n", !IO),
+	io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n", 
+		!IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
 :- func arg_num_to_arg_pos(int) = arg_pos.

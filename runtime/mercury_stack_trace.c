@@ -86,6 +86,14 @@ static  void        MR_maybe_print_parent_context(FILE *fp,
                         MR_bool print_parent, MR_bool verbose,
                         const char *filename, int lineno);
 
+static  MR_bool     MR_call_details_are_valid(const MR_Proc_Layout *entry, 
+                        MR_Word *base_sp, MR_Word *base_curfr);
+static  MR_bool     MR_call_is_before_event_or_seq(
+                        MR_find_first_call_seq_or_event seq_or_event, 
+                        MR_Unsigned seq_no_or_event_no, 
+                        const MR_Proc_Layout *entry, MR_Word *base_sp, 
+                        MR_Word *base_curfr);
+
 /* see comments in mercury_stack_trace.h */
 MR_Code *MR_stack_trace_bottom;
 MR_Word *MR_nondet_stack_trace_bottom;
@@ -1214,30 +1222,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
         }
     }
 
-    if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
-        MR_Integer maybe_from_full = entry->MR_sle_maybe_from_full;
-        if (maybe_from_full > 0) {
-            /*
-            ** For procedures compiled with shallow
-            ** tracing, the details will be valid only
-            ** if the value of MR_from_full saved in
-            ** the appropriate stack slot was MR_TRUE.
-            */
-            if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-                print_details = MR_based_stackvar(base_sp, maybe_from_full);
-            } else {
-                print_details = MR_based_framevar(base_curfr, maybe_from_full);
-            }
-        } else {
-            /*
-            ** For procedures compiled with full tracing,
-            ** we can always print out the details.
-            */
-            print_details = MR_TRUE;
-        }
-    } else {
-        print_details = MR_FALSE;
-    }
+    print_details = MR_call_details_are_valid(entry, base_sp, base_curfr);
 
     if (print_details) {
         unsigned long event_num;
@@ -1521,6 +1506,115 @@ MR_maybe_print_parent_context(FILE *fp, MR_bool print_parent, MR_bool verbose,
             fprintf(fp, " (%s:%d)", filename, lineno);
         }
     }
+}
+
+static  MR_bool
+MR_call_details_are_valid(const MR_Proc_Layout *entry, MR_Word *base_sp, 
+    MR_Word *base_curfr)
+{
+    if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
+        MR_Integer maybe_from_full = entry->MR_sle_maybe_from_full;
+        if (maybe_from_full > 0) {
+            /*
+            ** For procedures compiled with shallow
+            ** tracing, the details will be valid only
+            ** if the value of MR_from_full saved in
+            ** the appropriate stack slot was MR_TRUE.
+            */
+            if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+                return MR_based_stackvar(base_sp, maybe_from_full);
+            } else {
+                return MR_based_framevar(base_curfr, maybe_from_full);
+            }
+        } else {
+            return MR_TRUE;
+        }
+    } else {
+        return MR_FALSE;
+    }
+}
+
+static MR_bool
+MR_call_is_before_event_or_seq(MR_find_first_call_seq_or_event seq_or_event, 
+    MR_Unsigned seq_no_or_event_no, 
+    const MR_Proc_Layout *entry, MR_Word *base_sp, MR_Word *base_curfr)
+{
+    MR_Unsigned     call_event_num;
+    MR_Unsigned     call_seq_num;
+    
+    if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+        if (base_sp == NULL) {
+            return MR_FALSE;
+        }
+    } else {
+        if (base_curfr == NULL) {
+            return MR_FALSE;
+        }
+    }
+
+    if (MR_call_details_are_valid(entry, base_sp, base_curfr)) {
+        if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+            call_event_num = MR_event_num_stackvar(base_sp) + 1;
+            call_seq_num = MR_call_num_stackvar(base_sp);
+        } else {
+            call_event_num = MR_event_num_framevar(base_curfr) + 1;
+            call_seq_num = MR_call_num_framevar(base_curfr);
+        }
+        if (seq_or_event == MR_FIND_FIRST_CALL_BEFORE_EVENT) {
+            return call_event_num <= seq_no_or_event_no;
+        } else if (seq_or_event == MR_FIND_FIRST_CALL_BEFORE_SEQ) {
+            return call_seq_num <= seq_no_or_event_no;
+        } else {
+            MR_fatal_error("Unknown MR_find_first_call_seq_or_event");
+        }
+    } else {
+        return MR_FALSE;
+    }
+}
+
+int
+MR_find_first_call_less_eq_seq_or_event(
+    MR_find_first_call_seq_or_event seq_or_event, 
+    MR_Unsigned seq_no_or_event_no, 
+    const MR_Label_Layout *label_layout, MR_Word *det_stack_pointer, 
+    MR_Word *current_frame, const char **problem)
+{
+    MR_Stack_Walk_Step_Result       result;
+    const MR_Label_Layout           *cur_label_layout;
+    MR_Word                         *stack_trace_sp;
+    MR_Word                         *stack_trace_curfr;
+    int                             ancestor_level;
+
+    MR_do_init_modules();
+
+    stack_trace_sp = det_stack_pointer;
+    stack_trace_curfr = current_frame;
+
+    cur_label_layout = label_layout;
+
+    ancestor_level = 0;
+
+    while (cur_label_layout != NULL) {
+
+        if (MR_call_is_before_event_or_seq(seq_or_event, seq_no_or_event_no, 
+                cur_label_layout->MR_sll_entry, stack_trace_sp,
+                stack_trace_curfr)) {
+            return ancestor_level;
+        }
+
+        result = MR_stack_walk_step(cur_label_layout->MR_sll_entry, 
+            &cur_label_layout, &stack_trace_sp, &stack_trace_curfr, problem);
+        
+        if (result != MR_STEP_OK) {
+            return -1;
+        } 
+
+        ancestor_level++;
+
+    } while (cur_label_layout != NULL);
+
+    *problem = "no more stack";
+    return -1;
 }
 
 /*

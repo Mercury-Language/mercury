@@ -591,7 +591,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         int *word_count, const char *cat, const char*item);
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Integer *depth_step_size, 
-                        MR_Decl_Search_Mode *search_mode, 
+                        MR_Decl_Search_Mode *search_mode, MR_bool *new_session,
                         char ***words, int *word_count, const char *cat, 
                         const char *item);
 static  MR_bool     MR_trace_options_type_ctor(MR_bool *print_rep,
@@ -5633,6 +5633,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Code **jumpaddr)
 {
     MR_Decl_Search_Mode search_mode;
+    MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
@@ -5640,7 +5641,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_trace_decl_in_dd_dd_mode = MR_FALSE;
         
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode,
+        &MR_edt_depth_step_size, &search_mode, &new_session,
         &words, &word_count, "dd", "dd"))
     {
         ; /* the usage message has already been printed */
@@ -5655,7 +5656,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         MR_trace_decl_set_fallback_search_mode(search_mode);
 
         if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
-            NULL, cmd, event_info, event_details, jumpaddr))
+            NULL, new_session, cmd, event_info, event_details, jumpaddr))
         {
             return STOP_INTERACTING;
         }
@@ -5674,6 +5675,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Trace_Mode       trace_mode;
     const char          *filename;
     MR_Decl_Search_Mode search_mode;
+    MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
@@ -5681,7 +5683,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_trace_decl_in_dd_dd_mode = MR_TRUE;
     
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode,
+        &MR_edt_depth_step_size, &search_mode, &new_session,
         &words, &word_count, "dd", "dd_dd"))
     {
         ; /* the usage message has already been printed */
@@ -5697,7 +5699,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         MR_trace_decl_set_fallback_search_mode(search_mode);
 
         if (MR_trace_start_decl_debug(trace_mode, filename,
-            cmd, event_info, event_details, jumpaddr))
+            new_session, cmd, event_info, event_details, jumpaddr))
         {
             return STOP_INTERACTING;
         }
@@ -6915,18 +6917,20 @@ static struct MR_option MR_trace_dd_opts[] =
     { "assume-all-io-is-tabled",    MR_no_argument,         NULL,   'a' },
     { "depth-step-size",            MR_required_argument,   NULL,   'd' },
     { "search-mode",                MR_required_argument,   NULL,   's' },
+    { "resume",                     MR_required_argument,   NULL,   'r' },
     { NULL,                         MR_no_argument,         NULL,   0 }
 };
 
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled, 
     MR_Integer *depth_step_size, MR_Decl_Search_Mode *search_mode, 
-    char ***words, int *word_count, const char *cat, const char *item)
+    MR_bool *new_session, char ***words, int *word_count, const char *cat,
+    const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "ad:s:", 
+    while ((c = MR_getopt_long(*word_count, *words, "ad:s:r", 
         MR_trace_dd_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -6949,6 +6953,10 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }
+                break;
+
+            case 'r':
+                *new_session = MR_FALSE;
                 break;
 
             default:

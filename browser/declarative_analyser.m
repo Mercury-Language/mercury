@@ -72,13 +72,27 @@
 :- pred analyser_state_replace_io_map(io_action_map::in,
 	analyser_state(T)::in, analyser_state(T)::out) is det.
 
+:- type analysis_type(T)
+			% Use the given tree to do analysis.  The tree will be
+			% a new explicitly generated portion of the annotated
+			% trace.  start_or_resume_analysis should be called
+			% with this type of analysis when a new declarative
+			% debugging session has been started or a requested
+			% subtree or supertree has been generated.
+	--->	new_tree(T)
+			% Continue the previous analysis.  This will happen
+			% when the user suspends a declarative debugging
+			% session with a `pd' or `abort' command and now wants
+			% to continue the suspended session.
+	;	resume_previous.
+
 	% Perform analysis on the given EDT, which may be a new tree
 	% to diagnose, or a sub-tree that was required to be made
 	% explicit.
 	%
-:- pred start_or_resume_analysis(S::in, T::in, analyser_response(T)::out,
-	analyser_state(T)::in, analyser_state(T)::out) is det
-	<= mercury_edt(S, T).
+:- pred start_or_resume_analysis(S::in, analysis_type(T)::in,
+	analyser_response(T)::out, analyser_state(T)::in,
+	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
 	% Continue analysis after the oracle has responded with an
 	% answer.
@@ -270,38 +284,44 @@ analyser_state_replace_io_map(IoActionMap, !Analyser) :-
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
-start_or_resume_analysis(Store, Node, Response, !Analyser) :-
-	MaybeRequireExplicit = !.Analyser ^ require_explicit,
+start_or_resume_analysis(Store, AnalysisType, Response, !Analyser) :-
 	(
-		MaybeRequireExplicit = yes(TreeType),
-		SearchSpace0 = !.Analyser ^ search_space,
+		AnalysisType = new_tree(Node),
+		MaybeRequireExplicit = !.Analyser ^ require_explicit,
 		(
-			TreeType = explicit_supertree,
-			incorporate_explicit_supertree(Store, Node, 
-				SearchSpace0, SearchSpace)
+			MaybeRequireExplicit = yes(TreeType),
+			SearchSpace0 = !.Analyser ^ search_space,
+			(
+				TreeType = explicit_supertree,
+				incorporate_explicit_supertree(Store, Node, 
+					SearchSpace0, SearchSpace)
+			;
+				TreeType = explicit_subtree(SuspectId),
+				incorporate_explicit_subtree(SuspectId, Node, 
+					SearchSpace0, SearchSpace)
+			),
+			!:Analyser = !.Analyser ^ search_space := SearchSpace,
+			!:Analyser = !.Analyser ^ require_explicit := no,
+			decide_analyser_response(Store, Response, !Analyser)
 		;
-			TreeType = explicit_subtree(SuspectId),
-			incorporate_explicit_subtree(SuspectId, Node, 
-				SearchSpace0, SearchSpace)
-		),
-		!:Analyser = !.Analyser ^ search_space := SearchSpace,
-		!:Analyser = !.Analyser ^ require_explicit := no,
-		decide_analyser_response(Store, Response, !Analyser)
+			MaybeRequireExplicit = no,
+			%
+			% An explicit subtree was not requested, so this is the 
+			% start of a new declarative debugging session.
+			%
+			reset_analyser(!Analyser),
+			initialise_search_space(Store, Node, SearchSpace),
+			!:Analyser = !.Analyser ^ search_space := SearchSpace,
+			topmost_det(SearchSpace, TopMostId),
+			!:Analyser = !.Analyser ^ last_search_question := 
+				yes(TopMostId),
+			edt_question(!.Analyser ^ io_action_map, Store, Node, 
+				Question),
+			Response = revise(Question)
+		)
 	;
-		MaybeRequireExplicit = no,
-		%
-		% An explicit subtree was not requested, so this is the 
-		% start of a new declarative debugging session.
-		%
-		reset_analyser(!Analyser),
-		initialise_search_space(Store, Node, SearchSpace),
-		!:Analyser = !.Analyser ^ search_space := SearchSpace,
-		topmost_det(SearchSpace, TopMostId),
-		!:Analyser = !.Analyser ^ last_search_question := 
-			yes(TopMostId),
-		edt_question(!.Analyser ^ io_action_map, Store, Node, 
-			Question),
-		Response = revise(Question)
+		AnalysisType = resume_previous,
+		decide_analyser_response(Store, Response, !Analyser)
 	).
 
 continue_analysis(Store, Answer, Response, !Analyser) :-

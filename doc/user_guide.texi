@@ -3312,7 +3312,7 @@ The following commands relate to the declarative debugger.  See
 @ref{Declarative debugging} for details.
 @sp 1
 @table @code
-@item dd [-d@var{depth}] [-s@var{search-mode}]
+@item dd [-r] [-d@var{depth}] [-s@var{search-mode}]
 @c @item dd [--assume-all-io-is-tabled]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
@@ -3329,12 +3329,20 @@ much of the execution trace to gather when it reruns the program.  A higher
 declarative debugger for long running programs since it will not have to rerun
 the program as much.
 @sp 1
-The @samp{-s@var{search-mode}} or @samp{--search-mode
-@var{search-mode}} option tells the declarative debugger which 
+The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}} 
+option tells the declarative debugger which 
 search mode to use.  Either @samp{top-down} or @samp{divide-and-query}
 may be specified.  See @ref{Search Modes} for a more detailed description of
 the available search modes.  @samp{top-down} is the default when this option is
 not given.
+@sp 1
+Use the @samp{-r} or @samp{--resume} option to continue your previous
+declarative debugging session.  If the @samp{--resume} option is given and
+there were no previous declarative debugging sessions then the option will be
+ignored.  A @samp{dd --resume} command can be issued at any event.  The
+@samp{--search-mode} or @samp{--depth-step-size} options can be used in
+conjunction with the @samp{--resume} option to change the search mode or depth
+step size of a previously started declarative debugging session.
 @sp 1
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
