@@ -214,9 +214,16 @@ typedef	char		MR_small_bool;
 ** or adding support for other C compilers or other processors)
 ** should be reflected in the mangled grade name produced by
 ** runtime/mercury_grade.h.
+**
+** It might be slightly more efficient to use __regparm__(3) rather than
+** __regparm__(2), but GCC won't do tail-call optimization for calls via
+** function pointers if we use __regparm__(3), since there may be no spare
+** caller-save registers to hold the function pointer.  Tail call
+** optimization is more likely to be important than squeezing the last 1%
+** in performance.
 */
 #if defined(MR_USE_REGPARM) && defined(__GNUC__) && defined(__i386__)
-  #define MR_CALL __attribute__((__stdcall__, __regparm__(3)))
+  #define MR_CALL __attribute__((__stdcall__, __regparm__(2)))
 #else
   #define MR_CALL
 #endif
