@@ -276,8 +276,8 @@ union FloatWord {
 
 #ifdef __GNUC__
 
-#define float_to_word(f) (__extension__ ((union FloatWord)(f)).w)
-#define word_to_float(w) (__extension__ ((union FloatWord)(w)).f)
+#define float_to_word(f) (__extension__ ((union FloatWord)(Float)(f)).w)
+#define word_to_float(w) (__extension__ ((union FloatWord)(Word)(w)).f)
 
 #else
 
