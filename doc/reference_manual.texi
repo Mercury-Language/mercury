@@ -500,6 +500,16 @@ The two different syntaxes have identical semantics.
 @var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid goals.
 Note that the ``else'' part is @emph{not} optional.
 
+The declarative semantics of an if-then-else is given by
+@code{( @var{CondGoal}, @var{ThenGoal} ; not(@var{CondGoal}), @var{ElseGoal})},
+but the operational semantics are different, and it is treated
+differently for the purposes of determinism inference (@pxref{Determinism}).
+Operationally, it executes the @var{CondGoal}, and if that succeeds, then
+execution continues with the @var{ThenGoal}; otherwise, i.e. if @var{CondGoal}
+fails, it executes the @var{ElseGoal}.  Note that @var{CondGoal} can be
+nondeterministic -- unlike Prolog, Mercury's if-then-else does not commit
+to the first solution of the condition if the condition succeeds.
+
 @item @code{@var{Term1} = @var{Term2}}
 A unification.
 @var{Term1} and @var{Term2} must be valid data-terms.
