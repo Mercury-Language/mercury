@@ -242,7 +242,6 @@
 :- implementation.
 
 :- pragma foreign_decl("C", "#include <GL/glut.h>").
-:- pragma foreign_import_module("C", bool).
 
 :- type window == int.
 
@@ -629,34 +628,34 @@ window.set_cursor(Cursor, !IO) :-
 	window.is_double_buffered(DB::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	if(glutGet(GLUT_WINDOW_DOUBLEBUFFER)) {
-		DB = ML_bool_return_yes();
+	if (glutGet(GLUT_WINDOW_DOUBLEBUFFER)) {
+		DB = MR_YES;
 	} else {
-		DB = ML_bool_return_no();
+		DB = MR_NO;
 	}
 	IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
 	window.is_stereo(Stereo::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
-	if(glutGet(GLUT_WINDOW_STEREO)) {
-		Stereo = ML_bool_return_yes();
+	if (glutGet(GLUT_WINDOW_STEREO)) {
+		Stereo = MR_YES;
 	} else {
-		Stereo = ML_bool_return_no();
+		Stereo = MR_NO;
 	}
 	IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
 	window.is_rgba(RGBA::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
-	if(glutGet(GLUT_WINDOW_RGBA)) {
-		RGBA = ML_bool_return_yes();
+	if (glutGet(GLUT_WINDOW_RGBA)) {
+		RGBA = MR_YES;
 	} else {
-		RGBA = ML_bool_return_no();
+		RGBA = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -828,12 +827,12 @@ window.get(State, Value, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.has_overlay(Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
 	if (glutLayerGet(GLUT_HAS_OVERLAY)) {
-		Result = ML_bool_return_yes();
+		Result = MR_YES;
 	} else {
-		Result = ML_bool_return_no();
+		Result = MR_NO;
 	}
 	IO = IO0;
 ").

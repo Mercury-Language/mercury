@@ -145,8 +145,6 @@
 
 :- pragma foreign_decl("C", "#include <GL/glut.h>").
 
-:- pragma foreign_import_module("C", bool).
-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C", 
@@ -391,12 +389,12 @@ glut.has_device(Device, Result, !IO) :-
 :- pred glut.has_device_2(int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	glut.has_device_2(Device::in, Res::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
 	if(glutDeviceGet((GLenum) Device)) {
-		Res = ML_bool_return_yes(); 
+		Res = MR_YES; 
 	} else {
-		Res = ML_bool_return_no();
+		Res = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -466,12 +464,12 @@ device_to_int(joystick)  = glut_has_joystick.
 
 :- pragma foreign_proc("C",
 	glut.display_mode_possible(IsPossible::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
 	if(glutGet(GLUT_DISPLAY_MODE_POSSIBLE)) {
-		IsPossible = ML_bool_return_yes();
+		IsPossible = MR_YES;
 	} else {
-		IsPossible = ML_bool_return_no();
+		IsPossible = MR_NO;
 	}
 	IO = IO0;
 ").

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2000, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ select(Fd, R, W, E, Timeout, Result) -->
 
 :- pragma c_code(fd_isset(Fd::in, Fds::in, Res::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "{
-	Res = (ME_fd_isset(Fd, (fd_set *) Fds) ? 1 : 0 );
+	Res = (ME_fd_isset(Fd, (fd_set *) Fds) ? MR_YES : MR_NO );
 	IO = IO0;
 }").
 

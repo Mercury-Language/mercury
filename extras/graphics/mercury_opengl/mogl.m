@@ -987,8 +987,6 @@
 	#include <GL/gl.h>
 ").
 
-:- pragma foreign_import_module("C", bool).
-
 %------------------------------------------------------------------------------%
 %
 % GL Errors.
@@ -2584,7 +2582,7 @@ delete_textures(Textures @ [_|_], !IO) :-
 
 	textures = MR_GC_NEW_ARRAY(GLuint, NumTextures);
 
-	while(!MR_list_is_empty(Textures)) {
+	while (!MR_list_is_empty(Textures)) {
 		textures[i++] = MR_list_head(Textures);
 		Textures = MR_list_tail(Textures);
 	}
@@ -2612,7 +2610,7 @@ delete_textures(Textures @ [_|_], !IO) :-
 
 	Textures = MR_list_empty();
 	
-	for(i = 0; i < Num; i++) {
+	for (i = 0; i < Num; i++) {
 		Textures = MR_list_cons(new_textures[i], Textures);
 	}
 
@@ -2623,12 +2621,12 @@ delete_textures(Textures @ [_|_], !IO) :-
 	
 :- pragma foreign_proc("C",
 	is_texture(Name::in, IsList::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure], 
+	[will_not_call_mercury, promise_pure], 
 "
-	if(glIsTexture(Name)) {
-		IsList = ML_bool_return_yes();
+	if (glIsTexture(Name)) {
+		IsList = MR_YES;
 	} else {
-		IsList = ML_bool_return_no();
+		IsList = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -3516,9 +3514,9 @@ new_list(Num, Mode, !IO) :-
 	[may_call_mercury, promise_pure],
 "
 	if (glIsList((GLuint) L)) {
-		R = ML_bool_return_yes();
+		R = MR_YES;
 	} else {
-		R = ML_bool_return_no();
+		R = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -3646,16 +3644,15 @@ is_enabled(Flag, IsEnabled, !IO) :-
 	control_flag_to_int_and_offset(Flag, Int, Offset),
 	is_enabled_2(Int, Offset, IsEnabled, !IO).
 
-	% XXX Add `terminates' attribute.
 :- pred is_enabled_2(int::in, int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	is_enabled_2(FlagVal::in, Offset::in, R::out, IO0::di, IO::uo), 
-	[may_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	if (glIsEnabled(control_flag_flags[FlagVal] + Offset)) {
-		R = ML_bool_return_yes();
+		R = MR_YES;
 	} else {
-		R = ML_bool_return_no();
+		R = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -3816,16 +3813,16 @@ get_boolean(Param, Value, !IO) :-
 :- pred get_boolean_2(int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	get_boolean_2(Param::in, Value::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	GLboolean value;
 
 	glGetBooleanv(single_boolean_state_flags[Param], &value);
 	
 	if (value == GL_TRUE) {
-		Value = ML_bool_return_yes();
+		Value = MR_YES;
 	} else {
-		Value = ML_bool_return_no();
+		Value = MR_NO;
 	}
 
 	IO = IO0;
@@ -3853,34 +3850,34 @@ get_boolean(Param, V0, V1, V2, V3, !IO) :-
 :- pragma foreign_proc("C",
 	get_boolean_2(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di,
 		IO::uo),
-	[may_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	GLboolean values[4];
 
 	glGetBooleanv(quad_boolean_state_flags[Param], values);
 
 	if (values[0] == GL_TRUE) {
-		V0 = ML_bool_return_yes();
+		V0 = MR_YES;
 	} else {
-		V0 = ML_bool_return_no();
+		V0 = MR_NO;
 	}
 	
 	if (values[1] == GL_TRUE) {
-		V1 = ML_bool_return_yes();
+		V1 = MR_YES;
 	} else {
-		V1 = ML_bool_return_no();
+		V1 = MR_NO;
 	}
 	
 	if (values[2] == GL_TRUE) {
-		V2 = ML_bool_return_yes();
+		V2 = MR_YES;
 	} else {
-		V2 = ML_bool_return_no();
+		V2 = MR_NO;
 	}
 	
 	if (values[3] == GL_TRUE) {
-		V3 = ML_bool_return_yes();
+		V3 = MR_YES;
 	} else {
-		V3 = ML_bool_return_no();
+		V3 = MR_NO;
 	}
 
 	IO = IO0;

@@ -94,8 +94,6 @@
 
 :- pragma foreign_decl("C", "#include <GL/glut.h>").
 
-:- pragma foreign_import_module("C", bool).
-
 %-----------------------------------------------------------------------------%
 
 :- func glut_normal = int.
@@ -123,12 +121,12 @@ layer_to_int(overlay) = glut_overlay.
 
 :- pragma foreign_proc("C",
 	overlay.possible(Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, promise_pure],
 "
 	if (glutLayerGet(GLUT_OVERLAY_POSSIBLE)) {
-		Result = ML_bool_return_yes();
+		Result = MR_YES;
 	} else {
-		Result = ML_bool_return_no();
+		Result = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -137,18 +135,18 @@ layer_to_int(overlay) = glut_overlay.
 
 overlay.establish(Result, !IO) :-
 	overlay.establish_2(Result0, !IO),
-	Result = ( Result0 = 1 -> ok ; error("Unable to establish overlay.") ).
+	Result = ( Result0 = yes -> ok ; error("Unable to establish overlay.")).
 
-:- pred overlay.establish_2(int::out, io::di, io::uo) is det.
+:- pred overlay.establish_2(bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	overlay.establish_2(Result::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
 	if (glutLayerGet(GLUT_OVERLAY_POSSIBLE)) {
 		glutEstablishOverlay();
-		Result = 1;
+		Result = MR_YES;
 	} else {
-		Result = 0;
+		Result = MR_NO;
 	}
 	IO = IO0;
 ").
@@ -264,9 +262,9 @@ overlay.layer_in_use(Layer, !IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	if (glutLayerGet(GLUT_NORMAL_DAMAGED)) {
-		Result = ML_bool_return_yes();
+		Result = MR_YES;
 	} else {
-		Result = ML_bool_return_no();
+		Result = MR_NO;
 	}
 	IO = IO0;
 ").
