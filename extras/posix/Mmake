@@ -1,0 +1,12 @@
+
+MLLIBS = posix_workarounds.o
+
+depend : hello.depend
+
+default_target : hello
+
+hello : posix_workarounds.o
+
+clean :
+	-/bin/rm -f posix_workarounds.o
+

@@ -1,0 +1,4 @@
+This directory contains stuff for accessing POSIX.3 stuff directly from
+Mercury. Since I don't actually have a copy of the standard, it's more
+like the stuff that man pages claim is in POSIX.3, and not even all of
+that. :-) conway, 12/10/99
