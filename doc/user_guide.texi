@@ -951,6 +951,10 @@ Warn about predicate arguments which are not used.
 @item --warn-interface-imports
 Warn about modules imported in the interface which are not
 used in the interface.
+
+@sp 1
+@item --warn-missing-opt-files
+Warn about @samp{.opt} files that cannot be opened.
 @end table
 
 @node Verbosity options
@@ -1384,6 +1388,10 @@ while optimimization level 5 means full optimization.
 @item --optimize-space
 Turn on optimizations that reduce code size
 and turn off optimizations that significantly increase code size.
+
+@item --intermodule-optimization
+Perform inlining and higher-order specialization of the code for predicates
+imported from other modules.
 @end table
 
 @node High-level (HLDS->HLDS) optimization options
@@ -1402,15 +1410,21 @@ Disable the inlining of simple procedures.
 @item --no-inline-single-use
 Disable the inlining of procedures called only once.
 
-@item --inline-threshold @var{threshold}
+@item --inline-compound-threshold @var{threshold}
 Inline a procedure if its size
 (measured roughly in terms of the number of connectives in its internal form),
 multiplied by the number of times it is called,
 is below the given threshold.
 
-@item --intermodule-optimization
-Perform inlining and higher-order specialization of the code for predicates
-imported from other modules.
+@item --inline-simple-threshold @var{threshold}
+Inline a procedure if its size is less than the given threshold.
+
+@item --intermod-inline-simple-threshold @var{threshold}
+Similar to --inline-simple-threshold, except used to determine which
+predicates should be included in @samp{.opt} files. Note that changing this 
+between writing the @samp{.opt} file and compiling to C may cause link errors,
+and too high a value may result in reduced performance.
+
 
 @sp 1
 @item --no-common-struct
