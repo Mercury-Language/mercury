@@ -1,4 +1,5 @@
-% Test that string__hash and the MR_hash_string return the same value.
+% Test that string__hash and MR_hash_string return the same value.
+
 :- module string_hash.
 
 :- interface.
@@ -22,8 +23,8 @@ main(!IO) :-
 	).
 
 :- pred test(int::in, bool::in, bool::out,
-		random__supply::mdi, random__supply::muo,
-		io__state::di, io__state::uo) is det.
+	random__supply::mdi, random__supply::muo,
+	io__state::di, io__state::uo) is det.
 
 test(Length, !Succeeded, !RS, !IO) :-
 	( Length = 0 ->
@@ -49,7 +50,7 @@ test(Length, !Succeeded, !RS, !IO) :-
 	).
 
 :- pred make_char_list(int::in, list(char)::in, list(char)::out,
-		random__supply::mdi, random__supply::muo) is det.
+	random__supply::mdi, random__supply::muo) is det.
 
 make_char_list(Length, !List, !RS) :-
 	( Length = 0 ->
@@ -70,9 +71,10 @@ make_char_list(Length, !List, !RS) :-
 
 :- func runtime_string_hash(string) = int.
 
-:- pragma foreign_proc("C", runtime_string_hash(String::in) = (Hash::out),
-		[promise_pure, will_not_call_mercury],
+:- pragma foreign_proc("C",
+	runtime_string_hash(StringArg::in) = (Hash::out),
+	[promise_pure, will_not_call_mercury],
 "
-	Hash = MR_hash_string(String);
+	Hash = MR_hash_string(StringArg);
 ").
 
