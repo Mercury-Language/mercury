@@ -218,6 +218,11 @@ USING_MICROSOFT_CL_COMPILER=@USING_MICROSOFT_CL_COMPILER@
 # can be found by `mmc --make'.
 include $(MERCURY_DIR)/Mercury.options
 
+$(MERCURY_DIR)/Mercury.options:
+	@if [ ! -f $(MERCURY_DIR)/Mercury.options ]; then \
+ 		touch $(MERCURY_DIR)/Mercury.options; \
+	fi
+
 # The Mmake.params file can be used to override definitions in this file
 -include $(MERCURY_DIR)/Mmake.params
 

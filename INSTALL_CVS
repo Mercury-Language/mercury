@@ -42,6 +42,7 @@ parallel=-j3
 autoconf &&
 ./configure &&
 touch Mmake.params &&
+touch Mercury.options &&
 mmake depend $parallel &&
 mmake MMAKEFLAGS=$parallel &&
 tools/bootcheck $parallel &&
