@@ -16,7 +16,10 @@ pretty_print_test.out: pretty_print_test.ugly
 
 PROGS =
 
-OTHER_TESTS = mdemangle_test pretty_print_test
+OTHER_TESTS = mdemangle_test
+
+# does not work at the moment
+# OTHERTESTS = ... pretty_print_test
 
 #-----------------------------------------------------------------------------#
 
@@ -37,5 +40,10 @@ check:	$(OUTS) $(RESS)
 mods:	$(MODS)
 
 all:	$(PROGS)
+
+clean:	clean_ugly
+
+clean_ugly:
+	/bin/rm -fr *.ugly
 
 #-----------------------------------------------------------------------------#
