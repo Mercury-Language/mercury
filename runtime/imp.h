@@ -206,6 +206,20 @@ extern	Word	*nondstackmin;
 				/* return */ (Word) (hp - 2)	\
 			)
 
+#define create2_bf(w1)	(					\
+				hp = hp + 2,			\
+				hp[-2] = (Word) (w1),		\
+				heap_overflow_check(),		\
+				/* return */ (Word) (hp - 2)	\
+			)
+
+#define create2_fb(w2)	(					\
+				hp = hp + 2,			\
+				hp[-1] = (Word) (w2),		\
+				heap_overflow_check(),		\
+				/* return */ (Word) (hp - 2)	\
+			)
+
 /* DEFINITIONS FOR MANIPULATING THE STACK */
 
 #define	detstackvar(n)	sp[-n]

@@ -24,7 +24,7 @@ You should have received a copy of the GNU General Public License
 along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifdef __svr4
+#ifdef __svr4__
 #include <sys/times.h>
 #include <limits.h>
 #else
@@ -48,7 +48,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 int get_run_time (void)
 {
-#ifdef __svr4
+#ifdef __svr4__
   struct tms tms;
 #else
 #ifdef USG
@@ -68,7 +68,7 @@ int get_run_time (void)
 #endif
 #endif
 
-#ifdef __svr4
+#ifdef __svr4__
   times (&tms);
   return (tms.tms_utime /* + tms.tms_stime */) * (1000000 / _sysconf(3));
 #else

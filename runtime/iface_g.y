@@ -10,7 +10,7 @@ YYREPL	YY	yy
 
 #ifndef	lint
 static const char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.7 1993-12-31 10:11:14 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.8 1994-04-19 06:04:59 zs Exp $";
 #endif
 
 #include	<ctype.h>
