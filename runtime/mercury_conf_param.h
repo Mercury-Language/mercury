@@ -449,8 +449,7 @@
   #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
 #endif
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_DEBUG_GOTOS) \
-		|| defined(MR_DEBUG_AGC_SCHEDULING) \
-		|| defined(MR_DEBUG_LABEL_NAMES)
+	|| defined(MR_DEBUG_AGC_SCHEDULING) || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_ENTRY_LABEL_NAMES
 #endif
 
