@@ -28,9 +28,9 @@
 */
 
 typedef struct MR_Event_Info_Struct {
-	Unsigned			MR_event_number;
-	Unsigned			MR_call_seqno;
-	Unsigned			MR_call_depth;
+	MR_Unsigned			MR_event_number;
+	MR_Unsigned			MR_call_seqno;
+	MR_Unsigned			MR_call_depth;
 	MR_Trace_Port			MR_trace_port;
 	const MR_Stack_Layout_Label	*MR_event_sll;
 	const char 			*MR_event_path;
@@ -45,16 +45,75 @@ typedef struct MR_Event_Info_Struct {
 */
 
 typedef struct MR_Event_Details_Struct {
-	int			MR_call_seqno;
-	int			MR_call_depth;
-	int			MR_event_number;
+	MR_Unsigned			MR_event_number;
+	MR_Unsigned			MR_call_seqno;
+	MR_Unsigned			MR_call_depth;
 } MR_Event_Details;
 
-/* The initial size of arrays of argument values. */
-#define	MR_INIT_ARG_COUNT	20
+/*
+** The above declarations are part of the interface between MR_trace_real
+** and the internal and external debuggers. Even though MR_trace_real is
+** defined in mercury_trace.c, its prototype is not here. Instead, it is
+** in runtime/mercury_init.h. This is necessary because the address of
+** MR_trace_real may be taken in automatically generated <main>_init.c files,
+** and we do not want to include mercury_trace.h in such files; we don't want
+** them to refer to the trace directory at all unless debugging is enabled.
+*/
 
-extern	const char *MR_trace_retry(MR_Event_Info *event_info,
-			MR_Event_Details *event_details, Code **jumpaddr);
+/*
+** Ideally, MR_trace_retry works by resetting the state of the stacks and
+** registers to the state appropriate for the call to the selected ancestor,
+** setting *jumpaddr to point to the start of the code for the selected
+** ancestor, and returning MR_RETRY_OK_DIRECT.
+**
+** If resetting the stacks requires discarding the stack frame of a procedure
+** whose evaluation method is memo or loopcheck, we must also reset the call
+** table entry for that particular call to uninitialized. There are two reasons
+** for this. The first is that the call table entry was uninitialized at the
+** time of the first call, so if the retried call is to do what the original
+** call did, it must find the call table entry in the same state. The second
+** reason is that if we did not reset the call table entry, then the retried
+** call would find the "call active" marker left by the original call, and
+** since this normally indicates an infinite loop, it will generate a runtime
+** abort.
+**
+** Unfortunately, resetting the call table entry to uninitialized does not work
+** in general for procedures whose evaluation method is minimal model tabling.
+** In such procedures, a subgoal can be a consumer as well as a generator,
+** and control passes between consumers and generators in a complex fashion.
+** There is no safe way to reset the state of such a system, except to wait
+** for normal forward execution to execute the completion operation on an
+** SCC of mutually dependent subgoals.
+**
+** If the stack segments between the current call and the call to be retried
+** contain one or more such complete SCCs, then MR_trace_retry will return
+** either MR_RETRY_OK_FINISH_FIRST or MR_RETRY_OK_FAIL_FIRST. The first
+** indicates that the `retry' command should be executed only after a `finish'
+** command on the selected call has made the state of the SCC quiescent.
+** However, if the selected call is itself a generator, then reaching one of
+** its exit ports is not enough to make its SCC quiescent; for that, one must
+** wait for its failure. This is why in such cases, MR_trace_retry will ask
+** for the `retry' command to be executed only after a `fail' command.
+** 
+** If the fail command reaches an exception port on the selected call instead
+** of the fail port, then the SCC cannot be made quiescent, and MR_trace_retry
+** will return MR_RETRY_ERROR, putting a description of the error into
+** *problem. It will also do this for other, more prosaic problems, such as
+** when it finds that some of the stack frames it looks at lack debugging
+** information.
+*/
+
+typedef	enum {
+	MR_RETRY_OK_DIRECT,
+	MR_RETRY_OK_FINISH_FIRST,
+	MR_RETRY_OK_FAIL_FIRST,
+	MR_RETRY_ERROR
+} MR_Retry_Result;
+
+extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
+				MR_Event_Details *event_details,
+				int ancestor_level, const char **problem,
+				Code **jumpaddr);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be
@@ -69,6 +128,9 @@ extern	const char *MR_trace_retry(MR_Event_Info *event_info,
 ** If MR_trace_cmd == MR_CMD_FINISH, the event handler will stop at the next
 ** event at depth MR_trace_stop_depth and whose port is EXIT or FAIL or
 ** EXCEPTION.
+**
+** If MR_trace_cmd == MR_CMD_FAIL, the event handler will stop at the next
+** event at depth MR_trace_stop_depth and whose port is FAIL or EXCEPTION.
 **
 ** If MR_trace_cmd == MR_CMD_RESUME_FORWARD, the event handler will stop at
 ** the next event of any call whose port is *not* REDO or FAIL or EXCEPTION.
@@ -93,6 +155,7 @@ typedef enum {
 	MR_CMD_GOTO,
 	MR_CMD_NEXT,
 	MR_CMD_FINISH,
+	MR_CMD_FAIL,
 	MR_CMD_RESUME_FORWARD,
 	MR_CMD_EXCP,
 	MR_CMD_RETURN,
@@ -114,12 +177,12 @@ typedef struct {
 				** if MR_trace_cmd is MR_CMD_NEXT or
 				** MR_CMD_FINISH.
 				*/
-	Unsigned		MR_trace_stop_depth;
+	MR_Unsigned		MR_trace_stop_depth;
 				/*
 				** The MR_trace_stop_event field is meaningful
 				** if MR_trace_cmd is MR_CMD_GOTO  
 				*/
-	Unsigned		MR_trace_stop_event;
+	MR_Unsigned		MR_trace_stop_event;
 	MR_Trace_Print_Level	MR_trace_print_level;
 	bool			MR_trace_strict;
 

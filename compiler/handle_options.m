@@ -381,6 +381,31 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		;
 			[]
 		),
+
+			% Disable hijacks if debugging is enabled. The
+			% code we now use to restore the stacks for
+			% direct retries works only if the retry does not
+			% "backtrack" over a hijacked nondet stack frame
+			% whose hijack has not been undone. Note that
+			% code compiled without debugging may still hijack
+			% nondet stack frames. Execution may reemerge from
+			% the nondebugged region in one of two ways. If
+			% the nondebugged code returns, then it will have
+			% undone hijack, and the retry code will work. If
+			% the nondebugged code calls debugged code, there
+			% will be a region on the stacks containing no
+			% debugging information, and the retry command will
+			% refuse to perform retries that go into or beyond
+			% this region. Both cases preserve correctness.
+			%
+			% An alternative solution would be to store everything
+			% on the nondet stack that may be hijacked in ordinary
+			% stack slots on entry to every procedure, but that
+			% would be not only more complex than simply disabling
+			% hijacks, it would be slower as well, except in
+			% procedures that would have many nested hijacks,
+			% and such code is extremely rare.
+		globals__io_set_option(allow_hijacks, bool(no)),
 			% The following option prevents useless variables
 			% from cluttering the trace. Its explicit setting
 			% removes a source of variability in the goal paths

@@ -2841,6 +2841,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
+	{ proc_info_get_call_table_tip(Proc, MaybeCallTableTip) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -2885,6 +2886,14 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		io__write_string("% address is taken\n")
 	;
 		io__write_string("% address is not taken\n")
+	),
+
+	( { MaybeCallTableTip = yes(CallTableTip) } ->
+		io__write_string("% call table tip: "),
+		mercury_output_var(CallTableTip, VarSet, AppendVarnums),
+		io__write_string("\n")
+	;
+		[]
 	),
 
 	hlds_out__write_indent(Indent),

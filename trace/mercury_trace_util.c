@@ -1,4 +1,3 @@
-
 /*
 ** Copyright (C) 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
@@ -6,7 +5,8 @@
 */
 
 /*
-** This file contains utility functions for debugger.
+** This file contains utility functions that can be used by any or all
+** of the various kinds of Mercury debuggers.
 **
 ** Author: zs.
 */
@@ -33,4 +33,60 @@ MR_trace_is_number(const char *word, int *value)
 	}
 
 	return FALSE;
+}
+
+void
+MR_print_stack_regs(FILE *fp, MR_Word *saved_regs)
+{
+	fprintf(fp, "sp = ");
+	MR_print_detstackptr(fp, MR_saved_sp(saved_regs));
+	fprintf(fp, "\ncurfr = ");
+	MR_print_nondstackptr(fp, MR_saved_curfr(saved_regs));
+	fprintf(fp, "\nmaxfr = ");
+	MR_print_nondstackptr(fp, MR_saved_maxfr(saved_regs));
+	fprintf(fp, "\n");
+}
+
+void
+MR_print_heap_regs(FILE *fp, MR_Word *saved_regs)
+{
+	fprintf(fp, "hp = ");
+	MR_print_heapptr(fp, MR_saved_hp(saved_regs));
+	fprintf(fp, "\nsol_hp = ");
+	MR_print_heapptr(fp, MR_saved_sol_hp(saved_regs));
+	fprintf(fp, "\nmin_hp_rec = ");
+	MR_print_heapptr(fp, MR_saved_min_hp_rec(saved_regs));
+	fprintf(fp, "\nglobal_hp = ");
+	MR_print_heapptr(fp, MR_saved_global_hp(saved_regs));
+	fprintf(fp, "\n");
+}
+
+void
+MR_print_tabling_regs(FILE *fp, MR_Word *saved_regs)
+{
+	fprintf(fp, "gen_next = %ld\n", (long) MR_saved_gen_next(saved_regs));
+	fprintf(fp, "cut_next = %ld\n", (long) MR_saved_cut_next(saved_regs));
+}
+
+void
+MR_print_succip_reg(FILE *fp, MR_Word *saved_regs)
+{
+	fprintf(fp, "succip = ");
+	MR_print_label(fp, MR_saved_succip(saved_regs));
+	fprintf(fp, "\n");
+}
+
+void
+MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
+{
+	fprintf(fp, "r1 = %d (%x)\n",
+			MR_saved_r1(saved_regs), MR_saved_r1(saved_regs));
+	fprintf(fp, "r2 = %d (%x)\n",
+			MR_saved_r2(saved_regs), MR_saved_r2(saved_regs));
+	fprintf(fp, "r3 = %d (%x)\n",
+			MR_saved_r3(saved_regs), MR_saved_r3(saved_regs));
+	fprintf(fp, "r4 = %d (%x)\n",
+			MR_saved_r4(saved_regs), MR_saved_r4(saved_regs));
+	fprintf(fp, "r5 = %d (%x)\n",
+			MR_saved_r5(saved_regs), MR_saved_r5(saved_regs));
 }

@@ -34,6 +34,7 @@ DEBUGGER_PROGS=	\
 	polymorphic_output		\
 	queens				\
 	resume_typeinfos		\
+	retry				\
 	shallow
 
 # The following tests are disabled, since currently they get some spurious
@@ -162,6 +163,9 @@ resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
 	$(MDB) ./resume_typeinfos < resume_typeinfos.inp 2>&1 | \
 		sed 's/resume_typeinfos.m:[0-9]*/resume_typeinfos.m:NNNN/g' \
 		> resume_typeinfos.out 2>&1
+
+retry.out: retry retry.inp
+	$(MDB) ./retry < retry.inp > retry.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1

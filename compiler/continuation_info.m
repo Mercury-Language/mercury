@@ -75,29 +75,37 @@
 					% arguments on procedure entry, for
 					% use in implementing retry in the
 					% debugger.
+			eval_method	:: eval_method,
+					% Of the procedure.
 			call_label	:: maybe(label),
+					% If the trace level is not none,
+					% this contains the label associated
+					% with the call event, whose stack
+					% layout says which variables were
+					% live and where on entry.
+			max_trace_reg	:: int,
 					% The number of the highest numbered
 					% rN register that can contain useful
 					% information during a call to MR_trace
 					% from within this procedure.
-			max_trace_reg	:: int,
-					% Info about the stack slots used
-					% for tracing.
 			proc_body	:: hlds_goal,
+					% The body of the procedure.
 			initial_instmap	:: instmap,
 					% The instmap at the start of the
 					% procedure body.
 			trace_slot_info	:: trace_slot_info,
+					% Info about the stack slots used
+					% for tracing.
+			need_proc_id	:: bool,
 					% Do we require the procedure id
 					% section of the procedure layout
 					% to be present, even if the option
 					% procid_stack_layout is not set?
-			need_proc_id	:: bool,
-					% The names of all the variables.
 			varset		:: prog_varset,
+					% The names of all the variables.
+			internal_map	:: proc_label_layout_info
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
-			internal_map	:: proc_label_layout_info
 		).
 
 	%
@@ -198,7 +206,7 @@
 
 :- type return_layout_info
 	--->	return_layout_info(
-			list(pair(code_addr, prog_context)),
+			assoc_list(code_addr, pair(prog_context, goal_path)),
 			layout_label_info
 		).
 
@@ -337,7 +345,9 @@ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 			label,		% the return label
 			code_addr,	% the target of the call
 			list(liveinfo),	% what is live on return
-			term__context	% the position of the call in source
+			term__context,	% the position of the call in source
+			goal_path	% the position of the call in the body;
+					% meaningful only if tracing is enabled
 		).
 
 	%
@@ -355,9 +365,10 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
 	Internals0 = ProcLayoutInfo0^internal_map,
 	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
-		Instr = call(Target, label(ReturnLabel), LiveInfo, Context, _)
-			- _Comment,
-		Call = call_info(ReturnLabel, Target, LiveInfo, Context)
+		Instr = call(Target, label(ReturnLabel), LiveInfo, Context,
+			GoalPath, _) - _Comment,
+		Call = call_info(ReturnLabel, Target, LiveInfo, Context,
+			GoalPath)
 	)),
 	list__filter_map(GetCallInfo, Instructions, Calls),
 
@@ -380,7 +391,8 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 
 continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		Internals0, Internals) :-
-	CallInfo = call_info(ReturnLabel, Target, LiveInfoList, Context),
+	CallInfo = call_info(ReturnLabel, Target, LiveInfoList,
+		Context, MaybeGoalPath),
 	( map__search(Internals0, ReturnLabel, Internal0) ->
 		Internal0 = internal_layout_info(Port0, Resume0, Return0)
 	;
@@ -394,7 +406,8 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		(
 			Return0 = no,
 			Layout = layout_label_info(VarInfoSet, TypeInfoMap),
-			ReturnInfo = return_layout_info([Target - Context],
+			ReturnInfo = return_layout_info(
+				[Target - (Context - MaybeGoalPath)],
 				Layout),
 			Return = yes(ReturnInfo)
 		;
@@ -410,7 +423,8 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 			set__intersect(LV0, VarInfoSet, LV),
 			map__intersect(set__intersect, TV0, TypeInfoMap, TV),
 			Layout = layout_label_info(LV, TV),
-			TargetContexts = [Target - Context | TargetsContexts0],
+			TargetContexts = [Target - (Context - MaybeGoalPath)
+				| TargetsContexts0],
 			ReturnInfo = return_layout_info(TargetContexts,
 				Layout),
 			Return = yes(ReturnInfo)

@@ -9,7 +9,7 @@ mdb> break q
 mdb> continue
        3:      3  3 CALL pred exception_value:p/1-0 (det) exception_value.m:30
 mdb> finish
-       4:      3  3 EXCP pred exception_value:p/1-0 (det) exception_value.m:31
+       4:      3  3 EXCP pred exception_value:p/1-0 (det) c3; exception_value.m:31
 mdb> print exception
 	"p exception"
 mdb> continue
@@ -19,7 +19,7 @@ being omitted from the trace.
 exception(univ("p exception" : string))
        7:      5  3 CALL pred exception_value:q/1-0 (det) exception_value.m:35
 mdb> finish
-       8:      5  3 EXCP pred exception_value:q/1-0 (det) exception_value.m:36
+       8:      5  3 EXCP pred exception_value:q/1-0 (det) c16; exception_value.m:36
 mdb> browse exception
 browser> set depth 9
 browser> set size 99

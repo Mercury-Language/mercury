@@ -80,11 +80,12 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
 	{ goal_info_get_context(GoalInfo, Context) },
+	{ goal_info_get_goal_path(GoalInfo, GoalPath) },
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
-			CallModel)
+			GoalPath, CallModel)
 			- CallComment,
 		label(ReturnLabel)
 			- "continuation label"
@@ -167,11 +168,12 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args0,
 		% Make the call.
 	code_info__get_next_label(ReturnLabel),
 	{ goal_info_get_context(GoalInfo, Context) },
+	{ goal_info_get_goal_path(GoalInfo, GoalPath) },
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
-			Context, CallModel)
+			Context, GoalPath, CallModel)
 			- "Setup and call",
 		label(ReturnLabel)
 			- "Continuation label"

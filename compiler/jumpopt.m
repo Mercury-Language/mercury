@@ -242,7 +242,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
 		Uinstr0 = call(Proc, label(RetLabel), LiveInfos, Context,
-			CallModel)
+			GoalPath, CallModel)
 	->
 		(
 			% Look for det style tailcalls. We look for this
@@ -338,7 +338,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				RemainInstrs = Instrs0
 			;
 				NewInstrs = [call(Proc, label(DestLabel),
-					LiveInfos, Context, CallModel)
+					LiveInfos, Context, GoalPath,
+					CallModel)
 					- Redirect],
 				RemainInstrs = Instrs0
 			),

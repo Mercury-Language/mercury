@@ -2,7 +2,7 @@
 mdb> echo on
 Command echo enabled.
 mdb> exception
-       4:      2  2 EXCP pred exception_cmd:test/2-0 (det) exception_cmd.m:18 (exception_cmd.m:12)
+       4:      2  2 EXCP pred exception_cmd:test/2-0 (det) t;c2; exception_cmd.m:18 (exception_cmd.m:12)
 mdb> print *
        HeadVar__1             	42
 mdb> continue

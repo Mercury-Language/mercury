@@ -61,7 +61,7 @@
 
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
-:- import_module continuation_info, trace, options, hlds_out.
+:- import_module continuation_info, trace, trace_params, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util, goal_util.
 :- import_module prog_data, prog_out, prog_util, instmap, globals.
@@ -258,6 +258,28 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
 	code_info__get_cell_counter(CellCounter, CodeInfo, _),
 
+	globals__get_trace_level(Globals, TraceLevel),
+	code_info__get_created_temp_frame(CreatedTempFrame, CodeInfo, _),
+
+	(
+		trace_level_is_none(TraceLevel) = no,
+		CreatedTempFrame = yes,
+		CodeModel \= model_non
+	->
+			% If tracing is enabled, the procedure lives on
+			% the det stack and the code created any temporary
+			% nondet stack frames, then we must have reserved a
+			% stack slot for storing the value of maxfr; if we
+			% didn't, a retry command in the debugger from a point
+			% in the middle of this procedure will do the wrong
+			% thing.
+		proc_info_get_need_maxfr_slot(ProcInfo, HaveMaxfrSlot),
+		require(unify(HaveMaxfrSlot, yes),
+			"should have reserved a slot for maxfr, but didn't")
+	;
+		true
+	),
+
 		% Turn the code tree into a list.
 	tree__flatten(CodeTree, FragmentList),
 		% Now the code is a list of code fragments (== list(instr)),
@@ -282,12 +304,13 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
+		proc_info_eval_method(ProcInfo, EvalMethod),
 		proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
 		proc_info_varset(ProcInfo, VarSet),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
-			MaybeSuccipSlot, MaybeTraceCallLabel, MaxTraceReg,
-			Goal, InstMap0, TraceSlotInfo, ForceProcId,
-			VarSet, InternalMap),
+			MaybeSuccipSlot, EvalMethod, MaybeTraceCallLabel,
+			MaxTraceReg, Goal, InstMap0, TraceSlotInfo,
+			ForceProcId, VarSet, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;
@@ -315,9 +338,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions,
 		ProcLabel, LabelCounter, ContainsReconstruction).
 
-:- pred maybe_add_tabling_pointer_var(module_info, pred_id, proc_id, proc_info,
-	proc_label, global_data, global_data).
-:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, in, out) is det.
+:- pred maybe_add_tabling_pointer_var(module_info::in,
+	pred_id::in, proc_id::in, proc_info::in, proc_label::in,
+	global_data::in, global_data::out) is det.
 
 maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
 		GlobalData0, GlobalData) :-
@@ -538,7 +561,7 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			MaybeFailExternalInfo = no,
 			TraceFailCode = empty
 		},
-		{ TraceSlotInfo = trace_slot_info(_, _, yes(_)) ->
+		{ TraceSlotInfo ^ slot_trail = yes(_) ->
 			DiscardTraceTicketCode = node([
 				discard_ticket - "discard retry ticket"
 			])
@@ -802,7 +825,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			])
 		},
 		{
-			TraceSlotInfo = trace_slot_info(_, _, yes(_)),
+			TraceSlotInfo ^ slot_trail = yes(_),
 			CodeModel \= model_non
 		->
 			PruneTraceTicketCode = node([
@@ -943,7 +966,32 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			)
 		},
 
-		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, Code),
+		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode),
+
+			% If the predicate's evaluation method is memo,
+			% loopcheck or minimal model, the goal generated
+			% the variable that represents the call table tip,
+			% *and* tracing is enabled, then we save this variable
+			% to its stack slot. This is necessary to enable
+			% retries across this procedure to reset the call table
+			% entry to uninitialized, effectively removing the
+			% call table entry.
+		(
+			{ goal_info_get_features(GoalInfo, Features) },
+			{ set__member(call_table_gen, Features) },
+			code_info__get_proc_info(ProcInfo),
+			{ proc_info_get_call_table_tip(ProcInfo,
+				MaybeCallTableVar) },
+				% MaybeCallTableVar will be `no' unless
+				% tracing is enabled.
+			{ MaybeCallTableVar = yes(CallTableVar) }
+		->
+			code_info__save_variables_on_stack([CallTableVar],
+				SaveCode),
+			{ Code = tree(GoalCode, SaveCode) }
+		;
+			{ Code = GoalCode }
+		),
 
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
@@ -1066,12 +1114,12 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		set__insert(LiveVals0, stackvar(StackLoc), LiveVals1),
 		Instrn = livevals(LiveVals1)
         ;
-		Instrn0 = call(Target, ReturnLabel, LiveVals0, Context, CM)
+		Instrn0 = call(Target, ReturnLabel, LiveVals0, Context, GP, CM)
 	->
 		map__init(Empty),
 		LiveVals  = [live_lvalue(direct(stackvar(StackLoc)),
 				succip, Empty) | LiveVals0],
-		Instrn = call(Target, ReturnLabel, LiveVals, Context, CM)
+		Instrn = call(Target, ReturnLabel, LiveVals, Context, GP, CM)
 	;
 		Instrn = Instrn0
 	),

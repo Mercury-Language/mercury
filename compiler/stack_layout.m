@@ -21,85 +21,94 @@
 %
 %---------------------------------------------------------------------------%
 %
-% Data Stucture: stack_layouts
+% Data Structure: procedure layouts
 %
 % If the option basic_stack_layout is set, we generate a MR_Stack_Layout_Entry
 % for each procedure. This will be stored in the global variable whose name is
 %	mercury_data__layout__mercury__<proc_label>.
-% This structure will always contain stack tracing information:
 %
-%	code address		(Code *) - address of entry
-% 	succip stack location	(uint_least32_t) actually, type MR_Long_Lval
-% 					(the location will be set to -1
-% 					if there is no succip available).
-% 	number of stack slots	(uint_least16_t)
-% 	determinism		(uint_least16_t) actually, type MR_Determinism
+% This structure contains up to three groups of fields. The first group,
+% which contains information that enables the stack to be traversed, is always
+% present. The second group, which identifies the procedure in terms that are
+% meaningful to both humans and machines, will be generated only if the option
+% procid_stack_layout is set, i.e. if we are doing stack tracing, execution
+% tracing or profiling. The third group, which contains information
+% specifically intended for the debugger, will be generated only if the option
+% trace_stack_layout is set.
 %
-% If the option procid_stack_layout is set, i.e. if we are doing stack
-% tracing, execution tracing or profiling, the structure will also include
-% information on the identity of the procedure. This information will take
-% one of two forms. Almost all procedures use the first form:
+% The distinguished value -1 in the first field of the second group
+% indicates that the later fields are not present.
 %
-%	predicate/function	(Integer) actually, MR_pred_func
-%	declaring module name	(String)
-%	defining module name	(String)
-%	predicate name		(String)
-%	predicate arity		(int_least16_t)
-%	procedure number	(int_least16_t)
+% The distinguished value NULL in the first field of the third group
+% indicates that the later fields are not present.
 %
-% Automatically generated unification, index and comparison predicates
-% use the second form:
+%---------------------------------------------------------------------------%
 %
-%	type name		(String)
-%	type module's name	(String)
-%	defining module name	(String)
-%	predicate name		(String)
-%	predicate arity		(int_least16_t)
-%	procedure number	(int_least16_t)
+% The first group contains the following fields:
 %
-% The runtime system can figure out which form is present by testing
-% the value of the first slot. A value of 0 or 1 indicates the first form;
-% any higher value indicates the second form. The distinguished value -1
-% indicates that procid_stack_layout is not set, and that the later fields
-% are not present.
+%	MR_Code			*MR_sle_code_addr;
+%	MR_Long_Lval		MR_sle_succip_locn;
+%	MR_int_least16_t	MR_sle_stack_slots;
+%	MR_Determinism		MR_sle_detism;
 %
-% The meanings of the fields in both forms are the same as in procedure labels.
+% The code_addr field points to the start of the procedure's code.
 %
-% If the option trace_stack_layout is set, i.e. if we are doing execution
-% tracing, the structure will also include some extra fields:
+% The succip_locn field encoded the location of the saved succip if it is saved
+% in a general purpose stack slot. If the succip is saved in a specal purpose
+% stack slot (as it is for model_non procedures) or if the procedure never
+% saves the succip (as in leaf procedures), this field will contain -1.
 %
-%	call trace info		(MR_Stack_Layout_Label *) - points to the
-%				layout structure of the call event
-%	module layout		(MR_Module_Layout *) - points to the layout
-%				struct of the containing module.
-%	variable names		(int_least16_t *) - pointer to an array of
-%				offsets into the module-wide string table
-%	variable name count	(int_least16_t) - the number of offsets in the
-%				variable names array
-%	max reg at trace event	(int_least16_t) - the number of the highest
-%				numbered rN register live at a trace event
-%				inside the procedure
-%	maybe from full		(int_least8_t) - number of the stack slot of
-%				the from_full flag, if the procedure is
-%				shallow traced
-%	maybe trail		(int_least8_t) - number of the first of two
-%				stack slots used for recording the state of
-%				the trail, if trailing is enabled
-%	maybe decl debug	(int_least8_t) - number of the first of two
-%				stack slots used by the declarative debugger,
-%				if --trace-decl is set
+% The stack_slots field gives the number of general purpose stack slots
+% in the procedure.
 %
-% The call trace info field will point to the label layout structure for the
-% label associated with the call event at the entry to the procedure. The
-% purpose of this information is to allow the runtime debugger to find out
-% which variables are where on entry, so it can reexecute the procedure if
-% asked to do so and if the values of the required variables are still
-% available. (If trace_stack_layout is not set, this field will be present,
-% but it will be set to NULL.)
+% The detism field encodes the determinism of the procedure.
 %
-% The module layout field will point to the layout structure of the entire
-% module. Amongst other things, the string table for the module is stored
-% there. The variable names field points to an array that contains offsets
+%---------------------------------------------------------------------------%
+%
+% The second group contains one field:
+%
+%	MR_Stack_Layout_Proc_Id	MR_sle_proc_id;
+%
+% This field is a union. The usual alternative of which identifies ordinary
+% procedures, while the other alternative identifies automatically generated 
+% unification, comparison and index functions. The meanings of the fields
+% in both forms are the same as in procedure labels. The runtime system can
+% figure out which form is present by testing the value of the first slot,
+% as the acceptable ranges of values of the first fields (which are the same
+% size) are disjoint.
+%
+%---------------------------------------------------------------------------%
+%
+% The third group contains the following fields:
+%
+%	struct MR_Stack_Layout_Label_Struct	*MR_sle_call_label;
+%	struct MR_Module_Layout_Struct		*MR_sle_module_layout;
+%	MR_Word					MR_sle_proc_rep;
+%	MR_int_least16_t			*MR_sle_used_var_names;
+%	MR_int_least16_t			MR_sle_max_var_num;
+%	MR_int_least16_t			MR_sle_max_r_num;
+%	MR_int_least8_t				MR_sle_maybe_from_full;
+%	MR_int_least8_t				MR_sle_maybe_trail;
+%	MR_int_least8_t				MR_sle_maybe_maxfr;
+%	MR_EvalMethod				MR_sle_eval_method:8;
+%	MR_int_least8_t				MR_sle_maybe_call_table;
+%	MR_int_least8_t				MR_sle_maybe_decl_debug;
+%
+% The call_label field points to the label layout structure for the label
+% associated with the call event at the entry to the procedure. The purpose
+% of this field is to allow the runtime debugger to find out which variables
+% are where on entry, so it can reexecute the procedure if asked to do so
+% and if the values of the required variables are still available.
+%
+% The module_layout field points to the module info structure of the module
+% containing the procedure. This allows the debugger access to the string table
+% stored there, as well the table associating source-file contexts with labels.
+%
+% The proc_rep field contains a representation of the body of the procedure
+% as a Mercury term of type goal_rep, defined in program_representation.m.
+% If will be 0 if no such representation is available.
+%
+% The used_var_names field points to an array that contains offsets
 % into the string table, with the offset at index i-1 giving the name of
 % variable i (since variable numbers start at one). If a variable has no name
 % or cannot be referred to from an event, the offset will be zero, at which
@@ -111,18 +120,51 @@
 % Therefore using the stored offset to index into the string table
 % is always safe.
 %
-% If the procedure is compiled with deep tracing, the from full field will
-% contain a negative number. If it is compiled with shallow tracing, it will
-% contain the number of the stack slot that holds the flag that says whether
-% this incarnation of the procedure was called from deeply traced code or not.
-% (The determinism of the procedure decides whether the stack slot refers
-% to a stackvar or a framevar.)
+% The max_var_num field gives the number of elements in the used_var_names
+% table.
 %
-% If --trace-decl is not set, the maybe decl debug field will contain a
-% negative number. If it is set, it will contain the number of the first
-% of two stack slots used by the declarative debugger; the other slot is
-% the next higher numbered one. (The determinism of the procedure decides
-% whether the stack slot refers to a stackvar or a framevar.)
+% The max_r_num field tells the debugger which Mercury abstract machine
+% registers need saving in MR_trace: besides the special registers, it is
+% the general-purpose registers rN for values of N up to and including the
+% value of this field. Note that this field contains an upper bound; in
+% general, there will be calls to MR_trace at which the number of the highest
+% numbered general purpose (i.e. rN) registers is less than this. However,
+% storing the upper bound gets us almost all the benefit (of not saving and
+% restoring all the thousand rN registers) for a small fraction of the static
+% space cost of storing the actual number in label layout structures.
+%
+% If the procedure is compiled with deep tracing, the maybe_from_full field
+% will contain a negative number. If it is compiled with shallow tracing,
+% it will contain the number of the stack slot that holds the flag that says
+% whether this incarnation of the procedure was called from deeply traced code
+% or not. (The determinism of the procedure decides whether the stack slot
+% refers to a stackvar or a framevar.)
+%
+% If trailing is not enabled, the maybe_trail field will contain a negative
+% number. If it is enabled, it will contain number of the first of two stack
+% slots used for checkpointing the state of the trail on entry to the
+% procedure. The first contains the trail pointer, the second the ticket.
+%
+% If the procedure lives on the nondet stack, or if it cannot create any
+% temporary nondet stack frames, the maybe_maxfr field will contain a negative
+% number. If it lives on the det stack, and can create temporary nondet stack
+% frames, it will contain the number number of the stack slot that contains the
+% value of maxfr on entry, for use in executing the retry debugger command
+% from the middle of the procedure.
+%
+% The eval_method field contains a representation of the evaluation method
+% used by the procedure. The retry command needs this information if it is
+% to reset the call tables of the procedure invocations being retried.
+%
+% If --trace-decl is not set, the maybe_decl field will contain a negative
+% number. If it is set, it will contain the number of the first of two stack
+% slots used by the declarative debugger; the other slot is the next higher
+% numbered one. (The determinism of the procedure decides whether the stack
+% slot refers to a stackvar or a framevar.)
+%
+%---------------------------------------------------------------------------%
+%
+% Data Structure: label layouts
 %
 % If the option basic_stack_layout is set, we generate stack layout tables
 % for some labels internal to the procedure. This table will be stored in the
@@ -549,8 +591,8 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
-	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
+	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism, StackSlots,
+		SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
 		VarSet, InternalMap) },
 	{ map__to_assoc_list(InternalMap, Internals) },
@@ -562,8 +604,8 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ list__foldl(stack_layout__update_label_table, Internals,
 		LabelTables0, LabelTables) },
 	stack_layout__set_label_tables(LabelTables),
-	stack_layout__construct_proc_layout(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
+	stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
+		SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
 		VarSet, NamedVars).
 
@@ -580,7 +622,7 @@ stack_layout__update_label_table(Label - InternalInfo,
 	(
 		Return = yes(return_layout_info(TargetsContexts, _)),
 		stack_layout__find_valid_return_context(TargetsContexts,
-			Target, Context)
+			Target, Context, _GoalPath)
 	->
 		( Target = label(TargetLabel) ->
 			IsReturn = known_callee(TargetLabel)
@@ -633,17 +675,18 @@ stack_layout__update_label_table_2(Label, Context, IsReturn,
 	).
 
 :- pred stack_layout__find_valid_return_context(
-	assoc_list(code_addr, prog_context)::in,
-	code_addr::out, prog_context::out) is semidet.
+	assoc_list(code_addr, pair(prog_context, goal_path))::in,
+	code_addr::out, prog_context::out, goal_path::out) is semidet.
 
-stack_layout__find_valid_return_context([Target - Context | TargetContexts],
-		ValidTarget, ValidContext) :-
+stack_layout__find_valid_return_context([Target - (Context - GoalPath)
+		| TargetContexts], ValidTarget, ValidContext, ValidGoalPath) :-
 	( stack_layout__context_is_valid(Context) ->
 		ValidTarget = Target,
-		ValidContext = Context
+		ValidContext = Context,
+		ValidGoalPath = GoalPath
 	;
 		stack_layout__find_valid_return_context(TargetContexts,
-			ValidTarget, ValidContext)
+			ValidTarget, ValidContext, ValidGoalPath)
 	).
 
 :- pred stack_layout__context_is_valid(prog_context::in) is semidet.
@@ -659,14 +702,15 @@ stack_layout__context_is_valid(Context) :-
 	% Construct a procedure-specific layout.
 
 :- pred stack_layout__construct_proc_layout(label::in, determinism::in,
-	int::in, maybe(int)::in, maybe(label)::in, int::in,
-	hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
+	int::in, maybe(int)::in, eval_method::in, maybe(label)::in,
+	int::in, hlds_goal::in, instmap::in, trace_slot_info::in, bool::in,
 	prog_varset::in, map(int, string)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel, MaxTraceReg, Goal, InstMap,
-		TraceSlotInfo, ForceProcIdLayout, VarSet, UsedVarNames) -->
+		MaybeSuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
+		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
+		VarSet, UsedVarNames) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
 	->
@@ -728,9 +772,10 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 			ProcLabel) },
 		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
 			IdArgTypes) },
-		stack_layout__construct_trace_layout(MaybeCallLabel,
-			MaxTraceReg, Goal, InstMap, TraceSlotInfo,
-			VarSet, UsedVarNames, TraceRvals, TraceArgTypes),
+		stack_layout__construct_trace_layout(EvalMethod,
+			MaybeCallLabel, MaxTraceReg, Goal, InstMap,
+			TraceSlotInfo, VarSet, UsedVarNames,
+			TraceRvals, TraceArgTypes),
 		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
 		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
 	;
@@ -752,13 +797,13 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		Rvals, ArgTypes, []) },
 	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
 
-:- pred stack_layout__construct_trace_layout(maybe(label)::in, int::in,
-	hlds_goal::in, instmap::in, trace_slot_info::in,
-	prog_varset::in, map(int, string)::in,
+:- pred stack_layout__construct_trace_layout(eval_method::in,
+	maybe(label)::in, int::in, hlds_goal::in, instmap::in,
+	trace_slot_info::in, prog_varset::in, map(int, string)::in,
 	list(maybe(rval))::out, create_arg_types::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
+stack_layout__construct_trace_layout(EvalMethod, MaybeCallLabel, MaxTraceReg,
 		Goal, InstMap, TraceSlotInfo, VarSet, UsedVarNameMap,
 		Rvals, ArgTypes) -->
 	stack_layout__get_trace_stack_layout(TraceLayout),
@@ -797,29 +842,44 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 				data_addr(ModuleName, module_layout)))),
 		MaxTraceRegRval = yes(const(int_const(MaxTraceReg))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
-			MaybeDeclSlots, MaybeTrailSlot),
+			MaybeDeclSlots, MaybeTrailSlots, MaybeMaxfrSlot,
+			MaybeCallTableSlot),
+		EvalMethodInt =
+			stack_layout__represent_eval_method(EvalMethod),
+		EvalMethodRval = yes(const(int_const(EvalMethodInt))),
 		( MaybeFromFullSlot = yes(FromFullSlot) ->
 			FromFullRval = yes(const(int_const(FromFullSlot)))
 		;
 			FromFullRval = yes(const(int_const(-1)))
+		),
+		( MaybeTrailSlots = yes(FirstTrailSlot) ->
+			TrailRval = yes(const(int_const(FirstTrailSlot)))
+		;
+			TrailRval = yes(const(int_const(-1)))
+		),
+		( MaybeMaxfrSlot = yes(MaxfrSlot) ->
+			MaxfrRval = yes(const(int_const(MaxfrSlot)))
+		;
+			MaxfrRval = yes(const(int_const(-1)))
+		),
+		( MaybeCallTableSlot = yes(CallTableSlot) ->
+			CallTableRval = yes(const(int_const(CallTableSlot)))
+		;
+			CallTableRval = yes(const(int_const(-1)))
 		),
 		( MaybeDeclSlots = yes(DeclSlot) ->
 			DeclRval = yes(const(int_const(DeclSlot)))
 		;
 			DeclRval = yes(const(int_const(-1)))
 		),
-		( MaybeTrailSlot = yes(TrailSlot) ->
-			TrailRval = yes(const(int_const(TrailSlot)))
-		;
-			TrailRval = yes(const(int_const(-1)))
-		),
 		Rvals = [CallRval, ModuleRval, GoalRepRval, VarNameVector,
 			VarNameCount, MaxTraceRegRval,
-			FromFullRval, TrailRval, DeclRval],
+			FromFullRval, TrailRval, MaxfrRval,
+			EvalMethodRval, CallTableRval, DeclRval],
 		ArgTypes = initial([
 			4 - yes(data_ptr),
 			2 - yes(int_least16),
-			3 - yes(int_least8)],
+			6 - yes(int_least8)],
 			none)
 		}
 	;
@@ -827,6 +887,14 @@ stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
 		{ Rvals = [yes(const(int_const(0)))] },
 		{ ArgTypes = initial([1 - yes(integer)], none) }
 	).
+
+:- func stack_layout__represent_eval_method(eval_method) = int.
+
+stack_layout__represent_eval_method(eval_normal)     = 0.
+stack_layout__represent_eval_method(eval_loop_check) = 1.
+stack_layout__represent_eval_method(eval_memo)       = 2.
+stack_layout__represent_eval_method(eval_minimal)    = 3.
+
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, maybe(rval)::out, maybe(rval)::out,
@@ -907,7 +975,8 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
 			],
-		ArgTypes = [4 - no, 2 - yes(int_least16)]
+		ArgTypes = [1 - yes(integer), 3 - yes(string),
+				2 - yes(int_least16)]
 	;
 		ProcLabel = special_proc(DefModule, PredName, TypeModule,
 			TypeName, Arity, ProcId),
@@ -922,7 +991,7 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
 			],
-		ArgTypes = [4 - no, 2 - yes(int_least16)]
+		ArgTypes = [4 - yes(string), 2 - yes(int_least16)]
 	).
 
 :- pred stack_layout__represent_pred_or_func(pred_or_func::in, int::out) is det.
@@ -979,30 +1048,51 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 			ResumeTypeVarMap)
 	},
 	(
-		{ Trace = yes(trace_port_layout_info(_, Port, Path, _)) },
+		{ Trace = yes(trace_port_layout_info(_, Port, GoalPath, _)) },
 		{ Return = no },
 		{ llds_out__trace_port_to_num(Port, PortNum) },
-		{ trace__path_to_string(Path, PathStr) },
-		stack_layout__lookup_string_in_table(PathStr, PathNum)
+		{ trace__path_to_string(GoalPath, GoalPathStr) },
+		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum)
 	;
 		{ Trace = no },
-		{ Return = yes(_) },
-			% We only ever use the port and path fields of these
-			% layout structures when we process exception events.
+		{ Return = yes(ReturnInfo) },
+			% We only ever use the port fields of these layout
+			% structures when we process exception events.
+			% (Since exception events are interface events,
+			% the goal path field is not meaningful then.)
 		{ llds_out__trace_port_to_num(exception, PortNum) },
-		{ PathNum = 0 }
+			% We only ever use the goal path fields of these
+			% layout structures when we process "fail" commands
+			% in the debugger.
+		{ ReturnInfo = return_layout_info(TargetsContexts, _) },
+		(
+			{ stack_layout__find_valid_return_context(
+				TargetsContexts, _, _, GoalPath) }
+		->
+			{ trace__path_to_string(GoalPath, GoalPathStr) },
+			stack_layout__lookup_string_in_table(GoalPathStr,
+				GoalPathNum)
+		;
+				% If tracing is enabled, then exactly one of
+				% the calls for which this label is a return
+				% site would have had a valid context. If none
+				% do, then tracing is not enabled, and
+				% therefore the goal path of this label will
+				% not be accessed.
+			{ GoalPathNum = 0 }
+		)
 	;
 		{ Trace = no },
 		{ Return = no },
 		{ PortNum = -1 },
-		{ PathNum = -1 }
+		{ GoalPathNum = -1 }
 	;
 		{ Trace = yes(_) },
 		{ Return = yes(_) },
 		{ error("label has both trace and return layout info") }
 	),
 	{ TraceRvals = [yes(const(int_const(PortNum))),
-			yes(const(int_const(PathNum)))] },
+			yes(const(int_const(GoalPathNum)))] },
 	stack_layout__get_agc_stack_layout(AgcStackLayout),
 	{
 		Return = no,

@@ -1135,6 +1135,7 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details,
 		Code **jumpaddr)
 {
+	MR_Retry_Result		result;
 	MR_Stack_Layout_Entry 	*entry;
 	FILE			*out;
 	Unsigned		depth_limit;
@@ -1232,14 +1233,20 @@ MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 		MR_Event_Details *event_details, Code **jumpaddr)
 {
-	const char		*message;
+	const char		*problem;
+	MR_Retry_Result		retry_result;
 
 	/*
 	** Go back to an event before the topmost call.
 	*/
-	message = MR_trace_retry(event_info, event_details, jumpaddr);
-	if (message != NULL) {
-		return message;
+	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
+			jumpaddr);
+	if (retry_result != MR_RETRY_OK_DIRECT) {
+		if (retry_result == MR_RETRY_ERROR) {
+			return problem;
+		} else {
+			return "internal error: direct retry impossible";
+		}
 	}
 
 	/*
@@ -1330,7 +1337,8 @@ static	Code *
 MR_decl_handle_bug_found(Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
-	const char		*message;
+	const char		*problem;
+	MR_Retry_Result		retry_result;
 	Code			*jumpaddr;
 
 	/*
@@ -1338,10 +1346,25 @@ MR_decl_handle_bug_found(Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 	** bug event.  Then set the command to go to the bug
 	** event and return to interactive mode.
 	*/
-	message = MR_trace_retry(event_info, event_details, &jumpaddr);
-	if (message != NULL) {
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
+	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
+#endif
+	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
+			&jumpaddr);
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
+	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
+	MR_print_r_regs(stdout, event_info->MR_saved_regs);
+#endif
+	if (retry_result != MR_RETRY_OK_DIRECT) {
 		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
+		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n");
+		if (retry_result == MR_RETRY_ERROR) {
+			fprintf(MR_mdb_err, "%s\n", problem);
+		} else {
+			fprintf(MR_mdb_err, "direct retry impossible\n");
+		}
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		MR_trace_enabled = TRUE;
 		return MR_trace_event_internal(cmd, TRUE, event_info);

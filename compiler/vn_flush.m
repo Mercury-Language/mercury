@@ -186,11 +186,11 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs = [livevals(Livevals) - ""]
 	;
 		Vn_instr = vn_call(ProcAddr, RetAddr, LiveInfo,
-			Context, CodeModel),
+			Context, GoalPath, CodeModel),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = [call(ProcAddr, RetAddr, LiveInfo,
-			Context, CodeModel) - ""]
+			Context, GoalPath, CodeModel) - ""]
 	;
 		Vn_instr = vn_mkframe(NondetFrameInfo, Redoip),
 		vn_util__rval_to_vn(const(code_addr_const(Redoip)), AddrVn,

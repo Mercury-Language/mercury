@@ -190,7 +190,7 @@ static void	MR_dump_stack_record_print_to_socket(FILE *fp,
 			const MR_Stack_Layout_Entry *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
-			bool context_mismatch);
+			const char *goal_path, bool context_mismatch);
 static void	MR_get_list_modules_to_import(MR_Word debugger_request, 
 			MR_Integer *modules_list_length_ptr,
 			MR_Word *modules_list_ptr);
@@ -497,8 +497,9 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Trace_Port	port = event_info->MR_trace_port;
 	const char	*path = event_info->MR_event_path;
 	MR_Word		*saved_regs = event_info->MR_saved_regs;
-	MR_Integer		modules_list_length;
+	MR_Integer	modules_list_length;
 	MR_Word		modules_list;
+	MR_Retry_Result	retry_result;
 	static MR_String	MR_object_file_name;
 
 	MR_trace_enabled = FALSE;
@@ -618,9 +619,9 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_RETRY\n");
 				}
-				message = MR_trace_retry(event_info, 
-					&event_details, &jumpaddr);
-				if (message == NULL) {
+				retry_result = MR_trace_retry(event_info, 
+					&event_details, 0, &message, &jumpaddr);
+				if (retry_result == MR_RETRY_OK_DIRECT) {
 					MR_send_message_to_socket("ok");
 					cmd->MR_trace_cmd = MR_CMD_GOTO;
 					cmd->MR_trace_stop_event = 
@@ -1281,8 +1282,9 @@ MR_get_var_number(MR_Word debugger_request)
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, 
 	const MR_Stack_Layout_Entry *entry_layout, int count, int start_level, 
-	MR_Word *base_sp, MR_Word *base_curfr, const char *filename, int linenumber,
-	bool context_mismatch)
+	MR_Word *base_sp, MR_Word *base_curfr,
+	const char *filename, int linenumber,
+	const char *goal_path, bool context_mismatch)
 {
 	MR_send_message_to_socket_format("level(%d).\n", start_level);
 	MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);

@@ -13,7 +13,7 @@
 :- module vn_type.
 
 :- interface.
-:- import_module llds, builtin_ops, livemap, options.
+:- import_module hlds_goal, llds, builtin_ops, livemap, options.
 :- import_module getopt, map, set, list, std_util, counter.
 
 :- type vn == int.
@@ -71,7 +71,7 @@
 
 :- type vn_instr	--->	vn_livevals(lvalset)
 			;	vn_call(code_addr, code_addr, list(liveinfo),
-					term__context, call_model)
+					term__context, goal_path, call_model)
 			;	vn_mkframe(nondet_frame_info, code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr)

@@ -338,6 +338,13 @@ typedef union MR_Stack_Layout_Proc_Id_Union {
 	MR_Stack_Layout_Compiler_Proc	MR_proc_comp;
 } MR_Stack_Layout_Proc_Id;
 
+typedef	enum {
+	MR_EVAL_METHOD_NORMAL,
+	MR_EVAL_METHOD_LOOP_CHECK,
+	MR_EVAL_METHOD_MEMO,
+	MR_EVAL_METHOD_MINIMAL
+} MR_EvalMethod;
+
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
 	MR_Code			*MR_sle_code_addr;
@@ -359,6 +366,9 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	MR_int_least16_t	MR_sle_max_r_num;
 	MR_int_least8_t		MR_sle_maybe_from_full;
 	MR_int_least8_t		MR_sle_maybe_trail;
+	MR_int_least8_t		MR_sle_maybe_maxfr;
+	MR_EvalMethod		MR_sle_eval_method:8;
+	MR_int_least8_t		MR_sle_maybe_call_table;
 	MR_int_least8_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
@@ -490,6 +500,10 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_int_least16_t	MR_sll_goal_path;
 	MR_Stack_Layout_Vars	MR_sll_var_info;
 } MR_Stack_Layout_Label;
+
+#define	MR_label_goal_path(layout)					\
+	((layout)->MR_sll_entry->MR_sle_module_layout->MR_ml_string_table\
+	+ (layout)->MR_sll_goal_path)
 
 /*
 ** Define a stack layout for an internal label.

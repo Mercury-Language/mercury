@@ -1282,7 +1282,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		:-
 	(
 		(
-			Instr = call(_, label(ContLabel), _, _, _)
+			Instr = call(_, label(ContLabel), _, _, _, _)
 		;
 			Instr = mkframe(_, label(ContLabel))
 		;
@@ -1386,7 +1386,8 @@ output_instruction_decls(block(_TempR, _TempF, Instrs),
 output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(call(Target, ContLabel, _,_,_), DeclSet0, DeclSet) -->
+output_instruction_decls(call(Target, ContLabel, _, _, _, _),
+		DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
@@ -1648,7 +1649,7 @@ output_instruction(assign(Lval, Rval), _) -->
 	output_rval_as_type(Rval, Type),
 	io__write_string(";\n").
 
-output_instruction(call(Target, ContLabel, LiveVals, _, _), ProfInfo) -->
+output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	output_call(Target, ContLabel, CallerLabel),
 	output_gc_livevals(LiveVals).

@@ -150,6 +150,11 @@
 :- pred code_info__set_max_reg_in_use_at_trace(int::in,
 	code_info::in, code_info::out) is det.
 
+		% Get the flag which is true iff the procedure has so far
+		% emitted code that creates a temporary nondet stack frame.
+:- pred code_info__get_created_temp_frame(bool::out,
+	code_info::in, code_info::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -206,6 +211,9 @@
 	code_info::in, code_info::out) is det.
 
 :- pred code_info__set_non_common_static_data(list(comp_gen_c_data)::in,
+	code_info::in, code_info::out) is det.
+
+:- pred code_info__set_created_temp_frame(bool::in,
 	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -307,7 +315,7 @@
 				% Static data structures created for this
 				% procedure which do not need to be scanned
 				% by llds_common.
-		max_reg_used :: int
+		max_reg_used :: int,
 				% At each call to MR_trace, we compute the
 				% highest rN register number that contains
 				% a useful value. This slot contains the
@@ -317,6 +325,9 @@
 				% are equal to or smaller than this field.
 				% This slot contains -1 if tracing is not
 				% enabled.
+		created_temp_frame:: bool
+				% True iff the procedure has created one or
+				% more temporary nondet frames.
 	).
 
 :- type var_locns_info
@@ -377,7 +388,7 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 	set__init(Zombies),
 	map__init(LayoutMap),
 	code_info__max_var_slot(StackSlots, VarSlotMax),
-	trace__reserved_slots(ProcInfo, Globals, FixedSlots),
+	trace__reserved_slots(ProcInfo, Globals, FixedSlots, _),
 	int__max(VarSlotMax, FixedSlots, SlotMax),
 	CodeInfo0 = code_info(
 		Globals,
@@ -403,22 +414,25 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 		0,
 		TempContentMap,
 		[],
-		-1
+		-1,
+		no
 	),
-	code_info__init_maybe_trace_info(TraceLevel, Globals, TraceSlotInfo,
-		CodeInfo0, CodeInfo1),
+	code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo,
+		TraceSlotInfo, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
 :- pred code_info__init_maybe_trace_info(trace_level::in, globals::in,
-	trace_slot_info::out, code_info::in, code_info::out) is det.
+	proc_info::in, trace_slot_info::out,
+	code_info::in, code_info::out) is det.
 
-code_info__init_maybe_trace_info(TraceLevel, Globals, TraceSlotInfo) -->
+code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, TraceSlotInfo)
+		-->
 	( { trace_level_is_none(TraceLevel) = no } ->
-		trace__setup(Globals, TraceSlotInfo, TraceInfo),
+		trace__setup(ProcInfo, Globals, TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo))
 	;
-		{ TraceSlotInfo = trace_slot_info(no, no, no) }
+		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -445,6 +459,7 @@ code_info__get_max_temp_slot_count(CI^stackslot_max, CI, CI).
 code_info__get_temp_content_map(CI^temp_contents, CI, CI).
 code_info__get_non_common_static_data(CI^comp_gen_c_data, CI, CI).
 code_info__get_max_reg_in_use_at_trace(CI^max_reg_used, CI, CI).
+code_info__get_created_temp_frame(CI^created_temp_frame, CI, CI).
 
 %---------------------------------------------------------------------------%
 
@@ -463,6 +478,7 @@ code_info__set_max_temp_slot_count(TM, CI, CI^stackslot_max := TM).
 code_info__set_temp_content_map(CM, CI, CI^temp_contents := CM).
 code_info__set_non_common_static_data(CG, CI, CI^comp_gen_c_data := CG).
 code_info__set_max_reg_in_use_at_trace(MR, CI, CI^max_reg_used := MR).
+code_info__set_created_temp_frame(MR, CI, CI^created_temp_frame := MR).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -894,12 +910,12 @@ code_info__remember_position(position_info(C), C, C).
 
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 		% The static fields in PosCI and CurCI should be identical.
-	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _,
-		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _,  _ ),
+	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _, 
+		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _,  _,  _ ),
 	CurCI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG, PH),
+		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG, PH, PI),
 	NextCI = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH, PI).
 
 code_info__reset_resume_known(BranchStart) -->
 	{ BranchStart = position_info(BranchStartCI) },
@@ -1944,6 +1960,7 @@ code_info__create_temp_frame(Redoip, Comment, Code) -->
 		mkframe(temp_frame(Kind), Redoip)
 			- Comment
 	]) },
+	code_info__set_created_temp_frame(yes),
 	code_info__get_fail_info(FailInfo0),
 	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, CondEnv, Allow) },
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, may_be_different,

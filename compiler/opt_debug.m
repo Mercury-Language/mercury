@@ -309,7 +309,7 @@ opt_debug__dump_ctrl_list([N - VnInstr | Ctrllist], Str) :-
 
 opt_debug__dump_vninstr(vn_livevals(_), Str) :-
 	string__append_list(["livevals(...)"], Str).
-opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _, _), Str) :-
+opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
@@ -932,7 +932,7 @@ opt_debug__dump_instr(assign(Lval, Rval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["assign(", L_str, ", ", R_str, ")"], Str).
-opt_debug__dump_instr(call(Proc, Ret, _, _, _), Str) :-
+opt_debug__dump_instr(call(Proc, Ret, _, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).

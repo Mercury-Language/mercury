@@ -108,7 +108,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 			Cost is RvalCost + LvalCost + AssignCost
 		)
 	;
-		Uinstr = call(_, _, _, _, _),
+		Uinstr = call(_, _, _, _, _, _),
 		Cost = 0
 	;
 		Uinstr = mkframe(_, _),

@@ -63,20 +63,28 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 		set__init(ResumeVars0),
 		LiveSets1 = LiveSets0
 	),
-	trace__reserved_slots(ProcInfo0, Globals, NumReservedSlots),
+	trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo1),
+	trace__reserved_slots(ProcInfo1, Globals, NumReservedSlots,
+		MaybeReservedVarInfo),
+	( MaybeReservedVarInfo = yes(ResVar - _) ->
+		set__singleton_set(ResVarSet, ResVar),
+		set__insert(LiveSets1, ResVarSet, LiveSets2)
+	;
+		LiveSets2 = LiveSets1
+	),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-	AllocData = alloc_data(ModuleInfo, ProcInfo0, TypeInfoLiveness),
+	AllocData = alloc_data(ModuleInfo, ProcInfo1, TypeInfoLiveness),
 	set__init(NondetLiveness0),
 	build_live_sets_in_goal(Goal0, Liveness0,
-		NondetLiveness0, ResumeVars0, LiveSets1, AllocData,
+		NondetLiveness0, ResumeVars0, LiveSets2, AllocData,
 		_Liveness, _NondetLiveness, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
 	allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
-		StackSlots),
+		MaybeReservedVarInfo, StackSlots),
 
-	proc_info_set_stack_slots(ProcInfo0, StackSlots, ProcInfo).
+	proc_info_set_stack_slots(ProcInfo1, StackSlots, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -572,33 +580,42 @@ find_output_vars_2([Var - arg_info(_, Mode) | Rest], OutVars0, OutVars) :-
 %-----------------------------------------------------------------------------%
 
 :- pred allocate_stack_slots(list(set(prog_var))::in, code_model::in, int::in,
-	stack_slots::out) is det.
+	maybe(pair(prog_var, int))::in, stack_slots::out) is det.
 
-allocate_stack_slots(ColourList, CodeModel, NumReservedSlots, StackSlots) :-
+allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
+		MaybeReservedVarInfo, StackSlots) :-
 	map__init(StackSlots0),
 		% The reserved slots are referred to by fixed number
 		% (e.g. framevar(1)) in trace__setup.
 	FirstVarSlot is 1 + NumReservedSlots,
-	allocate_stack_slots_2(ColourList, FirstVarSlot, CodeModel,
-		StackSlots0, StackSlots).
+	allocate_stack_slots_2(ColourList, CodeModel, FirstVarSlot,
+		MaybeReservedVarInfo, StackSlots0, StackSlots).
 
-:- pred allocate_stack_slots_2(list(set(prog_var))::in, int::in, code_model::in,
+:- pred allocate_stack_slots_2(list(set(prog_var))::in, code_model::in,
+	int::in, maybe(pair(prog_var, int))::in,
 	stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_2([], _N, _CodeModel, StackSlots, StackSlots).
-allocate_stack_slots_2([Vars | VarSets], N0, CodeModel,
+allocate_stack_slots_2([], _, _, _, StackSlots, StackSlots).
+allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
 		StackSlots0, StackSlots) :-
-	set__to_sorted_list(Vars, VarList),
 	(
-		CodeModel = model_non
+		MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
+		set__member(ResVar, Vars)
 	->
-		Slot = framevar(N0)
+		SlotNum = ResSlotNum,
+		N1 = N0
 	;
-		Slot = stackvar(N0)
+		SlotNum = N0,
+		N1 = N0 + 1
 	),
+	( CodeModel = model_non ->
+		Slot = framevar(SlotNum)
+	;
+		Slot = stackvar(SlotNum)
+	),
+	set__to_sorted_list(Vars, VarList),
 	allocate_same_stack_slot(VarList, Slot, StackSlots0, StackSlots1),
-	N1 is N0 + 1,
-	allocate_stack_slots_2(VarSets, N1, CodeModel,
+	allocate_stack_slots_2(VarSets, CodeModel, N1, MaybeReservedVarInfo,
 		StackSlots1, StackSlots).
 
 :- pred allocate_same_stack_slot(list(prog_var)::in, lval::in, stack_slots::in,

@@ -174,7 +174,7 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		llds_common__process_rval(Rval0, Rval, Info0, Info),
 		Instr = assign(Lval, Rval)
 	;
-		Instr0 = call(_, _, _, _, _),
+		Instr0 = call(_, _, _, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	;

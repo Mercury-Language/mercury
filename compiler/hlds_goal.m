@@ -652,8 +652,14 @@
 	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
-	    ;	(impure)	% This goal is impure.  See hlds_pred.m.
-	    ;	(semipure).	% This goal is semipure.  See hlds_pred.m.
+	;	(impure)	% This goal is impure.  See hlds_pred.m.
+	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
+	;	call_table_gen.	% This goal generates the variable that
+				% represents the call table tip. If debugging
+				% is enabled, the code generator needs to save
+				% the value of this variable in its stack slot
+				% as soon as it is generated; this marker
+				% tells the code generator when this happens.
 
 	% see compiler/notes/allocation.html for what these alternatives mean
 :- type resume_point	--->	resume_point(set(prog_var), resume_locs)
@@ -685,9 +691,11 @@
 			;	ite_then
 			;	ite_else
 			;	neg
-			;	exist
+			;	exist(maybe_cut)
 			;	first
 			;	later.
+
+:- type maybe_cut	--->	cut ; no_cut.
 
 :- type goal_path == list(goal_path_step).
 

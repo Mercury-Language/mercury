@@ -154,7 +154,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = call(_, _, _, _, _),
+		Uinstr0 = call(_, _, _, _, _, _),
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals, "call", yes, _),
 		Livemap = Livemap0,

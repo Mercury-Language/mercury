@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
+:- import_module hlds_pred, hlds_goal, hlds_data, tree, prog_data, (inst).
 :- import_module rtti, builtin_ops.
 
 :- import_module bool, assoc_list, list, map, set, std_util, counter.
@@ -247,15 +247,18 @@
 			% specified by lval.
 
 	;	call(code_addr, code_addr, list(liveinfo), term__context,
-				call_model)
+				goal_path, call_model)
 			% call(Target, Continuation, _, _, _) is the same as
 			% succip = Continuation; goto(Target).
 			% The third argument is the live value info for the
 			% values live on return. The fourth argument gives
-			% the context of the call. The last gives the model
-			% of the called procedure, and if it is nondet,
-			% says whether tail recursion elimination is
-			% potentially applicable to the call.
+			% the context of the call. The fifth gives the goal
+			% path of the call in the body of the procedure; it is
+			% meaningful only if execution tracing is enabled.
+			% The last gives the code model of the called
+			% procedure, and if it is model_non, says whether
+			% tail recursion elimination is potentially applicable
+			% to the call.
 
 	;	mkframe(nondet_frame_info, code_addr)
 			% mkframe(NondetFrameInfo, CodeAddr) creates a nondet
@@ -1043,6 +1046,8 @@
 				% signed or unsigned
 				% (used for registers, stack slots, etc).
 
+:- func llds__stack_slot_num_to_lval(code_model, int) = lval.
+
 :- pred llds__wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
 
 	% given a non-var rval, figure out its type
@@ -1076,6 +1081,13 @@
 :- implementation.
 
 :- import_module require.
+
+llds__stack_slot_num_to_lval(CodeModel, SlotNum) =
+	(if CodeModel = model_non then
+		framevar(SlotNum)
+	else
+		stackvar(SlotNum)
+	).
 
 llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
 

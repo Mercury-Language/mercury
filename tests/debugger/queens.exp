@@ -122,20 +122,18 @@ mdb> stack
    4       pred queens:queen/2-0 (nondet) (queens.m:42)
    5       pred queens:main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d
-   0      20      10    6 pred queens:qperm/2-0 (nondet) (queens.m:45)
-   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49)
-   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49)
-   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49)
-   4       4       3    2 pred queens:queen/2-0 (nondet) (queens.m:42)
-   5       1       1    1 pred queens:main/2-0 (cc_multi) (queens.m:15)
+   0      20      10    6 pred queens:qperm/2-0 (nondet) (queens.m:45) (empty)
+   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
+   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
+   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
+   4       4       3    2 pred queens:queen/2-0 (nondet) (queens.m:42) c2;
+   5       1       1    1 pred queens:main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> 
       21:     10  6 SWTC queens.m:46
                          pred queens:qperm/2-0 (nondet) s1;
 mdb> retry
-      34:     10  6 EXIT queens.m:45 (from queens.m:49)
-                         pred queens:qperm/2-0 (nondet)
       20:     10  6 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
 mdb> print *
@@ -231,8 +229,6 @@ mdb> step -aS 5
 mdb> disable 1
  1: - stop  interface pred queens:qdelete/3-0 (nondet)
 mdb> retry 4
-      76:      4  3 EXIT queens.m:45 (from queens.m:42)
-                         pred queens:qperm/2-0 (nondet)
        5:      4  3 CALL queens.m:45 (from queens.m:42)
                          pred queens:qperm/2-0 (nondet)
 mdb> break 49

@@ -1396,6 +1396,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_rl_exprn_id(proc_info, rl_exprn_id, proc_info).
 :- mode proc_info_set_rl_exprn_id(in, in, out) is det.
 
+:- pred proc_info_get_need_maxfr_slot(proc_info, bool).
+:- mode proc_info_get_need_maxfr_slot(in, out) is det.
+
+:- pred proc_info_set_need_maxfr_slot(proc_info, bool, proc_info).
+:- mode proc_info_set_need_maxfr_slot(in, in, out) is det.
+
+:- pred proc_info_get_call_table_tip(proc_info, maybe(prog_var)).
+:- mode proc_info_get_call_table_tip(in, out) is det.
+
+:- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
+:- mode proc_info_set_call_table_tip(in, in, out) is det.
+
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
 	% those type variables. (find all typeinfos for variables in V).
@@ -1545,13 +1557,54 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% must be considered as having its
 					% address taken, since it is possible
 					% that some other module may do so.
-			maybe_aditi_rl_id :: maybe(rl_exprn_id)
+			maybe_aditi_rl_id :: maybe(rl_exprn_id),
 					% For predicates with an
 					% `aditi_top_down' marker, which are
 					% executed top-down on the Aditi side
 					% of the connection, we generate an RL
 					% expression, for which this is an
 					% identifier. See rl_update.m.
+ 			need_maxfr_slot	:: bool,
+					% True iff tracing is enabled, this
+ 					% is a procedure that lives on the det
+ 					% stack, and the code of this procedure
+ 					% may create a frame on the det stack.
+ 					% (Only in these circumstances do we
+ 					% need to reserve a stack slot to hold
+ 					% the value of maxfr at the call, for
+ 					% use in implementing retry.)
+ 					%
+ 					% This slot is used only with the LLDS
+					% backend XXX. Its value is set during
+					% the live_vars pass; it is invalid
+					% before then.
+ 			call_table_tip	:: maybe(prog_var)
+					% If the tracing is enabled and the
+ 					% procedure's evaluation method is
+ 					% memo, loopcheck or minimal, this
+ 					% slot identifies the variable that
+ 					% holds the tip of the call table.
+ 					% Otherwise, this field will be set to
+ 					% `no'.
+					%
+					% Tabled procedures record, in the
+					% data structure identified by this
+					% variable, that the call is active.
+					% When performing a retry across
+					% such a procedure, we must reset
+					% the state of the call; if we don't,
+					% the retried call will find the
+					% active call and report an infinite
+					% loop error.
+					%
+					% Such resetting of course requires
+					% the debugger to know whether the
+					% procedure has reached the call table
+					% tip yet. Therefore when binding this
+					% variable, the code generator of the
+					% relevant backend must record this
+					% fact in a place accessible to the
+					% debugger.
 		).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1581,7 +1634,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
 		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
 		ArgInfo, InitialLiveness, TVarsMap, TCVarsMap, eval_normal,
-		no, no, DeclaredModes, IsAddressTaken, RLExprn
+		no, no, DeclaredModes, IsAddressTaken, RLExprn, no, no
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
@@ -1593,7 +1646,7 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, eval_normal, 
-		ArgSizes, Termination, no, IsAddressTaken, RLExprn).
+		ArgSizes, Termination, no, IsAddressTaken, RLExprn, no, no).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 		Context, TVarMap, TCVarsMap, IsAddressTaken, ProcInfo) :-
@@ -1604,7 +1657,7 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
 		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
 		Liveness, TVarMap, TCVarsMap, eval_normal, no, no, no, 
-		IsAddressTaken, RLExprn).
+		IsAddressTaken, RLExprn, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
@@ -1690,6 +1743,8 @@ proc_info_get_maybe_termination_info(ProcInfo, ProcInfo^maybe_termination).
 proc_info_maybe_declared_argmodes(ProcInfo, ProcInfo^maybe_declared_head_modes).
 proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
 proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
+proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
+proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
 
 proc_info_set_varset(ProcInfo, VS, ProcInfo^prog_varset := VS).
 proc_info_set_vartypes(ProcInfo, VT, ProcInfo^var_types := VT).
@@ -1715,6 +1770,8 @@ proc_info_set_maybe_termination_info(ProcInfo, MT,
 	ProcInfo^maybe_termination := MT).
 proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
 proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
+proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
+proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
