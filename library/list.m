@@ -19,18 +19,17 @@
 	% standard append predicate
 
 :- pred append(list(T), list(T), list(T)).
-:- mode append(input, input, output).
-:- mode append(output, output, input).
+:- mode append(in, in, out) is det.
+:- mode append(out, out, in) is nondet.
 
 	% merge - see NU-Prolog documentation
 
 :- pred merge(list(T), list(T), list(T)).
-:- mode merge(input, input, output).
-:- mode merge(output, output, input).
+:- mode merge(in, in, out) is det.
 
 :- pred member(T, list(T)).
-:- mode member(output, input).
-:- mode member(input, input).
+:- mode member(out, in) is nondet.
+:- mode member(in, in) is semidet.
 
 	% member_chk/2 is just a particular mode of member/2.
 	% The reason that it is a separate predicate is because
@@ -38,39 +37,53 @@
 	% around if you call it with both args input.
 
 :- pred member_chk(T, list(T)).
-:- mode member_chk(input, input).
+:- mode member_chk(in, in) is semidet.
 
 :- pred member(T, list(T), list(T)).
-:- mode member(output, input, output).
+:- mode member(out, in, out) is nondet.
 
 :- pred length(list(_T), int).
-:- mode length(input_list_skel, output).
-:- mode length(output_list_skel, input).
+:- mode length(input_list_skel, out) is det.
+:- mode length(output_list_skel, in) is det.
 
 :- pred condense(list(list(T)), list(T)).
-:- mode condense(input, output).
+:- mode condense(in, out) is det.
 
 :- pred same_length(list(T), list(T)).
-:- mode same_length(input_list_skel, output_list_skel).
-:- mode same_length(output_list_skel, input_list_skel).
+:- mode same_length(input_list_skel, output_list_skel) is det.
+:- mode same_length(output_list_skel, input_list_skel) is det.
 
 	% split_list(Len, List, Start, End):
 	%	splits `List' into a prefix `Start' of length `Len',
 	%	and a remainder `End'.
 
 :- pred split_list(int, list(T), list(T), list(T)).
-:- mode split_list(input, input, output, output).
+:- mode split_list(in, in, out, out) is det.
 
 :- pred reverse(list(T), list(T)).
-:- mode reverse(input, output).
+:- mode reverse(in, out) is det.
 
 :- pred delete(list(T), T, list(T)).
-:- mode delete(in, in, out).
+:- mode delete(in, in, out) is semidet.
+:- mode delete(in, out, out) is nondet.
+
+	% delete_first(List0, Elem, List) is true iff Elem occurs in List0
+	% and List is List0 with the first occurence of Elem removed
+
+:- pred delete_first(list(T), T, list(T)).
+:- mode delete_first(in, in, out) is semidet.
+
+	% delete_all(List0, Elem, List) is true iff List is List0 with
+	% all occurences of Elem removed
+
+:- pred delete_all(list(T), T, list(T)).
+:- mode delete_all(in, in, out) is det.
 
 	% sort(List0, List):
 	%	List is List0 sorted with duplicates removed.
+
 :- pred sort(list(T), list(T)).
-:- mode sort(in, out).
+:- mode sort(in, out) is det.
 
 :- pred nth_member_search(list(T), T, int).
 :- mode nth_member_search(in, in, out) is semidet.
@@ -139,6 +152,23 @@ split_list(N, List, Start, End) :-
 		List = [Head | List1],
 		Start = [Head | Start1],
 		split_list(N1, List1, Start1, End)
+	).
+
+delete_first([X | Xs], Y, Zs) :-
+	( X = Y ->
+		Zs = Xs
+	;
+		Zs = [X | Zs1],
+		delete_first(Xs, Y, Zs1)
+	).
+
+delete_all([], _, []).
+delete_all([X | Xs], Y, Zs) :-
+	( X = Y ->
+		delete_all(Xs, Y, Zs)
+	;
+		Zs = [X | Zs1],
+		delete_all(Xs, Y, Zs1)
 	).
 
 %-----------------------------------------------------------------------------%

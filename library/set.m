@@ -176,14 +176,8 @@ set__remove_list(S0, [X | Xs], S) :-
 	set__remove(S0, X, S1),
 	set__remove_list(S1, Xs, S).
 
-set__remove([], _, []).
-set__remove([E|Es], X, S) :-
-	( E = X ->
-		S = S1
-	;
-		S = [E | S1]
-	),
-	set__remove(Es, X, S1).
+set__remove(Set0, Elem, Set) :-
+	delete_all(Set0, Elem, Set).
 
 set__union(Set0, Set1, Set) :-
 	append(Set1, Set0, Set).

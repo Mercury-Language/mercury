@@ -210,7 +210,8 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 			_Condition,
 			ClausesInfo, % source level
 			ProcTable,
-			_Context
+			_Context,
+			_Junk
 		),
 		Indent1 is Indent + 1
 	},

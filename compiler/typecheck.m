@@ -192,7 +192,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	predinfo_clauses_info(PredInfo0, ClausesInfo0),
 	ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
 	( Clauses0 = [] ->
-		ModuleInfo1 = ModuleInfo0,
+		ModuleInfo2 = ModuleInfo0,
 		Error1 = Error0,
 		IOState1 = IOState0
 	;
@@ -207,12 +207,18 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		typeinfo_get_vartypes(TypeInfo2, VarTypes),
 		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 		predinfo_set_clauses_info(PredInfo0, ClausesInfo, PredInfo),
+		typeinfo_get_found_error(TypeInfo2, Error1),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-		typeinfo_get_found_error(TypeInfo2, Error1),
+		( Error1 = yes ->
+			moduleinfo_remove_predid(ModuleInfo1, PredId,
+				ModuleInfo2)
+		;
+			ModuleInfo2 = ModuleInfo1
+		),
 		typeinfo_get_io_state(TypeInfo2, IOState1)
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo1, Error1, ModuleInfo, Error,
+	typecheck_pred_types_2(PredIds, ModuleInfo2, Error1, ModuleInfo, Error,
 		IOState1, IOState).
 
 :- pred write_progress_message(pred_id, io__state, io__state).

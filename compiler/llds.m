@@ -304,7 +304,7 @@ output_instruction(incr_hp(N)) -->
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo).
 
-output_label(entrylabel(Module, Pred, Arity, Mode)) -->
+output_label(entrylabel(_Module, Pred, Arity, Mode)) -->
 	%%% io__write_string(Module),
 	io__write_string("mercury"),
 	io__write_string("__"),
@@ -313,7 +313,7 @@ output_label(entrylabel(Module, Pred, Arity, Mode)) -->
 	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode).
-output_label(label(Module, Pred, Arity, Mode, Num)) -->
+output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 	%%% io__write_string(Module),
 	io__write_string("mercury"),
 	io__write_string("__"),

@@ -432,7 +432,9 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 	  map__init(Procs),
 	  make_predid(ModuleName, Name, Arity, PredId),
 	  clauses_info_init(Arity, ClausesInfo),
-	  P = predicate(VarSet, Types, Cond, ClausesInfo, Procs, Context) },
+	  PredContainsError = no,
+	  P = predicate(VarSet, Types, Cond, ClausesInfo, Procs, Context,
+			PredContainsError) },
 	(
 		% some [P2]
 		{ map__search(Preds0, PredId, P2) }
@@ -471,8 +473,10 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 :- pred pred_is_compat(pred_info, pred_info).
 :- mode pred_is_compat(input, input).
 
-pred_is_compat(predicate(_, Types, _, _, _, _),
-	       predicate(_, Types, _, _, _, _)).
+pred_is_compat(PredInfo1, PredInfo2) :-
+	predinfo_arg_types(PredInfo1, _, ArgTypes1),
+	predinfo_arg_types(PredInfo2, _, ArgTypes2),
+	ArgTypes1 = ArgTypes2.
  
 %-----------------------------------------------------------------------------%
 
@@ -509,15 +513,13 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		% some [P0]
 		{ map__search(Preds0, PredId, P0) }
 	->
-		{ P0 = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs0,
-			TContext) },
+		{ predinfo_procedures(P0, Procs0) },
 			% XXX we should check that this mode declaration
 			% isn't the same as an existing one
 		{ next_mode_id(Procs0, ModeId) },
 		{ procinfo_init(Modes, Det, MContext, NewProc) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) },
-		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs,
-			TContext) },
+		{ predinfo_set_procedures(P0, Procs, P) },
 		{ map__set(Preds0, PredId, P, Preds) }
 	;
 		undefined_pred_error(PredName, Arity, MContext,	
@@ -540,7 +542,7 @@ preds_add_implicit(Preds0, PredId, Context, Preds) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars(Arity, TVarSet0, TypeVars, TVarSet),
 	var_list_to_term_list(TypeVars, Types),
-	P = predicate(TVarSet, Types, true, ClausesInfo, Procs, Context),
+	P = predicate(TVarSet, Types, true, ClausesInfo, Procs, Context, no),
 	map__set(Preds0, PredId, P, Preds).
 
 :- pred var_list_to_term_list(list(var), list(term)).
@@ -602,13 +604,12 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		{ map__search(Preds0, PredId, PredInfo0) }
 	->
 			% XXX abstract predicate/4
-		{ PredInfo0 = predicate(TVarSet, Types, Cond, Clauses0, Procs,
-				TContext),
+		{ predinfo_clauses_info(PredInfo0, Clauses0), 
+		  predinfo_procedures(PredInfo0, Procs),
 		  map__keys(Procs, ModeIds),
 		  clauses_info_add_clause(Clauses0, ModeIds, VarSet, Args,
 				Body, Context, Clauses),
-		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs,
-				TContext),
+		  predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
 	;
 		undefined_pred_error(PredName, Arity, Context, "clause"),

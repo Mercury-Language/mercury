@@ -43,20 +43,23 @@
 
 	% The symbol table for predicates.
 
-:- type pred_info	--->	predicate(
-					varset,		% names of _type_ vars
-							% in the pred type decl
-					list(type),	% argument types
-					condition,	% formal specification
-							% (not used)
+:- type pred_info	
+	--->	predicate(
+			varset,		% names of _type_ vars
+					% in the pred type decl
+			list(type),	% argument types
+			condition,	% formal specification
+					% (not used)
 
-					clauses_info,
+			clauses_info,
 
-					proc_table,
+			proc_table,
 
-					term__context	% the location (line #)
-							% of the :- pred decl.
-				).
+			term__context,	% the location (line #)
+					% of the :- pred decl.
+
+			bool		% unused junk
+		).
 
 :- type clauses_info	--->	clauses_info(
 					varset,		% variable names
@@ -435,6 +438,9 @@
 :- pred moduleinfo_incr_warnings(module_info, module_info).
 :- mode moduleinfo_incr_warnings(input, output).
 
+:- pred moduleinfo_remove_predid(module_info, pred_id, module_info).
+:- mode moduleinfo_remove_predid(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -569,6 +575,11 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
+moduleinfo_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
+	moduleinfo_predids(ModuleInfo0, PredIds0),
+	delete_all(PredIds0, PredId, PredIds),
+	moduleinfo_set_predids(ModuleInfo0, PredIds, ModuleInfo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -657,32 +668,32 @@ make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
 make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
 
 predinfo_proc_ids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _),
+	PredInfo = predicate(_, _, _, _, Procs, _, _),
 	map__keys(Procs, ProcIds).
 
 predinfo_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Clauses, _Procs, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _).
 
 predinfo_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(TypeVars, ArgTypes, Cond, _, Procs, C),
-	PredInfo = predicate(TypeVars, ArgTypes, Cond, Clauses, Procs, C).
+	PredInfo0 = predicate(TypeVars, ArgTypes, Cond, _, Procs, C, Err),
+	PredInfo = predicate(TypeVars, ArgTypes, Cond, Clauses, Procs, C, Err).
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).
+	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _).
 
 predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs, _).
+	PredInfo = predicate(_, _, _, _, Procs, _, _).
 
 predinfo_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F),
-	PredInfo = predicate(A, B, C, D, Procedures, F).
+	PredInfo0 = predicate(A, B, C, D, _, F, G),
+	PredInfo = predicate(A, B, C, D, Procedures, F, G).
 
 predinfo_procids(PredInfo, ProcIds) :-
 	predinfo_procedures(PredInfo, Procedures),
 	map__keys(Procedures, ProcIds).
 
 predinfo_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context).
+	PredInfo = predicate(_, _, _, _, _, Context, _).
 
 predinfo_is_imported(PredInfo) :-
 	predinfo_clauses_info(PredInfo, ClauseInfo),
