@@ -149,7 +149,7 @@ if test "$MKFIFO" = ""; then
 	MKFIFO=none
 fi
 AC_SUBST(MKFIFO)
-test MKNOD = "" && MKNOD=mknod
+test "$MKNOD" = "" && MKNOD=mknod
 AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
