@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999,2001-2002 The University of Melbourne.
+% Copyright (C) 1999,2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,11 @@ garbage_collect -->
 
 	GC_gcollect();
 #elif defined(MR_NATIVE_GC)
+  #ifdef MR_HIGHLEVEL_CODE
 	MR_garbage_collect();
+  #else
+  	/* XXX not yet implemented */
+  #endif
 #endif
 ").
 garbage_collect :-
